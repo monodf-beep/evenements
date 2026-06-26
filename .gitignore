@@ -1,0 +1,14 @@
+# Secrets — ne jamais committer
+.env
+
+# Base de données et logs générés
+data/
+logs/
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/

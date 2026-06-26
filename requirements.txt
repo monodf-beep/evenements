@@ -1,0 +1,6 @@
+anthropic
+feedparser
+flask
+gunicorn
+python-dotenv
+requests

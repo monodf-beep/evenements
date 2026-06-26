@@ -1,0 +1,19 @@
+# Images de SUBSTITUTION par territoire.
+#
+# Utilisées quand un article n'a pas d'image réutilisable (cas presse : on ne
+# reprend pas l'image du journal) ou quand le flux ne fournit aucun visuel.
+# Les sources INSTITUTIONNELLES gardent, elles, leur propre image.
+#
+# Format : territoire;url    (territoire : Savoie | Piemonte | Vallee-Aoste | Nice | Alcotra)
+# Plusieurs lignes par territoire = variation (choix déterministe par article).
+# 'default' sert de repli si un territoire n'a aucune image.
+#
+# Visuels actuels : bannières de marque Cultura Sabauda (hébergées dans Brevo).
+# Générées par scripts/make_banners.py.
+
+Savoie;https://img.mailinblue.com/10646318/images/content_library/original/6a1fec783405f1c822ac64fc.png
+Piemonte;https://img.mailinblue.com/10646318/images/content_library/original/6a1fec788ff3307ae7c9f3b2.png
+Vallee-Aoste;https://img.mailinblue.com/10646318/images/content_library/original/6a1fec78d63faa2a8aba3560.png
+Nice;https://img.mailinblue.com/10646318/images/content_library/original/6a1fec78d63faa2a8aba355f.png
+Alcotra;https://img.mailinblue.com/10646318/images/content_library/original/6a1fec783405f1c822ac64fd.png
+default;https://img.mailinblue.com/10646318/images/content_library/original/6a1fec7850ae0c94d653a7e6.png

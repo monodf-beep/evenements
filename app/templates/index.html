@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Agenda CS — Validation</title>
+<style>
+  body { font-family: sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 0.5rem; border: 1px solid #ddd; text-align: left; vertical-align: top; }
+  th { background: #f5f5f5; }
+  .score { font-weight: bold; font-size: 1.1rem; }
+  .s9, .s10 { color: #1a7a2e; }
+  .s7, .s8 { color: #2563eb; }
+  .btn { padding: 0.3rem 0.8rem; margin: 0.2rem; cursor: pointer; border: none; border-radius: 3px; }
+  .btn-cs { background: #c0392b; color: white; }
+  .btn-sub { background: #2563eb; color: white; }
+  .btn-rej { background: #888; color: white; }
+  nav { margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<nav><a href="/">Validation ({{ events|length }})</a> | <a href="/stats">Stats</a></nav>
+<h1>Événements à valider (score ≥ 7)</h1>
+{% if not events %}
+  <p>Aucun événement en attente de validation.</p>
+{% else %}
+<table>
+  <tr>
+    <th>Score</th><th>Catégorie</th><th>Titre</th>
+    <th>Date</th><th>Lieu</th><th>Territoire</th>
+    <th>Justification</th><th>Source</th><th>Actions</th>
+  </tr>
+  {% for e in events %}
+  <tr>
+    <td class="score s{{ e.llm_score }}">{{ e.llm_score }}/10</td>
+    <td>{{ e.llm_categorie }}</td>
+    <td><strong>{{ e.title }}</strong></td>
+    <td>{{ e.date_start }}</td>
+    <td>{{ e.lieu or '' }} {{ e.ville or '' }}</td>
+    <td>{{ e.territoire }}</td>
+    <td><em>{{ e.llm_justification }}</em></td>
+    <td><a href="{{ e.url_source }}" target="_blank">↗</a><br><small>{{ e.source_name }}</small></td>
+    <td>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline">
+        <button class="btn btn-cs">✅ CS</button>
+      </form>
+      <form method="POST" action="/action/{{ e.id }}/subdomain" style="display:inline">
+        <button class="btn btn-sub">📋 Sub</button>
+      </form>
+      <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline">
+        <button class="btn btn-rej">❌ Rejeter</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+</body>
+</html>

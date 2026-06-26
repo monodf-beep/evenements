@@ -1,0 +1,11 @@
+# Sources RSS des événements culturels — Sprint 1
+# Format : url_rss;territoire;nom_source
+# Territoire : Savoie | Piemonte | Vallee-Aoste | Nice
+# Vérifier que ces flux RSS existent avant Sprint 1.
+# Lignes commençant par # ignorées.
+
+https://www.salonelibro.it/it/feed.xml;Piemonte;Salone del Libro Torino
+https://www.turismotorino.org/feed;Piemonte;Turismo Torino
+https://patrimoines.savoie.fr/agenda/rss;Savoie;Patrimoines de Savoie
+https://regione.vda.it/rss/eventi.xml;Vallee-Aoste;Région Vallée d'Aoste
+https://www.nicecotedazur.org/agenda/rss;Nice;Nice Côte d'Azur

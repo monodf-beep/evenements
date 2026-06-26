@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Stats Agenda CS</title>
+<style>body{font-family:sans-serif;max-width:600px;margin:2rem auto;}</style>
+</head>
+<body>
+<nav><a href="/">Validation</a> | <a href="/stats">Stats</a></nav>
+<h1>Statistiques</h1>
+<table border="1" cellpadding="8">
+  <tr><th>Statut</th><th>Nb</th></tr>
+  {% for row in counts %}
+  <tr><td>{{ row.statut }}</td><td>{{ row.n }}</td></tr>
+  {% endfor %}
+</table>
+</body>
+</html>
