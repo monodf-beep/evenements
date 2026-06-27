@@ -1,11 +1,28 @@
 # Sources RSS des événements culturels — Sprint 1
 # Format : url_rss;territoire;nom_source
 # Territoire : Savoie | Piemonte | Vallee-Aoste | Nice
-# Vérifier que ces flux RSS existent avant Sprint 1.
 # Lignes commençant par # ignorées.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# ÉTAT DE VÉRIFICATION DES FLUX (2026-06-27)
+# Les 5 URLs proposées dans le brief ont été testées : 4 renvoient 404/503 et
+# du HTML (pas de RSS). Elles sont commentées ci-dessous avec leur statut, en
+# attente d'URLs réelles à fournir par les sources. Le flux Nice a été corrigé
+# vers l'URL WordPress qui fonctionne. À compléter avant la mise en production.
+# ─────────────────────────────────────────────────────────────────────────────
 
-https://www.salonelibro.it/it/feed.xml;Piemonte;Salone del Libro Torino
-https://www.turismotorino.org/feed;Piemonte;Turismo Torino
-https://patrimoines.savoie.fr/agenda/rss;Savoie;Patrimoines de Savoie
-https://regione.vda.it/rss/eventi.xml;Vallee-Aoste;Région Vallée d'Aoste
-https://www.nicecotedazur.org/agenda/rss;Nice;Nice Côte d'Azur
+# ── Vérifié OK (HTTP 200, RSS valide) ──
+# NB : fil général de la Métropole (actus, pas agenda culturel dédié) ; le
+# filtrage éditorial du LLM écartera l'essentiel. À remplacer par un flux
+# agenda culturel si la Métropole en publie un.
+https://www.nicecotedazur.org/feed/;Nice;Nice Côte d'Azur
+
+# ── À VÉRIFIER / corriger : URLs du brief invalides au 2026-06-27 ──
+# Salone del Libro Torino — HTTP 404 (page HTML, pas de RSS)
+#https://www.salonelibro.it/it/feed.xml;Piemonte;Salone del Libro Torino
+# Turismo Torino — HTTP 404 (page HTML, pas de RSS)
+#https://www.turismotorino.org/feed;Piemonte;Turismo Torino
+# Patrimoines de Savoie — HTTP 404 (redirige vers page erreur-404)
+#https://patrimoines.savoie.fr/agenda/rss;Savoie;Patrimoines de Savoie
+# Région Vallée d'Aoste — HTTP 503 (page HTML, pas de RSS)
+#https://regione.vda.it/rss/eventi.xml;Vallee-Aoste;Région Vallée d'Aoste
