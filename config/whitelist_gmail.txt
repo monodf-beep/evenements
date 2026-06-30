@@ -1,0 +1,34 @@
+# Indices de TERRITOIRE par expéditeur, pour le canal Gmail.
+#
+# Le sélecteur PRIMAIRE des mails est le label Gmail « Agenda » (curation Franck) :
+# ce fichier ne sert qu'à DEVINER le territoire d'un événement à partir de
+# l'adresse d'expédition. Un expéditeur non listé → territoire vide (à classer).
+#
+# Format (un par ligne) :  motif_expediteur;territoire
+#   motif = sous-chaîne cherchée dans l'adresse « From » (domaine ESP ou propre).
+#   territoire : Savoie | Piemonte | Vallee-Aoste | Nice
+#
+# Mis à jour 2026-06-30. À compléter avec les adresses réelles relevées dans Gmail
+# (beaucoup de newsletters partent via un ESP : mailchimp, sendinblue/brevo, etc.).
+
+# ---- Piémont ----
+salonelibro.it;Piemonte
+turismotorino.org;Piemonte
+fondazionetorinomusei.it;Piemonte
+gamtorino.it;Piemonte
+circololettori.it;Piemonte
+
+# ---- Nice / Alpes-Maritimes ----
+tnn.fr;Nice
+forumsirius.fr;Nice
+departement06.fr;Nice
+explorenicecotedazur.com;Nice
+nicecotedazur.org;Nice
+
+# ---- Savoie / Haute-Savoie ----
+bonlieu-annecy.com;Savoie
+espacemalraux-chambery.fr;Savoie
+
+# ---- Vallée d'Aoste ----
+lovevda.it;Vallee-Aoste
+fortedibard.it;Vallee-Aoste

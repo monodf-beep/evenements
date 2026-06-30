@@ -1,0 +1,35 @@
+# Registre des NEWSLETTERS culturelles suivies (canal Gmail).
+# Affiché à titre de suivi ; la collecte réelle se fait par le label Gmail « Agenda »
+# (voir scripts/gmail_collect.py), pas par ce fichier.
+#
+# Format (un par ligne) :  nom;domaine;territoire;statut
+#   statut : actif | attente | candidat | inactif
+#     actif    = inscription confirmée (double opt-in OK)
+#     attente  = inscrit, opt-in/captcha à finaliser
+#     candidat = à souscrire / bloqué (captcha, embed) — à retenter
+#     inactif  = pas de newsletter sur le site
+#
+# Mis à jour 2026-06-30 (run Claude-in-Chrome).
+
+# ============================ PIÉMONT ============================
+Salone Internazionale del Libro;email.salonelibro.it;Piemonte;actif
+Turismo Torino e Provincia;turismotorino.org;Piemonte;actif
+Fondazione Torino Musei (GAM/MAO/Palazzo Madama);fondazionetorinomusei.it;Piemonte;actif
+Circolo dei Lettori;circololettori.it;Piemonte;candidat
+Città di Torino;comune.torino.it;Piemonte;inactif
+Regione Piemonte;regione.piemonte.it;Piemonte;inactif
+VisitPiemonte;visitpiemonte.com;Piemonte;inactif
+
+# ======================= NICE / ALPES-MARITIMES =======================
+Théâtre National de Nice (TNN);tnn.fr;Nice;actif
+Département des Alpes-Maritimes;departement06.fr;Nice;attente
+Office de Tourisme Nice Côte d'Azur;explorenicecotedazur.com;Nice;candidat
+Ville de Menton;menton.fr;Nice;inactif
+Ville d'Antibes Juan-les-Pins;antibesjuanlespins.com;Nice;inactif
+Musées nationaux Alpes-Maritimes (Chagall);musees-nationaux-alpesmaritimes.fr;Nice;inactif
+
+# ============================ SAVOIE / HAUTE-SAVOIE ============================
+Bonlieu scène nationale Annecy;bonlieu-annecy.com;Savoie;attente
+
+# ============================ VALLÉE D'AOSTE ============================
+Office Régional du Tourisme (Lovevda);lovevda.it;Vallee-Aoste;candidat
