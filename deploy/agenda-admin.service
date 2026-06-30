@@ -24,7 +24,9 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/evenements
-ExecStart=/root/evenements/.venv/bin/gunicorn -w 2 -b 127.0.0.1:8098 'app.app:app'
+# 1 worker : le backoffice est mono-utilisateur, et le suivi des lancements
+# manuels (waitpid des sous-process) suppose que le même process suit ses enfants.
+ExecStart=/root/evenements/.venv/bin/gunicorn -w 1 -b 127.0.0.1:8098 'app.app:app'
 Restart=on-failure
 RestartSec=5
 

@@ -32,13 +32,10 @@ https://www.megeve.com/feed/;Savoie;Megève Tourisme
 https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie
 # Radar
 https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar)
-# À RE-VÉRIFIER hors proxy (bloqués HTTP 000/502 ici, probablement valides — WordPress) :
-#https://www.theatrecharlesdullin.fr/feed/;Savoie;Théâtre Charles Dullin
-#https://www.chambery-tourisme.com/feed/;Savoie;Chambéry Tourisme
-#https://www.citedesarts-chambery.fr/feed/;Savoie;Cité des Arts Chambéry
-#https://www.grand-chambery.fr/feed/;Savoie;Grand Chambéry
-#https://www.chateau-annecy.fr/feed/;Savoie;Château-Musée d'Annecy
-#https://www.museedumontblanc.com/feed/;Savoie;Musée du Mont-Blanc
+# NB : 6 pistes Savoie (theatrecharlesdullin.fr, chambery-tourisme.com,
+# citedesarts-chambery.fr, grand-chambery.fr, chateau-annecy.fr,
+# museedumontblanc.com) testées depuis le VPS le 2026-06-30 → domaines morts
+# (DNS non résolu / timeout). Écartées. À remplacer par de vrais flux si on en trouve.
 
 # ================================= PIÉMONT ====================================
 # Portail tourisme régional (agenda eventi : mostre, festival, patrimonio)

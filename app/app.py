@@ -11,10 +11,13 @@ Lance avec : gunicorn -w 1 -b 127.0.0.1:5001 'app.app:app'
 from __future__ import annotations
 import hashlib
 import hmac
+import json
 import os
 import sqlite3
+import subprocess
 import sys
 from collections import Counter
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 
@@ -148,6 +151,114 @@ def friendly_alert():
     return {"kind": kind, "reset": reset, "raw": msg, "ts": a.get("ts", "")}
 
 
+# --------------------------------------------------------------------------- #
+# Lancement manuel des étapes du pipeline (boutons du dashboard)
+# --------------------------------------------------------------------------- #
+TASKS = {
+    "scrape":   {"script": "scripts/scraper_events.py", "label": "Scraping RSS", "icon": "📡", "cost": False},
+    "gmail":    {"script": "scripts/gmail_collect.py",   "label": "Newsletters Gmail", "icon": "📬", "cost": True},
+    "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation LLM", "icon": "🧠", "cost": True},
+}
+RUN_STATE = ROOT / "data" / "run_state.json"
+
+
+def _load_runstate() -> dict:
+    try:
+        return json.loads(RUN_STATE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_runstate(st: dict) -> None:
+    try:
+        RUN_STATE.parent.mkdir(parents=True, exist_ok=True)
+        RUN_STATE.write_text(json.dumps(st), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except Exception:
+        return False
+
+
+def _running_state() -> dict:
+    """Renvoie {task: running_bool} en RÉCOLTANT les process terminés.
+
+    Un process fini devient zombie tant qu'il n'est pas « reaped » : os.kill(0)
+    le verrait encore vivant. On utilise waitpid(WNOHANG) pour le récolter et
+    on persiste un flag « done » (le service tourne en 1 worker gunicorn, donc
+    c'est bien le parent qui suit ses enfants).
+    """
+    st = _load_runstate()
+    changed = False
+    result = {}
+    for task, info in st.items():
+        if info.get("done") or not info.get("pid"):
+            result[task] = False
+            continue
+        pid = int(info["pid"])
+        running = True
+        try:
+            wpid, _status = os.waitpid(pid, os.WNOHANG)
+            if wpid == pid:           # vient de se terminer (récolté)
+                running = False
+        except ChildProcessError:     # pas/plus notre enfant
+            running = _pid_alive(pid)
+        except Exception:
+            running = _pid_alive(pid)
+        if not running:
+            info["done"] = True
+            changed = True
+        result[task] = running
+    if changed:
+        _save_runstate(st)
+    return result
+
+
+def launch_task(task: str) -> tuple[bool, str]:
+    """Lance un script du pipeline en arrière-plan (non bloquant)."""
+    if _running_state().get(task):
+        return False, "déjà en cours"
+    script = ROOT / TASKS[task]["script"]
+    logf = ROOT / "logs" / f"run_{task}.log"
+    logf.parent.mkdir(parents=True, exist_ok=True)
+    fh = open(logf, "ab")
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, str(script)], cwd=str(ROOT),
+            stdout=fh, stderr=fh, start_new_session=True)
+    except Exception as exc:  # pragma: no cover
+        return False, f"échec : {exc}"
+    st = _load_runstate()
+    st[task] = {"pid": proc.pid, "done": False,
+                "started": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    _save_runstate(st)
+    return True, "lancé"
+
+
+def tasks_status() -> dict:
+    st = _load_runstate()
+    running = _running_state()
+    out = {}
+    for key, meta in TASKS.items():
+        info = st.get(key, {})
+        logf = ROOT / "logs" / f"run_{key}.log"
+        tail = ""
+        if logf.exists():
+            try:
+                lines = logf.read_text(encoding="utf-8", errors="replace").strip().splitlines()
+                tail = lines[-1][:200] if lines else ""
+            except Exception:
+                tail = ""
+        out[key] = {**meta, "running": running.get(key, False),
+                    "started": info.get("started", ""), "tail": tail}
+    return out
+
+
 def load_newsletters() -> list[dict]:
     """Lit config/newsletters.txt : nom;domaine;territoire;statut."""
     rows: list[dict] = []
@@ -195,6 +306,8 @@ def dashboard():
     src_counts = Counter(s["territoire"] for s in load_sources())
     newsletters = load_newsletters()
     nl_active = sum(1 for n in newsletters if n["statut"] == "actif")
+    tasks = tasks_status()
+    any_running = any(t["running"] for t in tasks.values())
 
     return render_template(
         "dashboard.html",
@@ -205,7 +318,18 @@ def dashboard():
         cost=cost, alert=friendly_alert(),
         src_counts=src_counts, src_total=sum(src_counts.values()),
         newsletters=newsletters, nl_active=nl_active,
+        tasks=tasks, any_running=any_running,
     )
+
+
+@app.route("/run/<task>", methods=["POST"])
+@require_auth
+def run_task(task: str):
+    if task not in TASKS:
+        return "Tâche inconnue", 404
+    ok, msg = launch_task(task)
+    log.info("Lancement manuel '%s' : %s", task, msg)
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/validation")
