@@ -23,7 +23,7 @@
 </style>
 </head>
 <body>
-<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation ({{ events|length }})</a></nav>
+<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation ({{ events|length }})</a><a href="/logout" style="float:right">Déconnexion</a></nav>
 {% if alert %}
 <div class="alert">⚠️ Alerte API — crédit / limite d'usage atteinte : {{ alert.message }}
   <small>({{ alert.ts }})</small></div>

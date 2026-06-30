@@ -9,6 +9,8 @@ Auth HTTP Basic. Design minimaliste fonctionnel.
 Lance avec : gunicorn -w 1 -b 127.0.0.1:5001 'app.app:app'
 """
 from __future__ import annotations
+import hashlib
+import hmac
 import os
 import sqlite3
 import sys
@@ -16,8 +18,7 @@ from collections import Counter
 from functools import wraps
 from pathlib import Path
 
-from flask import Flask, redirect, render_template, request, url_for
-from flask import Response
+from flask import Flask, redirect, render_template, request, session, url_for
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -50,22 +51,55 @@ STATUS_LABELS = {
 }
 
 app = Flask(__name__, template_folder="templates")
+# Clé de session : FLASK_SECRET_KEY si fournie, sinon dérivée (stable entre les
+# workers gunicorn) des identifiants — pas de secret aléatoire qui invaliderait
+# les sessions à chaque redémarrage / par worker.
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or hashlib.sha256(
+    (os.getenv("BACKOFFICE_USER", "admin") + ":"
+     + os.getenv("BACKOFFICE_PASSWORD", "")).encode("utf-8")
+).hexdigest()
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 
 
 def check_auth(username, password):
-    return (username == os.getenv("BACKOFFICE_USER", "admin")
-            and password == os.getenv("BACKOFFICE_PASSWORD", ""))
+    """Comparaison à temps constant des identifiants du .env."""
+    u = os.getenv("BACKOFFICE_USER", "admin")
+    p = os.getenv("BACKOFFICE_PASSWORD", "")
+    return (hmac.compare_digest(username or "", u)
+            and hmac.compare_digest(password or "", p))
 
 
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return Response("Accès refusé", 401,
-                            {"WWW-Authenticate": 'Basic realm="Backoffice"'})
+        if not session.get("logged_in"):
+            return redirect(url_for("login", next=request.path))
         return f(*args, **kwargs)
     return decorated
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("logged_in"):
+        return redirect(url_for("dashboard"))
+    error = None
+    if request.method == "POST":
+        if check_auth(request.form.get("username"), request.form.get("password")):
+            session["logged_in"] = True
+            session["user"] = request.form.get("username")
+            # Anti open-redirect : on n'autorise qu'un chemin local.
+            nxt = request.args.get("next") or ""
+            if not nxt.startswith("/") or nxt.startswith("//"):
+                nxt = url_for("dashboard")
+            return redirect(nxt)
+        error = "Identifiants incorrects."
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 def get_db():

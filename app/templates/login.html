@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda CS — Connexion</title>
+<style>
+  body { font-family: sans-serif; background: #f3f4f6; color: #1f2937;
+         display: flex; min-height: 100vh; align-items: center; justify-content: center; margin: 0; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+          padding: 2rem 2.2rem; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  h1 { font-size: 1.15rem; margin: 0 0 0.3rem; }
+  p.sub { color: #6b7280; font-size: 0.85rem; margin: 0 0 1.3rem; }
+  label { display: block; font-size: 0.85rem; color: #374151; margin: 0.7rem 0 0.2rem; }
+  input { width: 100%; box-sizing: border-box; padding: 0.55rem 0.7rem;
+          border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; }
+  button { width: 100%; margin-top: 1.3rem; padding: 0.6rem; border: none;
+           border-radius: 6px; background: #2563eb; color: #fff; font-size: 0.95rem;
+           cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  .err { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+         border-radius: 6px; padding: 0.5rem 0.7rem; font-size: 0.85rem; margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+<form class="card" method="POST" action="{{ url_for('login', next=request.args.get('next','')) }}">
+  <h1>Agenda Cultura Sabauda</h1>
+  <p class="sub">Backoffice de validation</p>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <label for="username">Nom d'utilisateur</label>
+  <input id="username" name="username" autocomplete="username" autofocus>
+  <label for="password">Mot de passe</label>
+  <input id="password" name="password" type="password" autocomplete="current-password">
+  <button type="submit">Se connecter</button>
+</form>
+</body>
+</html>
