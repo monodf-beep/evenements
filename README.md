@@ -46,8 +46,9 @@ réutilisation directe de ses utilitaires (voir [Fichiers synchronisés](#fichie
            ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ app/app.py  (Flask + gunicorn, auth HTTP Basic)               │
-│  • liste les events statut='evaluated' & score≥7 (tri desc)   │
-│  • encart « Coûts API » (semaine + cumul) + alerte crédit      │
+│  • /          dashboard : KPIs, coûts API/modèle, répartitions │
+│               statut/territoire/catégorie, sources, newsletters│
+│  • /validation  events statut='evaluated' & score≥7 (tri desc)│
 │  • actions : [Publier CS] [Subdomain] [Rejeter]               │
 └──────────┬───────────────────────────────────────────────────┘
            │ [Publier CS]
@@ -59,6 +60,12 @@ réutilisation directe de ses utilitaires (voir [Fichiers synchronisés](#fichie
 │  • retourne wp_post_id → stocké en base                        │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+**Deux canaux d'entrée** alimentent `events_raw` (statut=pending) :
+- **RSS** — `scripts/scraper_events.py` (cron 8h), sources dans `config/sources.txt` ;
+- **Newsletters Gmail** — `scripts/gmail_collect.py` (cron 8h15) : lit les mails du
+  label Gmail `Agenda`, un LLM en extrait les événements (modèle configurable
+  `ANTHROPIC_MODEL_EXTRACT`). Setup OAuth : `docs/SETUP_GMAIL.md` / `scripts/authorize.py`.
 
 ## Bifurcation par score
 
