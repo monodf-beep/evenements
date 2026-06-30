@@ -31,7 +31,7 @@ https://www.megeve.com/feed/;Savoie;Megève Tourisme
 # Institutionnel départemental (culture diffuse)
 https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie
 # Radar
-https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar)
+https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar);radar
 # NB : 6 pistes Savoie (theatrecharlesdullin.fr, chambery-tourisme.com,
 # citedesarts-chambery.fr, grand-chambery.fr, chateau-annecy.fr,
 # museedumontblanc.com) testées depuis le VPS le 2026-06-30 → domaines morts
@@ -48,15 +48,15 @@ https://www.teatrostabiletorino.it/feed/;Piemonte;Teatro Stabile di Torino
 # Rencontres littéraires
 https://www.circololettori.it/feed/;Piemonte;Fondazione Circolo dei Lettori
 # Radar
-https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+Torino+OR+Piemonte&hl=it&gl=IT&ceid=IT:it;Piemonte;Google News - Cultura Torino/Piemonte (radar)
+https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+Torino+OR+Piemonte&hl=it&gl=IT&ceid=IT:it;Piemonte;Google News - Cultura Torino/Piemonte (radar);radar
 
 # ============================== VALLÉE D'AOSTE ================================
 # Seul flux institutionnel natif réellement peuplé (WordPress)
 https://www.fortedibard.it/eventi/feed/;Vallee-Aoste;Forte di Bard - Eventi
 https://www.fortedibard.it/feed/;Vallee-Aoste;Forte di Bard - Notizie
 # Radars (couvrent le reste du territoire, peu de RSS institutionnel)
-https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+%22Valle+d%27Aosta%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura VdA (radar)
-https://news.google.com/rss/search?q=cultura+eventi+%22Valle+d%27Aosta%22+OR+%22Vall%C3%A9e+d%27Aoste%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura/Eventi VdA bilingue (radar)
+https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+%22Valle+d%27Aosta%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura VdA (radar);radar
+https://news.google.com/rss/search?q=cultura+eventi+%22Valle+d%27Aosta%22+OR+%22Vall%C3%A9e+d%27Aoste%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura/Eventi VdA bilingue (radar);radar
 
 # ========================= NICE / ALPES-MARITIMES ============================
 # Vrai agenda d'événements (Opéra : concerts, festival, spectacles)
@@ -71,4 +71,4 @@ https://www.grasse.fr/feed/;Nice;Ville de Grasse
 # Office de tourisme
 https://www.explorenicecotedazur.com/feed/;Nice;Office de Tourisme Nice Côte d'Azur
 # Radar
-https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR+%22Alpes-Maritimes%22&hl=fr&gl=FR&ceid=FR:fr;Nice;Google News - Culture 06 (radar)
+https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR+%22Alpes-Maritimes%22&hl=fr&gl=FR&ceid=FR:fr;Nice;Google News - Culture 06 (radar);radar

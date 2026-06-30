@@ -92,7 +92,7 @@
     <td><a href="/preview/{{ e.id }}" target="_blank"><strong>{{ e.title }}</strong></a></td>
     <td>{{ e.date_start or '—' }}</td>
     <td>{{ e.territoire or '—' }}</td>
-    <td>{% if e.url_source %}<a href="{{ e.url_source }}" target="_blank">↗</a> {% endif %}<small>{{ e.source_name or '' }}</small></td>
+    <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<small class="muted">📡 radar</small>{% elif e.url_source %}<a href="{{ e.url_source }}" target="_blank">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
     <td><span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) }}</span></td>
     <td>{{ e.llm_score if e.llm_score is not none else '—' }}</td>
     <td>

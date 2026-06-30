@@ -45,9 +45,16 @@ def init_db(conn: sqlite3.Connection) -> None:
         llm_model        TEXT,
         statut           TEXT DEFAULT 'pending',
         published_cs_date TEXT,
-        wp_post_id_cs    INTEGER
+        wp_post_id_cs    INTEGER,
+        source_type      TEXT DEFAULT 'institutionnel'
     )
     """)
+    # Migrations : colonnes ajoutées après coup sur une base déjà existante.
+    for col, decl in (("source_type", "TEXT DEFAULT 'institutionnel'"),):
+        try:
+            conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass  # colonne déjà présente
     conn.commit()
 
 
@@ -60,12 +67,15 @@ def load_sources() -> list[dict]:
         line = line.strip()
         if not line or line.startswith("#") or ";" not in line:
             continue
-        parts = line.split(";", 2)
+        parts = line.split(";", 3)
         if len(parts) >= 2:
             sources.append({
                 "url": parts[0].strip(),
                 "territoire": parts[1].strip(),
                 "name": parts[2].strip() if len(parts) > 2 else parts[0].strip(),
+                # type : institutionnel (défaut) | radar (presse/Google News, détection seule)
+                "type": (parts[3].strip().lower() if len(parts) > 3 and parts[3].strip()
+                         else "institutionnel"),
             })
     return sources
 
@@ -94,6 +104,19 @@ def extract_image(entry: dict) -> str:
     return ""
 
 
+def best_content(entry: dict) -> str:
+    """Texte le plus complet disponible : content:encoded prioritaire sur le résumé."""
+    parts = []
+    for c in getattr(entry, "content", []) or []:
+        v = c.get("value", "")
+        if v:
+            parts.append(v)
+    full = max(parts, key=len) if parts else ""
+    summary = entry.get("summary", "") or ""
+    text = full if len(full) >= len(summary) else summary
+    return text.strip()[:10000]
+
+
 def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set) -> int:
     log.info("Scraping : %s", source["name"])
     try:
@@ -119,16 +142,18 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set) -> int:
             conn.execute("""
             INSERT INTO events_raw
                 (title, description, date_start, territoire, url_source,
-                 url_image, source_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                 url_image, source_name, organisateur, source_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 entry.get("title", "").strip(),
-                entry.get("summary", "").strip()[:2000],
+                best_content(entry),
                 entry.get("published", ""),
                 source["territoire"],
                 url,
                 image,
                 source["name"],
+                (entry.get("author", "") or "").strip()[:200],
+                source.get("type", "institutionnel"),
             ))
             inserted += 1
         except sqlite3.IntegrityError:

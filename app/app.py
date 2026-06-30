@@ -21,6 +21,7 @@ from collections import Counter
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 
@@ -364,7 +365,12 @@ def preview(event_id: int):
         return "Événement introuvable", 404
     ev = dict(ev)
     ev["description_clean"] = clean_html(ev.get("description"))
-    return render_template("preview.html", e=ev, image=event_image(ev))
+    image = event_image(ev)
+    is_radar = (ev.get("source_type") == "radar"
+                or "(radar)" in (ev.get("source_name") or ""))
+    image_host = urlparse(image).netloc if image else ""
+    return render_template("preview.html", e=ev, image=image,
+                           image_host=image_host, is_radar=is_radar)
 
 
 @app.route("/site-dedie")
