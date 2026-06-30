@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site dédié — aperçu bêta</title>
+<style>
+  body { font-family: sans-serif; color: #1f2937; max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+  nav { font-size: 0.9rem; margin-bottom: 1rem; }
+  nav a { color: #2563eb; text-decoration: none; margin-right: 1rem; }
+  h1 { font-size: 1.5rem; margin: .3rem 0 .2rem; }
+  .lead { color: #6b7280; margin-bottom: 1.4rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+  .card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff;
+          display: flex; flex-direction: column; }
+  .card img { width: 100%; height: 150px; object-fit: cover; }
+  .card .c { padding: .8rem .9rem 1rem; display: flex; flex-direction: column; flex: 1; }
+  .cat { text-transform: uppercase; letter-spacing: .06em; font-size: .68rem; color: #7c3aed; font-weight: bold; }
+  .card h3 { font-size: 1.02rem; margin: .3rem 0 .4rem; line-height: 1.25; }
+  .date { font-size: .8rem; color: #6b7280; margin-bottom: .4rem; }
+  .ex { font-size: .85rem; color: #374151; flex: 1; }
+  .card a.btn { margin-top: .7rem; font-size: .82rem; color: #2563eb; text-decoration: none; }
+  .empty { color: #9ca3af; }
+  .pill { float: right; font-size: .7rem; background: #f1f5f9; border-radius: 999px; padding: .1rem .5rem; color: #475569; }
+</style>
+</head>
+<body>
+<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation</a><a href="/site-dedie">🌐 Site dédié</a></nav>
+<h1>Site dédié — aperçu bêta</h1>
+<p class="lead">Aperçu des événements <strong>score 4-6</strong> (statut <code>published_sub</code>) tels
+qu'ils alimenteraient le site dédié. <strong>Rien n'est publié</strong> : c'est une page de test interne.</p>
+
+{% if not events %}
+  <p class="empty">Aucun événement en attente pour le site dédié.</p>
+{% else %}
+<div class="grid">
+  {% for e in events %}
+  <div class="card">
+    {% if e._img %}<img src="{{ e._img }}" alt="">{% endif %}
+    <div class="c">
+      <div class="cat">{{ e.llm_categorie or '' }} <span class="pill">{{ e.territoire }} · {{ e.llm_score }}/10</span></div>
+      <h3>{{ e.title }}</h3>
+      <div class="date">{% if e.date_start %}🗓 {{ e.date_start }}{% endif %}</div>
+      <div class="ex">{{ e._excerpt }}{% if e._excerpt|length >= 180 %}…{% endif %}</div>
+      <a class="btn" href="/preview/{{ e.id }}">Aperçu article ↗</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+</body>
+</html>

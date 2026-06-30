@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aperçu — {{ e.title }}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1f2937;
+         max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 4rem; line-height: 1.6; }
+  nav { font-family: sans-serif; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  nav a { color: #2563eb; text-decoration: none; margin-right: 1rem; }
+  .eyebrow { font-family: sans-serif; text-transform: uppercase; letter-spacing: .08em;
+             font-size: .72rem; color: #b91c1c; font-weight: bold; margin-bottom: .4rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .6rem; }
+  .meta { font-family: sans-serif; font-size: .85rem; color: #6b7280; margin-bottom: 1.2rem; }
+  .hero { width: 100%; max-height: 380px; object-fit: cover; border-radius: 8px; margin: 1rem 0 1.4rem; }
+  .body { font-size: 1.08rem; }
+  .src { font-family: sans-serif; font-size: .9rem; margin-top: 1.6rem; }
+  .src a { color: #2563eb; }
+  .note { font-family: sans-serif; background: #f9fafb; border: 1px solid #e5e7eb;
+          border-left: 4px solid #c0392b; border-radius: 6px; padding: .8rem 1rem;
+          margin-top: 2rem; font-size: .9rem; color: #374151; }
+  .note .s { font-weight: bold; font-size: 1rem; }
+  .pill { display: inline-block; font-family: sans-serif; font-size: .75rem;
+          background: #eef2ff; color: #3730a3; border-radius: 999px; padding: .15rem .6rem; }
+</style>
+</head>
+<body>
+<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation</a><a href="/site-dedie">🌐 Site dédié</a></nav>
+
+{% if e.llm_categorie %}<div class="eyebrow">{{ e.llm_categorie }}</div>{% endif %}
+<h1>{{ e.title }}</h1>
+<div class="meta">
+  {% if e.date_start %}🗓 {{ e.date_start }} · {% endif %}
+  {% if e.lieu %}{{ e.lieu }} · {% endif %}{% if e.ville %}{{ e.ville }} · {% endif %}
+  <span class="pill">{{ e.territoire or '—' }}</span>
+</div>
+
+{% if image %}<img class="hero" src="{{ image }}" alt="">{% endif %}
+
+<div class="body">
+  {% if e.description_clean %}<p>{{ e.description_clean }}</p>{% else %}<p><em>Pas de description fournie par la source.</em></p>{% endif %}
+</div>
+
+<div class="src">
+  {% if e.url_source %}↗ <a href="{{ e.url_source }}" target="_blank" rel="noopener">Source : {{ e.source_name or e.url_source }}</a>{% endif %}
+</div>
+
+<div class="note">
+  <span class="s">Note éditoriale (interne) — score {{ e.llm_score if e.llm_score is not none else '—' }}/10</span><br>
+  {% if e.llm_justification %}<em>{{ e.llm_justification }}</em><br>{% endif %}
+  Statut actuel : <strong>{{ e.statut }}</strong>
+</div>
+</body>
+</html>

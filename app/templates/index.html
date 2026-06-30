@@ -49,6 +49,7 @@
     <td><em>{{ e.llm_justification }}</em></td>
     <td><a href="{{ e.url_source }}" target="_blank">↗</a><br><small>{{ e.source_name }}</small></td>
     <td>
+      <a href="/preview/{{ e.id }}" target="_blank" class="btn" style="background:#374151;color:#fff;text-decoration:none">👁 Aperçu</a>
       <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline">
         <button class="btn btn-cs">✅ CS</button>
       </form>

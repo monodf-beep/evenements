@@ -23,10 +23,13 @@ from flask import Flask, redirect, render_template, request, session, url_for
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import re
+
 from scripts.publisher import publish_to_cs
 from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
+from utils.sources import pick_image, load_territory_images
 from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
@@ -108,6 +111,20 @@ def get_db():
     return conn
 
 
+_TERRITORY_IMAGES = load_territory_images()
+
+
+def event_image(ev: dict) -> str:
+    """Image de l'événement, ou bannière de substitution par territoire."""
+    return ev.get("url_image") or pick_image(
+        ev.get("territoire", ""), str(ev.get("id", "")), _TERRITORY_IMAGES)
+
+
+def clean_html(text: str) -> str:
+    """Retire les balises HTML pour un aperçu texte propre."""
+    return re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", text or "")).strip()
+
+
 def load_newsletters() -> list[dict]:
     """Lit config/newsletters.txt : nom;domaine;territoire;statut."""
     rows: list[dict] = []
@@ -179,6 +196,37 @@ def validation():
     """).fetchall()
     conn.close()
     return render_template("index.html", events=events, alert=usage.get_alert())
+
+
+@app.route("/preview/<int:event_id>")
+@require_auth
+def preview(event_id: int):
+    conn = get_db()
+    ev = conn.execute("SELECT * FROM events_raw WHERE id = ?", (event_id,)).fetchone()
+    conn.close()
+    if not ev:
+        return "Événement introuvable", 404
+    ev = dict(ev)
+    ev["description_clean"] = clean_html(ev.get("description"))
+    return render_template("preview.html", e=ev, image=event_image(ev))
+
+
+@app.route("/site-dedie")
+@require_auth
+def site_dedie():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM events_raw WHERE statut = 'published_sub' "
+        "ORDER BY llm_score DESC, scrape_date DESC"
+    ).fetchall()
+    conn.close()
+    events = []
+    for r in rows:
+        e = dict(r)
+        e["_img"] = event_image(e)
+        e["_excerpt"] = clean_html(e.get("description"))[:180]
+        events.append(e)
+    return render_template("site_dedie.html", events=events)
 
 
 @app.route("/action/<int:event_id>/<action>", methods=["POST"])
