@@ -15,21 +15,21 @@
 Salone Internazionale del Libro;email.salonelibro.it;Piemonte;actif
 Turismo Torino e Provincia;turismotorino.org;Piemonte;actif
 Fondazione Torino Musei (GAM/MAO/Palazzo Madama);fondazionetorinomusei.it;Piemonte;actif
-Circolo dei Lettori;circololettori.it;Piemonte;candidat
+Circolo dei Lettori;circololettori.it;Piemonte;actif
 Città di Torino;comune.torino.it;Piemonte;inactif
 Regione Piemonte;regione.piemonte.it;Piemonte;inactif
 VisitPiemonte;visitpiemonte.com;Piemonte;inactif
 
 # ======================= NICE / ALPES-MARITIMES =======================
 Théâtre National de Nice (TNN);tnn.fr;Nice;actif
-Département des Alpes-Maritimes;departement06.fr;Nice;attente
-Office de Tourisme Nice Côte d'Azur;explorenicecotedazur.com;Nice;candidat
+Département des Alpes-Maritimes;departement06.fr;Nice;actif
+Office de Tourisme Nice Côte d'Azur;explorenicecotedazur.com;Nice;actif
 Ville de Menton;menton.fr;Nice;inactif
 Ville d'Antibes Juan-les-Pins;antibesjuanlespins.com;Nice;inactif
 Musées nationaux Alpes-Maritimes (Chagall);musees-nationaux-alpesmaritimes.fr;Nice;inactif
 
 # ============================ SAVOIE / HAUTE-SAVOIE ============================
-Bonlieu scène nationale Annecy;bonlieu-annecy.com;Savoie;attente
+Bonlieu scène nationale Annecy;bonlieu-annecy.com;Savoie;actif
 
 # ============================ VALLÉE D'AOSTE ============================
-Office Régional du Tourisme (Lovevda);lovevda.it;Vallee-Aoste;candidat
+Office Régional du Tourisme (Lovevda);lovevda.it;Vallee-Aoste;actif
