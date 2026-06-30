@@ -25,6 +25,10 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 DEFAULT_MODEL = "claude-sonnet-4-6"
 BATCH_SIZE = 100
 
+# Sentinel : échec d'APPEL API (réseau / statut). L'événement reste 'pending'
+# et sera réévalué au prochain run — jamais rejeté à tort pour une panne API.
+API_ERROR = object()
+
 EVAL_PROMPT = """Tu es l'assistant éditorial de Cultura Sabauda, un média culturel
 bilingue couvrant Savoie, Piémont, Vallée d'Aoste et Nice.
 
@@ -87,7 +91,7 @@ def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict
     except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
         usage.note_api_error(exc)
         log.error("Erreur API Anthropic : %s", exc)
-        return None
+        return API_ERROR
     except (json.JSONDecodeError, IndexError) as exc:
         log.warning("JSON invalide pour '%s' : %s", event.get("title", "")[:50], exc)
         return None
@@ -113,6 +117,11 @@ def main() -> int:
     for event in pending:
         ev = dict(event)
         result = evaluate_event(ev, client, model)
+        if result is API_ERROR:
+            # Panne API : on ne touche pas au statut (reste 'pending', réévalué
+            # au prochain run). On stoppe le batch : l'API est probablement KO.
+            log.warning("[%d] erreur API — laissé en pending, arrêt du batch", ev["id"])
+            break
         if result is None:
             conn.execute(
                 "UPDATE events_raw SET statut='rejected', llm_score=0 WHERE id=?",
