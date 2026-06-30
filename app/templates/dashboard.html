@@ -13,10 +13,21 @@
   .alert { background: #c0392b; color: #fff; padding: 0.8rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-weight: bold; }
   .alert small { font-weight: normal; opacity: 0.85; }
   .kpis { display: flex; flex-wrap: wrap; gap: 0.8rem; }
-  .kpi { flex: 1; min-width: 130px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.9rem 1rem; }
+  .kpi { flex: 1; min-width: 130px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.9rem 1rem; text-decoration: none; color: inherit; display: block; }
+  .kpi:hover { border-color: #2563eb; box-shadow: 0 1px 6px rgba(37,99,235,.12); }
   .kpi .v { font-size: 1.7rem; font-weight: bold; }
   .kpi .l { font-size: 0.8rem; color: #6b7280; }
   .kpi.hot .v { color: #c0392b; }
+  .how { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: .6rem 1rem; margin-bottom: 1.2rem; }
+  .how summary { cursor: pointer; font-weight: bold; color: #374151; }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .9rem 0 .4rem; }
+  .flow .step { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: .5rem .7rem; font-size: .85rem; }
+  .flow .step small { display: block; color: #6b7280; font-size: .72rem; }
+  .flow .arr { color: #9ca3af; font-size: 1.2rem; }
+  .flow .branch { display: flex; flex-direction: column; gap: .35rem; }
+  .flow .b { font-size: .82rem; padding: .35rem .6rem; border-radius: 6px; border-left: 4px solid; background: #fff; }
+  .flow .b7 { border-color: #16a34a; } .flow .b4 { border-color: #7c3aed; } .flow .b0 { border-color: #9ca3af; }
+  .howp { font-size: .82rem; color: #6b7280; margin: .3rem 0 0; }
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   th, td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; text-align: left; }
   .bar-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.25rem 0; font-size: 0.9rem; }
@@ -38,7 +49,7 @@
 </style>
 </head>
 <body>
-<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation ({{ to_validate }})</a><a href="/site-dedie">🌐 Site dédié</a><a href="/logout" style="float:right">Déconnexion</a></nav>
+<nav><a href="/">📊 Dashboard</a><a href="/events">📥 Événements ({{ total }})</a><a href="/validation">✅ Validation ({{ to_validate }})</a><a href="/site-dedie">🌐 Site dédié</a><a href="/logout" style="float:right">Déconnexion</a></nav>
 
 {% if alert %}
 <div class="alert">⛔ {{ alert.kind }} — l'évaluation et l'extraction sont en pause.
@@ -48,13 +59,33 @@
 
 <h1>Agenda Cultura Sabauda — tableau de bord</h1>
 
+<details class="how" open>
+<summary>ℹ️ Comment ça marche — le flux d'agrégation des événements</summary>
+<div class="flow">
+  <div class="step">📡 <b>Sources</b><small>RSS + newsletters Gmail</small></div>
+  <div class="arr">→</div>
+  <div class="step">📥 <b>Collecte</b><small>statut « En attente »</small></div>
+  <div class="arr">→</div>
+  <div class="step">🧠 <b>Évaluation Claude</b><small>score éditorial 0-10</small></div>
+  <div class="arr">→</div>
+  <div class="branch">
+    <div class="b b7">score ≥ 7 → <b>À valider</b> → tu choisis → ✅ <b>Publier CS</b> (brouillon WordPress)</div>
+    <div class="b b4">score 4-6 → 🌐 <b>Site dédié</b></div>
+    <div class="b b0">score &lt; 4 → ❌ <b>Rejeté</b></div>
+  </div>
+</div>
+<p class="howp">Garde-fou : tout part en <b>brouillon</b> WordPress — rien n'est publié sans ta validation.
+Le panneau « Lancement manuel » ci-dessous déclenche chaque étape à la demande ;
+clique un chiffre ci-dessous pour ouvrir la liste correspondante.</p>
+</details>
+
 <div class="kpis">
-  <div class="kpi"><div class="v">{{ total }}</div><div class="l">Événements collectés</div></div>
-  <div class="kpi"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente d'évaluation</div></div>
-  <div class="kpi hot"><div class="v">{{ to_validate }}</div><div class="l">À valider (score ≥ 7)</div></div>
-  <div class="kpi"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Publiés CS (draft)</div></div>
-  <div class="kpi"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Site dédié</div></div>
-  <div class="kpi"><div class="v">{{ status_counts.get('rejected', 0) }}</div><div class="l">Rejetés</div></div>
+  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Événements collectés</div></a>
+  <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente d'évaluation</div></a>
+  <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (score ≥ 7)</div></a>
+  <a class="kpi" href="/events?statut=published_cs"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Publiés CS (draft)</div></a>
+  <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Site dédié</div></a>
+  <a class="kpi" href="/events?statut=rejected"><div class="v">{{ status_counts.get('rejected', 0) }}</div><div class="l">Rejetés</div></a>
 </div>
 
 <h2>⚙️ Lancement manuel</h2>

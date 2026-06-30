@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda CS — Événements</title>
+<style>
+  body { font-family: sans-serif; max-width: 1280px; margin: 1.5rem auto; padding: 0 1rem; color: #1f2937; }
+  nav { font-size: 0.95rem; margin-bottom: 1rem; }
+  nav a { color: #2563eb; text-decoration: none; margin-right: 1rem; }
+  h1 { font-size: 1.4rem; margin: .3rem 0 .8rem; }
+  .alert { background:#c0392b;color:#fff;padding:.7rem 1rem;border-radius:4px;margin-bottom:1rem;font-weight:bold;}
+  .alert small{font-weight:normal;opacity:.85;}
+  form.filters { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .8rem; }
+  form.filters select, form.filters input { padding: .4rem .5rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .9rem; }
+  form.filters button { padding: .4rem .9rem; border: none; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+  .chips { margin-bottom: .8rem; font-size: .85rem; }
+  .chips a { display: inline-block; margin-right: .4rem; padding: .15rem .6rem; border-radius: 999px;
+             background: #f1f5f9; color: #334155; text-decoration: none; }
+  .chips a.on { background: #2563eb; color: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { padding: .45rem .5rem; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+  th { background: #f9fafb; position: sticky; top: 0; }
+  .st { font-size: .75rem; padding: .1rem .5rem; border-radius: 999px; color: #fff; white-space: nowrap; }
+  .st-pending{background:#6b7280;} .st-evaluated{background:#2563eb;} .st-published_cs{background:#16a34a;}
+  .st-published_sub{background:#7c3aed;} .st-rejected{background:#9ca3af;}
+  .btn { padding: .25rem .55rem; margin: .1rem; cursor: pointer; border: none; border-radius: 4px; font-size: .78rem; text-decoration:none; display:inline-block; }
+  .btn-prev{background:#374151;color:#fff;} .btn-cs{background:#c0392b;color:#fff;}
+  .btn-sub{background:#7c3aed;color:#fff;} .btn-rej{background:#9ca3af;color:#fff;}
+  .pager { margin-top: 1rem; font-size: .9rem; }
+  .pager a, .pager span { margin-right: .6rem; }
+  .muted{color:#9ca3af;}
+</style>
+</head>
+<body>
+<nav><a href="/">📊 Dashboard</a><a href="/events">📥 Événements</a><a href="/validation">✅ Validation</a><a href="/site-dedie">🌐 Site dédié</a><a href="/logout" style="float:right">Déconnexion</a></nav>
+
+{% if alert %}
+<div class="alert">⛔ {{ alert.kind }} — l'évaluation et l'extraction sont en pause.
+  {% if alert.reset %}<br>Accès rétabli le <strong>{{ alert.reset }}</strong>.{% endif %}
+  <br><small>{{ alert.raw }}</small></div>
+{% endif %}
+
+<h1>Événements collectés <span class="muted">({{ total }})</span></h1>
+
+<div class="chips">
+  <a href="/events" class="{{ 'on' if not statut else '' }}">Tous</a>
+  {% for key, lbl in status_labels.items() %}
+  <a href="/events?statut={{ key }}" class="{{ 'on' if statut == key else '' }}">{{ lbl }} ({{ statut_counts.get(key, 0) }})</a>
+  {% endfor %}
+</div>
+
+<form class="filters" method="GET" action="/events">
+  <input type="hidden" name="statut" value="{{ statut }}">
+  <select name="territoire">
+    <option value="">Tous territoires</option>
+    {% for t in territories %}<option value="{{ t }}" {{ 'selected' if territoire==t else '' }}>{{ t }}</option>{% endfor %}
+  </select>
+  <input type="text" name="q" value="{{ q }}" placeholder="Rechercher dans le titre…">
+  <button type="submit">Filtrer</button>
+  {% if territoire or q %}<a href="/events?statut={{ statut }}" class="muted">réinitialiser</a>{% endif %}
+</form>
+
+{% if not events %}
+  <p class="muted">Aucun événement pour ce filtre.</p>
+{% else %}
+<table>
+  <tr><th>Titre</th><th>Date</th><th>Territoire</th><th>Source</th><th>Statut</th><th>Score</th><th>Actions</th></tr>
+  {% for e in events %}
+  <tr>
+    <td><a href="/preview/{{ e.id }}" target="_blank"><strong>{{ e.title }}</strong></a></td>
+    <td>{{ e.date_start or '—' }}</td>
+    <td>{{ e.territoire or '—' }}</td>
+    <td>{% if e.url_source %}<a href="{{ e.url_source }}" target="_blank">↗</a> {% endif %}<small>{{ e.source_name or '' }}</small></td>
+    <td><span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) }}</span></td>
+    <td>{{ e.llm_score if e.llm_score is not none else '—' }}</td>
+    <td>
+      <a href="/preview/{{ e.id }}" target="_blank" class="btn btn-prev">👁</a>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-cs">✅ CS</button></form>
+      <form method="POST" action="/action/{{ e.id }}/subdomain" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-sub">📋 Sub</button></form>
+      <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-rej">❌</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<div class="pager">
+  {% set base = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&page=' %}
+  {% if page > 1 %}<a href="{{ base }}{{ page-1 }}">← précédent</a>{% endif %}
+  <span class="muted">page {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a href="{{ base }}{{ page+1 }}">suivant →</a>{% endif %}
+</div>
+{% endif %}
+</body>
+</html>

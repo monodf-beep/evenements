@@ -48,6 +48,7 @@ init_db(_conn)
 _conn.close()
 
 TERRITORIES = ["Savoie", "Piemonte", "Vallee-Aoste", "Nice"]
+PAGE_SIZE = 50
 STATUS_LABELS = {
     "pending": "En attente",
     "evaluated": "À valider",
@@ -376,6 +377,43 @@ def site_dedie():
     return render_template("site_dedie.html", events=events)
 
 
+@app.route("/events")
+@require_auth
+def events():
+    statut = request.args.get("statut", "")
+    terr = request.args.get("territoire", "")
+    q = request.args.get("q", "").strip()
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except ValueError:
+        page = 1
+
+    where, params = [], []
+    if statut:
+        where.append("statut = ?"); params.append(statut)
+    if terr:
+        where.append("territoire = ?"); params.append(terr)
+    if q:
+        where.append("title LIKE ?"); params.append(f"%{q}%")
+    wsql = ("WHERE " + " AND ".join(where)) if where else ""
+
+    conn = get_db()
+    total = conn.execute(f"SELECT COUNT(*) n FROM events_raw {wsql}", params).fetchone()["n"]
+    rows = conn.execute(
+        f"SELECT * FROM events_raw {wsql} ORDER BY scrape_date DESC, id DESC LIMIT ? OFFSET ?",
+        params + [PAGE_SIZE, (page - 1) * PAGE_SIZE]).fetchall()
+    statut_counts = {r["statut"]: r["n"] for r in conn.execute(
+        "SELECT statut, COUNT(*) n FROM events_raw GROUP BY statut")}
+    conn.close()
+
+    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    return render_template(
+        "events.html", events=[dict(r) for r in rows],
+        statut=statut, territoire=terr, q=q, page=page, pages=pages, total=total,
+        territories=TERRITORIES, status_labels=STATUS_LABELS,
+        statut_counts=statut_counts, alert=friendly_alert())
+
+
 @app.route("/action/<int:event_id>/<action>", methods=["POST"])
 @require_auth
 def action(event_id: int, action: str):
@@ -410,7 +448,10 @@ def action(event_id: int, action: str):
         conn.commit()
 
     conn.close()
-    return redirect(url_for("validation"))
+    nxt = request.form.get("next", "")
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = url_for("validation")
+    return redirect(nxt)
 
 
 if __name__ == "__main__":
