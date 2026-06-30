@@ -34,8 +34,9 @@
 <nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation ({{ to_validate }})</a><a href="/site-dedie">🌐 Site dédié</a><a href="/logout" style="float:right">Déconnexion</a></nav>
 
 {% if alert %}
-<div class="alert">⚠️ Alerte API — crédit / limite d'usage atteinte : {{ alert.message }}
-  <small>({{ alert.ts }})</small></div>
+<div class="alert">⛔ {{ alert.kind }} — l'évaluation et l'extraction sont en pause.
+  {% if alert.reset %}<br>Accès rétabli le <strong>{{ alert.reset }}</strong>.{% endif %}
+  <br><small>{{ alert.raw }}</small></div>
 {% endif %}
 
 <h1>Agenda Cultura Sabauda — tableau de bord</h1>

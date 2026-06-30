@@ -25,8 +25,9 @@
 <body>
 <nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation ({{ events|length }})</a><a href="/logout" style="float:right">Déconnexion</a></nav>
 {% if alert %}
-<div class="alert">⚠️ Alerte API — crédit / limite d'usage atteinte : {{ alert.message }}
-  <small>({{ alert.ts }})</small></div>
+<div class="alert">⛔ {{ alert.kind }} — l'évaluation et l'extraction sont en pause.
+  {% if alert.reset %}<br>Accès rétabli le <strong>{{ alert.reset }}</strong>.{% endif %}
+  <br><small>{{ alert.raw }}</small></div>
 {% endif %}
 <h1>Événements à valider (score ≥ 7)</h1>
 {% if not events %}

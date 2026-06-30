@@ -125,6 +125,29 @@ def clean_html(text: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", text or "")).strip()
 
 
+def friendly_alert():
+    """Met en forme l'alerte API (crédit/quota) pour le bandeau du backoffice.
+
+    Extrait le type de problème et, si présente, la date de reprise d'accès.
+    """
+    a = usage.get_alert()
+    if not a:
+        return None
+    msg = a.get("message", "")
+    low = msg.lower()
+    m = re.search(r"regain access on (\d{4}-\d{2}-\d{2})(?: at (\d{2}:\d{2}))?", msg)
+    reset = None
+    if m:
+        reset = m.group(1) + (f" à {m.group(2)} UTC" if m.group(2) else "")
+    if any(k in low for k in ("usage limit", "reached your", "quota", "regain access")):
+        kind = "Quota / limite d'usage API atteint"
+    elif any(k in low for k in ("credit", "billing", "balance", "insufficient", "payment", "402")):
+        kind = "Crédit API épuisé / facturation"
+    else:
+        kind = "Problème d'accès à l'API"
+    return {"kind": kind, "reset": reset, "raw": msg, "ts": a.get("ts", "")}
+
+
 def load_newsletters() -> list[dict]:
     """Lit config/newsletters.txt : nom;domaine;territoire;statut."""
     rows: list[dict] = []
@@ -179,7 +202,7 @@ def dashboard():
         status_counts=status_counts, status_labels=STATUS_LABELS,
         terr_counts=terr_counts, cat_counts=cat_counts,
         territories=TERRITORIES,
-        cost=cost, alert=usage.get_alert(),
+        cost=cost, alert=friendly_alert(),
         src_counts=src_counts, src_total=sum(src_counts.values()),
         newsletters=newsletters, nl_active=nl_active,
     )
@@ -195,7 +218,7 @@ def validation():
         ORDER BY llm_score DESC, scrape_date DESC
     """).fetchall()
     conn.close()
-    return render_template("index.html", events=events, alert=usage.get_alert())
+    return render_template("index.html", events=events, alert=friendly_alert())
 
 
 @app.route("/preview/<int:event_id>")
