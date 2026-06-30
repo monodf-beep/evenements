@@ -64,6 +64,11 @@ Garde-fous d'enrichissement :
   un groupe sans lien n'est pas mis en avant pour lui-même.
 - **Coût maîtrisé** : l'enrichissement web a un coût API → réservé aux événements
   retenus (score ≥ seuil), pas à toute la collecte.
+- **Paywall / presse** : on ne franchit **JAMAIS** un paywall. Le radar fournit un
+  signal (titre, date, lieu, entités) → on va chercher le contenu à la **source
+  officielle libre** : page de l'organisateur/du lieu, agenda officiel, billetterie.
+  C'est **automatisable** (recherche web → page officielle → extraction). Si aucune
+  source libre n'existe, l'événement reste mince et **n'est pas mis en avant**.
 
 ## 6. Ton & langue
 
@@ -88,6 +93,18 @@ Principe : **le lecteur d'abord**. La confiance prime sur le clic.
 - Sources **presse** (radar) : servent à détecter, **jamais créditées/liées** dans le
   rendu (pas de publicité aux médias concurrents) ; l'info est attribuée à l'acteur primaire.
 - Images : voir §9.
+
+### Plusieurs sources pour un même événement — priorité & fusion
+Un même événement peut arriver par **plusieurs flux** (institutionnel + radar + office
+de tourisme). On **ne garde PAS la version la plus pauvre** : on **déduplique** les
+candidats (même sujet via `same_story`, même territoire, dates proches) et on
+**fusionne vers la source la plus riche et la plus autoritaire**.
+
+Ordre de priorité : **source primaire/officielle** (lieu, organisateur) > office de
+tourisme / institution > **radar (presse)**. À information égale, la version **avec
+photo** et au **contenu le plus complet** l'emporte. Le radar ne « gagne » jamais :
+il détecte, il ne fournit pas le contenu. La fusion récupère le meilleur de chaque
+source (image de l'un, texte complet de l'autre, lien officiel d'un troisième).
 
 ## 9. Images
 

@@ -40,11 +40,24 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 
 ### Enrichissement & rédaction (cœur du « site dédié » qualitatif)
 - [ ] Construire l'étape 3 (agent de recherche) + l'étape 4 (agent de rédaction).
+- [ ] **Enrichissement = automatique** : depuis le signal (titre/date/lieu/entités),
+      recherche web → **source officielle libre** (organisateur, lieu, agenda officiel,
+      billetterie) → extraction du contenu pour la rédaction. **Ne JAMAIS franchir un
+      paywall** (CHARTE §5). C'est la réponse à « comment avoir du contenu quand c'est
+      payant » : on prend le contenu à la source primaire gratuite, pas à la presse.
 - [ ] Schéma de données enrichies en base (nouvelles colonnes / table).
 - [ ] Budget : l'enrichissement web a un coût → seuils, plafond mensuel, choix du modèle.
 - [ ] Sourcing strict : ne jamais inventer ; tracer les sources utilisées.
 
 ### Qualité de la collecte
+- [ ] **Déduplication multi-sources** ⟵ signalé par Franck. Un même événement arrive
+      par plusieurs flux (institutionnel + radar + office de tourisme). Aujourd'hui la
+      dédup est seulement par `url_source` exacte → on garde des **doublons**, parfois la
+      **version la plus pauvre**. À faire : regrouper via `same_story()` (titre +
+      territoire + dates proches) et **fusionner vers la source la plus riche/autoritaire**
+      (institutionnel > radar ; avec photo ; contenu le plus complet). Voir CHARTE §8.
+      NB : `same_story()` / `strip_tracking()` existent dans l'Observatoire mais ont
+      **divergé** de notre copie synchronisée `utils/sources.py` → resynchroniser au passage.
 - [ ] **Géo-filtrage des radars Google News** : ils ramènent du hors-périmètre
       (ex. « Lombardia »). Aujourd'hui l'évaluation LLM les rejette (score 0) — OK,
       mais coûteux. Envisager un pré-filtre territoire avant l'appel LLM.
