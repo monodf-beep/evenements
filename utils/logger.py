@@ -1,3 +1,4 @@
+# SYNCED FROM observatoire-business-sabaudo — ne pas diverger (extraction future cultura-core)
 """Logger horodaté partagé par toutes les routines de l'observatoire.
 
 Chaque routine écrit à la fois sur la console et dans un fichier

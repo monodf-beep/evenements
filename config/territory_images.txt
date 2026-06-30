@@ -1,3 +1,4 @@
+# SYNCED FROM observatoire-business-sabaudo — ne pas diverger (extraction future cultura-core)
 # Images de SUBSTITUTION par territoire.
 #
 # Utilisées quand un article n'a pas d'image réutilisable (cas presse : on ne

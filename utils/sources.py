@@ -1,3 +1,4 @@
+# SYNCED FROM observatoire-business-sabaudo — ne pas diverger (extraction future cultura-core)
 """Dérive le domaine et le libellé d'une source à partir d'un enregistrement de veille.
 
 Sert à créditer les sources dans la newsletter (favicon + nom) sans rien inventer :

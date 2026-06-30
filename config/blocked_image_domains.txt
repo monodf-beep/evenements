@@ -1,3 +1,4 @@
+# SYNCED FROM observatoire-business-sabaudo — ne pas diverger (extraction future cultura-core)
 # Hôtes d'IMAGES proscrits : CDN de presse / agrégateurs.
 # Une image servie par l'un de ces domaines n'est JAMAIS affichée dans la
 # newsletter : on retombe automatiquement sur la bannière de territoire.
