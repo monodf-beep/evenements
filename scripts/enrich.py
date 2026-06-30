@@ -1,0 +1,285 @@
+#!/usr/bin/env python3
+"""Enrichissement + rédaction des événements retenus (étapes 3 & 4 du pipeline).
+
+À partir du SIGNAL d'un événement retenu (titre, date, lieu, entités) et de toute
+la MATIÈRE disponible (sa description + celle des doublons fusionnés, même venus
+d'un radar gratuit), un agent LLM :
+
+1. RECHERCHE le contexte sur le web → privilégie la SOURCE OFFICIELLE LIBRE
+   (organisateur, lieu, agenda officiel, billetterie) — voir CHARTE §5 ;
+2. ENRICHIT selon la nature de l'événement (lieu, artiste, conférencier, plat…) ;
+3. RÉDIGE un article (titre, chapô, corps, encadré pratique) selon CHARTE §4/§6/§7.
+
+GARDE-FOUS (CHARTE §5/§7) :
+- Ne JAMAIS franchir un paywall : on prend le contenu à la source primaire gratuite,
+  jamais à la presse concurrente (les radars servent de simple détection).
+- Ne JAMAIS inventer : une info non trouvée/sourcée n'est pas écrite.
+- Coût maîtrisé : réservé aux événements retenus (score ≥ seuil), traité par petits
+  lots, modèle configurable. PAS en cron par défaut — déclenché à la main (bouton).
+
+LLM ? OUI — jugement éditorial + recherche + rédaction (langue). La sélection des
+candidats et l'agrégation de la matière restent déterministes. Voir docs/LLM_OU_CODE.md.
+
+SDK anthropic DIRECT + outil serveur de recherche web (web_search_20260209).
+Usage :
+    python scripts/enrich.py            # lot par défaut (ENRICH_BATCH)
+    python scripts/enrich.py 12 15 18   # enrichit ces id précis (bouton « 1 événement »)
+"""
+from __future__ import annotations
+import anthropic
+import json
+import os
+import re
+import sqlite3
+import sys
+from pathlib import Path
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from utils.logger import get_logger
+from utils import usage
+from scripts.scraper_events import init_db
+
+log = get_logger("enrich")
+DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
+
+# Modèle dédié à l'enrichissement (recherche web + rédaction). Sonnet 5 par défaut :
+# bon rapport qualité/prix et compatible avec l'outil de recherche web dynamique.
+DEFAULT_MODEL = "claude-sonnet-5"
+# Seuil : on n'enrichit que les événements retenus (cf. CHARTE §5, coût maîtrisé).
+MIN_SCORE = int(os.getenv("ENRICH_MIN_SCORE", "7"))
+# Taille de lot : l'enrichissement (web + rédaction) coûte cher → petit lot.
+BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
+# Plafond de recherches web par événement (outil serveur).
+MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "5"))
+
+# Sentinel : échec d'APPEL API. L'événement n'est pas marqué → réenrichi plus tard.
+API_ERROR = object()
+
+WEB_SEARCH_TOOL = {
+    "type": "web_search_20260209",
+    "name": "web_search",
+    "max_uses": MAX_WEB_SEARCHES,
+}
+
+ENRICH_PROMPT = """Tu es l'agent éditorial de Cultura Sabauda, média culturel bilingue
+FR/IT couvrant l'espace alpin occidental : Savoie/Haute-Savoie, Piémont, Vallée d'Aoste,
+Nice/Alpes-Maritimes. Registre « Internazionale + Le Monde Diplomatique » : sérieux,
+exigeant, evergreen — l'inverse d'un annuaire touristique.
+
+MISSION : à partir du signal et de la matière ci-dessous, RECHERCHE le contexte sur le
+web puis RÉDIGE un article prêt à relire.
+
+PRINCIPE DE L'ESCALIER : partir de l'ancrage local concret pour monter vers une question
+qui dépasse le territoire (mémoire, transmission, identité alpine, art, langue).
+
+ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
+- Lieu (théâtre, musée, château, abbaye…) : histoire/identité, importance patrimoniale.
+- Artiste / groupe : origine (local ? de territoires proches ? renommée), genre.
+- Conférencier / auteur : qui c'est, pourquoi ça compte.
+- Plat / produit (si intérêt culturel local) : origine, tradition, ce qu'il raconte.
+- Œuvre / exposition : artiste, période, intérêt.
+- Date / récurrence : rendez-vous historique ? édition anniversaire ?
+
+GARDE-FOUS STRICTS :
+- Ne franchis JAMAIS un paywall. Cherche le contenu à la SOURCE OFFICIELLE LIBRE :
+  organisateur, lieu, agenda officiel, billetterie. N'utilise PAS la presse concurrente
+  comme source ; ne la cite pas.
+- N'invente RIEN. Si une info n'est pas trouvée et sourcée, ne l'écris pas. En cas de
+  matière trop mince, mets "confiance": "faible" et reste factuel.
+- Pas de superlatifs creux ("incontournable", "magique", "à ne pas manquer"), aucun
+  dark pattern (urgence factice, clickbait).
+- Nomme toujours la géographie : ville → province/département → territoire.
+
+SIGNAL :
+Titre : {title}
+Date (brute du flux) : {date_start}
+Lieu / ville : {lieu}
+Territoire : {territoire}
+Organisateur : {organisateur}
+Catégorie évaluée : {categorie}
+
+MATIÈRE DISPONIBLE (déjà collectée, à vérifier/compléter par ta recherche) :
+{material}
+
+Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la forme :
+{{
+  "contexte_lieu": "<ce que la recherche apprend du lieu, ou ''>",
+  "contexte_entites": "<artiste/conférencier/plat/œuvre : origine, renommée, intérêt, ou ''>",
+  "angle": "<l'escalier : du local à l'universel, une à deux phrases>",
+  "infos_pratiques": "<dates, lieu, accès, tarif/gratuité, lien officiel — factuel>",
+  "sources": ["<url officielle/libre consultée>", "..."],
+  "confiance": "<haute|moyenne|faible>",
+  "article": {{
+    "titre": "<titre informatif et incarné, pas racoleur>",
+    "chapo": "<1-2 phrases : l'essentiel + l'angle>",
+    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà (markdown)>",
+    "encadre": "<encadré pratique : dates, lieu, accès, gratuité, lien officiel>"
+  }}
+}}"""
+
+
+def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
+    """Agrège (déterministe) la matière : description de l'événement + celle des
+    doublons fusionnés vers lui (statut='merged', duplicate_of=ev.id)."""
+    parts = []
+    own = (ev.get("description") or "").strip()
+    if own:
+        parts.append(own)
+    for row in conn.execute(
+        "SELECT description, source_name FROM events_raw WHERE duplicate_of = ?",
+        (ev["id"],)
+    ):
+        d = (row["description"] or "").strip()
+        if d and d not in parts:
+            parts.append(d)
+    text = "\n\n---\n\n".join(parts)
+    return re.sub(r"(?s)<[^>]+>", " ", text)[:6000] or "(aucune — titre seul)"
+
+
+def _final_text(message) -> str:
+    """Concatène les blocs texte de la réponse (en ignorant les blocs d'outil web)."""
+    out = []
+    for block in message.content:
+        if getattr(block, "type", None) == "text":
+            out.append(block.text)
+    return "\n".join(out)
+
+
+def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str):
+    """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR."""
+    prompt = ENRICH_PROMPT.format(
+        title=ev.get("title", ""),
+        date_start=ev.get("date_start") or "—",
+        lieu=ev.get("lieu") or ev.get("ville") or "—",
+        territoire=ev.get("territoire", ""),
+        organisateur=ev.get("organisateur") or ev.get("source_name") or "—",
+        categorie=ev.get("llm_categorie") or "—",
+        material=material,
+    )
+    messages = [{"role": "user", "content": prompt}]
+    try:
+        # Boucle de l'outil serveur : on relance tant que le tour est en pause.
+        for _ in range(MAX_WEB_SEARCHES + 3):
+            message = client.messages.create(
+                model=model,
+                # marge pour le raisonnement adaptatif + l'article complet
+                max_tokens=4096,
+                tools=[WEB_SEARCH_TOOL],
+                thinking={"type": "adaptive"},
+                messages=messages,
+            )
+            usage.record_message(model, message, label="enrichissement")
+            if message.stop_reason == "pause_turn":
+                messages.append({"role": "assistant", "content": message.content})
+                continue
+            break
+    except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        usage.note_api_error(exc)
+        log.error("Erreur API Anthropic : %s", exc)
+        return API_ERROR
+
+    raw = _final_text(message)
+    match = re.search(r"\{.*\}", raw, re.S)
+    if not match:
+        log.warning("Pas de JSON pour '%s'", ev.get("title", "")[:50])
+        return None
+    try:
+        return json.loads(match.group())
+    except json.JSONDecodeError as exc:
+        log.warning("JSON invalide pour '%s' : %s", ev.get("title", "")[:50], exc)
+        return None
+
+
+def build_article_md(data: dict) -> tuple[str, str]:
+    """Assemble (titre, markdown) depuis le JSON de l'agent (déterministe)."""
+    art = data.get("article") or {}
+    titre = (art.get("titre") or "").strip()
+    chapo = (art.get("chapo") or "").strip()
+    corps = (art.get("corps") or "").strip()
+    encadre = (art.get("encadre") or "").strip()
+    sources = [s for s in (data.get("sources") or []) if s]
+
+    md = []
+    if titre:
+        md.append(f"# {titre}")
+    if chapo:
+        md.append(f"**{chapo}**")
+    if corps:
+        md.append(corps)
+    if encadre:
+        md.append("## En pratique\n\n" + encadre)
+    if sources:
+        md.append("## Sources\n\n" + "\n".join(f"- {s}" for s in sources))
+    return titre, "\n\n".join(md).strip()
+
+
+def select_events(conn: sqlite3.Connection, ids: list[int]) -> list[sqlite3.Row]:
+    if ids:
+        qmarks = ",".join("?" * len(ids))
+        return conn.execute(
+            f"SELECT * FROM events_raw WHERE id IN ({qmarks})", ids).fetchall()
+    # Événements retenus (≥ seuil), pas encore enrichis. Les doublons 'merged' sont
+    # exclus : leur matière est déjà agrégée vers le gagnant.
+    return conn.execute(
+        "SELECT * FROM events_raw "
+        "WHERE statut IN ('evaluated', 'published_sub') "
+        "  AND llm_score >= ? "
+        "  AND (enrich_status IS NULL OR enrich_status = '') "
+        "  AND (duplicate_of IS NULL) "
+        "ORDER BY llm_score DESC, scrape_date DESC LIMIT ?",
+        (MIN_SCORE, BATCH_SIZE)).fetchall()
+
+
+def main(argv: list[str]) -> int:
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        log.error("ANTHROPIC_API_KEY non définie")
+        return 1
+    model = os.getenv("ANTHROPIC_MODEL_ENRICH", DEFAULT_MODEL)
+    ids = [int(a) for a in argv if a.isdigit()]
+    client = anthropic.Anthropic(api_key=api_key)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    init_db(conn)
+
+    events = select_events(conn, ids)
+    log.info("%d événement(s) à enrichir (modèle : %s, seuil score ≥ %d)",
+             len(events), model, MIN_SCORE)
+
+    done = 0
+    for event in events:
+        ev = dict(event)
+        material = gather_material(conn, ev)
+        result = enrich_event(ev, material, client, model)
+        if result is API_ERROR:
+            log.warning("[%d] erreur API — laissé tel quel, arrêt du lot", ev["id"])
+            break
+        if result is None:
+            conn.execute(
+                "UPDATE events_raw SET enrich_status='error', "
+                "enriched_at=datetime('now'), enrich_model=? WHERE id=?",
+                (model, ev["id"]))
+            conn.commit()
+            continue
+        title, md = build_article_md(result)
+        conn.execute("""
+        UPDATE events_raw SET
+            enrich_status='enriched', enriched_at=datetime('now'), enrich_model=?,
+            enrich_data=?, article_title=?, article_md=?
+        WHERE id=?
+        """, (model, json.dumps(result, ensure_ascii=False), title, md, ev["id"]))
+        conn.commit()
+        done += 1
+        log.info("[%d] enrichi (confiance=%s) | %s", ev["id"],
+                 result.get("confiance", "?"), ev.get("title", "")[:60])
+
+    conn.close()
+    log.info("=== Enrichissement terminé : %d/%d ===", done, len(events))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

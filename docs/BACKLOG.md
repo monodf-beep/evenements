@@ -12,15 +12,16 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 2. ÉVALUATION          evaluator.py — 1 appel LLM par événement
    agent/règles : CHARTE §1-3 (escalier, périmètre strict, scoring) → score 0-10
    →
-3. ENRICHISSEMENT  ⟵ À CONSTRUIRE
-   agent de recherche (web + sources officielles) UNIQUEMENT sur les événements
-   retenus (coût maîtrisé). Récupère contexte selon CHARTE §5 (lieu, artiste/groupe,
-   plat, conférencier…). Sortie : champs structurés (contexte_lieu, contexte_artiste,
-   angle, infos_pratiques) stockés en base.
+3. ENRICHISSEMENT  ✅ scripts/enrich.py (déclenché à la main, pas en cron)
+   agent de recherche (web + sources officielles, outil web_search_20260209)
+   UNIQUEMENT sur les événements retenus (score ≥ ENRICH_MIN_SCORE, coût maîtrisé,
+   doublons exclus). Agrège d'abord la MATIÈRE (description + doublons fusionnés),
+   puis récupère le contexte selon CHARTE §5. Sortie : enrich_data (JSON :
+   contexte_lieu, contexte_entites, angle, infos_pratiques, sources, confiance).
    →
-4. RÉDACTION       ⟵ À CONSTRUIRE
-   agent de rédaction LLM, à partir des données enrichies, selon CHARTE §4, §6, §7.
-   Sortie : article (titre, chapô, corps, encadré) → file de relecture.
+4. RÉDACTION       ✅ scripts/enrich.py (même appel agentique que l'étape 3)
+   rédige l'article selon CHARTE §4/§6/§7. Sortie : article_title + article_md
+   (titre, chapô, corps, encadré, sources) → visible dans /preview, file de relecture.
    →
 5. RELECTURE / VALIDATION   Franck (backoffice) : valider / corriger / rejeter.
    →
@@ -39,15 +40,22 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 - [ ] Légendes / crédits photo si requis.
 
 ### Enrichissement & rédaction (cœur du « site dédié » qualitatif)
-- [ ] Construire l'étape 3 (agent de recherche) + l'étape 4 (agent de rédaction).
-- [ ] **Enrichissement = automatique** : depuis le signal (titre/date/lieu/entités),
+- [x] Construire l'étape 3 (agent de recherche) + l'étape 4 (agent de rédaction)
+      → `scripts/enrich.py` (un seul appel agentique : recherche web puis rédaction).
+- [x] **Enrichissement = automatique** : depuis le signal (titre/date/lieu/entités),
       recherche web → **source officielle libre** (organisateur, lieu, agenda officiel,
       billetterie) → extraction du contenu pour la rédaction. **Ne JAMAIS franchir un
       paywall** (CHARTE §5). C'est la réponse à « comment avoir du contenu quand c'est
       payant » : on prend le contenu à la source primaire gratuite, pas à la presse.
-- [ ] Schéma de données enrichies en base (nouvelles colonnes / table).
-- [ ] Budget : l'enrichissement web a un coût → seuils, plafond mensuel, choix du modèle.
-- [ ] Sourcing strict : ne jamais inventer ; tracer les sources utilisées.
+- [x] Schéma de données enrichies en base : colonnes `enrich_status`, `enriched_at`,
+      `enrich_model`, `enrich_data` (JSON), `article_title`, `article_md`.
+- [x] Budget : réservé aux retenus (`ENRICH_MIN_SCORE`), par lots (`ENRICH_BATCH`),
+      modèle configurable (`ANTHROPIC_MODEL_ENRICH`), plafond de recherches web
+      (`ENRICH_MAX_SEARCHES`). Déclenché à la MAIN (bouton), **pas en cron** pour l'instant.
+- [x] Sourcing strict : ne jamais inventer ; `sources[]` tracées + `confiance` affichée.
+- [ ] **À valider par Franck** : passer l'enrichissement en cron (auto quotidien) une
+      fois le coût réel observé ? seuil de score ? auto-publication du site dédié ?
+- [ ] Plafond mensuel de coût (kill-switch) si l'enrichissement tourne en auto.
 
 ### Qualité de la collecte
 - [ ] **Déduplication multi-sources** ⟵ signalé par Franck. Un même événement arrive

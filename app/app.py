@@ -164,6 +164,7 @@ TASKS = {
     "gmail":    {"script": "scripts/gmail_collect.py",   "label": "Newsletters Gmail", "icon": "📬", "cost": True},
     "dedupe":   {"script": "scripts/dedupe.py",          "label": "Déduplication", "icon": "🔗", "cost": False},
     "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation LLM", "icon": "🧠", "cost": True},
+    "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True},
 }
 RUN_STATE = ROOT / "data" / "run_state.json"
 
@@ -371,8 +372,34 @@ def preview(event_id: int):
     is_radar = (ev.get("source_type") == "radar"
                 or "(radar)" in (ev.get("source_name") or ""))
     image_host = urlparse(image).netloc if image else ""
+    # Données enrichies (article rédigé + contexte sourcé), si l'agent a tourné.
+    enriched = None
+    if ev.get("enrich_data"):
+        try:
+            enriched = json.loads(ev["enrich_data"])
+        except (ValueError, TypeError):
+            enriched = None
+    enrich_running = _running_state().get("enrich", False)
     return render_template("preview.html", e=ev, image=image,
-                           image_host=image_host, is_radar=is_radar)
+                           image_host=image_host, is_radar=is_radar,
+                           enriched=enriched, enrich_running=enrich_running)
+
+
+@app.route("/enrich/<int:event_id>", methods=["POST"])
+@require_auth
+def enrich_one(event_id: int):
+    """Lance l'agent d'enrichissement sur UN événement (non bloquant)."""
+    logf = ROOT / "logs" / "run_enrich.log"
+    logf.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fh = open(logf, "ab")
+        subprocess.Popen(
+            [sys.executable, str(ROOT / "scripts" / "enrich.py"), str(event_id)],
+            cwd=str(ROOT), stdout=fh, stderr=fh, start_new_session=True)
+        flash("✍️ Enrichissement lancé — rafraîchis la page dans ~30 s.", "ok")
+    except Exception as exc:
+        flash(f"❌ Échec du lancement : {exc}", "err")
+    return redirect(url_for("preview", event_id=event_id))
 
 
 @app.route("/site-dedie")

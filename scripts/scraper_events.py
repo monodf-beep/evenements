@@ -52,7 +52,14 @@ def init_db(conn: sqlite3.Connection) -> None:
     """)
     # Migrations : colonnes ajoutées après coup sur une base déjà existante.
     for col, decl in (("source_type", "TEXT DEFAULT 'institutionnel'"),
-                      ("duplicate_of", "INTEGER")):
+                      ("duplicate_of", "INTEGER"),
+                      # Enrichissement + rédaction (scripts/enrich.py)
+                      ("enrich_status", "TEXT"),
+                      ("enriched_at", "TEXT"),
+                      ("enrich_model", "TEXT"),
+                      ("enrich_data", "TEXT"),
+                      ("article_title", "TEXT"),
+                      ("article_md", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

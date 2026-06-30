@@ -26,10 +26,37 @@
   .note .s { font-weight: bold; font-size: 1rem; }
   .pill { display: inline-block; font-family: sans-serif; font-size: .75rem;
           background: #eef2ff; color: #3730a3; border-radius: 999px; padding: .15rem .6rem; }
+  .article { border: 1px solid #d1d5db; border-radius: 10px; padding: 1.2rem 1.4rem;
+             margin: 1.4rem 0; background: #fcfcfd; }
+  .article h2 { font-size: 1.5rem; margin: 0 0 .5rem; }
+  .article .chapo { font-weight: bold; font-size: 1.12rem; color: #111827; }
+  .article .corps { margin-top: .8rem; white-space: pre-wrap; }
+  .article .encadre { font-family: sans-serif; font-size: .9rem; background: #f3f4f6;
+                      border-radius: 8px; padding: .7rem .9rem; margin-top: 1rem; white-space: pre-wrap; }
+  .article .ctx { font-family: sans-serif; font-size: .9rem; color: #374151; margin-top: .8rem; }
+  .article .ctx b { color: #111827; }
+  .article .src { font-family: sans-serif; font-size: .82rem; color: #6b7280; margin-top: .8rem; }
+  .article .src a { color: #2563eb; word-break: break-all; }
+  .conf { font-family: sans-serif; font-size: .72rem; text-transform: uppercase;
+          letter-spacing: .05em; border-radius: 999px; padding: .12rem .55rem; }
+  .conf-haute { background:#dcfce7; color:#166534; }
+  .conf-moyenne { background:#fef9c3; color:#854d0e; }
+  .conf-faible { background:#fee2e2; color:#991b1b; }
+  .btn { font-family: sans-serif; display: inline-block; cursor: pointer; border: 0;
+         border-radius: 6px; padding: .55rem 1rem; font-size: .9rem; font-weight: 600;
+         background: #4f46e5; color: #fff; }
+  .btn.sec { background: #e5e7eb; color: #374151; }
+  .flash { font-family: sans-serif; border-radius: 6px; padding: .6rem .9rem; margin-bottom: 1rem; font-size: .9rem; }
+  .flash.ok { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+  .flash.err { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
 </style>
 </head>
 <body>
 <nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation</a><a href="/site-dedie">🌐 Site dédié</a></nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+{% endwith %}
 
 {% if e.llm_categorie %}<div class="eyebrow">{{ e.llm_categorie }}</div>{% endif %}
 <h1>{{ e.title }}</h1>
@@ -41,9 +68,42 @@
 
 {% if image %}<img class="hero" src="{{ image }}" alt="">{% endif %}
 
-<div class="body">
-  {% if e.description_clean %}<p>{{ e.description_clean }}</p>{% else %}<p><em>Pas de description fournie par la source.</em></p>{% endif %}
-</div>
+{% if enriched and enriched.article %}
+  {% set art = enriched.article %}
+  <div class="article">
+    <div style="display:flex;justify-content:space-between;align-items:center;font-family:sans-serif;font-size:.78rem;color:#6b7280;margin-bottom:.6rem;">
+      <span>✍️ Article rédigé par l'agent · {{ e.enrich_model or '—' }}</span>
+      {% set c = enriched.confiance or 'moyenne' %}
+      <span class="conf conf-{{ c }}">confiance {{ c }}</span>
+    </div>
+    {% if art.titre %}<h2>{{ art.titre }}</h2>{% endif %}
+    {% if art.chapo %}<div class="chapo">{{ art.chapo }}</div>{% endif %}
+    {% if art.corps %}<div class="corps">{{ art.corps }}</div>{% endif %}
+    {% if enriched.contexte_lieu %}<div class="ctx"><b>Lieu :</b> {{ enriched.contexte_lieu }}</div>{% endif %}
+    {% if enriched.contexte_entites %}<div class="ctx"><b>Contexte :</b> {{ enriched.contexte_entites }}</div>{% endif %}
+    {% if enriched.angle %}<div class="ctx"><b>Angle (escalier) :</b> {{ enriched.angle }}</div>{% endif %}
+    {% if art.encadre %}<div class="encadre"><b>En pratique</b><br>{{ art.encadre }}</div>{% endif %}
+    {% if enriched.sources %}
+      <div class="src"><b>Sources consultées (officielles/libres) :</b><br>
+        {% for s in enriched.sources %}<a href="{{ s }}" target="_blank" rel="noopener">{{ s }}</a><br>{% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+<details {% if not enriched %}open{% endif %} style="margin:1rem 0;font-family:sans-serif;font-size:.9rem;">
+  <summary style="cursor:pointer;color:#6b7280;">Matière source (brut RSS)</summary>
+  <div class="body" style="margin-top:.6rem;">
+    {% if e.description_clean %}<p>{{ e.description_clean }}</p>{% else %}<p><em>Pas de description fournie par la source.</em></p>{% endif %}
+  </div>
+</details>
+
+<form method="post" action="/enrich/{{ e.id }}" style="margin:1rem 0;">
+  <button class="btn{% if enriched %} sec{% endif %}" {% if enrich_running %}disabled{% endif %}>
+    {% if enrich_running %}✍️ Enrichissement en cours…{% elif enriched %}🔄 Ré-enrichir{% else %}✍️ Enrichir + rédiger (agent web){% endif %}
+  </button>
+  {% if e.enrich_status == 'error' %}<span style="font-family:sans-serif;font-size:.82rem;color:#991b1b;margin-left:.6rem;">Dernier essai : pas de résultat exploitable.</span>{% endif %}
+</form>
 
 <div class="credits">
   <div><strong>Crédits</strong></div>
