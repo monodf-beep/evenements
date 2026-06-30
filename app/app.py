@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.publisher import publish_to_cs
-from scripts.scraper_events import load_sources
+from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
 from dotenv import load_dotenv
@@ -32,6 +32,13 @@ load_dotenv(ROOT / ".env")
 log = get_logger("backoffice")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 NEWSLETTERS_FILE = ROOT / "config" / "newsletters.txt"
+
+# Garantit que la base + le schéma existent, même sur un VPS frais où aucun
+# scraping n'a encore tourné : sinon le dashboard planterait sur "no such table".
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+_conn = sqlite3.connect(DB_PATH)
+init_db(_conn)
+_conn.close()
 
 TERRITORIES = ["Savoie", "Piemonte", "Vallee-Aoste", "Nice"]
 STATUS_LABELS = {

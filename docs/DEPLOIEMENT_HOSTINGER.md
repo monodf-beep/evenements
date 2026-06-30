@@ -74,6 +74,27 @@ sudo cp deploy/traefik-agenda.yml /docker/traefik/dynamic/
 Ouvrir **https://agenda.culturasabauda.eu** → login `BACKOFFICE_USER` /
 `BACKOFFICE_PASSWORD`. Le certificat Let's Encrypt est émis au 1er accès.
 
+---
+
+## Accès SANS nom de domaine (tunnel SSH) — bêta interne
+
+Pour une bêta interne, **inutile de créer un DNS ou une route Traefik** (on saute
+les étapes 1 et 6). L'app reste sur `127.0.0.1:8098` (étape 5) — non exposée au
+public — et on y accède par un **tunnel SSH** depuis son ordinateur :
+
+```bash
+# depuis TON ordinateur (pas le VPS) — remplace <IP_VPS> par l'IP du VPS :
+ssh -L 8098:127.0.0.1:8098 root@<IP_VPS>
+```
+
+Laisse ce terminal ouvert, puis ouvre **http://127.0.0.1:8098** dans ton
+navigateur → login `BACKOFFICE_USER` / `BACKOFFICE_PASSWORD`.
+
+> 🔒 L'accès est chiffré par SSH (pas besoin de HTTPS/certificat). Comme l'app
+> écoute en loopback, elle reste injoignable depuis l'extérieur. Quand tu voudras
+> l'ouvrir publiquement, il suffira d'ajouter le DNS (étape 1) + la route Traefik
+> (étape 6), sans rien changer au reste.
+
 ## 7. Planifier la collecte (cron)
 
 ```bash
