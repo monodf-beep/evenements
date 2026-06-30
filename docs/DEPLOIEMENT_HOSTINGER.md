@@ -95,6 +95,31 @@ navigateur → login `BACKOFFICE_USER` / `BACKOFFICE_PASSWORD`.
 > l'ouvrir publiquement, il suffira d'ajouter le DNS (étape 1) + la route Traefik
 > (étape 6), sans rien changer au reste.
 
+---
+
+## URL publique SANS posséder de domaine
+
+Trois options, du plus rapide au plus stable :
+
+### a) Tunnel Cloudflare (URL HTTPS instantanée, éphémère)
+Aucune config DNS/cert. Affiche une URL `https://<aléatoire>.trycloudflare.com` :
+```bash
+# sur le VPS (le service agenda-admin doit tourner sur 8098) :
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+chmod +x /usr/local/bin/cloudflared
+cloudflared tunnel --url http://127.0.0.1:8098
+```
+L'URL s'affiche dans le terminal (et change à chaque redémarrage). Idéal pour montrer la bêta.
+
+### b) sslip.io + Traefik (URL HTTPS stable, sans domaine)
+`agenda.<IP_VPS>.sslip.io` résout vers l'IP du VPS → vrai certificat Let's Encrypt.
+Voir `deploy/traefik-agenda-sslip.yml` (remplacer `<IP_VPS>`). URL stable :
+`https://agenda.<IP_VPS>.sslip.io`.
+
+### c) IP:port direct (déconseillé)
+`http://<IP_VPS>:8098` en ouvrant le pare-feu — mais l'auth Basic passe **en clair**
+(pas de HTTPS). À éviter sauf test très court, idéalement pare-feu restreint à ton IP.
+
 ## 7. Planifier la collecte (cron)
 
 ```bash
