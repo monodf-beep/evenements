@@ -28,6 +28,8 @@
   .flow .b { font-size: .82rem; padding: .35rem .6rem; border-radius: 6px; border-left: 4px solid; background: #fff; }
   .flow .b7 { border-color: #16a34a; } .flow .b4 { border-color: #7c3aed; } .flow .b0 { border-color: #9ca3af; }
   .howp { font-size: .82rem; color: #6b7280; margin: .3rem 0 0; }
+  .imgline { font-size: .85rem; color: #6b7280; margin: -.4rem 0 1rem; }
+  .imgline a { color: #2563eb; text-decoration: none; }
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   th, td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; text-align: left; }
   .bar-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.25rem 0; font-size: 0.9rem; }
@@ -87,6 +89,8 @@ clique un chiffre ci-dessous pour ouvrir la liste correspondante.</p>
   <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Site dédié</div></a>
   <a class="kpi" href="/events?statut=rejected"><div class="v">{{ status_counts.get('rejected', 0) }}</div><div class="l">Rejetés</div></a>
 </div>
+<p class="imgline">🖼 <a href="/events?img=1">{{ with_img }} événement(s) avec photo</a> ·
+  <a href="/events?img=0">{{ without_img }} sans photo</a></p>
 
 <h2>⚙️ Lancement manuel</h2>
 <div class="runpanel">

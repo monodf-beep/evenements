@@ -293,6 +293,11 @@ def dashboard():
     to_validate = conn.execute(
         "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7"
     ).fetchone()["n"]
+    imgrow = conn.execute(
+        "SELECT SUM(CASE WHEN url_image IS NOT NULL AND url_image != '' THEN 1 ELSE 0 END) wi, "
+        "COUNT(*) t FROM events_raw").fetchone()
+    with_img = imgrow["wi"] or 0
+    without_img = (imgrow["t"] or 0) - with_img
     conn.close()
 
     total = sum(status_counts.values())
@@ -322,6 +327,7 @@ def dashboard():
         src_counts=src_counts, src_total=sum(src_counts.values()),
         newsletters=newsletters, nl_active=nl_active,
         tasks=tasks, any_running=any_running,
+        with_img=with_img, without_img=without_img,
     )
 
 
@@ -390,17 +396,31 @@ def events():
     except ValueError:
         page = 1
 
-    where, params = [], []
+    img = request.args.get("img", "")  # "" toutes · "1" avec photo · "0" sans
+
+    base_where, base_params = [], []
     if statut:
-        where.append("statut = ?"); params.append(statut)
+        base_where.append("statut = ?"); base_params.append(statut)
     if terr:
-        where.append("territoire = ?"); params.append(terr)
+        base_where.append("territoire = ?"); base_params.append(terr)
     if q:
-        where.append("title LIKE ?"); params.append(f"%{q}%")
+        base_where.append("title LIKE ?"); base_params.append(f"%{q}%")
+
+    where, params = list(base_where), list(base_params)
+    if img == "1":
+        where.append("url_image IS NOT NULL AND url_image != ''")
+    elif img == "0":
+        where.append("(url_image IS NULL OR url_image = '')")
     wsql = ("WHERE " + " AND ".join(where)) if where else ""
+    base_wsql = ("WHERE " + " AND ".join(base_where)) if base_where else ""
 
     conn = get_db()
     total = conn.execute(f"SELECT COUNT(*) n FROM events_raw {wsql}", params).fetchone()["n"]
+    imgrow = conn.execute(
+        "SELECT SUM(CASE WHEN url_image IS NOT NULL AND url_image != '' THEN 1 ELSE 0 END) wi, "
+        f"COUNT(*) t FROM events_raw {base_wsql}", base_params).fetchone()
+    with_img = imgrow["wi"] or 0
+    without_img = (imgrow["t"] or 0) - with_img
     rows = conn.execute(
         f"SELECT * FROM events_raw {wsql} ORDER BY scrape_date DESC, id DESC LIMIT ? OFFSET ?",
         params + [PAGE_SIZE, (page - 1) * PAGE_SIZE]).fetchall()
@@ -411,7 +431,8 @@ def events():
     pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     return render_template(
         "events.html", events=[dict(r) for r in rows],
-        statut=statut, territoire=terr, q=q, page=page, pages=pages, total=total,
+        statut=statut, territoire=terr, q=q, img=img, page=page, pages=pages, total=total,
+        with_img=with_img, without_img=without_img,
         territories=TERRITORIES, status_labels=STATUS_LABELS,
         statut_counts=statut_counts, alert=friendly_alert())
 
