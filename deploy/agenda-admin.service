@@ -1,0 +1,32 @@
+# Service systemd — backoffice Agenda Cultura Sabauda (dashboard + validation).
+#
+# Installation sur le VPS :
+#   sudo cp deploy/agenda-admin.service /etc/systemd/system/
+#   # adapter User= et les chemins (WorkingDirectory/ExecStart) si déployé ailleurs
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now agenda-admin
+#   systemctl status agenda-admin
+#
+# Le service écoute sur 127.0.0.1:8098 (loopback). Pour y accéder :
+#   - propre / permanent : route Traefik HTTPS → voir deploy/traefik-agenda.yml
+#     (host agenda.culturasabauda.eu).
+#   - rapide / debug : tunnel SSH  ->  ssh -L 8098:127.0.0.1:8098 root@<VPS_IP>
+#     puis http://127.0.0.1:8098 (login BACKOFFICE_USER/BACKOFFICE_PASSWORD du .env).
+#
+# ⚠ Toujours derrière HTTPS — l'auth HTTP Basic transite sinon en clair.
+
+[Unit]
+Description=Agenda Cultura Sabauda — backoffice (dashboard + validation)
+After=network.target
+
+[Service]
+# Chemins du VPS (projet déployé sous /root). Adapter si déployé ailleurs.
+Type=simple
+User=root
+WorkingDirectory=/root/evenements
+ExecStart=/root/evenements/.venv/bin/gunicorn -w 2 -b 127.0.0.1:8098 'app.app:app'
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
