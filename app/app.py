@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.publisher import publish_to_cs
 from utils.logger import get_logger
+from utils import usage
 from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
@@ -60,7 +61,16 @@ def index():
         ORDER BY llm_score DESC, scrape_date DESC
     """).fetchall()
     conn.close()
-    return render_template("index.html", events=events)
+    summary = usage.summarize()
+    week = summary["current_week"]
+    cost = {
+        "week_label": week,
+        "week": summary["weeks"].get(week, {}).get("cost", 0.0),
+        "total": summary["total"]["cost"],
+        "calls_total": summary["total"]["calls"],
+    }
+    return render_template("index.html", events=events,
+                           cost=cost, alert=usage.get_alert())
 
 
 @app.route("/action/<int:event_id>/<action>", methods=["POST"])
