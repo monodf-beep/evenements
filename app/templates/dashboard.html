@@ -20,8 +20,8 @@
   th, td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; text-align: left; }
   .bar-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.25rem 0; font-size: 0.9rem; }
   .bar-row .lbl { width: 130px; flex-shrink: 0; }
-  .bar-row .track { flex: 1; background: #f1f5f9; border-radius: 4px; height: 16px; }
-  .bar-row .fill { background: #2563eb; height: 16px; border-radius: 4px; }
+  .bar-row .track { flex: 1; background: #f1f5f9; border-radius: 4px; height: 16px; display: block; overflow: hidden; }
+  .bar-row .fill { background: #2563eb; height: 16px; border-radius: 4px; display: block; min-width: 2px; }
   .bar-row .n { width: 36px; text-align: right; color: #374151; }
   .cols { display: flex; flex-wrap: wrap; gap: 2rem; }
   .cols > div { flex: 1; min-width: 320px; }
