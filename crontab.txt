@@ -1,7 +1,9 @@
 # Agenda Backoffice — Cultura Sabauda
 # Installer avec : crontab crontab.txt
 #
-# Scraping quotidien 8h
+# Scraping RSS quotidien 8h
 0 8 * * * cd /var/www/agenda-backoffice && python scripts/scraper_events.py >> logs/scraper.log 2>&1
+# Collecte des newsletters (label Gmail « Agenda ») 8h15
+15 8 * * * cd /var/www/agenda-backoffice && python scripts/gmail_collect.py >> logs/gmail.log 2>&1
 # Évaluation LLM 9h (après scraping)
 0 9 * * * cd /var/www/agenda-backoffice && python scripts/evaluator.py >> logs/evaluator.log 2>&1
