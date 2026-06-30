@@ -1,74 +1,52 @@
 # Sources RSS des événements culturels — Sprint 1
-# Format : url_rss;territoire;nom_source
+# Format : url_rss;territoire;nom_source;tier
 # Territoire : Savoie | Piemonte | Vallee-Aoste | Nice
+# Tier (priorité de source pour la déduplication/fusion, voir docs/CHARTE_EDITORIALE.md §8) :
+#   officielle  = organisateur / lieu primaire (théâtre, musée, opéra…)   [priorité max]
+#   institution = collectivité / institution (ville, département, métropole)
+#   tourisme    = office de tourisme / portail touristique
+#   radar       = presse / Google News (DÉTECTION seule, jamais crédité/lié)
 # Lignes commençant par # ignorées.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # Flux VÉRIFIÉS le 2026-06-30 (HTTP 200 + corps XML RSS/Atom + ≥1 item réel).
-# Les placeholders du brief initial (salonelibro/it/feed.xml, turismotorino/feed,
-# patrimoines.savoie.fr, regione.vda.it/rss/eventi.xml, nicecotedazur/agenda/rss)
-# étaient tous morts (404/503) → retirés.
-#
-# Beaucoup d'institutions n'exposent AUCUN flux RSS (sites headless/Next.js,
-# CMS sans feed) : Turismo Torino, VisitPiemonte, Teatro Regio, GAM, Région VdA,
-# Lovevda, Comune di Aosta, Département 06, TNN, Ville de Chambéry/Annecy…
-# → elles seront couvertes par le CANAL NEWSLETTER (Gmail) et le scraping HTML.
-#
-# Les requêtes « Google News RSS » servent de RADAR territorial (toujours valides,
-# large couverture) ; le filtrage éditorial du LLM fait le tri.
+# Beaucoup d'institutions n'exposent AUCUN flux RSS → couvertes par le canal
+# newsletter (Gmail) et le scraping HTML. Les « Google News » servent de RADAR.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ============================ SAVOIE / HAUTE-SAVOIE ============================
-# Scène nationale (vrai contenu spectacle vivant)
-https://www.espacemalraux-chambery.fr/feed/;Savoie;Malraux scène nationale Chambéry
-# Villes à forte composante événementielle
-https://www.albertville.fr/feed/;Savoie;Ville d'Albertville
-# Offices de tourisme (agenda/actus touristique, culturel partiel)
-https://www.aix-les-bains.com/feed/;Savoie;Office de Tourisme Aix-les-Bains
-https://www.aixlesbains-rivieradesalpes.com/feed/;Savoie;Aix-les-Bains Riviera des Alpes
-https://www.lac-annecy.com/feed/;Savoie;Office de Tourisme du Lac d'Annecy
-https://www.megeve.com/feed/;Savoie;Megève Tourisme
-# Institutionnel départemental (culture diffuse)
-https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie
-# Radar
+https://www.espacemalraux-chambery.fr/feed/;Savoie;Malraux scène nationale Chambéry;officielle
+https://www.albertville.fr/feed/;Savoie;Ville d'Albertville;institution
+https://www.aix-les-bains.com/feed/;Savoie;Office de Tourisme Aix-les-Bains;tourisme
+https://www.aixlesbains-rivieradesalpes.com/feed/;Savoie;Aix-les-Bains Riviera des Alpes;tourisme
+https://www.lac-annecy.com/feed/;Savoie;Office de Tourisme du Lac d'Annecy;tourisme
+https://www.megeve.com/feed/;Savoie;Megève Tourisme;tourisme
+https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie;institution
 https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar);radar
-# NB : 6 pistes Savoie (theatrecharlesdullin.fr, chambery-tourisme.com,
-# citedesarts-chambery.fr, grand-chambery.fr, chateau-annecy.fr,
-# museedumontblanc.com) testées depuis le VPS le 2026-06-30 → domaines morts
-# (DNS non résolu / timeout). Écartées. À remplacer par de vrais flux si on en trouve.
+# NB : 6 pistes Savoie (theatrecharlesdullin.fr, chambery-tourisme.com, citedesarts-chambery.fr,
+# grand-chambery.fr, chateau-annecy.fr, museedumontblanc.com) testées depuis le VPS le
+# 2026-06-30 → domaines morts (DNS/timeout). Écartées.
 
 # ================================= PIÉMONT ====================================
-# Portail tourisme régional (agenda eventi : mostre, festival, patrimonio)
-https://www.piemonteitalia.eu/it/rss.xml;Piemonte;Piemonte Italia (VisitPiemonte)
-# Musées
-https://www.museireali.beniculturali.it/feed/;Piemonte;Musei Reali Torino
-https://www.castellodirivoli.org/feed/;Piemonte;Castello di Rivoli - Arte Contemporanea
-# Théâtre
-https://www.teatrostabiletorino.it/feed/;Piemonte;Teatro Stabile di Torino
-# Rencontres littéraires
-https://www.circololettori.it/feed/;Piemonte;Fondazione Circolo dei Lettori
-# Radar
+https://www.piemonteitalia.eu/it/rss.xml;Piemonte;Piemonte Italia (VisitPiemonte);tourisme
+https://www.museireali.beniculturali.it/feed/;Piemonte;Musei Reali Torino;officielle
+https://www.castellodirivoli.org/feed/;Piemonte;Castello di Rivoli - Arte Contemporanea;officielle
+https://www.teatrostabiletorino.it/feed/;Piemonte;Teatro Stabile di Torino;officielle
+https://www.circololettori.it/feed/;Piemonte;Fondazione Circolo dei Lettori;officielle
 https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+Torino+OR+Piemonte&hl=it&gl=IT&ceid=IT:it;Piemonte;Google News - Cultura Torino/Piemonte (radar);radar
 
 # ============================== VALLÉE D'AOSTE ================================
-# Seul flux institutionnel natif réellement peuplé (WordPress)
-https://www.fortedibard.it/eventi/feed/;Vallee-Aoste;Forte di Bard - Eventi
-https://www.fortedibard.it/feed/;Vallee-Aoste;Forte di Bard - Notizie
-# Radars (couvrent le reste du territoire, peu de RSS institutionnel)
+https://www.fortedibard.it/eventi/feed/;Vallee-Aoste;Forte di Bard - Eventi;officielle
+https://www.fortedibard.it/feed/;Vallee-Aoste;Forte di Bard - Notizie;officielle
 https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+%22Valle+d%27Aosta%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura VdA (radar);radar
 https://news.google.com/rss/search?q=cultura+eventi+%22Valle+d%27Aosta%22+OR+%22Vall%C3%A9e+d%27Aoste%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura/Eventi VdA bilingue (radar);radar
 
 # ========================= NICE / ALPES-MARITIMES ============================
-# Vrai agenda d'événements (Opéra : concerts, festival, spectacles)
-https://www.opera-nice.org/agenda/feed/;Nice;Opéra Nice Côte d'Azur - Agenda
-# Musées
-https://www.mamac-nice.org/feed/;Nice;MAMAC de Nice
-https://www.musee-matisse-nice.org/fr/feed/;Nice;Musée Matisse de Nice
-# Collectivités (actus à composante culturelle)
-https://www.nicecotedazur.org/feed/;Nice;Métropole Nice Côte d'Azur
-https://www.nice.fr/feed/;Nice;Ville de Nice
-https://www.grasse.fr/feed/;Nice;Ville de Grasse
-# Office de tourisme
-https://www.explorenicecotedazur.com/feed/;Nice;Office de Tourisme Nice Côte d'Azur
-# Radar
+https://www.opera-nice.org/agenda/feed/;Nice;Opéra Nice Côte d'Azur - Agenda;officielle
+https://www.mamac-nice.org/feed/;Nice;MAMAC de Nice;officielle
+https://www.musee-matisse-nice.org/fr/feed/;Nice;Musée Matisse de Nice;officielle
+https://www.nicecotedazur.org/feed/;Nice;Métropole Nice Côte d'Azur;institution
+https://www.nice.fr/feed/;Nice;Ville de Nice;institution
+https://www.grasse.fr/feed/;Nice;Ville de Grasse;institution
+https://www.explorenicecotedazur.com/feed/;Nice;Office de Tourisme Nice Côte d'Azur;tourisme
 https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR+%22Alpes-Maritimes%22&hl=fr&gl=FR&ceid=FR:fr;Nice;Google News - Culture 06 (radar);radar

@@ -56,6 +56,7 @@ STATUS_LABELS = {
     "published_cs": "Publié CS",
     "published_sub": "Site dédié",
     "rejected": "Rejeté",
+    "merged": "Fusionné",
 }
 
 app = Flask(__name__, template_folder="templates")
@@ -161,6 +162,7 @@ def friendly_alert():
 TASKS = {
     "scrape":   {"script": "scripts/scraper_events.py", "label": "Scraping RSS", "icon": "📡", "cost": False},
     "gmail":    {"script": "scripts/gmail_collect.py",   "label": "Newsletters Gmail", "icon": "📬", "cost": True},
+    "dedupe":   {"script": "scripts/dedupe.py",          "label": "Déduplication", "icon": "🔗", "cost": False},
     "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation LLM", "icon": "🧠", "cost": True},
 }
 RUN_STATE = ROOT / "data" / "run_state.json"

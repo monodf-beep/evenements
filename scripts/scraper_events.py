@@ -46,11 +46,13 @@ def init_db(conn: sqlite3.Connection) -> None:
         statut           TEXT DEFAULT 'pending',
         published_cs_date TEXT,
         wp_post_id_cs    INTEGER,
-        source_type      TEXT DEFAULT 'institutionnel'
+        source_type      TEXT DEFAULT 'institutionnel',
+        duplicate_of     INTEGER
     )
     """)
     # Migrations : colonnes ajoutées après coup sur une base déjà existante.
-    for col, decl in (("source_type", "TEXT DEFAULT 'institutionnel'"),):
+    for col, decl in (("source_type", "TEXT DEFAULT 'institutionnel'"),
+                      ("duplicate_of", "INTEGER")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
