@@ -6,9 +6,11 @@ Sprint 1 : post_type='post' + taxonomie 'agenda' + meta fields.
 Sprint 2 : migrer vers CPT 'agenda' JetEngine.
 """
 from __future__ import annotations
+import mimetypes
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 
@@ -17,6 +19,49 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 
 log = get_logger("publisher")
+
+
+def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
+    """Télécharge l'image source et l'envoie dans la médiathèque WordPress.
+
+    Retourne le media_id (à passer en featured_media) ou None si échec.
+    Jamais bloquant : un échec d'upload laisse le post sans vignette.
+    """
+    try:
+        img = requests.get(image_url, timeout=30)
+        img.raise_for_status()
+        content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
+        if not content_type.startswith("image/"):
+            log.warning("URL image non-image (%s) : %s", content_type or "?", image_url)
+            return None
+
+        # Nom de fichier : basename de l'URL, sinon dérivé du type MIME.
+        name = os.path.basename(urlparse(image_url).path) or "image"
+        if "." not in name:
+            ext = mimetypes.guess_extension(content_type) or ".jpg"
+            name = f"{name}{ext}"
+
+        resp = requests.post(
+            f"{wp_url}/wp-json/wp/v2/media",
+            data=img.content,
+            auth=auth,
+            headers={
+                "Content-Type": content_type,
+                "Content-Disposition": f'attachment; filename="{name}"',
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        media_id = resp.json().get("id")
+        log.info("Média uploadé WP id=%s : %s", media_id, image_url)
+        return media_id
+    except requests.HTTPError as exc:
+        log.warning("Upload média refusé (%s) : %s", exc.response.status_code,
+                    exc.response.text[:200])
+        return None
+    except (requests.RequestException, ValueError) as exc:
+        log.warning("Upload média impossible : %s", exc)
+        return None
 
 
 def publish_to_cs(event: dict) -> int | None:
@@ -30,6 +75,7 @@ def publish_to_cs(event: dict) -> int | None:
         log.error("Variables WordPress manquantes (WP_URL, WP_USER, WP_APP_PASSWORD)")
         return None
 
+    auth = (wp_user, wp_pass)
     payload = {
         "title":   event.get("title", ""),
         "content": event.get("description", ""),
@@ -47,15 +93,22 @@ def publish_to_cs(event: dict) -> int | None:
             "event_llm_justification": event.get("llm_justification", ""),
         },
     }
-    # Image à la une si disponible
+
+    # Image à la une : upload dans la médiathèque puis featured_media.
+    # _thumbnail_url en meta ne définit PAS la vignette via l'API REST.
     if event.get("url_image"):
-        payload["_thumbnail_url"] = event["url_image"]
+        media_id = _upload_featured_media(wp_url, auth, event["url_image"])
+        if media_id:
+            payload["featured_media"] = media_id
+        else:
+            log.info("Post sans vignette (upload média échoué) : %s",
+                     event.get("title", "")[:60])
 
     try:
         resp = requests.post(
             f"{wp_url}/wp-json/wp/v2/posts",
             json=payload,
-            auth=(wp_user, wp_pass),
+            auth=auth,
             timeout=30,
         )
         resp.raise_for_status()
