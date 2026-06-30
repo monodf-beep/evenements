@@ -22,7 +22,7 @@ from utils import usage
 
 log = get_logger("evaluator")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_MODEL = "claude-sonnet-5"
 BATCH_SIZE = 100
 
 # Sentinel : échec d'APPEL API (réseau / statut). L'événement reste 'pending'

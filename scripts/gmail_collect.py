@@ -49,7 +49,7 @@ CREDENTIALS_PATH = Path(os.getenv("GMAIL_CREDENTIALS", CONFIG_DIR / "credentials
 TOKEN_PATH = Path(os.getenv("GMAIL_TOKEN", CONFIG_DIR / "token.json"))
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_MODEL = "claude-sonnet-5"
 
 # Sentinel : panne d'appel API pendant l'extraction → on arrête sans marquer le
 # mail comme traité (il sera repris au prochain run). Même logique que l'évaluateur.
