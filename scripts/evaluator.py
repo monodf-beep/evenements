@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils import usage
 
 log = get_logger("evaluator")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -77,12 +78,14 @@ def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict
             max_tokens=256,
             messages=[{"role": "user", "content": prompt}],
         )
+        usage.record_message(model, message, label="évaluation")
         raw = message.content[0].text.strip()
         match = re.search(r"\{.*\}", raw, re.S)
         if not match:
             return None
         return json.loads(match.group())
     except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        usage.note_api_error(exc)
         log.error("Erreur API Anthropic : %s", exc)
         return None
     except (json.JSONDecodeError, IndexError) as exc:
