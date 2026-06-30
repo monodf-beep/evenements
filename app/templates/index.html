@@ -19,6 +19,9 @@
   .alert { background: #c0392b; color: #fff; padding: 0.8rem 1rem; border-radius: 4px;
            margin-bottom: 1rem; font-weight: bold; }
   .alert small { font-weight: normal; opacity: 0.85; }
+  .flash { padding:.6rem .9rem; border-radius:6px; margin-bottom:.7rem; font-size:.9rem; }
+  .flash.ok { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+  .flash.err { background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; }
   nav a { margin-right: 1rem; text-decoration: none; color: #2563eb; }
 </style>
 </head>
@@ -29,6 +32,9 @@
   {% if alert.reset %}<br>Accès rétabli le <strong>{{ alert.reset }}</strong>.{% endif %}
   <br><small>{{ alert.raw }}</small></div>
 {% endif %}
+{% with msgs = get_flashed_messages(with_categories=true) %}
+{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+{% endwith %}
 <h1>Événements à valider (score ≥ 7)</h1>
 {% if not events %}
   <p>Aucun événement en attente de validation.</p>
@@ -51,11 +57,11 @@
     <td><a href="{{ e.url_source }}" target="_blank">↗</a><br><small>{{ e.source_name }}</small></td>
     <td>
       <a href="/preview/{{ e.id }}" target="_blank" class="btn" style="background:#374151;color:#fff;text-decoration:none">👁 Aperçu</a>
-      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline">
-        <button class="btn btn-cs">✅ CS</button>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress pour cet événement ?')">
+        <button class="btn btn-cs" title="Crée un brouillon sur WordPress">✅ WordPress</button>
       </form>
       <form method="POST" action="/action/{{ e.id }}/subdomain" style="display:inline">
-        <button class="btn btn-sub">📋 Sub</button>
+        <button class="btn btn-sub" title="Classer pour le site dédié">📋 Site dédié</button>
       </form>
       <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline">
         <button class="btn btn-rej">❌ Rejeter</button>

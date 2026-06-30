@@ -30,6 +30,9 @@
   .pager { margin-top: 1rem; font-size: .9rem; }
   .pager a, .pager span { margin-right: .6rem; }
   .muted{color:#9ca3af;}
+  .flash { padding:.6rem .9rem; border-radius:6px; margin-bottom:.7rem; font-size:.9rem; }
+  .flash.ok { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+  .flash.err { background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; }
 </style>
 </head>
 <body>
@@ -40,6 +43,10 @@
   {% if alert.reset %}<br>Accès rétabli le <strong>{{ alert.reset }}</strong>.{% endif %}
   <br><small>{{ alert.raw }}</small></div>
 {% endif %}
+
+{% with msgs = get_flashed_messages(with_categories=true) %}
+{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+{% endwith %}
 
 <h1>Événements collectés <span class="muted">({{ total }})</span></h1>
 
@@ -75,10 +82,10 @@
     <td><span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) }}</span></td>
     <td>{{ e.llm_score if e.llm_score is not none else '—' }}</td>
     <td>
-      <a href="/preview/{{ e.id }}" target="_blank" class="btn btn-prev">👁</a>
-      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-cs">✅ CS</button></form>
-      <form method="POST" action="/action/{{ e.id }}/subdomain" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-sub">📋 Sub</button></form>
-      <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-rej">❌</button></form>
+      <a href="/preview/{{ e.id }}" target="_blank" class="btn btn-prev" title="Aperçu de l'article">👁 Aperçu</a>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress pour cet événement ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-cs" title="Crée un brouillon sur WordPress">✅ WordPress</button></form>
+      <form method="POST" action="/action/{{ e.id }}/subdomain" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-sub" title="Classer pour le site dédié (volume)">📋 Site dédié</button></form>
+      <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-rej" title="Rejeter">❌ Rejeter</button></form>
     </td>
   </tr>
   {% endfor %}

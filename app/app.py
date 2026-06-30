@@ -11,6 +11,7 @@ Lance avec : gunicorn -w 1 -b 127.0.0.1:5001 'app.app:app'
 from __future__ import annotations
 import hashlib
 import hmac
+import html
 import json
 import os
 import sqlite3
@@ -21,7 +22,7 @@ from datetime import datetime
 from functools import wraps
 from pathlib import Path
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -32,7 +33,6 @@ from scripts.publisher import publish_to_cs
 from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
-from utils.sources import pick_image, load_territory_images
 from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
@@ -115,18 +115,20 @@ def get_db():
     return conn
 
 
-_TERRITORY_IMAGES = load_territory_images()
-
-
 def event_image(ev: dict) -> str:
-    """Image de l'événement, ou bannière de substitution par territoire."""
-    return ev.get("url_image") or pick_image(
-        ev.get("territoire", ""), str(ev.get("id", "")), _TERRITORY_IMAGES)
+    """URL de la photo de l'événement (vide si la source n'en fournit pas).
+
+    Pas de bannière de substitution ici : l'alternative pour les événements sans
+    photo est une tâche à venir (voir docs/BACKLOG.md).
+    """
+    return ev.get("url_image") or ""
 
 
 def clean_html(text: str) -> str:
-    """Retire les balises HTML pour un aperçu texte propre."""
-    return re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", text or "")).strip()
+    """Texte propre : retire les balises ET décode les entités HTML (&nbsp; …)."""
+    text = re.sub(r"(?s)<[^>]+>", " ", text or "")
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def friendly_alert():
@@ -425,6 +427,7 @@ def action(event_id: int, action: str):
         conn.close()
         return "Événement introuvable", 404
 
+    title = (event["title"] or "")[:70]
     if action == "publish_cs":
         wp_id = publish_to_cs(dict(event))
         if wp_id:
@@ -434,18 +437,23 @@ def action(event_id: int, action: str):
             """, (wp_id, event_id))
             conn.commit()
             log.info("Publié CS : event_id=%d wp_id=%d", event_id, wp_id)
+            flash(f"✅ « {title} » → brouillon créé sur WordPress (id {wp_id}).", "ok")
+        else:
+            flash(f"❌ Échec WordPress pour « {title} » — vérifie WP_URL / identifiants (voir logs).", "err")
     elif action == "subdomain":
         conn.execute(
             "UPDATE events_raw SET statut='published_sub' WHERE id=?",
             (event_id,)
         )
         conn.commit()
+        flash(f"📋 « {title} » classé pour le site dédié.", "ok")
     elif action == "reject":
         conn.execute(
             "UPDATE events_raw SET statut='rejected' WHERE id=?",
             (event_id,)
         )
         conn.commit()
+        flash(f"❌ « {title} » rejeté.", "ok")
 
     conn.close()
     nxt = request.form.get("next", "")

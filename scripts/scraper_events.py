@@ -6,6 +6,7 @@ Cron : 0 8 * * * (quotidien 8h)
 from __future__ import annotations
 import sqlite3
 import os
+import re
 import sys
 from pathlib import Path
 import feedparser
@@ -83,6 +84,13 @@ def extract_image(entry: dict) -> str:
     # media:thumbnail
     if hasattr(entry, "media_thumbnail") and entry.media_thumbnail:
         return entry.media_thumbnail[0].get("url", "")
+    # fallback : première <img> trouvée dans le résumé / contenu HTML
+    blob = entry.get("summary", "") or ""
+    for c in getattr(entry, "content", []) or []:
+        blob += c.get("value", "")
+    match = re.search(r'<img[^>]+src=["\']?(https?://[^"\'>\s]+)', blob, re.I)
+    if match:
+        return match.group(1)
     return ""
 
 
