@@ -1,5 +1,7 @@
 # Secrets — ne jamais committer
 .env
+config/credentials.json
+config/token.json
 
 # Base de données et logs générés
 data/
