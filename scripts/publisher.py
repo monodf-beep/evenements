@@ -111,7 +111,7 @@ def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
             name = f"{name}{ext}"
 
         resp = requests.post(
-            f"{wp_url}/wp-json/wp/v2/media",
+            f"{wp_url}/?rest_route=/wp/v2/media",
             data=img.content,
             auth=auth,
             headers={
@@ -179,7 +179,7 @@ def publish_to_cs(event: dict) -> int | None:
 
     try:
         resp = requests.post(
-            f"{wp_url}/wp-json/wp/v2/posts",
+            f"{wp_url}/?rest_route=/wp/v2/posts",
             json=payload,
             auth=auth,
             headers=_UA,
