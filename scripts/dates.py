@@ -13,12 +13,21 @@ gère les cas courants d'une programmation culturelle :
   - « jusqu'au 30 août » / « fino al 30 agosto » (fin seule → en cours jusqu'à…)
   - ISO 2026-07-05, dates numériques 05/07/2026, 05.07.2026 (jj/mm/aaaa, format européen)
 
+Trois passes, du plus sûr/gratuit au dernier recours :
+  1. TEXTE (titre + description) — regex FR/IT, gratuit et instantané ;
+  2. PAGE structurée — JSON-LD schema.org Event + <time datetime> (déterministe) ;
+  3. LLM — jugement de langue sur la prose de la page, quand 1 et 2 échouent
+     (beaucoup de sites, surtout IT, ne donnent la date qu'en toutes lettres).
+     Économique, borné, idempotent ; désactivable par DATES_LLM=0.
+
 Sortie stockée : date_event_start / date_event_end (ISO AAAA-MM-JJ) + date_source
-('parsed' | 'none'). Les événements non datés vont dans le bac « date à confirmer ».
-Cron : après dedupe, avant l'évaluation.
+('parsed' | 'page' | 'llm' | 'none' | 'nodate' | 'llm_none'). Les non-datés vont
+dans le bac « date à confirmer ». Cron : après dedupe, avant l'évaluation.
 """
 from __future__ import annotations
 import argparse
+import html as htmlmod
+import json
 import os
 import re
 import sqlite3
@@ -41,6 +50,13 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 FETCH_CAP = int(os.getenv("DATES_FETCH_CAP", "200"))   # pages fetchées par run (max)
 FETCH_TIMEOUT = int(os.getenv("DATES_FETCH_TIMEOUT", "6"))
 _UA = {"User-Agent": "Mozilla/5.0 (compatible; CulturaSabaudaBot/1.0)"}
+# 3ᵉ passe : datation LLM (jugement de langue) sur les non-datés que le regex et le
+# JSON-LD n'ont pas su lire — beaucoup de pages (surtout IT) donnent la date en prose.
+# Économique et borné. Actif si une clé Anthropic est présente (désactivable : DATES_LLM=0).
+DATES_LLM = os.getenv("DATES_LLM", "1") not in ("0", "false", "False", "")
+DATES_LLM_CAP = int(os.getenv("DATES_LLM_CAP", "150"))
+DATES_LLM_MODEL = os.getenv("DATES_LLM_MODEL") or os.getenv("ANTHROPIC_MODEL_EXTRACT",
+                                                            "claude-haiku-4-5-20251001")
 
 _MONTHS = {
     # français
@@ -180,6 +196,70 @@ def fetch_event_dates(url: str) -> tuple[str, str, str]:
     return (s, e, "page") if src == "page" else ("", "", "nodate")
 
 
+def fetch_page_text(url: str) -> str:
+    """Texte visible d'une page (pour la datation LLM). '' si inaccessible/hors périmètre."""
+    if not url or url.startswith("gmail:") or "news.google.com" in url:
+        return ""
+    try:
+        r = requests.get(url, timeout=FETCH_TIMEOUT, headers=_UA)
+        if r.status_code != 200 or not r.text:
+            return ""
+        doc = r.text
+    except requests.RequestException:
+        return ""
+    doc = re.sub(r"(?is)<(script|style|nav|header|footer|noscript)[^>]*>.*?</\1>", " ", doc)
+    doc = re.sub(r"(?s)<[^>]+>", " ", doc)
+    return re.sub(r"\s+", " ", htmlmod.unescape(doc)).strip()[:5000]
+
+
+def llm_dates(material: str, ref: date, client, model: str) -> tuple[str, str, str]:
+    """Le LLM lit la matière et rend la période de l'ÉVÉNEMENT. ('','','llm_none') si rien.
+
+    Jugement de langue (FR/IT), pas de parsing structuré : on ne l'utilise qu'en
+    dernier recours, quand regex + JSON-LD ont échoué (voir docs/LLM_OU_CODE.md).
+    """
+    material = (material or "").strip()
+    if not material:
+        return ("", "", "llm_none")
+    prompt = (
+        "Tu extrais la DATE de déroulement d'un événement culturel à partir du texte "
+        "fourni (français ou italien). Ignore les dates de publication, d'inscription "
+        "ou de vernissage isolé : ce qui compte, c'est QUAND l'événement a lieu.\n"
+        f"Date du jour (pour déduire l'année si absente) : {ref.isoformat()}.\n"
+        "Règles : une seule date → start = end ; une plage → les deux ; une fin seule "
+        "(« jusqu'au… ») → start vide, end rempli ; si aucune date d'événement n'est "
+        "trouvable, found=false.\n\n"
+        f"TEXTE :\n{material[:4000]}\n\n"
+        'Réponds en JSON STRICT et rien d\'autre : '
+        '{"start": "AAAA-MM-JJ" ou "", "end": "AAAA-MM-JJ" ou "", "found": true|false}'
+    )
+    try:
+        msg = client.messages.create(
+            model=model, max_tokens=150,
+            messages=[{"role": "user", "content": prompt}])
+    except Exception as exc:  # jamais bloquant
+        log.warning("Datation LLM échouée : %s", exc)
+        return ("", "", "llm_none")
+    raw = "".join(getattr(b, "text", "") for b in msg.content
+                  if getattr(b, "type", None) == "text").strip()
+    blob = raw[raw.find("{"):raw.rfind("}") + 1] if "{" in raw else ""
+    try:
+        data = json.loads(blob or raw)
+    except (ValueError, TypeError):
+        return ("", "", "llm_none")
+    if not data.get("found"):
+        return ("", "", "llm_none")
+    s, e = (data.get("start") or "").strip(), (data.get("end") or "").strip()
+    # Validation stricte : on n'accepte que des dates ISO réelles.
+    s = s if (re.fullmatch(r"\d{4}-\d{2}-\d{2}", s) and _iso(*map(int, s.split("-")))) else ""
+    e = e if (re.fullmatch(r"\d{4}-\d{2}-\d{2}", e) and _iso(*map(int, e.split("-")))) else ""
+    if s and e:
+        return (min(s, e), max(s, e), "llm")
+    if s or e:
+        return (s, e or s, "llm") if s else ("", e, "llm")
+    return ("", "", "llm_none")
+
+
 def ensure_columns(conn: sqlite3.Connection) -> None:
     for col, decl in (("date_event_start", "TEXT"),
                       ("date_event_end", "TEXT"),
@@ -197,6 +277,10 @@ def main(argv=None) -> int:
                         help="Ne pas aller lire les pages (parsing texte seulement).")
     parser.add_argument("--fetch-cap", type=int, default=FETCH_CAP,
                         help="Nombre max de pages à télécharger sur ce run.")
+    parser.add_argument("--no-llm", action="store_true",
+                        help="Ne pas utiliser la datation LLM de dernier recours.")
+    parser.add_argument("--llm-cap", type=int, default=DATES_LLM_CAP,
+                        help="Nombre max d'événements datés par LLM sur ce run.")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -242,15 +326,44 @@ def main(argv=None) -> int:
             conn.commit()
         log.info("Passe page : %d daté(s) via la page", from_page)
 
+    # --- Passe 3 : datation LLM (dernier recours) pour les non-datés restants ---
+    from_llm = 0
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if DATES_LLM and not args.no_llm and api_key:
+        todo = conn.execute(
+            "SELECT id, title, description, url_source FROM events_raw "
+            "WHERE date_source IN ('none', 'nodate') AND statut != 'merged' "
+            "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
+            "LIMIT ?", (args.llm_cap,)).fetchall()
+        log.info("Passe LLM : %d événement(s) à dater (modèle %s, cap %d)",
+                 len(todo), DATES_LLM_MODEL, args.llm_cap)
+        if todo:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+            ref = date.today()
+            for r in todo:
+                # La page porte la vraie date ; à défaut, le titre + la description.
+                material = fetch_page_text(r["url_source"]) or f"{r['title']}\n{r['description'] or ''}"
+                s, e, src = llm_dates(material, ref, client, DATES_LLM_MODEL)
+                conn.execute(
+                    "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
+                    (s, e, src, r["id"]))
+                conn.commit()
+                if src == "llm":
+                    from_llm += 1
+            log.info("Passe LLM : %d daté(s) par le LLM", from_llm)
+    elif DATES_LLM and not args.no_llm and not api_key:
+        log.info("Passe LLM ignorée : ANTHROPIC_API_KEY absente.")
+
     total_dated = conn.execute(
-        "SELECT COUNT(*) n FROM events_raw WHERE date_source IN ('parsed','page') "
+        "SELECT COUNT(*) n FROM events_raw WHERE date_source IN ('parsed','page','llm') "
         "AND statut != 'merged'").fetchone()["n"]
     undated = conn.execute(
         "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "
         "AND COALESCE(date_event_end,'')='' AND statut != 'merged'").fetchone()["n"]
     conn.close()
-    log.info("=== Datation : +%d texte +%d page ce run · %d datés au total, %d sans date ===",
-             parsed, from_page, total_dated, undated)
+    log.info("=== Datation : +%d texte +%d page +%d LLM ce run · %d datés au total, %d sans date ===",
+             parsed, from_page, from_llm, total_dated, undated)
     return 0
 
 
