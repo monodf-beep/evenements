@@ -55,6 +55,9 @@ MIN_SCORE = int(os.getenv("ENRICH_MIN_SCORE", "7"))
 BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
 # Plafond de recherches web par événement (outil serveur).
 MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "5"))
+# Budget de sortie : DOIT couvrir raisonnement adaptatif + recherche web + article JSON.
+# 4096 était trop court → réponse coupée (stop_reason=max_tokens) avant le JSON.
+MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "16000"))
 
 # Sentinel : échec d'APPEL API. L'événement n'est pas marqué → réenrichi plus tard.
 API_ERROR = object()
@@ -220,14 +223,19 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
             log.info("[%d] appel API tour %d…", ev["id"], turn)
             with client.messages.stream(
                 model=model,
-                max_tokens=4096,  # marge pour le raisonnement adaptatif + l'article
+                max_tokens=MAX_TOKENS,  # raisonnement adaptatif + recherche web + article
                 tools=[WEB_SEARCH_TOOL],
                 thinking={"type": "adaptive"},
                 messages=messages,
             ) as stream:
                 message = stream.get_final_message()
             usage.record_message(model, message, label="enrichissement")
-            log.info("[%d] tour %d : stop_reason=%s", ev["id"], turn, message.stop_reason)
+            out_tok = getattr(getattr(message, "usage", None), "output_tokens", "?")
+            log.info("[%d] tour %d : stop_reason=%s, %s tokens sortie",
+                     ev["id"], turn, message.stop_reason, out_tok)
+            if message.stop_reason == "max_tokens":
+                log.warning("[%d] réponse coupée (max_tokens=%d) — augmente ENRICH_MAX_TOKENS",
+                            ev["id"], MAX_TOKENS)
             if message.stop_reason == "pause_turn":
                 messages.append({"role": "assistant", "content": message.content})
                 continue
