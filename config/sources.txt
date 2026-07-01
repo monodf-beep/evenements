@@ -53,3 +53,65 @@ https://www.nice.fr/feed/;Nice;Ville de Nice;institution
 https://www.grasse.fr/feed/;Nice;Ville de Grasse;institution
 https://www.explorenicecotedazur.com/feed/;Nice;Office de Tourisme Nice Côte d'Azur;tourisme
 https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR+%22Alpes-Maritimes%22&hl=fr&gl=FR&ceid=FR:fr;Nice;Google News - Culture 06 (radar);radar
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-01 — recherche multi-agents ville par ville. Flux vérifiés au
+# curl (HTTP 200 après redirections + RSS + items événementiels réels). URL
+# canoniques (redirections résolues). Le scraper ignore sans risque un flux mort.
+# Découverte clé : agendaculturel.fr expose un agenda culturel PAR DÉPARTEMENT.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ------------------------------ SAVOIE / HAUTE-SAVOIE ------------------------
+https://73.agendaculturel.fr/rss;Savoie;Agenda Culturel Savoie (73);tourisme
+https://74.agendaculturel.fr/rss;Savoie;Agenda Culturel Haute-Savoie (74);tourisme
+https://www.mjc-chambery.com/feed/;Savoie;MJC de Chambéry;institution
+https://montmelian.com/category/culture/feed/;Savoie;Ville de Montmélian - Culture;officielle
+https://www.laravoire.fr/agenda/feed/;Savoie;Ville de La Ravoire - Agenda;officielle
+https://www.pays-albertville.com/feed/;Savoie;OT Pays d'Albertville;tourisme
+https://www.coeurdetarentaise-tourisme.com/feed/;Savoie;OT Coeur de Tarentaise (Moûtiers);tourisme
+https://dentduchat.com/feed/;Savoie;OT Yenne - Dent du Chat;tourisme
+https://www.ugine.com/feed/;Savoie;Ville d'Ugine;officielle
+https://mal-thonon.org/feed/;Savoie;Maison des Arts du Léman (Thonon);officielle
+https://mjc-annemasse.fr/feed/;Savoie;MJC Annemasse;officielle
+https://www.chateau-rouge.net/feed/;Savoie;Château Rouge (Annemasse);officielle
+
+# --------------------------------- PIÉMONT ----------------------------------
+https://www.turismoinlanga.it/it/feed/;Piemonte;Turismo in Langa;tourisme
+https://piemontedalvivo.it/feed/;Piemonte;Piemonte dal Vivo;officielle
+https://www.fondazionemerz.org/feed/;Piemonte;Fondazione Merz (Torino);officielle
+https://fondazionecrc.it/feed/;Piemonte;Fondazione CRC (Cuneo);officielle
+https://www.scrittorincitta.it/feed/;Piemonte;scrittorincittà (Cuneo);officielle
+https://www.paratissima.it/feed/;Piemonte;Paratissima (Torino);officielle
+https://flowersfestival.it/feed/;Piemonte;Flowers Festival (Collegno);officielle
+https://museodiffusotorino.it/feed/;Piemonte;Museo Diffuso della Resistenza (Torino);officielle
+https://www.fondazioneaccorsi-ometto.it/feed/;Piemonte;Museo Accorsi-Ometto (Torino);officielle
+https://www.museorisorgimentotorino.it/feed/;Piemonte;Museo del Risorgimento (Torino);officielle
+https://visitvalsesiavercelli.it/feed/;Piemonte;ATL Valsesia Vercelli;tourisme
+https://www.teatroalfieriasti.it/feed/;Piemonte;Teatro Alfieri (Asti);officielle
+https://www.visitmondovi.it/feed/;Piemonte;Visit Mondovì;tourisme
+
+# ------------------------------- VALLÉE D'AOSTE -----------------------------
+https://www.grand-paradis.it/it/rss.xml;Vallee-Aoste;Fondation Grand Paradis;institution
+https://rendezvous-vda.it/feed/;Vallee-Aoste;Rendez-Vous en Vallée d'Aoste;tourisme
+https://rendezvous-vda.it/fr/feed/;Vallee-Aoste;Rendez-Vous en Vallée d'Aoste (FR);tourisme
+https://valledaostaheritage.com/feed/;Vallee-Aoste;Valle d'Aosta Heritage;institution
+https://www.courmayeurmontblanc.it/feed/;Vallee-Aoste;OT Courmayeur Mont-Blanc;tourisme
+
+# --------------------------- NICE / ALPES-MARITIMES -------------------------
+https://06.agendaculturel.fr/rss;Nice;Agenda Culturel Alpes-Maritimes (06);tourisme
+https://www.fondation-maeght.com/feed/;Nice;Fondation Maeght (Saint-Paul-de-Vence);institution
+https://www.theatredegrasse.com/feed/;Nice;Théâtre de Grasse;officielle
+https://scene55.fr/feed/;Nice;Scène 55 (Mougins);officielle
+https://vence-tourisme.com/feed/;Nice;OT de Vence;tourisme
+https://www.ville-valbonne.fr/feed/;Nice;Ville de Valbonne;institution
+https://www.ville-grasse.fr/feed/;Nice;Ville de Grasse;institution
+https://mougins.fr/category/agenda/feed/;Nice;Ville de Mougins - Agenda;institution
+https://www.villefranche-sur-mer.fr/agenda/feed/;Nice;Ville de Villefranche - Agenda;institution
+https://www.nuitsdusud.com/feed/;Nice;Festival Nuits du Sud (Vence);officielle
+
+# À CONFIRMER depuis le VPS (bloqués par WAF/anti-bot depuis l'environnement de
+# recherche, mais lieux/festivals réels et majeurs → très probablement OK en prod).
+https://www.reggiavenaria.it/feed/;Piemonte;Reggia di Venaria;officielle
+https://www.fondazionesandretto.it/feed/;Piemonte;Fondazione Sandretto Re Rebaudengo (Torino);officielle
+https://www.legrandbivouac.com/feed/;Savoie;Festival Le Grand Bivouac (Albertville);officielle
+https://jazzajuan.com/feed/;Nice;Jazz à Juan (Antibes);officielle
