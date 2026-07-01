@@ -203,13 +203,23 @@ def _shell(inner: str, *, preheader: str) -> str:
     )
 
 
+def _credit(item: dict) -> str:
+    """Légende de crédit sous une image (photo licenciable). Vide si pas de crédit."""
+    c = (item.get("credit") or "").strip()
+    if not c:
+        return ""
+    return (f'<div style="font-size:11px;color:{MUTED};margin-top:4px;'
+            f'line-height:1.4;">📷 {escape(c)}</div>')
+
+
 def _hero_block(hero: dict) -> str:
     """Section « À la une » (héros). hero doit contenir title/summary/territory."""
     img = ""
     if hero.get("image"):
         img = (
             f'<tr><td style="padding:0 36px;"><img src="{escape(hero["image"])}" width="528" alt="" '
-            'style="width:100%;height:auto;display:block;border-radius:10px;border:0;"></td></tr>'
+            'style="width:100%;height:auto;display:block;border-radius:10px;border:0;">'
+            f'{_credit(hero)}</td></tr>'
         )
     button = ""
     if hero.get("url"):
@@ -271,7 +281,8 @@ def _cards_block(items: list[dict]) -> str:
         if it.get("image"):
             img = (
                 f'<tr><td style="padding:0 0 12px;"><img src="{escape(it["image"])}" width="528" alt="" '
-                'style="width:100%;height:auto;display:block;border-radius:10px;border:0;"></td></tr>'
+                'style="width:100%;height:auto;display:block;border-radius:10px;border:0;">'
+                f'{_credit(it)}</td></tr>'
             )
         cards += (
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '

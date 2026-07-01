@@ -44,6 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import usage
+from utils.images import fetch_og_image
 from scripts.scraper_events import init_db
 
 log = get_logger("enrich")
@@ -188,31 +189,6 @@ def fetch_official_page(url: str, timeout: int = 8) -> str:
     doc = re.sub(r"(?s)<[^>]+>", " ", doc)
     doc = htmlmod.unescape(doc)
     return re.sub(r"\s+", " ", doc).strip()[:6000]
-
-
-def fetch_og_image(url: str, timeout: int = 8) -> str:
-    """Récupère l'image de partage (og:image / twitter:image) de la page officielle.
-    Sert de vignette quand le flux ne fournit pas d'image. Déterministe, skip radar/Gmail."""
-    if not url or url.startswith("gmail:") or "news.google.com" in url:
-        return ""
-    try:
-        r = requests.get(url, timeout=timeout, headers=_UA)
-        if r.status_code != 200 or not r.text:
-            return ""
-        html = r.text
-    except Exception:
-        return ""
-    for pat in (r'<meta[^>]+property=["\']og:image(?::url)?["\'][^>]+content=["\']([^"\']+)',
-                r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
-                r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)'):
-        m = re.search(pat, html, re.I)
-        if m:
-            img = htmlmod.unescape(m.group(1).strip())
-            if img.startswith("//"):
-                img = "https:" + img
-            if img.startswith("http"):
-                return img
-    return ""
 
 
 def gather_material(conn: sqlite3.Connection, ev: dict) -> str:

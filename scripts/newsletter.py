@@ -41,6 +41,7 @@ from utils.logger import get_logger
 from utils.brevo import (BrevoError, campaign_edit_url, create_draft_campaign,
                          list_contact_lists, list_senders)
 from utils.newsletter_variants import variant_magazine
+from utils.sources import load_territory_images, pick_image
 
 log = get_logger("newsletter")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -96,14 +97,22 @@ def _domain(url: str) -> str:
         return ""
 
 
-def build_item(ev: dict) -> dict:
-    """Transforme un enregistrement événement en item de gabarit."""
+def build_item(ev: dict, banners: dict | None = None) -> dict:
+    """Transforme un enregistrement événement en item de gabarit.
+
+    Image : celle en base ; à défaut, repli sur la bannière de marque du
+    territoire (aucune carte n'est jamais vide). Le crédit (photo licenciable
+    Wikimedia Commons) est affiché quand il existe."""
     radar = _is_radar(ev)
     url = "" if radar else (ev.get("url_source") or "")
+    image = ev.get("url_image") or ""
+    if not image and banners is not None:
+        image = pick_image(ev.get("territoire", ""), key=str(ev.get("id", "")), images=banners)
     return {
         "title": (ev.get("article_title") or ev.get("title") or "").strip(),
         "summary": _summary(ev),
-        "image": ev.get("url_image") or "",
+        "image": image,
+        "credit": ev.get("image_credit") or "",
         # radar (presse) : jamais crédité ni lié (charte §8)
         "url": url,
         "source": "" if radar else (ev.get("source_name") or ""),
@@ -127,7 +136,8 @@ def select_events(conn: sqlite3.Connection, territoire: str, pfrom: str, pto: st
 
 def build_data(rows: list[dict], *, week_label: str, tagline: str) -> dict:
     """Répartit les événements en héros / cartes / sommaire pour le gabarit magazine."""
-    items = [build_item(ev) for ev in rows]
+    banners = load_territory_images()
+    items = [build_item(ev, banners) for ev in rows]
     hero = items[0] if items else None
     rest = items[1:]
     cards = rest[:MAX_CARDS]
