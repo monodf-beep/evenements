@@ -36,6 +36,16 @@
   .thumb { width:54px; height:36px; object-fit:cover; border-radius:4px; display:block; }
   .imgline { font-size:.85rem; color:#6b7280; margin:.2rem 0 .8rem; }
   .imgline a { color:#2563eb; text-decoration:none; margin:0 .2rem; }
+  .period { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.2rem 0 .9rem;
+            padding:.6rem .7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:.9rem; }
+  .period .plabel { font-weight:600; margin-right:.2rem; }
+  .period input[type=date] { padding:.35rem .4rem; border:1px solid #cbd5e1; border-radius:6px; }
+  .pbtn { padding:.32rem .7rem; border:1px solid #cbd5e1; border-radius:999px; background:#fff;
+          color:#334155; cursor:pointer; text-decoration:none; font-size:.85rem; }
+  .pbtn.on { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+  .period .sep { color:#cbd5e1; }
+  .daterange { white-space:nowrap; font-weight:600; color:#0f172a; }
+  .ongoing { font-size:.72rem; color:#b45309; display:block; }
 </style>
 </head>
 <body>
@@ -65,6 +75,25 @@
   {% endfor %}
 </div>
 
+<form class="period" method="GET" action="/events">
+  <input type="hidden" name="statut" value="{{ statut }}">
+  <input type="hidden" name="territoire" value="{{ territoire }}">
+  <input type="hidden" name="q" value="{{ q }}">
+  <input type="hidden" name="img" value="{{ img }}">
+  <span class="plabel">📅 Période :</span>
+  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
+  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
+  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
+  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
+  <span class="sep">|</span>
+  du <input type="date" name="dfrom" value="{{ dfrom }}">
+  au <input type="date" name="dto" value="{{ dto }}">
+  <button class="pbtn">Plage perso</button>
+  <span class="sep">|</span>
+  <a href="/events?dated=undated&statut={{ statut }}" class="pbtn {{ 'on' if dated=='undated' }}">📌 Date à confirmer ({{ undated_count }})</a>
+  {% if plabel or dated %}<a href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}" class="muted">✕ effacer la période{% if plabel %} ({{ plabel }}){% endif %}</a>{% endif %}
+</form>
+
 <form class="filters" method="GET" action="/events">
   <input type="hidden" name="statut" value="{{ statut }}">
   <select name="territoire">
@@ -90,7 +119,15 @@
   <tr>
     <td>{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
     <td><a href="/preview/{{ e.id }}" target="_blank"><strong>{{ e.title }}</strong></a></td>
-    <td>{{ e.date_start or '—' }}</td>
+    <td>
+      {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
+        <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
+        <span class="ongoing">en cours</span>
+      {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>
+      {% elif e.date_event_end %}<span class="daterange">jusqu'au {{ e.date_event_end }}</span>
+      {% elif e.date_source == 'none' %}<span class="muted">à confirmer</span>
+      {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
+    </td>
     <td>{{ e.territoire or '—' }}</td>
     <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<small class="muted">📡 radar</small>{% elif e.url_source %}<a href="{{ e.url_source }}" target="_blank">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
     <td><span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) }}</span></td>
@@ -106,7 +143,7 @@
 </table>
 
 <div class="pager">
-  {% set base = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&page=' %}
+  {% set base = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&preset=' ~ preset ~ '&dfrom=' ~ dfrom ~ '&dto=' ~ dto ~ '&dated=' ~ dated ~ '&page=' %}
   {% if page > 1 %}<a href="{{ base }}{{ page-1 }}">← précédent</a>{% endif %}
   <span class="muted">page {{ page }} / {{ pages }}</span>
   {% if page < pages %}<a href="{{ base }}{{ page+1 }}">suivant →</a>{% endif %}

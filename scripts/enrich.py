@@ -254,21 +254,24 @@ def build_article_md(data: dict) -> tuple[str, str]:
     return titre, "\n\n".join(md).strip()
 
 
-def select_events(conn: sqlite3.Connection, ids: list[int]) -> list[sqlite3.Row]:
+def select_events(conn: sqlite3.Connection, ids: list[int],
+                  dfrom: str = "", dto: str = "") -> list[sqlite3.Row]:
     if ids:
         qmarks = ",".join("?" * len(ids))
         return conn.execute(
             f"SELECT * FROM events_raw WHERE id IN ({qmarks})", ids).fetchall()
     # Événements retenus (≥ seuil), pas encore enrichis. Les doublons 'merged' sont
     # exclus : leur matière est déjà agrégée vers le gagnant.
+    where = ["statut IN ('evaluated', 'published_sub')", "llm_score >= ?",
+             "(enrich_status IS NULL OR enrich_status = '')", "(duplicate_of IS NULL)"]
+    params: list = [MIN_SCORE]
+    if dfrom and dto:  # circonscrit à la période de travail (chevauchement)
+        where.append("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?")
+        params += [dto, dfrom]
     return conn.execute(
-        "SELECT * FROM events_raw "
-        "WHERE statut IN ('evaluated', 'published_sub') "
-        "  AND llm_score >= ? "
-        "  AND (enrich_status IS NULL OR enrich_status = '') "
-        "  AND (duplicate_of IS NULL) "
+        f"SELECT * FROM events_raw WHERE {' AND '.join(where)} "
         "ORDER BY llm_score DESC, scrape_date DESC LIMIT ?",
-        (MIN_SCORE, BATCH_SIZE)).fetchall()
+        (*params, BATCH_SIZE)).fetchall()
 
 
 def main(argv: list[str]) -> int:
@@ -279,12 +282,17 @@ def main(argv: list[str]) -> int:
         return 1
     model = os.getenv("ANTHROPIC_MODEL_ENRICH", DEFAULT_MODEL)
     ids = [int(a) for a in argv if a.isdigit()]
+    dfrom = dto = ""
+    if "--from" in argv:
+        dfrom = argv[argv.index("--from") + 1] if argv.index("--from") + 1 < len(argv) else ""
+    if "--to" in argv:
+        dto = argv[argv.index("--to") + 1] if argv.index("--to") + 1 < len(argv) else ""
     client = anthropic.Anthropic(api_key=api_key)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
-    events = select_events(conn, ids)
+    events = select_events(conn, ids, dfrom, dto)
     log.info("%d événement(s) à enrichir (modèle : %s, seuil score ≥ %d)",
              len(events), model, MIN_SCORE)
 

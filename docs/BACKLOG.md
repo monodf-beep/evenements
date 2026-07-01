@@ -78,6 +78,15 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
       (institutionnel > radar ; avec photo ; contenu le plus complet). Voir CHARTE §8.
       NB : `same_story()` / `strip_tracking()` existent dans l'Observatoire mais ont
       **divergé** de notre copie synchronisée `utils/sources.py` → resynchroniser au passage.
+- [x] **Travailler par PÉRIODE (« ce week-end »)** ⟵ signalé par Franck. `scripts/dates.py`
+      extrait la vraie date d'événement (FR/IT, plages, « jusqu'au X ») → `date_event_*`.
+      Filtre de période dans `/events` (presets + mini-calendrier + bac « date à confirmer »),
+      tri chronologique. **Principe** (validé sur GuidaTorino) : *la période pilote la
+      VALORISATION* (une expo longue re-fait surface à chaque week-end qu'elle chevauche),
+      *le STATUT pilote le COÛT* (Évaluation/Enrichissement ne traitent que les `pending`
+      de la fenêtre — `--from/--to` — et ne repaient jamais un événement déjà traité).
+      Aperçu du compte avant de lancer. Reste à faire : angle « dernier week-end » auto ;
+      re-valorisation d'un événement déjà publié sur une nouvelle période.
 - [ ] **Géo-filtrage des radars Google News** : ils ramènent du hors-périmètre
       (ex. « Lombardia »). Aujourd'hui l'évaluation LLM les rejette (score 0) — OK,
       mais coûteux. Envisager un pré-filtre territoire avant l'appel LLM.

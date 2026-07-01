@@ -7,6 +7,7 @@ Cron : 0 9 * * * (quotidien 9h, après le scraping de 8h)
 """
 from __future__ import annotations
 import anthropic
+import argparse
 import json
 import os
 import re
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import usage
+from scripts.scraper_events import init_db
 
 log = get_logger("evaluator")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -97,7 +99,13 @@ def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict
         return None
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Évaluation LLM des événements pending.")
+    parser.add_argument("--from", dest="dfrom", default="",
+                        help="Ne traiter que les événements chevauchant [from, to] (AAAA-MM-JJ).")
+    parser.add_argument("--to", dest="dto", default="")
+    args = parser.parse_args(argv)
+
     load_dotenv(ROOT / ".env")
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -107,12 +115,21 @@ def main() -> int:
     client = anthropic.Anthropic(api_key=api_key)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    init_db(conn)  # garantit les colonnes de date même sur une base ancienne
 
+    where, qparams = ["statut = 'pending'"], []
+    scope = ""
+    if args.dfrom and args.dto:
+        # Circonscrit à une période de travail : n'évalue (donc ne paie) que les
+        # événements qui CHEVAUCHENT la fenêtre. Voir app : « statut pilote le coût ».
+        where.append("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?")
+        qparams += [args.dto, args.dfrom]
+        scope = f" [période {args.dfrom}→{args.dto}]"
     pending = conn.execute(
-        "SELECT * FROM events_raw WHERE statut = 'pending' LIMIT ?",
-        (BATCH_SIZE,)
+        f"SELECT * FROM events_raw WHERE {' AND '.join(where)} LIMIT ?",
+        (*qparams, BATCH_SIZE)
     ).fetchall()
-    log.info("%d événements à évaluer (modèle : %s)", len(pending), model)
+    log.info("%d événements à évaluer%s (modèle : %s)", len(pending), scope, model)
 
     for event in pending:
         ev = dict(event)
@@ -159,4 +176,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

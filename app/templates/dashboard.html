@@ -93,11 +93,41 @@ clique un chiffre ci-dessous pour ouvrir la liste correspondante.</p>
   <a href="/events?img=0">{{ without_img }} sans photo</a></p>
 
 <h2>⚙️ Lancement manuel</h2>
+
+<style>
+  .period { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.2rem 0 .5rem;
+            padding:.55rem .7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:.9rem; }
+  .period .plabel { font-weight:600; }
+  .period input[type=date] { padding:.32rem .4rem; border:1px solid #cbd5e1; border-radius:6px; }
+  .pbtn { padding:.3rem .7rem; border:1px solid #cbd5e1; border-radius:999px; background:#fff;
+          color:#334155; cursor:pointer; font-size:.85rem; }
+  .pbtn.on { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+  .period .sep { color:#cbd5e1; }
+</style>
+
+<form class="period" method="GET" action="/">
+  <span class="plabel">📅 Période de travail :</span>
+  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
+  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
+  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
+  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
+  <span class="sep">|</span>
+  du <input type="date" name="dfrom" value="{{ dfrom }}">
+  au <input type="date" name="dto" value="{{ dto }}">
+  <button class="pbtn">Plage perso</button>
+  {% if plabel %}<span class="muted">→ <strong>{{ plabel }}</strong></span>{% endif %}
+</form>
+<p class="runwarn" style="margin-top:.2rem">📅 L'<strong>Évaluation</strong> et l'<strong>Enrichissement</strong> ne traitent que les événements <em>de cette période</em>. Le statut pilote le coût : un événement déjà traité n'est jamais repayé, même s'il réapparaît un autre week-end.</p>
+
 <div class="runpanel">
   {% for key, t in tasks.items() %}
   <form method="POST" action="/run/{{ key }}" style="display:inline">
+    {% if t.period %}<input type="hidden" name="preset" value="{{ preset }}"><input type="hidden" name="dfrom" value="{{ dfrom }}"><input type="hidden" name="dto" value="{{ dto }}">{% endif %}
     <button class="runbtn" {% if any_running %}disabled{% endif %}>
-      {{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{% if t.running %} — ⏳ en cours…{% endif %}
+      {{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{%
+        if key == 'evaluate' and scope.eval is not none %} <small>({{ scope.eval }} sur la période)</small>{%
+        elif key == 'enrich' and scope.enrich is not none %} <small>({{ scope.enrich }} sur la période)</small>{% endif %}{%
+        if t.running %} — ⏳ en cours…{% endif %}
     </button>
   </form>
   {% endfor %}

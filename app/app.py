@@ -18,7 +18,7 @@ import sqlite3
 import subprocess
 import sys
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from functools import wraps
 from pathlib import Path
 from urllib.parse import urlparse
@@ -58,6 +58,50 @@ STATUS_LABELS = {
     "rejected": "Rejeté",
     "merged": "Fusionné",
 }
+
+# --------------------------------------------------------------------------- #
+# Périodes de travail (« ce week-end », « week-end prochain »…)
+# On travaille par PÉRIODE : la vue re-fait surface aux événements qui CHEVAUCHENT
+# la fenêtre (une expo longue réapparaît chaque week-end, comme GuidaTorino). Le
+# coût, lui, est piloté par le STATUT (on n'évalue/enrichit que les 'pending').
+# --------------------------------------------------------------------------- #
+def _weekend_of(d: date) -> tuple[date, date]:
+    """(vendredi, dimanche) du week-end de la semaine contenant d (week-end = ven→dim)."""
+    wd = d.weekday()  # lun=0 … dim=6
+    friday = d + timedelta(days=(4 - wd)) if wd <= 4 else d - timedelta(days=(wd - 4))
+    return friday, friday + timedelta(days=2)
+
+
+PERIOD_PRESETS = ["weekend", "next_weekend", "7d", "month"]
+
+
+def period_bounds(preset: str, dfrom: str, dto: str):
+    """Renvoie (from_iso, to_iso, label) pour un preset ou une plage perso. ('','','') si aucun."""
+    today = date.today()
+    if preset == "weekend":
+        f, s = _weekend_of(today)
+        return f.isoformat(), s.isoformat(), "Ce week-end"
+    if preset == "next_weekend":
+        f, s = _weekend_of(today + timedelta(days=7))
+        return f.isoformat(), s.isoformat(), "Week-end prochain"
+    if preset == "7d":
+        return today.isoformat(), (today + timedelta(days=7)).isoformat(), "7 prochains jours"
+    if preset == "month":
+        return today.isoformat(), (today + timedelta(days=30)).isoformat(), "30 prochains jours"
+    if dfrom or dto:
+        f = dfrom or today.isoformat()
+        t = dto or f
+        return f, t, f"{f} → {t}"
+    return "", "", ""
+
+
+def overlap_clause(pfrom: str, pto: str) -> tuple[str, list]:
+    """Clause SQL : l'événement CHEVAUCHE [pfrom, pto]. Les non-datés (start/end vides
+    ou NULL) sont naturellement exclus. Un « jusqu'au X » (start vide, end rempli) est
+    inclus s'il court encore pendant la fenêtre."""
+    return ("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?",
+            [pto, pfrom])
+
 
 app = Flask(__name__, template_folder="templates")
 # Clé de session : FLASK_SECRET_KEY si fournie, sinon dérivée (stable entre les
@@ -164,8 +208,9 @@ TASKS = {
     "gmail":    {"script": "scripts/gmail_collect.py",   "label": "Newsletters Gmail", "icon": "📬", "cost": True},
     "press":    {"script": "scripts/press_kits.py",      "label": "Dossiers de presse", "icon": "📎", "cost": False},
     "dedupe":   {"script": "scripts/dedupe.py",          "label": "Déduplication", "icon": "🔗", "cost": False},
-    "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation LLM", "icon": "🧠", "cost": True},
-    "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True},
+    "dates":    {"script": "scripts/dates.py",           "label": "Datation", "icon": "📅", "cost": False},
+    "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation LLM", "icon": "🧠", "cost": True, "period": True},
+    "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True, "period": True},
 }
 RUN_STATE = ROOT / "data" / "run_state.json"
 
@@ -227,7 +272,7 @@ def _running_state() -> dict:
     return result
 
 
-def launch_task(task: str) -> tuple[bool, str]:
+def launch_task(task: str, extra_args: list | None = None) -> tuple[bool, str]:
     """Lance un script du pipeline en arrière-plan (non bloquant)."""
     if _running_state().get(task):
         return False, "déjà en cours"
@@ -237,7 +282,7 @@ def launch_task(task: str) -> tuple[bool, str]:
     fh = open(logf, "ab")
     try:
         proc = subprocess.Popen(
-            [sys.executable, str(script)], cwd=str(ROOT),
+            [sys.executable, str(script), *(extra_args or [])], cwd=str(ROOT),
             stdout=fh, stderr=fh, start_new_session=True)
     except Exception as exc:  # pragma: no cover
         return False, f"échec : {exc}"
@@ -322,6 +367,26 @@ def dashboard():
     tasks = tasks_status()
     any_running = any(t["running"] for t in tasks.values())
 
+    # Période de travail du panneau de run (défaut : week-end prochain) + aperçu du
+    # nombre d'événements que chaque étape coûteuse traiterait sur cette fenêtre.
+    preset = request.args.get("preset", "next_weekend")
+    dfrom = request.args.get("dfrom", "")
+    dto = request.args.get("dto", "")
+    pfrom, pto, plabel = period_bounds(preset, dfrom, dto)
+    scope = {"eval": None, "enrich": None}
+    if pfrom and pto:
+        clause, cp = overlap_clause(pfrom, pto)
+        thr = int(os.getenv("ENRICH_MIN_SCORE", "7"))
+        conn = get_db()
+        scope["eval"] = conn.execute(
+            f"SELECT COUNT(*) n FROM events_raw WHERE statut='pending' AND {clause}",
+            cp).fetchone()["n"]
+        scope["enrich"] = conn.execute(
+            "SELECT COUNT(*) n FROM events_raw WHERE statut IN ('evaluated','published_sub') "
+            "AND llm_score >= ? AND (enrich_status IS NULL OR enrich_status='') "
+            f"AND duplicate_of IS NULL AND {clause}", [thr, *cp]).fetchone()["n"]
+        conn.close()
+
     return render_template(
         "dashboard.html",
         total=total, to_validate=to_validate,
@@ -333,6 +398,8 @@ def dashboard():
         newsletters=newsletters, nl_active=nl_active,
         tasks=tasks, any_running=any_running,
         with_img=with_img, without_img=without_img,
+        preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
+        presets=PERIOD_PRESETS, scope=scope, today=date.today().isoformat(),
     )
 
 
@@ -341,8 +408,17 @@ def dashboard():
 def run_task(task: str):
     if task not in TASKS:
         return "Tâche inconnue", 404
-    ok, msg = launch_task(task)
-    log.info("Lancement manuel '%s' : %s", task, msg)
+    extra = []
+    # Étapes coûteuses : on peut les circonscrire à une période de travail.
+    if TASKS[task].get("period"):
+        pfrom, pto, plabel = period_bounds(
+            request.form.get("preset", ""),
+            request.form.get("dfrom", ""), request.form.get("dto", ""))
+        if pfrom and pto:
+            extra = ["--from", pfrom, "--to", pto]
+    ok, msg = launch_task(task, extra)
+    scope = f" [{extra[1]}→{extra[3]}]" if extra else ""
+    log.info("Lancement manuel '%s'%s : %s", task, scope, msg)
     return redirect(url_for("dashboard"))
 
 
@@ -445,6 +521,11 @@ def events():
         page = 1
 
     img = request.args.get("img", "")  # "" toutes · "1" avec photo · "0" sans
+    preset = request.args.get("preset", "")
+    dfrom = request.args.get("dfrom", "")
+    dto = request.args.get("dto", "")
+    dated = request.args.get("dated", "")  # "" tous · "undated" = date à confirmer
+    pfrom, pto, plabel = period_bounds(preset, dfrom, dto)
 
     base_where, base_params = [], []
     if statut:
@@ -459,6 +540,12 @@ def events():
         where.append("url_image IS NOT NULL AND url_image != ''")
     elif img == "0":
         where.append("(url_image IS NULL OR url_image = '')")
+    # Filtre période : chevauchement de la fenêtre, OU bac « date à confirmer ».
+    if dated == "undated":
+        where.append("(date_source IS NULL OR date_source = 'none')")
+    elif pfrom and pto:
+        clause, cparams = overlap_clause(pfrom, pto)
+        where.append(clause); params.extend(cparams)
     wsql = ("WHERE " + " AND ".join(where)) if where else ""
     base_wsql = ("WHERE " + " AND ".join(base_where)) if base_where else ""
 
@@ -469,11 +556,18 @@ def events():
         f"COUNT(*) t FROM events_raw {base_wsql}", base_params).fetchone()
     with_img = imgrow["wi"] or 0
     without_img = (imgrow["t"] or 0) - with_img
+    # Avec une période active on trie chronologiquement (par date d'événement) ;
+    # sinon par date de collecte (le plus récent d'abord).
+    order = ("date_event_start ASC, id DESC" if (pfrom and pto and dated != "undated")
+             else "scrape_date DESC, id DESC")
     rows = conn.execute(
-        f"SELECT * FROM events_raw {wsql} ORDER BY scrape_date DESC, id DESC LIMIT ? OFFSET ?",
+        f"SELECT * FROM events_raw {wsql} ORDER BY {order} LIMIT ? OFFSET ?",
         params + [PAGE_SIZE, (page - 1) * PAGE_SIZE]).fetchall()
     statut_counts = {r["statut"]: r["n"] for r in conn.execute(
         "SELECT statut, COUNT(*) n FROM events_raw GROUP BY statut")}
+    undated_count = conn.execute(
+        "SELECT COUNT(*) n FROM events_raw WHERE (date_source IS NULL OR date_source='none') "
+        "AND statut != 'merged'").fetchone()["n"]
     conn.close()
 
     pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
@@ -481,6 +575,9 @@ def events():
         "events.html", events=[dict(r) for r in rows],
         statut=statut, territoire=terr, q=q, img=img, page=page, pages=pages, total=total,
         with_img=with_img, without_img=without_img,
+        preset=preset, dfrom=dfrom, dto=dto, dated=dated, plabel=plabel,
+        presets=PERIOD_PRESETS, undated_count=undated_count,
+        today=date.today().isoformat(),
         territories=TERRITORIES, status_labels=STATUS_LABELS,
         statut_counts=statut_counts, alert=friendly_alert())
 
