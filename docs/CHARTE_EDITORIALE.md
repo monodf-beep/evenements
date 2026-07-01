@@ -24,6 +24,14 @@ Le territoire doit toujours être nommé : **ville → province/département →
 
 ## 3. Critères de sélection (rappel du scoring)
 
+**Définition d'un événement.** Une manifestation **culturelle** à laquelle le **public
+peut assister**, à une **date à venir** (ou en cours), dans un lieu — expo, concert,
+spectacle, conférence, rencontre, atelier, visite, projection, festival. On y va pour
+découvrir/apprendre/se cultiver. **N'est PAS un événement** (→ rejet) : l'actualité
+institutionnelle (réunion de conseil, convention, subvention, nomination, communiqué),
+une inauguration ou remise de prix **déjà passée**, un sujet d'infrastructure/voirie —
+bref tout ce à quoi on ne peut pas **assister à une date**.
+
 Un événement mérite la mise en avant s'il :
 - **transmet un savoir rare** (architectural, historique, linguistique, gastronomique,
   scientifique — pas du tout-venant) ;

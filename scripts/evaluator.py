@@ -34,7 +34,14 @@ API_ERROR = object()
 EVAL_PROMPT = """Tu es l'assistant éditorial de Cultura Sabauda, un média culturel
 bilingue couvrant Savoie, Piémont, Vallée d'Aoste et Nice.
 
-Évalue si cet événement mérite d'être mis en avant sur la homepage (score 0-10).
+QU'EST-CE QU'UN ÉVÉNEMENT ? (à vérifier AVANT de noter)
+Une manifestation CULTURELLE à laquelle le PUBLIC peut ASSISTER, à une DATE à venir
+(ou en cours), dans un lieu : exposition, concert, spectacle, conférence, rencontre,
+atelier, visite, projection, festival. On y va pour découvrir, apprendre, se cultiver.
+Si ce n'est PAS quelque chose auquel on peut assister à une date → ce n'est pas un
+événement → score 0.
+
+Évalue ensuite si cet événement mérite d'être mis en avant sur la homepage (score 0-10).
 
 SCORING :
 +3 : transmet un savoir rare ou expert (architectural, historique, linguistique,
@@ -54,6 +61,13 @@ CONFÉRENCES & RENCONTRES | EXPOSITIONS & PATRIMOINE |
 CRÉATION VIVANTE | ATELIERS & TRANSMISSION | FESTIVALS
 
 EXCLUSIONS AUTOMATIQUES (score = 0) :
+- PAS un événement auquel on peut assister (voir définition ci-dessus)
+- ACTUALITÉ INSTITUTIONNELLE / ADMINISTRATIVE : réunion de conseil ou de commission,
+  délibération, convention/partenariat signé, subvention, nomination, communiqué de
+  politique publique, bilan/rétrospective, palmarès ou remise de prix DÉJÀ tenue
+- INAUGURATION ou cérémonie DÉJÀ PASSÉE (racontée comme une nouvelle, pas un rendez-vous)
+- INFRASTRUCTURE / travaux / voirie / sécurité / mobilité (chantier, passage à niveau,
+  totems, pont, ligne, aménagement)
 - Événement hors Savoie/Piémont/Vallée d'Aoste/Nice
 - Exercice protection civile ou militaire
 - Sagre ou fête de village générique sans transmission de savoir
