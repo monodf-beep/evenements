@@ -6,6 +6,7 @@ Sprint 1 : post_type='post' + taxonomie 'agenda' + meta fields.
 Sprint 2 : migrer vers CPT 'agenda' JetEngine.
 """
 from __future__ import annotations
+import base64
 import html
 import json
 import mimetypes
@@ -27,6 +28,17 @@ log = get_logger("publisher")
 # requêtes sans User-Agent de navigateur. On se présente comme un navigateur.
 _UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
+
+
+def _headers(auth) -> dict:
+    """En-têtes communs : navigateur + auth de secours via un en-tête PERSONNALISÉ.
+    Beaucoup d'hébergeurs (nginx/LiteSpeed) suppriment l'en-tête `Authorization` →
+    l'app-password n'atteint pas WordPress (rest_not_logged_in). On envoie donc AUSSI
+    les identifiants dans `X-CS-Auth` (que le serveur ne filtre pas), lu côté WordPress
+    par le mu-plugin cs-rest-auth.php (voir deploy/wordpress/). L'auth Basic normale
+    reste en place : si l'en-tête n'est PAS supprimé, elle suffit."""
+    token = base64.b64encode(f"{auth[0]}:{auth[1]}".encode("utf-8")).decode("ascii")
+    return {**_UA, "X-CS-Auth": token}
 
 
 def _md_inline(s: str) -> str:
@@ -115,7 +127,7 @@ def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
             data=img.content,
             auth=auth,
             headers={
-                **_UA,
+                **_headers(auth),
                 "Content-Type": content_type,
                 "Content-Disposition": f'attachment; filename="{name}"',
             },
@@ -182,7 +194,7 @@ def publish_to_cs(event: dict) -> int | None:
             f"{wp_url}/?rest_route=/wp/v2/posts",
             json=payload,
             auth=auth,
-            headers=_UA,
+            headers=_headers(auth),
             timeout=30,
         )
         resp.raise_for_status()
