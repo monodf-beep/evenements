@@ -21,7 +21,10 @@ https://www.aix-les-bains.com/feed/;Savoie;Office de Tourisme Aix-les-Bains;tour
 https://www.aixlesbains-rivieradesalpes.com/feed/;Savoie;Aix-les-Bains Riviera des Alpes;tourisme
 https://www.lac-annecy.com/feed/;Savoie;Office de Tourisme du Lac d'Annecy;tourisme
 https://www.megeve.com/feed/;Savoie;Megève Tourisme;tourisme
-https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie;institution
+# DÉSACTIVÉ (fil d'ACTU générale du département, pas un agenda → ~90% non-événements :
+# réunions de conseil, conventions, inaugurations passées, voirie). La culture 74 vient
+# mieux des musées/scènes/newsletters. Réactiver en retirant le # si besoin.
+# https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie;institution
 https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar);radar
 # NB : 6 pistes Savoie (theatrecharlesdullin.fr, chambery-tourisme.com, citedesarts-chambery.fr,
 # grand-chambery.fr, chateau-annecy.fr, museedumontblanc.com) testées depuis le VPS le

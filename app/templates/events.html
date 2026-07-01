@@ -49,6 +49,10 @@
     <option value="0" {{ 'selected' if img=='0' }}>Sans photo ({{ without_img }})</option>
   </select>
   <button class="btn btn-primary btn-sm">Filtrer</button>
+  <span class="sep" style="color:#cbd5e1">|</span>
+  <span class="muted" style="font-size:.85rem">Tri :</span>
+  <a class="pbtn {{ 'on' if sort != 'score' }}" href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}&img={{ img }}&preset={{ preset }}&dfrom={{ dfrom }}&dto={{ dto }}&dated={{ dated }}">date</a>
+  <a class="pbtn {{ 'on' if sort == 'score' }}" href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}&img={{ img }}&preset={{ preset }}&dfrom={{ dfrom }}&dto={{ dto }}&dated={{ dated }}&sort=score">score ↓</a>
 </form>
 
 {% if not events %}
@@ -86,7 +90,7 @@
 </div>
 
 <div class="pager">
-  {% set base = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&preset=' ~ preset ~ '&dfrom=' ~ dfrom ~ '&dto=' ~ dto ~ '&dated=' ~ dated ~ '&page=' %}
+  {% set base = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&preset=' ~ preset ~ '&dfrom=' ~ dfrom ~ '&dto=' ~ dto ~ '&dated=' ~ dated ~ '&sort=' ~ sort ~ '&page=' %}
   {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="{{ base }}{{ page-1 }}">← précédent</a>{% endif %}
   <span class="muted">page {{ page }} / {{ pages }}</span>
   {% if page < pages %}<a class="btn btn-ghost btn-sm" href="{{ base }}{{ page+1 }}">suivant →</a>{% endif %}

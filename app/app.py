@@ -573,6 +573,7 @@ def events():
         page = 1
 
     img = request.args.get("img", "")  # "" toutes · "1" avec photo · "0" sans
+    sort = request.args.get("sort", "")  # "" défaut · "score" = meilleur score en haut
     preset = request.args.get("preset", "")
     dfrom = request.args.get("dfrom", "")
     dto = request.args.get("dto", "")
@@ -608,10 +609,14 @@ def events():
         f"COUNT(*) t FROM events_raw {base_wsql}", base_params).fetchone()
     with_img = imgrow["wi"] or 0
     without_img = (imgrow["t"] or 0) - with_img
-    # Avec une période active on trie chronologiquement (par date d'événement) ;
-    # sinon par date de collecte (le plus récent d'abord).
-    order = ("date_event_start ASC, id DESC" if (pfrom and pto and dated != "undated")
-             else "scrape_date DESC, id DESC")
+    # Tri : par score si demandé (meilleur en haut, NULL en bas via SQLite) ;
+    # sinon chronologique quand une période est active ; sinon par date de collecte.
+    if sort == "score":
+        order = "llm_score DESC, scrape_date DESC, id DESC"
+    elif pfrom and pto and dated != "undated":
+        order = "date_event_start ASC, id DESC"
+    else:
+        order = "scrape_date DESC, id DESC"
     rows = conn.execute(
         f"SELECT * FROM events_raw {wsql} ORDER BY {order} LIMIT ? OFFSET ?",
         params + [PAGE_SIZE, (page - 1) * PAGE_SIZE]).fetchall()
@@ -627,7 +632,7 @@ def events():
         "events.html", events=annotate_period([dict(r) for r in rows], pfrom, pto),
         statut=statut, territoire=terr, q=q, img=img, page=page, pages=pages, total=total,
         with_img=with_img, without_img=without_img,
-        preset=preset, dfrom=dfrom, dto=dto, dated=dated, plabel=plabel,
+        preset=preset, dfrom=dfrom, dto=dto, dated=dated, plabel=plabel, sort=sort,
         presets=PERIOD_PRESETS, undated_count=undated_count,
         today=date.today().isoformat(),
         territories=TERRITORIES, status_labels=STATUS_LABELS,
