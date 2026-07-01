@@ -247,6 +247,7 @@ TASKS = {
     "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation", "icon": "🧠", "cost": True, "period": True, "phase": "prepare", "help": "Claude note l'intérêt éditorial (0-10)."},
     "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True, "period": True, "phase": "prepare", "help": "Recherche + rédige l'article des retenus."},
     "visuals":  {"script": "scripts/visuals.py",         "label": "Compléter les visuels", "icon": "🖼️", "cost": True, "period": True, "phase": "prepare", "help": "Photo pour les retenus sans image : og:image → Wikimedia Commons (licenciable, LLM) → bannière territoire."},
+    "complete": {"script": "scripts/complete_period.py", "label": "Tout compléter (période)", "icon": "✨", "cost": True, "period": True, "phase": "prepare", "help": "Enchaîne datation → évaluation → visuels → enrichissement sur la période. Idempotent : ne refait que ce qui manque."},
     "newsletter": {"script": "scripts/newsletter.py",    "label": "Newsletter (brouillon)", "icon": "📧", "cost": False, "phase": "publish", "help": "Brouillon Brevo des événements Savoie de la semaine."},
 }
 COLLECT_TASKS = [k for k, v in TASKS.items() if v.get("phase") == "collect"]
