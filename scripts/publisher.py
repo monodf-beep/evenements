@@ -6,8 +6,11 @@ Sprint 1 : post_type='post' + taxonomie 'agenda' + meta fields.
 Sprint 2 : migrer vers CPT 'agenda' JetEngine.
 """
 from __future__ import annotations
+import html
+import json
 import mimetypes
 import os
+import re
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
@@ -19,6 +22,67 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 
 log = get_logger("publisher")
+
+
+def _md_inline(s: str) -> str:
+    """Échappe le HTML puis rend **gras** et *italique* (markdown léger)."""
+    s = html.escape(s)
+    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+    s = re.sub(r"(?<!\*)\*(?!\*)(.+?)\*(?!\*)", r"<em>\1</em>", s)
+    return s
+
+
+def _md_to_html(text: str) -> str:
+    """Convertit un texte markdown-léger (paragraphes, titres ##, gras/italique) en HTML."""
+    out = []
+    for block in re.split(r"\n\s*\n", (text or "").strip()):
+        block = block.strip()
+        if not block:
+            continue
+        if block.startswith("### "):
+            out.append(f"<h4>{_md_inline(block[4:])}</h4>")
+        elif block.startswith("## "):
+            out.append(f"<h3>{_md_inline(block[3:])}</h3>")
+        else:
+            out.append("<p>" + _md_inline(block).replace("\n", "<br>") + "</p>")
+    return "\n".join(out)
+
+
+def build_post(event: dict) -> tuple[str, str]:
+    """(titre, contenu HTML) à publier. PRIORITÉ à l'article enrichi par l'agent ;
+    repli sur le titre + la description bruts si l'événement n'a pas été enrichi."""
+    data = None
+    if event.get("enrich_data"):
+        try:
+            data = json.loads(event["enrich_data"])
+        except (ValueError, TypeError):
+            data = None
+
+    art = (data or {}).get("article") or {}
+    title = (event.get("article_title") or art.get("titre")
+             or event.get("title") or "").strip()
+
+    if art:
+        parts = []
+        if art.get("chapo"):
+            parts.append(f"<p><strong>{_md_inline(art['chapo'].strip())}</strong></p>")
+        if art.get("corps"):
+            parts.append(_md_to_html(art["corps"]))
+        if art.get("encadre"):
+            parts.append("<h3>En pratique</h3>")
+            parts.append(_md_to_html(art["encadre"]))
+        sources = [s for s in (data.get("sources") or []) if s]
+        if sources:
+            parts.append("<h3>Sources</h3><ul>")
+            parts += [f'<li><a href="{html.escape(s)}" target="_blank" '
+                      f'rel="noopener">{html.escape(s)}</a></li>' for s in sources]
+            parts.append("</ul>")
+        return title, "\n".join(parts)
+
+    # Repli : article non enrichi → description brute (nettoyée des balises).
+    raw = re.sub(r"(?s)<[^>]+>", " ", event.get("description") or "")
+    raw = re.sub(r"\s+", " ", html.unescape(raw)).strip()
+    return title, f"<p>{html.escape(raw)}</p>" if raw else ""
 
 
 def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
@@ -76,9 +140,12 @@ def publish_to_cs(event: dict) -> int | None:
         return None
 
     auth = (wp_user, wp_pass)
+    # PRIORITÉ à l'article enrichi (titre + chapô + corps + encadré + sources) ;
+    # repli sur le brut si l'événement n'a pas été rédigé par l'agent.
+    title, content = build_post(event)
     payload = {
-        "title":   event.get("title", ""),
-        "content": event.get("description", ""),
+        "title":   title,
+        "content": content,
         "status":  "draft",   # TOUJOURS draft — Franck publie manuellement
         "meta": {
             "event_date_start":      event.get("date_start", ""),
