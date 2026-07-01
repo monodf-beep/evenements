@@ -78,7 +78,7 @@
       {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
     </td>
     <td>{{ e.territoire or '—' }}</td>
-    <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span>{% elif e.url_source %}<a href="{{ e.url_source }}" target="_blank">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
+    <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source and e.url_source.startswith('gmail:') %}<span class="muted">📬 newsletter</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source %}<span class="muted">🌐 RSS</span> <a href="{{ e.url_source }}" target="_blank">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
     <td><span class="st st-{{ e.statut }}" title="{{ e.llm_justification or 'Non évalué' }}">{{ status_labels.get(e.statut, e.statut) }}</span></td>
     <td>{{ e.llm_score if e.llm_score is not none else '—' }}</td>
     <td>
