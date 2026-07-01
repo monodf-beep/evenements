@@ -135,7 +135,8 @@ def main(argv=None) -> int:
     parser.add_argument("--to", dest="dto", default="")
     args = parser.parse_args(argv)
 
-    conn = init_db(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    init_db(conn)
     conn.row_factory = sqlite3.Row
     rows = select_events(conn, args.ids, args.dfrom, args.dto)
     scope = (f"ids {args.ids}" if args.ids
