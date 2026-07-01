@@ -161,6 +161,27 @@
   {% endif %}
 </details>
 
+<!-- Comment est calculé le score (repliable) -->
+<details class="box">
+  <summary>🧮 Comment est calculé le score d'importance</summary>
+  <div style="margin-top:.7rem;font-size:.9rem">
+    <p class="muted">Le score ne juge pas la « profondeur culturelle » mais l'<strong>importance</strong>
+      de l'événement — va-t-il réunir du monde, compte-t-il dans le territoire ? Somme de 5 critères (0-10) :</p>
+    <div class="table-wrap"><table>
+      <tr><th>Critère</th><th>Max</th><th>Ce qu'on regarde</th></tr>
+      <tr><td>Notoriété du lieu</td><td>3</td><td>Lieu emblématique très cité (grand stade, opéra, grand musée) vs local modeste (pondéré par la taille de la commune)</td></tr>
+      <tr><td>Organisateur &amp; moyens</td><td>2</td><td>Institution / gros opérateur / grand festival vs petit organisateur informel</td></tr>
+      <tr><td>Édition &amp; tradition</td><td>2</td><td>Rendez-vous historique, édition élevée (Xe), anniversaire</td></tr>
+      <tr><td>Rayonnement</td><td>2</td><td>International / transfrontalier FR-IT &gt; régional &gt; local</td></tr>
+      <tr><td>Spécificité territoriale</td><td>1</td><td>Identitaire, propre au territoire vs générique/franchise</td></tr>
+    </table></div>
+    <p class="muted" style="margin-top:.6rem">
+      <strong>Gate</strong> : si ce n'est pas un événement (actu, réunion, voirie, inauguration passée) → <span class="badge grey">Rejeté</span>.
+      Sinon : <strong>≥ 7</strong> → <span class="badge new">À valider</span> (mise en avant home) ·
+      <strong>&lt; 7</strong> → <span class="badge re">Site dédié</span> (catalogue). Le détail par critère est visible sur chaque fiche (Aperçu).</p>
+  </div>
+</details>
+
 <!-- Configuration (repliable) -->
 <details class="box">
   <summary>⚙️ Sources &amp; newsletters</summary>

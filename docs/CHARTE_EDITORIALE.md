@@ -24,23 +24,30 @@ Le territoire doit toujours être nommé : **ville → province/département →
 
 ## 3. Critères de sélection (rappel du scoring)
 
-**Définition d'un événement.** Une manifestation **culturelle** à laquelle le **public
-peut assister**, à une **date à venir** (ou en cours), dans un lieu — expo, concert,
-spectacle, conférence, rencontre, atelier, visite, projection, festival. On y va pour
-découvrir/apprendre/se cultiver. **N'est PAS un événement** (→ rejet) : l'actualité
-institutionnelle (réunion de conseil, convention, subvention, nomination, communiqué),
-une inauguration ou remise de prix **déjà passée**, un sujet d'infrastructure/voirie —
-bref tout ce à quoi on ne peut pas **assister à une date**.
+**Définition d'un événement.** Une manifestation à laquelle le **public peut assister**,
+à une **date à venir** (ou en cours), dans un lieu. On couvre **large** (à la manière de
+GuidaTorino) : expos, concerts, spectacles, festivals, **sagre & gastronomie**, **marchés**
+(fleurs, antiquaires, brocante, artisanat), sport, cinéma, fêtes populaires… **N'est PAS un
+événement** (→ rejet) : actualité institutionnelle (réunion, convention, subvention,
+nomination, communiqué), inauguration/remise de prix **déjà passée**, infrastructure/voirie,
+consultation publique — tout ce à quoi on ne peut pas **assister à une date**.
 
-Un événement mérite la mise en avant s'il :
-- **transmet un savoir rare** (architectural, historique, linguistique, gastronomique,
-  scientifique — pas du tout-venant) ;
-- **engage un regard** (point de vue, thèse — pas seulement divertir) ;
-- **connecte le local à l'universel** (escalier) ;
-- bonus : **bilingue FR/IT** ou en langue de territoire (savoyard, piémontais…).
+**Le score = IMPORTANCE, pas profondeur culturelle.** On mesure si l'événement va *réunir du
+monde* / *compte dans le territoire*. Somme de 5 critères (0-10) :
+- **Notoriété du lieu** (0-3) — lieu emblématique très cité vs local modeste (pondéré par la
+  taille de la commune) ;
+- **Organisateur & moyens** (0-2) — institution / gros opérateur / grand festival vs petit ;
+- **Édition & tradition** (0-2) — rendez-vous historique, édition élevée, anniversaire ;
+- **Rayonnement** (0-2) — international / transfrontalier FR-IT > régional > local ;
+- **Spécificité territoriale** (0-1) — identitaire vs générique/franchise.
 
-Exclusions automatiques : exercices civils/militaires, sagres génériques, concerts de
-masse sans ancrage, foires/salons commerciaux, comédie de boulevard / humour généraliste.
+**Deux niveaux de valorisation** (comme GuidaTorino : « cosa fare » mis en avant + catalogue) :
+- score **≥ 7** → **mise en avant** (home, article rédigé — file « À valider ») ;
+- score **< 7** mais vrai événement → **catalogue** (site dédié, cherchable) — *jamais rejeté*.
+- non-événement → **rejeté**.
+
+La **profondeur / l'escalier** (§1, §5) n'est **plus un filtre** : c'est un **principe de
+RÉDACTION** (comment on traite un sujet) et un atout pour choisir les mises en avant.
 
 ## 4. Structure d'un article événement
 

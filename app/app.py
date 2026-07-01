@@ -513,6 +513,13 @@ def preview(event_id: int):
         except (ValueError, TypeError):
             enriched = None
     enrich_running = _running_state().get("enrich", False)
+    # Détail du score d'importance (critère par critère), si évalué.
+    score_detail = None
+    if ev.get("llm_score_detail"):
+        try:
+            score_detail = json.loads(ev["llm_score_detail"])
+        except (ValueError, TypeError):
+            score_detail = None
     # Dossier(s) de presse rattaché(s) à cet événement (matière primaire).
     press_kits = []
     try:
@@ -527,7 +534,7 @@ def preview(event_id: int):
     return render_template("preview.html", e=ev, image=image,
                            image_host=image_host, is_radar=is_radar,
                            enriched=enriched, enrich_running=enrich_running,
-                           press_kits=press_kits)
+                           press_kits=press_kits, score_detail=score_detail)
 
 
 @app.route("/enrich/<int:event_id>", methods=["POST"])

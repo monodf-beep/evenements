@@ -131,8 +131,20 @@
 </div>
 
 <div class="note">
-  <span class="s">Note éditoriale (interne) — score {{ e.llm_score if e.llm_score is not none else '—' }}/10</span><br>
+  <span class="s">Score d'importance — {{ e.llm_score if e.llm_score is not none else '—' }}/10</span>
+  {% if e.llm_categorie %} · <span class="pill">{{ e.llm_categorie }}</span>{% endif %}<br>
   {% if e.llm_justification %}<em>{{ e.llm_justification }}</em><br>{% endif %}
+  {% if score_detail %}
+  <table style="font-family:sans-serif;font-size:.85rem;border-collapse:collapse;margin:.6rem 0;width:100%">
+    {% set labels = {'notoriete_lieu':'Notoriété du lieu (0-3)','organisateur_moyens':'Organisateur & moyens (0-2)','edition_tradition':'Édition & tradition (0-2)','rayonnement':'Rayonnement (0-2)','specificite_territoriale':'Spécificité territoriale (0-1)'} %}
+    {% for key, lbl in labels.items() %}{% if score_detail.get(key) %}
+    <tr>
+      <td style="padding:.2rem .4rem;border-bottom:1px solid #eee;white-space:nowrap"><strong>{{ score_detail[key].points }}</strong> · {{ lbl }}</td>
+      <td style="padding:.2rem .4rem;border-bottom:1px solid #eee;color:#6b7280">{{ score_detail[key].note }}</td>
+    </tr>
+    {% endif %}{% endfor %}
+  </table>
+  {% endif %}
   Statut actuel : <strong>{{ e.statut }}</strong>
 </div>
 </body>

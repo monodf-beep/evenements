@@ -31,48 +31,40 @@ BATCH_SIZE = 100
 # et sera réévalué au prochain run — jamais rejeté à tort pour une panne API.
 API_ERROR = object()
 
-EVAL_PROMPT = """Tu es l'assistant éditorial de Cultura Sabauda, un média culturel
-bilingue couvrant Savoie, Piémont, Vallée d'Aoste et Nice.
+CATEGORIES = ("Expositions & Patrimoine", "Concerts & Musique",
+              "Spectacle vivant", "Festivals", "Gastronomie & Sagre",
+              "Marchés & Foires", "Sport", "Cinéma", "Jeune public & Famille",
+              "Conférences & Rencontres", "Fêtes & Traditions populaires")
 
-QU'EST-CE QU'UN ÉVÉNEMENT ? (à vérifier AVANT de noter)
-Une manifestation CULTURELLE à laquelle le PUBLIC peut ASSISTER, à une DATE à venir
-(ou en cours), dans un lieu : exposition, concert, spectacle, conférence, rencontre,
-atelier, visite, projection, festival. On y va pour découvrir, apprendre, se cultiver.
-Si ce n'est PAS quelque chose auquel on peut assister à une date → ce n'est pas un
-événement → score 0.
+EVAL_PROMPT = """Tu es l'assistant éditorial de Cultura Sabauda, agenda culturel bilingue
+FR/IT couvrant Savoie/Haute-Savoie, Piémont, Vallée d'Aoste et Nice. On couvre LARGE, à la
+manière de GuidaTorino : expositions, concerts, spectacles, festivals, sagre et gastronomie,
+marchés (fleurs, antiquaires, brocante, artisanat), sport, cinéma, fêtes populaires…
 
-Évalue ensuite si cet événement mérite d'être mis en avant sur la homepage (score 0-10).
+ÉTAPE 1 — GATE. Est-ce un ÉVÉNEMENT auquel le public peut ASSISTER, à une date à venir ou
+en cours, dans un lieu ? Si NON (actualité institutionnelle, réunion/convention/subvention/
+nomination, inauguration ou remise de prix DÉJÀ passée, travaux/voirie/mobilité, consultation
+publique, hors des 4 territoires) → "est_evenement": false et score 0. Sinon → true, continue.
 
-SCORING :
-+3 : transmet un savoir rare ou expert (architectural, historique, linguistique,
-     gastronomique, scientifique — pas du tout-venant touristique)
-+3 : engage un regard original (point de vue, thèse — pas juste divertir)
-+3 : connecte le local à une question universelle (principe de l'escalier :
-     ancrage territorial → question qui dépasse le territoire)
-+1 : bilingue FR/IT ou en langue du territoire (savoyard, piémontais…)
+ÉTAPE 2 — SCORE D'IMPORTANCE (0-10). PAS de profondeur culturelle exigée : on mesure si
+l'événement est IMPORTANT (va réunir du monde, compte dans le territoire). Note chaque critère :
 
-POUR LE THÉÂTRE (CRÉATION VIVANTE) :
-- Scène nationale, théâtre historique, salle ≤ 200 places avec création : +fort
-- Ex. Teatro Regio Torino, Théâtre Charles Dullin Chambéry, Piccolo Teatro Milano
-- Comédie de boulevard en tournée, humour généraliste : score ≤ 2
+- notoriete_lieu (0-3) : lieu emblématique et très cité (grand stade, opéra, grand musée,
+  place centrale) = 3 ; lieu reconnu = 2 ; lieu local modeste = 1 ; confidentiel/inconnu = 0.
+  Pondère par la taille de la commune (dans un petit village, le lieu local principal compte).
+- organisateur_moyens (0-2) : institution / gros opérateur / grand festival = 2 ;
+  ville ou association structurée = 1 ; petit organisateur informel = 0.
+- edition_tradition (0-2) : rendez-vous historique / édition élevée (Xe) / anniversaire = 2 ;
+  récurrent établi = 1 ; première ou ponctuel = 0.
+- rayonnement (0-2) : international ou transfrontalier FR-IT = 2 ; régional = 1 ; local = 0.
+- specificite_territoriale (0-1) : identitaire, propre au territoire = 1 ; générique/franchise
+  qu'on trouve partout = 0.
 
-CATÉGORIES ACCEPTÉES :
-CONFÉRENCES & RENCONTRES | EXPOSITIONS & PATRIMOINE |
-CRÉATION VIVANTE | ATELIERS & TRANSMISSION | FESTIVALS
+score = somme des points (0-10). N'EXCLUS PAS le grand public, le sport, la gastronomie ni les
+marchés. Écarte seulement (score bas) le TRÈS confidentiel et le PUREMENT commercial (salon/foire
+commerciale de vente). Le méga-concert de tournée est admis mais sans bonus « territoire ».
 
-EXCLUSIONS AUTOMATIQUES (score = 0) :
-- PAS un événement auquel on peut assister (voir définition ci-dessus)
-- ACTUALITÉ INSTITUTIONNELLE / ADMINISTRATIVE : réunion de conseil ou de commission,
-  délibération, convention/partenariat signé, subvention, nomination, communiqué de
-  politique publique, bilan/rétrospective, palmarès ou remise de prix DÉJÀ tenue
-- INAUGURATION ou cérémonie DÉJÀ PASSÉE (racontée comme une nouvelle, pas un rendez-vous)
-- INFRASTRUCTURE / travaux / voirie / sécurité / mobilité (chantier, passage à niveau,
-  totems, pont, ligne, aménagement)
-- Événement hors Savoie/Piémont/Vallée d'Aoste/Nice
-- Exercice protection civile ou militaire
-- Sagre ou fête de village générique sans transmission de savoir
-- Grand concert de masse sans ancrage territorial spécifique
-- Événement purement commercial (salon, foire commerciale)
+CATÉGORIE : choisis-en UNE parmi : {categories}.
 
 Événement à évaluer :
 Titre : {title}
@@ -80,14 +72,25 @@ Description : {description}
 Lieu : {lieu}, {territoire}
 Source : {source_name}
 
-Réponds UNIQUEMENT en JSON valide, sans aucun texte avant ou après :
-{{"score": <0-10>, "categorie": "<catégorie>", "justification": "<une phrase>", "niveau1_eligible": <true|false>}}"""
+Réponds UNIQUEMENT en JSON valide, sans texte avant/après :
+{{"est_evenement": <true|false>,
+  "categorie": "<une catégorie de la liste>",
+  "criteres": {{
+    "notoriete_lieu": {{"points": <0-3>, "note": "<courte raison>"}},
+    "organisateur_moyens": {{"points": <0-2>, "note": "<courte raison>"}},
+    "edition_tradition": {{"points": <0-2>, "note": "<courte raison>"}},
+    "rayonnement": {{"points": <0-2>, "note": "<courte raison>"}},
+    "specificite_territoriale": {{"points": <0-1>, "note": "<courte raison>"}}
+  }},
+  "score": <0-10>,
+  "justification": "<une phrase de synthèse>"}}"""
 
 
 def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict | None:
     prompt = EVAL_PROMPT.format(
+        categories=" · ".join(CATEGORIES),
         title=event.get("title", ""),
-        description=(event.get("description") or "")[:500],
+        description=(event.get("description") or "")[:800],
         lieu=event.get("lieu") or event.get("ville") or "",
         territoire=event.get("territoire", ""),
         source_name=event.get("source_name", ""),
@@ -95,7 +98,7 @@ def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict
     try:
         message = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=1536,
             messages=[{"role": "user", "content": prompt}],
         )
         usage.record_message(model, message, label="évaluation")
@@ -161,29 +164,34 @@ def main(argv=None) -> int:
                 (ev["id"],)
             )
             continue
-        score = result.get("score", 0)
-        # Bifurcation selon score
-        if score >= 7:
+        est = result.get("est_evenement", True)
+        score = int(result.get("score", 0) or 0)
+        # Gate = est_evenement ; puis IMPORTANCE. Un vrai événement n'est JAMAIS rejeté
+        # d'office : score >= 7 → à valider (mise en avant home) ; sinon → catalogue
+        # (site dédié). Seuls les NON-événements sont rejetés.
+        if not est:
+            new_statut, score = "rejected", 0
+        elif score >= 7:
             new_statut = "evaluated"
-        elif score >= 4:
-            new_statut = "published_sub"
         else:
-            new_statut = "rejected"
+            new_statut = "published_sub"
+        detail = json.dumps(result.get("criteres") or {}, ensure_ascii=False)
         conn.execute("""
         UPDATE events_raw SET
-            llm_score=?, llm_categorie=?, llm_justification=?,
+            llm_score=?, llm_categorie=?, llm_justification=?, llm_score_detail=?,
             llm_model=?, llm_evaluated_at=datetime('now'), statut=?
         WHERE id=?
         """, (
             score,
             result.get("categorie", ""),
             result.get("justification", ""),
+            detail,
             model,
             new_statut,
             ev["id"],
         ))
-        log.info("[%d] score=%d statut=%s | %s", ev["id"], score, new_statut,
-                 ev.get("title", "")[:60])
+        log.info("[%d] event=%s score=%d statut=%s cat=%s | %s", ev["id"], est, score,
+                 new_statut, result.get("categorie", "")[:20], ev.get("title", "")[:50])
 
     conn.commit()
     conn.close()

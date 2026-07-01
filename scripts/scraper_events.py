@@ -63,7 +63,9 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Vraie date de l'événement extraite du texte (scripts/dates.py)
                       ("date_event_start", "TEXT"),
                       ("date_event_end", "TEXT"),
-                      ("date_source", "TEXT")):
+                      ("date_source", "TEXT"),
+                      # Détail du score d'importance par critère (JSON, scripts/evaluator.py)
+                      ("llm_score_detail", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
