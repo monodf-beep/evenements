@@ -38,3 +38,84 @@ pays-albertville.com;Savoie
 lovevda.it;Vallee-Aoste
 fortedibard.it;Vallee-Aoste
 turismo.vda.it;Vallee-Aoste
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-01 — domaines des newsletters identifiées par la recherche
+# multi-agents (voir docs/NEWSLETTERS_A_SABONNER.md). Ajoutés en amont : dès que
+# tu t'abonnes + labellises « Agenda », le territoire est deviné automatiquement.
+# NB : certains partent via un ESP (Brevo/Mailchimp/Mailjet…) → si un mail n'est
+# pas classé, ajoute ici le domaine expéditeur réel vu dans le premier email.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ---- Piémont (ajout) ----
+guidatorino.com;Piemonte
+mentelocale.it;Piemonte
+torinoclick.it;Piemonte
+piemontedalvivo.it;Piemonte
+museocinema.it;Piemonte
+museoegizio.it;Piemonte
+teatroregio.torino.it;Piemonte
+ogrtorino.it;Piemonte
+mitosettembremusica.it;Piemonte
+kappafuturfestival.it;Piemonte
+collisioni.it;Piemonte
+fieradeltartufo.org;Piemonte
+enteturismolmr.it;Piemonte
+torinodanzafestival.it;Piemonte
+teatrostabiletorino.it;Piemonte
+visitpiemonte-dmo.org;Piemonte
+lavenaria.it;Piemonte
+
+# ---- Nice / Alpes-Maritimes (ajout) ----
+palaisdesfestivals.com;Nice
+cotedazurfrance.fr;Nice
+menton-riviera-merveilles.fr;Nice
+sortiracannes.com;Nice
+semec.com;Nice
+opera-nice.org;Nice
+anthea-antibes.fr;Nice
+fondation-maeght.com;Nice
+theatredegrasse.com;Nice
+forumcarros.com;Nice
+mamac-nice.org;Nice
+musee-matisse-nice.org;Nice
+ville-nice.fr;Nice
+villa-arson.fr;Nice
+nicejazzfest.fr;Nice
+jazzajuan.com;Nice
+nuitsdusud.com;Nice
+antibesjuanlespins.com;Nice
+cannes.com;Nice
+nicerendezvous.com;Nice
+
+# ---- Savoie / Haute-Savoie (ajout) ----
+malrauxchambery.fr;Savoie
+dometheatre.com;Savoie
+le-brise-glace.com;Savoie
+chateau-rouge.net;Savoie
+mal-thonon.org;Savoie
+chambery.fr;Savoie
+mairie-chambery.fr;Savoie
+cinema-laturbine.fr;Savoie
+musilac.com;Savoie
+guitare-en-scene.com;Savoie
+musiquesenstock.fr;Savoie
+grandbivouac.com;Savoie
+lac-annecy.com;Savoie
+chamberymontagnes.com;Savoie
+aixlesbains-rivieradesalpes.com;Savoie
+musees.annecy.fr;Savoie
+annecy.fr;Savoie
+savoie-mont-blanc.com;Savoie
+chamonix.com;Savoie
+agendaculturel.fr;Savoie
+grandchambery.fr;Savoie
+grandannecy.fr;Savoie
+
+# ---- Vallée d'Aoste (ajout) ----
+grand-paradis.it;Vallee-Aoste
+musicastellevda.it;Vallee-Aoste
+aostaclassica.it;Vallee-Aoste
+cervinia.it;Vallee-Aoste
+courmayeurmontblanc.it;Vallee-Aoste
+aostasera.it;Vallee-Aoste

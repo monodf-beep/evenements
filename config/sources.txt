@@ -115,3 +115,20 @@ https://www.reggiavenaria.it/feed/;Piemonte;Reggia di Venaria;officielle
 https://www.fondazionesandretto.it/feed/;Piemonte;Fondazione Sandretto Re Rebaudengo (Torino);officielle
 https://www.legrandbivouac.com/feed/;Savoie;Festival Le Grand Bivouac (Albertville);officielle
 https://jazzajuan.com/feed/;Nice;Jazz à Juan (Antibes);officielle
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-01 (2) — agrégateurs & rubriques AGENDA de médias, recherche
+# multi-agents. FILTRE ASSUMÉ : on ne garde que l'événementiel ciblé (guides
+# what's-on + rubriques agenda/eventi). Les fils d'actu générale (ANSA, réseau
+# morenews, Nice-Matin, France 3…) sont ÉCARTÉS : trop de bruit, comme Google News.
+# Guides tiers concurrents → tier `radar` (on détecte, on ne crédite/lie jamais).
+# ═════════════════════════════════════════════════════════════════════════════
+https://www.torinoclick.it/feed/;Piemonte;TorinoClick (agence Ville de Turin);tourisme
+https://www.guidatorino.com/feed/;Piemonte;GuidaTorino (guide);radar
+https://www.nicerendezvous.com/actus-culture-2?format=feed&type=rss;Nice;NiceRendezVous - Culture (guide);radar
+https://www.nicerendezvous.com/actus-loisirs-2?format=feed&type=rss;Nice;NiceRendezVous - Loisirs (guide);radar
+https://www.nicerendezvous.com/actus-spectacles-2.feed?type=rss;Nice;NiceRendezVous - Spectacles (guide);radar
+https://www.gazzettamatin.com/category/oggi-domani/appuntamenti/feed/;Vallee-Aoste;Gazzetta Matin - Appuntamenti (agenda);radar
+https://www.aostaoggi.it/eventi?format=feed&type=rss;Vallee-Aoste;Aostaoggi - Eventi (agenda);radar
+https://www.quotidianopiemontese.it/category/eventi/feed/;Piemonte;Quotidiano Piemontese - Eventi (agenda);radar
+https://www.ledauphine.com/culture-loisirs/rss;Savoie;Le Dauphiné - Sorties et loisirs;radar
