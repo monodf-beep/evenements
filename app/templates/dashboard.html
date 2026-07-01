@@ -99,6 +99,12 @@
       <a class="btn btn-ghost" href="/site-dedie">🌐 Site dédié</a>
       <small>Les événements classés pour le site de volume.</small>
     </div>
+    <div class="task">
+      <form method="POST" action="/run/newsletter">
+        <button class="btn btn-dark" {% if any_running %}disabled{% endif %}>📧 Newsletter (brouillon){% if tasks.newsletter and tasks.newsletter.running %} ⏳{% endif %}</button>
+      </form>
+      <small>Crée un brouillon Brevo des événements Savoie de la semaine (tu relis + envoies).</small>
+    </div>
     <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">🔒 Tout part en <strong>brouillon</strong> WordPress — rien n'est publié sans ta validation.</p>
   </section>
 </div>
