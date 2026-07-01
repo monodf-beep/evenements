@@ -57,6 +57,18 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
       fois le coût réel observé ? seuil de score ? auto-publication du site dédié ?
 - [ ] Plafond mensuel de coût (kill-switch) si l'enrichissement tourne en auto.
 
+### Matière maximale (décision Franck : 1 + 3)
+- [x] **Canal « dossiers de presse »** (`scripts/press_kits.py`) : label Gmail « Presse »,
+      extraction texte PDF (pypdf) + photos HD sur disque, rattachement à l'événement
+      (same_story). L'agent d'enrichissement en fait sa **matière prioritaire**.
+- [x] **Faits vs expression** : l'agent exploite la presse (même payante) pour les FAITS
+      (dates, lieu, casting), jamais le texte ni le crédit ; expression/attribution =
+      source officielle. CHARTE §5 mise à jour.
+- [ ] **Hébergement des photos de dossier** pour l'image à la une WordPress (upload média
+      WP) — aujourd'hui les photos HD sont juste enregistrées sous `data/press_kits/`.
+- [ ] **Suivi des accréditations** (option 2, non retenue pour l'instant) : registre des
+      organisateurs accrédités → priorité + relances aux lieux clés.
+
 ### Qualité de la collecte
 - [ ] **Déduplication multi-sources** ⟵ signalé par Franck. Un même événement arrive
       par plusieurs flux (institutionnel + radar + office de tourisme). Aujourd'hui la

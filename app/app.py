@@ -162,6 +162,7 @@ def friendly_alert():
 TASKS = {
     "scrape":   {"script": "scripts/scraper_events.py", "label": "Scraping RSS", "icon": "📡", "cost": False},
     "gmail":    {"script": "scripts/gmail_collect.py",   "label": "Newsletters Gmail", "icon": "📬", "cost": True},
+    "press":    {"script": "scripts/press_kits.py",      "label": "Dossiers de presse", "icon": "📎", "cost": False},
     "dedupe":   {"script": "scripts/dedupe.py",          "label": "Déduplication", "icon": "🔗", "cost": False},
     "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation LLM", "icon": "🧠", "cost": True},
     "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True},
@@ -380,9 +381,21 @@ def preview(event_id: int):
         except (ValueError, TypeError):
             enriched = None
     enrich_running = _running_state().get("enrich", False)
+    # Dossier(s) de presse rattaché(s) à cet événement (matière primaire).
+    press_kits = []
+    try:
+        conn2 = get_db()
+        press_kits = [dict(r) for r in conn2.execute(
+            "SELECT subject, sender, n_photos, "
+            "       (LENGTH(COALESCE(pdf_text,'')) + LENGTH(COALESCE(body_text,''))) AS chars "
+            "FROM press_kits WHERE matched_event_id = ?", (event_id,)).fetchall()]
+        conn2.close()
+    except sqlite3.OperationalError:
+        press_kits = []
     return render_template("preview.html", e=ev, image=image,
                            image_host=image_host, is_radar=is_radar,
-                           enriched=enriched, enrich_running=enrich_running)
+                           enriched=enriched, enrich_running=enrich_running,
+                           press_kits=press_kits)
 
 
 @app.route("/enrich/<int:event_id>", methods=["POST"])

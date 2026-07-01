@@ -59,16 +59,31 @@ va chercher (web/sources officielles) **selon la nature** de l'événement :
 
 Garde-fous d'enrichissement :
 - **Ne jamais inventer** : si une info n'est pas trouvée/sourcée, on ne l'écrit pas.
-- **Prioriser les sources officielles/primaires** ; ne pas recopier la presse concurrente.
 - **Pertinence territoriale** : un groupe local ou de territoire proche est un angle ;
   un groupe sans lien n'est pas mis en avant pour lui-même.
 - **Coût maîtrisé** : l'enrichissement web a un coût API → réservé aux événements
   retenus (score ≥ seuil), pas à toute la collecte.
-- **Paywall / presse** : on ne franchit **JAMAIS** un paywall. Le radar fournit un
-  signal (titre, date, lieu, entités) → on va chercher le contenu à la **source
-  officielle libre** : page de l'organisateur/du lieu, agenda officiel, billetterie.
-  C'est **automatisable** (recherche web → page officielle → extraction). Si aucune
-  source libre n'existe, l'événement reste mince et **n'est pas mis en avant**.
+
+**Matière : le maximum, par des moyens qui tiennent juridiquement.** L'objectif est
+d'avoir la matière la plus riche possible. Trois leviers, dans l'ordre de valeur :
+
+1. **Dossier de presse (source primaire, prioritaire)** — en tant que média, on obtient
+   des organisateurs, gratuitement et avec droits d'usage, le dossier complet + photos
+   HD (canal `press_kits`, label Gmail « Presse »). C'est **plus** et **mieux** que tout
+   article payant. À privilégier partout où c'est disponible → viser l'**accréditation**
+   auprès des lieux clés (opéras, musées, festivals).
+2. **Faits vs expression** — les **faits** (dates, lieu, programme, distribution, tarifs)
+   ne sont **pas protégés** : on les récupère **partout**, y compris en lisant la presse
+   (même payante, via extraits/recherche). En revanche on **ne recopie jamais
+   l'expression** d'un article (phrases, formules, l'analyse d'un journaliste) et on **ne
+   crédite pas** la presse : l'attribution et la citation vont à la **source officielle**.
+3. **Source officielle libre** — page de l'organisateur/du lieu, agenda, billetterie :
+   c'est là qu'on vérifie les faits et qu'on prend l'expression réutilisable.
+
+On **ne contourne pas** un mur d'accès par des moyens techniques (login, ripper) : le
+risque juridique retomberait sur l'éditeur nommé. Le bon canal pour « passer le
+paywall » légalement, c'est l'**accréditation presse** (levier 1). Si un événement
+n'a **aucune** source libre et **aucun** dossier, il reste mince et n'est pas mis en avant.
 
 ## 6. Ton & langue
 

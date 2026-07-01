@@ -98,6 +98,16 @@
   </div>
 </details>
 
+{% if press_kits %}
+  <div style="font-family:sans-serif;font-size:.9rem;background:#eff6ff;border:1px solid #bfdbfe;
+              border-radius:8px;padding:.7rem .9rem;margin:1rem 0;color:#1e3a8a;">
+    📎 <b>{{ press_kits|length }} dossier(s) de presse rattaché(s)</b> — matière primaire pour la rédaction.
+    {% for k in press_kits %}
+      <div style="margin-top:.3rem;color:#374151;">• {{ k.subject }}{% if k.n_photos %} — {{ k.n_photos }} photo(s) HD{% endif %}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 <form method="post" action="/enrich/{{ e.id }}" style="margin:1rem 0;">
   <button class="btn{% if enriched %} sec{% endif %}" {% if enrich_running %}disabled{% endif %}>
     {% if enrich_running %}✍️ Enrichissement en cours…{% elif enriched %}🔄 Ré-enrichir{% else %}✍️ Enrichir + rédiger (agent web){% endif %}

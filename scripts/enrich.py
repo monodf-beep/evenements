@@ -5,15 +5,17 @@
 la MATIÈRE disponible (sa description + celle des doublons fusionnés, même venus
 d'un radar gratuit), un agent LLM :
 
-1. RECHERCHE le contexte sur le web → privilégie la SOURCE OFFICIELLE LIBRE
-   (organisateur, lieu, agenda officiel, billetterie) — voir CHARTE §5 ;
+1. RECHERCHE le contexte sur le web → privilégie le DOSSIER DE PRESSE (source primaire,
+   voir scripts/press_kits.py) puis la source officielle libre (organisateur, lieu,
+   agenda, billetterie) — voir CHARTE §5 ;
 2. ENRICHIT selon la nature de l'événement (lieu, artiste, conférencier, plat…) ;
 3. RÉDIGE un article (titre, chapô, corps, encadré pratique) selon CHARTE §4/§6/§7.
 
 GARDE-FOUS (CHARTE §5/§7) :
-- Ne JAMAIS franchir un paywall : on prend le contenu à la source primaire gratuite,
-  jamais à la presse concurrente (les radars servent de simple détection).
-- Ne JAMAIS inventer : une info non trouvée/sourcée n'est pas écrite.
+- FAITS vs EXPRESSION : la presse (même payante) sert à récupérer des FAITS (dates,
+  lieu, casting) — jamais son texte, qu'on ne recopie pas et qu'on ne crédite pas.
+  L'expression et l'attribution vont à la source officielle/primaire.
+- Ne JAMAIS inventer : une info non trouvée n'est pas écrite (sinon "confiance" basse).
 - Coût maîtrisé : réservé aux événements retenus (score ≥ seuil), traité par petits
   lots, modèle configurable. PAS en cron par défaut — déclenché à la main (bouton).
 
@@ -82,12 +84,22 @@ ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
 - Œuvre / exposition : artiste, période, intérêt.
 - Date / récurrence : rendez-vous historique ? édition anniversaire ?
 
+EXPLOITER LA PRESSE POUR LES FAITS (pas pour le texte) :
+- Tu PEUX consulter la presse, y compris via des extraits de recherche, pour en tirer
+  des FAITS : dates, lieu, programme, distribution/casting, tarifs. Les faits ne sont
+  pas protégés — sers-t'en pour avoir le MAXIMUM de matière.
+- Tu ne dois JAMAIS recopier l'EXPRESSION d'un article (phrases, formules, l'analyse
+  ou l'avis d'un journaliste) : reformule tout dans tes propres mots.
+- Ne cite PAS la presse comme source. Dans "sources", ne mets que des pages
+  OFFICIELLES/LIBRES (organisateur, lieu, agenda officiel, billetterie), où les faits
+  sont vérifiables. Si un fait ne vient que de la presse, tu peux l'utiliser mais
+  baisse la "confiance".
+- Le DOSSIER DE PRESSE fourni (s'il y en a un) est la matière PRIORITAIRE : c'est la
+  source primaire, avec droits d'usage — appuie-toi dessus en premier.
+
 GARDE-FOUS STRICTS :
-- Ne franchis JAMAIS un paywall. Cherche le contenu à la SOURCE OFFICIELLE LIBRE :
-  organisateur, lieu, agenda officiel, billetterie. N'utilise PAS la presse concurrente
-  comme source ; ne la cite pas.
-- N'invente RIEN. Si une info n'est pas trouvée et sourcée, ne l'écris pas. En cas de
-  matière trop mince, mets "confiance": "faible" et reste factuel.
+- N'invente RIEN. Si une info n'est pas trouvée, ne l'écris pas. En cas de matière trop
+  mince, mets "confiance": "faible" et reste factuel.
 - Pas de superlatifs creux ("incontournable", "magique", "à ne pas manquer"), aucun
   dark pattern (urgence factice, clickbait).
 - Nomme toujours la géographie : ville → province/département → territoire.
@@ -120,9 +132,30 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
 }}"""
 
 
+def gather_press_kits(conn: sqlite3.Connection, ev: dict) -> str:
+    """Matière PRIORITAIRE : dossiers de presse (source primaire) EXPLICITEMENT rattachés
+    à l'événement. Le rattachement (déterministe) est fait par scripts/press_kits.py ;
+    ici on ne fait que lire. Vide si le canal presse n'a jamais tourné (table absente)."""
+    try:
+        rows = conn.execute(
+            "SELECT subject, body_text, pdf_text, n_photos FROM press_kits "
+            "WHERE matched_event_id = ?", (ev["id"],)).fetchall()
+    except sqlite3.OperationalError:
+        return ""
+    chunks = []
+    for r in rows:
+        body = (r["body_text"] or "").strip()
+        pdf = (r["pdf_text"] or "").strip()
+        photos = f" [{r['n_photos']} photo(s) HD jointe(s)]" if r["n_photos"] else ""
+        chunk = "\n".join(x for x in (body, pdf) if x)
+        if chunk:
+            chunks.append(f"« {r['subject']} »{photos}\n{chunk}")
+    return "\n\n===\n\n".join(chunks)[:12000]
+
+
 def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
-    """Agrège (déterministe) la matière : description de l'événement + celle des
-    doublons fusionnés vers lui (statut='merged', duplicate_of=ev.id)."""
+    """Agrège (déterministe) la matière : dossiers de presse PRIORITAIRES, puis la
+    description de l'événement + celle des doublons fusionnés (duplicate_of=ev.id)."""
     parts = []
     own = (ev.get("description") or "").strip()
     if own:
@@ -134,8 +167,14 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
         d = (row["description"] or "").strip()
         if d and d not in parts:
             parts.append(d)
-    text = "\n\n---\n\n".join(parts)
-    return re.sub(r"(?s)<[^>]+>", " ", text)[:6000] or "(aucune — titre seul)"
+    text = re.sub(r"(?s)<[^>]+>", " ", "\n\n---\n\n".join(parts))[:6000]
+
+    press = gather_press_kits(conn, ev)
+    if press:
+        press = re.sub(r"(?s)<[^>]+>", " ", press)
+        return (f"[DOSSIER(S) DE PRESSE — source primaire, matière prioritaire]\n{press}"
+                f"\n\n[AUTRES SIGNAUX (flux/radar)]\n{text or '(aucun)'}")
+    return text or "(aucune — titre seul)"
 
 
 def _final_text(message) -> str:
