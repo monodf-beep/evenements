@@ -190,6 +190,31 @@ def fetch_official_page(url: str, timeout: int = 8) -> str:
     return re.sub(r"\s+", " ", doc).strip()[:6000]
 
 
+def fetch_og_image(url: str, timeout: int = 8) -> str:
+    """Récupère l'image de partage (og:image / twitter:image) de la page officielle.
+    Sert de vignette quand le flux ne fournit pas d'image. Déterministe, skip radar/Gmail."""
+    if not url or url.startswith("gmail:") or "news.google.com" in url:
+        return ""
+    try:
+        r = requests.get(url, timeout=timeout, headers=_UA)
+        if r.status_code != 200 or not r.text:
+            return ""
+        html = r.text
+    except Exception:
+        return ""
+    for pat in (r'<meta[^>]+property=["\']og:image(?::url)?["\'][^>]+content=["\']([^"\']+)',
+                r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
+                r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)'):
+        m = re.search(pat, html, re.I)
+        if m:
+            img = htmlmod.unescape(m.group(1).strip())
+            if img.startswith("//"):
+                img = "https:" + img
+            if img.startswith("http"):
+                return img
+    return ""
+
+
 def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
     """Agrège (déterministe) la matière, par ordre de priorité :
     1) dossiers de presse rattachés ; 2) PAGE OFFICIELLE récupérée en direct ;
@@ -375,6 +400,15 @@ def main(argv: list[str]) -> int:
     done = 0
     for event in events:
         ev = dict(event)
+        # Vignette de secours : si le flux n'a pas d'image, prendre l'og:image de la
+        # page officielle (déterministe). Sert à la fiche ET à l'image à la une WordPress.
+        if not (ev.get("url_image") or "").strip():
+            og = fetch_og_image(ev.get("url_source", ""))
+            if og:
+                conn.execute("UPDATE events_raw SET url_image=? WHERE id=?", (og, ev["id"]))
+                conn.commit()
+                ev["url_image"] = og
+                log.info("[%d] image récupérée (og:image) : %s", ev["id"], og[:80])
         material = gather_material(conn, ev)
         result = enrich_event(ev, material, client, model)
         if result is API_ERROR:
