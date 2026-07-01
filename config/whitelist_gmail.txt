@@ -119,3 +119,9 @@ aostaclassica.it;Vallee-Aoste
 cervinia.it;Vallee-Aoste
 courmayeurmontblanc.it;Vallee-Aoste
 aostasera.it;Vallee-Aoste
+
+# ---- Ajout vague 3 (types nouveaux : cinéma, traditions, institut culturel) ----
+institutfrancais.it;Piemonte
+cinemamassimotorino.it;Piemonte
+langhe.net;Piemonte
+seances-speciales.fr;Nice

@@ -97,6 +97,12 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 - [ ] Courmayeur Mont Blanc — https://www.courmayeurmontblanc.it/
 - [ ] OT régional (liste PRO) — https://turismo.vda.it/iscrizione-alla-newsletter/
 
+## Types nouveaux (cinéma art & essai, traditions, instituts culturels)
+- [ ] Cinema Massimo (Torino, art & essai) — https://www.cinemamassimotorino.it/ _(form home)_
+- [ ] Les Écrans du Sud (réseau art & essai PACA, 06) — https://seances-speciales.fr/ _(form home)_
+- [ ] LoveLanghe (traditions/sagre Langhe-Cuneo) — https://www.langhe.net/newsletter/
+- [ ] Institut français Italia (antenne Torino) — https://www.institutfrancais.it/ _(form pied de page)_
+
 ---
 
 ## À savoir
