@@ -97,6 +97,15 @@ h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; font-weight:700; line-he
 .badge.re { background:var(--purple-soft); color:#5b21b6; }
 .badge.grey { background:#eef0f4; color:#475569; }
 .st { display:inline-block; font-size:.72rem; padding:.12rem .55rem; border-radius:999px; color:#fff; white-space:nowrap; cursor:help; }
+/* Triage rapide : pastilles de statut cliquables. Actif = coloré ; inactif = gris
+   cliquable. Un clic classe l'événement (pas de dropdown). */
+.stpick { display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+.stpick form { margin:0; }
+button.st { border:0; font-family:inherit; line-height:1.5; }
+.st-off { background:#eef1f5; color:#64748b; cursor:pointer; transition:filter .1s, background .1s, color .1s; }
+.st-off:hover { background:#dbe2ea; color:#334155; filter:none; }
+.stpick .st { opacity:1; }
+.stpick .st-off { opacity:.9; }
 /* Statuts : couleurs bien distinctes. À valider = ambre (action) ; les 2 marques
    ont chacune leur couleur (Cultura Sabauda = vert « publié » ; Agenda Sabaudo =
    bleu marine de la marque) ; Rejeté = rouge ; neutres = gris. */

@@ -695,5 +695,28 @@ def action(event_id: int, action: str):
     return redirect(nxt)
 
 
+# Statuts assignables en un clic depuis la liste (triage rapide, SANS effet de bord :
+# ni WordPress ni LLM — juste l'étiquette). Le push WordPress reste l'action dédiée.
+_STATUS_PICK = {"evaluated", "published_cs", "published_sub", "rejected"}
+
+
+@app.route("/set-status/<int:event_id>/<statut>", methods=["POST"])
+@require_auth
+def set_status(event_id: int, statut: str):
+    if statut not in _STATUS_PICK:
+        return "Statut invalide", 400
+    conn = get_db()
+    conn.execute("UPDATE events_raw SET statut=? WHERE id=?", (statut, event_id))
+    conn.commit()
+    conn.close()
+    nxt = request.form.get("next", "")
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = url_for("events")
+    # Ancre : on revient sur la même ligne (pas de saut en haut de page).
+    if "#" not in nxt:
+        nxt = f"{nxt}#e{event_id}"
+    return redirect(nxt)
+
+
 if __name__ == "__main__":
     app.run(debug=False, port=5001)
