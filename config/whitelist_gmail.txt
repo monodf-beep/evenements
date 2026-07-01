@@ -23,7 +23,9 @@ tnn.fr;Nice
 forumsirius.fr;Nice
 departement06.fr;Nice
 explorenicecotedazur.com;Nice
+explorenca.com;Nice
 nicecotedazur.org;Nice
+tnca.fr;Nice
 
 # ---- Savoie / Haute-Savoie ----
 bonlieu-annecy.com;Savoie
@@ -32,3 +34,4 @@ espacemalraux-chambery.fr;Savoie
 # ---- Vallée d'Aoste ----
 lovevda.it;Vallee-Aoste
 fortedibard.it;Vallee-Aoste
+turismo.vda.it;Vallee-Aoste
