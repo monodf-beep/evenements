@@ -59,7 +59,11 @@ def init_db(conn: sqlite3.Connection) -> None:
                       ("enrich_model", "TEXT"),
                       ("enrich_data", "TEXT"),
                       ("article_title", "TEXT"),
-                      ("article_md", "TEXT")):
+                      ("article_md", "TEXT"),
+                      # Vraie date de l'événement extraite du texte (scripts/dates.py)
+                      ("date_event_start", "TEXT"),
+                      ("date_event_end", "TEXT"),
+                      ("date_source", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
