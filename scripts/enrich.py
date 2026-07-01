@@ -54,10 +54,13 @@ MIN_SCORE = int(os.getenv("ENRICH_MIN_SCORE", "7"))
 # Taille de lot : l'enrichissement (web + rédaction) coûte cher → petit lot.
 BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
 # Plafond de recherches web par événement (outil serveur).
-MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "5"))
-# Budget de sortie : DOIT couvrir raisonnement adaptatif + recherche web + article JSON.
-# 4096 était trop court → réponse coupée (stop_reason=max_tokens) avant le JSON.
-MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "16000"))
+MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "3"))
+# Budget de sortie de l'article JSON.
+MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "8000"))
+# Raisonnement étendu : COÛTEUX et LENT (runs de ~5 min, budget de tokens épuisé avant
+# le JSON → stop_reason=max_tokens). Inutile pour « chercher + rédiger en JSON ».
+# Désactivé par défaut ; ENRICH_THINKING=1 pour l'activer (articles plus fouillés, plus chers).
+USE_THINKING = os.getenv("ENRICH_THINKING", "0").lower() in ("1", "true", "yes", "on")
 
 # Sentinel : échec d'APPEL API. L'événement n'est pas marqué → réenrichi plus tard.
 API_ERROR = object()
@@ -219,15 +222,14 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
         # STREAMING : indispensable ici (recherche web + raisonnement = requêtes longues)
         # — évite les read-timeouts silencieux. On logge chaque tour pour la traçabilité.
+        kwargs = dict(model=model, max_tokens=MAX_TOKENS,
+                      tools=[WEB_SEARCH_TOOL], messages=messages)
+        if USE_THINKING:
+            kwargs["thinking"] = {"type": "adaptive"}
         for turn in range(1, MAX_WEB_SEARCHES + 4):
-            log.info("[%d] appel API tour %d…", ev["id"], turn)
-            with client.messages.stream(
-                model=model,
-                max_tokens=MAX_TOKENS,  # raisonnement adaptatif + recherche web + article
-                tools=[WEB_SEARCH_TOOL],
-                thinking={"type": "adaptive"},
-                messages=messages,
-            ) as stream:
+            log.info("[%d] appel API tour %d… (thinking=%s)", ev["id"], turn, USE_THINKING)
+            kwargs["messages"] = messages
+            with client.messages.stream(**kwargs) as stream:
                 message = stream.get_final_message()
             usage.record_message(model, message, label="enrichissement")
             out_tok = getattr(getattr(message, "usage", None), "output_tokens", "?")
