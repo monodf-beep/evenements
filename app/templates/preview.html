@@ -59,6 +59,26 @@
   {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
 {% endwith %}
 
+<div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;font-family:sans-serif;
+            background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;margin-bottom:1.2rem;">
+  <span style="font-size:.82rem;color:#6b7280;margin-right:.2rem;">Actions :</span>
+  <form method="post" action="/action/{{ e.id }}/publish_cs" style="margin:0"
+        onsubmit="return confirm('Créer un brouillon WordPress pour cet événement ?')">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <button class="btn" style="background:#16a34a;color:#fff">✅ WordPress</button>
+  </form>
+  <form method="post" action="/action/{{ e.id }}/subdomain" style="margin:0">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <button class="btn" style="background:#7c3aed;color:#fff">📋 Site dédié</button>
+  </form>
+  <form method="post" action="/action/{{ e.id }}/reject" style="margin:0"
+        onsubmit="return confirm('Rejeter cet événement ?')">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <button class="btn" style="background:#e5e7eb;color:#374151">❌ Rejeter</button>
+  </form>
+  {% if e.statut %}<span class="pill" style="margin-left:auto">statut : {{ e.statut }}</span>{% endif %}
+</div>
+
 {% if e.llm_categorie %}<div class="eyebrow">{{ e.llm_categorie }}</div>{% endif %}
 <h1>{{ e.title }}</h1>
 <div class="meta">

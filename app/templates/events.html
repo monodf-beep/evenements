@@ -64,7 +64,10 @@
   {% for e in events %}
   <tr>
     <td>{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
-    <td><a href="/preview/{{ e.id }}" target="_blank"><strong>{{ e.title }}</strong></a></td>
+    <td><a href="/preview/{{ e.id }}" target="_blank"><strong>{{ e.title }}</strong></a>
+      {% if e.enrich_status == 'enriched' %}<br><span class="badge" style="background:#dcfce7;color:#166534">✍️ article prêt</span>
+      {% elif e.enrich_status in ('error','api_error') %}<br><span class="badge" style="background:#fee2e2;color:#991b1b">✍️ échec</span>{% endif %}
+      {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
     <td>
       {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
         <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
