@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+{% if enrich_running %}<meta http-equiv="refresh" content="12">{% endif %}
 <title>Aperçu — {{ e.title }}</title>
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1f2937;
@@ -112,7 +113,8 @@
   <button class="btn{% if enriched %} sec{% endif %}" {% if enrich_running %}disabled{% endif %}>
     {% if enrich_running %}✍️ Enrichissement en cours…{% elif enriched %}🔄 Ré-enrichir{% else %}✍️ Enrichir + rédiger (agent web){% endif %}
   </button>
-  {% if e.enrich_status == 'error' %}<span style="font-family:sans-serif;font-size:.82rem;color:#991b1b;margin-left:.6rem;">Dernier essai : pas de résultat exploitable.</span>{% endif %}
+  {% if e.enrich_status == 'error' %}<span style="font-family:sans-serif;font-size:.82rem;color:#991b1b;margin-left:.6rem;">Dernier essai : réponse illisible de l'agent — réessaie.</span>{% endif %}
+  {% if e.enrich_status == 'api_error' %}<span style="font-family:sans-serif;font-size:.82rem;color:#991b1b;margin-left:.6rem;">Dernier essai : l'appel à l'API a échoué (quota, ou recherche web indisponible). Vérifie le bandeau d'alerte et le log <code>run_enrich.log</code>.</span>{% endif %}
 </form>
 
 <div class="credits">

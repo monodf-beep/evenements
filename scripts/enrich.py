@@ -316,7 +316,12 @@ def main(argv: list[str]) -> int:
         material = gather_material(conn, ev)
         result = enrich_event(ev, material, client, model)
         if result is API_ERROR:
-            log.warning("[%d] erreur API — laissé tel quel, arrêt du lot", ev["id"])
+            # Trace visible côté back-office (sinon l'utilisateur ne voit « rien »).
+            conn.execute(
+                "UPDATE events_raw SET enrich_status='api_error', "
+                "enriched_at=datetime('now'), enrich_model=? WHERE id=?", (model, ev["id"]))
+            conn.commit()
+            log.warning("[%d] erreur API — marqué 'api_error', arrêt du lot", ev["id"])
             break
         if result is None:
             conn.execute(

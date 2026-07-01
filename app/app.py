@@ -530,17 +530,13 @@ def preview(event_id: int):
 @app.route("/enrich/<int:event_id>", methods=["POST"])
 @require_auth
 def enrich_one(event_id: int):
-    """Lance l'agent d'enrichissement sur UN événement (non bloquant)."""
-    logf = ROOT / "logs" / "run_enrich.log"
-    logf.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        fh = open(logf, "ab")
-        subprocess.Popen(
-            [sys.executable, str(ROOT / "scripts" / "enrich.py"), str(event_id)],
-            cwd=str(ROOT), stdout=fh, stderr=fh, start_new_session=True)
-        flash("✍️ Enrichissement lancé — rafraîchis la page dans ~30 s.", "ok")
-    except Exception as exc:
-        flash(f"❌ Échec du lancement : {exc}", "err")
+    """Lance l'agent d'enrichissement sur UN événement (non bloquant, suivi via run_state)."""
+    ok, msg = launch_task("enrich", [str(event_id)])
+    if ok:
+        flash("✍️ Enrichissement lancé — la recherche web + rédaction prend ~40 à 90 s. "
+              "La page se rafraîchit toute seule.", "ok")
+    else:
+        flash(f"⚠️ Enrichissement non lancé : {msg}.", "err")
     return redirect(url_for("preview", event_id=event_id))
 
 
