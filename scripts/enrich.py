@@ -213,24 +213,31 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
     )
     messages = [{"role": "user", "content": prompt}]
     try:
-        # Boucle de l'outil serveur : on relance tant que le tour est en pause.
-        for _ in range(MAX_WEB_SEARCHES + 3):
-            message = client.messages.create(
+        # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
+        # STREAMING : indispensable ici (recherche web + raisonnement = requêtes longues)
+        # — évite les read-timeouts silencieux. On logge chaque tour pour la traçabilité.
+        for turn in range(1, MAX_WEB_SEARCHES + 4):
+            log.info("[%d] appel API tour %d…", ev["id"], turn)
+            with client.messages.stream(
                 model=model,
-                # marge pour le raisonnement adaptatif + l'article complet
-                max_tokens=4096,
+                max_tokens=4096,  # marge pour le raisonnement adaptatif + l'article
                 tools=[WEB_SEARCH_TOOL],
                 thinking={"type": "adaptive"},
                 messages=messages,
-            )
+            ) as stream:
+                message = stream.get_final_message()
             usage.record_message(model, message, label="enrichissement")
+            log.info("[%d] tour %d : stop_reason=%s", ev["id"], turn, message.stop_reason)
             if message.stop_reason == "pause_turn":
                 messages.append({"role": "assistant", "content": message.content})
                 continue
             break
     except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
         usage.note_api_error(exc)
-        log.error("Erreur API Anthropic : %s", exc)
+        log.error("[%d] Erreur API Anthropic : %s", ev["id"], exc)
+        return API_ERROR
+    except Exception as exc:  # tout autre échec (ne jamais rester silencieux)
+        log.error("[%d] Échec enrichissement inattendu : %s", ev["id"], exc)
         return API_ERROR
 
     raw = _final_text(message)
@@ -301,12 +308,15 @@ def main(argv: list[str]) -> int:
         dfrom = argv[argv.index("--from") + 1] if argv.index("--from") + 1 < len(argv) else ""
     if "--to" in argv:
         dto = argv[argv.index("--to") + 1] if argv.index("--to") + 1 < len(argv) else ""
-    client = anthropic.Anthropic(api_key=api_key)
+    # Timeout dur : une requête (même longue avec recherche web) ne doit jamais
+    # pendre indéfiniment — au pire elle échoue proprement et c'est loggé.
+    client = anthropic.Anthropic(api_key=api_key, timeout=180.0)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
     events = select_events(conn, ids, dfrom, dto)
+    log.info("ids à traiter : %s", [e["id"] for e in events])
     log.info("%d événement(s) à enrichir (modèle : %s, seuil score ≥ %d)",
              len(events), model, MIN_SCORE)
 
