@@ -106,7 +106,7 @@ GARDE-FOUS STRICTS :
 
 SIGNAL :
 Titre : {title}
-Date (brute du flux) : {date_start}
+Dates de l'événement : {dates}
 Lieu / ville : {lieu}
 Territoire : {territoire}
 Organisateur : {organisateur}
@@ -177,6 +177,20 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
     return text or "(aucune — titre seul)"
 
 
+def _dates_hint(ev: dict) -> str:
+    """Dates réelles de l'événement pour le prompt (préférées à la date brute du flux,
+    qui n'est que la date de publication RSS). Permet l'angle « en cours jusqu'au X »."""
+    s = (ev.get("date_event_start") or "").strip()
+    e = (ev.get("date_event_end") or "").strip()
+    if s and e and s != e:
+        return f"du {s} au {e} (événement en cours sur cette plage)"
+    if s:
+        return s
+    if e:
+        return f"jusqu'au {e} (en cours)"
+    return ev.get("date_start") or "à confirmer"
+
+
 def _final_text(message) -> str:
     """Concatène les blocs texte de la réponse (en ignorant les blocs d'outil web)."""
     out = []
@@ -190,7 +204,7 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR."""
     prompt = ENRICH_PROMPT.format(
         title=ev.get("title", ""),
-        date_start=ev.get("date_start") or "—",
+        dates=_dates_hint(ev),
         lieu=ev.get("lieu") or ev.get("ville") or "—",
         territoire=ev.get("territoire", ""),
         organisateur=ev.get("organisateur") or ev.get("source_name") or "—",

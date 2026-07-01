@@ -23,6 +23,20 @@
   .flash.ok { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
   .flash.err { background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; }
   nav a { margin-right: 1rem; text-decoration: none; color: #2563eb; }
+  .period { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.2rem 0 1rem;
+            padding:.55rem .7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:.9rem; }
+  .period .plabel { font-weight:600; }
+  .period input[type=date] { padding:.32rem .4rem; border:1px solid #cbd5e1; border-radius:6px; }
+  .pbtn { padding:.3rem .7rem; border:1px solid #cbd5e1; border-radius:999px; background:#fff;
+          color:#334155; cursor:pointer; font-size:.85rem; text-decoration:none; }
+  .pbtn.on { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+  .period .sep { color:#cbd5e1; }
+  .badge { font-size:.7rem; font-weight:700; padding:.1rem .45rem; border-radius:999px; white-space:nowrap; }
+  .b-new { background:#dcfce7; color:#166534; }
+  .b-last { background:#fef3c7; color:#92400e; }
+  .b-re { background:#ede9fe; color:#5b21b6; }
+  .daterange { white-space:nowrap; font-weight:600; }
+  tr.reproposer { background:#faf5ff; }
 </style>
 </head>
 <body>
@@ -35,9 +49,26 @@
 {% with msgs = get_flashed_messages(with_categories=true) %}
 {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
 {% endwith %}
-<h1>Événements à valider (score ≥ 7)</h1>
+{% if has_period %}<h1>Plan de la période <span style="color:#4f46e5">{{ plabel }}</span></h1>
+{% else %}<h1>Événements à valider (score ≥ 7)</h1>{% endif %}
+
+<form class="period" method="GET" action="/validation">
+  <span class="plabel">📅 Période :</span>
+  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
+  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
+  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
+  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
+  <span class="sep">|</span>
+  du <input type="date" name="dfrom" value="{{ dfrom }}">
+  au <input type="date" name="dto" value="{{ dto }}">
+  <button class="pbtn">Plage perso</button>
+  {% if has_period %}<a href="/validation" class="muted" style="color:#6b7280">✕ toute la file</a>{% endif %}
+</form>
+{% if has_period %}<p style="font-size:.85rem;color:#6b7280;margin-top:-.5rem">
+  🆕 nouveaux retenus · 🔁 déjà publiés encore en cours (à re-valoriser) · ⏳ dernier week-end (dernière chance).</p>{% endif %}
+
 {% if not events %}
-  <p>Aucun événement en attente de validation.</p>
+  <p>Aucun événement {% if has_period %}sur cette période{% else %}en attente de validation{% endif %}.</p>
 {% else %}
 <table>
   <tr>
@@ -46,11 +77,22 @@
     <th>Justification</th><th>Source</th><th>Actions</th>
   </tr>
   {% for e in events %}
-  <tr>
-    <td class="score s{{ e.llm_score }}">{{ e.llm_score }}/10</td>
+  <tr class="{{ 'reproposer' if e._republish else '' }}">
+    <td class="score s{{ e.llm_score }}">{{ e.llm_score if e.llm_score is not none else '—' }}/10</td>
     <td>{{ e.llm_categorie }}</td>
-    <td><strong>{{ e.title }}</strong></td>
-    <td>{{ e.date_start }}</td>
+    <td>
+      <strong>{{ e.title }}</strong>
+      {% if e._new and has_period %}<br><span class="badge b-new">🆕 nouveau</span>{% endif %}
+      {% if e._republish %}<br><span class="badge b-re">🔁 déjà publié{% if e.published_cs_date %} le {{ e.published_cs_date[:10] }}{% endif %}</span>{% endif %}
+      {% if e._ending %}<br><span class="badge b-last">⏳ dernier week-end</span>{% endif %}
+    </td>
+    <td>
+      {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
+        <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
+      {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>
+      {% elif e.date_event_end %}<span class="daterange">jusqu'au {{ e.date_event_end }}</span>
+      {% else %}{{ e.date_start or '—' }}{% endif %}
+    </td>
     <td>{{ e.lieu or '' }} {{ e.ville or '' }}</td>
     <td>{{ e.territoire }}</td>
     <td><em>{{ e.llm_justification }}</em></td>

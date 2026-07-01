@@ -95,6 +95,23 @@ def period_bounds(preset: str, dfrom: str, dto: str):
     return "", "", ""
 
 
+def annotate_period(events: list[dict], pfrom: str, pto: str) -> list[dict]:
+    """Marque chaque événement pour la valorisation d'une période :
+    - _ending  : c'est le DERNIER week-end (événement en cours qui se termine dans la
+                 fenêtre) → angle « dernière chance », comme GuidaTorino ;
+    - _republish : déjà valorisé (publié) mais toujours en cours → à re-proposer ;
+    - _new     : retenu, pas encore valorisé.
+    Tout est déterministe (comparaison de dates ISO), pas de LLM."""
+    for e in events:
+        start = e.get("date_event_start") or ""
+        end = e.get("date_event_end") or ""
+        is_range = bool(end) and (not start or start < end)
+        e["_ending"] = bool(pfrom and pto and end and is_range and pfrom <= end <= pto)
+        e["_republish"] = e.get("statut") in ("published_cs", "published_sub")
+        e["_new"] = e.get("statut") == "evaluated"
+    return events
+
+
 def overlap_clause(pfrom: str, pto: str) -> tuple[str, list]:
     """Clause SQL : l'événement CHEVAUCHE [pfrom, pto]. Les non-datés (start/end vides
     ou NULL) sont naturellement exclus. Un « jusqu'au X » (start vide, end rempli) est
@@ -425,14 +442,30 @@ def run_task(task: str):
 @app.route("/validation")
 @require_auth
 def validation():
+    preset = request.args.get("preset", "")
+    dfrom = request.args.get("dfrom", "")
+    dto = request.args.get("dto", "")
+    pfrom, pto, plabel = period_bounds(preset, dfrom, dto)
     conn = get_db()
-    events = conn.execute("""
-        SELECT * FROM events_raw
-        WHERE statut = 'evaluated' AND llm_score >= 7
-        ORDER BY llm_score DESC, scrape_date DESC
-    """).fetchall()
+    if pfrom and pto:
+        # « Plan du week-end » : tout ce qui CHEVAUCHE la fenêtre et mérite d'être mis
+        # en avant — les nouveaux retenus ET les déjà-publiés encore en cours (re-valo).
+        clause, cp = overlap_clause(pfrom, pto)
+        events = conn.execute(
+            f"SELECT * FROM events_raw WHERE {clause} AND duplicate_of IS NULL AND ("
+            "  (statut='evaluated' AND llm_score>=7) "
+            "  OR statut IN ('published_cs','published_sub')) "
+            "ORDER BY date_event_start ASC, llm_score DESC", cp).fetchall()
+    else:
+        events = conn.execute(
+            "SELECT * FROM events_raw WHERE statut='evaluated' AND llm_score>=7 "
+            "ORDER BY llm_score DESC, scrape_date DESC").fetchall()
     conn.close()
-    return render_template("index.html", events=events, alert=friendly_alert())
+    events = annotate_period([dict(e) for e in events], pfrom, pto)
+    return render_template(
+        "index.html", events=events, alert=friendly_alert(),
+        preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
+        presets=PERIOD_PRESETS, has_period=bool(pfrom and pto))
 
 
 @app.route("/preview/<int:event_id>")
@@ -572,7 +605,7 @@ def events():
 
     pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     return render_template(
-        "events.html", events=[dict(r) for r in rows],
+        "events.html", events=annotate_period([dict(r) for r in rows], pfrom, pto),
         statut=statut, territoire=terr, q=q, img=img, page=page, pages=pages, total=total,
         with_img=with_img, without_img=without_img,
         preset=preset, dfrom=dfrom, dto=dto, dated=dated, plabel=plabel,

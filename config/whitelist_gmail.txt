@@ -30,6 +30,9 @@ tnca.fr;Nice
 # ---- Savoie / Haute-Savoie ----
 bonlieu-annecy.com;Savoie
 espacemalraux-chambery.fr;Savoie
+savoie.fr;Savoie
+hautesavoie.fr;Savoie
+pays-albertville.com;Savoie
 
 # ---- Vallée d'Aoste ----
 lovevda.it;Vallee-Aoste
