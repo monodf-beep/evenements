@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """Crée un BROUILLON de newsletter « Agenda Sabaudo » à partir des événements de la semaine.
 
-Reprend la mécanique de l'Observatoire (utils/brevo.py, création de BROUILLON — jamais
-d'envoi). Sélection déterministe (pas de LLM) : les événements retenus d'un territoire
-qui chevauchent la fenêtre (par défaut les 7 prochains jours), triés par importance.
+Reprend le gabarit « magazine » de l'Observatoire (héros « À la une », sommaire
+« Aussi cette semaine », cartes « Le tour des territoires », favicons, pied
+éditorial) via utils.newsletter_variants.variant_magazine, et la mécanique Brevo
+(utils.brevo, création de BROUILLON — jamais d'envoi). Sélection déterministe
+(pas de LLM) : les événements retenus d'un territoire qui chevauchent la fenêtre
+(par défaut les 7 prochains jours), triés par importance.
 
 Config (.env) :
-    BREVO_API_KEY        clé API Brevo (même que l'Observatoire)
-    BREVO_SENDER_NAME    défaut « Agenda Sabaudo »
-    BREVO_SENDER_EMAIL   email expéditeur VALIDÉ dans Brevo (ex. contact@culturasabauda.eu)
-    BREVO_LIST_ID        id de la liste (Agenda Sabaudo — Newsletter, ex. 12)
+    BREVO_API_KEY          clé API Brevo (même que l'Observatoire)
+    BREVO_SENDER_NAME      défaut « Agenda Sabaudo »
+    BREVO_SENDER_EMAIL     email expéditeur VALIDÉ dans Brevo
+    BREVO_LIST_ID          id de la liste (Agenda Sabaudo — Newsletter, ex. 12)
+    BREVO_LOGO_URL         (option) URL du logo hébergé (bibliothèque média Brevo)
     NEWSLETTER_TERRITOIRE  défaut « Savoie »
+    NEWSLETTER_DASHBOARD_URL (option) lien « voir tout l'agenda » (site/tableau de bord)
 
 Usage :
     python scripts/newsletter.py                         # 7 prochains jours, Savoie
@@ -24,8 +29,9 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -34,12 +40,15 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils.brevo import (BrevoError, campaign_edit_url, create_draft_campaign,
                          list_contact_lists, list_senders)
-from utils.newsletter_template import render_newsletter
+from utils.newsletter_variants import variant_magazine
 
 log = get_logger("newsletter")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 _MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
               "août", "septembre", "octobre", "novembre", "décembre"]
+# Nb de cartes détaillées (« Le tour des territoires ») ; au-delà, le reste passe
+# en sommaire numéroté (« Aussi cette semaine »).
+MAX_CARDS = 6
 
 
 def _clean(text: str) -> str:
@@ -80,21 +89,28 @@ def _is_radar(ev: dict) -> bool:
     return ev.get("source_type") == "radar" or "(radar)" in (ev.get("source_name") or "")
 
 
-def build_items(rows: list[dict]) -> list[dict]:
-    items = []
-    for ev in rows:
-        radar = _is_radar(ev)
-        items.append({
-            "title": (ev.get("article_title") or ev.get("title") or "").strip(),
-            "summary": _summary(ev),
-            "image": ev.get("url_image") or "",
-            # radar (presse) : jamais crédité ni lié (charte §8)
-            "url": "" if radar else (ev.get("url_source") or ""),
-            "source": "" if radar else (ev.get("source_name") or ""),
-            "territory": ev.get("territoire") or "",
-            "date": _fmt_range(ev.get("date_event_start") or "", ev.get("date_event_end") or ""),
-        })
-    return items
+def _domain(url: str) -> str:
+    try:
+        return urlparse(url).netloc.lower().removeprefix("www.")
+    except ValueError:
+        return ""
+
+
+def build_item(ev: dict) -> dict:
+    """Transforme un enregistrement événement en item de gabarit."""
+    radar = _is_radar(ev)
+    url = "" if radar else (ev.get("url_source") or "")
+    return {
+        "title": (ev.get("article_title") or ev.get("title") or "").strip(),
+        "summary": _summary(ev),
+        "image": ev.get("url_image") or "",
+        # radar (presse) : jamais crédité ni lié (charte §8)
+        "url": url,
+        "source": "" if radar else (ev.get("source_name") or ""),
+        "domain": None if radar else (_domain(url) or None),
+        "territory": ev.get("territoire") or "",
+        "date_label": _fmt_range(ev.get("date_event_start") or "", ev.get("date_event_end") or ""),
+    }
 
 
 def select_events(conn: sqlite3.Connection, territoire: str, pfrom: str, pto: str,
@@ -107,6 +123,41 @@ def select_events(conn: sqlite3.Connection, territoire: str, pfrom: str, pto: st
         "ORDER BY llm_score DESC, date_event_start ASC LIMIT ?",
         (territoire, pto, pfrom, limit)).fetchall()
     return [dict(r) for r in rows]
+
+
+def build_data(rows: list[dict], *, week_label: str, tagline: str) -> dict:
+    """Répartit les événements en héros / cartes / sommaire pour le gabarit magazine."""
+    items = [build_item(ev) for ev in rows]
+    hero = items[0] if items else None
+    rest = items[1:]
+    cards = rest[:MAX_CARDS]
+    signaux = rest[MAX_CARDS:]
+    preheader = (hero["summary"][:120] if hero else tagline[:120])
+    return {
+        "week_label": week_label,
+        "tagline": tagline,
+        "preheader": preheader,
+        "hero": hero,
+        "items": cards,
+        "signaux": signaux,
+        "logo_url": os.getenv("BREVO_LOGO_URL") or None,
+        "dashboard_url": os.getenv("NEWSLETTER_DASHBOARD_URL", ""),
+    }
+
+
+def _run_check(html: str) -> None:
+    """Vérification automatique du HTML exact (non bloquante)."""
+    try:
+        from scripts.check_newsletter import check as _check_nl
+        problems = [(lvl, lbl, ex) for lvl, lbl, ex in _check_nl(html) if lvl == "ERREUR"]
+        if problems:
+            log.warning("⚠ Vérification newsletter : %d problème(s) bloquant(s) :", len(problems))
+            for _lvl, lbl, ex in problems:
+                log.warning("   ✗ %s%s", lbl, (" — ex. " + ex[0][:80]) if ex else "")
+        else:
+            log.info("✓ Vérification newsletter : aucun problème bloquant.")
+    except Exception as exc:  # le contrôle ne doit jamais casser la génération
+        log.warning("Vérification newsletter non effectuée : %s", exc)
 
 
 def _check(api_key: str) -> int:
@@ -165,12 +216,9 @@ def main(argv=None) -> int:
 
     week_label = f"Du {_fmt_day(pfrom)} au {_fmt_day(pto)}"
     subject = f"Agenda Sabaudo — {territoire}, à l'affiche cette semaine"
-    intro = (f"Voici une sélection d'événements à vivre en {territoire} dans les prochains "
-             "jours. Bonne découverte, et bon week-end !")
-    html = render_newsletter(
-        title="Agenda Sabaudo", subtitle="L'agenda des sorties, en collaboration avec Cultura Sabauda",
-        week_label=week_label, intro=intro, items=build_items(rows),
-        signature="— L'équipe Agenda Sabaudo")
+    tagline = f"Les sorties à vivre en {territoire}"
+    data = build_data(rows, week_label=week_label, tagline=tagline)
+    html = variant_magazine(data)
 
     # Vérité terrain : on écrit le HTML EXACT localement pour l'inspecter.
     try:
@@ -180,6 +228,8 @@ def main(argv=None) -> int:
         log.info("HTML local écrit : %s", out)
     except OSError as exc:
         log.warning("Écriture HTML locale impossible : %s", exc)
+
+    _run_check(html)
 
     try:
         cid = create_draft_campaign(
