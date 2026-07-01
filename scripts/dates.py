@@ -18,6 +18,7 @@ Sortie stockée : date_event_start / date_event_end (ISO AAAA-MM-JJ) + date_sour
 Cron : après dedupe, avant l'évaluation.
 """
 from __future__ import annotations
+import argparse
 import os
 import re
 import sqlite3
@@ -25,6 +26,8 @@ import sys
 import unicodedata
 from datetime import date, datetime
 from pathlib import Path
+
+import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -34,6 +37,10 @@ from dotenv import load_dotenv
 
 log = get_logger("dates")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
+# Récupération de la date sur la PAGE de l'événement (2ᵉ passe, déterministe).
+FETCH_CAP = int(os.getenv("DATES_FETCH_CAP", "200"))   # pages fetchées par run (max)
+FETCH_TIMEOUT = int(os.getenv("DATES_FETCH_TIMEOUT", "6"))
+_UA = {"User-Agent": "Mozilla/5.0 (compatible; CulturaSabaudaBot/1.0)"}
 
 _MONTHS = {
     # français
@@ -85,9 +92,10 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         if starts:
             return (min(starts), max(starts), "parsed")
 
-    # 2) Plage « du 5 au 8 juillet [2026] » / « dal 5 al 8 luglio » (même mois)
-    m = re.search(rf"(?:du|dal|dall'|dall’|da)?\s*(\d{{1,2}})\s*(?:au|al|all'|all’|[-–—à])\s*"
-                  rf"(\d{{1,2}})\s+({_MONTH_RE})\.?\s*(\d{{4}})?", t)
+    # 2) Plage même mois : « du 5 au 8 juillet », « dal 5 al 8 luglio », « 5 e 6 luglio »,
+    #    « sabato 5 e domenica 6 luglio » (un mot — ex. jour de semaine — toléré après le lien)
+    m = re.search(rf"(?:du|dal|dall'|dall’|da)?\s*(\d{{1,2}})\s*(?:au|al|all'|all’|et|e|&|[-–—à])\s*"
+                  rf"(?:[a-zà-ÿ]+\s+)?(\d{{1,2}})\s+({_MONTH_RE})\.?\s*(\d{{4}})?", t)
     if m:
         d1, d2, mon, yr = int(m[1]), int(m[2]), M[m[3]], m[4]
         y = int(yr) if yr else _year(min(d1, d2), mon, ref)
@@ -136,6 +144,42 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
     return ("", "", "none")
 
 
+def dates_from_page(html: str) -> tuple[str, str, str]:
+    """Extrait une date depuis le HTML d'une page d'événement, du plus FIABLE au moins :
+    1) JSON-LD schema.org Event (startDate/endDate) — le standard des sites d'événements ;
+    2) balises <time datetime="…"> ;
+    3) meta (article:published_time n'est PAS la date d'événement → ignoré).
+    Ne devine JAMAIS depuis le texte libre de la page (trop de faux positifs)."""
+    # 1) JSON-LD "startDate": "2026-07-05" (ou avec heure "2026-07-05T21:00")
+    ms = re.search(r'"startDate"\s*:\s*"(\d{4}-\d{2}-\d{2})', html)
+    if ms:
+        me = re.search(r'"endDate"\s*:\s*"(\d{4}-\d{2}-\d{2})', html)
+        s = ms.group(1)
+        e = me.group(1) if me else s
+        if _iso(*map(int, s.split("-"))):
+            return (min(s, e), max(s, e), "page")
+    # 2) <time datetime="2026-07-05">
+    times = re.findall(r'<time[^>]+datetime=["\'](\d{4}-\d{2}-\d{2})', html, re.I)
+    times = [t for t in times if _iso(*map(int, t.split("-")))]
+    if times:
+        return (min(times), max(times), "page")
+    return ("", "", "")
+
+
+def fetch_event_dates(url: str) -> tuple[str, str, str]:
+    """Télécharge la page et en extrait la date (JSON-LD/<time>). ('','','nodate') si rien."""
+    if not url or url.startswith("gmail:") or "news.google.com" in url:
+        return ("", "", "nodate")
+    try:
+        r = requests.get(url, timeout=FETCH_TIMEOUT, headers=_UA)
+        if r.status_code != 200 or not r.text:
+            return ("", "", "nodate")
+    except Exception:
+        return ("", "", "nodate")
+    s, e, src = dates_from_page(r.text)
+    return (s, e, "page") if src == "page" else ("", "", "nodate")
+
+
 def ensure_columns(conn: sqlite3.Connection) -> None:
     for col, decl in (("date_event_start", "TEXT"),
                       ("date_event_end", "TEXT"),
@@ -147,33 +191,68 @@ def ensure_columns(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Datation des événements (texte + page).")
+    parser.add_argument("--no-fetch", action="store_true",
+                        help="Ne pas aller lire les pages (parsing texte seulement).")
+    parser.add_argument("--fetch-cap", type=int, default=FETCH_CAP,
+                        help="Nombre max de pages à télécharger sur ce run.")
+    args = parser.parse_args(argv)
+
     load_dotenv(ROOT / ".env")
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
     ensure_columns(conn)
-    # On (re)date les événements pas encore datés et non fusionnés.
+
+    # --- Passe 1 : texte (titre + description), gratuit et instantané ---
     rows = conn.execute(
         "SELECT id, title, description FROM events_raw "
         "WHERE (date_source IS NULL OR date_source = '') AND statut != 'merged'"
     ).fetchall()
-    log.info("%d événement(s) à dater", len(rows))
+    log.info("Passe texte : %d événement(s) à dater", len(rows))
     parsed = 0
     for r in rows:
-        text = f"{r['title']}\n{r['description'] or ''}"
-        s, e, src = parse_dates(text)
+        s, e, src = parse_dates(f"{r['title']}\n{r['description'] or ''}")
         conn.execute(
             "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
             (s, e, src, r["id"]))
         if src == "parsed":
             parsed += 1
     conn.commit()
+    log.info("Passe texte : %d daté(s) par le texte", parsed)
+
+    # --- Passe 2 : page de l'événement (JSON-LD/<time>), pour les restants ---
+    from_page = 0
+    if not args.no_fetch:
+        todo = conn.execute(
+            "SELECT id, url_source FROM events_raw "
+            "WHERE date_source = 'none' AND statut != 'merged' "
+            "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
+            "LIMIT ?", (args.fetch_cap,)).fetchall()
+        log.info("Passe page : %d page(s) à lire (cap %d)", len(todo), args.fetch_cap)
+        for r in todo:
+            s, e, src = fetch_event_dates(r["url_source"])
+            # 'page' = trouvé ; 'nodate' = lu mais rien (ne sera plus re-fetché).
+            conn.execute(
+                "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
+                (s, e, src, r["id"]))
+            if src == "page":
+                from_page += 1
+            conn.commit()
+        log.info("Passe page : %d daté(s) via la page", from_page)
+
+    total_dated = conn.execute(
+        "SELECT COUNT(*) n FROM events_raw WHERE date_source IN ('parsed','page') "
+        "AND statut != 'merged'").fetchone()["n"]
+    undated = conn.execute(
+        "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "
+        "AND COALESCE(date_event_end,'')='' AND statut != 'merged'").fetchone()["n"]
     conn.close()
-    log.info("=== Datation terminée : %d/%d datés (%d sans date) ===",
-             parsed, len(rows), len(rows) - parsed)
+    log.info("=== Datation : +%d texte +%d page ce run · %d datés au total, %d sans date ===",
+             parsed, from_page, total_dated, undated)
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

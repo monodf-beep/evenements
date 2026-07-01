@@ -125,7 +125,7 @@
         <span class="ongoing">{{ '⏳ dernier week-end' if e._ending else 'en cours' }}</span>
       {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>
       {% elif e.date_event_end %}<span class="daterange">jusqu'au {{ e.date_event_end }}</span>
-      {% elif e.date_source == 'none' %}<span class="muted">à confirmer</span>
+      {% elif e.date_source in ('none','nodate') %}<span class="muted">à confirmer</span>
       {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
     </td>
     <td>{{ e.territoire or '—' }}</td>

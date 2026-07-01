@@ -120,7 +120,7 @@ def overlap_clause(pfrom: str, pto: str) -> tuple[str, list]:
             [pto, pfrom])
 
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder="static")
 # Clé de session : FLASK_SECRET_KEY si fournie, sinon dérivée (stable entre les
 # workers gunicorn) des identifiants — pas de secret aléatoire qui invaliderait
 # les sessions à chaque redémarrage / par worker.
@@ -575,7 +575,7 @@ def events():
         where.append("(url_image IS NULL OR url_image = '')")
     # Filtre période : chevauchement de la fenêtre, OU bac « date à confirmer ».
     if dated == "undated":
-        where.append("(date_source IS NULL OR date_source = 'none')")
+        where.append("COALESCE(date_event_start,'')='' AND COALESCE(date_event_end,'')=''")
     elif pfrom and pto:
         clause, cparams = overlap_clause(pfrom, pto)
         where.append(clause); params.extend(cparams)
@@ -599,8 +599,8 @@ def events():
     statut_counts = {r["statut"]: r["n"] for r in conn.execute(
         "SELECT statut, COUNT(*) n FROM events_raw GROUP BY statut")}
     undated_count = conn.execute(
-        "SELECT COUNT(*) n FROM events_raw WHERE (date_source IS NULL OR date_source='none') "
-        "AND statut != 'merged'").fetchone()["n"]
+        "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "
+        "AND COALESCE(date_event_end,'')='' AND statut != 'merged'").fetchone()["n"]
     conn.close()
 
     pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
