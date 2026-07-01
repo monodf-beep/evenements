@@ -217,18 +217,38 @@ def friendly_alert():
     return {"kind": kind, "reset": reset, "raw": msg, "ts": a.get("ts", "")}
 
 
+@app.context_processor
+def inject_globals():
+    """Compteurs de navigation + alerte, disponibles dans TOUTES les pages (base.html)."""
+    pending = validate = 0
+    try:
+        conn = get_db()
+        pending = conn.execute(
+            "SELECT COUNT(*) n FROM events_raw WHERE statut='pending'").fetchone()["n"]
+        validate = conn.execute(
+            "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7"
+        ).fetchone()["n"]
+        conn.close()
+    except Exception:
+        pass
+    return {"nav": {"pending": pending, "validate": validate},
+            "nav_alert": friendly_alert()}
+
+
 # --------------------------------------------------------------------------- #
 # Lancement manuel des étapes du pipeline (boutons du dashboard)
 # --------------------------------------------------------------------------- #
 TASKS = {
-    "scrape":   {"script": "scripts/scraper_events.py", "label": "Scraping RSS", "icon": "📡", "cost": False},
-    "gmail":    {"script": "scripts/gmail_collect.py",   "label": "Newsletters Gmail", "icon": "📬", "cost": True},
-    "press":    {"script": "scripts/press_kits.py",      "label": "Dossiers de presse", "icon": "📎", "cost": False},
-    "dedupe":   {"script": "scripts/dedupe.py",          "label": "Déduplication", "icon": "🔗", "cost": False},
-    "dates":    {"script": "scripts/dates.py",           "label": "Datation", "icon": "📅", "cost": False},
-    "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation LLM", "icon": "🧠", "cost": True, "period": True},
-    "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True, "period": True},
+    "scrape":   {"script": "scripts/scraper_events.py", "label": "Scraping RSS", "icon": "📡", "cost": False, "phase": "collect", "help": "Récupère les événements des flux RSS."},
+    "gmail":    {"script": "scripts/gmail_collect.py",   "label": "Newsletters Gmail", "icon": "📬", "cost": True, "phase": "collect", "help": "Lit les newsletters du label « Agenda »."},
+    "press":    {"script": "scripts/press_kits.py",      "label": "Dossiers de presse", "icon": "📎", "cost": False, "phase": "collect", "help": "Lit les dossiers de presse du label « Presse »."},
+    "dedupe":   {"script": "scripts/dedupe.py",          "label": "Déduplication", "icon": "🔗", "cost": False, "phase": "prepare", "help": "Fusionne les doublons multi-sources."},
+    "dates":    {"script": "scripts/dates.py",           "label": "Datation", "icon": "📅", "cost": False, "phase": "prepare", "help": "Extrait la vraie date de chaque événement."},
+    "evaluate": {"script": "scripts/evaluator.py",       "label": "Évaluation", "icon": "🧠", "cost": True, "period": True, "phase": "prepare", "help": "Claude note l'intérêt éditorial (0-10)."},
+    "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True, "period": True, "phase": "prepare", "help": "Recherche + rédige l'article des retenus."},
 }
+COLLECT_TASKS = [k for k, v in TASKS.items() if v.get("phase") == "collect"]
+PREPARE_TASKS = [k for k, v in TASKS.items() if v.get("phase") == "prepare"]
 RUN_STATE = ROOT / "data" / "run_state.json"
 
 

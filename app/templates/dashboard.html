@@ -1,150 +1,124 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-{% if any_running %}<meta http-equiv="refresh" content="5">{% endif %}
-<title>Agenda CS — Dashboard</title>
-<style>
-  body { font-family: sans-serif; max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; color: #1f2937; }
-  nav { margin-bottom: 1rem; font-size: 0.95rem; }
-  nav a { margin-right: 1rem; text-decoration: none; color: #2563eb; }
-  h1 { font-size: 1.5rem; margin: 0.3rem 0 1rem; }
-  h2 { font-size: 1rem; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3rem; margin-top: 1.6rem; }
-  .alert { background: #c0392b; color: #fff; padding: 0.8rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-weight: bold; }
-  .alert small { font-weight: normal; opacity: 0.85; }
-  .kpis { display: flex; flex-wrap: wrap; gap: 0.8rem; }
-  .kpi { flex: 1; min-width: 130px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.9rem 1rem; text-decoration: none; color: inherit; display: block; }
-  .kpi:hover { border-color: #2563eb; box-shadow: 0 1px 6px rgba(37,99,235,.12); }
-  .kpi .v { font-size: 1.7rem; font-weight: bold; }
-  .kpi .l { font-size: 0.8rem; color: #6b7280; }
-  .kpi.hot .v { color: #c0392b; }
-  .how { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: .6rem 1rem; margin-bottom: 1.2rem; }
-  .how summary { cursor: pointer; font-weight: bold; color: #374151; }
-  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .9rem 0 .4rem; }
-  .flow .step { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: .5rem .7rem; font-size: .85rem; }
-  .flow .step small { display: block; color: #6b7280; font-size: .72rem; }
-  .flow .arr { color: #9ca3af; font-size: 1.2rem; }
-  .flow .branch { display: flex; flex-direction: column; gap: .35rem; }
-  .flow .b { font-size: .82rem; padding: .35rem .6rem; border-radius: 6px; border-left: 4px solid; background: #fff; }
-  .flow .b7 { border-color: #16a34a; } .flow .b4 { border-color: #7c3aed; } .flow .b0 { border-color: #9ca3af; }
-  .howp { font-size: .82rem; color: #6b7280; margin: .3rem 0 0; }
-  .imgline { font-size: .85rem; color: #6b7280; margin: -.4rem 0 1rem; }
-  .imgline a { color: #2563eb; text-decoration: none; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th, td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; text-align: left; }
-  .bar-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.25rem 0; font-size: 0.9rem; }
-  .bar-row .lbl { width: 130px; flex-shrink: 0; }
-  .bar-row .track { flex: 1; background: #f1f5f9; border-radius: 4px; height: 16px; display: block; overflow: hidden; }
-  .bar-row .fill { background: #2563eb; height: 16px; border-radius: 4px; display: block; min-width: 2px; }
-  .bar-row .n { width: 36px; text-align: right; color: #374151; }
-  .cols { display: flex; flex-wrap: wrap; gap: 2rem; }
-  .cols > div { flex: 1; min-width: 320px; }
-  .pill { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
-  .muted { color: #9ca3af; }
-  .cost { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.6rem 0.9rem; }
-  .runpanel { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .4rem 0; }
-  .runbtn { padding: .5rem .9rem; border: none; border-radius: 6px; background: #111827; color: #fff; font-size: .9rem; cursor: pointer; }
-  .runbtn:disabled { opacity: .45; cursor: default; }
-  .runhint { font-size: .85rem; color: #6b7280; }
-  .runlog { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: .4rem .7rem; margin: .3rem 0; font-size: .8rem; color: #374151; }
-  .runwarn { font-size: .78rem; color: #9ca3af; margin: .2rem 0 0; }
-</style>
-</head>
-<body>
-<nav><a href="/">📊 Dashboard</a><a href="/events">📥 Événements ({{ total }})</a><a href="/validation">✅ Validation ({{ to_validate }})</a><a href="/site-dedie">🌐 Site dédié</a><a href="/logout" style="float:right">Déconnexion</a></nav>
+{% extends "base.html" %}
+{% set active = 'dash' %}
+{% block title %}Tableau de bord — Agenda CS{% endblock %}
+{% block head %}{% if any_running %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+{% block h1 %}Tableau de bord{% endblock %}
+{% block subtitle %}<div class="sub">Agrège, évalue et prépare les événements culturels — tout part en brouillon, rien n'est publié sans toi.</div>{% endblock %}
 
-{% if alert %}
-<div class="alert">⛔ {{ alert.kind }} — l'évaluation et l'extraction sont en pause.
-  {% if alert.reset %}<br>Accès rétabli le <strong>{{ alert.reset }}</strong>.{% endif %}
-  <br><small>{{ alert.raw }}</small></div>
-{% endif %}
+{% block content %}
 
-<h1>Agenda Cultura Sabauda — tableau de bord</h1>
-
-<details class="how" open>
-<summary>ℹ️ Comment ça marche — le flux d'agrégation des événements</summary>
-<div class="flow">
-  <div class="step">📡 <b>Sources</b><small>RSS + newsletters Gmail</small></div>
-  <div class="arr">→</div>
-  <div class="step">📥 <b>Collecte</b><small>statut « En attente »</small></div>
-  <div class="arr">→</div>
-  <div class="step">🧠 <b>Évaluation Claude</b><small>score éditorial 0-10</small></div>
-  <div class="arr">→</div>
-  <div class="branch">
-    <div class="b b7">score ≥ 7 → <b>À valider</b> → tu choisis → ✅ <b>Publier CS</b> (brouillon WordPress)</div>
-    <div class="b b4">score 4-6 → 🌐 <b>Site dédié</b></div>
-    <div class="b b0">score &lt; 4 → ❌ <b>Rejeté</b></div>
+<!-- Prochaine action -->
+<div class="card" style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between;border-color:#dfe1fb;background:linear-gradient(180deg,#fff,#fbfbff)">
+  <div>
+    <div class="section-title" style="margin:0 0 .3rem">Ta prochaine action</div>
+    {% if nav.validate %}
+      <div style="font-size:1.1rem"><strong>{{ nav.validate }}</strong> événement(s) prêt(s) à valider.</div>
+      <div class="muted" style="font-size:.9rem">Ouvre le plan du week-end pour choisir quoi mettre en avant.</div>
+    {% elif nav.pending %}
+      <div style="font-size:1.1rem"><strong>{{ nav.pending }}</strong> événement(s) en attente d'évaluation.</div>
+      <div class="muted" style="font-size:.9rem">Choisis une période plus bas et lance l'évaluation.</div>
+    {% else %}
+      <div style="font-size:1.1rem">Rien en attente. 👌</div>
+      <div class="muted" style="font-size:.9rem">Lance une collecte pour récupérer de nouveaux événements.</div>
+    {% endif %}
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-primary" href="/validation?preset=next_weekend">🗓️ Plan du week-end prochain</a>
+    <a class="btn btn-ghost" href="/events">📥 Tous les événements</a>
   </div>
 </div>
-<p class="howp">Garde-fou : tout part en <b>brouillon</b> WordPress — rien n'est publié sans ta validation.
-Le panneau « Lancement manuel » ci-dessous déclenche chaque étape à la demande ;
-clique un chiffre ci-dessous pour ouvrir la liste correspondante.</p>
-</details>
 
+<!-- KPIs -->
 <div class="kpis">
-  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Événements collectés</div></a>
-  <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente d'évaluation</div></a>
-  <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (score ≥ 7)</div></a>
-  <a class="kpi" href="/events?statut=published_cs"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Publiés CS (draft)</div></a>
+  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés</div></a>
+  <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
+  <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (≥ 7)</div></a>
+  <a class="kpi" href="/events?statut=published_cs"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Publiés (brouillon)</div></a>
   <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Site dédié</div></a>
-  <a class="kpi" href="/events?statut=rejected"><div class="v">{{ status_counts.get('rejected', 0) }}</div><div class="l">Rejetés</div></a>
 </div>
-<p class="imgline">🖼 <a href="/events?img=1">{{ with_img }} événement(s) avec photo</a> ·
-  <a href="/events?img=0">{{ without_img }} sans photo</a></p>
+<p class="muted" style="font-size:.85rem;margin:-.5rem 0 0">🖼 <a href="/events?img=1">{{ with_img }} avec photo</a> · <a href="/events?img=0">{{ without_img }} sans photo</a></p>
 
-<h2>⚙️ Lancement manuel</h2>
+<!-- Pipeline -->
+<div class="section-title">Lancer le pipeline</div>
+{% if any_running %}<div class="flash ok">⏳ Une tâche tourne — la page se rafraîchit toute seule…</div>{% endif %}
 
-<style>
-  .period { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.2rem 0 .5rem;
-            padding:.55rem .7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:.9rem; }
-  .period .plabel { font-weight:600; }
-  .period input[type=date] { padding:.32rem .4rem; border:1px solid #cbd5e1; border-radius:6px; }
-  .pbtn { padding:.3rem .7rem; border:1px solid #cbd5e1; border-radius:999px; background:#fff;
-          color:#334155; cursor:pointer; font-size:.85rem; }
-  .pbtn.on { background:#4f46e5; color:#fff; border-color:#4f46e5; }
-  .period .sep { color:#cbd5e1; }
-</style>
+<div class="phases">
+  <!-- Phase 1 : Collecter -->
+  <section class="card phase">
+    <div class="phase-h"><span class="phase-num">1</span><h3>Collecter</h3></div>
+    <p class="hint">Récupérer les nouveaux événements des sources.</p>
+    {% for key, t in tasks.items() if t.phase == 'collect' %}
+    <div class="task">
+      <form method="POST" action="/run/{{ key }}">
+        <button class="btn btn-dark" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{% if t.running %} ⏳{% endif %}</button>
+      </form>
+      <small>{{ t.help }}</small>
+    </div>
+    {% endfor %}
+  </section>
 
-<form class="period" method="GET" action="/">
-  <span class="plabel">📅 Période de travail :</span>
-  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
-  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
-  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
-  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
-  <span class="sep">|</span>
-  du <input type="date" name="dfrom" value="{{ dfrom }}">
-  au <input type="date" name="dto" value="{{ dto }}">
-  <button class="pbtn">Plage perso</button>
-  {% if plabel %}<span class="muted">→ <strong>{{ plabel }}</strong></span>{% endif %}
-</form>
-<p class="runwarn" style="margin-top:.2rem">📅 L'<strong>Évaluation</strong> et l'<strong>Enrichissement</strong> ne traitent que les événements <em>de cette période</em>. Le statut pilote le coût : un événement déjà traité n'est jamais repayé, même s'il réapparaît un autre week-end.</p>
+  <!-- Phase 2 : Préparer -->
+  <section class="card phase">
+    <div class="phase-h"><span class="phase-num">2</span><h3>Préparer</h3></div>
+    <p class="hint">Dédupliquer, dater, puis évaluer &amp; rédiger — sur la période choisie.</p>
 
-<div class="runpanel">
-  {% for key, t in tasks.items() %}
-  <form method="POST" action="/run/{{ key }}" style="display:inline">
-    {% if t.period %}<input type="hidden" name="preset" value="{{ preset }}"><input type="hidden" name="dfrom" value="{{ dfrom }}"><input type="hidden" name="dto" value="{{ dto }}">{% endif %}
-    <button class="runbtn" {% if any_running %}disabled{% endif %}>
-      {{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{%
-        if key == 'evaluate' and scope.eval is not none %} <small>({{ scope.eval }} sur la période)</small>{%
-        elif key == 'enrich' and scope.enrich is not none %} <small>({{ scope.enrich }} sur la période)</small>{% endif %}{%
-        if t.running %} — ⏳ en cours…{% endif %}
-    </button>
-  </form>
-  {% endfor %}
-  {% if any_running %}<span class="runhint">⏳ tâche en cours — la page se rafraîchit toute seule…</span>{% endif %}
+    <form class="period" method="GET" action="/" style="margin-bottom:.8rem">
+      <span class="plabel">📅</span>
+      <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce WE</button>
+      <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">WE prochain</button>
+      <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 j</button>
+      <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 j</button>
+      <input type="date" name="dfrom" value="{{ dfrom }}"><input type="date" name="dto" value="{{ dto }}">
+      <button class="pbtn">Plage</button>
+      {% if plabel %}<span class="muted">{{ plabel }}</span>{% endif %}
+    </form>
+
+    {% for key, t in tasks.items() if t.phase == 'prepare' %}
+    <div class="task">
+      <form method="POST" action="/run/{{ key }}">
+        {% if t.period %}<input type="hidden" name="preset" value="{{ preset }}"><input type="hidden" name="dfrom" value="{{ dfrom }}"><input type="hidden" name="dto" value="{{ dto }}">{% endif %}
+        <button class="btn btn-dark" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{%
+          if key == 'evaluate' and scope.eval is not none %} <span class="badge grey">{{ scope.eval }}</span>{%
+          elif key == 'enrich' and scope.enrich is not none %} <span class="badge grey">{{ scope.enrich }}</span>{% endif %}{% if t.running %} ⏳{% endif %}</button>
+      </form>
+      <small>{{ t.help }}</small>
+    </div>
+    {% endfor %}
+    <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">💶 = crédits API. Un événement déjà traité n'est jamais repayé.</p>
+  </section>
+
+  <!-- Phase 3 : Valider & publier -->
+  <section class="card phase">
+    <div class="phase-h"><span class="phase-num">3</span><h3>Valider &amp; publier</h3></div>
+    <p class="hint">Choisir quoi mettre en avant, puis créer le brouillon WordPress.</p>
+    <div class="task">
+      <a class="btn btn-primary" href="/validation?preset=next_weekend">🗓️ Plan du week-end</a>
+      <small>Les retenus + les expos encore en cours à re-valoriser.</small>
+    </div>
+    <div class="task">
+      <a class="btn btn-ghost" href="/site-dedie">🌐 Site dédié</a>
+      <small>Les événements classés pour le site de volume.</small>
+    </div>
+    <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">🔒 Tout part en <strong>brouillon</strong> WordPress — rien n'est publié sans ta validation.</p>
+  </section>
 </div>
-{% for key, t in tasks.items() %}{% if t.tail %}
-<div class="runlog"><strong>{{ t.icon }} {{ t.label }}</strong> <small>· dernier lancement {{ t.started }}</small><br><code>{{ t.tail }}</code></div>
-{% endif %}{% endfor %}
-<p class="runwarn">💶 = consomme des crédits API (le scraping RSS est gratuit). Pendant qu'une tâche tourne, les boutons sont désactivés.</p>
 
-<h2>💶 Coûts API</h2>
-<div class="cost">
-  Semaine {{ cost.week_label }} : <strong>${{ '%.4f'|format(cost.week) }}</strong>
-  &nbsp;·&nbsp; cumul : <strong>${{ '%.4f'|format(cost.total) }}</strong>
-  ({{ cost.calls_total }} appels)
+{% set logs = [] %}
+{% for key, t in tasks.items() if t.tail %}
+  {% if loop.first %}<div class="section-title">Derniers lancements</div>{% endif %}
+  <div class="card" style="padding:.6rem .9rem;margin-bottom:.5rem"><strong>{{ t.icon }} {{ t.label }}</strong>
+    <span class="muted" style="font-size:.8rem">· {{ t.started }}</span><br>
+    <code style="font-size:.8rem;color:#475569">{{ t.tail }}</code></div>
+{% endfor %}
+
+<!-- Coûts -->
+<div class="section-title">Coûts API</div>
+<div class="card">
+  <div class="cost-line">Semaine {{ cost.week_label }} : <strong>${{ '%.4f'|format(cost.week) }}</strong>
+    &nbsp;·&nbsp; cumul : <strong>${{ '%.4f'|format(cost.total) }}</strong>
+    <span class="muted">({{ cost.calls_total }} appels)</span></div>
   {% if cost.by_model %}
-  <table style="margin-top:0.5rem">
+  <table style="margin-top:.6rem">
     <tr><th>Modèle</th><th>Appels</th><th>Tokens (in/out)</th><th>Coût</th></tr>
     {% for m, d in cost.by_model.items() %}
     <tr><td>{{ m }}</td><td>{{ d.calls }}</td><td>{{ d['in'] }} / {{ d.out }}</td><td>${{ '%.4f'|format(d.cost) }}</td></tr>
@@ -153,70 +127,63 @@ clique un chiffre ci-dessous pour ouvrir la liste correspondante.</p>
   {% endif %}
 </div>
 
-<div class="cols">
-  <div>
-    <h2>Par statut</h2>
-    {% set smax = (status_counts.values()|max) if status_counts else 1 %}
-    {% for key, lbl in status_labels.items() %}
-    {% set n = status_counts.get(key, 0) %}
-    <div class="bar-row">
-      <span class="lbl">{{ lbl }}</span>
-      <span class="track"><span class="fill" style="width: {{ (n / smax * 100) if smax else 0 }}%"></span></span>
-      <span class="n">{{ n }}</span>
-    </div>
-    {% endfor %}
-  </div>
-  <div>
-    <h2>Par territoire</h2>
-    {% set tmax = (terr_counts.values()|max) if terr_counts else 1 %}
-    {% if not terr_counts %}<p class="muted">Aucun événement.</p>{% endif %}
-    {% for terr, n in terr_counts.items() %}
-    <div class="bar-row">
-      <span class="lbl">{{ terr }}</span>
-      <span class="track"><span class="fill" style="width: {{ (n / tmax * 100) if tmax else 0 }}%; background:#16a34a"></span></span>
-      <span class="n">{{ n }}</span>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-
-{% if cat_counts %}
-<h2>Par catégorie (événements évalués)</h2>
-{% set cmax = cat_counts[0].n %}
-{% for row in cat_counts %}
-<div class="bar-row">
-  <span class="lbl" style="width:220px">{{ row.c }}</span>
-  <span class="track"><span class="fill" style="width: {{ (row.n / cmax * 100) if cmax else 0 }}%; background:#7c3aed"></span></span>
-  <span class="n">{{ row.n }}</span>
-</div>
-{% endfor %}
-{% endif %}
-
-<div class="cols">
-  <div>
-    <h2>Sources RSS ({{ src_total }})</h2>
-    <table>
-      <tr><th>Territoire</th><th>Flux actifs</th></tr>
-      {% for terr in territories %}
-      <tr><td>{{ terr }}</td><td>{{ src_counts.get(terr, 0) }}</td></tr>
+<!-- Statistiques (repliable) -->
+<details class="box">
+  <summary>📊 Statistiques</summary>
+  <div class="cols" style="margin-top:.8rem">
+    <div>
+      <h3>Par statut</h3>
+      {% set smax = (status_counts.values()|max) if status_counts else 1 %}
+      {% for key, lbl in status_labels.items() %}{% set n = status_counts.get(key, 0) %}
+      <div class="bar-row"><span class="lbl">{{ lbl }}</span>
+        <span class="track"><span class="fill" style="width: {{ (n / smax * 100) if smax else 0 }}%"></span></span>
+        <span class="n">{{ n }}</span></div>
       {% endfor %}
-    </table>
-  </div>
-  <div>
-    <h2>📬 Newsletters suivies ({{ nl_active }} actives)</h2>
-    <table>
-      <tr><th>Source</th><th>Territoire</th><th>Statut</th></tr>
-      {% for n in newsletters %}
-      {% set color = {'actif':'#16a34a','attente':'#d97706','candidat':'#2563eb','inactif':'#9ca3af'}.get(n.statut, '#9ca3af') %}
-      <tr>
-        <td>{{ n.nom }}</td>
-        <td>{{ n.territoire }}</td>
-        <td><span class="pill" style="background:{{ color }}"></span>{{ n.statut }}</td>
-      </tr>
+    </div>
+    <div>
+      <h3>Par territoire</h3>
+      {% set tmax = (terr_counts.values()|max) if terr_counts else 1 %}
+      {% if not terr_counts %}<p class="muted">Aucun événement.</p>{% endif %}
+      {% for terr, n in terr_counts.items() %}
+      <div class="bar-row"><span class="lbl">{{ terr }}</span>
+        <span class="track"><span class="fill" style="width: {{ (n / tmax * 100) if tmax else 0 }}%;background:var(--ok)"></span></span>
+        <span class="n">{{ n }}</span></div>
       {% endfor %}
-    </table>
+    </div>
   </div>
-</div>
+  {% if cat_counts %}
+  <h3 style="margin-top:1rem">Par catégorie (évalués)</h3>
+  {% set cmax = cat_counts[0].n %}
+  {% for row in cat_counts %}
+  <div class="bar-row"><span class="lbl" style="width:230px">{{ row.c }}</span>
+    <span class="track"><span class="fill" style="width: {{ (row.n / cmax * 100) if cmax else 0 }}%;background:var(--purple)"></span></span>
+    <span class="n">{{ row.n }}</span></div>
+  {% endfor %}
+  {% endif %}
+</details>
 
-</body>
-</html>
+<!-- Configuration (repliable) -->
+<details class="box">
+  <summary>⚙️ Sources &amp; newsletters</summary>
+  <div class="cols" style="margin-top:.8rem">
+    <div>
+      <h3>Sources RSS ({{ src_total }})</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Territoire</th><th>Flux</th></tr>
+        {% for terr in territories %}<tr><td>{{ terr }}</td><td>{{ src_counts.get(terr, 0) }}</td></tr>{% endfor %}
+      </table></div>
+    </div>
+    <div>
+      <h3>📬 Newsletters ({{ nl_active }} actives)</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Source</th><th>Territoire</th><th>Statut</th></tr>
+        {% for n in newsletters %}
+        {% set color = {'actif':'#16a34a','attente':'#d97706','candidat':'#2563eb','inactif':'#9ca3af'}.get(n.statut, '#9ca3af') %}
+        <tr><td>{{ n.nom }}</td><td>{{ n.territoire }}</td><td><span class="pill" style="background:{{ color }}"></span>{{ n.statut }}</td></tr>
+        {% endfor %}
+      </table></div>
+    </div>
+  </div>
+</details>
+
+{% endblock %}

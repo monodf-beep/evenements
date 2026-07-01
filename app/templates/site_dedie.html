@@ -1,52 +1,29 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Site dédié — aperçu bêta</title>
-<style>
-  body { font-family: sans-serif; color: #1f2937; max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
-  nav { font-size: 0.9rem; margin-bottom: 1rem; }
-  nav a { color: #2563eb; text-decoration: none; margin-right: 1rem; }
-  h1 { font-size: 1.5rem; margin: .3rem 0 .2rem; }
-  .lead { color: #6b7280; margin-bottom: 1.4rem; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
-  .card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff;
-          display: flex; flex-direction: column; }
-  .card img { width: 100%; height: 150px; object-fit: cover; }
-  .card .c { padding: .8rem .9rem 1rem; display: flex; flex-direction: column; flex: 1; }
-  .cat { text-transform: uppercase; letter-spacing: .06em; font-size: .68rem; color: #7c3aed; font-weight: bold; }
-  .card h3 { font-size: 1.02rem; margin: .3rem 0 .4rem; line-height: 1.25; }
-  .date { font-size: .8rem; color: #6b7280; margin-bottom: .4rem; }
-  .ex { font-size: .85rem; color: #374151; flex: 1; }
-  .card a.btn { margin-top: .7rem; font-size: .82rem; color: #2563eb; text-decoration: none; }
-  .empty { color: #9ca3af; }
-  .pill { float: right; font-size: .7rem; background: #f1f5f9; border-radius: 999px; padding: .1rem .5rem; color: #475569; }
-</style>
-</head>
-<body>
-<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation</a><a href="/site-dedie">🌐 Site dédié</a></nav>
-<h1>Site dédié — aperçu bêta</h1>
-<p class="lead">Aperçu des événements <strong>score 4-6</strong> (statut <code>published_sub</code>) tels
-qu'ils alimenteraient le site dédié. <strong>Rien n'est publié</strong> : c'est une page de test interne.</p>
+{% extends "base.html" %}
+{% set active = 'site' %}
+{% block title %}Site dédié — Agenda CS{% endblock %}
+{% block h1 %}Site dédié <span class="muted" style="font-size:1rem">({{ events|length }})</span>{% endblock %}
+{% block subtitle %}<div class="sub">Événements score 4-6 qui alimenteraient le site de volume. Aperçu interne — <strong>rien n'est publié</strong>.</div>{% endblock %}
 
+{% block content %}
 {% if not events %}
-  <p class="empty">Aucun événement en attente pour le site dédié.</p>
+  <div class="card empty">Aucun événement classé pour le site dédié.</div>
 {% else %}
-<div class="grid">
+<div class="phases" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
   {% for e in events %}
-  <div class="card">
-    {% if e._img %}<img src="{{ e._img }}" alt="">{% endif %}
-    <div class="c">
-      <div class="cat">{{ e.llm_categorie or '' }} <span class="pill">{{ e.territoire }} · {{ e.llm_score }}/10</span></div>
-      <h3>{{ e.title }}</h3>
-      <div class="date">{% if e.date_start %}🗓 {{ e.date_start }}{% endif %}</div>
-      <div class="ex">{{ e._excerpt }}{% if e._excerpt|length >= 180 %}…{% endif %}</div>
-      <a class="btn" href="/preview/{{ e.id }}">Aperçu article ↗</a>
+  <div class="card" style="padding:0;overflow:hidden;margin:0">
+    {% if e._img %}<img src="{{ e._img }}" alt="" style="width:100%;height:150px;object-fit:cover;display:block">{% endif %}
+    <div style="padding:.9rem 1rem 1.1rem">
+      <div style="text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;color:var(--purple);font-weight:700">
+        {{ e.llm_categorie or '' }}
+        <span class="badge grey" style="float:right">{{ e.territoire }} · {{ e.llm_score }}/10</span></div>
+      <h3 style="margin:.35rem 0 .3rem">{{ e.title }}</h3>
+      {% if e.date_event_start %}<div class="muted" style="font-size:.8rem;margin-bottom:.4rem">🗓 {{ e.date_event_start }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}</div>
+      {% elif e.date_start %}<div class="muted" style="font-size:.8rem;margin-bottom:.4rem">🗓 {{ e.date_start }}</div>{% endif %}
+      <div style="font-size:.86rem;color:#374151">{{ e._excerpt }}{% if e._excerpt|length >= 180 %}…{% endif %}</div>
+      <a class="btn btn-ghost btn-sm" style="margin-top:.7rem" href="/preview/{{ e.id }}" target="_blank">Aperçu article ↗</a>
     </div>
   </div>
   {% endfor %}
 </div>
 {% endif %}
-</body>
-</html>
+{% endblock %}

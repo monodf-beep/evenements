@@ -1,0 +1,160 @@
+/* ============================================================================
+   Agenda Cultura Sabauda — système de design commun (back-office)
+   Un seul fichier, partagé par toutes les pages (base.html). Palette éditoriale
+   sobre : indigo profond + accents chauds, beaucoup de blanc, hiérarchie claire.
+   ========================================================================== */
+:root {
+  --bg:#f4f5f8; --surface:#ffffff; --ink:#1e2330; --muted:#6b7280; --line:#e6e8ee;
+  --brand:#4f46e5; --brand-ink:#4338ca; --brand-soft:#eef0ff;
+  --ok:#16a34a; --ok-soft:#dcfce7; --warn:#d97706; --warn-soft:#fef3c7;
+  --danger:#dc2626; --danger-soft:#fee2e2; --purple:#7c3aed; --purple-soft:#ede9fe;
+  --radius:12px; --radius-sm:8px; --shadow:0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
+  --sidebar:236px;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ink); background:var(--bg); font-size:15px; line-height:1.5; }
+a { color:var(--brand-ink); text-decoration:none; }
+a:hover { text-decoration:underline; }
+h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; font-weight:700; line-height:1.2; }
+.muted { color:var(--muted); }
+
+/* ---------- Shell : sidebar + main ---------- */
+.app-shell { display:grid; grid-template-columns:var(--sidebar) 1fr; min-height:100vh; }
+.sidebar { background:#171a24; color:#c7cbd6; display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh; padding:1.1rem .8rem; }
+.brand { display:flex; align-items:center; gap:.6rem; padding:.2rem .4rem 1rem; }
+.brand-mark { width:34px; height:34px; border-radius:9px; background:var(--brand);
+  color:#fff; font-weight:800; display:grid; place-items:center; font-family:Georgia,serif; }
+.brand b { color:#fff; display:block; font-size:.98rem; }
+.brand small { color:#8b90a0; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
+.nav { display:flex; flex-direction:column; gap:.15rem; margin-top:.4rem; }
+.nav a { display:flex; align-items:center; gap:.55rem; padding:.55rem .7rem; border-radius:8px;
+  color:#c7cbd6; font-size:.92rem; font-weight:500; }
+.nav a:hover { background:#232734; color:#fff; text-decoration:none; }
+.nav a.on { background:var(--brand); color:#fff; }
+.nav-badge { margin-left:auto; background:#fff; color:var(--brand-ink); font-size:.72rem;
+  font-weight:700; padding:.03rem .42rem; border-radius:999px; }
+.nav a.on .nav-badge { background:rgba(255,255,255,.9); }
+.nav-foot { margin-top:auto; padding-top:1rem; border-top:1px solid #262a37; }
+.nav-foot a { color:#8b90a0; font-size:.85rem; padding:.4rem .7rem; display:block; }
+
+.main { padding:1.6rem 2rem 4rem; max-width:1180px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.2rem; }
+.topbar h1 { font-size:1.5rem; margin:0; }
+.topbar .sub { color:var(--muted); font-size:.9rem; }
+
+/* ---------- Cartes ---------- */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:1.1rem 1.2rem; margin-bottom:1.1rem; }
+.card > h2:first-child, .card > h3:first-child { margin-top:0; }
+.card h2 { font-size:1.05rem; margin:0 0 .7rem; }
+.card h3 { font-size:.98rem; margin:0 0 .5rem; }
+.section-title { font-size:.78rem; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--muted); font-family:inherit; font-weight:700; margin:1.6rem 0 .6rem; }
+
+/* ---------- KPIs ---------- */
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.8rem; margin-bottom:1.1rem; }
+.kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:.9rem 1rem; box-shadow:var(--shadow); color:inherit; display:block; }
+.kpi:hover { border-color:var(--brand); text-decoration:none; }
+.kpi .v { font-size:1.8rem; font-weight:800; font-family:Georgia,serif; line-height:1; }
+.kpi .l { font-size:.8rem; color:var(--muted); margin-top:.3rem; }
+.kpi.hot { background:linear-gradient(180deg,#fff, #fff7f6); border-color:#fecaca; }
+.kpi.hot .v { color:var(--danger); }
+
+/* ---------- Boutons ---------- */
+.btn { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .9rem; border-radius:8px;
+  border:1px solid transparent; font-size:.9rem; font-weight:600; cursor:pointer; text-decoration:none;
+  background:#eef0f4; color:var(--ink); }
+.btn:hover { text-decoration:none; filter:brightness(.97); }
+.btn:disabled { opacity:.45; cursor:default; }
+.btn-primary { background:var(--brand); color:#fff; }
+.btn-dark { background:#171a24; color:#fff; }
+.btn-ghost { background:#fff; border-color:var(--line); color:var(--ink); }
+.btn-ok { background:var(--ok); color:#fff; }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-purple { background:var(--purple); color:#fff; }
+.btn-sm { padding:.32rem .6rem; font-size:.8rem; }
+.btn-row { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+
+/* ---------- Phases du pipeline ---------- */
+.phases { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; }
+.phase-h { display:flex; align-items:baseline; gap:.5rem; margin-bottom:.2rem; }
+.phase-num { width:22px; height:22px; border-radius:50%; background:var(--brand-soft); color:var(--brand-ink);
+  font-size:.78rem; font-weight:800; display:grid; place-items:center; font-family:inherit; }
+.phase-h h3 { margin:0; }
+.phase p.hint { color:var(--muted); font-size:.82rem; margin:.1rem 0 .8rem; }
+.task { display:flex; flex-direction:column; }
+.task .btn { justify-content:flex-start; width:100%; }
+.task small { color:var(--muted); font-size:.76rem; margin:.15rem 0 .55rem .1rem; }
+
+/* ---------- Badges & pills ---------- */
+.badge { display:inline-block; font-size:.72rem; font-weight:700; padding:.12rem .5rem; border-radius:999px; white-space:nowrap; }
+.badge.new { background:var(--ok-soft); color:#166534; }
+.badge.last { background:var(--warn-soft); color:#92400e; }
+.badge.re { background:var(--purple-soft); color:#5b21b6; }
+.badge.grey { background:#eef0f4; color:#475569; }
+.st { display:inline-block; font-size:.72rem; padding:.12rem .55rem; border-radius:999px; color:#fff; white-space:nowrap; }
+.st-pending{background:#6b7280;} .st-evaluated{background:var(--brand);} .st-published_cs{background:var(--ok);}
+.st-published_sub{background:var(--purple);} .st-rejected{background:#9ca3af;} .st-merged{background:#94a3b8;}
+.pill { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+
+/* ---------- Période (barre de filtre) ---------- */
+.period { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;
+  padding:.6rem .75rem; background:var(--brand-soft); border:1px solid #dfe1fb; border-radius:10px; font-size:.9rem; }
+.period .plabel { font-weight:700; color:var(--brand-ink); }
+.period input[type=date] { padding:.35rem .45rem; border:1px solid #cbd5e1; border-radius:6px; background:#fff; }
+.period .sep { color:#c7cbd6; }
+.pbtn { padding:.32rem .75rem; border:1px solid #cdd0ee; border-radius:999px; background:#fff;
+  color:var(--brand-ink); cursor:pointer; font-size:.85rem; text-decoration:none; }
+.pbtn:hover { text-decoration:none; border-color:var(--brand); }
+.pbtn.on { background:var(--brand); color:#fff; border-color:var(--brand); }
+
+/* ---------- Tableaux ---------- */
+.table-wrap { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); overflow:hidden; }
+table { width:100%; border-collapse:collapse; font-size:.88rem; }
+th,td { padding:.6rem .7rem; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+th { background:#fafbfc; font-size:.76rem; letter-spacing:.03em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+tbody tr:hover { background:#fafbff; }
+tbody tr:last-child td { border-bottom:none; }
+.thumb { width:56px; height:38px; object-fit:cover; border-radius:6px; display:block; background:#eef0f4; }
+.daterange { white-space:nowrap; font-weight:600; }
+.ongoing { font-size:.72rem; color:var(--warn); display:block; }
+
+/* ---------- Barres de stats ---------- */
+.bar-row { display:flex; align-items:center; gap:.6rem; margin:.28rem 0; font-size:.9rem; }
+.bar-row .lbl { width:150px; flex-shrink:0; }
+.bar-row .track { flex:1; background:#eef0f4; border-radius:5px; height:15px; overflow:hidden; }
+.bar-row .fill { background:var(--brand); height:15px; border-radius:5px; min-width:2px; display:block; }
+.bar-row .n { width:38px; text-align:right; color:var(--muted); }
+.cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.1rem; }
+
+/* ---------- Alertes / flash ---------- */
+.alert { background:var(--danger); color:#fff; padding:.8rem 1rem; border-radius:var(--radius-sm);
+  margin-bottom:1rem; font-weight:600; }
+.alert small { font-weight:400; opacity:.9; }
+.flash { padding:.65rem .95rem; border-radius:var(--radius-sm); margin-bottom:.7rem; font-size:.9rem; border:1px solid; }
+.flash.ok { background:var(--ok-soft); color:#166534; border-color:#bbf7d0; }
+.flash.err { background:var(--danger-soft); color:#991b1b; border-color:#fecaca; }
+
+/* ---------- Divers ---------- */
+details.box { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:.5rem 1rem; margin-bottom:1.1rem; }
+details.box > summary { cursor:pointer; font-weight:600; padding:.35rem 0; }
+.cost-line { font-size:1rem; }
+.cost-line strong { font-size:1.15rem; }
+.empty { text-align:center; color:var(--muted); padding:2.5rem 1rem; }
+.pager { margin-top:1rem; display:flex; gap:.8rem; align-items:center; font-size:.9rem; }
+
+/* ---------- Responsive : la sidebar passe en barre haute ---------- */
+@media (max-width:820px) {
+  .app-shell { grid-template-columns:1fr; }
+  .sidebar { position:static; height:auto; flex-direction:row; align-items:center; flex-wrap:wrap; gap:.3rem; }
+  .brand { padding:.2rem .5rem; }
+  .nav { flex-direction:row; flex-wrap:wrap; margin:0; }
+  .nav-foot { margin:0 0 0 auto; border:none; padding:0; }
+  .main { padding:1.1rem 1rem 3rem; }
+}

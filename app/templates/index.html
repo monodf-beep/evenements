@@ -1,117 +1,64 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>Agenda CS — Validation</title>
-<style>
-  body { font-family: sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th, td { padding: 0.5rem; border: 1px solid #ddd; text-align: left; vertical-align: top; }
-  th { background: #f5f5f5; }
-  .score { font-weight: bold; font-size: 1.1rem; }
-  .s9, .s10 { color: #1a7a2e; }
-  .s7, .s8 { color: #2563eb; }
-  .btn { padding: 0.3rem 0.8rem; margin: 0.2rem; cursor: pointer; border: none; border-radius: 3px; }
-  .btn-cs { background: #c0392b; color: white; }
-  .btn-sub { background: #2563eb; color: white; }
-  .btn-rej { background: #888; color: white; }
-  nav { margin-bottom: 1rem; }
-  .alert { background: #c0392b; color: #fff; padding: 0.8rem 1rem; border-radius: 4px;
-           margin-bottom: 1rem; font-weight: bold; }
-  .alert small { font-weight: normal; opacity: 0.85; }
-  .flash { padding:.6rem .9rem; border-radius:6px; margin-bottom:.7rem; font-size:.9rem; }
-  .flash.ok { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
-  .flash.err { background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; }
-  nav a { margin-right: 1rem; text-decoration: none; color: #2563eb; }
-  .period { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.2rem 0 1rem;
-            padding:.55rem .7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:.9rem; }
-  .period .plabel { font-weight:600; }
-  .period input[type=date] { padding:.32rem .4rem; border:1px solid #cbd5e1; border-radius:6px; }
-  .pbtn { padding:.3rem .7rem; border:1px solid #cbd5e1; border-radius:999px; background:#fff;
-          color:#334155; cursor:pointer; font-size:.85rem; text-decoration:none; }
-  .pbtn.on { background:#4f46e5; color:#fff; border-color:#4f46e5; }
-  .period .sep { color:#cbd5e1; }
-  .badge { font-size:.7rem; font-weight:700; padding:.1rem .45rem; border-radius:999px; white-space:nowrap; }
-  .b-new { background:#dcfce7; color:#166534; }
-  .b-last { background:#fef3c7; color:#92400e; }
-  .b-re { background:#ede9fe; color:#5b21b6; }
-  .daterange { white-space:nowrap; font-weight:600; }
-  tr.reproposer { background:#faf5ff; }
-</style>
-</head>
-<body>
-<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation ({{ events|length }})</a><a href="/logout" style="float:right">Déconnexion</a></nav>
-{% if alert %}
-<div class="alert">⛔ {{ alert.kind }} — l'évaluation et l'extraction sont en pause.
-  {% if alert.reset %}<br>Accès rétabli le <strong>{{ alert.reset }}</strong>.{% endif %}
-  <br><small>{{ alert.raw }}</small></div>
-{% endif %}
-{% with msgs = get_flashed_messages(with_categories=true) %}
-{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
-{% endwith %}
-{% if has_period %}<h1>Plan de la période <span style="color:#4f46e5">{{ plabel }}</span></h1>
-{% else %}<h1>Événements à valider (score ≥ 7)</h1>{% endif %}
+{% extends "base.html" %}
+{% set active = 'validation' %}
+{% block title %}À valider — Agenda CS{% endblock %}
+{% block h1 %}{% if has_period %}Plan de la période{% else %}À valider{% endif %}{% endblock %}
+{% block subtitle %}<div class="sub">{% if has_period %}<strong>{{ plabel }}</strong> — les retenus + les événements encore en cours à re-valoriser.{% else %}Événements notés ≥ 7 par Claude, en attente de ton choix.{% endif %}</div>{% endblock %}
 
-<form class="period" method="GET" action="/validation">
+{% block content %}
+
+<!-- Barre de période -->
+<form class="period" method="GET" action="/validation" style="margin-bottom:.7rem">
   <span class="plabel">📅 Période :</span>
   <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
   <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
   <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
   <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
   <span class="sep">|</span>
-  du <input type="date" name="dfrom" value="{{ dfrom }}">
-  au <input type="date" name="dto" value="{{ dto }}">
+  du <input type="date" name="dfrom" value="{{ dfrom }}"> au <input type="date" name="dto" value="{{ dto }}">
   <button class="pbtn">Plage perso</button>
-  {% if has_period %}<a href="/validation" class="muted" style="color:#6b7280">✕ toute la file</a>{% endif %}
+  {% if has_period %}<a href="/validation" class="muted">✕ toute la file</a>{% endif %}
 </form>
-{% if has_period %}<p style="font-size:.85rem;color:#6b7280;margin-top:-.5rem">
-  🆕 nouveaux retenus · 🔁 déjà publiés encore en cours (à re-valoriser) · ⏳ dernier week-end (dernière chance).</p>{% endif %}
+{% if has_period %}<p class="muted" style="font-size:.85rem;margin:.1rem 0 .9rem">
+  <span class="badge new">🆕 nouveau</span> retenu à traiter ·
+  <span class="badge re">🔁 déjà publié</span> à re-valoriser ·
+  <span class="badge last">⏳ dernier week-end</span> dernière chance.</p>{% endif %}
 
 {% if not events %}
-  <p>Aucun événement {% if has_period %}sur cette période{% else %}en attente de validation{% endif %}.</p>
+  <div class="card empty">Aucun événement {% if has_period %}sur cette période{% else %}en attente de validation{% endif %}.</div>
 {% else %}
+<div class="table-wrap">
 <table>
-  <tr>
-    <th>Score</th><th>Catégorie</th><th>Titre</th>
-    <th>Date</th><th>Lieu</th><th>Territoire</th>
-    <th>Justification</th><th>Source</th><th>Actions</th>
-  </tr>
+  <tr><th>Score</th><th>Titre</th><th>Date</th><th>Lieu</th><th>Territoire</th><th>Justification</th><th>Actions</th></tr>
   {% for e in events %}
-  <tr class="{{ 'reproposer' if e._republish else '' }}">
-    <td class="score s{{ e.llm_score }}">{{ e.llm_score if e.llm_score is not none else '—' }}/10</td>
-    <td>{{ e.llm_categorie }}</td>
+  <tr {% if e._republish %}style="background:#faf7ff"{% endif %}>
+    <td><strong style="font-size:1.05rem;color:{{ '#166534' if (e.llm_score or 0) >= 9 else '#4338ca' }}">{{ e.llm_score if e.llm_score is not none else '—' }}</strong>/10
+      {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
     <td>
-      <strong>{{ e.title }}</strong>
-      {% if e._new and has_period %}<br><span class="badge b-new">🆕 nouveau</span>{% endif %}
-      {% if e._republish %}<br><span class="badge b-re">🔁 déjà publié{% if e.published_cs_date %} le {{ e.published_cs_date[:10] }}{% endif %}</span>{% endif %}
-      {% if e._ending %}<br><span class="badge b-last">⏳ dernier week-end</span>{% endif %}
+      <a href="/preview/{{ e.id }}" target="_blank"><strong>{{ e.title }}</strong></a>
+      {% if e._new and has_period %}<br><span class="badge new">🆕 nouveau</span>{% endif %}
+      {% if e._republish %}<br><span class="badge re">🔁 déjà publié{% if e.published_cs_date %} le {{ e.published_cs_date[:10] }}{% endif %}</span>{% endif %}
+      {% if e._ending %}<br><span class="badge last">⏳ dernier week-end</span>{% endif %}
     </td>
     <td>
       {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
         <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
       {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>
       {% elif e.date_event_end %}<span class="daterange">jusqu'au {{ e.date_event_end }}</span>
-      {% else %}{{ e.date_start or '—' }}{% endif %}
+      {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
     </td>
     <td>{{ e.lieu or '' }} {{ e.ville or '' }}</td>
     <td>{{ e.territoire }}</td>
-    <td><em>{{ e.llm_justification }}</em></td>
-    <td><a href="{{ e.url_source }}" target="_blank">↗</a><br><small>{{ e.source_name }}</small></td>
+    <td class="muted" style="font-size:.85rem"><em>{{ e.llm_justification }}</em></td>
     <td>
-      <a href="/preview/{{ e.id }}" target="_blank" class="btn" style="background:#374151;color:#fff;text-decoration:none">👁 Aperçu</a>
-      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress pour cet événement ?')">
-        <button class="btn btn-cs" title="Crée un brouillon sur WordPress">✅ WordPress</button>
-      </form>
-      <form method="POST" action="/action/{{ e.id }}/subdomain" style="display:inline">
-        <button class="btn btn-sub" title="Classer pour le site dédié">📋 Site dédié</button>
-      </form>
-      <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline">
-        <button class="btn btn-rej">❌ Rejeter</button>
-      </form>
+      <a href="/preview/{{ e.id }}" target="_blank" class="btn btn-ghost btn-sm">👁 Aperçu</a>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress ?')"><button class="btn btn-ok btn-sm">✅ WordPress</button></form>
+      <form method="POST" action="/action/{{ e.id }}/subdomain" style="display:inline"><button class="btn btn-purple btn-sm">📋 Site dédié</button></form>
+      <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"><button class="btn btn-sm" style="background:#e5e7eb">❌</button></form>
     </td>
   </tr>
   {% endfor %}
 </table>
+</div>
 {% endif %}
-</body>
-</html>
+
+{% endblock %}
