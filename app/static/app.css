@@ -97,8 +97,11 @@ h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; font-weight:700; line-he
 .badge.re { background:var(--purple-soft); color:#5b21b6; }
 .badge.grey { background:#eef0f4; color:#475569; }
 .st { display:inline-block; font-size:.72rem; padding:.12rem .55rem; border-radius:999px; color:#fff; white-space:nowrap; }
-.st-pending{background:#6b7280;} .st-evaluated{background:var(--brand);} .st-published_cs{background:var(--ok);}
-.st-published_sub{background:var(--purple);} .st-rejected{background:#9ca3af;} .st-merged{background:#94a3b8;}
+/* Statuts : couleurs bien distinctes. À valider = ambre (action) ; les 2 marques
+   ont chacune leur couleur (Cultura Sabauda = vert « publié » ; Agenda Sabaudo =
+   bleu marine de la marque) ; Rejeté = rouge ; neutres = gris. */
+.st-pending{background:#64748b;} .st-evaluated{background:var(--warn);} .st-published_cs{background:var(--ok);}
+.st-published_sub{background:#1a2b4a;} .st-rejected{background:#b91c1c;} .st-merged{background:#94a3b8;}
 .pill { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
 
 /* ---------- Période (barre de filtre) ---------- */

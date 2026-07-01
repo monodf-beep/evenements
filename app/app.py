@@ -53,8 +53,8 @@ PAGE_SIZE = 50
 STATUS_LABELS = {
     "pending": "En attente",
     "evaluated": "À valider",
-    "published_cs": "Publié CS",
-    "published_sub": "Site dédié",
+    "published_cs": "Cultura Sabauda",
+    "published_sub": "Agenda Sabaudo",
     "rejected": "Rejeté",
     "merged": "Fusionné",
 }
