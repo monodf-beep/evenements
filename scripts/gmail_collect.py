@@ -203,7 +203,9 @@ def extract_events(email: dict, client: anthropic.Anthropic, model: str):
             messages=[{"role": "user", "content": prompt}],
         )
         usage.record_message(model, message, label="extraction newsletter")
-        raw = message.content[0].text.strip()
+        # Bloc TEXTE (le modèle peut émettre un bloc de raisonnement en premier).
+        raw = "".join(getattr(b, "text", "") for b in message.content
+                      if getattr(b, "type", None) == "text").strip()
         match = re.search(r"\[.*\]", raw, re.S)
         if not match:
             return []

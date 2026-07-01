@@ -29,12 +29,15 @@ Usage :
 """
 from __future__ import annotations
 import anthropic
+import html as htmlmod
 import json
 import os
 import re
 import sqlite3
 import sys
 from pathlib import Path
+
+import requests
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -61,6 +64,11 @@ MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "8000"))
 # le JSON → stop_reason=max_tokens). Inutile pour « chercher + rédiger en JSON ».
 # Désactivé par défaut ; ENRICH_THINKING=1 pour l'activer (articles plus fouillés, plus chers).
 USE_THINKING = os.getenv("ENRICH_THINKING", "0").lower() in ("1", "true", "yes", "on")
+# Outil de recherche web (serveur Anthropic) : à activer seulement s'il est disponible
+# sur la clé. Par défaut OFF — on fournit nous-mêmes la PAGE OFFICIELLE comme matière
+# (déterministe, fiable, moins cher). ENRICH_WEB_SEARCH=1 pour l'ajouter en bonus.
+USE_WEB_SEARCH = os.getenv("ENRICH_WEB_SEARCH", "0").lower() in ("1", "true", "yes", "on")
+_UA = {"User-Agent": "Mozilla/5.0 (compatible; CulturaSabaudaBot/1.0)"}
 
 # Sentinel : échec d'APPEL API. L'événement n'est pas marqué → réenrichi plus tard.
 API_ERROR = object()
@@ -76,8 +84,11 @@ FR/IT couvrant l'espace alpin occidental : Savoie/Haute-Savoie, Piémont, Vallé
 Nice/Alpes-Maritimes. Registre « Internazionale + Le Monde Diplomatique » : sérieux,
 exigeant, evergreen — l'inverse d'un annuaire touristique.
 
-MISSION : à partir du signal et de la matière ci-dessous, RECHERCHE le contexte sur le
-web puis RÉDIGE un article prêt à relire.
+MISSION : RÉDIGE un article prêt à relire à partir de la MATIÈRE fournie ci-dessous
+(page officielle de l'événement, dossier de presse, flux). Appuie-toi EN PRIORITÉ sur
+la PAGE OFFICIELLE et le DOSSIER DE PRESSE : ce sont tes sources primaires. N'affirme
+aucun fait qui ne figure ni dans cette matière ni dans un savoir historique/géographique
+solidement établi ; en cas de doute, baisse la confiance.
 
 PRINCIPE DE L'ESCALIER : partir de l'ancrage local concret pour monter vers une question
 qui dépasse le territoire (mémoire, transmission, identité alpine, art, langue).
@@ -159,9 +170,31 @@ def gather_press_kits(conn: sqlite3.Connection, ev: dict) -> str:
     return "\n\n===\n\n".join(chunks)[:12000]
 
 
+def fetch_official_page(url: str, timeout: int = 8) -> str:
+    """Récupère le TEXTE de la page officielle de l'événement (source primaire, libre).
+    Déterministe : le code va chercher la matière, le LLM la rédige. Skip radar/Gmail.
+    Ne franchit aucun mur d'accès — lit simplement la page publique."""
+    if not url or url.startswith("gmail:") or "news.google.com" in url:
+        return ""
+    try:
+        r = requests.get(url, timeout=timeout, headers=_UA)
+        if r.status_code != 200 or not r.text:
+            return ""
+        doc = r.text
+    except Exception:
+        return ""
+    # Retire scripts/styles/navigation, puis les balises, puis décode les entités.
+    doc = re.sub(r"(?is)<(script|style|nav|header|footer|noscript)[^>]*>.*?</\1>", " ", doc)
+    doc = re.sub(r"(?s)<[^>]+>", " ", doc)
+    doc = htmlmod.unescape(doc)
+    return re.sub(r"\s+", " ", doc).strip()[:6000]
+
+
 def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
-    """Agrège (déterministe) la matière : dossiers de presse PRIORITAIRES, puis la
-    description de l'événement + celle des doublons fusionnés (duplicate_of=ev.id)."""
+    """Agrège (déterministe) la matière, par ordre de priorité :
+    1) dossiers de presse rattachés ; 2) PAGE OFFICIELLE récupérée en direct ;
+    3) signaux flux/radar (description + doublons fusionnés). Le LLM rédige à partir
+    de cette matière RÉELLE — il n'a pas à « connaître » l'événement."""
     parts = []
     own = (ev.get("description") or "").strip()
     if own:
@@ -173,14 +206,21 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
         d = (row["description"] or "").strip()
         if d and d not in parts:
             parts.append(d)
-    text = re.sub(r"(?s)<[^>]+>", " ", "\n\n---\n\n".join(parts))[:6000]
+    rss = re.sub(r"(?s)<[^>]+>", " ", "\n\n---\n\n".join(parts))[:6000]
 
     press = gather_press_kits(conn, ev)
     if press:
         press = re.sub(r"(?s)<[^>]+>", " ", press)
-        return (f"[DOSSIER(S) DE PRESSE — source primaire, matière prioritaire]\n{press}"
-                f"\n\n[AUTRES SIGNAUX (flux/radar)]\n{text or '(aucun)'}")
-    return text or "(aucune — titre seul)"
+    page = fetch_official_page(ev.get("url_source", ""))
+
+    sections = []
+    if press:
+        sections.append(f"[DOSSIER(S) DE PRESSE — source primaire, prioritaire]\n{press}")
+    if page:
+        sections.append(f"[PAGE OFFICIELLE DE L'ÉVÉNEMENT — récupérée en direct, source primaire]\n{page}")
+    if rss:
+        sections.append(f"[SIGNAUX FLUX / RADAR]\n{rss}")
+    return "\n\n".join(sections) or "(aucune — titre seul)"
 
 
 def _dates_hint(ev: dict) -> str:
@@ -222,12 +262,14 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
         # STREAMING : indispensable ici (recherche web + raisonnement = requêtes longues)
         # — évite les read-timeouts silencieux. On logge chaque tour pour la traçabilité.
-        kwargs = dict(model=model, max_tokens=MAX_TOKENS,
-                      tools=[WEB_SEARCH_TOOL], messages=messages)
+        kwargs = dict(model=model, max_tokens=MAX_TOKENS, messages=messages)
+        if USE_WEB_SEARCH:
+            kwargs["tools"] = [WEB_SEARCH_TOOL]
         if USE_THINKING:
             kwargs["thinking"] = {"type": "adaptive"}
-        for turn in range(1, MAX_WEB_SEARCHES + 4):
-            log.info("[%d] appel API tour %d… (thinking=%s)", ev["id"], turn, USE_THINKING)
+        for turn in range(1, (MAX_WEB_SEARCHES + 4) if USE_WEB_SEARCH else 2):
+            log.info("[%d] appel API tour %d… (web=%s, thinking=%s)",
+                     ev["id"], turn, USE_WEB_SEARCH, USE_THINKING)
             kwargs["messages"] = messages
             with client.messages.stream(**kwargs) as stream:
                 message = stream.get_final_message()

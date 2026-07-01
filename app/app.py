@@ -403,6 +403,9 @@ def dashboard():
     nl_active = sum(1 for n in newsletters if n["statut"] == "actif")
     tasks = tasks_status()
     any_running = any(t["running"] for t in tasks.values())
+    # Derniers lancements, le plus RÉCENT en premier (tri par horodatage décroissant).
+    runs = sorted([(k, t) for k, t in tasks.items() if t.get("tail")],
+                  key=lambda kt: kt[1].get("started", ""), reverse=True)
 
     # Période de travail du panneau de run (défaut : week-end prochain) + aperçu du
     # nombre d'événements que chaque étape coûteuse traiterait sur cette fenêtre.
@@ -433,7 +436,7 @@ def dashboard():
         cost=cost, alert=friendly_alert(),
         src_counts=src_counts, src_total=sum(src_counts.values()),
         newsletters=newsletters, nl_active=nl_active,
-        tasks=tasks, any_running=any_running,
+        tasks=tasks, any_running=any_running, runs=runs,
         with_img=with_img, without_img=without_img,
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
         presets=PERIOD_PRESETS, scope=scope, today=date.today().isoformat(),

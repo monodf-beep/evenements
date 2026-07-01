@@ -81,11 +81,13 @@ def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict
     try:
         message = client.messages.create(
             model=model,
-            max_tokens=256,
+            max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )
         usage.record_message(model, message, label="évaluation")
-        raw = message.content[0].text.strip()
+        # Récupère le bloc TEXTE (le modèle peut émettre un bloc de raisonnement en 1er).
+        raw = "".join(getattr(b, "text", "") for b in message.content
+                      if getattr(b, "type", None) == "text").strip()
         match = re.search(r"\{.*\}", raw, re.S)
         if not match:
             return None
