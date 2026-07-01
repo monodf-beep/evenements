@@ -23,6 +23,11 @@ from utils.logger import get_logger
 
 log = get_logger("publisher")
 
+# Certaines protections anti-bot (WAF/nginx, ex. Hostinger) renvoient un 403 aux
+# requêtes sans User-Agent de navigateur. On se présente comme un navigateur.
+_UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                     "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
+
 
 def _md_inline(s: str) -> str:
     """Échappe le HTML puis rend **gras** et *italique* (markdown léger)."""
@@ -92,7 +97,7 @@ def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
     Jamais bloquant : un échec d'upload laisse le post sans vignette.
     """
     try:
-        img = requests.get(image_url, timeout=30)
+        img = requests.get(image_url, timeout=30, headers=_UA)
         img.raise_for_status()
         content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
         if not content_type.startswith("image/"):
@@ -110,6 +115,7 @@ def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
             data=img.content,
             auth=auth,
             headers={
+                **_UA,
                 "Content-Type": content_type,
                 "Content-Disposition": f'attachment; filename="{name}"',
             },
@@ -176,6 +182,7 @@ def publish_to_cs(event: dict) -> int | None:
             f"{wp_url}/wp-json/wp/v2/posts",
             json=payload,
             auth=auth,
+            headers=_UA,
             timeout=30,
         )
         resp.raise_for_status()
