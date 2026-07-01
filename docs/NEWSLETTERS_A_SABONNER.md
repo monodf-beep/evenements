@@ -21,11 +21,11 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 ---
 
 ## Savoie / Haute-Savoie
-- [ ] ⭐ **Bonlieu Scène Nationale** (théâtre/danse/musique, Annecy) — https://www.bonlieu-annecy.com/inscription-newsletter
-- [ ] ⭐ **Espace Malraux Scène Nationale** (théâtre/danse, Chambéry) — https://billetterie.malrauxchambery.fr/3web_mailing_cherche?template=11720
-- [ ] ⭐ **Cité des Arts Chambéry** (expos/ateliers, *hebdo*) — https://www.chambery.fr/522-newsletter-de-la-cite-des-arts.htm
-- [ ] ⭐ **OT Lac d'Annecy** (sorties/événements) — https://www.lac-annecy.com/newsletter/
-- [ ] ⭐ **Chambéry Montagnes** (Grand Chambéry Tourisme) — https://www.chamberymontagnes.com/newsletter/
+- [x] ⭐ **Bonlieu Scène Nationale** (théâtre/danse/musique, Annecy) — https://www.bonlieu-annecy.com/inscription-newsletter
+- [x] ⭐ **Espace Malraux Scène Nationale** (théâtre/danse, Chambéry) — https://billetterie.malrauxchambery.fr/3web_mailing_cherche?template=11720
+- [x] ⭐ **Cité des Arts Chambéry** (expos/ateliers, *hebdo*) — https://www.chambery.fr/522-newsletter-de-la-cite-des-arts.htm
+- [x] ⭐ **OT Lac d'Annecy** (sorties/événements) — https://www.lac-annecy.com/newsletter/
+- [x] ⭐ **Chambéry Montagnes** (Grand Chambéry Tourisme) — https://www.chamberymontagnes.com/newsletter/
 - [ ] Le Dôme Théâtre (Albertville) — https://www.dometheatre.com _(form en pied de page)_
 - [ ] Le Brise Glace / MJC Annecy (concerts) — https://www.le-brise-glace.com
 - [ ] Château Rouge (Annemasse) — https://www.chateau-rouge.net/newsletters/
