@@ -8,7 +8,8 @@
 
 <!-- Chips statut -->
 <div class="btn-row" style="margin-bottom:.7rem">
-  <a href="/events" class="pbtn {{ 'on' if not statut and not dated }}">Tous</a>
+  <a href="/events?statut=actifs" class="pbtn {{ 'on' if statut in ('', 'actifs') and not dated }}">✓ Actifs ({{ actifs_count }})</a>
+  <a href="/events?statut=all" class="pbtn {{ 'on' if statut == 'all' }}">Tous ({{ total_all }})</a>
   {% for key, lbl in status_labels.items() %}
   <a href="/events?statut={{ key }}" class="pbtn {{ 'on' if statut == key }}">{{ lbl }} ({{ statut_counts.get(key, 0) }})</a>
   {% endfor %}
@@ -51,6 +52,7 @@
   </select>
   <select name="src" class="field" aria-label="Filtrer par type de source">
     <option value="">Source : toutes</option>
+    <option value="sans_radar" {{ 'selected' if src=='sans_radar' }}>🚫📡 Hors radar ({{ (src_counts.officiel or 0) + (src_counts.newsletter or 0) }})</option>
     <option value="officiel" {{ 'selected' if src=='officiel' }}>🌐 Officiel / RSS ({{ src_counts.officiel or 0 }})</option>
     <option value="newsletter" {{ 'selected' if src=='newsletter' }}>📬 Newsletter ({{ src_counts.newsletter or 0 }})</option>
     <option value="radar" {{ 'selected' if src=='radar' }}>📡 Radar presse ({{ src_counts.radar or 0 }})</option>
@@ -58,8 +60,10 @@
   <button class="btn btn-primary btn-sm">Filtrer</button>
   <span class="sep"></span>
   <span class="muted" style="font-size:.85rem">Tri :</span>
-  <a class="pbtn {{ 'on' if sort != 'score' }}" href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}&img={{ img }}&src={{ src }}&preset={{ preset }}&dfrom={{ dfrom }}&dto={{ dto }}&dated={{ dated }}">date</a>
-  <a class="pbtn {{ 'on' if sort == 'score' }}" href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}&img={{ img }}&src={{ src }}&preset={{ preset }}&dfrom={{ dfrom }}&dto={{ dto }}&dated={{ dated }}&sort=score">score ↓</a>
+  {% set sortbase = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&src=' ~ src ~ '&preset=' ~ preset ~ '&dfrom=' ~ dfrom ~ '&dto=' ~ dto ~ '&dated=' ~ dated %}
+  <a class="pbtn {{ 'on' if sort not in ('date','score') }}" href="{{ sortbase }}&sort=qualite" title="Photo + score + article prêt en haut">⭐ qualité</a>
+  <a class="pbtn {{ 'on' if sort == 'date' }}" href="{{ sortbase }}&sort=date">date</a>
+  <a class="pbtn {{ 'on' if sort == 'score' }}" href="{{ sortbase }}&sort=score">score ↓</a>
 </form>
 
 {% if not events %}

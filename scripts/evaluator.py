@@ -13,6 +13,7 @@ import os
 import re
 import sqlite3
 import sys
+from datetime import date
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -39,6 +40,14 @@ CATEGORIES = ("Expositions & Patrimoine", "Concerts & Musique",
 # Territoires couverts, valeurs canoniques (mêmes libellés que config/sources.txt).
 # L'évaluateur peut CORRIGER le territoire d'une source large mal étiquetée.
 TERRITOIRES = ("Savoie", "Piemonte", "Vallee-Aoste", "Nice")
+
+
+def is_past_event(ev: dict, today: str) -> bool:
+    """Vrai si l'événement est TERMINÉ (sa date de fin — ou de début à défaut —
+    est antérieure à aujourd'hui). On informe de ce qui VA se passer, pas du passé.
+    Sans date connue → False (indécidable, on laisse la suite juger)."""
+    end = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()[:10]
+    return bool(end) and end < today
 
 EVAL_PROMPT = """Tu es l'assistant éditorial de Cultura Sabauda, agenda culturel bilingue
 FR/IT couvrant Savoie/Haute-Savoie, Piémont, Vallée d'Aoste et Nice. On couvre LARGE, à la
@@ -169,8 +178,17 @@ def main(argv=None) -> int:
     ).fetchall()
     log.info("%d événements à évaluer%s (modèle : %s)", len(pending), scope, model)
 
+    today = date.today().isoformat()
     for event in pending:
         ev = dict(event)
+        # Pré-filtre GRATUIT : un événement déjà passé est rejeté sans appeler le
+        # LLM (on ne paie pas, et on ne publie que du à-venir / en cours).
+        if is_past_event(ev, today):
+            conn.execute("UPDATE events_raw SET statut='rejected', llm_score=0, "
+                         "llm_justification='Événement passé (déjà terminé).' WHERE id=?",
+                         (ev["id"],))
+            log.info("[%d] passé → rejeté | %s", ev["id"], ev.get("title", "")[:50])
+            continue
         result = evaluate_event(ev, client, model)
         if result is API_ERROR:
             # Panne API : on ne touche pas au statut (reste 'pending', réévalué

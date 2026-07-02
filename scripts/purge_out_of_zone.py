@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Purge DÉTERMINISTE des événements hors zone (gratuit, sans LLM).
+"""Purge DÉTERMINISTE du bruit (gratuit, sans LLM).
 
-Rejette (ou supprime avec --hard) les événements 'pending' qui citent un lieu
-clairement hors des 4 territoires (config/out_of_zone.txt) sans aucun lieu
-couvert (config/perimeter_keywords.txt), plus les sources larges sans lieu
-couvert. Même logique que le nettoyage lancé à chaque scraping — ici à la
-demande, avec un aperçu.
+Rejette (ou supprime avec --hard) les événements 'pending' qui sont :
+  • HORS ZONE — citent un lieu clairement hors des 4 territoires
+    (config/out_of_zone.txt) sans aucun lieu couvert, ou source large sans lieu
+    couvert ;
+  • PASSÉS — déjà terminés (date de fin/début antérieure à aujourd'hui) : on
+    n'informe que du à-venir / en cours.
 
     python scripts/purge_out_of_zone.py            # aperçu (rien n'est modifié)
     python scripts/purge_out_of_zone.py --apply    # rejette (statut='rejected')
@@ -16,6 +17,7 @@ import argparse
 import os
 import sqlite3
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,20 +49,29 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
-        "SELECT id, title, description, url_source, territoire, source_name "
+        "SELECT id, title, description, url_source, territoire, source_name, "
+        "date_event_start, date_event_end "
         "FROM events_raw WHERE statut = 'pending' AND duplicate_of IS NULL").fetchall()
 
+    today = date.today().isoformat()
     hits = []
     for r in rows:
         material = f"{r['title']}\n{r['description'] or ''}"
+        end = (r["date_event_end"] or r["date_event_start"] or "").strip()[:10]
+        past_hit = bool(end) and end < today
         broad_hit = (broad and is_broad_source(_domain(r["url_source"]), broad)
                      and perimeter_re is not None
                      and not mentions_perimeter(material, perimeter_re))
         zone_hit = is_out_of_scope(material, out_re, perimeter_re)
-        if broad_hit or zone_hit:
+        if past_hit:
+            hits.append((r, "passé"))
+        elif broad_hit or zone_hit:
             hits.append((r, "hors zone" if zone_hit else "source large"))
 
-    print(f"\n{len(hits)} événement(s) hors zone sur {len(rows)} en attente :\n")
+    from collections import Counter
+    par_motif = Counter(m for _, m in hits)
+    detail = ", ".join(f"{n} {m}" for m, n in par_motif.items()) or "aucun"
+    print(f"\n{len(hits)} à purger sur {len(rows)} en attente ({detail}) :\n")
     for r, motif in hits[:60]:
         print(f"  [{r['id']:>5}] {r['territoire'] or '—':<14} {motif:<12} "
               f"{(r['source_name'] or '')[:22]:<22} {r['title'][:60]}")
@@ -78,10 +89,14 @@ def main(argv=None) -> int:
         conn.executemany("DELETE FROM events_raw WHERE id=?", [(i,) for i in ids])
         verbe = "supprimé(s)"
     else:
+        motifs = {
+            "passé": "Événement passé (déjà terminé).",
+            "hors zone": "Hors zone (lieu hors périmètre cité, aucun lieu couvert).",
+            "source large": "Hors périmètre (source large, aucun lieu couvert cité).",
+        }
         conn.executemany(
-            "UPDATE events_raw SET statut='rejected', "
-            "llm_justification='Hors zone (purge déterministe, aucun lieu couvert).' "
-            "WHERE id=?", [(i,) for i in ids])
+            "UPDATE events_raw SET statut='rejected', llm_justification=? WHERE id=?",
+            [(motifs[m], r["id"]) for r, m in hits])
         verbe = "rejeté(s)"
     conn.commit()
     conn.close()

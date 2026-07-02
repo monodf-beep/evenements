@@ -614,7 +614,11 @@ def events():
     pfrom, pto, plabel = period_bounds(preset, dfrom, dto)
 
     base_where, base_params = [], []
-    if statut:
+    # Statut : défaut = ACTIFS (tout sauf rejeté/fusionné, le bruit) ; « all » = tout ;
+    # sinon un statut précis. Permet « tous sauf rejeté » en un clic.
+    if statut in ("", "actifs"):
+        base_where.append("statut NOT IN ('rejected', 'merged')")
+    elif statut != "all":
         base_where.append("statut = ?"); base_params.append(statut)
     if terr:
         base_where.append("territoire = ?"); base_params.append(terr)
@@ -624,6 +628,8 @@ def events():
     # (flux de lieux/institutions, territoire fiable). Aide à isoler le bruit radar.
     if src == "radar":
         base_where.append("(source_type = 'radar' OR source_name LIKE '%(radar)%')")
+    elif src == "sans_radar":
+        base_where.append("source_type != 'radar' AND COALESCE(source_name,'') NOT LIKE '%(radar)%'")
     elif src == "newsletter":
         base_where.append("url_source LIKE 'gmail:%'")
     elif src == "officiel":
@@ -651,19 +657,26 @@ def events():
         f"COUNT(*) t FROM events_raw {base_wsql}", base_params).fetchone()
     with_img = imgrow["wi"] or 0
     without_img = (imgrow["t"] or 0) - with_img
-    # Tri : par score si demandé (meilleur en haut, NULL en bas via SQLite) ;
-    # sinon chronologique quand une période est active ; sinon par date de collecte.
+    # Tri. Défaut = QUALITÉ : le haut de liste est publiable tel quel (photo +
+    # score élevé + article prêt), et ça se dégrade en descendant. « date » et
+    # « score » restent disponibles explicitement.
+    has_photo = "(CASE WHEN url_image IS NOT NULL AND url_image != '' THEN 1 ELSE 0 END)"
+    is_ready = "(CASE WHEN enrich_status = 'enriched' THEN 1 ELSE 0 END)"
     if sort == "score":
-        order = "llm_score DESC, scrape_date DESC, id DESC"
-    elif pfrom and pto and dated != "undated":
-        order = "date_event_start ASC, id DESC"
-    else:
-        order = "scrape_date DESC, id DESC"
+        order = "COALESCE(llm_score,-1) DESC, scrape_date DESC, id DESC"
+    elif sort == "date":
+        order = ("date_event_start ASC, id DESC" if pfrom and pto and dated != "undated"
+                 else "scrape_date DESC, id DESC")
+    else:  # qualité (défaut)
+        order = (f"{has_photo} DESC, COALESCE(llm_score,-1) DESC, {is_ready} DESC, "
+                 "COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC, id DESC")
     rows = conn.execute(
         f"SELECT * FROM events_raw {wsql} ORDER BY {order} LIMIT ? OFFSET ?",
         params + [PAGE_SIZE, (page - 1) * PAGE_SIZE]).fetchall()
     statut_counts = {r["statut"]: r["n"] for r in conn.execute(
         "SELECT statut, COUNT(*) n FROM events_raw GROUP BY statut")}
+    total_all = sum(statut_counts.values())
+    actifs_count = total_all - statut_counts.get("rejected", 0) - statut_counts.get("merged", 0)
     undated_count = conn.execute(
         "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "
         "AND COALESCE(date_event_end,'')='' AND statut != 'merged'").fetchone()["n"]
@@ -681,6 +694,7 @@ def events():
         "events.html", events=annotate_period([dict(r) for r in rows], pfrom, pto),
         statut=statut, territoire=terr, q=q, img=img, src=src, page=page, pages=pages, total=total,
         with_img=with_img, without_img=without_img, src_counts=src_counts,
+        total_all=total_all, actifs_count=actifs_count,
         preset=preset, dfrom=dfrom, dto=dto, dated=dated, plabel=plabel, sort=sort,
         presets=PERIOD_PRESETS, undated_count=undated_count,
         today=date.today().isoformat(),
