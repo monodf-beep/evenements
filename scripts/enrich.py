@@ -144,7 +144,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "article": {{
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel + l'angle>",
-    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà (markdown)>",
+    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà. MARKDOWN structuré pour la lisibilité (Yoast) : si le corps dépasse ~250 mots, découpe-le avec des sous-titres '## ' tous les 2-3 paragraphes ; phrases COURTES (vise <20 mots) ; emploie des mots de liaison (ainsi, en effet, par ailleurs, dès lors) ; mets en GRAS les faits clés (dates, noms propres, lieux, chiffres)>",
     "encadre": "<encadré pratique : dates, lieu, accès, gratuité, lien officiel>"
   }}
 }}"""

@@ -217,7 +217,47 @@ CPT  evenement (TEC: tribe_events)
 
 ---
 
-## 8. Décisions à trancher (pour toi)
+## 8. Anatomie du contenu & maillage interne (vérifié sur GuidaTorino)
+
+Reconnaissance live du **corps** des pages (Claude-in-Chrome) — les règles concrètes à coder :
+
+**Maillage « centripète » (la règle qui répond au reproche Yoast « aucun lien interne ») :**
+- Une **fiche événement** ne lie, dans son corps, que vers **2 pages internes** : sa page
+  **lieu** (`/luoghi/…`) et sa page **catégorie** (+ 1-2 liens externes billetterie). **Jamais
+  vers d'autres fiches.** Le reste des liens de la page vient du gabarit (nav, tuiles catégories,
+  sidebar) : ~33 liens internes au total sur la page, mais **~3 seulement dans le corps**.
+- Le **listicle** est le **seul** gabarit à créer des **liens croisés entre fiches** (« en savoir
+  plus → » vers chaque fiche) : ~11 liens internes dans le corps.
+- **Pas** de bloc « événements liés » dynamique chez eux. **Nous, on peut faire mieux** : ajouter
+  un rail « événements liés » (même lieu / catégorie / dates) — c'est un plus SEO qu'ils n'ont pas.
+
+→ **Règle Agenda Sabaudo** : dans le corps d'une fiche, lier le **nom du lieu** vers sa page
+lieu et la **catégorie** vers son hub. Ces liens se posent à l'export (on connaît lieu + catégorie).
+
+**Corps de l'article (fiche) :**
+- GuidaTorino : **court et dense** (200-270 mots, 2 paragraphes, **zéro sous-titre**). Ils
+  évitent le reproche Yoast « 300 mots sans sous-titres » **en restant courts**.
+- Nous, nos articles enrichis font ~450-500 mots → il **faut des `##` sous-titres** (fait :
+  `enrich.py` ajoute désormais des H2 au-delà de ~250 mots, phrases courtes, mots de liaison).
+- **Gras** sur les faits : dates, noms propres (artistes), lieux, chiffres, titres d'œuvres +
+  les labels du bloc pratique (Quand / Où / Prix). On applique le même patron.
+- Pas de chapô typographique distinct chez eux ; nous gardons notre chapô en gras (c'est un plus).
+
+**Page lieu (`/luoghi/`) — minimale, à reproduire :** fil d'Ariane → H1 (nom du lieu) → liste
+**« Événements à venir »** (chaque événement daté + lié) → **carte** → **adresse**. **Aucune
+description éditoriale.** Confirme le CPT `lieu` = agrégateur (événements + carte + adresse).
+
+**Listicle « Les 10 du week-end » — 1 item = ** `## Nom` → image → paragraphe (~75 mots) →
+lien **« En savoir plus → »** vers la fiche. 10 items. Pas de H3, pas de chapô de section.
+
+**Note technique :** chez eux, le bloc pratique (Quand/Où/Prix/Carte) est du `<p>` avec
+`<strong>` (pas des headings) ; les étoiles (WP-PostRatings) sont sur chaque fiche (engagement,
+optionnel pour nous) ; **pas de boutons de partage** (mais on garde l'Open Graph pour l'aperçu
+au partage de lien, qui est autre chose).
+
+---
+
+## 9. Décisions à trancher (pour toi)
 
 1. **Plugin** : **The Events Calendar** (ma reco — meilleur pour le bilingue, l'échelle et
    l'indexation) — ou **Events Manager** pour mirrorer GuidaTorino à l'identique (au prix de ses
