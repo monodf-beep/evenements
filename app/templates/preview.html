@@ -101,9 +101,14 @@
 
   {% if e.seo_at %}
   <div style="display:grid;gap:.5rem;margin:.5rem 0 .8rem">
+    <div><span class="muted text-sm">🔑 Expression clé (focus keyphrase)</span><br><strong>{{ e.seo_keyphrase or '—' }}</strong></div>
     <div><span class="muted text-sm">Title ({{ (e.seo_title or '')|length }}/60)</span><br><strong>{{ e.seo_title }}</strong></div>
+    <div><span class="muted text-sm">Slug</span><br><code>{{ e.seo_slug or '—' }}</code></div>
     <div><span class="muted text-sm">Meta description ({{ (e.seo_meta or '')|length }}/160)</span><br>{{ e.seo_meta }}</div>
-    <div><span class="muted text-sm">Réponse directe (AEO — réutilisable en chapô)</span><br><em>{{ e.seo_answer }}</em></div>
+    <div><span class="muted text-sm">Réponse directe (AEO + aperçu réseaux sociaux)</span><br><em>{{ e.seo_answer }}</em></div>
+    {% if seo_tags %}<div><span class="muted text-sm">Étiquettes</span><br>
+      {% for t in seo_tags %}<span class="badge grey" style="margin-right:.3rem">{{ t }}</span>{% endfor %}</div>{% endif %}
+    {% if e.llm_categorie %}<div><span class="muted text-sm">Catégorie (→ WordPress)</span><br><span class="badge grey">{{ e.llm_categorie }}</span></div>{% endif %}
     {% if seo_faq %}
     <div><span class="muted text-sm">FAQ</span>
       <ul style="margin:.3rem 0 0;padding-left:1.1rem">

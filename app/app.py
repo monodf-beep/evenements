@@ -561,6 +561,12 @@ def preview(event_id: int):
             seo_faq = json.loads(ev["seo_faq"])
         except (ValueError, TypeError):
             seo_faq = []
+    seo_tags = []
+    if ev.get("seo_tags"):
+        try:
+            seo_tags = json.loads(ev["seo_tags"])
+        except (ValueError, TypeError):
+            seo_tags = []
     faq_jsonld = seo_mod.faq_jsonld_str(seo_faq)
     # Détail du score d'importance (critère par critère), si évalué.
     score_detail = None
@@ -584,7 +590,8 @@ def preview(event_id: int):
                            image_host=image_host, is_radar=is_radar,
                            enriched=enriched, enrich_running=enrich_running,
                            press_kits=press_kits, score_detail=score_detail,
-                           jsonld=jsonld, seo_faq=seo_faq, faq_jsonld=faq_jsonld)
+                           jsonld=jsonld, seo_faq=seo_faq, seo_tags=seo_tags,
+                           faq_jsonld=faq_jsonld)
 
 
 @app.route("/enrich/<int:event_id>", methods=["POST"])
@@ -635,9 +642,12 @@ def seo_optimize(event_id: int):
         return redirect(url_for("preview", event_id=event_id))
     conn.execute(
         "UPDATE events_raw SET seo_title=?, seo_meta=?, seo_answer=?, seo_faq=?, "
-        "seo_model=?, seo_at=datetime('now') WHERE id=?",
+        "seo_keyphrase=?, seo_slug=?, seo_tags=?, seo_model=?, seo_at=datetime('now') "
+        "WHERE id=?",
         (result["seo_title"], result["seo_meta"], result["seo_answer"],
-         json.dumps(result["seo_faq"], ensure_ascii=False), model, event_id))
+         json.dumps(result["seo_faq"], ensure_ascii=False),
+         result["seo_keyphrase"], result["seo_slug"],
+         json.dumps(result["seo_tags"], ensure_ascii=False), model, event_id))
     conn.commit()
     conn.close()
     flash("✨ SEO généré : title, méta, réponse directe et FAQ ci-dessous.", "ok")

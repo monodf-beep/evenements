@@ -102,11 +102,36 @@ def build_post(event: dict) -> tuple[str, str]:
     return title, f"<p>{html.escape(raw)}</p>" if raw else ""
 
 
-def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
+def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
+    """ID d'un terme (taxonomy = 'categories' | 'tags') par son nom ; le crée s'il
+    n'existe pas. Jamais bloquant : renvoie None en cas d'échec."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    try:
+        r = requests.get(f"{wp_url}/?rest_route=/wp/v2/{taxonomy}",
+                         params={"search": name, "per_page": 20},
+                         auth=auth, headers=_headers(auth), timeout=20)
+        r.raise_for_status()
+        for t in r.json():
+            if (t.get("name") or "").strip().lower() == name.lower():
+                return t.get("id")
+        c = requests.post(f"{wp_url}/?rest_route=/wp/v2/{taxonomy}",
+                          json={"name": name}, auth=auth, headers=_headers(auth), timeout=20)
+        c.raise_for_status()
+        return c.json().get("id")
+    except (requests.RequestException, ValueError) as exc:
+        log.warning("Terme %s « %s » non résolu : %s", taxonomy, name, exc)
+        return None
+
+
+def _upload_featured_media(wp_url: str, auth, image_url: str,
+                           alt: str = "", caption: str = "") -> int | None:
     """Télécharge l'image source et l'envoie dans la médiathèque WordPress.
 
     Retourne le media_id (à passer en featured_media) ou None si échec.
     Jamais bloquant : un échec d'upload laisse le post sans vignette.
+    alt/caption : texte alternatif (SEO, avec l'expression clé) et légende (crédit photo).
     """
     try:
         img = requests.get(image_url, timeout=30, headers=_UA)
@@ -136,6 +161,15 @@ def _upload_featured_media(wp_url: str, auth, image_url: str) -> int | None:
         resp.raise_for_status()
         media_id = resp.json().get("id")
         log.info("Média uploadé WP id=%s : %s", media_id, image_url)
+        # Renseigne le texte alternatif (SEO) et la légende (crédit photo).
+        if media_id and (alt or caption):
+            try:
+                requests.post(
+                    f"{wp_url}/?rest_route=/wp/v2/media/{media_id}",
+                    json={"alt_text": alt, "caption": caption},
+                    auth=auth, headers=_headers(auth), timeout=20)
+            except requests.RequestException:
+                pass  # non bloquant : la vignette est déjà en place
         return media_id
     except requests.HTTPError as exc:
         log.warning("Upload média refusé (%s) : %s", exc.response.status_code,
@@ -161,28 +195,75 @@ def publish_to_cs(event: dict) -> int | None:
     # PRIORITÉ à l'article enrichi (titre + chapô + corps + encadré + sources) ;
     # repli sur le brut si l'événement n'a pas été rédigé par l'agent.
     title, content = build_post(event)
+    meta = {
+        "event_date_start":      event.get("date_start", ""),
+        "event_lieu":            event.get("lieu", ""),
+        "event_ville":           event.get("ville", ""),
+        "event_territoire":      event.get("territoire", ""),
+        "event_categorie":       event.get("llm_categorie", ""),
+        "event_organisateur":    event.get("organisateur", ""),
+        "event_prix":            event.get("prix", ""),
+        "event_url_source":      event.get("url_source", ""),
+        "event_llm_score":       str(event.get("llm_score", 0)),
+        "event_llm_justification": event.get("llm_justification", ""),
+    }
+    # Le titre de l'ARTICLE reste le titre éditorial ; le title Yoast (SEO, avec
+    # la marque) part séparément en méta (_yoast_wpseo_title) ci-dessous.
     payload = {
         "title":   title,
         "content": content,
         "status":  "draft",   # TOUJOURS draft — Franck publie manuellement
-        "meta": {
-            "event_date_start":      event.get("date_start", ""),
-            "event_lieu":            event.get("lieu", ""),
-            "event_ville":           event.get("ville", ""),
-            "event_territoire":      event.get("territoire", ""),
-            "event_categorie":       event.get("llm_categorie", ""),
-            "event_organisateur":    event.get("organisateur", ""),
-            "event_prix":            event.get("prix", ""),
-            "event_url_source":      event.get("url_source", ""),
-            "event_llm_score":       str(event.get("llm_score", 0)),
-            "event_llm_justification": event.get("llm_justification", ""),
-        },
     }
+
+    # --- SEO / Yoast : méta, expression clé, extrait, slug, aperçu social ------
+    seo_desc = event.get("seo_meta") or ""
+    social_desc = event.get("seo_answer") or seo_desc  # la réponse directe, + percutante
+    if event.get("seo_at"):
+        if event.get("seo_keyphrase"):
+            meta["_yoast_wpseo_focuskw"] = event["seo_keyphrase"]
+        if event.get("seo_title"):
+            meta["_yoast_wpseo_title"] = event["seo_title"]
+        if seo_desc:
+            meta["_yoast_wpseo_metadesc"] = seo_desc
+        # Aperçu réseaux sociaux (Open Graph = Facebook/LinkedIn/WhatsApp, + Twitter).
+        # L'image OG est la vignette (featured_media) : Yoast la reprend d'office.
+        if event.get("seo_title"):
+            meta["_yoast_wpseo_opengraph-title"] = event["seo_title"]
+            meta["_yoast_wpseo_twitter-title"] = event["seo_title"]
+        if social_desc:
+            meta["_yoast_wpseo_opengraph-description"] = social_desc
+            meta["_yoast_wpseo_twitter-description"] = social_desc
+        if event.get("seo_answer"):
+            payload["excerpt"] = event["seo_answer"]
+        if event.get("seo_slug"):
+            payload["slug"] = event["seo_slug"]
+    payload["meta"] = meta
+
+    # --- Catégorie (les 11) + étiquettes → taxonomies WordPress natives -------
+    cat_id = _resolve_term(wp_url, auth, "categories", event.get("llm_categorie"))
+    if cat_id:
+        payload["categories"] = [cat_id]
+    tag_names = []
+    if event.get("seo_tags"):
+        try:
+            tag_names = [t for t in json.loads(event["seo_tags"]) if t]
+        except (ValueError, TypeError):
+            tag_names = []
+    if event.get("seo_keyphrase"):
+        tag_names.append(event["seo_keyphrase"])
+    tag_ids = [i for i in (_resolve_term(wp_url, auth, "tags", n)
+                           for n in dict.fromkeys(tag_names)) if i]
+    if tag_ids:
+        payload["tags"] = tag_ids
 
     # Image à la une : upload dans la médiathèque puis featured_media.
     # _thumbnail_url en meta ne définit PAS la vignette via l'API REST.
+    # alt = expression clé (SEO) ; légende = crédit photo.
     if event.get("url_image"):
-        media_id = _upload_featured_media(wp_url, auth, event["url_image"])
+        media_id = _upload_featured_media(
+            wp_url, auth, event["url_image"],
+            alt=event.get("seo_keyphrase") or event.get("title", ""),
+            caption=event.get("image_credit", ""))
         if media_id:
             payload["featured_media"] = media_id
         else:

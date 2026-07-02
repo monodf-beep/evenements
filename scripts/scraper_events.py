@@ -87,6 +87,9 @@ def init_db(conn: sqlite3.Connection) -> None:
                       ("seo_meta", "TEXT"),
                       ("seo_answer", "TEXT"),
                       ("seo_faq", "TEXT"),
+                      ("seo_keyphrase", "TEXT"),
+                      ("seo_slug", "TEXT"),
+                      ("seo_tags", "TEXT"),
                       ("seo_model", "TEXT"),
                       ("seo_at", "TEXT")):
         try:

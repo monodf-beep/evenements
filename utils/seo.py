@@ -27,6 +27,15 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").strip())
 
 
+def slugify(text: str) -> str:
+    """Slug SEO : minuscules, accents retirés, mots séparés par des tirets."""
+    import unicodedata
+    t = unicodedata.normalize("NFD", (text or "").lower())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    t = re.sub(r"[^a-z0-9]+", "-", t).strip("-")
+    return t[:70]
+
+
 def build_event_jsonld(ev: dict) -> dict | None:
     """Construit le JSON-LD schema.org/Event depuis les champs de la base.
     Déterministe, sans LLM. Renvoie None si l'événement n'a pas le minimum
@@ -86,8 +95,8 @@ def event_jsonld_str(ev: dict) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-SEO_PROMPT = """Tu optimises le référencement d'un événement culturel pour un agenda en
-ligne bilingue (Savoie, Piémont, Vallée d'Aoste, Nice). Style sobre, factuel, jamais racoleur
+SEO_PROMPT = """Tu optimises le référencement (Yoast) d'un événement culturel pour un agenda
+en ligne bilingue (Savoie, Piémont, Vallée d'Aoste, Nice). Style sobre, factuel, jamais racoleur
 (pas de « incontournable », « magique »). Géographie nommée (ville, territoire).
 
 Événement :
@@ -97,10 +106,21 @@ Lieu : {lieu}, {ville} ({territoire})
 Dates : {dates}
 Description : {description}
 
+Choisis d'abord UNE expression clé principale (« focus keyphrase ») : 2 à 4 mots, le cœur
+cherché de l'événement (ex. nom propre + lieu). Puis rédige TOUT autour d'elle, en respectant
+Yoast :
+- le titre SEO COMMENCE par l'expression clé ;
+- la méta description CONTIENT l'expression clé ;
+- la réponse directe et l'intro CONTIENNENT l'expression clé ;
+- le slug CONTIENT l'expression clé (minuscules, tirets).
+
 Produis, en français, en JSON strict :
-{{"seo_title": "<titre SEO 50-60 caractères, avec le lieu/ville ; suffixe ' — Agenda Sabaudo'>",
-  "seo_meta": "<meta description 150-160 caractères, factuelle : quoi, où, quand>",
-  "seo_answer": "<réponse directe de 40-60 mots (AEO) : synthèse de l'événement, réutilisable en chapô>",
+{{"seo_keyphrase": "<expression clé principale, 2-4 mots>",
+  "seo_title": "<titre SEO 50-60 caractères, COMMENÇANT par l'expression clé ; suffixe ' — Agenda Sabaudo'>",
+  "seo_slug": "<slug court contenant l'expression clé, minuscules-et-tirets, sans année si récurrent>",
+  "seo_meta": "<meta description 150-160 caractères, factuelle (quoi, où, quand) et CONTENANT l'expression clé>",
+  "seo_answer": "<réponse directe de 40-60 mots (AEO), CONTENANT l'expression clé, réutilisable en chapô>",
+  "seo_tags": ["<3 à 6 étiquettes : lieu, ville, artistes/thème, catégorie>"],
   "seo_faq": [
     {{"q": "<question naturelle, ex. Quand a lieu … ?>", "a": "<réponse courte et factuelle>"}},
     {{"q": "<Où se déroule … ?>", "a": "<…>"}},
@@ -151,10 +171,17 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
     faq = data.get("seo_faq") or []
     faq = [{"q": _clean(x.get("q")), "a": _clean(x.get("a"))}
            for x in faq if isinstance(x, dict) and x.get("q") and x.get("a")]
+    tags = data.get("seo_tags") or []
+    tags = [_clean(t) for t in tags if isinstance(t, str) and _clean(t)][:6]
+    keyphrase = _clean(data.get("seo_keyphrase"))
+    slug = slugify(data.get("seo_slug") or keyphrase or _clean(data.get("seo_title")))
     return {
+        "seo_keyphrase": keyphrase[:60],
         "seo_title": _clean(data.get("seo_title"))[:70],
+        "seo_slug": slug,
         "seo_meta": _clean(data.get("seo_meta"))[:180],
         "seo_answer": _clean(data.get("seo_answer")),
+        "seo_tags": tags,
         "seo_faq": faq,
     }
 
