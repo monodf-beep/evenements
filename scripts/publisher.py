@@ -195,6 +195,11 @@ def publish_to_cs(event: dict) -> int | None:
     # PRIORITÉ à l'article enrichi (titre + chapô + corps + encadré + sources) ;
     # repli sur le brut si l'événement n'a pas été rédigé par l'agent.
     title, content = build_post(event)
+    # Méta événementielles publiques (lisibles via REST une fois le post publié).
+    # On N'EXPOSE PAS le scoring interne (llm_score/justification), ni l'URL d'une
+    # source RADAR (charte §8 : le radar n'est jamais crédité ni lié).
+    is_radar = (event.get("source_type") == "radar"
+                or "(radar)" in (event.get("source_name") or ""))
     meta = {
         "event_date_start":      event.get("date_start", ""),
         "event_lieu":            event.get("lieu", ""),
@@ -203,9 +208,7 @@ def publish_to_cs(event: dict) -> int | None:
         "event_categorie":       event.get("llm_categorie", ""),
         "event_organisateur":    event.get("organisateur", ""),
         "event_prix":            event.get("prix", ""),
-        "event_url_source":      event.get("url_source", ""),
-        "event_llm_score":       str(event.get("llm_score", 0)),
-        "event_llm_justification": event.get("llm_justification", ""),
+        "event_url_source":      "" if is_radar else event.get("url_source", ""),
     }
     # Le titre de l'ARTICLE reste le titre éditorial ; le title Yoast (SEO, avec
     # la marque) part séparément en méta (_yoast_wpseo_title) ci-dessous.

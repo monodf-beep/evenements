@@ -48,10 +48,12 @@ add_action('init', function () {
     }
 
     // --- Champs personnalisés du backoffice (non protégés) --------------------
+    // Volontairement SANS le scoring interne (llm_score/justification) : il ne
+    // doit pas être exposé publiquement via l'API REST. L'URL de source radar
+    // n'est de toute façon jamais poussée (voir publisher.py, charte §8).
     foreach (array(
         'event_date_start', 'event_lieu', 'event_ville', 'event_territoire',
         'event_categorie', 'event_organisateur', 'event_prix', 'event_url_source',
-        'event_llm_score', 'event_llm_justification',
     ) as $key) {
         $register($key, false);
     }
