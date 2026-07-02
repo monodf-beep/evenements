@@ -14,8 +14,18 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from urllib.parse import urlparse
+
 from utils.logger import get_logger
-from utils.sources import is_blocked_image, load_blocked_image_domains
+from utils.sources import (is_blocked_image, is_broad_source, load_blocked_image_domains,
+                           load_broad_sources, load_perimeter_filter, mentions_perimeter)
+
+
+def _domain(url: str) -> str:
+    try:
+        return urlparse(url).netloc.lower().removeprefix("www.")
+    except ValueError:
+        return ""
 
 log = get_logger("scraper_events")
 
@@ -136,14 +146,18 @@ def best_content(entry: dict) -> str:
     return text.strip()[:10000]
 
 
-def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set) -> int:
+def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
+                  perimeter_re=None, broad: set | None = None) -> int:
     log.info("Scraping : %s", source["name"])
     try:
         feed = feedparser.parse(source["url"])
     except Exception as exc:
         log.warning("Échec scraping %s : %s", source["name"], exc)
         return 0
-    inserted = 0
+    # Source LARGE (couverture > périmètre) : on ne gardera que les événements
+    # qui citent un lieu du périmètre (évite Avignon, Grenoble… via Le Dauphiné).
+    is_large = is_broad_source(_domain(source["url"]), broad or set())
+    inserted = skipped = 0
     for entry in feed.entries:
         url = entry.get("link", "").strip()
         if not url:
@@ -153,6 +167,11 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set) -> int:
             "SELECT id FROM events_raw WHERE url_source = ?", (url,)
         ).fetchone()
         if exists:
+            continue
+        title = entry.get("title", "").strip()
+        content = best_content(entry)
+        if is_large and not mentions_perimeter(f"{title}\n{content}", perimeter_re):
+            skipped += 1
             continue
         image = extract_image(entry)
         if is_blocked_image(image, blocked):
@@ -164,8 +183,8 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set) -> int:
                  url_image, source_name, organisateur, source_type)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                entry.get("title", "").strip(),
-                best_content(entry),
+                title,
+                content,
                 entry.get("published", ""),
                 source["territoire"],
                 url,
@@ -178,7 +197,8 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set) -> int:
         except sqlite3.IntegrityError:
             pass  # doublon race condition
     conn.commit()
-    log.info("%s : %d nouveaux événements", source["name"], inserted)
+    tail = f" ({skipped} hors périmètre écartés)" if skipped else ""
+    log.info("%s : %d nouveaux événements%s", source["name"], inserted, tail)
     return inserted
 
 
@@ -189,14 +209,40 @@ def main() -> int:
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     blocked = load_blocked_image_domains()
+    perimeter_re = load_perimeter_filter()
+    broad = load_broad_sources()
     sources = load_sources()
     if not sources:
         log.error("Aucune source configurée dans %s", SOURCES_FILE)
         return 1
-    total = sum(scrape_source(s, conn, blocked) for s in sources)
+    total = sum(scrape_source(s, conn, blocked, perimeter_re, broad) for s in sources)
+    cleaned = clean_out_of_perimeter(conn, perimeter_re, broad)
     conn.close()
-    log.info("=== Scraping terminé : %d nouveaux événements ===", total)
+    log.info("=== Scraping terminé : %d nouveaux événements (%d hors périmètre rejetés) ===",
+             total, cleaned)
     return 0
+
+
+def clean_out_of_perimeter(conn: sqlite3.Connection, perimeter_re, broad: set) -> int:
+    """Rejette les événements DÉJÀ en base, issus d'une source large, encore 'pending'
+    et ne citant aucun lieu du périmètre (nettoyage rétroactif). Idempotent."""
+    if perimeter_re is None or not broad:
+        return 0
+    rows = conn.execute(
+        "SELECT id, title, description, url_source FROM events_raw "
+        "WHERE statut = 'pending' AND duplicate_of IS NULL").fetchall()
+    n = 0
+    for r in rows:
+        if not is_broad_source(_domain(r[3]), broad):
+            continue
+        if not mentions_perimeter(f"{r[1]}\n{r[2] or ''}", perimeter_re):
+            conn.execute("UPDATE events_raw SET statut='rejected', "
+                         "llm_justification='Hors périmètre (source large, aucun lieu couvert cité).' "
+                         "WHERE id=?", (r[0],))
+            n += 1
+    if n:
+        conn.commit()
+    return n
 
 
 if __name__ == "__main__":

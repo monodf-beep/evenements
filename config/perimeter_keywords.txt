@@ -1,0 +1,139 @@
+# Lieux du PÉRIMÈTRE couvert (Savoie/Haute-Savoie, Piémont, Vallée d'Aoste, Nice/06).
+# Un mot par ligne. Les accents sont retirés automatiquement à la comparaison
+# (donc « Chambery » matche « Chambéry »). Sert à filtrer les sources LARGES
+# (config/broad_sources.txt) : un événement de source large n'est gardé que s'il
+# cite au moins un de ces lieux. Lignes # ignorées.
+
+# ── Savoie / Haute-Savoie (73/74) ──
+Savoie
+Haute-Savoie
+Chambery
+Annecy
+Aix-les-Bains
+Albertville
+Annemasse
+Thonon
+Evian
+Cluses
+Sallanches
+Chamonix
+Megeve
+Saint-Gervais
+Moutiers
+Ugine
+Yenne
+Montmelian
+La Ravoire
+Rumilly
+Bonneville
+Passy
+Faverges
+Seynod
+Cran-Gevrier
+Saint-Julien-en-Genevois
+Bourg-Saint-Maurice
+Modane
+Saint-Jean-de-Maurienne
+Courchevel
+Meribel
+Val d'Isere
+Tignes
+La Plagne
+Les Arcs
+Val Thorens
+Tarentaise
+Maurienne
+Beaufortain
+Bauges
+Chablais
+Genevois
+Faucigny
+Mont-Blanc
+Leman
+lac du Bourget
+lac d'Annecy
+
+# ── Piémont ──
+Piemont
+Piemonte
+Turin
+Torino
+Cuneo
+Alba
+Asti
+Alessandria
+Biella
+Novara
+Vercelli
+Ivrea
+Pinerolo
+Moncalieri
+Chieri
+Collegno
+Rivoli
+Venaria
+Chivasso
+Verbania
+Domodossola
+Mondovi
+Bra
+Saluzzo
+Fossano
+Langhe
+Monferrato
+Roero
+Valsesia
+Ossola
+Canavese
+
+# ── Vallée d'Aoste ──
+Vallee d'Aoste
+Valle d'Aosta
+Vallee-d-Aoste
+Aoste
+Aosta
+Courmayeur
+Cervinia
+Breuil
+Cogne
+Gressoney
+Chatillon
+Saint-Vincent
+Verres
+Pont-Saint-Martin
+La Thuile
+Valtournenche
+Morgex
+Bard
+Gran Paradiso
+Cervin
+Mont Rose
+valdotain
+valdotaine
+
+# ── Nice / Alpes-Maritimes (06) ──
+Nice
+Alpes-Maritimes
+Cannes
+Antibes
+Grasse
+Menton
+Cagnes
+Vence
+Mougins
+Valbonne
+Villefranche
+Saint-Paul-de-Vence
+Beaulieu
+Juan-les-Pins
+Cap-Ferrat
+Cap d'Antibes
+Sophia Antipolis
+Roquebrune
+Le Cannet
+Mandelieu
+Carros
+Saint-Laurent-du-Var
+Villeneuve-Loubet
+Cote d'Azur
+Riviera
