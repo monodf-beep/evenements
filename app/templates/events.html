@@ -25,10 +25,10 @@
   <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
   <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
   <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
-  <span class="sep">|</span>
+  <span class="sep"></span>
   du <input type="date" name="dfrom" value="{{ dfrom }}"> au <input type="date" name="dto" value="{{ dto }}">
   <button class="pbtn">Plage perso</button>
-  <span class="sep">|</span>
+  <span class="sep"></span>
   <a href="/events?dated=undated&statut={{ statut }}" class="pbtn {{ 'on' if dated=='undated' }}">📌 Date à confirmer ({{ undated_count }})</a>
   {% if plabel or dated %}<a href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}" class="muted">✕ effacer</a>{% endif %}
 </form>
@@ -38,18 +38,18 @@
   <input type="hidden" name="statut" value="{{ statut }}">
   <input type="hidden" name="preset" value="{{ preset }}">
   <input type="hidden" name="dfrom" value="{{ dfrom }}"><input type="hidden" name="dto" value="{{ dto }}">
-  <select name="territoire" class="pbtn" style="padding:.4rem .6rem">
+  <select name="territoire" class="field" aria-label="Filtrer par territoire">
     <option value="">Tous territoires</option>
     {% for t in territories %}<option value="{{ t }}" {{ 'selected' if territoire==t }}>{{ t }}</option>{% endfor %}
   </select>
-  <input type="text" name="q" value="{{ q }}" placeholder="Rechercher dans le titre…" class="pbtn" style="padding:.4rem .6rem;min-width:220px">
-  <select name="img" class="pbtn" style="padding:.4rem .6rem">
+  <input type="text" name="q" value="{{ q }}" placeholder="Rechercher dans le titre…" class="field" style="min-width:220px" aria-label="Rechercher dans le titre">
+  <select name="img" class="field" aria-label="Filtrer par photo">
     <option value="">Photo : toutes</option>
     <option value="1" {{ 'selected' if img=='1' }}>Avec photo ({{ with_img }})</option>
     <option value="0" {{ 'selected' if img=='0' }}>Sans photo ({{ without_img }})</option>
   </select>
   <button class="btn btn-primary btn-sm">Filtrer</button>
-  <span class="sep" style="color:#cbd5e1">|</span>
+  <span class="sep"></span>
   <span class="muted" style="font-size:.85rem">Tri :</span>
   <a class="pbtn {{ 'on' if sort != 'score' }}" href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}&img={{ img }}&preset={{ preset }}&dfrom={{ dfrom }}&dto={{ dto }}&dated={{ dated }}">date</a>
   <a class="pbtn {{ 'on' if sort == 'score' }}" href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}&img={{ img }}&preset={{ preset }}&dfrom={{ dfrom }}&dto={{ dto }}&dated={{ dated }}&sort=score">score ↓</a>
@@ -60,13 +60,18 @@
 {% else %}
 <div class="table-wrap">
 <table>
-  <tr><th>Photo</th><th>Titre</th><th>Date</th><th>Territoire</th><th>Source</th><th>Statut (clic = classer)</th><th>Score</th><th>Actions</th></tr>
+  <thead>
+  <tr><th scope="col">Photo</th><th scope="col">Titre</th><th scope="col">Date</th><th scope="col">Territoire</th><th scope="col">Source</th><th scope="col">Statut (clic = classer)</th><th scope="col">Score</th><th scope="col">Actions</th></tr>
+  </thead>
+  <tbody>
   {% for e in events %}
   <tr id="e{{ e.id }}">
-    <td>{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
-    <td><a href="/preview/{{ e.id }}" target="_blank"><strong>{{ e.title }}</strong></a>
-      {% if e.enrich_status == 'enriched' %}<br><span class="badge" style="background:#dcfce7;color:#166534">✍️ article prêt</span>
-      {% elif e.enrich_status in ('error','api_error') %}<br><span class="badge" style="background:#fee2e2;color:#991b1b">✍️ échec</span>{% endif %}
+    <td>{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td><a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
+      {% set ready = e.enrich_status == 'enriched' and e.url_image and (e.date_event_start or e.date_event_end) %}
+      {% if ready %}<br><span class="badge ready" title="Article + photo + date : publiable tel quel">✓ prêt à publier</span>
+      {% elif e.enrich_status == 'enriched' %}<br><span class="badge article">✍️ article prêt</span>
+      {% elif e.enrich_status in ('error','api_error') %}<br><span class="badge fail">✍️ échec</span>{% endif %}
       {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
     <td>
       {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
@@ -78,7 +83,7 @@
       {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
     </td>
     <td>{{ e.territoire or '—' }}</td>
-    <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source and e.url_source.startswith('gmail:') %}<span class="muted">📬 newsletter</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source %}<span class="muted">🌐 RSS</span> <a href="{{ e.url_source }}" target="_blank">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
+    <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source and e.url_source.startswith('gmail:') %}<span class="muted">📬 newsletter</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source %}<span class="muted">🌐 RSS</span> <a href="{{ e.url_source }}" target="_blank" rel="noopener" aria-label="Ouvrir la source (nouvel onglet)">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
     <td>
       {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabaudo'),('rejected','Rejeté')] %}
       <div class="stpick" title="{{ e.llm_justification or 'Non évalué' }}">
@@ -96,14 +101,16 @@
       {% if e.statut not in ['evaluated','published_cs','published_sub','rejected'] %}
       <div class="muted" style="font-size:.7rem;margin-top:3px;">actuel : {{ status_labels.get(e.statut, e.statut) }}</div>
       {% endif %}
+      {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ brouillon WP #{{ e.wp_post_id_cs }}</a>{% endif %}
     </td>
     <td>{{ e.llm_score if e.llm_score is not none else '—' }}</td>
     <td>
-      <a href="/preview/{{ e.id }}" target="_blank" class="btn btn-ghost btn-sm">👁 Aperçu</a>
-      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Pousser en brouillon sur WordPress">✅ WP</button></form>
+      <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon WordPress Cultura Sabauda">🚀 Publier CS</button></form>
     </td>
   </tr>
   {% endfor %}
+  </tbody>
 </table>
 </div>
 

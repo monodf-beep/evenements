@@ -1,82 +1,32 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-{% if enrich_running %}<meta http-equiv="refresh" content="12">{% endif %}
-<title>Aperçu — {{ e.title }}</title>
-<style>
-  body { font-family: Georgia, 'Times New Roman', serif; color: #1f2937;
-         max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 4rem; line-height: 1.6; }
-  nav { font-family: sans-serif; font-size: 0.9rem; margin-bottom: 1.5rem; }
-  nav a { color: #2563eb; text-decoration: none; margin-right: 1rem; }
-  .eyebrow { font-family: sans-serif; text-transform: uppercase; letter-spacing: .08em;
-             font-size: .72rem; color: #b91c1c; font-weight: bold; margin-bottom: .4rem; }
-  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .6rem; }
-  .meta { font-family: sans-serif; font-size: .85rem; color: #6b7280; margin-bottom: 1.2rem; }
-  .hero { width: 100%; max-height: 380px; object-fit: cover; border-radius: 8px; margin: 1rem 0 1.4rem; }
-  .body { font-size: 1.08rem; }
-  .credits { font-family: sans-serif; font-size: .88rem; margin-top: 1.6rem; color: #374151;
-             background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: .7rem .9rem; }
-  .credits > div { margin: .15rem 0; }
-  .credits a { color: #2563eb; }
-  .credits .radar { color: #b45309; }
-  .note { font-family: sans-serif; background: #f9fafb; border: 1px solid #e5e7eb;
-          border-left: 4px solid #c0392b; border-radius: 6px; padding: .8rem 1rem;
-          margin-top: 2rem; font-size: .9rem; color: #374151; }
-  .note .s { font-weight: bold; font-size: 1rem; }
-  .pill { display: inline-block; font-family: sans-serif; font-size: .75rem;
-          background: #eef2ff; color: #3730a3; border-radius: 999px; padding: .15rem .6rem; }
-  .article { border: 1px solid #d1d5db; border-radius: 10px; padding: 1.2rem 1.4rem;
-             margin: 1.4rem 0; background: #fcfcfd; }
-  .article h2 { font-size: 1.5rem; margin: 0 0 .5rem; }
-  .article .chapo { font-weight: bold; font-size: 1.12rem; color: #111827; }
-  .article .corps { margin-top: .8rem; white-space: pre-wrap; }
-  .article .encadre { font-family: sans-serif; font-size: .9rem; background: #f3f4f6;
-                      border-radius: 8px; padding: .7rem .9rem; margin-top: 1rem; white-space: pre-wrap; }
-  .article .ctx { font-family: sans-serif; font-size: .9rem; color: #374151; margin-top: .8rem; }
-  .article .ctx b { color: #111827; }
-  .article .src { font-family: sans-serif; font-size: .82rem; color: #6b7280; margin-top: .8rem; }
-  .article .src a { color: #2563eb; word-break: break-all; }
-  .conf { font-family: sans-serif; font-size: .72rem; text-transform: uppercase;
-          letter-spacing: .05em; border-radius: 999px; padding: .12rem .55rem; }
-  .conf-haute { background:#dcfce7; color:#166534; }
-  .conf-moyenne { background:#fef9c3; color:#854d0e; }
-  .conf-faible { background:#fee2e2; color:#991b1b; }
-  .btn { font-family: sans-serif; display: inline-block; cursor: pointer; border: 0;
-         border-radius: 6px; padding: .55rem 1rem; font-size: .9rem; font-weight: 600;
-         background: #4f46e5; color: #fff; }
-  .btn.sec { background: #e5e7eb; color: #374151; }
-  .flash { font-family: sans-serif; border-radius: 6px; padding: .6rem .9rem; margin-bottom: 1rem; font-size: .9rem; }
-  .flash.ok { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
-  .flash.err { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
-</style>
-</head>
-<body>
-<nav><a href="/">📊 Dashboard</a><a href="/validation">✅ Validation</a><a href="/site-dedie">🌐 Site dédié</a></nav>
+{% extends "base.html" %}
+{% set active = 'validation' %}
+{% block title %}Aperçu — {{ e.title }}{% endblock %}
+{% block head %}{% if enrich_running %}<meta http-equiv="refresh" content="12">{% endif %}{% endblock %}
+{% block h1 %}Aperçu{% endblock %}
+{% block subtitle %}<div class="sub">La fiche telle qu'elle partirait — article, sources, score détaillé.</div>{% endblock %}
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
-{% endwith %}
+{% block content %}
+<div class="article-page">
 
-<div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;font-family:sans-serif;
-            background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;margin-bottom:1.2rem;">
-  <span style="font-size:.82rem;color:#6b7280;margin-right:.2rem;">Actions :</span>
+<!-- Barre d'actions : classer / publier -->
+<div class="card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.6rem .8rem">
+  <span class="muted text-sm" style="margin-right:.2rem">Actions :</span>
   <form method="post" action="/action/{{ e.id }}/publish_cs" style="margin:0"
-        onsubmit="return confirm('Créer un brouillon WordPress pour cet événement ?')">
+        onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')">
     <input type="hidden" name="next" value="{{ request.full_path }}">
-    <button class="btn" style="background:#16a34a;color:#fff">✅ WordPress</button>
+    <button class="btn btn-ok btn-sm">🚀 Publier CS</button>
   </form>
   <form method="post" action="/action/{{ e.id }}/subdomain" style="margin:0">
     <input type="hidden" name="next" value="{{ request.full_path }}">
-    <button class="btn" style="background:#7c3aed;color:#fff">📋 Site dédié</button>
+    <button class="btn btn-purple btn-sm">📋 Agenda Sabaudo</button>
   </form>
   <form method="post" action="/action/{{ e.id }}/reject" style="margin:0"
         onsubmit="return confirm('Rejeter cet événement ?')">
     <input type="hidden" name="next" value="{{ request.full_path }}">
-    <button class="btn" style="background:#e5e7eb;color:#374151">❌ Rejeter</button>
+    <button class="btn btn-ghost btn-sm">❌ Rejeter</button>
   </form>
-  {% if e.statut %}<span class="pill" style="margin-left:auto">statut : {{ e.statut }}</span>{% endif %}
+  {% if e.statut %}<span class="st st-{{ e.statut }}" style="margin-left:auto">{{ status_labels.get(e.statut, e.statut) if status_labels else e.statut }}</span>{% endif %}
+  {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ brouillon WP #{{ e.wp_post_id_cs }}</a>{% endif %}
 </div>
 
 {% if e.llm_categorie %}<div class="eyebrow">{{ e.llm_categorie }}</div>{% endif %}
@@ -84,15 +34,15 @@
 <div class="meta">
   {% if e.date_start %}🗓 {{ e.date_start }} · {% endif %}
   {% if e.lieu %}{{ e.lieu }} · {% endif %}{% if e.ville %}{{ e.ville }} · {% endif %}
-  <span class="pill">{{ e.territoire or '—' }}</span>
+  <span class="badge grey">{{ e.territoire or '—' }}</span>
 </div>
 
-{% if image %}<img class="hero" src="{{ image }}" alt="">{% endif %}
+{% if image %}<img class="hero" src="{{ image }}" alt="" loading="lazy" decoding="async">{% endif %}
 
 {% if enriched and enriched.article %}
   {% set art = enriched.article %}
   <div class="article">
-    <div style="display:flex;justify-content:space-between;align-items:center;font-family:sans-serif;font-size:.78rem;color:#6b7280;margin-bottom:.6rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;font-family:-apple-system,sans-serif;font-size:.78rem;color:var(--muted);margin-bottom:.6rem;">
       <span>✍️ Article rédigé par l'agent · {{ e.enrich_model or '—' }}</span>
       {% set c = enriched.confiance or 'moyenne' %}
       <span class="conf conf-{{ c }}">confiance {{ c }}</span>
@@ -112,35 +62,35 @@
   </div>
 {% endif %}
 
-<details {% if not enriched %}open{% endif %} style="margin:1rem 0;font-family:sans-serif;font-size:.9rem;">
-  <summary style="cursor:pointer;color:#6b7280;">Matière source (brut RSS)</summary>
-  <div class="body" style="margin-top:.6rem;">
+<details {% if not enriched %}open{% endif %} style="margin:1rem 0;font-family:-apple-system,sans-serif;font-size:.9rem;">
+  <summary style="cursor:pointer;color:var(--muted);">Matière source (brut RSS)</summary>
+  <div style="margin-top:.6rem;font-size:1.05rem;">
     {% if e.description_clean %}<p>{{ e.description_clean }}</p>{% else %}<p><em>Pas de description fournie par la source.</em></p>{% endif %}
   </div>
 </details>
 
 {% if press_kits %}
-  <div style="font-family:sans-serif;font-size:.9rem;background:#eff6ff;border:1px solid #bfdbfe;
-              border-radius:8px;padding:.7rem .9rem;margin:1rem 0;color:#1e3a8a;">
+  <div style="font-family:-apple-system,sans-serif;font-size:.9rem;background:var(--info-soft);border:1px solid #bcd6fb;
+              border-radius:8px;padding:.7rem .9rem;margin:1rem 0;color:var(--info-ink);">
     📎 <b>{{ press_kits|length }} dossier(s) de presse rattaché(s)</b> — matière primaire pour la rédaction.
     {% for k in press_kits %}
-      <div style="margin-top:.3rem;color:#374151;">• {{ k.subject }}{% if k.n_photos %} — {{ k.n_photos }} photo(s) HD{% endif %}</div>
+      <div style="margin-top:.3rem;color:var(--ink-2);">• {{ k.subject }}{% if k.n_photos %} — {{ k.n_photos }} photo(s) HD{% endif %}</div>
     {% endfor %}
   </div>
 {% endif %}
 
-<form method="post" action="/enrich/{{ e.id }}" style="margin:1rem 0;">
-  <button class="btn{% if enriched %} sec{% endif %}" {% if enrich_running %}disabled{% endif %}>
-    {% if enrich_running %}✍️ Enrichissement en cours…{% elif enriched %}🔄 Ré-enrichir{% else %}✍️ Enrichir + rédiger (agent web){% endif %}
+<form method="post" action="/enrich/{{ e.id }}" style="margin:1rem 0;font-family:-apple-system,sans-serif;">
+  <button class="btn {% if enriched %}btn-ghost{% else %}btn-primary{% endif %}" {% if enrich_running %}disabled{% endif %}>
+    {% if enrich_running %}✍️ Enrichissement en cours…{% elif enriched %}🔄 Ré-enrichir (💶){% else %}✍️ Enrichir + rédiger (agent web) 💶{% endif %}
   </button>
-  {% if e.enrich_status == 'error' %}<span style="font-family:sans-serif;font-size:.82rem;color:#991b1b;margin-left:.6rem;">Dernier essai : réponse illisible de l'agent — réessaie.</span>{% endif %}
-  {% if e.enrich_status == 'api_error' %}<span style="font-family:sans-serif;font-size:.82rem;color:#991b1b;margin-left:.6rem;">Dernier essai : l'appel à l'API a échoué (quota, ou recherche web indisponible). Vérifie le bandeau d'alerte et le log <code>run_enrich.log</code>.</span>{% endif %}
+  {% if e.enrich_status == 'error' %}<span class="text-xs" style="color:var(--danger-ink);margin-left:.6rem;">Dernier essai : réponse illisible de l'agent — réessaie.</span>{% endif %}
+  {% if e.enrich_status == 'api_error' %}<span class="text-xs" style="color:var(--danger-ink);margin-left:.6rem;">Dernier essai : l'appel à l'API a échoué (quota, ou recherche web indisponible). Vérifie le bandeau d'alerte et le log <code>run_enrich.log</code>.</span>{% endif %}
 </form>
 
 <div class="credits">
   <div><strong>Crédits</strong></div>
   {% if is_radar %}
-    <div class="radar">📡 Détecté via radar (presse) — <strong>non lié</strong>. À confirmer à la source officielle (page du lieu/organisateur).</div>
+    <div style="color:var(--warn-ink)">📡 Détecté via radar (presse) — <strong>non lié</strong>. À confirmer à la source officielle (page du lieu/organisateur).</div>
   {% elif e.url_source %}
     <div>↗ <a href="{{ e.url_source }}" target="_blank" rel="noopener">Source : {{ e.source_name or e.url_source }}</a></div>
   {% elif e.source_name %}
@@ -152,20 +102,23 @@
 
 <div class="note">
   <span class="s">Score d'importance — {{ e.llm_score if e.llm_score is not none else '—' }}/10</span>
-  {% if e.llm_categorie %} · <span class="pill">{{ e.llm_categorie }}</span>{% endif %}<br>
+  {% if e.llm_categorie %} · <span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}<br>
   {% if e.llm_justification %}<em>{{ e.llm_justification }}</em><br>{% endif %}
   {% if score_detail %}
-  <table style="font-family:sans-serif;font-size:.85rem;border-collapse:collapse;margin:.6rem 0;width:100%">
+  <table style="font-size:.85rem;border-collapse:collapse;margin:.6rem 0;width:100%">
+    <tbody>
     {% set labels = {'notoriete_lieu':'Notoriété du lieu (0-3)','organisateur_moyens':'Organisateur & moyens (0-2)','edition_tradition':'Édition & tradition (0-2)','rayonnement':'Rayonnement (0-2)','specificite_territoriale':'Spécificité territoriale (0-1)'} %}
     {% for key, lbl in labels.items() %}{% if score_detail.get(key) %}
     <tr>
-      <td style="padding:.2rem .4rem;border-bottom:1px solid #eee;white-space:nowrap"><strong>{{ score_detail[key].points }}</strong> · {{ lbl }}</td>
-      <td style="padding:.2rem .4rem;border-bottom:1px solid #eee;color:#6b7280">{{ score_detail[key].note }}</td>
+      <td style="padding:.2rem .4rem;border-bottom:1px solid var(--line);white-space:nowrap"><strong>{{ score_detail[key].points }}</strong> · {{ lbl }}</td>
+      <td style="padding:.2rem .4rem;border-bottom:1px solid var(--line);color:var(--muted)">{{ score_detail[key].note }}</td>
     </tr>
     {% endif %}{% endfor %}
+    </tbody>
   </table>
   {% endif %}
-  Statut actuel : <strong>{{ e.statut }}</strong>
+  Statut actuel : <span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) if status_labels else e.statut }}</span>
 </div>
-</body>
-</html>
+
+</div>
+{% endblock %}

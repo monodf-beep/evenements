@@ -1,25 +1,24 @@
 {% extends "base.html" %}
 {% set active = 'dash' %}
 {% block title %}Tableau de bord — Agenda CS{% endblock %}
-{% block head %}{% if any_running %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
 {% block h1 %}Tableau de bord{% endblock %}
 {% block subtitle %}<div class="sub">Agrège, évalue et prépare les événements culturels — tout part en brouillon, rien n'est publié sans toi.</div>{% endblock %}
 
 {% block content %}
 
 <!-- Prochaine action -->
-<div class="card" style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between;border-color:#dfe1fb;background:linear-gradient(180deg,#fff,#fbfbff)">
+<div class="card card-cta" {% if any_running %}data-any-running="1"{% endif %}>
   <div>
-    <div class="section-title" style="margin:0 0 .3rem">Ta prochaine action</div>
+    <div class="section-title" style="margin:0 0 .3rem;border:none;padding:0">Ta prochaine action</div>
     {% if nav.validate %}
       <div style="font-size:1.1rem"><strong>{{ nav.validate }}</strong> événement(s) prêt(s) à valider.</div>
-      <div class="muted" style="font-size:.9rem">Ouvre le plan du week-end pour choisir quoi mettre en avant.</div>
+      <div class="muted text-sm">Ouvre le plan du week-end pour choisir quoi mettre en avant.</div>
     {% elif nav.pending %}
       <div style="font-size:1.1rem"><strong>{{ nav.pending }}</strong> événement(s) en attente d'évaluation.</div>
-      <div class="muted" style="font-size:.9rem">Choisis une période plus bas et lance l'évaluation.</div>
+      <div class="muted text-sm">Choisis une période plus bas et lance l'évaluation.</div>
     {% else %}
       <div style="font-size:1.1rem">Rien en attente. 👌</div>
-      <div class="muted" style="font-size:.9rem">Lance une collecte pour récupérer de nouveaux événements.</div>
+      <div class="muted text-sm">Lance une collecte pour récupérer de nouveaux événements.</div>
     {% endif %}
   </div>
   <div class="btn-row">
@@ -28,15 +27,21 @@
   </div>
 </div>
 
-<!-- KPIs -->
+<!-- KPIs : le vocabulaire des 2 destinations est UNIFIÉ (Cultura Sabauda / Agenda Sabaudo) -->
 <div class="kpis">
-  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés</div></a>
+  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés (actifs)</div></a>
   <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
   <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (≥ 7)</div></a>
-  <a class="kpi" href="/events?statut=published_cs"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Publiés (brouillon)</div></a>
-  <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Site dédié</div></a>
+  <a class="kpi" href="/events?statut=published_cs"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Cultura Sabauda</div></a>
+  <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Agenda Sabaudo</div></a>
 </div>
-<p class="muted" style="font-size:.85rem;margin:-.5rem 0 0">🖼 <a href="/events?img=1">{{ with_img }} avec photo</a> · <a href="/events?img=0">{{ without_img }} sans photo</a></p>
+
+<!-- Alertes métier : ce qui bloque le flux (cliquables → la vue filtrée) -->
+<div class="alerts-inline">
+  {% if biz.undated %}<a href="/events?dated=undated"><span aria-hidden="true">📌</span> {{ biz.undated }} sans date (invisibles en période)</a>{% endif %}
+  {% if biz.retained_nophoto %}<a href="/events?img=0"><span aria-hidden="true">🖼</span> {{ biz.retained_nophoto }} retenu(s) sans photo</a>{% endif %}
+  <a href="/events?img=0" style="background:#eceff3;color:var(--ink-2);border-color:var(--line-2)"><span aria-hidden="true">🖼</span> {{ with_img }} avec / {{ without_img }} sans photo</a>
+</div>
 
 <!-- Pipeline -->
 <div class="section-title">Lancer le pipeline</div>
@@ -96,7 +101,7 @@
       <small>Les retenus + les expos encore en cours à re-valoriser.</small>
     </div>
     <div class="task">
-      <a class="btn btn-ghost" href="/site-dedie">🌐 Site dédié</a>
+      <a class="btn btn-ghost" href="/site-dedie">🌐 Agenda Sabaudo</a>
       <small>Les événements classés pour le site de volume.</small>
     </div>
     <div class="task">
@@ -183,8 +188,8 @@
     </table></div>
     <p class="muted" style="margin-top:.6rem">
       <strong>Gate</strong> : si ce n'est pas un événement (actu, réunion, voirie, inauguration passée) → <span class="badge grey">Rejeté</span>.
-      Sinon : <strong>≥ 7</strong> → <span class="badge new">À valider</span> (mise en avant home) ·
-      <strong>&lt; 7</strong> → <span class="badge re">Site dédié</span> (catalogue). Le détail par critère est visible sur chaque fiche (Aperçu).</p>
+      Sinon : <strong>≥ 7</strong> → <span class="badge new">À valider</span> (candidat Cultura Sabauda) ·
+      <strong>&lt; 7</strong> → <span class="badge re">Agenda Sabaudo</span> (catalogue). Le détail par critère est visible sur chaque fiche (Aperçu).</p>
   </div>
 </details>
 

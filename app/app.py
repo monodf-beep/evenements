@@ -232,7 +232,9 @@ def inject_globals():
     except Exception:
         pass
     return {"nav": {"pending": pending, "validate": validate},
-            "nav_alert": friendly_alert()}
+            "nav_alert": friendly_alert(),
+            # Base WordPress (lien direct vers un brouillon créé : wp_post_id_cs).
+            "wp_base": (os.getenv("WP_URL", "") or "").rstrip("/")}
 
 
 # --------------------------------------------------------------------------- #
@@ -388,9 +390,21 @@ def dashboard():
         "COUNT(*) t FROM events_raw").fetchone()
     with_img = imgrow["wi"] or 0
     without_img = (imgrow["t"] or 0) - with_img
+    # Alertes métier : ce qui bloque le flux éditorial (visibles en bandeau).
+    biz = {
+        "undated": conn.execute(
+            "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "
+            "AND COALESCE(date_event_end,'')='' AND statut NOT IN ('rejected','merged') "
+            "AND duplicate_of IS NULL").fetchone()["n"],
+        "retained_nophoto": conn.execute(
+            "SELECT COUNT(*) n FROM events_raw WHERE statut IN "
+            "('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
+            "AND COALESCE(url_image,'')=''").fetchone()["n"],
+    }
     conn.close()
 
-    total = sum(status_counts.values())
+    # « Collectés » actifs : hors rejetés/fusionnés (le total brut était trompeur).
+    total = sum(n for s, n in status_counts.items() if s not in ("rejected", "merged"))
     summary = usage.summarize()
     week = summary["current_week"]
     cost = {
@@ -440,10 +454,18 @@ def dashboard():
         src_counts=src_counts, src_total=sum(src_counts.values()),
         newsletters=newsletters, nl_active=nl_active,
         tasks=tasks, any_running=any_running, runs=runs,
-        with_img=with_img, without_img=without_img,
+        with_img=with_img, without_img=without_img, biz=biz,
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
         presets=PERIOD_PRESETS, scope=scope, today=date.today().isoformat(),
     )
+
+
+@app.route("/api/status")
+@require_auth
+def api_status():
+    """État minimal du pipeline pour le polling JS (fin de tâche → un seul reload)."""
+    running = any(t["running"] for t in tasks_status().values())
+    return {"running": running}
 
 
 @app.route("/run/<task>", methods=["POST"])
