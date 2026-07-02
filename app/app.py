@@ -538,6 +538,18 @@ def preview(event_id: int):
         except (ValueError, TypeError):
             enriched = None
     enrich_running = _running_state().get("enrich", False)
+    # SEO/GEO/AEO : le JSON-LD Event est DÉTERMINISTE (construit depuis la base,
+    # toujours affiché) ; les champs title/méta/réponse/FAQ sont générés à la
+    # demande (bouton). cf. utils/seo.py + docs/AGENT_SEO_DASHBOARD_SPEC.md.
+    from utils import seo as seo_mod
+    jsonld = seo_mod.event_jsonld_str(ev)
+    seo_faq = []
+    if ev.get("seo_faq"):
+        try:
+            seo_faq = json.loads(ev["seo_faq"])
+        except (ValueError, TypeError):
+            seo_faq = []
+    faq_jsonld = seo_mod.faq_jsonld_str(seo_faq)
     # Détail du score d'importance (critère par critère), si évalué.
     score_detail = None
     if ev.get("llm_score_detail"):
@@ -559,7 +571,8 @@ def preview(event_id: int):
     return render_template("preview.html", e=ev, image=image,
                            image_host=image_host, is_radar=is_radar,
                            enriched=enriched, enrich_running=enrich_running,
-                           press_kits=press_kits, score_detail=score_detail)
+                           press_kits=press_kits, score_detail=score_detail,
+                           jsonld=jsonld, seo_faq=seo_faq, faq_jsonld=faq_jsonld)
 
 
 @app.route("/enrich/<int:event_id>", methods=["POST"])
@@ -573,6 +586,50 @@ def enrich_one(event_id: int):
     else:
         flash(f"⚠️ Enrichissement non lancé : {msg}.", "err")
     return redirect(url_for("preview", event_id=event_id))
+
+
+@app.route("/seo/<int:event_id>", methods=["POST"])
+@require_auth
+def seo_optimize(event_id: int):
+    """Génère les champs SEO/AEO (title, méta, réponse directe, FAQ) via LLM pour
+    UN événement phare. Le JSON-LD, lui, est déterministe (affiché sans ce bouton).
+    Réservé aux événements importants — coût maîtrisé. cf. utils/seo.py."""
+    import anthropic
+    from utils import seo as seo_mod
+    conn = get_db()
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    ev = dict(row)
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        conn.close()
+        flash("⚠️ Clé API absente — SEO non généré.", "err")
+        return redirect(url_for("preview", event_id=event_id))
+    model = (os.getenv("ANTHROPIC_MODEL_SEO") or os.getenv("ANTHROPIC_MODEL_VISUALS")
+             or "claude-haiku-4-5")
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        result = seo_mod.optimize_seo(ev, client, model)
+    except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        usage.note_api_error(exc)
+        conn.close()
+        flash("⚠️ Appel API échoué (crédit/quota ?) — voir le bandeau d'alerte.", "err")
+        return redirect(url_for("preview", event_id=event_id))
+    if not result:
+        conn.close()
+        flash("⚠️ Réponse illisible du modèle — réessaie.", "err")
+        return redirect(url_for("preview", event_id=event_id))
+    conn.execute(
+        "UPDATE events_raw SET seo_title=?, seo_meta=?, seo_answer=?, seo_faq=?, "
+        "seo_model=?, seo_at=datetime('now') WHERE id=?",
+        (result["seo_title"], result["seo_meta"], result["seo_answer"],
+         json.dumps(result["seo_faq"], ensure_ascii=False), model, event_id))
+    conn.commit()
+    conn.close()
+    flash("✨ SEO généré : title, méta, réponse directe et FAQ ci-dessous.", "ok")
+    return redirect(url_for("preview", event_id=event_id) + "#seo")
 
 
 @app.route("/site-dedie")

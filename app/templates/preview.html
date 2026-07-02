@@ -87,6 +87,46 @@
   {% if e.enrich_status == 'api_error' %}<span class="text-xs" style="color:var(--danger-ink);margin-left:.6rem;">Dernier essai : l'appel à l'API a échoué (quota, ou recherche web indisponible). Vérifie le bandeau d'alerte et le log <code>run_enrich.log</code>.</span>{% endif %}
 </form>
 
+<!-- SEO / GEO / AEO — outils par événement (réservé aux phares) -->
+<div id="seo" class="card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:1rem 0;padding:1rem 1.1rem">
+  <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:.4rem">
+    <strong>🔎 SEO / GEO / AEO</strong>
+    <span class="muted text-sm">Données pour le référencement — utile à la publication WordPress.</span>
+    <form method="post" action="/seo/{{ e.id }}" style="margin:0 0 0 auto"
+          onsubmit="return confirm('Générer les champs SEO (title, méta, réponse, FAQ) via le LLM ? 💶')">
+      <input type="hidden" name="next" value="{{ request.full_path }}">
+      <button class="btn btn-primary btn-sm">{% if e.seo_at %}🔄 Régénérer SEO 💶{% else %}✨ Optimiser SEO 💶{% endif %}</button>
+    </form>
+  </div>
+
+  {% if e.seo_at %}
+  <div style="display:grid;gap:.5rem;margin:.5rem 0 .8rem">
+    <div><span class="muted text-sm">Title ({{ (e.seo_title or '')|length }}/60)</span><br><strong>{{ e.seo_title }}</strong></div>
+    <div><span class="muted text-sm">Meta description ({{ (e.seo_meta or '')|length }}/160)</span><br>{{ e.seo_meta }}</div>
+    <div><span class="muted text-sm">Réponse directe (AEO — réutilisable en chapô)</span><br><em>{{ e.seo_answer }}</em></div>
+    {% if seo_faq %}
+    <div><span class="muted text-sm">FAQ</span>
+      <ul style="margin:.3rem 0 0;padding-left:1.1rem">
+        {% for f in seo_faq %}<li><strong>{{ f.q }}</strong><br>{{ f.a }}</li>{% endfor %}
+      </ul>
+    </div>{% endif %}
+    <div class="muted text-xs">Généré le {{ e.seo_at[:16] }} · {{ e.seo_model or '—' }}</div>
+  </div>
+  {% else %}
+  <div class="muted text-sm" style="margin:.3rem 0 .6rem">Pas encore généré. Le bouton produit title, méta, réponse directe (pour les moteurs IA) et une FAQ — à réserver aux <strong>événements importants</strong>.</div>
+  {% endif %}
+
+  {% if jsonld %}
+  <details>
+    <summary style="cursor:pointer;color:var(--muted)">Données structurées schema.org/Event (déterministe, prêt à coller)</summary>
+    <pre style="overflow-x:auto;background:var(--brand-strong,#0f2440);color:#e6edf7;padding:.7rem .9rem;border-radius:8px;font-size:.78rem;margin:.5rem 0">{{ jsonld }}</pre>
+    {% if faq_jsonld %}<pre style="overflow-x:auto;background:var(--brand-strong,#0f2440);color:#e6edf7;padding:.7rem .9rem;border-radius:8px;font-size:.78rem;margin:.5rem 0">{{ faq_jsonld }}</pre>{% endif %}
+  </details>
+  {% else %}
+  <div class="muted text-xs">JSON-LD indisponible : il faut au minimum un titre et une <strong>date de début</strong> (lance la datation).</div>
+  {% endif %}
+</div>
+
 <div class="credits">
   <div><strong>Crédits</strong></div>
   {% if is_radar %}

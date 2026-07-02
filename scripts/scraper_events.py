@@ -80,7 +80,15 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Visuels (scripts/visuals.py) : crédit + provenance de l'image
                       # ('rss' | 'og' | 'commons' | 'banner').
                       ("image_credit", "TEXT"),
-                      ("image_source", "TEXT")):
+                      ("image_source", "TEXT"),
+                      # SEO/GEO/AEO (utils/seo.py) : champs générés à la demande pour
+                      # les événements phares (title/méta/réponse directe/FAQ).
+                      ("seo_title", "TEXT"),
+                      ("seo_meta", "TEXT"),
+                      ("seo_answer", "TEXT"),
+                      ("seo_faq", "TEXT"),
+                      ("seo_model", "TEXT"),
+                      ("seo_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
