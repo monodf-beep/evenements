@@ -599,6 +599,7 @@ def events():
     statut = request.args.get("statut", "")
     terr = request.args.get("territoire", "")
     q = request.args.get("q", "").strip()
+    src = request.args.get("src", "")  # "" tous · radar · newsletter · officiel
     try:
         page = max(1, int(request.args.get("page", 1)))
     except ValueError:
@@ -619,6 +620,15 @@ def events():
         base_where.append("territoire = ?"); base_params.append(terr)
     if q:
         base_where.append("title LIKE ?"); base_params.append(f"%{q}%")
+    # Type de source : radar (presse, à confirmer) · newsletter (Gmail) · officiel
+    # (flux de lieux/institutions, territoire fiable). Aide à isoler le bruit radar.
+    if src == "radar":
+        base_where.append("(source_type = 'radar' OR source_name LIKE '%(radar)%')")
+    elif src == "newsletter":
+        base_where.append("url_source LIKE 'gmail:%'")
+    elif src == "officiel":
+        base_where.append("source_type != 'radar' AND COALESCE(source_name,'') NOT LIKE '%(radar)%' "
+                          "AND COALESCE(url_source,'') NOT LIKE 'gmail:%'")
 
     where, params = list(base_where), list(base_params)
     if img == "1":
@@ -657,13 +667,20 @@ def events():
     undated_count = conn.execute(
         "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "
         "AND COALESCE(date_event_end,'')='' AND statut != 'merged'").fetchone()["n"]
+    src_counts = conn.execute(
+        "SELECT "
+        "SUM(CASE WHEN source_type='radar' OR source_name LIKE '%(radar)%' THEN 1 ELSE 0 END) radar, "
+        "SUM(CASE WHEN url_source LIKE 'gmail:%' THEN 1 ELSE 0 END) newsletter, "
+        "SUM(CASE WHEN source_type!='radar' AND COALESCE(source_name,'') NOT LIKE '%(radar)%' "
+        "     AND COALESCE(url_source,'') NOT LIKE 'gmail:%' THEN 1 ELSE 0 END) officiel "
+        "FROM events_raw").fetchone()
     conn.close()
 
     pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     return render_template(
         "events.html", events=annotate_period([dict(r) for r in rows], pfrom, pto),
-        statut=statut, territoire=terr, q=q, img=img, page=page, pages=pages, total=total,
-        with_img=with_img, without_img=without_img,
+        statut=statut, territoire=terr, q=q, img=img, src=src, page=page, pages=pages, total=total,
+        with_img=with_img, without_img=without_img, src_counts=src_counts,
         preset=preset, dfrom=dfrom, dto=dto, dated=dated, plabel=plabel, sort=sort,
         presets=PERIOD_PRESETS, undated_count=undated_count,
         today=date.today().isoformat(),

@@ -17,8 +17,9 @@ sys.path.insert(0, str(ROOT))
 from urllib.parse import urlparse
 
 from utils.logger import get_logger
-from utils.sources import (is_blocked_image, is_broad_source, load_blocked_image_domains,
-                           load_broad_sources, load_perimeter_filter, mentions_perimeter)
+from utils.sources import (is_blocked_image, is_broad_source, is_out_of_scope,
+                           load_blocked_image_domains, load_broad_sources,
+                           load_out_of_zone, load_perimeter_filter, mentions_perimeter)
 
 
 def _domain(url: str) -> str:
@@ -147,7 +148,7 @@ def best_content(entry: dict) -> str:
 
 
 def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
-                  perimeter_re=None, broad: set | None = None) -> int:
+                  perimeter_re=None, broad: set | None = None, out_re=None) -> int:
     log.info("Scraping : %s", source["name"])
     try:
         feed = feedparser.parse(source["url"])
@@ -170,7 +171,15 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
             continue
         title = entry.get("title", "").strip()
         content = best_content(entry)
-        if is_large and not mentions_perimeter(f"{title}\n{content}", perimeter_re):
+        material = f"{title}\n{content}"
+        # 1) Source LARGE : gardée seulement si elle cite un lieu du périmètre.
+        if is_large and not mentions_perimeter(material, perimeter_re):
+            skipped += 1
+            continue
+        # 2) TOUTE source : écartée si le texte cite un lieu clairement hors zone
+        #    (Avignon, Lyon, Milano…) SANS aucun lieu couvert. Détection positive,
+        #    indépendante du domaine — rattrape le radar mal rangé.
+        if is_out_of_scope(material, out_re, perimeter_re):
             skipped += 1
             continue
         image = extract_image(entry)
@@ -211,34 +220,45 @@ def main() -> int:
     blocked = load_blocked_image_domains()
     perimeter_re = load_perimeter_filter()
     broad = load_broad_sources()
+    out_re = load_out_of_zone()
     sources = load_sources()
     if not sources:
         log.error("Aucune source configurée dans %s", SOURCES_FILE)
         return 1
-    total = sum(scrape_source(s, conn, blocked, perimeter_re, broad) for s in sources)
-    cleaned = clean_out_of_perimeter(conn, perimeter_re, broad)
+    total = sum(scrape_source(s, conn, blocked, perimeter_re, broad, out_re) for s in sources)
+    cleaned = clean_out_of_perimeter(conn, perimeter_re, broad, out_re)
     conn.close()
     log.info("=== Scraping terminé : %d nouveaux événements (%d hors périmètre rejetés) ===",
              total, cleaned)
     return 0
 
 
-def clean_out_of_perimeter(conn: sqlite3.Connection, perimeter_re, broad: set) -> int:
-    """Rejette les événements DÉJÀ en base, issus d'une source large, encore 'pending'
-    et ne citant aucun lieu du périmètre (nettoyage rétroactif). Idempotent."""
-    if perimeter_re is None or not broad:
+def clean_out_of_perimeter(conn: sqlite3.Connection, perimeter_re, broad: set,
+                           out_re=None) -> int:
+    """Rejette rétroactivement les événements 'pending' hors périmètre. Idempotent.
+    Deux motifs, déterministes et gratuits :
+      A) source LARGE ne citant AUCUN lieu couvert ;
+      B) TOUTE source citant un lieu clairement hors zone SANS lieu couvert
+         (rattrape le radar mal rangé, ex. « Festival d'Avignon » en Savoie).
+    """
+    if perimeter_re is None and out_re is None:
         return 0
     rows = conn.execute(
         "SELECT id, title, description, url_source FROM events_raw "
         "WHERE statut = 'pending' AND duplicate_of IS NULL").fetchall()
     n = 0
     for r in rows:
-        if not is_broad_source(_domain(r[3]), broad):
-            continue
-        if not mentions_perimeter(f"{r[1]}\n{r[2] or ''}", perimeter_re):
-            conn.execute("UPDATE events_raw SET statut='rejected', "
-                         "llm_justification='Hors périmètre (source large, aucun lieu couvert cité).' "
-                         "WHERE id=?", (r[0],))
+        material = f"{r[1]}\n{r[2] or ''}"
+        broad_hit = (broad and is_broad_source(_domain(r[3]), broad)
+                     and perimeter_re is not None
+                     and not mentions_perimeter(material, perimeter_re))
+        zone_hit = is_out_of_scope(material, out_re, perimeter_re)
+        if broad_hit or zone_hit:
+            motif = ("Hors zone (lieu hors périmètre cité, aucun lieu couvert)."
+                     if zone_hit else
+                     "Hors périmètre (source large, aucun lieu couvert cité).")
+            conn.execute("UPDATE events_raw SET statut='rejected', llm_justification=? "
+                         "WHERE id=?", (motif, r[0]))
             n += 1
     if n:
         conn.commit()

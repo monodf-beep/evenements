@@ -269,6 +269,29 @@ def mentions_perimeter(text: str, perimeter_re) -> bool:
     return bool(perimeter_re.search(_strip_accents(text or "").lower()))
 
 
+_OUT_OF_ZONE_FILE = Path(__file__).resolve().parent.parent / "config" / "out_of_zone.txt"
+
+
+def load_out_of_zone(path: Path | None = None):
+    """Regex des marqueurs HORS ZONE (Lyon, Avignon, Milano…). Détection POSITIVE :
+    sert à purger le bruit que les sources larges/radar ramènent hors périmètre."""
+    return _compile_keywords(_load_keywords(path or _OUT_OF_ZONE_FILE))
+
+
+def mentions_out_of_zone(text: str, out_re) -> bool:
+    """Vrai si le texte cite un lieu clairement hors des 4 territoires."""
+    if out_re is None:
+        return False  # pas de liste configurée → on n'affirme rien
+    return bool(out_re.search(_strip_accents(text or "").lower()))
+
+
+def is_out_of_scope(text: str, out_re, perimeter_re) -> bool:
+    """Hors périmètre de façon DÉTERMINISTE : le texte cite un lieu hors zone
+    ET aucun lieu couvert. Un lieu couvert cité (même en passant) lève le doute
+    et laisse la décision au LLM (cas « tournée / comparaison »)."""
+    return mentions_out_of_zone(text, out_re) and not mentions_perimeter(text, perimeter_re)
+
+
 def load_broad_sources(path: Path | None = None) -> set[str]:
     """Domaines des sources LARGES (non locales) à filtrer par périmètre géographique."""
     path = path or _BROAD_FILE
