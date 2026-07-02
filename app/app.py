@@ -732,7 +732,7 @@ def action(event_id: int, action: str):
             (event_id,)
         )
         conn.commit()
-        flash(f"📋 « {title} » classé pour le site dédié.", "ok")
+        flash(f"📋 « {title} » classé pour Agenda Sabaudo.", "ok")
     elif action == "reject":
         conn.execute(
             "UPDATE events_raw SET statut='rejected' WHERE id=?",
