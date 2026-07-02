@@ -7,25 +7,43 @@ guidatorino.com. Complète le plan du site (arborescence/URLs) et le guide d'ind
 
 ## 1. La taxonomie de GuidaTorino (ce qu'on a observé)
 
-GuidaTorino tourne sous WordPress avec le plugin **Events Manager**. Sa structure repose sur
-**trois axes** — et un principe clé.
+GuidaTorino tourne sous WordPress avec le plugin **Events Manager (EM)** — confirmé par
+inspection du DOM (CPT `event` + CPT `location`, classes `single-event`, `single-location`,
+`em-location-map-container`).
 
-| Objet | Type WordPress | URLs observées |
-|---|---|---|
-| Événement | CPT « event » | `/eventi-torino/{slug-evenement}/` |
-| **Catégorie** d'événement | Taxonomie | `/eventi/torino/{categoria}/` → cinema, mostre, concerti, teatro, gastronomia, bambini, sport, **gratis** |
-| **Lieu / salle** | Taxonomie « luoghi » | `/luoghi/{nom-lieu}/` (ex. `/luoghi/pista-500/`) — avec adresse + carte |
-| **Temps** (oggi, domani, weekend, mois) | **PAS une taxonomie** | Vues filtrées / pages dédiées (`/eventi-torino-weekend/`, `/eventi-torino-luglio/`) |
+**Structure réelle observée (vérifiée sur le site vivant, Claude-in-Chrome) :**
 
-**Le principe à retenir :** le temps n'est **jamais** une taxonomie. C'est une **requête sur les
-dates**. Les sections « Cosa fare / Dove mangiare » de GuidaTorino sont, elles, du contenu de
-guide de ville — **hors périmètre** pour nous (on est un agenda d'événements, pas un guide
-touristique complet). On garde donc **3 axes : catégorie · lieu · (géographie)**, plus le temps
-comme requête.
+| Objet | Type WordPress RÉEL | URL exacte | Remarque |
+|---|---|---|---|
+| Fiche événement | **CPT `event`** (Events Manager) | `/eventi-torino/{slug}/` | Permalink personnalisé |
+| **Lieu / salle** | **CPT `location`** (Events Manager) | `/luoghi/{slug}/` (ex. `/luoghi/museo-egizio/`) | **La seule vraie taxonomie EM exposée** : adresse + carte Google Maps + événements liés |
+| **Catégories** (mostre, concerti, teatro, gastronomia, bambini, sport, **eventi-gratis**) | **Pages WP statiques** (enfants d'une page parent), **pas** des archives de taxonomie | `/eventi/torino/{slug}/` | Chaque page = un shortcode EM filtré par catégorie. La taxo native `/event-category/` n'est **pas** utilisée en front |
+| Temps : Oggi, Domani | **Pages WP statiques** + shortcode filtré | `/eventi-torino-oggi/`, `/eventi-torino-domani/` | Pas une vue dynamique |
+| Temps : Weekend | **Article de blog** (post) **édité à la main** chaque semaine | `/eventi-torino-week-end/` | La fameuse URL evergreen recyclée |
+| Temps : mois | **12 pages WP statiques** | `/eventi-torino-{mese}/` | Une page par mois |
+| **Organisateur** | ❌ **non exposé** (`/organizzatori/` → 404) | — | Fonction EM présente mais non utilisée |
 
-Différence importante avec nous : GuidaTorino est **mono-ville** (Turin). Nous avons un **4ᵉ axe
-qu'il n'a pas : le territoire** (4 territoires transfrontaliers). C'est notre identité — il doit
-être une taxonomie à part entière.
+**Ce que la vérification confirme dans notre plan :**
+- Le **lieu** (`/luoghi/`) est bien l'objet de valeur : adresse + carte + événements liés. À
+  reprendre tel quel.
+- Le **temps n'est jamais une taxonomie** — chez eux ce sont des pages/articles. On garde le
+  temps comme **requête sur les dates**.
+- L'**organisateur** est accessoire (eux ne l'exposent même pas) → chez nous, optionnel/noindex.
+
+**Ce que la vérification corrige / ce qu'on fera MIEUX qu'eux :**
+- Leurs **catégories = pages statiques manuelles** (une page WP à créer/maintenir par catégorie).
+  Ça ne passe pas à l'échelle pour nous (11 catégories × 4 territoires × 2 langues). **On
+  utilisera de vraies archives de taxonomie** (auto-générées) — voir §2.
+- Leur **weekend = un article édité à la main** chaque semaine. **Chez nous, hub dynamique** à
+  URL fixe qui interroge les dates (zéro saisie manuelle).
+- **Bon à prendre chez eux quand même** : le principe « **page éditoriale + liste d'événements
+  filtrée** » (leur intro + shortcode). On le reproduit **proprement** : chaque hub = archive de
+  taxonomie **avec un texte d'intro pérenne** au-dessus (nos textes FR/IT sont déjà écrits). On
+  garde l'avantage SEO de leur intro éditoriale, sans la corvée de la page statique manuelle.
+
+Différence structurelle avec eux : GuidaTorino est **mono-ville** (Turin). Notre **4ᵉ axe, le
+territoire** (4 territoires transfrontaliers), n'existe pas chez eux — c'est notre identité, une
+taxonomie à part entière.
 
 ---
 
@@ -84,11 +102,30 @@ Repris du schéma `events_raw` du backoffice :
 
 ---
 
-## 3. Recommandation d'implémentation : **The Events Calendar** comme socle
+## 3. Quel plugin ? — The Events Calendar vs Events Manager (GuidaTorino)
 
-Plutôt que tout recréer à la main, on part de **The Events Calendar (TEC)** — déjà recommandé
-dans le guide d'indexation — qui **fournit nativement** une structure calquée sur le modèle
-GuidaTorino, et **génère le schema `Event`**.
+La vérification l'a montré : **GuidaTorino utilise Events Manager (EM)**. Faut-il copier ?
+Analyse critique — les deux ont un CPT événement + un CPT lieu + du schema, mais :
+
+| Critère | The Events Calendar (TEC) | Events Manager (EM, = GuidaTorino) |
+|---|---|---|
+| Archives de taxonomie (catégorie, territoire) | ✅ natives, auto | ⚠️ possibles mais **GuidaTorino les contourne** par des pages statiques manuelles |
+| Lieu (Venue/Location + carte + événements liés) | ✅ | ✅ (leur `/luoghi/`) |
+| Schema `Event` auto | ✅ | ✅ |
+| Intégration **RankMath / Yoast** (IndexNow, hreflang, sitemaps) | ✅ documentée | ⚠️ moins outillée |
+| Multilingue **FR/IT** (WPML/Polylang) | ✅ intégration WPML officielle | ⚠️ friction connue |
+| Passage à l'échelle (11 cat × 4 terr × 2 langues) | ✅ (taxonomies) | ⚠️ (leur modèle « page par catégorie » ne scale pas) |
+
+**Reco : The Events Calendar** — pas parce que GuidaTorino a tort, mais parce que **notre besoin
+diffère** : bilingue, 4 territoires, indexation rapide (IndexNow via RankMath, cf. guide
+d'indexation). On **reprend les bons patterns d'EM/GuidaTorino** (le lieu-objet avec carte, le
+hub = intro éditoriale + liste filtrée) **sans** ses faiblesses (catégories manuelles, weekend
+édité à la main, multilingue laborieux). *Si tu tiens à mirrorer GuidaTorino à l'identique, EM
+reste viable — mais tu hériteras de ses limites multilingues et de la maintenance des pages
+statiques.*
+
+On part donc de **TEC**, qui **fournit nativement** une structure proche du modèle GuidaTorino
+et **génère le schema `Event`** :
 
 | Notre modèle | Fourni par TEC ? | Action |
 |---|---|---|
@@ -182,8 +219,9 @@ CPT  evenement (TEC: tribe_events)
 
 ## 8. Décisions à trancher (pour toi)
 
-1. **Socle** : The Events Calendar (ma reco) — ou un CPT 100 % maison (plus de contrôle, plus de
-   dev) ? Reco : TEC, on ne réinvente pas les dates/lieux/schema.
+1. **Plugin** : **The Events Calendar** (ma reco — meilleur pour le bilingue, l'échelle et
+   l'indexation) — ou **Events Manager** pour mirrorer GuidaTorino à l'identique (au prix de ses
+   limites multilingues + pages catégories manuelles) ? Reco : **TEC**.
 2. **Bilingue** : Polylang (gratuit/Pro) ou WPML (payant, intégration TEC plus fluide) ?
 3. **`territoire`** : hiérarchique territoire > ville (ma reco) — validé ?
 4. **`lieu`** : taxonomie TEC « Venues » (ma reco) — ou simple champ texte au lancement, taxo
