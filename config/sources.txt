@@ -131,7 +131,10 @@ https://www.nicerendezvous.com/actus-spectacles-2.feed?type=rss;Nice;NiceRendezV
 https://www.gazzettamatin.com/category/oggi-domani/appuntamenti/feed/;Vallee-Aoste;Gazzetta Matin - Appuntamenti (agenda);radar
 https://www.aostaoggi.it/eventi?format=feed&type=rss;Vallee-Aoste;Aostaoggi - Eventi (agenda);radar
 https://www.quotidianopiemontese.it/category/eventi/feed/;Piemonte;Quotidiano Piemontese - Eventi (agenda);radar
-https://www.ledauphine.com/culture-loisirs/rss;Savoie;Le Dauphiné - Sorties et loisirs;radar
+# Le Dauphiné : ÉDITIONS LOCALES géo-scopées (73/74) au lieu du flux national
+# « culture-loisirs » qui débordait (Avignon, Pyrénées…). Radar = détection seule.
+https://www.ledauphine.com/savoie/rss;Savoie;Le Dauphiné - Savoie (édition locale);radar
+https://www.ledauphine.com/haute-savoie/rss;Savoie;Le Dauphiné - Haute-Savoie (édition locale);radar
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AJOUT 2026-07-01 (3) — TYPES de sources nouveaux (recherche multi-agents) :

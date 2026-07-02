@@ -6,8 +6,10 @@
 # Grenoble, Valence… ; Google News renvoie des articles adjacents).
 #
 # Les sources institutionnelles mono-lieu (une salle, un musée) NE sont PAS ici :
-# leur territoire est fiable, on ne les filtre pas.
+# leur territoire est fiable, on ne les filtre pas. De même, les éditions LOCALES
+# géo-scopées (ex. ledauphine.com/savoie/rss) sont fiables : on ne les met pas ici,
+# sinon on jetterait à tort les brèves locales qui ne renomment pas leur commune.
+# Le filtre POSITIF hors-zone (config/out_of_zone.txt) protège du national republié.
 # Lignes # ignorées.
 
-ledauphine.com
 news.google.com
