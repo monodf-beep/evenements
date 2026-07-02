@@ -31,17 +31,17 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 - [ ] Château Rouge (Annemasse) — https://www.chateau-rouge.net/newsletters/
 - [ ] Maison des Arts du Léman (Thonon) — https://mal-thonon.org/inscription-newsletter/
 - [ ] La Turbine (Cran-Gevrier, cinéma/sciences) — https://cinema-laturbine.fr/FR/72/newsletter-la-turbine-cran-gevrier.html
-- [ ] Festival Musilac (Aix-les-Bains) — https://www.musilac.com/
-- [ ] Guitare en Scène (St-Julien-en-Genevois) — https://www.guitare-en-scene.com/
-- [ ] Musiques en Stock (Cluses) — https://musiquesenstock.fr/
-- [ ] Le Grand Bivouac (Albertville) — https://www.grandbivouac.com/fr
-- [ ] OT Aix-les-Bains Riviera des Alpes — https://www.aixlesbains-rivieradesalpes.com/newsletter/
-- [ ] Maison du Tourisme Pays d'Albertville (*Hebdo*) — https://www.pays-albertville.com/
-- [ ] Musées d'Annecy (Château / Palais de l'Île) — https://musees.annecy.fr/Newsletters/Newsletter-Annecy/Newsletter-Utilisateurs
-- [ ] Musées de la Ville de Chambéry (*mensuel*) — https://www.chambery.fr/536-newsletter-des-musee-de-la-ville-de-chambery.htm
-- [ ] Savoie Mont Blanc (magazine — plutôt tourisme) — https://www.savoie-mont-blanc.com/newsletter
-- [ ] OT Chamonix-Mont-Blanc — https://www.chamonix.com/newsletter,500,fr.html
-- [ ] _(2e rideau, généraliste)_ Grand Chambéry · Grand Annecy · Ville de Chambéry · Ville d'Annecy
+- [x] Festival Musilac (Aix-les-Bains) — https://www.muhsilac.com/
+- [x] Guitare en Scène (St-Julien-en-Genevois) — https://www.guitare-en-scene.com/
+- [x] Musiques en Stock (Cluses) — https://musiquesenstock.fr/
+- [x] Le Grand Bivouac (Albertville) — https://www.grandbivouac.com/fr
+- [x] OT Aix-les-Bains Riviera des Alpes — https://www.aixlesbains-rivieradesalpes.com/newsletter/
+- [x] Maison du Tourisme Pays d'Albertville (*Hebdo*) — https://www.pays-albertville.com/
+- [x] Musées d'Annecy (Château / Palais de l'Île) — https://musees.annecy.fr/Newsletters/Newsletter-Annecy/Newsletter-Utilisateurs
+- [x] Musées de la Ville de Chambéry (*mensuel*) — https://www.chambery.fr/536-newsletter-des-musee-de-la-ville-de-chambery.htm
+- [x] Savoie Mont Blanc (magazine — plutôt tourisme) — https://www.savoie-mont-blanc.com/newsletter
+- [x] OT Chamonix-Mont-Blanc — https://www.chamonix.com/newsletter,500,fr.html
+- [x] _(2e rideau, généraliste)_ Grand Chambéry · Grand Annecy · Ville de Chambéry · Ville d'Annecy
 
 ## Nice / Alpes-Maritimes
 - [ ] ⭐ **Explore Nice Côte d'Azur** (OT Nice, agenda sorties) — https://www.explorenicecotedazur.com/
