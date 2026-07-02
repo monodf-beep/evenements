@@ -41,6 +41,18 @@
   {% if biz.undated %}<a href="/events?dated=undated"><span aria-hidden="true">📌</span> {{ biz.undated }} sans date (invisibles en période)</a>{% endif %}
   {% if biz.retained_nophoto %}<a href="/events?img=0"><span aria-hidden="true">🖼</span> {{ biz.retained_nophoto }} retenu(s) sans photo</a>{% endif %}
   <a href="/events?img=0" style="background:#eceff3;color:var(--ink-2);border-color:var(--line-2)"><span aria-hidden="true">🖼</span> {{ with_img }} avec / {{ without_img }} sans photo</a>
+  <a href="/events?statut=published_cs" title="Ouvre un événement → Aperçu → section SEO/GEO/AEO"><span aria-hidden="true">🔎</span> SEO : {{ seo.optimises }}/{{ seo.phares }} fiche(s) Cultura Sabauda optimisée(s)</a>
+</div>
+
+<!-- Outils SEO : où les trouver (par événement, dans l'Aperçu) -->
+<div class="card" style="margin:.2rem 0 1rem;padding:.8rem 1rem">
+  <strong>🔎 SEO / GEO / AEO</strong>
+  <span class="muted text-sm">— les outils sont <strong>sur chaque fiche</strong> : ouvre un événement → « 👁 Aperçu » → section en bas.
+  JSON-LD schema.org/Event <strong>gratuit</strong> (toujours affiché) + bouton « ✨ Optimiser SEO » (title, méta, réponse directe, FAQ) à réserver aux événements phares.</span>
+  <div class="btn-row" style="margin-top:.5rem">
+    <a class="btn btn-ghost btn-sm" href="/events?statut=published_cs">Événements Cultura Sabauda →</a>
+    <a class="btn btn-ghost btn-sm" href="/validation">À valider →</a>
+  </div>
 </div>
 
 <!-- Pipeline -->

@@ -401,6 +401,18 @@ def dashboard():
             "('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
             "AND COALESCE(url_image,'')=''").fetchone()["n"],
     }
+    # SEO : événements phares (publiés sur Cultura Sabauda) et combien ont déjà
+    # leurs métadonnées SEO générées. Point d'entrée visible depuis le dashboard.
+    try:
+        seo = {
+            "phares": conn.execute(
+                "SELECT COUNT(*) n FROM events_raw WHERE statut='published_cs' "
+                "AND duplicate_of IS NULL").fetchone()["n"],
+            "optimises": conn.execute(
+                "SELECT COUNT(*) n FROM events_raw WHERE seo_at IS NOT NULL").fetchone()["n"],
+        }
+    except sqlite3.OperationalError:
+        seo = {"phares": 0, "optimises": 0}
     conn.close()
 
     # « Collectés » actifs : hors rejetés/fusionnés (le total brut était trompeur).
@@ -454,7 +466,7 @@ def dashboard():
         src_counts=src_counts, src_total=sum(src_counts.values()),
         newsletters=newsletters, nl_active=nl_active,
         tasks=tasks, any_running=any_running, runs=runs,
-        with_img=with_img, without_img=without_img, biz=biz,
+        with_img=with_img, without_img=without_img, biz=biz, seo=seo,
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
         presets=PERIOD_PRESETS, scope=scope, today=date.today().isoformat(),
     )
