@@ -16,9 +16,9 @@
     </div>
     <nav class="nav" aria-label="Navigation principale">
       <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Tableau de bord</a>
+      <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Événements</a>
       <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
         {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
-      <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Événements</a>
       <a href="/site-dedie" class="{{ 'on' if active=='site' }}" {% if active=='site' %}aria-current="page"{% endif %}><span aria-hidden="true">🌐</span> Agenda Sabaudo</a>
     </nav>
     <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>
