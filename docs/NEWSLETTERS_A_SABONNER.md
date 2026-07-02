@@ -45,11 +45,11 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 
 ## Nice / Alpes-Maritimes
 - [ ] ⭐ **Explore Nice Côte d'Azur** (OT Nice, agenda sorties) — https://www.explorenicecotedazur.com/
-- [ ] ⭐ **Palais des Festivals Cannes** (*mensuel*) — https://en.palaisdesfestivals.com/newsletter-subscribe/
-- [ ] ⭐ **Côte d'Azur France** (CRT / Dépt 06) — https://cotedazurfrance.fr/sabonner_aux_newsletters/
-- [ ] ⭐ **Menton, Riviera & Merveilles** (*mensuel*) — https://www.menton-riviera-merveilles.fr/sinscrire-a-la-newsletter/
+- [x] ⭐ **Palais des Festivals Cannes** (*mensuel*) — https://en.palaisdesfestivals.com/newsletter-subscribe/
+- [x] ⭐ **Côte d'Azur France** (CRT / Dépt 06) — https://cotedazurfrance.fr/sabonner_aux_newsletters/
+- [x] ⭐ **Menton, Riviera & Merveilles** (*mensuel*) — https://www.menton-riviera-merveilles.fr/sinscrire-a-la-newsletter/
 - [ ] ⭐ **Sortir à Cannes** (SEMEC) — https://www.sortiracannes.com/agenda
-- [ ] Opéra Nice Côte d'Azur — https://www.opera-nice.org/newsletter/
+- [x] Opéra Nice Côte d'Azur — https://www.opera-nice.org/newsletter/
 - [ ] Théâtre National de Nice (TNN) — https://www.tnn.fr/fr/
 - [ ] Anthéa (Antibes) — https://www.anthea-antibes.fr/
 - [ ] Fondation Maeght (Saint-Paul-de-Vence) — https://www.fondation-maeght.com/
@@ -63,13 +63,14 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 - [ ] Nuits du Sud (Vence) — https://www.nuitsdusud.com/
 - [ ] Antibes Juan-les-Pins Tourisme — https://www.antibesjuanlespins.com/
 - [ ] Cannes.com (Ville de Cannes) — https://www.cannes.com/
+- [x] Forum Sirius (billetterie / agenda spectacles Nice) — https://www.forumsirius.fr/orion/tdn.phtml?fiche=news
 
 ## Piémont
-- [ ] ⭐ **GuidaTorino** (agenda *hebdo*, Turin + environs) — https://www.guidatorino.com/iscrizione-newsletter/
+- [x] ⭐ **GuidaTorino** (agenda *hebdo*, Turin + environs) — https://www.guidatorino.com/iscrizione-newsletter/
 - [ ] ⭐ **Mentelocale Torino** (agenda *hebdo*) — https://www.mentelocale.it/torino/
-- [ ] ⭐ **Turismo Torino e Provincia** (*mensuel*) — https://turismotorino.org/it/iscrizione-newsletter
+- [x] ⭐ **Turismo Torino e Provincia** (*mensuel*) — https://turismotorino.org/it/iscrizione-newsletter
 - [ ] ⭐ **Fondazione Torino Musei** (GAM + Palazzo Madama + MAO) — https://www.fondazionetorinomusei.it/it/newsletter
-- [ ] ⭐ **Fondazione Piemonte dal Vivo** (*mensuel*, tout le Piémont) — https://piemontedalvivo.it/newsletter/
+- [x] ⭐ **Fondazione Piemonte dal Vivo** (*mensuel*, tout le Piémont) — https://piemontedalvivo.it/newsletter/
 - [ ] Museo Nazionale del Cinema (*hebdo*) — https://www.museocinema.it/it/newsletter/subscribe
 - [ ] Museo Egizio — https://www.museoegizio.it/newsletter/
 - [ ] Teatro Regio Torino — https://www.teatroregio.torino.it/newsletter
@@ -87,11 +88,11 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 - [ ] Reggia di Venaria — https://lavenaria.it/it
 
 ## Vallée d'Aoste
-- [ ] ⭐ **Forte di Bard** (mostre/concerti, top venue) — https://www.fortedibard.it/iscrizione-newsletter/
-- [ ] ⭐ **Fondation Grand Paradis** (festival/castelli, *max 3/mois*) — https://www.grand-paradis.it/it/fondation-grand-paradis/newsletter
+- [x] ⭐ **Forte di Bard** (mostre/concerti, top venue) — https://www.fortedibard.it/iscrizione-newsletter/
+- [x] ⭐ **Fondation Grand Paradis** (festival/castelli, *max 3/mois*) — https://www.grand-paradis.it/it/fondation-grand-paradis/newsletter
 - [ ] ⭐ **LoveVDA — Office Régional du Tourisme** (agenda régional, bilingue) — https://www.lovevda.it/it
-- [ ] ⭐ **Musicastelle Outdoor** (festival musique altitude) — https://www.musicastellevda.it/contatti/
-- [ ] ⭐ **Aosta Classica** (festival musique classique) — https://aostaclassica.it/
+- [x] ⭐ **Musicastelle Outdoor** (festival musique altitude) — https://www.musicastellevda.it/contatti/
+- [x] ⭐ **Aosta Classica** (festival musique classique) — https://aostaclassica.it/
 - [ ] AperòNews (AostaSera, *hebdo weekend*) — http://eepurl.com/hoVAyj
 - [ ] Breuil-Cervinia / Cervino Tourism — https://cervinia.it/
 - [ ] Courmayeur Mont Blanc — https://www.courmayeurmontblanc.it/
@@ -100,7 +101,7 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 ## Types nouveaux (cinéma art & essai, traditions, instituts culturels)
 - [ ] Cinema Massimo (Torino, art & essai) — https://www.cinemamassimotorino.it/ _(form home)_
 - [ ] Les Écrans du Sud (réseau art & essai PACA, 06) — https://seances-speciales.fr/ _(form home)_
-- [ ] LoveLanghe (traditions/sagre Langhe-Cuneo) — https://www.langhe.net/newsletter/
+- [x] LoveLanghe (traditions/sagre Langhe-Cuneo) — https://www.langhe.net/newsletter/
 - [ ] Institut français Italia (antenne Torino) — https://www.institutfrancais.it/ _(form pied de page)_
 
 ---
