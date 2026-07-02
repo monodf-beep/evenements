@@ -36,15 +36,32 @@ CATEGORIES = ("Expositions & Patrimoine", "Concerts & Musique",
               "Marchés & Foires", "Sport", "Cinéma", "Jeune public & Famille",
               "Conférences & Rencontres", "Fêtes & Traditions populaires")
 
+# Territoires couverts, valeurs canoniques (mêmes libellés que config/sources.txt).
+# L'évaluateur peut CORRIGER le territoire d'une source large mal étiquetée.
+TERRITOIRES = ("Savoie", "Piemonte", "Vallee-Aoste", "Nice")
+
 EVAL_PROMPT = """Tu es l'assistant éditorial de Cultura Sabauda, agenda culturel bilingue
 FR/IT couvrant Savoie/Haute-Savoie, Piémont, Vallée d'Aoste et Nice. On couvre LARGE, à la
 manière de GuidaTorino : expositions, concerts, spectacles, festivals, sagre et gastronomie,
 marchés (fleurs, antiquaires, brocante, artisanat), sport, cinéma, fêtes populaires…
 
+ÉTAPE 0 — PÉRIMÈTRE (localisation). Où se déroule VRAIMENT l'événement ? Nos 4 territoires :
+  • Savoie / Haute-Savoie (73/74) : Chambéry, Annecy, Aix-les-Bains, Albertville, Annemasse,
+    Thonon, Chamonix, Tarentaise, Maurienne, Chablais, autour des lacs du Bourget et d'Annecy…
+  • Piémont (Piemonte) : Turin, Cuneo, Alba, Asti, Alessandria, Biella, Novara, Langhe, Monferrato…
+  • Vallée d'Aoste (Vallee-Aoste) : Aoste, Courmayeur, Cervinia, Cogne, Saint-Vincent…
+  • Nice / Alpes-Maritimes (06) : Nice, Cannes, Antibes, Grasse, Menton, Côte d'Azur…
+Une source régionale/presse déborde souvent (Lyon, Grenoble, Valence, Avignon, Marseille, Gap,
+Milan hors Piémont, Gênes, Turin OK mais Bologne non…). Si le lieu réel est HORS de ces 4
+territoires → "hors_perimetre": true, "est_evenement": false, score 0. Un simple lieu cité en
+passant (tournée, comparaison) ne suffit PAS : c'est le lieu de l'événement qui compte.
+Sinon → "hors_perimetre": false, et renseigne "territoire" avec le bon parmi
+Savoie · Piemonte · Vallee-Aoste · Nice (corrige si la source l'a mal étiqueté).
+
 ÉTAPE 1 — GATE. Est-ce un ÉVÉNEMENT auquel le public peut ASSISTER, à une date à venir ou
 en cours, dans un lieu ? Si NON (actualité institutionnelle, réunion/convention/subvention/
 nomination, inauguration ou remise de prix DÉJÀ passée, travaux/voirie/mobilité, consultation
-publique, hors des 4 territoires) → "est_evenement": false et score 0. Sinon → true, continue.
+publique) → "est_evenement": false et score 0. Sinon → true, continue.
 
 ÉTAPE 2 — SCORE D'IMPORTANCE (0-10). PAS de profondeur culturelle exigée : on mesure si
 l'événement est IMPORTANT (va réunir du monde, compte dans le territoire). Note chaque critère :
@@ -73,7 +90,9 @@ Lieu : {lieu}, {territoire}
 Source : {source_name}
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant/après :
-{{"est_evenement": <true|false>,
+{{"hors_perimetre": <true|false>,
+  "territoire": "<Savoie|Piemonte|Vallee-Aoste|Nice ou "" si hors périmètre>",
+  "est_evenement": <true|false>,
   "categorie": "<une catégorie de la liste>",
   "criteres": {{
     "notoriete_lieu": {{"points": <0-3>, "note": "<courte raison>"}},
@@ -165,33 +184,48 @@ def main(argv=None) -> int:
             )
             continue
         est = result.get("est_evenement", True)
+        hors = bool(result.get("hors_perimetre", False))
         score = int(result.get("score", 0) or 0)
-        # Gate = est_evenement ; puis IMPORTANCE. Un vrai événement n'est JAMAIS rejeté
-        # d'office : score >= 7 → à valider (mise en avant home) ; sinon → catalogue
-        # (site dédié). Seuls les NON-événements sont rejetés.
-        if not est:
+        # ÉTAPE 0 : hors des 4 territoires → rejet (2e garde après le filtre
+        # déterministe du scraper : rattrape le lieu cité en passant que le
+        # match de mots-clés laisse passer). Sinon, gate est_evenement + importance.
+        # Un vrai événement n'est JAMAIS rejeté d'office : score >= 7 → à valider
+        # (mise en avant home) ; sinon → catalogue (site dédié).
+        if hors or not est:
             new_statut, score = "rejected", 0
         elif score >= 7:
             new_statut = "evaluated"
         else:
             new_statut = "published_sub"
+        # Correction du territoire : l'évaluateur peut rectifier une source large
+        # mal étiquetée (ex. Le Dauphiné « Savoie » pour un événement d'Annecy).
+        terr = (result.get("territoire") or "").strip()
+        new_terr = terr if terr in TERRITOIRES and not hors else ev.get("territoire")
+        justif = result.get("justification", "")
+        if hors:
+            justif = "Hors périmètre — " + justif if justif else "Hors périmètre."
         detail = json.dumps(result.get("criteres") or {}, ensure_ascii=False)
         conn.execute("""
         UPDATE events_raw SET
             llm_score=?, llm_categorie=?, llm_justification=?, llm_score_detail=?,
-            llm_model=?, llm_evaluated_at=datetime('now'), statut=?
+            llm_model=?, llm_evaluated_at=datetime('now'), statut=?, territoire=?
         WHERE id=?
         """, (
             score,
             result.get("categorie", ""),
-            result.get("justification", ""),
+            justif,
             detail,
             model,
             new_statut,
+            new_terr,
             ev["id"],
         ))
-        log.info("[%d] event=%s score=%d statut=%s cat=%s | %s", ev["id"], est, score,
-                 new_statut, result.get("categorie", "")[:20], ev.get("title", "")[:50])
+        if new_terr != ev.get("territoire"):
+            log.info("[%d] territoire corrigé : %s → %s", ev["id"],
+                     ev.get("territoire"), new_terr)
+        log.info("[%d] event=%s hors=%s score=%d statut=%s cat=%s | %s", ev["id"], est,
+                 hors, score, new_statut, result.get("categorie", "")[:20],
+                 ev.get("title", "")[:50])
 
     conn.commit()
     conn.close()
