@@ -1,175 +1,79 @@
-# Stratégie — marque, domaines & lecture par territoire
+# Stratégie — marque, territoires & structure (version simple, définitive)
 
-*Décisions d'architecture à prendre AVANT la création du site. Répond à : la marque est-elle
-bonne ? sous-domaines par ville ? comment ne pas noyer l'utilisateur sous 4 territoires ?*
-
----
-
-## 1. La marque
-
-- **« Sabaudo » = le bon socle** : seul mot couvrant les 4 territoires sans en privilégier un,
-  relié à Cultura Sabauda, distinctif, libre en SEO. À **garder comme identité**.
-- **Mais froid/savant** : le nom ne portera pas le trafic (il vient des requêtes « que faire à
-  [ville] »). La chaleur viendra du **UX + d'une tagline claire**, pas du nom.
-- **Décision** : réserver **`agendasabaudo.eu`** ce soir (l'ancre). Le **nom affiché** (logo +
-  tagline) peut s'affiner plus tard **sans changer le domaine**. Ne pas bloquer le lancement.
-- Tagline à tester (chaleur + clarté + transfrontalier) : ex. *« Les sorties des Alpes, d'un
-  versant à l'autre »* / *« Que faire de Chambéry à Turin »*.
-
-## 2. Domaines : sous-répertoires, JAMAIS de sous-domaines
-
-- **Sous-domaines** (`annecy.agendasabaudo.eu`) = Google les traite comme des **sites séparés**
-  → autorité **fragmentée**, chaque ville repart de zéro. + Multisite WordPress lourd. **Non.**
-- **Sous-répertoires** (`agendasabaudo.eu/fr/ville/annecy/`) = toute l'autorité sur **un
-  domaine**, et ce sont **les entrées par ville/province** voulues. **Un seul WordPress.**
-
-## 3. Le modèle « cercles concentriques » (local d'abord, transfrontalier ensuite)
-
-Le problème : 4 territoires à parts égales **noient** l'utilisateur (un Savoyard ne veut pas de
-Nice). La réponse n'est pas de tout mélanger, mais de **hiérarchiser par proximité** :
-
-```
-   ┌─────────────────────────────────────────────┐
-   │  4. Les autres territoires (accessibles,     │   ← au menu, jamais poussés
-   │     jamais mis en avant)                     │
-   │   ┌─────────────────────────────────────┐    │
-   │   │ 3. TRANSFRONTALIER (curé, 2-3 pépites)│   │   ← la passerelle éditoriale
-   │   │   ┌─────────────────────────────┐    │    │
-   │   │   │ 2. TON TERRITOIRE (Savoie)  │    │    │   ← le cœur
-   │   │   │   ┌─────────────────────┐   │    │    │
-   │   │   │   │ 1. TA VILLE (Chambéry)│  │    │    │   ← le plus pertinent
-   │   │   │   └─────────────────────┘   │    │    │
-   │   │   └─────────────────────────────┘    │    │
-   │   └─────────────────────────────────────┘    │
-   └─────────────────────────────────────────────┘
-```
-
-1. **Ta ville** (Chambéry) — le plus pertinent. Un Chambérien ne veut pas forcément Thonon.
-2. **Ton territoire** (Savoie/Haute-Savoie) — la région naturelle.
-3. **Transfrontalier** — **2-3 pépites curées** de l'autre côté des Alpes (Piémont surtout,
-   un peu de Vallée d'Aoste). **C'est l'atout unique du concept Sabaudo** : aucun agenda local
-   ne dit « et ce week-end, de l'autre côté de la frontière… ». Curé, pas déversé.
-4. **Les autres territoires** (Nice pour un Savoyard) — **accessibles au menu, jamais poussés**.
-
-**La règle d'or** : le local **domine**, le transfrontalier est une **invitation choisie** (2-3
-items éditorialisés), pas du volume. On sert la mission transfrontalière **sans** noyer le lecteur.
-
-## 4. Comment ça se traduit dans le site
-
-**La home n'est pas un déversoir des 4 territoires.** Trois options, de la plus simple à la plus riche :
-
-- **A — Sélecteur de territoire mémorisé (reco pour le lancement)** : à la 1ʳᵉ visite, « Votre
-  territoire ? » (ou géoloc). On mémorise (cookie). Ensuite la home est **territoire-first** :
-  gros bloc de TON territoire + un petit bloc « **À voir aussi de l'autre côté des Alpes** »
-  (2-3 pépites) + le reste au menu. Simple, efficace, respecte l'entonnoir.
-- **B — Les hubs territoire comme vraies portes d'entrée** : le SEO amène les gens directement
-  sur `/territoire/savoie/` (via « que faire en Savoie »). Chaque hub territoire = local-first +
-  petit bloc transfrontalier. La home « / » reste un chapeau léger.
-- **C (v2) — Tri par distance** : ordonner les événements par proximité de la ville de
-  l'utilisateur (nécessite les coordonnées lieu — partiellement dispo). Puissant, mais plus tard.
-
-**Reco : A + B ensemble.** Hubs territoire = colonne vertébrale SEO (indexables, local-first) ;
-home = expérience personnalisée qui se souvient de ton territoire. Distance (C) en v2.
-
-**SEO préservé** : la personnalisation (réordonner par cookie) **ne nuit pas** au SEO tant que
-la home garde des **liens crawlables** vers tous les hubs. On personnalise pour l'humain, on
-garde la structure de hubs pour Google. Les deux sont servis.
-
-## 5. Le bloc « transfrontalier » — la signature à soigner
-
-- Sur chaque hub territoire, un encart **« De l'autre côté des Alpes »** : 2-3 événements
-  **choisis à la main** (le bouton « À la une / choix manuel » du backoffice le permet déjà).
-- Priorité de voisinage à définir : pour la Savoie → surtout **Piémont** (Turin proche) + un peu
-  **Vallée d'Aoste** (Mont-Blanc/tunnel) ; **Nice en dernier** (loin, peu pertinent au quotidien).
-- C'est éditorial : on ne pousse pas 200 événements niçois à un Chambérien, on lui glisse **la**
-  belle expo de Turin du week-end. C'est ce qui rend le concept Sabaudo vivant plutôt qu'abstrait.
-
-## 6. Implications data / backoffice
-
-- On a déjà **territoire + ville** par événement → suffisant pour A et B dès maintenant.
-- **Coordonnées (lat/lng)** du lieu à fiabiliser pour le tri par distance (C, v2).
-- Le **choix manuel** (À la une) sert à alimenter le bloc transfrontalier curé — déjà en place.
-- Prévoir un champ « ville » propre et normalisé (pour les hubs ville des grandes villes).
-
-## 7bis. Comment on détecte le territoire (sans forcer personne)
-
-**Le réflexe à corriger : la home n'est PAS la porte d'entrée principale.** Sur un agenda local,
-la majorité du trafic vient de Google sur une requête précise (« que faire à Annecy », « eventi
-Torino ») → l'internaute **atterrit directement sur un hub** (`/ville/annecy/`, `/territoire/
-piemont/`). **La page d'arrivée encode déjà le territoire.** Donc pour le plus gros du trafic,
-on n'a **rien à deviner** : l'URL le dit.
-
-Le « quel territoire ? » se pose pour la **home** (trafic de marque/habitude — non négligeable :
-beaucoup tapent le nom du site directement) et pour tout premier visiteur sans contexte d'URL.
-
-**Le principe (corrigé) : aucun signal n'est fiable seul — ils se contredisent.** Le Savoyard à
-Turin a une **IP italienne** (position) et un **téléphone en français** (langue) : les deux
-signaux pointent des territoires opposés. Conclusion : **on ne « devine » pas en dur**. On :
-1. propose un **défaut raisonnable**,
-2. rend le **contexte visible** (« Vous voyez : Savoie »),
-3. rend le **changement trivial** (sélecteur 1 tap, toujours dans le header),
-4. quand deux signaux **se contredisent**, on **suggère en douceur** au lieu de trancher en
-   silence.
-
-### ⚠ L'IP ne dit PAS la position (roaming « home routing »)
-Vérifié (sources ci-dessous) : en itinérance, la plupart des forfaits **tunnellent le trafic
-jusqu'au pays d'origine** → une **SIM française à Turin sort en IP française**. L'IP géolocalise
-donc au **domicile**, pas à la position réelle. **Conclusion : l'IP n'est PAS un signal fiable de
-position** pour notre cas (le voyageur sur son forfait). On l'abandonne comme défaut.
-
-### Ce qui est vraiment fiable, du plus au moins
-- **Le choix explicite de l'utilisateur** (sélecteur + mémoire cookie) = **le seul signal
-  fiable**. Il nous dit son coin. Toujours juste. C'est le cœur.
-- **Le bouton opt-in « 📍 Près de moi »** = la SEULE position fiable : il déclenche la
-  **géoloc GPS du navigateur** (précise), **quand l'utilisateur le décide** (pas de popup à
-  l'arrivée). Le Savoyard à Turin tape « Près de moi » → GPS = Turin → événements du Piémont
-  autour de lui. Il choisit d'être localisé, c'est exact, et non intrusif.
-- **Langue de l'appareil / IP-pays** = **hints faibles seulement** : pour pré-ordonner le
-  sélecteur ou déclencher une suggestion douce. Jamais autoritaires (l'IP se trompe en roaming,
-  la langue ne distingue pas Savoie de Nice).
-- **Rien** → **home neutre best-of** + « Votre coin ? ».
-
-### La bannière de conflit (validée par Franck) — mais c'est un BONUS
-Quand un hint (IP-pays fiable : wifi local, eSIM locale…) diffère de la préférence, un bandeau
-discret et **dismissible** :
-> *« Vous semblez être en Piémont — voir les événements à Turin ? [Oui] [Rester en Savoie] »*
-Un tap résout, jamais faux en silence. **Mais** comme le signal (IP) est faible/absent en
-roaming, la bannière ne se déclenchera pas toujours → c'est un plus, **pas** le mécanisme
-principal. Le mécanisme principal reste : **choix explicite + « Près de moi » opt-in.**
-
-### Les cas concrets (tes scénarios)
-- **Toi, habitué, tu tapes le nom du site** : home → ton **dernier coin mémorisé** (cookie), le
-  sélecteur juste à côté. Habitude respectée.
-- **Savoyard à Turin** : son IP reste **française** (roaming) → aucune détection auto fiable.
-  Il tape **« 📍 Près de moi »** (GPS = Turin) → Piémont autour de lui ; OU 1 tap sur Piémont
-  dans le sélecteur. Il agit, c'est exact. On ne lui sert PAS de la Savoie en silence, et on ne
-  se fie pas à une IP menteuse. (Ta correction, réglée.)
-- **Touriste de n'importe où** : **home neutre** best-of + « Votre coin ? » (+ « Près de moi »
-  s'il veut le local). Ou il arrive par Google sur une page lieu → contexte déjà posé.
-- **Jamais d'inscription pour naviguer** — l'inscription = newsletter uniquement (opt-in).
-
-### SEO / technique
-- **Google** (sans cookie, IP US) voit la **home neutre** + les liens vers TOUS les hubs → il
-  indexe tout. Perso pour l'humain, structure pour Google. **Pas de cloaking** (mêmes liens,
-  seul l'ordre change).
-- **Mise en œuvre par phases** :
-  - **Phase 1 (lancement, la plus honnête)** : home **« choix d'abord »** — un sélecteur de coin
-    clair et chaleureux + un best-of ; on **mémorise le choix** (cookie) ; sélecteur toujours
-    visible. **On ne devine pas → on ne se trompe jamais.** C'est ta « landing qui te fait
-    choisir ». Simple, robuste, zéro dépendance géo.
-  - **Phase 2** : ajouter le bouton **« 📍 Près de moi »** (géoloc GPS opt-in → tri par distance)
-    + la **langue** pour pré-ordonner le sélecteur + la **bannière de conflit** (bonus, quand un
-    signal IP fiable existe). PAS de défaut automatique par IP (roaming = peu fiable).
+*Conclusion après débat. On revient au SIMPLE (esprit GuidaTorino) : le succès vient de la
+profondeur de contenu et du SEO, pas d'une UX maligne. Ce doc remplace les versions
+fluctuantes précédentes.*
 
 ---
 
-## 7. Décisions à trancher (avant/pendant la création)
+## 1. Marque & domaine
+- **« Sabaudo »** = le bon socle (seul mot couvrant les 4 territoires, lié à Cultura Sabauda,
+  libre en SEO). **On garde « Agenda Sabaudo ».** Logo + tagline (la chaleur) s'affinent plus
+  tard, sans changer le domaine.
+- **Domaine unique `agendasabaudo.eu`**, **sous-répertoires** (`/fr/…`, `/it/…`,
+  `/fr/territoire/savoie/`). **Jamais de sous-domaines** (Google fragmente l'autorité).
 
-1. **Marque** : garder « Agenda Sabaudo » + affiner logo/tagline plus tard (reco) ? ou explorer
-   un autre nom maintenant ?
-2. **Domaines** : sous-répertoires sur un WordPress (reco ferme) — validé ?
-3. **Modèle géo** : cercles concentriques, local-first + transfrontalier curé (reco) — validé ?
-   Ça impacte **directement la maquette** (la home n'est pas un dump 4-territoires).
-4. **Personnalisation** : sélecteur de territoire mémorisé dès le lancement (option A) — ok ?
-5. **Voisinages** : confirmer les priorités transfrontalières par territoire (Savoie→Piémont ;
-   etc.).
+## 2. Périmètre de lancement : les 4 territoires, bilingue, D'EMBLÉE
+- **Pas de « Savoie d'abord ».** Lancer « l'agenda de la Savoie » = catalogué Savoie pour
+  toujours ; le Piémontais dira « pas pour nous ». Le positionnement **transfrontalier**
+  (4 territoires, 2 langues) doit être là **dès le jour 1** (modèle Nos Alpes / Le Alpi).
+
+## 3. Bilinguisme : réaliste
+- **Interface, hubs, navigation : 100 % bilingues FR/IT.**
+- **Fiches : en langue d'origine** (les événements piémontais en italien, savoyards en français).
+- **Traduction manuelle uniquement des temps forts** éditoriaux. **Jamais** de traduction
+  automatique en masse (intenable solo + spam Google).
+
+## 4. La home : MARQUE + ORIENTATION (pas un feed)
+- On ne *browse* pas la home, on la *traverse*. Elle **prouve** que l'espace Sabaudo vit et
+  **oriente** vers les portes.
+- **Best-of curé et ÉQUILIBRÉ** : quelques temps forts, avec **au moins 1-2 par territoire** —
+  pour n'apparaître ni comme « un site savoyard », ni comme « un site turinois ».
+- **Portes claires** : les 4 territoires + un accès aux grandes activités.
+- **Pas un flux de tous les événements** (ce serait le bruit qu'on refuse).
+
+## 5. Navigation : TERRITOIRE primaire, activité à l'intérieur
+- **1ᵉ décision = le territoire** (Savoie / Piémont / Vallée d'Aoste / Nice). On entre dans
+  « sa » partie.
+- **À l'intérieur du territoire = filtrer par activité** (concerts, expos, sagre, marchés…).
+- **Vues transversales par activité** (ex. « toutes les sagre des 4 territoires ») = **bonus de
+  découverte**, pas le cœur (un Savoyard veut d'abord les sagre de Savoie).
+- Le **temps** (« ce week-end ») reste une requête/hub, jamais une taxonomie.
+
+## 6. Accompagner sans enfermer
+- **Cookie = raccourci mémorisé** : on retient le dernier territoire choisi et on propose
+  « ↩ Reprendre en Savoie » (visible), + un petit bandeau. **Jamais de redirection silencieuse.**
+- **Pas de détection auto au lancement** : l'IP ment (roaming « home routing »), le cookie ancre.
+- **« 📍 Près de moi » (GPS opt-in) = v2** : la seule position fiable, déclenchée par
+  l'utilisateur quand il la veut (le voyageur à Turin tape « près de moi »).
+
+## 7. Ce qu'on ABANDONNE (pour rester simple)
+- ❌ La personnalisation de la home par devinette (cercles concentriques).
+- ❌ La détection automatique du territoire (IP / géoloc à l'arrivée).
+- ❌ Deux axes « territoire » et « activité » co-égaux sur la home (disperse).
+- ❌ Traduire toutes les fiches.
+
+Le besoin « local d'abord » est servi **sans** tout ça : la plupart des visiteurs arrivent par
+Google **sur un hub territoire/ville** (l'URL = le territoire), les autres **choisissent leur
+porte une fois** (et le raccourci s'en souvient).
+
+## 8. LE vrai enjeu (là où ça se gagne)
+**Ce n'est pas le modèle de home. C'est le contenu :**
+- **Profondeur** : assez d'événements pour que chaque territoire paraisse vivant.
+- **Équilibre** : ni « site savoyard » (là où tu sources le plus) ni « site turinois » (là où il
+  y a le plus de qualité). Forcer la présence de chaque territoire.
+- **Vrai bilingue** : contenu italien natif sur les gros événements, pas de la traduction machine.
+- **Backlinks locaux** (offices de tourisme, presse) : le levier des 6-18 mois.
+
+## 9. Pour ce soir — la liste simple
+Un site **GuidaTorino-simple**, sans perso :
+- **Home** : marque + best-of équilibré (1-2 temps forts/territoire) + les 4 portes territoire +
+  accès activités.
+- **4 hubs territoire** (`/territoire/…`) : intro pérenne + « ce week-end en X » + flux local,
+  filtrable par activité + encart découverte du voisin.
+- **11 hubs catégorie** (dont Gastronomie & Sagre) : par défaut dans le territoire, + vue
+  transversale.
+- **Fiche événement** (mode minimal d'abord), **hubs ville** pour les grandes villes,
+  **hubs temporels** evergreen (« ce week-end »), **recherche**, **404**.
+- **Bilingue** : interface FR/IT, fiches en langue d'origine.
+- **Zéro** détection auto, GPS, cercles concentriques. (v2 : raccourci mémorisé + « près de moi ».)
