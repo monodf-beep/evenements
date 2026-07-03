@@ -209,30 +209,40 @@ FR|IT). + ligne légale + mention « édité par Cultura Sabauda ».
 
 ## 6. Gabarits page par page
 
-### 6.1 Home — une gare de tri, pas une vitrine vide
+### 6.1 Home — LOCAL D'ABORD (modèle « cercles concentriques »)
 
-Ordre vertical (aéré, PAS la mosaïque dense 3 colonnes de GuidaTorino, mais son esprit) :
+**⚠ Décision produit (cf. `STRATEGIE_MARQUE_ET_TERRITOIRES.md`) : la home n'est PAS un déversoir
+des 4 territoires à parts égales.** Elle est **locale d'abord** : elle s'adapte au territoire de
+l'utilisateur, et le transfrontalier est une **invitation curée** (2-3 pépites), pas du volume.
+C'est LA différence avec GuidaTorino (mono-ville) : chez nous 4 territoires à égalité = bruit.
 
-1. Header + **barre de raccourcis temporels** (chips : Aujourd'hui · Ce week-end · Cette
-   semaine · Choisir des dates).
-2. **Héro éditorial** : 1 événement à la une (sélection manuelle ; repli : meilleur score de
-   la semaine) — grande image, kicker catégorie, titre, date en gros, pilule territoire +
-   2–3 secondaires en cartes compactes à droite.
-3. **« Ce week-end »** : cartouche de rubrique (petites capitales, à la GuidaTorino) +
-   8–12 cartes standard + lien « Tout le week-end → ».
-4. **« Le tour des territoires »** : 4 blocs (un par territoire, sa couleur en pilule),
-   4–6 cartes compactes chacun + « Tout le Piémont → ». (Reprend la rubrique existante de la
-   newsletter — cohérence de marque.)
-5. **Rail catégories** : 11 tuiles illustrées horizontales scrollables (l'équivalent moderne
-   des 6 tuiles GIF de GuidaTorino — LE pattern de relance).
-6. **« Dernière chance »** : expositions/événements qui se terminent ≤ 14 jours (badge rouge).
-7. **Bloc newsletter** inline : promesse datée « Le vendredi matin : le week-end des
-   4 territoires » + 1 champ email.
-8. **« Les 10 du week-end »** : carte large vers le listicle hebdo.
-9. Footer.
+**Sélecteur de territoire** (1ʳᵉ visite ou géoloc, mémorisé en cookie) : « Votre coin ? »
+→ Savoie/Haute-Savoie · Piémont · Vallée d'Aoste · Nice. Tout se réordonne autour de ce choix.
+(Repli sans choix : Savoie/Haute-Savoie par défaut, ou une home neutre.)
 
-H1 home : accroche éditoriale (« Que faire dans les Alpes, de Chambéry à Turin »), pas le nom
-du site seul.
+Ordre vertical (aéré, esprit GuidaTorino mais local-first) :
+
+1. Header + **barre de raccourcis temporels** (Aujourd'hui · Ce week-end · Cette semaine · Dates)
+   + **sélecteur de territoire** visible (pour changer de coin).
+2. **Héro éditorial** : 1 événement à la une **de TON territoire** (sélection manuelle ; repli :
+   meilleur score local) + 2-3 secondaires.
+3. **« Ce week-end près de chez toi »** : 8-12 cartes **de ton territoire** (idéalement ta ville
+   en tête) + « Tout le week-end en [territoire] → ».
+4. **« De l'autre côté des Alpes »** (LA signature Sabaudo) : **2-3 pépites curées** du/des
+   territoire(s) voisin(s) — pour la Savoie surtout **Piémont**, un peu **Vallée d'Aoste**,
+   **Nice en dernier**. Éditorialisé, jamais du volume. + « Explorer le Piémont → ».
+5. **Rail catégories** : 11 tuiles illustrées (le pattern de relance).
+6. **« Dernière chance »** : expositions qui se terminent ≤ 14 jours (badge rouge), **locales**.
+7. **Bloc newsletter** inline (promesse datée « Le vendredi matin »).
+8. **« Les 10 du week-end »** : carte large vers le listicle hebdo (du territoire).
+9. Footer (avec accès aux **4 territoires** — accessibles, mais pas poussés dans le flux).
+
+**SEO préservé** : le réordonnancement est côté client (cookie) ; la home garde des **liens
+crawlables** vers TOUS les hubs (territoires, catégories) → Google voit la structure complète.
+On personnalise pour l'humain, on garde les hubs pour Google.
+
+H1 home : accroche éditoriale (« Que faire en Savoie ce week-end » adaptée au territoire, ou
+« Que faire dans les Alpes, de Chambéry à Turin » par défaut).
 
 ### 6.2 Hubs temporels (Aujourd'hui / Ce week-end / Cette semaine)
 
@@ -252,7 +262,9 @@ du site seul.
 - Chips de croisement (sur Piémont : ses catégories actives ; sur Concerts : ses 4
   territoires).
 - « Ce week-end en/à X » en tête (4–8 cartes), puis flux chronologique complet paginé.
-- Territoire : bloc « villes » (liens) + « dans les territoires voisins » en pied.
+- Territoire : bloc **« villes »** (liens vers les hubs ville) + encart **« De l'autre côté des
+  Alpes »** (2-3 pépites curées du territoire voisin — la signature Sabaudo, cf. §6.1) en pied.
+  L'ordre de voisinage : Savoie→Piémont d'abord ; à définir par territoire.
 
 ### 6.4 Fiche événement (LE gabarit critique — 2 niveaux de richesse)
 
