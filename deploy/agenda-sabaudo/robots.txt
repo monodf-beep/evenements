@@ -1,0 +1,44 @@
+# robots.txt — Agenda Sabaudo (https://agendasabaudo.eu)
+# Objectif : autoriser le crawl SEO classique ET les crawlers IA (choix GEO/AEO assumé),
+# tout en bloquant les vues techniques The Events Calendar (anti-index-bloat).
+# À déposer à la RACINE du site public. Si RankMath gère le robots.txt virtuel,
+# recopier ces blocs dans RankMath → Réglages généraux → Modifier robots.txt.
+
+# --- Crawlers IA explicitement autorisés (on VEUT être lu et cité) ---
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# --- Tous les autres robots ---
+User-agent: *
+Allow: /
+Disallow: /wp-admin/
+Allow: /wp-admin/admin-ajax.php
+
+# Vues techniques The Events Calendar (jamais indexées : semaine / photo / jour / filtres)
+Disallow: /*?eventDisplay=*
+Disallow: /*/week/*
+Disallow: /*/photo/*
+Disallow: /*?tribe-bar-date=*
+Disallow: /*?eventDate=*
+
+# Exports iCal et recherche interne (sans valeur d'indexation)
+Disallow: /*?ical=*
+Disallow: /*?outlook-ical=*
+Disallow: /*?s=*
+Disallow: /fr/recherche/
+Disallow: /it/ricerca/
+
+# Sitemap (généré par RankMath)
+Sitemap: https://agendasabaudo.eu/sitemap_index.xml
