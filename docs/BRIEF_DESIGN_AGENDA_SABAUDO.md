@@ -209,40 +209,43 @@ FR|IT). + ligne légale + mention « édité par Cultura Sabauda ».
 
 ## 6. Gabarits page par page
 
-### 6.1 Home — LOCAL D'ABORD (modèle « cercles concentriques »)
+### 6.1 Home — MARQUE + ORIENTATION (pas un feed, PAS de personnalisation)
 
-**⚠ Décision produit (cf. `STRATEGIE_MARQUE_ET_TERRITOIRES.md`) : la home n'est PAS un déversoir
-des 4 territoires à parts égales.** Elle est **locale d'abord** : elle s'adapte au territoire de
-l'utilisateur, et le transfrontalier est une **invitation curée** (2-3 pépites), pas du volume.
-C'est LA différence avec GuidaTorino (mono-ville) : chez nous 4 territoires à égalité = bruit.
+**⚠ Décision produit finale (cf. `STRATEGIE_MARQUE_ET_TERRITOIRES.md` + `DECISIONS_ECARTEES.md`).**
+La home **ne devine pas** le territoire de l'utilisateur (pas de géoloc, pas de sélecteur imposé,
+pas de « cercles concentriques » — ces pistes sont écartées). Elle **assume les 4 territoires**,
+**prouve** que l'espace Sabaudo vit, et **oriente** vers les portes. **On la traverse, on n'y
+browse pas.** Ce n'est PAS un flux de tous les événements (ce serait le bruit qu'on refuse).
 
-**Sélecteur de territoire** (1ʳᵉ visite ou géoloc, mémorisé en cookie) : « Votre coin ? »
-→ Savoie/Haute-Savoie · Piémont · Vallée d'Aoste · Nice. Tout se réordonne autour de ce choix.
-(Repli sans choix : Savoie/Haute-Savoie par défaut, ou une home neutre.)
+Ordre vertical (aéré, esprit GuidaTorino) :
 
-Ordre vertical (aéré, esprit GuidaTorino mais local-first) :
-
-1. Header + **barre de raccourcis temporels** (Aujourd'hui · Ce week-end · Cette semaine · Dates)
-   + **sélecteur de territoire** visible (pour changer de coin).
-2. **Héro éditorial** : 1 événement à la une **de TON territoire** (sélection manuelle ; repli :
-   meilleur score local) + 2-3 secondaires.
-3. **« Ce week-end près de chez toi »** : 8-12 cartes **de ton territoire** (idéalement ta ville
-   en tête) + « Tout le week-end en [territoire] → ».
-4. **« De l'autre côté des Alpes »** (LA signature Sabaudo) : **2-3 pépites curées** du/des
-   territoire(s) voisin(s) — pour la Savoie surtout **Piémont**, un peu **Vallée d'Aoste**,
-   **Nice en dernier**. Éditorialisé, jamais du volume. + « Explorer le Piémont → ».
-5. **Rail catégories** : 11 tuiles illustrées (le pattern de relance).
-6. **« Dernière chance »** : expositions qui se terminent ≤ 14 jours (badge rouge), **locales**.
+1. Header + **barre de raccourcis temporels** (Aujourd'hui · Ce week-end · Cette semaine · Dates).
+   Header bilingue **FR | IT** (texte, pas de drapeau).
+2. **Héro éditorial** : 1-2 temps forts de l'espace Sabaudo (sélection manuelle).
+3. **Best-of ÉQUILIBRÉ** : quelques temps forts avec **au moins 1-2 par territoire** — pour
+   n'apparaître **ni** « site savoyard » **ni** « site turinois ». Curé, pas exhaustif.
+4. **Les 4 portes TERRITOIRE** (bloc majeur) : Savoie/Haute-Savoie · Piémont · Vallée d'Aoste ·
+   Nice, chacune sa couleur — **c'est l'axe primaire**, la 1ʳᵉ décision du visiteur (« où ? »).
+5. **Rail catégories** : 11 tuiles (dont Gastronomie & Sagre) — l'axe secondaire (« quoi ? »),
+   + éventuelles vues transversales (« toutes les sagre des 4 territoires » = découverte).
+6. **« Dernière chance »** : expositions qui se terminent ≤ 14 jours (badge rouge).
 7. **Bloc newsletter** inline (promesse datée « Le vendredi matin »).
-8. **« Les 10 du week-end »** : carte large vers le listicle hebdo (du territoire).
-9. Footer (avec accès aux **4 territoires** — accessibles, mais pas poussés dans le flux).
+8. **« Les 10 du week-end »** : carte large vers le listicle hebdo.
+9. Footer (accès aux 4 territoires, 11 catégories, projet, RSS, FR|IT).
 
-**SEO préservé** : le réordonnancement est côté client (cookie) ; la home garde des **liens
-crawlables** vers TOUS les hubs (territoires, catégories) → Google voit la structure complète.
-On personnalise pour l'humain, on garde les hubs pour Google.
+**Raccourci mémorisé (léger, PROPOSÉ, jamais imposé)** : si le visiteur a déjà visité un
+territoire, un lien discret « ↩ Reprendre en Savoie ». Jamais de redirection automatique.
+*(Le « 📍 Près de moi » GPS opt-in = v2, pas au lancement.)*
 
-H1 home : accroche éditoriale (« Que faire en Savoie ce week-end » adaptée au territoire, ou
-« Que faire dans les Alpes, de Chambéry à Turin » par défaut).
+**SEO** : la home a des **liens crawlables** vers TOUS les hubs (territoires + catégories) →
+Google voit toute la structure.
+
+H1 home : accroche éditoriale de marque (« Que faire dans les Alpes, de Chambéry à Turin »),
+**pas** adaptée par territoire.
+
+> **Rappel local-first** : le « local d'abord » ne se joue PAS sur la home mais **dans les hubs**
+> (l'utilisateur arrive sur `/territoire/savoie/` ou `/ville/annecy/` depuis Google, ou choisit
+> sa porte). La home, elle, est transfrontalière et assumée.
 
 ### 6.2 Hubs temporels (Aujourd'hui / Ce week-end / Cette semaine)
 
