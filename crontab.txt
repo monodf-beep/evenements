@@ -17,3 +17,5 @@
 # NB : le cron évalue TOUTE la file pending (rattrapage quotidien). Le pilotage par
 # période (« ce week-end ») se fait à la MAIN via le bouton du dashboard.
 0 9 * * * cd /root/evenements && .venv/bin/python scripts/evaluator.py >> logs/evaluator.log 2>&1
+# Sauvegarde de la base 3h (copie cohérente horodatée, garde les 14 dernières) — anti perte de données
+0 3 * * * cd /root/evenements && .venv/bin/python scripts/backup_db.py >> logs/backup.log 2>&1

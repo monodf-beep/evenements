@@ -794,6 +794,7 @@ def action(event_id: int, action: str):
 
     title = (event["title"] or "")[:70]
     if action == "publish_cs":
+        existed = event["wp_post_id_cs"]
         wp_id = publish_to_cs(dict(event))
         if wp_id:
             conn.execute("""
@@ -802,7 +803,8 @@ def action(event_id: int, action: str):
             """, (wp_id, event_id))
             conn.commit()
             log.info("Publié CS : event_id=%d wp_id=%d", event_id, wp_id)
-            flash(f"✅ « {title} » → brouillon créé sur WordPress (id {wp_id}).", "ok")
+            verbe = "mis à jour" if existed and wp_id == existed else "créé"
+            flash(f"✅ « {title} » → brouillon WordPress {verbe} (id {wp_id}).", "ok")
         else:
             flash(f"❌ Échec WordPress pour « {title} » — vérifie WP_URL / identifiants (voir logs).", "err")
     elif action == "subdomain":

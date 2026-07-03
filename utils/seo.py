@@ -107,8 +107,9 @@ Dates : {dates}
 Description : {description}
 
 Choisis d'abord UNE expression clé principale (« focus keyphrase ») : 2 à 4 mots, le cœur
-cherché de l'événement (ex. nom propre + lieu). Puis rédige TOUT autour d'elle, en respectant
-Yoast :
+cherché de l'événement (ex. nom propre + lieu). IMPÉRATIF : choisis des mots qui apparaissent
+TELS QUELS dans la description/l'article ci-dessus (sinon Yoast signale « clé absente du
+texte »). Puis rédige TOUT autour d'elle, en respectant Yoast :
 - le titre SEO COMMENCE par l'expression clé ;
 - la méta description CONTIENT l'expression clé ;
 - la réponse directe et l'intro CONTIENNENT l'expression clé ;
@@ -140,6 +141,9 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
             return f"du {s} au {e}"
         return s or "date à confirmer"
 
+    # Matière pour choisir la clé : l'ARTICLE rédigé s'il existe (c'est LUI qui
+    # sera publié → la clé doit y figurer), sinon la description brute.
+    material = _clean(ev.get("article_md") or ev.get("description"))
     prompt = SEO_PROMPT.format(
         title=_clean(ev.get("title")),
         categorie=ev.get("llm_categorie") or "",
@@ -147,7 +151,7 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
         ville=ev.get("ville") or "",
         territoire=ev.get("territoire") or "",
         dates=_dates(ev),
-        description=_clean(ev.get("description"))[:600],
+        description=material[:900],
     )
     message = client.messages.create(
         model=model, max_tokens=1024,

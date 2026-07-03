@@ -102,6 +102,29 @@ def build_post(event: dict) -> tuple[str, str]:
     return title, f"<p>{html.escape(raw)}</p>" if raw else ""
 
 
+_WP_CATEGORIES_FILE = ROOT / "config" / "wp_categories.txt"
+
+
+def _map_category(name: str) -> str:
+    """Traduit une catégorie interne (les 11) vers la catégorie WordPress réelle,
+    d'après config/wp_categories.txt (lignes « interne = WordPress »). Sans
+    correspondance, renvoie le nom interne inchangé."""
+    name = (name or "").strip()
+    if not name or not _WP_CATEGORIES_FILE.exists():
+        return name
+    try:
+        for line in _WP_CATEGORIES_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            src, dst = (p.strip() for p in line.split("=", 1))
+            if src.lower() == name.lower() and dst:
+                return dst
+    except OSError:
+        pass
+    return name
+
+
 def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
     """ID d'un terme (taxonomy = 'categories' | 'tags') par son nom ; le crée s'il
     n'existe pas. Jamais bloquant : renvoie None en cas d'échec."""
@@ -243,7 +266,11 @@ def publish_to_cs(event: dict) -> int | None:
     payload["meta"] = meta
 
     # --- Catégorie (les 11) + étiquettes → taxonomies WordPress natives -------
-    cat_id = _resolve_term(wp_url, auth, "categories", event.get("llm_categorie"))
+    # Mapping optionnel « catégorie interne → catégorie WordPress » via
+    # config/wp_categories.txt (pour coller à la taxonomie réelle de CS sans
+    # créer de doublons). À défaut, on utilise le nom interne tel quel.
+    cat_name = _map_category(event.get("llm_categorie"))
+    cat_id = _resolve_term(wp_url, auth, "categories", cat_name)
     if cat_id:
         payload["categories"] = [cat_id]
     tag_names = []
@@ -273,17 +300,23 @@ def publish_to_cs(event: dict) -> int | None:
             log.info("Post sans vignette (upload média échoué) : %s",
                      event.get("title", "")[:60])
 
+    # MISE À JOUR si un brouillon existe déjà pour cet événement (évite les
+    # doublons quand on reclique « Publier CS ») ; création sinon. Si l'ancien
+    # brouillon a été supprimé côté WP (404), on recrée.
+    existing = event.get("wp_post_id_cs")
+    endpoint = (f"{wp_url}/?rest_route=/wp/v2/posts/{existing}" if existing
+                else f"{wp_url}/?rest_route=/wp/v2/posts")
     try:
-        resp = requests.post(
-            f"{wp_url}/?rest_route=/wp/v2/posts",
-            json=payload,
-            auth=auth,
-            headers=_headers(auth),
-            timeout=30,
-        )
+        resp = requests.post(endpoint, json=payload, auth=auth,
+                             headers=_headers(auth), timeout=30)
+        if existing and resp.status_code == 404:
+            log.info("Brouillon WP %s introuvable → recréation", existing)
+            resp = requests.post(f"{wp_url}/?rest_route=/wp/v2/posts", json=payload,
+                                 auth=auth, headers=_headers(auth), timeout=30)
         resp.raise_for_status()
         post_id = resp.json().get("id")
-        log.info("Draft créé WP id=%s : %s", post_id, event.get("title", "")[:60])
+        verb = "mis à jour" if existing and post_id == existing else "créé"
+        log.info("Brouillon WP %s id=%s : %s", verb, post_id, event.get("title", "")[:60])
         return post_id
     except requests.HTTPError as exc:
         log.error("Erreur WordPress API (%s) : %s", exc.response.status_code,
