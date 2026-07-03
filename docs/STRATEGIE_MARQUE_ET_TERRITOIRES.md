@@ -99,45 +99,56 @@ Torino ») → l'internaute **atterrit directement sur un hub** (`/ville/annecy/
 piemont/`). **La page d'arrivée encode déjà le territoire.** Donc pour le plus gros du trafic,
 on n'a **rien à deviner** : l'URL le dit.
 
-Le « quel territoire ? » ne se pose donc que pour la **home** (trafic direct, marque, newsletter).
-Réponse : une **cascade de signaux, aucun bloquant**, du plus fiable au moins fiable :
+Le « quel territoire ? » se pose pour la **home** (trafic de marque/habitude — non négligeable :
+beaucoup tapent le nom du site directement) et pour tout premier visiteur sans contexte d'URL.
 
-1. **Choix explicite mémorisé** (cookie) — le plus fort. Dès que quelqu'un choisit ou navigue un
-   territoire, on s'en souvient. Un visiteur qui revient retrouve son coin.
-2. **Géoloc par IP** (silencieuse, côté serveur/edge — PAS le popup navigateur) — juste un
-   **défaut** pour un premier visiteur sans cookie. Approximatif mais suffisant pour un défaut.
-3. **Home neutre « best-of »** — si aucun signal (touriste, IP étrangère) : une home accueillante
-   (les pépites de chaque territoire) + une **bande « Votre coin ? »** douce. On invite, on ne
-   bloque pas.
+**Le principe (corrigé) : aucun signal n'est fiable seul — ils se contredisent.** Le Savoyard à
+Turin a une **IP italienne** (position) et un **téléphone en français** (langue) : les deux
+signaux pointent des territoires opposés. Conclusion : **on ne « devine » pas en dur**. On :
+1. propose un **défaut raisonnable**,
+2. rend le **contexte visible** (« Vous voyez : Savoie »),
+3. rend le **changement trivial** (sélecteur 1 tap, toujours dans le header),
+4. quand deux signaux **se contredisent**, on **suggère en douceur** au lieu de trancher en
+   silence.
 
-Et **toujours** : un **sélecteur de territoire en un clic** dans le header (comme un sélecteur de
-langue) → n'importe qui corrige une mauvaise devinette instantanément.
+### Le défaut, par ordre de robustesse
+- **Position actuelle (IP)** = le meilleur défaut quand on ne sait rien d'autre : si tu es à
+  Turin, on te montre le Piémont (c'est ce que tu veux le plus souvent). **La position prime,
+  pas le vieux cookie** (c'est ta correction : servir de la Savoie à quelqu'un qui est à Turin =
+  mauvais).
+- **Langue de l'appareil** = signal secondaire pour départager quand l'IP est floue/étrangère :
+  appareil FR → défaut côté français (Savoie/Nice) ; appareil IT → côté italien (Piémont/VdA).
+- **Cookie** = **préférence, pas prison** : si tu as déjà choisi « Savoie », on s'en souvient —
+  MAIS si ta position dit que tu es ailleurs, on ne l'impose pas en silence (voir la bannière).
+- **Rien de tout ça** (touriste, IP inconnue) → **home neutre best-of** + « Votre coin ? ».
 
-**Ordre de priorité : cookie > IP > neutre.** (Le cookie AVANT l'IP : c'est ce qui gère le
-Savoyard en vacances — voir ci-dessous.)
+### La bannière de conflit (la vraie élégance)
+Quand la **position ≠ la préférence mémorisée**, un bandeau discret et **dismissible** :
+> *« Vous semblez être en Piémont — voir les événements à Turin ? [Oui] [Rester en Savoie] »*
+Le Savoyard à Turin tape **Oui** → Piémont. Chez lui (position = préférence), il ne le voit
+jamais. **Un tap résout le conflit, on ne se trompe jamais en silence.**
 
 ### Les cas concrets (tes scénarios)
-- **Savoyard chez lui** : arrive via Google sur une page Savoie (contexte posé) ; ou home + IP
-  Rhône-Alpes → Savoie ; ou son cookie dit Savoie. Tous les chemins mènent à Savoie ; si faux,
-  1 clic.
-- **Savoyard en vacances à Turin** : son **cookie « Savoie » l'emporte sur l'IP** → il retrouve
-  la Savoie. Et s'il veut du Turin pour son séjour, 1 clic sur Piémont (ou l'IP Piémont le lui
-  propose déjà). Les deux besoins sont servis.
-- **Touriste de n'importe où** : IP étrangère → **home neutre best-of** + « Votre coin ? ». Il
-  choisit sa destination. Ou il est arrivé par Google sur une page lieu → contexte déjà posé.
-- **Jamais d'inscription obligatoire.** On ne demande JAMAIS de créer un compte pour naviguer.
-  L'inscription = newsletter uniquement (opt-in, échange de valeur), jamais une barrière.
+- **Toi, habitué, tu tapes le nom du site** : home → ton **dernier coin mémorisé** (cookie), le
+  sélecteur juste à côté. Habitude respectée.
+- **Savoyard à Turin** : IP = Piémont, préférence = Savoie → **bannière** « Vous êtes en Piémont ?
+  Voir Turin ». 1 tap. On ne lui sert PAS de la Savoie en silence. (Ta correction, réglée.)
+- **Touriste de n'importe où** : IP étrangère → langue (FR/IT) départage, sinon **home neutre**
+  best-of + « Votre coin ? ». Ou il arrive par Google sur une page lieu → contexte déjà posé.
+- **Jamais d'inscription pour naviguer** — l'inscription = newsletter uniquement (opt-in).
 
 ### SEO / technique
-- **Google** n'a ni cookie ni IP locale → il voit la **home neutre** (best-of + liens vers TOUS
-  les hubs). Il indexe la home neutre + tous les hubs. Les humains ont la perso. **Aucun risque**
-  de cloaking (mêmes liens pour tous, seul l'ordre change).
-- **Mise en œuvre par phases** (important pour ce soir) :
-  - **Phase 1 (lancement, simple)** : PAS d'IP. Home neutre best-of + **sélecteur header** +
-    **mémoire du dernier territoire visité (cookie)** → au retour sur la home, un petit JS
-    réordonne vers le coin mémorisé. Zéro dépendance géo. Suffisant.
-  - **Phase 2 (plus tard)** : ajouter le **défaut par IP** (en-tête pays Cloudflare, ou service
-    géo) pour le tout premier visiteur sans cookie.
+- **Google** (sans cookie, IP US) voit la **home neutre** + les liens vers TOUS les hubs → il
+  indexe tout. Perso pour l'humain, structure pour Google. **Pas de cloaking** (mêmes liens,
+  seul l'ordre change).
+- **Mise en œuvre par phases** :
+  - **Phase 1 (lancement, la plus honnête)** : home **« choix d'abord »** — un sélecteur de coin
+    clair et chaleureux + un best-of ; on **mémorise le choix** (cookie) ; sélecteur toujours
+    visible. **On ne devine pas → on ne se trompe jamais.** C'est ta « landing qui te fait
+    choisir ». Simple, robuste, zéro dépendance géo.
+  - **Phase 2** : ajouter le **défaut par position** (en-tête pays Cloudflare) + la **langue** en
+    départage + la **bannière de conflit**. C'est le raffinement qui rend le défaut « juste »
+    sans jamais enfermer.
 
 ---
 
