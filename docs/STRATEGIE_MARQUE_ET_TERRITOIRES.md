@@ -111,30 +111,41 @@ signaux pointent des territoires opposés. Conclusion : **on ne « devine » pas
 4. quand deux signaux **se contredisent**, on **suggère en douceur** au lieu de trancher en
    silence.
 
-### Le défaut, par ordre de robustesse
-- **Position actuelle (IP)** = le meilleur défaut quand on ne sait rien d'autre : si tu es à
-  Turin, on te montre le Piémont (c'est ce que tu veux le plus souvent). **La position prime,
-  pas le vieux cookie** (c'est ta correction : servir de la Savoie à quelqu'un qui est à Turin =
-  mauvais).
-- **Langue de l'appareil** = signal secondaire pour départager quand l'IP est floue/étrangère :
-  appareil FR → défaut côté français (Savoie/Nice) ; appareil IT → côté italien (Piémont/VdA).
-- **Cookie** = **préférence, pas prison** : si tu as déjà choisi « Savoie », on s'en souvient —
-  MAIS si ta position dit que tu es ailleurs, on ne l'impose pas en silence (voir la bannière).
-- **Rien de tout ça** (touriste, IP inconnue) → **home neutre best-of** + « Votre coin ? ».
+### ⚠ L'IP ne dit PAS la position (roaming « home routing »)
+Vérifié (sources ci-dessous) : en itinérance, la plupart des forfaits **tunnellent le trafic
+jusqu'au pays d'origine** → une **SIM française à Turin sort en IP française**. L'IP géolocalise
+donc au **domicile**, pas à la position réelle. **Conclusion : l'IP n'est PAS un signal fiable de
+position** pour notre cas (le voyageur sur son forfait). On l'abandonne comme défaut.
 
-### La bannière de conflit (la vraie élégance)
-Quand la **position ≠ la préférence mémorisée**, un bandeau discret et **dismissible** :
+### Ce qui est vraiment fiable, du plus au moins
+- **Le choix explicite de l'utilisateur** (sélecteur + mémoire cookie) = **le seul signal
+  fiable**. Il nous dit son coin. Toujours juste. C'est le cœur.
+- **Le bouton opt-in « 📍 Près de moi »** = la SEULE position fiable : il déclenche la
+  **géoloc GPS du navigateur** (précise), **quand l'utilisateur le décide** (pas de popup à
+  l'arrivée). Le Savoyard à Turin tape « Près de moi » → GPS = Turin → événements du Piémont
+  autour de lui. Il choisit d'être localisé, c'est exact, et non intrusif.
+- **Langue de l'appareil / IP-pays** = **hints faibles seulement** : pour pré-ordonner le
+  sélecteur ou déclencher une suggestion douce. Jamais autoritaires (l'IP se trompe en roaming,
+  la langue ne distingue pas Savoie de Nice).
+- **Rien** → **home neutre best-of** + « Votre coin ? ».
+
+### La bannière de conflit (validée par Franck) — mais c'est un BONUS
+Quand un hint (IP-pays fiable : wifi local, eSIM locale…) diffère de la préférence, un bandeau
+discret et **dismissible** :
 > *« Vous semblez être en Piémont — voir les événements à Turin ? [Oui] [Rester en Savoie] »*
-Le Savoyard à Turin tape **Oui** → Piémont. Chez lui (position = préférence), il ne le voit
-jamais. **Un tap résout le conflit, on ne se trompe jamais en silence.**
+Un tap résout, jamais faux en silence. **Mais** comme le signal (IP) est faible/absent en
+roaming, la bannière ne se déclenchera pas toujours → c'est un plus, **pas** le mécanisme
+principal. Le mécanisme principal reste : **choix explicite + « Près de moi » opt-in.**
 
 ### Les cas concrets (tes scénarios)
 - **Toi, habitué, tu tapes le nom du site** : home → ton **dernier coin mémorisé** (cookie), le
   sélecteur juste à côté. Habitude respectée.
-- **Savoyard à Turin** : IP = Piémont, préférence = Savoie → **bannière** « Vous êtes en Piémont ?
-  Voir Turin ». 1 tap. On ne lui sert PAS de la Savoie en silence. (Ta correction, réglée.)
-- **Touriste de n'importe où** : IP étrangère → langue (FR/IT) départage, sinon **home neutre**
-  best-of + « Votre coin ? ». Ou il arrive par Google sur une page lieu → contexte déjà posé.
+- **Savoyard à Turin** : son IP reste **française** (roaming) → aucune détection auto fiable.
+  Il tape **« 📍 Près de moi »** (GPS = Turin) → Piémont autour de lui ; OU 1 tap sur Piémont
+  dans le sélecteur. Il agit, c'est exact. On ne lui sert PAS de la Savoie en silence, et on ne
+  se fie pas à une IP menteuse. (Ta correction, réglée.)
+- **Touriste de n'importe où** : **home neutre** best-of + « Votre coin ? » (+ « Près de moi »
+  s'il veut le local). Ou il arrive par Google sur une page lieu → contexte déjà posé.
 - **Jamais d'inscription pour naviguer** — l'inscription = newsletter uniquement (opt-in).
 
 ### SEO / technique
@@ -146,9 +157,9 @@ jamais. **Un tap résout le conflit, on ne se trompe jamais en silence.**
     clair et chaleureux + un best-of ; on **mémorise le choix** (cookie) ; sélecteur toujours
     visible. **On ne devine pas → on ne se trompe jamais.** C'est ta « landing qui te fait
     choisir ». Simple, robuste, zéro dépendance géo.
-  - **Phase 2** : ajouter le **défaut par position** (en-tête pays Cloudflare) + la **langue** en
-    départage + la **bannière de conflit**. C'est le raffinement qui rend le défaut « juste »
-    sans jamais enfermer.
+  - **Phase 2** : ajouter le bouton **« 📍 Près de moi »** (géoloc GPS opt-in → tri par distance)
+    + la **langue** pour pré-ordonner le sélecteur + la **bannière de conflit** (bonus, quand un
+    signal IP fiable existe). PAS de défaut automatique par IP (roaming = peu fiable).
 
 ---
 
