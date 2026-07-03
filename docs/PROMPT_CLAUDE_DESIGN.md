@@ -1,92 +1,126 @@
-# Prompt pour Claude Design — Agenda Sabaudo
+# Prompt Claude Design — Agenda Sabaudo (maquette v2, mobile-first « scroll & choisir »)
 
-*À coller dans Claude Design pour produire la maquette. Version alignée sur la décision finale
-(simple, sans personnalisation). Copie tout ce qui est entre les lignes.*
+*Prompt complet à coller dans Claude Design. Modèle : la home mobile de GuidaTorino — une PILE de
+rubriques curées qu'on parcourt en scrollant, UI épurée, l'information prime sur la marque.*
 
 ---
 
 Tu conçois l'UX/UI de **Agenda Sabaudo**, l'agenda culturel **transfrontalier bilingue FR/IT** de
 l'espace alpin occidental — **4 territoires** : Savoie/Haute-Savoie, Piémont, Vallée d'Aoste,
-Nice/Alpes-Maritimes. Édité par le média **Cultura Sabauda**. Site WordPress.
+Nice/Alpes-Maritimes. Édité par le média **Cultura Sabauda**. Site WordPress. **Conçois d'abord
+le MOBILE** (puis l'adaptation desktop).
 
-**Modèle d'expérience : guidatorino.com** — un guide urbain sobre et dense qui « marche » par la
-clarté et le contenu, pas par des effets. On en reprend l'esprit (cartes à date visible, pages
-catégorie et lieu, hubs « ce week-end » evergreen) en **plus moderne et responsive**.
+## Le modèle : GuidaTorino sur mobile — « on scrolle et on choisit »
+La home est une **pile verticale de rubriques curées** qu'on **parcourt en scrollant**. Le
+visiteur **ne filtre pas, ne va pas dans le menu** : il descend, son œil n'a pas à chercher, il
+**tape** la rubrique ou la carte qui l'intéresse. Chaque rubrique = un **petit titre de section**
+(en capitales, discret) + une **sélection de cartes** (carrousel horizontal ou petite grille) +
+un lien **« voir tout → »**.
 
-## Principes NON négociables (anti-« design slop »)
-- **Sobriété éditoriale = le branding.** Interdits : dégradés SaaS violet/bleu, glassmorphism,
-  blobs, hero vide à slogan centré, sections « features », carrousels automatiques, animations
-  décoratives, emoji en guise d'icônes. Chaque pixel sert une **date, un lieu, un titre, une
-  photo**.
-- **Tout est du texte HTML réel** (jamais de titre ou de date dans une image).
-- **Mobile-first**, responsive, accessible (contrastes AA, focus visibles).
-- **Bilingue** : commutateur **« FR | IT » en texte** (jamais de drapeau).
+**Trois règles qui découlent de ce modèle :**
+1. **Curé, PAS exhaustif.** Chaque rubrique montre un **best-of**, pas tout. La seule exhaustivité
+   est derrière une entrée **« Tout l'agenda → »** (liste filtrable). Ailleurs, on fait des choix.
+2. **UI épurée au maximum : l'INFORMATION prime, pas la marque.** La photo + le titre + la date
+   dominent. L'identité du site = **petits rappels** (logo discret, l'accent rouge avec
+   parcimonie, les pilules de couleur territoire). **Pas de gros branding**, pas de chrome lourd.
+3. **On scrolle, c'est simple.** Pas de filtres sur la home, pas de personnalisation, pas de
+   géolocalisation, la home ne devine rien.
 
-## Charte (applique-la, la DA reste à toi)
-- **Marine profond** `#1a2b4a` (marque : titres, header, footer).
-- **Rouge de Savoie** `#c8102e` = **le seul accent** (CTA, filets, urgences). Rare = signifiant.
-- **Couleurs territoire** (pilules) : Savoie bleu `#1a56b0` · Piémont rouge `#b3261e` · Vallée
-  d'Aoste vert `#1e7d34` · Nice orange `#b25e00`.
-- Logotype « Agenda Sabaudo » + point rouge ; mention « édité par Cultura Sabauda » discrète.
-- Typo : à toi (piste : serif éditoriale pour les titres + sans lisible pour les données). Icônes
-  au trait, pas d'emoji dans l'UI.
+## Anti « design slop » (interdits)
+Pas de dégradés SaaS, glassmorphism, blobs, hero vide à slogan centré, sections « features »,
+carrousels **auto-défilants** (les carrousels sont à **swipe manuel**), animations décoratives,
+**emoji en guise d'icônes** (icônes au trait), texte dans les images. Tout est du **texte HTML
+réel**. Accessible (contrastes AA, focus visibles).
 
-## La règle de fond (à respecter absolument)
-- La **home n'est PAS un flux** de tous les événements, et elle **ne devine PAS** le territoire de
-  l'utilisateur (pas de géoloc, pas de personnalisation). Elle est une **page de marque +
-  d'orientation** : elle prouve que l'espace Sabaudo vit, et elle **oriente**.
-- **Axe PRIMAIRE = le territoire** : la 1ʳᵉ décision du visiteur est « où ? » (les 4 territoires).
-  L'**activité (catégorie) vient à l'intérieur** du territoire. Ce ne sont PAS deux menus égaux.
-- Le **local d'abord** se vit **dans les pages territoire/ville**, pas sur la home.
+## Charte (applique-la, la DA reste à toi — mais RESTE ÉPURÉ)
+- **Marine profond** `#1a2b4a` (titres, petits éléments de marque).
+- **Rouge de Savoie** `#c8102e` = **le seul accent**, rare (CTA, filets, urgences).
+- **Couleurs territoire** (pilules sur les cartes) : Savoie bleu `#1a56b0` · Piémont rouge
+  `#b3261e` · Vallée d'Aoste vert `#1e7d34` · Nice orange `#b25e00`.
+- Logo « Agenda Sabaudo » **discret** + point rouge ; « édité par Cultura Sabauda » en tout petit.
+- Typo : à toi (piste : serif éditoriale pour les titres + sans lisible pour les données).
 
-## Écrans à produire (desktop + mobile)
+## LA HOME (mobile) — la pile de rubriques, dans cet ordre
 
-1. **Home** (marque + orientation) :
-   - header (logo, nav temporelle : Aujourd'hui · Ce week-end · Cette semaine · Agenda ; loupe ;
-     FR|IT) ;
-   - héro : 1-2 temps forts de l'espace Sabaudo ;
-   - **best-of ÉQUILIBRÉ** : quelques temps forts avec **au moins 1-2 par territoire** (ni « site
-     savoyard » ni « site turinois ») ;
-   - **les 4 portes TERRITOIRE** (bloc majeur, chacune sa couleur) — l'axe primaire ;
-   - rail des 11 catégories (dont « Gastronomie & Sagre ») ;
-   - « Dernière chance » (expos qui finissent) ; bloc newsletter ; lien listicle « Les 10 du
-     week-end » ; footer riche (4 territoires, 11 catégories, projet, FR|IT).
-   - lien discret « ↩ Reprendre en [dernier territoire] » (proposé, jamais imposé).
+1. **Header minimal (sticky)** : petit logo, **loupe**, **menu** (burger), commutateur **FR | IT**
+   (texte, jamais de drapeau). Épuré.
+2. **Carrousel « À la une »** (swipe manuel) : 3-5 grandes cartes = les temps forts de l'espace
+   Sabaudo, **ÉQUILIBRÉS** (au moins 1 par territoire), chaque carte avec sa **pilule territoire**.
+3. **Grille de portes (icônes au trait)** — c'est ici que se fait le CHOIX :
+   - **d'abord les 4 TERRITOIRES** (Savoie · Piémont · Vallée d'Aoste · Nice), chacun sa couleur
+     — **c'est l'axe primaire, la 1ʳᵉ décision « où ? »** ;
+   - puis quelques grandes entrées : **Ce week-end · Expositions · Concerts · Sagre · En famille ·
+     Tout l'agenda**.
+4. **« Ce week-end »** : titre de section + carrousel de cartes (best-of équilibré) + « Tout le
+   week-end → ».
+5. **« Sagre & gastronomie du moment »** : une rubrique thématique dédiée (GuidaTorino met les
+   sagre en avant — c'est un aimant) + « voir tout → ».
+6. **« À ne pas manquer »** (sélection éditoriale, choix manuel) : quelques cartes.
+7. **« Aujourd'hui »** : les événements du jour.
+8. **« Le fil » / nouveautés** : derniers articles/listicles (« Les 10 du week-end », dossiers).
+9. **Bloc newsletter** (léger, 1 champ, promesse datée « le vendredi matin »).
+10. **« Tout l'agenda → »** : l'entrée unique vers la liste exhaustive **filtrable** (territoire /
+    catégorie / date). La seule page exhaustive.
+11. **Footer léger** : 4 territoires · 11 catégories · projet · FR|IT · « édité par Cultura
+    Sabauda ».
 
-2. **Hub territoire** (ex. Savoie) — LE cas d'usage local : H1 + intro ; « ce week-end en Savoie » ;
-   flux local **filtrable par activité** (barre de filtres date + catégorie) ; bloc villes ;
-   encart « De l'autre côté des Alpes » (2-3 pépites du Piémont — la signature transfrontalière).
+> Équilibre territorial obligatoire dans les rubriques curées (2, 4, 6) : ne pas paraître « site
+> savoyard » ni « site turinois ». Chaque carte porte sa **pilule territoire** pour que l'origine
+> soit toujours lisible.
 
-3. **Hub catégorie** (ex. Concerts & Musique) : par défaut dans un territoire, + option vue
-   transversale « les 4 territoires ».
+## LA CARTE ÉVÉNEMENT (le composant central) — comme GuidaTorino
+Ordre visuel : **image (ratio ~3:2)** → **la DATE en premier** (ex. « 05/07/2026 » ou « 05/07 –
+19/07 ») → **titre** (2 lignes max) → lieu + ville. + **pilule territoire (sa couleur)**, badge
+catégorie discret, « Gratuit » si applicable. **Carte entièrement cliquable.** Pas d'extrait sur
+les cartes (date + lieu suffisent). Variantes : **héro** (carrousel) · **standard** (rubriques) ·
+**compacte/liste** (résultats, agenda).
 
-4. **Fiche événement — MODE MINIMAL D'ABORD** (le cas majoritaire : beaucoup d'événements n'ont
-   PAS d'article rédigé) : héro image (ou bannière territoire) + crédit photo ; badges d'état ;
-   catégorie ; H1 ; lieu · ville · pilule territoire ; **bloc pratique** (dates humanisées,
-   horaires, lieu + carte, prix / « Gratuit », bouton « Réserver — site officiel ») ; description
-   courte ; « Vérifié le JJ/MM » ; **3 rails liés** (mêmes dates près d'ici · même territoire ·
-   même catégorie). Puis le **mode riche** (avec article : chapô + corps + encadré « En pratique »).
-
-5. **Hub temporel « Ce week-end »** : H1 avec dates + chapô éditorial + filtres territoire/
-   catégorie + grille.
-
-## Le composant central : la carte événement (4 variantes)
-Invariants : image (ratio unique ~3:2), **date lisible SANS clic**, titre 2 lignes max, lieu +
-ville, badge catégorie, **pilule territoire (sa couleur)**, badges d'état, « Gratuit » si
-applicable, carte entièrement cliquable.
-Variantes : **héro** · **standard** (grille) · **compacte/liste** (mobile, dense) · **dernière
-chance** (bandeau d'urgence rouge).
-
-## Badges d'état (système fermé)
+## Badges d'état (système fermé, discrets)
 `En cours` · `Dernier week-end` / `Plus que X jours` (rouge) · `Date à confirmer` (gris) ·
-`Gratuit` · `Annulé`/`Reporté`.
+`Gratuit`.
 
-## Livrables prioritaires
-Si tu ne fais que trois choses, fais-les justes : **(1) la carte événement**, **(2) la fiche en
-mode minimal**, **(3) la home (marque + 4 portes territoire + best-of équilibré)**. Si ces trois
-sont justes, le site est juste.
+## Les autres écrans (mobile + desktop)
+- **Hub territoire** (ex. Savoie) — LE cas d'usage local : titre + intro courte ; « ce week-end
+  en Savoie » ; **flux local filtrable par activité** (barre de filtres date + catégorie —
+  ici, oui, on filtre) ; encart « De l'autre côté des Alpes » (2-3 pépites du Piémont).
+- **Hub catégorie** (ex. Concerts, Sagre) : par défaut dans un territoire, + vue transversale
+  « les 4 territoires ».
+- **Fiche événement — MODE MINIMAL D'ABORD** (beaucoup d'événements n'ont PAS d'article) : image
+  (ou bannière territoire) + crédit photo ; badges ; catégorie ; titre ; lieu · ville · pilule
+  territoire ; **bloc pratique** (dates humanisées, horaires, lieu + carte, prix / « Gratuit »,
+  bouton « Réserver — site officiel ») ; description courte ; « Vérifié le JJ/MM » ; **3 rails
+  liés** (mêmes dates près d'ici · même territoire · même catégorie). Puis le **mode riche**
+  (article : chapô + corps + encadré « En pratique »).
+- **« Tout l'agenda »** : la liste exhaustive filtrable (territoire / catégorie / date).
 
-## Ce qu'il ne faut PAS faire
-Pas de home-feed, pas de sélecteur de territoire imposé à l'entrée, pas de géoloc, pas de deux
-menus territoire/activité co-égaux, pas de carte sans date, pas de carrousel auto, pas de
-drapeaux, pas d'emoji-icônes, pas de texte dans les images.
+## Desktop
+Même logique, la pile devient 1 colonne large (ou 2 colonnes contenu + rail) ; on **ne densifie
+pas** au point de perdre l'esprit épuré. Le scroll reste le geste principal.
+
+## Standards de finition professionnels (checklist pré-livraison)
+*Repris des bonnes pratiques UI/UX « pro max » — applique-les à chaque écran.*
+- **Icônes = SVG au trait (Heroicons ou Lucide)**, jamais d'emoji dans l'UI.
+- **`cursor-pointer`** sur tout élément cliquable ; **états hover** avec transition douce
+  **150-300 ms**.
+- **États focus visibles** (navigation clavier) ; **`prefers-reduced-motion` respecté**.
+- **Contraste texte ≥ 4.5:1** (WCAG AA) — vérifie surtout le texte sur les images (overlay/
+  dégradé sombre derrière les titres en surimpression).
+- **Responsive, mobile-first** : points de rupture **375 / 768 / 1024 / 1440 px**.
+- **Ombres douces, transitions 200-300 ms, hover subtils** — mouvement discret, jamais tape-à-l'œil.
+- **Bannir les dégradés « IA » violet/rose** et tout effet décoratif gratuit (cf. anti-slop).
+- **Cibles tactiles ≥ 44 px** (mobile), espacements généreux, hiérarchie typographique nette.
+- **Zéro layout shift** : réserver la place des images (ratio fixe) et des emplacements variables.
+- **Theme-aware** (clair/sombre) optionnel — si tu le fais, garde l'esprit épuré dans les deux.
+- **Appairage de police** (piste) : une **serif éditoriale** pour les titres (autorité « guide »)
+  + une **sans lisible** (ex. Inter / Source Sans) pour les données pratiques. Charge-les proprement.
+
+## Livrables prioritaires (si tu ne fais que 3 choses justes)
+1. **La carte événement** (date en premier, pilule territoire).
+2. **La home mobile** (pile de rubriques curées : carrousel à la une → portes territoires+catégories
+   → ce week-end → sagre → à ne pas manquer → aujourd'hui → tout l'agenda).
+3. **La fiche en mode minimal.**
+
+## Rappels des interdits (spécifiques)
+Home-feed exhaustif · filtres sur la home · sélecteur de territoire imposé à l'entrée · géoloc ·
+carrousel auto-défilant · deux menus territoire/activité co-égaux (le territoire est primaire,
+l'activité vient dedans) · gros branding · emoji-icônes · texte dans les images.
