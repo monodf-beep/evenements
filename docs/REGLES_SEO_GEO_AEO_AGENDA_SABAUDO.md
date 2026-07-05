@@ -1,4 +1,4 @@
-# Règles SEO / GEO / AEO — Agenda Sabaudo
+# Règles SEO / GEO / AEO — Agenda Sabauda
 
 *Playbook de construction du site public (pas un audit : le site n'existe pas encore). Cadre
 repris et adapté du skill **SNLabat/SEO-GEO-AEO-Skill** (github.com/SNLabat/SEO-GEO-AEO-Skill),
@@ -34,15 +34,15 @@ fiche et des hubs temporels.
 
 | Gabarit | `title` (modèle) | `meta description` (modèle) |
 |---|---|---|
-| Home | Agenda Sabaudo — Que faire dans les Alpes : Savoie, Piémont, Vallée d'Aoste, Nice | L'agenda culturel des 4 territoires alpins. Expositions, concerts, festivals, sagre : tout ce qu'il y a à faire ce week-end et cette semaine. |
-| Ce week-end | Que faire ce week-end dans les Alpes (4–6 juillet 2026) — Agenda Sabaudo | Les sorties de ce week-end en Savoie, Piémont, Vallée d'Aoste et à Nice : concerts, expos, festivals, marchés. Sélection + agenda complet. |
-| Territoire | Événements et sorties en Piémont — Agenda Sabaudo | Que faire en Piémont : expositions, concerts, festivals et sagre à Turin, Cuneo, Alba… L'agenda mis à jour en continu. |
-| Catégorie | Concerts & musique dans les Alpes : Savoie, Piémont, Aoste, Nice — Agenda Sabaudo | Tous les concerts à venir sur les 4 territoires alpins. Dates, lieux, tarifs — agenda actualisé. |
-| Croisement | Concerts en Piémont : l'agenda des prochains concerts — Agenda Sabaudo | Les concerts à venir en Piémont, de Turin aux Langhe. Dates, lieux et infos pratiques. |
-| Fiche | [Événement] — [Ville], [dates] — Agenda Sabaudo | [1 phrase factuelle : quoi, où, quand, gratuit/tarif]. |
+| Home | Agenda Sabauda — Que faire dans les Alpes : Savoie, Piémont, Vallée d'Aoste, Nice | L'agenda culturel des 4 territoires alpins. Expositions, concerts, festivals, sagre : tout ce qu'il y a à faire ce week-end et cette semaine. |
+| Ce week-end | Que faire ce week-end dans les Alpes (4–6 juillet 2026) — Agenda Sabauda | Les sorties de ce week-end en Savoie, Piémont, Vallée d'Aoste et à Nice : concerts, expos, festivals, marchés. Sélection + agenda complet. |
+| Territoire | Événements et sorties en Piémont — Agenda Sabauda | Que faire en Piémont : expositions, concerts, festivals et sagre à Turin, Cuneo, Alba… L'agenda mis à jour en continu. |
+| Catégorie | Concerts & musique dans les Alpes : Savoie, Piémont, Aoste, Nice — Agenda Sabauda | Tous les concerts à venir sur les 4 territoires alpins. Dates, lieux, tarifs — agenda actualisé. |
+| Croisement | Concerts en Piémont : l'agenda des prochains concerts — Agenda Sabauda | Les concerts à venir en Piémont, de Turin aux Langhe. Dates, lieux et infos pratiques. |
+| Fiche | [Événement] — [Ville], [dates] — Agenda Sabauda | [1 phrase factuelle : quoi, où, quand, gratuit/tarif]. |
 
 Règles : la **date dans le title** des hubs temporels et des fiches (booste le CTR), jamais deux
-titles identiques, marque « Agenda Sabaudo » en suffixe partout. En IT : title/meta traduits,
+titles identiques, marque « Agenda Sabauda » en suffixe partout. En IT : title/meta traduits,
 `inLanguage` cohérent.
 
 ### 1.2 Structure & technique
@@ -74,7 +74,7 @@ maillage. C'est ce qui fait remonter les pages de liste.
 
 ### 2.1 E-E-A-T : l'entité éditoriale doit être limpide
 
-- **Éditeur nommé** : « Agenda Sabaudo, édité par **Cultura Sabauda** » présent en footer + page
+- **Éditeur nommé** : « Agenda Sabauda, édité par **Cultura Sabauda** » présent en footer + page
   À propos + schema `Organization`/`publisher`. Une IA cite plus volontiers une source dont
   l'entité et la ligne éditoriale sont claires.
 - **Page À propos** substantielle (le texte bilingue est prêt : `PLAN_DU_SITE…` §4) : qui, quoi,
@@ -92,7 +92,7 @@ maillage. C'est ce qui fait remonter les pages de liste.
 - **`sameAs` vers Wikidata/Wikipedia** pour les lieux et grands équipements récurrents (ex. le
   lieu « Museo Egizio » → sa page Wikidata ; ville « Chambéry » → Wikidata). Ça désambiguïse
   l'entité pour les moteurs IA (Chambéry-en-Savoie, pas un homonyme).
-- **`Organization` avec `sameAs`** vers les profils sociaux d'Agenda Sabaudo (une fois lancés).
+- **`Organization` avec `sameAs`** vers les profils sociaux d'Agenda Sabauda (une fois lancés).
 
 ### 2.3 Densité factuelle (le point fort naturel d'un agenda)
 
@@ -216,8 +216,8 @@ Questions/réponses courtes, marquées en `FAQPage` (§4.2). Exemples par gabari
   "inLanguage": "fr",
   "isAccessibleForFree": false,
   "publisher": {
-    "@type": "Organization", "name": "Agenda Sabaudo",
-    "url": "https://agendasabaudo.eu",
+    "@type": "Organization", "name": "Agenda Sabauda",
+    "url": "https://agendasabauda.eu",
     "parentOrganization": { "@type": "Organization", "name": "Cultura Sabauda" }
   }
 }
@@ -248,7 +248,7 @@ inventée).
   "@context": "https://schema.org", "@type": "ItemList",
   "itemListElement": [
     {"@type": "ListItem", "position": 1,
-     "url": "https://agendasabaudo.eu/fr/evenement/…"},
+     "url": "https://agendasabauda.eu/fr/evenement/…"},
     {"@type": "ListItem", "position": 2, "url": "…"}
   ]
 }
@@ -258,11 +258,11 @@ inventée).
 
 ```json
 {"@context":"https://schema.org","@type":"WebSite",
- "name":"Agenda Sabaudo","url":"https://agendasabaudo.eu",
+ "name":"Agenda Sabauda","url":"https://agendasabauda.eu",
  "inLanguage":["fr","it"],
  "publisher":{"@type":"Organization","name":"Cultura Sabauda"},
  "potentialAction":{"@type":"SearchAction",
-   "target":"https://agendasabaudo.eu/fr/recherche/?q={q}","query-input":"required name=q"}}
+   "target":"https://agendasabauda.eu/fr/recherche/?q={q}","query-input":"required name=q"}}
 ```
 
 ---

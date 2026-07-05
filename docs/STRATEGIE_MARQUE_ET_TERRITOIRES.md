@@ -8,9 +8,9 @@ fluctuantes précédentes.*
 
 ## 1. Marque & domaine
 - **« Sabaudo »** = le bon socle (seul mot couvrant les 4 territoires, lié à Cultura Sabauda,
-  libre en SEO). **On garde « Agenda Sabaudo ».** Logo + tagline (la chaleur) s'affinent plus
+  libre en SEO). **On garde « Agenda Sabauda ».** Logo + tagline (la chaleur) s'affinent plus
   tard, sans changer le domaine.
-- **Domaine unique `agendasabaudo.eu`**, **sous-répertoires** (`/fr/…`, `/it/…`,
+- **Domaine unique `agendasabauda.eu`**, **sous-répertoires** (`/fr/…`, `/it/…`,
   `/fr/territoire/savoie/`). **Jamais de sous-domaines** (Google fragmente l'autorité).
 
 ## 2. Périmètre de lancement : les 4 territoires, bilingue, D'EMBLÉE

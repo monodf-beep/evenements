@@ -9,7 +9,7 @@
 
 *Dernière mise à jour : [JJ/MM/AAAA]*
 
-Agenda Sabaudo (https://agendasabaudo.eu), édité par **Cultura Sabauda**, accorde une importance
+Agenda Sabauda (https://agendasabauda.eu), édité par **Cultura Sabauda**, accorde une importance
 particulière à la protection de vos données personnelles. La présente politique explique quelles
 données sont traitées, dans quel but, sur quelle base légale, combien de temps elles sont
 conservées et comment exercer vos droits. Nous appliquons le principe de **minimisation** : nous
@@ -19,8 +19,8 @@ ne collectons que les données strictement nécessaires, sans dark pattern ni ca
 
 - **Responsable :** [RAISON SOCIALE — Cultura Sabauda]
 - **Adresse :** [ADRESSE POSTALE COMPLÈTE]
-- **Contact :** [contact@agendasabaudo.eu]
-- **Délégué à la protection des données (DPO), le cas échéant :** [NOM / dpo@agendasabaudo.eu]
+- **Contact :** [contact@agendasabauda.eu]
+- **Délégué à la protection des données (DPO), le cas échéant :** [NOM / dpo@agendasabauda.eu]
   *(Si aucun DPO n'est désigné, indiquer le point de contact « protection des données ».)*
 
 ## 2. Données traitées, finalités et bases légales
@@ -91,8 +91,8 @@ Conformément au RGPD, vous disposez des droits suivants sur vos données :
 - **Droit de retirer votre consentement** à tout moment, sans que cela remette en cause la
   licéité du traitement effectué avant le retrait.
 
-**Comment les exercer :** écrivez à **[contact@agendasabaudo.eu]** (ou au DPO le cas échéant :
-[dpo@agendasabaudo.eu]), en précisant votre demande. Nous pourrons vous demander un justificatif
+**Comment les exercer :** écrivez à **[contact@agendasabauda.eu]** (ou au DPO le cas échéant :
+[dpo@agendasabauda.eu]), en précisant votre demande. Nous pourrons vous demander un justificatif
 d'identité si un doute raisonnable existe. Nous répondons dans un délai d'**un mois**.
 
 Pour la newsletter, un lien de **désinscription** figure dans chaque envoi : un clic suffit.
@@ -118,7 +118,7 @@ En cas de changement substantiel, une information sera portée sur le site.
 
 *Ultimo aggiornamento: [GG/MM/AAAA]*
 
-Agenda Sabaudo (https://agendasabaudo.eu), edito da **Cultura Sabauda**, attribuisce particolare
+Agenda Sabauda (https://agendasabauda.eu), edito da **Cultura Sabauda**, attribuisce particolare
 importanza alla protezione dei tuoi dati personali. La presente informativa spiega quali dati
 vengono trattati, per quali finalità, su quale base giuridica, per quanto tempo sono conservati e
 come esercitare i tuoi diritti. Applichiamo il principio di **minimizzazione**: raccogliamo solo i
@@ -128,8 +128,8 @@ dati strettamente necessari, senza dark pattern né caselle pre-selezionate.
 
 - **Titolare:** [RAGIONE SOCIALE — Cultura Sabauda]
 - **Indirizzo:** [INDIRIZZO POSTALE COMPLETO]
-- **Contatti:** [contact@agendasabaudo.eu]
-- **Responsabile della protezione dei dati (DPO), se nominato:** [NOME / dpo@agendasabaudo.eu]
+- **Contatti:** [contact@agendasabauda.eu]
+- **Responsabile della protezione dei dati (DPO), se nominato:** [NOME / dpo@agendasabauda.eu]
   *(Se non è nominato alcun DPO, indicare il punto di contatto «protezione dei dati».)*
 
 ## 2. Dati trattati, finalità e basi giuridiche
@@ -202,8 +202,8 @@ In conformità al GDPR, hai i seguenti diritti sui tuoi dati:
 - **Diritto di revocare il consenso** in qualsiasi momento, senza che ciò pregiudichi la liceità
   del trattamento effettuato prima della revoca.
 
-**Come esercitarli:** scrivi a **[contact@agendasabaudo.eu]** (o al DPO se nominato:
-[dpo@agendasabaudo.eu]), precisando la tua richiesta. Potremo chiederti un documento d'identità in
+**Come esercitarli:** scrivi a **[contact@agendasabauda.eu]** (o al DPO se nominato:
+[dpo@agendasabauda.eu]), precisando la tua richiesta. Potremo chiederti un documento d'identità in
 caso di ragionevole dubbio. Rispondiamo entro **un mese**.
 
 Per la newsletter, in ogni invio è presente un link di **cancellazione**: basta un clic.

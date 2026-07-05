@@ -1,4 +1,4 @@
-# Prompt Claude Design — Agenda Sabaudo (calqué sur la home MOBILE de GuidaTorino)
+# Prompt Claude Design — Agenda Sabauda (calqué sur la home MOBILE de GuidaTorino)
 
 *À coller dans Claude Design. **Consigne racine : ne pas réinventer. Reproduire fidèlement les
 strates de la home mobile de GuidaTorino** (le modèle qui marche), en les habillant de notre
@@ -7,7 +7,7 @@ L'UI est épurée : l'information prime, la marque est discrète.*
 
 ---
 
-Tu conçois l'UX/UI de **Agenda Sabaudo**, agenda culturel **transfrontalier bilingue FR/IT** de
+Tu conçois l'UX/UI de **Agenda Sabauda**, agenda culturel **transfrontalier bilingue FR/IT** de
 l'espace alpin occidental — **4 territoires** : Savoie/Haute-Savoie, Piémont, Vallée d'Aoste,
 Nice/Alpes-Maritimes. Édité par **Cultura Sabauda**. WordPress. **Conçois d'abord le MOBILE (375 px).**
 
@@ -37,7 +37,7 @@ Tout est du **texte HTML réel**.
   (comme le rouge `#fb4f4f` de GuidaTorino : réservé aux dates/étiquettes, jamais partout).
 - Pilules territoire : Savoie bleu `#1a56b0` · Piémont rouge `#b3261e` · Vallée d'Aoste vert
   `#1e7d34` · Nice orange `#b25e00`.
-- Logo « Agenda Sabaudo » **discret** + point rouge ; « édité par Cultura Sabauda » en tout petit.
+- Logo « Agenda Sabauda » **discret** + point rouge ; « édité par Cultura Sabauda » en tout petit.
 - Typo : **serif éditoriale pour les titres** (esprit Georgia de GuidaTorino) + sans lisible pour
   les données. Icônes SVG au trait.
 

@@ -96,7 +96,7 @@
     <td>{{ e.territoire or '—' }}</td>
     <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source and e.url_source.startswith('gmail:') %}<span class="muted">📬 newsletter</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source %}<span class="muted">🌐 RSS</span> <a href="{{ e.url_source }}" target="_blank" rel="noopener" aria-label="Ouvrir la source (nouvel onglet)">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
     <td>
-      {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabaudo'),('rejected','Rejeté')] %}
+      {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabauda'),('rejected','Rejeté')] %}
       <div class="stpick" title="{{ e.llm_justification or 'Non évalué' }}">
       {% for key, lbl in picks %}
         {% if e.statut == key %}

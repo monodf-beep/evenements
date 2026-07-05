@@ -59,7 +59,7 @@
     <td>{{ e.lieu or '' }} {{ e.ville or '' }}</td>
     <td class="muted" style="font-size:.85rem"><em>{{ e.llm_justification }}</em></td>
     <td>
-      {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabaudo'),('rejected','Rejeté')] %}
+      {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabauda'),('rejected','Rejeté')] %}
       <div class="stpick">
       {% for key, lbl in picks %}
         {% if e.statut == key %}

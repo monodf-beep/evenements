@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Boucle de vérification de la newsletter « Agenda Sabaudo ».
+"""Boucle de vérification de la newsletter « Agenda Sabauda ».
 
 Contrôle le HTML EXACT envoyé à Brevo (logs/derniere_newsletter.html) et signale
 tout ce qui ne doit PAS partir :

@@ -1,4 +1,4 @@
-# Agenda Sabaudo — Reste à faire, risques & challenge
+# Agenda Sabauda — Reste à faire, risques & challenge
 
 *État au 02/07/2026. Document critique : ce qui reste, ce qui cloche, ce qui manque, et la
 question de priorité à trancher.*
@@ -10,15 +10,15 @@ question de priorité à trancher.*
 **On polit le SEO du petit site pendant que le gros n'existe pas.**
 Tout l'effort SEO récent (expression clé, méta, Open Graph, catégories…) s'applique à **Cultura
 Sabauda** — le média curé, **faible volume** (score ≥ 7). Or le vrai gisement SEO/GEO, c'est
-**Agenda Sabaudo**, le site de **volume** — et il **n'existe pas encore** (ni domaine, ni
+**Agenda Sabauda**, le site de **volume** — et il **n'existe pas encore** (ni domaine, ni
 WordPress, ni pages). On a des dizaines de pages de specs excellentes, **zéro ligne de site**.
 
 → **Décision à prendre** : est-ce qu'on continue à peaufiner l'export Cultura Sabauda, ou on
-**démarre la construction d'Agenda Sabaudo** (le vrai chantier) ? Ma reco : figer l'export CS
+**démarre la construction d'Agenda Sabauda** (le vrai chantier) ? Ma reco : figer l'export CS
 « assez bon », et **attaquer le site de volume**.
 
 **Risque SEO majeur, sous-estimé : le contenu dupliqué.** Si un même événement part à la fois
-sur Cultura Sabauda ET sur Agenda Sabaudo, Google voit **deux pages quasi identiques** → pénalité
+sur Cultura Sabauda ET sur Agenda Sabauda, Google voit **deux pages quasi identiques** → pénalité
 possible. Il FAUT une règle de canonical / de séparation éditoriale entre les deux sites **avant**
 de lancer le volume. Ce n'est écrit nulle part pour l'instant.
 
@@ -54,21 +54,21 @@ de lancer le volume. Ce n'est écrit nulle part pour l'instant.
 
 ## 3. Ce qui MANQUE (jamais commencé)
 
-### 3.1 Le site Agenda Sabaudo (le gros chantier)
-- [ ] **Réserver le domaine** `agendasabaudo.eu` (n'existe pas).
+### 3.1 Le site Agenda Sabauda (le gros chantier)
+- [ ] **Réserver le domaine** `agendasabauda.eu` (n'existe pas).
 - [ ] **Créer le WordPress** + choisir le plugin (**décision TEC vs Events Manager**).
 - [ ] **Enregistrer les taxonomies** : `territoire` (4 > villes), catégorie (11), lieu, étiquettes.
 - [ ] **Gabarits** : home (6 tuiles, En évidence, tour des territoires), hubs temporels evergreen,
       territoire, catégorie, **fiche (mode minimal d'abord)**, listicle, recherche, 404.
 - [ ] **Bilinguisme FR/IT** (Polylang/WPML + hreflang).
-- [ ] **Export backoffice → Agenda Sabaudo** (aujourd'hui on n'exporte QUE vers CS).
+- [ ] **Export backoffice → Agenda Sabauda** (aujourd'hui on n'exporte QUE vers CS).
 - [ ] **Design** (en cours de ton côté, Claude Design).
 
 ### 3.2 SEO / indexation (infra du futur site)
 - [ ] Sitemaps propres + soumission Search Console (les 2 sites).
 - [ ] **IndexNow** (RankMath) activé.
 - [ ] hreflang FR/IT.
-- [ ] **Règle anti-duplication CS ↔ Agenda Sabaudo** (canonical) — cf. §0.
+- [ ] **Règle anti-duplication CS ↔ Agenda Sabauda** (canonical) — cf. §0.
 - [ ] Analytics (GA4 ou Matomo) — **rien n'est mesuré aujourd'hui**.
 - [ ] Backlinks locaux (offices de tourisme, presse) — le vrai levier des 6-18 mois.
 
@@ -105,12 +105,12 @@ de lancer le volume. Ce n'est écrit nulle part pour l'instant.
 
 ## 5. Ordre recommandé (ma proposition)
 
-1. **Trancher le §0** : figer CS, démarrer Agenda Sabaudo. Réserver le domaine.
+1. **Trancher le §0** : figer CS, démarrer Agenda Sabauda. Réserver le domaine.
 2. **Sauvegarder la base** (rapide, évite la catastrophe).
 3. **Corriger les 2 bugs backoffice** #1 (doublon Publier) et #2 (clé dans l'article).
 4. **Recon Cultura Sabauda** → régler #3 et #4.
 5. **Lancer le pipeline** en prod (données propres).
-6. **Construire Agenda Sabaudo** (le chantier) : plugin → taxonomies → gabarits → export → SEO.
+6. **Construire Agenda Sabauda** (le chantier) : plugin → taxonomies → gabarits → export → SEO.
 7. Legal + analytics + backlinks en parallèle.
 
 *Le vrai message : on a une base saine et des specs solides. Le risque n'est pas la qualité,

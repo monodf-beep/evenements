@@ -1,4 +1,4 @@
-# BRIEF DESIGN — Agenda Sabaudo (site public de volume)
+# BRIEF DESIGN — Agenda Sabauda (site public de volume)
 
 *Brief complet à destination de Claude Design. Rédigé le 02/07/2026 à partir de trois analyses
 dédiées : dissection UX de guidatorino.com (pages réelles), fiche produit compilée depuis le
@@ -9,7 +9,7 @@ la homepage.*
 
 ## 0. Ce qu'on attend de toi (Claude Design)
 
-Tu conçois l'UX/UI du site public **Agenda Sabaudo**. Le modèle d'expérience est
+Tu conçois l'UX/UI du site public **Agenda Sabauda**. Le modèle d'expérience est
 **guidatorino.com** — un guide urbain qui « marche » depuis 15 ans — dont on reprend les
 patterns structurels (détaillés §2) en les modernisant (responsive, accessibilité, sans la
 densité publicitaire). **La direction artistique t'appartient** : tu appliques la charte
@@ -29,16 +29,16 @@ EST le branding (c'est la leçon n°1 de GuidaTorino).
 
 ### 1.1 Deux marques, deux niveaux
 
-| | **Cultura Sabauda** (existant) | **Agenda Sabaudo** (à concevoir) |
+| | **Cultura Sabauda** (existant) | **Agenda Sabauda** (à concevoir) |
 |---|---|---|
 | Nature | Média culturel bilingue FR/IT, curé, exigeant | **L'agenda exhaustif des sorties** de l'espace alpin occidental |
 | Contenu | Événements score ≥ 7, validés un à un, articles rédigés | Événements score 4–6 automatiques + choix manuels : **catalogue de volume, cherchable** |
 | Promesse | Profondeur, mise en perspective | **Exhaustivité** : « un vrai événement n'est jamais rejeté » |
 | Rôle SEO | Autorité éditoriale | **Capter les requêtes « que faire à/en… »** |
 
-Agenda Sabaudo assume la couverture large « à la manière de GuidaTorino » : expos, concerts,
+Agenda Sabauda assume la couverture large « à la manière de GuidaTorino » : expos, concerts,
 sagre, marchés, sport, cinéma, fêtes populaires. Le footer le dit : *« Une sélection culturelle
-proposée par la rédaction, en collaboration avec Cultura Sabauda »* — Agenda Sabaudo est la
+proposée par la rédaction, en collaboration avec Cultura Sabauda »* — Agenda Sabauda est la
 marque grand public, Cultura Sabauda la caution éditoriale (logo éditeur discret, comme sur la
 newsletter existante).
 
@@ -68,7 +68,7 @@ Conférences & Rencontres · Fêtes & Traditions populaires.
 
 ~90 sources, des dizaines de nouveaux événements/jour, 50–200 événements actifs simultanés.
 Plateforme : **WordPress** (2ᵉ site, alimenté en brouillons par le backoffice existant).
-Domaine pressenti : agendasabaudo.eu (à confirmer — n'existe pas encore en config).
+Domaine pressenti : agendasabauda.eu (à confirmer — n'existe pas encore en config).
 
 ---
 
@@ -123,11 +123,11 @@ Domaine pressenti : agendasabaudo.eu (à confirmer — n'existe pas encore en co
 - **Marine profond** `#1a2b4a` (variante backoffice `#1f3a63`) — couleur de marque : masthead,
   titres, footer.
 - **Rouge de Savoie** `#c8102e` — LE seul accent : CTA, point final du logotype
-  (« Agenda Sabaudo**.** »), filets d'intertitres, états d'urgence (« dernier week-end »).
+  (« Agenda Sabauda**.** »), filets d'intertitres, états d'urgence (« dernier week-end »).
   Règle GuidaTorino : l'accent est rare, donc signifiant.
 - Neutres : encre `#16202c`, gris `#6b7280`, bordures `#e5e7eb`, fond doux `#eef1f5`.
 - Pilules territoires : les 4 duos pastel/foncé du §1.2.
-- Logotype : wordmark « Agenda Sabaudo » + point rouge ; mention éditeur « Cultura Sabauda »
+- Logotype : wordmark « Agenda Sabauda » + point rouge ; mention éditeur « Cultura Sabauda »
   discrète (logo 24 px, comme sur la newsletter).
 - Intention déclarée de la charte : **« chaleureux, grand public »** — c'est un agenda de
   sorties, pas une revue savante.
@@ -178,7 +178,7 @@ météo contextuelle sur fiche (événements extérieurs, J-3) · facettes de re
 ### Header (sticky, compact au scroll)
 
 ```
-[Agenda Sabaudo.]   Aujourd'hui | Ce week-end | Catégories ▾ | Territoires ▾ | Agenda ▾ | 🔍 | FR|IT
+[Agenda Sabauda.]   Aujourd'hui | Ce week-end | Catégories ▾ | Territoires ▾ | Agenda ▾ | 🔍 | FR|IT
 ```
 
 - **Aujourd'hui** et **Ce week-end** : liens directs SANS sous-menu (les 2 actions les plus
@@ -411,8 +411,8 @@ catégories en pied de page (partout) · bloc « territoires voisins ».
   `BreadcrumbList` partout ; `ItemList` sur les hubs ; `WebSite`+`SearchAction` sur la home ;
   `Organization` (éditeur : Cultura Sabauda).
 - **Titles types** : hubs temporels avec dates réelles (« Que faire ce week-end dans les
-  Alpes (4–6 juillet 2026) — Agenda Sabaudo ») ; fiche « [Événement] — [Ville], [dates] —
-  Agenda Sabaudo ».
+  Alpes (4–6 juillet 2026) — Agenda Sabauda ») ; fiche « [Événement] — [Ville], [dates] —
+  Agenda Sabauda ».
 - Maillage : chaque fiche renvoie vers 4–6 hubs (breadcrumb + 3 rails + tuiles). Sitemaps
   séparés fiches/hubs, `lastmod` fiables.
 

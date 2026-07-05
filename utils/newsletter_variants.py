@@ -1,4 +1,4 @@
-"""Gabarit « magazine » pour la newsletter Agenda Sabaudo.
+"""Gabarit « magazine » pour la newsletter Agenda Sabauda.
 
 Porté du gabarit magazine de l'Observatoire (Business Sabaudo) et adapté à
 l'agenda culturel : mêmes bonnes pratiques (cadre AIDA), même structure —
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from html import escape
 
-# Identité Agenda Sabaudo (bleu profond + rouge de Savoie — chaleureux, grand public).
+# Identité Agenda Sabauda (bleu profond + rouge de Savoie — chaleureux, grand public).
 BRAND = "#1a2b4a"       # bleu profond (masthead, intertitres)
 ACCENT = "#c8102e"      # rouge de Savoie (CTA, point, accents)
 INK = "#16202c"
@@ -135,7 +135,7 @@ def _header(week_label: str, tagline: str, logo_url: str | None = None) -> str:
         "</tr></table></td></tr>"
         '<tr><td style="padding:14px 36px 0;background:#fff;">'
         f'<div style="font-size:34px;font-weight:800;letter-spacing:-.5px;color:{BRAND};line-height:1;">'
-        f'Agenda Sabaudo<span style="color:{ACCENT};">.</span></div>'
+        f'Agenda Sabauda<span style="color:{ACCENT};">.</span></div>'
         f'<div style="font-size:13px;color:{MUTED};margin-top:9px;letter-spacing:.2px;">{escape(tagline)}</div>'
         "</td></tr>"
         '<tr><td style="padding:18px 36px 0;background:#fff;">'
@@ -161,7 +161,7 @@ def _footer(logo_url: str | None = None) -> str:
     logo = ""
     if logo_url:
         logo = (
-            f'<div style="margin-bottom:16px;"><img src="{logo_url}" alt="Agenda Sabaudo" '
+            f'<div style="margin-bottom:16px;"><img src="{logo_url}" alt="Agenda Sabauda" '
             'width="44" height="44" style="width:44px;height:44px;max-width:44px;'
             'border:0;display:block;"></div>'
         )
@@ -173,7 +173,7 @@ def _footer(logo_url: str | None = None) -> str:
         "<strong>Répondez à cet email</strong>, on lit tout."
         "</div>"
         f'<div style="color:{MUTED};font-size:12px;line-height:1.6;">'
-        "<strong style=\"color:%s;\">Agenda Sabaudo</strong>, l'agenda des sorties de l'espace alpin occidental<br>"
+        "<strong style=\"color:%s;\">Agenda Sabauda</strong>, l'agenda des sorties de l'espace alpin occidental<br>"
         "Savoie · Piémont · Vallée d'Aoste · Nice<br>"
         "<em>Une sélection culturelle proposée par la rédaction, en collaboration avec Cultura Sabauda.</em><br>"
         '<a href="https://culturasabauda.eu" style="color:%s;">culturasabauda.eu</a> · '
@@ -186,7 +186,7 @@ def _shell(inner: str, *, preheader: str) -> str:
     return (
         '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-        "<title>Agenda Sabaudo</title></head>"
+        "<title>Agenda Sabauda</title></head>"
         # Signature unique du gabarit — permet de distinguer à coup sûr un brouillon
         # fraîchement généré d'un ancien (chercher ASABAUDO-MAGAZINE-2026A).
         "<!-- ASABAUDO-MAGAZINE-2026A · gabarit magazine (Le tour des territoires) -->"
@@ -302,7 +302,7 @@ def _cards_block(items: list[dict]) -> str:
 
 
 def variant_magazine(data: dict) -> str:
-    """Assemble l'email « magazine » Agenda Sabaudo à partir des données structurées.
+    """Assemble l'email « magazine » Agenda Sabauda à partir des données structurées.
 
     Clés attendues : week_label, preheader. Optionnelles : hero (dict), signaux
     (liste), items (liste), dashboard_url, logo_url, pictogram_url, tagline.

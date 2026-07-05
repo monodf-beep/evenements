@@ -1,4 +1,4 @@
-# Agenda Sabaudo — Plan du site & contenus fondateurs
+# Agenda Sabauda — Plan du site & contenus fondateurs
 
 *Document de travail — 02/07/2026. À utiliser en parallèle de la maquette Claude Design.
 Complète le brief `BRIEF_DESIGN_AGENDA_SABAUDO.md` : ici on fige l'arborescence, les 3 modules
@@ -10,7 +10,7 @@ coller (À propos FR/IT).*
 ## 1. Plan du site (arborescence)
 
 ```
-Agenda Sabaudo  (/fr/  ·  /it/)
+Agenda Sabauda  (/fr/  ·  /it/)
 │
 ├─ ACCÈS TEMPOREL  (le réflexe agenda — en tête de menu)
 │  ├─ Aujourd'hui                     /fr/aujourdhui/
@@ -73,7 +73,7 @@ Agenda Sabaudo  (/fr/  ·  /it/)
 ### 2.1 Les 6 tuiles-raccourcis (adaptation des « Cosa fare e vedere »)
 
 GuidaTorino aligne 6 tuiles illustrées : un mix « 1 générique + tout-événements + catégories
-phares ». Agenda Sabaudo n'est **pas** un guide de ville (pas de restaurants, pas de « uscire
+phares ». Agenda Sabauda n'est **pas** un guide de ville (pas de restaurants, pas de « uscire
 la sera ») : c'est un **agenda d'événements sur 4 territoires**. On garde le principe des
 6 tuiles, adapté.
 
@@ -105,9 +105,9 @@ Chez GuidaTorino : un encadré de contenus **populaires evergreen**, choisis à 
 (les 10 choses du week-end, les sagre du mois, les incontournables). C'est de la **curation
 éditoriale**, distincte du flux automatique.
 
-**Pour Agenda Sabaudo — bloc « À ne pas manquer »** (ou « En ce moment ») :
+**Pour Agenda Sabauda — bloc « À ne pas manquer »** (ou « En ce moment ») :
 - 4 à 6 entrées **choisies manuellement** par toi dans le backoffice (le bouton de sélection
-  existe déjà — c'est la logique « choix manuel → Agenda Sabaudo »).
+  existe déjà — c'est la logique « choix manuel → Agenda Sabauda »).
 - Contenu type : le gros festival de la saison, une expo phare en cours, l'événement à la une,
   un temps fort par territoire.
 - Vignette + titre + date. Se distingue visuellement du flux daté (fond légèrement teinté,
@@ -120,9 +120,9 @@ GuidaTorino ferme ses pages sur une liste thématique : *« Retrouvez sur Guida 
 les informations à ne pas manquer : Attractions · Événements · Manger & boire · Infos utiles
 · Sortir le soir · Alentours »*.
 
-**Pour Agenda Sabaudo** (footer + bas de l'À propos) :
+**Pour Agenda Sabauda** (footer + bas de l'À propos) :
 
-> **Retrouvez sur Agenda Sabaudo tout ce qu'il ne faut pas manquer :**
+> **Retrouvez sur Agenda Sabauda tout ce qu'il ne faut pas manquer :**
 > – Que faire ce week-end
 > – Les 4 territoires : Savoie & Haute-Savoie · Piémont · Vallée d'Aoste · Nice
 > – Expositions & patrimoine
@@ -132,7 +132,7 @@ les informations à ne pas manquer : Attractions · Événements · Manger & boi
 
 Version IT :
 
-> **Ritrovate su Agenda Sabaudo tutto ciò da non perdere:**
+> **Ritrovate su Agenda Sabauda tutto ciò da non perdere:**
 > – Cosa fare questo weekend
 > – I 4 territori: Savoia & Alta Savoia · Piemonte · Valle d'Aosta · Nizza
 > – Mostre & patrimonio
@@ -160,9 +160,9 @@ Le projet (À propos, Proposer un événement, Newsletter, Crédits photos, Ment
 créé · pour qui · ce qu'on y trouve · engagement), adapté à l'identité transfrontalière et aux
 règles de la charte (rien d'inventé, sources officielles, crédits respectés).*
 
-### 🇫🇷 À propos d'Agenda Sabaudo
+### 🇫🇷 À propos d'Agenda Sabauda
 
-Agenda Sabaudo est l'agenda culturel de l'espace alpin occidental — un territoire sans
+Agenda Sabauda est l'agenda culturel de l'espace alpin occidental — un territoire sans
 frontière qui relie la Savoie et la Haute-Savoie, le Piémont, la Vallée d'Aoste et Nice.
 Notre objectif : rassembler en un seul endroit tout ce qu'il y a à faire, à voir et à vivre sur
 ces quatre territoires que l'histoire, la langue et la montagne ont toujours reliés.
@@ -172,7 +172,7 @@ Sabaudo recense chaque semaine les expositions, concerts, spectacles, festivals,
 marchés, fêtes traditionnelles, rendez-vous en famille et grands moments sportifs — des
 institutions les plus prestigieuses aux plus petites communes de village.
 
-Agenda Sabaudo s'adresse à tous : au voyageur de passage pour un week-end comme à l'habitant
+Agenda Sabauda s'adresse à tous : au voyageur de passage pour un week-end comme à l'habitant
 qui veut découvrir, ou redécouvrir, ce qui se passe près de chez lui — d'un versant à l'autre
 des Alpes. Vous y trouverez, semaine après semaine, une sélection vivante et l'agenda complet
 de la période : ce qui commence, ce qui se termine, et ce qu'il ne faut pas manquer ce
@@ -180,36 +180,36 @@ week-end.
 
 Nous nous engageons à vérifier nos informations à la source officielle — le lieu, l'organisateur
 —, à créditer chaque photographie et à ne jamais publier autre chose que des événements réels,
-à venir. Agenda Sabaudo est édité par **Cultura Sabauda**, média culturel bilingue de l'espace
+à venir. Agenda Sabauda est édité par **Cultura Sabauda**, média culturel bilingue de l'espace
 alpin occidental.
 
-*Retrouvez sur Agenda Sabaudo tout ce qu'il ne faut pas manquer : que faire ce week-end · les
+*Retrouvez sur Agenda Sabauda tout ce qu'il ne faut pas manquer : que faire ce week-end · les
 4 territoires · expositions & patrimoine · concerts, spectacles & festivals · gastronomie,
 sagre & marchés · en famille.*
 
-### 🇮🇹 Chi siamo — Agenda Sabaudo
+### 🇮🇹 Chi siamo — Agenda Sabauda
 
-Agenda Sabaudo è l'agenda culturale dello spazio alpino occidentale — un territorio senza
+Agenda Sabauda è l'agenda culturale dello spazio alpino occidentale — un territorio senza
 confini che unisce la Savoia e l'Alta Savoia, il Piemonte, la Valle d'Aosta e Nizza. Il nostro
 obiettivo: riunire in un unico luogo tutto ciò che c'è da fare, da vedere e da vivere in questi
 quattro territori che la storia, la lingua e la montagna hanno da sempre legato.
 
-Nato dalla convinzione che la cultura non si ferma ai confini amministrativi, Agenda Sabaudo
+Nato dalla convinzione che la cultura non si ferma ai confini amministrativi, Agenda Sabauda
 raccoglie ogni settimana mostre, concerti, spettacoli, festival, sagre, mercati, feste
 tradizionali, appuntamenti per le famiglie e grandi eventi sportivi — dalle istituzioni più
 prestigiose ai più piccoli comuni di paese.
 
-Agenda Sabaudo si rivolge a tutti: al viaggiatore di passaggio per un weekend come all'abitante
+Agenda Sabauda si rivolge a tutti: al viaggiatore di passaggio per un weekend come all'abitante
 che vuole scoprire, o riscoprire, ciò che accade vicino a casa — da un versante all'altro delle
 Alpi. Vi troverete, settimana dopo settimana, una selezione viva e l'agenda completo del
 periodo: ciò che inizia, ciò che finisce e ciò da non perdere questo weekend.
 
 Ci impegniamo a verificare le nostre informazioni alla fonte ufficiale — il luogo,
 l'organizzatore —, a citare ogni fotografia e a non pubblicare mai altro che eventi reali e in
-programma. Agenda Sabaudo è edito da **Cultura Sabauda**, testata culturale bilingue dello
+programma. Agenda Sabauda è edito da **Cultura Sabauda**, testata culturale bilingue dello
 spazio alpino occidentale.
 
-*Ritrovate su Agenda Sabaudo tutto ciò da non perdere: cosa fare questo weekend · i 4 territori
+*Ritrovate su Agenda Sabauda tutto ciò da non perdere: cosa fare questo weekend · i 4 territori
 · mostre & patrimonio · concerti, spettacoli & festival · gastronomia, sagre & mercati · in
 famiglia.*
 
@@ -240,7 +240,7 @@ famiglia.*
 
 ## 6. Points ouverts (décisions Franck)
 
-1. **Domaine** : `agendasabaudo.eu` à réserver — il n'existe pas encore (seul
+1. **Domaine** : `agendasabauda.eu` à réserver — il n'existe pas encore (seul
    `agenda.culturasabauda.eu` existe, pour le backoffice).
 2. **6 tuiles** : familles de catégories (ma reco) *ou* mix temporel + territoires ? (§2.1)
 3. **Auto-publication du site de volume** : les score 4-6 partent-ils en ligne

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Crée un BROUILLON de newsletter « Agenda Sabaudo » à partir des événements de la semaine.
+"""Crée un BROUILLON de newsletter « Agenda Sabauda » à partir des événements de la semaine.
 
 Reprend le gabarit « magazine » de l'Observatoire (héros « À la une », sommaire
 « Aussi cette semaine », cartes « Le tour des territoires », favicons, pied
@@ -10,9 +10,9 @@ Reprend le gabarit « magazine » de l'Observatoire (héros « À la une », som
 
 Config (.env) :
     BREVO_API_KEY          clé API Brevo (même que l'Observatoire)
-    BREVO_SENDER_NAME      défaut « Agenda Sabaudo »
+    BREVO_SENDER_NAME      défaut « Agenda Sabauda »
     BREVO_SENDER_EMAIL     email expéditeur VALIDÉ dans Brevo
-    BREVO_LIST_ID          id de la liste (Agenda Sabaudo — Newsletter, ex. 12)
+    BREVO_LIST_ID          id de la liste (Agenda Sabauda — Newsletter, ex. 12)
     BREVO_LOGO_URL         (option) URL du logo hébergé (bibliothèque média Brevo)
     NEWSLETTER_TERRITOIRE  défaut « Savoie »
     NEWSLETTER_DASHBOARD_URL (option) lien « voir tout l'agenda » (site/tableau de bord)
@@ -189,7 +189,7 @@ def _check(api_key: str) -> int:
 
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
-    parser = argparse.ArgumentParser(description="Brouillon de newsletter Agenda Sabaudo.")
+    parser = argparse.ArgumentParser(description="Brouillon de newsletter Agenda Sabauda.")
     parser.add_argument("--from", dest="dfrom", default="")
     parser.add_argument("--to", dest="dto", default="")
     parser.add_argument("--limit", type=int, default=12)
@@ -203,7 +203,7 @@ def main(argv=None) -> int:
     if args.check:
         return _check(api_key)
 
-    sender_name = os.getenv("BREVO_SENDER_NAME", "Agenda Sabaudo")
+    sender_name = os.getenv("BREVO_SENDER_NAME", "Agenda Sabauda")
     sender_email = os.getenv("BREVO_SENDER_EMAIL", "")
     list_ids = [int(x) for x in re.split(r"[,;\s]+", os.getenv("BREVO_LIST_ID", "").strip()) if x.isdigit()]
     territoire = os.getenv("NEWSLETTER_TERRITOIRE", "Savoie")
@@ -225,7 +225,7 @@ def main(argv=None) -> int:
         return 1
 
     week_label = f"Du {_fmt_day(pfrom)} au {_fmt_day(pto)}"
-    subject = f"Agenda Sabaudo — {territoire}, à l'affiche cette semaine"
+    subject = f"Agenda Sabauda — {territoire}, à l'affiche cette semaine"
     tagline = f"Les sorties à vivre en {territoire}"
     data = build_data(rows, week_label=week_label, tagline=tagline)
     html = variant_magazine(data)
@@ -243,7 +243,7 @@ def main(argv=None) -> int:
 
     try:
         cid = create_draft_campaign(
-            api_key=api_key, name=f"Agenda Sabaudo — {territoire} — {week_label}",
+            api_key=api_key, name=f"Agenda Sabauda — {territoire} — {week_label}",
             subject=subject, sender_name=sender_name, sender_email=sender_email,
             list_ids=list_ids, html_content=html)
     except BrevoError as exc:

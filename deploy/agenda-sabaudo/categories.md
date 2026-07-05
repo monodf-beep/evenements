@@ -1,4 +1,4 @@
-# Les 11 catégories — Agenda Sabaudo
+# Les 11 catégories — Agenda Sabauda
 
 Catégories d'événements TEC (taxonomie native `tribe_events_cat`). À créer dans
 **Événements → Catégories**. URL des hubs : `/fr/evenements/{slug}/` (base d'archive

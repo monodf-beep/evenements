@@ -1,4 +1,4 @@
-# Taxonomie & structure WordPress — Agenda Sabaudo
+# Taxonomie & structure WordPress — Agenda Sabauda
 
 *Proposition de construction du site public dans WordPress, à partir de la taxonomie observée sur
 guidatorino.com. Complète le plan du site (arborescence/URLs) et le guide d'indexation (stack).*
@@ -47,7 +47,7 @@ taxonomie à part entière.
 
 ---
 
-## 2. Le modèle de données proposé pour Agenda Sabaudo
+## 2. Le modèle de données proposé pour Agenda Sabauda
 
 ### 2.1 Un type de contenu : l'événement
 
@@ -231,7 +231,7 @@ Reconnaissance live du **corps** des pages (Claude-in-Chrome) — les règles co
 - **Pas** de bloc « événements liés » dynamique chez eux. **Nous, on peut faire mieux** : ajouter
   un rail « événements liés » (même lieu / catégorie / dates) — c'est un plus SEO qu'ils n'ont pas.
 
-→ **Règle Agenda Sabaudo** : dans le corps d'une fiche, lier le **nom du lieu** vers sa page
+→ **Règle Agenda Sabauda** : dans le corps d'une fiche, lier le **nom du lieu** vers sa page
 lieu et la **catégorie** vers son hub. Ces liens se posent à l'export (on connaît lieu + catégorie).
 
 **Corps de l'article (fiche) :**

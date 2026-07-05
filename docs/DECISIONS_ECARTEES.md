@@ -9,7 +9,7 @@ idées ressurgit, relire la colonne « Pourquoi ça ne marche pas » avant d'en 
 
 ## A. Architecture & territoires
 
-### ❌ Sous-domaines par ville/territoire (`annecy.agendasabaudo.eu`)
+### ❌ Sous-domaines par ville/territoire (`annecy.agendasabauda.eu`)
 **Pourquoi non** : Google traite chaque sous-domaine comme un **site séparé** → l'autorité SEO
 (déjà faible, site neuf) est **fragmentée**, chacun repart de zéro. + gérer ça sur un WordPress
 = Multisite, lourd et fragile.

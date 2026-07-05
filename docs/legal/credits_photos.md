@@ -8,7 +8,7 @@
 
 *Dernière mise à jour : [JJ/MM/AAAA]*
 
-Agenda Sabaudo (https://agendasabaudo.eu), édité par **Cultura Sabauda**, s'engage à illustrer les
+Agenda Sabauda (https://agendasabauda.eu), édité par **Cultura Sabauda**, s'engage à illustrer les
 événements dans le **respect du droit d'auteur** et à créditer chaque image selon son origine.
 Cette page explique d'où viennent nos images, comment nous les créditons, et comment un ayant droit
 peut demander un retrait.
@@ -28,7 +28,7 @@ Par ordre de priorité, une fiche événement est illustrée par :
 
 3. **Les bannières de marque par territoire.** En dernier recours, lorsqu'aucune image officielle
    ni libre n'est disponible, la fiche affiche un **visuel de marque neutre** propre au territoire
-   ou à la catégorie, produit par Agenda Sabaudo. Aucun crédit tiers n'est alors nécessaire.
+   ou à la catégorie, produit par Agenda Sabauda. Aucun crédit tiers n'est alors nécessaire.
 
 ## 2. Ce que nous n'utilisons jamais
 
@@ -52,7 +52,7 @@ Par ordre de priorité, une fiche événement est illustrée par :
 Vous êtes l'auteur ou le titulaire des droits d'une image, et vous estimez qu'elle est utilisée à
 tort, ou vous souhaitez qu'elle soit retirée ou mieux créditée ? Écrivez-nous :
 
-- **Adresse :** **[contact@agendasabaudo.eu]**
+- **Adresse :** **[contact@agendasabauda.eu]**
 - **Objet à indiquer :** « Crédits photos — demande de retrait / correction »
 - **À préciser :** l'URL de la page où figure l'image, une description ou capture de l'image
   concernée, et votre qualité (auteur, ayant droit, mandataire).
@@ -73,7 +73,7 @@ adresse. Nous corrigeons volontiers toute inexactitude de bonne foi.
 
 *Ultimo aggiornamento: [GG/MM/AAAA]*
 
-Agenda Sabaudo (https://agendasabaudo.eu), edito da **Cultura Sabauda**, si impegna a illustrare
+Agenda Sabauda (https://agendasabauda.eu), edito da **Cultura Sabauda**, si impegna a illustrare
 gli eventi nel **rispetto del diritto d'autore** e a citare ogni immagine in base alla sua origine.
 Questa pagina spiega da dove provengono le nostre immagini, come le accreditiamo e come un avente
 diritto può chiederne la rimozione.
@@ -94,7 +94,7 @@ In ordine di priorità, una scheda evento è illustrata da:
 
 3. **I banner di marca per territorio.** Come ultima risorsa, quando non è disponibile alcuna
    immagine ufficiale né libera, la scheda mostra un **materiale visivo neutro** proprio del
-   territorio o della categoria, prodotto da Agenda Sabaudo. In tal caso non è necessario alcun
+   territorio o della categoria, prodotto da Agenda Sabauda. In tal caso non è necessario alcun
    credito a terzi.
 
 ## 2. Ciò che non utilizziamo mai
@@ -120,7 +120,7 @@ In ordine di priorità, una scheda evento è illustrata da:
 Sei l'autore o il titolare dei diritti di un'immagine e ritieni che sia utilizzata indebitamente,
 oppure desideri che venga rimossa o meglio accreditata? Scrivici:
 
-- **Indirizzo:** **[contact@agendasabaudo.eu]**
+- **Indirizzo:** **[contact@agendasabauda.eu]**
 - **Oggetto da indicare:** «Crediti fotografici — richiesta di rimozione / correzione»
 - **Da specificare:** l'URL della pagina in cui compare l'immagine, una descrizione o schermata
   dell'immagine interessata e il tuo titolo (autore, avente diritto, mandatario).

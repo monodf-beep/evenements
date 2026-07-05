@@ -1,4 +1,4 @@
-# Marketing & pilotage — Agenda Sabaudo (solo, effort minimal)
+# Marketing & pilotage — Agenda Sabauda (solo, effort minimal)
 
 *But : piloter la croissance en ~15 min/semaine, sans rien coder de fragile, sans vanity metrics.
 Synthèse de deux recherches (repères GuidaTorino + bonnes pratiques growth solo 2025-2026).*
@@ -105,7 +105,7 @@ hors zone. Pour le social local, **Facebook (groupes locaux + Events)** vaut mie
 | **Événements actifs à venir** | count statut actif & date_debut ≥ aujourd'hui | fond de stock |
 | **Couverture par territoire** | count actifs groupés par territoire | déséquilibre → pousser un levier sur le territoire creux |
 | **% avec photo** | actifs avec image / total actifs | < seuil → problème de sourcing (déjà identifié) |
-| **Routage** | count score ≥7 (→ Cultura Sabauda) vs <7 (→ Agenda Sabaudo) | dimensionne les deux flux de publication |
+| **Routage** | count score ≥7 (→ Cultura Sabauda) vs <7 (→ Agenda Sabauda) | dimensionne les deux flux de publication |
 | **Passés non purgés** | count date_fin < aujourd'hui & statut actif | > 0 → relancer la purge |
 | **File de publication** | actifs non encore poussés en brouillon | backlog éditorial |
 

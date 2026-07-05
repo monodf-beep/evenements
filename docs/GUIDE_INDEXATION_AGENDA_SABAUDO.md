@@ -1,4 +1,4 @@
-# Guide d'indexation — Agenda Sabaudo
+# Guide d'indexation — Agenda Sabauda
 
 *Comment faire indexer, vite et proprement, des pages d'événements sur un site WordPress neuf.
 Synthèse de 3 recherches web sourcées (doc officielle Google Search Central, analyse d'agrégateurs

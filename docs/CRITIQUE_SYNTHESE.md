@@ -80,7 +80,7 @@ Les agents ont trouvé que **nos docs se contredisent**. Décisions :
   pour Google. **`noindex` jusqu'à un seuil** de qualité/densité ; n'indexer que fiches + hubs à
   valeur réelle. (Sinon : profil « scaled content », pénalisable depuis mars 2024.)
 - **Deux sites : segmenter par publication, PAS par canonical.** Un événement vit sur **UN** site :
-  score ≥7 → **Cultura Sabauda uniquement** ; score <7 → **Agenda Sabaudo uniquement**. Fini le
+  score ≥7 → **Cultura Sabauda uniquement** ; score <7 → **Agenda Sabauda uniquement**. Fini le
   canonical cross-domaine (fragile, il donne l'autorité à l'autre domaine, et le bug
   `wp_post_id_cs` propagerait des canonicals cassés). Un cheval par événement.
 - **Réduire les pages « fraîcheur »** : garder « Ce week-end » (national + Savoie surtout) ;
@@ -117,7 +117,7 @@ Ceux-là ne se « corrigent » pas par une feature — c'est une décision d'amb
   un **widget agenda embeddable** (chaque intégration = un backlink + un pas vers l'effet réseau,
   et ça remplace l'outreach OT à rendement quasi nul).
 - **Pas de modèle de revenus nommé.** SEO/newsletter/social = des canaux d'audience, pas des
-  revenus. **Décision d'ambition à prendre** : Agenda Sabaudo est-il (a) un **actif de marque au
+  revenus. **Décision d'ambition à prendre** : Agenda Sabauda est-il (a) un **actif de marque au
   service de Cultura Sabauda** (barre basse, effort mesuré, pas de pression revenus) ou (b) un
   **business autonome** (alors il faut un modèle : mises en avant payantes organisateurs,
   partenariats OT, billetterie affiliée — et le moat ci-dessus) ? Les arbitrages d'effort en

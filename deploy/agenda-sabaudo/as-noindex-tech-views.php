@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Agenda Sabaudo — noindex des vues techniques TEC
+Plugin Name: Agenda Sabauda — noindex des vues techniques TEC
 Description: Pose « noindex, follow » sur les vues techniques de The Events Calendar
   (semaine /week/, photo /photo/, jour /day/, et paramètres ?eventDisplay= /
   ?tribe-bar-date= / ?eventDate=) ainsi que sur les pages paginées vides. Ces URLs

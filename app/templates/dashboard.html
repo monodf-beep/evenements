@@ -27,13 +27,13 @@
   </div>
 </div>
 
-<!-- KPIs : le vocabulaire des 2 destinations est UNIFIÉ (Cultura Sabauda / Agenda Sabaudo) -->
+<!-- KPIs : le vocabulaire des 2 destinations est UNIFIÉ (Cultura Sabauda / Agenda Sabauda) -->
 <div class="kpis">
   <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés (actifs)</div></a>
   <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
   <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (≥ 7)</div></a>
   <a class="kpi" href="/events?statut=published_cs"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Cultura Sabauda</div></a>
-  <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Agenda Sabaudo</div></a>
+  <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Agenda Sabauda</div></a>
 </div>
 
 <!-- Alertes métier : ce qui bloque le flux (cliquables → la vue filtrée) -->
@@ -113,7 +113,7 @@
       <small>Les retenus + les expos encore en cours à re-valoriser.</small>
     </div>
     <div class="task">
-      <a class="btn btn-ghost" href="/site-dedie">🌐 Agenda Sabaudo</a>
+      <a class="btn btn-ghost" href="/site-dedie">🌐 Agenda Sabauda</a>
       <small>Les événements classés pour le site de volume.</small>
     </div>
     <div class="task">
@@ -201,7 +201,7 @@
     <p class="muted" style="margin-top:.6rem">
       <strong>Gate</strong> : si ce n'est pas un événement (actu, réunion, voirie, inauguration passée) → <span class="badge grey">Rejeté</span>.
       Sinon : <strong>≥ 7</strong> → <span class="badge new">À valider</span> (candidat Cultura Sabauda) ·
-      <strong>&lt; 7</strong> → <span class="badge re">Agenda Sabaudo</span> (catalogue). Le détail par critère est visible sur chaque fiche (Aperçu).</p>
+      <strong>&lt; 7</strong> → <span class="badge re">Agenda Sabauda</span> (catalogue). Le détail par critère est visible sur chaque fiche (Aperçu).</p>
   </div>
 </details>
 

@@ -54,7 +54,7 @@ STATUS_LABELS = {
     "pending": "En attente",
     "evaluated": "À valider",
     "published_cs": "Cultura Sabauda",
-    "published_sub": "Agenda Sabaudo",
+    "published_sub": "Agenda Sabauda",
     "rejected": "Rejeté",
     "merged": "Fusionné",
 }
@@ -504,7 +504,7 @@ def pilotage():
         f"SELECT COUNT(*) n FROM events_raw WHERE {active} AND {end_expr} >= ? "
         "AND COALESCE(url_image,'')!=''", (today,))
 
-    # 4. Routage (actifs à venir, scorés) : ≥ seuil → Cultura Sabauda ; < seuil → Agenda Sabaudo.
+    # 4. Routage (actifs à venir, scorés) : ≥ seuil → Cultura Sabauda ; < seuil → Agenda Sabauda.
     route_cs = one(
         f"SELECT COUNT(*) n FROM events_raw WHERE {active} AND {end_expr} >= ? "
         "AND llm_score >= ?", (today, thr))
@@ -877,7 +877,7 @@ def action(event_id: int, action: str):
             (event_id,)
         )
         conn.commit()
-        flash(f"📋 « {title} » classé pour Agenda Sabaudo.", "ok")
+        flash(f"📋 « {title} » classé pour Agenda Sabauda.", "ok")
     elif action == "reject":
         conn.execute(
             "UPDATE events_raw SET statut='rejected' WHERE id=?",

@@ -1,4 +1,4 @@
-/* Agenda Sabaudo — enrichissements progressifs (le back-office marche SANS JS ;
+/* Agenda Sabauda — enrichissements progressifs (le back-office marche SANS JS ;
    ces deux ajouts fluidifient seulement).
    1) Triage sans rechargement : les mini-formulaires .stpick partent en fetch,
       la ligne se met à jour sur place — le tri « à la chaîne » devient continu.

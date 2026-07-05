@@ -1,7 +1,7 @@
-# INSTALL RUNBOOK — Agenda Sabaudo (site public)
+# INSTALL RUNBOOK — Agenda Sabauda (site public)
 
 Checklist pas-à-pas pour la mise en place de ce soir. Ordonné. Cocher au fur et à mesure.
-Domaine cible : **agendasabaudo.eu** (à réserver s'il ne l'est pas — cf. plan du site §6).
+Domaine cible : **agendasabauda.eu** (à réserver s'il ne l'est pas — cf. plan du site §6).
 Socle validé : The Events Calendar (CPT `tribe_events`) + RankMath + Polylang.
 
 > Règles à NE PAS contredire : le temps n'est jamais une taxonomie · IndexNow ON /
@@ -29,7 +29,7 @@ Tout ce qui était « à trancher » dans les docs est tranché ici. On construi
 
 Décision « un cheval par événement » (cf. `CRITIQUE_SYNTHESE.md` §3) — conditionne l'export ET les réglages RankMath :
 
-- **Un événement vit sur UN seul site** : **score ≥ 7 → Cultura Sabauda uniquement** ; **score < 7 → Agenda Sabaudo uniquement**. **Jamais de canonical cross-domaine.**
+- **Un événement vit sur UN seul site** : **score ≥ 7 → Cultura Sabauda uniquement** ; **score < 7 → Agenda Sabauda uniquement**. **Jamais de canonical cross-domaine.**
 - **La masse (score < 7) reste `noindex`** tant qu'une fiche n'atteint pas le seuil de qualité/densité (photo + texte réel + lieu géolocalisé). Le volume sert la **navigation**, pas l'index Google (sinon profil « scaled content », pénalisable). → n'indexer que **hubs + fiches à valeur réelle**.
 - **Hubs temporels** : `/ce-week-end/` **indexé** (national + Savoie surtout) ; **`/aujourdhui/` et `/cette-semaine/` en `noindex`** (utilitaires, infreshables en solo).
 - **Langue minoritaire** : `noindex` les hubs `/it/` (ou `/fr/`) tant qu'ils n'ont pas de **contenu natif réel** (évite de flaguer tout un répertoire comme *thin*).
@@ -39,7 +39,7 @@ Décision « un cheval par événement » (cf. `CRITIQUE_SYNTHESE.md` §3) — c
 
 ## 0. Pré-requis (avant de commencer)
 
-- [ ] Domaine `agendasabaudo.eu` pointé sur l'hébergement, HTTPS actif (certificat OK).
+- [ ] Domaine `agendasabauda.eu` pointé sur l'hébergement, HTTPS actif (certificat OK).
 - [ ] WordPress installé, à jour, thème de base choisi.
 - [ ] Accès admin + accès FTP/SFTP (ou gestionnaire de fichiers) à `wp-content/`.
 - [ ] Réglages → Permaliens = « Titre de la publication » (`/%postname%/`) — PAS « simple ».
@@ -64,10 +64,10 @@ Décision « un cheval par événement » (cf. `CRITIQUE_SYNTHESE.md` §3) — c
 - [ ] **Instant Indexing (Google) : OFF** — ne PAS configurer/activer le module « Instant Indexing »
       Google (son API est réservée à JobPosting/BroadcastEvent — hors périmètre, risque de révocation).
 - [ ] **Sitemaps : ON** — RankMath → Sitemap Settings :
-  - [ ] Activer le sitemap XML (URL : `https://agendasabaudo.eu/sitemap_index.xml`).
+  - [ ] Activer le sitemap XML (URL : `https://agendasabauda.eu/sitemap_index.xml`).
   - [ ] Inclure le CPT **Événements** (`tribe_events`) et les taxonomies **catégories** + **territoire**.
   - [ ] Exclure les fiches passées / vues techniques du sitemap.
-- [ ] **Titres & Meta** : suffixe de marque « — Agenda Sabaudo » ; templates title/meta par gabarit
+- [ ] **Titres & Meta** : suffixe de marque « — Agenda Sabauda » ; templates title/meta par gabarit
       (cf. REGLES_SEO §1.1).
 - [ ] **noindex** des vues techniques : géré par le mu-plugin `as-noindex-tech-views.php` (étape 4) —
       vérifier après coup qu'une URL `?eventDisplay=week` sort bien en `noindex`.
@@ -149,7 +149,7 @@ plugins s'activent seuls) :
 
 - [ ] Déposer `robots.txt` à la **racine** du site (ou, si RankMath sert un robots.txt virtuel :
       RankMath → Réglages généraux → **Modifier robots.txt** et y recopier les blocs).
-- [ ] Vérifier `https://agendasabaudo.eu/robots.txt` : Sitemap référencé, GPTBot / PerplexityBot /
+- [ ] Vérifier `https://agendasabauda.eu/robots.txt` : Sitemap référencé, GPTBot / PerplexityBot /
       Google-Extended autorisés, Disallow des vues techniques TEC présents.
 - [ ] Test : une URL `?eventDisplay=week` doit être Disallow ; une fiche doit être Allow.
 
@@ -157,7 +157,7 @@ plugins s'activent seuls) :
 
 ## 8. Google Search Console + sitemap
 
-- [ ] Ajouter la propriété **Domaine** `agendasabaudo.eu` (vérif DNS TXT) — couvre `/fr/` et `/it/`
+- [ ] Ajouter la propriété **Domaine** `agendasabauda.eu` (vérif DNS TXT) — couvre `/fr/` et `/it/`
       d'un coup. (Alternative : 2 propriétés préfixe-URL `.../fr/` et `.../it/` si tu veux des
       rapports séparés par langue — cf. REGLES_SEO §6.)
 - [ ] **Soumettre le sitemap** : Sitemaps → ajouter `sitemap_index.xml`.

@@ -4,7 +4,7 @@
 Deux volets (cf. docs/AGENT_SEO_DASHBOARD_SPEC.md) :
   • DÉTERMINISTE, gratuit : le JSON-LD schema.org/Event, construit depuis la base
     (aucun appel LLM). C'est la donnée structurée réutilisable pour l'export
-    WordPress (Cultura Sabauda aujourd'hui, Agenda Sabaudo demain).
+    WordPress (Cultura Sabauda aujourd'hui, Agenda Sabauda demain).
   • LLM, à la demande : title/méta/réponse directe (AEO)/FAQ — la langue et le
     jugement. Réservé aux phares (coût maîtrisé).
 
@@ -70,7 +70,7 @@ def build_event_jsonld(ev: dict) -> dict | None:
         "location": place,
         "inLanguage": "fr",
         "publisher": {
-            "@type": "Organization", "name": "Agenda Sabaudo",
+            "@type": "Organization", "name": "Agenda Sabauda",
             "parentOrganization": {"@type": "Organization", "name": "Cultura Sabauda"},
         },
     }
@@ -117,7 +117,7 @@ texte »). Puis rédige TOUT autour d'elle, en respectant Yoast :
 
 Produis, en français, en JSON strict :
 {{"seo_keyphrase": "<expression clé principale, 2-4 mots>",
-  "seo_title": "<titre SEO 50-60 caractères, COMMENÇANT par l'expression clé ; suffixe ' — Agenda Sabaudo'>",
+  "seo_title": "<titre SEO 50-60 caractères, COMMENÇANT par l'expression clé ; suffixe ' — Agenda Sabauda'>",
   "seo_slug": "<slug court contenant l'expression clé, minuscules-et-tirets, sans année si récurrent>",
   "seo_meta": "<meta description 150-160 caractères, factuelle (quoi, où, quand) et CONTENANT l'expression clé>",
   "seo_answer": "<réponse directe de 40-60 mots (AEO), CONTENANT l'expression clé, réutilisable en chapô>",

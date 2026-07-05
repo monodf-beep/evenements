@@ -10,7 +10,7 @@
 
 ## 1. Éditeur du site
 
-Le site **Agenda Sabaudo** (https://agendasabaudo.eu) est édité par **Cultura Sabauda**, média
+Le site **Agenda Sabauda** (https://agendasabauda.eu) est édité par **Cultura Sabauda**, média
 culturel bilingue de l'espace alpin occidental (Savoie et Haute-Savoie, Piémont, Vallée d'Aoste,
 Nice et Alpes-Maritimes).
 
@@ -19,7 +19,7 @@ Nice et Alpes-Maritimes).
 - **Adresse du siège :** [ADRESSE POSTALE COMPLÈTE]
 - **Numéro d'immatriculation :** [SIRET / RNA / n° d'immatriculation]
 - **Numéro de TVA intracommunautaire :** [N° TVA, le cas échéant — sinon « non assujetti à la TVA »]
-- **Adresse électronique de contact :** [contact@agendasabaudo.eu]
+- **Adresse électronique de contact :** [contact@agendasabauda.eu]
 - **Téléphone :** [N° DE TÉLÉPHONE, le cas échéant]
 
 ## 2. Directeur de la publication
@@ -37,7 +37,7 @@ Le site est hébergé par :
 
 ## 4. Nature du site : un agrégateur culturel
 
-Agenda Sabaudo est un **agenda agrégateur** : il recense des manifestations culturelles à venir
+Agenda Sabauda est un **agenda agrégateur** : il recense des manifestations culturelles à venir
 (expositions, concerts, spectacles, festivals, sagre, marchés, fêtes traditionnelles, rendez-vous
 en famille et événements sportifs) sur ses quatre territoires.
 
@@ -47,26 +47,26 @@ officielle** : la page du lieu, de l'organisateur, de l'office de tourisme ou de
 officielle. L'attribution et les liens renvoient toujours vers ces **acteurs primaires**.
 
 **Faits et expression.** Les informations factuelles relatives à un événement (une date, un lieu,
-un programme) ne sont pas, en elles-mêmes, protégées par le droit d'auteur : Agenda Sabaudo les
+un programme) ne sont pas, en elles-mêmes, protégées par le droit d'auteur : Agenda Sabauda les
 recueille et les republie librement. En revanche, l'éditeur **ne reproduit jamais l'expression**
 d'un tiers (le texte, les formules ou l'analyse d'un article de presse).
 
 **Contenu détecté via la presse (« radar »).** Certains événements sont *repérés* grâce à une
 veille de la presse locale. Cette veille sert **uniquement à la détection** : les articles de
-presse ne sont **ni cités, ni crédités, ni reproduits** sur Agenda Sabaudo. Le contenu publié est
+presse ne sont **ni cités, ni crédités, ni reproduits** sur Agenda Sabauda. Le contenu publié est
 systématiquement reconstitué et vérifié à partir des sources officielles de l'événement.
 
 ## 5. Propriété intellectuelle
 
 L'architecture du site, sa charte graphique, ses textes éditoriaux originaux (chapôs, intros de
-rubriques, sélections rédactionnelles) et la marque **Agenda Sabaudo** sont la propriété de
+rubriques, sélections rédactionnelles) et la marque **Agenda Sabauda** sont la propriété de
 l'éditeur ou de son maison-mère Cultura Sabauda. Toute reproduction ou réutilisation, totale ou
 partielle, sans autorisation écrite préalable, est interdite.
 
 Les **données factuelles** relatives aux événements peuvent être librement consultées et partagées.
 
 Les **images** obéissent à une politique dédiée : voir la page **Crédits photos**
-(https://agendasabaudo.eu/fr/credits-photos/). Les logos et visuels des lieux et organisateurs
+(https://agendasabauda.eu/fr/credits-photos/). Les logos et visuels des lieux et organisateurs
 demeurent la propriété de leurs titulaires respectifs.
 
 ## 6. Signaler ou demander le retrait d'un événement
@@ -74,7 +74,7 @@ demeurent la propriété de leurs titulaires respectifs.
 Un lieu, un organisateur ou un ayant droit peut à tout moment demander la **correction** ou le
 **retrait** d'un événement le concernant.
 
-- **Adresse :** [contact@agendasabaudo.eu]
+- **Adresse :** [contact@agendasabauda.eu]
 - **Objet à indiquer :** « Signalement / retrait — [nom de l'événement] »
 - **À préciser :** l'URL de la fiche concernée, la nature de la demande (erreur factuelle, doublon,
   demande de retrait) et, pour un ayant droit, la qualité à agir.
@@ -84,7 +84,7 @@ L'éditeur s'engage à examiner chaque demande dans les meilleurs délais et à 
 
 ## 7. Liens hypertextes
 
-Agenda Sabaudo renvoie vers des sites externes (lieux, organisateurs, billetteries officielles)
+Agenda Sabauda renvoie vers des sites externes (lieux, organisateurs, billetteries officielles)
 sur lesquels l'éditeur n'exerce aucun contrôle et ne saurait être tenu pour responsable de leur
 contenu.
 
@@ -98,7 +98,7 @@ l'éditeur ne saurait être engagée en cas d'erreur, d'omission ou d'indisponib
 ## 9. Données personnelles et cookies
 
 Le traitement des données personnelles et l'usage des cookies sont décrits dans la
-**Politique de confidentialité** (https://agendasabaudo.eu/fr/confidentialite/).
+**Politique de confidentialité** (https://agendasabauda.eu/fr/confidentialite/).
 
 ## 10. Droit applicable
 
@@ -114,7 +114,7 @@ résolution amiable, des tribunaux compétents du ressort du siège de l'éditeu
 
 ## 1. Editore del sito
 
-Il sito **Agenda Sabaudo** (https://agendasabaudo.eu) è edito da **Cultura Sabauda**, testata
+Il sito **Agenda Sabauda** (https://agendasabauda.eu) è edito da **Cultura Sabauda**, testata
 culturale bilingue dello spazio alpino occidentale (Savoia e Alta Savoia, Piemonte, Valle d'Aosta,
 Nizza e Alpi Marittime).
 
@@ -123,7 +123,7 @@ Nizza e Alpi Marittime).
 - **Sede legale:** [INDIRIZZO POSTALE COMPLETO]
 - **Numero di iscrizione:** [SIRET / numero di iscrizione]
 - **Partita IVA:** [PARTITA IVA, se applicabile — altrimenti «soggetto non titolare di partita IVA»]
-- **Indirizzo e-mail di contatto:** [contact@agendasabaudo.eu]
+- **Indirizzo e-mail di contatto:** [contact@agendasabauda.eu]
 - **Telefono:** [NUMERO DI TELEFONO, se applicabile]
 
 ## 2. Direttore responsabile della pubblicazione
@@ -141,7 +141,7 @@ Il sito è ospitato da:
 
 ## 4. Natura del sito: un aggregatore culturale
 
-Agenda Sabaudo è un **agenda aggregatore**: raccoglie eventi culturali in programma (mostre,
+Agenda Sabauda è un **agenda aggregatore**: raccoglie eventi culturali in programma (mostre,
 concerti, spettacoli, festival, sagre, mercati, feste tradizionali, appuntamenti per le famiglie
 ed eventi sportivi) sui suoi quattro territori.
 
@@ -151,27 +151,27 @@ ufficiale**: la pagina del luogo, dell'organizzatore, dell'ente del turismo o de
 ufficiale. L'attribuzione e i collegamenti rimandano sempre a questi **soggetti primari**.
 
 **Fatti ed espressione.** Le informazioni fattuali su un evento (una data, un luogo, un programma)
-non sono di per sé protette dal diritto d'autore: Agenda Sabaudo le raccoglie e le ripubblica
+non sono di per sé protette dal diritto d'autore: Agenda Sabauda le raccoglie e le ripubblica
 liberamente. L'editore, invece, **non riproduce mai l'espressione** di terzi (il testo, le formule
 o l'analisi di un articolo di stampa).
 
 **Contenuti individuati tramite la stampa («radar»).** Alcuni eventi vengono *individuati* grazie
 al monitoraggio della stampa locale. Questo monitoraggio serve **unicamente all'individuazione**:
-gli articoli di stampa **non sono citati, né accreditati, né riprodotti** su Agenda Sabaudo. Il
+gli articoli di stampa **non sono citati, né accreditati, né riprodotti** su Agenda Sabauda. Il
 contenuto pubblicato è sempre ricostruito e verificato a partire dalle fonti ufficiali
 dell'evento.
 
 ## 5. Proprietà intellettuale
 
 L'architettura del sito, la veste grafica, i testi editoriali originali (occhielli, introduzioni
-di rubrica, selezioni redazionali) e il marchio **Agenda Sabaudo** sono di proprietà dell'editore
+di rubrica, selezioni redazionali) e il marchio **Agenda Sabauda** sono di proprietà dell'editore
 o della sua casa editrice Cultura Sabauda. Ogni riproduzione o riutilizzo, totale o parziale,
 senza previa autorizzazione scritta, è vietato.
 
 I **dati fattuali** relativi agli eventi possono essere liberamente consultati e condivisi.
 
 Le **immagini** seguono una politica dedicata: si veda la pagina **Crediti fotografici**
-(https://agendasabaudo.eu/it/crediti-foto/). I loghi e i materiali visivi dei luoghi e degli
+(https://agendasabauda.eu/it/crediti-foto/). I loghi e i materiali visivi dei luoghi e degli
 organizzatori restano di proprietà dei rispettivi titolari.
 
 ## 6. Segnalare o chiedere la rimozione di un evento
@@ -179,7 +179,7 @@ organizzatori restano di proprietà dei rispettivi titolari.
 Un luogo, un organizzatore o un avente diritto può in qualsiasi momento chiedere la **correzione**
 o la **rimozione** di un evento che lo riguarda.
 
-- **Indirizzo:** [contact@agendasabaudo.eu]
+- **Indirizzo:** [contact@agendasabauda.eu]
 - **Oggetto da indicare:** «Segnalazione / rimozione — [nome dell'evento]»
 - **Da specificare:** l'URL della scheda interessata, la natura della richiesta (errore fattuale,
   duplicato, richiesta di rimozione) e, per un avente diritto, il titolo ad agire.
@@ -189,7 +189,7 @@ caso, alla correzione o alla rimozione entro un **termine ragionevole**.
 
 ## 7. Collegamenti ipertestuali
 
-Agenda Sabaudo rimanda a siti esterni (luoghi, organizzatori, biglietterie ufficiali) sui quali
+Agenda Sabauda rimanda a siti esterni (luoghi, organizzatori, biglietterie ufficiali) sui quali
 l'editore non esercita alcun controllo e di cui non può essere ritenuto responsabile.
 
 ## 8. Responsabilità
@@ -202,7 +202,7 @@ essere ritenuto responsabile in caso di errore, omissione o indisponibilità del
 ## 9. Dati personali e cookie
 
 Il trattamento dei dati personali e l'uso dei cookie sono descritti nell'**Informativa sulla
-privacy** (https://agendasabaudo.eu/it/privacy/).
+privacy** (https://agendasabauda.eu/it/privacy/).
 
 ## 10. Legge applicabile
 

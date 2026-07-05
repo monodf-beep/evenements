@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Agenda Sabaudo — Taxonomie « Territoire »
+Plugin Name: Agenda Sabauda — Taxonomie « Territoire »
 Description: Ajoute la taxonomie hiérarchique « territoire » (l'axe identitaire des
   4 territoires transfrontaliers, absent nativement de The Events Calendar) sur les
   événements TEC (tribe_events) et les articles. URL /territoire/{terr}[/{ville}]/,

@@ -1,4 +1,4 @@
-# Agenda Sabaudo — Textes d'intro pérennes (SEO), FR + IT
+# Agenda Sabauda — Textes d'intro pérennes (SEO), FR + IT
 
 *Contenu indexable pour les hubs territoire et catégorie. À placer sous le H1, au-dessus du
 flux d'événements. Voix : géographie nommée, incarnée, jamais racoleuse (pas de « incontournable »
@@ -26,7 +26,7 @@ grands rendez-vous sportifs de montagne. L'été porte les festivals de plein ai
 lacustres ; l'hiver, la vie culturelle des stations et des vallées.
 
 Terre du duché de Savoie, la Savoie partage avec le Piémont, la Vallée d'Aoste et le comté de
-Nice une histoire commune et un même goût pour la fête et le partage. Agenda Sabaudo recense
+Nice une histoire commune et un même goût pour la fête et le partage. Agenda Sabauda recense
 pour vous, semaine après semaine, tout ce qu'il y a à faire en Savoie et en Haute-Savoie —
 de Chambéry à Annecy, d'Évian à Bourg-Saint-Maurice.
 
@@ -42,7 +42,7 @@ sportivi di montagna. L'estate porta i festival all'aperto e le feste lacustri; 
 vita culturale delle località e delle vallate.
 
 Terra del ducato di Savoia, la Savoia condivide con il Piemonte, la Valle d'Aosta e la contea
-di Nizza una storia comune e lo stesso gusto per la festa. Agenda Sabaudo raccoglie per voi,
+di Nizza una storia comune e lo stesso gusto per la festa. Agenda Sabauda raccoglie per voi,
 settimana dopo settimana, tutto ciò che c'è da fare in Savoia e Alta Savoia — da Chambéry ad
 Annecy, da Évian a Bourg-Saint-Maurice.
 
@@ -63,7 +63,7 @@ village qui célèbrent la truffe, le vin, le chocolat et les produits de saison
 les Langhe, le Roero et le Monferrato, est le temps fort de la table et des vendanges.
 
 Cœur historique des États de Savoie, le Piémont partage avec la Savoie, la Vallée d'Aoste et
-Nice un héritage commun. Agenda Sabaudo réunit pour vous tout ce qu'il y a à faire en Piémont —
+Nice un héritage commun. Agenda Sabauda réunit pour vous tout ce qu'il y a à faire en Piémont —
 de Turin à Alba, de Cuneo à Novare.
 
 ### 🇮🇹 IT
@@ -79,7 +79,7 @@ tartufo, il vino, il cioccolato e i prodotti di stagione. L'autunno, nelle Langh
 nel Monferrato, è il momento clou della tavola e della vendemmia.
 
 Cuore storico degli Stati sabaudi, il Piemonte condivide con la Savoia, la Valle d'Aosta e
-Nizza un'eredità comune. Agenda Sabaudo riunisce per voi tutto ciò che c'è da fare in Piemonte
+Nizza un'eredità comune. Agenda Sabauda riunisce per voi tutto ciò che c'è da fare in Piemonte
 — da Torino ad Alba, da Cuneo a Novara.
 
 ---
@@ -99,7 +99,7 @@ Foire de Saint-Ours à Aoste, la Bataille des Reines ou les marchés de Noël. C
 et spectacles animent la saison, en ville comme dans les villages de haute altitude.
 
 Terre historiquement liée à la Maison de Savoie, la Vallée d'Aoste partage avec le Piémont, la
-Savoie et Nice une même culture de montagne et de frontière. Agenda Sabaudo rassemble tout ce
+Savoie et Nice une même culture de montagne et de frontière. Agenda Sabauda rassemble tout ce
 qu'il y a à faire en Vallée d'Aoste — d'Aoste à Courmayeur, de Cogne à Saint-Vincent.
 
 ### 🇮🇹 IT
@@ -115,7 +115,7 @@ Sant'Orso ad Aosta, la Bataille des Reines o i mercatini di Natale. Concerti, mo
 animano la stagione, in città come nei villaggi d'alta quota.
 
 Terra storicamente legata ai Savoia, la Valle d'Aosta condivide con il Piemonte, la Savoia e
-Nizza la stessa cultura di montagna e di frontiera. Agenda Sabaudo raccoglie tutto ciò che c'è
+Nizza la stessa cultura di montagna e di frontiera. Agenda Sabauda raccoglie tutto ciò che c'è
 da fare in Valle d'Aosta — da Aosta a Courmayeur, da Cogne a Saint-Vincent.
 
 ---
@@ -135,7 +135,7 @@ cinéma et de musique, carnavals et fêtes méditerranéennes comme la Fête du 
 climat doux porte une saison culturelle presque continue, du bord de mer aux villages perchés.
 
 Ancien comté de Nice, ce territoire partage avec la Savoie, le Piémont et la Vallée d'Aoste une
-histoire commune et un même art de vivre. Agenda Sabaudo réunit tout ce qu'il y a à faire à
+histoire commune et un même art de vivre. Agenda Sabauda réunit tout ce qu'il y a à faire à
 Nice et dans les Alpes-Maritimes — de Nice à Cannes, d'Antibes à Menton.
 
 ### 🇮🇹 IT
@@ -150,7 +150,7 @@ musica, carnevali e feste mediterranee come la Festa del Limone a Mentone. Il cl
 una stagione culturale quasi continua, dal lungomare ai villaggi arroccati.
 
 Antica contea di Nizza, questo territorio condivide con la Savoia, il Piemonte e la Valle
-d'Aosta una storia comune e la stessa arte di vivere. Agenda Sabaudo riunisce tutto ciò che c'è
+d'Aosta una storia comune e la stessa arte di vivere. Agenda Sabauda riunisce tutto ciò che c'è
 da fare a Nizza e nelle Alpi Marittime — da Nizza a Cannes, da Antibes a Mentone.
 
 ---

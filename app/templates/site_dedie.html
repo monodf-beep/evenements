@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% set active = 'site' %}
-{% block title %}Agenda Sabaudo — Agenda CS{% endblock %}
-{% block h1 %}Agenda Sabaudo <span class="muted" style="font-size:1rem">({{ events|length }})</span>{% endblock %}
-{% block subtitle %}<div class="sub">Les événements classés pour Agenda Sabaudo (le site de volume : score &lt; 7, ou choix manuel). Aperçu interne — <strong>rien n'est publié</strong>.</div>{% endblock %}
+{% block title %}Agenda Sabauda — Agenda CS{% endblock %}
+{% block h1 %}Agenda Sabauda <span class="muted" style="font-size:1rem">({{ events|length }})</span>{% endblock %}
+{% block subtitle %}<div class="sub">Les événements classés pour Agenda Sabauda (le site de volume : score &lt; 7, ou choix manuel). Aperçu interne — <strong>rien n'est publié</strong>.</div>{% endblock %}
 
 {% block content %}
 {% if not events %}
-  <div class="card empty">Aucun événement classé pour Agenda Sabaudo.</div>
+  <div class="card empty">Aucun événement classé pour Agenda Sabauda.</div>
 {% else %}
 <div class="phases" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
   {% for e in events %}

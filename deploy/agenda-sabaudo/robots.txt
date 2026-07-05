@@ -1,4 +1,4 @@
-# robots.txt — Agenda Sabaudo (https://agendasabaudo.eu)
+# robots.txt — Agenda Sabauda (https://agendasabauda.eu)
 # Objectif : autoriser le crawl SEO classique ET les crawlers IA (choix GEO/AEO assumé),
 # tout en bloquant les vues techniques The Events Calendar (anti-index-bloat).
 # À déposer à la RACINE du site public. Si RankMath gère le robots.txt virtuel,
@@ -41,4 +41,4 @@ Disallow: /fr/recherche/
 Disallow: /it/ricerca/
 
 # Sitemap (généré par RankMath)
-Sitemap: https://agendasabaudo.eu/sitemap_index.xml
+Sitemap: https://agendasabauda.eu/sitemap_index.xml
