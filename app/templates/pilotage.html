@@ -40,6 +40,26 @@
   <p class="muted text-sm" style="margin:.6rem 0 0">Un territoire creux ≠ à équilibrer de force (qualité d'abord) — mais s'il reste vide durablement, pousser une source ou un backlink de cette zone. <em>Marque large, profondeur Savoie</em> (cf. stratégie).</p>
 </div>
 
+<!-- Aperçu des modules de la home publique : ce que chaque rubrique contient AUJOURD'HUI -->
+<div class="section-title">Modules de la home publique — remplissage automatique</div>
+<div class="card">
+  <p class="muted text-sm" style="margin:0 0 .7rem">Chaque rubrique de la home = une <strong>requête</strong> (catégorie ou dates). Voici ce qu'elle contiendrait <strong>maintenant</strong>, calculé depuis la base. <span class="badge new">AUTO</span> se remplit seul · <span class="badge re">SEMI</span> best-of proposé, tu valides · <span class="badge grey">MANUEL / EXTERNE</span> hors auto.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Rubrique</th><th>Alimentation</th><th style="text-align:right">Événements</th><th>Aperçu (top)</th></tr>
+    {% for mod in home %}
+    {% set badge = {'date':'new','cat':'new','all':'new','bestof':'re','semi':'re','manual':'grey','external':'grey'}.get(mod.feed,'grey') %}
+    {% set word = {'date':'AUTO (dates)','cat':'AUTO (catégorie)','all':'AUTO (tout)','bestof':'SEMI (best-of)','semi':'SEMI','manual':'MANUEL','external':'EXTERNE'}.get(mod.feed,'—') %}
+    <tr id="mod-{{ mod.key }}">
+      <td><strong>{{ mod.label }}</strong><br><span class="muted" style="font-size:.76rem">{{ mod.help }}</span></td>
+      <td><span class="badge {{ badge }}">{{ word }}</span></td>
+      <td style="text-align:right">{% if mod.count is not none %}<strong style="font-size:1.05rem">{{ mod.count }}</strong>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{% if mod.sample %}{% for s in mod.sample %}<div style="font-size:.78rem">· {{ s.title }} <span class="muted">({{ s.territoire }}{% if s.score is not none %}, {{ s.score }}{% endif %})</span></div>{% endfor %}{% if mod.count and mod.count > mod.sample|length %}<div class="muted" style="font-size:.72rem">…et {{ mod.count - mod.sample|length }} autres</div>{% endif %}{% else %}<span class="muted" style="font-size:.78rem">—</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  <p class="muted text-sm" style="margin:.7rem 0 0">Un compte <strong>à 0</strong> sur une rubrique AUTO = trou de sourcing sur cette catégorie/période, pas un bug. Ces mêmes requêtes deviendront les <strong>shortcodes The Events Calendar</strong> côté WordPress (spéc dans <code>utils/home_modules.py</code>).</p>
+</div>
+
 <!-- Ce que ce tableau ne mesure PAS, et pourquoi -->
 <details class="box">
   <summary>🧭 Ce que ce tableau mesure (et ce qu'il ne mesure pas)</summary>

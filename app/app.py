@@ -524,6 +524,11 @@ def pilotage():
         f"AND duplicate_of IS NULL AND {end_expr} >= ? AND COALESCE(wp_post_id_cs,0)=0",
         (thr, today))
 
+    # Aperçu des modules de la home publique : combien chaque rubrique (Ce week-end,
+    # Sagres, Concerts…) contiendrait AUJOURD'HUI. Sert à voir l'auto-remplissage et
+    # les trous. cf. utils/home_modules.py (= spéc des requêtes TEC pour WordPress).
+    from utils import home_modules as hm
+    home = hm.preview(conn, date.today(), thr)
     conn.close()
     metrics = {
         "future": future, "with_photo": with_photo,
@@ -532,7 +537,7 @@ def pilotage():
         "past_active": past_active, "queue_cs": queue_cs, "thr": thr,
     }
     return render_template(
-        "pilotage.html", m=metrics, terr_future=terr_future,
+        "pilotage.html", m=metrics, terr_future=terr_future, home=home,
         territories=TERRITORIES, today=today, alert=friendly_alert())
 
 
