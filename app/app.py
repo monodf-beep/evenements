@@ -472,6 +472,70 @@ def dashboard():
     )
 
 
+@app.route("/pilotage")
+@require_auth
+def pilotage():
+    """Onglet « Pilotage » : santé ÉDITORIALE / couverture, calculée uniquement
+    depuis la base (aucune API externe, rien qui casse). Le pilotage du TRAFIC
+    (impressions, clics, position) vit dans Looker Studio, pas ici — cf.
+    docs/MARKETING_ET_PILOTAGE_AGENDA_SABAUDO.md."""
+    today = date.today().isoformat()
+    # « À venir » = se termine (ou commence, à défaut de fin) aujourd'hui ou après.
+    end_expr = "COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''))"
+    active = "statut NOT IN ('rejected','merged') AND duplicate_of IS NULL"
+    retained = "statut IN ('evaluated','published_cs','published_sub') AND duplicate_of IS NULL"
+    thr = int(os.getenv("ENRICH_MIN_SCORE", "7"))
+    conn = get_db()
+
+    def one(sql, params=()):
+        return conn.execute(sql, params).fetchone()["n"]
+
+    # 1. Fond de stock : événements actifs À VENIR (datés).
+    future = one(f"SELECT COUNT(*) n FROM events_raw WHERE {active} AND {end_expr} >= ?", (today,))
+
+    # 2. Couverture par territoire (actifs à venir) — déséquilibre = signal éditorial.
+    terr_rows = conn.execute(
+        f"SELECT COALESCE(NULLIF(territoire,''),'—') t, COUNT(*) n FROM events_raw "
+        f"WHERE {active} AND {end_expr} >= ? GROUP BY t", (today,)).fetchall()
+    terr_future = {r["t"]: r["n"] for r in terr_rows}
+
+    # 3. Photo (actifs à venir) — le trou de sourcing déjà identifié.
+    with_photo = one(
+        f"SELECT COUNT(*) n FROM events_raw WHERE {active} AND {end_expr} >= ? "
+        "AND COALESCE(url_image,'')!=''", (today,))
+
+    # 4. Routage (actifs à venir, scorés) : ≥ seuil → Cultura Sabauda ; < seuil → Agenda Sabaudo.
+    route_cs = one(
+        f"SELECT COUNT(*) n FROM events_raw WHERE {active} AND {end_expr} >= ? "
+        "AND llm_score >= ?", (today, thr))
+    route_as = one(
+        f"SELECT COUNT(*) n FROM events_raw WHERE {active} AND {end_expr} >= ? "
+        "AND llm_score IS NOT NULL AND llm_score < ?", (today, thr))
+
+    # 5. Passés NON purgés : retenus dont la date est révolue mais toujours actifs.
+    past_active = one(
+        f"SELECT COUNT(*) n FROM events_raw WHERE {retained} AND {end_expr} != '' "
+        f"AND {end_expr} < ?", (today,))
+
+    # 6. File de publication : candidats Cultura Sabauda (≥ seuil, à venir) pas encore
+    #    poussés en brouillon WordPress.
+    queue_cs = one(
+        f"SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score >= ? "
+        f"AND duplicate_of IS NULL AND {end_expr} >= ? AND COALESCE(wp_post_id_cs,0)=0",
+        (thr, today))
+
+    conn.close()
+    metrics = {
+        "future": future, "with_photo": with_photo,
+        "photo_pct": round(with_photo / future * 100) if future else 0,
+        "route_cs": route_cs, "route_as": route_as,
+        "past_active": past_active, "queue_cs": queue_cs, "thr": thr,
+    }
+    return render_template(
+        "pilotage.html", m=metrics, terr_future=terr_future,
+        territories=TERRITORIES, today=today, alert=friendly_alert())
+
+
 @app.route("/api/status")
 @require_auth
 def api_status():

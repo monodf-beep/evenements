@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% set active = 'pilotage' %}
+{% block title %}Pilotage — Agenda CS{% endblock %}
+{% block h1 %}Pilotage éditorial{% endblock %}
+{% block subtitle %}<div class="sub">Santé du <strong>contenu</strong> (ton vrai levier), calculée depuis la base — aucune donnée externe. Le pilotage du <strong>trafic</strong> (impressions, clics, position) vit dans Looker Studio.</div>{% endblock %}
+
+{% block content %}
+
+<!-- Les tuiles : chacune répond à « où on en est » et déclenche une action -->
+<div class="kpis">
+  <a class="kpi" href="/events"><div class="v">{{ m.future }}</div><div class="l">Actifs à venir</div></a>
+  <a class="kpi {{ 'hot' if m.photo_pct < 60 }}" href="/events?img=0"><div class="v">{{ m.photo_pct }}%</div><div class="l">Avec photo</div></a>
+  <a class="kpi" href="/validation"><div class="v">{{ m.route_cs }}</div><div class="l">→ Cultura Sabauda (≥ {{ m.thr }})</div></a>
+  <a class="kpi" href="/site-dedie"><div class="v">{{ m.route_as }}</div><div class="l">→ Agenda Sabaudo (&lt; {{ m.thr }})</div></a>
+</div>
+
+<!-- Ce qui déclenche une action corrective -->
+<div class="alerts-inline">
+  {% if m.queue_cs %}<a href="/validation"><span aria-hidden="true">🗓️</span> {{ m.queue_cs }} à valider/publier en brouillon (Cultura Sabauda)</a>{% endif %}
+  {% if m.past_active %}<a href="/events?dated=" style="background:#fde8e8;color:#b3261e;border-color:#f5c2c2"><span aria-hidden="true">🧹</span> {{ m.past_active }} passé(s) encore actif(s) — à purger</a>{% endif %}
+  {% if not m.queue_cs and not m.past_active %}<span class="muted">Rien à corriger côté flux. 👌</span>{% endif %}
+</div>
+
+<!-- Couverture par territoire : l'équilibre de la marque (4 territoires visibles) -->
+<div class="section-title">Couverture par territoire (actifs à venir)</div>
+<div class="card">
+  {% set tmax = (terr_future.values()|max) if terr_future else 1 %}
+  {% if not terr_future %}<p class="muted">Aucun événement à venir en base.</p>{% endif %}
+  {% for terr in territories %}{% set n = terr_future.get(terr, 0) %}
+  <div class="bar-row"><span class="lbl">{{ terr }}</span>
+    <span class="track"><span class="fill" style="width: {{ (n / tmax * 100) if tmax else 0 }}%;background:var(--ok)"></span></span>
+    <span class="n">{{ n }}</span></div>
+  {% endfor %}
+  {% set other = terr_future.get('—', 0) %}
+  {% if other %}
+  <div class="bar-row"><span class="lbl muted">sans territoire</span>
+    <span class="track"><span class="fill" style="width: {{ (other / tmax * 100) if tmax else 0 }}%;background:var(--line-2)"></span></span>
+    <span class="n">{{ other }}</span></div>
+  {% endif %}
+  <p class="muted text-sm" style="margin:.6rem 0 0">Un territoire creux ≠ à équilibrer de force (qualité d'abord) — mais s'il reste vide durablement, pousser une source ou un backlink de cette zone. <em>Marque large, profondeur Savoie</em> (cf. stratégie).</p>
+</div>
+
+<!-- Ce que ce tableau ne mesure PAS, et pourquoi -->
+<details class="box">
+  <summary>🧭 Ce que ce tableau mesure (et ce qu'il ne mesure pas)</summary>
+  <div style="margin-top:.7rem;font-size:.9rem">
+    <p class="muted">Principe : on n'affiche <strong>que</strong> ce qui se calcule tout seul depuis la base et qui <strong>déclenche une action</strong>. Aucune saisie manuelle, aucune API qui casse.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Tuile</th><th>Action qu'elle déclenche</th></tr>
+      <tr><td>Actifs à venir</td><td>Fond de stock — si trop bas, lancer une collecte.</td></tr>
+      <tr><td>Avec photo</td><td>&lt; 60 % → problème de sourcing d'images (compléter les visuels).</td></tr>
+      <tr><td>Routage CS / AS</td><td>Dimensionne les deux flux de publication (un site par événement).</td></tr>
+      <tr><td>À valider/publier</td><td>Backlog éditorial → ouvrir le plan du week-end.</td></tr>
+      <tr><td>Passés encore actifs</td><td>&gt; 0 → purger (fiches périmées, mauvais pour l'image et le SEO).</td></tr>
+      <tr><td>Couverture territoire</td><td>Déséquilibre durable → pousser une source/backlink sur la zone creuse.</td></tr>
+    </table></div>
+    <p class="muted" style="margin-top:.6rem"><strong>Le trafic (Google) n'est pas ici</strong> : impressions, clics, position moyenne, pages indexées se lisent dans <strong>Search Console + Looker Studio</strong> (gratuit, zéro maintenance) — une fois le site en ligne. Ta seule tâche SEO hebdo : optimiser 1 page en position 11-20. Détails dans <code>docs/MARKETING_ET_PILOTAGE_AGENDA_SABAUDO.md</code>.</p>
+  </div>
+</details>
+
+{% endblock %}
