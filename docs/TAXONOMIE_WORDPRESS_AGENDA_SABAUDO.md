@@ -257,16 +257,19 @@ au partage de lien, qui est autre chose).
 
 ---
 
-## 9. Décisions à trancher (pour toi)
+## 9. Décisions — FIGÉES
 
-1. **Plugin** : **The Events Calendar** (ma reco — meilleur pour le bilingue, l'échelle et
-   l'indexation) — ou **Events Manager** pour mirrorer GuidaTorino à l'identique (au prix de ses
-   limites multilingues + pages catégories manuelles) ? Reco : **TEC**.
-2. **Bilingue** : Polylang (gratuit/Pro) ou WPML (payant, intégration TEC plus fluide) ?
-3. **`territoire`** : hiérarchique territoire > ville (ma reco) — validé ?
-4. **`lieu`** : taxonomie TEC « Venues » (ma reco) — ou simple champ texte au lancement, taxo
-   plus tard ?
-5. **« Gratuit »** : champ booléen + étiquette pour la vue `/evenements/gratuit/` — ok ?
+Ces choix sont **tranchés et verrouillés** dans `deploy/agenda-sabaudo/INSTALL_RUNBOOK.md` §0.0
+(ne plus les ré-ouvrir pendant le build) :
+
+1. **Plugin** : **The Events Calendar**. ✅
+2. **Bilingue** : **Polylang** (gratuit) ; WPML seulement si la traduction des termes TEC coince. ✅
+3. **`territoire`** : **hiérarchique** territoire > ville. ✅
+4. **`lieu`** : **taxonomie TEC « Venues »** (slug `luoghi`). ✅
+5. **« Gratuit »** : **champ booléen + étiquette** pour la vue `/fr/evenements/gratuit/`. ✅
+
+Voir aussi la **politique d'indexation & routage par fiche** (un site par événement, masse en
+`noindex`) : `INSTALL_RUNBOOK.md` §0.1.
 
 *Rien ici n'est du dev : c'est le plan de structure. La construction WordPress (installer TEC,
 enregistrer `territoire`, régler les URLs, brancher l'export backoffice) se fera quand tu

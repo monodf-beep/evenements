@@ -10,6 +10,33 @@ Socle validé : The Events Calendar (CPT `tribe_events`) + RankMath + Polylang.
 
 ---
 
+## 0.0 Décisions FIGÉES (ne pas ré-ouvrir pendant le build)
+
+Tout ce qui était « à trancher » dans les docs est tranché ici. On construit une seule fois.
+
+| Point | Décision figée | Si ça coince |
+|---|---|---|
+| **Plugin événements** | **The Events Calendar** (CPT `tribe_events`) | — |
+| **Bilingue** | **Polylang** (gratuit) | Ne passer à WPML **que si** la traduction des termes TEC devient ingérable. Pas au lancement. |
+| **Taxonomie `territoire`** | **hiérarchique** : 4 territoires **> villes** (mu-plugin) | — |
+| **Taxonomie `lieu`** | **Venues natives de TEC** (slug `luoghi`) | Champ texte seulement si Venues bloque — improbable. |
+| **« Gratuit »** | **étiquette + champ booléen** (vue `/fr/evenements/gratuit/`), jamais une catégorie | — |
+| **11 catégories** | figées dans `categories.md` — **slugs immuables** | — |
+| **Préfixe langue** | `/fr/` et `/it/` explicites (ne PAS masquer la langue par défaut) | — |
+| **Schema Event** | **une seule source = TEC** ; désactiver le schema RankMath sur `tribe_events` | — |
+
+## 0.1 Politique d'indexation & routage par fiche (à appliquer dès le jour 1)
+
+Décision « un cheval par événement » (cf. `CRITIQUE_SYNTHESE.md` §3) — conditionne l'export ET les réglages RankMath :
+
+- **Un événement vit sur UN seul site** : **score ≥ 7 → Cultura Sabauda uniquement** ; **score < 7 → Agenda Sabaudo uniquement**. **Jamais de canonical cross-domaine.**
+- **La masse (score < 7) reste `noindex`** tant qu'une fiche n'atteint pas le seuil de qualité/densité (photo + texte réel + lieu géolocalisé). Le volume sert la **navigation**, pas l'index Google (sinon profil « scaled content », pénalisable). → n'indexer que **hubs + fiches à valeur réelle**.
+- **Hubs temporels** : `/ce-week-end/` **indexé** (national + Savoie surtout) ; **`/aujourdhui/` et `/cette-semaine/` en `noindex`** (utilitaires, infreshables en solo).
+- **Langue minoritaire** : `noindex` les hubs `/it/` (ou `/fr/`) tant qu'ils n'ont pas de **contenu natif réel** (évite de flaguer tout un répertoire comme *thin*).
+- **Vues techniques TEC** (mois/semaine/photo) : `noindex` + Disallow (mu-plugin `as-noindex-tech-views.php` + robots.txt).
+
+---
+
 ## 0. Pré-requis (avant de commencer)
 
 - [ ] Domaine `agendasabaudo.eu` pointé sur l'hébergement, HTTPS actif (certificat OK).
