@@ -529,6 +529,10 @@ def pilotage():
     # les trous. cf. utils/home_modules.py (= spéc des requêtes TEC pour WordPress).
     from utils import home_modules as hm
     home = hm.preview(conn, date.today(), thr)
+    # Conseiller « ce que TU dois faire » : actions humaines déduites de l'état de
+    # la base (le reste est automatique). cf. utils/advisor.py.
+    from utils import advisor as adv
+    todo = adv.advise(conn, date.today(), thr, TERRITORIES)
     conn.close()
     metrics = {
         "future": future, "with_photo": with_photo,
@@ -537,7 +541,7 @@ def pilotage():
         "past_active": past_active, "queue_cs": queue_cs, "thr": thr,
     }
     return render_template(
-        "pilotage.html", m=metrics, terr_future=terr_future, home=home,
+        "pilotage.html", m=metrics, terr_future=terr_future, home=home, todo=todo,
         territories=TERRITORIES, today=today, alert=friendly_alert())
 
 

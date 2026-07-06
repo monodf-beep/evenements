@@ -6,6 +6,28 @@
 
 {% block content %}
 
+<!-- Conseiller : ce que FRANCK doit faire (le reste est automatique) -->
+<div class="section-title" style="margin-top:0">Franck — ce que tu dois faire <span class="muted" style="font-weight:400;font-size:.8rem">(le reste tourne tout seul)</span></div>
+{% if todo %}
+{% set levinfo = {'valider':('#b45309','#fef3c7','À VALIDER'),'sourcer':('#b3261e','#fde8e8','À SOURCER'),'completer':('#1d4ed8','#e0e7ff','À COMPLÉTER'),'lancer':('#166534','#dcfce7','À LANCER')} %}
+<div class="card" style="padding:.5rem .6rem;margin-bottom:1rem">
+  {% for a in todo %}
+  {% set c = levinfo.get(a.level, ('#475569','#eceff3','—')) %}
+  <div style="display:flex;gap:.6rem;align-items:flex-start;padding:.55rem .5rem;{% if not loop.last %}border-bottom:1px solid var(--line-2){% endif %}">
+    <span aria-hidden="true" style="font-size:1.2rem;line-height:1.3">{{ a.icon }}</span>
+    <div style="flex:1;min-width:0">
+      <span class="badge" style="background:{{ c[1] }};color:{{ c[0] }};border:1px solid {{ c[0] }}33">{{ c[2] }}</span>
+      <strong style="margin-left:.3rem">{{ a.title }}</strong>
+      <div class="muted text-sm" style="margin-top:.15rem">{{ a.detail }}</div>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="{{ a.url }}" style="flex:none;align-self:center">{{ a.cta }} →</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card card-cta" style="margin-bottom:1rem"><div><strong>Rien ne requiert ton intervention.</strong> <span class="muted">Le pipeline et les modules de la home tournent tout seuls. 👌</span></div></div>
+{% endif %}
+
 <!-- Les tuiles : chacune répond à « où on en est » et déclenche une action -->
 <div class="kpis">
   <a class="kpi" href="/events"><div class="v">{{ m.future }}</div><div class="l">Actifs à venir</div></a>

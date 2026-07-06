@@ -22,19 +22,25 @@ Le Piémont est le seul territoire présent dans les DEUX grappes (Turin au nord
 
 ## 2. Tableau des proximités (à valoriser en priorité)
 
-| Depuis (audience) | Voisin transfrontalier | Franchissement | Temps porte-à-porte | Grande destination à mettre en avant | Saison |
-|---|---|---|---|---|---|
-| **Haute-Savoie** (Chamonix) | Vallée d'Aoste | Tunnel du Mont-Blanc | ~1 h (Chamonix–Aoste) | Aoste, Courmayeur | toute l'année |
-| **Savoie** (Maurienne) | Piémont | Tunnel du Fréjus | ~2 h (Modane–Turin) | **Turin**, Susa, Bardonecchia | toute l'année |
-| **Savoie** (Tarentaise) | Vallée d'Aoste | Col du Petit-Saint-Bernard | ~1 h 30 (Bourg-St-Maurice–Aoste) | Aoste, La Thuile | **été seulement** (col fermé l'hiver) |
-| **Savoie** (Haute-Maurienne) | Piémont | Col du Mont-Cenis | ~1 h 30 (Val-Cenis–Susa) | Susa, Turin | **été seulement** |
-| **Vallée d'Aoste** | Piémont | Autoroute A5 | ~1 h 15 (Aoste–Turin) | **Turin** | toute l'année |
-| **Vallée d'Aoste** | Haute-Savoie / Savoie | Tunnel du Mont-Blanc | ~1 h (Aoste–Chamonix) | Chamonix, Megève, Annecy (~1 h 30) | toute l'année |
-| **Piémont** (Turin) | Vallée d'Aoste | A5 | ~1 h 15 | Aoste, Cogne, Cervinia | toute l'année |
-| **Piémont** (Turin/Susa) | Savoie | Fréjus / Mont-Cenis | ~2 h | Maurienne, Chambéry, Val Cenis | toute l'année (Fréjus) |
-| **Alpes-Maritimes** (Nice) | **Monaco** | littoral (A8 / train) | ~30 min | Monaco (spectacles, expos, sport) | toute l'année |
-| **Alpes-Maritimes** (Roya) | Piémont (Cuneo) | Col / tunnel de Tende | ~2 h (Nice–Cuneo) | Cuneo, Limone Piemonte | ⚠ tunnel : vérifier la réouverture ; col = été |
-| **Alpes-Maritimes** (Nice) | Ligurie (IT, *hors périmètre*) | A8 / frontière | ~45 min (Nice–Vintimille) | Vintimille, San Remo | toute l'année (bonus découverte) |
+| Depuis (audience) | Voisin transfrontalier | Franchissement | Temps porte-à-porte | **Format conseillé** | Grande destination | Saison |
+|---|---|---|---|---|---|---|
+| **Haute-Savoie** (Chamonix) | Vallée d'Aoste | Tunnel du Mont-Blanc | ~1 h (Chamonix–Aoste) | 🌤 **à la journée** | Aoste, Courmayeur | toute l'année |
+| **Savoie** (Maurienne) | Piémont | Tunnel du Fréjus | ~2 h (Modane–Turin) | 🌙 **un week-end** | **Turin**, Susa, Bardonecchia | toute l'année |
+| **Savoie** (Tarentaise) | Vallée d'Aoste | Col du Petit-Saint-Bernard | ~1 h 30 (Bourg-St-Maurice–Aoste) | 🌤 à la journée | Aoste, La Thuile | **été seulement** |
+| **Savoie** (Haute-Maurienne) | Piémont | Col du Mont-Cenis | ~1 h 30 (Val-Cenis–Susa) | 🌤 à la journée | Susa, Turin | **été seulement** |
+| **Vallée d'Aoste** | Piémont | Autoroute A5 | ~1 h 15 (Aoste–Turin) | 🌤 à la journée | **Turin** | toute l'année |
+| **Vallée d'Aoste** | Haute-Savoie / Savoie | Tunnel du Mont-Blanc | ~1 h (Aoste–Chamonix) | 🌤 à la journée | Chamonix, Megève, Annecy (~1 h 30) | toute l'année |
+| **Piémont** (Turin) | Vallée d'Aoste | A5 | ~1 h 15 | 🌤 à la journée | Aoste, Cogne, Cervinia | toute l'année |
+| **Piémont** (Turin/Susa) | Savoie | Fréjus / Mont-Cenis | ~2 h | 🌙 un week-end | Maurienne, Chambéry, Val Cenis | toute l'année (Fréjus) |
+| **Alpes-Maritimes** (Nice) | **Monaco** | littoral (A8 / train) | ~30 min | 🌤 **à la journée / en soirée** | Monaco (spectacles, expos, sport) | toute l'année |
+| **Alpes-Maritimes** (Roya) | Piémont (Cuneo) | Col / tunnel de Tende | ~2 h (Nice–Cuneo) | 🌙 un week-end | Cuneo, Limone Piemonte | ⚠ tunnel : vérifier la réouverture ; col = été |
+| **Alpes-Maritimes** (Nice) | Ligurie (IT, *hors périmètre*) | A8 / frontière | ~45 min (Nice–Vintimille) | 🌤 à la journée | Vintimille, San Remo | toute l'année (bonus) |
+
+**Règle du format** (ce qu'on affiche sur la carte) : trajet **≤ ~1 h 30** par sens → « **🌤 à la
+journée** » (ou en soirée pour Monaco) ; trajet **≥ ~2 h** ou qui appelle une nuit sur place →
+« **🌙 le temps d'un week-end** ». Le message change le call-to-action : *« Allez-y dans la
+journée »* vs *« Prévoyez le week-end »*. Turin depuis la Savoie = week-end ; Aoste depuis
+Chamonix = journée.
 
 > ⚠ **Tunnel de Tende** : endommagé (tempête Alex, 2020), réouverture partielle en cours — vérifier
 > l'état avant de promettre « 2 h ». En attendant, la liaison Nice–Cuneo est plus longue.
@@ -65,9 +71,26 @@ Le Piémont est le seul territoire présent dans les DEUX grappes (Turin au nord
 - **Un dossier éditorial récurrent** (« Le fil ») : « 5 raisons de passer le tunnel ce mois-ci » —
   du contenu à forte valeur, pile dans l'angle Sabaudo, que Cultura Sabauda peut signer.
 
-## 5. Implémentation (plus tard — pas au lancement)
+## 5. Implémentation — PRÉSENT DÈS LE LANCEMENT (auto-masqué si vide)
 
-Modélisable comme un `feed: "voisin"` dans `utils/home_modules.py` : pour un territoire T, requête
-= événements **du/des territoire(s) voisin(s) de T** (table §2), score ≥ 8, à venir, limite 3.
-La carte de proximité ci-dessus = la table de correspondance. **Bloqué tant que** (a) le voisin
-n'est pas sourcé et (b) le hub territoire n'existe pas — donc post-lancement.
+Le module est **en place au lancement** : il existe dans le gabarit et **se remplit tout seul**
+dès qu'un gros événement voisin est sourcé. Le garde-fou §3.4 (« ne jamais afficher vide ») est
+géré **automatiquement** : si la requête ne renvoie rien, le bloc **ne s'affiche pas** — donc
+aucun risque de rubrique famélique, même à J1. Pas besoin d'attendre.
+
+Modélisation = un `feed: "voisin"` dans `utils/home_modules.py` :
+- entrée = un territoire T (ou, sur la home, l'ensemble des paires) ;
+- requête = événements **du/des territoire(s) voisin(s) de T** selon la table §2, **score ≥ 8**,
+  à venir, **limite 3** ;
+- chaque carte porte le **franchissement + le temps + le format** (« Turin — 2 h par le Fréjus —
+  🌙 le temps d'un week-end ») ;
+- **si 0 résultat → module masqué** (pas de placeholder).
+
+Table de correspondance voisins (à coder tel quel) — respecte les deux grappes :
+`Savoie → {Piemonte(Turin), Vallee-Aoste}` · `Vallee-Aoste → {Piemonte(Turin), Savoie}` ·
+`Piemonte → {Vallee-Aoste, Savoie}` · `Nice → {Monaco, Piemonte(Cuneo)}`.
+Le **format (journée / week-end)** se déduit du temps de trajet (règle §2 : ≤ ~1 h 30 = journée,
+≥ ~2 h = week-end).
+
+> Dépend tout de même du **hub territoire** pour la version contextuelle (« De l'autre côté des
+> Alpes ») ; la version **home générique** (« Ça vaut le déplacement »), elle, marche dès J1.
