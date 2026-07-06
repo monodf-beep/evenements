@@ -90,8 +90,10 @@ fi
 say "mu-plugins"
 MU_DIR="$WP_PATH/wp-content/mu-plugins"
 mkdir -p "$MU_DIR"
-# as-*.php sont dans ce dossier ; cs-*.php dans ../wordpress/ (pont backoffice→WP).
-for f in "$SCRIPT_DIR"/as-*.php "$SCRIPT_DIR"/../wordpress/cs-*.php; do
+# On ne dépose QUE les mu-plugins de lancement (as-*.php). Les mu-plugins du pont
+# backoffice→WP (cs-rest-auth / cs-seo-meta) demandent un secret configuré →
+# déposés plus tard, à la phase « publisher ».
+for f in "$SCRIPT_DIR"/as-*.php; do
   [ -f "$f" ] || continue
   cp -f "$f" "$MU_DIR/" && ok "déposé : $(basename "$f")"
 done
