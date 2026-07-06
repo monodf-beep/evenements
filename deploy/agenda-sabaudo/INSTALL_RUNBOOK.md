@@ -101,6 +101,8 @@ Copier dans **`wp-content/mu-plugins/`** (créer le dossier s'il n'existe pas ; 
 plugins s'activent seuls) :
 
 - [ ] `as-territoire-taxo.php` — taxonomie « territoire » + amorce des 4 territoires & villes.
+- [ ] `as-seed-categories.php` — amorce automatique des **11 catégories** (rend l'étape 5 automatique ;
+      requiert TEC actif).
 - [ ] `as-noindex-tech-views.php` — noindex des vues techniques TEC.
 - [ ] (déjà en place si backoffice branché : `cs-rest-auth.php`, `cs-seo-meta.php`.)
 - [ ] Réglages → Permaliens → **Enregistrer** (pour activer la réécriture `/territoire/`).
@@ -108,9 +110,11 @@ plugins s'activent seuls) :
 
 ---
 
-## 5. Créer les 11 catégories
+## 5. Les 11 catégories
 
-Événements → **Catégories** — créer les 11 (noms + slugs **exacts**, voir `categories.md`) :
+**Automatique** si `as-seed-categories.php` est déposé (étape 4) et TEC actif : les 11 catégories
+sont créées seules avec les slugs exacts. **Vérifier** dans Événements → **Catégories** que les 11
+sont bien là. En cas de besoin, les créer à la main (noms + slugs **exacts**, voir `categories.md`) :
 
 - [ ] `expositions-patrimoine` — Expositions & Patrimoine
 - [ ] `concerts-musique` — Concerts & Musique
