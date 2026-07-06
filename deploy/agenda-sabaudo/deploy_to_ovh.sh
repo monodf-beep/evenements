@@ -23,7 +23,7 @@
 
 set -uo pipefail
 
-: "${OVH_SSH:?Définis d'abord : export OVH_SSH=\"login@ssh.clusterXXX.hosting.ovh.net\"}"
+: "${OVH_SSH:?Definis dabord : export OVH_SSH=login@ssh.clusterXXX.hosting.ovh.net}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REMOTE_DIR="deploy-agenda-sabaudo"
