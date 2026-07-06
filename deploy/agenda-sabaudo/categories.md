@@ -26,9 +26,19 @@ peut différer ; garder l'ordre et le mapping ci-dessous).
 - **Ordre** : cet ordre est l'ordre d'affichage souhaité (menu « Catégories ▾»,
   footer). WordPress trie par défaut alphabétiquement — forcer l'ordre via le
   thème/menu, pas via le slug.
-- **6 tuiles vedettes de la home** (rappel plan du site §2.1) : Ce week-end,
-  Tout l'agenda, Expositions & Patrimoine, Concerts & Musique, Festivals + Sagre,
-  En famille. Les 11 restent toutes accessibles via le menu.
+- **Libellés de tuile localisés (Polylang)** : la catégorie `gastronomie-sagre`
+  s'affiche **« Gastronomie » en FR** et **« Sagre » en IT** (« sagra » n'existe pas
+  en France → obscur en tuile FR ; le mot reste un aimant éditorial dans les listicles
+  « Les sagre du Piémont »). Même catégorie dessous.
+- **Grille principale de la home (6 tuiles)** : Ce week-end · **Gastronomie**
+  (IT : Sagre) · Concerts & Musique · Expositions & Patrimoine · **Jeune public &
+  Famille** · Tout l'agenda.
+- **Grille secondaire (découverte, 4 tuiles)** : Aux alentours (transfrontalier) ·
+  Musées (lieux) · Curiosités (éditorial) · **Jeune public & Famille**.
+  ❌ **Pas de tuile « Météo »** (utilitaire hors mission, ambiguë sur 4 territoires,
+  dépendance externe). ❌ **Pas de tuile « Gratuit »** (donnée prix non fiable →
+  simple filtre/badge plus tard).
+- Les 11 catégories restent toutes accessibles via le menu.
 - **« Gratuit »** n'est PAS une catégorie : c'est une étiquette + champ booléen
   (vue `/fr/evenements/gratuit/`), cf. taxonomie §2.2.
 - **Le temps** (ce week-end, aujourd'hui…) n'est jamais une catégorie : ce sont des
