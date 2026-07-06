@@ -19,8 +19,8 @@ ne collectons que les données strictement nécessaires, sans dark pattern ni ca
 
 - **Responsable :** [RAISON SOCIALE — Cultura Sabauda]
 - **Adresse :** [ADRESSE POSTALE COMPLÈTE]
-- **Contact :** [contact@agendasabauda.eu]
-- **Délégué à la protection des données (DPO), le cas échéant :** [NOM / dpo@agendasabauda.eu]
+- **Contact :** [contact@culturasabauda.eu]
+- **Délégué à la protection des données (DPO), le cas échéant :** [NOM / dpo@culturasabauda.eu]
   *(Si aucun DPO n'est désigné, indiquer le point de contact « protection des données ».)*
 
 ## 2. Données traitées, finalités et bases légales
@@ -91,8 +91,8 @@ Conformément au RGPD, vous disposez des droits suivants sur vos données :
 - **Droit de retirer votre consentement** à tout moment, sans que cela remette en cause la
   licéité du traitement effectué avant le retrait.
 
-**Comment les exercer :** écrivez à **[contact@agendasabauda.eu]** (ou au DPO le cas échéant :
-[dpo@agendasabauda.eu]), en précisant votre demande. Nous pourrons vous demander un justificatif
+**Comment les exercer :** écrivez à **[contact@culturasabauda.eu]** (ou au DPO le cas échéant :
+[dpo@culturasabauda.eu]), en précisant votre demande. Nous pourrons vous demander un justificatif
 d'identité si un doute raisonnable existe. Nous répondons dans un délai d'**un mois**.
 
 Pour la newsletter, un lien de **désinscription** figure dans chaque envoi : un clic suffit.
@@ -128,8 +128,8 @@ dati strettamente necessari, senza dark pattern né caselle pre-selezionate.
 
 - **Titolare:** [RAGIONE SOCIALE — Cultura Sabauda]
 - **Indirizzo:** [INDIRIZZO POSTALE COMPLETO]
-- **Contatti:** [contact@agendasabauda.eu]
-- **Responsabile della protezione dei dati (DPO), se nominato:** [NOME / dpo@agendasabauda.eu]
+- **Contatti:** [contact@culturasabauda.eu]
+- **Responsabile della protezione dei dati (DPO), se nominato:** [NOME / dpo@culturasabauda.eu]
   *(Se non è nominato alcun DPO, indicare il punto di contatto «protezione dei dati».)*
 
 ## 2. Dati trattati, finalità e basi giuridiche
@@ -202,8 +202,8 @@ In conformità al GDPR, hai i seguenti diritti sui tuoi dati:
 - **Diritto di revocare il consenso** in qualsiasi momento, senza che ciò pregiudichi la liceità
   del trattamento effettuato prima della revoca.
 
-**Come esercitarli:** scrivi a **[contact@agendasabauda.eu]** (o al DPO se nominato:
-[dpo@agendasabauda.eu]), precisando la tua richiesta. Potremo chiederti un documento d'identità in
+**Come esercitarli:** scrivi a **[contact@culturasabauda.eu]** (o al DPO se nominato:
+[dpo@culturasabauda.eu]), precisando la tua richiesta. Potremo chiederti un documento d'identità in
 caso di ragionevole dubbio. Rispondiamo entro **un mese**.
 
 Per la newsletter, in ogni invio è presente un link di **cancellazione**: basta un clic.

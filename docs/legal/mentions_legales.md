@@ -19,7 +19,7 @@ Nice et Alpes-Maritimes).
 - **Adresse du siège :** [ADRESSE POSTALE COMPLÈTE]
 - **Numéro d'immatriculation :** [SIRET / RNA / n° d'immatriculation]
 - **Numéro de TVA intracommunautaire :** [N° TVA, le cas échéant — sinon « non assujetti à la TVA »]
-- **Adresse électronique de contact :** [contact@agendasabauda.eu]
+- **Adresse électronique de contact :** [contact@culturasabauda.eu]
 - **Téléphone :** [N° DE TÉLÉPHONE, le cas échéant]
 
 ## 2. Directeur de la publication
@@ -74,7 +74,7 @@ demeurent la propriété de leurs titulaires respectifs.
 Un lieu, un organisateur ou un ayant droit peut à tout moment demander la **correction** ou le
 **retrait** d'un événement le concernant.
 
-- **Adresse :** [contact@agendasabauda.eu]
+- **Adresse :** [contact@culturasabauda.eu]
 - **Objet à indiquer :** « Signalement / retrait — [nom de l'événement] »
 - **À préciser :** l'URL de la fiche concernée, la nature de la demande (erreur factuelle, doublon,
   demande de retrait) et, pour un ayant droit, la qualité à agir.
@@ -123,7 +123,7 @@ Nizza e Alpi Marittime).
 - **Sede legale:** [INDIRIZZO POSTALE COMPLETO]
 - **Numero di iscrizione:** [SIRET / numero di iscrizione]
 - **Partita IVA:** [PARTITA IVA, se applicabile — altrimenti «soggetto non titolare di partita IVA»]
-- **Indirizzo e-mail di contatto:** [contact@agendasabauda.eu]
+- **Indirizzo e-mail di contatto:** [contact@culturasabauda.eu]
 - **Telefono:** [NUMERO DI TELEFONO, se applicabile]
 
 ## 2. Direttore responsabile della pubblicazione
@@ -179,7 +179,7 @@ organizzatori restano di proprietà dei rispettivi titolari.
 Un luogo, un organizzatore o un avente diritto può in qualsiasi momento chiedere la **correzione**
 o la **rimozione** di un evento che lo riguarda.
 
-- **Indirizzo:** [contact@agendasabauda.eu]
+- **Indirizzo:** [contact@culturasabauda.eu]
 - **Oggetto da indicare:** «Segnalazione / rimozione — [nome dell'evento]»
 - **Da specificare:** l'URL della scheda interessata, la natura della richiesta (errore fattuale,
   duplicato, richiesta di rimozione) e, per un avente diritto, il titolo ad agire.

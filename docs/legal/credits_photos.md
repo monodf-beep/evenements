@@ -52,7 +52,7 @@ Par ordre de priorité, une fiche événement est illustrée par :
 Vous êtes l'auteur ou le titulaire des droits d'une image, et vous estimez qu'elle est utilisée à
 tort, ou vous souhaitez qu'elle soit retirée ou mieux créditée ? Écrivez-nous :
 
-- **Adresse :** **[contact@agendasabauda.eu]**
+- **Adresse :** **[contact@culturasabauda.eu]**
 - **Objet à indiquer :** « Crédits photos — demande de retrait / correction »
 - **À préciser :** l'URL de la page où figure l'image, une description ou capture de l'image
   concernée, et votre qualité (auteur, ayant droit, mandataire).
@@ -120,7 +120,7 @@ In ordine di priorità, una scheda evento è illustrata da:
 Sei l'autore o il titolare dei diritti di un'immagine e ritieni che sia utilizzata indebitamente,
 oppure desideri che venga rimossa o meglio accreditata? Scrivici:
 
-- **Indirizzo:** **[contact@agendasabauda.eu]**
+- **Indirizzo:** **[contact@culturasabauda.eu]**
 - **Oggetto da indicare:** «Crediti fotografici — richiesta di rimozione / correzione»
 - **Da specificare:** l'URL della pagina in cui compare l'immagine, una descrizione o schermata
   dell'immagine interessata e il tuo titolo (autore, avente diritto, mandatario).

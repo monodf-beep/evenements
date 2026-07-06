@@ -52,7 +52,7 @@ visibilité renforcée. Grandir avec nous, c'est prendre la meilleure place tôt
 
 ### Contactez-nous
 
-Écrivez-nous à **contact@agendasabauda.eu** ou remplissez le formulaire ci-dessous — nous revenons
+Écrivez-nous à **contact@culturasabauda.eu** ou remplissez le formulaire ci-dessous — nous revenons
 vers vous avec nos formats et nos tarifs.
 
 ---
@@ -93,7 +93,7 @@ con noi significa prendere il posto migliore in anticipo.
 
 ### Contattaci
 
-Scrivici a **contact@agendasabauda.eu** o compila il modulo qui sotto — ti risponderemo con i
+Scrivici a **contact@culturasabauda.eu** o compila il modulo qui sotto — ti risponderemo con i
 nostri formati e le tariffe.
 
 ---
@@ -111,7 +111,7 @@ nostri formati e le tariffe.
 | Message / *Messaggio* | zone de texte | oui |
 | Consentement RGPD / *Consenso privacy* | case à cocher (lien vers la politique de confidentialité) | oui |
 
-→ Envoi = **e-mail à `contact@agendasabauda.eu`** (ou création d'une entrée à traiter). **Pas de
+→ Envoi = **e-mail à `contact@culturasabauda.eu`** (ou création d'une entrée à traiter). **Pas de
 paiement en ligne** : on qualifie le besoin, puis on envoie une proposition. Anti-spam (honeypot).
 
 ## Gabarit WordPress
