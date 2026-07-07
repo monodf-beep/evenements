@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 # On réutilise la mise en forme de l'article et le mapping de catégorie du
 # publisher historique (mêmes règles éditoriales, y compris charte §8 sur le radar).
-from scripts.publisher import build_post, _map_category
+from scripts.publisher import build_post, _map_category, _upload_featured_media
 
 log = get_logger("publisher_as")
 
@@ -144,6 +144,18 @@ def publish_to_as(event: dict) -> int | None:
 
     auth = (wp_user, wp_pass)
     payload = _build_payload(event)
+
+    # Image à la une : on TÉLÉVERSE côté Python (fiable — le backoffice accède déjà à
+    # ces images) plutôt que de laisser WordPress aller chercher l'URL lui-même (souvent
+    # bloqué : hotlink/UA/firewall). On transmet ensuite l'id du média à l'endpoint.
+    if event.get("url_image"):
+        media_id = _upload_featured_media(
+            wp_url, auth, event["url_image"],
+            alt=event.get("seo_keyphrase") or event.get("title", "") or "",
+            caption=event.get("image_credit", "") or "")
+        if media_id:
+            payload["featured_media_id"] = media_id
+
     endpoint = f"{wp_url}/?rest_route=/cs/v1/event"
 
     # Diagnostic : ce qu'on envoie réellement (dates, lieu, taxonomies) — permet de

@@ -152,8 +152,13 @@ function cs_publish_event(WP_REST_Request $req) {
     if (!empty($seo['description']))   { update_post_meta($post_id, 'rank_math_description', sanitize_text_field($seo['description'])); }
     if (!empty($seo['focus_keyword'])) { update_post_meta($post_id, 'rank_math_focus_keyword', sanitize_text_field($seo['focus_keyword'])); }
 
-    // --- Image à la une : téléversée depuis l'URL (jamais bloquant) ------------
-    if (!empty($b['image_url']) && !has_post_thumbnail($post_id)) {
+    // --- Image à la une -------------------------------------------------------
+    // PRIORITÉ au média déjà téléversé côté Python (fiable). Repli : sideload depuis
+    // l'URL (moins fiable côté serveur — hotlink/UA/firewall — mais mieux que rien).
+    $fm = isset($b['featured_media_id']) ? (int) $b['featured_media_id'] : 0;
+    if ($fm > 0) {
+        set_post_thumbnail($post_id, $fm);
+    } elseif (!empty($b['image_url']) && !has_post_thumbnail($post_id)) {
         require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
