@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import os
 import sys
+import unicodedata
 from datetime import date
 from pathlib import Path
 import requests
@@ -52,6 +53,39 @@ def _headers(auth) -> dict:
 
 def _is_free(prix: str) -> int:
     return 1 if (prix or "").strip().lower() in _FREE else 0
+
+
+def _norm(s: str) -> str:
+    """minuscule, sans accents, apostrophe normalisée — pour les correspondances."""
+    s = unicodedata.normalize("NFD", (s or "").strip().lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return s.replace("’", "'")
+
+
+# Libellé interne du territoire (base) → SLUG du terme « territoire » semé (parent).
+# Les 4 territoires. Résout l'écart FR/IT/variantes ; à défaut on renvoie la valeur brute.
+_TERRITOIRES = {
+    "savoie": "savoie-haute-savoie",
+    "haute-savoie": "savoie-haute-savoie",
+    "savoie / haute-savoie": "savoie-haute-savoie",
+    "savoie/haute-savoie": "savoie-haute-savoie",
+    "piemont": "piemont",          # « Piémont » → normalisé « piemont »
+    "piemonte": "piemont",
+    "piedmont": "piemont",
+    "vallee d'aoste": "vallee-d-aoste",
+    "val d'aoste": "vallee-d-aoste",
+    "valle d'aosta": "vallee-d-aoste",
+    "vallee-d-aoste": "vallee-d-aoste",
+    "nice": "nice-alpes-maritimes",
+    "nice / alpes-maritimes": "nice-alpes-maritimes",
+    "nice/alpes-maritimes": "nice-alpes-maritimes",
+    "alpes-maritimes": "nice-alpes-maritimes",
+}
+
+
+def _map_territoire(value: str) -> str:
+    """Traduit le territoire interne vers le slug du terme semé (parent des 4)."""
+    return _TERRITOIRES.get(_norm(value), (value or "").strip())
 
 
 def _iso_dates(event: dict) -> tuple[str, str]:
@@ -108,7 +142,7 @@ def _build_payload(event: dict) -> dict:
         "start_date":  start_iso,
         "end_date":    end_iso,
         "category":    _map_category(event.get("llm_categorie")),
-        "territoire":  event.get("territoire", "") or "",
+        "territoire":  _map_territoire(event.get("territoire", "")),
         "score":       event.get("llm_score"),
         "image_url":   event.get("url_image", "") or "",
         "image_alt":   event.get("seo_keyphrase") or event.get("title", "") or "",
