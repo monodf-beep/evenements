@@ -11,13 +11,11 @@
 <!-- Barre d'actions : classer / publier -->
 <div class="card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.6rem .8rem">
   <span class="muted text-sm" style="margin-right:.2rem">Actions :</span>
-  <form method="post" action="/action/{{ e.id }}/publish_cs" style="margin:0"
-        onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')">
+  <form method="post" action="/action/{{ e.id }}/publish_cs" style="margin:0">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <button class="btn btn-ok btn-sm">🚀 Publier CS</button>
   </form>
-  <form method="post" action="/action/{{ e.id }}/publish_as" style="margin:0"
-        onsubmit="return confirm('Créer un brouillon événement Agenda Sabauda (agendasabauda.eu) ?')">
+  <form method="post" action="/action/{{ e.id }}/publish_as" style="margin:0">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <button class="btn btn-ok btn-sm">🗓 Publier Agenda</button>
   </form>
