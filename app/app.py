@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT))
 import re
 
 from scripts.publisher import publish_to_cs
+from scripts.publisher_as import publish_to_as
 from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
@@ -881,12 +882,20 @@ def action(event_id: int, action: str):
         else:
             flash(f"❌ Échec WordPress pour « {title} » — vérifie WP_URL / identifiants (voir logs).", "err")
     elif action == "subdomain":
-        conn.execute(
-            "UPDATE events_raw SET statut='published_sub' WHERE id=?",
-            (event_id,)
-        )
-        conn.commit()
-        flash(f"📋 « {title} » classé pour Agenda Sabauda.", "ok")
+        existed = event["wp_post_id_as"]
+        wp_id = publish_to_as(dict(event))
+        if wp_id:
+            conn.execute("""
+            UPDATE events_raw SET statut='published_sub',
+            published_as_date=datetime('now'), wp_post_id_as=? WHERE id=?
+            """, (wp_id, event_id))
+            conn.commit()
+            log.info("Publié Agenda Sabauda : event_id=%d wp_id=%d", event_id, wp_id)
+            verbe = "mis à jour" if existed and wp_id == existed else "créé"
+            flash(f"✅ « {title} » → brouillon Agenda Sabauda {verbe} (id {wp_id}).", "ok")
+        else:
+            flash(f"❌ Échec Agenda Sabauda pour « {title} » — vérifie "
+                  f"WP_AS_URL / identifiants (voir logs).", "err")
     elif action == "reject":
         conn.execute(
             "UPDATE events_raw SET statut='rejected' WHERE id=?",
