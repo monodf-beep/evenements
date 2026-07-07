@@ -74,10 +74,18 @@ function cs_publish_event(WP_REST_Request $req) {
         'post_content' => (string) ($b['content'] ?? ''),
         'post_status'  => 'draft',            // TOUJOURS brouillon — jamais publish auto
     );
-    if (!empty($b['start_date'])) { $args['EventStartDate'] = (string) $b['start_date']; }
-    if (!empty($b['end_date']))   { $args['EventEndDate']   = (string) $b['end_date']; }
-    else if (!empty($b['start_date'])) { $args['EventEndDate'] = (string) $b['start_date']; }
-    $args['EventAllDay'] = !empty($b['all_day']) ? 'yes' : 'no';
+    // Dates : NORMALISER en 'Y-m-d H:i:s'. tribe_create_event retombe silencieusement
+    // sur AUJOURD'HUI si on lui passe une date « seule » (ex. « 2025-07-22 ») ou un
+    // format qu'il ne reconnaît pas. On force donc un datetime complet. Pas d'heure
+    // fiable depuis les sources → on traite en JOURNÉE ENTIÈRE (all-day).
+    $start_ts = !empty($b['start_date']) ? strtotime((string) $b['start_date']) : false;
+    if ($start_ts) {
+        $end_ts = !empty($b['end_date']) ? strtotime((string) $b['end_date']) : $start_ts;
+        if (!$end_ts || $end_ts < $start_ts) { $end_ts = $start_ts; }
+        $args['EventStartDate'] = date('Y-m-d', $start_ts) . ' 00:00:00';
+        $args['EventEndDate']   = date('Y-m-d', $end_ts)   . ' 23:59:59';
+        $args['EventAllDay']    = 'yes';
+    }
 
     // --- Auteur selon le score (routage éditorial) ----------------------------
     $score   = isset($b['score']) ? (float) $b['score'] : null;
@@ -167,5 +175,7 @@ function cs_publish_event(WP_REST_Request $req) {
         'id'      => $post_id,
         'url'     => get_permalink($post_id),
         'updated' => $updated,
+        'start'   => isset($args['EventStartDate']) ? $args['EventStartDate'] : '(aucune date)',
+        'venue'   => $venue_id ?: 0,
     ), 200);
 }

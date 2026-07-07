@@ -146,6 +146,13 @@ def publish_to_as(event: dict) -> int | None:
     payload = _build_payload(event)
     endpoint = f"{wp_url}/?rest_route=/cs/v1/event"
 
+    # Diagnostic : ce qu'on envoie réellement (dates, lieu, taxonomies) — permet de
+    # savoir si un champ manquant vient d'ici (payload) ou de l'endpoint (TEC).
+    log.info("→ AS payload : start=%r end=%r venue=%r cat=%r terr=%r img=%s",
+             payload.get("start_date"), payload.get("end_date"),
+             payload.get("venue"), payload.get("category"),
+             payload.get("territoire"), bool(payload.get("image_url")))
+
     try:
         resp = requests.post(endpoint, json=payload, auth=auth,
                              headers=_headers(auth), timeout=60)
