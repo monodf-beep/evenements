@@ -9,7 +9,8 @@
 </head>
 <body>
 <div class="app-shell">
-  <aside class="sidebar">
+  <div class="nav-backdrop" data-nav-close></div>
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">CS</span>
       <div><b>Cultura Sabauda</b><small>Agenda</small></div>
@@ -22,11 +23,16 @@
       <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
         {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
       <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
+      <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
     </nav>
     <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>
   </aside>
 
   <main class="main">
+    <header class="mobile-bar">
+      <button class="nav-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+      <span class="mobile-brand"><span class="brand-mark" aria-hidden="true">CS</span> Agenda</span>
+    </header>
     <div class="topbar">
       <div>
         <h1>{% block h1 %}{% endblock %}</h1>

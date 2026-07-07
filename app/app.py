@@ -570,6 +570,15 @@ def pilotage():
         territories=TERRITORIES, today=today, alert=friendly_alert())
 
 
+@app.route("/process")
+@require_auth
+def process_page():
+    """Schéma pédagogique : le process complet, les agents, les boucles.
+
+    Page statique (aucune requête base/API) — juste une carte du fonctionnement."""
+    return render_template("process.html", active="process")
+
+
 @app.route("/api/status")
 @require_auth
 def api_status():

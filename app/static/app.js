@@ -45,6 +45,26 @@
     });
   });
 
+  /* ---- 1bis. Tiroir de navigation mobile (hamburger) ---- */
+  var toggle = document.querySelector(".nav-toggle");
+  if (toggle) {
+    var openNav = function (open) {
+      document.body.classList.toggle("nav-open", open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    toggle.addEventListener("click", function () {
+      openNav(!document.body.classList.contains("nav-open"));
+    });
+    /* Ferme : clic sur le voile, sur un lien du menu, ou touche Échap. */
+    document.addEventListener("click", function (ev) {
+      if (ev.target.closest("[data-nav-close]")) openNav(false);
+      else if (ev.target.closest(".sidebar .nav a")) openNav(false);
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") openNav(false);
+    });
+  }
+
   /* ---- 2. Polling de fin de tâche (dashboard) ---- */
   var flag = document.querySelector("[data-any-running='1']");
   if (flag) {
