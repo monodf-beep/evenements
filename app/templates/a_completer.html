@@ -44,7 +44,7 @@
       <!-- Complétion à la main : seuls les champs manquants sont pré-signalés -->
       <details style="margin-top:.4rem">
         <summary style="cursor:pointer;color:#2557a7">✍️ Compléter à la main</summary>
-        <form method="POST" action="/complete/{{ e.id }}" style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem;max-width:640px">
+        <form method="POST" action="/complete/{{ e.id }}" class="complete-grid" style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem;max-width:640px">
           {% for key, label in fields %}
             <label style="font-size:.82rem">{{ label }}
               {% if key == 'territoire' %}

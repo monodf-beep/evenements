@@ -69,22 +69,22 @@
 {% if not events %}
   <div class="card empty">Aucun événement pour ce filtre.</div>
 {% else %}
-<div class="table-wrap">
-<table>
+<div class="table-wrap cards">
+<table class="table-cards">
   <thead>
   <tr><th scope="col">Photo</th><th scope="col">Titre</th><th scope="col">Date</th><th scope="col">Territoire</th><th scope="col">Source</th><th scope="col">Statut (clic = classer)</th><th scope="col">Score</th><th scope="col">Actions</th></tr>
   </thead>
   <tbody>
   {% for e in events %}
   <tr id="e{{ e.id }}">
-    <td>{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
-    <td><a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
+    <td class="full cell-photo" data-label="">{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td class="full cell-title" data-label=""><a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
       {% set ready = e.enrich_status == 'enriched' and e.url_image and (e.date_event_start or e.date_event_end) %}
       {% if ready %}<br><span class="badge ready" title="Article + photo + date : publiable tel quel">✓ prêt à publier</span>
       {% elif e.enrich_status == 'enriched' %}<br><span class="badge article">✍️ article prêt</span>
       {% elif e.enrich_status in ('error','api_error') %}<br><span class="badge fail">✍️ échec</span>{% endif %}
       {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
-    <td>
+    <td data-label="Date">
       {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
         <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
         <span class="ongoing">{{ '⏳ dernier week-end' if e._ending else 'en cours' }}</span>
@@ -93,9 +93,9 @@
       {% elif e.date_source in ('none','nodate') %}<span class="muted">à confirmer</span>
       {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
     </td>
-    <td>{{ e.territoire or '—' }}</td>
-    <td>{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source and e.url_source.startswith('gmail:') %}<span class="muted">📬 newsletter</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source %}<span class="muted">🌐 RSS</span> <a href="{{ e.url_source }}" target="_blank" rel="noopener" aria-label="Ouvrir la source (nouvel onglet)">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
-    <td>
+    <td data-label="Territoire">{{ e.territoire or '—' }}</td>
+    <td class="stack" data-label="Source">{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source and e.url_source.startswith('gmail:') %}<span class="muted">📬 newsletter</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source %}<span class="muted">🌐 RSS</span> <a href="{{ e.url_source }}" target="_blank" rel="noopener" aria-label="Ouvrir la source (nouvel onglet)">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
+    <td class="stack" data-label="Statut">
       {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabauda'),('rejected','Rejeté')] %}
       <div class="stpick" title="{{ e.llm_justification or 'Non évalué' }}">
       {% for key, lbl in picks %}
@@ -115,8 +115,8 @@
       {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ CS WP #{{ e.wp_post_id_cs }}</a>{% endif %}
       {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ Agenda WP #{{ e.wp_post_id_as }}</a>{% endif %}
     </td>
-    <td>{{ e.llm_score if e.llm_score is not none else '—' }}</td>
-    <td>
+    <td data-label="Score">{{ e.llm_score if e.llm_score is not none else '—' }}</td>
+    <td class="full cell-actions" data-label="">
       <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
       <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon article Cultura Sabauda (culturasabauda.eu)">🚀 Publier CS</button></form>
       <form method="POST" action="/action/{{ e.id }}/publish_as" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon événement Agenda Sabauda (agendasabauda.eu)">🗓 Publier Agenda</button></form>

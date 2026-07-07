@@ -52,7 +52,9 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
   outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
 
 /* ---------- Shell : sidebar + main ---------- */
-.app-shell { display:grid; grid-template-columns:var(--sidebar) 1fr; min-height:100vh; }
+/* minmax(0,1fr) : sans ça, une table large (min-width:auto) élargit la colonne
+   au-delà de l'écran et fait déborder toute la page horizontalement sur mobile. */
+.app-shell { display:grid; grid-template-columns:var(--sidebar) minmax(0,1fr); min-height:100vh; }
 .sidebar { background:var(--brand-strong); color:#c2ccd9; display:flex; flex-direction:column;
   position:sticky; top:0; height:100vh; padding:1.1rem .8rem; }
 .brand { display:flex; align-items:center; gap:.6rem; padding:.2rem .4rem 1rem; }
@@ -71,7 +73,7 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 .nav-foot { margin-top:auto; padding-top:1rem; border-top:1px solid rgba(255,255,255,.12); }
 .nav-foot a { color:#8b96a8; font-size:.85rem; padding:.4rem .7rem; display:block; }
 
-.main { padding:1.6rem 2rem 4rem; max-width:1180px; }
+.main { padding:1.6rem 2rem 4rem; max-width:1180px; min-width:0; }
 .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.2rem; }
 .topbar h1 { font-size:1.5rem; margin:0; }
 .topbar .sub { color:var(--muted); font-size:.9rem; }
@@ -295,6 +297,53 @@ details.box > summary { cursor:pointer; font-weight:600; padding:.35rem 0; }
   .main { padding:1.1rem 1rem 3rem; max-width:100%; }
   .topbar { flex-wrap:wrap; }
   .topbar h1 { font-size:1.3rem; }
+
+  /* --- Barres de filtres : tout doit rétrécir et rester dans l'écran --- */
+  .btn-row { gap:.4rem; }
+  .period { gap:.4rem; font-size:.85rem; }
+  .period .sep, .sep { display:none; }                     /* les séparateurs verticaux gênent en wrap */
+  .field, select.field { flex:1 1 46%; min-width:0 !important; }
+  input.field, input[type=text].field { flex:1 1 100%; min-width:0 !important; width:100%; }
+  .period input[type=date] { flex:1 1 44%; min-width:0; }
+  .pbtn { font-size:.82rem; }
+
+  /* --- Tables de liste → CARTES empilées (events, à valider…) --- */
+  /* Réservé aux wraps de cartes : les autres tables gardent leur scroll horizontal. */
+  .table-wrap.cards { border:none; box-shadow:none; background:transparent; overflow:visible; }
+  table.table-cards, .table-cards tbody, .table-cards tr { display:block; width:100%; }
+  .table-cards thead { display:none; }                      /* les en-têtes deviennent des libellés inline */
+  .table-cards tr { border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow-sm); background:var(--surface); margin-bottom:.85rem; overflow:hidden; }
+  .table-cards td { display:flex; gap:.9rem; justify-content:space-between; align-items:baseline;
+    border:none; border-bottom:1px solid var(--line); padding:.5rem .85rem; text-align:right; }
+  .table-cards tr td:last-child { border-bottom:none; }
+  .table-cards td::before { content:attr(data-label); font-weight:700; color:var(--muted);
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.03em; text-align:left; flex:none; }
+  /* cellules pleine largeur : pas de libellé, contenu empilé à gauche */
+  .table-cards td.full { display:block; text-align:left; }
+  .table-cards td.full::before { display:none; }
+  .table-cards td.cell-photo { padding:0; }
+  .table-cards td.cell-photo .thumb { width:100%; height:170px; border-radius:0; }
+  .table-cards td.cell-title { font-size:1.02rem; padding-top:.7rem; padding-bottom:.6rem; }
+  .table-cards td.cell-title .badge { margin-top:.35rem; }
+  /* cellules « empilées » : libellé au-dessus, contenu en dessous (texte long, statut) */
+  .table-cards td.stack { display:block; text-align:left; }
+  .table-cards td.stack::before { display:block; margin-bottom:.35rem; }
+  .table-cards td.stack .stpick { justify-content:flex-start; }
+  /* actions : boutons pleine largeur empilés */
+  .table-cards td.cell-actions { display:flex; flex-direction:column; gap:.45rem;
+    background:var(--surface-2); padding:.7rem .85rem; }
+  .table-cards td.cell-actions::before { display:none; }
+  .table-cards td.cell-actions form { display:block; width:100%; margin:0; }
+  .table-cards td.cell-actions .btn { width:100%; justify-content:center; }
+  .table-cards .daterange { white-space:normal; }
+  .pager { justify-content:center; }
+
+  /* Formulaire de complétion « À compléter » : une colonne sur mobile. */
+  .complete-grid { grid-template-columns:1fr !important; }
+  /* Cartes génériques : on évite tout débordement horizontal du contenu. */
+  .card { overflow-wrap:anywhere; }
+  .kpis { grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
 }
 @media (max-width:680px) {
   .bar-row { flex-wrap:wrap; }

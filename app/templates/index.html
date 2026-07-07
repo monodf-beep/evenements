@@ -27,18 +27,18 @@
 {% if not events %}
   <div class="card empty">Aucun événement {% if has_period %}sur cette période{% else %}en attente de validation{% endif %}.</div>
 {% else %}
-<div class="table-wrap">
-<table>
+<div class="table-wrap cards">
+<table class="table-cards">
   <thead>
   <tr><th scope="col">Photo</th><th scope="col">Score</th><th scope="col">Titre</th><th scope="col">Date</th><th scope="col">Lieu</th><th scope="col">Justification</th><th scope="col">Statut (clic = classer)</th><th scope="col">Actions</th></tr>
   </thead>
   <tbody>
   {% for e in events %}
   <tr id="e{{ e.id }}" {% if e._republish %}style="background:#faf7ff"{% endif %}>
-    <td>{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="badge fail" title="Pas de photo — lance « Compléter les visuels »">🖼 sans photo</span>{% endif %}</td>
-    <td><strong style="font-size:1.05rem;color:{{ 'var(--ok-ink)' if (e.llm_score or 0) >= 9 else 'var(--brand-ink)' }}">{{ e.llm_score if e.llm_score is not none else '—' }}</strong>/10
+    <td class="full cell-photo" data-label="">{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="badge fail" title="Pas de photo — lance « Compléter les visuels »">🖼 sans photo</span>{% endif %}</td>
+    <td data-label="Score"><strong style="font-size:1.05rem;color:{{ 'var(--ok-ink)' if (e.llm_score or 0) >= 9 else 'var(--brand-ink)' }}">{{ e.llm_score if e.llm_score is not none else '—' }}</strong>/10
       {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
-    <td>
+    <td class="full cell-title" data-label="">
       <a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
       {% set ready = e.enrich_status == 'enriched' and e.url_image and (e.date_event_start or e.date_event_end) %}
       {% if ready %}<br><span class="badge ready" title="Article + photo + date : publiable tel quel">✓ prêt à publier</span>
@@ -49,16 +49,16 @@
       {% if e._ending %}<br><span class="badge last">⏳ dernier week-end</span>{% endif %}
       {% if e.territoire %}<br><small class="muted">{{ e.territoire }}</small>{% endif %}
     </td>
-    <td>
+    <td data-label="Date">
       {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
         <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
       {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>
       {% elif e.date_event_end %}<span class="daterange">jusqu'au {{ e.date_event_end }}</span>
       {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
     </td>
-    <td>{{ e.lieu or '' }} {{ e.ville or '' }}</td>
-    <td class="muted" style="font-size:.85rem"><em>{{ e.llm_justification }}</em></td>
-    <td>
+    <td data-label="Lieu">{{ e.lieu or '' }} {{ e.ville or '' }}</td>
+    <td class="stack muted" style="font-size:.85rem" data-label="Pourquoi"><em>{{ e.llm_justification }}</em></td>
+    <td class="stack" data-label="Statut">
       {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabauda'),('rejected','Rejeté')] %}
       <div class="stpick">
       {% for key, lbl in picks %}
@@ -74,7 +74,7 @@
       </div>
       {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ brouillon WP #{{ e.wp_post_id_cs }}</a>{% endif %}
     </td>
-    <td>
+    <td class="full cell-actions" data-label="">
       <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
       <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon WordPress Cultura Sabauda">🚀 Publier CS</button></form>
     </td>
