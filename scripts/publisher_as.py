@@ -54,6 +54,32 @@ def _is_free(prix: str) -> int:
     return 1 if (prix or "").strip().lower() in _FREE else 0
 
 
+def _iso_dates(event: dict) -> tuple[str, str]:
+    """(début, fin) en ISO AAAA-MM-JJ pour The Events Calendar.
+
+    Priorité aux colonnes déjà normalisées (date_event_start/end). Si elles sont
+    vides, on RÉ-EXTRAIT depuis le texte brut date_start via la logique française
+    de scripts/dates.parse_dates — surtout NE PAS envoyer date_start tel quel :
+    WordPress/PHP ne sait pas lire « 10 juin 2026 » et retombe sur la date du jour.
+    """
+    start = (event.get("date_event_start") or "").strip()
+    end   = (event.get("date_event_end") or "").strip()
+    if not start:
+        raw = (event.get("date_start") or "").strip()
+        if raw:
+            try:
+                from scripts.dates import parse_dates
+                s, e, _ = parse_dates(raw)
+                start = start or s
+                end   = end or e
+            except Exception as exc:  # ré-extraction non bloquante
+                log.warning("Ré-extraction de date impossible (%s) : %s", raw, exc)
+    if not start:
+        log.warning("Événement sans date ISO exploitable : %s",
+                    (event.get("title", "") or "")[:60])
+    return start, end
+
+
 def _build_payload(event: dict) -> dict:
     """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
     title, content = build_post(event)
@@ -74,12 +100,13 @@ def _build_payload(event: dict) -> dict:
         "as_image_credit":          event.get("image_credit", "") or "",
     }
 
+    start_iso, end_iso = _iso_dates(event)
     payload = {
         "wp_post_id":  event.get("wp_post_id_as") or None,
         "title":       title,
         "content":     content,
-        "start_date":  event.get("date_event_start") or event.get("date_start") or "",
-        "end_date":    event.get("date_event_end") or "",
+        "start_date":  start_iso,
+        "end_date":    end_iso,
         "category":    _map_category(event.get("llm_categorie")),
         "territoire":  event.get("territoire", "") or "",
         "score":       event.get("llm_score"),
