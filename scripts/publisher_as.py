@@ -19,7 +19,9 @@ Variables .env dédiées (ne PAS réutiliser celles de culturasabauda.eu) :
 """
 from __future__ import annotations
 import base64
+import json
 import os
+import re
 import sys
 import unicodedata
 from datetime import date
@@ -153,6 +155,28 @@ def _build_payload(event: dict) -> dict:
         payload["venue"] = {"Venue": event["lieu"].strip(),
                             "City": (event.get("ville") or "").strip()}
 
+    # Extrait : la réponse directe SEO si dispo, sinon le début de la description.
+    excerpt = (event.get("seo_answer") or "").strip()
+    if not excerpt:
+        raw = re.sub(r"<[^>]+>", " ", event.get("description") or "")
+        excerpt = re.sub(r"\s+", " ", raw).strip()[:200]
+    if excerpt:
+        payload["excerpt"] = excerpt
+
+    # Étiquettes (post_tag) : tags SEO + expression clé, dédupliqués.
+    tags = []
+    if event.get("seo_tags"):
+        try:
+            tags = [t for t in json.loads(event["seo_tags"]) if t]
+        except (ValueError, TypeError):
+            tags = []
+    if event.get("seo_keyphrase"):
+        tags.append(event["seo_keyphrase"])
+    tags = list(dict.fromkeys(t.strip() for t in tags if t and t.strip()))
+    if tags:
+        payload["tags"] = tags
+
+    # SEO Yoast (uniquement si l'événement a été traité par l'étape SEO).
     if event.get("seo_at"):
         payload["seo"] = {
             "title":         event.get("seo_title", "") or "",

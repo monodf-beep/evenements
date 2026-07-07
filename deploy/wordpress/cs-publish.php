@@ -72,6 +72,7 @@ function cs_publish_event(WP_REST_Request $req) {
     $args = array(
         'post_title'   => $title,
         'post_content' => (string) ($b['content'] ?? ''),
+        'post_excerpt' => (string) ($b['excerpt'] ?? ''),
         'post_status'  => 'draft',            // TOUJOURS brouillon — jamais publish auto
     );
     // Dates : NORMALISER en 'Y-m-d H:i:s'. tribe_create_event retombe silencieusement
@@ -136,6 +137,12 @@ function cs_publish_event(WP_REST_Request $req) {
     $terr_id = cs_resolve_term($b['territoire'] ?? '', 'territoire');
     if ($terr_id) { wp_set_object_terms($post_id, array($terr_id), 'territoire', false); }
 
+    // --- Étiquettes (post_tag) : créées par nom si nécessaire ------------------
+    if (!empty($b['tags']) && is_array($b['tags'])) {
+        $tags = array_filter(array_map('sanitize_text_field', $b['tags']));
+        if ($tags) { wp_set_object_terms($post_id, $tags, 'post_tag', false); }
+    }
+
     // --- Méta du contrat « as_* » (voir docs/CONTRAT_META_AS.md) ---------------
     $meta = isset($b['meta']) && is_array($b['meta']) ? $b['meta'] : array();
     $allowed = array('as_score', 'as_gratuit', 'as_tarif', 'as_horaire',
@@ -146,11 +153,11 @@ function cs_publish_event(WP_REST_Request $req) {
         }
     }
 
-    // --- SEO Rank Math (clés natives) -----------------------------------------
+    // --- SEO Yoast (clés natives) ---------------------------------------------
     $seo = isset($b['seo']) && is_array($b['seo']) ? $b['seo'] : array();
-    if (!empty($seo['title']))         { update_post_meta($post_id, 'rank_math_title', sanitize_text_field($seo['title'])); }
-    if (!empty($seo['description']))   { update_post_meta($post_id, 'rank_math_description', sanitize_text_field($seo['description'])); }
-    if (!empty($seo['focus_keyword'])) { update_post_meta($post_id, 'rank_math_focus_keyword', sanitize_text_field($seo['focus_keyword'])); }
+    if (!empty($seo['title']))         { update_post_meta($post_id, '_yoast_wpseo_title', sanitize_text_field($seo['title'])); }
+    if (!empty($seo['description']))   { update_post_meta($post_id, '_yoast_wpseo_metadesc', sanitize_text_field($seo['description'])); }
+    if (!empty($seo['focus_keyword'])) { update_post_meta($post_id, '_yoast_wpseo_focuskw', sanitize_text_field($seo['focus_keyword'])); }
 
     // --- Image à la une -------------------------------------------------------
     // PRIORITÉ au média déjà téléversé côté Python (fiable). Repli : sideload depuis
