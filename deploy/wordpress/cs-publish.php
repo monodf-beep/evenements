@@ -87,6 +87,8 @@ function cs_publish_event(WP_REST_Request $req) {
         $args['EventEndDate']   = date('Y-m-d', $end_ts)   . ' 23:59:59';
         $args['EventAllDay']    = 'yes';
     }
+    // Site officiel de l'événement (champ natif TEC « EventURL »).
+    if (!empty($b['website'])) { $args['EventURL'] = esc_url_raw((string) $b['website']); }
 
     // --- Auteur selon le score (routage éditorial) ----------------------------
     $score   = isset($b['score']) ? (float) $b['score'] : null;
@@ -137,10 +139,12 @@ function cs_publish_event(WP_REST_Request $req) {
     $terr_id = cs_resolve_term($b['territoire'] ?? '', 'territoire');
     if ($terr_id) { wp_set_object_terms($post_id, array($terr_id), 'territoire', false); }
 
-    // --- Étiquettes (post_tag) : créées par nom si nécessaire ------------------
-    if (!empty($b['tags']) && is_array($b['tags'])) {
+    // --- Étiquettes (post_tag) : TOUJOURS remplacées par la liste fournie -------
+    // Liste vide = on nettoie les tags existants. Contrôle total côté publisher
+    // (aucun tag auto libre ; vocabulaire contrôlé plus tard).
+    if (isset($b['tags']) && is_array($b['tags'])) {
         $tags = array_filter(array_map('sanitize_text_field', $b['tags']));
-        if ($tags) { wp_set_object_terms($post_id, $tags, 'post_tag', false); }
+        wp_set_object_terms($post_id, $tags, 'post_tag', false);
     }
 
     // --- Méta du contrat « as_* » (voir docs/CONTRAT_META_AS.md) ---------------

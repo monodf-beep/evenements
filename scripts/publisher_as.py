@@ -143,6 +143,9 @@ def _build_payload(event: dict) -> dict:
         "score":       event.get("llm_score"),
         "image_url":   event.get("url_image", "") or "",
         "image_alt":   event.get("seo_keyphrase") or event.get("title", "") or "",
+        # Site officiel de l'événement (champ natif TEC « EventURL ») = même valeur
+        # que as_source_officielle_url. Jamais la source radar (charte §8).
+        "website":     "" if is_radar else (event.get("url_source", "") or ""),
         "meta":        meta,
     }
 
@@ -158,18 +161,12 @@ def _build_payload(event: dict) -> dict:
     if excerpt:
         payload["excerpt"] = excerpt
 
-    # Étiquettes (post_tag) : tags SEO + expression clé, dédupliqués.
-    tags = []
-    if event.get("seo_tags"):
-        try:
-            tags = [t for t in json.loads(event["seo_tags"]) if t]
-        except (ValueError, TypeError):
-            tags = []
-    if event.get("seo_keyphrase"):
-        tags.append(event["seo_keyphrase"])
-    tags = list(dict.fromkeys(t.strip() for t in tags if t and t.strip()))
-    if tags:
-        payload["tags"] = tags
+    # Étiquettes : VOLONTAIREMENT AUCUNE. Les tags auto (LLM libre) créaient du bruit
+    # (doublons de catégorie/territoire, dates, combos jetables) = mauvais SEO. On
+    # enverra `tags` seulement plus tard, depuis un VOCABULAIRE CONTRÔLÉ lié aux
+    # sections du site. On envoie une liste VIDE pour que l'endpoint nettoie les tags
+    # existants (les 69 déjà publiés) au prochain --update.
+    payload["tags"] = []
 
     # SEO Yoast (uniquement si l'événement a été traité par l'étape SEO).
     if event.get("seo_at"):
