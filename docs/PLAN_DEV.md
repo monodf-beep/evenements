@@ -142,7 +142,20 @@ Le **contrat de méta `as_*`** (Phase 6) est le point d'alignement entre mon pub
 
 ---
 
+## État d'avancement (mis à jour)
+
+- ✅ **Phase 0** — charte (couleurs + typo), config SEO/Polylang, **GSC validé par DNS**. Terminée.
+- 🔨 **Phase 6** — pont backoffice → WordPress : **fonctionnelle**.
+  - `publisher.py` → culturasabauda.eu (article, « Publier CS ») — restauré, intact.
+  - `publisher_as.py` → agendasabauda.eu (événement TEC, « Publier Agenda ») via `cs/v1/event`.
+  - Dates ✅ (bug corrigé), catégorie ✅, territoire ✅, méta `as_*` ✅, image ✅, Rank Math ✅.
+  - UI : classer ≠ publier séparés, bouton « Publier Agenda », liens vers les 2 brouillons.
+  - **Reste** : (a) test **création + lieu** (chemin `tribe_create_event` + Venue/ville) ;
+    (b) décision `confirm()` sur les boutons ; (c) **publication en lot** (mode masse) — plus tard.
+- ⏭ **Phases 1–5, 7–9** — build WordPress : à démarrer quand les maquettes Claude Design sont prêtes.
+
 ## Prochain pas immédiat
 
-1. 🧑 Terminer **Phase 0.1** (charte couleurs — prompt Chrome déjà donné) → me dire « fait ».
-2. 🧑🤖 J'enchaîne sur le **pas-à-pas de la `carte-evenement`** (Phase 1) + je te livre la liste **définitive** des clés `as_*`.
+1. 🧑 **Clôturer la Phase 6** : test 🗓 Publier Agenda sur un événement **neuf avec lieu+ville**.
+2. 🧑🤖 Quand la **maquette est prête** → **Phase 1 : la `carte-evenement`** (composant JetEngine central),
+   sur le **contrat `as_*` figé** (`docs/CONTRAT_META_AS.md`).
