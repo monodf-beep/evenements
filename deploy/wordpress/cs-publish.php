@@ -89,6 +89,11 @@ function cs_publish_event(WP_REST_Request $req) {
     }
     // Site officiel de l'événement (champ natif TEC « EventURL »).
     if (!empty($b['website'])) { $args['EventURL'] = esc_url_raw((string) $b['website']); }
+    // Prix natif TEC.
+    if (isset($b['cost']) && $b['cost'] !== '') { $args['EventCost'] = sanitize_text_field((string) $b['cost']); }
+    // Afficher la carte (une clé Google Maps est configurée dans TEC).
+    $args['EventShowMap']     = true;
+    $args['EventShowMapLink'] = true;
 
     // --- Auteur selon le score (routage éditorial) ----------------------------
     $score   = isset($b['score']) ? (float) $b['score'] : null;
@@ -119,6 +124,19 @@ function cs_publish_event(WP_REST_Request $req) {
         if ($venue_id > 0) { $args['EventVenueID'] = $venue_id; }
     }
 
+    // --- Organisateur (Organizer) : réutilise s'il existe, sinon crée ----------
+    $org_id = 0;
+    $org = isset($b['organizer']) ? trim((string) $b['organizer']) : '';
+    if ($org !== '') {
+        $existing_org = get_page_by_title($org, OBJECT, 'tribe_organizer');
+        if ($existing_org) {
+            $org_id = (int) $existing_org->ID;
+        } elseif (function_exists('tribe_create_organizer')) {
+            $org_id = (int) tribe_create_organizer(array('Organizer' => $org));
+        }
+        if ($org_id > 0) { $args['EventOrganizerID'] = $org_id; }
+    }
+
     // --- Création ou mise à jour ----------------------------------------------
     $existing_id = isset($b['wp_post_id']) ? (int) $b['wp_post_id'] : 0;
     $updated = false;
@@ -136,6 +154,7 @@ function cs_publish_event(WP_REST_Request $req) {
     // Lien du lieu FORCÉ (tribe_update_event ne relie pas toujours le Venue sur la
     // mise à jour) : on écrit directement la méta que TEC lit pour lier le lieu.
     if ($venue_id > 0) { update_post_meta($post_id, '_EventVenueID', $venue_id); }
+    if ($org_id > 0)   { update_post_meta($post_id, '_EventOrganizerID', $org_id); }
 
     // --- Catégorie (tribe_events_cat) + territoire (taxo maison) ---------------
     $cat_id = cs_resolve_term($b['category'] ?? '', 'tribe_events_cat');
