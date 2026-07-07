@@ -64,30 +64,25 @@ def _norm(s: str) -> str:
     return s.replace("’", "'")
 
 
-# Libellé interne du territoire (base) → SLUG du terme « territoire » semé (parent).
-# Les 4 territoires. Résout l'écart FR/IT/variantes ; à défaut on renvoie la valeur brute.
-_TERRITOIRES = {
-    "savoie": "savoie-haute-savoie",
-    "haute-savoie": "savoie-haute-savoie",
-    "savoie / haute-savoie": "savoie-haute-savoie",
-    "savoie/haute-savoie": "savoie-haute-savoie",
-    "piemont": "piemont",          # « Piémont » → normalisé « piemont »
-    "piemonte": "piemont",
-    "piedmont": "piemont",
-    "vallee d'aoste": "vallee-d-aoste",
-    "val d'aoste": "vallee-d-aoste",
-    "valle d'aosta": "vallee-d-aoste",
-    "vallee-d-aoste": "vallee-d-aoste",
-    "nice": "nice-alpes-maritimes",
-    "nice / alpes-maritimes": "nice-alpes-maritimes",
-    "nice/alpes-maritimes": "nice-alpes-maritimes",
-    "alpes-maritimes": "nice-alpes-maritimes",
-}
-
-
 def _map_territoire(value: str) -> str:
-    """Traduit le territoire interne vers le slug du terme semé (parent des 4)."""
-    return _TERRITOIRES.get(_norm(value), (value or "").strip())
+    """Territoire interne → SLUG du terme « territoire » semé (parent des 4).
+
+    Détection par MOT-CLÉ (robuste à toutes les variantes FR/IT : « Vallée d'Aoste »,
+    « Valle d'Aosta », « Vallee-Aoste »… ; « Piémont »/« Piemonte »/« Piedmont » ; etc.).
+    À défaut de reconnaissance, on renvoie la valeur brute.
+    """
+    v = _norm(value)
+    if not v:
+        return ""
+    if "aost" in v:                                    # Vallée d'Aoste / Valle d'Aosta
+        return "vallee-d-aoste"
+    if "piemont" in v or "piedmont" in v:              # Piémont / Piemonte / Piedmont
+        return "piemont"
+    if "savoie" in v:                                  # Savoie / Haute-Savoie
+        return "savoie-haute-savoie"
+    if "nice" in v or "maritime" in v or "azur" in v:  # Nice / Alpes-Maritimes / Côte d'Azur
+        return "nice-alpes-maritimes"
+    return (value or "").strip()
 
 
 def _iso_dates(event: dict) -> tuple[str, str]:
