@@ -133,6 +133,10 @@ function cs_publish_event(WP_REST_Request $req) {
         return new WP_Error('tec_fail', 'Création TEC échouée.', array('status' => 500));
     }
 
+    // Lien du lieu FORCÉ (tribe_update_event ne relie pas toujours le Venue sur la
+    // mise à jour) : on écrit directement la méta que TEC lit pour lier le lieu.
+    if ($venue_id > 0) { update_post_meta($post_id, '_EventVenueID', $venue_id); }
+
     // --- Catégorie (tribe_events_cat) + territoire (taxo maison) ---------------
     $cat_id = cs_resolve_term($b['category'] ?? '', 'tribe_events_cat');
     if ($cat_id) { wp_set_object_terms($post_id, array($cat_id), 'tribe_events_cat', false); }
