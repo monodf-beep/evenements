@@ -146,6 +146,9 @@ def _build_payload(event: dict) -> dict:
         # Site officiel de l'événement (champ natif TEC « EventURL ») = même valeur
         # que as_source_officielle_url. Jamais la source radar (charte §8).
         "website":     "" if is_radar else (event.get("url_source", "") or ""),
+        # Champs natifs TEC : organisateur + prix (si on a la donnée).
+        "organizer":   (event.get("organisateur") or "").strip(),
+        "cost":        (event.get("prix") or "").strip(),
         "meta":        meta,
     }
 
