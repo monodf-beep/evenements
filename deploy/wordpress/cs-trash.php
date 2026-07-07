@@ -28,7 +28,42 @@ add_action('rest_api_init', function () {
             return current_user_can('delete_posts');
         },
     ));
+    // Inventaire des événements (pour détecter les doublons CÔTÉ WordPress — ceux
+    // qui ne sont pas tracés comme doublons dans la base du backoffice).
+    register_rest_route('cs/v1', '/list', array(
+        'methods'             => 'GET',
+        'callback'            => 'cs_list_events',
+        'permission_callback' => function () {
+            return current_user_can('edit_posts');
+        },
+    ));
 });
+
+/**
+ * Liste les événements TEC (hors corbeille) avec de quoi juger les doublons et la
+ * complétude : titre, date de début, statut, présence d'un lieu et d'une image.
+ */
+function cs_list_events(WP_REST_Request $req) {
+    $posts = get_posts(array(
+        'post_type'   => 'tribe_events',
+        'post_status' => array('draft', 'pending', 'future', 'publish', 'private'),
+        'numberposts' => -1,
+        'orderby'     => 'ID',
+        'order'       => 'ASC',
+    ));
+    $out = array();
+    foreach ($posts as $p) {
+        $out[] = array(
+            'id'     => $p->ID,
+            'title'  => get_the_title($p->ID),
+            'status' => $p->post_status,
+            'start'  => get_post_meta($p->ID, '_EventStartDate', true),
+            'venue'  => (int) get_post_meta($p->ID, '_EventVenueID', true),
+            'thumb'  => has_post_thumbnail($p->ID) ? 1 : 0,
+        );
+    }
+    return new WP_REST_Response($out, 200);
+}
 
 function cs_trash_event(WP_REST_Request $req) {
     $b  = $req->get_json_params();
