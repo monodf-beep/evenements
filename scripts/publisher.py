@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""Publie un événement vers WordPress CS via REST API + Application Password.
+"""Publie un événement vers WordPress via l'endpoint maison « cs/v1/event ».
 
-TOUJOURS en status='draft' — jamais 'publish' automatiquement.
-Sprint 1 : post_type='post' + taxonomie 'agenda' + meta fields.
-Sprint 2 : migrer vers CPT 'agenda' JetEngine.
+Architecture (Phase 6) : tout le travail The Events Calendar se fait CÔTÉ SERVEUR
+dans le mu-plugin deploy/wordpress/cs-publish.php (tribe_create_event, lieu,
+catégorie tribe_events_cat, taxonomie « territoire », méta « as_* », SEO Rank Math,
+image à la une, auteur selon le score). Ici on ne fait que construire un JSON propre
+et l'envoyer. TOUJOURS status=draft côté serveur — jamais publish automatiquement.
+
+Le score décide la SIGNATURE (Cultura Sabauda ≥ 7 / Agenda Sabauda < 7), pas
+« publier ou pas » : tous les événements retenus partent vers WordPress en brouillon.
 """
 from __future__ import annotations
 import base64
 import html
 import json
-import mimetypes
 import os
 import re
 import sys
+from datetime import date
 from pathlib import Path
-from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 
@@ -24,19 +28,22 @@ from utils.logger import get_logger
 
 log = get_logger("publisher")
 
-# Certaines protections anti-bot (WAF/nginx, ex. Hostinger) renvoient un 403 aux
-# requêtes sans User-Agent de navigateur. On se présente comme un navigateur.
+# Certaines protections anti-bot (WAF/nginx) renvoient un 403 sans User-Agent de
+# navigateur. On se présente comme un navigateur.
 _UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
 
+# Valeurs de prix qui signifient « entrée libre » → badge as_gratuit=1.
+_FREE = {"gratuit", "gratuite", "gratuit·e", "entrée libre", "entree libre",
+         "libre", "free", "0", "0€", "0 €"}
+
 
 def _headers(auth) -> dict:
-    """En-têtes communs : navigateur + auth de secours via un en-tête PERSONNALISÉ.
-    Beaucoup d'hébergeurs (nginx/LiteSpeed) suppriment l'en-tête `Authorization` →
-    l'app-password n'atteint pas WordPress (rest_not_logged_in). On envoie donc AUSSI
-    les identifiants dans `X-CS-Auth` (que le serveur ne filtre pas), lu côté WordPress
-    par le mu-plugin cs-rest-auth.php (voir deploy/wordpress/). L'auth Basic normale
-    reste en place : si l'en-tête n'est PAS supprimé, elle suffit."""
+    """Navigateur + auth de secours via en-tête PERSONNALISÉ. Beaucoup d'hébergeurs
+    (nginx/LiteSpeed) suppriment l'en-tête `Authorization` → l'app-password n'atteint
+    pas WordPress (rest_not_logged_in). On envoie donc AUSSI les identifiants dans
+    `X-CS-Auth` (non filtré), lu par le mu-plugin cs-rest-auth.php. L'auth Basic
+    normale reste en place : si l'en-tête n'est pas supprimé, elle suffit."""
     token = base64.b64encode(f"{auth[0]}:{auth[1]}".encode("utf-8")).decode("ascii")
     return {**_UA, "X-CS-Auth": token}
 
@@ -88,6 +95,8 @@ def build_post(event: dict) -> tuple[str, str]:
         if art.get("encadre"):
             parts.append("<h3>En pratique</h3>")
             parts.append(_md_to_html(art["encadre"]))
+        # NB : les sources RADAR ne sont jamais listées (charte §8) ; l'agent ne met
+        # dans « sources » que des sources officielles publiables.
         sources = [s for s in (data.get("sources") or []) if s]
         if sources:
             parts.append("<h3>Sources</h3><ul>")
@@ -106,9 +115,10 @@ _WP_CATEGORIES_FILE = ROOT / "config" / "wp_categories.txt"
 
 
 def _map_category(name: str) -> str:
-    """Traduit une catégorie interne (les 11) vers la catégorie WordPress réelle,
-    d'après config/wp_categories.txt (lignes « interne = WordPress »). Sans
-    correspondance, renvoie le nom interne inchangé."""
+    """Traduit une catégorie interne (les 11) vers le libellé/slug WordPress réel,
+    d'après config/wp_categories.txt (lignes « interne = WordPress »). L'endpoint
+    résout ensuite par slug puis par nom dans tribe_events_cat. Sans correspondance,
+    renvoie le nom interne inchangé."""
     name = (name or "").strip()
     if not name or not _WP_CATEGORIES_FILE.exists():
         return name
@@ -125,203 +135,92 @@ def _map_category(name: str) -> str:
     return name
 
 
-def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
-    """ID d'un terme (taxonomy = 'categories' | 'tags') par son nom ; le crée s'il
-    n'existe pas. Jamais bloquant : renvoie None en cas d'échec."""
-    name = (name or "").strip()
-    if not name:
-        return None
-    try:
-        r = requests.get(f"{wp_url}/?rest_route=/wp/v2/{taxonomy}",
-                         params={"search": name, "per_page": 20},
-                         auth=auth, headers=_headers(auth), timeout=20)
-        r.raise_for_status()
-        for t in r.json():
-            if (t.get("name") or "").strip().lower() == name.lower():
-                return t.get("id")
-        c = requests.post(f"{wp_url}/?rest_route=/wp/v2/{taxonomy}",
-                          json={"name": name}, auth=auth, headers=_headers(auth), timeout=20)
-        c.raise_for_status()
-        return c.json().get("id")
-    except (requests.RequestException, ValueError) as exc:
-        log.warning("Terme %s « %s » non résolu : %s", taxonomy, name, exc)
-        return None
+def _is_free(prix: str) -> int:
+    """1 si le prix signifie « gratuit », sinon 0."""
+    return 1 if (prix or "").strip().lower() in _FREE else 0
 
 
-def _upload_featured_media(wp_url: str, auth, image_url: str,
-                           alt: str = "", caption: str = "") -> int | None:
-    """Télécharge l'image source et l'envoie dans la médiathèque WordPress.
+def _build_payload(event: dict) -> dict:
+    """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
+    title, content = build_post(event)
 
-    Retourne le media_id (à passer en featured_media) ou None si échec.
-    Jamais bloquant : un échec d'upload laisse le post sans vignette.
-    alt/caption : texte alternatif (SEO, avec l'expression clé) et légende (crédit photo).
-    """
-    try:
-        img = requests.get(image_url, timeout=30, headers=_UA)
-        img.raise_for_status()
-        content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
-        if not content_type.startswith("image/"):
-            log.warning("URL image non-image (%s) : %s", content_type or "?", image_url)
-            return None
+    # Le radar n'est jamais crédité ni lié (charte §8) : on ne pousse pas son URL.
+    is_radar = (event.get("source_type") == "radar"
+                or "(radar)" in (event.get("source_name") or ""))
+    prix = event.get("prix", "") or ""
 
-        # Nom de fichier : basename de l'URL, sinon dérivé du type MIME.
-        name = os.path.basename(urlparse(image_url).path) or "image"
-        if "." not in name:
-            ext = mimetypes.guess_extension(content_type) or ".jpg"
-            name = f"{name}{ext}"
+    meta = {
+        "as_score":                 event.get("llm_score", ""),
+        "as_gratuit":               _is_free(prix),
+        "as_tarif":                 "" if _is_free(prix) else prix,
+        "as_horaire":               event.get("horaire", "") or "",
+        "as_billetterie_url":       event.get("billetterie_url", "") or "",
+        "as_source_officielle_url": "" if is_radar else (event.get("url_source", "") or ""),
+        "as_verifie_le":            date.today().isoformat(),
+        "as_image_credit":          event.get("image_credit", "") or "",
+    }
 
-        resp = requests.post(
-            f"{wp_url}/?rest_route=/wp/v2/media",
-            data=img.content,
-            auth=auth,
-            headers={
-                **_headers(auth),
-                "Content-Type": content_type,
-                "Content-Disposition": f'attachment; filename="{name}"',
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
-        media_id = resp.json().get("id")
-        log.info("Média uploadé WP id=%s : %s", media_id, image_url)
-        # Renseigne le texte alternatif (SEO) et la légende (crédit photo).
-        if media_id and (alt or caption):
-            try:
-                requests.post(
-                    f"{wp_url}/?rest_route=/wp/v2/media/{media_id}",
-                    json={"alt_text": alt, "caption": caption},
-                    auth=auth, headers=_headers(auth), timeout=20)
-            except requests.RequestException:
-                pass  # non bloquant : la vignette est déjà en place
-        return media_id
-    except requests.HTTPError as exc:
-        log.warning("Upload média refusé (%s) : %s", exc.response.status_code,
-                    exc.response.text[:200])
-        return None
-    except (requests.RequestException, ValueError) as exc:
-        log.warning("Upload média impossible : %s", exc)
-        return None
+    payload = {
+        "wp_post_id":  event.get("wp_post_id_cs") or None,
+        "title":       title,
+        "content":     content,
+        "start_date":  event.get("date_event_start") or event.get("date_start") or "",
+        "end_date":    event.get("date_event_end") or "",
+        "category":    _map_category(event.get("llm_categorie")),
+        "territoire":  event.get("territoire", "") or "",
+        "score":       event.get("llm_score"),
+        "image_url":   event.get("url_image", "") or "",
+        "image_alt":   event.get("seo_keyphrase") or event.get("title", "") or "",
+        "meta":        meta,
+    }
+
+    # Lieu (Venue) : nom + ville si disponibles.
+    if (event.get("lieu") or "").strip():
+        payload["venue"] = {"Venue": event["lieu"].strip(),
+                            "City": (event.get("ville") or "").strip()}
+
+    # SEO Rank Math (uniquement si l'événement a été traité par l'étape SEO).
+    if event.get("seo_at"):
+        payload["seo"] = {
+            "title":         event.get("seo_title", "") or "",
+            "description":   event.get("seo_meta", "") or "",
+            "focus_keyword": event.get("seo_keyphrase", "") or "",
+        }
+
+    return payload
 
 
 def publish_to_cs(event: dict) -> int | None:
-    """Publie l'événement en draft WordPress. Retourne le wp_post_id ou None."""
+    """Publie/actualise l'événement en brouillon WordPress (événement TEC).
+    Retourne le wp_post_id ou None. Le nom historique est conservé pour ne pas
+    toucher à l'appelant (app.py) ; le routage CS/AS se fait via le score, côté serveur."""
     load_dotenv(ROOT / ".env")
     wp_url  = os.getenv("WP_URL", "").rstrip("/")
     wp_user = os.getenv("WP_USER", "")
-    wp_pass = os.getenv("WP_APP_PASSWORD", "")  # Application Password WP
+    wp_pass = os.getenv("WP_APP_PASSWORD", "")
 
     if not all([wp_url, wp_user, wp_pass]):
         log.error("Variables WordPress manquantes (WP_URL, WP_USER, WP_APP_PASSWORD)")
         return None
 
     auth = (wp_user, wp_pass)
-    # PRIORITÉ à l'article enrichi (titre + chapô + corps + encadré + sources) ;
-    # repli sur le brut si l'événement n'a pas été rédigé par l'agent.
-    title, content = build_post(event)
-    # Méta événementielles publiques (lisibles via REST une fois le post publié).
-    # On N'EXPOSE PAS le scoring interne (llm_score/justification), ni l'URL d'une
-    # source RADAR (charte §8 : le radar n'est jamais crédité ni lié).
-    is_radar = (event.get("source_type") == "radar"
-                or "(radar)" in (event.get("source_name") or ""))
-    meta = {
-        "event_date_start":      event.get("date_start", ""),
-        "event_lieu":            event.get("lieu", ""),
-        "event_ville":           event.get("ville", ""),
-        "event_territoire":      event.get("territoire", ""),
-        "event_categorie":       event.get("llm_categorie", ""),
-        "event_organisateur":    event.get("organisateur", ""),
-        "event_prix":            event.get("prix", ""),
-        "event_url_source":      "" if is_radar else event.get("url_source", ""),
-    }
-    # Le titre de l'ARTICLE reste le titre éditorial ; le title Yoast (SEO, avec
-    # la marque) part séparément en méta (_yoast_wpseo_title) ci-dessous.
-    payload = {
-        "title":   title,
-        "content": content,
-        "status":  "draft",   # TOUJOURS draft — Franck publie manuellement
-    }
+    payload = _build_payload(event)
+    endpoint = f"{wp_url}/?rest_route=/cs/v1/event"
 
-    # --- SEO / Yoast : méta, expression clé, extrait, slug, aperçu social ------
-    seo_desc = event.get("seo_meta") or ""
-    social_desc = event.get("seo_answer") or seo_desc  # la réponse directe, + percutante
-    if event.get("seo_at"):
-        if event.get("seo_keyphrase"):
-            meta["_yoast_wpseo_focuskw"] = event["seo_keyphrase"]
-        if event.get("seo_title"):
-            meta["_yoast_wpseo_title"] = event["seo_title"]
-        if seo_desc:
-            meta["_yoast_wpseo_metadesc"] = seo_desc
-        # Aperçu réseaux sociaux (Open Graph = Facebook/LinkedIn/WhatsApp, + Twitter).
-        # L'image OG est la vignette (featured_media) : Yoast la reprend d'office.
-        if event.get("seo_title"):
-            meta["_yoast_wpseo_opengraph-title"] = event["seo_title"]
-            meta["_yoast_wpseo_twitter-title"] = event["seo_title"]
-        if social_desc:
-            meta["_yoast_wpseo_opengraph-description"] = social_desc
-            meta["_yoast_wpseo_twitter-description"] = social_desc
-        if event.get("seo_answer"):
-            payload["excerpt"] = event["seo_answer"]
-        if event.get("seo_slug"):
-            payload["slug"] = event["seo_slug"]
-    payload["meta"] = meta
-
-    # --- Catégorie (les 11) + étiquettes → taxonomies WordPress natives -------
-    # Mapping optionnel « catégorie interne → catégorie WordPress » via
-    # config/wp_categories.txt (pour coller à la taxonomie réelle de CS sans
-    # créer de doublons). À défaut, on utilise le nom interne tel quel.
-    cat_name = _map_category(event.get("llm_categorie"))
-    cat_id = _resolve_term(wp_url, auth, "categories", cat_name)
-    if cat_id:
-        payload["categories"] = [cat_id]
-    tag_names = []
-    if event.get("seo_tags"):
-        try:
-            tag_names = [t for t in json.loads(event["seo_tags"]) if t]
-        except (ValueError, TypeError):
-            tag_names = []
-    if event.get("seo_keyphrase"):
-        tag_names.append(event["seo_keyphrase"])
-    tag_ids = [i for i in (_resolve_term(wp_url, auth, "tags", n)
-                           for n in dict.fromkeys(tag_names)) if i]
-    if tag_ids:
-        payload["tags"] = tag_ids
-
-    # Image à la une : upload dans la médiathèque puis featured_media.
-    # _thumbnail_url en meta ne définit PAS la vignette via l'API REST.
-    # alt = expression clé (SEO) ; légende = crédit photo.
-    if event.get("url_image"):
-        media_id = _upload_featured_media(
-            wp_url, auth, event["url_image"],
-            alt=event.get("seo_keyphrase") or event.get("title", ""),
-            caption=event.get("image_credit", ""))
-        if media_id:
-            payload["featured_media"] = media_id
-        else:
-            log.info("Post sans vignette (upload média échoué) : %s",
-                     event.get("title", "")[:60])
-
-    # MISE À JOUR si un brouillon existe déjà pour cet événement (évite les
-    # doublons quand on reclique « Publier CS ») ; création sinon. Si l'ancien
-    # brouillon a été supprimé côté WP (404), on recrée.
-    existing = event.get("wp_post_id_cs")
-    endpoint = (f"{wp_url}/?rest_route=/wp/v2/posts/{existing}" if existing
-                else f"{wp_url}/?rest_route=/wp/v2/posts")
     try:
         resp = requests.post(endpoint, json=payload, auth=auth,
-                             headers=_headers(auth), timeout=30)
-        if existing and resp.status_code == 404:
-            log.info("Brouillon WP %s introuvable → recréation", existing)
-            resp = requests.post(f"{wp_url}/?rest_route=/wp/v2/posts", json=payload,
-                                 auth=auth, headers=_headers(auth), timeout=30)
+                             headers=_headers(auth), timeout=60)
         resp.raise_for_status()
-        post_id = resp.json().get("id")
-        verb = "mis à jour" if existing and post_id == existing else "créé"
-        log.info("Brouillon WP %s id=%s : %s", verb, post_id, event.get("title", "")[:60])
+        body = resp.json()
+        post_id = body.get("id")
+        verb = "mis à jour" if body.get("updated") else "créé"
+        log.info("Événement WP %s id=%s : %s", verb, post_id,
+                 (event.get("title", "") or "")[:60])
         return post_id
     except requests.HTTPError as exc:
         log.error("Erreur WordPress API (%s) : %s", exc.response.status_code,
-                  exc.response.text[:200])
+                  exc.response.text[:300])
         return None
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError) as exc:
         log.error("Connexion WordPress impossible : %s", exc)
         return None
