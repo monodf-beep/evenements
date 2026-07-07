@@ -110,8 +110,8 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
 
     # 2) Plage même mois : « du 5 au 8 juillet », « dal 5 al 8 luglio », « 5 e 6 luglio »,
     #    « sabato 5 e domenica 6 luglio » (un mot — ex. jour de semaine — toléré après le lien)
-    m = re.search(rf"(?:du|dal|dall'|dall’|da)?\s*(\d{{1,2}})\s*(?:au|al|all'|all’|et|e|&|[-–—à])\s*"
-                  rf"(?:[a-zà-ÿ]+\s+)?(\d{{1,2}})\s+({_MONTH_RE})\.?\s*(\d{{4}})?", t)
+    m = re.search(rf"(?:du|dal|dall'|dall’|da)?\s*(?<!\d)(\d{{1,2}})(?!\d)\s*(?:au|al|all'|all’|et|e|&|[-–—à])\s*"
+                  rf"(?:[a-zà-ÿ]+\s+)?(?<!\d)(\d{{1,2}})(?!\d)\s+({_MONTH_RE})\.?\s*(\d{{4}})?", t)
     if m:
         d1, d2, mon, yr = int(m[1]), int(m[2]), M[m[3]], m[4]
         y = int(yr) if yr else _year(min(d1, d2), mon, ref)
@@ -124,8 +124,21 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
                   rf"(?:au|al|all'|all’)\s*(\d{{1,2}})\s+({_MONTH_RE})\.?\s*(\d{{4}})?", t)
     if m:
         d1, mon1, y1, d2, mon2, y2 = int(m[1]), M[m[2]], m[3], int(m[4]), M[m[5]], m[6]
-        yy1 = int(y1) if y1 else _year(d1, mon1, ref)
-        yy2 = int(y2) if y2 else (yy1 if mon2 >= mon1 else yy1 + 1)
+        # Année : si UNE SEULE borne la porte (« du 2 mars au 27 avril 2025 »), on la
+        # PROPAGE à l'autre au lieu de la deviner — sinon _year() peut inventer une
+        # année délirante pour la borne nue (ex. « 2 mars » → 2027) et créer une plage
+        # de deux ans à l'envers. On recule/avance d'un an si l'ordre des mois l'impose.
+        if y1 and y2:
+            yy1, yy2 = int(y1), int(y2)
+        elif y2 and not y1:            # année seulement sur la fin → la propager au début
+            yy2 = int(y2)
+            yy1 = yy2 if mon1 <= mon2 else yy2 - 1
+        elif y1 and not y2:            # année seulement sur le début → la propager à la fin
+            yy1 = int(y1)
+            yy2 = yy1 if mon2 >= mon1 else yy1 + 1
+        else:                          # aucune année → inférence + cohérence des mois
+            yy1 = _year(d1, mon1, ref)
+            yy2 = yy1 if mon2 >= mon1 else yy1 + 1
         s, e = _iso(yy1, mon1, d1), _iso(yy2, mon2, d2)
         if s and e:
             return (min(s, e), max(s, e), "parsed")
