@@ -178,10 +178,16 @@ def _select(conn, args, today: str):
     return conn.execute(sql, params).fetchall()
 
 
-def _signal_state(ev: dict) -> str:
-    """État courant sérialisé : 'ready' ou 'missing:Lieu,Image' (pour l'anti-spam)."""
-    miss = comp.missing_labels(ev)
-    return "ready" if not miss else "missing:" + ",".join(miss)
+def _is_upcoming(ev: dict, today: str) -> bool:
+    """True si l'événement se termine (ou commence) aujourd'hui ou après.
+
+    Garde-fou de la porte : un événement peut devenir « complet » après complétion
+    mais avec une date PASSÉE (article sur une édition révolue, ou année mal
+    extraite). On ne pousse jamais un passé sur l'agenda — cf. run du 2026-07 où
+    « Nice Jazz Fest » s'est retrouvé daté 2024.
+    """
+    end = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
+    return bool(end) and end >= today
 
 
 def main(argv=None) -> int:
@@ -254,12 +260,23 @@ def main(argv=None) -> int:
         ev = complete_event(ev, conn, client, blocked, banners,
                             allow_web=allow_web, want_banner=want_banner,
                             model_extract=model_extract)
-        state = _signal_state(ev)
-        prev = ev.get("autocomplete_state") or ""
         now_complete = comp.is_complete(ev)
+        upcoming = _is_upcoming(ev, today)
+        # On ne pousse QUE si complet ET à venir (jamais un passé, cf. _is_upcoming).
+        publishable = now_complete and upcoming
+        end_date = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
+
+        # État pour l'anti-spam : ready / past:<date> / missing:<champs>.
+        if publishable:
+            state = "ready"
+        elif now_complete and not upcoming:
+            state = f"past:{end_date}"
+        else:
+            state = "missing:" + ",".join(comp.missing_labels(ev))
+        prev = ev.get("autocomplete_state") or ""
 
         wp_id = None
-        if now_complete and publish_to_as and not ev.get("wp_post_id_as"):
+        if publishable and publish_to_as and not ev.get("wp_post_id_as"):
             wp_id = publish_to_as(ev)
             if wp_id:
                 conn.execute(
@@ -269,8 +286,11 @@ def main(argv=None) -> int:
 
         # Signal Slack UNIQUEMENT si l'état a changé (anti-spam).
         if not args.no_slack and state != prev:
-            if now_complete:
+            if publishable:
                 slack.notify_ready(ev, wp_id or ev.get("wp_post_id_as"), wp_as_base)
+            elif now_complete and not upcoming:
+                slack.notify_incomplete(
+                    ev, [f"Date à vérifier — semble PASSÉE ({end_date})"])
             else:
                 slack.notify_incomplete(ev, comp.missing_labels(ev))
 
@@ -279,8 +299,12 @@ def main(argv=None) -> int:
             "WHERE id=?", (state, ev["id"]))
         conn.commit()
 
-        if now_complete:
+        if publishable:
             ready += 1
+        elif now_complete and not upcoming:
+            still += 1
+            log.info("id=%s complet mais date PASSÉE (%s) — non poussé, à vérifier",
+                     ev["id"], end_date)
         else:
             still += 1
             log.info("id=%s encore incomplet : manque %s", ev["id"],
