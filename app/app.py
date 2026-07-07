@@ -234,8 +234,11 @@ def inject_globals():
         pass
     return {"nav": {"pending": pending, "validate": validate},
             "nav_alert": friendly_alert(),
-            # Base WordPress (lien direct vers un brouillon créé : wp_post_id_cs).
-            "wp_base": (os.getenv("WP_URL", "") or "").rstrip("/")}
+            # Bases WordPress (liens directs vers les brouillons créés) :
+            #   wp_base    → culturasabauda.eu (article, wp_post_id_cs)
+            #   wp_as_base → agendasabauda.eu (événement, wp_post_id_as)
+            "wp_base": (os.getenv("WP_URL", "") or "").rstrip("/"),
+            "wp_as_base": (os.getenv("WP_AS_URL", "") or "").rstrip("/")}
 
 
 # --------------------------------------------------------------------------- #
@@ -882,6 +885,15 @@ def action(event_id: int, action: str):
         else:
             flash(f"❌ Échec WordPress pour « {title} » — vérifie WP_URL / identifiants (voir logs).", "err")
     elif action == "subdomain":
+        # CLASSER uniquement (pas de publication) — miroir des pastilles de statut.
+        conn.execute(
+            "UPDATE events_raw SET statut='published_sub' WHERE id=?",
+            (event_id,)
+        )
+        conn.commit()
+        flash(f"📋 « {title} » classé pour Agenda Sabauda.", "ok")
+    elif action == "publish_as":
+        # PUBLIER vers agendasabauda.eu (événement TEC) — pendant de « Publier CS ».
         existed = event["wp_post_id_as"]
         wp_id = publish_to_as(dict(event))
         if wp_id:

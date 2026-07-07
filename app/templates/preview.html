@@ -16,9 +16,14 @@
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <button class="btn btn-ok btn-sm">🚀 Publier CS</button>
   </form>
+  <form method="post" action="/action/{{ e.id }}/publish_as" style="margin:0"
+        onsubmit="return confirm('Créer un brouillon événement Agenda Sabauda (agendasabauda.eu) ?')">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <button class="btn btn-ok btn-sm">🗓 Publier Agenda</button>
+  </form>
   <form method="post" action="/action/{{ e.id }}/subdomain" style="margin:0">
     <input type="hidden" name="next" value="{{ request.full_path }}">
-    <button class="btn btn-purple btn-sm">📋 Agenda Sabauda</button>
+    <button class="btn btn-purple btn-sm" title="Classer seulement (ne publie pas)">📋 Classer Agenda</button>
   </form>
   <form method="post" action="/action/{{ e.id }}/reject" style="margin:0"
         onsubmit="return confirm('Rejeter cet événement ?')">
@@ -26,7 +31,8 @@
     <button class="btn btn-ghost btn-sm">❌ Rejeter</button>
   </form>
   {% if e.statut %}<span class="st st-{{ e.statut }}" style="margin-left:auto">{{ status_labels.get(e.statut, e.statut) if status_labels else e.statut }}</span>{% endif %}
-  {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ brouillon WP #{{ e.wp_post_id_cs }}</a>{% endif %}
+  {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ CS WP #{{ e.wp_post_id_cs }}</a>{% endif %}
+  {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ Agenda WP #{{ e.wp_post_id_as }}</a>{% endif %}
 </div>
 
 {% if e.llm_categorie %}<div class="eyebrow">{{ e.llm_categorie }}</div>{% endif %}

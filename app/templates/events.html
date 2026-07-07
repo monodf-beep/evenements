@@ -112,12 +112,14 @@
       {% if e.statut not in ['evaluated','published_cs','published_sub','rejected'] %}
       <div class="muted" style="font-size:.7rem;margin-top:3px;">actuel : {{ status_labels.get(e.statut, e.statut) }}</div>
       {% endif %}
-      {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ brouillon WP #{{ e.wp_post_id_cs }}</a>{% endif %}
+      {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ CS WP #{{ e.wp_post_id_cs }}</a>{% endif %}
+      {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ Agenda WP #{{ e.wp_post_id_as }}</a>{% endif %}
     </td>
     <td>{{ e.llm_score if e.llm_score is not none else '—' }}</td>
     <td>
       <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
-      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon WordPress Cultura Sabauda">🚀 Publier CS</button></form>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon article Cultura Sabauda (culturasabauda.eu)">🚀 Publier CS</button></form>
+      <form method="POST" action="/action/{{ e.id }}/publish_as" style="display:inline" onsubmit="return confirm('Créer un brouillon événement Agenda Sabauda (agendasabauda.eu) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon événement Agenda Sabauda (agendasabauda.eu)">🗓 Publier Agenda</button></form>
     </td>
   </tr>
   {% endfor %}
