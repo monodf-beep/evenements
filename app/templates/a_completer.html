@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set active = 'tocomplete' %}
+{% block title %}À compléter — Agenda CS{% endblock %}
+{% block h1 %}À compléter <span class="muted" style="font-size:1rem">({{ events|length }})</span>{% endblock %}
+{% block subtitle %}<div class="sub">Événements retenus mais <strong>incomplets</strong> : ils restent ici (pas de brouillon WordPress) tant qu'il manque un champ obligatoire. L'agent « 🛠️ Auto-compléter » scrape + cherche pour les compléter et signale sur Slack ; tu peux aussi compléter à la main ci-dessous.</div>{% endblock %}
+
+{% block content %}
+
+{% if not events %}
+  <div class="card" style="padding:1.4rem;text-align:center">
+    🎉 Rien à compléter — tous les événements retenus à venir sont complets et prêts pour le brouillon.
+  </div>
+{% else %}
+
+<div class="btn-row" style="margin-bottom:1rem">
+  <form method="POST" action="/run/autocomplete" style="display:inline">
+    <button class="btn btn-primary btn-sm" title="Complète date/lieu/image par scraping + recherche web, pousse les complets en brouillon, signale le reste sur Slack.">🛠️ Lancer l'auto-complétion</button>
+  </form>
+  <span class="muted" style="margin-left:.6rem">Obligatoires : Date · Lieu · Ville · Territoire · Catégorie · Image.</span>
+</div>
+
+{% for e in events %}
+<div class="card" id="e{{ e.id }}" style="padding:1rem;margin-bottom:.9rem">
+  <div style="display:flex;gap:1rem;align-items:flex-start">
+    {% if e._img %}
+      <img src="{{ e._img }}" alt="" style="width:120px;height:80px;object-fit:cover;border-radius:6px;flex:none">
+    {% else %}
+      <div style="width:120px;height:80px;border-radius:6px;background:#eee;display:flex;align-items:center;justify-content:center;flex:none" class="muted">sans photo</div>
+    {% endif %}
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;gap:1rem">
+        <b>{{ e.article_title or e.title }}</b>
+        <span class="muted" style="white-space:nowrap">score {{ e.llm_score if e.llm_score is not none else '—' }}</span>
+      </div>
+      <div class="muted" style="font-size:.85rem;margin:.2rem 0">
+        {{ e.date_event_start or 'date ?' }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}
+        · {{ e.lieu or 'lieu ?' }}{% if e.ville %}, {{ e.ville }}{% endif %}
+        · <a href="/preview/{{ e.id }}">fiche #{{ e.id }}</a>
+      </div>
+      <div style="margin:.35rem 0">
+        {% for m in e._missing %}<span class="chip" style="background:#fde8e8;color:#a12;border-radius:4px;padding:.1rem .45rem;margin-right:.3rem;font-size:.82rem">manque : {{ m }}</span>{% endfor %}
+      </div>
+
+      <!-- Complétion à la main : seuls les champs manquants sont pré-signalés -->
+      <details style="margin-top:.4rem">
+        <summary style="cursor:pointer;color:#2557a7">✍️ Compléter à la main</summary>
+        <form method="POST" action="/complete/{{ e.id }}" style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem;max-width:640px">
+          {% for key, label in fields %}
+            <label style="font-size:.82rem">{{ label }}
+              {% if key == 'territoire' %}
+                <select name="{{ key }}" class="field" style="width:100%">
+                  <option value="">— inchangé —</option>
+                  {% for t in territories %}<option value="{{ t }}" {{ 'selected' if e.territoire==t }}>{{ t }}</option>{% endfor %}
+                </select>
+              {% else %}
+                <input type="text" name="{{ key }}" value="{{ e[key] or '' }}" class="field" style="width:100%"
+                       placeholder="{{ '⚠️ manquant' if label.split(' ')[0] in e._missing else '' }}">
+              {% endif %}
+            </label>
+          {% endfor %}
+          <div style="grid-column:1/-1">
+            <button class="btn btn-primary btn-sm">💾 Enregistrer</button>
+          </div>
+        </form>
+      </details>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}

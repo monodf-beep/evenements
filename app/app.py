@@ -35,6 +35,8 @@ from scripts.publisher_as import publish_to_as
 from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
+from utils import completeness as comp
+from utils import slack
 from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
@@ -119,6 +121,21 @@ def overlap_clause(pfrom: str, pto: str) -> tuple[str, list]:
     inclus s'il court encore pendant la fenêtre."""
     return ("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?",
             [pto, pfrom])
+
+
+def incomplete_clause(today: str) -> tuple[str, list]:
+    """Clause SQL : événement RETENU, À VENIR, mais INCOMPLET (porte qualité).
+
+    Miroir exact de utils.completeness.is_complete côté base : un champ obligatoire
+    manque (date, lieu, ville, territoire, catégorie, image). Les non-datés sont
+    inclus (ils manquent justement la date). cf. utils/completeness.py."""
+    empties = " OR ".join(f"COALESCE({k},'')=''" for k, _ in comp.MANDATORY)
+    clause = (
+        "statut IN ('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
+        "AND (COALESCE(date_event_end, date_event_start, '')='' "
+        "     OR COALESCE(date_event_end, date_event_start) >= ?) "
+        f"AND ({empties})")
+    return clause, [today]
 
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -221,7 +238,7 @@ def friendly_alert():
 @app.context_processor
 def inject_globals():
     """Compteurs de navigation + alerte, disponibles dans TOUTES les pages (base.html)."""
-    pending = validate = 0
+    pending = validate = tocomplete = 0
     try:
         conn = get_db()
         pending = conn.execute(
@@ -229,10 +246,13 @@ def inject_globals():
         validate = conn.execute(
             "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7"
         ).fetchone()["n"]
+        clause, cp = incomplete_clause(date.today().isoformat())
+        tocomplete = conn.execute(
+            f"SELECT COUNT(*) n FROM events_raw WHERE {clause}", cp).fetchone()["n"]
         conn.close()
     except Exception:
         pass
-    return {"nav": {"pending": pending, "validate": validate},
+    return {"nav": {"pending": pending, "validate": validate, "tocomplete": tocomplete},
             "nav_alert": friendly_alert(),
             # Bases WordPress (liens directs vers les brouillons créés) :
             #   wp_base    → culturasabauda.eu (article, wp_post_id_cs)
@@ -254,6 +274,7 @@ TASKS = {
     "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True, "period": True, "phase": "prepare", "help": "Recherche + rédige l'article des retenus."},
     "visuals":  {"script": "scripts/visuals.py",         "label": "Compléter les visuels", "icon": "🖼️", "cost": True, "period": True, "phase": "prepare", "help": "Photo pour les retenus sans image : og:image → Wikimedia Commons (licenciable, LLM) → bannière territoire."},
     "complete": {"script": "scripts/complete_period.py", "label": "Tout compléter (période)", "icon": "✨", "cost": True, "period": True, "phase": "prepare", "help": "Enchaîne datation → évaluation → visuels → enrichissement sur la période. Idempotent : ne refait que ce qui manque."},
+    "autocomplete": {"script": "scripts/autocomplete.py", "label": "Auto-compléter + porte qualité", "icon": "🛠️", "cost": True, "phase": "prepare", "help": "Complète les événements retenus incomplets (date/lieu/image via scraping + recherche web), pousse les COMPLETS en brouillon Agenda Sabauda, et signale sur Slack ce qui reste à compléter."},
     "newsletter": {"script": "scripts/newsletter.py",    "label": "Newsletter (brouillon)", "icon": "📧", "cost": False, "phase": "publish", "help": "Brouillon Brevo des événements Savoie de la semaine."},
 }
 COLLECT_TASKS = [k for k, v in TASKS.items() if v.get("phase") == "collect"]
@@ -856,6 +877,164 @@ def events():
         today=date.today().isoformat(),
         territories=TERRITORIES, status_labels=STATUS_LABELS,
         statut_counts=statut_counts, alert=friendly_alert())
+
+
+# --------------------------------------------------------------------------- #
+# PORTE QUALITÉ — liste « À compléter » + complétion manuelle (dashboard/Slack)
+# Un événement retenu ne part sur Agenda Sabauda que COMPLET (utils/completeness).
+# Ici : la file des incomplets, l'édition à la main des champs manquants, et un
+# point d'entrée Slack pour que Franck renvoie une info qu'il a trouvée lui-même.
+# --------------------------------------------------------------------------- #
+
+# Champs éditables à la main (clé DB → libellé). Sous-ensemble des obligatoires +
+# la date de fin (facultative mais utile). L'image se colle par URL.
+_COMPLETE_FIELDS = [
+    ("date_event_start", "Date de début (AAAA-MM-JJ)"),
+    ("date_event_end",   "Date de fin (AAAA-MM-JJ, facultatif)"),
+    ("lieu",             "Lieu"),
+    ("ville",            "Ville"),
+    ("territoire",       "Territoire"),
+    ("llm_categorie",    "Catégorie"),
+    ("url_image",        "URL de l'image"),
+]
+# Clés acceptées via Slack (avec alias courts) → colonne DB.
+_SLACK_KEYS = {
+    "lieu": "lieu", "ville": "ville", "territoire": "territoire",
+    "categorie": "llm_categorie", "catégorie": "llm_categorie",
+    "image": "url_image", "url_image": "url_image",
+    "date": "date_event_start", "date_start": "date_event_start",
+    "date_debut": "date_event_start", "date_end": "date_event_end",
+    "date_fin": "date_event_end",
+}
+
+
+@app.route("/a-completer")
+@require_auth
+def a_completer():
+    """File des événements RETENUS incomplets (la porte qualité les retient ici)."""
+    today = date.today().isoformat()
+    clause, cp = incomplete_clause(today)
+    conn = get_db()
+    rows = conn.execute(
+        f"SELECT * FROM events_raw WHERE {clause} "
+        "ORDER BY COALESCE(llm_score,0) DESC, "
+        "COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC", cp).fetchall()
+    conn.close()
+    events = []
+    for r in rows:
+        e = dict(r)
+        e["_missing"] = comp.missing_labels(e)
+        e["_img"] = event_image(e)
+        events.append(e)
+    return render_template(
+        "a_completer.html", events=events, fields=_COMPLETE_FIELDS,
+        territories=TERRITORIES, today=today, active="tocomplete",
+        alert=friendly_alert())
+
+
+def _apply_completion(conn, event_id: int, values: dict) -> tuple[bool, list[str]]:
+    """Écrit les champs fournis (non vides) et renvoie (complet?, manques restants)."""
+    clean = {k: v.strip() for k, v in values.items()
+             if k in dict(_COMPLETE_FIELDS) and (v or "").strip()}
+    if clean:
+        sets = ", ".join(f"{k}=?" for k in clean)
+        conn.execute(f"UPDATE events_raw SET {sets} WHERE id=?",
+                     [*clean.values(), event_id])
+        conn.commit()
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    ev = dict(row) if row else {}
+    return comp.is_complete(ev), comp.missing_labels(ev)
+
+
+@app.route("/complete/<int:event_id>", methods=["POST"])
+@require_auth
+def complete_event_manual(event_id: int):
+    """Complétion À LA MAIN depuis la liste « À compléter »."""
+    conn = get_db()
+    row = conn.execute("SELECT id FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    values = {k: request.form.get(k, "") for k, _ in _COMPLETE_FIELDS}
+    complete, missing = _apply_completion(conn, event_id, values)
+    conn.close()
+    if complete:
+        flash("✅ Événement complété — tu peux le pousser en brouillon "
+              "(« Publier Agenda ») ou laisser l'auto-complétion s'en charger.", "ok")
+    else:
+        flash(f"💾 Enregistré. Il manque encore : {', '.join(missing)}.", "ok")
+    return redirect(url_for("a_completer") + f"#e{event_id}")
+
+
+def _parse_slack_kv(text: str) -> tuple[int | None, dict]:
+    """Parse « [complete] <id> lieu=… ville=… » → (id, {colonne: valeur})."""
+    text = (text or "").strip()
+    if text.lower().startswith("complete"):
+        text = text[len("complete"):].strip()
+    m = re.match(r"(\d+)\s*(.*)", text, re.S)
+    if not m:
+        return None, {}
+    event_id = int(m.group(1))
+    rest = m.group(2)
+    values: dict = {}
+    # key=value, la valeur court jusqu'au prochain « mot= » ou la fin.
+    for km in re.finditer(r"(\w+)=(.*?)(?=\s+\w+=|$)", rest, re.S):
+        key = _SLACK_KEYS.get(km.group(1).lower())
+        if key:
+            values[key] = km.group(2).strip()
+    return event_id, values
+
+
+def _verify_slack(req) -> bool:
+    """Vérifie la signature Slack (HMAC v0). Refuse si le secret n'est pas configuré."""
+    secret = (os.getenv("SLACK_SIGNING_SECRET") or "").strip()
+    if not secret:
+        return False
+    ts = req.headers.get("X-Slack-Request-Timestamp", "")
+    sig = req.headers.get("X-Slack-Signature", "")
+    if not ts or not sig:
+        return False
+    try:
+        if abs(datetime.now().timestamp() - int(ts)) > 300:
+            return False  # anti-rejeu (> 5 min)
+    except ValueError:
+        return False
+    base = f"v0:{ts}:{req.get_data(as_text=True)}".encode("utf-8")
+    mine = "v0=" + hmac.new(secret.encode("utf-8"), base, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(mine, sig)
+
+
+@app.route("/slack/complete", methods=["POST"])
+def slack_complete():
+    """Commande Slack « /agenda complete <id> lieu=… » — Franck renvoie une info.
+
+    PAS de session backoffice : l'authentification est la SIGNATURE Slack (HMAC avec
+    SLACK_SIGNING_SECRET). Sans secret configuré, l'endpoint refuse tout."""
+    if not _verify_slack(request):
+        return ("Signature Slack invalide (ou SLACK_SIGNING_SECRET absent).", 401)
+    event_id, values = _parse_slack_kv(request.form.get("text", ""))
+    if not event_id:
+        return {"response_type": "ephemeral",
+                "text": "Usage : `/agenda complete <id> lieu=… ville=… url_image=…`"}
+    conn = get_db()
+    row = conn.execute("SELECT id FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return {"response_type": "ephemeral", "text": f"Événement {event_id} introuvable."}
+    if not values:
+        conn.close()
+        return {"response_type": "ephemeral",
+                "text": "Aucun champ reconnu. Ex : `lieu=Théâtre… ville=… url_image=…`"}
+    complete, missing = _apply_completion(conn, event_id, values)
+    conn.close()
+    champs = ", ".join(values.keys())
+    if complete:
+        txt = (f"✅ Événement {event_id} complété ({champs}). "
+               "Il partira en brouillon au prochain passage de l'auto-complétion.")
+    else:
+        txt = (f"💾 Événement {event_id} mis à jour ({champs}). "
+               f"Il manque encore : {', '.join(missing)}.")
+    return {"response_type": "ephemeral", "text": txt}
 
 
 @app.route("/action/<int:event_id>/<action>", methods=["POST"])

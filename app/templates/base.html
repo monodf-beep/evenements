@@ -19,6 +19,8 @@
       <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Événements</a>
       <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
         {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
+      <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
+        {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
       <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
     </nav>
     <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>

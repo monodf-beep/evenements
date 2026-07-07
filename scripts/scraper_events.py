@@ -95,7 +95,13 @@ def init_db(conn: sqlite3.Connection) -> None:
                       ("seo_slug", "TEXT"),
                       ("seo_tags", "TEXT"),
                       ("seo_model", "TEXT"),
-                      ("seo_at", "TEXT")):
+                      ("seo_at", "TEXT"),
+                      # Extraction du lieu (scripts/venues.py) : provenance du lieu.
+                      ("venue_source", "TEXT"),
+                      # Agent d'auto-complétion + porte qualité (scripts/autocomplete.py) :
+                      # dernier passage + dernier signal émis (anti-spam Slack).
+                      ("autocomplete_at", "TEXT"),
+                      ("autocomplete_state", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

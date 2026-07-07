@@ -33,6 +33,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils import completeness as comp
 from scripts.publisher_as import publish_to_as
 
 log = get_logger("publish_batch_as")
@@ -71,6 +72,9 @@ def main(argv=None) -> int:
                         help="Réactualiser aussi les événements déjà sur l'agenda.")
     parser.add_argument("--include-past", action="store_true",
                         help="Inclure les événements déjà terminés (déconseillé).")
+    parser.add_argument("--allow-incomplete", action="store_true",
+                        help="Publier MÊME les événements incomplets (contourne la porte "
+                             "qualité). Par défaut, seuls les événements COMPLETS partent.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Lister la sélection sans rien publier.")
     args = parser.parse_args(argv)
@@ -79,18 +83,32 @@ def main(argv=None) -> int:
     today = date.today().isoformat()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    rows = _select(conn, args, today)
+    rows = [dict(r) for r in _select(conn, args, today)]
 
-    log.info("Sélection : %d événement(s) (cap %d, min-score %s, %s)",
-             len(rows), args.cap, args.min_score,
+    # PORTE QUALITÉ : seuls les événements COMPLETS partent en brouillon (les
+    # incomplets restent dans le dashboard, à charge de l'agent d'auto-complétion).
+    # cf. utils/completeness.py + scripts/autocomplete.py.
+    skipped = []
+    if not args.allow_incomplete:
+        kept = []
+        for ev in rows:
+            (kept if comp.is_complete(ev) else skipped).append(ev)
+        rows = kept
+
+    log.info("Sélection : %d complet(s) à publier, %d incomplet(s) écarté(s) "
+             "(cap %d, min-score %s, %s)",
+             len(rows), len(skipped), args.cap, args.min_score,
              "MAJ incluse" if args.update else "création seule")
 
     if args.dry_run:
         for r in rows:
-            lieu = (r["lieu"] or "—") if "lieu" in r.keys() else "—"
+            lieu = r.get("lieu") or "—"
             print(f"  [{r['id']}] {r['date_event_start']} · {(r['title'] or '')[:60]:60} "
                   f"· score={r['llm_score']} · lieu={lieu}")
-        print(f"\n{len(rows)} événement(s) SERAIENT publiés (dry-run — rien n'a été envoyé).")
+        for ev in skipped:
+            print(f"  ⤷ ÉCARTÉ [{ev['id']}] {(ev.get('title') or '')[:55]:55} "
+                  f"· manque : {', '.join(comp.missing_labels(ev))}")
+        print(f"\n{len(rows)} publié(s) / {len(skipped)} écarté(s) (dry-run — rien envoyé).")
         conn.close()
         return 0
 
