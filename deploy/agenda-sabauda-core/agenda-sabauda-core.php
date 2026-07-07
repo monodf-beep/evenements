@@ -100,7 +100,9 @@ add_action('init', function () {
         'fetes-traditions'        => 'Fêtes & Traditions populaires',
     );
     foreach ($categories as $slug => $name) {
-        if (!term_exists($slug, 'tribe_events_cat')) {
+        // Anti-doublon : on vérifie l'existence par SLUG *et* par NOM (WordPress
+        // suffixe le slug si un terme du même NOM existe déjà → créait un doublon).
+        if (!term_exists($slug, 'tribe_events_cat') && !term_exists($name, 'tribe_events_cat')) {
             wp_insert_term($name, 'tribe_events_cat', array('slug' => $slug));
         }
     }

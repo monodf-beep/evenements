@@ -47,9 +47,9 @@ add_action('init', function () {
     );
 
     foreach ($categories as $slug => $name) {
-        // term_exists() vérifie le slug DANS la taxonomie : idempotent, ne
-        // recrée jamais un terme existant (ni ne renomme un terme déjà là).
-        if (!term_exists($slug, 'tribe_events_cat')) {
+        // Anti-doublon : vérifier par SLUG *et* par NOM (WordPress suffixe le slug
+        // si un terme du même NOM existe déjà → sinon on créerait un doublon).
+        if (!term_exists($slug, 'tribe_events_cat') && !term_exists($name, 'tribe_events_cat')) {
             wp_insert_term($name, 'tribe_events_cat', array('slug' => $slug));
         }
     }
