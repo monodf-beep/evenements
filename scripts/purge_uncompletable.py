@@ -3,9 +3,13 @@
 
 Le diagnostic (scripts.diagnose_backlog) le montre : une grande part des incomplets
 sont des événements RADAR (presse — détection seule, charte §8) ou SANS PAGE
-exploitable (Gmail / Google News) auxquels il MANQUE la date ou le lieu. Il n'existe
-AUCUNE page officielle à lire → ils ne seront jamais complétés automatiquement. On
-les passe en 'rejected' (réversible) pour qu'ils quittent la file.
+exploitable (Google News, ou aucune URL) auxquels il MANQUE la date ou le lieu. Il
+n'existe AUCUNE page officielle à lire → ils ne seront jamais complétés
+automatiquement. On les passe en 'rejected' (réversible) pour qu'ils quittent la file.
+
+⚠️ Les NEWSLETTERS (« gmail:… ») ne sont PAS visées ici : elles ont bien une page
+d'article — on la rattrape d'abord avec scripts.gmail_relink. Ne les écarter à la
+main que si le rattrapage n'a rien donné.
 
 On ne touche PAS les événements qui ont une vraie page officielle (le « gisement »
 récupérable) ni ceux déjà complets.
@@ -39,8 +43,12 @@ def _is_radar(e: dict) -> bool:
 
 
 def _no_page(e: dict) -> bool:
+    """Vraiment SANS page exploitable. ⚠️ Les newsletters (« gmail:… ») en sont
+    EXCLUES : elles ont bien une page d'article — on la rattrape avec
+    scripts.gmail_relink AVANT d'envisager de les écarter. Ici, seuls les agrégateurs
+    à mur de redirection (Google News) et l'absence totale d'URL comptent."""
     u = e.get("url_source") or ""
-    return (not u) or u.startswith("gmail:") or "news.google.com" in u
+    return (not u) or "news.google.com" in u
 
 
 def main(argv=None) -> int:
@@ -70,7 +78,7 @@ def main(argv=None) -> int:
         source_bad = radar if args.radar_only else (radar or nopage)
         missing = {lbl for _k, lbl in comp.missing_fields(e)}
         if source_bad and (missing & {"Date", "Lieu"}):
-            reason = "radar (presse)" if radar else "sans page (Gmail/News)"
+            reason = "radar (presse)" if radar else "sans page (Google News)"
             targets.append((e, reason))
 
     mode = "EXÉCUTION" if args.execute else "DRY-RUN (rien ne bouge)"

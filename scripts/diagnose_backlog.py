@@ -53,11 +53,16 @@ def main() -> int:
 
     def is_radar(e):
         return e.get("source_type") == "radar" or "(radar)" in (e.get("source_name") or "")
+    def is_newsletter(e):
+        return (e.get("url_source") or "").startswith("gmail:")
     def no_page(e):
+        # « sans page » RÉELLE : les newsletters en sont exclues (leur lien d'article
+        # se rattrape avec scripts.gmail_relink).
         u = e.get("url_source") or ""
-        return (not u) or u.startswith("gmail:") or "news.google.com" in u
+        return (not u) or "news.google.com" in u
 
     radar = sum(1 for e in no_date if is_radar(e))
+    newsletter = sum(1 for e in no_date if is_newsletter(e))
     nopage = sum(1 for e in no_date if no_page(e))
     tried_web = sum(1 for e in no_date if (e.get("date_web_at") or ""))
     # probablement passés : une année révolue apparaît dans le titre ou date_start brut
@@ -68,21 +73,25 @@ def main() -> int:
         if re.search(rf"(?<!\d)({past_years})(?!\d)", blob):
             likely_past += 1
     print(f"    • source RADAR (presse, pas de page officielle)   : {radar}")
-    print(f"    • sans page exploitable (gmail / google news)      : {nopage}")
+    print(f"    • NEWSLETTER (lien d'article rattrapable, cf.↓)    : {newsletter}")
+    print(f"    • sans page réelle (google news / aucune URL)      : {nopage}")
     print(f"    • déjà tentés par l'agent web (cooldown actif)     : {tried_web}")
     print(f"    • probablement PASSÉS (année révolue dans le texte): {likely_past}")
 
-    # 3) Les « datables » restants = vrai gisement pour l'automatisation
+    # 3) Les « datables » restants = vrai gisement pour l'automatisation (page officielle,
+    #    hors newsletters non encore reliées — celles-ci passent par gmail_relink).
     datable = [e for e in no_date if not is_radar(e) and not no_page(e)
-               and not e.get("date_web_at")]
+               and not is_newsletter(e) and not e.get("date_web_at")]
     print(f"\n③ « Manque Date » avec une VRAIE page officielle, jamais tentés en web : {len(datable)}")
     print("    → ce sont les seuls où l'automatisation a encore une marge. Exemples :")
     for e in datable[:12]:
         print(f"      [{e['id']}] {(e.get('title') or '')[:64]}  ({e.get('source_name','')[:30]})")
 
     print(f"\n{'='*66}")
-    print("LECTURE : radar + sans-page + passés = tail NON automatisable (à écarter ou")
-    print("à saisir à la main). Le gisement réel = ③. Rien ici n'est lié aux 2 langues.\n")
+    print("LECTURE : radar + sans-page réelle + passés = tail NON automatisable (à écarter")
+    print("ou saisir à la main). Les NEWSLETTERS se rattrapent d'abord avec")
+    print("`scripts.gmail_relink` (backfill du lien d'article) puis dates/venues. Le")
+    print("gisement page-officielle = ③. Rien ici n'est lié aux 2 langues.\n")
     return 0
 
 

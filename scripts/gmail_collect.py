@@ -148,6 +148,28 @@ def _strip_html(html: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _linkify_html(html: str) -> str:
+    """Convertit chaque <a href="URL">texte</a> en « texte (URL) » AVANT de retirer
+    le HTML, pour que les liens d'articles survivent (sinon _strip_html les supprime
+    et l'extracteur ne peut plus rattacher d'URL à chaque événement)."""
+    def _repl(m: re.Match) -> str:
+        href = m.group(1).strip()
+        label = re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", m.group(2))).strip()
+        if not href.lower().startswith("http"):
+            return label
+        # on ignore les liens de désabonnement / réseaux sociaux (jamais un article) ;
+        # on GARDE les URLs d'articles même si elles portent un ?utm_… (paramètre de
+        # tracking très courant sur des liens parfaitement légitimes).
+        if re.search(r"unsubscribe|désabonn|list-manage|mailchi|sendinblue|mailerlite|"
+                     r"hubspotemail|/subscription|(?:facebook|instagram|twitter|linkedin|"
+                     r"youtube|tiktok)\.com|//x\.com", href, re.I):
+            return label
+        return f"{label} ({href})" if label else href
+    linked = re.sub(r'(?is)<a\b[^>]*?href=["\']?(https?://[^"\'>\s]+)["\']?[^>]*>(.*?)</a>',
+                    _repl, html)
+    return _strip_html(linked)
+
+
 def _walk(payload: dict):
     """Itère récursivement sur toutes les parties MIME."""
     yield payload
@@ -171,7 +193,9 @@ def parse_message(msg: dict) -> dict:
         elif mime.startswith("image/") and not image:
             # image attachée — on garde l'URL si dispo (rare en newsletter), sinon ignore
             image = body.get("attachmentId", "") and ""
-    body_text = text_plain or _strip_html(text_html)
+    # On PRÉFÈRE le HTML avec liens préservés (les URLs d'articles sont dans les
+    # <a href>) ; le text/plain est le repli quand il n'y a pas de partie HTML.
+    body_text = _linkify_html(text_html) if text_html else text_plain
     if not image:
         m = re.search(r'<img[^>]+src=["\']?(https?://[^"\'>\s]+)', text_html, re.I)
         if m:

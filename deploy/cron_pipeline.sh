@@ -59,6 +59,7 @@ case "$MODE" in
     # 1) Collecte
     step "scrape RSS"        "$PY" -m scripts.scraper_events
     step "gmail newsletters" "$PY" -m scripts.gmail_collect
+    step "gmail relink"      "$PY" -m scripts.gmail_relink --execute
     step "dossiers de presse" "$PY" -m scripts.press_kits
     # 2) Préparation
     step "déduplication"     "$PY" -m scripts.dedupe
