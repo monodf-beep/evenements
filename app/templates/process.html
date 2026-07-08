@@ -189,6 +189,26 @@
 </div>
 
 <div class="card" style="margin-top:1.1rem">
+  <h2>🤖 Les agents IA &amp; leurs modèles</h2>
+  <p class="muted" style="font-size:.9rem;margin:.2rem 0 .6rem">Chaque étape « intelligente » appelle l'API Claude. Le modèle est réglable par variable <code>.env</code> (colonne de droite) — le déterministe (scraping, dates dans le texte, WordPress) n'utilise <strong>aucune</strong> IA.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Agent</th><th>Ce qu'il fait</th><th>Modèle par défaut</th><th>Variable .env</th></tr>
+    <tr><td><b>Évaluateur</b> 🧠</td><td>Note l'intérêt éditorial (0-10) + catégorie</td><td>Claude Sonnet 5</td><td><code>ANTHROPIC_MODEL</code></td></tr>
+    <tr><td><b>Enrichissement</b> ✍️</td><td>Recherche web + rédige l'article des retenus</td><td>Claude Sonnet 5 <span class="muted">(web)</span></td><td><code>ANTHROPIC_MODEL_ENRICH</code></td></tr>
+    <tr><td><b>Extraction date</b></td><td>Lit la date dans le texte / la page (FR/IT)</td><td>Claude Haiku 4.5</td><td><code>ANTHROPIC_MODEL_EXTRACT</code></td></tr>
+    <tr><td><b>Extraction lieu</b></td><td>Lit le lieu/ville dans le texte / la page</td><td>Claude Haiku 4.5</td><td><code>ANTHROPIC_MODEL_EXTRACT</code></td></tr>
+    <tr><td><b>Agent date (web)</b> 🌐</td><td>Cherche la date sur le web (dernier recours)</td><td>Claude Sonnet 5 <span class="muted">(web)</span></td><td><code>ANTHROPIC_MODEL_SEARCH</code></td></tr>
+    <tr><td><b>Agent lieu (web)</b> 🌐</td><td>Cherche le lieu sur le web (dernier recours)</td><td>Claude Sonnet 5 <span class="muted">(web)</span></td><td><code>ANTHROPIC_MODEL_SEARCH</code></td></tr>
+    <tr><td><b>Agent image (web)</b> 🖼️</td><td>Cherche une photo pertinente sur le web</td><td>Claude Sonnet 5 <span class="muted">(web)</span></td><td><code>ANTHROPIC_MODEL_SEARCH</code></td></tr>
+    <tr><td><b>Vérificateur image</b> 👁️</td><td>Confirme (vision) que la photo colle au sujet</td><td>Claude Haiku 4.5</td><td><code>ANTHROPIC_MODEL_VISION</code></td></tr>
+    <tr><td><b>Requête visuelle</b></td><td>Rédige la requête photo Wikimedia Commons</td><td>Claude Haiku 4.5</td><td><code>ANTHROPIC_MODEL_VISUALS</code></td></tr>
+    <tr><td><b>SEO / AEO</b> 🔎</td><td>Title, méta, réponse directe, FAQ (phares)</td><td>Claude Haiku 4.5</td><td><code>ANTHROPIC_MODEL_SEO</code></td></tr>
+    <tr><td><b>Extraction newsletters</b> 📬</td><td>Repère les événements dans les mails Gmail</td><td>Claude Haiku 4.5</td><td><code>ANTHROPIC_MODEL_EXTRACT</code></td></tr>
+  </table></div>
+  <p class="muted" style="font-size:.82rem;margin-top:.5rem">L'<strong>auto-complétion</strong> n'a pas de modèle propre : elle orchestre les agents ci-dessus (date → lieu → image) puis applique la porte qualité. Une recherche web coûteuse n'est retentée qu'après un délai (cooldown 7 j).</p>
+</div>
+
+<div class="card" style="margin-top:1.1rem">
   <h2>🏷️ Les statuts</h2>
   <div class="pillrow">
     <span class="st st-pending">pending</span> <span class="mini">collecté, pas encore évalué</span>
