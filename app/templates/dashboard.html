@@ -45,11 +45,13 @@
 </div>
 {% endif %}
 
-<!-- Pipeline -->
-<div class="section-title">Lancer le pipeline</div>
-{% if any_running %}<div class="flash ok">⏳ Une tâche tourne — la page se rafraîchit toute seule…</div>{% endif %}
+<!-- Pipeline : REPLIÉ par défaut — tout tourne automatiquement (cron). On ne
+     l'ouvre que pour lancer une étape à la main. Évite le mur de boutons. -->
+<details class="box"{% if any_running %} open{% endif %}>
+  <summary>⚙️ Piloter le pipeline à la main <span class="muted text-sm">— d'habitude automatique (cron quotidien)</span></summary>
+{% if any_running %}<div class="flash ok" style="margin-top:.8rem">⏳ Une tâche tourne — la page se rafraîchit toute seule…</div>{% endif %}
 
-<div class="phases">
+<div class="phases" style="margin-top:.8rem">
   <!-- Phase 1 : Collecter -->
   <section class="card phase">
     <div class="phase-h"><span class="phase-num">1</span><h3>Collecter</h3></div>
@@ -57,7 +59,7 @@
     {% for key, t in tasks.items() if t.phase == 'collect' %}
     <div class="task">
       <form method="POST" action="/run/{{ key }}">
-        <button class="btn btn-dark" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{% if t.running %} ⏳{% endif %}</button>
+        <button class="btn btn-ghost" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{% if t.running %} ⏳{% endif %}</button>
       </form>
       <small>{{ t.help }}</small>
     </div>
@@ -84,7 +86,7 @@
     <div class="task">
       <form method="POST" action="/run/{{ key }}">
         {% if t.period %}<input type="hidden" name="preset" value="{{ preset }}"><input type="hidden" name="dfrom" value="{{ dfrom }}"><input type="hidden" name="dto" value="{{ dto }}">{% endif %}
-        <button class="btn btn-dark" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{%
+        <button class="btn btn-ghost" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{%
           if key == 'evaluate' and scope.eval is not none %} <span class="badge grey">{{ scope.eval }}</span>{%
           elif key == 'enrich' and scope.enrich is not none %} <span class="badge grey">{{ scope.enrich }}</span>{% endif %}{% if t.running %} ⏳{% endif %}</button>
       </form>
@@ -99,7 +101,7 @@
     <div class="phase-h"><span class="phase-num">3</span><h3>Valider &amp; publier</h3></div>
     <p class="hint">Choisir quoi mettre en avant, puis créer le brouillon WordPress.</p>
     <div class="task">
-      <a class="btn btn-primary" href="/validation?preset=next_weekend">🗓️ Plan du week-end</a>
+      <a class="btn btn-ghost" href="/validation?preset=next_weekend">🗓️ Plan du week-end</a>
       <small>Les retenus + les expos encore en cours à re-valoriser.</small>
     </div>
     <div class="task">
@@ -108,13 +110,14 @@
     </div>
     <div class="task">
       <form method="POST" action="/run/newsletter">
-        <button class="btn btn-dark" {% if any_running %}disabled{% endif %}>📧 Newsletter (brouillon){% if tasks.newsletter and tasks.newsletter.running %} ⏳{% endif %}</button>
+        <button class="btn btn-ghost" {% if any_running %}disabled{% endif %}>📧 Newsletter (brouillon){% if tasks.newsletter and tasks.newsletter.running %} ⏳{% endif %}</button>
       </form>
       <small>Crée un brouillon Brevo des événements Savoie de la semaine (tu relis + envoies).</small>
     </div>
     <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">🔒 Tout part en <strong>brouillon</strong> WordPress — rien n'est publié sans ta validation.</p>
   </section>
 </div>
+</details>
 
 {% for key, t in runs %}
   {% if loop.first %}<div class="section-title">Derniers lancements</div>{% endif %}
