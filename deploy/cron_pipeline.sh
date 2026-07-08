@@ -70,6 +70,7 @@ case "$MODE" in
     # 3) Complétion haut de panier (coûteux, borné) + porte qualité
     step "lieux (web)"       "$PY" -m scripts.venues_web --cap 15 --min-score 7
     step "dates (web)"       "$PY" -m scripts.dates_web  --cap 15 --min-score 7
+    step "écarter les passés" "$PY" -m scripts.purge_past --execute
     run_autocomplete
     log "=== FIN PIPELINE ==="
     ;;
