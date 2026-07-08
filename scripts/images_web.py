@@ -41,6 +41,7 @@ from utils.images import fetch_og_image
 from utils.sources import (is_blocked_image, is_logo_image,
                            load_blocked_image_domains)
 from scripts.venues import _clean
+from scripts.scraper_events import web_cooldown_sql, mark_web_attempt
 
 log = get_logger("images_web")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -209,6 +210,8 @@ def _select(conn, args, today: str):
     if not args.include_past:
         where.append("COALESCE(date_event_end, date_event_start) >= ?")
         params.append(today)
+    if not args.force:                     # cooldown : on saute ce qu'on a tenté récemment
+        where.append(web_cooldown_sql("image_web_at"))
     sql = (f"SELECT * FROM events_raw WHERE {' AND '.join(where)} "
            f"ORDER BY COALESCE(llm_score,0) DESC, date_event_start ASC LIMIT ?")
     params.append(args.cap)
@@ -221,6 +224,7 @@ def main(argv=None) -> int:
     parser.add_argument("--min-score", type=int, default=7, help="Score minimum (défaut 7).")
     parser.add_argument("--delay", type=float, default=1.0, help="Pause (s) entre deux événements.")
     parser.add_argument("--include-past", action="store_true", help="Inclure les événements passés.")
+    parser.add_argument("--force", action="store_true", help="Ignorer le cooldown (re-tenter tout de suite).")
     parser.add_argument("--dry-run", action="store_true", help="Lister sans appeler les agents.")
     args = parser.parse_args(argv)
 
@@ -253,6 +257,7 @@ def main(argv=None) -> int:
     ok = 0
     for i, r in enumerate(rows, 1):
         url, credit = find_verified_image(dict(r), client, blocked)
+        mark_web_attempt(conn, "image_web_at", r["id"])   # tentative armée (réussie ou non)
         if url:
             conn.execute(
                 "UPDATE events_raw SET url_image=?, image_credit=?, image_source='web' WHERE id=?",

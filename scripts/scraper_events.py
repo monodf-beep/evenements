@@ -101,11 +101,53 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Agent d'auto-complétion + porte qualité (scripts/autocomplete.py) :
                       # dernier passage + dernier signal émis (anti-spam Slack).
                       ("autocomplete_at", "TEXT"),
-                      ("autocomplete_state", "TEXT")):
+                      ("autocomplete_state", "TEXT"),
+                      # Cooldown des recherches WEB (lieu/date/image) : horodatage de la
+                      # dernière tentative, pour ne pas re-payer chaque jour un cas
+                      # introuvable — on ré-essaie après WEB_COOLDOWN_DAYS.
+                      ("venue_web_at", "TEXT"),
+                      ("date_web_at", "TEXT"),
+                      ("image_web_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
             pass  # colonne déjà présente
+    conn.commit()
+
+
+# --------------------------------------------------------------------------- #
+# Cooldown des recherches WEB (lieu/date/image). Une recherche web qui a échoué
+# ne réussira pas si on la relance tout de suite : on mémorise la tentative et on
+# ne ré-essaie qu'après WEB_COOLDOWN_DAYS. Évite de re-payer chaque jour les cas
+# introuvables ET fait tourner l'agent sur d'AUTRES événements. cf. venues_web /
+# dates_web / images_web / autocomplete.
+# --------------------------------------------------------------------------- #
+WEB_COOLDOWN_DAYS = int(os.getenv("WEB_COOLDOWN_DAYS", "7"))
+
+
+def web_cooldown_sql(col: str, days: int | None = None) -> str:
+    """Fragment SQL (pour un WHERE) : True si jamais tenté ou tentative trop ancienne."""
+    d = WEB_COOLDOWN_DAYS if days is None else days
+    return f"({col} IS NULL OR {col} < datetime('now','-{int(d)} days'))"
+
+
+def web_cooldown_ok(ev: dict, col: str, days: int | None = None) -> bool:
+    """True si on peut (re)tenter une recherche web pour ce champ (côté Python)."""
+    from datetime import datetime, timedelta
+    d = WEB_COOLDOWN_DAYS if days is None else days
+    ts = (ev.get(col) or "").strip()
+    if not ts:
+        return True
+    try:
+        last = datetime.fromisoformat(ts)
+    except ValueError:
+        return True
+    return (datetime.now() - last) >= timedelta(days=d)
+
+
+def mark_web_attempt(conn, col: str, event_id: int) -> None:
+    """Horodate la tentative web (réussie OU non) pour armer le cooldown."""
+    conn.execute(f"UPDATE events_raw SET {col}=datetime('now') WHERE id=?", (event_id,))
     conn.commit()
 
 

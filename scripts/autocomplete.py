@@ -43,7 +43,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import completeness as comp
 from utils import slack
-from scripts.scraper_events import init_db
+from scripts.scraper_events import init_db, web_cooldown_ok, mark_web_attempt
 
 log = get_logger("autocomplete")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -64,7 +64,8 @@ def ensure_columns(conn: sqlite3.Connection) -> None:
 # Complétion d'UN événement, champ par champ, en réutilisant l'outillage.
 # Chaque passe est idempotente et ne s'exécute QUE si le champ est encore vide.
 # --------------------------------------------------------------------------- #
-def _fill_date(ev: dict, client, model_extract: str, allow_web: bool) -> dict:
+def _fill_date(ev: dict, client, model_extract: str, allow_web: bool,
+               conn, event_id: int) -> dict:
     if not comp._empty(ev.get("date_event_start")):
         return {}
     from scripts.dates import (parse_dates, fetch_event_dates, fetch_page_text,
@@ -90,15 +91,17 @@ def _fill_date(ev: dict, client, model_extract: str, allow_web: bool) -> dict:
         if s:
             return {"date_event_start": s, "date_event_end": e, "date_source": src}
     # 4) recherche web (dernier recours, coûteux) — trouve la date d'un événement nommé
-    if allow_web and client is not None:
+    if allow_web and client is not None and web_cooldown_ok(ev, "date_web_at"):
         from scripts.dates_web import web_date
         s, e, src = web_date(ev, client, today.isoformat())
+        mark_web_attempt(conn, "date_web_at", event_id)
         if s:
             return {"date_event_start": s, "date_event_end": e, "date_source": src}
     return {}
 
 
-def _fill_venue(ev: dict, client, model_extract: str, allow_web: bool) -> dict:
+def _fill_venue(ev: dict, client, model_extract: str, allow_web: bool,
+                conn, event_id: int) -> dict:
     if not comp._empty(ev.get("lieu")):
         return {}
     from scripts.venues import fetch_event_venue, llm_venue
@@ -115,23 +118,25 @@ def _fill_venue(ev: dict, client, model_extract: str, allow_web: bool) -> dict:
         if lieu:
             return {"lieu": lieu, "ville": ville or ev.get("ville") or "", "venue_source": src}
     # 3) recherche web (dernier recours, coûteux)
-    if allow_web and client is not None:
+    if allow_web and client is not None and web_cooldown_ok(ev, "venue_web_at"):
         from scripts.venues_web import web_venue
         lieu, ville, src = web_venue(ev, client)
+        mark_web_attempt(conn, "venue_web_at", event_id)
         if lieu:
             return {"lieu": lieu, "ville": ville or ev.get("ville") or "", "venue_source": src}
     return {}
 
 
 def _fill_image(ev: dict, client, blocked, banners, allow_web: bool,
-                want_banner: bool) -> dict:
+                want_banner: bool, conn, event_id: int) -> dict:
     # Déjà une vraie photo → rien à faire.
     if comp.has_real_image(ev):
         return {}
     # 1) recherche web + vérificateur vision (meilleure photo pertinente)
-    if allow_web and client is not None:
+    if allow_web and client is not None and web_cooldown_ok(ev, "image_web_at"):
         from scripts.images_web import find_verified_image
         url, credit = find_verified_image(ev, client, blocked)
+        mark_web_attempt(conn, "image_web_at", event_id)
         if url:
             return {"url_image": url, "image_credit": credit, "image_source": "web"}
     # 2) chaîne déterministe (og:image → Commons → bannière). On ne garde la
@@ -147,11 +152,12 @@ def complete_event(ev: dict, conn, client, blocked, banners, *,
                    allow_web: bool, want_banner: bool, model_extract: str) -> dict:
     """Applique les passes de complétion et renvoie l'événement à jour (en base)."""
     updates: dict = {}
+    eid = ev["id"]
     for filler in (
-        lambda: _fill_date(ev, client, model_extract, allow_web),
-        lambda: _fill_venue(ev, client, model_extract, allow_web),
+        lambda: _fill_date(ev, client, model_extract, allow_web, conn, eid),
+        lambda: _fill_venue(ev, client, model_extract, allow_web, conn, eid),
         lambda: _fill_image({**ev, **updates}, client, blocked, banners,
-                            allow_web, want_banner),
+                            allow_web, want_banner, conn, eid),
     ):
         got = filler()
         if got:

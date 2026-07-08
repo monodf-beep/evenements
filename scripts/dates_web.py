@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from scripts.venues import _clean
+from scripts.scraper_events import web_cooldown_sql, mark_web_attempt
 
 log = get_logger("dates_web")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -101,6 +102,8 @@ def _select(conn, args, today: str):
         "COALESCE(llm_score,0) >= ?",
     ]
     params: list = [args.min_score]
+    if not args.force:                     # cooldown : on saute ce qu'on a tenté récemment
+        where.append(web_cooldown_sql("date_web_at"))
     sql = (f"SELECT * FROM events_raw WHERE {' AND '.join(where)} "
            f"ORDER BY COALESCE(llm_score,0) DESC LIMIT ?")
     params.append(args.cap)
@@ -112,6 +115,7 @@ def main(argv=None) -> int:
     parser.add_argument("--cap", type=int, default=15, help="Nombre max par run.")
     parser.add_argument("--min-score", type=int, default=7, help="Score minimum (défaut 7).")
     parser.add_argument("--delay", type=float, default=1.0, help="Pause (s) entre deux appels.")
+    parser.add_argument("--force", action="store_true", help="Ignorer le cooldown (re-tenter tout de suite).")
     parser.add_argument("--dry-run", action="store_true", help="Lister sans appeler l'agent.")
     args = parser.parse_args(argv)
 
@@ -141,6 +145,7 @@ def main(argv=None) -> int:
     ok = 0
     for i, r in enumerate(rows, 1):
         start, end, src = web_date(dict(r), client, today)
+        mark_web_attempt(conn, "date_web_at", r["id"])   # tentative armée (réussie ou non)
         if src == "web" and start:
             conn.execute(
                 "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? "
