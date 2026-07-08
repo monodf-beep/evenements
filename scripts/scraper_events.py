@@ -118,15 +118,21 @@ def load_sources() -> list[dict]:
         line = line.strip()
         if not line or line.startswith("#") or ";" not in line:
             continue
-        parts = line.split(";", 3)
+        # Format : url;territoire;nom;tier[;lieu;ville]
+        # lieu/ville OPTIONNELS : pour les sources « officielle » (un lieu précis),
+        # le lieu = la source → on l'applique par défaut (voir scripts/venues.py,
+        # passe 0). Les URL ne contiennent jamais de « ; » (query en &), split sûr.
+        parts = [p.strip() for p in line.split(";")]
         if len(parts) >= 2:
             sources.append({
-                "url": parts[0].strip(),
-                "territoire": parts[1].strip(),
-                "name": parts[2].strip() if len(parts) > 2 else parts[0].strip(),
+                "url": parts[0],
+                "territoire": parts[1],
+                "name": parts[2] if len(parts) > 2 and parts[2] else parts[0],
                 # type : institutionnel (défaut) | radar (presse/Google News, détection seule)
-                "type": (parts[3].strip().lower() if len(parts) > 3 and parts[3].strip()
-                         else "institutionnel"),
+                "type": (parts[3].lower() if len(parts) > 3 and parts[3] else "institutionnel"),
+                # Lieu/ville par défaut de la source (vides si non renseignés).
+                "lieu": parts[4] if len(parts) > 4 else "",
+                "ville": parts[5] if len(parts) > 5 else "",
             })
     return sources
 

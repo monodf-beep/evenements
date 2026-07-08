@@ -129,6 +129,41 @@ def llm_venue(material: str, client, model: str) -> tuple[str, str, str]:
     return (lieu, ville, "llm") if (lieu or ville) else ("", "", "llm_none")
 
 
+def apply_source_venues(conn: sqlite3.Connection) -> int:
+    """Passe 0 — LIEU DE LA SOURCE (déterministe, gratuit, le plus fiable).
+
+    Pour une source « officielle » (un lieu précis : théâtre, musée, festival…),
+    le lieu EST la source : un événement de flowersfestival.it se passe au Flowers
+    Festival, à Collegno. On applique le lieu/ville par défaut de la source (champs
+    optionnels de config/sources.txt) AVANT d'aller chercher par page/LLM/web.
+    On ne pose venue_source='source' que si on a rempli un LIEU (sinon on laisse les
+    passes suivantes trouver le lieu)."""
+    from scripts.scraper_events import load_sources
+    defaults = {s["name"]: (s.get("lieu", ""), s.get("ville", ""))
+                for s in load_sources() if (s.get("lieu") or s.get("ville"))}
+    filled = 0
+    for name, (lieu, ville) in defaults.items():
+        rows = conn.execute(
+            "SELECT id, lieu, ville FROM events_raw WHERE source_name = ? "
+            "AND statut != 'merged' AND (COALESCE(lieu,'')='' OR COALESCE(ville,'')='')",
+            (name,)).fetchall()
+        for r in rows:
+            updates: dict = {}
+            if lieu and not (r["lieu"] or "").strip():
+                updates["lieu"] = lieu
+                updates["venue_source"] = "source"
+            if ville and not (r["ville"] or "").strip():
+                updates["ville"] = ville
+            if not updates:
+                continue
+            sets = ", ".join(f"{k}=?" for k in updates)
+            conn.execute(f"UPDATE events_raw SET {sets} WHERE id=?",
+                         [*updates.values(), r["id"]])
+            filled += 1
+        conn.commit()
+    return filled
+
+
 def ensure_columns(conn: sqlite3.Connection) -> None:
     for col, decl in (("lieu", "TEXT"), ("ville", "TEXT"), ("venue_source", "TEXT")):
         try:
@@ -153,6 +188,10 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)
     ensure_columns(conn)
+
+    # --- Passe 0 : LIEU DE LA SOURCE (le lieu = la source pour les « officielle ») ---
+    from_source = apply_source_venues(conn)
+    log.info("Passe source : %d lieu/ville posé(s) depuis la source", from_source)
 
     # --- Passe 1 : page structurée (JSON-LD location), déterministe ---
     todo = conn.execute(

@@ -1,11 +1,15 @@
 # Sources RSS des événements culturels — Sprint 1
-# Format : url_rss;territoire;nom_source;tier
+# Format : url_rss;territoire;nom_source;tier[;lieu;ville]
 # Territoire : Savoie | Piemonte | Vallee-Aoste | Nice
 # Tier (priorité de source pour la déduplication/fusion, voir docs/CHARTE_EDITORIALE.md §8) :
 #   officielle  = organisateur / lieu primaire (théâtre, musée, opéra…)   [priorité max]
 #   institution = collectivité / institution (ville, département, métropole)
 #   tourisme    = office de tourisme / portail touristique
 #   radar       = presse / Google News (DÉTECTION seule, jamais crédité/lié)
+# lieu;ville (OPTIONNELS) : pour une source « officielle » (un lieu précis), le lieu
+#   EST la source → renseignés ici, appliqués par défaut (scripts/venues.py, passe 0).
+#   Laisse vide (ou n'écris que la ville) quand le lieu varie (ville, office, festival
+#   itinérant). Format « ;;Ville » = seulement la ville.
 # Lignes commençant par # ignorées.
 #
 # ─────────────────────────────────────────────────────────────────────────────
@@ -15,7 +19,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ============================ SAVOIE / HAUTE-SAVOIE ============================
-https://www.malrauxchambery.fr/feed/;Savoie;Malraux scène nationale Chambéry;officielle
+https://www.malrauxchambery.fr/feed/;Savoie;Malraux scène nationale Chambéry;officielle;Espace Malraux;Chambéry
 https://www.albertville.fr/feed/;Savoie;Ville d'Albertville;institution
 https://www.aix-les-bains.com/feed/;Savoie;Office de Tourisme Aix-les-Bains;tourisme
 https://www.aixlesbains-rivieradesalpes.com/feed/;Savoie;Aix-les-Bains Riviera des Alpes;tourisme
@@ -32,22 +36,22 @@ https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+
 
 # ================================= PIÉMONT ====================================
 https://www.piemonteitalia.eu/it/rss.xml;Piemonte;Piemonte Italia (VisitPiemonte);tourisme
-https://www.museireali.beniculturali.it/feed/;Piemonte;Musei Reali Torino;officielle
-https://www.castellodirivoli.org/feed/;Piemonte;Castello di Rivoli - Arte Contemporanea;officielle
-https://www.teatrostabiletorino.it/feed/;Piemonte;Teatro Stabile di Torino;officielle
-https://www.circololettori.it/feed/;Piemonte;Fondazione Circolo dei Lettori;officielle
+https://www.museireali.beniculturali.it/feed/;Piemonte;Musei Reali Torino;officielle;Musei Reali;Torino
+https://www.castellodirivoli.org/feed/;Piemonte;Castello di Rivoli - Arte Contemporanea;officielle;Castello di Rivoli;Rivoli
+https://www.teatrostabiletorino.it/feed/;Piemonte;Teatro Stabile di Torino;officielle;Teatro Stabile;Torino
+https://www.circololettori.it/feed/;Piemonte;Fondazione Circolo dei Lettori;officielle;Circolo dei Lettori;Torino
 https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+Torino+OR+Piemonte&hl=it&gl=IT&ceid=IT:it;Piemonte;Google News - Cultura Torino/Piemonte (radar);radar
 
 # ============================== VALLÉE D'AOSTE ================================
-https://www.fortedibard.it/eventi/feed/;Vallee-Aoste;Forte di Bard - Eventi;officielle
-https://www.fortedibard.it/feed/;Vallee-Aoste;Forte di Bard - Notizie;officielle
+https://www.fortedibard.it/eventi/feed/;Vallee-Aoste;Forte di Bard - Eventi;officielle;Forte di Bard;Bard
+https://www.fortedibard.it/feed/;Vallee-Aoste;Forte di Bard - Notizie;officielle;Forte di Bard;Bard
 https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+%22Valle+d%27Aosta%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura VdA (radar);radar
 https://news.google.com/rss/search?q=cultura+eventi+%22Valle+d%27Aosta%22+OR+%22Vall%C3%A9e+d%27Aoste%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura/Eventi VdA bilingue (radar);radar
 
 # ========================= NICE / ALPES-MARITIMES ============================
-https://www.opera-nice.org/agenda/feed/;Nice;Opéra Nice Côte d'Azur - Agenda;officielle
-https://www.mamac-nice.org/feed/;Nice;MAMAC de Nice;officielle
-https://www.musee-matisse-nice.org/fr/feed/;Nice;Musée Matisse de Nice;officielle
+https://www.opera-nice.org/agenda/feed/;Nice;Opéra Nice Côte d'Azur - Agenda;officielle;Opéra de Nice;Nice
+https://www.mamac-nice.org/feed/;Nice;MAMAC de Nice;officielle;MAMAC;Nice
+https://www.musee-matisse-nice.org/fr/feed/;Nice;Musée Matisse de Nice;officielle;Musée Matisse;Nice
 https://www.nicecotedazur.org/feed/;Nice;Métropole Nice Côte d'Azur;institution
 https://www.nice.fr/feed/;Nice;Ville de Nice;institution
 https://www.grasse.fr/feed/;Nice;Ville de Grasse;institution
@@ -64,30 +68,30 @@ https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR
 # ------------------------------ SAVOIE / HAUTE-SAVOIE ------------------------
 https://73.agendaculturel.fr/rss;Savoie;Agenda Culturel Savoie (73);tourisme
 https://74.agendaculturel.fr/rss;Savoie;Agenda Culturel Haute-Savoie (74);tourisme
-https://www.mjc-chambery.com/feed/;Savoie;MJC de Chambéry;institution
-https://montmelian.com/category/culture/feed/;Savoie;Ville de Montmélian - Culture;officielle
-https://www.laravoire.fr/agenda/feed/;Savoie;Ville de La Ravoire - Agenda;officielle
+https://www.mjc-chambery.com/feed/;Savoie;MJC de Chambéry;institution;MJC de Chambéry;Chambéry
+https://montmelian.com/category/culture/feed/;Savoie;Ville de Montmélian - Culture;officielle;;Montmélian
+https://www.laravoire.fr/agenda/feed/;Savoie;Ville de La Ravoire - Agenda;officielle;;La Ravoire
 https://www.pays-albertville.com/feed/;Savoie;OT Pays d'Albertville;tourisme
 https://www.coeurdetarentaise-tourisme.com/feed/;Savoie;OT Coeur de Tarentaise (Moûtiers);tourisme
 https://dentduchat.com/feed/;Savoie;OT Yenne - Dent du Chat;tourisme
-https://www.ugine.com/feed/;Savoie;Ville d'Ugine;officielle
-https://mal-thonon.org/feed/;Savoie;Maison des Arts du Léman (Thonon);officielle
-https://mjc-annemasse.fr/feed/;Savoie;MJC Annemasse;officielle
-https://www.chateau-rouge.net/feed/;Savoie;Château Rouge (Annemasse);officielle
+https://www.ugine.com/feed/;Savoie;Ville d'Ugine;officielle;;Ugine
+https://mal-thonon.org/feed/;Savoie;Maison des Arts du Léman (Thonon);officielle;Maison des Arts du Léman;Thonon-les-Bains
+https://mjc-annemasse.fr/feed/;Savoie;MJC Annemasse;officielle;MJC Annemasse;Annemasse
+https://www.chateau-rouge.net/feed/;Savoie;Château Rouge (Annemasse);officielle;Château Rouge;Annemasse
 
 # --------------------------------- PIÉMONT ----------------------------------
 https://www.turismoinlanga.it/it/feed/;Piemonte;Turismo in Langa;tourisme
 https://piemontedalvivo.it/feed/;Piemonte;Piemonte dal Vivo;officielle
-https://www.fondazionemerz.org/feed/;Piemonte;Fondazione Merz (Torino);officielle
-https://fondazionecrc.it/feed/;Piemonte;Fondazione CRC (Cuneo);officielle
-https://www.scrittorincitta.it/feed/;Piemonte;scrittorincittà (Cuneo);officielle
-https://www.paratissima.it/feed/;Piemonte;Paratissima (Torino);officielle
-https://flowersfestival.it/feed/;Piemonte;Flowers Festival (Collegno);officielle
-https://museodiffusotorino.it/feed/;Piemonte;Museo Diffuso della Resistenza (Torino);officielle
-https://www.fondazioneaccorsi-ometto.it/feed/;Piemonte;Museo Accorsi-Ometto (Torino);officielle
-https://www.museorisorgimentotorino.it/feed/;Piemonte;Museo del Risorgimento (Torino);officielle
+https://www.fondazionemerz.org/feed/;Piemonte;Fondazione Merz (Torino);officielle;Fondazione Merz;Torino
+https://fondazionecrc.it/feed/;Piemonte;Fondazione CRC (Cuneo);officielle;Fondazione CRC;Cuneo
+https://www.scrittorincitta.it/feed/;Piemonte;scrittorincittà (Cuneo);officielle;;Cuneo
+https://www.paratissima.it/feed/;Piemonte;Paratissima (Torino);officielle;;Torino
+https://flowersfestival.it/feed/;Piemonte;Flowers Festival (Collegno);officielle;Flowers Festival;Collegno
+https://museodiffusotorino.it/feed/;Piemonte;Museo Diffuso della Resistenza (Torino);officielle;Museo Diffuso della Resistenza;Torino
+https://www.fondazioneaccorsi-ometto.it/feed/;Piemonte;Museo Accorsi-Ometto (Torino);officielle;Museo Accorsi-Ometto;Torino
+https://www.museorisorgimentotorino.it/feed/;Piemonte;Museo del Risorgimento (Torino);officielle;Museo del Risorgimento;Torino
 https://visitvalsesiavercelli.it/feed/;Piemonte;ATL Valsesia Vercelli;tourisme
-https://www.teatroalfieriasti.it/feed/;Piemonte;Teatro Alfieri (Asti);officielle
+https://www.teatroalfieriasti.it/feed/;Piemonte;Teatro Alfieri (Asti);officielle;Teatro Alfieri;Asti
 https://www.visitmondovi.it/feed/;Piemonte;Visit Mondovì;tourisme
 
 # ------------------------------- VALLÉE D'AOSTE -----------------------------
@@ -99,22 +103,22 @@ https://www.courmayeurmontblanc.it/feed/;Vallee-Aoste;OT Courmayeur Mont-Blanc;t
 
 # --------------------------- NICE / ALPES-MARITIMES -------------------------
 https://06.agendaculturel.fr/rss;Nice;Agenda Culturel Alpes-Maritimes (06);tourisme
-https://www.fondation-maeght.com/feed/;Nice;Fondation Maeght (Saint-Paul-de-Vence);institution
-https://www.theatredegrasse.com/feed/;Nice;Théâtre de Grasse;officielle
-https://scene55.fr/feed/;Nice;Scène 55 (Mougins);officielle
+https://www.fondation-maeght.com/feed/;Nice;Fondation Maeght (Saint-Paul-de-Vence);institution;Fondation Maeght;Saint-Paul-de-Vence
+https://www.theatredegrasse.com/feed/;Nice;Théâtre de Grasse;officielle;Théâtre de Grasse;Grasse
+https://scene55.fr/feed/;Nice;Scène 55 (Mougins);officielle;Scène 55;Mougins
 https://vence-tourisme.com/feed/;Nice;OT de Vence;tourisme
 https://www.ville-valbonne.fr/feed/;Nice;Ville de Valbonne;institution
 https://www.ville-grasse.fr/feed/;Nice;Ville de Grasse;institution
 https://mougins.fr/category/agenda/feed/;Nice;Ville de Mougins - Agenda;institution
 https://www.villefranche-sur-mer.fr/agenda/feed/;Nice;Ville de Villefranche - Agenda;institution
-https://www.nuitsdusud.com/feed/;Nice;Festival Nuits du Sud (Vence);officielle
+https://www.nuitsdusud.com/feed/;Nice;Festival Nuits du Sud (Vence);officielle;;Vence
 
 # À CONFIRMER depuis le VPS (bloqués par WAF/anti-bot depuis l'environnement de
 # recherche, mais lieux/festivals réels et majeurs → très probablement OK en prod).
-https://www.reggiavenaria.it/feed/;Piemonte;Reggia di Venaria;officielle
-https://www.fondazionesandretto.it/feed/;Piemonte;Fondazione Sandretto Re Rebaudengo (Torino);officielle
-https://www.legrandbivouac.com/feed/;Savoie;Festival Le Grand Bivouac (Albertville);officielle
-https://jazzajuan.com/feed/;Nice;Jazz à Juan (Antibes);officielle
+https://www.reggiavenaria.it/feed/;Piemonte;Reggia di Venaria;officielle;Reggia di Venaria;Venaria Reale
+https://www.fondazionesandretto.it/feed/;Piemonte;Fondazione Sandretto Re Rebaudengo (Torino);officielle;Fondazione Sandretto Re Rebaudengo;Torino
+https://www.legrandbivouac.com/feed/;Savoie;Festival Le Grand Bivouac (Albertville);officielle;;Albertville
+https://jazzajuan.com/feed/;Nice;Jazz à Juan (Antibes);officielle;;Antibes
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AJOUT 2026-07-01 (2) — agrégateurs & rubriques AGENDA de médias, recherche
@@ -142,21 +146,21 @@ https://www.ledauphine.com/haute-savoie/rss;Savoie;Le Dauphiné - Haute-Savoie (
 # agenda universitaire, coopération transfrontalière. Renfort notable pour la VdA.
 # ═════════════════════════════════════════════════════════════════════════════
 # -- Cinéma (art & essai, festivals) --
-https://www.torinofilmfest.org/feed/;Piemonte;Torino Film Festival;officielle
-https://www.cinemamassimotorino.it/feed/;Piemonte;Cinema Massimo (art & essai, Torino);officielle
-https://www.loversff.com/feed/;Piemonte;Lovers Film Festival (Torino);officielle
-https://www.sottodiciottofilmfestival.it/feed/;Piemonte;Sottodiciotto Film Festival (Torino);officielle
-https://www.festivalcinemambiente.it/it/feed/;Piemonte;CinemAmbiente (Torino);officielle
-https://www.gpff.it/feed/;Vallee-Aoste;Gran Paradiso Film Festival (Cogne);officielle
+https://www.torinofilmfest.org/feed/;Piemonte;Torino Film Festival;officielle;;Torino
+https://www.cinemamassimotorino.it/feed/;Piemonte;Cinema Massimo (art & essai, Torino);officielle;Cinema Massimo;Torino
+https://www.loversff.com/feed/;Piemonte;Lovers Film Festival (Torino);officielle;;Torino
+https://www.sottodiciottofilmfestival.it/feed/;Piemonte;Sottodiciotto Film Festival (Torino);officielle;;Torino
+https://www.festivalcinemambiente.it/it/feed/;Piemonte;CinemAmbiente (Torino);officielle;;Torino
+https://www.gpff.it/feed/;Vallee-Aoste;Gran Paradiso Film Festival (Cogne);officielle;;Cogne
 https://acrira.org/feed/;Savoie;ACRIRA - cinémas indépendants alpins;institution
 https://seances-speciales.fr/feed/;Nice;Les Écrans du Sud - art & essai PACA;institution
 # -- Conservatoires & bibliothèques --
-https://www.conservatoriotorino.eu/eventi/feed/;Piemonte;Conservatorio G. Verdi Torino - Eventi;officielle
-https://bct.comune.torino.it/rss.xml;Piemonte;Biblioteche Civiche Torinesi;institution
-https://www.consaosta.it/feed/;Vallee-Aoste;Conservatoire de Musique de la Vallée d'Aoste;officielle
+https://www.conservatoriotorino.eu/eventi/feed/;Piemonte;Conservatorio G. Verdi Torino - Eventi;officielle;Conservatorio Giuseppe Verdi;Torino
+https://bct.comune.torino.it/rss.xml;Piemonte;Biblioteche Civiche Torinesi;institution;;Torino
+https://www.consaosta.it/feed/;Vallee-Aoste;Conservatoire de Musique de la Vallée d'Aoste;officielle;Conservatoire de la Vallée d'Aoste;Aoste
 # -- Université & transfrontalier --
 https://www.univ-smb.fr/agenda/feed/;Savoie;Université Savoie Mont Blanc - Agenda;institution
 https://www.interreg-alcotra.eu/rss.xml;Savoie;Interreg ALCOTRA (transfrontalier);institution
 # -- Traditions / mono-événement --
-https://www.nicecarnaval.com/feed/;Nice;Carnaval de Nice;officielle
+https://www.nicecarnaval.com/feed/;Nice;Carnaval de Nice;officielle;;Nice
 https://www.langhe.net/feed/;Piemonte;LoveLanghe (traditions/sagre Langhe);tourisme
