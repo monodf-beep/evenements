@@ -955,6 +955,29 @@ def _apply_completion(conn, event_id: int, values: dict) -> tuple[bool, list[str
     return comp.is_complete(ev), comp.missing_labels(ev)
 
 
+def _autopush_if_ready(conn, event_id: int) -> tuple[bool, int | None]:
+    """Complétion manuelle → PUSH IMMÉDIAT : si l'événement est complet + à venir +
+    pas encore sur l'agenda, on le pousse tout de suite en brouillon Agenda Sabauda
+    (au lieu d'attendre le prochain passage du cron). Renvoie (poussé?, wp_id|None).
+    Ne pousse jamais un événement passé (cf. porte qualité)."""
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        return False, None
+    ev = dict(row)
+    if not comp.is_complete(ev) or ev.get("wp_post_id_as"):
+        return False, None
+    end = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
+    if not end or end < date.today().isoformat():
+        return False, None
+    wp_id = publish_to_as(ev)
+    if wp_id:
+        conn.execute("UPDATE events_raw SET wp_post_id_as=?, "
+                     "published_as_date=datetime('now') WHERE id=?", (wp_id, event_id))
+        conn.commit()
+        return True, wp_id
+    return False, None
+
+
 @app.route("/complete/<int:event_id>", methods=["POST"])
 @require_auth
 def complete_event_manual(event_id: int):
@@ -966,10 +989,13 @@ def complete_event_manual(event_id: int):
         return "Événement introuvable", 404
     values = {k: request.form.get(k, "") for k, _ in _COMPLETE_FIELDS}
     complete, missing = _apply_completion(conn, event_id, values)
+    pushed, wp_id = _autopush_if_ready(conn, event_id) if complete else (False, None)
     conn.close()
-    if complete:
-        flash("✅ Événement complété — tu peux le pousser en brouillon "
-              "(« Publier Agenda ») ou laisser l'auto-complétion s'en charger.", "ok")
+    if pushed:
+        flash(f"✅ Complété et poussé en brouillon Agenda Sabauda (id {wp_id}).", "ok")
+    elif complete:
+        flash("✅ Complété. Non poussé (événement passé ou déjà sur l'agenda) — "
+              "l'auto-complétion le gérera si besoin.", "ok")
     else:
         flash(f"💾 Enregistré. Il manque encore : {', '.join(missing)}.", "ok")
     return redirect(url_for("a_completer") + f"#e{event_id}")
@@ -1035,11 +1061,15 @@ def slack_complete():
         return {"response_type": "ephemeral",
                 "text": "Aucun champ reconnu. Ex : `lieu=Théâtre… ville=… url_image=…`"}
     complete, missing = _apply_completion(conn, event_id, values)
+    pushed, wp_id = _autopush_if_ready(conn, event_id) if complete else (False, None)
     conn.close()
     champs = ", ".join(values.keys())
-    if complete:
-        txt = (f"✅ Événement {event_id} complété ({champs}). "
-               "Il partira en brouillon au prochain passage de l'auto-complétion.")
+    if pushed:
+        txt = (f"✅ Événement {event_id} complété ({champs}) et POUSSÉ en brouillon "
+               f"Agenda Sabauda (id {wp_id}).")
+    elif complete:
+        txt = (f"✅ Événement {event_id} complété ({champs}). Non poussé "
+               "(passé ou déjà sur l'agenda).")
     else:
         txt = (f"💾 Événement {event_id} mis à jour ({champs}). "
                f"Il manque encore : {', '.join(missing)}.")

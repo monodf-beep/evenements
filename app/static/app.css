@@ -352,3 +352,18 @@ details.box > summary { cursor:pointer; font-weight:600; padding:.35rem 0; }
   .kpis { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
   .btn, .pbtn { min-height:38px; }   /* cibles tactiles */
 }
+
+/* ---------- Desktop : colonne « Actions » toujours atteignable ----------
+   Les listes (Événements, À valider) ont beaucoup de colonnes : si la table
+   dépasse la largeur, elle défile dans .table-wrap. On ÉPINGLE la dernière
+   colonne (Actions : boutons Publier) à droite pour qu'elle reste visible. */
+@media (min-width:821px) {
+  .table-cards th:last-child, .table-cards td:last-child {
+    position:sticky; right:0; z-index:1;
+    box-shadow:-8px 0 8px -8px rgba(15,36,64,.15); }
+  .table-cards td:last-child { background:var(--surface); }
+  .table-cards th:last-child { background:var(--surface-2); }
+  .table-cards tbody tr:hover td:last-child { background:var(--brand-soft); }
+  /* Colonne justification : on la borne pour laisser de la place aux actions. */
+  .table-cards td:nth-child(6) { max-width:280px; }
+}
