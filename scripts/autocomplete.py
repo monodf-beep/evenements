@@ -85,9 +85,11 @@ def _fill_date(ev: dict, client, model_extract: str, allow_web: bool,
         return {"date_event_start": s, "date_event_end": e, "date_source": src}
     # 3) LLM sur la matière de la page (dernier recours)
     if client is not None:
-        material = fetch_page_text(ev.get("url_source", "")) or \
+        material = fetch_page_text(ev.get("url_source", ""), title=ev.get("title", "")) or \
             f"{ev.get('title','')}\n{ev.get('description') or ''}"
-        s, e, src = llm_dates(material, today, client, model_extract)
+        ctx = ", ".join(x for x in (ev.get("lieu"), ev.get("ville")) if x)
+        s, e, src = llm_dates(material, today, client, model_extract,
+                              title=ev.get("title", ""), context=ctx)
         if s:
             return {"date_event_start": s, "date_event_end": e, "date_source": src}
     # 4) recherche web (dernier recours, coûteux) — trouve la date d'un événement nommé
@@ -112,7 +114,7 @@ def _fill_venue(ev: dict, client, model_extract: str, allow_web: bool,
         return {"lieu": lieu, "ville": ville or ev.get("ville") or "", "venue_source": src}
     # 2) LLM sur la matière
     if client is not None:
-        material = fetch_page_text(ev.get("url_source", "")) or \
+        material = fetch_page_text(ev.get("url_source", ""), title=ev.get("title", "")) or \
             f"{ev.get('title','')}\n{ev.get('description') or ''}"
         lieu, ville, src = llm_venue(material, client, model_extract)
         if lieu:

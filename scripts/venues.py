@@ -226,7 +226,7 @@ def main(argv=None) -> int:
             import anthropic
             client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
             for r in todo:
-                material = fetch_page_text(r["url_source"]) or f"{r['title']}\n{r['description'] or ''}"
+                material = fetch_page_text(r["url_source"], title=r["title"] or "") or f"{r['title']}\n{r['description'] or ''}"
                 lieu, ville, src = llm_venue(material, client, VENUES_LLM_MODEL)
                 conn.execute(
                     "UPDATE events_raw SET lieu=?, ville=?, venue_source=? WHERE id=?",

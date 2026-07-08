@@ -234,36 +234,81 @@ def fetch_event_dates(url: str) -> tuple[str, str, str]:
     return (s, e, "page") if src == "page" else ("", "", "nodate")
 
 
-def fetch_page_text(url: str) -> str:
-    """Texte visible d'une page (pour la datation LLM). '' si inaccessible/hors périmètre."""
+def fetch_page_text(url: str, title: str = "") -> str:
+    """Texte visible d'une page (pour la datation LLM). '' si inaccessible/hors périmètre.
+
+    Se CENTRE sur le contenu de l'événement au lieu de prendre bêtement les premiers
+    caractères : sur une page d'institution, un énorme menu précède le contenu (la
+    date de l'événement peut être à 70 000 caractères du début). On privilégie la
+    balise <article>, sinon on fenêtre autour de la mention LA PLUS PROFONDE du titre
+    (le fil d'Ariane en haut n'est pas le contenu). Sans ce recentrage, le LLM ne
+    voit que du menu et rate la date pourtant présente."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ""
     r = _robust_get(url)
     if r is None:
         return ""
-    doc = r.text
-    doc = re.sub(r"(?is)<(script|style|nav|header|footer|noscript)[^>]*>.*?</\1>", " ", doc)
+    doc = re.sub(r"(?is)<(script|style|noscript|svg|form)\b[^>]*>.*?</\1>", " ", r.text)
+
+    region = ""
+    if title:
+        # Fenêtre autour du TITRE-TITRE de l'événement : le <h1>/<h2> dont le texte
+        # correspond au titre marque le début du contenu (l'intro datée suit juste
+        # après). On matche le HEADING, pas une mention quelconque — sinon on tombe
+        # sur un lien de partage en pied de page qui pointe un événement voisin
+        # (cas Fondazione Merz : la date d'à-côté serait captée à tort).
+        toks = {t.lower() for t in re.findall(r"[^\W\d_]{4,}", title, re.U)}
+        best_pos, best_score = -1, 0
+        if toks:
+            for m in re.finditer(r"(?is)<h[12]\b[^>]*>(.*?)</h[12]>", doc):
+                htext = re.sub(r"<[^>]+>", " ", m.group(1)).lower()
+                score = sum(1 for t in toks if t in htext)
+                if score > best_score:
+                    best_score, best_pos = score, m.start()
+        if best_pos >= 0:
+            region = doc[max(0, best_pos - 300):best_pos + 10000]
+    if not region:
+        articles = re.findall(r"(?is)<article\b.*?</article>", doc)
+        if articles:
+            region = max(articles, key=len)  # le plus gros <article> = le contenu
+    doc = region or doc
+
+    doc = re.sub(r"(?is)<(nav|header|footer|aside)\b[^>]*>.*?</\1>", " ", doc)
     doc = re.sub(r"(?s)<[^>]+>", " ", doc)
-    return re.sub(r"\s+", " ", htmlmod.unescape(doc)).strip()[:5000]
+    return re.sub(r"\s+", " ", htmlmod.unescape(doc)).strip()[:6000]
 
 
-def llm_dates(material: str, ref: date, client, model: str) -> tuple[str, str, str]:
+def llm_dates(material: str, ref: date, client, model: str,
+              title: str = "", context: str = "") -> tuple[str, str, str]:
     """Le LLM lit la matière et rend la période de l'ÉVÉNEMENT. ('','','llm_none') si rien.
 
     Jugement de langue (FR/IT), pas de parsing structuré : on ne l'utilise qu'en
     dernier recours, quand regex + JSON-LD ont échoué (voir docs/LLM_OU_CODE.md).
+
+    `title`/`context` ANCRENT la recherche : une page d'institution liste souvent
+    PLUSIEURS événements (avec chacun sa date). Sans savoir lequel nous intéresse,
+    le LLM ne peut pas trancher. On lui donne donc le titre (et lieu/ville) de
+    l'événement cible pour qu'il repère SA date, pas celle d'un voisin.
     """
     material = (material or "").strip()
     if not material:
         return ("", "", "llm_none")
+    cible = ""
+    if title:
+        cible = (f"ÉVÉNEMENT CIBLE : « {title} »"
+                 + (f" ({context})" if context else "") + "\n"
+                 "Le texte ci-dessous peut décrire PLUSIEURS événements ; ne renvoie "
+                 "que la date de CET événement précis. Si sa date n'y figure pas "
+                 "(même si d'autres dates sont présentes), found=false.\n\n")
     prompt = (
         "Tu extrais la DATE de déroulement d'un événement culturel à partir du texte "
         "fourni (français ou italien). Ignore les dates de publication, d'inscription "
         "ou de vernissage isolé : ce qui compte, c'est QUAND l'événement a lieu.\n"
         f"Date du jour (pour déduire l'année si absente) : {ref.isoformat()}.\n"
         "Règles : une seule date → start = end ; une plage → les deux ; une fin seule "
-        "(« jusqu'au… ») → start vide, end rempli ; si aucune date d'événement n'est "
-        "trouvable, found=false.\n\n"
+        "(« jusqu'au… ») → start vide, end rempli ; si aucune date de l'événement cible "
+        "n'est trouvable, found=false.\n\n"
+        f"{cible}"
         f"TEXTE :\n{material[:4000]}\n\n"
         'Réponds en JSON STRICT et rien d\'autre : '
         '{"start": "AAAA-MM-JJ" ou "", "end": "AAAA-MM-JJ" ou "", "found": true|false}'
@@ -378,7 +423,7 @@ def main(argv=None) -> int:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if DATES_LLM and not args.no_llm and api_key:
         todo = conn.execute(
-            "SELECT id, title, description, url_source FROM events_raw "
+            "SELECT id, title, description, url_source, lieu, ville FROM events_raw "
             "WHERE date_source IN ('none', 'nodate') AND statut != 'merged' "
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
             "LIMIT ?", (args.llm_cap,)).fetchall()
@@ -390,8 +435,11 @@ def main(argv=None) -> int:
             ref = date.today()
             for r in todo:
                 # La page porte la vraie date ; à défaut, le titre + la description.
-                material = fetch_page_text(r["url_source"]) or f"{r['title']}\n{r['description'] or ''}"
-                s, e, src = llm_dates(material, ref, client, DATES_LLM_MODEL)
+                material = (fetch_page_text(r["url_source"], title=r["title"] or "")
+                            or f"{r['title']}\n{r['description'] or ''}")
+                ctx = ", ".join(x for x in (r["lieu"], r["ville"]) if x)
+                s, e, src = llm_dates(material, ref, client, DATES_LLM_MODEL,
+                                      title=r["title"] or "", context=ctx)
                 conn.execute(
                     "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
                     (s, e, src, r["id"]))
