@@ -70,6 +70,9 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 .nav-badge { margin-left:auto; background:var(--accent); color:#fff; font-size:.72rem;
   font-weight:700; padding:.06rem .42rem; border-radius:var(--radius-pill); }
 .nav a.on .nav-badge { background:#fff; color:var(--brand-ink); }
+/* Intertitres de section (regroupement par produit dans la barre latérale) */
+.nav-section { font-size:.64rem; letter-spacing:.11em; text-transform:uppercase;
+  color:#7c8798; font-weight:700; padding:.8rem .75rem .28rem; }
 .nav-foot { margin-top:auto; padding-top:1rem; border-top:1px solid rgba(255,255,255,.12); }
 .nav-foot a { color:#8b96a8; font-size:.85rem; padding:.4rem .7rem; display:block; }
 

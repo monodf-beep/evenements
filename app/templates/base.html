@@ -18,11 +18,17 @@
     <nav class="nav" aria-label="Navigation principale">
       <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Tableau de bord</a>
       <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Événements</a>
+      <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
+
+      <div class="nav-section">Cultura Sabauda</div>
       <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
         {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
+
+      <div class="nav-section">Agenda Sabauda</div>
       <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
         {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
-      <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
+
+      <div class="nav-section">Aide</div>
       <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
     </nav>
     <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>
