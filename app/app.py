@@ -415,6 +415,14 @@ def dashboard():
         "COUNT(*) t FROM events_raw").fetchone()
     with_img = imgrow["wi"] or 0
     without_img = (imgrow["t"] or 0) - with_img
+    # Brouillons RÉELLEMENT créés sur WordPress (tracés par wp_post_id_*), pas par le
+    # statut : c'est ce qui bouge quand tu publies (le KPI se met enfin à jour).
+    draftrow = conn.execute(
+        "SELECT SUM(CASE WHEN COALESCE(wp_post_id_cs,0)>0 THEN 1 ELSE 0 END) cs, "
+        "SUM(CASE WHEN COALESCE(wp_post_id_as,0)>0 THEN 1 ELSE 0 END) ag FROM events_raw"
+    ).fetchone()
+    drafts_cs = draftrow["cs"] or 0
+    drafts_as = draftrow["ag"] or 0
     # Alertes métier : ce qui bloque le flux éditorial (visibles en bandeau).
     biz = {
         "undated": conn.execute(
@@ -492,6 +500,7 @@ def dashboard():
         newsletters=newsletters, nl_active=nl_active,
         tasks=tasks, any_running=any_running, runs=runs,
         with_img=with_img, without_img=without_img, biz=biz, seo=seo,
+        drafts_cs=drafts_cs, drafts_as=drafts_as,
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
         presets=PERIOD_PRESETS, scope=scope, today=date.today().isoformat(),
     )

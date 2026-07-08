@@ -32,28 +32,18 @@
   <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés (actifs)</div></a>
   <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
   <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (≥ 7)</div></a>
-  <a class="kpi" href="/events?statut=published_cs"><div class="v">{{ status_counts.get('published_cs', 0) }}</div><div class="l">Cultura Sabauda</div></a>
-  <a class="kpi" href="/site-dedie"><div class="v">{{ status_counts.get('published_sub', 0) }}</div><div class="l">Agenda Sabauda</div></a>
+  <a class="kpi" href="{{ wp_base }}/wp-admin/edit.php?post_status=draft" target="_blank" rel="noopener"><div class="v">{{ drafts_cs }}</div><div class="l">Brouillons CS</div></a>
+  <a class="kpi" href="{{ wp_as_base }}/wp-admin/edit.php?post_status=draft&post_type=tribe_events" target="_blank" rel="noopener"><div class="v">{{ drafts_as }}</div><div class="l">Brouillons Agenda</div></a>
 </div>
 
-<!-- Alertes métier : ce qui bloque le flux (cliquables → la vue filtrée) -->
+<!-- Alertes métier : UNIQUEMENT ce qui bloque, cliquable → la vue filtrée. Le reste
+     (photos, SEO) est descendu dans « Détails » pour ne pas surcharger l'œil. -->
+{% if biz.undated or biz.retained_nophoto %}
 <div class="alerts-inline">
-  {% if biz.undated %}<a href="/events?dated=undated"><span aria-hidden="true">📌</span> {{ biz.undated }} sans date (invisibles en période)</a>{% endif %}
+  {% if biz.undated %}<a href="/events?dated=undated"><span aria-hidden="true">📌</span> {{ biz.undated }} sans date</a>{% endif %}
   {% if biz.retained_nophoto %}<a href="/events?img=0"><span aria-hidden="true">🖼</span> {{ biz.retained_nophoto }} retenu(s) sans photo</a>{% endif %}
-  <a href="/events?img=0" style="background:#eceff3;color:var(--ink-2);border-color:var(--line-2)"><span aria-hidden="true">🖼</span> {{ with_img }} avec / {{ without_img }} sans photo</a>
-  <a href="/events?statut=published_cs" title="Ouvre un événement → Aperçu → section SEO/GEO/AEO"><span aria-hidden="true">🔎</span> SEO : {{ seo.optimises }}/{{ seo.phares }} fiche(s) Cultura Sabauda optimisée(s)</a>
 </div>
-
-<!-- Outils SEO : où les trouver (par événement, dans l'Aperçu) -->
-<div class="card" style="margin:.2rem 0 1rem;padding:.8rem 1rem">
-  <strong>🔎 SEO / GEO / AEO</strong>
-  <span class="muted text-sm">— les outils sont <strong>sur chaque fiche</strong> : ouvre un événement → « 👁 Aperçu » → section en bas.
-  JSON-LD schema.org/Event <strong>gratuit</strong> (toujours affiché) + bouton « ✨ Optimiser SEO » (title, méta, réponse directe, FAQ) à réserver aux événements phares.</span>
-  <div class="btn-row" style="margin-top:.5rem">
-    <a class="btn btn-ghost btn-sm" href="/events?statut=published_cs">Événements Cultura Sabauda →</a>
-    <a class="btn btn-ghost btn-sm" href="/validation">À valider →</a>
-  </div>
-</div>
+{% endif %}
 
 <!-- Pipeline -->
 <div class="section-title">Lancer le pipeline</div>
@@ -202,6 +192,20 @@
       <strong>Gate</strong> : si ce n'est pas un événement (actu, réunion, voirie, inauguration passée) → <span class="badge grey">Rejeté</span>.
       Sinon : <strong>≥ 7</strong> → <span class="badge new">À valider</span> (candidat Cultura Sabauda) ·
       <strong>&lt; 7</strong> → <span class="badge re">Agenda Sabauda</span> (catalogue). Le détail par critère est visible sur chaque fiche (Aperçu).</p>
+  </div>
+</details>
+
+<!-- SEO (repliable) : info de référence, pas une alerte -->
+<details class="box">
+  <summary>🔎 SEO / GEO / AEO — {{ seo.optimises }}/{{ seo.phares }} fiche(s) optimisée(s)</summary>
+  <div style="margin-top:.7rem;font-size:.9rem">
+    <p class="muted">Les outils SEO sont <strong>sur chaque fiche</strong> : ouvre un événement → « 👁 Aperçu » → section en bas.
+    Le JSON-LD schema.org/Event est <strong>gratuit</strong> (toujours affiché) ; le bouton « ✨ Optimiser SEO »
+    (title, méta, réponse directe, FAQ) est à réserver aux événements phares.</p>
+    <div class="btn-row" style="margin-top:.4rem">
+      <a class="btn btn-ghost btn-sm" href="/events?statut=published_cs">Événements Cultura Sabauda →</a>
+      <a class="btn btn-ghost btn-sm" href="/validation">À valider →</a>
+    </div>
   </div>
 </details>
 
