@@ -1169,6 +1169,39 @@ def action(event_id: int, action: str):
 _STATUS_PICK = {"evaluated", "published_cs", "published_sub", "rejected"}
 
 
+@app.route("/set-score/<int:event_id>", methods=["POST"])
+@require_auth
+def set_score(event_id: int):
+    """Ajuste le score À LA MAIN + MÉMORISE la correction (l'évaluateur apprend).
+    On écrit le nouveau score dans llm_score (utilisé partout) ET user_score, et on
+    journalise (titre + traits + ancien→nouveau) dans utils/score_memory."""
+    try:
+        new = max(0, min(10, int(request.form.get("score", ""))))
+    except (ValueError, TypeError):
+        flash("⚠️ Score invalide (0 à 10).", "err")
+        return redirect(request.form.get("next", "") or url_for("a_completer"))
+    conn = get_db()
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    ev = dict(row)
+    old = ev.get("llm_score")
+    conn.execute("UPDATE events_raw SET llm_score=?, user_score=?, "
+                 "score_overridden_at=datetime('now') WHERE id=?", (new, new, event_id))
+    conn.commit()
+    conn.close()
+    from utils import score_memory
+    score_memory.record(ev, old, new)
+    log.info("Score ajusté id=%d : %s → %d (mémorisé)", event_id, old, new)
+    flash(f"🧠 Score de « {(ev.get('title') or '')[:50]} » : {old} → {new}. "
+          "Mémorisé — l'évaluateur s'alignera sur ton goût.", "ok")
+    nxt = request.form.get("next", "")
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = url_for("a_completer")
+    return redirect(nxt if "#" in nxt else f"{nxt}#e{event_id}")
+
+
 @app.route("/set-status/<int:event_id>/<statut>", methods=["POST"])
 @require_auth
 def set_status(event_id: int, statut: str):

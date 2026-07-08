@@ -47,7 +47,14 @@
     <div style="flex:1;min-width:0">
       <div style="display:flex;justify-content:space-between;gap:1rem">
         <b>{{ e.article_title or e.title }}</b>
-        <span class="muted" style="white-space:nowrap">score {{ e.llm_score if e.llm_score is not none else '—' }}</span>
+        <form method="POST" action="/set-score/{{ e.id }}" style="display:flex;align-items:center;gap:.25rem;white-space:nowrap;margin:0"
+              title="Ajuste le score selon ton appréciation — c'est mémorisé, l'évaluateur apprend de tes choix">
+          <input type="hidden" name="next" value="/a-completer#e{{ e.id }}">
+          <span class="muted" style="font-size:.82rem">score</span>
+          <input type="number" name="score" min="0" max="10" value="{{ e.llm_score if e.llm_score is not none else '' }}"
+                 class="field" style="width:3.1rem;padding:.15rem .3rem">
+          <button class="btn btn-ghost btn-sm" title="Enregistrer (mémorisé)">✓</button>
+        </form>
       </div>
       <div class="muted" style="font-size:.85rem;margin:.2rem 0">
         {{ e.date_event_start or 'date ?' }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}

@@ -114,7 +114,8 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant/après :
   "justification": "<une phrase de synthèse>"}}"""
 
 
-def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict | None:
+def evaluate_event(event: dict, client: anthropic.Anthropic, model: str,
+                   calibration: str = "") -> dict | None:
     prompt = EVAL_PROMPT.format(
         categories=" · ".join(CATEGORIES),
         title=event.get("title", ""),
@@ -122,7 +123,7 @@ def evaluate_event(event: dict, client: anthropic.Anthropic, model: str) -> dict
         lieu=event.get("lieu") or event.get("ville") or "",
         territoire=event.get("territoire", ""),
         source_name=event.get("source_name", ""),
-    )
+    ) + (calibration or "")   # exemples des ajustements de Franck (mémoire d'apprentissage)
     try:
         message = client.messages.create(
             model=model,
@@ -179,6 +180,12 @@ def main(argv=None) -> int:
     log.info("%d événements à évaluer%s (modèle : %s)", len(pending), scope, model)
 
     today = date.today().isoformat()
+    # Mémoire d'apprentissage : les ajustements de score de Franck, injectés comme
+    # calibrage dans le prompt → l'évaluateur s'aligne peu à peu sur son goût.
+    from utils import score_memory
+    calibration = score_memory.calibration_block()
+    if calibration:
+        log.info("Calibrage : corrections de Franck injectées dans le prompt.")
     for event in pending:
         ev = dict(event)
         # Pré-filtre GRATUIT : un événement déjà passé est rejeté sans appeler le
@@ -189,7 +196,7 @@ def main(argv=None) -> int:
                          (ev["id"],))
             log.info("[%d] passé → rejeté | %s", ev["id"], ev.get("title", "")[:50])
             continue
-        result = evaluate_event(ev, client, model)
+        result = evaluate_event(ev, client, model, calibration)
         if result is API_ERROR:
             # Panne API : on ne touche pas au statut (reste 'pending', réévalué
             # au prochain run). On stoppe le batch : l'API est probablement KO.
