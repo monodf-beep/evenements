@@ -35,7 +35,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.images import commons_search, fetch_og_image
+from utils.images import commons_search, fetch_og_image, fetch_content_image
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
                            load_territory_images, pick_image)
 from scripts.scraper_events import init_db
@@ -97,6 +97,11 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict) -> tuple[s
         og = fetch_og_image(ev.get("url_source", ""))
         if og and not is_blocked_image(og, blocked) and not is_logo_image(og):
             return og, "", "og"
+        # Étage 2b — repli : 1re vraie photo de CONTENU (pages sans og:image, ex.
+        # offices de tourisme). L'info est sur la page, on la prend au lieu d'abandonner.
+        content = fetch_content_image(ev.get("url_source", ""))
+        if content and not is_blocked_image(content, blocked) and not is_logo_image(content):
+            return content, "", "page"
     # Étage 3 — photo licenciable Wikimedia Commons (LLM = requête, code = fetch).
     if client is not None:
         q = visual_query(ev, client, MODEL)
@@ -157,7 +162,7 @@ def main(argv=None) -> int:
 
     banners = load_territory_images()
     blocked = load_blocked_image_domains()
-    counts = {"og": 0, "commons": 0, "banner": 0, "none": 0}
+    counts = {"og": 0, "page": 0, "commons": 0, "banner": 0, "none": 0}
     for ev in rows:
         url, credit, source = resolve_image(ev, client, blocked, banners)
         if not url:
@@ -169,8 +174,8 @@ def main(argv=None) -> int:
             (url, credit, source, ev["id"]))
         conn.commit()
         counts[source] += 1
-    log.info("Visuels posés — og:image=%d · Commons=%d · bannière=%d · échec=%d",
-             counts["og"], counts["commons"], counts["banner"], counts["none"])
+    log.info("Visuels posés — og:image=%d · page=%d · Commons=%d · bannière=%d · échec=%d",
+             counts["og"], counts["page"], counts["commons"], counts["banner"], counts["none"])
     conn.close()
     return 0
 

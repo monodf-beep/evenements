@@ -19,7 +19,23 @@ from utils.sources import is_logo_image
 
 _API = "https://commons.wikimedia.org/w/api.php"
 _UA = {"User-Agent": "CulturaSabaudaBot/1.0 (agenda; contact@culturasabauda.eu)"}
+# UA navigateur pour lire les PAGES officielles (certains sites servent une page
+# vide/403 à un bot mais tout à un navigateur). Le _UA descriptif reste pour l'API
+# Commons (Wikimedia demande un UA identifiable).
+_PAGE_UA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "fr,it;q=0.8,en;q=0.6",
+}
 _OK_MIME = ("image/jpeg", "image/png")
+
+# Chemins typiques d'une VRAIE photo de contenu (CMS) — sert à préférer une image
+# éditoriale à un élément d'habillage.
+_CONTENT_HINT = re.compile(r"/(uploads|content|media|photos?|images?|wp-content|fichiers)/", re.I)
+# Habillage à rejeter (logo, icône, sprite, pixel de tracking, avatar…).
+_CHROME_IMG = re.compile(
+    r"logo|icon|sprite|favicon|placeholder|pixel|spinner|avatar|blank|1x1|"
+    r"loader|badge|banniere|banner|header-|/theme/|/assets/(?:img/)?ui", re.I)
 
 
 def fetch_og_image(url: str, timeout: int = 8) -> str:
@@ -47,6 +63,58 @@ def fetch_og_image(url: str, timeout: int = 8) -> str:
             if img.startswith("http"):
                 return img
     return ""
+
+
+def fetch_content_image(url: str, timeout: int = 8) -> str:
+    """Repli quand la page n'a PAS d'og:image : la 1re vraie photo de CONTENU.
+
+    Beaucoup de pages d'offices de tourisme / institutions ne posent pas de balise
+    og:image mais affichent une belle photo dans le corps (ex. lac-annecy.com). On
+    scanne les <img> (y compris lazy-load data-src / srcset), on écarte l'habillage
+    (logo, icône, pixel, bannière) et on privilégie une image de dossier éditorial
+    (/uploads/, /content/…). Renvoie '' si rien de convaincant."""
+    if not url or url.startswith("gmail:") or "news.google.com" in url:
+        return ""
+    try:
+        r = requests.get(url, timeout=timeout, headers=_PAGE_UA)
+        if r.status_code != 200 or not r.text:
+            return ""
+        page = r.text
+    except requests.RequestException:
+        return ""
+
+    candidates: list[str] = []
+    for m in re.finditer(r"<img\b[^>]*>", page, re.I):
+        tag = m.group(0)
+        src = ""
+        for attr in ("data-src", "data-lazy-src", "data-original", "src"):
+            a = re.search(rf'{attr}=["\']([^"\']+)', tag, re.I)
+            if a:
+                src = a.group(1)
+                break
+        if not src:
+            a = re.search(r'srcset=["\']([^"\']+)', tag, re.I)
+            if a:
+                src = a.group(1).split(",")[-1].strip().split(" ")[0]  # la + grande
+        src = htmlmod.unescape((src or "").strip())
+        if src.startswith("//"):
+            src = "https:" + src
+        low = src.lower()
+        if not low.startswith("http"):
+            continue
+        if not re.search(r"\.(jpg|jpeg|png|webp)(\?|#|$)", low):
+            continue
+        if is_logo_image(src) or _CHROME_IMG.search(low):
+            continue
+        candidates.append(src)
+
+    if not candidates:
+        return ""
+    # Priorité aux photos de dossier éditorial (/uploads/…), sinon la 1re valable.
+    for src in candidates:
+        if _CONTENT_HINT.search(src):
+            return src
+    return candidates[0]
 
 
 def _clean(text: str) -> str:
