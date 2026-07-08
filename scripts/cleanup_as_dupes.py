@@ -25,6 +25,7 @@ import sqlite3
 import sys
 import time
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -81,10 +82,43 @@ def find_duplicates(events: list[dict]) -> list[dict]:
     return to_trash
 
 
+def find_incomplete_past(events: list[dict], today: str, *,
+                         incomplete: bool, past: bool) -> dict:
+    """Repère, CÔTÉ WORDPRESS, les événements « déchet » (indépendamment de la base).
+
+    Depuis l'inventaire cs/v1/list on connaît : venue (lieu), thumb (image), start.
+      - INCOMPLET « déchet » = pas de lieu OU pas de date. (Un événement qui a lieu +
+        date mais pas d'image = « image seule » → PROTÉGÉ, récupérable par un run visuels.)
+      - PASSÉ = date de début révolue.
+    Ne touche jamais un exemplaire publié. Renvoie {id: raison}.
+    """
+    flagged: dict[int, str] = {}
+    for ev in events:
+        if ev.get("status") in ("publish", "private"):
+            continue
+        start = (ev.get("start") or "")[:10]
+        has_venue = bool(ev.get("venue"))
+        if incomplete and (not has_venue or not start):
+            manque = []
+            if not has_venue:
+                manque.append("lieu")
+            if not start:
+                manque.append("date")
+            flagged[ev["id"]] = "incomplet (sans " + "/".join(manque) + ")"
+        elif past and start and start < today:
+            flagged[ev["id"]] = f"passé ({start})"
+    return flagged
+
+
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="Ménage des doublons WordPress (corbeille, réversible).")
+    p = argparse.ArgumentParser(description="Ménage WordPress (doublons + incomplets/passés, corbeille réversible).")
     p.add_argument("--execute", action="store_true", help="Agir réellement (sinon DRY-RUN).")
-    p.add_argument("--cap", type=int, default=200, help="Nombre max de doublons traités.")
+    p.add_argument("--incomplete", action="store_true",
+                   help="Aussi les incomplets « déchet » (sans lieu ou sans date) — "
+                        "protège les « image seule ».")
+    p.add_argument("--past", action="store_true", help="Aussi les événements passés.")
+    p.add_argument("--all", action="store_true", help="Doublons + incomplets + passés.")
+    p.add_argument("--cap", type=int, default=300, help="Nombre max d'exemplaires traités.")
     p.add_argument("--delay", type=float, default=0.4, help="Pause (s) entre deux appels.")
     args = p.parse_args(argv)
 
@@ -102,14 +136,29 @@ def main(argv=None) -> int:
         return 1
     log.info("Inventaire WordPress : %d événement(s)", len(events))
 
-    to_trash = find_duplicates(events)[:args.cap]
+    by_id = {e["id"]: e for e in events}
+    # 1) Doublons (on garde le meilleur exemplaire).
+    reasons: dict[int, str] = {}
+    for r in find_duplicates(events):
+        reasons[r["id"]] = f"doublon (on garde WP#{r['_keep_id']})"
+    # 2) Incomplets « déchet » + passés (côté WordPress, attrape les orphelins).
+    do_incomplete = args.incomplete or args.all
+    do_past = args.past or args.all
+    if do_incomplete or do_past:
+        today = date.today().isoformat()
+        for eid, why in find_incomplete_past(
+                events, today, incomplete=do_incomplete, past=do_past).items():
+            reasons.setdefault(eid, why)   # ne pas écraser une raison « doublon »
+
+    to_trash = list(reasons.items())[:args.cap]
     mode = "EXÉCUTION" if args.execute else "DRY-RUN (rien ne bouge)"
-    print(f"\nDoublons WordPress — {mode} · {len(to_trash)} exemplaire(s) en trop\n")
-    for r in to_trash:
-        print(f"  corbeille WP#{r['id']:>5} ({r['status']}) « {r['title'][:60]} » "
-              f"→ on garde WP#{r['_keep_id']}")
+    scope = "doublons" + (" + incomplets" if do_incomplete else "") + (" + passés" if do_past else "")
+    print(f"\nMénage WordPress ({scope}) — {mode} · {len(to_trash)} exemplaire(s)\n")
+    for eid, why in to_trash:
+        title = (by_id.get(eid, {}).get("title") or "")[:58]
+        print(f"  corbeille WP#{eid:>5} « {title} » · {why}")
     if not to_trash:
-        print("Aucun doublon détecté. 🎉")
+        print("Rien à nettoyer. 🎉")
         return 0
     if not args.execute:
         print(f"\nDRY-RUN : {len(to_trash)} seraient mis à la corbeille. "
@@ -118,11 +167,11 @@ def main(argv=None) -> int:
 
     conn = sqlite3.connect(DB_PATH)
     ok = fail = 0
-    for i, r in enumerate(to_trash, 1):
-        if trash_one(wp_url, auth, r["id"]):
+    for i, (eid, _why) in enumerate(to_trash, 1):
+        if trash_one(wp_url, auth, eid):
             # Si un événement de la base pointait ce brouillon, on le délie.
             conn.execute("UPDATE events_raw SET wp_post_id_as=NULL, published_as_date=NULL "
-                         "WHERE wp_post_id_as=?", (r["id"],))
+                         "WHERE wp_post_id_as=?", (eid,))
             conn.commit()
             ok += 1
         else:
@@ -130,7 +179,7 @@ def main(argv=None) -> int:
         if args.delay and i < len(to_trash):
             time.sleep(args.delay)
     conn.close()
-    print(f"\n=== Doublons : {ok} à la corbeille, {fail} échec(s) ===")
+    print(f"\n=== Ménage : {ok} à la corbeille, {fail} échec(s) ===")
     print("Réversible : Événements → Corbeille dans WordPress.")
     return 0 if fail == 0 else 1
 
