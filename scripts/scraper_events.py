@@ -112,7 +112,13 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # l'affichage) + horodatage. Nourrit la mémoire d'apprentissage
                       # (utils/score_memory.py) qui recalibre l'évaluateur.
                       ("user_score", "INTEGER"),
-                      ("score_overridden_at", "TEXT")):
+                      ("score_overridden_at", "TEXT"),
+                      # Événement RÉCURRENT / permanent (activité réservable à l'année,
+                      # programmation sans date unique). recurring=1 → la date est
+                      # remplacée par une note « vérifiez les dates sur la source » et
+                      # l'événement satisfait la porte qualité (cf. utils/completeness).
+                      ("recurring", "INTEGER DEFAULT 0"),
+                      ("recurring_note", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

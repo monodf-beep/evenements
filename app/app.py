@@ -128,8 +128,16 @@ def incomplete_clause(today: str) -> tuple[str, list]:
 
     Miroir exact de utils.completeness.is_complete côté base : un champ obligatoire
     manque (date, lieu, ville, territoire, catégorie, image). Les non-datés sont
-    inclus (ils manquent justement la date). cf. utils/completeness.py."""
-    empties = " OR ".join(f"COALESCE({k},'')=''" for k, _ in comp.MANDATORY)
+    inclus (ils manquent justement la date) SAUF les récurrents (la date y est
+    remplacée par une note → non requise). cf. utils/completeness.py."""
+    parts = []
+    for k, _ in comp.MANDATORY:
+        if k == "date_event_start":
+            # Récurrent : date non requise (note « vérifiez sur la source »).
+            parts.append("(COALESCE(date_event_start,'')='' AND COALESCE(recurring,0)=0)")
+        else:
+            parts.append(f"COALESCE({k},'')=''")
+    empties = " OR ".join(parts)
     clause = (
         "statut IN ('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
         "AND (COALESCE(date_event_end, date_event_start, '')='' "
@@ -955,6 +963,7 @@ def a_completer():
     for r in rows:
         e = dict(r)
         e["_missing"] = comp.missing_labels(e)
+        e["_recurring_note"] = comp.recurring_note(e)
         e["_img"] = event_image(e)
         events.append(e)
     return render_template(
@@ -1156,6 +1165,20 @@ def action(event_id: int, action: str):
         )
         conn.commit()
         flash(f"❌ « {title} » rejeté.", "ok")
+    elif action == "recurring":
+        # Événement récurrent / permanent (sans date unique) : on remplace la date
+        # par une note renvoyant à la source. Il quitte « À compléter » (la date
+        # n'est plus requise). Note personnalisable via le champ `note`.
+        note = (request.form.get("note", "") or "").strip()
+        conn.execute("UPDATE events_raw SET recurring=1, recurring_note=? WHERE id=?",
+                     (note or None, event_id))
+        conn.commit()
+        flash(f"🔁 « {title} » marqué récurrent — les dates renvoient à la source.", "ok")
+    elif action == "recurring_off":
+        conn.execute("UPDATE events_raw SET recurring=0, recurring_note=NULL WHERE id=?",
+                     (event_id,))
+        conn.commit()
+        flash(f"↩️ « {title} » n'est plus récurrent.", "ok")
 
     conn.close()
     nxt = request.form.get("next", "")

@@ -57,7 +57,7 @@
         </form>
       </div>
       <div class="muted" style="font-size:.85rem;margin:.2rem 0">
-        {{ e.date_event_start or 'date ?' }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}
+        {% if e.recurring %}🔁 {{ e._recurring_note }}{% else %}{{ e.date_event_start or 'date ?' }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}{% endif %}
         · {{ e.lieu or 'lieu ?' }}{% if e.ville %}, {{ e.ville }}{% endif %}
         · <a href="/preview/{{ e.id }}" target="_blank" rel="noopener">fiche #{{ e.id }} ↗</a>
         {% if e.url_source and not e.url_source.startswith('gmail:') %}· <a href="{{ e.url_source }}" target="_blank" rel="noopener">source ↗</a>{% endif %}
@@ -66,13 +66,25 @@
         {% for m in e._missing %}<span class="chip" style="background:#fde8e8;color:#a12;border-radius:4px;padding:.1rem .45rem;margin-right:.3rem;font-size:.82rem">manque : {{ m }}</span>{% endfor %}
       </div>
 
-      <!-- Actions : compléter à la main OU écarter (doublon / hors sujet) -->
-      <div class="btn-row" style="margin:.35rem 0;align-items:center">
+      <!-- Actions : compléter à la main · marquer récurrent · écarter -->
+      <div class="btn-row" style="margin:.35rem 0;align-items:center;flex-wrap:wrap;gap:.4rem">
         <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"
               onsubmit="return confirm('Écarter cet événement (doublon ou hors sujet) ? Il quittera la file « À compléter ».')">
           <input type="hidden" name="next" value="/a-completer#e{{ e.id }}">
           <button class="btn btn-danger btn-sm">🗑 Écarter</button>
         </form>
+        {% if 'Date' in e._missing %}
+        <!-- Sans date unique (activité permanente / réservable à l'année) : on garde
+             l'événement mais la date renvoie à la source. Il quitte « À compléter ». -->
+        <form method="POST" action="/action/{{ e.id }}/recurring"
+              style="display:flex;gap:.3rem;align-items:center;margin:0"
+              title="Événement récurrent / permanent : la date sera remplacée par une note renvoyant à la source. Il quitte « À compléter ».">
+          <input type="hidden" name="next" value="/a-completer">
+          <input type="text" name="note" class="field" style="width:15rem;padding:.15rem .35rem;font-size:.8rem"
+                 placeholder="Note (déf. : « vérifiez les dates sur {{ e.source_name or 'la source' }} »)">
+          <button class="btn btn-ghost btn-sm">🔁 Récurrent</button>
+        </form>
+        {% endif %}
       </div>
 
       <!-- Complétion à la main : seuls les champs manquants sont pré-signalés -->

@@ -85,7 +85,8 @@
       {% elif e.enrich_status in ('error','api_error') %}<br><span class="badge fail">✍️ échec</span>{% endif %}
       {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
     <td data-label="Date">
-      {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
+      {% if e.recurring %}<span class="badge grey" title="{{ e.recurring_note or 'Récurrent — vérifiez les dates sur la source' }}">🔁 récurrent</span>
+      {% elif e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
         <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
         <span class="ongoing">{{ '⏳ dernier week-end' if e._ending else 'en cours' }}</span>
       {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>

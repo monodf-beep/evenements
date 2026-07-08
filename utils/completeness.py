@@ -35,9 +35,33 @@ def _empty(value) -> bool:
     return not str(value if value is not None else "").strip()
 
 
+def is_recurring(event: dict) -> bool:
+    """Événement RÉCURRENT / permanent : pas de date unique (activité réservable à
+    l'année, programmation continue). Sa « date » est une note renvoyant à la source."""
+    return bool(event.get("recurring"))
+
+
+def recurring_note(event: dict) -> str:
+    """Texte à afficher à la place de la date pour un événement récurrent."""
+    if not is_recurring(event):
+        return ""
+    custom = (event.get("recurring_note") or "").strip()
+    if custom:
+        return custom
+    src = (event.get("source_name") or "").strip()
+    return f"Récurrent — vérifiez les dates sur {src}" if src else \
+        "Récurrent — vérifiez les dates sur la source"
+
+
 def missing_fields(event: dict) -> list[tuple[str, str]]:
-    """Liste des (clé, libellé) obligatoires ENCORE vides pour cet événement."""
-    return [(key, label) for key, label in MANDATORY if _empty(event.get(key))]
+    """Liste des (clé, libellé) obligatoires ENCORE vides pour cet événement.
+
+    Cas RÉCURRENT : la date n'est pas requise (elle est remplacée par une note
+    renvoyant à la source), donc on ne la compte pas comme manquante."""
+    recurring = is_recurring(event)
+    return [(key, label) for key, label in MANDATORY
+            if _empty(event.get(key))
+            and not (recurring and key == "date_event_start")]
 
 
 def missing_labels(event: dict) -> list[str]:
