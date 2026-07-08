@@ -58,6 +58,15 @@
         {% for m in e._missing %}<span class="chip" style="background:#fde8e8;color:#a12;border-radius:4px;padding:.1rem .45rem;margin-right:.3rem;font-size:.82rem">manque : {{ m }}</span>{% endfor %}
       </div>
 
+      <!-- Actions : compléter à la main OU écarter (doublon / hors sujet) -->
+      <div class="btn-row" style="margin:.35rem 0;align-items:center">
+        <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"
+              onsubmit="return confirm('Écarter cet événement (doublon ou hors sujet) ? Il quittera la file « À compléter ».')">
+          <input type="hidden" name="next" value="/a-completer#e{{ e.id }}">
+          <button class="btn btn-danger btn-sm">🗑 Écarter</button>
+        </form>
+      </div>
+
       <!-- Complétion à la main : seuls les champs manquants sont pré-signalés -->
       <details style="margin-top:.4rem">
         <summary style="cursor:pointer;color:#2557a7">✍️ Compléter à la main</summary>
