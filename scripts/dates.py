@@ -316,6 +316,10 @@ def main(argv=None) -> int:
                         help="Ne pas utiliser la datation LLM de dernier recours.")
     parser.add_argument("--llm-cap", type=int, default=DATES_LLM_CAP,
                         help="Nombre max d'événements datés par LLM sur ce run.")
+    parser.add_argument("--retry", action="store_true",
+                        help="Ré-armer les événements déjà marqués « non-datables » "
+                             "(nodate/llm_none) pour les re-tenter — utile après une "
+                             "amélioration du fetch. Ne touche pas ceux qui ont une date.")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -323,6 +327,14 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)
     ensure_columns(conn)
+
+    if args.retry:
+        n = conn.execute(
+            "UPDATE events_raw SET date_source='none' "
+            "WHERE date_source IN ('nodate','llm_none') "
+            "  AND COALESCE(date_event_start,'')='' AND statut != 'merged'").rowcount
+        conn.commit()
+        log.info("Retry : %d événement(s) non-datables ré-armés pour re-tentative", n)
 
     # --- Passe 1 : texte (titre + description), gratuit et instantané ---
     rows = conn.execute(
