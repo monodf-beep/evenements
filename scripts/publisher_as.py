@@ -129,6 +129,10 @@ def _build_payload(event: dict) -> dict:
         "as_source_officielle_url": "" if is_radar else (event.get("url_source", "") or ""),
         "as_verifie_le":            date.today().isoformat(),
         "as_image_credit":          event.get("image_credit", "") or "",
+        # Lieu + ville en plat : la carte-événement JetEngine les lit directement
+        # (le Venue TEC reste par ailleurs pour la carte/adresse).
+        "as_lieu":                  (event.get("lieu") or "").strip(),
+        "as_ville":                 (event.get("ville") or "").strip(),
     }
 
     start_iso, end_iso = _iso_dates(event)
