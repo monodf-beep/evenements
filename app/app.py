@@ -274,7 +274,7 @@ TASKS = {
     "enrich":   {"script": "scripts/enrich.py",          "label": "Enrichissement + rédaction", "icon": "✍️", "cost": True, "period": True, "phase": "prepare", "help": "Recherche + rédige l'article des retenus."},
     "visuals":  {"script": "scripts/visuals.py",         "label": "Compléter les visuels", "icon": "🖼️", "cost": True, "period": True, "phase": "prepare", "help": "Photo pour les retenus sans image : og:image → Wikimedia Commons (licenciable, LLM) → bannière territoire."},
     "complete": {"script": "scripts/complete_period.py", "label": "Tout compléter (période)", "icon": "✨", "cost": True, "period": True, "phase": "prepare", "help": "Enchaîne datation → évaluation → visuels → enrichissement sur la période. Idempotent : ne refait que ce qui manque."},
-    "autocomplete": {"script": "scripts/autocomplete.py", "label": "Auto-compléter + porte qualité", "icon": "🛠️", "cost": True, "phase": "prepare", "help": "Complète les événements retenus incomplets (date/lieu/image via scraping + recherche web), pousse les COMPLETS en brouillon Agenda Sabauda, et signale sur Slack ce qui reste à compléter."},
+    "autocomplete": {"script": "scripts/autocomplete.py", "label": "Auto-compléter + porte qualité", "icon": "🛠️", "cost": True, "period": True, "phase": "prepare", "help": "Complète les événements retenus incomplets (date/lieu/image via scraping + recherche web), pousse les COMPLETS en brouillon Agenda Sabauda, et signale sur Slack ce qui reste à compléter. Choisis une période pour limiter le traitement."},
     "newsletter": {"script": "scripts/newsletter.py",    "label": "Newsletter (brouillon)", "icon": "📧", "cost": False, "phase": "publish", "help": "Brouillon Brevo des événements Savoie de la semaine."},
 }
 COLLECT_TASKS = [k for k, v in TASKS.items() if v.get("phase") == "collect"]
@@ -920,14 +920,27 @@ _SLACK_KEYS = {
 @app.route("/a-completer")
 @require_auth
 def a_completer():
-    """File des événements RETENUS incomplets (la porte qualité les retient ici)."""
+    """File des événements RETENUS incomplets (la porte qualité les retient ici).
+
+    Filtrable par PÉRIODE : pour se concentrer (et pour lancer l'auto-complétion)
+    sur une fenêtre au lieu de tout traiter."""
     today = date.today().isoformat()
+    preset = request.args.get("preset", "")
+    dfrom = request.args.get("dfrom", "")
+    dto = request.args.get("dto", "")
+    pfrom, pto, plabel = period_bounds(preset, dfrom, dto)
     clause, cp = incomplete_clause(today)
+    sql = f"SELECT * FROM events_raw WHERE {clause}"
+    params = list(cp)
+    if pfrom and pto:
+        # Datés chevauchant la fenêtre (les non-datés n'ont pas de période).
+        oc, op = overlap_clause(pfrom, pto)
+        sql += f" AND {oc}"
+        params += op
+    sql += (" ORDER BY COALESCE(llm_score,0) DESC, "
+            "COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC")
     conn = get_db()
-    rows = conn.execute(
-        f"SELECT * FROM events_raw WHERE {clause} "
-        "ORDER BY COALESCE(llm_score,0) DESC, "
-        "COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC", cp).fetchall()
+    rows = conn.execute(sql, params).fetchall()
     conn.close()
     events = []
     for r in rows:
@@ -938,7 +951,8 @@ def a_completer():
     return render_template(
         "a_completer.html", events=events, fields=_COMPLETE_FIELDS,
         territories=TERRITORIES, today=today, active="tocomplete",
-        alert=friendly_alert())
+        preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
+        presets=PERIOD_PRESETS, alert=friendly_alert())
 
 
 def _apply_completion(conn, event_id: int, values: dict) -> tuple[bool, list[str]]:

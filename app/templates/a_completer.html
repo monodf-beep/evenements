@@ -12,11 +12,28 @@
   </div>
 {% else %}
 
+<!-- Période : filtre la liste ET circonscrit l'auto-complétion (pour ne pas tout traiter) -->
+<form class="period" method="GET" action="/a-completer" style="margin-bottom:.7rem">
+  <span class="plabel">📅 Période :</span>
+  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
+  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
+  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
+  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
+  <span class="sep"></span>
+  du <input type="date" name="dfrom" value="{{ dfrom }}"> au <input type="date" name="dto" value="{{ dto }}">
+  <button class="pbtn">Plage perso</button>
+  {% if plabel %}<a href="/a-completer" class="muted">✕ tout</a>{% endif %}
+</form>
+
 <div class="btn-row" style="margin-bottom:1rem">
   <form method="POST" action="/run/autocomplete" style="display:inline">
-    <button class="btn btn-primary btn-sm" title="Complète date/lieu/image par scraping + recherche web, pousse les complets en brouillon, signale le reste sur Slack.">🛠️ Lancer l'auto-complétion</button>
+    <input type="hidden" name="preset" value="{{ preset }}">
+    <input type="hidden" name="dfrom" value="{{ dfrom }}">
+    <input type="hidden" name="dto" value="{{ dto }}">
+    <button class="btn btn-primary btn-sm" title="Complète date/lieu/image par scraping + recherche web, pousse les complets en brouillon, signale le reste sur Slack.">🛠️ Lancer l'auto-complétion{% if plabel %} · {{ plabel }}{% endif %}</button>
   </form>
-  <span class="muted" style="margin-left:.6rem">Obligatoires : Date · Lieu · Ville · Territoire · Catégorie · Image.</span>
+  <span class="muted" style="margin-left:.6rem">
+    {% if plabel %}Limité à <strong>{{ plabel }}</strong> ({{ events|length }} événement·s).{% else %}Sur TOUT le stock. Choisis une période pour te concentrer.{% endif %}</span>
 </div>
 
 {% for e in events %}

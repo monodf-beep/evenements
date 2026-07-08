@@ -167,7 +167,14 @@ def _select(conn, args, today: str):
         "COALESCE(llm_score,0) >= ?",
     ]
     params: list = [args.min_score]
-    if not args.include_past:
+    if args.dfrom and args.dto:
+        # PÉRIODE : uniquement les événements DATÉS qui chevauchent [from, to]
+        # (« pour ne pas tout faire »). Les non-datés n'ont pas de fenêtre → exclus.
+        where.append("COALESCE(date_event_start,'') <> '' "
+                     "AND COALESCE(date_event_start,'') <= ? "
+                     "AND COALESCE(date_event_end, date_event_start) >= ?")
+        params += [args.dto, args.dfrom]
+    elif not args.include_past:
         # « à venir » : on ignore les événements clairement terminés (datés et passés).
         where.append("(COALESCE(date_event_end, date_event_start, '') = '' "
                      "OR COALESCE(date_event_end, date_event_start) >= ?)")
@@ -205,6 +212,10 @@ def main(argv=None) -> int:
                         help="Compléter et signaler, mais NE PAS pousser en brouillon.")
     parser.add_argument("--no-slack", action="store_true", help="Ne pas notifier Slack.")
     parser.add_argument("--include-past", action="store_true", help="Inclure les événements passés.")
+    parser.add_argument("--from", dest="dfrom", default="",
+                        help="Début de période AAAA-MM-JJ — limite l'agent aux événements "
+                             "datés chevauchant la fenêtre (pour ne pas tout traiter).")
+    parser.add_argument("--to", dest="dto", default="", help="Fin de période AAAA-MM-JJ.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Lister les incomplets et leurs manques, sans rien faire.")
     args = parser.parse_args(argv)
