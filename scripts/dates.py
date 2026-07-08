@@ -48,8 +48,36 @@ log = get_logger("dates")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 # Récupération de la date sur la PAGE de l'événement (2ᵉ passe, déterministe).
 FETCH_CAP = int(os.getenv("DATES_FETCH_CAP", "200"))   # pages fetchées par run (max)
-FETCH_TIMEOUT = int(os.getenv("DATES_FETCH_TIMEOUT", "6"))
-_UA = {"User-Agent": "Mozilla/5.0 (compatible; CulturaSabaudaBot/1.0)"}
+FETCH_TIMEOUT = int(os.getenv("DATES_FETCH_TIMEOUT", "10"))
+# UA de NAVIGATEUR : beaucoup de sites (WAF/CDN) renvoient 403/404 à un robot déclaré.
+_UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                     "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+       "Accept-Language": "fr,it;q=0.8,en;q=0.6"}
+
+
+def _swap_www(url: str) -> str:
+    """Bascule www ↔ non-www dans l'hôte (redirections mal configurées → 404)."""
+    from urllib.parse import urlsplit, urlunsplit
+    p = urlsplit(url)
+    host = p.netloc[4:] if p.netloc.startswith("www.") else "www." + p.netloc
+    return urlunsplit((p.scheme, host, p.path, p.query, p.fragment))
+
+
+def _robust_get(url: str):
+    """GET avec UA navigateur ; si échec/non-200, retente l'hôte www↔non-www.
+    Renvoie une réponse 200 non vide, ou None."""
+    tried = []
+    for u in (url, _swap_www(url)):
+        if u in tried:
+            continue
+        tried.append(u)
+        try:
+            r = requests.get(u, timeout=FETCH_TIMEOUT, headers=_UA, allow_redirects=True)
+            if r.status_code == 200 and r.text:
+                return r
+        except requests.RequestException:
+            continue
+    return None
 # 3ᵉ passe : datation LLM (jugement de langue) sur les non-datés que le regex et le
 # JSON-LD n'ont pas su lire — beaucoup de pages (surtout IT) donnent la date en prose.
 # Économique et borné. Actif si une clé Anthropic est présente (désactivable : DATES_LLM=0).
@@ -199,11 +227,8 @@ def fetch_event_dates(url: str) -> tuple[str, str, str]:
     """Télécharge la page et en extrait la date (JSON-LD/<time>). ('','','nodate') si rien."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ("", "", "nodate")
-    try:
-        r = requests.get(url, timeout=FETCH_TIMEOUT, headers=_UA)
-        if r.status_code != 200 or not r.text:
-            return ("", "", "nodate")
-    except Exception:
+    r = _robust_get(url)
+    if r is None:
         return ("", "", "nodate")
     s, e, src = dates_from_page(r.text)
     return (s, e, "page") if src == "page" else ("", "", "nodate")
@@ -213,13 +238,10 @@ def fetch_page_text(url: str) -> str:
     """Texte visible d'une page (pour la datation LLM). '' si inaccessible/hors périmètre."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ""
-    try:
-        r = requests.get(url, timeout=FETCH_TIMEOUT, headers=_UA)
-        if r.status_code != 200 or not r.text:
-            return ""
-        doc = r.text
-    except requests.RequestException:
+    r = _robust_get(url)
+    if r is None:
         return ""
+    doc = r.text
     doc = re.sub(r"(?is)<(script|style|nav|header|footer|noscript)[^>]*>.*?</\1>", " ", doc)
     doc = re.sub(r"(?s)<[^>]+>", " ", doc)
     return re.sub(r"\s+", " ", htmlmod.unescape(doc)).strip()[:5000]

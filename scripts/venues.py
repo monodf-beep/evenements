@@ -81,11 +81,9 @@ def fetch_event_venue(url: str) -> tuple[str, str, str]:
     """Télécharge la page et en extrait le lieu (JSON-LD). ('','','novenue') si rien."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ("", "", "none")
-    try:
-        r = requests.get(url, timeout=FETCH_TIMEOUT, headers=_UA)
-        if r.status_code != 200 or not r.text:
-            return ("", "", "novenue")
-    except requests.RequestException:
+    from scripts.dates import _robust_get
+    r = _robust_get(url)
+    if r is None:
         return ("", "", "novenue")
     lieu, ville, src = venue_from_page(r.text)
     return (lieu, ville, "page") if src == "page" else ("", "", "novenue")
