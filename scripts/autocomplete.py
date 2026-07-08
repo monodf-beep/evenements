@@ -64,7 +64,7 @@ def ensure_columns(conn: sqlite3.Connection) -> None:
 # Complétion d'UN événement, champ par champ, en réutilisant l'outillage.
 # Chaque passe est idempotente et ne s'exécute QUE si le champ est encore vide.
 # --------------------------------------------------------------------------- #
-def _fill_date(ev: dict, client, model_extract: str) -> dict:
+def _fill_date(ev: dict, client, model_extract: str, allow_web: bool) -> dict:
     if not comp._empty(ev.get("date_event_start")):
         return {}
     from scripts.dates import (parse_dates, fetch_event_dates, fetch_page_text,
@@ -87,6 +87,12 @@ def _fill_date(ev: dict, client, model_extract: str) -> dict:
         material = fetch_page_text(ev.get("url_source", "")) or \
             f"{ev.get('title','')}\n{ev.get('description') or ''}"
         s, e, src = llm_dates(material, today, client, model_extract)
+        if s:
+            return {"date_event_start": s, "date_event_end": e, "date_source": src}
+    # 4) recherche web (dernier recours, coûteux) — trouve la date d'un événement nommé
+    if allow_web and client is not None:
+        from scripts.dates_web import web_date
+        s, e, src = web_date(ev, client, today.isoformat())
         if s:
             return {"date_event_start": s, "date_event_end": e, "date_source": src}
     return {}
@@ -142,7 +148,7 @@ def complete_event(ev: dict, conn, client, blocked, banners, *,
     """Applique les passes de complétion et renvoie l'événement à jour (en base)."""
     updates: dict = {}
     for filler in (
-        lambda: _fill_date(ev, client, model_extract),
+        lambda: _fill_date(ev, client, model_extract, allow_web),
         lambda: _fill_venue(ev, client, model_extract, allow_web),
         lambda: _fill_image({**ev, **updates}, client, blocked, banners,
                             allow_web, want_banner),

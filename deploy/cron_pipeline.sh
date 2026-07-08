@@ -69,6 +69,7 @@ case "$MODE" in
     step "enrichissement"    "$PY" -m scripts.enrich     --from "$FROM" --to "$TO"
     # 3) Complétion haut de panier (coûteux, borné) + porte qualité
     step "lieux (web)"       "$PY" -m scripts.venues_web --cap 15 --min-score 7
+    step "dates (web)"       "$PY" -m scripts.dates_web  --cap 15 --min-score 7
     run_autocomplete
     log "=== FIN PIPELINE ==="
     ;;
