@@ -52,7 +52,8 @@
       <div class="muted" style="font-size:.85rem;margin:.2rem 0">
         {{ e.date_event_start or 'date ?' }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}
         · {{ e.lieu or 'lieu ?' }}{% if e.ville %}, {{ e.ville }}{% endif %}
-        · <a href="/preview/{{ e.id }}">fiche #{{ e.id }}</a>
+        · <a href="/preview/{{ e.id }}" target="_blank" rel="noopener">fiche #{{ e.id }} ↗</a>
+        {% if e.url_source and not e.url_source.startswith('gmail:') %}· <a href="{{ e.url_source }}" target="_blank" rel="noopener">source ↗</a>{% endif %}
       </div>
       <div style="margin:.35rem 0">
         {% for m in e._missing %}<span class="chip" style="background:#fde8e8;color:#a12;border-radius:4px;padding:.1rem .45rem;margin-right:.3rem;font-size:.82rem">manque : {{ m }}</span>{% endfor %}
@@ -78,6 +79,13 @@
                   <option value="">— inchangé —</option>
                   {% for t in territories %}<option value="{{ t }}" {{ 'selected' if e.territoire==t }}>{{ t }}</option>{% endfor %}
                 </select>
+              {% elif key == 'url_image' %}
+                <span style="display:flex;gap:.4rem">
+                  <input type="text" name="{{ key }}" value="{{ e[key] or '' }}" class="field" style="flex:1;min-width:0"
+                         placeholder="{{ '⚠️ manquant' if 'Image' in e._missing else '' }}">
+                  <button type="button" class="btn btn-ghost btn-sm" title="Ouvrir l'image dans un nouvel onglet"
+                          onclick="var i=this.previousElementSibling; if(i.value){window.open(i.value,'_blank','noopener');}">↗</button>
+                </span>
               {% else %}
                 <input type="text" name="{{ key }}" value="{{ e[key] or '' }}" class="field" style="width:100%"
                        placeholder="{{ '⚠️ manquant' if label.split(' ')[0] in e._missing else '' }}">

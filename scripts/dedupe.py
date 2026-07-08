@@ -17,9 +17,12 @@ Cron : 0 8 * * * (après scraping/gmail, avant l'évaluation de 9h) — évite a
 payer l'évaluation LLM sur des doublons.
 """
 from __future__ import annotations
+import argparse
 import os
+import re
 import sqlite3
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,6 +38,60 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 # Priorité de source (tier curé dans config/sources.txt).
 TIER_RANK = {"officielle": 3, "institution": 2, "institutionnel": 2, "tourisme": 1, "radar": 0}
 _FIELDS = ("date_start", "lieu", "ville", "organisateur")
+
+# --- Déduplication INTER-LANGUE (FR/IT) -----------------------------------
+# same_story compare les titres → rate « Festa del Jambon de Bosses » vs « Fête du
+# Jambon de Bosses » (langues différentes). On rapproche ces paires par les TOKENS
+# SIGNIFICATIFS (noms propres, années), invariants d'une langue à l'autre — on
+# retire les mots-outils ET les mots génériques d'événement FR/IT (festa/fête,
+# sagra, concerto/concert…) qui, eux, diffèrent selon la langue.
+_STOP = {
+    # articles / prépositions / conjonctions FR + IT
+    "le", "la", "les", "un", "une", "des", "du", "de", "au", "aux", "et", "en",
+    "dans", "sur", "pour", "par", "avec", "ce", "cette", "il", "lo", "gli", "dei",
+    "degli", "delle", "del", "della", "dello", "di", "da", "al", "alla", "allo",
+    "con", "per", "the", "of", "and",
+    # mots génériques d'événement (diffèrent selon la langue → non distinctifs)
+    "fete", "festa", "feste", "sagra", "sagre", "fiera", "foire", "marche",
+    "mercato", "concert", "concerto", "spectacle", "spettacolo", "expo",
+    "esposizione", "mostra", "festival", "edizione", "edition", "rassegna",
+    "salon", "salone", "notte", "nuit", "giornata", "journee",
+}
+
+
+def _sig_tokens(title: str) -> set[str]:
+    """Tokens SIGNIFICATIFS d'un titre (sans accents, sans mots-outils/génériques).
+    Garde les mots de 3+ lettres et les nombres (années)."""
+    s = unicodedata.normalize("NFD", (title or "").lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    toks = re.findall(r"[a-z0-9]+", s)
+    return {t for t in toks if len(t) >= 3 and t not in _STOP}
+
+
+def cross_lang_same(a: str, b: str) -> bool:
+    """True si deux titres décrivent le MÊME événement malgré des langues différentes.
+
+    Signal robuste : forte intersection de tokens significatifs (noms propres/années).
+    Conservateur pour éviter les fusions à tort : ≥ 2 tokens communs, Jaccard ≥ 0,5,
+    et années compatibles (deux éditions d'années différentes ne fusionnent pas)."""
+    ta, tb = _sig_tokens(a), _sig_tokens(b)
+    if len(ta) < 2 or len(tb) < 2:
+        return False
+    shared = ta & tb
+    years_a = {t for t in ta if t.isdigit() and len(t) == 4}
+    years_b = {t for t in tb if t.isdigit() and len(t) == 4}
+    if years_a and years_b and years_a.isdisjoint(years_b):
+        return False                      # éditions d'années différentes
+    # Il faut ≥ 2 tokens communs qui NE SOIENT PAS des années : deux vrais mots
+    # distinctifs partagés (noms propres). L'année seule (+ un genre comme « jazz »)
+    # ne suffit pas → évite de fusionner deux événements différents de la même année.
+    shared_words = {t for t in shared if not (t.isdigit() and len(t) == 4)}
+    if len(shared_words) < 2:
+        return False
+    # Recouvrement suffisant par rapport au plus court des deux titres.
+    if len(shared) / min(len(ta), len(tb)) < 0.5:
+        return False
+    return True
 
 
 def richness(ev: dict) -> int:
@@ -78,7 +135,9 @@ def _groups(events: list[dict]) -> list[list[dict]]:
         for a in range(len(idxs)):
             for b in range(a + 1, len(idxs)):
                 i, j = idxs[a], idxs[b]
-                if same_story(events[i].get("title", ""), events[j].get("title", "")):
+                ti, tj = events[i].get("title", ""), events[j].get("title", "")
+                # même histoire (titres proches) OU même événement inter-langue FR/IT
+                if same_story(ti, tj) or cross_lang_same(ti, tj):
                     union(i, j)
 
     buckets: dict[int, list[dict]] = {}
@@ -115,24 +174,43 @@ def merge_group(conn: sqlite3.Connection, group: list[dict]) -> int:
         cols = ", ".join(f"{k}=?" for k in updates)
         conn.execute(f"UPDATE events_raw SET {cols} WHERE id=?",
                      (*updates.values(), winner["id"]))
+    merged_n = 0
     for e in losers:
+        # Un doublon DÉJÀ poussé sur l'agenda : on ne le fusionne pas ici (ça
+        # laisserait un brouillon WordPress orphelin) — le ménage WP s'en charge.
+        if e.get("wp_post_id_as"):
+            log.warning("id=%d déjà sur l'agenda (WP#%s) — non fusionné "
+                        "(nettoie côté WP avec scripts.cleanup_as_dupes)",
+                        e["id"], e["wp_post_id_as"])
+            continue
         conn.execute(
             "UPDATE events_raw SET statut='merged', duplicate_of=? WHERE id=?",
             (winner["id"], e["id"]))
+        merged_n += 1
     log.info("Groupe « %s » : %d sources → garde id=%d (%s), %d fusionnée(s)",
              winner.get("title", "")[:50], len(group), winner["id"],
-             winner.get("source_type"), len(losers))
-    return len(losers)
+             winner.get("source_type"), merged_n)
+    return merged_n
 
 
-def main() -> int:
+def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
+    parser = argparse.ArgumentParser(
+        description="Déduplication multi-sources (dont inter-langue FR/IT).")
+    parser.add_argument("--rescan", action="store_true",
+                        help="Inclure aussi les événements RETENUS (nettoie le stock "
+                             "existant, notamment les doublons inter-langue FR/IT).")
+    args = parser.parse_args(argv)
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
+    where = ("statut='pending' OR (statut IN ('evaluated','published_cs','published_sub') "
+             "AND duplicate_of IS NULL)") if args.rescan else "statut='pending'"
     rows = [dict(r) for r in conn.execute(
-        "SELECT * FROM events_raw WHERE statut='pending'").fetchall()]
-    log.info("%d événements 'pending' à dédupliquer", len(rows))
+        f"SELECT * FROM events_raw WHERE {where}").fetchall()]
+    log.info("%d événement(s) à dédupliquer%s", len(rows),
+             " (rescan du stock retenu)" if args.rescan else "")
 
     merged = 0
     groups = _groups(rows)
@@ -147,4 +225,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))
