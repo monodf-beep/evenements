@@ -84,21 +84,37 @@ spécifique requis. Elles se traduisent directement en **blocs Gutenberg natifs*
 
 1. ✅ **Fait** — 2ᵉ Listing Item "carte-à-la-une" (post 976, Blocks/Gutenberg), vérifié
    avec de vraies données. Détail : `build-recipes/STATUS.md` §Carte "à la une".
-2. 🟡 **En cours** — page Accueil (928) : sections 1-11 construites (masthead, barre
-   FR|IT+burger, menu overlay, sélecteur territoire, hero statique, pub, recherche,
-   6 tuiles, newsletter, À la une) via `wordpress/design-system/homepage-mobile.gutenberg.html`
-   + `apply-homepage.mjs`. **Vérifié visuellement dans Chrome** (après le correctif CSS,
-   voir STATUS.md) : rendu conforme à la maquette. Interactions menu/territoire en CSS
-   pur (checkbox hack), pas de JS. Franck a choisi de continuer sans attendre la
-   publication des événements (tous en `draft` actuellement → "À la une" affiche
-   "No data was found" en attendant).
-   Reste à construire (sections 12-24, non commencées) : Ça vaut le déplacement
-   (transfrontalier, bloqué sur décision Franck), Événements d'aujourd'hui (rail
-   horizontal — nécessite un 3ᵉ Listing Item variante compacte), Nouvelles expositions,
-   tuiles secondaires, Suivez-nous, recherche/newsletter bis, footer, barre pub sticky.
-   Asset manquant à demander à Franck : le croquis masthead Turin recoloré
-   (`assets/masthead-full-sketch-v6.png` dans la source) — repli temporaire en wordmark
-   texte, voir `components.css` (`.as-masthead-sketch`).
+2. ✅ **Fait (v1 complet, 24/24 sections)** — page Accueil (928) construite de bout
+   en bout via `wordpress/design-system/homepage-mobile.gutenberg.html` +
+   `apply-homepage.mjs`, **vérifiée visuellement dans Chrome** (après le correctif
+   CSS, voir STATUS.md) du masthead jusqu'au footer. Interactions menu/territoire
+   en CSS pur (checkbox hack), pas de JS.
+
+   **Sections dynamiques (vraies données TEC)** : À la une (post 976, grid 2×2),
+   Événements d'aujourd'hui (rail horizontal, réutilise le même Listing Item —
+   ⚠️ pas encore filtré par date du jour, affiche les 4 derniers événements ; un
+   vrai filtre "aujourd'hui" nécessite JetEngine Query Builder, pas juste le
+   Listing Grid). Toutes deux affichent "No data was found" tant qu'aucun
+   événement n'est publié (Franck a choisi de continuer sans attendre).
+
+   **Sections encore statiques/placeholder, à finaliser plus tard** :
+   - *Ça vaut le déplacement* (transfrontalier) : structure/styles fidèles à la
+     source, contenu factice ("Titre de l'événement transfrontalier"…) — le
+     mécanisme de données (sélection manuelle vs champ auto) reste à trancher
+     avec Franck avant de câbler du vrai contenu.
+   - *Nouvelles expositions* : textes d'exemple repris mot pour mot de la
+     source design (les 2 mêmes articles que la maquette) — format "Le Fil"/
+     Article, gabarit pas encore construit (cf. `docs/TEMPLATES_WORDPRESS.md`).
+   - *Suivez-nous* : liens Instagram/Facebook en `#` — vraies URLs à demander
+     à Franck.
+   - *Footer* : liens vers les 7 pages piliers existantes câblés en vrai ; les
+     pages qui n'existent pas encore (Dove Mangiare, Infos utiles, Qui sommes-
+     nous, Politique de confidentialité, Cookies, Plan du site, Publicité) sont
+     en `#`, à créer.
+   - *Masthead* : asset manquant (`assets/masthead-full-sketch-v6.png`, croquis
+     Turin recoloré) jamais fourni — repli en wordmark texte
+     (`.as-masthead-sketch` dans `components.css`), à remplacer une fois l'asset
+     obtenu.
 3. Trancher avec Franck le mécanisme du module transfrontalier (champ auto vs
    sélection manuelle).
 4. Relire les autres fichiers du projet (Fiche Événement, Hub Catégorie, etc.) au

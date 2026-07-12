@@ -310,6 +310,16 @@
 .as-tile:hover { filter: brightness(0.98); }
 @media (min-width: 481px) { .as-home { border-left: 1px solid #E3DCCE; border-right: 1px solid #E3DCCE; } }
 
+/* ---- Rail horizontal "Événements d'aujourd'hui" — force le Listing Grid JetEngine
+   (grid 2D par défaut) en scroll horizontal flex avec cartes de largeur fixe. Filtre
+   par date pas encore câblé (nécessite JetEngine Query Builder) — affiche pour l'instant
+   les 4 derniers événements, pas seulement ceux du jour. ---- */
+.as-day-rail .jet-listing-grid__items { display: flex !important; overflow-x: auto; gap: 12px; padding-bottom: 4px; }
+.as-day-rail .ala-une-card { width: 150px; flex-shrink: 0; }
+.as-day-rail .ala-une-card__title { font-size: 14.5px; }
+.as-sticky-ad { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; }
+@media (min-width: 481px) { .as-sticky-ad { max-width: 480px; margin: 0 auto; } }
+
 /* ===== homepage ===== */
 /* ---- HERO ---- */
 .as-hero {

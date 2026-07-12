@@ -73,7 +73,7 @@ actif malgré cette recommandation.
 | — | **Carte-événement** (composant réutilisé partout) | 🟡 v1 (titre/cat/territoire OK ; manque heure formatée, lieu, statut, clic, groupement par jour) |
 | — | **Carte "à la une"** (grid 2×2 avec image, section homepage) | 🟡 v1 (image/territoire/titre OK ; manque heure formatée, comme carte-événement) |
 | — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
-| 1 | Home | 🟡 Sections 1-11/24 construites et vérifiées visuellement (masthead → À la une). Reste : transfrontalier, rail du jour, expositions, footer, etc. |
+| 1 | Home | ✅ v1 complet (24/24 sections), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
 | 2 | Fiche événement (single TEC) | ❌ |
 | 3 | Hub catégorie (×11) | ❌ |
 | 4 | Hub territoire (×4) | ❌ |
