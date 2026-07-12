@@ -23,19 +23,51 @@ Calendar + Crocoblock/JetEngine + Elementor + Polylang**.
 - **Node ≥ 18** (fetch natif, zéro dépendance). Les scripts lisent `.env`
   (`WP_AS_URL` / `WP_AS_USER` / `WP_AS_APP_PASSWORD`).
 
+## MCP vs Claude-in-Chrome — répartition (leçon de la session du 2026-07-12)
+
+MCP est rapide (API REST directe) ; Claude-in-Chrome est lent et le canvas Elementor
+s'est révélé **non automatisable de façon fiable** (3 échecs confirmés : drag simple,
+double-clic, bouton +). Règle : **tout ce qui peut s'écrire en JSON/REST → MCP.**
+
+| Tâche | Canal |
+|---|---|
+| Contenu, structure, taxonomies, réglages, CSS (Code Snippets) | 🟢 MCP |
+| Meta Box JetEngine (formulaire) | 🟢 MCP + `find`/`form_input` (fiable) |
+| **Contenu des gabarits JetEngine, SI vue = Blocks (Gutenberg)** | 🟢 MCP (`post_content` = texte REST) |
+| Schéma des blocs JetEngine | 🟢 MCP (`GET /wp-json/wp/v2/block-types`, natif WP) |
+| Créer un nouveau Listing Item/Theme Part (modal initial) | 🌐 Chrome (fiable) |
+| Conditions d'affichage Theme Builder (Header/Footer) | 🌐 Chrome (capricieux) |
+| Canvas Elementor (widgets glisser-déposer) | ❌ à éviter — non fiable |
+
+**Décision de stack confirmée par `docs/BUILD_WORDPRESS_CROCOBLOCK.md` §0 : PAS Elementor,
+Gutenberg + JetEngine recommandé.** Le contournement technique trouvé cette session
+(Listing Items en vue Blocks) correspond donc à la direction officielle du plan, pas
+seulement à un palliatif d'automatisation. Écart à trancher : le site live a Elementor
+actif malgré cette recommandation.
+
 ## Scripts
 
 | Script | Rôle |
 |---|---|
-| `scripts/apply-tokens.mjs` | Pousse `design-system/tokens.css` dans Code Snippets (site-css, idempotent). `node wordpress/scripts/apply-tokens.mjs` |
+| `scripts/apply-tokens.mjs` | Pousse `design-system/tokens.css` dans Code Snippets (site-css, idempotent) |
+| `scripts/apply-settings.mjs` | Identité du site (titre, accroche, fuseau) |
+| `scripts/build-structure.mjs` | 7 pages piliers + menu « Principal FR » (idempotent) |
+| `scripts/apply-components.mjs` | Pousse `design-system/components.css` (site-css, idempotent) |
+| `scripts/apply-carte-evenement.mjs` | Met à jour le contenu Gutenberg du Listing Item carte-événement (post 969) |
 
-## Reste à faire (ordre du design system README-claude-code)
+## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
-1. ~~Tokens (couleurs/typo/espacements)~~ ✅ *(snippet Code Snippets)*
-2. Polices SemplicitaPro (@font-face) — upload .woff + snippet, ou mu-plugin via SFTP
-3. Meta box JetEngine sur `tribe_events` (statut, accent, billetterie)
-4. Carte-événement (JetEngine Listing) — via Claude-in-Chrome
-5. Archive/Agenda + filtres (JetSmartFilters)
-6. Fiche événement (single TEC)
-7. Hubs taxonomies (territoire, catégorie)
-8. Homepage
+| # | Gabarit | Statut |
+|---|---|---|
+| — | Structure (menu, 7 pages, taxonomies, tokens) | ✅ Fait |
+| — | **Carte-événement** (composant réutilisé partout) | 🟡 v1 (titre/cat/territoire OK ; manque heure formatée, lieu, statut, clic, groupement par jour) |
+| — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
+| 1 | Home | ❌ Page existe (928), vide |
+| 2 | Fiche événement (single TEC) | ❌ |
+| 3 | Hub catégorie (×11) | ❌ |
+| 4 | Hub territoire (×4) | ❌ |
+| 5 | Hub lieu (venue TEC) | ❌ |
+| 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | ❌ |
+| 7 | Recherche + 404 | ❌ |
+
+Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.
