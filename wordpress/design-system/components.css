@@ -5,107 +5,74 @@
    Les classes ciblent des structures montées ensuite dans le builder.
    ============================================================= */
 
-/* ===== carte-evenement ===== */
-/* ---- Carte / EventRow (variante compacte dense) ---- */
-.cs-ev{
-  position: relative;
-  display: grid;
-  grid-template-columns: auto var(--sc-media, 88px) 1fr; /* date · image · corps */
-  gap: var(--sc-5);                 /* 14px, densité agenda */
-  align-items: start;
-  padding: var(--sc-5);
-  background: var(--bg-white);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-1);        /* 2px */
-  box-shadow: var(--shadow-paper);
-  line-height: var(--lh-compact);   /* 1.35 */
-  transition: box-shadow var(--dur-fast) var(--ease-std),
-              transform var(--dur-fast) var(--ease-std);
-}
-.cs-ev:hover{ box-shadow: var(--shadow-lift); }
-.cs-ev:focus-within{ outline: 2px solid var(--cs-bleu); outline-offset: 2px; }
+/* ===== carte-evenement — SOURCE RÉELLE (ui_kits/agenda/kit.css + colors_and_type.css,
+   lus via DesignSync le 2026-07-12). Remplace une version précédente FABRIQUÉE sans
+   accès au design system — structure "boîte à ombre + image + pastille date" INEXACTE.
+   Le vrai composant est une LIGNE DENSE (.ag-row) dans une liste groupée par jour,
+   SANS image, SANS pastille de date par ligne (la date vient du day-group au-dessus). ===== */
 
-/* Pseudo-lien plein-carte : garde cat/territoire/lieu cliquables au-dessus */
-.cs-ev__overlay::after{ content:""; position:absolute; inset:0; z-index:0; }
-.cs-ev a{ position: relative; z-index: 1; }
+/* ---- Ligne événement (EventRow) : grid 96px(heure) | 1fr(contenu) | auto(statut) ---- */
+.ag-row {
+  display: grid; grid-template-columns: 96px 1fr auto; gap: 18px; align-items: start;
+  padding: 12px 0; border-bottom: 1px solid var(--rule); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-std);
+}
+.ag-row:hover { background: var(--bg-alt); }
+.ag-row__time { font-family: var(--font-mono); font-size: var(--fs-c-sm); color: var(--fg-2); padding-top: 2px; }
+.ag-row__main { min-width: 0; }
+.ag-row__catline { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.cs-ev-title.ag-row__title {
+  font-family: var(--font-editorial); font-weight: 600; font-size: var(--fs-c-lg);
+  letter-spacing: 0; line-height: 1.2; margin: 0;
+}
+.ag-row:hover .ag-row__title { text-decoration: underline; text-underline-offset: 3px; }
+.ag-row__meta.cs-ev-meta { font-size: var(--fs-c-sm); color: var(--fg-3); margin-top: 3px; }
+.ag-row__right { display: flex; align-items: center; gap: 10px; }
 
-/* ---- Pastille date (jour + n° + mois, fond rouge, La Semplicita 700) ---- */
-.cs-ev-date{
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-width: 52px; padding: var(--sc-3) var(--sc-2);
-  background: var(--cs-rouge); color: var(--fg-on-accent);
-  border-radius: var(--r-1);
-  font-family: var(--font-editorial); font-weight: 700;
-  text-transform: uppercase; letter-spacing: var(--tracking-caps);
-  line-height: 1.05; text-align: center;
+/* ---- En-tête de groupe par jour (le "gros chiffre" vit ICI, pas sur chaque ligne) ---- */
+.ag-daygroup { margin-bottom: 8px; }
+.ag-daygroup__head {
+  display: flex; align-items: baseline; gap: 12px;
+  border-top: 1px solid var(--fg-1); padding: 10px 0 8px; margin-top: 20px;
 }
-/* mise en forme du texte « sam 4 juil » : le jour n° en grand (via <strong> injecté ou nth) */
-.cs-ev-date strong{ font-size: 1.5rem; display: block; }
+.ag-daygroup__num { font-family: var(--font-editorial); font-weight: 600; font-size: 22px; color: var(--fg-1); line-height: 1; }
+.ag-daygroup__wd { font-size: var(--fs-c-xs); font-weight: 700; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--fg-3); }
+.ag-daygroup--today .ag-daygroup__num,
+.ag-daygroup--today .ag-daygroup__wd { color: var(--cs-rouge); }
 
-/* ---- Image 3:2 ---- */
-.cs-ev__media img{
-  width: 100%; aspect-ratio: 3 / 2; object-fit: cover;
-  border-radius: var(--r-1); display: block;
-}
+/* ---- Statut (texte à droite ; annulé seul a le droit au rouge, cf. kit.css) ---- */
+.ag-statustag { font-family: var(--font-mono); font-size: var(--fs-c-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); white-space: nowrap; }
+.ag-statustag--annule { color: var(--cs-rouge); font-weight: 700; }
 
-/* ---- Topline : kicker catégorie + puce territoire ---- */
-.cs-ev__topline{ display:flex; align-items:center; gap: var(--sc-4); margin-bottom: var(--sc-2); }
-.cs-ev-cat{                              /* CATÉGORIE = monochrome, La Semplicita */
-  font-family: var(--font-editorial); font-weight: 600;
-  text-transform: uppercase; letter-spacing: var(--tracking-caps);
-  font-size: var(--fs-eyebrow); color: var(--fg-2);
-  text-decoration: none;
+/* ---- Catégorie (monochrome, libellé) et territoire (chip mono, mono-espace) ----
+   (règles issues de colors_and_type.css — inchangées, déjà correctes) */
+.cs-ev-cat {
+  font-family: var(--font-editorial); font-weight: 600; font-size: var(--fs-c-xs);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-1);
 }
-.cs-ev-cat:hover{ color: var(--fg-1); }
-.cs-ev-terr{                             /* TERRITOIRE = puce MONOCHROME (pas de couleur) */
-  display:inline-flex; align-items:center; gap: var(--sc-2);
-  font-size: var(--fs-meta); color: var(--fg-3); text-decoration:none;
-}
-.cs-ev-terr::before{                     /* point neutre, jamais une teinte territoire */
-  content:""; width:6px; height:6px; border-radius: var(--r-pill);
-  background: currentColor; opacity:.6;
+.cs-ev-cat--accent { color: var(--cs-rouge); }
+.cs-terr {
+  font-family: var(--font-mono); font-size: var(--fs-c-xs); letter-spacing: 0.06em;
+  color: var(--fg-2); border: 1px solid var(--rule-strong); border-radius: var(--r-1); padding: 2px 7px;
 }
 
-/* ---- Titre ---- */
-.cs-ev-title{
-  font-family: var(--font-editorial); font-weight: 600;
-  font-size: var(--fs-h4); color: var(--fg-1); line-height: var(--lh-title);
-  margin: 0 0 var(--sc-2);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.cs-ev:hover .cs-ev-title{ color: var(--cs-bleu); }
+/* ---- Statut = TYPOGRAPHIE sur le wrapper .cs-ev--{statut}, jamais une couleur d'aplat ---- */
+.cs-ev-status { font-weight: 700; letter-spacing: var(--tracking-caps); text-transform: uppercase; font-size: var(--fs-c-xs); }
+.cs-ev--avenir  .cs-ev-title { color: var(--fg-1); }
+.cs-ev--complet .cs-ev-title,
+.cs-ev--complet .cs-ev-meta { color: var(--fg-3); }
+.cs-ev--annule  .cs-ev-title { color: var(--fg-3); text-decoration: line-through; text-decoration-thickness: 2px; }
+.cs-ev--annule  .cs-ev-meta  { color: var(--fg-3); }
+.cs-ev--passe   { opacity: 0.55; }
+.cs-ev--passe   .cs-ev-title { color: var(--fg-3); }
 
-/* ---- Meta : lieu · heure ---- */
-.cs-ev__meta{
-  display:flex; flex-wrap:wrap; align-items:center; gap: var(--sc-2) var(--sc-4);
-  font-family: var(--font-body); font-size: var(--fs-body-sm); color: var(--fg-2);
-}
-.cs-ev-venue::before{ content:"\1F4CD"; margin-right: var(--sc-2); } /* 📍 décoratif; remplaçable par SVG mask */
-.cs-ev-time{ color: var(--fg-3); }
+/* ---- Liste (conteneur des day-groups) ---- */
+.ag-list { max-width: 1080px; margin: 0 auto; padding: 28px 24px 100px; }
 
-/* ---- STATUT = TYPOGRAPHIE, jamais couleur ---- */
-.cs-ev--a_venir  .cs-ev-status{ display:none; }                  /* à venir = normal */
-.cs-ev--complet  .cs-ev-title,
-.cs-ev--complet  .cs-ev__meta { color: var(--fg-3); }            /* complet = gris */
-.cs-ev--annule   .cs-ev-title{ text-decoration: line-through; color: var(--fg-3); } /* annulé = barré + gris */
-.cs-ev--reporte  .cs-ev-title{ font-style: italic; color: var(--fg-3); }
-.cs-ev--passe{ opacity: .55; }                                   /* passé = opacité réduite (fiche only) */
-.cs-ev-status{                                                   /* libellé statut, neutre */
-  font-family: var(--font-body); font-size: var(--fs-meta);
-  text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--fg-3);
+@media (max-width: 720px) {
+  .ag-row { grid-template-columns: 72px 1fr; }
+  .ag-row__right { grid-column: 2; justify-content: flex-start; margin-top: 4px; }
 }
-
-/* ---- Badge Gratuit (seul badge coloré toléré) ---- */
-.cs-ev-badge--free{
-  display:inline-block; padding: 1px var(--sc-3);
-  font-family: var(--font-body); font-weight:700; font-size: var(--fs-meta);
-  text-transform: uppercase; letter-spacing: var(--tracking-caps);
-  color: var(--cs-bleu); background: transparent; border: 1px solid var(--cs-bleu);
-  border-radius: var(--r-1);
-}
-
-/* ---- Accent RARE (mise en avant éditoriale, si as_accent=1) ---- */
-.cs-ev--accent{ border-left: 3px solid var(--cs-rouge); }
 
 
 /* ===== header-menu ===== */
