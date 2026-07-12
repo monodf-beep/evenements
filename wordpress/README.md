@@ -65,6 +65,7 @@ actif malgré cette recommandation.
 | `scripts/apply-carte-a-la-une.mjs` | Met à jour le contenu Gutenberg du Listing Item carte "à la une" (post 976) |
 | `scripts/apply-homepage.mjs` | Pousse le contenu Gutenberg de la home mobile (24 sections) sur la page Accueil (928) |
 | `scripts/apply-single-event-meta.mjs` | Pousse le snippet PHP qui ajoute pilule territoire/statut/crédit photo/"Vérifié le" sur la fiche événement native TEC |
+| `scripts/apply-liste-pages.mjs` | Pousse le contenu Gutenberg des pages "Tout l'agenda" (932) et "Ce week-end" (930) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -79,7 +80,7 @@ actif malgré cette recommandation.
 | 3 | Hub catégorie (×11) | ❌ |
 | 4 | Hub territoire (×4) | ❌ |
 | 5 | Hub lieu (venue TEC) | ❌ |
-| 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | ❌ |
+| 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | 🟡 v1 : titre + Listing Grid (carte-evenement-blocks) sur les pages existantes (930/932). Filtre par date pas encore câblé (nécessite JetEngine Query Builder) — "Ce week-end" affiche tous les événements pour l'instant |
 | 7 | Recherche + 404 | ❌ |
 
 Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.

@@ -31,6 +31,41 @@ badges d'état, pilule territoire, "Vérifié le") a été ajouté via un filtre
 **Reste à faire (v2)** : les **3 rails liés** (même lieu / catégorie / dates) —
 nécessitent des `WP_Query` dédiées dans le même snippet PHP, pas encore écrites.
 
+## 🆕 « Tout l'agenda » et « Ce week-end » — v1
+
+Pages existantes (932 et 930) remplies avec un titre + `jet-engine/listing-grid`
+(réutilise `carte-evenement-blocks`, post 969, liste dense). Vérifié : la page
+rend sans erreur, "No data was found" tant qu'aucun événement n'est publié
+(comportement correct, pas un bug). **Filtre par date** ("le week-end en cours")
+**pas câblé** — nécessite JetEngine Query Builder (meta_query sur `_EventStartDate`
+entre vendredi et dimanche) ; pour l'instant les deux pages affichent la même
+liste complète.
+
+## ⚠️ Trouvaille bloquante : les archives de taxonomie (`territoire`, `tribe_events_cat`)
+## ne fonctionnent PAS avec le thème par défaut
+
+Testé `agendasabauda.eu/territoire/piemont/` : la page se charge mais retombe sur
+le template d'archive générique de GeneratePress, qui ne requête QUE le post type
+`post` — pas `tribe_events`. Résultat : page vide (affiche par erreur un commentaire
+"Hello world!" au lieu des événements du territoire). **Contrairement à la fiche
+événement (gérée nativement par TEC), les archives de taxonomie custom n'ont pas
+d'équivalent "template natif qui marche déjà" — il faut construire quelque chose.**
+
+Deux pistes, ni l'une ni l'autre triviale :
+1. **`pre_get_posts`** (PHP, scope front-end, même méthode que la fiche événement) :
+   forcer `post_type=tribe_events` sur la query principale quand `is_tax('territoire')`
+   ou `is_tax('tribe_events_cat')`. Rapide à écrire, mais le rendu dépendra ensuite
+   du gabarit de boucle par défaut du thème (`content-*.php` de GeneratePress) —
+   probablement pas stylé du tout sans un second hook sur `the_content`/`the_excerpt`
+   pour réutiliser le rendu carte-événement.
+2. **Theme Builder → Archive template** (JetThemeCore) : la voie "propre" prévue par
+   Crocoblock, mais c'est l'outil déjà documenté comme peu fiable en automatisation
+   navigateur (cf. section Header/Footer plus bas).
+
+Pas commencé cette session — prochain chantier technique à trancher (probablement
+la piste 1, en restant cohérent avec la méthode "MCP d'abord" qui a marché partout
+ailleurs).
+
 ## 🚨 CORRECTIF MAJEUR : le CSS "site-css" (Code Snippets) n'a JAMAIS atteint le front-end
 
 En vérifiant visuellement la home (première fois qu'un composant est vérifié dans un
