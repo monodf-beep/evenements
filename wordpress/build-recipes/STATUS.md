@@ -62,16 +62,26 @@ Deux pistes, ni l'une ni l'autre triviale :
    Crocoblock, mais c'est l'outil déjà documenté comme peu fiable en automatisation
    navigateur (cf. section Header/Footer plus bas).
 
-**✅ Piste 1 appliquée et vérifiée** : `wordpress/design-system/taxonomy-archive-query.php`
-(hook `pre_get_posts`, forcé `post_type=tribe_events` sur `is_tax('territoire')` et
-`is_tax('tribe_events_cat')`) via `apply-taxonomy-archive-query.mjs`. Vérifié sur
-`/territoire/piemont/` : la page passe de "mauvais contenu (post 'Hello world')" à
-"Rien de trouvé" — comportement CORRECT (même cause que partout ailleurs : aucun
-événement publié). Le mécanisme de requête est débloqué ; reste à styliser la boucle
-(le thème utilise son gabarit générique GeneratePress, pas encore les classes
-`.ag-row`/`.ag-daygroup` du design system) et à ajouter l'intro éditoriale pérenne
-prévue par le brief (`docs/TEMPLATES_WORDPRESS.md` #8 : "nos textes FR/IT sont
-écrits" — à récupérer auprès de Franck).
+**✅ Résolu, en deux temps :**
+1. `wordpress/design-system/taxonomy-archive-query.php` (hook `pre_get_posts`,
+   force `post_type=tribe_events` sur `is_tax('territoire')`/`is_tax('tribe_events_cat')`).
+2. `wordpress/design-system/taxonomy-archive-template.php` (hook `template_redirect`,
+   prend le contrôle TOTAL du rendu — plus besoin de compter sur le gabarit générique
+   GeneratePress). Réutilise le style `.ag-row`/`.cs-ev-cat`/`.cs-terr` du design
+   system, avec les lignes cliquables (mieux que `carte-evenement-blocks` qui ne l'est
+   pas encore). Titre H1 = nom du terme, message d'accueil propre si aucun événement.
+
+Vérifié sur `/territoire/piemont/` : affiche "Piémont" + "Aucun événement à afficher
+pour l'instant." (comportement correct, même cause que partout ailleurs — aucun
+événement publié). Le rendu avec de vraies données n'a pas été revérifié visuellement
+cette fois (pour éviter d'exposer temporairement des événements brouillon sur une page
+publique réelle) — mais la logique `WP_Query` est identique à celle déjà prouvée sur
+la page de test jetable de la carte "à la une".
+
+**Reste (v2)** : intro éditoriale pérenne FR/IT prévue par le brief
+(`docs/TEMPLATES_WORDPRESS.md` #8 : "nos textes FR/IT sont écrits" — à récupérer
+auprès de Franck), formatage de l'heure (même limitation connue partout ailleurs),
+groupement par jour (`.ag-daygroup`).
 
 ## 🚨 CORRECTIF MAJEUR : le CSS "site-css" (Code Snippets) n'a JAMAIS atteint le front-end
 
