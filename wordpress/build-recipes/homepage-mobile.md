@@ -82,10 +82,13 @@ spécifique requis. Elles se traduisent directement en **blocs Gutenberg natifs*
 
 ## Prochaines étapes (ordre d'exécution)
 
-1. Construire le 2ᵉ Listing Item "carte-à-la-une" (Blocks/Gutenberg) — même méthode
-   que `carte-evenement-blocks`.
+1. ✅ **Fait** — 2ᵉ Listing Item "carte-à-la-une" (post 976, Blocks/Gutenberg), vérifié
+   avec de vraies données. Détail : `build-recipes/STATUS.md` §Carte "à la une".
 2. Construire la page Accueil (928) section par section, en Gutenberg pur pour le
-   statique + Listing Grid pour le dynamique.
+   statique + Listing Grid pour le dynamique. **Préalable bloquant découvert en
+   vérifiant l'étape 1** : tous les événements du site sont actuellement en
+   statut `draft` (aucun `publish`) — une home construite maintenant afficherait
+   "No data was found" partout. À trancher avec Franck avant/pendant l'étape 2.
 3. Trancher avec Franck le mécanisme du module transfrontalier (champ auto vs
    sélection manuelle).
 4. Relire les autres fichiers du projet (Fiche Événement, Hub Catégorie, etc.) au

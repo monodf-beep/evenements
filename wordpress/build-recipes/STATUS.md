@@ -1,6 +1,40 @@
 # État du build WordPress — agendasabauda.eu
 
-*Dernière mise à jour : session du 2026-07-12 (3e passe — percée Gutenberg).*
+*Dernière mise à jour : session du 2026-07-12 (4e passe — carte "à la une" + homepage mobile).*
+
+## 🆕 Carte "à la une" (grid 2×2 avec image) — construite et vérifiée avec de vraies données
+
+Source réelle relue : `Agenda Sabaudo - Mobile.dc.html`, projet Claude Design **« Brief design
+agenda Sabaudo »** (projectId `4b44f3d4-eac1-424a-aecf-c70fa2606fd2`) — voir
+`build-recipes/homepage-mobile.md` §11. Variante DISTINCTE de `.ag-row` : image 3:2, eyebrow
+`{date} · {territoire}` (10.5px/800), titre Semplicita 600 15.5px.
+
+- **Listing Item live : post 976** (`carte-a-la-une-blocks`, source Posts, from post type
+  Événements, vue Blocks/Gutenberg) — créé via le modal browser (piège connu : un clic sur un
+  ref périmé peut atterrir ailleurs, ex. la page « À propos » ; toujours relire le formulaire
+  avec `read_page` juste avant de cliquer Create).
+- `wordpress/design-system/carte-a-la-une.gutenberg.html` — markup source (`jet-engine/dynamic-image`
+  linked_image:false, `jet-engine/dynamic-field` date + titre, `jet-engine/dynamic-terms` territoire).
+- `wordpress/design-system/components.css` — classes `.ala-une-card*` ajoutées (px littéraux,
+  fidèles à la source, pas de mapping token).
+- `wordpress/scripts/apply-carte-a-la-une.mjs` — pousse le markup sur le post 976 (idempotent).
+- **Vérifié avec de vraies données** via une page brouillon jetable (créée puis mise à la
+  corbeille dans la foulée) + un `jet-engine/listing-grid` pointé sur `lisitng_id:976` : image,
+  territoire (« Piémont », « Savoie / Haute-Savoie ») et titre s'affichent correctement pour
+  4 événements réels. Seule la date n'est pas formatée (même limitation connue que
+  carte-evenement, cf. §Limitations).
+
+### ⚠️ Constat important : AUCUN événement n'est actuellement publié
+
+`GET /wp-json/wp/v2/tribe_events?status=any` : les ~20 événements du site sont tous en
+statut **`draft`** (y compris le post 578 utilisé comme référence dans les tests précédents —
+il n'a jamais été réellement publié, seulement prévisualisé). Un `jet-engine/listing-grid` en
+config par défaut (`post_status:["publish"]`) affiche donc **"No data was found" partout tant
+que ces événements restent en brouillon**. Ce n'est pas un bug des Listing Items — c'est un
+état de données à trancher avec Franck (import en attente de relecture ? publication en masse
+prévue avant l'ouverture du site ?) avant que la home ou toute page publique soit crédible.
+
+## 🎉 PERCÉE : la carte-événement est enfin fidèle à la maquette, et vérifiée avec de vraies données
 
 ## 🎉 PERCÉE : la carte-événement est enfin fidèle à la maquette, et vérifiée avec de vraies données
 

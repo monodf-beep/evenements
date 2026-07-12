@@ -54,6 +54,7 @@ actif malgré cette recommandation.
 | `scripts/build-structure.mjs` | 7 pages piliers + menu « Principal FR » (idempotent) |
 | `scripts/apply-components.mjs` | Pousse `design-system/components.css` (site-css, idempotent) |
 | `scripts/apply-carte-evenement.mjs` | Met à jour le contenu Gutenberg du Listing Item carte-événement (post 969) |
+| `scripts/apply-carte-a-la-une.mjs` | Met à jour le contenu Gutenberg du Listing Item carte "à la une" (post 976) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -61,6 +62,7 @@ actif malgré cette recommandation.
 |---|---|---|
 | — | Structure (menu, 7 pages, taxonomies, tokens) | ✅ Fait |
 | — | **Carte-événement** (composant réutilisé partout) | 🟡 v1 (titre/cat/territoire OK ; manque heure formatée, lieu, statut, clic, groupement par jour) |
+| — | **Carte "à la une"** (grid 2×2 avec image, section homepage) | 🟡 v1 (image/territoire/titre OK ; manque heure formatée, comme carte-événement) |
 | — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
 | 1 | Home | ❌ Page existe (928), vide |
 | 2 | Fiche événement (single TEC) | ❌ |

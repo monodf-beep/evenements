@@ -255,6 +255,28 @@
 }
 
 
+/* ===== carte-à-la-une — SOURCE RÉELLE (Agenda Sabaudo - Mobile.dc.html, projet Claude
+   Design "Brief design agenda Sabaudo", lu via DesignSync le 2026-07-12). Variante
+   "grid 2×2 avec image" utilisée section 11 "À LA UNE" de la home — DISTINCTE de
+   .ag-row (ligne dense sans image). Valeurs en px littéraux pour coller exactement
+   à la source (pas de mapping token proposé par la maquette elle-même). ===== */
+.ala-une-card__image {
+  aspect-ratio: 3 / 2; overflow: hidden; background: #FBF7F0; border-radius: 3px; margin-bottom: 8px;
+}
+.ala-une-card__image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ala-une-card__eyebrow {
+  font-family: var(--font-body); font-size: 10.5px; font-weight: 800; color: var(--fg-1); margin-bottom: 3px;
+}
+.ala-une-card__title {
+  margin: 0; font-family: var(--font-editorial); font-weight: 600; font-size: 15.5px;
+  line-height: 1.22; color: var(--fg-1);
+}
+.ala-une-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; margin-bottom: 16px;
+}
+.ala-une-card__eyebrow { gap: 0; align-items: baseline; }
+.ala-une-card__terr::before { content: " · "; }
+
 /* ===== homepage ===== */
 /* ---- HERO ---- */
 .as-hero {
