@@ -17,6 +17,14 @@ Calendar + Crocoblock/JetEngine + Elementor + Polylang**.
   `theme.json` du child theme GeneratePress quand le SFTP OVH sera en place.
 - **Traçabilité** : toute modif du site passe par un script versionné ici, puis
   poussé sur GitHub. Le secret (App Password) reste dans `.env` (gitignored).
+- **⚠️ CSS via Code Snippets** : le plugin installé est la version **gratuite** —
+  son scope CSS natif "site-css" n'émet RIEN côté front (fonctionnalité Pro,
+  échoue silencieusement). `apply-tokens.mjs`/`apply-components.mjs` contournent
+  ça en générant un snippet **PHP** (scope `front-end`) qui échote la CSS via
+  `wp_head`. Ne jamais recréer un snippet CSS-type pour du style destiné au
+  public — toujours passer par ce contournement. Détail : `build-recipes/STATUS.md`.
+  **Toujours vérifier un nouveau composant visuellement dans un vrai navigateur**
+  (pas seulement via le HTML brut REST) avant de le marquer "vérifié".
 
 ## Outils
 
@@ -55,6 +63,7 @@ actif malgré cette recommandation.
 | `scripts/apply-components.mjs` | Pousse `design-system/components.css` (site-css, idempotent) |
 | `scripts/apply-carte-evenement.mjs` | Met à jour le contenu Gutenberg du Listing Item carte-événement (post 969) |
 | `scripts/apply-carte-a-la-une.mjs` | Met à jour le contenu Gutenberg du Listing Item carte "à la une" (post 976) |
+| `scripts/apply-homepage.mjs` | Pousse le contenu Gutenberg de la home mobile (sections 1-11) sur la page Accueil (928) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -64,7 +73,7 @@ actif malgré cette recommandation.
 | — | **Carte-événement** (composant réutilisé partout) | 🟡 v1 (titre/cat/territoire OK ; manque heure formatée, lieu, statut, clic, groupement par jour) |
 | — | **Carte "à la une"** (grid 2×2 avec image, section homepage) | 🟡 v1 (image/territoire/titre OK ; manque heure formatée, comme carte-événement) |
 | — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
-| 1 | Home | ❌ Page existe (928), vide |
+| 1 | Home | 🟡 Sections 1-11/24 construites et vérifiées visuellement (masthead → À la une). Reste : transfrontalier, rail du jour, expositions, footer, etc. |
 | 2 | Fiche événement (single TEC) | ❌ |
 | 3 | Hub catégorie (×11) | ❌ |
 | 4 | Hub territoire (×4) | ❌ |

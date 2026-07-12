@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 /**
  * apply-tokens.mjs — Applique les design tokens de la charte Cultura Sabauda
- * sur agendasabauda.eu via le plugin Code Snippets (scope "site-css").
+ * sur agendasabauda.eu via le plugin Code Snippets.
+ *
+ * IMPORTANT (découvert le 2026-07-12) : le scope CSS natif "site-css" de Code
+ * Snippets est une fonctionnalité PRO — en version gratuite (celle installée,
+ * v3.9.6) le snippet s'enregistre et s'active SANS ERREUR mais son code n'est
+ * JAMAIS émis côté front (vérifié : absent du HTML public, avec ou sans cache).
+ * Contournement : un snippet PHP (scope "front-end", 100% gratuit, déjà utilisé
+ * ailleurs sur ce site) qui échote la CSS dans <head> via wp_head. Le CSS est
+ * embarqué en base64 dans le code PHP généré pour éviter tout problème
+ * d'échappement de guillemets/backslashes.
  *
  * Idempotent : crée le snippet « CS · Design Tokens (charte) » s'il n'existe
  * pas, le met à jour sinon, puis l'active. Réversible (désactivable/supprimable
@@ -53,14 +62,20 @@ async function api(path, opts = {}) {
   return data;
 }
 
+function cssAsPhpSnippet(css, styleId) {
+  const b64 = Buffer.from(css, 'utf8').toString('base64');
+  return `add_action('wp_head', function () {\n    echo '<style id="${styleId}">' . base64_decode('${b64}') . '</style>';\n}, 5);`;
+}
+
 async function main() {
   const css = readFileSync(join(REPO, 'wordpress', 'design-system', 'tokens.css'), 'utf8');
+  const code = cssAsPhpSnippet(css, 'cs-design-tokens');
 
   // 1. Le snippet existe-t-il déjà ?
   const list = await api(`${API}?_fields=id,name,scope,active`);
   const existing = Array.isArray(list) ? list.find((s) => s.name === SNIPPET_NAME) : null;
 
-  const payload = { name: SNIPPET_NAME, code: css, scope: 'site-css', active: true };
+  const payload = { name: SNIPPET_NAME, code, scope: 'front-end', active: true };
 
   let snippet;
   if (existing) {

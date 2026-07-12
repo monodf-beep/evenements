@@ -2,6 +2,32 @@
 
 *Dernière mise à jour : session du 2026-07-12 (4e passe — carte "à la une" + homepage mobile).*
 
+## 🚨 CORRECTIF MAJEUR : le CSS "site-css" (Code Snippets) n'a JAMAIS atteint le front-end
+
+En vérifiant visuellement la home (première fois qu'un composant est vérifié dans un
+VRAI navigateur, pas juste via le HTML brut REST), tout le CSS censé être "✅ appliqué
+en live" depuis le début du chantier (tokens, carte-événement, carte-à-la-une,
+homepage) s'est révélé **absent du site public**, malgré snippet actif et sans erreur.
+
+**Cause identifiée et confirmée empiriquement** : le scope CSS natif "site-css" de
+Code Snippets (utilisé par `apply-tokens.mjs`/`apply-components.mjs` depuis le début)
+est une fonctionnalité de **Code Snippets PRO**. Le plugin installé est la version
+**gratuite (3.9.6)** — elle permet de créer/éditer/activer un snippet de type CSS
+sans aucune erreur, mais **n'émet jamais son contenu côté front** (vérifié : absent
+du HTML public sur plusieurs pages, avec cache-busting, y compris un snippet CSS créé
+à la main dans l'admin — donc pas un souci de l'API REST).
+
+**Fix appliqué** : `apply-tokens.mjs` et `apply-components.mjs` génèrent maintenant un
+snippet **PHP** (scope `front-end`, gratuit, déjà utilisé ailleurs sur ce site — ex.
+snippet #5) qui échote la CSS dans `<head>` via `wp_head`, encodée en base64 dans le
+code généré pour éviter tout souci d'échappement. **Vérifié visuellement dans Chrome**
+après le fix : tokens + composants + home s'affichent correctement.
+
+**Implication** : toute affirmation "✅ vérifié en live" antérieure à cette passe (carte-
+événement notamment) n'avait en réalité JAMAIS été vue stylée par un vrai visiteur —
+seul le HTML/markup avait été vérifié via REST, pas le rendu visuel avec CSS. Bien vérifier
+visuellement (Chrome, pas juste REST) chaque nouveau composant à l'avenir.
+
 ## 🆕 Carte "à la une" (grid 2×2 avec image) — construite et vérifiée avec de vraies données
 
 Source réelle relue : `Agenda Sabaudo - Mobile.dc.html`, projet Claude Design **« Brief design

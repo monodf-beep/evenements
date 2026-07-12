@@ -1,8 +1,16 @@
 #!/usr/bin/env node
 /**
  * apply-components.mjs — Applique le CSS des composants (carte, header, footer,
- * homepage) sur agendasabauda.eu via Code Snippets (scope site-css).
+ * homepage) sur agendasabauda.eu via Code Snippets.
  * Source : wordpress/design-system/components.css (extrait des build-recipes).
+ *
+ * IMPORTANT (découvert le 2026-07-12) : le scope CSS natif "site-css" de Code
+ * Snippets est une fonctionnalité PRO — en version gratuite (v3.9.6, celle
+ * installée) le snippet s'enregistre/s'active sans erreur mais n'est JAMAIS
+ * émis côté front (vérifié absent du HTML public). Contournement : snippet
+ * PHP (scope "front-end", gratuit) qui échote la CSS via wp_head, encodée en
+ * base64 dans le code généré pour éviter tout souci d'échappement.
+ *
  * Idempotent (crée/maj le snippet « CS · Composants (styles) »). Réversible.
  * Auth : Application Password via .env (WP_AS_*). Zéro dépendance.
  */
@@ -27,11 +35,17 @@ async function api(path, opts = {}) {
   return d;
 }
 
+function cssAsPhpSnippet(css, styleId) {
+  const b64 = Buffer.from(css, 'utf8').toString('base64');
+  return `add_action('wp_head', function () {\n    echo '<style id="${styleId}">' . base64_decode('${b64}') . '</style>';\n}, 6);`;
+}
+
 async function main() {
   const css = readFileSync(join(REPO, 'wordpress', 'design-system', 'components.css'), 'utf8');
+  const code = cssAsPhpSnippet(css, 'cs-composants-styles');
   const list = await api(`${API}?_fields=id,name`);
   const existing = Array.isArray(list) ? list.find((s) => s.name === NAME) : null;
-  const payload = { name: NAME, code: css, scope: 'site-css', active: true };
+  const payload = { name: NAME, code, scope: 'front-end', active: true };
   const snip = existing
     ? await api(`${API}/${existing.id}`, { method: 'POST', body: JSON.stringify(payload) })
     : await api(API, { method: 'POST', body: JSON.stringify(payload) });
