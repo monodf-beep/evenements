@@ -1,0 +1,109 @@
+/* =============================================================
+   Cultura Sabauda · DESIGN TOKENS (source unique, sans styles)
+   Source : Claude Design « Cultura Sabauda Design System »
+            implementation/tokens.css (récupéré via design-sync).
+   Appliqué sur agendasabauda.eu via Code Snippets (scope site-css)
+   par wordpress/scripts/apply-tokens.mjs.
+   Interim : à terme, migrer vers theme.json du child theme (méthode
+   prescrite par implementation/README-claude-code.md) une fois le
+   SFTP OVH en place.
+   ============================================================= */
+:root {
+  /* ---- Couleurs de marque ---- */
+  --cs-bleu:        #18365E;   /* Bleu Savoie */
+  --cs-beige:       #F7F1E8;   /* Beige parchemin */
+  --cs-bleu-clair:  #6486BA;   /* Bleu clair alpin */
+  --cs-noir:        #1D1D1B;   /* Noir encre */
+  --cs-rouge:       #DC5D45;   /* Rouge Piémont · accent */
+  --cs-blanc:       #FFFFFF;
+  --cs-premium:     #F2C230;   /* Jaune premium · SEUL usage : pastille abonnés */
+  --fg-on-premium:  #1D1D1B;
+
+  /* ---- Surfaces ---- */
+  --bg:        var(--cs-beige);
+  --bg-alt:    #FBF7F0;
+  --bg-deep:   var(--cs-bleu);
+  --bg-accent: var(--cs-rouge);
+  --bg-white:  var(--cs-blanc);
+
+  /* ---- Textes ---- */
+  --fg-1: var(--cs-noir);
+  --fg-2: #4A4A48;
+  --fg-3: #6F6B62;
+  --fg-on-deep:   var(--cs-beige);
+  --fg-on-accent: var(--cs-beige);
+  --fg-link:       var(--cs-rouge);
+  --fg-link-hover: #B8472F;
+
+  /* ---- Filets ---- */
+  --rule:        #E3DCCE;
+  --rule-strong: #C9BFAD;
+  --rule-on-deep: rgba(247,241,232,0.22);
+
+  /* ---- Rubriques (partagé média & social) ---- */
+  --tag-culture:      var(--cs-rouge);
+  --tag-histoire:     var(--cs-bleu);
+  --tag-geopolitique: #5B3A2E;
+  --tag-gastronomie:  #8C6A3F;
+  --tag-science:      var(--cs-bleu-clair);
+  --tag-entreprise:   #2E5E4C;
+
+  /* ---- Polices ---- */
+  --font-display:   'Alumni Sans Pinstripe', 'Didot', serif;   /* DISPLAY, MAJUSCULES uniquement */
+  --font-editorial: 'La Semplicita', 'Saira Condensed', sans-serif; /* titres, intertitres */
+  --font-body:      'Nunito Sans', system-ui, sans-serif; /* corps long */
+  --font-mono:      ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --tracking-display: 0.05em;
+  --tracking-eyebrow: 0.18em;
+  --tracking-caps:    0.08em;
+
+  /* ---- Échelle typographique ---- */
+  --fs-hero:    clamp(3.5rem, 7vw, 6.5rem);
+  --fs-h1:      clamp(2.5rem, 4.2vw, 3.75rem);
+  --fs-h2:      clamp(1.875rem, 3vw, 2.5rem);
+  --fs-h3:      1.5rem;
+  --fs-h4:      1.25rem;
+  --fs-lead:    1.25rem;
+  --fs-body:    1.0625rem;
+  --fs-body-sm: 0.9375rem;
+  --fs-meta:    0.8125rem;
+  --fs-eyebrow: 0.75rem;
+
+  --lh-display: 0.95;
+  --lh-title:   1.08;
+  --lh-body:    1.65;
+  --lh-meta:    1.4;
+
+  /* ---- Espacement (base 8pt) ---- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
+  --s-9: 96px; --s-10: 128px;
+
+  /* ---- Largeurs de colonne ---- */
+  --col-text:   64ch;
+  --col-wide:   78ch;
+  --col-narrow: 48ch;
+  --page-max:   1240px;
+
+  /* ---- Rayons / ombres / bordures ---- */
+  --r-0: 0; --r-1: 2px; --r-2: 4px; --r-pill: 999px;
+  --shadow-paper: 0 1px 0 rgba(29,29,27,0.04), 0 2px 8px rgba(29,29,27,0.06);
+  --shadow-lift:  0 2px 4px rgba(29,29,27,0.06), 0 14px 30px -12px rgba(29,29,27,0.18);
+
+  /* ---- Motion ---- */
+  --ease-std:   cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --dur-fast: 160ms; --dur-med: 260ms; --dur-slow: 420ms;
+
+  /* ---- Densité compacte (Agenda uniquement) ---- */
+  --sc-1: 2px; --sc-2: 4px; --sc-3: 6px; --sc-4: 10px;
+  --sc-5: 14px; --sc-6: 20px; --sc-7: 28px;
+  --lh-compact: 1.35;
+
+  /* ---- Points de rupture ---- */
+  --bp-mobile:  480px;
+  --bp-tablet:  768px;
+  --bp-desktop: 1024px;
+  --bp-wide:    1280px;
+}
