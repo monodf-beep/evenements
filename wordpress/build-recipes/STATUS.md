@@ -62,9 +62,16 @@ Deux pistes, ni l'une ni l'autre triviale :
    Crocoblock, mais c'est l'outil déjà documenté comme peu fiable en automatisation
    navigateur (cf. section Header/Footer plus bas).
 
-Pas commencé cette session — prochain chantier technique à trancher (probablement
-la piste 1, en restant cohérent avec la méthode "MCP d'abord" qui a marché partout
-ailleurs).
+**✅ Piste 1 appliquée et vérifiée** : `wordpress/design-system/taxonomy-archive-query.php`
+(hook `pre_get_posts`, forcé `post_type=tribe_events` sur `is_tax('territoire')` et
+`is_tax('tribe_events_cat')`) via `apply-taxonomy-archive-query.mjs`. Vérifié sur
+`/territoire/piemont/` : la page passe de "mauvais contenu (post 'Hello world')" à
+"Rien de trouvé" — comportement CORRECT (même cause que partout ailleurs : aucun
+événement publié). Le mécanisme de requête est débloqué ; reste à styliser la boucle
+(le thème utilise son gabarit générique GeneratePress, pas encore les classes
+`.ag-row`/`.ag-daygroup` du design system) et à ajouter l'intro éditoriale pérenne
+prévue par le brief (`docs/TEMPLATES_WORDPRESS.md` #8 : "nos textes FR/IT sont
+écrits" — à récupérer auprès de Franck).
 
 ## 🚨 CORRECTIF MAJEUR : le CSS "site-css" (Code Snippets) n'a JAMAIS atteint le front-end
 

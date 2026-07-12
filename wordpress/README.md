@@ -66,6 +66,7 @@ actif malgré cette recommandation.
 | `scripts/apply-homepage.mjs` | Pousse le contenu Gutenberg de la home mobile (24 sections) sur la page Accueil (928) |
 | `scripts/apply-single-event-meta.mjs` | Pousse le snippet PHP qui ajoute pilule territoire/statut/crédit photo/"Vérifié le" sur la fiche événement native TEC |
 | `scripts/apply-liste-pages.mjs` | Pousse le contenu Gutenberg des pages "Tout l'agenda" (932) et "Ce week-end" (930) |
+| `scripts/apply-taxonomy-archive-query.mjs` | Pousse le snippet PHP qui débloque les archives de taxonomie territoire/catégories (force post_type=tribe_events) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -77,8 +78,8 @@ actif malgré cette recommandation.
 | — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
 | 1 | Home | ✅ v1 complet (24/24 sections), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
 | 2 | Fiche événement (single TEC) | 🟡 v1 minimale : template natif TEC (déjà complet : titre, dates, contenu, DÉTAILS, LIEU+carte) + pilule territoire, badge de statut, crédit photo, "Vérifié le" injectés en PHP (pas de Theme Builder nécessaire). Manque : les 3 rails liés (même lieu/catégorie/dates) |
-| 3 | Hub catégorie (×11) | ❌ |
-| 4 | Hub territoire (×4) | ❌ |
+| 3 | Hub catégorie (×11) | 🟡 Requête débloquée (`pre_get_posts` force `post_type=tribe_events`) — boucle pas encore stylée, intro éditoriale à récupérer auprès de Franck |
+| 4 | Hub territoire (×4) | 🟡 Idem — vérifié sur `/territoire/piemont/` |
 | 5 | Hub lieu (venue TEC) | ❌ |
 | 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | 🟡 v1 : titre + Listing Grid (carte-evenement-blocks) sur les pages existantes (930/932). Filtre par date pas encore câblé (nécessite JetEngine Query Builder) — "Ce week-end" affiche tous les événements pour l'instant |
 | 7 | Recherche + 404 | ❌ |
