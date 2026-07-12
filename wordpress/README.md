@@ -68,6 +68,7 @@ actif malgré cette recommandation.
 | `scripts/apply-liste-pages.mjs` | Pousse le contenu Gutenberg des pages "Tout l'agenda" (932) et "Ce week-end" (930) |
 | `scripts/apply-taxonomy-archive-query.mjs` | Pousse le snippet PHP qui débloque les archives de taxonomie territoire/catégories (force post_type=tribe_events) |
 | `scripts/apply-taxonomy-archive-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu des Hubs territoire/catégorie (style `.ag-row`) |
+| `scripts/apply-search-events.mjs` | Pousse le snippet PHP qui élargit la recherche aux événements (date + territoire sous chaque résultat) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -83,6 +84,6 @@ actif malgré cette recommandation.
 | 4 | Hub territoire (×4) | 🟡 Idem — vérifié sur `/territoire/piemont/` |
 | 5 | Hub lieu (venue TEC) | 🚧 Bloqué — permaliens `/lieu/{slug}/` cassés (servent la page d'accueil au lieu de la fiche), pas un problème de contenu. Flush des permaliens tenté sans succès, détail dans STATUS.md |
 | 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | 🟡 v1 : titre + Listing Grid (carte-evenement-blocks) sur les pages existantes (930/932). Filtre par date pas encore câblé (nécessite JetEngine Query Builder) — "Ce week-end" affiche tous les événements pour l'instant |
-| 7 | Recherche + 404 | ❌ |
+| 7 | Recherche + 404 | 🟡 v1 : recherche élargie aux événements (`pre_get_posts`) + date/territoire sous chaque résultat. 404 = gabarit générique du thème, pas encore personnalisé |
 
 Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.
