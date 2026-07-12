@@ -1,6 +1,35 @@
 # État du build WordPress — agendasabauda.eu
 
-*Dernière mise à jour : session du 2026-07-12 (4e passe — carte "à la une" + homepage mobile).*
+*Dernière mise à jour : session du 2026-07-12 (5e passe — fiche événement, sans Theme Builder).*
+
+## 🆕 Fiche événement — v1 minimale, SANS Theme Builder
+
+Découverte clé : The Events Calendar a son **propre template `single-event` natif**
+(vue V2) qui fonctionne déjà très bien tel quel — titre, dates, description, bloc
+« En pratique » (dans le contenu importé), Sources, DÉTAILS (catégorie, site), LIEU
+(+ lien Google Maps), liens calendrier. **Aucun besoin du Theme Builder JetThemeCore**
+(dont la fiabilité en automatisation reste un problème non résolu — cf. plus bas) pour
+une fiche événement fonctionnelle.
+
+Ce qui manquait par rapport au brief (`docs/TEMPLATES_WORDPRESS.md` #7 : crédit photo,
+badges d'état, pilule territoire, "Vérifié le") a été ajouté via un filtre PHP
+`the_content` (pas de widget/canvas) :
+- `wordpress/design-system/single-event-meta.php` — pilule territoire (taxonomie
+  `territoire`), badge de statut (`as_statut` → Complet/Annulé en rouge/Reporté,
+  rien si `a_venir`), crédit photo (légende média WP si renseignée — aucune ne l'est
+  encore, à demander à l'équipe qui alimente l'import), "Vérifié le" (`post_modified`,
+  zéro champ supplémentaire nécessaire).
+- `wordpress/scripts/apply-single-event-meta.mjs` — pousse ce PHP en snippet Code
+  Snippets (scope `front-end`, gratuit).
+- Touche typographique (`.tribe-events-single-event-title`, `.tribe-events-content`)
+  ajoutée à `components.css` — classes CSS de TEC V2 **non vérifiées formellement**
+  (pas de risque si elles sont fausses : CSS additive, aucune casse possible).
+
+**Vérifié visuellement** sur l'événement 578 (aperçu WP) : pilule "Piémont" et
+"Vérifié le 12 juillet 2026" s'affichent correctement.
+
+**Reste à faire (v2)** : les **3 rails liés** (même lieu / catégorie / dates) —
+nécessitent des `WP_Query` dédiées dans le même snippet PHP, pas encore écrites.
 
 ## 🚨 CORRECTIF MAJEUR : le CSS "site-css" (Code Snippets) n'a JAMAIS atteint le front-end
 

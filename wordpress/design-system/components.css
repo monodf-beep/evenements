@@ -317,6 +317,14 @@
 .as-day-rail .jet-listing-grid__items { display: flex !important; overflow-x: auto; gap: 12px; padding-bottom: 4px; }
 .as-day-rail .ala-une-card { width: 150px; flex-shrink: 0; }
 .as-day-rail .ala-une-card__title { font-size: 14.5px; }
+
+/* ===== Fiche événement (single-event natif TEC) — touche typographique légère,
+   "mode minimal d'abord" (docs/TEMPLATES_WORDPRESS.md #7). Les champs manquants
+   (pilule territoire, statut, crédit photo, "Vérifié le") sont injectés en PHP
+   (design-system/single-event-meta.php), pas en Theme Builder. ===== */
+.tribe-events-single .tribe-events-single-event-title { font-family: var(--font-editorial); font-weight: 600; }
+.tribe-events-single .tribe-events-content { font-family: var(--font-body); font-size: 15px; line-height: 1.6; color: var(--fg-1); }
+.tribe-events-single .tribe-events-content p { margin-bottom: 1.1em; }
 .as-sticky-ad { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; }
 @media (min-width: 481px) { .as-sticky-ad { max-width: 480px; margin: 0 auto; } }
 

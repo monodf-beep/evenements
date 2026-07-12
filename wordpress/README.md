@@ -63,7 +63,8 @@ actif malgré cette recommandation.
 | `scripts/apply-components.mjs` | Pousse `design-system/components.css` (site-css, idempotent) |
 | `scripts/apply-carte-evenement.mjs` | Met à jour le contenu Gutenberg du Listing Item carte-événement (post 969) |
 | `scripts/apply-carte-a-la-une.mjs` | Met à jour le contenu Gutenberg du Listing Item carte "à la une" (post 976) |
-| `scripts/apply-homepage.mjs` | Pousse le contenu Gutenberg de la home mobile (sections 1-11) sur la page Accueil (928) |
+| `scripts/apply-homepage.mjs` | Pousse le contenu Gutenberg de la home mobile (24 sections) sur la page Accueil (928) |
+| `scripts/apply-single-event-meta.mjs` | Pousse le snippet PHP qui ajoute pilule territoire/statut/crédit photo/"Vérifié le" sur la fiche événement native TEC |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -74,7 +75,7 @@ actif malgré cette recommandation.
 | — | **Carte "à la une"** (grid 2×2 avec image, section homepage) | 🟡 v1 (image/territoire/titre OK ; manque heure formatée, comme carte-événement) |
 | — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
 | 1 | Home | ✅ v1 complet (24/24 sections), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
-| 2 | Fiche événement (single TEC) | ❌ |
+| 2 | Fiche événement (single TEC) | 🟡 v1 minimale : template natif TEC (déjà complet : titre, dates, contenu, DÉTAILS, LIEU+carte) + pilule territoire, badge de statut, crédit photo, "Vérifié le" injectés en PHP (pas de Theme Builder nécessaire). Manque : les 3 rails liés (même lieu/catégorie/dates) |
 | 3 | Hub catégorie (×11) | ❌ |
 | 4 | Hub territoire (×4) | ❌ |
 | 5 | Hub lieu (venue TEC) | ❌ |
