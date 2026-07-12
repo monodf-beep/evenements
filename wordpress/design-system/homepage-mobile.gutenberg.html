@@ -140,13 +140,14 @@
 </div>
 <!-- /wp:html -->
 
-<!-- wp:group {"style":{"spacing":{"padding":{"left":"20px","right":"20px"}}}} -->
-<div class="wp-block-group" style="padding-right:20px;padding-left:20px">
+<!-- wp:group {"className":"as-home","style":{"spacing":{"padding":{"left":"20px","right":"20px"}}}} -->
+<div class="wp-block-group as-home" style="padding-right:20px;padding-left:20px">
 <!-- wp:jet-engine/listing-grid {"lisitng_id":"976","columns":"2","columns_tablet":"2","columns_mobile":"2","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"]} /-->
 </div>
 <!-- /wp:group -->
 
 <!-- wp:html -->
+<div class="as-home">
 <div style="padding:0 20px">
   <a href="https://agendasabauda.eu/ce-week-end/" style="display:block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:13px 18px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em;border-radius:4px;margin-bottom:16px">Voir tous les événements du week-end&nbsp;→</a>
 </div>
@@ -187,15 +188,17 @@
     <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Événements d'aujourd'hui</div>
   </div>
 </div>
+</div>
 <!-- /wp:html -->
 
-<!-- wp:group {"className":"as-day-rail","style":{"spacing":{"padding":{"left":"20px","right":"20px"}}}} -->
-<div class="wp-block-group as-day-rail" style="padding-right:20px;padding-left:20px">
+<!-- wp:group {"className":"as-home as-day-rail","style":{"spacing":{"padding":{"left":"20px","right":"20px"}}}} -->
+<div class="wp-block-group as-home as-day-rail" style="padding-right:20px;padding-left:20px">
 <!-- wp:jet-engine/listing-grid {"lisitng_id":"976","columns":"4","columns_tablet":"4","columns_mobile":"4","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"]} /-->
 </div>
 <!-- /wp:group -->
 
 <!-- wp:html -->
+<div class="as-home">
 <div style="padding:0 20px">
   <a href="https://agendasabauda.eu/aujourdhui/" style="display:flex;align-items:center;gap:6px;text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B;margin-bottom:24px">Voir tous les événements d'aujourd'hui <span style="color:#DC5D45">→</span></a>
 </div>
@@ -340,6 +343,379 @@
   </div>
   <div style="flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>
+  </div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- ==================================================================
+     HOME DESKTOP (≥1024px) — même page, bloc séparé masqué/affiché en CSS
+     (.as-home-desktop). Source : section DESKTOP du même Agenda Sabaudo -
+     Mobile.dc.html. Publicités gouttière non reproduites (v1). Carrousel :
+     un seul visuel statique, pas de JS (flèches/points retirés).
+     ================================================================== -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+
+<!-- MASTHEAD -->
+<div style="text-align:center;padding-bottom:14px">
+  <div class="as-masthead-sketch" style="max-width:460px;margin:0 auto"></div>
+  <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:10px;color:#6F6B62;letter-spacing:0.14em;text-transform:uppercase;margin-top:8px">Quoi faire, où manger · 4 territoires</div>
+</div>
+
+<!-- NAV STICKY -->
+<div class="as-home-desktop__nav">
+  <nav style="display:flex;align-items:center;gap:22px">
+    <a href="https://agendasabauda.eu/ce-week-end/" style="font-weight:700">Ce week-end</a>
+    <a href="https://agendasabauda.eu/tout-l-agenda/">Événements</a>
+    <a href="#">Expositions</a>
+    <a href="#">Concerts</a>
+    <a href="#">Gastronomie</a>
+    <a href="#">En famille</a>
+    <a href="#">Infos utiles</a>
+  </nav>
+  <div style="display:flex;align-items:center;gap:20px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9C4B8;font-weight:400">|</span> <span style="color:#C9C4B8">IT</span></div>
+    <a href="https://agendasabauda.eu/?s=" style="display:flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg></a>
+  </div>
+</div>
+
+<!-- TERRITOIRE ACTIF -->
+<div style="display:flex;align-items:center;gap:16px;margin-top:20px;padding:10px 16px;background:#FBF7F0;border-radius:3px">
+  <div style="font-family:'Nunito Sans',sans-serif;font-size:12.5px;color:#1D1D1B">Vous regardez <strong style="color:#DC5D45">Savoie / Haute-Savoie</strong></div>
+  <div style="width:1px;height:12px;background:#D8CEBB"></div>
+  <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#6F6B62">Changer :</div>
+  <a href="https://agendasabauda.eu/territoire/piemont/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Piémont</a>
+  <a href="https://agendasabauda.eu/territoire/vallee-d-aoste/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Vallée d'Aoste</a>
+  <a href="https://agendasabauda.eu/territoire/nice-alpes-maritimes/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Comté de Nice</a>
+</div>
+
+<!-- CARROUSEL (statique v1 — à rendre dynamique via un Listing Item "mise en avant") -->
+<div class="as-home-desktop__carousel">
+  <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Grande%20Place%20et%20Maison%20Rouge%20de%20Conflans%20%C3%A0%20Albertville%20(avril%202024)%202.JPG?width=1400" alt="">
+  <div class="as-home-desktop__carousel-gradient"></div>
+  <div style="position:absolute;left:48px;right:48px;bottom:40px">
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:48px;line-height:1.02;color:#F7F1E8;letter-spacing:0.02em;max-width:640px">Mille ans de mémoire, un week-end à Conflans</div>
+  </div>
+</div>
+
+<!-- PUB SOUS CARROUSEL -->
+<div style="margin-top:16px;border:1px solid #E3DCCE;background:#fff">
+  <div style="padding:6px 10px;font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;color:#6F6B62;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
+  <div style="width:100%;height:120px;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">Bandeau 950×120</div>
+</div>
+
+<!-- RECHERCHE -->
+<form action="https://agendasabauda.eu/" method="get" style="margin-top:20px;display:flex;gap:10px">
+  <div style="flex:1;padding:13px 18px;background:#fff;border:1px solid #E3DCCE;border-radius:3px;display:flex;align-items:center;gap:10px">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg>
+    <input type="text" name="s" placeholder="Rechercher un événement, une ville…" style="flex:1;border:0;background:transparent;font-family:'Nunito Sans',sans-serif;font-size:14px;color:#1D1D1B">
+  </div>
+  <button type="submit" style="padding:13px 22px;background:#1D1D1B;color:#F7F1E8;border:0;border-radius:3px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;cursor:pointer">Chercher</button>
+</form>
+
+<!-- 6 TUILES + NEWSLETTER -->
+<div class="as-desktop-tiles" style="margin-top:28px">
+  <div class="as-desktop-tiles__grid">
+    <a href="https://agendasabauda.eu/ce-week-end/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.2c1.6-4.3 2.1-8 3.4-10.4c.9 2.8 1.5 6 3.1 9c1.2-3.6 1.8-7.1 3.2-9.3c1 3.1 1.4 6.6 3 9.4c1.1-3.7 1.9-6.8 3.3-9c.9 2.9 1.7 6.4 3.2 9.3"></path><path d="M2.8 13c-.4 3-.1 4.9-.2 6.9c6.7.3 13.8.1 20.2 0c0-2.2.3-4.1-.1-6.8"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Ce week-end</div>
+    </a>
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 2.9c-.2 2.6-.3 5.3-.1 7.8c.2 1.2 1 2.1 2.3 2.2c.4 3.2.3 6.6.2 9.8"></path><path d="M9.4 2.8c0 2.4 0 4.9-.1 7.3"></path><path d="M18 3.1c-1.9 2-1.8 6.1-.2 8.6c.3 3.6.2 7.4.1 10.9"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Saveurs &amp; gastronomie</div>
+    </a>
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.2" cy="18.3" r="2.7"></circle><circle cx="18.2" cy="15.7" r="2.8"></circle><path d="M9.9 18.4V6c3.4-.9 7-1.5 10.5-2.2v12.1"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Concerts</div>
+    </a>
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="14" rx="0.5"></rect><circle cx="8.3" cy="9.5" r="1.7"></circle><path d="M4.5 16.5l4.7-4.4c.7-.6 1.6-.6 2.3.1l1.6 1.5"></path><path d="M12 16.5l3.5-3.3c.7-.6 1.6-.6 2.3.1l2.2 2.1"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Expositions</div>
+    </a>
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="7" r="2.3"></circle><path d="M4 19.5v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"></path><circle cx="17" cy="8.5" r="1.9"></circle><path d="M14.2 19.5v-2.3c0-1.6 1.3-2.9 2.8-2.9s2.8 1.3 2.8 2.9v2.3"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">En famille</div>
+    </a>
+    <a href="https://agendasabauda.eu/tout-l-agenda/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.1 22.7v-13c2.8-1.9 5.7-3.8 8.7-5.5c3 1.8 6 3.7 8.7 5.6v12.8"></path><path d="M9.4 22.7v-6.9c1.1-.1 2.2-.2 3.4-.1c1.1 0 2.1.1 3.2.2v6.8"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Tout l'agenda</div>
+    </a>
+  </div>
+  <div class="as-desktop-tiles__newsletter">
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:19px;line-height:1.2;color:#F7F1E8;text-transform:uppercase">Recevez l'essentiel des quatre territoires</div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:11.5px;color:rgba(251,247,239,0.85)">Chaque vendredi matin, dans votre boîte.</div>
+    <div style="margin-top:6px;background:#F7F1E8;color:#DC5D45;text-align:center;padding:11px 14px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;border-radius:2px">S'inscrire à la newsletter</div>
+  </div>
+</div>
+
+<!-- PUB SOUS TUILES -->
+<div style="margin-top:28px;border:1px solid #E3DCCE;background:#fff">
+  <div style="padding:6px 10px;font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;color:#6F6B62;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
+  <div style="width:100%;height:90px;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">Bandeau 950×90</div>
+</div>
+
+<!-- A LA UNE -->
+<div style="margin-top:40px">
+  <div class="as-desktop-section-title">
+    <div class="as-desktop-section-title__label">À la une</div>
+    <a href="https://agendasabauda.eu/ce-week-end/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Voir tout <span style="color:#DC5D45">→</span></a>
+  </div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home-desktop as-desktop-grid-3"} -->
+<div class="wp-block-group as-home-desktop as-desktop-grid-3" style="margin-top:0">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"976","columns":"3","columns_tablet":"3","columns_mobile":"3","posts_num":3,"use_custom_post_types":true,"custom_post_types":["tribe_events"]} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+
+<!-- CE WEEK-END -->
+<div style="margin-top:44px">
+  <div class="as-desktop-section-title"><div class="as-desktop-section-title__label">Ce week-end</div></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home-desktop as-desktop-grid-3"} -->
+<div class="wp-block-group as-home-desktop as-desktop-grid-3" style="margin-top:0;margin-bottom:20px">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"976","columns":"3","columns_tablet":"3","columns_mobile":"3","posts_num":6,"use_custom_post_types":true,"custom_post_types":["tribe_events"]} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+<div style="display:flex;justify-content:center">
+  <a href="https://agendasabauda.eu/ce-week-end/" style="display:inline-block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:13px 22px;border-radius:4px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">Voir tous les événements du week-end&nbsp;→</a>
+</div>
+
+<!-- EVENEMENTS DU JOUR -->
+<div style="margin-top:44px">
+  <div class="as-desktop-section-title">
+    <div class="as-desktop-section-title__label">Événements d'aujourd'hui</div>
+    <a href="https://agendasabauda.eu/aujourdhui/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Voir tout <span style="color:#DC5D45">→</span></a>
+  </div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home-desktop as-desktop-grid-4"} -->
+<div class="wp-block-group as-home-desktop as-desktop-grid-4" style="margin-top:0">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"976","columns":"4","columns_tablet":"4","columns_mobile":"4","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"]} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+
+<!-- CA VAUT LE DEPLACEMENT — PLACEHOLDER v1 (même mécanisme non tranché que mobile) -->
+<div style="margin-top:44px">
+  <div class="as-desktop-section-title" style="margin-bottom:20px"><div class="as-desktop-section-title__label">Ça vaut le déplacement</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">
+    <a href="#" style="display:flex;gap:16px;text-decoration:none;align-items:flex-start">
+      <div style="width:180px;flex-shrink:0;aspect-ratio:3/2;overflow:hidden;background:#FBF7F0;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:10px;color:#6F6B62">Visuel à définir</div>
+      <div>
+        <div style="font-family:'Nunito Sans',sans-serif;font-size:10.5px;font-weight:800;color:#DC5D45;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:5px">Itinéraire à définir</div>
+        <h3 style="margin:0 0 8px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:17px;line-height:1.22;color:#1D1D1B">Titre de l'événement transfrontalier</h3>
+        <div style="display:inline-flex;align-items:center;gap:6px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Y aller <span style="color:#DC5D45">→</span></div>
+      </div>
+    </a>
+    <a href="#" style="display:flex;gap:16px;text-decoration:none;align-items:flex-start">
+      <div style="width:180px;flex-shrink:0;aspect-ratio:3/2;overflow:hidden;background:#FBF7F0;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:10px;color:#6F6B62">Visuel à définir</div>
+      <div>
+        <div style="font-family:'Nunito Sans',sans-serif;font-size:10.5px;font-weight:800;color:#DC5D45;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:5px">Itinéraire à définir</div>
+        <h3 style="margin:0 0 8px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:17px;line-height:1.22;color:#1D1D1B">Titre de l'événement transfrontalier</h3>
+        <div style="display:inline-flex;align-items:center;gap:6px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Y aller <span style="color:#DC5D45">→</span></div>
+      </div>
+    </a>
+  </div>
+  <div style="display:flex;justify-content:center">
+    <a href="#" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;background:#1D1D1B;color:#F7F1E8;padding:13px 22px;border-radius:4px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">
+      <span>Voir dans les autres territoires</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7F1E8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="13 6 19 12 13 18"></polyline></svg>
+    </a>
+  </div>
+</div>
+
+</div>
+<!-- /wp:html -->
+
+<!-- 3 COLONNES : NOUVEAUTES / EN EVIDENCE / AGENDA A VENIR — chaque colonne est un
+     vrai bloc wp:group imbriqué (pas du HTML brut réparti entre plusieurs blocs
+     wp:html, qui casse la structure : chaque wp:html est un fragment indépendant
+     et ne peut pas garder une balise ouverte à travers un autre bloc). -->
+<!-- wp:group {"className":"as-home-desktop as-desktop-cols3"} -->
+<div class="wp-block-group as-home-desktop as-desktop-cols3" style="margin-top:0">
+
+<!-- wp:group {"className":"as-desktop-col"} -->
+<div class="wp-block-group as-desktop-col">
+<!-- wp:html -->
+<div>
+  <div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">Nouveautés sur Agenda Sabauda</div></div>
+  <div style="display:flex;flex-direction:column">
+    <a href="#" style="display:flex;gap:16px;align-items:flex-start;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0">
+      <div style="width:132px;flex-shrink:0;aspect-ratio:3/2;overflow:hidden;background:#FBF7F0;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:9px;color:#6F6B62">Visuel</div>
+      <div style="flex:1;min-width:0">
+        <h2 style="margin:0 0 6px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:18px;line-height:1.2;color:#1D1D1B">Juillet 2026 : douze expositions à ne pas manquer à Turin</h2>
+        <p style="margin:0;font-family:'Nunito Sans',sans-serif;font-size:12.5px;line-height:1.5;color:#4A4A48">Les musées de la ville rouvrent leurs cimaises pour l'été, entre grands noms et découvertes. <span style="color:#DC5D45;font-weight:700">»</span></p>
+      </div>
+    </a>
+    <a href="#" style="display:flex;gap:16px;align-items:flex-start;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0">
+      <div style="width:132px;flex-shrink:0;aspect-ratio:3/2;overflow:hidden;background:#FBF7F0;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:9px;color:#6F6B62">Visuel</div>
+      <div style="flex:1;min-width:0">
+        <h2 style="margin:0 0 6px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:18px;line-height:1.2;color:#1D1D1B">Les douze choses à faire en Savoie ce week-end</h2>
+        <p style="margin:0;font-family:'Nunito Sans',sans-serif;font-size:12.5px;line-height:1.5;color:#4A4A48">Marchés nocturnes, randonnées d'altitude et guinguettes en bord de lac composent le programme du week-end. <span style="color:#DC5D45;font-weight:700">»</span></p>
+      </div>
+    </a>
+  </div>
+</div>
+<!-- /wp:html -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"className":"as-desktop-col"} -->
+<div class="wp-block-group as-desktop-col">
+<!-- wp:html -->
+<div><div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">En évidence</div></div></div>
+<!-- /wp:html -->
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"976","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":2,"use_custom_post_types":true,"custom_post_types":["tribe_events"]} /-->
+<!-- wp:html -->
+<div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0">
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5V8.2c1.9-1.1 4.3-1.7 6.9-1.7c1.6 0 3.1.2 4.5.7c1.4-.5 2.9-.7 4.5-.7c1.3 0 2.5.2 3.6.5v8.4c-1.1-.3-2.3-.5-3.6-.5c-1.6 0-3.1.2-4.5.7"></path><path d="M9.9 6.6v10.6"></path><circle cx="7" cy="19.2" r="1.4"></circle><circle cx="17" cy="19.2" r="1.4"></circle></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">Aux alentours</div>
+    </a>
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9.5" width="17" height="11.5" rx="0.5"></rect><path d="M6 9.5l2.8-6h6.4l2.8 6"></path><path d="M9 21v-5.5h6V21"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">Musées</div>
+    </a>
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="7" r="2.3"></circle><path d="M4 19.5v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"></path><circle cx="17" cy="8.5" r="1.9"></circle><path d="M14.2 19.5v-2.3c0-1.6 1.3-2.9 2.8-2.9s2.8 1.3 2.8 2.9v2.3"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">Curiosités</div>
+    </a>
+    <a href="#" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8.5c0-2.3 1.8-4 4-4s4 1.7 4 4c0 2-1.3 2.8-2.4 3.9c-1 1-1.6 1.9-1.6 3.3"></path><circle cx="12" cy="19.3" r="0.2"></circle></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">En famille</div>
+    </a>
+  </div>
+  <div style="border:1px solid #E3DCCE;background:#fff;margin-top:6px">
+    <div style="padding:6px 10px;font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;color:#6F6B62;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
+    <div style="width:100%;aspect-ratio:300/250;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">Encart 300×250</div>
+  </div>
+</div>
+<!-- /wp:html -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"className":"as-desktop-col"} -->
+<div class="wp-block-group as-desktop-col">
+<!-- wp:html -->
+<div><div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">L'agenda à venir</div></div></div>
+<!-- /wp:html -->
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"976","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":6,"use_custom_post_types":true,"custom_post_types":["tribe_events"]} /-->
+<!-- wp:html -->
+<div>
+  <a href="https://agendasabauda.eu/tout-l-agenda/" style="display:block;text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B;margin:14px 0 36px">Tout l'agenda <span style="color:#DC5D45">→</span></a>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+    <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;border:1px solid #1D1D1B;padding:11px 14px">
+      <span style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;letter-spacing:0.06em;color:#1D1D1B;text-transform:uppercase">Instagram</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.2" cy="6.8" r="0.6" fill="#1D1D1B" stroke="none"></circle></svg>
+    </a>
+    <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;border:1px solid #1D1D1B;padding:11px 14px">
+      <span style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;letter-spacing:0.06em;color:#1D1D1B;text-transform:uppercase">Facebook</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h-2.3c-1.9 0-3.2 1.3-3.2 3.3V10H7v3h2.5v7h3v-7h2.4l.4-3h-2.8V7.6c0-.7.3-1 1-1H15z"></path></svg>
+    </a>
+  </div>
+  <div style="border:1.5px solid #1D1D1B;padding:18px">
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:16px;line-height:1.2;color:#1D1D1B;margin-bottom:12px">Faire de la publicité sur Agenda Sabauda</div>
+    <a href="mailto:contact@culturasabauda.eu" style="display:inline-block;background:#DC5D45;color:#F7F1E8;text-decoration:none;padding:9px 16px;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;letter-spacing:0.02em">Nous écrire</a>
+  </div>
+</div>
+<!-- /wp:html -->
+</div>
+<!-- /wp:group -->
+
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<!-- NEWSLETTER (bandeau pleine largeur) -->
+<div class="as-desktop-newsletter-band">
+  <div style="flex:1">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#F7F1E8;text-transform:uppercase;margin-bottom:8px">Chaque vendredi matin</div>
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:30px;line-height:1.05;color:#F7F1E8;letter-spacing:0.02em;margin-bottom:8px">L'essentiel des quatre territoires, dans votre boîte</div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:13.5px;line-height:1.55;color:rgba(251,247,239,0.92);max-width:46ch">Une lettre courte, écrite à la main : les rendez-vous à ne pas manquer, une adresse où manger, un lieu à redécouvrir. Sans publicité, désabonnement en un clic.</div>
+  </div>
+  <div style="flex-shrink:0;width:400px">
+    <form style="display:flex;gap:10px">
+      <input type="email" placeholder="Votre adresse e-mail" style="flex:1;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;background:#F7F1E8;border:1px solid transparent;font-family:'Nunito Sans',sans-serif;font-size:13px;color:#1D1D1B;border-radius:2px">
+      <button type="submit" style="box-sizing:border-box;height:48px;padding:0 24px;background:#1D1D1B;color:#F7F1E8;border:0;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;border-radius:2px;white-space:nowrap;cursor:pointer">S'inscrire</button>
+    </form>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:11px;color:rgba(251,247,239,0.85);margin-top:10px">Inscrivez-vous pour recevoir chaque semaine l'essentiel des quatre territoires.</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="as-desktop-footer">
+  <div class="as-desktop-footer__inner">
+    <div class="as-desktop-footer__cols">
+      <div>
+        <h3>Territoires</h3>
+        <a href="https://agendasabauda.eu/territoire/savoie-haute-savoie/">Savoie</a>
+        <a href="https://agendasabauda.eu/territoire/piemont/">Piémont</a>
+        <a href="https://agendasabauda.eu/territoire/vallee-d-aoste/">Vallée d'Aoste</a>
+        <a href="https://agendasabauda.eu/territoire/nice-alpes-maritimes/">Nice</a>
+      </div>
+      <div>
+        <h3>Catégories</h3>
+        <a href="https://agendasabauda.eu/ce-week-end/">Ce week-end</a>
+        <a href="https://agendasabauda.eu/tout-l-agenda/">Événements</a>
+        <a href="#">Concerts</a>
+        <a href="#">Expositions</a>
+        <a href="#">Gastronomie</a>
+        <a href="#">En famille</a>
+        <a href="#">Curiosités</a>
+      </div>
+      <div>
+        <h3>Le projet</h3>
+        <a href="https://agendasabauda.eu/a-propos/">Qui sommes-nous</a>
+        <a href="#">Travailler avec nous</a>
+        <a href="https://agendasabauda.eu/proposer-un-evenement/">Proposer un événement</a>
+        <a href="#">Publicité</a>
+        <a href="mailto:contact@culturasabauda.eu">Contact</a>
+      </div>
+      <div>
+        <h3>Infos &amp; légal</h3>
+        <a href="#">Infos utiles</a>
+        <a href="https://agendasabauda.eu/?s=">Rechercher</a>
+        <a href="#">Newsletter</a>
+        <a href="#">Politique de confidentialité</a>
+        <a href="#">Cookies</a>
+        <a href="#">Plan du site</a>
+      </div>
+      <div>
+        <h3>Langue</h3>
+        <div style="font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;color:#1D1D1B">FR <span style="color:#6F6B62;font-weight:400">|</span> <span style="color:#6F6B62">IT</span></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #E3DCCE;padding-top:16px;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">© Agenda Sabauda — édité par Cultura Sabauda — contact@culturasabauda.eu</div>
+  </div>
+</div>
+
+<!-- BARRE PUB STICKY (desktop) -->
+<div class="as-desktop-sticky-ad">
+  <div class="as-desktop-sticky-ad__inner">
+    <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;color:#6F6B62;letter-spacing:0.14em;text-transform:uppercase;flex-shrink:0">Publicité</div>
+    <div style="flex:1;height:70px;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">Bandeau 728×90</div>
+    <div style="flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>
+    </div>
   </div>
 </div>
 <!-- /wp:html -->

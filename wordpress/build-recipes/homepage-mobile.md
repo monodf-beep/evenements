@@ -1,4 +1,4 @@
-# Recette de build — Homepage mobile (source RÉELLE, enfin trouvée)
+# Recette de build — Homepage mobile + desktop (source RÉELLE, enfin trouvée)
 
 *Source : `Agenda Sabaudo - Mobile.dc.html`, projet Claude Design **« Brief design
 agenda Sabaudo »** (projectId `4b44f3d4-eac1-424a-aecf-c70fa2606fd2` — DIFFÉRENT du

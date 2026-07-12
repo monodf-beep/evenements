@@ -1,6 +1,60 @@
 # État du build WordPress — agendasabauda.eu
 
-*Dernière mise à jour : session du 2026-07-12 (5e passe — fiche événement, sans Theme Builder).*
+*Dernière mise à jour : session du 2026-07-13 (6e passe — homepage DESKTOP + correctif structurel majeur).*
+
+## 🆕 Homepage desktop (≥1024px) construite — et un bug structurel majeur corrigé au passage
+
+Franck a signalé qu'il existe aussi une maquette **desktop** distincte (dans le même
+fichier source `Agenda Sabaudo - Mobile.dc.html`, section `isDesktop`), pas encore
+lue ni construite. Section relue en entier : masthead centré, nav sticky avec liens
+de catégories visibles (pas de burger), sélecteur territoire inline, carrousel
+(simplifié en un seul visuel statique v1, pas de JS), 6 tuiles + carte newsletter
+rouge côte à côte, "À la une"/"Ce week-end" en grilles 3 colonnes, rail 4 colonnes
+"Événements du jour", "Ça vaut le déplacement" en 2 colonnes, section 3 colonnes
+(Nouveautés/En évidence/Agenda à venir), bandeau newsletter pleine largeur, footer
+5 colonnes, barre pub sticky. Le tout dans le **même fichier**
+`homepage-mobile.gutenberg.html` que le mobile, poussé sur la **même page** (928) —
+les deux versions coexistent dans le DOM, **basculées en CSS pur** via
+`.as-home`/`.as-home-desktop` + `@media (min-width:1024px)` (aucun JS, cohérent
+avec le reste du site).
+
+### 🚨 Bug structurel découvert et corrigé : des blocs Gutenberg `wp:html` ne peuvent
+### PAS garder une balise ouverte à travers un autre bloc
+
+En construisant le desktop, la vérification visuelle a révélé que la home affichait
+le contenu MOBILE **en plus** du desktop, sur near 5000px de haut en trop. Cause
+racine : plusieurs gros morceaux du contenu mobile (Ça vaut le déplacement,
+Événements du jour, Nouvelles expositions, tuiles secondaires, Suivez-nous, footer,
+barre pub sticky…) **n'étaient en fait jamais enveloppés dans `.as-home`** — ils
+avaient été écrits à cheval sur plusieurs blocs `<!-- wp:html -->` séparés (par des
+blocs `wp:jet-engine/listing-grid` intercalés), et **chaque bloc `wp:html` est un
+fragment HTML indépendant** : une balise `<div>` ouverte dans un bloc ne peut pas
+être "gardée ouverte" jusqu'à un bloc suivant — elle se referme silencieusement à la
+frontière du bloc. Résultat : tout ce contenu s'affichait **sans condition de
+viewport**, invisible en apparence tant que mobile ET desktop utilisaient les mêmes
+couleurs de fond (jamais remarqué avant, car la vérification mobile précédente
+n'avait pas de second layout à côté duquel comparer).
+
+**Fix** : chaque section a été soit (a) entièrement contenue dans un seul bloc
+`wp:html` auto-suffisant, soit (b) restructurée en blocs `wp:group` imbriqués
+proprement (cas de la grille 3 colonnes desktop, qui a le même problème — une balise
+`<div class="as-desktop-cols3">` ouverte dans un bloc, des `wp:group`
+listing-grid intercalés, puis une fermeture dans un bloc ultérieur → grille cassée,
+tout empilé en pleine largeur). **Leçon à retenir pour la suite** : ne JAMAIS ouvrir
+une balise dans un bloc `wp:html` et compter sur un bloc suivant pour la fermer —
+soit tout mettre dans un seul bloc `wp:html`, soit nester correctement avec
+`wp:group`.
+
+**Vérifié visuellement** (viewport natif large du navigateur Claude, ~2133px,
+au-dessus du seuil desktop 1024px) : nav sticky, carrousel, tuiles+newsletter,
+grille 3 colonnes, bandeau newsletter rouge, footer 5 colonnes — tout s'affiche
+correctement, hauteur de page passée de ~10650px (avec le bug) à ~5741px.
+**Le mobile n'a PAS pu être re-vérifié visuellement dans cette session** (l'outil
+`resize_window` du navigateur ne change pas le viewport réel utilisé par les media
+queries CSS — limitation de l'outil, pas du site). Les correctifs n'ont fait
+qu'AJOUTER l'enveloppe `.as-home` manquante à du contenu déjà stylé et déjà vérifié
+visuellement lors d'une passe précédente — risque de régression mobile jugé faible,
+mais **à revérifier visuellement dès qu'un vrai viewport mobile sera disponible**.
 
 ## 🆕 Fiche événement — v1 minimale, SANS Theme Builder
 

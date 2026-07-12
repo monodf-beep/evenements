@@ -286,6 +286,9 @@
    estimés ici à partir des espacements voisins connus ; à corriger si Franck a les
    vraies valeurs. ===== */
 .as-home { position: relative; max-width: 480px; margin: 0 auto; overflow: hidden; background: #fff; }
+@media (min-width: 1024px) { .as-home { display: none; } }
+.as-home-desktop { display: none; }
+@media (min-width: 1024px) { .as-home-desktop { display: block; } }
 .as-menu-toggle, .as-terr-toggle { display: none; }
 /* Asset manquant : "assets/masthead-full-sketch-v6.png" (croquis Turin recoloré en
    masque CSS) référencé dans la source n'a jamais été fourni/uploadé — à demander à
@@ -384,5 +387,47 @@
 /* ---- Bouton CTA noir « Voir tout l'agenda du week-end » ---- */
 .as-cta { background: var(--cs-noir); color: var(--cs-blanc); border-radius: var(--r-pill);
           padding: var(--s-3) var(--s-5); font-family: var(--font-editorial); }
+
+/* ===== home desktop — SOURCE RÉELLE (section DESKTOP du même Agenda Sabaudo -
+   Mobile.dc.html). Publicités gouttière (160px de chaque côté, colonne 950px,
+   max 1440px) PAS reproduites en v1 — nécessiteraient un point de rupture propre
+   au-delà de 1440px, hors scope de la 1ère passe. Carrousel : un seul visuel
+   statique (pas de JS, cohérent avec le reste du site), flèches/points non
+   fonctionnels retirés. ===== */
+.as-home-desktop { max-width: 950px; margin: 0 auto; padding: 24px 20px 0; }
+.as-home-desktop__nav {
+  position: sticky; top: 0; z-index: 30; background: #fff; border-top: 1px solid #1D1D1B;
+  border-bottom: 1px solid #1D1D1B; height: 56px; display: flex; align-items: center; justify-content: space-between;
+}
+.as-home-desktop__nav a { text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #1D1D1B; }
+.as-home-desktop__carousel { position: relative; margin-top: 16px; width: 100%; height: 340px; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
+.as-home-desktop__carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
+.as-home-desktop__carousel-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 40%, rgba(29,29,27,.8) 100%); }
+.as-desktop-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.as-desktop-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.as-desktop-tiles { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: stretch; }
+.as-desktop-tiles__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.as-desktop-tiles__newsletter { background: #DC5D45; border-radius: 4px; padding: 26px 22px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.as-desktop-cols3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; align-items: start; margin-top: 44px; }
+.as-desktop-section-title { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #1D1D1B; padding-top: 12px; margin-bottom: 20px; }
+.as-desktop-section-title__label { font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: #1D1D1B; text-transform: uppercase; }
+.as-desktop-newsletter-band { display: none; max-width: 950px; margin: 56px auto 0; background: #DC5D45; padding: 40px 48px; align-items: center; justify-content: space-between; gap: 48px; }
+.as-desktop-footer { display: none; background: #FBF7F0; padding: 48px 0 28px; margin-top: 0; }
+.as-desktop-footer__inner { max-width: 950px; margin: 0 auto; padding: 0 20px; }
+.as-desktop-footer__cols { display: grid; grid-template-columns: repeat(5, 1fr); gap: 28px; margin-bottom: 32px; }
+.as-desktop-footer__cols a { display: block; text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 13px; color: #1D1D1B; margin-bottom: 9px; }
+.as-desktop-footer__cols h3 { font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #1D1D1B; text-transform: uppercase; margin: 0 0 14px; }
+.as-desktop-sticky-ad { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; background: #F7F1E8; border-top: 1px solid #1D1D1B; box-shadow: 0 -2px 10px rgba(0,0,0,.07); }
+.as-desktop-sticky-ad__inner { max-width: 950px; margin: 0 auto; padding: 8px 20px; display: flex; align-items: center; gap: 16px; }
+.as-desktop-col { min-width: 0; }
+@media (min-width: 1024px) {
+  .as-desktop-newsletter-band { display: flex; }
+  .as-desktop-footer { display: block; }
+  .as-desktop-sticky-ad { display: block; }
+}
+/* Grilles JetEngine desktop (3 ou 4 col) — la classe .ala-une-card__image/__eyebrow/__title
+   du composant carte "à la une" est réutilisée telle quelle, aucune surcharge nécessaire. */
+.as-desktop-grid-3 .jet-listing-grid__items,
+.as-desktop-grid-4 .jet-listing-grid__items { display: grid; gap: inherit; grid-template-columns: inherit; }
 
 

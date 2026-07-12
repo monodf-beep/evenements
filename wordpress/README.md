@@ -77,7 +77,7 @@ actif malgré cette recommandation.
 | — | **Carte-événement** (composant réutilisé partout) | 🟡 v1 (titre/cat/territoire OK ; manque heure formatée, lieu, statut, clic, groupement par jour) |
 | — | **Carte "à la une"** (grid 2×2 avec image, section homepage) | 🟡 v1 (image/territoire/titre OK ; manque heure formatée, comme carte-événement) |
 | — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
-| 1 | Home | ✅ v1 complet (24/24 sections), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
+| 1 | Home | ✅ v1 complet **mobile + desktop** (basculés en CSS, `min-width:1024px`), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
 | 2 | Fiche événement (single TEC) | 🟡 v1 minimale : template natif TEC (déjà complet : titre, dates, contenu, DÉTAILS, LIEU+carte) + pilule territoire, badge de statut, crédit photo, "Vérifié le" injectés en PHP (pas de Theme Builder nécessaire). Manque : les 3 rails liés (même lieu/catégorie/dates) |
 | 3 | Hub catégorie (×11) | 🟡 v1 stylée (`.ag-row`, lignes cliquables) — manque intro éditoriale (à récupérer auprès de Franck), groupement par jour |
 | 4 | Hub territoire (×4) | 🟡 Idem — vérifié sur `/territoire/piemont/` |
