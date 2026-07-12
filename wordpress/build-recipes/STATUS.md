@@ -83,6 +83,29 @@ la page de test jetable de la carte "à la une".
 auprès de Franck), formatage de l'heure (même limitation connue partout ailleurs),
 groupement par jour (`.ag-daygroup`).
 
+## 🚧 Hub lieu (venue) — BLOQUÉ, permaliens cassés (pas un problème de contenu)
+
+En voulant appliquer la même méthode "template natif TEC d'abord" qu'à la fiche
+événement : les 3 lieux publiés (`tribe_venue`, ex. `halle-olympique`) ont une URL
+REST correcte (`https://agendasabauda.eu/lieu/halle-olympique/`, status `publish`)
+mais **cette URL sert en réalité la page d'accueil** (200 OK, mais canonical =
+`https://agendasabauda.eu/`, contenu = page d'accueil) au lieu de la fiche du lieu.
+Pas une redirection HTTP (vérifié en désactivant le suivi de redirection) : WordPress
+route bien vers `/lieu/...` mais ne résout la query sur aucun post — symptôme
+classique de **règles de réécriture (rewrite rules) non synchronisées**.
+
+Tenté : ré-enregistrer les réglages de permaliens (Réglages → Permaliens →
+Enregistrer, ce qui déclenche normalement `flush_rewrite_rules()`) — **n'a pas
+résolu le problème**. Pas de piste supplémentaire explorée (pas d'accès WP-CLI/SSH
+pour un `wp rewrite flush` plus direct, ni au réglage de slug spécifique aux lieux
+dans TEC — pas trouvé dans Réglages → Évènements → Général, qui n'expose que le
+permalien évènement singulier/pluriel, pas celui des lieux).
+
+**À l'origine du blocage, pas un problème de gabarit** — donc pas de solution côté
+`design-system/`. Prochaine piste à essayer : chercher un réglage de permalien
+spécifique aux lieux plus profondément dans les onglets TEC, ou solliciter un accès
+WP-CLI/SSH pour un flush direct.
+
 ## 🚨 CORRECTIF MAJEUR : le CSS "site-css" (Code Snippets) n'a JAMAIS atteint le front-end
 
 En vérifiant visuellement la home (première fois qu'un composant est vérifié dans un

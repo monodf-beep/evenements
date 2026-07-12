@@ -81,7 +81,7 @@ actif malgré cette recommandation.
 | 2 | Fiche événement (single TEC) | 🟡 v1 minimale : template natif TEC (déjà complet : titre, dates, contenu, DÉTAILS, LIEU+carte) + pilule territoire, badge de statut, crédit photo, "Vérifié le" injectés en PHP (pas de Theme Builder nécessaire). Manque : les 3 rails liés (même lieu/catégorie/dates) |
 | 3 | Hub catégorie (×11) | 🟡 v1 stylée (`.ag-row`, lignes cliquables) — manque intro éditoriale (à récupérer auprès de Franck), groupement par jour |
 | 4 | Hub territoire (×4) | 🟡 Idem — vérifié sur `/territoire/piemont/` |
-| 5 | Hub lieu (venue TEC) | ❌ |
+| 5 | Hub lieu (venue TEC) | 🚧 Bloqué — permaliens `/lieu/{slug}/` cassés (servent la page d'accueil au lieu de la fiche), pas un problème de contenu. Flush des permaliens tenté sans succès, détail dans STATUS.md |
 | 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | 🟡 v1 : titre + Listing Grid (carte-evenement-blocks) sur les pages existantes (930/932). Filtre par date pas encore câblé (nécessite JetEngine Query Builder) — "Ce week-end" affiche tous les événements pour l'instant |
 | 7 | Recherche + 404 | ❌ |
 
