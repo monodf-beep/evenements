@@ -5,11 +5,65 @@
  * titre, dates, description, "En pratique", DÉTAILS, LIEU+carte) — pas de Theme
  * Builder nécessaire. Ajoute par-dessus, via le filtre the_content, ce que TEC
  * n'a pas nativement : pilule territoire, badge de statut (as_statut), crédit
- * photo (légende média WP si renseignée), date de vérification (post_modified).
- *
- * Pas encore fait (v1 minimale d'abord) : les 3 rails liés (même lieu / catégorie /
- * dates) — nécessitent des requêtes WP_Query dédiées, prévu en v2.
+ * photo (légende média WP si renseignée), date de vérification (post_modified),
+ * et 3 rails liés en pied de fiche (même lieu / même catégorie / dates proches).
  */
+
+/**
+ * Rend un rail de 3 événements liés (titre + date brute — même limitation de
+ * formatage que carte-evenement-blocks, cf. STATUS.md).
+ */
+function cs_render_event_rail($title, WP_Query $q, $current_id) {
+    if (!$q->have_posts()) {
+        return '';
+    }
+    $items = '';
+    while ($q->have_posts()) {
+        $q->the_post();
+        if (get_the_ID() === $current_id) {
+            continue;
+        }
+        $start = get_post_meta(get_the_ID(), '_EventStartDate', true);
+        $items .= '<a href="' . esc_url(get_permalink()) . '" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:10px 0">'
+            . '<div style="font-family:\'Nunito Sans\',sans-serif;font-size:10.5px;font-weight:800;color:#1D1D1B;margin-bottom:2px">' . esc_html($start) . '</div>'
+            . '<div style="font-family:\'La Semplicita\',\'Saira Condensed\',sans-serif;font-weight:600;font-size:14.5px;line-height:1.22;color:#1D1D1B">' . esc_html(get_the_title()) . '</div>'
+            . '</a>';
+    }
+    wp_reset_postdata();
+    if (!$items) {
+        return '';
+    }
+    return '<div style="margin-top:20px">'
+        . '<div style="font-family:\'Nunito Sans\',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase;border-top:1px solid #1D1D1B;padding-top:10px;margin-bottom:8px">' . esc_html($title) . '</div>'
+        . $items . '</div>';
+}
+
+add_filter('the_content', function ($content) {
+    if (!is_singular('tribe_events') || !in_the_loop() || !is_main_query()) {
+        return $content;
+    }
+    $post_id = get_the_ID();
+
+    $venue_id = get_post_meta($post_id, '_EventVenueID', true);
+    $rail_lieu = $venue_id ? cs_render_event_rail('Au même endroit', new WP_Query([
+        'post_type' => 'tribe_events', 'post_status' => 'publish', 'posts_per_page' => 4,
+        'post__not_in' => [$post_id], 'meta_key' => '_EventVenueID', 'meta_value' => $venue_id,
+    ]), $post_id) : '';
+
+    $cats = get_the_terms($post_id, 'tribe_events_cat');
+    $rail_cat = ($cats && !is_wp_error($cats)) ? cs_render_event_rail('Même catégorie', new WP_Query([
+        'post_type' => 'tribe_events', 'post_status' => 'publish', 'posts_per_page' => 4,
+        'post__not_in' => [$post_id],
+        'tax_query' => [['taxonomy' => 'tribe_events_cat', 'field' => 'term_id', 'terms' => $cats[0]->term_id]],
+    ]), $post_id) : '';
+
+    $rail_dates = cs_render_event_rail('À venir', new WP_Query([
+        'post_type' => 'tribe_events', 'post_status' => 'publish', 'posts_per_page' => 4,
+        'post__not_in' => [$post_id], 'meta_key' => '_EventStartDate', 'orderby' => 'meta_value', 'order' => 'ASC',
+    ]), $post_id);
+
+    return $content . $rail_lieu . $rail_cat . $rail_dates;
+}, 20);
 add_filter('the_content', function ($content) {
     if (!is_singular('tribe_events') || !in_the_loop() || !is_main_query()) {
         return $content;

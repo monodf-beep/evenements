@@ -82,8 +82,11 @@ badges d'état, pilule territoire, "Vérifié le") a été ajouté via un filtre
 **Vérifié visuellement** sur l'événement 578 (aperçu WP) : pilule "Piémont" et
 "Vérifié le 12 juillet 2026" s'affichent correctement.
 
-**Reste à faire (v2)** : les **3 rails liés** (même lieu / catégorie / dates) —
-nécessitent des `WP_Query` dédiées dans le même snippet PHP, pas encore écrites.
+✅ **v2 faite** : les 3 rails liés (même lieu, même catégorie, à venir) sont
+maintenant ajoutés en pied de fiche (`cs_render_event_rail()` dans le même
+snippet, filtre `the_content` priorité 20). Vérifié sans erreur PHP sur
+l'événement 578 ; rails vides pour l'instant (aucun événement publié, même
+cause que partout ailleurs — s'afficheront dès que du contenu réel sera publié).
 
 ## 🆕 « Tout l'agenda » et « Ce week-end » — v1
 
