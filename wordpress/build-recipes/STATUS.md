@@ -148,6 +148,45 @@ en brut SQL ("2026-07-13 00:00:00") au lieu d'un format court ("13/07") —
 `_EventStartDate` n'est pas enregistré comme champ "Date" JetEngine, connu
 depuis le tout début du chantier carte-événement.
 
+## 🆕 Plugin Ad Inserter installé + 12 emplacements pub câblés + centrage corrigé + critique architecture
+
+Trois demandes de Franck sur une même capture (home desktop) :
+
+1. **Contenu de la home décalé à gauche, pas centré.** Cause réelle :
+   GeneratePress enveloppe `#content` en `display:flex` (layout
+   contenu+sidebar, body class `right-sidebar`) — même sidebar vide, un
+   enfant flex unique (`.as-home-root`, `homepage-template.php`) ne remplit
+   pas la largeur du conteneur par défaut (pas de `flex-grow`), restant
+   calé à gauche. `.as-home-root{width:100%}` force le remplissage,
+   permettant au `max-width:950px;margin:auto` interne de vraiment centrer
+   dans la page. Vérifié : marges symétriques (~107px de chaque côté à
+   1548px, contre 218px/419px avant — un déséquilibre de 200px).
+2. **Modules pub réels au lieu des encarts fictifs.** Question posée :
+   quel plugin ? Recommandé et installé **Ad Inserter** (gratuit, gère
+   bannières vendues en direct ET tags programmatiques AdSense/GAM,
+   ciblage par appareil/page natif — cohérent avec le positionnement
+   "régie directe" du site, page Annoncer). Installé via
+   `POST /wp-json/wp/v2/plugins` (slug `ad-inserter`), actif (v2.8.17).
+   **12 emplacements câblés** en shortcodes `[adinserter block="N"]` :
+   #1/#2 gouttières (160×600), #3 sous carrousel (950×120), #4 sous tuiles
+   (950×90), #5 encart colonne "En évidence" (300×250), #6 barre sticky
+   desktop (728×90), #7-#11 les 5 encarts inline mobile (5:3), #12 barre
+   sticky mobile. Le repère "Publicité" reste affiché même bloc vide (Ad
+   Inserter n'affiche rien tant qu'il n'est pas configuré) pour marquer
+   l'emplacement réservé. **Configuration des blocs (codes/images/liens)
+   à faire par Franck dans wp-admin → Réglages → Ad Inserter** — je ne
+   peux pas m'y connecter moi-même (jamais de mot de passe, même le sien).
+3. **Critique franche demandée sur l'architecture HTML vs blocs natifs.**
+   Réponse donnée : oui ça répond aux media queries testées, mais c'est du
+   HTML dupliqué mobile/desktop (2 arbres figés, pas un vrai fluide), non
+   éditable visuellement dans l'admin, et source des bugs récurrents
+   chassés cette session (empilement cassé, centrage cassé, cascade CSS
+   cassée) — le prix payé pour contourner l'échec du drag-and-drop
+   Elementor/Crocoblock documenté plus tôt. Franck a proposé de faire
+   lui-même le glisser-déposer si je le guide — recommandation : envisager
+   une reconstruction en blocs JetEngine/Crocoblock natifs pour les
+   prochains chantiers, avec Franck aux commandes du canvas.
+
 ## 🆕 Masthead homepage restauré fidèlement (logo réel + nav riche), header compact réservé aux autres pages
 
 Franck a montré la vraie maquette desktop du header (logo+skyline centré,

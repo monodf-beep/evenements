@@ -32,14 +32,18 @@ add_action('template_redirect', function () {
          qui enveloppent déjà tout leur contenu dans un seul div. -->
     <div class="as-home-root">
       <!-- Gouttières pub desktop (≥1440px seulement, cf. .as-desktop-gutter-ad —
-           position fixe, indépendante de la largeur du conteneur 950px de la home). -->
+           position fixe, indépendante de la largeur du conteneur 950px de la home).
+           Blocs Ad Inserter #1 (gauche) / #2 (droite), 160×600 — à configurer
+           dans wp-admin → Réglages → Ad Inserter (code/image + lien). Tant
+           qu'un bloc est vide, Ad Inserter n'affiche rien : le repère
+           "Publicité" reste visible pour marquer l'emplacement réservé. -->
       <div class="as-desktop-gutter-ad as-desktop-gutter-ad--left">
         <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
-        <div>Pavé 160×600</div>
+        <?php echo do_shortcode('[adinserter block="1"]'); ?>
       </div>
       <div class="as-desktop-gutter-ad as-desktop-gutter-ad--right">
         <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
-        <div>Pavé 160×600</div>
+        <?php echo do_shortcode('[adinserter block="2"]'); ?>
       </div>
       <?php echo apply_filters('the_content', $page->post_content); ?>
     </div>
