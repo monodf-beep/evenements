@@ -8,9 +8,16 @@
  * parce que l'ancien masthead/menu baké dans le contenu (retiré, cf.
  * site-header-footer.php) masquait visuellement le haut de page.
  *
- * Le contenu reste éditable normalement (Gutenberg, page 928,
- * apply-homepage.mjs) — ce hook se contente d'exécuter le rendu des blocs
- * sans passer par le template de page du thème.
+ * Contenu actuellement Gutenberg (apply-homepage.mjs), MAIS la reconstruction
+ * en cours passe à Elementor + Crocoblock (JetEngine/JetMenu...) — quand
+ * Franck sauvegarde depuis Elementor, WordPress stocke le rendu dans les
+ * métadonnées `_elementor_data`/`_elementor_edit_mode`, PAS dans post_content
+ * (qui garde son ancien contenu Gutenberg, ignoré une fois basculé). Un
+ * simple `apply_filters('the_content', $page->post_content)` ne suffit pas à
+ * afficher du contenu Elementor de façon fiable en dehors de La Boucle — on
+ * utilise donc l'API officielle d'Elementor quand elle gère la page, avec
+ * repli sur l'ancien contenu Gutenberg sinon (transition en douceur, rien à
+ * casser tant que la reconstruction Elementor n'est pas terminée/publiée).
  */
 add_action('template_redirect', function () {
     if (is_admin() || !is_page(928)) {
@@ -21,6 +28,9 @@ add_action('template_redirect', function () {
     if (!$page) {
         return;
     }
+
+    $is_elementor = class_exists('\Elementor\Plugin')
+        && get_post_meta($page->ID, '_elementor_edit_mode', true) === 'builder';
 
     get_header();
     ?>
@@ -45,7 +55,13 @@ add_action('template_redirect', function () {
         <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
         <?php echo do_shortcode('[adinserter block="2"]'); ?>
       </div>
-      <?php echo apply_filters('the_content', $page->post_content); ?>
+      <?php
+      if ($is_elementor) {
+          echo \Elementor\Plugin::instance()->frontend->get_builder_content_for_display($page->ID);
+      } else {
+          echo apply_filters('the_content', $page->post_content);
+      }
+      ?>
     </div>
     <?php
     get_footer();
