@@ -444,15 +444,25 @@
   .as-desktop-newsletter-band { display: flex; }
   .as-desktop-footer { display: block; }
   .as-desktop-sticky-ad { display: block; }
-  .as-desktop-grid-3 { display: grid; }
-  .as-desktop-grid-4 { display: grid; }
+  .as-desktop-grid-3 { display: block; }
+  .as-desktop-grid-4 { display: block; }
   .as-desktop-tiles { display: grid; }
   .as-desktop-cols3 { display: grid; }
 }
-/* Grilles JetEngine desktop (3 ou 4 col) — la classe .ala-une-card__image/__eyebrow/__title
-   du composant carte "à la une" est réutilisée telle quelle, aucune surcharge nécessaire. */
-.as-desktop-grid-3 .jet-listing-grid__items,
-.as-desktop-grid-4 .jet-listing-grid__items { display: grid; gap: inherit; grid-template-columns: inherit; }
+/* ⚠️ .as-desktop-grid-3/-4 ne sont QUE des wrappers .as-home-desktop (masqués
+   sur mobile) autour du bloc natif JetEngine `wp:jet-engine/listing-grid` —
+   PAS des grilles CSS elles-mêmes. Le composant JetEngine gère déjà ses N
+   colonnes en interne via flexbox (`.jet-listing-grid__items.grid-col-desk-3`
+   + `--columns:3`, cf. jet-engine/assets/css/frontend.css), piloté par les
+   attributs de bloc `columns`/`columns_tablet`/`columns_mobile`. Un ancien
+   `display:grid` forcé ICI (sur le wrapper) ET sur `.jet-listing-grid__items`
+   cassait ce système à deux niveaux : le wrapper créait sa propre grille de 3
+   cellules avec un seul enfant (2 cellules vides), et forcer display:grid
+   sur .jet-listing-grid__items annulait le flex/--columns natif, réduisant
+   les cartes à une colonne unique et minuscule. Bug réel constaté le
+   2026-07-14 ("aucune section ne va dans la homepage desktop", carte "À la
+   une" réduite à une colonne étroite). Ne plus toucher au display interne du
+   composant JetEngine — le bloc gère sa propre responsivité. */
 
 /* Gouttières pub (160×600) — position fixe, indépendante du conteneur 950px de
    la home (contrairement à une grille wrapper qui aurait exigé de restructurer
