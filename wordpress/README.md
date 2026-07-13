@@ -65,9 +65,11 @@ actif malgré cette recommandation.
 | `scripts/apply-carte-a-la-une.mjs` | Met à jour le contenu Gutenberg du Listing Item carte "à la une" (post 976) |
 | `scripts/apply-homepage.mjs` | Pousse le contenu Gutenberg de la home mobile (24 sections) sur la page Accueil (928) |
 | `scripts/apply-single-event-meta.mjs` | Pousse le snippet PHP qui ajoute pilule territoire/statut/crédit photo/"Vérifié le" sur la fiche événement native TEC |
-| `scripts/apply-liste-pages.mjs` | Pousse le contenu Gutenberg des pages "Tout l'agenda" (932) et "Ce week-end" (930) |
+| `scripts/apply-liste-pages.mjs` | ⚠️ Obsolète — poussait l'ancien contenu Gutenberg (Listing Grid `.ag-row`) des pages 930/932, remplacé par `apply-liste-evenements-template.mjs` (template_redirect intercepte avant, contenu Gutenberg inutilisé) |
+| `scripts/apply-cs-cards.mjs` | Pousse `design-system/cs-cards.php` (composants carte partagés `cs_card_standard`/`cs_card_compact`/`cs_card_rail`), snippet global — prérequis pour les 3 scripts ci-dessous |
 | `scripts/apply-taxonomy-archive-query.mjs` | Pousse le snippet PHP qui débloque les archives de taxonomie territoire/catégories (force post_type=tribe_events) |
-| `scripts/apply-taxonomy-archive-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu des Hubs territoire/catégorie (style `.ag-row`) |
+| `scripts/apply-taxonomy-archive-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu des Hubs territoire/catégorie (vraie carte "standard", pilules colorées) |
+| `scripts/apply-liste-evenements-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu de "Ce week-end" (930) / "Tout l'agenda" (932) (vraie carte "compacte") |
 | `scripts/apply-search-events.mjs` | Pousse le snippet PHP qui élargit la recherche aux événements (date + territoire sous chaque résultat) |
 | `scripts/apply-site-header-footer.mjs` | Pousse le snippet PHP qui injecte le header/footer de marque site-wide (sauf Accueil) |
 
@@ -81,10 +83,10 @@ actif malgré cette recommandation.
 | — | Header / Footer (parties de thème) | ✅ v1 site-wide via hooks PHP (`wp_body_open`/`wp_footer`), pas de Theme Builder. Vraie menu WP ("Principal FR", 24 items). Exclut la page Accueil (a déjà les siens) |
 | 1 | Home | ✅ v1 complet **mobile + desktop** (basculés en CSS, `min-width:1024px`), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
 | 2 | Fiche événement (single TEC) | ✅ v2 : template natif TEC + pilule territoire, badge de statut, crédit photo, "Vérifié le", et 3 rails liés (même lieu/catégorie/à venir) — tout en PHP, pas de Theme Builder |
-| 3 | Hub catégorie (×11) | 🟡 v1 stylée (`.ag-row`, lignes cliquables) — manque intro éditoriale (à récupérer auprès de Franck), groupement par jour |
-| 4 | Hub territoire (×4) | 🟡 Idem — vérifié sur `/territoire/piemont/` |
+| 3 | Hub catégorie (×11) | ✅ v2 : vraie carte "standard" (`cs_card_standard`, pilules colorées), fil d'Ariane, filtres cosmétiques, newsletter légère — manque intro éditoriale réelle (à récupérer auprès de Franck) |
+| 4 | Hub territoire (×4) | ✅ v2 Idem — vérifié sur `/territoire/piemont/` |
 | 5 | Hub lieu (venue TEC) | 🚧 Bloqué — permaliens `/lieu/{slug}/` cassés (servent la page d'accueil au lieu de la fiche), pas un problème de contenu. Flush des permaliens tenté sans succès, détail dans STATUS.md |
-| 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | 🟡 v1 : titre + Listing Grid (carte-evenement-blocks) sur les pages existantes (930/932). Filtre par date pas encore câblé (nécessite JetEngine Query Builder) — "Ce week-end" affiche tous les événements pour l'instant |
+| 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | ✅ v2 : gabarit PHP dédié (`template_redirect`), vraie carte "compacte" (`cs_card_compact`), compteur, filtres cosmétiques, pagination — vérifié visuellement sur les deux pages. Filtre par date pas encore câblé (nécessite meta_query dédiée) — "Ce week-end" affiche tous les événements pour l'instant |
 | 7 | Recherche + 404 | ✅ Recherche élargie aux événements (date/territoire par résultat). 404 = gabarit générique du thème, mais hérite automatiquement du header/footer de marque — vérifié visuellement, acceptable en l'état |
 
 Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.

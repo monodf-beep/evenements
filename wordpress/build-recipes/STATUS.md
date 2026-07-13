@@ -1,6 +1,41 @@
 # État du build WordPress — agendasabauda.eu
 
-*Dernière mise à jour : session du 2026-07-13 (8e passe — mise en ligne de la home, footer corrigé, plan pour les gabarits restants).*
+*Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie et « Ce week-end »/« Tout l'agenda » reconstruits en gabarits PHP dédiés).*
+
+## 🆕 Vraie grammaire de carte (brief §8.1) — remplace `.ag-row` sur Hubs + listes
+
+En relisant les vraies maquettes (`Fiche Evenement.dc.html`, `Hub Categorie.dc.html`,
+`Liste Evenements.dc.html`), constat : `.ag-row` (ligne dense sans image, pilule
+grise neutre) vient en fait de `ui_kits/agenda/kit.css`, une **mini-app distincte**
+— PAS la grammaire du site public. La vraie carte a une image 3:2 (ou vignette
+88px), une date lisible, un titre, "lieu · ville", et une **pilule territoire
+colorée** (une couleur par territoire, brief §1.2/§3 — Savoie bleu, Piémont rouge,
+Vallée d'Aoste vert, Nice orange), en 3 variantes : "standard" (À la une, Hubs),
+"compacte" (listes), "rail" (fiche événement).
+
+- `wordpress/design-system/cs-cards.php` — bibliothèque PHP partagée
+  (`cs_card_standard`, `cs_card_compact`, `cs_card_rail`, `cs_pill_class`,
+  `cs_event_venue_line`, `cs_event_date_short`, `cs_event_territory_pill`),
+  chargée comme snippet global (priorité 1, `apply-cs-cards.mjs`) pour être
+  disponible à tous les autres snippets.
+- **Fiche événement** (`single-event-meta.php`) entièrement réécrite en gabarit
+  `template_redirect` complet (plus un simple filtre `the_content` sur le
+  template natif TEC) : hero 4:3 + crédit photo, badges calculés (statut,
+  "Plus que N jours"/"Dernier jour", "Gratuit"), bloc pratique (dates/horaires/
+  prix/lieu+CTA), 3 rails dans l'ordre brief §6.4 (Au même endroit → Même
+  catégorie → Près d'ici mêmes dates — pas un rail générique "à venir").
+  Vérifié visuellement sur l'événement 578, sans erreur PHP.
+- **Hub territoire/catégorie** (`taxonomy-archive-template.php`) réécrit pour
+  utiliser `cs_card_standard()`. Vérifié sur `/territoire/piemont/`.
+- **« Ce week-end »/« Tout l'agenda »** (930/932) : nouveau
+  `wordpress/design-system/liste-evenements-template.php`, même schéma
+  `template_redirect` que les Hubs (remplace l'ancien contenu Gutenberg +
+  Listing Grid `carte-evenement-blocks` de `apply-liste-pages.mjs`, devenu
+  obsolète — le contenu Gutenberg des pages n'est plus utilisé, interceptée
+  avant par le hook). Utilise `cs_card_compact()`, compteur d'événements,
+  barre "Filtres" (cosmétique v1), pagination placeholder. Vérifié
+  visuellement sur les deux pages, sans erreur PHP — "0 événement"/"Aucun
+  événement à afficher" correct (aucun événement publié, cf. plus bas).
 
 ## 🚀 `agendasabauda.eu` affiche enfin la vraie home (page_on_front réglé)
 
