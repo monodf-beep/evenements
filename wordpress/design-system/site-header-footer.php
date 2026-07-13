@@ -40,21 +40,34 @@ add_action('wp_footer', function () {
     if (is_page(928)) {
         return;
     }
+    // Même structure/contenu que le footer de la home (homepage-mobile.gutenberg.html) :
+    // 3 rangées de liens (nav, à propos/légal, territoires+langue) + copyright. Liens vers
+    // pages réelles quand elles existent, sinon # (pages à créer : Dove Mangiare, Infos
+    // utiles, Qui sommes-nous, Politique de confidentialité, Cookies, Plan du site, Publicité).
     ?>
     <footer class="as-site-footer">
       <div class="as-site-footer__inner">
-        <nav class="as-site-footer__nav">
-          <?php
-          wp_nav_menu([
-              'menu' => 'Principal FR',
-              'container' => false,
-              'depth' => 1,
-              'items_wrap' => '<ul class="as-site-footer__menu">%3$s</ul>',
-              'fallback_cb' => false,
-          ]);
-          ?>
-        </nav>
-        <div class="as-site-footer__legal">© Agenda Sabauda — édité par Cultura Sabauda — <a href="mailto:contact@culturasabauda.eu">contact@culturasabauda.eu</a></div>
+        <div class="as-site-footer__row">
+          <a href="<?php echo esc_url(home_url('/accueil/')); ?>">Accueil</a>
+          <a href="<?php echo esc_url(home_url('/ce-week-end/')); ?>">Ce week-end</a>
+          <a href="<?php echo esc_url(home_url('/tout-l-agenda/')); ?>">Événements</a>
+          <a href="#">Dove Mangiare</a>
+          <a href="#">Curiosités</a>
+          <a href="#">Infos utiles</a>
+          <a href="<?php echo esc_url(home_url('/?s=')); ?>">Rechercher</a>
+          <a href="#">Newsletter</a>
+          <a href="<?php echo esc_url(home_url('/proposer-un-evenement/')); ?>">Proposer un événement</a>
+        </div>
+        <div class="as-site-footer__row as-site-footer__row--rule">
+          <a href="<?php echo esc_url(home_url('/a-propos/')); ?>">Qui sommes-nous</a>
+          <a href="#">Travailler avec nous</a>
+          <a href="#">Politique de confidentialité</a>
+          <a href="#">Cookies</a>
+          <a href="#">Plan du site</a>
+          <a href="#">Publicité</a>
+          <a href="mailto:contact@culturasabauda.eu">Contact</a>
+        </div>
+        <div class="as-site-footer__legal">Savoie · Piémont · Vallée d'Aoste · Nice · FR | IT<br>© Agenda Sabauda — contact@culturasabauda.eu</div>
       </div>
     </footer>
     <?php

@@ -464,12 +464,18 @@ body:not(.page-id-928) #colophon { display: none !important; }
 .as-site-header__lang { font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 800; color: #1D1D1B; flex-shrink: 0; }
 .as-site-header__lang .muted { color: #C9C4B8; font-weight: 400; }
 
-.as-site-footer { background: #FBF7F0; border-top: 1px solid #1D1D1B; padding: 32px 0; margin-top: 48px; }
+.as-site-footer { background: #FBF7F0; border-top: 1px solid #1D1D1B; padding: 24px 0; margin-top: 48px; }
 .as-site-footer__inner { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
-.as-site-footer__menu { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
-.as-site-footer__menu a { text-decoration: underline; font-family: 'Nunito Sans', sans-serif; font-size: 13px; color: #1D1D1B; }
-.as-site-footer__legal { font-family: 'Nunito Sans', sans-serif; font-size: 11px; color: #6F6B62; border-top: 1px solid #E3DCCE; padding-top: 12px; }
-.as-site-footer__legal a { color: #6F6B62; }
+.as-site-footer__row {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px;
+  font-family: 'Nunito Sans', sans-serif; font-size: 12px; color: #1D1D1B;
+}
+.as-site-footer__row a { color: #1D1D1B; text-decoration: underline; }
+.as-site-footer__row--rule { border-top: 1px solid #E3DCCE; padding-top: 12px; }
+.as-site-footer__legal {
+  border-top: 1px solid #E3DCCE; padding-top: 12px;
+  font-family: 'Nunito Sans', sans-serif; font-size: 11px; line-height: 1.8; color: #6F6B62;
+}
 @media (max-width: 720px) {
   .as-site-header__menu { display: none; }
 }
