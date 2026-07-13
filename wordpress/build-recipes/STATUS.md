@@ -272,6 +272,29 @@ la page de test jetable de la carte "à la une".
 auprès de Franck), formatage de l'heure (même limitation connue partout ailleurs),
 groupement par jour (`.ag-daygroup`).
 
+## 🆕 Fiche lieu (venue) — gabarit PRÊT mais toujours BLOQUÉ par le bug de permaliens
+
+`wordpress/design-system/venue-single-template.php`
+(`apply-venue-single-template.mjs`) construit et poussé — fidèle à
+"Agenda Sabaudo - Page Lieu.dc.html" (fil d'Ariane, H1, liste "Événements à
+venir" avec `cs_event_date_short()`, mini-carte placeholder + adresse). Sur
+`template_redirect`, `is_singular('tribe_venue')`.
+
+**Non vérifiable visuellement pour l'instant** — le bug de permaliens
+`/lieu/{slug}/` (ci-dessous) empêche d'atteindre la fiche. Tenté un
+contournement en query var directe (`?post_type=tribe_venue&p=912`,
+lecture seule, aucun nouvel endpoint) : **404**, alors qu'un CPT public
+standard répond normalement à ce format même sans rewrite rules propres.
+**Nouvelle piste plus probable que le rewrite-cache** : The Events Calendar
+a un réglage **"Enable Venue and Organizer Pages"** (onglet Events →
+Settings, généralement sous "Display" ou "General" selon la version) qui,
+désactivé, empêche toute page singulière `tribe_venue`/`tribe_organizer` de
+se résoudre — cohérent avec le symptôme observé (retombe sur la home). Pas
+vérifiable depuis cette session : nécessiterait de se connecter à
+wp-admin, ce que la politique de sécurité interdit (jamais saisir un mot de
+passe, même pour le site du client). **À vérifier par Franck directement
+dans Events → Settings**, ou lors d'une session avec accès WP-CLI/SSH.
+
 ## 🚧 Hub lieu (venue) — BLOQUÉ, permaliens cassés (pas un problème de contenu)
 
 En voulant appliquer la même méthode "template natif TEC d'abord" qu'à la fiche
