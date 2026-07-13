@@ -1,88 +1,143 @@
-# Plan de reconstruction de la home (928) en blocs natifs
+# Plan + prompts de reconstruction de la home (928) en Elementor + Crocoblock
 
-Nouveau workflow (2026-07-14) : Claude dans Chrome place la structure par
-glisser-déposer (blocs natifs WordPress + JetEngine/Crocoblock), Claude Code
-configure ensuite le contenu/les données dynamiques via l'API REST WordPress
-(MCP). Objectif : remplacer les blocs "HTML personnalisé" par des blocs
-natifs, éditables visuellement, sans les bugs du HTML fait main rencontrés
-cette session (empilement cassé, centrage cassé, cascade CSS en conflit avec
-JetEngine).
+Workflow : Claude dans Chrome construit par glisser-déposer dans Elementor
+(widgets natifs + Crocoblock : JetEngine, JetElements, JetMenu...), Claude
+Code configure ensuite le contenu/les données dynamiques via l'API REST
+WordPress une fois la structure posée. **Garde-fous valables pour TOUTES les
+sections ci-dessous** : ne rien supprimer de l'ancien contenu avant capture
+d'écran comparative validée, ne jamais cliquer "Publier"/"Mettre à jour"
+sans confirmation explicite.
 
-**Opportunité d'architecture** : les blocs Colonnes et Navigation natifs
-s'adaptent déjà tout seuls à la largeur d'écran. Pour les sections encore en
-HTML, on peut donc viser **un seul arbre responsive** au lieu de la
-duplication actuelle `.as-home` (mobile) / `.as-home-desktop` (desktop) —
-qui est la source de plusieurs bugs corrigés cette session (contenu non
-masqué, empilement cassé). Les blocs JetEngine Listing Grid (À la une, Ce
-week-end...) sont DÉJÀ nativement responsives (attributs `columns` /
-`columns_tablet` / `columns_mobile`) et n'ont pas besoin de cette
-duplication — c'est la preuve que ça marche.
+État de départ (2026-07-14) : toute la page Accueil semble avoir été
+aspirée par Elementor dans un unique widget "Éditeur de texte" au premier
+chargement (à reconfirmer en étape 0 du premier prompt). On construit les
+nouvelles sections À CÔTÉ, sans toucher à ce widget, jusqu'à validation
+complète.
 
-## Sections, dans l'ordre de la page
+---
 
-| # | Section | État actuel | Cible |
-|---|---|---|---|
-| 1 | Masthead + navigation | Dupliqué mobile/desktop, logo en `<img>` custom, burger en CSS pur (checkbox hack) | Bloc **Image** (logo) + Bloc **Navigation** natif (menu "Principal FR", id 272) — repli mobile automatique, **un seul arbre** |
-| 2 | Sélecteur de territoire actif | HTML custom (dropdown CSS pur) | Reste HTML pour l'instant (pas d'équivalent natif évident) — pas prioritaire |
-| 3 | Carrousel hero (photo Conflans + titre) | HTML custom, image statique | Bloc **Cover** (image de fond + texte superposé), nativement responsive |
-| 4 | Barre de recherche | HTML custom (form GET) | À tester : bloc **Recherche** natif WordPress, sinon garder HTML |
-| 5 | 6 tuiles + newsletter | HTML custom (grid CSS) | Bloc **Colonnes** avec Image/Titre par tuile + bloc **Groupe** coloré pour la newsletter |
-| 6 | À la une / Ce week-end / Événements d'aujourd'hui | **Déjà des blocs JetEngine Listing Grid natifs** | Aucun changement structurel — juste retirer le wrapper `.as-desktop-grid-3`/`-4` devenu inutile (cf. STATUS.md, bug du 2026-07-14) |
-| 7 | Ça vaut le déplacement | HTML custom, placeholder | **Prompt déjà écrit** : `prompt-claude-chrome-ca-vaut-le-deplacement.md` |
-| 8 | 3 colonnes Nouveautés / En évidence / L'agenda à venir | HTML custom + 2 Listing Grid imbriqués | Bloc **Colonnes** (3), Listing Grid JetEngine dans 2 colonnes, contenu éditorial dans la 1ère |
-| 9 | Bandeau newsletter pleine largeur | HTML custom | Bloc **Groupe** (fond rouge) + Colonnes (texte + formulaire) |
-| 10 | Footer | **Déjà unifié** (site-header-footer.php, hors contenu de page) | Rien à faire |
-| 11 | Barre pub sticky | HTML custom + shortcode Ad Inserter | À vérifier : Ad Inserter propose un mode "position fixe" natif — pourrait remplacer tout le HTML custom |
-| 12 | Gouttières pub (160×600) | PHP (`homepage-template.php`) + shortcode Ad Inserter | Reste en PHP (position fixe hors du flux de contenu, pas un bloc de page) |
+## 1. Masthead + Navigation (JetMenu) — PRIORITÉ 1
 
-## Prompt prêt à l'emploi — Masthead + Navigation (priorité 1)
+Prompt déjà détaillé dans `prompt-elementor-masthead-nav.md`. Résumé :
+nouveau Conteneur en tout début de page → Widget Image (logo
+`masthead-agenda-sabauda-v7.png`, ~460px centré, lien `/`) → Widget
+Titre/Texte petit gris majuscules (`Quoi faire, où manger · 4 territoires`)
+→ Widget **JetMenu** lié au menu WordPress existant **"Principal FR"** (id
+272) → texte `FR | IT`.
 
-C'est la section qui a causé le plus de bugs cette session (logo cassé,
-header dupliqué, nav non sticky, centrage cassé). La reconstruire en blocs
-natifs est la meilleure démonstration de la méthode.
+## 2. Sélecteur de territoire actif
 
-**Repérage** : dans la liste des blocs de la page Accueil (928), les tout
-premiers blocs "HTML personnalisé" contiennent le masthead — un pour la
-version mobile (commentaire `<!-- MASTHEAD -->` puis `<!-- BARRE FR|IT +
-BURGER -->` puis `<!-- MENU (overlay) -->`), un autre plus bas pour la
-version desktop (commentaire `<!-- MASTHEAD -->` puis `<!-- NAV STICKY -->`).
-**Ne pas les supprimer avant d'avoir la nouvelle version validée.**
+Reste en widget Texte/HTML pour l'instant (pas d'équivalent Crocoblock
+évident pour ce dropdown précis) : `Vous regardez **Savoie / Haute-Savoie**
+| Changer : Piémont · Vallée d'Aoste · Comté de Nice` — texte simple avec
+liens, sur fond `#FBF7F0`, sans interaction dropdown pour l'instant (v1).
+Pas prioritaire, à construire après les sections dynamiques.
 
-**Construction**, à insérer en tout début de page (avant le premier bloc
-existant) :
+## 3. Carrousel hero (photo + titre)
 
-1. **Bloc Image** : uploader `https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-agenda-sabauda-v7.png`
-   (déjà dans la médiathèque WordPress — chercher "masthead" dans le
-   sélecteur média plutôt que ré-uploader). Largeur max ~460px, centré. Lien
-   de l'image vers la page d'accueil (`/`).
-2. **Bloc Paragraphe** (petit texte centré, gris `#6F6B62`, majuscules) :
-   `Quoi faire, où manger · 4 territoires`
-3. **Bloc Navigation** (rechercher "Navigation" dans l'inserteur de blocs) :
-   - Dans les réglages du bloc, choisir de lier au menu WordPress existant
-     **"Principal FR"** (pas besoin de recréer les liens un par un).
-   - Vérifier dans les réglages qu'un mode d'affichage mobile (icône
-     hamburger / "Overlay menu") est activé — c'est le comportement natif
-     qui remplace le checkbox-hack CSS actuel.
-   - Ajouter, aligné à droite du bloc Navigation, un petit texte ou bloc
-     séparé `FR | IT` (pas de bloc natif pour un sélecteur de langue —
-     texte simple pour l'instant).
+**Construction** : un **Conteneur** avec image de fond (onglet Style →
+Arrière-plan → Image, choisir/uploader une photo — ex. château de Conflans
+déjà utilisé) + un **Widget Titre** superposé en bas à gauche, texte blanc
+`Mille ans de mémoire, un week-end à Conflans`, police display (Saira
+Condensed/Semplicita si disponible dans les réglages de police du thème).
+Hauteur du conteneur : ~500px desktop. Pas de vrai carrousel/slider pour
+l'instant (image statique, cohérent avec le choix déjà fait cette session).
 
-**Vérification avant de continuer** : capture d'écran à largeur mobile
-(< 768px) ET desktop (> 1024px), vérifier que le menu se replie bien en
-version mobile (icône hamburger cliquable) et reste lisible en desktop.
-Comparer avec le rendu actuel du site (les deux mastheads existants,
-mobile et desktop) avant de les supprimer.
+## 4. Barre de recherche
 
-**Ce qu'il ne faut PAS faire** :
-- Ne pas supprimer les anciens blocs HTML avant validation visuelle.
-- Ne pas essayer de rendre le bloc Navigation sticky au scroll pour
-  l'instant — ce sera ajouté après (CSS additionnelle) une fois la
-  structure validée.
-- Ne pas publier la page avant confirmation.
+**Construction** : chercher un widget **"Recherche"** natif Elementor
+(catégorie Général) ou JetSearch si disponible dans le panneau Crocoblock.
+Le configurer avec le placeholder `Rechercher un événement, une ville…` et
+un bouton `Chercher`. Si aucun widget de recherche stylable n'est trouvé
+facilement, le signaler — on gardera le champ HTML actuel en repli.
 
-## Suite (à préparer une fois les sections 1 et 7 validées)
+## 5. 6 tuiles + newsletter
 
-Prompts à écrire ensuite, dans cet ordre : #3 (carrousel), #5 (tuiles +
-newsletter), #8 (3 colonnes), #9 (bandeau newsletter). Je les rédigerai au
-fur et à mesure, une fois qu'on aura confirmé que la méthode fonctionne bien
-sur les deux premières sections.
+**Construction** : un **Conteneur** en 2 colonnes (grille de tuiles à
+gauche, encart newsletter à droite) :
+- Colonne gauche : grille 3×2 de **Widget Icon Box** (JetElements ou natif
+  Elementor) — 6 tuiles : "Ce week-end", "Saveurs & gastronomie",
+  "Concerts", "Expositions", "En famille", "Tout l'agenda", chacune avec
+  une icône + libellé, fond `#FBF7F0`, lien vers la page correspondante
+  quand elle existe (`/ce-week-end/`, `/tout-l-agenda/`), `#` sinon.
+- Colonne droite : un **Conteneur** fond rouge `#DC5D45`, avec Widget Titre
+  `Recevez l'essentiel des quatre territoires` (blanc), Widget Texte
+  `Chaque vendredi matin, dans votre boîte.` (blanc, plus petit), Widget
+  Bouton `S'inscrire à la newsletter` (fond crème `#F7F1E8`, texte rouge).
+
+## 6. À la une / Ce week-end / Événements d'aujourd'hui
+
+**Ne PAS reconstruire depuis zéro** — ces trois sections utilisent déjà le
+composant JetEngine "carte à la une" (Listing Item post 976). Chercher le
+widget **"JetEngine – Listing Grid"** dans le panneau Crocoblock, le glisser,
+et dans ses réglages sélectionner comme source le Listing Item existant
+(chercher "carte-a-la-une" ou l'ID 976 dans le sélecteur). Configurer :
+- "À la une" : 3 colonnes, 3 événements, titre de section + lien "Voir tout"
+- "Ce week-end" : 3 colonnes, 6 événements
+- "Événements d'aujourd'hui" : 4 colonnes, 4 événements
+
+Si le Listing Item 976 n'apparaît pas dans la liste (il a été construit en
+vue Blocks/Gutenberg, peut-être pas visible depuis un widget Elementor), le
+signaler avant de continuer — il faudra alors le recréer en vue Elementor,
+étape à faire avec prudence (historiquement peu fiable en automatisation).
+
+## 7. Ça vaut le déplacement
+
+Prompt déjà écrit en version Gutenberg (`prompt-claude-chrome-ca-vaut-le-deplacement.md`)
+— **adapter en widgets Elementor** : un **Conteneur** 2 colonnes, dans
+chaque colonne un Widget Image (placeholder) + Widget Texte rouge majuscule
+`ITINÉRAIRE À DÉFINIR` + Widget Titre `Titre de l'événement transfrontalier`
++ lien `Y aller →`. Sous les 2 colonnes, un Widget Bouton centré `Voir dans
+les autres territoires →` (fond noir `#1D1D1B`, texte crème `#F7F1E8`).
+
+## 8. 3 colonnes : Nouveautés / En évidence / L'agenda à venir
+
+**Construction** : un **Conteneur** 3 colonnes égales :
+- Colonne 1 "Nouveautés sur Agenda Sabauda" : Widget Titre + 2× (Widget
+  Image + Widget Titre H3 + Widget Texte avec lien "»") — contenu éditorial
+  statique pour l'instant (pas de vraies données Le Fil).
+- Colonne 2 "En évidence" : Widget Titre + **Widget JetEngine Listing Grid**
+  (même Listing Item 976, 1 colonne, 2 événements) + grille 2×2 de Icon Box
+  ("Aux alentours", "Musées", "Curiosités", "En famille") + un encart pub
+  (déjà câblé côté PHP, ne pas y toucher ici).
+- Colonne 3 "L'agenda à venir" : Widget Titre + **Widget JetEngine Listing
+  Grid** (Listing Item 976, 1 colonne, 3 événements) + lien "Tout l'agenda"
+  + 2 boutons Instagram/Facebook + encadré "Faire de la publicité".
+
+## 9. Bandeau newsletter pleine largeur
+
+**Construction** : un **Conteneur** pleine largeur, fond rouge `#DC5D45`,
+2 colonnes : à gauche Widget Titre `L'essentiel des quatre territoires,
+dans votre boîte` (blanc, grand) + Widget Texte descriptif ; à droite un
+champ email + Widget Bouton `S'inscrire`.
+
+## 10. Footer
+
+**Ne rien construire ici** — déjà unifié site-wide via
+`site-header-footer.php` (hook PHP, hors contenu de page). Le footer
+s'affiche automatiquement sur toutes les pages, y compris l'Accueil.
+
+## 11. Barre pub sticky (mobile + desktop)
+
+**Avant de construire quoi que ce soit** : vérifier dans wp-admin →
+Réglages → Ad Inserter si un des types de bloc propose une **position fixe
+native** (bas d'écran, avec bouton de fermeture) — si oui, ça remplace
+entièrement le besoin de construire ce widget dans Elementor, il suffit de
+configurer le bloc Ad Inserter correspondant (déjà câblé en shortcode
+`[adinserter block="6"]` desktop / `[adinserter block="12"]` mobile côté
+PHP, cf. `homepage-template.php`/contenu existant).
+
+## 12. Gouttières pub (160×600)
+
+**Ne rien construire ici** — gérées en PHP (`homepage-template.php`,
+position fixe, shortcodes Ad Inserter `#1`/`#2`), hors du contenu de page
+Elementor.
+
+---
+
+## Ordre d'exécution recommandé
+
+1 (masthead+nav) → 3 (hero) → 5 (tuiles+newsletter) → 6 (listings existants,
+vérifier compatibilité Elementor) → 7 (ça vaut le déplacement) → 8 (3
+colonnes) → 9 (bandeau newsletter) → 4 (recherche) → 2 (sélecteur territoire)
+→ 11 (vérifier Ad Inserter avant de construire quoi que ce soit).
