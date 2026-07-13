@@ -1,6 +1,17 @@
 # État du build WordPress — agendasabauda.eu
 
-*Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie et « Ce week-end »/« Tout l'agenda » reconstruits en gabarits PHP dédiés).*
+*Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie, « Ce week-end »/« Tout l'agenda » et Recherche reconstruits en gabarits PHP dédiés).*
+
+## 🆕 Page Recherche — gabarit dédié
+
+Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit
+`search.php` générique de GeneratePress par un `template_redirect` sur
+`is_search()` (`wordpress/design-system/search-page-template.php`,
+`apply-search-page-template.mjs`) : champ de recherche fonctionnel (GET vers
+`s`), 2 filtres cosmétiques (Catégorie/Ville, v1 non câblés), état
+"Raccourcis" (Ce week-end + 4 territoires + Concerts & Musique, avant toute
+saisie), résultats en `cs_card_compact()`, état vide avec 2 CTA. Vérifié
+visuellement avec et sans requête (`?s=` et `?s=festival`), sans erreur PHP.
 
 ## 🆕 Vraie grammaire de carte (brief §8.1) — remplace `.ag-row` sur Hubs + listes
 

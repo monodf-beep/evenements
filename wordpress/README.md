@@ -70,7 +70,8 @@ actif malgré cette recommandation.
 | `scripts/apply-taxonomy-archive-query.mjs` | Pousse le snippet PHP qui débloque les archives de taxonomie territoire/catégories (force post_type=tribe_events) |
 | `scripts/apply-taxonomy-archive-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu des Hubs territoire/catégorie (vraie carte "standard", pilules colorées) |
 | `scripts/apply-liste-evenements-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu de "Ce week-end" (930) / "Tout l'agenda" (932) (vraie carte "compacte") |
-| `scripts/apply-search-events.mjs` | Pousse le snippet PHP qui élargit la recherche aux événements (date + territoire sous chaque résultat) |
+| `scripts/apply-search-events.mjs` | Pousse le snippet PHP qui élargit la recherche aux événements (date + territoire sous chaque résultat) — vestige, plus vraiment utilisé côté rendu depuis `apply-search-page-template.mjs` |
+| `scripts/apply-search-page-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu de la page de recherche (`is_search()`) |
 | `scripts/apply-site-header-footer.mjs` | Pousse le snippet PHP qui injecte le header/footer de marque site-wide (sauf Accueil) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
@@ -87,6 +88,6 @@ actif malgré cette recommandation.
 | 4 | Hub territoire (×4) | ✅ v2 Idem — vérifié sur `/territoire/piemont/` |
 | 5 | Hub lieu (venue TEC) | 🚧 Bloqué — permaliens `/lieu/{slug}/` cassés (servent la page d'accueil au lieu de la fiche), pas un problème de contenu. Flush des permaliens tenté sans succès, détail dans STATUS.md |
 | 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | ✅ v2 : gabarit PHP dédié (`template_redirect`), vraie carte "compacte" (`cs_card_compact`), compteur, filtres cosmétiques, pagination — vérifié visuellement sur les deux pages. Filtre par date pas encore câblé (nécessite meta_query dédiée) — "Ce week-end" affiche tous les événements pour l'instant |
-| 7 | Recherche + 404 | ✅ Recherche élargie aux événements (date/territoire par résultat). 404 = gabarit générique du thème, mais hérite automatiquement du header/footer de marque — vérifié visuellement, acceptable en l'état |
+| 7 | Recherche + 404 | ✅ v2 : gabarit PHP dédié (`is_search()`, `template_redirect`) — champ fonctionnel, filtres cosmétiques, état "Raccourcis" (avant saisie), résultats en carte compacte, état vide avec CTA. Vérifié visuellement (avec/sans requête). 404 = gabarit générique du thème, hérite du header/footer de marque — acceptable en l'état |
 
 Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.
