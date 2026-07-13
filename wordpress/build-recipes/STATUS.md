@@ -112,6 +112,34 @@ Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit
 saisie), résultats en `cs_card_compact()`, état vide avec 2 CTA. Vérifié
 visuellement avec et sans requête (`?s=` et `?s=festival`), sans erreur PHP.
 
+## 🆕 Masthead illustré uploadé + gouttières pub desktop construites
+
+Franck a montré des captures de la vraie maquette desktop (Claude Design
+ouvert directement) pour comparaison. Constat : la structure/contenu du
+desktop déjà construit cette session correspond en fait très fidèlement à
+la référence (tuiles+newsletter, À la une, Ce week-end, 3 colonnes, footer
+5-col — tout y était déjà). Les deux vrais écarts, corrigés :
+- **Masthead illustré** : l'asset `assets/masthead-full-sketch-v6.png`,
+  documenté "manquant" dans une passe précédente, existe en fait bien dans
+  le projet Claude Design — jamais récupéré. Téléchargé via `DesignSync`,
+  uploadé en media WordPress (id 997,
+  `wp-content/uploads/2026/07/masthead-sabauda-sketch.png`), câblé en masque
+  CSS (`.as-masthead-sketch`, même technique que la source .dc.html
+  d'origine — permet de teinter le croquis en noir sans dépendre de la
+  couleur du PNG). Réinjecté comme bandeau **décoratif seul** (pas de
+  menu/burger/FR|IT — ça vit dans le header site-wide) en tête de
+  `.as-home` et `.as-home-desktop`.
+- **Gouttières pub 160×600** : jamais construites (documenté "hors scope
+  v1"). Ajoutées en `position:fixed` (indépendant du conteneur 950px de la
+  home, pas de wrapper grid à restructurer), visibles seulement ≥1440px
+  (injectées par `homepage-template.php`, page Accueil uniquement).
+
+**Vérifié via `getComputedStyle`/`getBoundingClientRect`** (screenshot du
+Browser pane toujours en échec cette session) : masthead visible en mobile
+(391px) et desktop (1600px), mask-image pointant vers l'asset uploadé
+(vérifié `200 image/png`), gouttières `display:none` à 1280px et
+`display:flex` à 1600px (positions gauche/droite correctes).
+
 ## 🚨 CORRECTIF MAJEUR : header/menu dupliqué sur la home + sections desktop visibles sur mobile
 
 Franck a signalé (10e passe) : sur la home, un menu s'affiche EN PLUS de celui
