@@ -2,6 +2,46 @@
 
 *Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie, « Ce week-end »/« Tout l'agenda » et Recherche reconstruits en gabarits PHP dédiés).*
 
+## 🆕 « Proposer un événement » — formulaire public fonctionnel
+
+Source réelle : `Agenda Sabaudo - Proposer un evenement.dc.html`. Nouveau
+`wordpress/design-system/proposer-evenement-template.php`
+(`apply-proposer-evenement-template.mjs`), `template_redirect` sur
+`is_page(934)` : formulaire complet (titre, catégorie, territoire, dates/
+lieu en texte libre, description, billetterie facultative, photo, e-mail,
+consentement RGPD, honeypot anti-spam), nonce WP. Chaque soumission crée un
+`tribe_events` en statut **draft** (jamais publié automatiquement, conforme
+à la promesse éditoriale de la maquette) — dates/lieu texte libre stockés en
+meta `_as_submitted_*` et repris dans le contenu, à structurer par la
+rédaction avant publication (pas de parsing automatique de date en texte
+libre, jugé peu fiable).
+
+### ⚠️ Fausse alerte utile à documenter : la liste REST `?status=draft` peut sembler ignorer une écriture récente
+
+En testant le formulaire de bout en bout (6 soumissions successives), chaque
+tentative affichait bien l'écran "Merci" mais semblait ne créer AUCUN
+brouillon : `GET /wp-json/wp/v2/tribe_events?status=draft&orderby=id&order=desc`
+ne remontait jamais le nouveau post, même en interrogeant directement (fetch
+Node, hors navigateur) pour écarter un souci d'autofill sur le champ
+honeypot. Un `var_export($post_id)` temporaire inséré dans le template a
+montré que `wp_insert_post()` retournait bien un ID valide (992) à chaque
+fois. **Cause réelle : la LISTE (endpoint collection, avec `orderby`/`status`)
+ne reflétait pas immédiatement les écritures récentes, alors qu'un
+`GET /wp-json/wp/v2/tribe_events/{id}` direct par ID affichait la donnée
+fraîche instantanément.** En sondant directement la plage d'ID autour du
+`post_id` retourné, les 6 posts de test (988 à 993) existaient bel et bien,
+créés correctement dès la toute première soumission — y compris AVANT le
+renommage du honeypot (`as_website`→`as_hp_check`, fait par précaution mais
+qui n'était donc pas la cause du "problème"). **Leçon pour la suite : ne
+jamais conclure qu'une écriture a échoué sur la seule base d'un endpoint de
+LISTE REST qui ne la montre pas — toujours vérifier par un GET direct sur
+l'ID retourné par `wp_insert_post()` avant de creuser plus loin.** Les 6
+brouillons de test ont été supprimés définitivement après vérification.
+
+**Vérifié visuellement** (formulaire vide, champs remplis) et de bout en
+bout (soumission réelle créant un brouillon `tribe_events` avec les bonnes
+métadonnées/taxonomies), sans erreur PHP.
+
 ## 🆕 Page Recherche — gabarit dédié
 
 Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit

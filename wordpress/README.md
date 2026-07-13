@@ -73,6 +73,7 @@ actif malgré cette recommandation.
 | `scripts/apply-search-events.mjs` | Pousse le snippet PHP qui élargit la recherche aux événements (date + territoire sous chaque résultat) — vestige, plus vraiment utilisé côté rendu depuis `apply-search-page-template.mjs` |
 | `scripts/apply-search-page-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu de la page de recherche (`is_search()`) |
 | `scripts/apply-site-header-footer.mjs` | Pousse le snippet PHP qui injecte le header/footer de marque site-wide (sauf Accueil) |
+| `scripts/apply-proposer-evenement-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu ET du traitement du formulaire "Proposer un événement" (934) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -89,5 +90,6 @@ actif malgré cette recommandation.
 | 5 | Hub lieu (venue TEC) | 🚧 Bloqué — permaliens `/lieu/{slug}/` cassés (servent la page d'accueil au lieu de la fiche), pas un problème de contenu. Flush des permaliens tenté sans succès, détail dans STATUS.md |
 | 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | ✅ v2 : gabarit PHP dédié (`template_redirect`), vraie carte "compacte" (`cs_card_compact`), compteur, filtres cosmétiques, pagination — vérifié visuellement sur les deux pages. Filtre par date pas encore câblé (nécessite meta_query dédiée) — "Ce week-end" affiche tous les événements pour l'instant |
 | 7 | Recherche + 404 | ✅ v2 : gabarit PHP dédié (`is_search()`, `template_redirect`) — champ fonctionnel, filtres cosmétiques, état "Raccourcis" (avant saisie), résultats en carte compacte, état vide avec CTA. Vérifié visuellement (avec/sans requête). 404 = gabarit générique du thème, hérite du header/footer de marque — acceptable en l'état |
+| 8 | Proposer un événement (formulaire, page 934) | ✅ Formulaire public fonctionnel (`template_redirect` sur `is_page(934)`) — crée un `tribe_events` en statut draft à chaque soumission (jamais publié automatiquement), nonce + honeypot anti-spam. Vérifié de bout en bout (6 soumissions de test créées puis supprimées). Dates/lieu en texte libre, à structurer par la rédaction avant publication |
 
 Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.
