@@ -112,6 +112,35 @@ Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit
 saisie), résultats en `cs_card_compact()`, état vide avec 2 CTA. Vérifié
 visuellement avec et sans requête (`?s=` et `?s=festival`), sans erreur PHP.
 
+## 🚨 CORRECTIF MAJEUR : sections desktop alignées horizontalement au lieu de s'empiler
+
+Franck a montré une capture du live desktop : layout entièrement cassé,
+sections "No data was found" / "Ce week-end" / "Événements d'aujourd'hui" /
+"Ça vaut le déplacement" toutes alignées **côte à côte** sur une seule
+ligne au lieu de s'empiler verticalement, chevauchant les gouttières pub.
+
+**Cause** : `homepage-template.php` faisait
+`echo apply_filters('the_content', ...)` **sans envelopper le résultat dans
+un seul conteneur** — chaque bloc Gutenberg de la home (un `<div>` par
+section) atterrissait donc comme enfant direct du conteneur
+`content-area`/`site-content` de GeneratePress (prévu en `display:flex`
+pour la mise en page contenu+sidebar). Résultat : tous les blocs devenaient
+des flex items en ligne, étirés à la même hauteur (`align-items:stretch`
+par défaut). **Absent des autres pages custom du site** (Hubs, listes,
+recherche...) qui enveloppent déjà tout leur contenu dans un seul
+`<div style="max-width:...">` — un seul enfant dans le conteneur GP, donc
+jamais affecté par son flex.
+
+**Fix** : tout le contenu de la home (gouttières + `the_content`) enveloppé
+dans un seul `<div class="as-home-root">` dans `homepage-template.php`.
+
+**Vérifié via `getBoundingClientRect`** à 1548px : chaque section
+`.as-home-desktop` fait maintenant 950px de large (au lieu de largeurs
+variables 86 à 368px), et les `y` s'enchaînent verticalement (97 → 1330 →
+1381 → 1499 → 1571 → 1738...) au lieu d'être tous identiques à `y:97`.
+Gouttières pub sans chevauchement (contenu jusqu'à x=1116.5, gouttière
+droite débutant à x=1349).
+
 ## 🆕 Vrai logo (skyline + "Agenda Sabaudo" intégré) dans le header sticky
 
 Franck : le header (mobile ET desktop) doit être plus haut pour faire de la
