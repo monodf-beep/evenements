@@ -57,7 +57,16 @@ add_action('template_redirect', function () {
       </div>
       <?php
       if ($is_elementor) {
-          echo \Elementor\Plugin::instance()->frontend->get_builder_content_for_display($page->ID);
+          // get_builder_content() a besoin du contexte $post/La Boucle standard
+          // (setup_postdata) pour ne pas retourner une chaîne vide — Elementor
+          // s'appuie en interne sur get_the_ID()/le post courant, pas seulement
+          // sur le paramètre $post_id. Sans ça, rendu vide silencieux (aucune
+          // exception), constaté le 2026-07-14.
+          global $post;
+          $post = $page;
+          setup_postdata($post);
+          echo \Elementor\Plugin::instance()->frontend->get_builder_content($page->ID, true);
+          wp_reset_postdata();
       } else {
           echo apply_filters('the_content', $page->post_content);
       }
