@@ -285,6 +285,16 @@
    exporté (variables du compilateur Claude Design, non présentes dans ce fichier) —
    estimés ici à partir des espacements voisins connus ; à corriger si Franck a les
    vraies valeurs. ===== */
+/* GeneratePress enveloppe #content en display:flex (layout contenu+sidebar,
+   body class "right-sidebar") — même avec une sidebar vide, un seul enfant
+   flex (.as-home-root, homepage-template.php) ne remplit pas la largeur du
+   conteneur par défaut (flex-basis:auto, pas de flex-grow), et reste calé à
+   gauche au lieu d'être centré. width:100% le force à occuper tout
+   l'espace, pour que .as-home/.as-home-desktop (max-width + margin:auto à
+   l'intérieur) se centrent réellement dans la page, pas juste dans une
+   zone décalée. Bug réel constaté le 2026-07-13 (contenu visiblement décalé
+   à gauche par rapport aux gouttières pub, ancrées au vrai viewport). */
+.as-home-root { width: 100%; }
 .as-home { position: relative; max-width: 480px; margin: 0 auto; overflow: hidden; background: #fff; }
 @media (min-width: 1024px) { .as-home { display: none; } }
 .as-home-desktop { display: none; }
