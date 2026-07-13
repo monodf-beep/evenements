@@ -20,7 +20,9 @@ add_action('wp_body_open', function () {
     ?>
     <div class="as-site-header">
       <div class="as-site-header__inner">
-        <a href="<?php echo esc_url(home_url('/')); ?>" class="as-site-header__wordmark">Agenda Sabauda</a>
+        <a href="<?php echo esc_url(home_url('/')); ?>" class="as-site-header__wordmark" aria-label="Agenda Sabauda, accueil">
+          <img src="https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-agenda-sabauda-v7.png" alt="Agenda Sabauda" width="778" height="250">
+        </a>
         <nav class="as-site-header__nav">
           <?php
           wp_nav_menu([

@@ -112,6 +112,34 @@ Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit
 saisie), résultats en `cs_card_compact()`, état vide avec 2 CTA. Vérifié
 visuellement avec et sans requête (`?s=` et `?s=festival`), sans erreur PHP.
 
+## 🆕 Vrai logo (skyline + "Agenda Sabaudo" intégré) dans le header sticky
+
+Franck : le header (mobile ET desktop) doit être plus haut pour faire de la
+place à "l'image avec le nom intégré", disponible dans **le vrai projet
+Design System** (`Cultura Sabauda Design System`, projectId
+`756af367-0f11-4104-9780-d252a774c9e7` — distinct du projet brief
+"Agenda Sabaudo" utilisé jusqu'ici pour les maquettes de pages).
+
+- Trouvé `assets/agenda/masthead-agenda-v7.png` (778×250) — skyline +
+  "Agenda Sabaudo" en typo script, **intégré dans l'image** (contrairement à
+  l'asset v6 utilisé précédemment, qui était juste le skyline sans texte).
+  Téléchargé, uploadé en media WP (id 999).
+- `.as-site-header__wordmark` remplace le texte par cette image (52px de
+  haut mobile, 64px desktop), header plus haut (77px mobile / 97px desktop,
+  contre 61px avant).
+- Le bandeau décoratif ajouté au tour précédent
+  (`.as-home-hero`/`.as-home-desktop-hero`, avec l'ancien croquis v6) est
+  retiré — le logo vit maintenant UNE SEULE FOIS dans le header sticky,
+  seule l'accroche texte ("Quoi faire, où manger · 4 territoires") reste
+  sur la home.
+
+**Vérifié via `getComputedStyle`/`getBoundingClientRect`** sur une page
+hors-accueil (`/tout-l-agenda/`, confirme que le header s'applique
+partout) : image chargée (778×250 natif), rendue 161.8×52 à 391px et
+199×64 à 1440px, un seul `<img masthead>` dans tout le DOM de la home (pas
+de doublon), tagline visible une seule fois à la fois (mobile OU desktop,
+jamais les deux).
+
 ## 🆕 Masthead illustré uploadé + gouttières pub desktop construites
 
 Franck a montré des captures de la vraie maquette desktop (Claude Design
