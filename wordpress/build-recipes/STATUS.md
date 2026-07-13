@@ -1,6 +1,24 @@
 # État du build WordPress — agendasabauda.eu
 
-*Dernière mise à jour : session du 2026-07-13 (7e passe — Header/Footer site-wide, recherche, rails liés).*
+*Dernière mise à jour : session du 2026-07-13 (8e passe — mise en ligne de la home, footer corrigé, plan pour les gabarits restants).*
+
+## 🚀 `agendasabauda.eu` affiche enfin la vraie home (page_on_front réglé)
+
+Franck a signalé "la homepage en desktop ne fonctionne pas, il n'y a rien" en
+regardant `agendasabauda.eu` dans son vrai navigateur. **Pas un bug CSS** : le
+réglage WordPress `show_on_front` était resté sur `posts` (le blog par défaut,
+"Hello world!"), `page_on_front` à `0` — la page Accueil (928) construite cette
+session n'avait jamais été branchée comme page de démarrage du site. Changement
+de production (visible immédiatement par tout visiteur) → confirmation demandée
+et obtenue avant d'agir. `show_on_front=page` / `page_on_front=928` appliqués.
+Vérifié : `https://agendasabauda.eu/` sert maintenant la home (mobile+desktop).
+
+## 🆕 Footer site-wide corrigé pour matcher la maquette
+
+Franck a montré une capture du footer attendu : 3 rangées de liens soulignés
+(nav, à propos/légal, territoires+langue) + copyright — pas un simple menu WP
+à une ligne comme j'avais mis initialement. `site-header-footer.php` réutilise
+maintenant exactement le même contenu que le footer mobile de la home.
 
 ## 🆕 Header/Footer de marque, site-wide — SANS Theme Builder (enfin débloqué)
 
