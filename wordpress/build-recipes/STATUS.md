@@ -2,6 +2,44 @@
 
 *Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie, « Ce week-end »/« Tout l'agenda » et Recherche reconstruits en gabarits PHP dédiés).*
 
+## 🆕 « Le Fil » (magazine éditorial) — listing + fiche article
+
+Sources réelles : `Agenda Sabaudo - Le Fil.dc.html` (listing) et
+`Agenda Sabaudo - Article.dc.html` (fiche). Réutilise le post type natif
+`post` de WordPress (pas de CPT dédié — plus simple, catégories déjà
+natives) :
+- `wordpress/design-system/le-fil-template.php`
+  (`apply-le-fil-template.mjs`) : listing image+titre+chapô+chevron,
+  pagination réelle. `template_redirect` sur une nouvelle **page 994
+  ("Le Fil"), créée en BROUILLON** (la création avait été bloquée en statut
+  `publish` par le classifieur auto-mode — `[Modify Shared Resources]`,
+  nouvelle page publique sans validation explicite ; recréée en `draft`,
+  correctement laissée non publique). **Reste à publier par Franck/avec
+  confirmation explicite** avant que `/le-fil/` soit joignable.
+- `wordpress/design-system/article-single-template.php`
+  (`apply-article-single-template.mjs`) : fiche complète (fil d'Ariane,
+  H1, image, contenu, encadrés Quand/Où/Prix/Infos conditionnels — pilotés
+  par des champs meta libres `as_article_quand`/`as_article_ou`/
+  `as_article_prix`/`as_article_infos` à saisir manuellement, pas encore une
+  vraie Meta Box JetEngine —, carte Google Maps si `as_article_ou` renseigné,
+  réseaux sociaux, recherche, newsletter, CTA pub, "En vedette"). `is_single()`
+  + `get_post_type()==='post'`.
+
+**Scoping assumé** : la maquette réelle a 8 blocs publicitaires/liens
+sponsorisés quasi identiques (aucune régie pub réelle configurée à ce
+stade) — un seul encadré "Publicité" représentatif est gardé plutôt que de
+dupliquer les 8, à revoir avec Franck une fois une stratégie de
+monétisation décidée. Fil d'Ariane simplifié à 1 niveau (catégorie WP
+native) — la maquette a un 2e niveau (ex. "Turin") qui n'a pas d'équivalent
+dans la taxonomie actuelle.
+
+**Vérifié visuellement** sur le post natif "Hello world!" (id 1, seul post
+publié du site) : fil d'Ariane, H1, contenu, encart pub, réseaux sociaux,
+recherche, newsletter, CTA pub, footer — tout s'affiche sans erreur PHP.
+Encadrés Quand/Où/Prix non visibles (aucun champ meta renseigné sur ce post
+de test, comportement conditionnel correct). "En vedette" vide (un seul
+post existant, exclu de lui-même).
+
 ## 🆕 « Proposer un événement » — formulaire public fonctionnel
 
 Source réelle : `Agenda Sabaudo - Proposer un evenement.dc.html`. Nouveau
