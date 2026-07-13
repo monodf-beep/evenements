@@ -306,33 +306,11 @@
   <a href="mailto:contact@culturasabauda.eu" style="display:inline-block;background:#DC5D45;color:#F7F1E8;text-decoration:none;padding:9px 18px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:0.02em">Nous écrire</a>
 </div>
 
-<!-- FOOTER — liens vers pages réelles quand elles existent, sinon # (pages à créer,
-     cf. docs/TEMPLATES_WORDPRESS.md : Dove Mangiare, Infos utiles, Qui sommes-nous,
-     Politique de confidentialité, Cookies, Plan du site, Publicité, Contact). -->
-<div style="padding:16px 20px 0">
-  <div style="border-top:1px solid #1D1D1B;padding-top:16px;display:flex;flex-wrap:wrap;gap:6px 14px;font-family:'Nunito Sans',sans-serif;font-size:12px;color:#1D1D1B;margin-bottom:12px">
-    <a href="https://agendasabauda.eu/accueil/" style="color:#1D1D1B;text-decoration:underline">Accueil</a>
-    <a href="https://agendasabauda.eu/ce-week-end/" style="color:#1D1D1B;text-decoration:underline">Ce week-end</a>
-    <a href="https://agendasabauda.eu/tout-l-agenda/" style="color:#1D1D1B;text-decoration:underline">Événements</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Dove Mangiare</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Curiosités</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Infos utiles</a>
-    <a href="https://agendasabauda.eu/?s=" style="color:#1D1D1B;text-decoration:underline">Rechercher</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Newsletter</a>
-    <a href="https://agendasabauda.eu/proposer-un-evenement/" style="color:#1D1D1B;text-decoration:underline">Proposer un événement</a>
-  </div>
-  <div style="border-top:1px solid #E3DCCE;padding-top:12px;display:flex;flex-wrap:wrap;gap:6px 14px;font-family:'Nunito Sans',sans-serif;font-size:12px;color:#1D1D1B;margin-bottom:12px">
-    <a href="https://agendasabauda.eu/a-propos/" style="color:#1D1D1B;text-decoration:underline">Qui sommes-nous</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Travailler avec nous</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Politique de confidentialité</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Cookies</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Plan du site</a>
-    <a href="#" style="color:#1D1D1B;text-decoration:underline">Publicité</a>
-    <a href="mailto:contact@culturasabauda.eu" style="color:#1D1D1B;text-decoration:underline">Contact</a>
-  </div>
-  <div style="border-top:1px solid #E3DCCE;padding-top:12px;font-family:'Nunito Sans',sans-serif;font-size:11px;line-height:1.8;color:#6F6B62">Savoie · Piémont · Vallée d'Aoste · Nice · FR | IT<br>© Agenda Sabauda — contact@culturasabauda.eu</div>
-  <div style="height:64px"></div>
-</div>
+<!-- Le footer vit maintenant uniquement dans site-header-footer.php (footer
+     unique sur toutes les pages, y compris l'Accueil) — celui bâti ici a été
+     retiré pour éviter le doublon. On garde juste l'espace pour la barre pub
+     sticky. -->
+<div style="height:64px"></div>
 
 <!-- BARRE PUB STICKY (mobile) -->
 <div class="as-sticky-ad" style="background:#F7F1E8;border-top:1px solid #1D1D1B;padding:10px 14px;display:flex;align-items:center;gap:10px">
@@ -667,52 +645,9 @@
   </div>
 </div>
 
-<!-- FOOTER -->
-<div class="as-desktop-footer">
-  <div class="as-desktop-footer__inner">
-    <div class="as-desktop-footer__cols">
-      <div>
-        <h3>Territoires</h3>
-        <a href="https://agendasabauda.eu/territoire/savoie-haute-savoie/">Savoie</a>
-        <a href="https://agendasabauda.eu/territoire/piemont/">Piémont</a>
-        <a href="https://agendasabauda.eu/territoire/vallee-d-aoste/">Vallée d'Aoste</a>
-        <a href="https://agendasabauda.eu/territoire/nice-alpes-maritimes/">Nice</a>
-      </div>
-      <div>
-        <h3>Catégories</h3>
-        <a href="https://agendasabauda.eu/ce-week-end/">Ce week-end</a>
-        <a href="https://agendasabauda.eu/tout-l-agenda/">Événements</a>
-        <a href="#">Concerts</a>
-        <a href="#">Expositions</a>
-        <a href="#">Gastronomie</a>
-        <a href="#">En famille</a>
-        <a href="#">Curiosités</a>
-      </div>
-      <div>
-        <h3>Le projet</h3>
-        <a href="https://agendasabauda.eu/a-propos/">Qui sommes-nous</a>
-        <a href="#">Travailler avec nous</a>
-        <a href="https://agendasabauda.eu/proposer-un-evenement/">Proposer un événement</a>
-        <a href="#">Publicité</a>
-        <a href="mailto:contact@culturasabauda.eu">Contact</a>
-      </div>
-      <div>
-        <h3>Infos &amp; légal</h3>
-        <a href="#">Infos utiles</a>
-        <a href="https://agendasabauda.eu/?s=">Rechercher</a>
-        <a href="#">Newsletter</a>
-        <a href="#">Politique de confidentialité</a>
-        <a href="#">Cookies</a>
-        <a href="#">Plan du site</a>
-      </div>
-      <div>
-        <h3>Langue</h3>
-        <div style="font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;color:#1D1D1B">FR <span style="color:#6F6B62;font-weight:400">|</span> <span style="color:#6F6B62">IT</span></div>
-      </div>
-    </div>
-    <div style="border-top:1px solid #E3DCCE;padding-top:16px;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">© Agenda Sabauda — édité par Cultura Sabauda — contact@culturasabauda.eu</div>
-  </div>
-</div>
+<!-- Le footer vit maintenant uniquement dans site-header-footer.php (footer
+     unique sur toutes les pages, y compris l'Accueil) — celui bâti ici (5
+     colonnes) a été retiré pour éviter le doublon. -->
 
 <!-- BARRE PUB STICKY (desktop) -->
 <div class="as-desktop-sticky-ad">

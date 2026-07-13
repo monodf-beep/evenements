@@ -5,14 +5,16 @@
  * générique GeneratePress (CSS) et injecte notre propre markup via les hooks
  * WordPress natifs wp_body_open / wp_footer.
  *
- * Exclut l'Accueil (928) : elle a SON PROPRE masthead (logo réel + nav riche
- * en desktop, burger en mobile) et SON PROPRE footer, bakés dans son contenu
- * (homepage-mobile.gutenberg.html) — les dupliquer ici créerait un doublon.
- * Historique : ce header avait été rendu universel (y compris 928) à tort en
- * réponse à un doublon "menu du conteneur + header" — le vrai problème était
- * que le masthead/nav de la home avait été retiré par erreur puis mal
- * reconstruit ; il est maintenant restauré avec le vrai logo (assets/agenda/
- * masthead-agenda-v7.png), donc l'exclusion d'origine reprend son sens.
+ * HEADER : exclut l'Accueil (928) — elle a SON PROPRE masthead (logo réel +
+ * nav riche en desktop, burger en mobile) baké dans son contenu
+ * (homepage-mobile.gutenberg.html), différent par nature du header compact
+ * des autres pages (cf. leurs propres maquettes : Recherche, Page Lieu...).
+ *
+ * FOOTER : PAS d'exclusion — Franck a demandé un footer strictement
+ * identique sur toutes les pages, y compris l'Accueil (contrairement au
+ * header, qui a une bonne raison design d'être différent sur la home). Le
+ * footer 5 colonnes qui existait dans le contenu de la home a été retiré
+ * (cf. homepage-mobile.gutenberg.html) au profit de celui-ci, unique.
  *
  * Réutilise le vrai menu WP "Principal FR" (id 272) déjà construit avec ses
  * sous-menus Catégories/Territoires — pas de lien inventé. Menu mobile en CSS
@@ -64,11 +66,9 @@ add_action('wp_body_open', function () {
 }, 5);
 
 add_action('wp_footer', function () {
-    if (is_page(928)) {
-        return;
-    }
-    // Même structure/contenu que le footer de la home (homepage-mobile.gutenberg.html) :
-    // 3 rangées de liens (nav, à propos/légal, territoires+langue) + copyright. Liens vers
+    // Affiché sur TOUTES les pages, y compris l'Accueil (928) — footer unique
+    // demandé par Franck. 3 rangées de liens (nav, à propos/légal,
+    // territoires+langue) + copyright. Liens vers
     // pages réelles quand elles existent, sinon # (pages à créer : Dove Mangiare, Infos
     // utiles, Qui sommes-nous, Politique de confidentialité, Cookies, Plan du site, Publicité).
     ?>

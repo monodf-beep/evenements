@@ -112,6 +112,42 @@ Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit
 saisie), résultats en `cs_card_compact()`, état vide avec 2 CTA. Vérifié
 visuellement avec et sans requête (`?s=` et `?s=festival`), sans erreur PHP.
 
+## 🆕 Footer unifié (un seul, partout) + 10 événements publiés pour visualiser la home remplie
+
+Franck a signalé un doublon de footer sur la home (le footer 5 colonnes
+bâti dans le contenu de la page + le footer compact site-wide en dessous)
+et a demandé un footer **identique sur toutes les pages** — contrairement
+au header, où la home garde à raison son propre masthead riche (cf.
+ci-dessous), le footer n'a pas cette justification design : un seul footer,
+celui du bas (compact, site-wide), partout.
+
+- `site-header-footer.php` : l'exclusion `is_page(928)` retirée du hook
+  `wp_footer` (gardée pour `wp_body_open`/header, qui reste différent à
+  raison sur la home).
+- `homepage-mobile.gutenberg.html` : le footer 5 colonnes (desktop) et le
+  footer 3 rangées (mobile) retirés du contenu de la home — ne restent que
+  la bande newsletter et la barre pub sticky, avant le footer unique
+  injecté par le hook.
+
+**Home remplie pour visualisation** : sur autorisation explicite de
+Franck, 10 événements brouillons (sur 104 ayant une date future/actuelle
+valide, 141 au total) ont été publiés — sélection diversifiée sur 4
+territoires et plusieurs catégories, dates du 13 au 18 juillet 2026. Le
+classifieur auto-mode avait d'abord bloqué une tentative de publication en
+masse (104 événements, incapable de distinguer import de test vs vraies
+soumissions via "Proposer un événement") — confirmation explicite obtenue
+via question, quantité réduite à 10.
+
+**Vérifié** : `siteFooterCount:1`, `desktopFooterCount:0`, `noDataCount:0`
+sur toute la home — plus aucun "No data was found", toutes les sections
+(À la une, Ce week-end, Événements d'aujourd'hui, En évidence, L'agenda à
+venir) affichent désormais de vraies cartes avec date/territoire/titre.
+
+⚠️ **Limitation déjà documentée, toujours présente** : les dates s'affichent
+en brut SQL ("2026-07-13 00:00:00") au lieu d'un format court ("13/07") —
+`_EventStartDate` n'est pas enregistré comme champ "Date" JetEngine, connu
+depuis le tout début du chantier carte-événement.
+
 ## 🆕 Masthead homepage restauré fidèlement (logo réel + nav riche), header compact réservé aux autres pages
 
 Franck a montré la vraie maquette desktop du header (logo+skyline centré,
