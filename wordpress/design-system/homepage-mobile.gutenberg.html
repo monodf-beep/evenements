@@ -7,11 +7,50 @@
 
 <!-- wp:html -->
 <div class="as-home">
-<input type="checkbox" id="as-terr-toggle" class="as-terr-toggle">
+<input type="checkbox" id="as-menu-toggle" class="as-menu-toggle">
 
-<!-- ACCROCHE (le logo/nom vit dans le header site-wide, image intégrée — pas
-     de doublon ici) -->
-<div class="as-masthead-tagline" style="padding:14px 20px 0">Quoi faire, où manger · 4 territoires</div>
+<!-- MASTHEAD (logo réel — assets/agenda/masthead-agenda-v7.png, skyline +
+     "Agenda Sabaudo" intégré, projet Claude Design "Cultura Sabauda Design
+     System") -->
+<div style="padding:16px 0 0">
+  <a href="https://agendasabauda.eu/accueil/" style="display:block;text-decoration:none" aria-label="Agenda Sabauda, accueil">
+    <img class="as-masthead-sketch" src="https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-agenda-sabauda-v7.png" alt="Agenda Sabauda" width="778" height="250">
+  </a>
+  <div class="as-masthead-tagline" style="text-align:center;margin-top:8px">Quoi faire, où manger · 4 territoires</div>
+</div>
+
+<!-- BARRE FR|IT + BURGER -->
+<div style="display:flex;align-items:center;justify-content:flex-end;border-top:1px solid #1D1D1B;border-bottom:1px solid #1D1D1B;margin-top:12px;padding:8px 0 8px 20px">
+  <div style="display:flex;align-items:center;gap:12px;padding-right:20px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9C4B8;font-weight:400">|</span> <span style="color:#C9C4B8">IT</span></div>
+    <label for="as-menu-toggle" style="cursor:pointer;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></label>
+  </div>
+</div>
+
+<!-- MENU (overlay) -->
+<div class="as-menu-overlay">
+  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1D1D1B;padding:16px 20px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1D1D1B">Menu</div>
+    <label for="as-menu-toggle" style="cursor:pointer;display:flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg></label>
+  </div>
+  <div style="padding:8px 20px;flex:1;overflow-y:auto">
+    <a href="https://agendasabauda.eu/accueil/" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Home</a>
+    <a href="https://agendasabauda.eu/ce-week-end/" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Ce week-end</a>
+    <a href="#a-la-une" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">À la une</a>
+    <a href="https://agendasabauda.eu/aujourdhui/" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Événements d'aujourd'hui</a>
+    <a href="#" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Nouvelles expositions</a>
+    <a href="#" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Aux alentours</a>
+    <a href="#" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Musées</a>
+    <a href="#" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Curiosités</a>
+    <a href="#" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Météo</a>
+    <a href="https://agendasabauda.eu/?s=" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Rechercher</a>
+    <a href="https://agendasabauda.eu/proposer-un-evenement/" style="display:block;text-decoration:none;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#DC5D45;text-transform:uppercase">Proposer un événement</a>
+  </div>
+  <div style="border-top:1px solid #1D1D1B;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9C4B8;font-weight:400">|</span> <span style="color:#C9C4B8">IT</span></div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#6F6B62">Savoie · Piémont · Vallée d'Aoste · Nice</div>
+  </div>
+</div>
 
 <!-- TERRITOIRE ACTIF -->
 <div style="position:relative">
@@ -19,6 +58,7 @@
     <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#1D1D1B">Vous regardez <strong style="color:#DC5D45">Savoie / Haute-Savoie</strong></div>
     <label for="as-terr-toggle" style="cursor:pointer;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#DC5D45;text-decoration:underline">Changer de territoire</label>
   </div>
+  <input type="checkbox" id="as-terr-toggle" class="as-terr-toggle">
   <div class="as-terr-dropdown">
     <a href="https://agendasabauda.eu/territoire/savoie-haute-savoie/" style="display:block;text-decoration:none;padding:12px 20px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;color:#1D1D1B;border-top:1px solid #E3DCCE">Savoie / Haute-Savoie</a>
     <a href="https://agendasabauda.eu/territoire/piemont/" style="display:block;text-decoration:none;padding:12px 20px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:400;color:#1D1D1B;border-top:1px solid #E3DCCE">Piémont</a>
@@ -322,9 +362,30 @@
 <!-- wp:html -->
 <div class="as-home-desktop">
 
-<!-- ACCROCHE (le logo/nom vit dans le header site-wide, image intégrée — pas
-     de doublon ici) -->
-<div class="as-masthead-tagline" style="text-align:center;padding-top:20px">Quoi faire, où manger · 4 territoires</div>
+<!-- MASTHEAD (logo réel — assets/agenda/masthead-agenda-v7.png) -->
+<div style="text-align:center;padding-bottom:14px">
+  <a href="https://agendasabauda.eu/accueil/" style="display:inline-block;text-decoration:none" aria-label="Agenda Sabauda, accueil">
+    <img class="as-masthead-sketch" src="https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-agenda-sabauda-v7.png" alt="Agenda Sabauda" width="778" height="250">
+  </a>
+  <div class="as-masthead-tagline" style="margin-top:8px">Quoi faire, où manger · 4 territoires</div>
+</div>
+
+<!-- NAV STICKY -->
+<div class="as-home-desktop__nav">
+  <nav style="display:flex;align-items:center;gap:22px">
+    <a href="https://agendasabauda.eu/ce-week-end/" style="font-weight:700">Ce week-end</a>
+    <a href="https://agendasabauda.eu/tout-l-agenda/">Événements</a>
+    <a href="#">Expositions</a>
+    <a href="#">Concerts</a>
+    <a href="#">Gastronomie</a>
+    <a href="#">En famille</a>
+    <a href="#">Infos utiles</a>
+  </nav>
+  <div style="display:flex;align-items:center;gap:20px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9C4B8;font-weight:400">|</span> <span style="color:#C9C4B8">IT</span></div>
+    <a href="https://agendasabauda.eu/?s=" style="display:flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg></a>
+  </div>
+</div>
 
 <!-- TERRITOIRE ACTIF -->
 <div style="display:flex;align-items:center;gap:16px;margin-top:20px;padding:10px 16px;background:#FBF7F0;border-radius:3px">

@@ -289,10 +289,14 @@
 @media (min-width: 1024px) { .as-home { display: none; } }
 .as-home-desktop { display: none; }
 @media (min-width: 1024px) { .as-home-desktop { display: block; } }
-.as-terr-toggle { display: none; }
-/* Logo+nom intégrés maintenant affichés dans le header site-wide
-   (.as-site-header__wordmark img, assets/agenda/masthead-agenda-v7.png) —
-   ne reste ici qu'une accroche texte, pas de doublon du logo sur la home. */
+.as-menu-toggle, .as-terr-toggle { display: none; }
+/* Logo (assets/agenda/masthead-agenda-v7.png, skyline + "Agenda Sabaudo"
+   intégré) — la home a SON PROPRE masthead (plus grand, avec la nav riche
+   pour le desktop), le header site-wide compact (site-header-footer.php)
+   ne s'affiche donc pas sur la page Accueil (928, cf. exclusion PHP) pour
+   éviter un doublon. */
+.as-masthead-sketch { display: block; width: 100%; max-width: 210px; height: auto; margin: 0 auto; }
+.as-home-desktop .as-masthead-sketch { max-width: 460px; }
 .as-masthead-tagline {
   font-family: 'Nunito Sans', sans-serif; font-weight: 700; font-size: 9px;
   color: #6F6B62; letter-spacing: 0.14em; text-transform: uppercase;
@@ -302,6 +306,7 @@
   position: absolute; inset: 0; z-index: 20; background: #fff; display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform 280ms cubic-bezier(0.2,0,0,1);
 }
+.as-menu-toggle:checked ~ .as-menu-overlay { transform: translateX(0); }
 .as-menu-toggle:checked ~ .as-menu-overlay { transform: translateX(0); }
 .as-terr-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 10;
   background: #fff; border-bottom: 1.5px solid #1D1D1B; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
@@ -393,6 +398,11 @@
    retirés d'ici (vivent dans le header site-wide, site-header-footer.php) —
    ne reste que le masthead décoratif (.as-home-desktop-hero). ===== */
 .as-home-desktop { max-width: 950px; margin: 0 auto; padding: 24px 20px 0; }
+.as-home-desktop__nav {
+  position: sticky; top: 0; z-index: 30; background: #fff; border-top: 1px solid #1D1D1B;
+  border-bottom: 1px solid #1D1D1B; height: 56px; display: flex; align-items: center; justify-content: space-between;
+}
+.as-home-desktop__nav a { text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #1D1D1B; }
 .as-home-desktop__carousel { position: relative; margin-top: 16px; width: 100%; height: 340px; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
 .as-home-desktop__carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
 .as-home-desktop__carousel-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 40%, rgba(29,29,27,.8) 100%); }

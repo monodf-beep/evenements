@@ -3,20 +3,25 @@
  * Header/Footer de marque, site-wide — SANS Theme Builder (JetThemeCore documenté
  * comme peu fiable en automatisation, cf. STATUS.md). Masque le header/footer
  * générique GeneratePress (CSS) et injecte notre propre markup via les hooks
- * WordPress natifs wp_body_open / wp_footer — fonctionne sur TOUTES les pages,
- * y compris l'Accueil (928).
+ * WordPress natifs wp_body_open / wp_footer.
  *
- * Historique : la home avait initialement son propre masthead/nav/footer bakés
- * dans son contenu (mobile+desktop), et ce header site-wide l'excluait pour
- * éviter un doublon. Franck a signalé le doublon inverse (deux menus visibles,
- * celui du conteneur non sticky) — le masthead/nav baké a été retiré de
- * homepage-mobile.gutenberg.html, ce header devient l'unique header du site.
+ * Exclut l'Accueil (928) : elle a SON PROPRE masthead (logo réel + nav riche
+ * en desktop, burger en mobile) et SON PROPRE footer, bakés dans son contenu
+ * (homepage-mobile.gutenberg.html) — les dupliquer ici créerait un doublon.
+ * Historique : ce header avait été rendu universel (y compris 928) à tort en
+ * réponse à un doublon "menu du conteneur + header" — le vrai problème était
+ * que le masthead/nav de la home avait été retiré par erreur puis mal
+ * reconstruit ; il est maintenant restauré avec le vrai logo (assets/agenda/
+ * masthead-agenda-v7.png), donc l'exclusion d'origine reprend son sens.
  *
  * Réutilise le vrai menu WP "Principal FR" (id 272) déjà construit avec ses
  * sous-menus Catégories/Territoires — pas de lien inventé. Menu mobile en CSS
  * pur (checkbox hack), pas de JS.
  */
 add_action('wp_body_open', function () {
+    if (is_page(928)) {
+        return;
+    }
     ?>
     <div class="as-site-header">
       <div class="as-site-header__inner">
@@ -59,6 +64,9 @@ add_action('wp_body_open', function () {
 }, 5);
 
 add_action('wp_footer', function () {
+    if (is_page(928)) {
+        return;
+    }
     // Même structure/contenu que le footer de la home (homepage-mobile.gutenberg.html) :
     // 3 rangées de liens (nav, à propos/légal, territoires+langue) + copyright. Liens vers
     // pages réelles quand elles existent, sinon # (pages à créer : Dove Mangiare, Infos

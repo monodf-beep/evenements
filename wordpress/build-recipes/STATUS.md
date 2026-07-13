@@ -112,6 +112,43 @@ Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit
 saisie), résultats en `cs_card_compact()`, état vide avec 2 CTA. Vérifié
 visuellement avec et sans requête (`?s=` et `?s=festival`), sans erreur PHP.
 
+## 🆕 Masthead homepage restauré fidèlement (logo réel + nav riche), header compact réservé aux autres pages
+
+Franck a montré la vraie maquette desktop du header (logo+skyline centré,
+grand, tagline, puis nav sticky avec catégories + FR|IT + recherche) —
+constat que le header compact universel construit plus tôt ne correspondait
+pas du tout. **Reconstruction de l'architecture originale**, avec le vrai
+logo cette fois :
+- La home (928) retrouve SON PROPRE masthead (mobile : logo 210px + burger ;
+  desktop : logo 460px + nav riche sticky avec Ce week-end/Événements/
+  Expositions/Concerts/Gastronomie/En famille/Infos utiles + FR|IT +
+  recherche), utilisant le vrai logo `masthead-agenda-v7.png`.
+- `site-header-footer.php` **réexclut la page 928** (comme à l'origine) —
+  elle a son propre header ET son propre footer bakés dans son contenu ;
+  le header compact site-wide reste pour toutes les AUTRES pages
+  (cohérent avec leurs propres maquettes — Recherche/Page Lieu/Proposer
+  montrent un petit logo centré, pas ce grand masthead).
+- **Leçon** : le "doublon" signalé initialement n'était pas un défaut de
+  conception (masthead riche + nav sticky séparés est le vrai design) mais
+  la combinaison de (a) un bug distinct — GeneratePress natif visible sur
+  928 — et (b) un logo cassé (asset manquant) rendant le masthead
+  méconnaissable. Le "correctif" qui avait tout unifié en un seul header
+  compact partout était une sur-correction ; reverti au profit d'une vraie
+  reproduction fidèle par type de page.
+
+**Bug annexe trouvé et corrigé en vérifiant l'interaction** : le dropdown
+"Changer de territoire" (mobile) ne s'ouvrait jamais — son
+`<input type="checkbox">` était placé tout en haut de `.as-home`, PAS un
+sibling direct de `.as-terr-dropdown` (imbriqué plus bas), cassant le
+sélecteur CSS `~` (combinateur de frère uniquement, pas de descendant).
+Checkbox déplacé juste avant `.as-terr-dropdown`, dans le même parent —
+`matches()` confirme maintenant la relation.
+
+**Méthode de vérification** : `label.click()` + attendre ~500ms avant de
+relire `getComputedStyle` (la transition CSS 280ms + le cycle de repaint
+du navigateur embarqué ne sont pas instantanés — lire le style dans le
+même tick JS que le clic donne une fausse impression d'échec).
+
 ## 🚨 CORRECTIF MAJEUR : sections desktop alignées horizontalement au lieu de s'empiler
 
 Franck a montré une capture du live desktop : layout entièrement cassé,
