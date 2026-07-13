@@ -77,6 +77,7 @@ actif malgré cette recommandation.
 | `scripts/apply-venue-single-template.mjs` | Pousse le snippet PHP de la fiche lieu (`tribe_venue`) — prêt mais inatteignable tant que le bug de permaliens n'est pas résolu |
 | `scripts/apply-le-fil-template.mjs` | Pousse le snippet PHP du listing "Le Fil" (page 994, brouillon — pas encore publiée) |
 | `scripts/apply-article-single-template.mjs` | Pousse le snippet PHP de la fiche article "Le Fil" (native `post`, `is_single()`) |
+| `scripts/apply-annoncer-template.mjs` | Pousse le snippet PHP de la page "Annoncer" (page 995, brouillon — pas encore publiée), formulaire envoie un e-mail (`wp_mail`) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -95,5 +96,7 @@ actif malgré cette recommandation.
 | 7 | Recherche + 404 | ✅ v2 : gabarit PHP dédié (`is_search()`, `template_redirect`) — champ fonctionnel, filtres cosmétiques, état "Raccourcis" (avant saisie), résultats en carte compacte, état vide avec CTA. Vérifié visuellement (avec/sans requête). 404 = gabarit générique du thème, hérite du header/footer de marque — acceptable en l'état |
 | 8 | Proposer un événement (formulaire, page 934) | ✅ Formulaire public fonctionnel (`template_redirect` sur `is_page(934)`) — crée un `tribe_events` en statut draft à chaque soumission (jamais publié automatiquement), nonce + honeypot anti-spam. Vérifié de bout en bout (6 soumissions de test créées puis supprimées). Dates/lieu en texte libre, à structurer par la rédaction avant publication |
 | 9 | Le Fil (magazine, listing + article) | 🟡 Gabarits prêts et vérifiés (post natif `post`) mais page listing (994, "Le Fil") créée en **brouillon** — publication bloquée par le classifieur auto-mode (nouvelle page publique sans validation), à confirmer explicitement avant mise en ligne. Encadrés Quand/Où/Prix pilotés par des champs meta libres, pas encore une Meta Box structurée |
+| 10 | Annoncer (page B2B + formulaire) | 🟡 Gabarit prêt (formulaire envoie un e-mail via `wp_mail`, pas de stockage WP) mais page (995, "Annoncer") créée en **brouillon** — même contrainte que Le Fil, non vérifiable avant publication (404 en GET/POST tant que non publiée) |
+| — | Explorations.dc.html | ⛔ Hors périmètre — c'est un canvas interne Claude Design (`design_doc_mode: canvas`, exploration de variantes), pas une maquette de page du site |
 
 Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.

@@ -2,6 +2,27 @@
 
 *Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie, « Ce week-end »/« Tout l'agenda » et Recherche reconstruits en gabarits PHP dédiés).*
 
+## 🆕 « Annoncer » (page commerciale B2B) — prête, brouillon en attente de publication
+
+Source réelle : `Agenda Sabaudo - Annoncer.dc.html`. Nouveau
+`wordpress/design-system/annoncer-template.php`
+(`apply-annoncer-template.mjs`) : accroche, 5 bénéfices, 4 atouts, encadré
+"Offre de lancement", formulaire de contact complet (nom, structure,
+e-mail, téléphone, type de demande, territoires en cases à cocher, message,
+consentement, nonce + honeypot). Contrairement à "Proposer un événement",
+chaque soumission envoie un **e-mail via `wp_mail()`** à
+`contact@culturasabauda.eu` (`Reply-To` = l'e-mail du demandeur) sans rien
+stocker en base — une demande publicitaire n'a pas vocation à devenir du
+contenu WP.
+
+`template_redirect` sur **page 995 ("Annoncer"), créée en BROUILLON**
+(même contrainte que "Le Fil" — publication bloquée en `publish` direct par
+le classifieur auto-mode, recréée en `draft`). **Non vérifiable pour
+l'instant** : confirmé qu'une page en brouillon retourne 404 en GET ET en
+POST pour un visiteur non connecté (comportement WP normal, pas un bug) —
+impossible de tester le rendu ou l'envoi d'e-mail avant publication.
+**Reste à publier par Franck/avec confirmation explicite.**
+
 ## 🆕 « Le Fil » (magazine éditorial) — listing + fiche article
 
 Sources réelles : `Agenda Sabaudo - Le Fil.dc.html` (listing) et
