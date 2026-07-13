@@ -85,6 +85,6 @@ actif malgré cette recommandation.
 | 4 | Hub territoire (×4) | 🟡 Idem — vérifié sur `/territoire/piemont/` |
 | 5 | Hub lieu (venue TEC) | 🚧 Bloqué — permaliens `/lieu/{slug}/` cassés (servent la page d'accueil au lieu de la fiche), pas un problème de contenu. Flush des permaliens tenté sans succès, détail dans STATUS.md |
 | 6 | « Ce week-end » + « Tout l'agenda » (liste filtrable) | 🟡 v1 : titre + Listing Grid (carte-evenement-blocks) sur les pages existantes (930/932). Filtre par date pas encore câblé (nécessite JetEngine Query Builder) — "Ce week-end" affiche tous les événements pour l'instant |
-| 7 | Recherche + 404 | 🟡 v1 : recherche élargie aux événements (`pre_get_posts`) + date/territoire sous chaque résultat. 404 = gabarit générique du thème, pas encore personnalisé |
+| 7 | Recherche + 404 | ✅ Recherche élargie aux événements (date/territoire par résultat). 404 = gabarit générique du thème, mais hérite automatiquement du header/footer de marque — vérifié visuellement, acceptable en l'état |
 
 Détail complet, limitations connues et méthode dans `build-recipes/STATUS.md`.
