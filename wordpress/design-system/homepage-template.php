@@ -1,0 +1,29 @@
+<?php
+/**
+ * Accueil (page 928) — rendu via template_redirect, comme toutes les autres
+ * pages custom du site (Hubs, listes, recherche...), pour bypasser le
+ * gabarit `page.php` par défaut de GeneratePress (entry-header "Accueil" +
+ * barre latérale avec widgets Rechercher/Recent Posts) qui restait visible
+ * sous le contenu Gutenberg de la home — invisible auparavant seulement
+ * parce que l'ancien masthead/menu baké dans le contenu (retiré, cf.
+ * site-header-footer.php) masquait visuellement le haut de page.
+ *
+ * Le contenu reste éditable normalement (Gutenberg, page 928,
+ * apply-homepage.mjs) — ce hook se contente d'exécuter le rendu des blocs
+ * sans passer par le template de page du thème.
+ */
+add_action('template_redirect', function () {
+    if (is_admin() || !is_page(928)) {
+        return;
+    }
+
+    $page = get_post(928);
+    if (!$page) {
+        return;
+    }
+
+    get_header();
+    echo apply_filters('the_content', $page->post_content);
+    get_footer();
+    exit;
+});

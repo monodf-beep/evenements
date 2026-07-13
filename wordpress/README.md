@@ -72,7 +72,8 @@ actif malgré cette recommandation.
 | `scripts/apply-liste-evenements-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu de "Ce week-end" (930) / "Tout l'agenda" (932) (vraie carte "compacte") |
 | `scripts/apply-search-events.mjs` | Pousse le snippet PHP qui élargit la recherche aux événements (date + territoire sous chaque résultat) — vestige, plus vraiment utilisé côté rendu depuis `apply-search-page-template.mjs` |
 | `scripts/apply-search-page-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu de la page de recherche (`is_search()`) |
-| `scripts/apply-site-header-footer.mjs` | Pousse le snippet PHP qui injecte le header/footer de marque site-wide (sauf Accueil) |
+| `scripts/apply-site-header-footer.mjs` | Pousse le snippet PHP qui injecte le header/footer de marque site-wide (sticky, toutes pages y compris Accueil) |
+| `scripts/apply-homepage-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu de l'Accueil (928) via `template_redirect`, bypasse le gabarit `page.php` générique |
 | `scripts/apply-proposer-evenement-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu ET du traitement du formulaire "Proposer un événement" (934) |
 | `scripts/apply-venue-single-template.mjs` | Pousse le snippet PHP de la fiche lieu (`tribe_venue`) — prêt mais inatteignable tant que le bug de permaliens n'est pas résolu |
 | `scripts/apply-le-fil-template.mjs` | Pousse le snippet PHP du listing "Le Fil" (page 994, brouillon — pas encore publiée) |
@@ -86,8 +87,8 @@ actif malgré cette recommandation.
 | — | Structure (menu, 7 pages, taxonomies, tokens) | ✅ Fait |
 | — | **Carte-événement** (composant réutilisé partout) | 🟡 v1 (titre/cat/territoire OK ; manque heure formatée, lieu, statut, clic, groupement par jour) |
 | — | **Carte "à la une"** (grid 2×2 avec image, section homepage) | 🟡 v1 (image/territoire/titre OK ; manque heure formatée, comme carte-événement) |
-| — | Header / Footer (parties de thème) | ✅ v1 site-wide via hooks PHP (`wp_body_open`/`wp_footer`), pas de Theme Builder. Vraie menu WP ("Principal FR", 24 items). Exclut la page Accueil (a déjà les siens) |
-| 1 | Home | ✅ v1 complet **mobile + desktop** (basculés en CSS, `min-width:1024px`), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
+| — | Header / Footer (parties de thème) | ✅ v2 site-wide via hooks PHP (`wp_body_open`/`wp_footer`), sticky, menu burger mobile CSS-only, **sur TOUTES les pages y compris l'Accueil** (l'ancien masthead/nav baké dans la home a été retiré, doublonnait avec ce header) |
+| 1 | Home | ✅ v2 : gabarit `template_redirect` (bypasse `page.php`/sidebar générique GeneratePress), **mobile + desktop** basculés en CSS (`min-width:1024px`) — bug de cascade CSS corrigé (sections desktop restaient visibles sur mobile, sous le footer). Vérifié via JS (`getComputedStyle`) à 391px et 1280px. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
 | 2 | Fiche événement (single TEC) | ✅ v2 : template natif TEC + pilule territoire, badge de statut, crédit photo, "Vérifié le", et 3 rails liés (même lieu/catégorie/à venir) — tout en PHP, pas de Theme Builder |
 | 3 | Hub catégorie (×11) | ✅ v2 : vraie carte "standard" (`cs_card_standard`, pilules colorées), fil d'Ariane, filtres cosmétiques, newsletter légère — manque intro éditoriale réelle (à récupérer auprès de Franck) |
 | 4 | Hub territoire (×4) | ✅ v2 Idem — vérifié sur `/territoire/piemont/` |

@@ -403,12 +403,19 @@
 .as-home-desktop__carousel { position: relative; margin-top: 16px; width: 100%; height: 340px; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
 .as-home-desktop__carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
 .as-home-desktop__carousel-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 40%, rgba(29,29,27,.8) 100%); }
-.as-desktop-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.as-desktop-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-.as-desktop-tiles { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: stretch; }
+/* ⚠️ display:none par défaut (pas seulement via le parent .as-home-desktop) —
+   ces classes cohabitent SUR LE MÊME élément que .as-home-desktop dans le HTML
+   généré (ex. class="as-home-desktop as-desktop-cols3"), et une règle
+   display:grid de même spécificité déclarée après display:none l'emporterait
+   en cascade, rendant la section visible sur mobile malgré .as-home-desktop.
+   Bug réel constaté le 2026-07-13 (sections "Nouveautés/En évidence/Agenda à
+   venir" et grilles "À la une" visibles sous le footer mobile). */
+.as-desktop-grid-3 { display: none; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.as-desktop-grid-4 { display: none; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.as-desktop-tiles { display: none; grid-template-columns: 1fr 280px; gap: 20px; align-items: stretch; }
 .as-desktop-tiles__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .as-desktop-tiles__newsletter { background: #DC5D45; border-radius: 4px; padding: 26px 22px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
-.as-desktop-cols3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; align-items: start; margin-top: 44px; }
+.as-desktop-cols3 { display: none; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; align-items: start; margin-top: 44px; }
 .as-desktop-section-title { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #1D1D1B; padding-top: 12px; margin-bottom: 20px; }
 .as-desktop-section-title__label { font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: #1D1D1B; text-transform: uppercase; }
 .as-desktop-newsletter-band { display: none; max-width: 950px; margin: 56px auto 0; background: #DC5D45; padding: 40px 48px; align-items: center; justify-content: space-between; gap: 48px; }
@@ -424,6 +431,10 @@
   .as-desktop-newsletter-band { display: flex; }
   .as-desktop-footer { display: block; }
   .as-desktop-sticky-ad { display: block; }
+  .as-desktop-grid-3 { display: grid; }
+  .as-desktop-grid-4 { display: grid; }
+  .as-desktop-tiles { display: grid; }
+  .as-desktop-cols3 { display: grid; }
 }
 /* Grilles JetEngine desktop (3 ou 4 col) — la classe .ala-une-card__image/__eyebrow/__title
    du composant carte "à la une" est réutilisée telle quelle, aucune surcharge nécessaire. */
@@ -432,14 +443,16 @@
 
 /* ===== Header/Footer de marque, site-wide (design-system/site-header-footer.php) —
    injectés via wp_body_open/wp_footer, PAS de Theme Builder. Masque le
-   header/footer générique GeneratePress partout SAUF sur la page Accueil (928,
-   body class .page-id-928) qui a déjà les siens dans son propre contenu. ===== */
-body:not(.page-id-928) .site-header,
-body:not(.page-id-928) #masthead,
-body:not(.page-id-928) .site-footer,
-body:not(.page-id-928) #colophon { display: none !important; }
+   header/footer générique GeneratePress PARTOUT, y compris sur la page Accueil
+   (928) — un seul header/footer sur tout le site, plus de duplication avec
+   l'ancien masthead/nav baké dans le contenu de la home (retiré de
+   homepage-mobile.gutenberg.html). ===== */
+.site-header, #masthead, .site-footer, #colophon { display: none !important; }
 
-.as-site-header { background: #fff; border-bottom: 1px solid #1D1D1B; }
+.as-site-header {
+  background: #fff; border-bottom: 1px solid #1D1D1B;
+  position: sticky; top: 0; z-index: 40;
+}
 .as-site-header__inner {
   max-width: 1240px; margin: 0 auto; padding: 14px 20px; display: flex;
   align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
@@ -464,6 +477,37 @@ body:not(.page-id-928) #colophon { display: none !important; }
 .as-site-header__lang { font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 800; color: #1D1D1B; flex-shrink: 0; }
 .as-site-header__lang .muted { color: #C9C4B8; font-weight: 400; }
 
+/* Burger + menu overlay mobile (CSS-only, checkbox hack — même technique que
+   l'ancien menu baké dans la home, maintenant centralisée ici). */
+.as-site-header__burger-toggle { display: none; }
+.as-site-header__burger-label { display: none; cursor: pointer; }
+@media (max-width: 720px) {
+  .as-site-header__menu { display: none; }
+  .as-site-header__burger-label { display: flex; }
+  .as-site-header__burger-toggle:checked ~ .as-site-header__mobile-menu { display: block; }
+}
+.as-site-header__mobile-menu {
+  display: none; position: fixed; inset: 0; z-index: 50; background: #F7F1E8;
+  overflow-y: auto;
+}
+.as-site-header__mobile-menu-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid #1D1D1B; padding: 16px 20px;
+}
+.as-site-header__mobile-menu-title {
+  font-family: 'Nunito Sans', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase; color: #1D1D1B;
+}
+.as-site-header__mobile-menu ul { list-style: none; margin: 0; padding: 8px 20px; }
+.as-site-header__mobile-menu li { border-bottom: 1px solid #E3DCCE; }
+.as-site-header__mobile-menu li a {
+  display: block; text-decoration: none; padding: 16px 0;
+  font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #1D1D1B;
+}
+.as-site-header__mobile-menu .sub-menu { padding: 0 0 0 16px; }
+.as-site-header__mobile-menu .sub-menu li a { font-size: 10px; }
+
 .as-site-footer { background: #FBF7F0; border-top: 1px solid #1D1D1B; padding: 24px 0; margin-top: 48px; }
 .as-site-footer__inner { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
 .as-site-footer__row {
@@ -475,9 +519,6 @@ body:not(.page-id-928) #colophon { display: none !important; }
 .as-site-footer__legal {
   border-top: 1px solid #E3DCCE; padding-top: 12px;
   font-family: 'Nunito Sans', sans-serif; font-size: 11px; line-height: 1.8; color: #6F6B62;
-}
-@media (max-width: 720px) {
-  .as-site-header__menu { display: none; }
 }
 
 

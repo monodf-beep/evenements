@@ -112,6 +112,58 @@ Source réelle : `Agenda Sabaudo - Recherche.dc.html`. Remplace le gabarit
 saisie), résultats en `cs_card_compact()`, état vide avec 2 CTA. Vérifié
 visuellement avec et sans requête (`?s=` et `?s=festival`), sans erreur PHP.
 
+## 🚨 CORRECTIF MAJEUR : header/menu dupliqué sur la home + sections desktop visibles sur mobile
+
+Franck a signalé (10e passe) : sur la home, un menu s'affiche EN PLUS de celui
+du header (le sien, sticky, ne fonctionnait pas), et le mobile n'était pas
+masqué en desktop. Trois bugs distincts, cumulés :
+
+1. **Double header/footer sur la page Accueil (928)** — `site-header-footer.php`
+   excluait explicitement 928 (pour ne pas dupliquer le masthead/nav/footer
+   bakés dans le contenu Gutenberg de la home), mais le header/footer
+   site-wide (`.as-site-header`/`.as-site-footer`) n'avait **jamais** de
+   `position:sticky` — c'est le masthead baké dans le conteneur mobile qui
+   semblait "être le header", non sticky, avec ses propres marges. **Fix** :
+   masthead/burger/menu retirés de `homepage-mobile.gutenberg.html` (mobile
+   ET desktop), `site-header-footer.php` n'exclut plus 928, `.as-site-header`
+   a maintenant `position:sticky;top:0`, menu burger mobile CSS-only ajouté
+   (repris de l'ancien pattern de la home, maintenant centralisé). Un seul
+   header/footer, sticky, sur tout le site.
+2. **La home utilisait encore le gabarit `page.php` par défaut de
+   GeneratePress** (entry-header "Accueil" + barre latérale Rechercher/Recent
+   Posts) — invisible auparavant seulement parce que l'ancien masthead
+   masquait visuellement le haut de page. Une fois le masthead retiré (fix
+   précédent), ce contenu parasite est apparu. **Fix** : nouveau
+   `wordpress/design-system/homepage-template.php` — même schéma
+   `template_redirect` que toutes les autres pages custom du site (bypasse
+   `page.php`), mais affiche le VRAI contenu Gutenberg de la page 928 (édité
+   normalement en wp-admin) au lieu de markup codé en dur.
+3. **Sections desktop visibles sur mobile, sous le footer** — `.as-desktop-grid-3`/
+   `-grid-4`/`-tiles`/`-cols3` déclaraient `display:grid` **sans condition de
+   largeur d'écran**, alors qu'elles cohabitent SUR LE MÊME élément que
+   `.as-home-desktop` dans le HTML (`class="as-home-desktop as-desktop-cols3"`).
+   Avec une spécificité CSS égale, la règle déclarée en dernier dans le fichier
+   l'emporte en cascade — `display:grid` (déclaré après `.as-home-desktop{display:none}`)
+   gagnait, rendant "Nouveautés/En évidence/Agenda à venir" et les grilles "À
+   la une" desktop visibles même sur mobile. **Bug réel, présent depuis la
+   construction du desktop plus tôt cette session** — resté invisible car (a)
+   l'ancien masthead mobile dominait visuellement le haut de page, et (b)
+   l'outil `resize_window` ne changeait pas vraiment le viewport de rendu
+   (limitation documentée plus haut), empêchant toute vérification à une
+   largeur mobile authentique. **Fix** : `display:none` par défaut sur ces 4
+   classes, `display:grid` déplacé dans le `@media (min-width:1024px)`.
+
+**Vérifié via JS dans le navigateur (le screenshot du Browser pane a timeout
+de façon persistante cette session, contournement via `getComputedStyle` +
+`innerWidth`/`innerHeight` réels)** — et bonne nouvelle, `resize_window`
+fonctionne bien maintenant (391×847 confirmé via `window.innerWidth` après
+resize, contrairement à la limitation documentée précédemment) :
+- À 391px (mobile réel) : `.as-home` visible (`display:block`), `.as-home-desktop`
+  masqué (8/8 instances `display:none`), 1 seul `.as-site-header` (sticky),
+  1 seul `.as-site-footer`, rien après le footer dans le DOM.
+- À 1280px (desktop) : inverse exact — `.as-home` masqué (5/5), `.as-home-desktop`
+  et grilles desktop en `block`/`grid`, GP native header confirmé `display:none`.
+
 ## 🆕 Vraie grammaire de carte (brief §8.1) — remplace `.ag-row` sur Hubs + listes
 
 En relisant les vraies maquettes (`Fiche Evenement.dc.html`, `Hub Categorie.dc.html`,
