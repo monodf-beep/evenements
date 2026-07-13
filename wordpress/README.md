@@ -69,6 +69,7 @@ actif malgré cette recommandation.
 | `scripts/apply-taxonomy-archive-query.mjs` | Pousse le snippet PHP qui débloque les archives de taxonomie territoire/catégories (force post_type=tribe_events) |
 | `scripts/apply-taxonomy-archive-template.mjs` | Pousse le snippet PHP qui prend le contrôle du rendu des Hubs territoire/catégorie (style `.ag-row`) |
 | `scripts/apply-search-events.mjs` | Pousse le snippet PHP qui élargit la recherche aux événements (date + territoire sous chaque résultat) |
+| `scripts/apply-site-header-footer.mjs` | Pousse le snippet PHP qui injecte le header/footer de marque site-wide (sauf Accueil) |
 
 ## Plan de développement — 7 gabarits minimum pour ouvrir (source : `docs/TEMPLATES_WORDPRESS.md`)
 
@@ -77,7 +78,7 @@ actif malgré cette recommandation.
 | — | Structure (menu, 7 pages, taxonomies, tokens) | ✅ Fait |
 | — | **Carte-événement** (composant réutilisé partout) | 🟡 v1 (titre/cat/territoire OK ; manque heure formatée, lieu, statut, clic, groupement par jour) |
 | — | **Carte "à la une"** (grid 2×2 avec image, section homepage) | 🟡 v1 (image/territoire/titre OK ; manque heure formatée, comme carte-événement) |
-| — | Header / Footer (parties de thème) | ❌ Shells vides, CSS jamais vérifié contre la vraie maquette |
+| — | Header / Footer (parties de thème) | ✅ v1 site-wide via hooks PHP (`wp_body_open`/`wp_footer`), pas de Theme Builder. Vraie menu WP ("Principal FR", 24 items). Exclut la page Accueil (a déjà les siens) |
 | 1 | Home | ✅ v1 complet **mobile + desktop** (basculés en CSS, `min-width:1024px`), vérifiée visuellement. Plusieurs sections restent statiques/placeholder (transfrontalier, expositions, réseaux sociaux, pages footer manquantes) — détail dans `build-recipes/homepage-mobile.md` |
 | 2 | Fiche événement (single TEC) | ✅ v2 : template natif TEC + pilule territoire, badge de statut, crédit photo, "Vérifié le", et 3 rails liés (même lieu/catégorie/à venir) — tout en PHP, pas de Theme Builder |
 | 3 | Hub catégorie (×11) | 🟡 v1 stylée (`.ag-row`, lignes cliquables) — manque intro éditoriale (à récupérer auprès de Franck), groupement par jour |

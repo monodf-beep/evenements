@@ -1,6 +1,34 @@
 # État du build WordPress — agendasabauda.eu
 
-*Dernière mise à jour : session du 2026-07-13 (6e passe — homepage DESKTOP + correctif structurel majeur).*
+*Dernière mise à jour : session du 2026-07-13 (7e passe — Header/Footer site-wide, recherche, rails liés).*
+
+## 🆕 Header/Footer de marque, site-wide — SANS Theme Builder (enfin débloqué)
+
+Contrairement à toutes les tentatives précédentes documentées dans ce fichier (Theme
+Builder JetThemeCore peu fiable en automatisation, shells 960/961/962 orphelins,
+mal formés), le header/footer est maintenant résolu avec la **même méthode qui a
+marché partout ailleurs cette session** (fiche événement, Hubs, recherche) : des
+hooks PHP natifs WordPress, pas de canvas.
+
+- `wordpress/design-system/site-header-footer.php` — `wp_body_open` injecte un
+  header (wordmark + `wp_nav_menu()` sur le vrai menu "Principal FR", id 272, 24
+  items avec sous-menus Catégories/Territoires déjà construits — pas de lien
+  inventé) ; `wp_footer` injecte un footer (même menu, niveau racine, + copyright).
+  **Exclut explicitement la page Accueil (928)** — elle a déjà son propre
+  masthead/nav/footer bakés dans son contenu (mobile+desktop) ; les dupliquer
+  créerait un header/footer en double sur cette page précise.
+- CSS : masque le header/footer générique GeneratePress (`.site-header`,
+  `#masthead`, `.site-footer`, `#colophon`) sur toutes les pages SAUF `.page-id-928`
+  (body class native WP), et style le nouveau header/footer avec les tokens de
+  la charte.
+- **Vérifié visuellement** sur `/tout-l-agenda/` : wordmark + nav + FR|IT en
+  haut, menu + copyright en bas, plus aucune trace du bandeau bleu générique du
+  thème. **Vérifié qu'il n'y a pas de doublon sur `/accueil/`** (0 occurrence
+  HTML des classes `as-site-header`/`as-site-footer` sur cette page précise).
+
+**Limite v1** : pas de menu mobile (burger) sur les pages hors-accueil — le menu
+desktop est simplement masqué en dessous de 720px pour l'instant (`@media
+(max-width:720px){.as-site-header__menu{display:none}}`), à corriger en v2.
 
 ## 🆕 Homepage desktop (≥1024px) construite — et un bug structurel majeur corrigé au passage
 

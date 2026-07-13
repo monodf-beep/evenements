@@ -430,4 +430,48 @@
 .as-desktop-grid-3 .jet-listing-grid__items,
 .as-desktop-grid-4 .jet-listing-grid__items { display: grid; gap: inherit; grid-template-columns: inherit; }
 
+/* ===== Header/Footer de marque, site-wide (design-system/site-header-footer.php) —
+   injectés via wp_body_open/wp_footer, PAS de Theme Builder. Masque le
+   header/footer générique GeneratePress partout SAUF sur la page Accueil (928,
+   body class .page-id-928) qui a déjà les siens dans son propre contenu. ===== */
+body:not(.page-id-928) .site-header,
+body:not(.page-id-928) #masthead,
+body:not(.page-id-928) .site-footer,
+body:not(.page-id-928) #colophon { display: none !important; }
+
+.as-site-header { background: #fff; border-bottom: 1px solid #1D1D1B; }
+.as-site-header__inner {
+  max-width: 1240px; margin: 0 auto; padding: 14px 20px; display: flex;
+  align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+.as-site-header__wordmark {
+  font-family: 'La Semplicita', 'Saira Condensed', sans-serif; font-weight: 700; font-size: 20px;
+  color: #1D1D1B; text-decoration: none; letter-spacing: 0.02em; flex-shrink: 0;
+}
+.as-site-header__menu { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 18px; }
+.as-site-header__menu li { position: relative; }
+.as-site-header__menu a {
+  text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; color: #1D1D1B;
+}
+.as-site-header__menu a:hover { color: #DC5D45; }
+.as-site-header__menu .sub-menu {
+  list-style: none; margin: 0; padding: 8px 0; position: absolute; top: 100%; left: 0; z-index: 30;
+  background: #fff; border: 1px solid #1D1D1B; min-width: 220px; display: none;
+}
+.as-site-header__menu li:hover > .sub-menu { display: block; }
+.as-site-header__menu .sub-menu a { display: block; padding: 6px 16px; text-transform: none; font-weight: 600; white-space: nowrap; }
+.as-site-header__lang { font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 800; color: #1D1D1B; flex-shrink: 0; }
+.as-site-header__lang .muted { color: #C9C4B8; font-weight: 400; }
+
+.as-site-footer { background: #FBF7F0; border-top: 1px solid #1D1D1B; padding: 32px 0; margin-top: 48px; }
+.as-site-footer__inner { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+.as-site-footer__menu { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.as-site-footer__menu a { text-decoration: underline; font-family: 'Nunito Sans', sans-serif; font-size: 13px; color: #1D1D1B; }
+.as-site-footer__legal { font-family: 'Nunito Sans', sans-serif; font-size: 11px; color: #6F6B62; border-top: 1px solid #E3DCCE; padding-top: 12px; }
+.as-site-footer__legal a { color: #6F6B62; }
+@media (max-width: 720px) {
+  .as-site-header__menu { display: none; }
+}
+
 
