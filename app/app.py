@@ -1187,6 +1187,49 @@ def action(event_id: int, action: str):
     return redirect(nxt)
 
 
+@app.route("/set-focal/<int:event_id>", methods=["POST"])
+@require_auth
+def set_focal(event_id: int):
+    """Règle le CADRAGE de la vignette 4:3 : point focal (x,y ∈ [0,1]) + mode
+    (auto/cover/letterbox). Sert quand le recadrage auto coupe mal (titre d'affiche
+    rogné…). Si l'événement est déjà sur l'Agenda, on RE-POUSSE aussitôt pour que la
+    correction soit visible tout de suite."""
+    def _f(name, default):
+        try:
+            return min(max(float(request.form.get(name, "")), 0.0), 1.0)
+        except (TypeError, ValueError):
+            return default
+    fx, fy = _f("focal_x", 0.5), _f("focal_y", 0.5)
+    mode = (request.form.get("mode", "") or "").strip().lower()
+    if mode not in ("", "cover", "letterbox"):
+        mode = ""  # valeur inconnue → auto
+    conn = get_db()
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    conn.execute("UPDATE events_raw SET card_focal_x=?, card_focal_y=?, card_mode=? "
+                 "WHERE id=?", (fx, fy, mode or None, event_id))
+    conn.commit()
+    ev = dict(conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone())
+    conn.close()
+    log.info("Cadrage vignette id=%d : focal=(%.2f,%.2f) mode=%s", event_id, fx, fy,
+             mode or "auto")
+    label = {"": "auto", "cover": "recadrage", "letterbox": "affiche entière"}[mode]
+    if ev.get("wp_post_id_as"):
+        wp_id = publish_to_as(ev)
+        if wp_id:
+            flash(f"🖼 Cadrage enregistré ({label}) et vignette régénérée sur l'Agenda "
+                  f"(WP #{wp_id}).", "ok")
+        else:
+            flash(f"🖼 Cadrage enregistré ({label}), mais la re-publication a échoué "
+                  "(voir logs).", "err")
+    else:
+        flash(f"🖼 Cadrage enregistré ({label}) — s'appliquera à la publication Agenda.",
+              "ok")
+    return redirect(url_for("preview", event_id=event_id) + f"#cadrage")
+
+
 # Statuts assignables en un clic depuis la liste (triage rapide, SANS effet de bord :
 # ni WordPress ni LLM — juste l'étiquette). Le push WordPress reste l'action dédiée.
 _STATUS_PICK = {"evaluated", "published_cs", "published_sub", "rejected"}

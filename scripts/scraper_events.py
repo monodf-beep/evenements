@@ -122,7 +122,11 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Point focal du recadrage 4:3 de la vignette (0..1), réglé à la
                       # main dans le back-office quand le cadrage auto coupe mal.
                       ("card_focal_x", "REAL"),
-                      ("card_focal_y", "REAL")):
+                      ("card_focal_y", "REAL"),
+                      # Mode de vignette forcé à la main : '' (auto) | 'cover'
+                      # (recadrer au point focal) | 'letterbox' (affiche entière sur
+                      # fond flou — utile quand le titre de l'affiche est coupé).
+                      ("card_mode", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

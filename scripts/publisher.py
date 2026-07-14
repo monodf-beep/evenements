@@ -150,7 +150,8 @@ def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
 
 def _upload_featured_media(wp_url: str, auth, image_url: str,
                            alt: str = "", caption: str = "",
-                           card: bool = False, focal=(0.5, 0.5)) -> int | None:
+                           card: bool = False, focal=(0.5, 0.5),
+                           mode: str = "auto") -> int | None:
     """Télécharge l'image source et l'envoie dans la médiathèque WordPress.
 
     Retourne le media_id (à passer en featured_media) ou None si échec.
@@ -179,11 +180,11 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
             # Standardisation 4:3 (import paresseux : Pillow n'est requis que si demandé).
             try:
                 from utils.card_image import make_card_bytes
-                data, mode = make_card_bytes(img.content, focal=focal)
+                data, used_mode = make_card_bytes(img.content, focal=focal, mode=mode or "auto")
                 content_type = "image/jpeg"
                 stem = name.rsplit(".", 1)[0]
                 name = f"{stem}-carte.jpg"
-                log.info("Vignette 4:3 générée (%s) pour %s", mode, image_url)
+                log.info("Vignette 4:3 générée (%s) pour %s", used_mode, image_url)
             except Exception as exc:  # jamais bloquant : on garde l'original
                 log.warning("Vignette 4:3 impossible (%s) — image d'origine conservée.", exc)
 

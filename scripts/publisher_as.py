@@ -243,11 +243,13 @@ def publish_to_as(event: dict) -> int | None:
     alt = event.get("seo_keyphrase") or event.get("title", "") or ""
     media_id = None
     if url_image and not _is_logo(url_image):
-        # Vraie affiche → vignette standardisée 4:3 (point focal réglable au back-office).
+        # Vraie affiche → vignette standardisée 4:3. Point focal ET mode (auto/cover/
+        # letterbox) réglables à la main au back-office (éditeur de cadrage).
         media_id = _upload_featured_media(
             wp_url, auth, url_image, alt=alt,
             caption=event.get("image_credit", "") or "",
-            card=True, focal=_focal(event))
+            card=True, focal=_focal(event),
+            mode=(event.get("card_mode") or "auto"))
     # Repli sur la BANNIÈRE TERRITOIRE quand : (a) l'image source est un logo/pictogramme
     # (carte laide) → on l'écarte au push ; (b) le téléversement de l'affiche a échoué
     # (403 hotlink / 429 / URL morte). Comble aussi les événements sans image exploitable.
