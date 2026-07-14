@@ -114,8 +114,13 @@ def score(ev: dict) -> tuple[int, int]:
     return (TIER_RANK.get((ev.get("source_type") or "").lower(), 1), richness(ev))
 
 
-def _groups(events: list[dict]) -> list[list[dict]]:
-    """Regroupe par territoire + same_story (union-find simple)."""
+def _groups(events: list[dict], cross_lang: bool = False) -> list[list[dict]]:
+    """Regroupe par territoire + same_story (union-find simple).
+
+    cross_lang=False (défaut) : on ne dédoublonne QU'EN MÊME LANGUE. Sur un site
+    bilingue, les versions FR et IT d'un même événement ne sont PAS des doublons —
+    ce sont deux traductions à lier via Polylang (+ hreflang), pas à fusionner. On
+    n'active la fusion inter-langue (cross_lang_same) que si explicitement demandé."""
     parent = list(range(len(events)))
 
     def find(i):
@@ -136,8 +141,10 @@ def _groups(events: list[dict]) -> list[list[dict]]:
             for b in range(a + 1, len(idxs)):
                 i, j = idxs[a], idxs[b]
                 ti, tj = events[i].get("title", ""), events[j].get("title", "")
-                # même histoire (titres proches) OU même événement inter-langue FR/IT
-                if same_story(ti, tj) or cross_lang_same(ti, tj):
+                # même histoire (titres proches) — et, SI demandé, même événement
+                # inter-langue FR/IT (désactivé par défaut : bilingue = à lier, pas
+                # à fusionner).
+                if same_story(ti, tj) or (cross_lang and cross_lang_same(ti, tj)):
                     union(i, j)
 
     buckets: dict[int, list[dict]] = {}
@@ -199,7 +206,11 @@ def main(argv=None) -> int:
         description="Déduplication multi-sources (dont inter-langue FR/IT).")
     parser.add_argument("--rescan", action="store_true",
                         help="Inclure aussi les événements RETENUS (nettoie le stock "
-                             "existant, notamment les doublons inter-langue FR/IT).")
+                             "existant en MÊME LANGUE).")
+    parser.add_argument("--cross-lang", action="store_true",
+                        help="FUSIONNER aussi les paires FR/IT (⚠️ à éviter sur un site "
+                             "bilingue : les traductions sont à LIER via Polylang, pas à "
+                             "fusionner). Désactivé par défaut.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -213,7 +224,7 @@ def main(argv=None) -> int:
              " (rescan du stock retenu)" if args.rescan else "")
 
     merged = 0
-    groups = _groups(rows)
+    groups = _groups(rows, cross_lang=args.cross_lang)
     dups = [g for g in groups if len(g) > 1]
     for g in dups:
         merged += merge_group(conn, g)
