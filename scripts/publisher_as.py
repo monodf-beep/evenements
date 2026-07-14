@@ -35,6 +35,8 @@ from utils.logger import get_logger
 # On réutilise la mise en forme de l'article et le mapping de catégorie du
 # publisher historique (mêmes règles éditoriales, y compris charte §8 sur le radar).
 from scripts.publisher import build_post, _map_category, _upload_featured_media
+# Détection des logos/pictogrammes + bannières de repli par territoire.
+from utils.sources import is_logo_image, load_territory_images, pick_image
 
 log = get_logger("publisher_as")
 
@@ -111,6 +113,20 @@ def _iso_dates(event: dict) -> tuple[str, str]:
     return start, end
 
 
+def _is_logo(url) -> bool:
+    """True si l'URL image est en réalité un logo/pictogramme/bannière générique
+    (détecté par utils.sources.is_logo_image) — à écarter comme vignette."""
+    url = (url or "").strip()
+    return bool(url) and is_logo_image(url)
+
+
+def _banner(event: dict, banners: dict) -> str:
+    """Bannière de repli (vignette générique propre) pour le territoire, ou "".
+    Déterministe par id → varie d'un événement à l'autre au sein d'un territoire."""
+    return pick_image(event.get("territoire", ""), key=str(event.get("id", "")),
+                      images=banners)
+
+
 def _focal(event: dict) -> tuple[float, float]:
     """Point focal (x, y) ∈ [0,1] pour le recadrage 4:3 de la vignette. Défaut = centre.
     Renseigné à la main dans le back-office (éditeur de point focal) via card_focal_x/y."""
@@ -142,7 +158,9 @@ def _build_payload(event: dict) -> dict:
         "as_image_credit":          event.get("image_credit", "") or "",
         # Image ORIGINALE (non recadrée) : la vignette mise en avant est standardisée
         # en 4:3 pour la grille ; la FICHE, elle, affiche l'affiche entière via ce champ.
-        "as_image_original":        event.get("url_image", "") or "",
+        # JAMAIS un logo/pictogramme (« voir l'affiche en grand » n'aurait aucun sens) :
+        # dans ce cas on laisse vide → la fiche montrera la bannière territoire seule.
+        "as_image_original":        "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
         # Lieu + ville en plat : la carte-événement JetEngine les lit directement
         # (le Venue TEC reste par ailleurs pour la carte/adresse).
         "as_lieu":                  (event.get("lieu") or "").strip(),
@@ -159,7 +177,9 @@ def _build_payload(event: dict) -> dict:
         "category":    _map_category(event.get("llm_categorie")),
         "territoire":  _map_territoire(event.get("territoire", "")),
         "score":       event.get("llm_score"),
-        "image_url":   event.get("url_image", "") or "",
+        # On ne transmet pas un logo comme image : l'endpoint pourrait la re-télécharger
+        # en repli. La vraie vignette part en featured_media_id (téléversée ci-dessous).
+        "image_url":   "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
         "image_alt":   event.get("seo_keyphrase") or event.get("title", "") or "",
         # Site officiel de l'événement (champ natif TEC « EventURL ») = même valeur
         # que as_source_officielle_url. Jamais la source radar (charte §8).
@@ -219,14 +239,29 @@ def publish_to_as(event: dict) -> int | None:
     # Image à la une : on TÉLÉVERSE côté Python (fiable — le backoffice accède déjà à
     # ces images) plutôt que de laisser WordPress aller chercher l'URL lui-même (souvent
     # bloqué : hotlink/UA/firewall). On transmet ensuite l'id du média à l'endpoint.
-    if event.get("url_image"):
+    url_image = (event.get("url_image") or "").strip()
+    alt = event.get("seo_keyphrase") or event.get("title", "") or ""
+    media_id = None
+    if url_image and not _is_logo(url_image):
+        # Vraie affiche → vignette standardisée 4:3 (point focal réglable au back-office).
         media_id = _upload_featured_media(
-            wp_url, auth, event["url_image"],
-            alt=event.get("seo_keyphrase") or event.get("title", "") or "",
+            wp_url, auth, url_image, alt=alt,
             caption=event.get("image_credit", "") or "",
-            card=True, focal=_focal(event))   # vignette standardisée 4:3
-        if media_id:
-            payload["featured_media_id"] = media_id
+            card=True, focal=_focal(event))
+    # Repli sur la BANNIÈRE TERRITOIRE quand : (a) l'image source est un logo/pictogramme
+    # (carte laide) → on l'écarte au push ; (b) le téléversement de l'affiche a échoué
+    # (403 hotlink / 429 / URL morte). Comble aussi les événements sans image exploitable.
+    if not media_id:
+        banner = _banner(event, load_territory_images())
+        if banner:
+            if _is_logo(url_image):
+                log.info("Logo écarté au push (%s) → bannière territoire", url_image)
+            elif url_image:
+                log.info("Téléversement affiche échoué (%s) → bannière territoire", url_image)
+            media_id = _upload_featured_media(
+                wp_url, auth, banner, alt=alt, card=True, focal=(0.5, 0.5))
+    if media_id:
+        payload["featured_media_id"] = media_id
 
     endpoint = f"{wp_url}/?rest_route=/cs/v1/event"
 
