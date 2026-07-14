@@ -111,6 +111,17 @@ def _iso_dates(event: dict) -> tuple[str, str]:
     return start, end
 
 
+def _focal(event: dict) -> tuple[float, float]:
+    """Point focal (x, y) ∈ [0,1] pour le recadrage 4:3 de la vignette. Défaut = centre.
+    Renseigné à la main dans le back-office (éditeur de point focal) via card_focal_x/y."""
+    def _c(v, d=0.5):
+        try:
+            return min(max(float(v), 0.0), 1.0)
+        except (TypeError, ValueError):
+            return d
+    return (_c(event.get("card_focal_x")), _c(event.get("card_focal_y")))
+
+
 def _build_payload(event: dict) -> dict:
     """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
     title, content = build_post(event)
@@ -129,6 +140,9 @@ def _build_payload(event: dict) -> dict:
         "as_source_officielle_url": "" if is_radar else (event.get("url_source", "") or ""),
         "as_verifie_le":            date.today().isoformat(),
         "as_image_credit":          event.get("image_credit", "") or "",
+        # Image ORIGINALE (non recadrée) : la vignette mise en avant est standardisée
+        # en 4:3 pour la grille ; la FICHE, elle, affiche l'affiche entière via ce champ.
+        "as_image_original":        event.get("url_image", "") or "",
         # Lieu + ville en plat : la carte-événement JetEngine les lit directement
         # (le Venue TEC reste par ailleurs pour la carte/adresse).
         "as_lieu":                  (event.get("lieu") or "").strip(),
@@ -209,7 +223,8 @@ def publish_to_as(event: dict) -> int | None:
         media_id = _upload_featured_media(
             wp_url, auth, event["url_image"],
             alt=event.get("seo_keyphrase") or event.get("title", "") or "",
-            caption=event.get("image_credit", "") or "")
+            caption=event.get("image_credit", "") or "",
+            card=True, focal=_focal(event))   # vignette standardisée 4:3
         if media_id:
             payload["featured_media_id"] = media_id
 

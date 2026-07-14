@@ -149,13 +149,17 @@ def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
 
 
 def _upload_featured_media(wp_url: str, auth, image_url: str,
-                           alt: str = "", caption: str = "") -> int | None:
+                           alt: str = "", caption: str = "",
+                           card: bool = False, focal=(0.5, 0.5)) -> int | None:
     """Télécharge l'image source et l'envoie dans la médiathèque WordPress.
 
     Retourne le media_id (à passer en featured_media) ou None si échec.
     Jamais bloquant : un échec d'upload laisse le post sans vignette.
     alt/caption : texte alternatif (SEO, avec l'expression clé) et légende (crédit photo).
-    """
+    card : si True, l'image est standardisée en VIGNETTE 4:3 (cover-focal ou letterbox,
+    cf. utils.card_image) AVANT l'upload — pour une grille uniforme. `focal` (x,y) ∈ [0,1]
+    ancre le recadrage. Si la transformation échoue (image exotique), on retombe sur
+    l'original (jamais bloquant)."""
     try:
         img = requests.get(image_url, timeout=30, headers=_UA)
         img.raise_for_status()
@@ -170,9 +174,22 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
             ext = mimetypes.guess_extension(content_type) or ".jpg"
             name = f"{name}{ext}"
 
+        data = img.content
+        if card:
+            # Standardisation 4:3 (import paresseux : Pillow n'est requis que si demandé).
+            try:
+                from utils.card_image import make_card_bytes
+                data, mode = make_card_bytes(img.content, focal=focal)
+                content_type = "image/jpeg"
+                stem = name.rsplit(".", 1)[0]
+                name = f"{stem}-carte.jpg"
+                log.info("Vignette 4:3 générée (%s) pour %s", mode, image_url)
+            except Exception as exc:  # jamais bloquant : on garde l'original
+                log.warning("Vignette 4:3 impossible (%s) — image d'origine conservée.", exc)
+
         resp = requests.post(
             f"{wp_url}/?rest_route=/wp/v2/media",
-            data=img.content,
+            data=data,
             auth=auth,
             headers={
                 **_headers(auth),

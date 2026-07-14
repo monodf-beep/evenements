@@ -176,7 +176,10 @@ function cs_publish_event(WP_REST_Request $req) {
         'as_billetterie_url', 'as_source_officielle_url', 'as_verifie_le', 'as_image_credit',
         // Lieu + ville EN PLAT (en plus du Venue TEC) : binding JetEngine trivial
         // pour la carte-événement (pas de relation vers le CPT Venue à gérer).
-        'as_lieu', 'as_ville');
+        'as_lieu', 'as_ville',
+        // URL de l'image ORIGINALE (non recadrée) : la vignette mise en avant est en
+        // 4:3 pour la grille ; la FICHE affiche l'affiche entière via ce méta.
+        'as_image_original');
     foreach ($allowed as $k) {
         if (array_key_exists($k, $meta)) {
             update_post_meta($post_id, $k, sanitize_text_field((string) $meta[$k]));

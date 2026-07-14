@@ -118,7 +118,11 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # remplacée par une note « vérifiez les dates sur la source » et
                       # l'événement satisfait la porte qualité (cf. utils/completeness).
                       ("recurring", "INTEGER DEFAULT 0"),
-                      ("recurring_note", "TEXT")):
+                      ("recurring_note", "TEXT"),
+                      # Point focal du recadrage 4:3 de la vignette (0..1), réglé à la
+                      # main dans le back-office quand le cadrage auto coupe mal.
+                      ("card_focal_x", "REAL"),
+                      ("card_focal_y", "REAL")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
