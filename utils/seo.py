@@ -144,7 +144,8 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
     # Matière pour choisir la clé : l'ARTICLE rédigé s'il existe (c'est LUI qui
     # sera publié → la clé doit y figurer), sinon la description brute.
     material = _clean(ev.get("article_md") or ev.get("description"))
-    prompt = SEO_PROMPT.format(
+    from utils.voix import voix_block
+    prompt = voix_block() + SEO_PROMPT.format(
         title=_clean(ev.get("title")),
         categorie=ev.get("llm_categorie") or "",
         lieu=ev.get("lieu") or "",

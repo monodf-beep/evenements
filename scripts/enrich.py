@@ -249,7 +249,8 @@ def _final_text(message) -> str:
 
 def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str):
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR."""
-    prompt = ENRICH_PROMPT.format(
+    from utils.voix import voix_block
+    prompt = voix_block() + ENRICH_PROMPT.format(
         title=ev.get("title", ""),
         dates=_dates_hint(ev),
         lieu=ev.get("lieu") or ev.get("ville") or "—",
