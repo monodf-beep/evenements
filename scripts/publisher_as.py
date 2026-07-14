@@ -158,6 +158,13 @@ def _recover_image(event: dict) -> str:
     return found
 
 
+def _lang(event: dict) -> str:
+    """Langue Polylang de l'événement ('fr'|'it'), détectée sur titre+description."""
+    from utils.lang import detect_lang
+    return detect_lang(event.get("title", ""), event.get("description", ""),
+                       event.get("territoire", ""))
+
+
 def _focal(event: dict) -> tuple[float, float]:
     """Point focal (x, y) ∈ [0,1] pour le recadrage 4:3 de la vignette. Défaut = centre.
     Renseigné à la main dans le back-office (éditeur de point focal) via card_focal_x/y."""
@@ -207,6 +214,9 @@ def _build_payload(event: dict) -> dict:
         "end_date":    end_iso,
         "category":    _map_category(event.get("llm_categorie")),
         "territoire":  _map_territoire(event.get("territoire", "")),
+        # Langue Polylang (site bilingue FR/IT) : détectée sur le texte, départagée par
+        # le territoire. Permet le sélecteur de langue, les archives et les hreflang.
+        "language":    _lang(event),
         "score":       event.get("llm_score"),
         # On ne transmet pas un logo comme image : l'endpoint pourrait la re-télécharger
         # en repli. La vraie vignette part en featured_media_id (téléversée ci-dessous).
