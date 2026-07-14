@@ -53,11 +53,17 @@ def load_blocked_image_domains(path: Path | None = None) -> set[str]:
 
 
 # Motifs d'URL trahissant un LOGO / blason / icône (pas une vraie photo de sujet).
-_LOGO_TOKENS = (
-    "logo", "sprite", "icon", "favicon", "placeholder", "default", "avatar",
-    "blason", "stemma", "flag", "banner", "/badge", "header", "footer", "/ui/",
-    "wordmark", "brandmark", "emblem", "crest",
-)
+# Jetons de NOM DE FICHIER trahissant un logo / blason / icône / gabarit (pas une
+# photo). Comparés au SEUL nom de fichier, BORNÉS par des non-alphanumériques :
+#  • « default » matche « default.png » mais PAS le dossier Drupal « sites/default/
+#    files » (faux positif classique : comune.torino.it & co.) ;
+#  • « logo » matche « Logo-Escale.png » mais pas « catalogo.jpg » ;
+#  • « flag » matche « flag.png » mais pas « flagship.jpg ».
+_LOGO_NAME_TOKENS = frozenset((
+    "logo", "logos", "sprite", "icon", "icons", "favicon", "placeholder",
+    "default", "avatar", "blason", "stemma", "flag", "banner", "badge",
+    "header", "footer", "wordmark", "brandmark", "emblem", "crest",
+))
 
 
 # Préfixes/clés de paramètres de TRAÇAGE à retirer des URLs (emailing, pub, analytics).
@@ -121,13 +127,23 @@ def strip_tracking(url: str) -> str:
 
 
 def is_logo_image(url: str) -> bool:
-    """Vrai si l'URL ressemble à un logo / blason / icône (à écarter), pas une photo."""
+    """Vrai si l'URL ressemble à un logo / blason / icône (à écarter), pas une photo.
+
+    On juge sur le NOM DE FICHIER (mots bornés), PAS sur le chemin complet : un
+    dossier banal comme « sites/default/files » (Drupal) ne doit pas faire un faux
+    positif. Les .svg sont toujours écartés (pictogrammes vectoriels)."""
     u = (url or "").lower()
     if not u:
         return False
-    if u.endswith(".svg"):
+    path = urlparse(u).path            # ignore la query (…/img.svg?v=2 reste un svg)
+    if path.endswith(".svg"):
         return True
-    return any(t in u for t in _LOGO_TOKENS)
+    name = path.rsplit("/", 1)[-1]     # nom de fichier seul
+    words = set(re.split(r"[^a-z0-9]+", name))
+    if words & _LOGO_NAME_TOKENS:
+        return True
+    # Dossiers d'UI de thème (icônes d'interface) — signal net et rare.
+    return "/ui/" in path or "/icons/" in path
 
 
 def is_blocked_image(url: str, blocked: set[str]) -> bool:
