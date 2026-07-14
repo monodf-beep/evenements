@@ -17,14 +17,25 @@ import os
 import re
 from pathlib import Path
 
-# Chemin(s) de la voix, dans le vault Obsidian sur le VPS. Système EN COUCHES : on peut
-# lister PLUSIEURS chemins (fichiers ou dossiers) séparés par « : », chargés DANS L'ORDRE
-# — d'abord la voix commune, puis la surcharge du projet. Chaque chemin peut être un .md
-# ou un dossier (ses .md sont concaténés).
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+# Nom de la variable d'env. LISTE de chemins (fichiers ou dossiers) séparés par « : »,
+# chargés DANS L'ORDRE — d'abord la voix commune, puis la surcharge du projet. Système
+# EN COUCHES. Chaque chemin peut être un .md ou un dossier (ses .md sont concaténés).
 # Ex. : OBSIDIAN_VOIX_PATH=/opt/obsidian/.../Voix commune (synthèse).md:/opt/obsidian/.../Charte Agenda Sabauda (surcharges).md
-VOIX_PATH = os.getenv("OBSIDIAN_VOIX_PATH", "")
-# Garde-fou : on n'injecte pas un pavé illimité dans chaque prompt.
-MAX_CHARS = int(os.getenv("VOIX_MAX_CHARS", "6000"))
+VOIX_ENV = "OBSIDIAN_VOIX_PATH"
+
+
+def _spec() -> str:
+    """Lit OBSIDIAN_VOIX_PATH à l'APPEL (pas à l'import) : robuste quel que soit l'ordre
+    de chargement. Charge d'abord le .env du projet (idempotent, sans écraser l'env)."""
+    load_dotenv(ROOT / ".env")
+    return os.getenv(VOIX_ENV, "")
+
+
+def _max_chars() -> int:
+    return int(os.getenv("VOIX_MAX_CHARS", "6000"))
 
 
 def _strip_obsidian(text: str) -> str:
@@ -61,7 +72,7 @@ def load_voix() -> str:
     Plusieurs chemins (séparés par « : ») sont chargés DANS L'ORDRE et concaténés :
     voix commune d'abord, surcharge projet ensuite. Un chemin manquant est ignoré."""
     layers = []
-    for spec in VOIX_PATH.split(os.pathsep):
+    for spec in _spec().split(os.pathsep):
         spec = spec.strip()
         if not spec:
             continue
@@ -73,7 +84,7 @@ def load_voix() -> str:
             layers.append(txt)
     if not layers:
         return ""
-    return "\n\n".join(layers)[:MAX_CHARS].strip()
+    return "\n\n".join(layers)[:_max_chars()].strip()
 
 
 def voix_block(prefix: str = "") -> str:
