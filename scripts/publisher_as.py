@@ -35,8 +35,9 @@ from utils.logger import get_logger
 # On réutilise la mise en forme de l'article et le mapping de catégorie du
 # publisher historique (mêmes règles éditoriales, y compris charte §8 sur le radar).
 from scripts.publisher import build_post, _map_category, _upload_featured_media
-# Détection des logos/pictogrammes + bannières de repli par territoire.
-from utils.sources import is_logo_image, load_territory_images, pick_image
+# Détection des logos/pictogrammes + bannières de repli par territoire + filtres image.
+from utils.sources import (is_logo_image, load_territory_images, pick_image,
+                           is_blocked_image, load_blocked_image_domains)
 
 log = get_logger("publisher_as")
 
@@ -125,6 +126,36 @@ def _banner(event: dict, banners: dict) -> str:
     Déterministe par id → varie d'un événement à l'autre au sein d'un territoire."""
     return pick_image(event.get("territoire", ""), key=str(event.get("id", "")),
                       images=banners)
+
+
+def _is_radar(event: dict) -> bool:
+    return (event.get("source_type") == "radar"
+            or "(radar)" in (event.get("source_name") or ""))
+
+
+def _recover_image(event: dict) -> str:
+    """Tente d'extraire une VRAIE affiche depuis la PAGE SOURCE de l'événement.
+
+    Beaucoup d'images sont bloquées en téléchargement direct (hotlink/Cloudflare :
+    ex. le média d'agendaculturel en 403) alors que la fiche organisateur, elle, est
+    accessible et contient la photo. On la récupère via utils.images.fetch_content_image
+    (og:image puis 1re photo de contenu, habillage écarté). On saute le radar (charte
+    §8 : pas de reprise d'image de presse) et on rejette logo/domaine proscrit.
+    Renvoie une URL exploitable ou ""."""
+    src = (event.get("url_source") or "").strip()
+    if not src or _is_radar(event):
+        return ""
+    try:
+        from utils.images import fetch_content_image
+        found = (fetch_content_image(src) or "").strip()
+    except Exception as exc:                      # jamais bloquant
+        log.warning("Récupération image depuis la source impossible : %s", exc)
+        return ""
+    if not found or _is_logo(found):
+        return ""
+    if is_blocked_image(found, load_blocked_image_domains()):
+        return ""
+    return found
 
 
 def _focal(event: dict) -> tuple[float, float]:
@@ -250,9 +281,20 @@ def publish_to_as(event: dict) -> int | None:
             caption=event.get("image_credit", "") or "",
             card=True, focal=_focal(event),
             mode=(event.get("card_mode") or "auto"))
-    # Repli sur la BANNIÈRE TERRITOIRE quand : (a) l'image source est un logo/pictogramme
-    # (carte laide) → on l'écarte au push ; (b) le téléversement de l'affiche a échoué
-    # (403 hotlink / 429 / URL morte). Comble aussi les événements sans image exploitable.
+    # Repli 1 — PAGE SOURCE : l'affiche directe manque, a échoué (403/429), ou était un
+    # logo → on tente d'extraire une vraie photo depuis la fiche organisateur (souvent
+    # accessible même quand le média direct est bloqué). Mieux qu'une bannière générique.
+    if not media_id:
+        recovered = _recover_image(event)
+        if recovered:
+            log.info("Affiche récupérée depuis la page source (%s)", recovered)
+            media_id = _upload_featured_media(
+                wp_url, auth, recovered, alt=alt,
+                caption=event.get("image_credit", "") or "",
+                card=True, focal=_focal(event),
+                mode=(event.get("card_mode") or "auto"))
+    # Repli 2 — BANNIÈRE TERRITOIRE quand tout le reste a échoué (logo écarté sans page
+    # exploitable, image bloquée + page bloquée, aucune image). Comble les cartes vides.
     if not media_id:
         banner = _banner(event, load_territory_images())
         if banner:
