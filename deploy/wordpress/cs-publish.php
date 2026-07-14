@@ -36,44 +36,7 @@ add_action('rest_api_init', function () {
             return current_user_can('edit_posts');
         },
     ));
-    // Lie deux (ou plus) événements comme TRADUCTIONS Polylang l'un de l'autre.
-    // Corps : {"translations": {"fr": <post_id>, "it": <post_id>}}.
-    register_rest_route('cs/v1', '/link-translations', array(
-        'methods'             => 'POST',
-        'callback'            => 'cs_link_translations',
-        'permission_callback' => function () {
-            return current_user_can('edit_posts');
-        },
-    ));
 });
-
-/**
- * Lie des événements comme traductions Polylang (site bilingue FR/IT).
- * S'assure d'abord que chaque post porte sa langue, puis les groupe.
- */
-function cs_link_translations(WP_REST_Request $req) {
-    if (!function_exists('pll_save_post_translations') || !function_exists('pll_set_post_language')) {
-        return new WP_Error('no_polylang', 'Polylang inactif.', array('status' => 500));
-    }
-    $b = $req->get_json_params();
-    $links = (is_array($b) && isset($b['translations']) && is_array($b['translations']))
-        ? $b['translations'] : array();
-    $clean = array();
-    foreach ($links as $lang => $pid) {
-        $lang = sanitize_key((string) $lang);
-        $pid  = (int) $pid;
-        if ($lang && $pid && get_post_type($pid) === 'tribe_events') {
-            pll_set_post_language($pid, $lang);   // garantit la langue avant de lier
-            $clean[$lang] = $pid;
-        }
-    }
-    if (count($clean) < 2) {
-        return new WP_Error('need_two', 'Au moins deux langues valides requises.',
-            array('status' => 400));
-    }
-    pll_save_post_translations($clean);
-    return new WP_REST_Response(array('linked' => $clean), 200);
-}
 
 /**
  * Résout un terme par slug PUIS par nom dans une taxonomie. Ne crée RIEN
@@ -192,14 +155,6 @@ function cs_publish_event(WP_REST_Request $req) {
     // mise à jour) : on écrit directement la méta que TEC lit pour lier le lieu.
     if ($venue_id > 0) { update_post_meta($post_id, '_EventVenueID', $venue_id); }
     if ($org_id > 0)   { update_post_meta($post_id, '_EventOrganizerID', $org_id); }
-
-    // --- Langue Polylang (site bilingue FR/IT) --------------------------------
-    // Chaque événement porte SA langue → sélecteur de langue, archives, hreflang
-    // corrects. Le liage FR↔IT des traductions se fait via /cs/v1/link-translations.
-    $lang = isset($b['language']) ? sanitize_key((string) $b['language']) : '';
-    if ($lang && function_exists('pll_set_post_language')) {
-        pll_set_post_language($post_id, $lang);
-    }
 
     // --- Catégorie (tribe_events_cat) + territoire (taxo maison) ---------------
     $cat_id = cs_resolve_term($b['category'] ?? '', 'tribe_events_cat');
