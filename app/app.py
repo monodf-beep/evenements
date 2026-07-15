@@ -596,6 +596,60 @@ def process_page():
     return render_template("process.html", active="process")
 
 
+_COWORK_PROMPT_FILE = ROOT / "docs" / "COWORK_AUTOCOMPLETION.md"
+
+
+def _cowork_prompt() -> str:
+    """Extrait le bloc de prompt (entre les ``` ) du doc, pour l'afficher/copier.
+    Repli : le doc entier si le bloc n'est pas trouvé."""
+    try:
+        txt = _COWORK_PROMPT_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return "(docs/COWORK_AUTOCOMPLETION.md introuvable)"
+    m = re.search(r"```\s*\n(.*?)\n```", txt, re.S)
+    return m.group(1).strip() if m else txt
+
+
+def _ensure_cowork_table(conn):
+    conn.execute("CREATE TABLE IF NOT EXISTS cowork_runs ("
+                 "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                 "created_at TEXT NOT NULL, report TEXT NOT NULL)")
+
+
+@app.route("/cowork")
+@require_auth
+def cowork_page():
+    """Prompt de la tâche Cowork (retrouvable) + journal horodaté des passages."""
+    conn = get_db()
+    _ensure_cowork_table(conn)
+    runs = [dict(r) for r in conn.execute(
+        "SELECT id, created_at, report FROM cowork_runs "
+        "ORDER BY id DESC LIMIT 100").fetchall()]
+    last = runs[0]["created_at"] if runs else None
+    conn.commit()
+    conn.close()
+    return render_template("cowork.html", active="cowork",
+                           prompt=_cowork_prompt(), runs=runs, last=last)
+
+
+@app.route("/cowork/log", methods=["POST"])
+@require_auth
+def cowork_log():
+    """Enregistre un passage de Cowork (rapport collé), horodaté côté serveur."""
+    report = (request.form.get("report", "") or "").strip()
+    if not report:
+        flash("⚠️ Rapport vide — rien enregistré.", "err")
+        return redirect(url_for("cowork_page"))
+    conn = get_db()
+    _ensure_cowork_table(conn)
+    conn.execute("INSERT INTO cowork_runs (created_at, report) VALUES "
+                 "(datetime('now','localtime'), ?)", (report[:20000],))
+    conn.commit()
+    conn.close()
+    flash("✅ Passage Cowork enregistré dans le journal.", "ok")
+    return redirect(url_for("cowork_page") + "#journal")
+
+
 @app.route("/api/status")
 @require_auth
 def api_status():
