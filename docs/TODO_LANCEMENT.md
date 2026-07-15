@@ -22,6 +22,30 @@
 - [ ] Écrans secondaires (prompts fournis) : fiche · hub catégorie · hub territoire (+ module transfrontalier « Y aller ») · hub lieu · liste filtrable · recherche · Proposer un événement · 404 · le fil/article · **Annoncer**
 - [ ] Figer la **DA finale** (typo, couleurs) → base du thème enfant
 
+## 📅 À revoir la semaine prochaine (~20 juillet 2026)
+
+**Fait le 14-15 juillet** (contexte) : Polylang **langue + liage FR/IT** en prod (mu-plugin
+`cs-polylang.php`) · **taxonomies bilingues** déployées (`cs-taxo-it.php`) · **GA4** propre
+(`G-HWRKPM4F7J`, injecté par Complianz, consent-gated) · **consentement RGPD** conforme via
+**Complianz** (opt-in, 3 boutons, blocage AdSense avant consentement) — **bannière en français**.
+
+À trancher / faire la semaine prochaine :
+- [ ] 🧑 **Construire le contenu italien** (traduire **pages + menu** via Polylang) — aujourd'hui
+  `/it/` est vide (« Non è stato trovato nulla »). *C'est le vrai préalable : la bannière IT ne
+  sert à rien tant que le site IT n'existe pas.* → chantier **WordPress local**.
+- [ ] **Bannière de consentement multilingue IT** — reste **en français pour tous** en attendant.
+  Le multilingue est **payant** dans Complianz **et** CookieYes (gating inversé). Quand `/it/` aura
+  du vrai contenu + des visiteurs → **Complianz Premium (~49 €/an)** = multilingue **+** Consent
+  Mode v2 d'un coup (6× moins cher que CookieYes Pro). **Pas avant.**
+- [ ] Vérif **double-tag GA4** : après consentement, un **seul** hit `g/collect` avec
+  `G-HWRKPM4F7J` (GTM/gtag détectés à côté d'AdSense — s'assurer qu'aucune autre source ne pose GA).
+- [ ] (optionnel, confidentialité) décocher le **partage de données** GA4 (« Produits et services
+  Google »…) côté compte, puis cocher la case correspondante dans Complianz.
+- [ ] 🧑 **Hygiène sécurité** (suite à la soirée) : réinitialiser le **mot de passe FTP** OVH et
+  **régénérer la clé API Anthropic** (toutes deux ont transité en clair) ; supprimer le mu-plugin
+  orphelin dans `www/wp-content/mu-plugins/`.
+- [ ] 🧑 Programmer la **tâche récurrente Cowork** (prompt rangé : back-office → Aide → Cowork).
+
 ## 2. WordPress — construction
 ### 2a. Config admin ⚙️ (runbook `deploy/agenda-sabaudo/INSTALL_RUNBOOK.md`)
 - [ ] Domaine **agendasabauda.eu** + HTTPS
