@@ -65,6 +65,24 @@
 - [ ] Composants : carte événement · carrousel · newsletter · **module transfrontalier** · emplacements pub
 - [ ] Copier `cs-seo-meta.php` + `cs-rest-auth.php` sur l'hôte WP
 
+### 🔧 Outillage de build — tranché (16 juillet)
+Question : « **Ad Inserter** suffit-il pour tout (habillage, bannière, colonnes,
+éléments de page, popup) ? » → **Non.** Ad Inserter est un **injecteur de code** :
+bon **uniquement pour la couche publicité** (emplacements partenaires/AdSense,
+sticky mobile, popup **pub**), avec respect du consentement (Complianz déjà en
+place). Il ne fait ni thème, ni colonnes, ni contenu — l'y forcer casse Polylang,
+l'édition non-dev et l'objectif « parties éditables en **Gutenberg natif** ».
+- **Habillage entier** (header/footer, couleurs, polices) → **thème enfant**
+  GeneratePress + `theme.json` / `tokens.css` (design system `implementation/`).
+- **Colonnes / éléments de page** → **Gutenberg natif** (+ **JetEngine Blocks**
+  pour le dynamique : listings d'événements, hubs). **Jamais Elementor.**
+- **Pub / bannière / popup pub** → **Ad Inserter** (le garder pour ça, rien d'autre).
+- **Popup non-pub** (newsletter, annonce) → à décider (cf. recherche ci-dessous).
+- [ ] **Choisir la pile de build définitive** — recherche approfondie lancée
+  (Gutenberg FSE/theme.json vs GenerateBlocks vs Kadence Blocks vs JetEngine Blocks
+  vs Bricks) : critères = compat outils déjà possédés (JetEngine/Crocoblock),
+  Polylang FR/IT, éditabilité par IA, perfs, séparation propre de la couche pub.
+
 ## 3. Pont backoffice → WordPress 🤖 (après création du site)
 - [ ] **2ᵉ publisher** : export vers Agenda Sabauda (nécessite URL + credentials du site)
 - [ ] **Routage** : score ≥ 7 → Cultura Sabauda · < 7 → Agenda Sabauda (un site par événement, pas de canonical croisé)
