@@ -78,10 +78,14 @@ l'édition non-dev et l'objectif « parties éditables en **Gutenberg natif** »
   pour le dynamique : listings d'événements, hubs). **Jamais Elementor.**
 - **Pub / bannière / popup pub** → **Ad Inserter** (le garder pour ça, rien d'autre).
 - **Popup non-pub** (newsletter, annonce) → à décider (cf. recherche ci-dessous).
-- [ ] **Choisir la pile de build définitive** — recherche approfondie lancée
-  (Gutenberg FSE/theme.json vs GenerateBlocks vs Kadence Blocks vs JetEngine Blocks
-  vs Bricks) : critères = compat outils déjà possédés (JetEngine/Crocoblock),
-  Polylang FR/IT, éditabilité par IA, perfs, séparation propre de la couche pub.
+- [x] **Pile de build tranchée** → voir **`docs/PILE_BUILD_WORDPRESS.md`** (recherche
+  2026 sourcée). Résumé : GeneratePress Child **classique** (pas FSE) · éditorial en
+  **blocs core** (Polylang) · dynamique en **JetEngine Blocks + Query Builder** ·
+  éditabilité IA via **MCP JetEngine / Novamira** · pub **Ad Inserter** · popup non-pub
+  **Popup Maker**. **⚠️ Point à trancher : Polylang vs WPML pour le dynamique JetEngine**
+  (Crocoblock est certifié WPML, pas Polylang → garder JetEngine au dynamique « à faibles
+  libellés » au lancement, budgéter WPML ~99 €/an seulement si le multilingue dynamique
+  devient central).
 
 ## 3. Pont backoffice → WordPress 🤖 (après création du site)
 - [ ] **2ᵉ publisher** : export vers Agenda Sabauda (nécessite URL + credentials du site)
