@@ -77,6 +77,9 @@ l'édition non-dev et l'objectif « parties éditables en **Gutenberg natif** »
 - **Colonnes / éléments de page** → **Gutenberg natif** (+ **JetEngine Blocks**
   pour le dynamique : listings d'événements, hubs). **Jamais Elementor.**
 - **Pub / bannière / popup pub** → **Ad Inserter** (le garder pour ça, rien d'autre).
+  Mise en place détaillée : **`docs/REGIE_ANNONCEURS.md`** (tableau format→mécanisme,
+  recette Ad Inserter, choix des encarts, skin ON/OFF) + scaffold thème
+  **`deploy/wordpress/cs-regie.php`** (skin + gouttières, consent-gated, desktop only).
 - **Popup non-pub** (newsletter, annonce) → à décider (cf. recherche ci-dessous).
 - [x] **Pile de build tranchée** → voir **`docs/PILE_BUILD_WORDPRESS.md`** (recherche
   2026 sourcée). Résumé : GeneratePress Child **classique** (pas FSE) · éditorial en
