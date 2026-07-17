@@ -282,6 +282,107 @@
 .ala-une-card__eyebrow { gap: 0; align-items: baseline; }
 .ala-une-card__terr::before { content: " · "; }
 
+/* ===== carte "En évidence" — colonne 2 de la section desktop 3-colonnes de la home
+   (as-desktop-cols3), post JetEngine 1688 ("carte-evidence-blocks"), _element_id
+   "evidence"/"evidence-bottom". DISTINCTE de .ala-une-card : image 16/9 pleine largeur
+   + titre seul, PAS d'eyebrow/date ni de pastille territoire (cf. maquette Claude Design,
+   section desktop 3 colonnes, "En évidence"). Bug corrigé le 2026-07-17 : cette colonne
+   réutilisait à tort le Listing Item 976 ("à la une").
+   Clic : jet-engine/dynamic-image avec linked_image:true enveloppe l'<img> (ou, à défaut
+   d'image, le lien vide) dans un <a href="{permalink}">. JetEngine ne permet PAS de faire
+   du <h3> du titre un lien à son tour (jet-engine/dynamic-field n'a pas d'attribut href ;
+   jet-engine/dynamic-link, qui pourrait sembler l'outil naturel, ignore ses innerBlocks et
+   affiche son propre label — inutilisable comme wrapper) : la zone cliquable est donc
+   confinée au visuel, pas à la carte entière comme dans la maquette. C'est déjà mieux que
+   .ala-une-card (976), qui n'a aucune zone cliquable du tout aujourd'hui. */
+.evidence-card { display: block; border-bottom: 1px solid #E3DCCE; padding-bottom: 18px; }
+.evidence-card__image {
+  position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #FBF7F0;
+  border-radius: 3px; margin-bottom: 9px;
+}
+.evidence-card__image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.evidence-card__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; }
+/* Fallback visuel (même convention que .ala-une-card__image:empty) — ici sur le <a> généré
+   par linked_image:true, car c'est lui qui est effectivement vide quand le post n'a pas
+   d'image mise en avant (le conteneur .evidence-card__image, lui, n'est jamais :empty
+   puisqu'il contient toujours ce <a>, même vide). */
+.evidence-card__image .jet-listing-dynamic-image__link:empty {
+  display: flex; align-items: center; justify-content: center;
+}
+.evidence-card__image .jet-listing-dynamic-image__link:empty::after {
+  content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62;
+}
+.evidence-card__title {
+  margin: 0; font-family: var(--font-editorial); font-weight: 600; font-size: 15px;
+  line-height: 1.25; color: var(--fg-1);
+}
+.evidence-card:hover .evidence-card__title { text-decoration: underline; text-underline-offset: 3px; }
+/* Conteneurs des 2 blocs jet-engine/listing-grid (_element_id evidence / evidence-bottom,
+   posts_num:3 chacun) : colonne flex, gap 18px (cf. maquette "conteneur .../gap:18px").
+   margin-bottom:36px sur le groupe "top" seulement (le groupe "bottom" n'a rien après lui
+   dans la colonne, pas de marge à prévoir). */
+#evidence .jet-listing-grid__items,
+#evidence-bottom .jet-listing-grid__items {
+  display: flex; flex-direction: column; gap: 18px;
+}
+#evidence .jet-listing-grid__items { margin-bottom: 36px; }
+
+/* ===== carte "L'agenda à venir" — colonne 3 de la section desktop 3-colonnes de la home
+   (as-desktop-cols3), post JetEngine 1690 ("carte-agenda-a-venir-blocks"), _element_id
+   "venir"/"venir-bottom". Ligne horizontale compacte : petite vignette + titre + date en
+   rouge, PAS de pastille territoire (cf. maquette Claude Design, section desktop 3
+   colonnes, "L'agenda à venir"). Bug corrigé le 2026-07-17 : cette colonne réutilisait à
+   tort le Listing Item 976 ("à la une"), qui affiche un format complètement différent
+   (image 3/2 + eyebrow date + pastille territoire + titre).
+   Clic : même technique que .evidence-card (1688, colonne 2, cf. ci-dessus) —
+   jet-engine/dynamic-image avec linked_image:true enveloppe la vignette (ou, à défaut
+   d'image, la zone vide) dans un <a href="{permalink}">. Titre et date restent hors du
+   lien (même limitation JetEngine déjà documentée pour .evidence-card : pas moyen de
+   rendre la carte entière cliquable en blocs JetEngine natifs, sans JS — interdit sur ce
+   site).
+   Corrections avis expert UI (2026-07-17) : border-radius 3px (pas 2px de la spec
+   initiale — cohérence avec la règle site-wide "radius 3px sur les images", cf.
+   .ala-une-card__image et .evidence-card__image ci-dessus) ; vignette en
+   width:90px + aspect-ratio:3/2 (pas de height fixe 58px, qui donnait un ratio ~1.55:1 ne
+   correspondant à aucun ratio déjà utilisé sur le site — probable coquille pour 90×60,
+   cf. col.1 qui utilise déjà width:132px + aspect-ratio:3/2 pour sa vignette). */
+.venir-row { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #E3DCCE; padding-bottom: 12px; }
+.venir-row__image {
+  position: relative; width: 90px; flex-shrink: 0; aspect-ratio: 3 / 2; overflow: hidden;
+  background: #FBF7F0; border-radius: 3px;
+}
+.venir-row__image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.venir-row__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; }
+/* Fallback visuel (même convention que .ala-une-card__image:empty / .evidence-card__image) —
+   ici sur le <a> généré par linked_image:true, cf. commentaire équivalent ci-dessus pour
+   .evidence-card__image. */
+.venir-row__image .jet-listing-dynamic-image__link:empty {
+  display: flex; align-items: center; justify-content: center;
+}
+.venir-row__image .jet-listing-dynamic-image__link:empty::after {
+  content: "Visuel"; font-family: var(--font-body); font-size: 9px; color: #6F6B62;
+}
+.venir-row__body { min-width: 0; }
+.venir-row__title {
+  margin: 0 0 3px; font-family: var(--font-editorial); font-weight: 600; font-size: 13.5px;
+  line-height: 1.25; color: var(--fg-1);
+}
+.venir-row:hover .venir-row__title { text-decoration: underline; text-underline-offset: 3px; }
+.venir-row__date {
+  font-family: var(--font-body); font-size: 11px; font-weight: 800; color: #DC5D45;
+}
+/* Conteneurs des 2 blocs jet-engine/listing-grid (_element_id venir / venir-bottom,
+   posts_num:4 chacun) : colonne flex, gap 12px (cf. maquette "conteneur .../gap:12px").
+   margin-bottom:14px sur le groupe "top" seulement, pour l'espace avant la pub 300×250
+   désormais placée au milieu (le groupe "bottom" n'a rien après lui dans la colonne à part
+   le lien "Tout l'agenda" qui a déjà sa propre marge haute inline, pas de marge à prévoir
+   ici — même convention que #evidence/#evidence-bottom ci-dessus). */
+#venir .jet-listing-grid__items,
+#venir-bottom .jet-listing-grid__items {
+  display: flex; flex-direction: column; gap: 12px;
+}
+#venir .jet-listing-grid__items { margin-bottom: 14px; }
+
 /* ===== home mobile (sections 1-11) — SOURCE RÉELLE (Agenda Sabaudo - Mobile.dc.html,
    projet "Brief design agenda Sabaudo", lu le 2026-07-12). Interactions (menu, sélecteur
    territoire) en CSS pur ("checkbox hack") — pas de JS, contourne le risque de filtrage
