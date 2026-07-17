@@ -5,6 +5,16 @@
    Les classes ciblent des structures montées ensuite dans le builder.
    ============================================================= */
 
+/* Gutenberg (wp:group layout:flex avec flexWrap:"nowrap") ajoute la classe
+   "is-nowrap" au conteneur mais ne pousse JAMAIS la règle flex-wrap
+   correspondante dans le CSS du site (elle vit uniquement dans le CSS
+   généré par l'éditeur/le thème par défaut de WordPress, absent ici car le
+   site n'utilise pas les styles de bloc natifs). Constaté le 2026-07-17 :
+   sur toutes les cartes eyebrow (date · territoire), le texte retombait sur
+   une 2e ligne dès que ça ne tenait pas pile, laissant le séparateur "·"
+   flotter seul — visible sur quasiment tous les screenshots de ce chantier. */
+.is-nowrap { flex-wrap: nowrap; }
+
 /* ===== carte-evenement — SOURCE RÉELLE (ui_kits/agenda/kit.css + colors_and_type.css,
    lus via DesignSync le 2026-07-12). Remplace une version précédente FABRIQUÉE sans
    accès au design system — structure "boîte à ombre + image + pastille date" INEXACTE.
@@ -282,6 +292,43 @@
 .ala-une-card__eyebrow { gap: 0; align-items: baseline; }
 .ala-une-card__terr::before { content: " · "; }
 
+/* ===== carte-à-la-une — FORMAT A, variante DESKTOP PLEINE LARGEUR (Listing Item
+   JetEngine 1695, "carte-a-la-une-full-blocks", _element_id "ala-une"/"weekend"
+   dans l'arbre .as-home-desktop UNIQUEMENT — grilles .as-desktop-grid-3, PAS la
+   section "3 colonnes" evidence/venir tout en bas). DISTINCTE de .ala-une-card
+   (Format B, mobile grille 2col + rail "jour", post 976, PAS de ligne lieu) :
+   tailles légèrement plus grandes (titre 16.5px vs 15.5px, eyebrow 11px vs
+   10.5px, image margin-bottom 9px vs 8px) + ligne {lieu} finale (nom du lieu,
+   résolu via la clé meta virtuelle _EventVenueName, cf. Code Snippets id 43).
+   Poussé le 2026-07-17. ===== */
+.ala-une-full-card__image {
+  position: relative; aspect-ratio: 3 / 2; overflow: hidden; background: #FBF7F0; border-radius: 3px; margin-bottom: 9px;
+}
+/* position:absolute + inset:0 plutôt que width/height:100% — plus robuste face
+   à un ancêtre (wp-block-group__inner-container injecté par Gutenberg autour
+   de tagName:"article") qui peut empêcher la résolution du pourcentage de
+   hauteur et laisser l'image à sa taille intrinsèque (marges blanches
+   constatées le 2026-07-17 sur les images non 3:2). */
+.ala-une-full-card__image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Fallback visuel — filet de sécurité seulement : le meta_query "garantie photo"
+   (Code Snippets id 44, _element_id ala-une/weekend/jour) exclut déjà du pool
+   les tribe_events sans image mise en avant, donc ce cas ne devrait plus se
+   présenter en pratique sur ces 2 sections. */
+.ala-une-full-card__image:empty { display: flex; align-items: center; justify-content: center; }
+.ala-une-full-card__image:empty::after { content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62; }
+.ala-une-full-card__eyebrow {
+  font-family: var(--font-body); font-size: 11px; font-weight: 800; color: var(--fg-1); margin-bottom: 4px;
+  gap: 0; align-items: baseline;
+}
+.ala-une-full-card__terr::before { content: " · "; }
+.ala-une-full-card__title {
+  margin: 0 0 4px; font-family: var(--font-editorial); font-weight: 600; font-size: 16.5px;
+  line-height: 1.24; color: var(--fg-1);
+}
+.ala-une-full-card__venue {
+  font-family: var(--font-body); font-size: 12px; color: #6F6B62;
+}
+
 /* ===== carte "En évidence" — colonne 2 de la section desktop 3-colonnes de la home
    (as-desktop-cols3), post JetEngine 1688 ("carte-evidence-blocks"), _element_id
    "evidence"/"evidence-bottom". DISTINCTE de .ala-une-card : image 16/9 pleine largeur
@@ -443,7 +490,13 @@
    les 4 derniers événements, pas seulement ceux du jour. ---- */
 .as-day-rail .jet-listing-grid__items { display: flex !important; overflow-x: auto; gap: 12px; padding-bottom: 4px; }
 .as-day-rail .ala-une-card { width: 150px; flex-shrink: 0; }
-.as-day-rail .ala-une-card__title { font-size: 14.5px; }
+/* Titre 15px sur TOUTES les cartes _element_id "jour" (rail mobile scrollable
+   ET grille statique 4col desktop, cf. maquette Claude Design "15px dans le
+   rail" — le terme "rail" y désigne la section entière, mobile+desktop, pas
+   seulement le scroll horizontal mobile). _element_id "jour" est réutilisé
+   2x (arbre mobile + arbre desktop, un seul visible via @media à la fois) ;
+   id dupliqué en HTML mais le sélecteur #jour matche les deux occurrences. */
+#jour .ala-une-card__title { font-size: 15px; }
 
 /* ===== Fiche événement (single-event natif TEC) — touche typographique légère,
    "mode minimal d'abord" (docs/TEMPLATES_WORDPRESS.md #7). Les champs manquants
