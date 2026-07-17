@@ -286,7 +286,15 @@
 .ala-une-card__eyebrow {
   font-family: var(--font-body); font-size: 10.5px; font-weight: 800; color: var(--fg-1); margin-bottom: 3px;
 }
-.ala-une-card__title {
+/* Constaté le 2026-07-18 : JetEngine pose la classe __title sur son propre
+   <div> d'enveloppe (jet-listing-dynamic-field-block, jet-listing-dynamic-field,
+   ...), PAS sur le <h3> réellement rendu (qui n'a que la classe générique
+   jet-listing-dynamic-field__content). Le <h3> hérite donc de tout SAUF
+   font-size, propriété que la feuille de style par défaut du navigateur fixe
+   directement sur h3 (règle non héritée, qui gagne sur l'héritage quelle que
+   soit sa spécificité) — d'où des titres bien plus gros que prévu. Toutes les
+   règles __title ci-dessous ciblent donc aussi explicitement leur <h3> interne. */
+.ala-une-card__title, .ala-une-card__title h3 {
   margin: 0; font-family: var(--font-editorial); font-weight: 600; font-size: 15.5px;
   line-height: 1.22; color: var(--fg-1);
 }
@@ -339,7 +347,7 @@
 }
 .ala-une-full-card__terr { display: inline; }
 .ala-une-full-card__terr::before { content: " · "; }
-.ala-une-full-card__title {
+.ala-une-full-card__title, .ala-une-full-card__title h3 {
   margin: 0 0 4px; font-family: var(--font-editorial); font-weight: 600; font-size: 16.5px;
   line-height: 1.24; color: var(--fg-1);
 }
@@ -377,7 +385,7 @@
 .evidence-card__image .jet-listing-dynamic-image__link:empty::after {
   content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62;
 }
-.evidence-card__title {
+.evidence-card__title, .evidence-card__title h3 {
   margin: 0; font-family: var(--font-editorial); font-weight: 600; font-size: 15px;
   line-height: 1.25; color: var(--fg-1);
 }
@@ -428,7 +436,7 @@
   content: "Visuel"; font-family: var(--font-body); font-size: 9px; color: #6F6B62;
 }
 .venir-row__body { min-width: 0; }
-.venir-row__title {
+.venir-row__title, .venir-row__title h3 {
   margin: 0 0 3px; font-family: var(--font-editorial); font-weight: 600; font-size: 13.5px;
   line-height: 1.25; color: var(--fg-1);
 }
@@ -514,7 +522,7 @@
    seulement le scroll horizontal mobile). _element_id "jour" est réutilisé
    2x (arbre mobile + arbre desktop, un seul visible via @media à la fois) ;
    id dupliqué en HTML mais le sélecteur #jour matche les deux occurrences. */
-#jour .ala-une-card__title { font-size: 15px; }
+#jour .ala-une-card__title, #jour .ala-une-card__title h3 { font-size: 15px; }
 
 /* ===== Fiche événement (single-event natif TEC) — touche typographique légère,
    "mode minimal d'abord" (docs/TEMPLATES_WORDPRESS.md #7). Les champs manquants
