@@ -323,7 +323,7 @@
 .as-terr-toggle:checked ~ .as-terr-dropdown { display: block; }
 .as-hero-frame { position: relative; aspect-ratio: 1 / 1.05; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
 .as-hero-frame img { position: relative; z-index: 0; }
-.as-hero-frame__gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 45%, rgba(29,29,27,.78) 100%); }
+.as-hero-frame__gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 45%, rgba(29,29,27,.7) 100%); }
 .as-tile:hover { filter: brightness(0.98); }
 .as-terr-link:hover { color: #DC5D45 !important; }
 .as-adbar-toggle, .as-desktop-adbar-toggle { display: none; }
@@ -419,7 +419,7 @@
 .as-home-desktop__nav a { text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #1D1D1B; }
 .as-home-desktop__carousel { position: relative; margin-top: 16px; width: 100%; height: 340px; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
 .as-home-desktop__carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
-.as-home-desktop__carousel-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 40%, rgba(29,29,27,.8) 100%); }
+.as-home-desktop__carousel-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 40%, rgba(29,29,27,.7) 100%); }
 /* ⚠️ display:none par défaut (pas seulement via le parent .as-home-desktop) —
    ces classes cohabitent SUR LE MÊME élément que .as-home-desktop dans le HTML
    généré (ex. class="as-home-desktop as-desktop-cols3"), et une règle
