@@ -22,8 +22,8 @@
 <!-- BARRE FR|IT + BURGER -->
 <div style="display:flex;align-items:center;justify-content:flex-end;border-top:1px solid #1D1D1B;border-bottom:1px solid #1D1D1B;margin-top:12px;padding:8px 0 8px 20px">
   <div style="display:flex;align-items:center;gap:12px;padding-right:20px">
-    <div style="font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9C4B8;font-weight:400">|</span> <span style="color:#C9C4B8">IT</span></div>
-    <label for="as-menu-toggle" style="cursor:pointer;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></label>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9BFAD;font-weight:400">|</span> <span style="color:#C9BFAD">IT</span></div>
+    <label for="as-menu-toggle" aria-label="Ouvrir le menu" style="cursor:pointer;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></label>
   </div>
 </div>
 
@@ -31,7 +31,7 @@
 <div class="as-menu-overlay">
   <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1D1D1B;padding:16px 20px">
     <div style="font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1D1D1B">Menu</div>
-    <label for="as-menu-toggle" style="cursor:pointer;display:flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg></label>
+    <label for="as-menu-toggle" aria-label="Fermer le menu" style="cursor:pointer;display:flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg></label>
   </div>
   <div style="padding:8px 20px;flex:1;overflow-y:auto">
     <a href="https://agendasabauda.eu/accueil/" style="display:block;text-decoration:none;border-bottom:1px solid #E3DCCE;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Home</a>
@@ -47,7 +47,7 @@
     <a href="https://agendasabauda.eu/proposer-un-evenement/" style="display:block;text-decoration:none;padding:16px 0;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#DC5D45;text-transform:uppercase">Proposer un événement</a>
   </div>
   <div style="border-top:1px solid #1D1D1B;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
-    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9C4B8;font-weight:400">|</span> <span style="color:#C9C4B8">IT</span></div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9BFAD;font-weight:400">|</span> <span style="color:#C9BFAD">IT</span></div>
     <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#6F6B62">Savoie · Piémont · Vallée d'Aoste · Nice</div>
   </div>
 </div>
@@ -153,7 +153,7 @@
 <!-- wp:html -->
 <div class="as-home">
 <div style="padding:0 20px">
-  <a href="https://agendasabauda.eu/ce-week-end/" style="display:block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:13px 18px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em;border-radius:4px;margin-bottom:16px">Voir tous les événements du week-end&nbsp;→</a>
+  <a href="https://agendasabauda.eu/ce-week-end/" style="display:block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:12px 0 16px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em;border:none;clip-path:polygon(0 0,100% 0,100% 88%,94% 100%,88% 89%,82% 100%,76% 89%,70% 100%,64% 89%,58% 100%,52% 89%,46% 100%,40% 89%,34% 100%,28% 89%,22% 100%,16% 89%,10% 100%,4% 89%,0 100%);margin-bottom:16px">Voir tous les événements du week-end&nbsp;→</a>
 </div>
 
 <!-- CA VAUT LE DEPLACEMENT (transfrontalier) — PLACEHOLDER v1, statique.
@@ -180,7 +180,7 @@
     <h3 style="margin:0 0 8px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:16.5px;line-height:1.22;color:#1D1D1B">Titre de l'événement transfrontalier</h3>
     <div style="display:inline-flex;align-items:center;gap:6px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Y aller <span style="color:#DC5D45">→</span></div>
   </div>
-  <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;background:#1D1D1B;color:#F7F1E8;padding:13px 18px 16px;margin-bottom:24px;border-radius:4px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">
+  <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;background:#1D1D1B;color:#F7F1E8;padding:13px 18px 16px;margin-bottom:24px;border:none;clip-path:polygon(0 0,100% 0,100% 88%,94% 100%,88% 89%,82% 100%,76% 89%,70% 100%,64% 89%,58% 100%,52% 89%,46% 100%,40% 89%,34% 100%,28% 89%,22% 100%,16% 89%,10% 100%,4% 89%,0 100%);font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">
     <span>Piémont, Vallée d'Aoste, Nice : voir dans les autres territoires</span>
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7F1E8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-left:10px"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="13 6 19 12 13 18"></polyline></svg>
   </a>
@@ -353,14 +353,14 @@
   <nav style="display:flex;align-items:center;gap:22px">
     <a href="https://agendasabauda.eu/ce-week-end/" style="font-weight:700">Ce week-end</a>
     <a href="https://agendasabauda.eu/tout-l-agenda/">Événements</a>
-    <a href="#">Expositions</a>
-    <a href="#">Concerts</a>
-    <a href="#">Gastronomie</a>
-    <a href="#">En famille</a>
+    <a href="https://agendasabauda.eu/evenements/categorie/expositions-patrimoine/">Expositions</a>
+    <a href="https://agendasabauda.eu/evenements/categorie/concerts-musique/">Concerts</a>
+    <a href="https://agendasabauda.eu/evenements/categorie/gastronomie-sagre/">Gastronomie</a>
+    <a href="https://agendasabauda.eu/evenements/categorie/jeune-public-famille/">En famille</a>
     <a href="#">Infos utiles</a>
   </nav>
   <div style="display:flex;align-items:center;gap:20px">
-    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9C4B8;font-weight:400">|</span> <span style="color:#C9C4B8">IT</span></div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9BFAD;font-weight:400">|</span> <span style="color:#C9BFAD">IT</span></div>
     <a href="https://agendasabauda.eu/?s=" style="display:flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg></a>
   </div>
 </div>
@@ -368,7 +368,7 @@
 <!-- TERRITOIRE ACTIF -->
 <div style="display:flex;align-items:center;gap:16px;margin-top:20px;padding:10px 16px;background:#FBF7F0;border-radius:3px">
   <div style="font-family:'Nunito Sans',sans-serif;font-size:12.5px;color:#1D1D1B">Vous regardez <strong style="color:#DC5D45">Savoie / Haute-Savoie</strong></div>
-  <div style="width:1px;height:12px;background:#D8CEBB"></div>
+  <div style="width:1px;height:12px;background:#C9BFAD"></div>
   <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#6F6B62">Changer :</div>
   <a href="https://agendasabauda.eu/territoire/piemont/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Piémont</a>
   <a href="https://agendasabauda.eu/territoire/vallee-d-aoste/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Vallée d'Aoste</a>
@@ -476,7 +476,7 @@
 <!-- wp:html -->
 <div class="as-home-desktop">
 <div style="display:flex;justify-content:center">
-  <a href="https://agendasabauda.eu/ce-week-end/" style="display:inline-block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:13px 22px;border-radius:4px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">Voir tous les événements du week-end&nbsp;→</a>
+  <a href="https://agendasabauda.eu/ce-week-end/" style="display:inline-block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:13px 30px 17px;border:none;clip-path:polygon(0 0,100% 0,100% 88%,94% 100%,88% 89%,82% 100%,76% 89%,70% 100%,64% 89%,58% 100%,52% 89%,46% 100%,40% 89%,34% 100%,28% 89%,22% 100%,16% 89%,10% 100%,4% 89%,0 100%);font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">Voir tous les événements du week-end&nbsp;→</a>
 </div>
 
 <!-- EVENEMENTS DU JOUR -->
@@ -520,7 +520,7 @@
     </a>
   </div>
   <div style="display:flex;justify-content:center">
-    <a href="#" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;background:#1D1D1B;color:#F7F1E8;padding:13px 22px;border-radius:4px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">
+    <a href="#" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;background:#1D1D1B;color:#F7F1E8;padding:13px 30px 17px;border:none;clip-path:polygon(0 0,100% 0,100% 88%,94% 100%,88% 89%,82% 100%,76% 89%,70% 100%,64% 89%,58% 100%,52% 89%,46% 100%,40% 89%,34% 100%,28% 89%,22% 100%,16% 89%,10% 100%,4% 89%,0 100%);font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">
       <span>Voir dans les autres territoires</span>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7F1E8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="13 6 19 12 13 18"></polyline></svg>
     </a>
