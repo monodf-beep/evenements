@@ -378,7 +378,7 @@
   border-radius: 3px; margin-bottom: 9px;
 }
 .evidence-card__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
-.evidence-card__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; }
+.evidence-card__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; text-decoration: none; }
 /* Fallback visuel (même convention que .ala-une-card__image:empty) — ici sur le <a> généré
    par linked_image:true, car c'est lui qui est effectivement vide quand le post n'a pas
    d'image mise en avant (le conteneur .evidence-card__image, lui, n'est jamais :empty
@@ -429,7 +429,7 @@
   background: #FBF7F0; border-radius: 3px;
 }
 .venir-row__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
-.venir-row__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; }
+.venir-row__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; text-decoration: none; }
 /* Fallback visuel (même convention que .ala-une-card__image:empty / .evidence-card__image) —
    ici sur le <a> généré par linked_image:true, cf. commentaire équivalent ci-dessus pour
    .evidence-card__image. */
