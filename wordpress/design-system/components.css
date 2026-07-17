@@ -438,6 +438,12 @@
 .as-desktop-tiles__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .as-desktop-tiles__newsletter { background: #DC5D45; border-radius: 4px; padding: 26px 22px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
 .as-desktop-cols3 { display: none; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; align-items: start; margin-top: 44px; }
+/* Le bloc Gutenberg "Group" enveloppe son contenu dans .wp-block-group__inner-container,
+   qui devient alors le SEUL enfant direct de la grille (les 3 vraies colonnes sont
+   petites-filles, pas filles) — elles s'empilent donc en 1 colonne au lieu de 3.
+   display:contents fait disparaître ce wrapper du flux de mise en page sans le retirer
+   du DOM, pour que .as-desktop-col devienne enfant direct de la grille. */
+.as-desktop-cols3 > .wp-block-group__inner-container { display: contents; }
 .as-desktop-section-title { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #1D1D1B; padding-top: 12px; margin-bottom: 20px; }
 .as-desktop-section-title__label { font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: #1D1D1B; text-transform: uppercase; }
 .as-desktop-newsletter-band { display: none; max-width: 950px; margin: 56px auto 0; background: #DC5D45; padding: 40px 48px; align-items: center; justify-content: space-between; gap: 48px; }
