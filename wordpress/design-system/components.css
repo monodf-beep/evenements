@@ -293,7 +293,17 @@
 .ala-une-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; margin-bottom: 16px;
 }
-.ala-une-card__eyebrow { gap: 0; align-items: baseline; }
+/* Constaté le 2026-07-17 (en creusant le "point flottant" au-delà du 1er correctif
+   is-nowrap, qui n'était pas la vraie cause) : au RENDU réel, .ala-une-card__terr
+   n'est PAS un enfant du groupe flex .ala-une-card__eyebrow malgré un bloc source
+   wp:group correctement imbriqué — jet-engine/dynamic-terms, en tant que bloc
+   dynamique server-rendered, sort de son wp:group parent lors du rendu final.
+   .ala-une-card__terr redevient donc un <div> frère qui retombe sur sa propre
+   ligne par défaut (bloc), donnant l'impression d'un "·" flottant tout seul
+   au-dessus du territoire. Fix : rendre les deux inline-flex/inline pour qu'ils
+   restent sur la même ligne quelle que soit leur position réelle dans le DOM. */
+.ala-une-card__eyebrow { display: inline-flex; gap: 0; align-items: baseline; }
+.ala-une-card__terr { display: inline; }
 .ala-une-card__terr::before { content: " · "; }
 
 /* ===== carte-à-la-une — FORMAT A, variante DESKTOP PLEINE LARGEUR (Listing Item
@@ -322,8 +332,9 @@
 .ala-une-full-card__image:empty::after { content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62; }
 .ala-une-full-card__eyebrow {
   font-family: var(--font-body); font-size: 11px; font-weight: 800; color: var(--fg-1); margin-bottom: 4px;
-  gap: 0; align-items: baseline;
+  display: inline-flex; gap: 0; align-items: baseline;
 }
+.ala-une-full-card__terr { display: inline; }
 .ala-une-full-card__terr::before { content: " · "; }
 .ala-une-full-card__title {
   margin: 0 0 4px; font-family: var(--font-editorial); font-weight: 600; font-size: 16.5px;
