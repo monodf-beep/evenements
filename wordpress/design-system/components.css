@@ -12,8 +12,12 @@
    site n'utilise pas les styles de bloc natifs). Constaté le 2026-07-17 :
    sur toutes les cartes eyebrow (date · territoire), le texte retombait sur
    une 2e ligne dès que ça ne tenait pas pile, laissant le séparateur "·"
-   flotter seul — visible sur quasiment tous les screenshots de ce chantier. */
-.is-nowrap { flex-wrap: nowrap; }
+   flotter seul — visible sur quasiment tous les screenshots de ce chantier.
+   !important nécessaire : WordPress core injecte lui-même
+   ".is-layout-flex{flex-wrap:wrap}" (même spécificité, chargé après ce
+   snippet dans le <head>), donc un simple flex-wrap:nowrap ne suffisait
+   pas à gagner le conflit de cascade. */
+.is-nowrap { flex-wrap: nowrap !important; }
 
 /* ===== carte-evenement — SOURCE RÉELLE (ui_kits/agenda/kit.css + colors_and_type.css,
    lus via DesignSync le 2026-07-12). Remplace une version précédente FABRIQUÉE sans
