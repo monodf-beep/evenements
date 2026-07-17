@@ -8,6 +8,47 @@
    prescrite par implementation/README-claude-code.md) une fois le
    SFTP OVH en place.
    ============================================================= */
+
+/* ---- Polices auto-hébergées (licence commerciale confirmée par Franck
+   le 2026-07-17) — jusque-là --font-editorial n'était jamais chargé
+   nulle part (ni @font-face, ni Google Fonts), donc tout ce qui
+   l'utilisait retombait silencieusement sur la police système. ---- */
+@font-face {
+  font-family: 'La Semplicita';
+  src: url('https://agendasabauda.eu/wp-content/uploads/fonts/semplicita/SemplicitaPro-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'La Semplicita';
+  src: url('https://agendasabauda.eu/wp-content/uploads/fonts/semplicita/SemplicitaPro-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'La Semplicita';
+  src: url('https://agendasabauda.eu/wp-content/uploads/fonts/semplicita/SemplicitaPro-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'La Semplicita';
+  src: url('https://agendasabauda.eu/wp-content/uploads/fonts/semplicita/SemplicitaPro-Semibold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'La Semplicita';
+  src: url('https://agendasabauda.eu/wp-content/uploads/fonts/semplicita/SemplicitaPro-Bold.woff') format('woff');
+  font-weight: 700 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* ---- Couleurs de marque ---- */
   --cs-bleu:        #18365E;   /* Bleu Savoie */
