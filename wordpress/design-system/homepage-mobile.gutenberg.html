@@ -14,7 +14,7 @@
      System") -->
 <div style="padding:16px 0 0">
   <a href="https://agendasabauda.eu/accueil/" style="display:block;text-decoration:none" aria-label="Agenda Sabauda, accueil">
-    <img class="as-masthead-sketch" src="https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-agenda-sabauda-v7.png" alt="Agenda Sabauda" width="778" height="250">
+    <div class="as-masthead-sketch" role="img" aria-label="Agenda Sabauda" style="aspect-ratio:741/212;background:#1D1D1B;-webkit-mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-sabauda-sketch.png');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-sabauda-sketch.png');mask-size:contain;mask-repeat:no-repeat;mask-position:center"></div>
   </a>
   <div class="as-masthead-tagline" style="text-align:center;margin-top:8px">Quoi faire, où manger · 4 territoires</div>
 </div>
@@ -313,6 +313,7 @@
 <div style="height:64px"></div>
 
 <!-- BARRE PUB STICKY (mobile) — bloc Ad Inserter #12 -->
+<input type="checkbox" id="as-adbar-toggle" class="as-adbar-toggle">
 <div class="as-sticky-ad" style="background:#F7F1E8;border-top:1px solid #1D1D1B;padding:10px 14px;display:flex;align-items:center;gap:10px">
   <div style="flex:1;display:flex;align-items:center;gap:10px;min-width:0">
     <div style="width:60px;height:42px;flex-shrink:0;background:#FBF7F0;border:1px solid #E3DCCE;display:flex;align-items:center;justify-content:center">
@@ -323,9 +324,9 @@
       <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:700;color:#1D1D1B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">[adinserter block="12"]</div>
     </div>
   </div>
-  <div style="flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center">
+  <label for="as-adbar-toggle" aria-label="Fermer la publicité" style="cursor:pointer;flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>
-  </div>
+  </label>
 </div>
 </div>
 <!-- /wp:html -->
@@ -343,7 +344,7 @@
 <!-- MASTHEAD (logo réel — assets/agenda/masthead-agenda-v7.png) -->
 <div style="text-align:center;padding-bottom:14px">
   <a href="https://agendasabauda.eu/accueil/" style="display:inline-block;text-decoration:none" aria-label="Agenda Sabauda, accueil">
-    <img class="as-masthead-sketch" src="https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-agenda-sabauda-v7.png" alt="Agenda Sabauda" width="778" height="250">
+    <div class="as-masthead-sketch" role="img" aria-label="Agenda Sabauda" style="aspect-ratio:741/212;background:#1D1D1B;-webkit-mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-sabauda-sketch.png');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/masthead-sabauda-sketch.png');mask-size:contain;mask-repeat:no-repeat;mask-position:center"></div>
   </a>
   <div class="as-masthead-tagline" style="margin-top:8px">Quoi faire, où manger · 4 territoires</div>
 </div>
@@ -370,9 +371,9 @@
   <div style="font-family:'Nunito Sans',sans-serif;font-size:12.5px;color:#1D1D1B">Vous regardez <strong style="color:#DC5D45">Savoie / Haute-Savoie</strong></div>
   <div style="width:1px;height:12px;background:#C9BFAD"></div>
   <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#6F6B62">Changer :</div>
-  <a href="https://agendasabauda.eu/territoire/piemont/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Piémont</a>
-  <a href="https://agendasabauda.eu/territoire/vallee-d-aoste/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Vallée d'Aoste</a>
-  <a href="https://agendasabauda.eu/territoire/nice-alpes-maritimes/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Comté de Nice</a>
+  <a href="https://agendasabauda.eu/territoire/piemont/" class="as-terr-link" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Piémont</a>
+  <a href="https://agendasabauda.eu/territoire/vallee-d-aoste/" class="as-terr-link" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Vallée d'Aoste</a>
+  <a href="https://agendasabauda.eu/territoire/nice-alpes-maritimes/" class="as-terr-link" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Comté de Nice</a>
 </div>
 
 <!-- CARROUSEL (statique v1 — à rendre dynamique via un Listing Item "mise en avant") -->
@@ -652,13 +653,14 @@
      colonnes) a été retiré pour éviter le doublon. -->
 
 <!-- BARRE PUB STICKY (desktop) — bloc Ad Inserter #6 (728×90) -->
+<input type="checkbox" id="as-desktop-adbar-toggle" class="as-desktop-adbar-toggle">
 <div class="as-desktop-sticky-ad">
   <div class="as-desktop-sticky-ad__inner">
     <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;color:#6F6B62;letter-spacing:0.14em;text-transform:uppercase;flex-shrink:0">Publicité</div>
     <div style="flex:1;min-height:70px;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">[adinserter block="6"]</div>
-    <div style="flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center">
+    <label for="as-desktop-adbar-toggle" aria-label="Fermer la publicité" style="cursor:pointer;flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>
-    </div>
+    </label>
   </div>
 </div>
 <!-- /wp:html -->
