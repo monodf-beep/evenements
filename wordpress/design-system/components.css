@@ -306,7 +306,7 @@
    restent sur la même ligne quelle que soit leur position réelle dans le DOM. */
 .ala-une-card__eyebrow { display: inline-flex; gap: 0; align-items: baseline; }
 .ala-une-card__terr { display: inline; }
-.ala-une-card__terr::before { content: " · "; }
+.ala-une-card__eyebrow > .ala-une-card__terr::before { content: " · "; }
 
 /* ===== carte-à-la-une — FORMAT A, variante DESKTOP PLEINE LARGEUR (Listing Item
    JetEngine 1695, "carte-a-la-une-full-blocks", _element_id "ala-une"/"weekend"
@@ -352,7 +352,7 @@
   display: inline-flex; gap: 0; align-items: baseline;
 }
 .ala-une-full-card__terr { display: inline; }
-.ala-une-full-card__terr::before { content: " · "; }
+.ala-une-full-card__eyebrow > .ala-une-full-card__terr::before { content: " · "; }
 .ala-une-full-card__title, .ala-une-full-card__title h3 {
   margin: 0 0 4px; font-family: var(--font-editorial); font-weight: 600; font-size: 16.5px;
   line-height: 1.24; color: var(--fg-1);
