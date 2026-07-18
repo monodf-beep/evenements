@@ -2,6 +2,36 @@
 
 *Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie, « Ce week-end »/« Tout l'agenda » et Recherche reconstruits en gabarits PHP dédiés).*
 
+## 🆕 « Mentions légales » (page 1700) — gabarit prêt et vérifié, **NE PAS PUBLIER**
+
+Source réelle : `docs/legal/mentions_legales.md` (FR + IT, trame juridique rédigée par
+Franck). Nouveau `wordpress/design-system/legal-mentions-template.php`
+(snippet live #50, `CS · Gabarit Mentions légales`) : petit convertisseur
+markdown→HTML maison (`cs_legal_md_to_html`/`cs_legal_md_inline`, gère ##/###,
+paragraphes, listes à puces avec continuation indentée, **gras**/*italique*,
+URLs nues, placeholders `[entre crochets]` surlignés en `<mark>`) + bandeau
+"brouillon interne" en tête de page. Les deux blocs (FR section 1-10, IT
+sezione 1-10) du document source sont rendus l'un après l'autre sur la même
+page.
+
+**Vérifié en profondeur SANS publier** (impossible de charger l'URL publique
+d'un brouillon — 404 anonyme normal ; pas d'auth wp-admin utilisée, conforme à
+la contrainte du chantier) : rejoue le rendu complet (`get_header()` + contenu
++ `get_footer()`, sans le `exit;` final) côté serveur via `novamira/execute-php`,
+sur le contenu réel extrait du snippet déployé. Résultat propre : 10 `<h2>`
+par langue, 3 `<ul>`/13 `<li>` bien équilibrés par langue, 15 placeholders
+surlignés par langue, aucune erreur/warning/notice PHP, pas de fuite de balise
+`<?php`. Un bug de parsing (item de liste dont la suite déborde sur une ligne
+indentée — section 6 FR/IT du document) a été détecté et corrigé (pré-passe de
+fusion des lignes de continuation) avant redéploiement du snippet.
+
+**Bloqué pour publication — informations légales réelles manquantes,
+interdiction d'inventer** : raison sociale/dénomination, statut juridique,
+adresse du siège, SIRET/n° d'immatriculation, n° de TVA intracommunautaire,
+téléphone de contact, nom + fonction du directeur de publication, nom +
+adresse + contact de l'hébergeur (× 2, FR et IT identiques sauf traduction du
+libellé). Page 1700 laissée volontairement en `post_status=draft`.
+
 ## 🆕 « Annoncer » (page commerciale B2B) — prête, brouillon en attente de publication
 
 Source réelle : `Agenda Sabaudo - Annoncer.dc.html`. Nouveau
