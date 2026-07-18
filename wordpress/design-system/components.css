@@ -251,15 +251,29 @@
    "grid 2×2 avec image" utilisée section 11 "À LA UNE" de la home — DISTINCTE de
    .ag-row (ligne dense sans image). Valeurs en px littéraux pour coller exactement
    à la source (pas de mapping token proposé par la maquette elle-même). ===== */
+.ala-une-card { position: relative; }
 .ala-une-card__image {
   aspect-ratio: 3 / 2; overflow: hidden; background: #FBF7F0; border-radius: 3px; margin-bottom: 8px;
 }
 .ala-une-card__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
+/* Carte entière cliquable (2026-07-18, demandé par Franck) — jusqu'ici .ala-une-card
+   (post JetEngine 976/1696) n'avait AUCUNE zone cliquable (linked_image:false sur le bloc
+   jet-engine/dynamic-image). Passé à linked_image:true (+ image_link_source:_permalink)
+   pour faire apparaître un <a href="{permalink}"> autour de la vignette, puis même
+   technique "stretched link" que .evidence-card/.venir-row (cf. commentaire détaillé sur
+   .evidence-card) pour étendre le clic à la carte entière : le <a> reste en flux normal
+   (visuellement identique), son ::before (pas ::after, déjà pris par le fallback "Visuel"
+   juste en dessous) passe en position:absolute et remonte jusqu'à .ala-une-card
+   (position:relative) faute de tout ancêtre intermédiaire positionné. */
+.ala-une-card__image .jet-listing-dynamic-image__link { display: block; width: 100%; height: 100%; text-decoration: none; }
+.ala-une-card__image .jet-listing-dynamic-image__link::before { content: ""; position: absolute; inset: 0; }
 /* Fallback visuel — évite un pavé vide quand l'événement n'a pas d'image mise en avant
    (constaté le 2026-07-17 : plusieurs cartes "À la une"/"Événements d'aujourd'hui" sans
-   <img>, rendu vide et incohérent à côté des cartes avec photo dans la même rangée). */
-.ala-une-card__image:empty { display: flex; align-items: center; justify-content: center; }
-.ala-une-card__image:empty::after { content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62; }
+   <img>, rendu vide et incohérent à côté des cartes avec photo dans la même rangée).
+   Ciblé sur le <a> (jamais :empty lui-même, contient toujours ce lien même vide) depuis
+   le passage à linked_image:true, même convention que .evidence-card__image. */
+.ala-une-card__image .jet-listing-dynamic-image__link:empty { display: flex; align-items: center; justify-content: center; }
+.ala-une-card__image .jet-listing-dynamic-image__link:empty::after { content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62; }
 .ala-une-card__eyebrow {
   font-family: var(--font-body); font-size: 10.5px; font-weight: 800; color: var(--fg-1); margin-bottom: 3px;
 }
@@ -311,16 +325,28 @@
    dans le même genre de contexte (wrapper wp-block-group__inner-container +
    grille JetEngine). Revenu à cette même technique simple, éprouvée, plutôt
    que d'empiler une 3e variante non testée. */
+.ala-une-full-card { position: relative; }
 .ala-une-full-card__image {
   aspect-ratio: 3 / 2; overflow: hidden; background: #FBF7F0; border-radius: 3px; margin-bottom: 9px;
 }
 .ala-une-full-card__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
+/* Carte entière cliquable (2026-07-18, demandé par Franck) — même traitement que
+   .ala-une-card (cf. commentaire détaillé là-bas) : passé à linked_image:true +
+   image_link_source:_permalink sur le bloc JetEngine (post 1695), puis "stretched link"
+   via ::before sur le <a> généré (::after réservé au fallback "Visuel" juste en dessous).
+   Ne touche PAS à la technique de dimensionnement de l'image elle-même (aspect-ratio +
+   overflow:hidden, sans position:absolute) — cf. avertissement ci-dessus, deux tentatives
+   précédentes avec position:absolute SUR L'IMAGE avaient cassé le rendu desktop ; ce
+   correctif ne s'applique qu'au <a> wrapper, pas à l'image. */
+.ala-une-full-card__image .jet-listing-dynamic-image__link { display: block; width: 100%; height: 100%; text-decoration: none; }
+.ala-une-full-card__image .jet-listing-dynamic-image__link::before { content: ""; position: absolute; inset: 0; }
 /* Fallback visuel — filet de sécurité seulement : le meta_query "garantie photo"
    (Code Snippets id 44, _element_id ala-une/weekend/jour) exclut déjà du pool
    les tribe_events sans image mise en avant, donc ce cas ne devrait plus se
-   présenter en pratique sur ces 2 sections. */
-.ala-une-full-card__image:empty { display: flex; align-items: center; justify-content: center; }
-.ala-une-full-card__image:empty::after { content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62; }
+   présenter en pratique sur ces 2 sections. Ciblé sur le <a> (jamais :empty lui-même)
+   depuis le passage à linked_image:true, même convention que .ala-une-card__image. */
+.ala-une-full-card__image .jet-listing-dynamic-image__link:empty { display: flex; align-items: center; justify-content: center; }
+.ala-une-full-card__image .jet-listing-dynamic-image__link:empty::after { content: "Visuel"; font-family: var(--font-body); font-size: 11px; color: #6F6B62; }
 .ala-une-full-card__eyebrow {
   font-family: var(--font-body); font-size: 11px; font-weight: 800; color: var(--fg-1); margin-bottom: 4px;
   display: inline-flex; gap: 0; align-items: baseline;
@@ -346,16 +372,26 @@
    d'image, le lien vide) dans un <a href="{permalink}">. JetEngine ne permet PAS de faire
    du <h3> du titre un lien à son tour (jet-engine/dynamic-field n'a pas d'attribut href ;
    jet-engine/dynamic-link, qui pourrait sembler l'outil naturel, ignore ses innerBlocks et
-   affiche son propre label — inutilisable comme wrapper) : la zone cliquable est donc
-   confinée au visuel, pas à la carte entière comme dans la maquette. C'est déjà mieux que
-   .ala-une-card (976), qui n'a aucune zone cliquable du tout aujourd'hui. */
-.evidence-card { display: block; border-bottom: 1px solid #E3DCCE; padding-bottom: 18px; }
+   affiche son propre label — inutilisable comme wrapper).
+   Carte entière cliquable (2026-07-18, demandé par Franck) SANS JS, via la technique CSS
+   "stretched link" : le <a> généré par linked_image:true reste normalement en flux (plus
+   en position:absolute cantonné à la vignette), donc visuellement identique ; un ::before
+   sur ce même <a> (::after est déjà pris par le fallback "Visuel" plus bas), lui, passe en
+   position:absolute et — comme ni le <a> ni son wrapper .evidence-card__image ne sont plus
+   position:relative — remonte jusqu'au premier ancêtre positionné, .evidence-card
+   lui-même, et le recouvre en entier (inset:0). Le clic n'importe où sur la carte active
+   donc ce lien, sans avoir besoin d'un <a> autour de tout le HTML (impossible nativement
+   en blocs JetEngine, cf. limitation ci-dessus). Les pastilles territoire
+   (jet-listing-dynamic-terms__link) sont des <span>, pas de vrais liens, donc pas de
+   conflit de clic imbriqué. */
+.evidence-card { display: block; border-bottom: 1px solid #E3DCCE; padding-bottom: 18px; position: relative; }
 .evidence-card__image {
-  position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #FBF7F0;
+  aspect-ratio: 16 / 9; overflow: hidden; background: #FBF7F0;
   border-radius: 3px; margin-bottom: 9px;
 }
 .evidence-card__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
-.evidence-card__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; text-decoration: none; }
+.evidence-card__image .jet-listing-dynamic-image__link { display: block; width: 100%; height: 100%; text-decoration: none; }
+.evidence-card__image .jet-listing-dynamic-image__link::before { content: ""; position: absolute; inset: 0; }
 /* Fallback visuel (même convention que .ala-une-card__image:empty) — ici sur le <a> généré
    par linked_image:true, car c'est lui qui est effectivement vide quand le post n'a pas
    d'image mise en avant (le conteneur .evidence-card__image, lui, n'est jamais :empty
@@ -400,7 +436,7 @@
    width:90px + aspect-ratio:3/2 (pas de height fixe 58px, qui donnait un ratio ~1.55:1 ne
    correspondant à aucun ratio déjà utilisé sur le site — probable coquille pour 90×60,
    cf. col.1 qui utilise déjà width:132px + aspect-ratio:3/2 pour sa vignette). */
-.venir-row { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #E3DCCE; padding-bottom: 12px; }
+.venir-row { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #E3DCCE; padding-bottom: 12px; position: relative; }
 /* Fix décalage/centrage visuel sur titres courts (ex. "Loups Garous", "Marché gourmand
    de Chambéry") — 2026-07-18, révisé le même jour après regénération du template
    JetEngine "carte-agenda-a-venir-blocks" par une autre session (structure passée d'un
@@ -435,11 +471,17 @@
   display: flex; gap: 10px; align-items: center;
 }
 .venir-row__image {
-  position: relative; width: 90px; flex-shrink: 0; aspect-ratio: 3 / 2; overflow: hidden;
+  width: 90px; flex-shrink: 0; aspect-ratio: 3 / 2; overflow: hidden;
   background: #FBF7F0; border-radius: 3px;
 }
 .venir-row__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
-.venir-row__image .jet-listing-dynamic-image__link { position: absolute; inset: 0; display: block; text-decoration: none; }
+.venir-row__image .jet-listing-dynamic-image__link { display: block; width: 100%; height: 100%; text-decoration: none; }
+/* Carte entière cliquable (2026-07-18) — même technique "stretched link" que
+   .evidence-card, cf. commentaire détaillé là-bas (::before, pas ::after, qui est déjà
+   pris par le fallback "Visuel" plus bas). .venir-row__image et le <a> ne sont plus
+   position:relative, laissant ce ::before remonter jusqu'à .venir-row (position:relative)
+   et le recouvrir en entier. */
+.venir-row__image .jet-listing-dynamic-image__link::before { content: ""; position: absolute; inset: 0; }
 /* Fallback visuel (même convention que .ala-une-card__image:empty / .evidence-card__image) —
    ici sur le <a> généré par linked_image:true, cf. commentaire équivalent ci-dessus pour
    .evidence-card__image. */
