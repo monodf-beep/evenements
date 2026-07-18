@@ -525,9 +525,28 @@
 
 /* ---- Rail horizontal "Événements d'aujourd'hui" — force le Listing Grid JetEngine
    (grid 2D par défaut) en scroll horizontal flex avec cartes de largeur fixe. Filtre
-   par date pas encore câblé (nécessite JetEngine Query Builder) — affiche pour l'instant
-   les 4 derniers événements, pas seulement ceux du jour. ---- */
-.as-day-rail .jet-listing-grid__items { display: flex !important; overflow-x: auto; gap: 12px; padding-bottom: 4px; }
+   par date câblé côté PHP (snippet "CS · Filtre date rail Aujourd'hui", filtre
+   jet-engine/listing/grid/posts-query-args sur _element_id "jour") — ce bloc CSS gère
+   uniquement la mise en page.
+   Bug corrigé 2026-07-18 (signalé par Franck, "en mobile ne va pas du tout") : cartes
+   qui se chevauchaient et la 4e carte qui repassait à la ligne au lieu de rester dans
+   le rail. Mesuré en DevTools : .jet-listing-grid__item (l'enfant flex RÉEL de
+   .jet-listing-grid__items, pas .ala-une-card qui est nichée dedans) reste à ~89px de
+   large (25% du conteneur, 4 colonnes) à cause de la règle JetEngine
+   ".jet-listing-grid__items > .jet-listing-grid__item { flex: 0 0 calc(100% / var(--columns)) }"
+   (frontend.css du plugin) : le raccourci `flex` fixe le flex-basis, qui prime sur
+   `width` seul pour le dimensionnement — un premier essai avec juste "width:auto
+   !important" n'avait donc aucun effet. La carte interne à 150px débordait de son item
+   à 89px (chevauchement avec la carte suivante), et une fois la somme des largeurs >
+   largeur du conteneur, flex-wrap:wrap (JetEngine, sans !important mais nous ne le
+   surchargions pas encore) forçait un retour à la ligne au lieu de scroller
+   horizontalement. Fix : surcharger le raccourci `flex` lui-même (pas juste width) —
+   ET max-width:25% (calc(100%/var(--columns)), même règle JetEngine), qui clampait
+   l'item à ~89px indépendamment du flex-basis corrigé. */
+.as-day-rail .jet-listing-grid__items {
+  display: flex !important; flex-wrap: nowrap !important; overflow-x: auto; gap: 12px; padding-bottom: 4px;
+}
+.as-day-rail .jet-listing-grid__item { flex: 0 0 auto !important; width: auto !important; max-width: none !important; }
 .as-day-rail .ala-une-card { width: 150px; flex-shrink: 0; }
 /* Titre 15px sur TOUTES les cartes _element_id "jour" (rail mobile scrollable
    ET grille statique 4col desktop, cf. maquette Claude Design "15px dans le
