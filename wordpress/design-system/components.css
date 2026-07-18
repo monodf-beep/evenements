@@ -699,8 +699,17 @@
    en cascade, rendant la section visible sur mobile malgré .as-home-desktop.
    Bug réel constaté le 2026-07-13 (sections "Nouveautés/En évidence/Agenda à
    venir" et grilles "À la une" visibles sous le footer mobile). */
-.as-desktop-grid-3 { display: none; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.as-desktop-grid-4 { display: none; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+/* ⚠️ Pas de grid-template-columns/gap ici : au-delà de 1024px cette classe passe
+   en display:block (règle plus bas), jamais display:grid, donc ces propriétés
+   seraient du code mort — pire, trompeur, car gap:24px ne correspond PAS au
+   gutter réel (mesuré à 20px, cf. commentaire plus bas sur le vrai layout
+   JetEngine flex). Écart mesuré et corrigé le 2026-07-18 : getComputedStyle
+   donnait gap:24px alors que .ala-une-full-card avait un colGap/rowGap réel de
+   20px (padding:10px de chaque .jet-listing-grid__item). Si un vrai espacement
+   visuel de 24px est voulu, agir sur #weekend .jet-listing-grid__items (voir
+   avertissement plus bas sur les régressions passées avant d'y toucher). */
+.as-desktop-grid-3 { display: none; }
+.as-desktop-grid-4 { display: none; }
 .as-desktop-tiles { display: none; grid-template-columns: 1fr 280px; gap: 20px; align-items: stretch; }
 .as-desktop-tiles__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .as-desktop-tiles__newsletter { background: #DC5D45; border-radius: 4px; padding: 26px 22px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
