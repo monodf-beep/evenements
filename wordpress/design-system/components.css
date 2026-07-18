@@ -511,6 +511,22 @@
 }
 #venir .jet-listing-grid__items { margin-bottom: 14px; }
 
+/* ===== carte "Nouveautés sur Agenda Sabauda" — colonne 1 de la section desktop
+   3-colonnes de la home (as-desktop-cols3). Écart mesuré le 2026-07-19 : cette colonne
+   est du HTML statique injecté directement dans le post/template de la home (928, pas de
+   post JetEngine dédié comme .evidence-card/1688 ou .venir-row/1690) — 6 liens
+   <a href="#"> mesurés (DevTools + grep post_content), tous des pièges UX puisque
+   toutes les autres cartes du site sont cliquables depuis le 2026-07-18. Contenu éditorial
+   (titres, vignettes "Visuel") toujours fictif — PAS de vrai Listing Grid JetEngine câblé
+   ici, contrairement aux 2 autres colonnes. Fix appliqué : les 6 <a href="#"> ont été
+   remplacés par des <div class="nouveaute-row"> (non cliquables, donc plus de piège UX)
+   dans le post_content 928 ; cette classe reprend telles quelles les valeurs inline
+   mesurées (gap 16px, padding 16px 0, image 132px) pour ne rien changer visuellement.
+   Cette classe est un point d'ancrage réutilisable pour un futur câblage JetEngine réel
+   (Listing Grid + linked_image:true + stretched-link, cf. .venir-row ci-dessus) quand du
+   contenu éditorial réel existera — non fait ici faute de contenu réel à afficher. */
+.nouveaute-row { display: flex; gap: 16px; align-items: flex-start; border-bottom: 1px solid #E3DCCE; padding: 16px 0; }
+
 /* ===== home mobile (sections 1-11) — SOURCE RÉELLE (Agenda Sabaudo - Mobile.dc.html,
    projet "Brief design agenda Sabaudo", lu le 2026-07-12). Interactions (menu, sélecteur
    territoire) en CSS pur ("checkbox hack") — pas de JS, contourne le risque de filtrage
