@@ -436,7 +436,7 @@
    width:90px + aspect-ratio:3/2 (pas de height fixe 58px, qui donnait un ratio ~1.55:1 ne
    correspondant à aucun ratio déjà utilisé sur le site — probable coquille pour 90×60,
    cf. col.1 qui utilise déjà width:132px + aspect-ratio:3/2 pour sa vignette). */
-.venir-row { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #E3DCCE; padding-bottom: 12px; position: relative; }
+.venir-row { display: flex; gap: 10px; align-items: flex-start; border-bottom: 1px solid #E3DCCE; padding-bottom: 12px; position: relative; }
 /* Fix décalage/centrage visuel sur titres courts (ex. "Loups Garous", "Marché gourmand
    de Chambéry") — 2026-07-18, révisé le même jour après regénération du template
    JetEngine "carte-agenda-a-venir-blocks" par une autre session (structure passée d'un
@@ -468,7 +468,7 @@
    wrapper de l'image seule (aucun effet visible, un seul enfant) ; dans le cas à wrapper
    unique, ça met l'image et .venir-row__body côte à côte comme prévu. */
 .venir-row > .wp-block-group__inner-container {
-  display: flex; gap: 10px; align-items: center;
+  display: flex; gap: 10px; align-items: flex-start;
 }
 .venir-row__image {
   width: 90px; flex-shrink: 0; aspect-ratio: 3 / 2; overflow: hidden;
