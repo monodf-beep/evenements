@@ -3,7 +3,8 @@
 *Recherche approfondie multi-sources (6 angles, 28 sources, 25 affirmations vérifiées
 en 3 votes contradictoires, 0 réfutée — 16 juillet 2026). Contexte : GeneratePress
 Child (sans GP Premium ni GenerateBlocks), JetEngine/Crocoblock déjà possédé, Polylang
-FR/IT, The Events Calendar, OVH mutualisé (PHP 8.0), règle « jamais d'Elementor »,
+FR/IT, The Events Calendar, OVH mutualisé (PHP 8.0), préférence Gutenberg natif
+(Elementor disponible et actif, mais non imposé),
 objectif = parties éditables en Gutenberg natif + PHP, modifiables par IA.*
 
 ---

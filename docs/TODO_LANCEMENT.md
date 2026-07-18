@@ -75,7 +75,7 @@ l'édition non-dev et l'objectif « parties éditables en **Gutenberg natif** »
 - **Habillage entier** (header/footer, couleurs, polices) → **thème enfant**
   GeneratePress + `theme.json` / `tokens.css` (design system `implementation/`).
 - **Colonnes / éléments de page** → **Gutenberg natif** (+ **JetEngine Blocks**
-  pour le dynamique : listings d'événements, hubs). **Jamais Elementor.**
+  pour le dynamique : listings d'événements, hubs). **Préférence Gutenberg natif** (perfs/portabilité) ; **Elementor non proscrit** (il est actif sur le site).
 - **Pub / bannière / popup pub** → **Ad Inserter** (le garder pour ça, rien d'autre).
   Mise en place détaillée : **`docs/REGIE_ANNONCEURS.md`** (tableau format→mécanisme,
   recette Ad Inserter, choix des encarts, skin ON/OFF) + scaffold thème

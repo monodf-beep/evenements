@@ -5,7 +5,7 @@
 - **Chantier backoffice** (moi, Python) : le pont `publisher.py` → WordPress, routage, contrat de méta.
 
 Principe directeur figé : **The Events Calendar = la donnée · JetEngine = la mise en forme · GeneratePress = le socle.**
-Objectif transverse : **rester rapide** (Core Web Vitals = SEO). **Jamais d'Elementor.**
+Objectif transverse : **rester rapide** (Core Web Vitals = SEO). **Préférence forte pour Gutenberg natif** (perfs + portabilité + traduction) ; **Elementor reste possible**, il est d'ailleurs actif sur le site — pas proscrit, à arbitrer au cas par cas.
 
 Légende propriétaire : 🧑 = toi (via Claude-in-Chrome) · 🤖 = moi (backoffice) · 🧑🤖 = à deux.
 
