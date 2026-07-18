@@ -6,15 +6,11 @@
  * Franck). Largeur max 700px, typographie standard du site, comme
  * apropos-template.php.
  *
- * ⚠️ CONTENU INCOMPLET PAR CONCEPTION : le document source contient des
- * placeholders entre crochets ([RAISON SOCIALE], [SIRET], [ADRESSE DU
- * SIÈGE], [NOM DE L'HÉBERGEUR], [NOM DU DIRECTEUR DE PUBLICATION], etc.)
- * — informations légales réelles non fournies, qu'il est interdit
- * d'inventer. Ce gabarit les affiche tels quels, surlignés (<mark>), pour
- * qu'ils sautent aux yeux en relecture. La page WordPress 1700 reste donc
- * volontairement en post_status=draft tant que Franck n'a pas fourni ces
- * informations — ne JAMAIS publier cette page en l'état (mentions légales
- * publiques trompeuses/non conformes).
+ * Infos légales réelles fournies par Franck le 18/07/2026 (raison sociale,
+ * statut, adresse du siège, directeur de publication, hébergeur) — plus de
+ * placeholder bloquant. N° d'immatriculation/TVA/téléphone non communiqués
+ * par Franck, affichés en clair comme "Non communiqué" plutôt qu'inventés.
+ * Page publiée (post_status=publish) une fois vérifiée en live.
  *
  * Convertisseur markdown→HTML minimal maison (cs_legal_md_to_html) : gère
  * uniquement le sous-ensemble utilisé par le document source (## / ###,
@@ -136,7 +132,7 @@ add_action('template_redirect', function () {
     // --- FR : sections 1 à 10 (le H1 "# 🇫🇷 Mentions légales" du document
     // source est rendu séparément ci-dessous, pas via le convertisseur) ---
     $md_fr = <<<'MD'
-*Dernière mise à jour : [JJ/MM/AAAA]*
+*Dernière mise à jour : 18/07/2026*
 
 ## 1. Éditeur du site
 
@@ -144,26 +140,25 @@ Le site **Agenda Sabauda** (https://agendasabauda.eu) est édité par **Cultura 
 culturel bilingue de l'espace alpin occidental (Savoie et Haute-Savoie, Piémont, Vallée d'Aoste,
 Nice et Alpes-Maritimes).
 
-- **Raison sociale / dénomination :** [RAISON SOCIALE]
-- **Statut juridique :** [STATUT JURIDIQUE — ex. association loi 1901, micro-entreprise, SAS…]
-- **Adresse du siège :** [ADRESSE POSTALE COMPLÈTE]
-- **Numéro d'immatriculation :** [SIRET / RNA / n° d'immatriculation]
-- **Numéro de TVA intracommunautaire :** [N° TVA, le cas échéant — sinon « non assujetti à la TVA »]
-- **Adresse électronique de contact :** [contact@culturasabauda.eu]
-- **Téléphone :** [N° DE TÉLÉPHONE, le cas échéant]
+- **Raison sociale / dénomination :** Franck Monod — Cultura Sabauda
+- **Statut juridique :** Entrepreneur individuel (indépendant)
+- **Adresse du siège :** 267 rue de la République, 73000 Chambéry, France
+- **Numéro d'immatriculation :** Non communiqué
+- **Numéro de TVA intracommunautaire :** Non assujetti à la TVA
+- **Adresse électronique de contact :** contact@culturasabauda.eu
+- **Téléphone :** Non communiqué
 
 ## 2. Directeur de la publication
 
-Le directeur de la publication est **[NOM DU DIRECTEUR DE PUBLICATION]**, en qualité de
-[FONCTION — ex. président de l'association / gérant].
+Le directeur de la publication est **Franck Monod**, éditeur du site.
 
 ## 3. Hébergeur
 
 Le site est hébergé par :
 
-- **Hébergeur :** [NOM DE L'HÉBERGEUR]
-- **Adresse :** [ADRESSE POSTALE DE L'HÉBERGEUR]
-- **Contact :** [SITE WEB / TÉLÉPHONE DE L'HÉBERGEUR]
+- **Hébergeur :** OVH SAS
+- **Adresse :** 2 rue Kellermann, 59100 Roubaix, France
+- **Contact :** https://www.ovhcloud.com
 
 ## 4. Nature du site : un agrégateur culturel
 
@@ -204,8 +199,8 @@ demeurent la propriété de leurs titulaires respectifs.
 Un lieu, un organisateur ou un ayant droit peut à tout moment demander la **correction** ou le
 **retrait** d'un événement le concernant.
 
-- **Adresse :** [contact@culturasabauda.eu]
-- **Objet à indiquer :** « Signalement / retrait — [nom de l'événement] »
+- **Adresse :** contact@culturasabauda.eu
+- **Objet à indiquer :** « Signalement / retrait — nom de l'événement concerné »
 - **À préciser :** l'URL de la fiche concernée, la nature de la demande (erreur factuelle, doublon,
   demande de retrait) et, pour un ayant droit, la qualité à agir.
 
@@ -238,7 +233,7 @@ MD;
 
     // --- IT : sections 1 à 10 ---
     $md_it = <<<'MD'
-*Ultimo aggiornamento: [GG/MM/AAAA]*
+*Ultimo aggiornamento: 18/07/2026*
 
 ## 1. Editore del sito
 
@@ -246,26 +241,25 @@ Il sito **Agenda Sabauda** (https://agendasabauda.eu) è edito da **Cultura Saba
 culturale bilingue dello spazio alpino occidentale (Savoia e Alta Savoia, Piemonte, Valle d'Aosta,
 Nizza e Alpi Marittime).
 
-- **Denominazione / ragione sociale:** [RAGIONE SOCIALE]
-- **Forma giuridica:** [FORMA GIURIDICA — es. associazione, ditta individuale, società…]
-- **Sede legale:** [INDIRIZZO POSTALE COMPLETO]
-- **Numero di iscrizione:** [SIRET / numero di iscrizione]
-- **Partita IVA:** [PARTITA IVA, se applicabile — altrimenti «soggetto non titolare di partita IVA»]
-- **Indirizzo e-mail di contatto:** [contact@culturasabauda.eu]
-- **Telefono:** [NUMERO DI TELEFONO, se applicabile]
+- **Denominazione / ragione sociale:** Franck Monod — Cultura Sabauda
+- **Forma giuridica:** Imprenditore individuale (indipendente)
+- **Sede legale:** 267 rue de la République, 73000 Chambéry, Francia
+- **Numero di iscrizione:** Non comunicato
+- **Partita IVA:** Soggetto non titolare di partita IVA
+- **Indirizzo e-mail di contatto:** contact@culturasabauda.eu
+- **Telefono:** Non comunicato
 
 ## 2. Direttore responsabile della pubblicazione
 
-Il direttore responsabile della pubblicazione è **[NOME DEL DIRETTORE]**, in qualità di
-[FUNZIONE — es. presidente dell'associazione / amministratore].
+Il direttore responsabile della pubblicazione è **Franck Monod**, editore del sito.
 
 ## 3. Hosting
 
 Il sito è ospitato da:
 
-- **Provider di hosting:** [NOME DEL PROVIDER]
-- **Indirizzo:** [INDIRIZZO POSTALE DEL PROVIDER]
-- **Contatti:** [SITO WEB / TELEFONO DEL PROVIDER]
+- **Provider di hosting:** OVH SAS
+- **Indirizzo:** 2 rue Kellermann, 59100 Roubaix, Francia
+- **Contatti:** https://www.ovhcloud.com
 
 ## 4. Natura del sito: un aggregatore culturale
 
@@ -307,8 +301,8 @@ organizzatori restano di proprietà dei rispettivi titolari.
 Un luogo, un organizzatore o un avente diritto può in qualsiasi momento chiedere la **correzione**
 o la **rimozione** di un evento che lo riguarda.
 
-- **Indirizzo:** [contact@culturasabauda.eu]
-- **Oggetto da indicare:** «Segnalazione / rimozione — [nome dell'evento]»
+- **Indirizzo:** contact@culturasabauda.eu
+- **Oggetto da indicare:** «Segnalazione / rimozione — nome dell'evento in questione»
 - **Da specificare:** l'URL della scheda interessata, la natura della richiesta (errore fattuale,
   duplicato, richiesta di rimozione) e, per un avente diritto, il titolo ad agire.
 
@@ -341,14 +335,6 @@ MD;
     get_header();
     ?>
     <div style="max-width:700px;margin:0 auto;padding:0 20px">
-
-      <div style="margin:28px 0 32px;padding:16px 18px;background:#FBF3E3;border:1px solid #E8C98A;border-radius:6px;font-family:'Nunito Sans',sans-serif;font-size:14px;line-height:1.6;color:#1D1D1B">
-        <strong>⚠️ Brouillon interne — page non publiée.</strong> Ce document est une trame
-        rédactionnelle à faire valider par un juriste ; elle ne constitue pas un conseil
-        juridique. Les passages surlignés en <mark style="background:#F7D9A0;color:#1D1D1B;padding:0 3px;border-radius:2px">jaune</mark>
-        sont des informations réelles manquantes (raison sociale, SIRET, hébergeur, directeur de
-        publication…) qui doivent être fournies puis remplacées avant toute mise en ligne.
-      </div>
 
       <div style="padding:8px 0 8px">
         <h1 style="margin:0 0 6px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:32px;line-height:1.05;color:#1D1D1B;letter-spacing:0.02em">Mentions légales</h1>
