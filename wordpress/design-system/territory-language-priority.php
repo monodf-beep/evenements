@@ -5,6 +5,16 @@
  * hook mais fichier séparé — consigne de la session : un nouveau
  * comportement = un nouveau snippet).
  *
+ * CORRIGÉ le 2026-07-18 (bug SQL découvert en diagnostiquant le rail
+ * "Événements d'aujourd'hui" desktop qui revenait vide après la réécriture
+ * anti-doublon de #44) : le filtre 'posts_clauses' ci-dessous concaténait
+ * toujours "... DESC, " devant le orderby existant, y compris quand celui-ci
+ * était vide — ce qui arrive pour certaines combinaisons de meta_query (ex.
+ * "jour" avec le filtre date + post__in de l'accumulateur anti-doublon). Une
+ * virgule finale juste avant LIMIT rend le SQL invalide, WP_Query échoue
+ * silencieusement et retourne 0 résultat. Corrigé avec une garde sur
+ * $clauses['orderby'] !== ''.
+ *
  * Demande de Franck (2026-07-18) : quand on bascule FR/IT (sélecteur de
  * langue Polylang, site-header-footer.php), le contenu affiché doit aussi
  * "prioriser les localisations" — pas juste filtrer par langue (déjà fait
@@ -78,7 +88,13 @@ add_filter('posts_clauses', function ($clauses, $query) {
             WHERE taxonomy = 'territoire' AND term_id IN ($ids_sql)
         )
     )";
-    $clauses['orderby'] = "(cs_terr_prio.object_id IS NOT NULL) DESC, " . $clauses['orderby'];
+    // Le "orderby" naturel peut être vide selon la combinaison de meta_query
+    // de la requête (constaté en direct le 2026-07-18 sur "jour" combiné à
+    // l'accumulateur anti-doublon de #44 : sans cette garde, la concaténation
+    // laissait une virgule finale ("... DESC, ") juste avant LIMIT, ce qui
+    // produisait un SQL invalide et donc 0 résultat silencieusement).
+    $clauses['orderby'] = '(cs_terr_prio.object_id IS NOT NULL) DESC'
+        . ($clauses['orderby'] !== '' ? ', ' . $clauses['orderby'] : '');
     $clauses['groupby'] = "{$wpdb->posts}.ID";
 
     return $clauses;
