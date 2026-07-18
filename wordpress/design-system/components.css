@@ -425,20 +425,22 @@
    cf. col.1 qui utilise déjà width:132px + aspect-ratio:3/2 pour sa vignette). */
 .venir-row { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #E3DCCE; padding-bottom: 12px; }
 /* Fix décalage/centrage visuel sur titres courts (ex. "Loups Garous", "Marché gourmand
-   de Chambéry") — 2026-07-18. Le seul enfant direct de .venir-row est le wrapper Gutenberg
-   .wp-block-group__inner-container, qui reçoit un margin:0 auto (hors composants, cœur WP/
-   thème). Avec un titre long ce wrapper remplit naturellement les 237px de la colonne et le
-   margin:auto ne produit aucun décalage visible ; avec un titre court il se réduit à la
-   largeur de son contenu (ex. 90px = largeur de la vignette) et le margin:auto le recentre,
-   décalant vignette + titre vers la droite. Mesuré en DevTools : marge gauche 73.57px sur
-   "Loups Garous", 16.35px sur "Marché gourmand de Chambéry", 0px sur les titres longs
-   (Wagner, Mancuso, Comédie). Forcer width:100%+margin:0 fait toujours occuper la pleine
-   largeur de la colonne, quel que soit le contenu. */
-.venir-row > .wp-block-group__inner-container {
-  width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-}
+   de Chambéry") — 2026-07-18, révisé le même jour après regénération du template
+   JetEngine "carte-agenda-a-venir-blocks" par une autre session (structure passée d'un
+   wrapper unique image+corps à deux enfants directs distincts : le wrapper image, et
+   .venir-row__body en sibling). Un premier correctif ciblant ".venir-row > .wp-block-
+   group__inner-container { width:100% }" supposait l'ancienne structure à wrapper unique
+   et cassait la nouvelle (il forçait le wrapper de l'IMAGE seule à 100%, écrasant l'espace
+   du corps de texte). Cause racine, valable pour les deux structures : tout wrapper
+   Gutenberg .wp-block-group__inner-container qui contient le titre reçoit un margin:0 auto
+   (hors composants, cœur WP/thème) ; avec un titre court ce wrapper se réduit à la largeur
+   de son contenu et le margin:auto le recentre dans l'espace disponible. Fix structure-
+   agnostique : neutraliser margin:auto sur tous les wrappers internes à .venir-row (ne
+   touche pas le wrapper image, qui n'a déjà pas de marge) + forcer .venir-row__body à
+   occuper tout l'espace flex restant (flex:1) pour que la zone de texte ait une largeur
+   constante, indépendante de la longueur du titre. */
+.venir-row .wp-block-group__inner-container { margin: 0; }
+.venir-row__body { flex: 1 1 0%; min-width: 0; }
 .venir-row__image {
   position: relative; width: 90px; flex-shrink: 0; aspect-ratio: 3 / 2; overflow: hidden;
   background: #FBF7F0; border-radius: 3px;
@@ -454,7 +456,6 @@
 .venir-row__image .jet-listing-dynamic-image__link:empty::after {
   content: "Visuel"; font-family: var(--font-body); font-size: 9px; color: #6F6B62;
 }
-.venir-row__body { min-width: 0; }
 .venir-row__title, .venir-row__title h3 {
   margin: 0 0 3px; font-family: var(--font-editorial); font-weight: 600; font-size: 13.5px;
   line-height: 1.25; color: var(--fg-1);
