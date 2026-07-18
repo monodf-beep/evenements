@@ -132,6 +132,60 @@ if (!function_exists('cs_card_compact')) {
     }
 }
 
+if (!function_exists('cs_render_day_groups')) {
+    /**
+     * Groupement par jour — au-dessus de chaque changement de date dans une
+     * liste triée par _EventStartDate ASC : en-tête de groupe (règle
+     * horizontale + libellé "Aujourd'hui"/"Demain"/date longue type
+     * "Vendredi 24 juillet"), suivi des cartes du jour rendues par
+     * $card_renderer (cs_card_compact par défaut, ou cs_card_standard —
+     * n'importe quel callable(int $event_id): string pour rester réutilisable).
+     *
+     * $query : un WP_Query DÉJÀ exécuté (post_type tribe_events, trié par
+     * _EventStartDate ASC) — cette fonction ne filtre/trie rien elle-même,
+     * l'appelant garde la main sur la requête. Consomme la boucle
+     * ($query->the_post()) et fait le wp_reset_postdata() lui-même.
+     */
+    function cs_render_day_groups(WP_Query $query, $card_renderer = 'cs_card_compact') {
+        if (!$query->have_posts()) {
+            return '';
+        }
+        $today = current_time('Y-m-d');
+        $tomorrow = date('Y-m-d', strtotime($today . ' +1 day'));
+        $current_day = null;
+        ob_start();
+        while ($query->have_posts()) {
+            $query->the_post();
+            $event_id = get_the_ID();
+            $start = get_post_meta($event_id, '_EventStartDate', true);
+            $day = $start ? date('Y-m-d', strtotime($start)) : '';
+            if ($day !== $current_day) {
+                $current_day = $day;
+                if ($day === $today) {
+                    $label = "Aujourd'hui";
+                } elseif ($day === $tomorrow) {
+                    $label = 'Demain';
+                } elseif ($day) {
+                    $label = ucfirst(date_i18n('l j F', strtotime($day)));
+                } else {
+                    $label = '';
+                }
+                if ($label) {
+                    ?>
+                    <div style="display:flex;align-items:center;gap:10px;margin:22px 0 6px">
+                      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6F6B62;white-space:nowrap"><?php echo esc_html($label); ?></div>
+                      <div style="flex:1;height:1px;background:#E3DCCE"></div>
+                    </div>
+                    <?php
+                }
+            }
+            echo call_user_func($card_renderer, $event_id);
+        }
+        wp_reset_postdata();
+        return ob_get_clean();
+    }
+}
+
 if (!function_exists('cs_card_rail')) {
     // Carte de rail (150px, horizontal scroll) — fiche événement.
     function cs_card_rail($event_id) {
