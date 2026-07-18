@@ -681,6 +681,12 @@
   .as-desktop-gutter-ad { display: flex; }
 }
 
+/* Gouttières + barres sticky pub masquées (2026-07-18, demande Franck) — Ad
+   Inserter n'a aucun bloc configuré côté wp-admin, ces emplacements vides
+   affichaient un repère "Publicité" en permanence. Supprimer cette règle une
+   fois les blocs Ad Inserter réellement configurés. */
+.as-desktop-gutter-ad, .as-sticky-ad, .as-desktop-sticky-ad { display: none !important; }
+
 /* ===== Header/Footer de marque, site-wide (design-system/site-header-footer.php) —
    injectés via wp_body_open/wp_footer, PAS de Theme Builder. Masque le
    header/footer générique GeneratePress PARTOUT, y compris sur la page Accueil
