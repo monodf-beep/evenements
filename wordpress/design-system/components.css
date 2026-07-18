@@ -236,7 +236,35 @@
 .as-footer__legal a{ color: rgba(247,241,232,.85); }
 .as-footer__editeur img{ height:24px; width:auto; vertical-align:middle; margin-right: var(--s-2); }
 
-/* ---- Responsive ---- */
+/* ---- Footer réel WordPress (footer-widgets GeneratePress) ---- reconciliation avec le CSS
+   live (snippet id=12) : la structure DOM effective du footer (site-footer > #footer-widgets >
+   .footer-widgets-container > .inside-footer-widgets > .footer-widget-1..5) était absente de
+   ce fichier — .as-footer__cols ci-dessus n'existe plus dans le DOM rendu. Ajouté ici pour que
+   git reste la source de vérité du CSS réellement servi.
+   Bug corrigé (mesuré 2026-07-19 avec getComputedStyle sur agendasabauda.eu) : la règle
+   responsive héritée du live (`.inside-footer-widgets{ grid-template-columns: repeat(2,1fr)
+   !important }` à 768px, `1fr !important` à 480px) n'avait AUCUN effet — le conteneur réel est
+   en display:flex (géré par GeneratePress, widget-areas.min.css), pas display:grid.
+   Preuve : à 1280px, display='flex', flexDirection='row', gridTemplateColumns='none' (5 colonnes
+   en ligne, 206px chacune). À 700px (sous le seuil 768px), display='flex' toujours,
+   flexDirection='column' (bascule propre à GeneratePress, déclenchée aussi à max-width:768px),
+   gridTemplateColumns calculé='repeat(2, 1fr)' mais sans effet car display≠grid — résultat :
+   passage direct de 5 colonnes en ligne à 1 seule colonne empilée (5 blocs pleine largeur,
+   left identique 30px, top croissant), jamais de palier 2 colonnes.
+   Fix : forcer display:grid (en écrasant le display:flex de GeneratePress) pour que
+   grid-template-columns reprenne effet ; neutralise aussi le margin-bottom que GeneratePress
+   ajoute entre colonnes en mode flex-column (redondant avec le gap du grid). */
+.footer-widgets-container{ max-width: var(--page-max); margin: 0 auto; padding: var(--s-8) var(--s-5); }
+.inside-footer-widgets{ gap: var(--s-6); }
+@media (max-width: 768px){
+  .inside-footer-widgets{ display: grid !important; grid-template-columns: repeat(2, 1fr) !important; }
+  .inside-footer-widgets > div:not(:last-child){ margin-bottom: 0 !important; }
+}
+@media (max-width: 480px){
+  .inside-footer-widgets{ grid-template-columns: 1fr !important; }
+}
+
+/* ---- Responsive (legacy .as-footer__cols, conservé au cas où réutilisé ailleurs — à auditer) ---- */
 @media (max-width: 1024px){
   .as-footer__cols{ grid-template-columns: repeat(2, 1fr); }
 }
