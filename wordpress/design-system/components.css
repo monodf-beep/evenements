@@ -671,9 +671,22 @@
    retirés d'ici (vivent dans le header site-wide, site-header-footer.php) —
    ne reste que le masthead décoratif (.as-home-desktop-hero). ===== */
 .as-home-desktop { max-width: 950px; margin: 0 auto; padding: 24px 20px 0; }
+/* Full-bleed sticky nav (2026-07-18) — mesuré en DevTools (scrollY:1000, vp
+   1280×900) : sans ce correctif, .as-home-desktop__nav restait un enfant en
+   flux normal de .as-home-desktop (max-width:950px), donc rect={x:177.33,
+   width:910,right:1087.33} au lieu de couvrir tout le viewport une fois
+   collée — 177px/193px de fond beige visibles de chaque côté de la bande
+   blanche. Technique "breakout" par marges négatives en vw (mêmes marges des
+   deux côtés → pas besoin de restructurer le HTML/wrapper) : la bande
+   blanche + bordures s'étend maintenant sur 100vw, tandis que le padding
+   interne (calc(50vw - 455px), 455 = 910/2) recentre les liens exactement
+   sur la même colonne de contenu de 910px qu'avant. */
 .as-home-desktop__nav {
   position: sticky; top: 0; z-index: 30; background: #fff; border-top: 1px solid #1D1D1B;
   border-bottom: 1px solid #1D1D1B; height: 56px; display: flex; align-items: center; justify-content: space-between;
+  margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);
+  padding-left: calc(50vw - 455px); padding-right: calc(50vw - 455px);
+  box-sizing: border-box;
 }
 .as-home-desktop__nav a { text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #1D1D1B; }
 .as-home-desktop__carousel { position: relative; margin-top: 16px; width: 100%; height: 340px; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
