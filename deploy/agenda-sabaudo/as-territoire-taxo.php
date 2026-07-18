@@ -67,7 +67,7 @@ add_action('init', function () {
     // Clés = slugs (cohérents avec le plan du site) ; valeurs = libellé + enfants.
     $territoires = array(
         'savoie-haute-savoie' => array(
-            'label'   => 'Savoie / Haute-Savoie',
+            'label'   => 'Savoie',
             'enfants' => array(
                 'annecy'   => 'Annecy',
                 'chambery' => 'Chambéry',
