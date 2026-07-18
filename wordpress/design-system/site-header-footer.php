@@ -10,11 +10,14 @@
  * (homepage-mobile.gutenberg.html), différent par nature du header compact
  * des autres pages (cf. leurs propres maquettes : Recherche, Page Lieu...).
  *
- * FOOTER : PAS d'exclusion — Franck a demandé un footer strictement
- * identique sur toutes les pages, y compris l'Accueil (contrairement au
- * header, qui a une bonne raison design d'être différent sur la home). Le
- * footer 5 colonnes qui existait dans le contenu de la home a été retiré
- * (cf. homepage-mobile.gutenberg.html) au profit de celui-ci, unique.
+ * FOOTER : géré nativement par GeneratePress (widgets .site-info / .site-footer,
+ * 5 colonnes + as-footer__themes + as-footer__legal) depuis le 2026-07-14
+ * (cf. components.css, commentaire "FOOTER natif GeneratePress ... remplace
+ * l'ancien HTML figé"). Le hook wp_footer ci-dessous qui injectait un second
+ * <footer class="as-site-footer"> (3 rangées de liens + copyright, dupliquant
+ * intégralement le footer natif) a été supprimé le 2026-07-19 — écart mesuré :
+ * deux <footer> consécutifs sur chaque page (#1 .site-info, #2 .as-site-footer,
+ * top #2 == bottom #1). Voir historique git pour l'ancien code si besoin.
  *
  * Réutilise le vrai menu WP "Principal FR" (id 272) déjà construit avec ses
  * sous-menus Catégories/Territoires — pas de lien inventé. Menu mobile en CSS
@@ -86,40 +89,5 @@ add_action('wp_body_open', function () {
         </div>
       </div>
     </div>
-    <?php
-}, 5);
-
-add_action('wp_footer', function () {
-    // Affiché sur TOUTES les pages, y compris l'Accueil (928) — footer unique
-    // demandé par Franck. 3 rangées de liens (nav, à propos/légal,
-    // territoires+langue) + copyright. Liens vers
-    // pages réelles quand elles existent, sinon # (pages à créer : Dove Mangiare, Infos
-    // utiles, Qui sommes-nous, Politique de confidentialité, Cookies, Plan du site, Publicité).
-    ?>
-    <footer class="as-site-footer">
-      <div class="as-site-footer__inner">
-        <div class="as-site-footer__row">
-          <a href="<?php echo esc_url(home_url('/accueil/')); ?>">Accueil</a>
-          <a href="<?php echo esc_url(home_url('/ce-week-end/')); ?>">Ce week-end</a>
-          <a href="<?php echo esc_url(home_url('/tout-l-agenda/')); ?>">Événements</a>
-          <a href="#">Dove Mangiare</a>
-          <a href="#">Curiosités</a>
-          <a href="#">Infos utiles</a>
-          <a href="<?php echo esc_url(home_url('/?s=')); ?>">Rechercher</a>
-          <a href="#">Newsletter</a>
-          <a href="<?php echo esc_url(home_url('/proposer-un-evenement/')); ?>">Proposer un événement</a>
-        </div>
-        <div class="as-site-footer__row as-site-footer__row--rule">
-          <a href="<?php echo esc_url(home_url('/a-propos/')); ?>">Qui sommes-nous</a>
-          <a href="#">Travailler avec nous</a>
-          <a href="#">Politique de confidentialité</a>
-          <a href="#">Cookies</a>
-          <a href="#">Plan du site</a>
-          <a href="#">Publicité</a>
-          <a href="mailto:contact@culturasabauda.eu">Contact</a>
-        </div>
-        <div class="as-site-footer__legal">Savoie · Piémont · Vallée d'Aoste · Nice · FR | IT<br>© Agenda Sabauda — contact@culturasabauda.eu</div>
-      </div>
-    </footer>
     <?php
 }, 5);
