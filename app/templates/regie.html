@@ -47,6 +47,13 @@
       <li><b>Vérifier</b> en navigation privée (accepter/refuser le consentement, tester le lien).</li>
       <li><b>À l'échéance</b> : revenir ici, cliquer <b>« Terminer »</b>, puis désactiver/remplacer le bloc côté site.</li>
     </ol>
+    <p class="text-sm" style="margin:.6rem 0 0;background:#f0f7f0;border-left:3px solid #1a7f4b;padding:.5rem .7rem;border-radius:4px;">
+      📊 <b>Suivi des clics.</b> Dans la pub, ne mets <b>pas</b> l'URL de l'annonceur en direct :
+      mets le <b>lien de suivi</b> <code>/go/…</code> affiché sous chaque campagne (une fois l'URL de
+      destination renseignée). Chaque clic est compté ici — <b>tu possèdes le chiffre</b>, indépendant
+      du consentement et de Google — et s'affiche à côté de la campagne. Les blocs 1 & 2 (AdSense),
+      eux, sont comptés par Google.
+    </p>
     <p class="muted text-sm" style="margin:.4rem 0 0;">⚠️ La version gratuite d'Ad Inserter n'a pas d'expiration automatique fiable : c'est <b>l'alerte de fin de cette page</b> (badge dans le menu) qui te rappelle de repasser désactiver le bloc à la date de fin. Détail technique : <code>docs/REGIE_ANNONCEURS.md</code>.</p>
   </div>
 
@@ -97,11 +104,22 @@
           <div class="text-sm" style="margin-top:.2rem;">
             {% if c.date_debut %}{{ c.date_debut }}{% endif %} → {% if c.date_fin %}<b>{{ c.date_fin }}</b>{% else %}<span class="muted">sans fin</span>{% endif %}
             {% if c.tarif %}· {{ c.tarif }} €{% endif %}
-            {% if c.url %}· <a href="{{ c.url }}" target="_blank" rel="noopener">lien ↗</a>{% endif %}
+            {% if c.url %}· <a href="{{ c.url }}" target="_blank" rel="noopener">destination ↗</a>{% endif %}
           </div>
+          {% if c.url %}
+          <div class="text-sm" style="margin-top:.35rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+            <span class="muted">🔗 Lien de suivi (à mettre dans la pub) :</span>
+            <code style="font-size:.78rem;background:var(--code-bg,#f6f7f9);padding:.1rem .35rem;border-radius:4px;">{{ go_base }}/go/{{ c.id }}</code>
+            <button type="button" class="btn btn-sm" onclick="rgCopy('{{ go_base }}/go/{{ c.id }}',this)">📋 Copier</button>
+          </div>
+          {% else %}
+          <div class="text-sm muted" style="margin-top:.35rem;">⚠️ Renseigne l'URL de destination pour obtenir un lien de suivi.</div>
+          {% endif %}
           {% if c.note %}<div class="muted text-sm" style="margin-top:.2rem;">{{ c.note }}</div>{% endif %}
         </div>
         <div style="text-align:right;">
+          <div style="font-weight:700;font-size:1.05rem;">👆 {{ c.clicks or 0 }} <span class="text-sm" style="font-weight:400;">clic{{ 's' if (c.clicks or 0) != 1 else '' }}</span></div>
+          {% if c.last_click %}<div class="muted text-sm" style="margin-bottom:.3rem;">dernier : {{ c.last_click }}</div>{% endif %}
           {% if c.statut != 'active' %}<span class="muted text-sm">terminée</span>
           {% elif c.expired %}<span style="color:#dc2626;font-weight:700;">⏰ échue ({{ -c.days_left }} j)</span>
           {% elif c.days_left is not none and c.days_left <= 3 %}<span style="color:#b45309;font-weight:700;">fin dans {{ c.days_left }} j</span>
@@ -122,4 +140,13 @@
   {% endif %}
 
 </div>
+
+<script>
+function rgCopy(txt, btn) {
+  navigator.clipboard.writeText(txt).then(function(){
+    var old = btn.textContent; btn.textContent = '✓ Copié';
+    setTimeout(function(){ btn.textContent = old; }, 1500);
+  });
+}
+</script>
 {% endblock %}

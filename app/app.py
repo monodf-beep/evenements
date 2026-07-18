@@ -683,6 +683,12 @@ def _ensure_regie_table(conn):
                  "bloc TEXT NOT NULL, format TEXT, url TEXT, image_url TEXT, "
                  "date_debut TEXT, date_fin TEXT, tarif TEXT, note TEXT, "
                  "statut TEXT NOT NULL DEFAULT 'active')")
+    # Migration douce : compteur de clics (ajouté après coup, sans casser l'existant).
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(ad_campaigns)").fetchall()}
+    if "clicks" not in cols:
+        conn.execute("ALTER TABLE ad_campaigns ADD COLUMN clicks INTEGER NOT NULL DEFAULT 0")
+    if "last_click" not in cols:
+        conn.execute("ALTER TABLE ad_campaigns ADD COLUMN last_click TEXT")
 
 
 @app.route("/regie")
@@ -712,7 +718,8 @@ def regie_page():
             occupied.setdefault(r["bloc"], r)
     return render_template("regie.html", active="regie", blocks=AD_BLOCKS,
                            campaigns=rows, occupied=occupied,
-                           today=today.isoformat())
+                           today=today.isoformat(),
+                           go_base=request.host_url.rstrip("/"))
 
 
 @app.route("/regie/add", methods=["POST"])
@@ -769,6 +776,31 @@ def regie_delete(cid):
     conn.close()
     flash("Campagne supprimée.", "ok")
     return redirect(url_for("regie_page"))
+
+
+@app.route("/go/<int:cid>")
+def regie_go(cid):
+    """Redirection PUBLIQUE comptée : enregistre le clic puis renvoie vers l'annonceur.
+
+    C'est le lien à mettre comme destination de la pub (/go/<id>) : chaque clic
+    est compté ici (indépendamment du consentement et de Google), puis le visiteur
+    est redirigé vers le vrai site de l'annonceur. Pas d'auth : les visiteurs
+    doivent pouvoir cliquer. Pas d'open-redirect : la destination vient de la base
+    (posée par l'admin), jamais de l'URL.
+    """
+    conn = get_db()
+    _ensure_regie_table(conn)
+    row = conn.execute("SELECT url FROM ad_campaigns WHERE id=?", (cid,)).fetchone()
+    dest = (row["url"] if row else "") or ""
+    if dest and re.match(r"^https?://", dest):
+        conn.execute("UPDATE ad_campaigns SET clicks=clicks+1, "
+                     "last_click=datetime('now','localtime') WHERE id=?", (cid,))
+        conn.commit()
+        conn.close()
+        return redirect(dest, code=302)
+    conn.close()
+    fallback = (os.getenv("WP_AS_URL", "") or "https://agendasabauda.eu").rstrip("/")
+    return redirect(fallback + "/", code=302)
 
 
 @app.route("/api/status")
