@@ -2,6 +2,35 @@
 
 *Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie, « Ce week-end »/« Tout l'agenda » et Recherche reconstruits en gabarits PHP dédiés).*
 
+## ✅ « Crédits photos » (page 1702) — construite, vérifiée et **PUBLIÉE**
+
+Source réelle : `docs/legal/credits_photos.md` (FR + IT, trame rédigée par Franck). Nouveau
+`wordpress/design-system/legal-credits-photos-template.php` (snippet live #53,
+`CS · Gabarit Crédits photos`), même gabarit que Mentions légales/Confidentialité
+(`cs_legal_md_to_html`/`cs_legal_md_inline`, copie identique guardée par `function_exists`).
+
+**Différence clé avec Mentions légales (1700) et Confidentialité (1701) : ce document
+source ne contient AUCUN placeholder bloquant.** Les seuls crochets `[…]` du markdown
+source étaient la date de dernière mise à jour (`[JJ/MM/AAAA]`/`[GG/MM/AAAA]`, remplie
+avec la date de mise en ligne 18/07/2026) et l'adresse `[contact@culturasabauda.eu]`, déjà
+la vraie adresse de contact utilisée en clair partout ailleurs sur le site — pas une
+donnée d'identité légale manquante à obtenir de Franck. Adaptations mineures de contenu :
+les 2 listes numérotées "1./2./3." (§1 FR/IT, ordre de priorité des sources d'images)
+converties en liste à puces avec le numéro conservé en gras (le convertisseur maison ne
+gère pas les listes ordonnées) ; l'exemple de format de crédit "[Auteur]"/"[Autore]"
+reformulé sans crochets ("Nom de l'auteur"/"Nome dell'autore") pour ne pas être confondu
+avec un placeholder à remplir ; backticks autour de `alt` remplacés par des guillemets
+(code inline non géré par le convertisseur).
+
+**Vérifié en 2 temps** : (1) rendu rejoué côté serveur via `novamira/execute-php` sur le
+snippet déployé — 5 `<h2>` / 4 `<ul>` / 11 `<li>` par langue, **0 placeholder `<mark>`
+restant** (contrairement à Mentions/Confidentialité), aucune fuite de balise `<?php`,
+aucune erreur/warning ; (2) page passée en `post_status=publish`, puis vérifiée en live
+par `curl` sur `https://agendasabauda.eu/credits-photos/` : 200 OK, aucun
+Fatal error/Warning/Notice/Deprecated PHP, les 2 H1 ("Crédits photos"/"Crediti
+fotografici") et les 10 H2 de section présents, listes et liens `mailto` bien rendus,
+header/footer de marque site-wide (snippet #19) présents.
+
 ## 🆕 « Mentions légales » (page 1700) — gabarit prêt et vérifié, **NE PAS PUBLIER**
 
 Source réelle : `docs/legal/mentions_legales.md` (FR + IT, trame juridique rédigée par
