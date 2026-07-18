@@ -32,6 +32,50 @@ téléphone de contact, nom + fonction du directeur de publication, nom +
 adresse + contact de l'hébergeur (× 2, FR et IT identiques sauf traduction du
 libellé). Page 1700 laissée volontairement en `post_status=draft`.
 
+## 🆕 « Confidentialité » (page 1701) — gabarit prêt et vérifié, **NE PAS PUBLIER**
+
+Source réelle : `docs/legal/confidentialite.md` (FR + IT, trame RGPD rédigée par
+Franck). Nouveau `wordpress/design-system/legal-confidentialite-template.php`
+(snippet live #51, `CS · Gabarit Confidentialité`), même gabarit et même
+convertisseur markdown→HTML maison que « Mentions légales » (page 1700,
+`cs_legal_md_to_html`/`cs_legal_md_inline`, guardés par `function_exists()`
+pour rester chargeables quel que soit l'ordre de chargement des deux
+snippets — la pré-passe de fusion des lignes de continuation a été dupliquée
+à l'identique dans les deux fichiers pour ne pas dépendre de cet ordre).
+Complété par deux fonctions propres à cette page,
+`cs_legal_md_table`/`cs_legal_md_to_html_with_tables`, absentes de Mentions
+légales : le document source contient 3 tableaux markdown (données
+traitées/finalités/bases légales, sous-traitants) que le convertisseur
+ligne-à-ligne ne gérait pas nativement.
+
+**Vérifié en profondeur SANS publier**, même méthode que Mentions légales
+(404 anonyme normal sur un brouillon, pas d'auth wp-admin) : rejoue le rendu
+complet (`get_header()` + contenu + `get_footer()`, sans le `exit;` final)
+côté serveur via `novamira/execute-php`, sur le contenu réel extrait du
+snippet déployé. Résultat propre par langue : 9 `<h2>` (sections 1 à 9),
+4 `<ul>`/16 `<li>` bien équilibrés, 2 `<table>` (rendus par
+`cs_legal_md_table`), 14 `<p>` bien équilibrés, 17 placeholders surlignés,
+aucune erreur/warning/notice/deprecated PHP, pas de fuite de balise `<?php`.
+
+**Bloqué pour publication — informations réelles manquantes ou décisions non
+tranchées, interdiction d'inventer** :
+- Responsable de traitement : raison sociale, adresse postale complète, DPO
+  (nom/e-mail) le cas échéant.
+- Sous-traitants : nom + localisation de l'hébergeur ; nom + localisation/
+  configuration de l'outil de mesure d'audience réellement retenu (le
+  document ne présuppose ni Matomo ni GA4 — à trancher par Franck avant
+  rédaction finale, le choix a un impact sur la base légale décrite en §2/§6) ;
+  précision du statut UE de Brevo.
+- Durées de conservation réelles pour la newsletter, "Proposer un événement"/
+  Contact, et la mesure d'audience (le document propose des valeurs par
+  défaut entre crochets, ex. « 3 mois », « 12 mois », « 13 mois », à
+  confirmer ou modifier).
+- Transferts hors UE : à préciser si un outil retenu (ex. un analytics non
+  européen) l'implique, sinon confirmer explicitement « aucun transfert hors
+  UE ».
+
+Page 1701 laissée volontairement en `post_status=draft`.
+
 ## 🆕 « Annoncer » (page commerciale B2B) — prête, brouillon en attente de publication
 
 Source réelle : `Agenda Sabaudo - Annoncer.dc.html`. Nouveau
