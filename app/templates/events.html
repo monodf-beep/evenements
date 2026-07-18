@@ -69,14 +69,27 @@
 {% if not events %}
   <div class="card empty">Aucun événement pour ce filtre.</div>
 {% else %}
+
+<!-- Barre de publication en lot (sélection via cases à cocher) -->
+<form id="bulk-form" method="POST" action="/action/bulk/publish_as" style="margin-bottom:.5rem">
+  <input type="hidden" name="next" value="{{ request.full_path }}">
+  <div class="btn-row" style="align-items:center">
+    <span id="bulk-count" class="muted text-sm">0 sélectionné(s)</span>
+    <button type="submit" formaction="/action/bulk/publish_cs" id="bulk-cs" class="btn btn-ok btn-sm" disabled
+            onclick="return bulkConfirm(this,'Cultura Sabauda')">🚀 Publier CS (sélection)</button>
+    <button type="submit" formaction="/action/bulk/publish_as" id="bulk-as" class="btn btn-ok btn-sm" disabled
+            onclick="return bulkConfirm(this,'Agenda Sabauda')">🗓 Publier Agenda (sélection)</button>
+  </div>
+</form>
 <div class="table-wrap cards">
 <table class="table-cards">
   <thead>
-  <tr><th scope="col">Photo</th><th scope="col">Titre</th><th scope="col">Date</th><th scope="col">Territoire</th><th scope="col">Source</th><th scope="col">Statut (clic = classer)</th><th scope="col">Score</th><th scope="col">Actions</th></tr>
+  <tr><th scope="col"><input type="checkbox" id="check-all" aria-label="Tout sélectionner"></th><th scope="col">Photo</th><th scope="col">Titre</th><th scope="col">Date</th><th scope="col">Territoire</th><th scope="col">Source</th><th scope="col">Statut (clic = classer)</th><th scope="col">Score</th><th scope="col">Actions</th></tr>
   </thead>
   <tbody>
   {% for e in events %}
   <tr id="e{{ e.id }}">
+    <td class="full" data-label=""><input type="checkbox" class="row-check" form="bulk-form" name="ids" value="{{ e.id }}" aria-label="Sélectionner"></td>
     <td class="full cell-photo" data-label="">{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
     <td class="full cell-title" data-label=""><a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
       {% set ready = e.enrich_status == 'enriched' and e.url_image and (e.date_event_start or e.date_event_end) %}
@@ -119,8 +132,8 @@
     <td data-label="Score">{{ e.llm_score if e.llm_score is not none else '—' }}</td>
     <td class="full cell-actions" data-label="">
       <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
-      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon article Cultura Sabauda (culturasabauda.eu)">🚀 Publier CS</button></form>
-      <form method="POST" action="/action/{{ e.id }}/publish_as" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon événement Agenda Sabauda (agendasabauda.eu)">🗓 Publier Agenda</button></form>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon article Cultura Sabauda (culturasabauda.eu)">🚀 Publier CS</button></form>
+      <form method="POST" action="/action/{{ e.id }}/publish_as" style="display:inline" onsubmit="return confirm('Créer un brouillon Agenda Sabauda (événement TEC) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon événement Agenda Sabauda (agendasabauda.eu)">🗓 Publier Agenda</button></form>
     </td>
   </tr>
   {% endfor %}
@@ -134,6 +147,32 @@
   <span class="muted">page {{ page }} / {{ pages }}</span>
   {% if page < pages %}<a class="btn btn-ghost btn-sm" href="{{ base }}{{ page+1 }}">suivant →</a>{% endif %}
 </div>
+<script>
+(function () {
+  var rowChecks = Array.prototype.slice.call(document.querySelectorAll('.row-check'));
+  var checkAll = document.getElementById('check-all');
+  var count = document.getElementById('bulk-count');
+  var btnCs = document.getElementById('bulk-cs');
+  var btnAs = document.getElementById('bulk-as');
+  function refresh() {
+    var n = rowChecks.filter(function (c) { return c.checked; }).length;
+    count.textContent = n + ' sélectionné(s)';
+    btnCs.disabled = n === 0;
+    btnAs.disabled = n === 0;
+    if (checkAll) checkAll.checked = n > 0 && n === rowChecks.length;
+  }
+  rowChecks.forEach(function (c) { c.addEventListener('change', refresh); });
+  if (checkAll) checkAll.addEventListener('change', function () {
+    rowChecks.forEach(function (c) { c.checked = checkAll.checked; });
+    refresh();
+  });
+  window.bulkConfirm = function (btn, label) {
+    var n = rowChecks.filter(function (c) { return c.checked; }).length;
+    return confirm('Publier ' + n + ' événement(s) en brouillon vers ' + label + ' ?');
+  };
+  refresh();
+})();
+</script>
 {% endif %}
 
 {% endblock %}

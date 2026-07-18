@@ -1241,6 +1241,51 @@ def action(event_id: int, action: str):
     return redirect(nxt)
 
 
+_BULK_PUBLISH = {
+    "publish_cs": (publish_to_cs, "statut='published_cs', published_cs_date=datetime('now'), wp_post_id_cs=?",
+                   "Cultura Sabauda"),
+    "publish_as": (publish_to_as, "statut='published_sub', published_as_date=datetime('now'), wp_post_id_as=?",
+                   "Agenda Sabauda"),
+}
+
+
+@app.route("/action/bulk/<action>", methods=["POST"])
+@require_auth
+def action_bulk(action: str):
+    """Publication en LOT : sélection manuelle (cases à cocher sur /events), même
+    logique que l'action à l'unité, appelée en boucle. Toujours brouillon (aucun
+    changement côté publisher/mu-plugin) — juste évite les clics répétés."""
+    if action not in _BULK_PUBLISH:
+        return "Action inconnue", 404
+    publish_fn, set_clause, label = _BULK_PUBLISH[action]
+    ids = [int(i) for i in request.form.getlist("ids") if i.isdigit()]
+    conn = get_db()
+    ok, fail = 0, []
+    for event_id in ids:
+        event = conn.execute("SELECT * FROM events_raw WHERE id = ?", (event_id,)).fetchone()
+        if not event:
+            continue
+        wp_id = publish_fn(dict(event))
+        if wp_id:
+            conn.execute(f"UPDATE events_raw SET {set_clause} WHERE id=?", (wp_id, event_id))
+            conn.commit()
+            ok += 1
+        else:
+            fail.append((event["title"] or "")[:40])
+    conn.close()
+    log.info("Publication en lot (%s) : %d/%d ok", action, ok, len(ids))
+    if ok:
+        flash(f"✅ {ok}/{len(ids)} événement(s) publié(s) en brouillon {label}.", "ok")
+    if fail:
+        flash(f"❌ Échec pour : {', '.join(fail)} (voir logs).", "err")
+    if not ids:
+        flash("Aucun événement sélectionné.", "err")
+    nxt = request.form.get("next", "")
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = url_for("events")
+    return redirect(nxt)
+
+
 @app.route("/set-focal/<int:event_id>", methods=["POST"])
 @require_auth
 def set_focal(event_id: int):
