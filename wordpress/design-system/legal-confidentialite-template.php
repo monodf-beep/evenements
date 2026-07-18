@@ -18,11 +18,14 @@
  * en l'état (politique de confidentialité publique trompeuse/non conforme
  * RGPD : elle doit refléter les sous-traitants RÉELLEMENT utilisés).
  *
- * Réutilise cs_legal_md_inline()/cs_legal_md_to_html() définies dans
- * legal-mentions-template.php (mêmes fonctions, guardées par
+ * Réutilise le même sous-ensemble markdown que legal-mentions-template.php
+ * (cs_legal_md_inline()/cs_legal_md_to_html(), guardées par
  * function_exists() ici pour rester chargeable indépendamment de l'ordre des
- * snippets — les deux définitions sont identiques, donc peu importe laquelle
- * "gagne" au chargement).
+ * snippets — les deux définitions doivent rester IDENTIQUES, y compris la
+ * pré-passe de rattachement des lignes de continuation indentées, sinon
+ * laquelle "gagne" au chargement change le rendu). Complété ici par
+ * cs_legal_md_table()/cs_legal_md_to_html_with_tables() (absentes de
+ * legal-mentions-template.php, qui n'a pas de tableau markdown).
  *
  * Header/footer de marque déjà injectés site-wide par le snippet #19
  * (site-header-footer.php) — pas recréés ici.
@@ -59,7 +62,22 @@ if (!function_exists('cs_legal_md_to_html')) {
         $ul_style = 'margin:0 0 18px;padding-left:20px;font-family:\'Nunito Sans\',sans-serif;font-size:15px;line-height:1.65;color:#1D1D1B';
         $li_style = 'margin:0 0 8px';
 
-        $lines = explode("\n", $md);
+        // Pré-passe : rattache les lignes de continuation indentées (item de
+        // liste qui déborde sur la ligne suivante, ex. section 3/§7 FR/IT du
+        // document source) à la ligne logique précédente, avant le parsing.
+        // Même correctif que legal-mentions-template.php, dupliqué ici car
+        // chaque snippet définit sa propre copie de la fonction (guardée par
+        // function_exists) — ne pas laisser cette copie diverger de l'autre.
+        $raw_lines = explode("\n", $md);
+        $lines = [];
+        foreach ($raw_lines as $raw_line) {
+            if (preg_match('/^\s+\S/', $raw_line) && !empty($lines) && end($lines) !== '') {
+                $lines[count($lines) - 1] .= ' ' . trim($raw_line);
+            } else {
+                $lines[] = rtrim($raw_line);
+            }
+        }
+
         $html = '';
         $in_list = false;
         $para_buf = [];
