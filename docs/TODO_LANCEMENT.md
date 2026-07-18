@@ -62,7 +62,7 @@
 - [ ] Menus (overlay + footer)
 ### 2c. Thème enfant / templates 🤖 (quand maquettes figées)
 - [ ] Home · Fiche (mode minimal) · Hub catégorie · **Hub territoire** · Hub lieu · **liste filtrable** (Ce week-end + Tout l'agenda) · **`/[ville]/ce-week-end/`** daté · Recherche · 404
-- [ ] Composants : carte événement · carrousel · newsletter · **module transfrontalier** · emplacements pub
+- [ ] Composants : carte événement · **carrousel de sélections** (spec `docs/SELECTIONS_HOME.md` : CPT « Sélection » + relation/requête JetEngine, formats *Ce week-end · Que faire à [ville] · Nouveautés · Ça vaut le déplacement · Sagre du mois*) · newsletter · **module transfrontalier** · emplacements pub
 - [ ] Copier `cs-seo-meta.php` + `cs-rest-auth.php` sur l'hôte WP
 
 ### 🔧 Outillage de build — tranché (16 juillet)
