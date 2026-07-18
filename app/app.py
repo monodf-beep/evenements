@@ -669,10 +669,14 @@ def cowork_log():
 #   source 'adsense' : rempli automatiquement par Google (rien à gérer ici)
 #   source 'manuel'  : régie directe → gérable depuis cette page
 AD_BLOCKS = {
-    "1": {"nom": "Leaderboard (haut)",           "format": "970×90 · 350×90 mobile",   "source": "adsense"},
-    "2": {"nom": "Pavé in-article",              "format": "300×250 / 336×280",        "source": "adsense"},
-    "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel"},
-    "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel"},
+    "1": {"nom": "Leaderboard (haut)",           "format": "970×90 · 350×90 mobile",   "source": "adsense",
+          "w": 970,  "h": 90,   "prix_base": 250, "prix_lancement": 150},
+    "2": {"nom": "Pavé in-article",              "format": "300×250 / 336×280",        "source": "adsense",
+          "w": 300,  "h": 250,  "prix_base": 200, "prix_lancement": 120},
+    "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel",
+          "w": 970,  "h": 90,   "prix_base": 220, "prix_lancement": 140},
+    "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel",
+          "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390},
 }
 
 
