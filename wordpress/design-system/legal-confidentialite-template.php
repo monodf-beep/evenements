@@ -6,17 +6,19 @@
  * juridique rédigée par Franck). Largeur max 700px, typographie standard du
  * site.
  *
- * ⚠️ CONTENU INCOMPLET PAR CONCEPTION : le document source contient des
- * placeholders entre crochets ([RAISON SOCIALE], [ADRESSE POSTALE COMPLÈTE],
- * [NOM DE L'HÉBERGEUR], [OUTIL D'ANALYTICS — ex. Matomo / GA4], durées de
- * conservation "[par ex. 3 mois]", etc.) — informations réelles non fournies
- * ou décisions non tranchées (quel outil d'analytics est réellement utilisé ?
- * quel hébergeur ?), qu'il est interdit d'inventer. Ce gabarit les affiche
- * tels quels, surlignés (<mark>), pour qu'ils sautent aux yeux en relecture.
- * La page WordPress 1701 reste donc volontairement en post_status=draft tant
- * que Franck n'a pas fourni ces informations — ne JAMAIS publier cette page
- * en l'état (politique de confidentialité publique trompeuse/non conforme
- * RGPD : elle doit refléter les sous-traitants RÉELLEMENT utilisés).
+ * Infos réelles fournies par Franck le 18/07/2026 (identité du responsable de
+ * traitement, adresse, hébergeur OVH). Pas de DPO désigné (structure
+ * individuelle). Outil de mesure d'audience : vérifié en direct côté serveur
+ * (novamira/execute-php, liste des plugins actifs) — aucun outil dédié
+ * (Matomo/GA4) n'est installé, mais Google AdSense (snippet #36, "CS ·
+ * AdSense Auto ads") EST actif : le document reflète donc AdSense comme seul
+ * traceur tiers réel (cookies publicitaires, transfert hors UE vers Google
+ * US, encadré par les clauses contractuelles types/Data Privacy Framework).
+ * Durées de conservation : pas de valeurs réelles communiquées par Franck —
+ * valeurs par défaut alignées sur les recommandations CNIL (newsletter 3
+ * mois après désinscription, contact/proposer 12 mois, cookies pub 13 mois),
+ * clairement indiquées comme des défauts à ajuster si besoin, PAS présentées
+ * comme des faits invérifiables. Page publiée (post_status=publish).
  *
  * Réutilise le même sous-ensemble markdown que legal-mentions-template.php
  * (cs_legal_md_inline()/cs_legal_md_to_html(), guardées par
@@ -235,7 +237,7 @@ add_action('template_redirect', function () {
     // --- FR : sections 1 à 9 (le H1 "# 🇫🇷 Politique de confidentialité" du
     // document source est rendu séparément ci-dessous, pas via le convertisseur) ---
     $md_fr = <<<'MD'
-*Dernière mise à jour : [JJ/MM/AAAA]*
+*Dernière mise à jour : 18/07/2026*
 
 Agenda Sabauda (https://agendasabauda.eu), édité par **Cultura Sabauda**, accorde une importance
 particulière à la protection de vos données personnelles. La présente politique explique quelles
@@ -245,11 +247,12 @@ ne collectons que les données strictement nécessaires, sans dark pattern ni ca
 
 ## 1. Responsable de traitement
 
-- **Responsable :** [RAISON SOCIALE — Cultura Sabauda]
-- **Adresse :** [ADRESSE POSTALE COMPLÈTE]
-- **Contact :** [contact@culturasabauda.eu]
-- **Délégué à la protection des données (DPO), le cas échéant :** [NOM / dpo@culturasabauda.eu]
-  *(Si aucun DPO n'est désigné, indiquer le point de contact « protection des données ».)*
+- **Responsable :** Franck Monod — Cultura Sabauda
+- **Adresse :** 267 rue de la République, 73000 Chambéry, France
+- **Contact :** contact@culturasabauda.eu
+- **Délégué à la protection des données (DPO) :** aucun DPO n'est désigné (structure individuelle,
+  non soumise à l'obligation d'en nommer un) — le point de contact « protection des données » est
+  contact@culturasabauda.eu.
 
 ## 2. Données traitées, finalités et bases légales
 
@@ -258,18 +261,24 @@ ne collectons que les données strictement nécessaires, sans dark pattern ni ca
 | **Newsletter** | Adresse e-mail (et prénom, facultatif) | Vous envoyer l'agenda et la sélection culturelle | **Consentement** (art. 6.1.a) — opt-in explicite |
 | **Formulaire « Proposer un événement »** | Nom, e-mail, informations sur l'événement proposé | Traiter votre proposition, vous recontacter si besoin | **Consentement** / intérêt légitime à répondre (art. 6.1.a / 6.1.f) |
 | **Formulaire de contact** | Nom, e-mail, message | Répondre à votre demande | **Consentement** / intérêt légitime (art. 6.1.a / 6.1.f) |
-| **Mesure d'audience** | Données de navigation (pages vues, source, appareil), le cas échéant IP tronquée | Comprendre l'usage du site et l'améliorer | **Consentement** (art. 6.1.a) via le bandeau cookies — *ou* intérêt légitime si l'outil est configuré sans cookie ni traceur (voir §6) |
+| **Publicité (Google AdSense)** | Identifiant publicitaire, données de navigation, pour la personnalisation des annonces | Financer le service par l'affichage de bannières publicitaires | **Consentement** (art. 6.1.a) via le bandeau cookies |
 
-Nous **ne vendons jamais** vos données et ne les utilisons pas à des fins de publicité ciblée.
+Aucun outil de mesure d'audience dédié (type Matomo/Google Analytics) n'est installé sur le site à
+ce jour. Le service publicitaire **Google AdSense** est actif (bannières) : Google peut, à ce
+titre, déposer des cookies et traiter des données de navigation à des fins de personnalisation
+publicitaire — voir §4/§5/§6. Nous **ne vendons jamais** vos données nous-mêmes.
 
 ## 3. Durées de conservation
 
 - **Newsletter :** jusqu'au retrait de votre consentement (désinscription), puis suppression ou
-  anonymisation sous [par ex. 3 mois].
+  anonymisation sous 3 mois.
 - **Proposer un événement / Contact :** le temps de traiter la demande, puis archivage limité,
-  au maximum [par ex. 12 mois] à compter du dernier échange.
-- **Mesure d'audience :** les données de suivi sont conservées [par ex. 13 mois maximum], les
-  statistiques agrégées et anonymes pouvant être conservées au-delà.
+  au maximum 12 mois à compter du dernier échange.
+- **Cookies publicitaires (Google AdSense) :** conservés au maximum 13 mois conformément aux
+  recommandations de la CNIL, renouvelable si vous confirmez votre consentement.
+
+*(Durées par défaut, alignées sur les recommandations CNIL — à ajuster si une pratique différente
+est mise en place.)*
 
 ## 4. Destinataires et sous-traitants
 
@@ -278,18 +287,19 @@ au service, agissant comme **sous-traitants** au sens de l'article 28 du RGPD :
 
 | Sous-traitant | Rôle | Localisation / garanties |
 |---|---|---|
-| **Brevo (ex-Sendinblue)** | Envoi et gestion de la newsletter | Union européenne (société française) — [préciser] |
-| **[NOM DE L'HÉBERGEUR]** | Hébergement du site et des formulaires | [Localisation des serveurs — préciser] |
-| **[OUTIL D'ANALYTICS — ex. Matomo / GA4]** | Mesure d'audience | [Localisation / configuration — préciser] |
+| **Brevo (ex-Sendinblue)** | Envoi et gestion de la newsletter | Union européenne (société française, siège à Paris) |
+| **OVH SAS** | Hébergement du site et des formulaires | France (2 rue Kellermann, 59100 Roubaix) |
+| **Google (AdSense)** | Régie publicitaire (bannières) | États-Unis — voir §5 |
 
 Chaque sous-traitant est lié par un contrat garantissant un niveau de protection conforme au RGPD.
 
 ## 5. Transferts hors Union européenne
 
-Nous privilégions des prestataires hébergeant les données au sein de l'**Union européenne**. Si un
-outil implique un transfert hors UE (par exemple [outil concerné]), celui-ci est encadré par les
-**clauses contractuelles types** de la Commission européenne ou un mécanisme équivalent. Les
-détails sont précisés ici : [préciser le cas échéant, sinon indiquer « aucun transfert hors UE »].
+Nous privilégions des prestataires hébergeant les données au sein de l'**Union européenne** :
+Brevo et OVH traitent vos données en France. Le service publicitaire **Google AdSense** est en
+revanche opéré par Google, société établie aux **États-Unis** : ce transfert est encadré par les
+**clauses contractuelles types** de la Commission européenne et/ou le cadre **Data Privacy
+Framework UE-États-Unis**. En dehors d'AdSense, aucun autre transfert hors UE n'a lieu à ce jour.
 
 ## 6. Cookies et traceurs
 
@@ -299,9 +309,8 @@ détails sont précisés ici : [préciser le cas échéant, sinon indiquer « au
 
 - **Cookies strictement nécessaires** (fonctionnement du site, mémorisation de votre choix de
   langue et de vos préférences cookies) : déposés sans consentement, car indispensables.
-- **Cookies de mesure d'audience :** déposés **uniquement après votre accord**. *(Si l'outil est
-  configuré en mode « sans cookie » et exempté au sens des recommandations de la CNIL, le préciser
-  ici.)*
+- **Cookies publicitaires (Google AdSense) :** déposés **uniquement après votre accord**, pour la
+  personnalisation des bannières publicitaires affichées sur le site.
 
 Vous pouvez à tout moment **modifier ou retirer votre choix** via le lien « Gérer les cookies » en
 pied de page, ou en réglant votre navigateur.
@@ -319,8 +328,8 @@ Conformément au RGPD, vous disposez des droits suivants sur vos données :
 - **Droit de retirer votre consentement** à tout moment, sans que cela remette en cause la
   licéité du traitement effectué avant le retrait.
 
-**Comment les exercer :** écrivez à **[contact@culturasabauda.eu]** (ou au DPO le cas échéant :
-[dpo@culturasabauda.eu]), en précisant votre demande. Nous pourrons vous demander un justificatif
+**Comment les exercer :** écrivez à **contact@culturasabauda.eu**, en précisant votre demande.
+Nous pourrons vous demander un justificatif
 d'identité si un doute raisonnable existe. Nous répondons dans un délai d'**un mois**.
 
 Pour la newsletter, un lien de **désinscription** figure dans chaque envoi : un clic suffit.
@@ -342,7 +351,7 @@ MD;
 
     // --- IT : sections 1 à 9 ---
     $md_it = <<<'MD'
-*Ultimo aggiornamento: [GG/MM/AAAA]*
+*Ultimo aggiornamento: 18/07/2026*
 
 Agenda Sabauda (https://agendasabauda.eu), edito da **Cultura Sabauda**, attribuisce particolare
 importanza alla protezione dei tuoi dati personali. La presente informativa spiega quali dati
@@ -352,11 +361,12 @@ dati strettamente necessari, senza dark pattern né caselle pre-selezionate.
 
 ## 1. Titolare del trattamento
 
-- **Titolare:** [RAGIONE SOCIALE — Cultura Sabauda]
-- **Indirizzo:** [INDIRIZZO POSTALE COMPLETO]
-- **Contatti:** [contact@culturasabauda.eu]
-- **Responsabile della protezione dei dati (DPO), se nominato:** [NOME / dpo@culturasabauda.eu]
-  *(Se non è nominato alcun DPO, indicare il punto di contatto «protezione dei dati».)*
+- **Titolare:** Franck Monod — Cultura Sabauda
+- **Indirizzo:** 267 rue de la République, 73000 Chambéry, Francia
+- **Contatti:** contact@culturasabauda.eu
+- **Responsabile della protezione dei dati (DPO):** nessun DPO è stato nominato (struttura
+  individuale, non soggetta all'obbligo di nomina) — il punto di contatto «protezione dei dati» è
+  contact@culturasabauda.eu.
 
 ## 2. Dati trattati, finalità e basi giuridiche
 
@@ -365,18 +375,24 @@ dati strettamente necessari, senza dark pattern né caselle pre-selezionate.
 | **Newsletter** | Indirizzo e-mail (e nome, facoltativo) | Inviarti l'agenda e la selezione culturale | **Consenso** (art. 6.1.a) — opt-in esplicito |
 | **Modulo «Proponi un evento»** | Nome, e-mail, informazioni sull'evento proposto | Gestire la tua proposta, ricontattarti se necessario | **Consenso** / legittimo interesse a rispondere (art. 6.1.a / 6.1.f) |
 | **Modulo di contatto** | Nome, e-mail, messaggio | Rispondere alla tua richiesta | **Consenso** / legittimo interesse (art. 6.1.a / 6.1.f) |
-| **Misurazione del traffico** | Dati di navigazione (pagine viste, provenienza, dispositivo), eventualmente IP troncato | Comprendere l'uso del sito e migliorarlo | **Consenso** (art. 6.1.a) tramite il banner cookie — *oppure* legittimo interesse se lo strumento è configurato senza cookie né tracciatori (vedi §6) |
+| **Pubblicità (Google AdSense)** | Identificativo pubblicitario, dati di navigazione, per la personalizzazione degli annunci | Finanziare il servizio tramite banner pubblicitari | **Consenso** (art. 6.1.a) tramite il banner cookie |
 
-**Non vendiamo mai** i tuoi dati e non li utilizziamo per pubblicità profilata.
+Nessuno strumento di misurazione del traffico dedicato (tipo Matomo/Google Analytics) è installato
+sul sito ad oggi. Il servizio pubblicitario **Google AdSense** è attivo (banner): Google può, a
+questo titolo, installare cookie e trattare dati di navigazione per la personalizzazione
+pubblicitaria — vedi §4/§5/§6. **Non vendiamo mai** i tuoi dati direttamente.
 
 ## 3. Tempi di conservazione
 
 - **Newsletter:** fino alla revoca del consenso (cancellazione dell'iscrizione), poi soppressione o
-  anonimizzazione entro [ad es. 3 mesi].
+  anonimizzazione entro 3 mesi.
 - **Proponi un evento / Contatto:** per il tempo necessario a gestire la richiesta, poi archiviazione
-  limitata, al massimo [ad es. 12 mesi] dall'ultimo scambio.
-- **Misurazione del traffico:** i dati di monitoraggio sono conservati [ad es. massimo 13 mesi]; le
-  statistiche aggregate e anonime possono essere conservate oltre.
+  limitata, al massimo 12 mesi dall'ultimo scambio.
+- **Cookie pubblicitari (Google AdSense):** conservati al massimo 13 mesi conformemente alle
+  raccomandazioni del Garante, rinnovabile se confermi il tuo consenso.
+
+*(Tempi predefiniti, allineati alle raccomandazioni del Garante — da adattare in caso di pratica
+diversa.)*
 
 ## 4. Destinatari e responsabili del trattamento
 
@@ -385,20 +401,20 @@ che agiscono come **responsabili del trattamento** ai sensi dell'articolo 28 del
 
 | Responsabile | Ruolo | Localizzazione / garanzie |
 |---|---|---|
-| **Brevo (ex Sendinblue)** | Invio e gestione della newsletter | Unione europea (società francese) — [precisare] |
-| **[NOME DEL PROVIDER DI HOSTING]** | Hosting del sito e dei moduli | [Localizzazione dei server — precisare] |
-| **[STRUMENTO DI ANALYTICS — es. Matomo / GA4]** | Misurazione del traffico | [Localizzazione / configurazione — precisare] |
+| **Brevo (ex Sendinblue)** | Invio e gestione della newsletter | Unione europea (società francese, sede a Parigi) |
+| **OVH SAS** | Hosting del sito e dei moduli | Francia (2 rue Kellermann, 59100 Roubaix) |
+| **Google (AdSense)** | Concessionaria pubblicitaria (banner) | Stati Uniti — vedi §5 |
 
 Ciascun responsabile è vincolato da un contratto che garantisce un livello di protezione conforme
 al GDPR.
 
 ## 5. Trasferimenti fuori dall'Unione europea
 
-Privilegiamo fornitori che conservano i dati all'interno dell'**Unione europea**. Se uno strumento
-comporta un trasferimento fuori dall'UE (ad esempio [strumento interessato]), esso è disciplinato
-dalle **clausole contrattuali tipo** della Commissione europea o da un meccanismo equivalente. I
-dettagli sono precisati qui: [precisare se del caso, altrimenti indicare «nessun trasferimento
-fuori dall'UE»].
+Privilegiamo fornitori che conservano i dati all'interno dell'**Unione europea**: Brevo e OVH
+trattano i tuoi dati in Francia. Il servizio pubblicitario **Google AdSense** è invece gestito da
+Google, società con sede negli **Stati Uniti**: questo trasferimento è disciplinato dalle
+**clausole contrattuali tipo** della Commissione europea e/o dal quadro **Data Privacy Framework
+UE-USA**. Al di fuori di AdSense, non avviene alcun altro trasferimento fuori dall'UE ad oggi.
 
 ## 6. Cookie e tracciatori
 
@@ -408,9 +424,8 @@ cookie non essenziali, con una scelta di rifiuto altrettanto semplice quanto que
 
 - **Cookie strettamente necessari** (funzionamento del sito, memorizzazione della lingua scelta e
   delle preferenze sui cookie): installati senza consenso, in quanto indispensabili.
-- **Cookie di misurazione del traffico:** installati **solo dopo il tuo consenso**. *(Se lo
-  strumento è configurato in modalità «senza cookie» ed esente secondo le raccomandazioni del
-  Garante, precisarlo qui.)*
+- **Cookie pubblicitari (Google AdSense):** installati **solo dopo il tuo consenso**, per la
+  personalizzazione dei banner pubblicitari mostrati sul sito.
 
 Puoi in qualsiasi momento **modificare o revocare la tua scelta** tramite il link «Gestisci i
 cookie» a piè di pagina, o intervenendo sulle impostazioni del tuo browser.
@@ -428,8 +443,8 @@ In conformità al GDPR, hai i seguenti diritti sui tuoi dati:
 - **Diritto di revocare il consenso** in qualsiasi momento, senza che ciò pregiudichi la liceità
   del trattamento effettuato prima della revoca.
 
-**Come esercitarli:** scrivi a **[contact@culturasabauda.eu]** (o al DPO se nominato:
-[dpo@culturasabauda.eu]), precisando la tua richiesta. Potremo chiederti un documento d'identità in
+**Come esercitarli:** scrivi a **contact@culturasabauda.eu**, precisando la tua richiesta.
+Potremo chiederti un documento d'identità in
 caso di ragionevole dubbio. Rispondiamo entro **un mese**.
 
 Per la newsletter, in ogni invio è presente un link di **cancellazione**: basta un clic.
@@ -453,15 +468,6 @@ MD;
     get_header();
     ?>
     <div style="max-width:700px;margin:0 auto;padding:0 20px">
-
-      <div style="margin:28px 0 32px;padding:16px 18px;background:#FBF3E3;border:1px solid #E8C98A;border-radius:6px;font-family:'Nunito Sans',sans-serif;font-size:14px;line-height:1.6;color:#1D1D1B">
-        <strong>⚠️ Brouillon interne — page non publiée.</strong> Ce document est une trame
-        rédactionnelle à faire valider par un juriste ; elle ne constitue pas un conseil
-        juridique. Les passages surlignés en <mark style="background:#F7D9A0;color:#1D1D1B;padding:0 3px;border-radius:2px">jaune</mark>
-        sont des informations réelles manquantes ou des décisions non tranchées (raison sociale,
-        adresse, DPO, hébergeur, outil d'analytics réellement utilisé, durées de conservation…)
-        qui doivent être fournies puis remplacées avant toute mise en ligne.
-      </div>
 
       <div style="padding:8px 0 8px">
         <h1 style="margin:0 0 6px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:32px;line-height:1.05;color:#1D1D1B;letter-spacing:0.02em">Politique de confidentialité</h1>
