@@ -128,11 +128,47 @@
           <div style="margin-top:.4rem;display:flex;gap:.4rem;justify-content:flex-end;">
             {% if c.statut == 'active' %}
             <form method="post" action="/regie/end/{{ c.id }}" style="display:inline;"><button class="btn btn-sm">Terminer</button></form>
+            {% else %}
+            <form method="post" action="/regie/reactivate/{{ c.id }}" style="display:inline;"><button class="btn btn-sm">Réactiver</button></form>
             {% endif %}
             <form method="post" action="/regie/delete/{{ c.id }}" style="display:inline;" onsubmit="return confirm('Supprimer définitivement cette campagne ?');"><button class="btn btn-sm" style="color:#dc2626;">Suppr.</button></form>
           </div>
         </div>
       </div>
+      <details style="margin-top:.55rem;">
+        <summary style="cursor:pointer;font-size:.85rem;color:#2563eb;">✏️ Éditer cette campagne</summary>
+        <form method="post" action="/regie/edit/{{ c.id }}" style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Annonceur *
+            <input name="annonceur" required maxlength="200" value="{{ c.annonceur }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Bloc *
+            <select name="bloc" required style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+              {% for id, b in blocks.items() if b.source == 'manuel' %}
+              <option value="{{ id }}" {{ 'selected' if id == c.bloc }}>{{ id }} — {{ b.nom }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">URL de destination
+            <input name="url" maxlength="500" value="{{ c.url or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">URL de l'image
+            <input name="image_url" maxlength="500" value="{{ c.image_url or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Date de début
+            <input type="date" name="date_debut" value="{{ c.date_debut or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Date de fin
+            <input type="date" name="date_fin" value="{{ c.date_fin or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Tarif (€)
+            <input name="tarif" maxlength="50" value="{{ c.tarif or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Note
+            <input name="note" maxlength="1000" value="{{ c.note or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <div style="grid-column:1/3;"><button class="btn btn-ok btn-sm">💾 Enregistrer les corrections</button></div>
+        </form>
+      </details>
     </div>
     {% endfor %}
   {% else %}

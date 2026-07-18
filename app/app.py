@@ -778,6 +778,47 @@ def regie_delete(cid):
     return redirect(url_for("regie_page"))
 
 
+@app.route("/regie/edit/<int:cid>", methods=["POST"])
+@require_auth
+def regie_edit(cid):
+    """Corrige une campagne existante (garde l'id, les clics et la date de création)."""
+    f = request.form
+    annonceur = (f.get("annonceur", "") or "").strip()
+    bloc = (f.get("bloc", "") or "").strip()
+    if not annonceur or bloc not in AD_BLOCKS:
+        flash("⚠️ Annonceur et bloc sont obligatoires.", "err")
+        return redirect(url_for("regie_page"))
+    conn = get_db()
+    _ensure_regie_table(conn)
+    conn.execute(
+        "UPDATE ad_campaigns SET annonceur=?, bloc=?, format=?, url=?, image_url=?, "
+        "date_debut=?, date_fin=?, tarif=?, note=? WHERE id=?",
+        (annonceur[:200], bloc, AD_BLOCKS[bloc]["format"],
+         (f.get("url", "") or "").strip()[:500],
+         (f.get("image_url", "") or "").strip()[:500],
+         (f.get("date_debut", "") or "").strip()[:10],
+         (f.get("date_fin", "") or "").strip()[:10],
+         (f.get("tarif", "") or "").strip()[:50],
+         (f.get("note", "") or "").strip()[:1000], cid))
+    conn.commit()
+    conn.close()
+    flash("✅ Campagne mise à jour.", "ok")
+    return redirect(url_for("regie_page"))
+
+
+@app.route("/regie/reactivate/<int:cid>", methods=["POST"])
+@require_auth
+def regie_reactivate(cid):
+    """Repasse une campagne « terminée » en active."""
+    conn = get_db()
+    _ensure_regie_table(conn)
+    conn.execute("UPDATE ad_campaigns SET statut='active' WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
+    flash("Campagne réactivée.", "ok")
+    return redirect(url_for("regie_page"))
+
+
 @app.route("/go/<int:cid>")
 def regie_go(cid):
     """Redirection PUBLIQUE comptée : enregistre le clic puis renvoie vers l'annonceur.
