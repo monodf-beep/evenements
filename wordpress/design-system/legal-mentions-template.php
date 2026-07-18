@@ -18,9 +18,10 @@
  *
  * Convertisseur markdown→HTML minimal maison (cs_legal_md_to_html) : gère
  * uniquement le sous-ensemble utilisé par le document source (## / ###,
- * paragraphes, listes à puces "- ", **gras**, *italique*, URLs nues,
- * placeholders [entre crochets]). Pas un parseur markdown généraliste —
- * volontairement limité ("HTML simple" demandé), suffisant pour ce document.
+ * paragraphes, listes à puces "- " avec lignes de continuation indentées,
+ * **gras**, *italique*, URLs nues, placeholders [entre crochets]). Pas un
+ * parseur markdown généraliste — volontairement limité ("HTML simple"
+ * demandé), suffisant pour ce document.
  *
  * Header/footer de marque déjà injectés site-wide par le snippet #19
  * (site-header-footer.php) — pas recréés ici.
@@ -57,7 +58,19 @@ if (!function_exists('cs_legal_md_to_html')) {
         $ul_style = 'margin:0 0 18px;padding-left:20px;font-family:\'Nunito Sans\',sans-serif;font-size:15px;line-height:1.65;color:#1D1D1B';
         $li_style = 'margin:0 0 8px';
 
-        $lines = explode("\n", $md);
+        // Pré-passe : rattache les lignes de continuation indentées (item de
+        // liste qui déborde sur la ligne suivante, ex. section 6 FR/IT du
+        // document source) à la ligne logique précédente, avant le parsing.
+        $raw_lines = explode("\n", $md);
+        $lines = [];
+        foreach ($raw_lines as $raw_line) {
+            if (preg_match('/^\s+\S/', $raw_line) && !empty($lines) && end($lines) !== '') {
+                $lines[count($lines) - 1] .= ' ' . trim($raw_line);
+            } else {
+                $lines[] = rtrim($raw_line);
+            }
+        }
+
         $html = '';
         $in_list = false;
         $para_buf = [];
