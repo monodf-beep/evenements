@@ -187,29 +187,6 @@
   outline-offset: 2px;
 }
 
-/* ---- Zone A : newsletter ---- */
-.as-footer__news{
-  background: rgba(100,134,186,.14); /* --cs-bleu-clair translucide */
-  border-bottom: 1px solid var(--rule-on-deep);
-  padding: var(--s-6) var(--s-5);
-}
-.as-footer__news h2{
-  font-family: var(--font-editorial);
-  font-size: var(--fs-h4);
-  margin: 0 0 var(--s-2);
-}
-.as-footer__news form{ display:flex; gap: var(--s-2); flex-wrap:wrap; max-width: 34rem; }
-.as-footer__news input[type=email]{
-  flex:1 1 14rem; padding: var(--s-3) var(--s-4);
-  border:1px solid var(--rule-on-deep); border-radius: var(--r-2);
-  background: rgba(247,241,232,.06); color: var(--fg-on-deep);
-}
-.as-footer__news input::placeholder{ color: rgba(247,241,232,.55); }
-.as-footer__news button{
-  padding: var(--s-3) var(--s-5); border:0; border-radius: var(--r-2); cursor:pointer;
-  background: var(--cs-rouge); color: var(--cs-beige); font-weight:700;
-}
-
 /* ---- Layout général ---- */
 .as-footer__inner{ max-width: var(--page-max); margin:0 auto; padding: var(--s-8) var(--s-5); }
 
