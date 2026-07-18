@@ -418,6 +418,22 @@
    constante, indépendante de la longueur du titre. */
 .venir-row .wp-block-group__inner-container { margin: 0; }
 .venir-row__body { flex: 1 1 0%; min-width: 0; }
+/* Fix vignette empilée au-dessus du titre au lieu de côte à côte — 2026-07-18,
+   confirmé contre la maquette (handoff Claude Design, brief-design-agenda-sabaudo/
+   project/Agenda Sabaudo - Explorations.dc.html, bloc "AGENDA A VENIR") : toutes les
+   variantes de la maquette utilisent une carte à 2 enfants directs en flex row (image
+   flex:none largeur fixe à gauche, corps texte flexible à droite), jamais empilée.
+   Selon comment JetEngine régénère le bloc "carte-agenda-a-venir-blocks" (1690), le DOM
+   réel varie : soit .venir-row a directement 2 enfants (wrapper image + .venir-row__body,
+   déjà côte à côte via le flex de .venir-row lui-même), soit ils sont regroupés dans un
+   unique wrapper Gutenberg .wp-block-group__inner-container qui, en layout bloc normal,
+   empile l'image au-dessus du corps. Rendre CE wrapper flex row aussi couvre les deux cas
+   sans dépendre de la structure exacte : dans le cas à 2 enfants, ça ne s'applique qu'au
+   wrapper de l'image seule (aucun effet visible, un seul enfant) ; dans le cas à wrapper
+   unique, ça met l'image et .venir-row__body côte à côte comme prévu. */
+.venir-row > .wp-block-group__inner-container {
+  display: flex; gap: 10px; align-items: center;
+}
 .venir-row__image {
   position: relative; width: 90px; flex-shrink: 0; aspect-ratio: 3 / 2; overflow: hidden;
   background: #FBF7F0; border-radius: 3px;
