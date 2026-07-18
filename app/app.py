@@ -23,7 +23,8 @@ from functools import wraps
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import (Flask, flash, jsonify, redirect, render_template, request,
+                   session, url_for)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -846,6 +847,40 @@ def regie_go(cid):
     conn.close()
     fallback = (os.getenv("WP_AS_URL", "") or "https://agendasabauda.eu").rstrip("/")
     return redirect(fallback + "/", code=302)
+
+
+@app.route("/api/active-ads")
+def regie_active_ads():
+    """API PUBLIQUE lue par WordPress : les pubs manuelles actuellement à diffuser.
+
+    Renvoie, par bloc, la créative active du jour (statut actif, dans la fenêtre de
+    dates, image + destination renseignées). Le module WordPress cs-regie-serve.php
+    interroge cette URL (avec cache) et affiche la pub tout seul — plus de copier-coller.
+    Un seul annonceur par bloc (le plus récent l'emporte).
+    """
+    conn = get_db()
+    _ensure_regie_table(conn)
+    today = date.today().isoformat()
+    rows = conn.execute(
+        "SELECT id, bloc, image_url, url FROM ad_campaigns "
+        "WHERE statut='active' AND image_url<>'' AND url<>'' "
+        "AND (date_debut IS NULL OR date_debut='' OR date_debut<=?) "
+        "AND (date_fin   IS NULL OR date_fin=''   OR date_fin>=?) "
+        "ORDER BY id ASC", (today, today)).fetchall()
+    conn.close()
+    base = request.host_url.rstrip("/")
+    ads = {}
+    for r in rows:
+        ads[r["bloc"]] = {
+            "id": r["id"],
+            "image": r["image_url"],
+            "link": base + "/go/" + str(r["id"]),
+            "format": AD_BLOCKS.get(r["bloc"], {}).get("format", ""),
+        }
+    resp = jsonify({"ads": ads})
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Cache-Control"] = "public, max-age=120"
+    return resp
 
 
 @app.route("/api/status")

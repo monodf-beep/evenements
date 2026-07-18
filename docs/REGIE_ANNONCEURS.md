@@ -93,3 +93,18 @@ Les 3 emplacements **hors flux** qu'Ad Inserter gère mal en version gratuite :
 Tout le reste (leaderboard, pavés in-list / in-article, sticky bas) = **blocs Ad Inserter**
 configurés en wp-admin selon le tableau ci-dessus. Les créatives du scaffold se règlent
 par option `cs_regie` (filtre `cs_regie_options` pour alimentation future par le back-office).
+
+## Diffusion AUTOMATIQUE depuis le back-office (zéro copier-coller)
+Pour supprimer le collage manuel dans Ad Inserter, deux pièces travaillent ensemble :
+- **Back-office** : l'API publique `GET /api/active-ads` expose, par bloc, la créative
+  **active du jour** (statut actif, dans la fenêtre de dates, image + destination
+  renseignées ; lien = `/go/<id>` donc clics comptés).
+- **WordPress** : le mu-plugin **`deploy/wordpress/cs-regie-serve.php`** interroge cette
+  API (cache 5 min) et **affiche la pub tout seul**. V1 : **Bloc 3 = bandeau bas d'écran
+  (sticky, fermable)**, consent-gated, libellé « Publicité ».
+
+Résultat : **créer / modifier / terminer** une campagne dans le back-office suffit — la pub
+apparaît / change / disparaît sur agendasabauda.eu dans les **~5 min** (purge immédiate
+possible via `/?cs_regie_refresh=1`). ⚠️ Ne pas configurer **aussi** le Bloc 3 dans Ad
+Inserter (double pub). Ad Inserter reste pour l'**AdSense** (blocs 1 & 2). Les blocs 4
+(skin) et autres formats peuvent suivre le même modèle ensuite.
