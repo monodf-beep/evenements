@@ -260,7 +260,19 @@ def inject_globals():
         conn.close()
     except Exception:
         pass
-    return {"nav": {"pending": pending, "validate": validate, "tocomplete": tocomplete},
+    regie = 0
+    try:
+        conn = get_db()
+        _ensure_regie_table(conn)
+        regie = conn.execute(
+            "SELECT COUNT(*) n FROM ad_campaigns WHERE statut='active' "
+            "AND date_fin IS NOT NULL AND date_fin<>'' "
+            "AND julianday(date_fin)-julianday('now','localtime') <= 3").fetchone()["n"]
+        conn.close()
+    except Exception:
+        pass
+    return {"nav": {"pending": pending, "validate": validate,
+                    "tocomplete": tocomplete, "regie": regie},
             "nav_alert": friendly_alert(),
             # Bases WordPress (liens directs vers les brouillons créés) :
             #   wp_base    → culturasabauda.eu (article, wp_post_id_cs)
@@ -648,6 +660,115 @@ def cowork_log():
     conn.close()
     flash("✅ Passage Cowork enregistré dans le journal.", "ok")
     return redirect(url_for("cowork_page") + "#journal")
+
+
+# --------------------------------------------------------------------------- #
+# Régie publicitaire — démarche + gestion des campagnes manuelles
+# --------------------------------------------------------------------------- #
+# Blocs publicitaires du site (cf. docs/REGIE_ANNONCEURS.md).
+#   source 'adsense' : rempli automatiquement par Google (rien à gérer ici)
+#   source 'manuel'  : régie directe → gérable depuis cette page
+AD_BLOCKS = {
+    "1": {"nom": "Leaderboard (haut)",           "format": "970×90 · 350×90 mobile",   "source": "adsense"},
+    "2": {"nom": "Pavé in-article",              "format": "300×250 / 336×280",        "source": "adsense"},
+    "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel"},
+    "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel"},
+}
+
+
+def _ensure_regie_table(conn):
+    conn.execute("CREATE TABLE IF NOT EXISTS ad_campaigns ("
+                 "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                 "created_at TEXT NOT NULL, annonceur TEXT NOT NULL, "
+                 "bloc TEXT NOT NULL, format TEXT, url TEXT, image_url TEXT, "
+                 "date_debut TEXT, date_fin TEXT, tarif TEXT, note TEXT, "
+                 "statut TEXT NOT NULL DEFAULT 'active')")
+
+
+@app.route("/regie")
+@require_auth
+def regie_page():
+    """Démarche pour poser une pub manuelle + suivi des campagnes (dates, échéances)."""
+    conn = get_db()
+    _ensure_regie_table(conn)
+    rows = [dict(r) for r in conn.execute(
+        "SELECT * FROM ad_campaigns ORDER BY "
+        "CASE statut WHEN 'active' THEN 0 ELSE 1 END, "
+        "date_fin IS NULL, date_fin").fetchall()]
+    conn.commit()
+    conn.close()
+    today = date.today()
+    occupied = {}  # bloc -> campagne active en cours
+    for r in rows:
+        r["days_left"] = None
+        if r.get("date_fin"):
+            try:
+                r["days_left"] = (date.fromisoformat(r["date_fin"]) - today).days
+            except ValueError:
+                pass
+        r["expired"] = bool(r["statut"] == "active" and r["days_left"] is not None
+                            and r["days_left"] < 0)
+        if r["statut"] == "active" and not r["expired"]:
+            occupied.setdefault(r["bloc"], r)
+    return render_template("regie.html", active="regie", blocks=AD_BLOCKS,
+                           campaigns=rows, occupied=occupied,
+                           today=today.isoformat())
+
+
+@app.route("/regie/add", methods=["POST"])
+@require_auth
+def regie_add():
+    """Enregistre une campagne (trace + date de fin pour l'alerte d'échéance)."""
+    f = request.form
+    annonceur = (f.get("annonceur", "") or "").strip()
+    bloc = (f.get("bloc", "") or "").strip()
+    if not annonceur or bloc not in AD_BLOCKS:
+        flash("⚠️ Annonceur et bloc sont obligatoires.", "err")
+        return redirect(url_for("regie_page") + "#ajouter")
+    conn = get_db()
+    _ensure_regie_table(conn)
+    conn.execute(
+        "INSERT INTO ad_campaigns (created_at, annonceur, bloc, format, url, "
+        "image_url, date_debut, date_fin, tarif, note, statut) VALUES "
+        "(datetime('now','localtime'),?,?,?,?,?,?,?,?,?,'active')",
+        (annonceur[:200], bloc, AD_BLOCKS[bloc]["format"],
+         (f.get("url", "") or "").strip()[:500],
+         (f.get("image_url", "") or "").strip()[:500],
+         (f.get("date_debut", "") or "").strip()[:10],
+         (f.get("date_fin", "") or "").strip()[:10],
+         (f.get("tarif", "") or "").strip()[:50],
+         (f.get("note", "") or "").strip()[:1000]))
+    conn.commit()
+    conn.close()
+    flash("✅ Campagne enregistrée dans la régie.", "ok")
+    return redirect(url_for("regie_page"))
+
+
+@app.route("/regie/end/<int:cid>", methods=["POST"])
+@require_auth
+def regie_end(cid):
+    """Marque une campagne comme terminée (à faire à l'échéance, après avoir "
+    "désactivé/remplacé le bloc côté site)."""
+    conn = get_db()
+    _ensure_regie_table(conn)
+    conn.execute("UPDATE ad_campaigns SET statut='ended' WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
+    flash("Campagne marquée « terminée ».", "ok")
+    return redirect(url_for("regie_page"))
+
+
+@app.route("/regie/delete/<int:cid>", methods=["POST"])
+@require_auth
+def regie_delete(cid):
+    """Supprime définitivement une ligne de campagne."""
+    conn = get_db()
+    _ensure_regie_table(conn)
+    conn.execute("DELETE FROM ad_campaigns WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
+    flash("Campagne supprimée.", "ok")
+    return redirect(url_for("regie_page"))
 
 
 @app.route("/api/status")

@@ -27,6 +27,8 @@
       <div class="nav-section">Agenda Sabauda</div>
       <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
         {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
+      <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Régie pub
+        {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</a>
 
       <div class="nav-section">Aide</div>
       <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
