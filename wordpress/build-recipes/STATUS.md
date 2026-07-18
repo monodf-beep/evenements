@@ -2,6 +2,24 @@
 
 *Dernière mise à jour : session du 2026-07-13 (9e passe — vraie grammaire de carte, Hub territoire/catégorie, « Ce week-end »/« Tout l'agenda » et Recherche reconstruits en gabarits PHP dédiés).*
 
+## ✅ Barre légale du footer — 2 des 3 liens morts corrigés (session du 2026-07-19)
+
+Écart mesuré : `.as-footer__legal-links` (widget Custom HTML `4` de la zone `footer-bar`,
+option WP `widget_custom_html`, **stocké en base, pas dans ce repo** — pas de fichier git
+source pour ce contenu) contenait 3 liens `href="#"` : « Mentions légales », « Confidentialité »,
+« Crédits photos ». Or les pages 1700 (Mentions légales) et 1702 (Crédits photos) sont
+`post_status=publish` (permaliens `/mentions-legales/` et `/credits-photos/`) depuis les
+sessions précédentes.
+
+**Corrigé en live uniquement** (`update_option('widget_custom_html', ...)`, vérifié via
+`file_get_contents('https://agendasabauda.eu/?nocache=…')`) : les 2 liens vers pages publiées
+pointent maintenant vers leurs URL réelles. Le lien « Confidentialité » reste volontairement
+`href="#"` : la page 1701 est toujours `post_status=draft` (cf. section « Confidentialité »
+ci-dessous — infos légales réelles manquantes, interdiction d'inventer). Aucun changement
+CSS nécessaire (`.as-footer__legal` dans `components.css` ne fait que du style, pas de contenu) ;
+aucun fichier git ne porte le contenu HTML de ce widget, donc rien à committer côté template —
+seule cette note documente le fix live.
+
 ## ✅ « Crédits photos » (page 1702) — construite, vérifiée et **PUBLIÉE**
 
 Source réelle : `docs/legal/credits_photos.md` (FR + IT, trame rédigée par Franck). Nouveau
