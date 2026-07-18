@@ -616,7 +616,20 @@
 .as-day-rail .jet-listing-grid__items {
   display: flex !important; flex-wrap: nowrap !important; overflow-x: auto; gap: 12px; padding-bottom: 4px;
 }
-.as-day-rail .jet-listing-grid__item { flex: 0 0 auto !important; width: auto !important; max-width: none !important; }
+/* Fix 2026-07-19 (mesure DOM en direct, agendasabauda.eu 375x812) : le fix précédent
+   ne surchargeait que flex/width/max-width, laissant passer padding:10px hérité de
+   JetEngine (.jet-listing-grid__item, valeur par défaut du plugin, box-sizing:border-box).
+   Mesuré : item width=170px (150px carte .ala-une-card + 20px de padding, 10px de
+   chaque côté), cardLeft-itemLeft=10px sur les 3 items visibles. Écart visuel réel
+   entre 2 cartes = 10(padding item N) + 12(gap flex) + 10(padding item N+1) = 32px
+   au lieu des 12px de gap prévus. Conséquence sur le "peek" (indice de scroll) :
+   railClientWidth=355px, item0 right=180px absolu / item1 right=362px absolu, la
+   zone visible du rail va de 10 à 365px (railLeft=10) donc item2 (left=374px) est
+   entièrement hors champ = 0px de peek au lieu des ~43px voulus (maquette Agenda
+   Sabaudo - Mobile.dc.html L.232-256 : cartes 150px sans padding individuel, gap
+   12px). Fix : padding:0 !important pour ramener l'item à 150px = largeur de la
+   carte, gap 12px propre, peek restauré. */
+.as-day-rail .jet-listing-grid__item { flex: 0 0 auto !important; width: auto !important; max-width: none !important; padding: 0 !important; }
 .as-day-rail .ala-une-card { width: 150px; flex-shrink: 0; }
 /* Titre 15px sur TOUTES les cartes _element_id "jour" (rail mobile scrollable
    ET grille statique 4col desktop, cf. maquette Claude Design "15px dans le
