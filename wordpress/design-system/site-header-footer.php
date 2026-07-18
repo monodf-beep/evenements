@@ -40,7 +40,31 @@ add_action('wp_body_open', function () {
           ]);
           ?>
         </nav>
-        <div class="as-site-header__lang">FR <span>|</span> <span class="muted">IT</span></div>
+        <div class="as-site-header__lang">
+          <?php
+          // Écart mesuré 2026-07-18 : FR|IT n'était que du texte statique (aucun <a href>).
+          // On génère maintenant de vrais liens Polylang vers l'URL traduite courante,
+          // en conservant le style visuel existant (couleur inline, pas de dépendance à
+          // un composant CSS différent) pour zéro régression visuelle.
+          $as_langs = function_exists('pll_the_languages') ? pll_the_languages(['raw' => 1, 'hide_if_empty' => 0]) : [];
+          if ($as_langs) {
+              $as_lang_links = [];
+              foreach ($as_langs as $as_lang) {
+                  $as_lang_style = 'text-decoration:none;' . ($as_lang['current_lang'] ? 'color:inherit' : 'color:#C9BFAD;font-weight:400');
+                  $as_lang_links[] = sprintf(
+                      '<a href="%s" style="%s">%s</a>',
+                      esc_url($as_lang['url']),
+                      esc_attr($as_lang_style),
+                      esc_html(strtoupper($as_lang['slug']))
+                  );
+              }
+              echo implode(' <span>|</span> ', $as_lang_links);
+          } else {
+              // Repli si Polylang est désactivé : ancien texte statique, non cliquable.
+              echo 'FR <span>|</span> <span class="muted">IT</span>';
+          }
+          ?>
+        </div>
         <input type="checkbox" id="as-site-header-burger" class="as-site-header__burger-toggle">
         <label for="as-site-header-burger" class="as-site-header__burger-label" aria-label="Menu">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
