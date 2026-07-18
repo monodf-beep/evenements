@@ -24,6 +24,10 @@ if (!defined('ABSPATH')) { exit; }
 if (!defined('CS_REGIE_BACKOFFICE')) {
     define('CS_REGIE_BACKOFFICE', 'https://backoffice.agendasabauda.eu');
 }
+// Anti supply-chain : on n'injecte QUE des créatives de domaines qu'on contrôle.
+// L'image doit venir du site, le lien du backoffice (le /go/<id> de comptage).
+if (!defined('CS_REGIE_IMG_HOST'))  { define('CS_REGIE_IMG_HOST',  'agendasabauda.eu'); }
+if (!defined('CS_REGIE_LINK_HOST')) { define('CS_REGIE_LINK_HOST', 'backoffice.agendasabauda.eu'); }
 
 /** Récupère les pubs actives depuis le backoffice, avec cache 5 min (transient). */
 function cs_regie_serve_fetch() {
@@ -45,14 +49,28 @@ add_action('init', function () {
     if (!empty($_GET['cs_regie_refresh'])) { delete_transient('cs_regie_ads'); }
 });
 
+/** URL sûre ? https + hôte égal (ou sous-domaine) d'un domaine autorisé. */
+function cs_regie_host_ok($url, $allowed) {
+    if (wp_parse_url($url, PHP_URL_SCHEME) !== 'https') { return false; }
+    $host = strtolower((string) wp_parse_url($url, PHP_URL_HOST));
+    $allowed = strtolower($allowed);
+    return ($host === $allowed) || (substr($host, -strlen('.' . $allowed)) === '.' . $allowed);
+}
+
 add_action('wp_footer', function () {
     if (is_admin()) { return; }
     $ads = cs_regie_serve_fetch();
     if (empty($ads['3']) || empty($ads['3']['image']) || empty($ads['3']['link'])) {
         return;  // Bloc 3 (bandeau bas d'écran) : rien d'actif → rien à afficher
     }
-    $img  = esc_url($ads['3']['image']);
-    $link = esc_url($ads['3']['link']);
+    $img  = $ads['3']['image'];
+    $link = $ads['3']['link'];
+    // Fail-safe : créative d'un domaine non contrôlé → on n'injecte RIEN.
+    if (!cs_regie_host_ok($img, CS_REGIE_IMG_HOST) || !cs_regie_host_ok($link, CS_REGIE_LINK_HOST)) {
+        return;
+    }
+    $img  = esc_url($img);
+    $link = esc_url($link);
     ?>
     <style>
       #cs-sticky{display:none;position:fixed;left:0;right:0;bottom:0;z-index:9999;
