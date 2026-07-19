@@ -694,6 +694,23 @@
 .tribe-events-single .tribe-events-single-event-title { font-family: var(--font-editorial); font-weight: 600; }
 .tribe-events-single .tribe-events-content { font-family: var(--font-body); font-size: 15px; line-height: 1.6; color: var(--fg-1); }
 .tribe-events-single .tribe-events-content p { margin-bottom: 1.1em; }
+/* Fix débordement horizontal mobile (2026-07-20) : le template "Single Event"
+   (jet-theme-core 962) est un placeholder vide — tout le rendu de la fiche
+   (carte Google Maps, tableau "infos pratiques", venue) vient du markup natif
+   du plugin The Events Calendar, qui n'a aucune contrainte de largeur fluide
+   par défaut. Audit multi-agents (3 agents DevTools+CSS) n'a pas pu reproduire
+   le débordement en scan DOM statique (carte/tableau probablement chargés
+   après le premier écran) — fix défensif ciblé sur les conteneurs natifs TEC
+   les plus à risque, sans dépendre d'une reproduction visuelle. */
+.tribe-events-single .tribe-events-venue-map,
+.tribe-events-single .tribe-events-venue-map iframe,
+.tribe-events-single .tribe-events-single-event-meta,
+.tribe-events-single .tribe-events-meta-group,
+.tribe-events-single .tribe-events-meta-group table,
+.tribe-events-single .tribe-events-schedule { max-width: 100%; }
+.tribe-events-single .tribe-events-venue-map iframe { height: auto; }
+.tribe-events-single .tribe-events-meta-group table { table-layout: fixed; word-break: break-word; }
+.tribe-events-single { overflow-x: hidden; }
 .as-sticky-ad { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; }
 @media (min-width: 481px) { .as-sticky-ad { max-width: 480px; margin: 0 auto; } }
 
