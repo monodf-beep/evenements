@@ -843,6 +843,39 @@
    le bloc Ad Inserter lui-même dans le contenu de page. Supprimer cette
    règle une fois une vraie campagne branchée sur ce bloc. */
 .ai-pub-3-bar { display: none !important; }
+/* Débordement horizontal sur la page "article" (single post, ex. /hello-world/,
+   2026-07-20, DevTools réel 375px) : window.innerWidth mesurait 990px au lieu de
+   375 (visualViewport.width) — le bloc Ad Inserter #1 contient une unité AdSense
+   (data-ad-format="auto" data-full-width-responsive="true") non remplie
+   (data-ad-status="unfilled" — même cause que .ai-pub-3-bar ci-dessus, aucune
+   campagne réelle). Sans remplissage, l'iframe AdSense retombe sur sa largeur
+   desktop par défaut de 970px (#aswift_N_host, style inline width:970px), qui
+   élargit tout le layout viewport de la page et zoome le rendu vers l'extérieur.
+   Règle générique (pas juste bloc #1) : n'importe quel emplacement AdSense/Ad
+   Inserter peut reproduire ce comportement tant qu'il n'est pas rempli. */
+.code-block, [id^="ai-pub-"], ins.adsbygoogle, ins.adsbygoogle iframe, ins.adsbygoogle > div {
+  max-width: 100% !important; overflow-x: hidden;
+}
+/* 2e cause du même débordement (2026-07-20, DevTools réel 375px, page "article"
+   /hello-world/) : #content.site-content (wrapper GeneratePress) est en
+   display:flex; flex-direction:column. Le conteneur "<div style="max-width:
+   700px;margin:0 auto;padding:0 20px">" utilisé tel quel dans ~14 gabarits PHP
+   (CS · Gabarit Article/Le Fil/Ce week-end/Tout l'agenda/Aujourd'hui/Cette
+   semaine/À propos/Mentions légales/Confidentialité/Crédits photos/Recherche/
+   Fiche lieu/Hub territoire-catégorie) est un enfant direct de ce flex
+   container. Premier réflexe "min-width:0" INEFFICACE : ça ne joue que sur
+   l'axe principal (vertical, colonne) — le vrai problème est sur l'axe
+   transversal (horizontal) : son "margin:0 auto" (marges auto gauche/droite)
+   désactive le stretch par défaut d'align-items (règle spec flexbox : un
+   margin auto sur l'axe transversal neutralise align-items:stretch), donc le
+   div retombe sur sa largeur de contenu (max-content, plafonnée à
+   max-width:700px) au lieu de remplir l'espace dispo — bloqué à 700px même en
+   viewport 375px. Fix : width:100% explicite (au lieu de compter sur le
+   stretch flex) ; combiné au max-width:700px déjà inline dans le PHP, ça
+   donne bien "100% du conteneur, plafonné à 700px" à toutes les tailles
+   d'écran, desktop inclus. Casse TOUTES les pages utilisant ce gabarit sur
+   mobile (pas seulement /hello-world/, juste le premier constaté). */
+#content.site-content > div { width: 100% !important; }
 
 /* ===== Header/Footer de marque, site-wide (design-system/site-header-footer.php) —
    injectés via wp_body_open/wp_footer, PAS de Theme Builder. Masque le
