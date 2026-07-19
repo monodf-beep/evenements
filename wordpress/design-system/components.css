@@ -833,6 +833,16 @@
    affichaient un repère "Publicité" en permanence. Supprimer cette règle une
    fois les blocs Ad Inserter réellement configurés. */
 .as-desktop-gutter-ad, .as-sticky-ad, .as-desktop-sticky-ad { display: none !important; }
+/* Barre sticky "Ad Inserter" bloc #3, native au plugin (PAS notre régie
+   #cs-sticky de wp-content/mu-plugins/cs-regie-serve.php, qui elle reste
+   déjà cachée quand vide) — visible sur les pages événement (single
+   tribe_events), absente de la home. Même raison que ci-dessus : aucune
+   campagne réelle, le bloc retombe sur un encart "Votre publicité ici /
+   Annoncer sur Agenda Sabauda" en permanence (2026-07-20, demande Franck).
+   !important nécessaire : le style de .ai-pub-3-bar est injecté inline par
+   le bloc Ad Inserter lui-même dans le contenu de page. Supprimer cette
+   règle une fois une vraie campagne branchée sur ce bloc. */
+.ai-pub-3-bar { display: none !important; }
 
 /* ===== Header/Footer de marque, site-wide (design-system/site-header-footer.php) —
    injectés via wp_body_open/wp_footer, PAS de Theme Builder. Masque le
