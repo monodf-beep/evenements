@@ -24,6 +24,7 @@ import argparse
 import os
 import sqlite3
 import sys
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -41,9 +42,20 @@ log = get_logger("refill-images-as")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
-def select_targets(conn: sqlite3.Connection, ids) -> list[dict]:
-    """Événements publiés sur AS (wp_post_id_as présent) dont l'image manque ou
-    n'est qu'un logo (donc pas de vignette côté WordPress)."""
+def select_targets(conn: sqlite3.Connection, ids, wp_ids) -> list[dict]:
+    """Événements à re-imager.
+
+    --wp-ids : ON FORCE le retraitement des événements dont l'id WP (wp_post_id_as)
+    est fourni, SANS filtre sur url_image — utile quand l'image existe en base mais a
+    échoué à l'upload (donc pas de vignette côté WordPress). C'est le cas des 10 de la
+    home. Sinon : événements publiés sur AS dont url_image est vide ou n'est qu'un logo.
+    """
+    if wp_ids:
+        placeholders = ",".join("?" * len(wp_ids))
+        q = ("SELECT * FROM events_raw WHERE duplicate_of IS NULL "
+             f"AND CAST(wp_post_id_as AS TEXT) IN ({placeholders})")
+        return [dict(r) for r in conn.execute(q, [str(x) for x in wp_ids]).fetchall()]
+
     q = ("SELECT * FROM events_raw "
          "WHERE COALESCE(wp_post_id_as,'') <> '' AND duplicate_of IS NULL")
     params: list = []
@@ -59,7 +71,10 @@ def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(
         description="Re-remplit et re-pousse l'image des événements Agenda Sabauda sans visuel.")
-    parser.add_argument("ids", nargs="*", type=int, help="Ids précis (défaut : tous les AS sans image).")
+    parser.add_argument("ids", nargs="*", type=int, help="Ids backoffice précis (défaut : tous les AS sans image).")
+    parser.add_argument("--wp-ids", nargs="*", type=int, default=None,
+                        help="Cible par id WordPress (wp_post_id_as) — FORCE le retraitement, "
+                             "même si url_image est renseigné (cas des events sans vignette côté WP).")
     parser.add_argument("--dry-run", action="store_true",
                         help="Résout l'image mais ne met à jour NI la base NI WordPress.")
     parser.add_argument("--no-web", action="store_true",
@@ -69,7 +84,7 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     conn.row_factory = sqlite3.Row
-    rows = select_targets(conn, args.ids)
+    rows = select_targets(conn, args.ids, args.wp_ids)
     log.info("%d événement(s) Agenda Sabauda sans image à traiter.", len(rows))
     if not rows:
         log.info("Rien à faire — tous les événements AS ciblés ont déjà une image.")
@@ -114,11 +129,20 @@ def main(argv=None) -> int:
             continue
         # publish_to_as refait sa PROPRE chaîne de repli (url_image → page source →
         # bannière) et met à jour l'événement existant (wp_post_id_as) sans le dépublier.
-        new_id = publish_to_as(ev)
+        # Retry : OVH mutualisé renvoie parfois un 504 sur l'upload d'une grande image.
+        new_id = None
+        for attempt in range(3):
+            new_id = publish_to_as(ev)
+            if new_id:
+                break
+            if attempt < 2:
+                log.warning("[%s] re-push tentative %d échouée (504/timeout ?) — retry dans %ds…",
+                            ev["id"], attempt + 1, 5 * (attempt + 1))
+                time.sleep(5 * (attempt + 1))
         if new_id:
             pushed += 1
         else:
-            log.error("[%s] re-push échoué — %s", ev["id"], title)
+            log.error("[%s] re-push échoué après 3 tentatives — %s", ev["id"], title)
 
     log.info("Résolu — og=%d · page=%d · Commons=%d · bannière=%d · aucun=%d | re-poussés=%d%s",
              stats["og"], stats["page"], stats["commons"], stats["banner"], stats["none"],
