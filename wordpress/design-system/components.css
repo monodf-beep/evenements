@@ -164,113 +164,64 @@
 }
 
 
-/* ===== footer ===== */
-/* ===== FOOTER Agenda Sabauda — fond deep (bleu Savoie) ===== */
-.as-footer{
-  background: var(--bg-deep);
-  color: var(--fg-on-deep);
-  font-family: var(--font-body);
-  font-size: var(--fs-body-sm);
-  line-height: var(--lh-body);
+/* ===== FOOTER natif GeneratePress — fond clair (2026-07-20, conforme maquette
+   Claude Design "Agenda Sabaudo - Mobile.dc.html", bloc desktop lignes 800-853).
+   Remplace la version "fond bleu deep + bloc marque + colonne Explorer" du
+   2026-07-14 : décision actée avec l'utilisateur de suivre la maquette à la
+   lettre — bloc marque (wordmark/baseline/about/social) et colonne "Explorer"
+   RETIRÉS du footer (le bloc "Suivez-nous" de la maquette vit dans le corps de
+   page, pas le footer). 5 colonnes : Territoires, Catégories, Le projet,
+   Infos & légal (nouveau menu WP #340), Langue (bloc statique FR|IT, pas un
+   widget nav_menu). Une seule ligne copyright remplace les 2 widgets Zone
+   D/E précédents. Valeurs en px littéraux pour coller exactement à la
+   maquette (pas de mapping token proposé par la source elle-même). */
+.site-footer,
+.site-footer .site-info{
+  background: #FBF7F0 !important;
+  color: #1D1D1B;
 }
-.as-footer a{
-  color: var(--fg-on-deep);          /* beige sur bleu = contraste AA large */
-  text-decoration: none;
-}
-.as-footer a:hover,
-.as-footer a:focus-visible{
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.as-footer a:focus-visible{          /* focus visible = rouge accent (non-texte, safe) */
+.site-footer a,
+.site-footer .widget-title{ color: #1D1D1B; }
+.site-footer a{ text-decoration: none; }
+.site-footer a:hover,
+.site-footer a:focus-visible{ text-decoration: underline; text-underline-offset: 3px; }
+.site-footer a:focus-visible{
   outline: 2px solid var(--cs-rouge);
   outline-offset: 2px;
 }
+.site-footer .copyright-bar{ display: none; }
 
-/* ---- Layout général ---- */
-.as-footer__inner{ max-width: var(--page-max); margin:0 auto; padding: var(--s-8) var(--s-5); }
-
-/* ---- Zone B : marque ---- */
-.as-footer__brand{ margin-bottom: var(--s-7); max-width: 32rem; }
-.as-footer__wordmark{
-  font-family: var(--font-editorial);
-  font-size: var(--fs-h3); font-weight:800; letter-spacing: var(--tracking-caps);
-  color: var(--fg-on-deep); line-height: var(--lh-title);
+/* ---- Colonnes (footer-widgets) ---- */
+.footer-widgets-container{ max-width: 950px; margin: 0 auto; padding: 48px 20px 28px; }
+.inside-footer-widgets{ gap: 28px; }
+.site-footer .widget-title{
+  font-family: 'Nunito Sans', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #1D1D1B; margin: 0 0 14px;
 }
-.as-footer__wordmark .wm-dot{ color: var(--cs-rouge); }   /* le point rouge du logotype */
-.as-footer__baseline{ color: var(--cs-bleu-clair); margin-top: var(--s-2); }
-.as-footer__about{ color: rgba(247,241,232,.82); font-size: var(--fs-meta); margin-top: var(--s-3); }
-.as-footer__social{ display:flex; gap: var(--s-4); margin-top: var(--s-4); }
-.as-footer__social a{ display:inline-flex; }         /* icônes SVG trait, 20px */
-.as-footer__lang{ margin-top: var(--s-4); letter-spacing: var(--tracking-caps); }
-.as-footer__lang [aria-current="true"]{ font-weight:800; }
-.as-footer__lang .sep{ opacity:.5; margin:0 var(--s-2); }
+.site-footer .widget_nav_menu ul{ list-style:none; margin:0; padding:0; display:grid; gap: 9px; }
+.site-footer .widget_nav_menu a{ font-family: 'Nunito Sans', sans-serif; font-size: 13px; color: #1D1D1B; }
+.site-footer .widget_nav_menu .sub-menu{ padding-left: 12px; }
 
-/* ---- Zone C : 4 colonnes ---- */
-.as-footer__cols{
-  display:grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-6);
-  border-top: 1px solid var(--rule-on-deep); padding-top: var(--s-6);
-}
-.as-footer__col h3{
-  font-family: var(--font-editorial);
-  font-size: var(--fs-meta); text-transform:uppercase; letter-spacing: var(--tracking-eyebrow);
-  color: var(--cs-bleu-clair); margin:0 0 var(--s-3);
-}
-.as-footer__col ul{ list-style:none; margin:0; padding:0; display:grid; gap: var(--s-2); }
+/* ---- Colonne Langue (footer-5, bloc HTML statique, pas un menu) ---- */
+.as-footer__lang{ font-family: 'Nunito Sans', sans-serif; font-size: 13px; font-weight: 800; color: #1D1D1B; }
+.as-footer__lang .sep{ color: #6F6B62; font-weight: 400; margin: 0 6px; }
+.as-footer__lang a:last-child{ color: #6F6B62; font-weight: 400; }
 
-/* ---- Zone D : nav thématique ---- */
-.as-footer__themes{
-  border-top: 1px solid var(--rule-on-deep);
-  margin-top: var(--s-6); padding-top: var(--s-5);
-  font-size: var(--fs-meta); color: rgba(247,241,232,.82);
-}
-.as-footer__themes strong{ color: var(--fg-on-deep); }
+/* ---- Copyright (footer-bar, 1 widget Custom HTML) ---- */
+.site-footer .footer-bar{ border-top: 1px solid #E3DCCE; padding-top: 16px; }
+.as-footer__copyright{ font-family: 'Nunito Sans', sans-serif; font-size: 11px; color: #6F6B62; }
 
-/* ---- Zone E : barre légale ---- */
-.as-footer__legal{
-  border-top: 1px solid var(--rule-on-deep);
-  margin-top: var(--s-6); padding: var(--s-5) 0 0;
-  display:flex; flex-wrap:wrap; justify-content:space-between; gap: var(--s-3);
-  font-size: var(--fs-meta); color: rgba(247,241,232,.75);
-}
-.as-footer__legal a{ color: rgba(247,241,232,.85); }
-.as-footer__editeur img{ height:24px; width:auto; vertical-align:middle; margin-right: var(--s-2); }
-
-/* ---- Footer réel WordPress (footer-widgets GeneratePress) ---- reconciliation avec le CSS
-   live (snippet id=12) : la structure DOM effective du footer (site-footer > #footer-widgets >
-   .footer-widgets-container > .inside-footer-widgets > .footer-widget-1..5) était absente de
-   ce fichier — .as-footer__cols ci-dessus n'existe plus dans le DOM rendu. Ajouté ici pour que
-   git reste la source de vérité du CSS réellement servi.
-   Bug corrigé (mesuré 2026-07-19 avec getComputedStyle sur agendasabauda.eu) : la règle
-   responsive héritée du live (`.inside-footer-widgets{ grid-template-columns: repeat(2,1fr)
-   !important }` à 768px, `1fr !important` à 480px) n'avait AUCUN effet — le conteneur réel est
-   en display:flex (géré par GeneratePress, widget-areas.min.css), pas display:grid.
-   Preuve : à 1280px, display='flex', flexDirection='row', gridTemplateColumns='none' (5 colonnes
-   en ligne, 206px chacune). À 700px (sous le seuil 768px), display='flex' toujours,
-   flexDirection='column' (bascule propre à GeneratePress, déclenchée aussi à max-width:768px),
-   gridTemplateColumns calculé='repeat(2, 1fr)' mais sans effet car display≠grid — résultat :
-   passage direct de 5 colonnes en ligne à 1 seule colonne empilée (5 blocs pleine largeur,
-   left identique 30px, top croissant), jamais de palier 2 colonnes.
-   Fix : forcer display:grid (en écrasant le display:flex de GeneratePress) pour que
-   grid-template-columns reprenne effet ; neutralise aussi le margin-bottom que GeneratePress
-   ajoute entre colonnes en mode flex-column (redondant avec le gap du grid). */
-.footer-widgets-container{ max-width: var(--page-max); margin: 0 auto; padding: var(--s-8) var(--s-5); }
-.inside-footer-widgets{ gap: var(--s-6); }
+/* ---- Responsive : force display:grid (GeneratePress applique display:flex sur
+   .inside-footer-widgets, qui neutralise grid-template-columns — bug identifié et
+   corrigé le 2026-07-19) ---- */
+.inside-footer-widgets{ display: grid !important; grid-template-columns: repeat(5, 1fr) !important; }
 @media (max-width: 768px){
-  .inside-footer-widgets{ display: grid !important; grid-template-columns: repeat(2, 1fr) !important; }
+  .inside-footer-widgets{ grid-template-columns: repeat(2, 1fr) !important; }
   .inside-footer-widgets > div:not(:last-child){ margin-bottom: 0 !important; }
 }
 @media (max-width: 480px){
   .inside-footer-widgets{ grid-template-columns: 1fr !important; }
-}
-
-/* ---- Responsive (legacy .as-footer__cols, conservé au cas où réutilisé ailleurs — à auditer) ---- */
-@media (max-width: 1024px){
-  .as-footer__cols{ grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 480px){
-  .as-footer__cols{ grid-template-columns: 1fr; }
-  .as-footer__legal{ flex-direction:column; }
 }
 
 
