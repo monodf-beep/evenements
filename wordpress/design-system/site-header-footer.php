@@ -10,6 +10,15 @@
  * (homepage-mobile.gutenberg.html), différent par nature du header compact
  * des autres pages (cf. leurs propres maquettes : Recherche, Page Lieu...).
  *
+ * 2026-07-18 : l'exclusion couvre maintenant aussi la traduction IT de 928
+ * (page "Home (IT)", cf. homepage-template.php) — même raison exacte, cette
+ * page a elle aussi son propre masthead/nav bakés dans son contenu Gutenberg
+ * (homepage-mobile-it.gutenberg.html). Résolue dynamiquement via
+ * cs_agenda_home_page_ids() (définie dans homepage-template.php, snippet
+ * "CS · Gabarit Accueil (928)") pour ne pas dupliquer l'ID en dur ici — sans
+ * ça, la home IT afficherait CE header générique EN PLUS de son propre
+ * masthead (double header).
+ *
  * FOOTER : géré nativement par GeneratePress (widgets .site-info / .site-footer,
  * 5 colonnes + as-footer__themes + as-footer__legal) depuis le 2026-07-14
  * (cf. components.css, commentaire "FOOTER natif GeneratePress ... remplace
@@ -24,7 +33,8 @@
  * pur (checkbox hack), pas de JS.
  */
 add_action('wp_body_open', function () {
-    if (is_page(928)) {
+    $home_ids = function_exists('cs_agenda_home_page_ids') ? cs_agenda_home_page_ids() : [928];
+    if (is_page($home_ids)) {
         return;
     }
     ?>

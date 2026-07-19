@@ -18,19 +18,60 @@
  * utilise donc l'API officielle d'Elementor quand elle gère la page, avec
  * repli sur l'ancien contenu Gutenberg sinon (transition en douceur, rien à
  * casser tant que la reconstruction Elementor n'est pas terminée/publiée).
+ *
+ * 2026-07-18 : Franck a demandé une vraie home IT (agendasabauda.eu/it/ ne
+ * chargeait aucune section dynamique — page 928 sans traduction Polylang,
+ * pll_get_post(928,'it') === 0). Une page "Home (IT)" a été créée avec son
+ * propre post_content Gutenberg traduit
+ * (wordpress/design-system/homepage-mobile-it.gutenberg.html) et liée à 928
+ * via pll_set_post_language()/pll_save_post_translations(). Ce gabarit gère
+ * donc maintenant *la page courante*, quelle qu'elle soit parmi 928 (FR) et
+ * sa traduction IT — cf. cs_agenda_home_page_ids() — au lieu de rester câblé
+ * en dur sur le seul post 928. Chaque page garde son propre post_content
+ * (FR pour 928, IT pour sa traduction), donc le rendu plus bas n'a pas eu
+ * besoin de changer : il opère déjà sur $page = la page demandée, jamais sur
+ * un ID fixe.
  */
+if (!function_exists('cs_agenda_home_page_ids')) {
+    /**
+     * IDs de page gérés par ce gabarit : 928 (FR, ancre historique) + sa
+     * traduction Polylang dans les autres langues actives (IT), résolue
+     * dynamiquement pour ne jamais dépendre d'un ID codé en dur ailleurs.
+     * Réutilisée par site-header-footer.php pour exclure le header/footer
+     * générique de CES MÊMES pages (elles ont leur propre masthead/nav
+     * bakés dans leur contenu Gutenberg, cf. commentaire là-bas).
+     */
+    function cs_agenda_home_page_ids() {
+        $ids = [928];
+        if (function_exists('pll_get_post')) {
+            $it_id = pll_get_post(928, 'it');
+            if ($it_id) {
+                $ids[] = (int) $it_id;
+            }
+        }
+        return $ids;
+    }
+}
+
 add_action('template_redirect', function () {
-    if (is_admin() || !is_page(928)) {
+    if (is_admin() || !is_page(cs_agenda_home_page_ids())) {
         return;
     }
 
-    $page = get_post(928);
-    if (!$page) {
+    $page = get_queried_object();
+    if (!($page instanceof WP_Post)) {
         return;
     }
 
     $is_elementor = class_exists('\Elementor\Plugin')
         && get_post_meta($page->ID, '_elementor_edit_mode', true) === 'builder';
+
+    // Libellé "Publicité" des gouttières desktop, traduit pour la home IT —
+    // seul texte visible en dur dans ce gabarit PHP (le reste du contenu vit
+    // dans le post_content Gutenberg de chaque page, déjà traduit là-bas).
+    $publicite_label = (function_exists('pll_current_language') && pll_current_language() === 'it')
+        ? 'Pubblicità'
+        : 'Publicité';
 
     get_header();
     ?>
@@ -48,11 +89,11 @@ add_action('template_redirect', function () {
            qu'un bloc est vide, Ad Inserter n'affiche rien : le repère
            "Publicité" reste visible pour marquer l'emplacement réservé. -->
       <div class="as-desktop-gutter-ad as-desktop-gutter-ad--left">
-        <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
+        <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;letter-spacing:0.14em;text-transform:uppercase"><?php echo esc_html($publicite_label); ?></div>
         <?php echo do_shortcode('[adinserter block="1"]'); ?>
       </div>
       <div class="as-desktop-gutter-ad as-desktop-gutter-ad--right">
-        <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;letter-spacing:0.14em;text-transform:uppercase">Publicité</div>
+        <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;letter-spacing:0.14em;text-transform:uppercase"><?php echo esc_html($publicite_label); ?></div>
         <?php echo do_shortcode('[adinserter block="2"]'); ?>
       </div>
       <?php
