@@ -613,27 +613,26 @@
 .as-terr-toggle:checked ~ .as-terr-dropdown { display: block; }
 .as-hero-frame { position: relative; aspect-ratio: 1 / 1.05; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
 .as-hero-frame img { position: relative; z-index: 0; }
-.as-hero-frame__gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 45%, rgba(29,29,27,.7) 100%); }
-/* ===== Carrousel "Sélections" home (2026-07-19) — remplace le hero statique v1
-   (cf. commentaire d'origine "à rendre dynamique plus tard via un Listing Item").
-   Réutilise .as-hero-frame (mobile) / .as-home-desktop__carousel (desktop) tels quels
-   pour le cadre+dégradé ; ces classes ci-dessous habillent le contenu dynamique
-   JetEngine (Listing Items "carte-selection-hero-mobile-blocks" /
-   "carte-selection-hero-desktop-blocks", Query Builder "selections-home", ID 4,
-   filtrée sel_home=1 triée sel_ordre). Carte entière cliquable (linked_image sur le
-   bloc dynamic-image) vers la page de la sélection. */
+/* ===== Carrousel "Sélections" home (2026-07-19, image plate 2026-07-20) — remplace le
+   hero statique v1. Réutilise .as-hero-frame (mobile) / .as-home-desktop__carousel
+   (desktop) tels quels pour le cadre ; JetEngine (Listing Items "carte-selection-hero-
+   mobile-blocks" / "carte-selection-hero-desktop-blocks", Query Builder "selections-
+   home", ID 4, filtrée sel_home=1 triée sel_ordre). Carte entière cliquable (linked_image
+   sur le bloc dynamic-image) vers la page de la sélection.
+   Depuis le 2026-07-20 : le texte (eyebrow, titre, souligné, territoires) est cuit dans
+   les pixels de l'image à la une elle-même (export Claude Design, 1200×800), plus de
+   surcouche CSS ni de dégradé — d'où le retrait de .as-hero-frame__gradient et de
+   .selection-hero__title / .selection-hero-desktop__title (dead code) et opacity:1 pour
+   ne pas ternir un visuel déjà finalisé. */
 .selection-hero__image { position: absolute; inset: 0; display: block; }
-.selection-hero__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; opacity: .92; }
-.selection-hero__title {
-  position: absolute; left: 18px; right: 18px; bottom: 16px; z-index: 1;
-  font-family: 'La Semplicita', 'Saira Condensed', sans-serif; font-weight: 600;
-  font-size: 28px; line-height: 1; color: #F7F1E8; letter-spacing: 0.02em;
-}
-.selection-hero-desktop__title {
-  position: absolute; left: 48px; right: 48px; bottom: 40px; z-index: 1; max-width: 640px;
-  font-family: 'La Semplicita', 'Saira Condensed', sans-serif; font-weight: 600;
-  font-size: 48px; line-height: 1.02; color: #F7F1E8; letter-spacing: 0.02em;
-}
+.selection-hero__image img { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
+/* Bug préexistant corrigé le 2026-07-20 (mesure DevTools live) : il manquait la règle sur
+   le <a> généré par linked_image (même convention que .evidence-card__image /
+   .venir-row__image ci-dessus) — sans elle, height:100% sur l'img ne se résout pas
+   (pourcentage ignoré faute de hauteur explicite sur le <a> parent), l'image ne
+   remplissait donc que sa hauteur intrinsèque (ratio 3:2) au lieu du cadre du carrousel,
+   laissant un bandeau noir vide en dessous sur mobile ET desktop. */
+.selection-hero__image .jet-listing-dynamic-image__link { display: block; width: 100%; height: 100%; text-decoration: none; }
 .as-tile:hover { filter: brightness(0.98); }
 .as-terr-link:hover { color: #DC5D45 !important; }
 .as-adbar-toggle, .as-desktop-adbar-toggle { display: none; }
@@ -796,8 +795,7 @@
 }
 .as-home-desktop__nav a { text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #1D1D1B; }
 .as-home-desktop__carousel { position: relative; margin-top: 16px; width: 100%; height: 340px; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
-.as-home-desktop__carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
-.as-home-desktop__carousel-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 40%, rgba(29,29,27,.7) 100%); }
+.as-home-desktop__carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 /* ⚠️ display:none par défaut (pas seulement via le parent .as-home-desktop) —
    ces classes cohabitent SUR LE MÊME élément que .as-home-desktop dans le HTML
    généré (ex. class="as-home-desktop as-desktop-cols3"), et une règle
