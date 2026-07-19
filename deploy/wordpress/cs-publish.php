@@ -141,6 +141,9 @@ function cs_publish_event(WP_REST_Request $req) {
     $existing_id = isset($b['wp_post_id']) ? (int) $b['wp_post_id'] : 0;
     $updated = false;
     if ($existing_id > 0 && get_post_type($existing_id) === 'tribe_events') {
+        // NE PAS dépublier au re-push : on retire post_status pour préserver le statut
+        // existant (publié ou brouillon). Le forçage draft ne vaut QUE pour la création.
+        unset($args['post_status']);
         tribe_update_event($existing_id, $args);
         $post_id = $existing_id;
         $updated = true;
