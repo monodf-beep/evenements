@@ -69,11 +69,17 @@ function cs_publish_event(WP_REST_Request $req) {
     }
 
     // --- Arguments TEC (dates gérées proprement par tribe_create_event) --------
+    // Statut : AUTO-PUBLICATION (décision Franck 2026-07-20). Le backoffice a déjà sa
+    // porte de qualité (évaluation + complétude) → on met EN LIGNE directement au lieu
+    // de laisser des dizaines de brouillons invisibles. Surchargeable par le payload
+    // ('status' = 'draft'|'pending'|'publish') si on veut repasser en relecture manuelle.
+    $pub_status = (isset($b['status']) && in_array($b['status'], array('draft', 'pending', 'publish'), true))
+        ? $b['status'] : 'publish';
     $args = array(
         'post_title'   => $title,
         'post_content' => (string) ($b['content'] ?? ''),
         'post_excerpt' => (string) ($b['excerpt'] ?? ''),
-        'post_status'  => 'draft',            // TOUJOURS brouillon — jamais publish auto
+        'post_status'  => $pub_status,
     );
     // Dates : NORMALISER en 'Y-m-d H:i:s'. tribe_create_event retombe silencieusement
     // sur AUJOURD'HUI si on lui passe une date « seule » (ex. « 2025-07-22 ») ou un
