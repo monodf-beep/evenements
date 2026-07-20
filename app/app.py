@@ -609,6 +609,70 @@ def process_page():
     return render_template("process.html", active="process")
 
 
+# Wireframe annoté de la home : sections RÉELLES observées sur agendasabauda.eu,
+# chacune avec sa règle d'affichage (intention → filtre → score → tri → statut).
+# statut : ok=dynamique en place · cabler=à câbler · corriger=bug à corriger ·
+#          placeholder=faux contenu à convertir · encours=en cours.
+HOME_SECTIONS = [
+    {"nom": "En-tête + navigation", "kind": "struct", "intention": "Repères de marque + accès rapides",
+     "filtre": "—", "score": "—", "tri": "—", "statut": "ok",
+     "note": "Ce week-end · Événements · Curiosités · Lieux · Annoncer · bascule FR/IT."},
+    {"nom": "Hero — « Agenda Sabauda »", "kind": "struct", "intention": "Identité + accroche transfrontalière",
+     "filtre": "—", "score": "—", "tri": "—", "statut": "ok", "note": "Masthead + baseline."},
+    {"nom": "À la une / En vedette", "kind": "vedette", "intention": "« Le rendez-vous à ne pas manquer »",
+     "filtre": "événements à venir (date ≥ aujourd'hui)", "score": "le PLUS HAUT (llm_score max)",
+     "tri": "score ↓ · limite 1", "statut": "cabler",
+     "note": "1 grande carte = l'événement le mieux noté du moment. C'est ici que le score sert le plus."},
+    {"nom": "Ce week-end", "kind": "liste", "intention": "« Que faire ce week-end ? »",
+     "filtre": "date = samedi→dimanche courant · tous territoires", "score": "départage",
+     "tri": "date ↑ puis score ↓", "statut": "ok", "note": "Se décale tout seul chaque semaine."},
+    {"nom": "Événements d'aujourd'hui", "kind": "liste", "intention": "« Ce soir / aujourd'hui »",
+     "filtre": "⚠️ actuellement STRICTEMENT = aujourd'hui → souvent VIDE (« No data »)",
+     "score": "—", "tri": "date ↑", "statut": "corriger",
+     "note": "À passer en « à venir (7 jours) » : un agenda clairsemé n'a pas d'événement CHAQUE jour."},
+    {"nom": "Nouveautés sur Agenda Sabauda", "kind": "cartes", "intention": "« Quoi de neuf »",
+     "filtre": "événements récemment AJOUTÉS", "score": "—", "tri": "date d'ajout ↓", "statut": "placeholder",
+     "note": "Aujourd'hui = 3 faux articles codés en dur → à convertir en Sélection dynamique."},
+    {"nom": "En évidence", "kind": "cartes", "intention": "« Notre sélection »",
+     "filtre": "à venir + score élevé", "score": "seuil haut", "tri": "score ↓", "statut": "encours",
+     "note": "Affiche de VRAIS événements (Festival, Concert) — images en cours de correction."},
+    {"nom": "L'agenda à venir", "kind": "liste", "intention": "« Les prochains rendez-vous »",
+     "filtre": "date ≥ aujourd'hui", "score": "—", "tri": "date ↑", "statut": "ok",
+     "note": "Liste chronologique des suivants (Sagra, Course…)."},
+    {"nom": "Par catégorie — En famille · Concerts · Expos · Gastronomie", "kind": "cartes",
+     "intention": "« Par envie »", "filtre": "catégorie choisie + à venir",
+     "score": "mise en avant interne", "tri": "score ↓ puis date ↑", "statut": "cabler",
+     "note": "Les catégories existent (bilingues) ; chaque section = une Listing Grid filtrée."},
+    {"nom": "Par territoire — Savoie · Piémont · V. d'Aoste · Nice", "kind": "chips",
+     "intention": "« Tel territoire »", "filtre": "archive du territoire", "score": "—",
+     "tri": "date ↑", "statut": "ok", "note": "Archives de taxonomie déjà en place (bilingues)."},
+    {"nom": "Ça vaut le déplacement", "kind": "cartes", "intention": "Transfrontalier — « vaut le voyage »",
+     "filtre": "curation MANUELLE (événements voisins épinglés)", "score": "—", "tri": "éditorial",
+     "statut": "placeholder", "note": "Aujourd'hui = « Titre/Visuel/Itinéraire à définir » → Sélection manuelle."},
+    {"nom": "Publicité", "kind": "struct", "intention": "Régie annonceurs", "filtre": "—", "score": "—",
+     "tri": "—", "statut": "ok", "note": "Gérée dans l'onglet Régie (emplacements + suivi des clics)."},
+    {"nom": "Pied de page", "kind": "struct", "intention": "Navigation secondaire + mentions",
+     "filtre": "—", "score": "—", "tri": "—", "statut": "ok", "note": "Liens explorer / projet / légales."},
+]
+
+_STATUT_LABEL = {
+    "ok": ("Dynamique en place", "#1a7f4b", "#e9f6ee"),
+    "encours": ("En cours", "#b45309", "#fdf3e3"),
+    "corriger": ("À corriger", "#dc2626", "#fdeaea"),
+    "placeholder": ("Placeholder → à convertir", "#8a5a00", "#fbf1dd"),
+    "cabler": ("À câbler", "#2563eb", "#e8f0fe"),
+    "struct": ("Structure", "#6F6B62", "#f0efe9"),
+}
+
+
+@app.route("/wireframe-home")
+@require_auth
+def wireframe_home():
+    """Wireframe annoté de la home : chaque section réelle + sa règle d'affichage."""
+    return render_template("wireframe_home.html", active="wireframe",
+                           sections=HOME_SECTIONS, labels=_STATUT_LABEL)
+
+
 _COWORK_PROMPT_FILE = ROOT / "docs" / "COWORK_AUTOCOMPLETION.md"
 
 
