@@ -8,6 +8,26 @@ note — c'est la première trace versionnée de ce travail.*
 
 ---
 
+## ✅ Mise à jour 2026-07-20 — modèle arrêté + blocages levés
+
+- **Modèle « override » validé (Franck).** Toutes les pubs sont **AdSense par défaut** ;
+  quand un annonceur est vendu, sa créative est créée dans le backoffice et **remplace
+  l'AdSense du bloc concerné** le temps de la campagne. Pas d'emplacement séparé.
+- **`/api/active-ads` n'est plus en time-out.** Diagnostic du 20/07 : DNS OK
+  (`backoffice.agendasabauda.eu` → IP VPS), route Traefik déposée, HTTP **200**. Le
+  « time-out » du 18/07 était transitoire / déjà réparé.
+- **Lien `/go` déterministe.** Le backoffice force une base publique https
+  (`PUBLIC_BASE_URL`) au lieu de `request.host_url`, pour ne pas produire un lien
+  `http://` (rejeté par le fail-safe https-only côté WP).
+- **Créatives hébergées uniquement sur `agendasabauda.eu`** → allowlist image du
+  mu-plugin = `agendasabauda.eu` seul (pas de `culturasabauda.eu`).
+- **`cs-regie-serve.php` réécrit (v0.2)** : de « sticky bas manuel-only » à **primitive
+  d'override par bloc** — shortcode `[cs_slot bloc="N"]…code AdSense…[/cs_slot]`. Reste
+  le **câblage thème** : envelopper le code AdSense de chaque bloc dans ce shortcode.
+  → conflit #2 ci-dessous **résolu** (plus de sticky bas concurrent).
+
+---
+
 ## ⚠️ Conflits connus, non résolus au moment de ce commit
 
 1. **Collision de numérotation de blocs Ad Inserter.** Le template homepage

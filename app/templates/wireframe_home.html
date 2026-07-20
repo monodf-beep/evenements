@@ -101,9 +101,25 @@
   <!-- ===================== ENCARTS PUBLICITÉ ===================== -->
   <h2 style="margin:1.8rem 0 .5rem;">📣 Les encarts publicité</h2>
 
-  <!-- Systèmes régie à consolider -->
+  <!-- Modèle override -->
+  <div class="card" style="padding:1rem 1.2rem;margin-bottom:1rem;background:#e8f0fe;border:1px solid #9db8e8;">
+    <b>Le modèle : « AdSense par défaut, remplaçable par le backoffice ».</b>
+    <div style="margin-top:.5rem;font-size:.9rem;line-height:1.5;">
+      Chaque emplacement affiche <b>Google AdSense</b> par défaut. Quand tu as un annonceur,
+      tu crées sa pub dans l'onglet <b>Régie</b> pour le bloc voulu : elle <b>prend la place</b>
+      de l'AdSense sur ce bloc, le temps de la campagne. Pas d'emplacement séparé — un même
+      slot, deux sources possibles, le backoffice gagne quand une campagne est active.
+    </div>
+    <div class="text-sm muted" style="margin-top:.5rem;">
+      Côté WordPress, chaque bloc AdSense s'enveloppe dans <code>[cs_slot bloc="N"]…code AdSense…[/cs_slot]</code>
+      (mu-plugin <code>cs-regie-serve.php</code>) : si <code>/api/active-ads</code> renvoie une campagne
+      pour le bloc N, la créative backoffice s'affiche à la place, gatée consentement Complianz.
+    </div>
+  </div>
+
+  <!-- Systèmes régie -->
   <div class="card" style="padding:1rem 1.2rem;margin-bottom:1rem;background:#fdf3e3;border:1px solid #e8c98a;">
-    <b>⚠️ À consolider — 3 systèmes de régie se chevauchent</b> (dont deux jamais dans ce dépôt).
+    <b>Les briques de la régie</b> — qui fait quoi (deux ne sont pas encore déployées / à câbler).
     <div style="margin-top:.6rem;display:flex;flex-direction:column;gap:.5rem;">
       {% for s in regie_systems %}
       {% set vc = {'garder':('GARDER','#1a7f4b','#e9f6ee'),'aligner':('ALIGNER','#b45309','#fdf3e3'),'abandonner':('ABANDONNER','#dc2626','#fdeaea')}[s.verdict] %}
@@ -114,7 +130,7 @@
       </div>
       {% endfor %}
     </div>
-    <div class="text-sm" style="margin-top:.6rem;"><b>Reco :</b> plan 12 blocs (thème) + cs-regie-serve.php (backoffice) + Ad Inserter pour l'AdSense ; abandonner cs-regie.php.</div>
+    <div class="text-sm" style="margin-top:.6rem;"><b>Reco :</b> plan 12 blocs (grille) + Ad Inserter (couche AdSense) + cs-regie-serve.php (override backoffice via <code>[cs_slot]</code>) ; abandonner cs-regie.php.</div>
   </div>
 
   <!-- Tableau des encarts -->
@@ -125,7 +141,7 @@
       </tr></thead>
       <tbody>
       {% for a in ad_plan %}
-      {% set sc = {'adsense':'#2563eb','maison':'#b45309','libre':'#6F6B62'}[a.src] %}
+      {% set sc = {'actif':'#1a7f4b','todo':'#b45309','reserve':'#6F6B62'}[a.src] %}
       <tr style="border-top:1px solid var(--border,#e2e4e8);">
         <td style="padding:.5rem .7rem;font-family:ui-monospace,monospace;font-weight:700;">{{ a.bloc }}</td>
         <td>{{ a.format }}</td>
@@ -139,10 +155,12 @@
     </table>
   </div>
   <p class="muted text-sm" style="margin-top:.6rem;">
-    Source : plan 12 blocs du thème (<code>agenda-sabauda-core</code>) croisé avec la config de cette session.
-    <b>FR / IT : aucune différence</b> nulle part (aucun code <code>pll_</code> trouvé dans les 3 gabarits).
-    Les ⚠️ sont des points où le code et la doc (STATUS.md) divergent — <b>à vérifier à l'écran</b>, pas à affirmer.
-    Aucun encart du plan ne cible les fiches événement : seul <b>notre Bloc 2</b> (pavé <code>/evenement/*</code>) le fait aujourd'hui.
+    Chaque bloc = <b>AdSense par défaut</b> (colonne Statut), <b>remplaçable par le backoffice</b> via
+    <code>[cs_slot bloc="N"]</code>. « À configurer » = le bloc existe dans le plan mais son code AdSense
+    n'est pas encore posé. Source : plan 12 blocs du thème (<code>agenda-sabauda-core</code>).
+    <b>FR / IT : aucune différence</b> (aucun code <code>pll_</code> dans les gabarits).
+    Les ⚠️ sont des points où le code et la doc (STATUS.md) divergent — <b>à vérifier à l'écran</b>.
+    Seul le <b>Bloc 2</b> (pavé <code>/evenement/*</code>) cible les fiches événement.
   </p>
 </div>
 {% endblock %}
