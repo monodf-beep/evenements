@@ -159,7 +159,12 @@ def _recover_image(event: dict) -> str:
 
 
 def _lang(event: dict) -> str:
-    """Langue Polylang de l'événement ('fr'|'it'), détectée sur titre+description."""
+    """Langue Polylang de l'événement ('fr'|'it'). Forcée par event['force_lang'] si
+    présent (cas des traductions : on ne devine pas, on impose), sinon détectée sur
+    titre+description (départagée par le territoire)."""
+    forced = str(event.get("force_lang") or "").strip().lower()
+    if forced in ("fr", "it"):
+        return forced
     from utils.lang import detect_lang
     return detect_lang(event.get("title", ""), event.get("description", ""),
                        event.get("territoire", ""))
