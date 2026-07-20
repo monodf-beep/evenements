@@ -101,3 +101,67 @@ add_action('wp_body_open', function () {
     </div>
     <?php
 }, 5);
+
+/**
+ * FOOTER MOBILE (2026-07-20) — la grille 5 colonnes (widgets GeneratePress,
+ * cf. commentaire FOOTER ci-dessus) reste la version desktop. Sur mobile, la
+ * maquette ("Agenda Sabaudo - Mobile.dc.html", bloc FOOTER lignes 369-391)
+ * n'a PAS de colonnes à en-têtes : des liens en flux qui reviennent à la
+ * ligne, groupés en 3 blocs (découverte+pratique / à propos+légal /
+ * territoires+langue), puis le copyright. Injecté ici en wp_footer, masqué
+ * en desktop par CSS (.as-footer-mobile, cf. components.css) — la grille
+ * 5 colonnes est symétriquement masquée sous le même seuil.
+ *
+ * Réutilise les 4 vrais menus WP déjà construits (280 Catégories, 281
+ * Territoires, 282 Le projet, 340 Infos & légal) — mêmes items que la
+ * grille desktop, pas de lien inventé. Passés par le même filtre
+ * wp_nav_menu_objects (cs-menu-it.php) pour la bascule URL/libellé IT.
+ */
+add_action('wp_footer', function () {
+    $get_items = function ($menu_id) {
+        $items = wp_get_nav_menu_items($menu_id);
+        if (!$items) {
+            return [];
+        }
+        return apply_filters('wp_nav_menu_objects', $items, (object) ['theme_location' => null]);
+    };
+
+    $categories = $get_items(280);
+    $projet = $get_items(282);
+    $infos = $get_items(340);
+    $territoires = $get_items(281);
+
+    $render_links = function ($items) {
+        foreach ($items as $item) {
+            printf('<a href="%s">%s</a>', esc_url($item->url), esc_html($item->title));
+        }
+    };
+    ?>
+    <div class="as-footer-mobile">
+      <div class="as-footer-mobile__group">
+        <a href="<?php echo esc_url(home_url('/')); ?>">Accueil</a>
+        <?php $render_links($categories); ?>
+        <?php $render_links($infos); ?>
+      </div>
+      <div class="as-footer-mobile__group">
+        <?php $render_links($projet); ?>
+      </div>
+      <div class="as-footer-mobile__group as-footer-mobile__group--meta">
+        <?php
+        $territoire_names = array_map(fn($t) => esc_html($t->title), $territoires);
+        $as_langs = function_exists('pll_the_languages') ? pll_the_languages(['raw' => 1, 'hide_if_empty' => 0]) : [];
+        $lang_str = 'FR | IT';
+        if ($as_langs) {
+            $lang_parts = [];
+            foreach ($as_langs as $as_lang) {
+                $lang_parts[] = sprintf('<a href="%s">%s</a>', esc_url($as_lang['url']), esc_html(strtoupper($as_lang['slug'])));
+            }
+            $lang_str = implode(' | ', $lang_parts);
+        }
+        echo implode(' · ', $territoire_names) . ' · ' . $lang_str;
+        ?>
+      </div>
+      <div class="as-footer-mobile__copyright">&copy; Agenda Sabauda &mdash; contact@culturasabauda.eu</div>
+    </div>
+    <?php
+}, 20);

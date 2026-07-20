@@ -216,12 +216,33 @@
    .inside-footer-widgets, qui neutralise grid-template-columns — bug identifié et
    corrigé le 2026-07-19) ---- */
 .inside-footer-widgets{ display: grid !important; grid-template-columns: repeat(5, 1fr) !important; }
+
+/* ---- Footer mobile (2026-07-20, conforme maquette "Agenda Sabaudo - Mobile.dc.html"
+   lignes 369-391) : sous 768px, la grille 5 colonnes à en-têtes cède la place à un
+   footer en liens qui s'enchaînent (flex-wrap), sans en-tête de colonne — bloc
+   .as-footer-mobile injecté en wp_footer (site-header-footer.php), pas un widget.
+   Les deux versions coexistent dans le DOM ; une seule est visible à la fois. */
+.as-footer-mobile{ display: none; }
 @media (max-width: 768px){
-  .inside-footer-widgets{ grid-template-columns: repeat(2, 1fr) !important; }
-  .inside-footer-widgets > div:not(:last-child){ margin-bottom: 0 !important; }
-}
-@media (max-width: 480px){
-  .inside-footer-widgets{ grid-template-columns: 1fr !important; }
+  .footer-widgets-container{ display: none; }
+  .as-footer-mobile{
+    display: block; max-width: 700px; margin: 0 auto; padding: 32px 20px 28px;
+  }
+  .as-footer-mobile__group{
+    display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 16px;
+    border-top: 1px solid #1D1D1B; margin-bottom: 12px;
+    font-family: 'Nunito Sans', sans-serif; font-size: 12px; color: #1D1D1B;
+  }
+  .as-footer-mobile__group + .as-footer-mobile__group{ border-top-color: #E3DCCE; }
+  .as-footer-mobile__group a{ color: #1D1D1B; text-decoration: underline; }
+  .as-footer-mobile__group--meta{
+    border-top: 1px solid #E3DCCE; font-size: 11px; color: #6F6B62; padding-top: 12px;
+  }
+  .as-footer-mobile__group--meta a{ color: #6F6B62; text-decoration: none; }
+  .as-footer-mobile__copyright{
+    border-top: 1px solid #E3DCCE; margin-top: 12px; padding-top: 12px;
+    font-family: 'Nunito Sans', sans-serif; font-size: 11px; color: #6F6B62;
+  }
 }
 
 
