@@ -9,7 +9,7 @@ Description: Route REST maison « /wp-json/cs/v1/trash » qui met à la CORBEILL
   pas détruire par erreur un événement mis en ligne à la main. Rien n'est supprimé
   définitivement : tout part à la corbeille et peut être restauré.
 Author: Cultura Sabauda
-Version: 1.0
+Version: 1.1
 
   INSTALLATION (comme cs-publish.php) :
    A) Code Snippets : coller tout le code SANS la ligne « <?php », « Run everywhere ».
@@ -80,8 +80,11 @@ function cs_trash_event(WP_REST_Request $req) {
         return new WP_Error('wrong_type', 'Ce n\'est pas un événement TEC.', array('status' => 409));
     }
     // Garde-fou 2 : jamais un contenu déjà PUBLIÉ en ligne (on ne nettoie que les
-    // brouillons/planifiés créés par le bot). Un publish manuel est intouchable.
-    if (in_array($post->post_status, array('publish', 'private'), true)) {
+    // brouillons/planifiés créés par le bot) — SAUF si l'appelant passe "force":true
+    // de façon délibérée (ex. retrait d'un article de presse publié par erreur via
+    // scripts/audit_non_events.py). Reste réversible (corbeille), pas de suppression.
+    $force = is_array($b) && !empty($b['force']);
+    if (in_array($post->post_status, array('publish', 'private'), true) && !$force) {
         return new WP_Error('published', 'Événement publié — non touché (sécurité).',
             array('status' => 409));
     }

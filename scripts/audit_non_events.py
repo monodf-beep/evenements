@@ -103,7 +103,9 @@ def main(argv=None) -> int:
     for rid in targets:
         r = by_id[rid]
         wp_id = int(r["wp_post_id_as"])
-        if trash_one(wp_url, auth, wp_id):
+        # force=True : ces non-événements SONT publiés (auto-publication) ; on lève
+        # délibérément le garde-fou « publié » de l'endpoint pour les retirer.
+        if trash_one(wp_url, auth, wp_id, force=True):
             conn.execute("UPDATE events_raw SET statut='rejected', wp_post_id_as=NULL, "
                          "published_as_date=NULL, llm_justification=? WHERE id=?",
                          ("Retiré : article de presse, pas un événement (%s)." % flags[rid], rid))

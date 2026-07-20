@@ -77,10 +77,16 @@ def _select(res: dict, args) -> list[dict]:
     return out
 
 
-def trash_one(wp_url: str, auth, wp_id: int) -> bool:
+def trash_one(wp_url: str, auth, wp_id: int, force: bool = False) -> bool:
+    """Met un événement à la corbeille. force=True autorise aussi un post PUBLIÉ
+    (nécessaire pour retirer un non-événement publié par erreur ; réservé à un appel
+    délibéré comme scripts.audit_non_events)."""
     endpoint = f"{wp_url}/?rest_route=/cs/v1/trash"
+    payload = {"id": wp_id}
+    if force:
+        payload["force"] = True
     try:
-        resp = requests.post(endpoint, json={"id": wp_id}, auth=auth,
+        resp = requests.post(endpoint, json=payload, auth=auth,
                              headers=_headers(auth), timeout=45)
         resp.raise_for_status()
         return bool(resp.json().get("trashed"))
