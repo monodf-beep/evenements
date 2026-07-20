@@ -23,8 +23,8 @@ from functools import wraps
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import (Flask, flash, jsonify, redirect, render_template, request,
-                   session, url_for)
+from flask import (Flask, Response, flash, jsonify, redirect, render_template,
+                   request, session, url_for)
 from markupsafe import Markup
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1339,6 +1339,223 @@ def regie_active_ads():
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Cache-Control"] = "public, max-age=120"
     return resp
+
+
+# ---------- Widget public « Agenda Sabauda » (embeddable partenaires) ----------
+# Un partenaire (office de tourisme, mairie, blog…) colle UNE ligne sur son site et
+# affiche les prochains événements de l'Agenda, avec liens retour vers le site public.
+# Deux intégrations : <script> (rendu dans la page hôte, Shadow DOM isolé) ou <iframe>
+# (page autonome). Le flux JSON est PUBLIC + CORS *, sans auth : les visiteurs des
+# partenaires doivent pouvoir le charger. Les fiches pointent vers agendasabauda.eu.
+_EMBED_MAX = 20
+_EMBED_DEFAULT = 6
+
+# Script embeddable autonome (aucune dépendance). Rendu dans un Shadow DOM pour ne pas
+# hériter/polluer le CSS du site hôte. Lit ses data-* et interroge /embed/events.json.
+_EMBED_WIDGET_JS = r"""(function(){
+  var s = document.currentScript;
+  if(!s){ return; }
+  var base = s.src.replace(/\/embed\/widget\.js.*$/, '');
+  var d = function(k, def){ var v = s.getAttribute('data-'+k); return (v===null||v==='')?def:v; };
+  var terr=d('territoire',''), ville=d('ville',''), lang=d('lang',''),
+      limit=d('limit','6'), title=d('title','Agenda Sabauda'),
+      accent=d('accent','#7a5b3a');
+  if(!/^#[0-9a-fA-F]{3,8}$/.test(accent)){ accent='#7a5b3a'; }
+  var host = document.createElement('div');
+  host.className = 'agenda-sabauda-widget';
+  s.parentNode.insertBefore(host, s.nextSibling);
+  var root = host.attachShadow ? host.attachShadow({mode:'open'}) : host;
+  var css = document.createElement('style');
+  css.textContent = ''
+    + ':host,*{box-sizing:border-box}'
+    + '.w{--a:'+accent+';font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#2a2622;max-width:640px}'
+    + '.hd{display:flex;align-items:center;gap:.5rem;margin:0 0 .6rem;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--a)}'
+    + '.hd:before{content:"";width:1.4rem;height:2px;background:var(--a);border-radius:2px}'
+    + '.it{display:flex;gap:.7rem;align-items:center;text-decoration:none;color:inherit;padding:.5rem;border-radius:10px;transition:background .15s}'
+    + '.it:hover{background:rgba(0,0,0,.04)}'
+    + '.th{width:64px;height:52px;flex:0 0 auto;border-radius:7px;background:#e7e1d6 center/cover no-repeat}'
+    + '.bd{min-width:0;flex:1}'
+    + '.ti{font-weight:600;font-size:.92rem;line-height:1.25;margin:0 0 .15rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'
+    + '.mt{font-size:.76rem;color:#6b6357;line-height:1.3}'
+    + '.dt{color:var(--a);font-weight:600}'
+    + '.ft{margin:.5rem .1rem 0;font-size:.72rem}'
+    + '.ft a{color:var(--a);text-decoration:none;font-weight:600}'
+    + '.em{font-size:.85rem;color:#6b6357;padding:.6rem .5rem}';
+  root.appendChild(css);
+  var wrap = document.createElement('div'); wrap.className='w';
+  var hd = document.createElement('div'); hd.className='hd'; hd.textContent=title;
+  wrap.appendChild(hd);
+  var list = document.createElement('div'); wrap.appendChild(list);
+  var ft = document.createElement('div'); ft.className='ft';
+  var fa = document.createElement('a'); fa.href=base==''?'#':base; fa.target='_blank'; fa.rel='noopener';
+  ft.appendChild(fa); wrap.appendChild(ft);
+  root.appendChild(wrap);
+  var q = [];
+  if(terr){ q.push('t='+encodeURIComponent(terr)); }
+  if(ville){ q.push('ville='+encodeURIComponent(ville)); }
+  if(lang){ q.push('lang='+encodeURIComponent(lang)); }
+  q.push('limit='+encodeURIComponent(limit));
+  fetch(base+'/embed/events.json?'+q.join('&')).then(function(r){return r.json();}).then(function(data){
+    var evs = (data && data.events) || [];
+    fa.href = data && data.source ? data.source : (base||'#');
+    fa.textContent = 'Voir tout l’agenda →';
+    if(!evs.length){ var em=document.createElement('div'); em.className='em';
+      em.textContent='Aucun événement à venir pour le moment.'; list.appendChild(em); return; }
+    evs.forEach(function(e){
+      var a=document.createElement('a'); a.className='it'; a.href=e.url; a.target='_blank'; a.rel='noopener';
+      var th=document.createElement('div'); th.className='th';
+      if(e.image){ th.style.backgroundImage='url("'+String(e.image).replace(/"/g,'')+'")'; }
+      a.appendChild(th);
+      var bd=document.createElement('div'); bd.className='bd';
+      var ti=document.createElement('div'); ti.className='ti'; ti.textContent=e.title; bd.appendChild(ti);
+      var mt=document.createElement('div'); mt.className='mt';
+      if(e.date_label){ var dt=document.createElement('span'); dt.className='dt'; dt.textContent=e.date_label; mt.appendChild(dt); }
+      var tail=[]; if(e.ville){ tail.push(e.ville); } if(e.categorie){ tail.push(e.categorie); }
+      if(tail.length){ mt.appendChild(document.createTextNode((e.date_label?' · ':'')+tail.join(' · '))); }
+      bd.appendChild(mt); a.appendChild(bd); list.appendChild(a);
+    });
+  }).catch(function(){ var em=document.createElement('div'); em.className='em';
+    em.textContent='Agenda momentanément indisponible.'; list.appendChild(em); });
+})();
+"""
+
+
+def _as_public_base():
+    return (os.getenv("WP_AS_URL", "") or "https://agendasabauda.eu").rstrip("/")
+
+
+def _terr_from_slug_strict(slug):
+    """Slug → libellé de territoire, ou None si aucun ne correspond (pas de repli)."""
+    for lbl in _NL_TERRITOIRES:
+        if _nl_slug(lbl) == slug:
+            return lbl
+    return None
+
+
+def _embed_date_label(start, end):
+    d1, d2 = _couv_date(start), _couv_date(end)
+    if not d1:
+        return ""
+    fmt = lambda d: "%d %s" % (d.day, _MOIS_ABBR[d.month])
+    return "%s → %s" % (fmt(d1), fmt(d2)) if d2 and d2 != d1 else fmt(d1)
+
+
+def _embed_events(conn, terr_label=None, ville=None, lang=None, limit=_EMBED_DEFAULT):
+    """Prochains événements EN LIGNE sur l'Agenda (wp_post_id_as), triés par date."""
+    today = date.today().isoformat()
+    rows = conn.execute(
+        "SELECT id, title, territoire, ville, lieu, llm_categorie, description, "
+        "date_event_start, date_event_end, url_image, wp_post_id_as FROM events_raw "
+        "WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
+        "AND COALESCE(date_event_start,'')<>'' "
+        "AND COALESCE(NULLIF(date_event_end,''), date_event_start) >= ? "
+        "ORDER BY date_event_start ASC", (today,)).fetchall()
+    base = _as_public_base()
+    from utils.lang import detect_lang
+    out = []
+    for r in rows:
+        if terr_label and _couv_terr_group(r["territoire"]) != terr_label:
+            continue
+        if ville and _couv_norm(ville) not in _couv_norm(r["ville"] or ""):
+            continue
+        if lang and detect_lang(r["title"] or "", r["description"] or "",
+                                r["territoire"] or "") != lang:
+            continue
+        out.append({
+            "id": r["id"],
+            "title": r["title"] or "",
+            "date_label": _embed_date_label(r["date_event_start"], r["date_event_end"]),
+            "ville": r["ville"] or "",
+            "lieu": r["lieu"] or "",
+            "categorie": r["llm_categorie"] or "",
+            "territoire": _couv_terr_group(r["territoire"]),
+            "image": r["url_image"] or "",
+            "url": "%s/?p=%d" % (base, int(r["wp_post_id_as"])),
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _embed_params(src):
+    """Lit t/ville/lang/limit depuis un mapping (request.args)."""
+    terr = _terr_from_slug_strict(src.get("t", "") or "")
+    ville = (src.get("ville", "") or "").strip() or None
+    lang = (src.get("lang", "") or "").strip().lower()
+    lang = lang if lang in ("fr", "it") else None
+    try:
+        limit = max(1, min(_EMBED_MAX, int(src.get("limit", _EMBED_DEFAULT))))
+    except (ValueError, TypeError):
+        limit = _EMBED_DEFAULT
+    return terr, ville, lang, limit
+
+
+@app.route("/embed/events.json")
+def embed_events_json():
+    """Flux public des prochains événements (CORS *). Params : t, ville, lang, limit."""
+    terr, ville, lang, limit = _embed_params(request.args)
+    conn = get_db()
+    events = _embed_events(conn, terr, ville, lang, limit)
+    conn.close()
+    resp = jsonify({"events": events, "count": len(events),
+                    "source": _as_public_base(),
+                    "generated": datetime.now().isoformat(timespec="seconds")})
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Cache-Control"] = "public, max-age=600"
+    return resp
+
+
+@app.route("/embed/widget.js")
+def embed_widget_js():
+    """Script embeddable : crée un conteneur isolé (Shadow DOM) et affiche les fiches.
+    Le partenaire colle UNE ligne ; le script lit ses data-* et interroge events.json."""
+    js = _EMBED_WIDGET_JS
+    resp = Response(js, mimetype="application/javascript; charset=utf-8")
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
+
+
+@app.route("/embed/widget")
+def embed_widget_iframe():
+    """Page autonome pour intégration en <iframe> (rendu serveur, styles isolés)."""
+    terr, ville, lang, limit = _embed_params(request.args)
+    conn = get_db()
+    events = _embed_events(conn, terr, ville, lang, limit)
+    conn.close()
+    title = (request.args.get("title", "") or "Agenda Sabauda").strip()[:60]
+    accent = _embed_accent(request.args.get("accent", ""))
+    resp = Response(render_template(
+        "embed_widget.html", events=events, title=title, accent=accent,
+        source=_as_public_base()))
+    resp.headers["Cache-Control"] = "public, max-age=600"
+    resp.headers["X-Frame-Options"] = "ALLOWALL"          # embeddable partout
+    return resp
+
+
+def _embed_accent(raw):
+    """Valide une couleur hex fournie par le partenaire (sinon accent par défaut)."""
+    raw = (raw or "").strip()
+    return raw if re.match(r"^#[0-9a-fA-F]{3,8}$", raw) else "#7a5b3a"
+
+
+@app.route("/partenariat")
+@require_auth
+def partenariat():
+    """Générateur du widget : aperçu + code à coller (script / iframe) pour la page
+    « Travailler avec nous » du site et pour les partenaires."""
+    terr, ville, lang, limit = _embed_params(request.args)
+    accent = _embed_accent(request.args.get("accent", ""))
+    title = (request.args.get("title", "") or "Agenda Sabauda").strip()[:60]
+    territs = [{"label": l, "slug": _nl_slug(l)} for l in _NL_TERRITOIRES]
+    qs = {"t": _nl_slug(terr) if terr else "", "ville": ville or "",
+          "lang": lang or "", "limit": limit, "accent": accent, "title": title}
+    query = "&".join("%s=%s" % (k, v) for k, v in qs.items() if v not in ("", None))
+    return render_template(
+        "partenariat.html", active="partenariat", territs=territs,
+        sel_terr=_nl_slug(terr) if terr else "", ville=ville or "", lang=lang or "",
+        limit=limit, accent=accent, title=title, query=query,
+        base=PUBLIC_BASE_URL)
 
 
 @app.route("/api/status")
