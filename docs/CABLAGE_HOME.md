@@ -55,10 +55,17 @@ tribe_events_cat = le terme voulu, tri as_score DÉCROISSANT puis _EventStartDat
 limite 4. Slugs : jeune-public-famille, concerts-musique, expositions-patrimoine,
 gastronomie-sagre. Branche chaque Listing Grid de section sur sa requête.
 
-ÉTAPE 6 — « Ça vaut le déplacement » (placeholder transfrontalier)
-Celle-ci utilise le CPT « selection » (mode manuel, événements voisins épinglés) — on la
-fera APRÈS avoir validé la sélection test. Pour l'instant, laisse le placeholder ; ne le
-câble pas encore.
+ÉTAPE 6 — « Ça vaut le déplacement » (transfrontalier — RÈGLE « autre versant »)
+Décision Franck (2026-07-20) : requête AUTOMATIQUE « côté autre versant » (plus de
+placeholder manuel). Deux requêtes, une par langue, branchées sur le Listing Grid (2 cartes)
+de la home correspondante :
+  - Home FR (lang=fr) : tribe_events à venir, Tax Query territoire IN
+    (piemont, vallee-d-aoste) [= côté italien], tri as_score DÉCROISSANT, limite 2.
+  - Home IT (lang=it) : tribe_events à venir, Tax Query territoire IN
+    (savoie-haute-savoie, nice-alpes-maritimes) [= côté français], tri as_score DÉCROISSANT,
+    limite 2.
+Le CPT « selection » reste disponible pour un override manuel plus tard, mais la règle par
+défaut est cette requête (la section n'est donc jamais vide).
 
 RÈGLES : par étapes, confirmation avant chaque modif, rollback documenté (garde l'ancienne
 query_id pour pouvoir revenir). Toutes les requêtes en langue courante (Polylang).
