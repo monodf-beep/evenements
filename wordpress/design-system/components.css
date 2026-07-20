@@ -192,7 +192,11 @@
 .site-footer .copyright-bar{ display: none; }
 
 /* ---- Colonnes (footer-widgets) ---- */
-.footer-widgets-container{ max-width: 950px; margin: 0 auto; padding: 48px 20px 28px; }
+/* !important nécessaire : la classe .grid-container (GeneratePress, main.min.css,
+   max-width:1200px) partage cet élément et charge APRÈS notre CSS dans le <head> —
+   même cause que .site-footer plus haut, juste jamais appliquée ici jusqu'au
+   2026-07-20 (footer débordait de la colonne 950px sur desktop). */
+.footer-widgets-container{ max-width: 950px !important; margin: 0 auto !important; padding: 48px 20px 28px !important; }
 .inside-footer-widgets{ gap: 28px; }
 .site-footer .widget-title{
   font-family: 'Nunito Sans', sans-serif;
