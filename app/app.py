@@ -25,6 +25,7 @@ from urllib.parse import urlparse
 
 from flask import (Flask, flash, jsonify, redirect, render_template, request,
                    session, url_for)
+from markupsafe import Markup
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -990,6 +991,58 @@ def newsletter_action():
     _nl_save_picks(conn, terr, edition_iso, picks)
     conn.close()
     return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso) + "#e" + str(eid))
+
+
+@app.route("/newsletter/brevo", methods=["POST"])
+@require_auth
+def newsletter_brevo():
+    """Crée le brouillon Brevo avec LA sélection composée (dans l'ordre choisi). Jamais
+    d'envoi — Brevo garde le brouillon pour relecture/envoi manuel."""
+    terr = _nl_terr_from_slug(request.form.get("t", ""))
+    edition = _nl_edition(request.form.get("e", ""))
+    edition_iso = edition.isoformat()
+    conn = get_db()
+    _ensure_nl_table(conn)
+    picks = _nl_read_picks(conn, terr, edition_iso) or []
+    if not picks:
+        conn.close()
+        flash("Sélection vide — rien à envoyer.", "err")
+        return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso))
+    ph = ",".join("?" * len(picks))
+    full = {r["id"]: dict(r) for r in conn.execute(
+        f"SELECT * FROM events_raw WHERE id IN ({ph})", picks).fetchall()}
+    conn.close()
+    ordered = [full[i] for i in picks if i in full]     # respecte l'ordre composé
+
+    api_key = os.getenv("BREVO_API_KEY")
+    sender_email = os.getenv("BREVO_SENDER_EMAIL", "")
+    sender_name = os.getenv("BREVO_SENDER_NAME", "Agenda Sabauda")
+    list_ids = [int(x) for x in re.split(r"[,;\s]+", os.getenv("BREVO_LIST_ID", "").strip()) if x.isdigit()]
+    if not api_key or not sender_email or not list_ids:
+        flash("Config Brevo incomplète dans .env (BREVO_API_KEY / BREVO_SENDER_EMAIL / BREVO_LIST_ID).", "err")
+        return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso))
+
+    try:
+        from scripts.newsletter import build_data, variant_magazine, _fmt_day
+        from utils.brevo import create_draft_campaign, campaign_edit_url, BrevoError
+        wl = f"Du {_fmt_day(edition_iso)} au {_fmt_day(_nl_window(edition)[1])}"
+        subject = f"Agenda Sabauda — {terr}, à l'affiche cette semaine"
+        tagline = f"Les sorties à vivre en {terr}"
+        html = variant_magazine(build_data(ordered, week_label=wl, tagline=tagline))
+        try:
+            cid = create_draft_campaign(
+                api_key=api_key, name=f"Agenda Sabauda — {terr} — {wl}", subject=subject,
+                sender_name=sender_name, sender_email=sender_email,
+                list_ids=list_ids, html_content=html)
+        except BrevoError as exc:
+            flash("Brevo a refusé la création du brouillon : %s" % exc, "err")
+            return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso))
+        flash(Markup("📧 Brouillon Brevo créé avec %d événement(s) — "
+                     "<a href='%s' target='_blank' rel='noopener'><b>relire / envoyer dans Brevo ↗</b></a>"
+                     % (len(ordered), campaign_edit_url(cid))), "ok")
+    except (ImportError, OSError, ValueError) as exc:
+        flash("Échec de fabrication du brouillon : %s" % exc, "err")
+    return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso))
 
 
 _COWORK_PROMPT_FILE = ROOT / "docs" / "COWORK_AUTOCOMPLETION.md"

@@ -65,28 +65,55 @@
   </details>
 
   <!-- Sélection -->
-  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin:.2rem 0 .5rem;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin:.2rem 0 .5rem;flex-wrap:wrap;">
     <h2 style="margin:0;font-size:1.05rem;">✅ La sélection <span class="muted" style="font-weight:400;">— ordre d'affichage</span></h2>
-    <form method="post" action="/newsletter/action" style="margin:0;" onsubmit="return confirm('Réinitialiser à l\'amorce automatique (top score) ?')">
-      <input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}">
-      <button name="action" value="reset" class="btn btn-ghost btn-sm">↺ Réinitialiser</button>
-    </form>
+    <div style="display:flex;gap:.4rem;">
+      <form method="post" action="/newsletter/brevo" style="margin:0;" onsubmit="return confirm('Créer le brouillon Brevo avec cette sélection ({{ n_selected }} événements, dans cet ordre) ? Aucun envoi — un brouillon à relire dans Brevo.')">
+        <input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}">
+        <button class="btn btn-ok btn-sm" {% if n_selected == 0 %}disabled{% endif %}>📧 Pousser vers Brevo</button>
+      </form>
+      <form method="post" action="/newsletter/action" style="margin:0;" onsubmit="return confirm('Réinitialiser à l\'amorce automatique (top score) ?')">
+        <input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}">
+        <button name="action" value="reset" class="btn btn-ghost btn-sm">↺ Réinitialiser</button>
+      </form>
+    </div>
   </div>
   {% for e in selected %}{{ ev_row(e, 'sel') }}{% else %}
   <p class="muted text-sm">Aucun événement sélectionné. Ajoute-en depuis les « presque retenus » ci-dessous.</p>
   {% endfor %}
 
-  <!-- Candidats (« presque retenus ») -->
-  <h2 style="margin:1.4rem 0 .5rem;font-size:1.05rem;">🎠 Les « presque retenus » <span class="muted" style="font-weight:400;font-size:.85rem;">— {{ candidates|length }} candidats sous la barre, à piocher</span></h2>
-  {% for e in candidates %}{{ ev_row(e, 'cand') }}{% else %}
-  <p class="muted text-sm">Aucun autre candidat sur ce territoire cette semaine.</p>
-  {% endfor %}
-
-  <!-- Prochaine étape -->
-  <div class="card" style="padding:.8rem 1rem;margin-top:1.4rem;background:#e8f0fe;border:1px solid #9db8e8;">
-    <b>Prochaine étape (Phase 2)</b> — un vrai <b>carrousel</b> pour les scores proches, et un bouton
-    <b>« 📧 Pousser vers Brevo »</b> qui crée le brouillon avec CETTE sélection (dans cet ordre). Pour
-    l'instant : compose et enregistre ici, l'envoi Brevo reste sur le script existant.
+  <!-- Candidats (« presque retenus ») — carrousel horizontal -->
+  <h2 style="margin:1.4rem 0 .5rem;font-size:1.05rem;">🎠 Les « presque retenus » <span class="muted" style="font-weight:400;font-size:.85rem;">— {{ candidates|length }} sous la barre · fais défiler et pioche</span></h2>
+  {% if candidates %}
+  <div style="display:flex;gap:.7rem;overflow-x:auto;padding:.3rem .1rem 1rem;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;">
+    {% for e in candidates %}
+    <div class="card" style="flex:0 0 220px;scroll-snap-align:start;padding:0;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="height:120px;background:#C9BFAD center/cover no-repeat;{% if e.url_image %}background-image:url('{{ e.url_image }}');{% endif %}position:relative;">
+        <span style="position:absolute;top:.4rem;right:.4rem;font-size:.72rem;font-weight:700;color:#1a7f4b;background:rgba(255,255,255,.92);border-radius:999px;padding:.1rem .45rem;">score {{ e.score }}</span>
+      </div>
+      <div style="padding:.55rem .6rem;flex:1;display:flex;flex-direction:column;gap:.3rem;">
+        <div style="font-weight:600;font-size:.85rem;line-height:1.25;">{{ e.title[:70] }}</div>
+        <div class="muted" style="font-size:.74rem;">{{ e.date_event_start }}{% if e.ville %} · {{ e.ville }}{% endif %}{% if e.llm_categorie %}<br>{{ e.llm_categorie }}{% endif %}</div>
+        <div style="margin-top:auto;display:flex;gap:.3rem;align-items:center;">
+          <form method="post" action="/newsletter/action" style="margin:0;flex:1;">
+            <input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}"><input type="hidden" name="event_id" value="{{ e.id }}">
+            <button name="action" value="add" class="btn btn-ok btn-sm" style="width:100%;">＋ Ajouter</button>
+          </form>
+          <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="muted" style="font-size:.85rem;text-decoration:none;" title="Aperçu">↗</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
   </div>
+  {% else %}
+  <p class="muted text-sm">Aucun autre candidat sur ce territoire cette semaine.</p>
+  {% endif %}
+
+  <p class="muted text-sm" style="margin-top:1rem;">
+    « 📧 Pousser vers Brevo » crée un <b>brouillon</b> (jamais d'envoi) avec ta sélection dans cet ordre,
+    à relire et envoyer depuis Brevo. Nécessite <code>BREVO_API_KEY / BREVO_SENDER_EMAIL / BREVO_LIST_ID</code>
+    dans le <code>.env</code>. La liste Brevo est celle configurée globalement — les listes par territoire
+    viendront ensuite.
+  </p>
 </div>
 {% endblock %}
