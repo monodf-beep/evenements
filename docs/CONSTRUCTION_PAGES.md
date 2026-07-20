@@ -1,10 +1,37 @@
 # Construction des pages du menu / carousel — réutiliser le gabarit liste
 
-*Constat (2026-07-20) : le carousel hero et le menu fonctionnent, mais les pages de
-destination (Ce week-end, territoires, Aujourd'hui, Agenda…) tombent sur le **gabarit
-WordPress par défaut** — d'où la sidebar « Rechercher / Recent / Hello world! » visible.
-Il faut créer/assigner le **gabarit liste agenda** (pleine largeur, sans sidebar) et y
-brancher la bonne requête. Un même gabarit sert plusieurs pages (cf. TEMPLATES_WORDPRESS.md).*
+*Constat initial (2026-07-20) : la sidebar « Rechercher / Recent / Hello world! » apparaît sur
+certaines pages de destination. On pensait que tout le menu tombait sur le gabarit WP par défaut.*
+
+## ✅ Inventaire réel (session Novamira, 2026-07-20) — le vrai périmètre est BIEN plus réduit
+
+Vérifié à l'écran, pas seulement dans le code : **la quasi-totalité des pages du menu ont déjà
+un gabarit dédié** (Code Snippets `template_redirect`), propres, sans sidebar :
+
+| Page | État | Gabarit |
+|---|---|---|
+| Aujourd'hui (929), Ce week-end (930), Cette semaine (931), Tout l'agenda (932) | ✅ propre | snippets dédiés, pattern `liste-evenements-template.php` |
+| À propos (933), Proposer un événement (934, form OK) | ✅ propre | snippets dédiés |
+| Hubs catégorie (×9) & territoire (×4) | ✅ propre | snippets 14+15 |
+
+**Le vrai travail restant (réduit) :**
+1. **Gabarit du CPT `selection`** (pages du carousel, ex. `/selections/quelle-sagre-ce-mois/`)
+   → **seul vrai cas « sidebar par défaut / Hello world »**. C'est LE symptôme du screenshot.
+2. **Bug de duplication** : sur les Hubs territoire/catégorie, chaque événement apparaît **2×**.
+3. **« Hello world! » (article id 1)** → corbeille (source du « Recent Posts » dans la sidebar).
+4. **(Décision)** Pages « Ce week-end × territoire » (`/ce-week-end/<terr>/`) : **n'existent pas
+   (404) et ne sont liées de nulle part** — le switcher home pointe vers `/territoire/<terr>/`.
+   Donc = fonctionnalité NOUVELLE (SEO), pas un lien cassé. **Reporté** sauf décision contraire.
+
+Le gabarit liste réutilisable existe déjà de fait (pattern `liste-evenements-template.php`
+dupliqué sur 4 pages + variante « carte pleine » pour les Hubs) — inutile d'en inventer un autre.
+
+---
+
+## (Spec initiale conservée pour référence — largement déjà réalisée)
+
+*Constat de départ : les pages de destination tombaient sur le **gabarit WordPress par défaut**.
+Réalité : seules les pages du CPT `selection` sont concernées (voir inventaire ci-dessus).*
 
 ---
 
