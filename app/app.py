@@ -207,8 +207,15 @@ def logout():
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    # timeout=30 + busy_timeout : on ATTEND le verrou (jusqu'à 30 s) au lieu de lever
+    # « database is locked » quand un script du pipeline écrit en même temps. WAL
+    # (posé par init_db) permet en plus la lecture concurrente pendant une écriture.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA busy_timeout=30000")
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 

@@ -35,6 +35,18 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
 def init_db(conn: sqlite3.Connection) -> None:
+    # Concurrence : plusieurs process écrivent la même base (app gunicorn + scripts
+    # du pipeline + auto-complétion). Sans réglage, SQLite verrouille toute la base
+    # pendant une écriture et lève « database is locked » dès qu'un 2e écrivain se
+    # présente. WAL = lecteurs concurrents + 1 écrivain ; busy_timeout = on ATTEND
+    # (30 s) le verrou au lieu d'échouer aussitôt. WAL est persistant (posé une fois
+    # sur le fichier) ; busy_timeout est par connexion → init_db le repose à chaque fois.
+    try:
+        conn.execute("PRAGMA busy_timeout=30000")
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+    except sqlite3.OperationalError:
+        pass  # base momentanément verrouillée à l'ouverture — non bloquant
     conn.execute("""
     CREATE TABLE IF NOT EXISTS events_raw (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
