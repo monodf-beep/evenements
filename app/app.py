@@ -665,12 +665,53 @@ _STATUT_LABEL = {
 }
 
 
+# Plan des encarts publicitaires — le plan de 12 blocs déjà câblé dans le THÈME
+# (agenda-sabauda-core), source d'autorité, croisé avec notre config de session.
+# ⚠️ = incertitude relevée à la lecture du code (STATUS.md vs fichier réel).
+AD_PLAN = [
+    {"bloc": "1", "format": "Leaderboard 970×90", "emplacement": "Gouttière gauche (homepage-template.php)",
+     "dm": "Desktop", "page": "Home", "statut": "AdSense actif (attente Google)", "src": "adsense"},
+    {"bloc": "2", "format": "Pavé 300×250", "emplacement": "Gouttière droite + pavé sur /evenement/*",
+     "dm": "Desktop", "page": "Home + fiche événement", "statut": "AdSense actif", "src": "adsense"},
+    {"bloc": "3", "format": "Sticky footer 950×120", "emplacement": "Sous le carrousel",
+     "dm": "⚠️ incertain (fichier « mobile », décrit desktop)", "page": "Home", "statut": "Maison — désactivé", "src": "maison"},
+    {"bloc": "4", "format": "Skin 950×90", "emplacement": "Sous les tuiles de catégories",
+     "dm": "⚠️ incertain (idem)", "page": "Home", "statut": "Maison — désactivé", "src": "maison"},
+    {"bloc": "5", "format": "Pavé 300×250", "emplacement": "Colonne « En évidence »",
+     "dm": "⚠️ incertain (idem)", "page": "Home", "statut": "Libre", "src": "libre"},
+    {"bloc": "6", "format": "Barre sticky 728×90", "emplacement": "Barre sticky desktop",
+     "dm": "Desktop (présumé, non confirmé)", "page": "Home", "statut": "Libre", "src": "libre"},
+    {"bloc": "7–11", "format": "5 encarts inline (5:3)", "emplacement": "Inline dans la liste",
+     "dm": "Mobile (explicite)", "page": "Home", "statut": "Libre", "src": "libre"},
+    {"bloc": "12", "format": "Barre sticky mobile", "emplacement": "Bas d'écran mobile",
+     "dm": "Mobile (explicite)", "page": "Home", "statut": "Libre", "src": "libre"},
+    {"bloc": "13–16", "format": "—", "emplacement": "Aucun usage prévu",
+     "dm": "—", "page": "—", "statut": "Libre (réserve)", "src": "libre"},
+]
+
+REGIE_SYSTEMS = [
+    {"nom": "Plan 12 blocs (thème agenda-sabauda-core)", "ou": "Live — hors git",
+     "role": "Emplacements pub de la home (gouttières, sticky, inline…)",
+     "verdict": "garder", "note": "Fait autorité — colle au Kit Annonceurs. Nos « blocs 1-4 » doivent s'aligner dessus."},
+    {"nom": "cs-regie-serve.php", "ou": "Live 18/07 — hors git (recréé en git cette session)",
+     "role": "Diffusion des pubs MANUELLES depuis le backoffice (sticky bas, gating Complianz, clic /go/<id>)",
+     "verdict": "garder", "note": "Bon mécanisme. Mais muet : /api/active-ads time-out (backoffice injoignable)."},
+    {"nom": "Ad Inserter (4 blocs, cette session)", "ou": "Live (wp-admin)",
+     "role": "AdSense (leaderboard + pavé) + tests manuels",
+     "verdict": "aligner", "note": "Numérotation en collision avec le plan 12. Garder pour l'AdSense uniquement."},
+    {"nom": "cs-regie.php (skin/gouttières)", "ou": "Git — jamais déployé",
+     "role": "Skin + gouttières via option WP",
+     "verdict": "abandonner", "note": "Redondant : le thème gère déjà skin/gouttières (blocs 1, 3, 4)."},
+]
+
+
 @app.route("/wireframe-home")
 @require_auth
 def wireframe_home():
-    """Wireframe annoté de la home : chaque section réelle + sa règle d'affichage."""
+    """Wireframe annoté de la home : sections + règles + plan des encarts pub."""
     return render_template("wireframe_home.html", active="wireframe",
-                           sections=HOME_SECTIONS, labels=_STATUT_LABEL)
+                           sections=HOME_SECTIONS, labels=_STATUT_LABEL,
+                           ad_plan=AD_PLAN, regie_systems=REGIE_SYSTEMS)
 
 
 _COWORK_PROMPT_FILE = ROOT / "docs" / "COWORK_AUTOCOMPLETION.md"
