@@ -41,6 +41,26 @@
   <span class="badge grey">{{ e.territoire or '—' }}</span>
 </div>
 
+<!-- Compléter à la main : date / lieu / ville (sans API — pilotable aussi par Claude-Chrome) -->
+<details class="card" id="completer" style="margin:.6rem 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"{% if not e.date_event_start or not e.lieu or not e.ville %} open{% endif %}>
+  <summary style="cursor:pointer;color:var(--muted);font-size:.9rem;">✍️ Compléter / corriger à la main (date, lieu, ville)</summary>
+  <div style="padding:.7rem .2rem 0;">
+    {% if e.url_source and not e.url_source.startswith('gmail:') %}
+    <p class="text-sm" style="margin:.1rem 0 .7rem;">↗ <a href="{{ e.url_source }}" target="_blank" rel="noopener"><b>Ouvrir la page source</b></a> pour y lire la date, puis reporte-la ci-dessous.</p>
+    {% endif %}
+    <form method="post" action="/complete/{{ e.id }}">
+      <input type="hidden" name="next" value="{{ request.full_path }}">
+      <div style="display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-end;">
+        <label class="text-sm">Date début<br><input type="date" name="date_event_start" value="{{ e.date_event_start or '' }}"></label>
+        <label class="text-sm">Date fin<br><input type="date" name="date_event_end" value="{{ e.date_event_end or '' }}"></label>
+        <label class="text-sm">Lieu<br><input type="text" name="lieu" value="{{ e.lieu or '' }}" placeholder="Nom du lieu" style="min-width:180px;"></label>
+        <label class="text-sm">Ville<br><input type="text" name="ville" value="{{ e.ville or '' }}" placeholder="Ville"></label>
+        <button class="btn btn-ok btn-sm" type="submit">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</details>
+
 {% if image %}<img class="hero" src="{{ image }}" alt="" loading="lazy" decoding="async">{% endif %}
 
 {% if image %}

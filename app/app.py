@@ -1298,6 +1298,41 @@ def seo_optimize(event_id: int):
     return redirect(url_for("preview", event_id=event_id) + "#seo")
 
 
+# Champs qu'on autorise à compléter/corriger À LA MAIN depuis l'aperçu (liste blanche
+# stricte : les clés viennent d'ici, jamais de l'utilisateur → pas d'injection SQL).
+_MANUAL_FIELDS = ("date_event_start", "date_event_end", "lieu", "ville",
+                  "territoire", "llm_categorie")
+
+
+@app.route("/complete/<int:event_id>", methods=["POST"])
+@require_auth
+def complete_event(event_id: int):
+    """Saisie MANUELLE des champs manquants (date, lieu, ville…) — sans API. Sert à
+    compléter à la main les événements que la recherche web n'a pas résolus, et permet
+    à une routine Claude-dans-Chrome de piloter ce même formulaire. On ne touche qu'aux
+    champs réellement fournis (on n'efface rien par mégarde)."""
+    updates = {}
+    for k in _MANUAL_FIELDS:
+        v = (request.form.get(k) or "").strip()
+        if v:
+            updates[k] = v
+    if updates.get("date_event_start") and not updates.get("date_event_end"):
+        updates["date_event_end"] = updates["date_event_start"]  # 1 jour → début = fin
+    if updates:
+        if "date_event_start" in updates:
+            updates["date_source"] = "manuel"
+        conn = get_db()
+        sets = ", ".join(f"{k}=?" for k in updates)
+        conn.execute(f"UPDATE events_raw SET {sets} WHERE id=?",
+                     (*updates.values(), event_id))
+        conn.commit()
+        conn.close()
+        flash("💾 Champs complétés à la main : " + ", ".join(updates) + ".", "ok")
+    else:
+        flash("Rien à enregistrer (aucun champ rempli).", "err")
+    return redirect(request.form.get("next") or url_for("preview", event_id=event_id))
+
+
 @app.route("/site-dedie")
 @require_auth
 def site_dedie():
