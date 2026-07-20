@@ -17,7 +17,23 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-set -a; [ -f "$ROOT/.env" ] && . "$ROOT/.env"; set +a
+
+# Lit UNE clé du .env sans « sourcer » tout le fichier : un `. .env` casse dès qu'une
+# valeur contient un espace non quoté (ex. « line 40: Sabaudo: command not found »).
+# On extrait seulement les clés dont on a besoin, guillemets éventuels retirés.
+read_env() {
+  local line
+  line=$(grep -E "^[[:space:]]*$1=" "$ROOT/.env" 2>/dev/null | tail -1) || return 0
+  line="${line#*=}"
+  line="${line%\"}"; line="${line#\"}"
+  line="${line%\'}"; line="${line#\'}"
+  printf '%s' "$line"
+}
+[ -f "$ROOT/.env" ] && {
+  WP_DEPLOY_SSH="${WP_DEPLOY_SSH:-$(read_env WP_DEPLOY_SSH)}"
+  WP_DEPLOY_MU_DIR="${WP_DEPLOY_MU_DIR:-$(read_env WP_DEPLOY_MU_DIR)}"
+  WP_DEPLOY_PORT="${WP_DEPLOY_PORT:-$(read_env WP_DEPLOY_PORT)}"
+}
 
 : "${WP_DEPLOY_SSH:?Manque WP_DEPLOY_SSH=user@host dans .env}"
 : "${WP_DEPLOY_MU_DIR:?Manque WP_DEPLOY_MU_DIR=chemin/vers/wp-content/mu-plugins dans .env}"
