@@ -60,6 +60,9 @@ def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Repère/retire les articles de presse publiés à tort.")
     parser.add_argument("--apply", action="store_true", help="Exécute (sinon dry-run).")
+    parser.add_argument("--db-only", action="store_true",
+                        help="Ne touche PAS WordPress ; marque juste les fiches rejetées en "
+                             "base (à utiliser si tu as déjà corbeillé les posts à la main).")
     parser.add_argument("--cap", type=int, default=0, help="Limite le nombre traité (0 = tout).")
     args = parser.parse_args(argv)
 
@@ -67,17 +70,21 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
-    rows = [dict(r) for r in conn.execute(
+    # On charge TOUTE la table pour la détection + la propagation (une jumelle publiée
+    # dont l'original a déjà été retiré doit rester repérée via son lien de traduction),
+    # mais on n'AGIT que sur les fiches encore publiées (wp_post_id_as renseigné).
+    all_rows = [dict(r) for r in conn.execute(
         "SELECT id, title, description, translation_of, wp_post_id_as, translated_lang "
-        "FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0").fetchall()]
-    flags = _flagged(rows)
-    by_id = {r["id"]: r for r in rows}
-    targets = sorted(flags)
+        "FROM events_raw").fetchall()]
+    flags = _flagged(all_rows)
+    by_id = {r["id"]: r for r in all_rows}
+    published = sum(1 for r in all_rows if (r.get("wp_post_id_as") or 0) > 0)
+    targets = sorted(rid for rid in flags if (by_id[rid].get("wp_post_id_as") or 0) > 0)
     if args.cap:
         targets = targets[:args.cap]
 
-    log.info("%d fiche(s) publiée(s) · %d non-événement(s) repéré(s)%s",
-             len(rows), len(flags), " (cap %d)" % args.cap if args.cap else "")
+    log.info("%d fiche(s) publiée(s) · %d non-événement(s) publié(s) à retirer%s",
+             published, len(targets), " (cap %d)" % args.cap if args.cap else "")
     for rid in targets:
         r = by_id[rid]
         log.info("  WP#%s [%s] %s — « %s »", r["wp_post_id_as"], rid, flags[rid],
@@ -94,7 +101,7 @@ def main(argv=None) -> int:
 
     wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
     auth = (os.getenv("WP_AS_USER", ""), os.getenv("WP_AS_APP_PASSWORD", ""))
-    if not (wp_url and auth[0] and auth[1]):
+    if not args.db_only and not (wp_url and auth[0] and auth[1]):
         log.error("WP_AS_URL/USER/APP_PASSWORD manquants — impossible d'agir.")
         conn.close()
         return 2
@@ -103,20 +110,23 @@ def main(argv=None) -> int:
     for rid in targets:
         r = by_id[rid]
         wp_id = int(r["wp_post_id_as"])
-        # force=True : ces non-événements SONT publiés (auto-publication) ; on lève
+        # --db-only : les posts sont déjà corbeillés à la main → on ne fait que la base.
+        # Sinon force=True : ces non-événements SONT publiés (auto-publication) ; on lève
         # délibérément le garde-fou « publié » de l'endpoint pour les retirer.
-        if trash_one(wp_url, auth, wp_id, force=True):
+        if args.db_only or trash_one(wp_url, auth, wp_id, force=True):
             conn.execute("UPDATE events_raw SET statut='rejected', wp_post_id_as=NULL, "
                          "published_as_date=NULL, llm_justification=? WHERE id=?",
                          ("Retiré : article de presse, pas un événement (%s)." % flags[rid], rid))
             conn.commit()
             ok += 1
-            log.info("  WP#%s → corbeille, fiche %s rejetée.", wp_id, rid)
+            log.info("  WP#%s → %s, fiche %s rejetée.", wp_id,
+                     "base seule" if args.db_only else "corbeille", rid)
         else:
             fail += 1
             log.warning("  WP#%s : mise à la corbeille échouée (fiche %s laissée).", wp_id, rid)
 
-    log.info("=== Terminé : %d à la corbeille, %d échec(s). ===", ok, fail)
+    log.info("=== Terminé : %d %s, %d échec(s). ===", ok,
+             "réconcilié(s) en base" if args.db_only else "à la corbeille", fail)
     conn.close()
     return 0
 
