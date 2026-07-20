@@ -22,6 +22,8 @@ SÛR : dry-run par défaut (--apply pour agir), --cap pour de petits lots.
 Usage (VPS) :
     .venv/bin/python -m scripts.translate_events                    # simulation
     .venv/bin/python -m scripts.translate_events --min-score 6 --cap 10 --apply
+    # remplir un versant maigre (ex. Piémont côté FR : ses événements IT → FR) :
+    .venv/bin/python -m scripts.translate_events --territoire piemont --cap 20 --apply
 """
 from __future__ import annotations
 import argparse
@@ -48,6 +50,23 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL_TRANSLATE", "claude-haiku-4-5")
 
 _LANG_NAME = {"fr": "français", "it": "italien"}
+
+# Filtre territoire optionnel (--territoire) : slug → mots-clés cherchés dans le champ
+# territoire normalisé. Sert à REMPLIR un versant maigre (ex. Piémont côté FR).
+_TERR_KEYS = {
+    "savoie-haute-savoie": ("savoie", "haute savoie"),
+    "piemont": ("piemont", "piemonte", "piedmont"),
+    "vallee-d-aoste": ("aoste", "aosta"),
+    "nice-alpes-maritimes": ("nice", "alpes maritimes", "azur"),
+}
+
+
+def _norm(s: str) -> str:
+    import unicodedata
+    s = (s or "").lower()
+    s = "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
+    import re as _re
+    return _re.sub(r"[^a-z0-9]+", " ", s).strip()
 
 
 def _ensure_cols(conn):
@@ -95,6 +114,8 @@ def main(argv=None) -> int:
     parser.add_argument("--apply", action="store_true", help="Exécute (sinon simulation).")
     parser.add_argument("--min-score", type=int, default=6, help="Score minimum (défaut 6).")
     parser.add_argument("--cap", type=int, default=10, help="Nb max par run (défaut 10).")
+    parser.add_argument("--territoire", default="",
+                        help="Filtre territoire (slug : %s)." % ", ".join(_TERR_KEYS))
     parser.add_argument("--model", default=DEFAULT_MODEL)
     args = parser.parse_args(argv)
 
@@ -111,14 +132,27 @@ def main(argv=None) -> int:
                           "AND duplicate_of IS NULL"):
         img_lang[detect_lang(r["title"] or "", r["description"] or "", r["territoire"] or "")].add(r["url_image"])
 
+    terr_keys = None
+    if args.territoire:
+        terr_keys = _TERR_KEYS.get(args.territoire.strip().lower())
+        if not terr_keys:
+            log.error("Territoire inconnu : %s (attendus : %s)",
+                      args.territoire, ", ".join(_TERR_KEYS))
+            conn.close()
+            return 2
+
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
         "AND COALESCE(translation_of,0)=0 AND COALESCE(translated_at,'')='' "
         "AND COALESCE(user_score, llm_score, 0) >= ? "
-        "ORDER BY COALESCE(user_score, llm_score, 0) DESC, id ASC LIMIT ?",
-        (args.min_score, args.cap)).fetchall()]
-    log.info("%d événement(s) candidat(s) (score ≥ %d, en ligne, non traduits)",
-             len(rows), args.min_score)
+        "ORDER BY COALESCE(user_score, llm_score, 0) DESC, id ASC",
+        (args.min_score,)).fetchall()]
+    if terr_keys:                                       # filtre territoire AVANT le plafond
+        rows = [r for r in rows if any(k in _norm(r.get("territoire", "")) for k in terr_keys)]
+    rows = rows[:args.cap]
+    log.info("%d événement(s) candidat(s) (score ≥ %d, en ligne, non traduits%s)",
+             len(rows), args.min_score,
+             ", territoire=" + args.territoire if args.territoire else "")
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=api_key) if (api_key and args.apply) else None
