@@ -988,4 +988,18 @@
   font-family: 'Nunito Sans', sans-serif; font-size: 11px; line-height: 1.8; color: #6F6B62;
 }
 
+/* ===== Masquer une section ENTIÈRE de la home (titre + grille) quand sa requête ne
+   retourne rien (2026-07-20, demande Franck) — distinct de :empty::after "Visuel" plus
+   haut (qui affiche un placeholder par CARTE quand une carte individuelle n'a pas
+   d'image ; ici on parle d'une section entière vide car la règle "garantie photo"
+   côté requête a exclu TOUS les candidats). CSS pur (:has), pas de JS. Couvre les
+   wrappers connus des sections câblées sur les requêtes 14-21 (règle image
+   obligatoire, cf. mu-plugins/cs-query-ce-week-end-dates.php) : rail "à venir"
+   (mobile+desktop), colonnes desktop 3-col (Nouveautés/En évidence/L'agenda à venir).
+   Non testé contre un vrai cas vide en production (aucune des 4 sections actives
+   n'est vide au moment où ceci est écrit) — à revérifier si une section se retrouve
+   un jour réellement vide. */
+.as-day-rail:has(.jet-listing-not-found),
+.as-desktop-col:has(.jet-listing-not-found) { display: none; }
+
 
