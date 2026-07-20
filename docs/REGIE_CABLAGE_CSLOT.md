@@ -26,12 +26,19 @@ Sécurité : image autorisée uniquement depuis `agendasabauda.eu`, lien uniquem
 Le fichier `deploy/wordpress/cs-regie-serve.php` (v0.2) est prêt. Le déblocage `.env`
 (guillemets ligne 40) doit être fait pour que `push-wordpress.sh` fonctionne.
 
-Déployer le mu-plugin depuis le VPS :
-```bash
-cd /root/evenements && git pull
-bash deploy/push-wordpress.sh cs-regie-serve.php
-```
-(Inoffensif : le fichier ne produit RIEN tant qu'aucun `[cs_slot]` ne l'appelle.)
+Déployer le mu-plugin — deux voies (inoffensif : il ne produit RIEN tant qu'aucun
+`[cs_slot]` ne l'appelle) :
+
+- **Voie A (SFTP depuis le VPS)** — nécessite `WP_DEPLOY_SSH` / `WP_DEPLOY_MU_DIR` dans
+  `.env` (identifiants FTP-SSH OVH ; SSH activé côté offre) :
+  ```bash
+  cd /root/evenements && git pull
+  bash deploy/push-wordpress.sh cs-regie-serve.php
+  ```
+- **Voie B (Novamira)** — si le SFTP n'est pas configuré : la session Novamira écrit le
+  fichier directement dans `wp-content/mu-plugins/cs-regie-serve.php` (contenu =
+  `deploy/wordpress/cs-regie-serve.php` du dépôt) via `file_put_contents`. C'est la
+  première étape du prompt ci-dessous.
 
 ---
 
@@ -44,6 +51,11 @@ PHP cs_regie_slot('N', $adsense_html). Objectif : chaque emplacement pub = AdSen
 défaut, remplacé par la créative backoffice si une campagne est active pour ce bloc.
 Verify-first, réversible, confirmation avant chaque écriture. Sauvegarde chaque valeur
 avant modif.
+
+ÉTAPE 0-bis — DÉPLOYER LE MU-PLUGIN (si pas déjà fait)
+Si wp-content/mu-plugins/cs-regie-serve.php est absent ou plus ancien que la v0.2, écris-le
+avec le contenu exact de deploy/wordpress/cs-regie-serve.php du dépôt (via file_put_contents).
+Vérifie ensuite qu'il est chargé (le shortcode [cs_slot] doit exister).
 
 ÉTAPE 0 — CARTOGRAPHIE (ne rien modifier)
 Pour CHAQUE bloc pub réellement rendu aujourd'hui (au moins les blocs 1 et 2 AdSense

@@ -69,6 +69,52 @@ pour rollback. Commence par l'ÉTAPE 0 (inventaire) et donne-la-moi.
 
 ---
 
+## Contenu prêt à coller (Novamira n'a qu'à exécuter)
+
+### Menu « Principale IT »
+
+| Libellé IT | Pointe vers | Note |
+|---|---|---|
+| **Cosa fare questo weekend** | `/it/questo-weekend/` | page créée à l'ÉTAPE 1 |
+| **Eventi** | `/it/eventi/` | page créée à l'ÉTAPE 2 |
+| **Territori** ▾ | 4 archives territoire IT | termes déjà traduits (`cs-taxo-it.php`) : Savoia/Alta Savoia · Piemonte · Valle d'Aosta · Nizza. Prendre l'URL réelle de chaque archive IT. |
+| **Categorie** ▾ | 11 archives catégorie IT | déjà traduites — reprendre les URLs des archives IT existantes. |
+| **Informazioni utili** | `/it/informazioni-utili/` | page créée à l'ÉTAPE 3 |
+
+Commutateur FR\|IT en texte (pas de drapeau). Assigner à l'emplacement « menu principal »
+**langue IT** (ne pas écraser le menu FR).
+
+### Texte « Chi siamo » (si Informazioni utili est une page éditoriale de type À propos)
+
+> **Chi siamo — Agenda Sabauda**
+>
+> Agenda Sabauda è l'agenda culturale dello spazio alpino occidentale — un territorio senza
+> confini che unisce la Savoia e l'Alta Savoia, il Piemonte, la Valle d'Aosta e Nizza. Il nostro
+> obiettivo: riunire in un unico luogo tutto ciò che c'è da fare, da vedere e da vivere in questi
+> quattro territori che la storia, la lingua e la montagna hanno da sempre legato.
+>
+> Nato dalla convinzione che la cultura non si ferma ai confini amministrativi, Agenda Sabauda
+> raccoglie ogni settimana mostre, concerti, spettacoli, festival, sagre, mercati, feste
+> tradizionali, appuntamenti per le famiglie e grandi eventi sportivi — dalle istituzioni più
+> prestigiose ai più piccoli comuni di paese.
+>
+> Agenda Sabauda si rivolge a tutti: al viaggiatore di passaggio per un weekend come all'abitante
+> che vuole scoprire, o riscoprire, ciò che accade vicino a casa — da un versante all'altro delle
+> Alpi. Vi troverete, settimana dopo settimana, una selezione viva e l'agenda completo del
+> periodo: ciò che inizia, ciò che finisce e ciò da non perdere questo weekend.
+>
+> Ci impegniamo a verificare le nostre informazioni alla fonte ufficiale — il luogo,
+> l'organizzatore —, a citare ogni fotografia e a non pubblicare mai altro che eventi reali e in
+> programma. Agenda Sabauda è edito da **Cultura Sabauda**, testata culturale bilingue dello
+> spazio alpino occidentale.
+
+*Note : « Informazioni utili » peut être (a) une page éditoriale « à propos / infos pratiques »
+— alors utiliser le texte ci-dessus — ou (b) un hub de liens (Chi siamo · Proporre un evento ·
+Contatto · Crediti foto · Note legali · Privacy). L'ÉTAPE 0 tranche en regardant ce que
+contient la page FR « infos utiles ».*
+
+---
+
 ## Rappels techniques
 
 - **Catégories & territoires IT** sont déjà traduits (`cs-taxo-it.php`, `cs-fix-terms-language.php`).
