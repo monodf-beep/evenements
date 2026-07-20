@@ -857,6 +857,24 @@ def _nl_slug(label):
     return _couv_norm(label).replace(" ", "-")
 
 
+def _parse_list_ids(raw):
+    """« 3, 7;9 » → [3, 7, 9]. Tolère virgules, points-virgules, espaces."""
+    return [int(x) for x in re.split(r"[,;\s]+", (raw or "").strip()) if x.isdigit()]
+
+
+def _nl_env_key(terr_label):
+    """Nom d'env-var de la liste Brevo propre au territoire : BREVO_LIST_<SLUG>.
+    Ex. « Savoie / Haute-Savoie » → BREVO_LIST_SAVOIE_HAUTE_SAVOIE."""
+    return "BREVO_LIST_" + _nl_slug(terr_label).upper().replace("-", "_")
+
+
+def _nl_list_ids(terr_label):
+    """IDs de liste Brevo pour ce territoire : la liste dédiée BREVO_LIST_<SLUG>
+    si elle est renseignée, sinon repli sur la liste globale BREVO_LIST_ID."""
+    return _parse_list_ids(os.getenv(_nl_env_key(terr_label), "")) or \
+        _parse_list_ids(os.getenv("BREVO_LIST_ID", ""))
+
+
 def _nl_terr_from_slug(slug):
     for lbl in _NL_TERRITOIRES:
         if _nl_slug(lbl) == slug:
@@ -956,7 +974,10 @@ def newsletter_compose():
         next_edition=(edition + timedelta(days=7)).isoformat(),
         win_from=_nl_window(edition)[0], win_to=_nl_window(edition)[1],
         selected=selected, candidates=candidates, n_pool=len(pool),
-        n_selected=len(selected))
+        n_selected=len(selected),
+        brevo_env_key=_nl_env_key(terr),
+        brevo_list_ids=_nl_list_ids(terr),
+        brevo_dedicated=bool(_parse_list_ids(os.getenv(_nl_env_key(terr), ""))))
 
 
 @app.route("/newsletter/action", methods=["POST"])
@@ -1017,9 +1038,10 @@ def newsletter_brevo():
     api_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("BREVO_SENDER_EMAIL", "")
     sender_name = os.getenv("BREVO_SENDER_NAME", "Agenda Sabauda")
-    list_ids = [int(x) for x in re.split(r"[,;\s]+", os.getenv("BREVO_LIST_ID", "").strip()) if x.isdigit()]
+    list_ids = _nl_list_ids(terr)
     if not api_key or not sender_email or not list_ids:
-        flash("Config Brevo incomplète dans .env (BREVO_API_KEY / BREVO_SENDER_EMAIL / BREVO_LIST_ID).", "err")
+        flash("Config Brevo incomplète dans .env (BREVO_API_KEY / BREVO_SENDER_EMAIL / "
+              "et %s ou, à défaut, BREVO_LIST_ID)." % _nl_env_key(terr), "err")
         return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso))
 
     try:

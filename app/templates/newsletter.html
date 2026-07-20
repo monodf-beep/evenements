@@ -111,9 +111,20 @@
 
   <p class="muted text-sm" style="margin-top:1rem;">
     « 📧 Pousser vers Brevo » crée un <b>brouillon</b> (jamais d'envoi) avec ta sélection dans cet ordre,
-    à relire et envoyer depuis Brevo. Nécessite <code>BREVO_API_KEY / BREVO_SENDER_EMAIL / BREVO_LIST_ID</code>
-    dans le <code>.env</code>. La liste Brevo est celle configurée globalement — les listes par territoire
-    viendront ensuite.
+    à relire et envoyer depuis Brevo. Nécessite <code>BREVO_API_KEY / BREVO_SENDER_EMAIL</code> dans le
+    <code>.env</code>, plus une liste de destinataires.
+    <br>
+    <b>Liste de ce territoire :</b>
+    {% if brevo_dedicated %}
+      liste dédiée <code>{{ brevo_env_key }}</code> → ID {{ brevo_list_ids|join(', ') }}.
+    {% elif brevo_list_ids %}
+      <span title="repli">liste globale <code>BREVO_LIST_ID</code> → ID {{ brevo_list_ids|join(', ') }}</span>
+      (définis <code>{{ brevo_env_key }}</code> dans le <code>.env</code> pour une liste propre à ce territoire).
+    {% else %}
+      <span style="color:#b45309;">aucune liste configurée</span> — renseigne <code>{{ brevo_env_key }}</code>
+      (ou <code>BREVO_LIST_ID</code> en repli) dans le <code>.env</code>.
+    {% endif %}
+    Chaque territoire a sa propre liste : <code>BREVO_LIST_&lt;TERRITOIRE&gt;</code>, repli sur la liste globale.
   </p>
 </div>
 {% endblock %}
