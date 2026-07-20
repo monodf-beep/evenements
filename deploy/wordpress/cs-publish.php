@@ -148,7 +148,36 @@ function cs_publish_event(WP_REST_Request $req) {
         $post_id = $existing_id;
         $updated = true;
     } else {
-        $post_id = (int) tribe_create_event($args);
+        // IDEMPOTENCE : avant de créer, chercher un événement identique déjà en base
+        // (même titre + même date de début). Évite les DOUBLONS quand wp_post_id est
+        // absent ou périmé (ex. site reconstruit → ancien id mort). Sans ce repli,
+        // un re-push recréait un second post au lieu de retrouver le premier.
+        $dupe_args = array(
+            'post_type'        => 'tribe_events',
+            'post_status'      => array('publish', 'pending', 'draft', 'future', 'private'),
+            'title'            => $title,
+            'posts_per_page'   => 1,
+            'fields'           => 'ids',
+            'no_found_rows'    => true,
+            'suppress_filters' => false,
+        );
+        if (!empty($args['EventStartDate'])) {
+            $dupe_args['meta_query'] = array(array(
+                'key'   => '_EventStartDate',
+                'value' => $args['EventStartDate'],
+            ));
+        }
+        $dupe = get_posts($dupe_args);
+        if (!empty($dupe)) {
+            // Retrouvé : on met à jour au lieu de dupliquer. On préserve le statut
+            // existant (comme la branche update ci-dessus).
+            unset($args['post_status']);
+            $post_id = (int) $dupe[0];
+            tribe_update_event($post_id, $args);
+            $updated = true;
+        } else {
+            $post_id = (int) tribe_create_event($args);
+        }
     }
     if (!$post_id) {
         return new WP_Error('tec_fail', 'Création TEC échouée.', array('status' => 500));
