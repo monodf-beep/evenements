@@ -723,6 +723,118 @@ def wireframe_home():
                            ad_plan=AD_PLAN, regie_systems=REGIE_SYSTEMS)
 
 
+# --- Couverture : compteurs par section × territoire × langue --------------------
+# Montre, pour chaque fenêtre temporelle du site, combien d'événements RÉELLEMENT en
+# ligne (publiés sur Agenda Sabauda) alimentent chaque territoire en FR et en IT.
+# But : repérer les MANQUES d'un coup d'œil (ex. « ça vaut le détour » Savoie/Nice en
+# IT ≈ 0, car les sources françaises ne produisent pas de fiches italiennes).
+_COUV_TERRITOIRES = [
+    ("Savoie / Haute-Savoie", ("savoie", "haute savoie")),
+    ("Piémont", ("piemont", "piemonte", "piedmont")),
+    ("Vallée d'Aoste", ("aoste", "aosta")),
+    ("Nice / Alpes-Maritimes", ("nice", "alpes maritimes", "azur")),
+]
+_MOIS_ABBR = ("", "janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.",
+              "août", "sept.", "oct.", "nov.", "déc.")
+
+
+def _couv_norm(s):
+    import unicodedata
+    s = (s or "").lower()
+    s = "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+def _couv_terr_group(territoire):
+    n = _couv_norm(territoire)
+    for label, keys in _COUV_TERRITOIRES:
+        if any(k in n for k in keys):
+            return label
+    return "Autre / non classé"
+
+
+def _couv_date(s):
+    try:
+        return date.fromisoformat((s or "")[:10])
+    except (ValueError, TypeError):
+        return None
+
+
+def _couv_data(conn):
+    from utils.lang import detect_lang
+    today = date.today()
+    wd = today.weekday()                       # lundi=0 … dimanche=6
+    sat = today - timedelta(days=wd - 5) if wd >= 5 else today + timedelta(days=5 - wd)
+    sun = sat + timedelta(days=1)
+    eow = today + timedelta(days=6 - wd)       # dimanche de la semaine en cours
+    far = date(2999, 1, 1)
+    windows = [
+        ("Aujourd'hui", today, today, today.strftime("%d/%m")),
+        ("Ce week-end", sat, sun,
+         "sam. %d – dim. %d %s" % (sat.day, sun.day, _MOIS_ABBR[sun.month])),
+        ("Cette semaine", today, eow, "jusqu'au dim. %d %s" % (eow.day, _MOIS_ABBR[eow.month])),
+        ("À venir (tous)", today, far, "à partir d'aujourd'hui"),
+    ]
+    terr_labels = [t[0] for t in _COUV_TERRITOIRES] + ["Autre / non classé"]
+
+    # matrice[iwin][terr][lang] = compteur ; catégories (à venir) idem.
+    mat = {i: {t: {"fr": 0, "it": 0} for t in terr_labels} for i in range(len(windows))}
+    cats = {}
+    undated = 0
+
+    rows = conn.execute(
+        "SELECT title, description, territoire, llm_categorie, "
+        "date_event_start, date_start, date_event_end "
+        "FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL"
+    ).fetchall()
+
+    for r in rows:
+        es = _couv_date(r["date_event_start"]) or _couv_date(r["date_start"])
+        ee = _couv_date(r["date_event_end"]) or es
+        lang = detect_lang(r["title"] or "", r["description"] or "", r["territoire"] or "")
+        lang = "it" if lang == "it" else "fr"
+        grp = _couv_terr_group(r["territoire"])
+        if es is None:
+            undated += 1
+            continue
+        for i, (_n, ws, we, _lbl) in enumerate(windows):
+            if es <= we and ee >= ws:          # chevauchement fenêtre
+                mat[i][grp][lang] += 1
+        # Catégories : sur la fenêtre « à venir » (dernière), si l'événement y tombe.
+        if ee >= today:
+            cat = (r["llm_categorie"] or "—").strip() or "—"
+            cats.setdefault(cat, {"fr": 0, "it": 0})[lang] += 1
+
+    # Mise en forme pour le template.
+    sections = []
+    for i, (name, _ws, _we, lbl) in enumerate(windows):
+        trows, tf, ti = [], 0, 0
+        for t in terr_labels:
+            fr, it = mat[i][t]["fr"], mat[i][t]["it"]
+            if t == "Autre / non classé" and fr == 0 and it == 0:
+                continue
+            trows.append({"terr": t, "fr": fr, "it": it, "total": fr + it})
+            tf += fr
+            ti += it
+        sections.append({"name": name, "label": lbl, "rows": trows,
+                         "tot_fr": tf, "tot_it": ti, "tot": tf + ti})
+    cat_rows = sorted(
+        ({"cat": c, "fr": v["fr"], "it": v["it"], "total": v["fr"] + v["it"]}
+         for c, v in cats.items()), key=lambda x: -x["total"])
+    return {"sections": sections, "cats": cat_rows, "undated": undated,
+            "n_total": len(rows)}
+
+
+@app.route("/couverture")
+@require_auth
+def couverture():
+    """Compteurs de couverture : section × territoire × langue (repérage des manques)."""
+    conn = get_db()
+    data = _couv_data(conn)
+    conn.close()
+    return render_template("couverture.html", active="couverture", **data)
+
+
 _COWORK_PROMPT_FILE = ROOT / "docs" / "COWORK_AUTOCOMPLETION.md"
 
 
