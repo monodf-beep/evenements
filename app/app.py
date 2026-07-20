@@ -842,6 +842,156 @@ def couverture():
     return render_template("couverture.html", active="couverture", **data)
 
 
+# ---------- Composeur de newsletter (Phase 1 : voir / curer / ordonner) ----------
+# Une newsletter par TERRITOIRE, envoyée le vendredi matin. On la compose toute la
+# semaine (dès lundi). Sélection auto = retenus du territoire dans la fenêtre, triés
+# par score ; Franck ajuste l'ordre, inclut/exclut, pioche dans les « presque retenus ».
+# La sélection ordonnée est stockée par (territoire, édition) en JSON.
+_NL_TERRITOIRES = [t[0] for t in _COUV_TERRITOIRES]      # 4 groupes (labels)
+_NL_SEED = 8                                             # nb inclus par défaut (amorce)
+_NL_WINDOW_DAYS = 7                                      # vendredi → +7 jours
+
+
+def _nl_slug(label):
+    return _couv_norm(label).replace(" ", "-")
+
+
+def _nl_terr_from_slug(slug):
+    for lbl in _NL_TERRITOIRES:
+        if _nl_slug(lbl) == slug:
+            return lbl
+    return _NL_TERRITOIRES[0]
+
+
+def _nl_edition(param=""):
+    """Date de l'édition = un vendredi. Défaut : le prochain vendredi (aujourd'hui inclus)."""
+    try:
+        return date.fromisoformat(param)
+    except (ValueError, TypeError):
+        today = date.today()
+        return today + timedelta(days=(4 - today.weekday()) % 7)
+
+
+def _nl_window(edition):
+    return edition.isoformat(), (edition + timedelta(days=_NL_WINDOW_DAYS)).isoformat()
+
+
+def _ensure_nl_table(conn):
+    conn.execute("CREATE TABLE IF NOT EXISTS newsletter_editions ("
+                 "territoire TEXT NOT NULL, edition TEXT NOT NULL, "
+                 "picks_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT, "
+                 "PRIMARY KEY (territoire, edition))")
+
+
+def _nl_pool(conn, terr_label, pfrom, pto):
+    """Événements RETENUS, DATÉS, du territoire, chevauchant la fenêtre, triés par score."""
+    rows = conn.execute(
+        "SELECT id, title, territoire, ville, lieu, llm_categorie, llm_score, user_score, "
+        "date_event_start, date_event_end, url_image FROM events_raw "
+        "WHERE statut IN ('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
+        "AND COALESCE(date_event_start,'')<>'' "
+        "AND COALESCE(date_event_start,'') <= ? "
+        "AND COALESCE(NULLIF(date_event_end,''), date_event_start) >= ?",
+        (pto, pfrom)).fetchall()
+    pool = []
+    for r in rows:
+        e = dict(r)
+        if _couv_terr_group(e["territoire"]) != terr_label:
+            continue
+        e["score"] = e["user_score"] if e["user_score"] is not None else (e["llm_score"] or 0)
+        pool.append(e)
+    pool.sort(key=lambda e: (-e["score"], e["date_event_start"] or ""))
+    return pool
+
+
+def _nl_read_picks(conn, terr_label, edition_iso):
+    row = conn.execute("SELECT picks_json FROM newsletter_editions WHERE territoire=? AND edition=?",
+                       (terr_label, edition_iso)).fetchone()
+    if row is None:
+        return None
+    try:
+        return [int(x) for x in json.loads(row["picks_json"])]
+    except (ValueError, TypeError):
+        return []
+
+
+def _nl_save_picks(conn, terr_label, edition_iso, picks):
+    conn.execute(
+        "INSERT INTO newsletter_editions (territoire, edition, picks_json, updated_at) "
+        "VALUES (?,?,?,datetime('now','localtime')) "
+        "ON CONFLICT(territoire, edition) DO UPDATE SET "
+        "picks_json=excluded.picks_json, updated_at=excluded.updated_at",
+        (terr_label, edition_iso, json.dumps(picks)))
+    conn.commit()
+
+
+@app.route("/newsletter")
+@require_auth
+def newsletter_compose():
+    terr = _nl_terr_from_slug(request.args.get("t", ""))
+    edition = _nl_edition(request.args.get("e", ""))
+    edition_iso = edition.isoformat()
+    conn = get_db()
+    _ensure_nl_table(conn)
+    pool = _nl_pool(conn, terr, *_nl_window(edition))
+    picks = _nl_read_picks(conn, terr, edition_iso)
+    if picks is None:                                   # amorce : top _NL_SEED par score
+        picks = [e["id"] for e in pool[:_NL_SEED]]
+        _nl_save_picks(conn, terr, edition_iso, picks)
+    conn.close()
+    by_id = {e["id"]: e for e in pool}
+    selected = []
+    for pos, i in enumerate([i for i in picks if i in by_id], 1):
+        e = by_id[i]
+        e["position"] = pos
+        selected.append(e)
+    picked = set(picks)
+    candidates = [e for e in pool if e["id"] not in picked]
+    territs = [{"label": l, "slug": _nl_slug(l), "on": l == terr} for l in _NL_TERRITOIRES]
+    return render_template(
+        "newsletter.html", active="newsletter", territs=territs,
+        terr=terr, terr_slug=_nl_slug(terr), edition=edition_iso, edition_dt=edition,
+        prev_edition=(edition - timedelta(days=7)).isoformat(),
+        next_edition=(edition + timedelta(days=7)).isoformat(),
+        win_from=_nl_window(edition)[0], win_to=_nl_window(edition)[1],
+        selected=selected, candidates=candidates, n_pool=len(pool),
+        n_selected=len(selected))
+
+
+@app.route("/newsletter/action", methods=["POST"])
+@require_auth
+def newsletter_action():
+    terr = _nl_terr_from_slug(request.form.get("t", ""))
+    edition_iso = _nl_edition(request.form.get("e", "")).isoformat()
+    action = request.form.get("action", "")
+    try:
+        eid = int(request.form.get("event_id", "0"))
+    except ValueError:
+        eid = 0
+    conn = get_db()
+    _ensure_nl_table(conn)
+    if action == "reset":
+        conn.execute("DELETE FROM newsletter_editions WHERE territoire=? AND edition=?",
+                     (terr, edition_iso))
+        conn.commit()
+        conn.close()
+        flash("Sélection réinitialisée (amorce automatique).", "ok")
+        return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso))
+    picks = _nl_read_picks(conn, terr, edition_iso) or []
+    if action == "add" and eid and eid not in picks:
+        picks.append(eid)
+    elif action == "remove" and eid in picks:
+        picks.remove(eid)
+    elif action in ("up", "down") and eid in picks:
+        i = picks.index(eid)
+        j = i - 1 if action == "up" else i + 1
+        if 0 <= j < len(picks):
+            picks[i], picks[j] = picks[j], picks[i]
+    _nl_save_picks(conn, terr, edition_iso, picks)
+    conn.close()
+    return redirect(url_for("newsletter_compose", t=_nl_slug(terr), e=edition_iso) + "#e" + str(eid))
+
+
 _COWORK_PROMPT_FILE = ROOT / "docs" / "COWORK_AUTOCOMPLETION.md"
 
 

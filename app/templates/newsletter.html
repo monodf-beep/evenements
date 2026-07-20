@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% set active = 'newsletter' %}
+{% block title %}Newsletter — composeur{% endblock %}
+{% block h1 %}Composeur de newsletter{% endblock %}
+{% block subtitle %}<div class="sub">Une newsletter par territoire, envoyée le <b>vendredi matin</b>. Compose-la toute la semaine : choisis les événements, ordonne-les, pioche dans les « presque retenus ».</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:1000px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+
+  {% macro ev_row(e, kind) %}
+  <div id="e{{ e.id }}" class="card" style="display:flex;gap:.7rem;align-items:center;padding:.5rem .7rem;margin-bottom:.4rem;">
+    {% if kind == 'sel' %}<div style="font-weight:800;color:#8a806f;min-width:1.4rem;text-align:center;">{{ e.position }}</div>{% endif %}
+    <div style="width:52px;height:40px;border-radius:4px;background:#C9BFAD center/cover no-repeat;{% if e.url_image %}background-image:url('{{ e.url_image }}');{% endif %}flex:0 0 auto;"></div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:600;font-size:.9rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e.title }}</div>
+      <div class="muted" style="font-size:.76rem;">
+        {{ e.date_event_start }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}
+        {% if e.ville %} · {{ e.ville }}{% endif %}{% if e.llm_categorie %} · {{ e.llm_categorie }}{% endif %}
+      </div>
+    </div>
+    <span title="score" style="font-size:.72rem;font-weight:700;color:#1a7f4b;background:#e9f6ee;border-radius:999px;padding:.1rem .45rem;">{{ e.score }}</span>
+    <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="muted" style="font-size:.8rem;text-decoration:none;" title="Aperçu">↗</a>
+    <div style="display:flex;gap:.25rem;">
+      {% if kind == 'sel' %}
+        <form method="post" action="/newsletter/action" style="margin:0;"><input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}"><input type="hidden" name="event_id" value="{{ e.id }}"><button name="action" value="up" class="btn btn-ghost btn-sm" title="Monter" {% if e.position == 1 %}disabled{% endif %}>↑</button></form>
+        <form method="post" action="/newsletter/action" style="margin:0;"><input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}"><input type="hidden" name="event_id" value="{{ e.id }}"><button name="action" value="down" class="btn btn-ghost btn-sm" title="Descendre" {% if e.position == n_selected %}disabled{% endif %}>↓</button></form>
+        <form method="post" action="/newsletter/action" style="margin:0;"><input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}"><input type="hidden" name="event_id" value="{{ e.id }}"><button name="action" value="remove" class="btn btn-ghost btn-sm" title="Retirer">✕</button></form>
+      {% else %}
+        <form method="post" action="/newsletter/action" style="margin:0;"><input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}"><input type="hidden" name="event_id" value="{{ e.id }}"><button name="action" value="add" class="btn btn-ok btn-sm" title="Ajouter à la sélection">＋ Ajouter</button></form>
+      {% endif %}
+    </div>
+  </div>
+  {% endmacro %}
+
+  <!-- Onglets territoire -->
+  <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem;">
+    {% for t in territs %}
+    <a href="/newsletter?t={{ t.slug }}&e={{ edition }}" class="btn btn-sm {{ 'btn-ok' if t.on else 'btn-ghost' }}">{{ t.label }}</a>
+    {% endfor %}
+  </div>
+
+  <!-- Bandeau édition -->
+  <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:.6rem .9rem;margin-bottom:1rem;">
+    <div>
+      <b>Édition du vendredi {{ edition_dt.strftime('%d/%m/%Y') }}</b>
+      <div class="muted text-sm">Fenêtre : {{ win_from }} → {{ win_to }} · {{ n_selected }} retenu(s) sur {{ n_pool }} candidats du territoire</div>
+    </div>
+    <div style="display:flex;gap:.4rem;align-items:center;">
+      <a href="/newsletter?t={{ terr_slug }}&e={{ prev_edition }}" class="btn btn-ghost btn-sm">← semaine −1</a>
+      <a href="/newsletter?t={{ terr_slug }}&e={{ next_edition }}" class="btn btn-ghost btn-sm">semaine +1 →</a>
+    </div>
+  </div>
+
+  <!-- Règles -->
+  <details class="card" style="padding:.7rem 1rem;margin-bottom:1rem;">
+    <summary style="cursor:pointer;color:var(--muted);font-size:.9rem;">📋 Les règles de sélection</summary>
+    <div class="text-sm" style="margin-top:.5rem;line-height:1.55;">
+      <b>Vivier</b> : événements <b>retenus</b> (évalués, non-doublons) du territoire, <b>datés</b>, qui
+      chevauchent la fenêtre de la semaine.<br>
+      <b>Tri</b> : par <b>score</b> décroissant (ton score manuel prime sur le score auto), puis par date.<br>
+      <b>Amorce</b> : les <b>{{ '{}'.format(8) }} mieux notés</b> sont pré-sélectionnés ; tu ajustes ensuite.<br>
+      <b>Ordre</b> : la position 1 = tête d'affiche de la newsletter, puis 2, 3…<br>
+      <span class="muted">L'envoi reste le vendredi matin ; tu peux composer dès lundi et affiner jusqu'au jeudi.</span>
+    </div>
+  </details>
+
+  <!-- Sélection -->
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin:.2rem 0 .5rem;">
+    <h2 style="margin:0;font-size:1.05rem;">✅ La sélection <span class="muted" style="font-weight:400;">— ordre d'affichage</span></h2>
+    <form method="post" action="/newsletter/action" style="margin:0;" onsubmit="return confirm('Réinitialiser à l\'amorce automatique (top score) ?')">
+      <input type="hidden" name="t" value="{{ terr_slug }}"><input type="hidden" name="e" value="{{ edition }}">
+      <button name="action" value="reset" class="btn btn-ghost btn-sm">↺ Réinitialiser</button>
+    </form>
+  </div>
+  {% for e in selected %}{{ ev_row(e, 'sel') }}{% else %}
+  <p class="muted text-sm">Aucun événement sélectionné. Ajoute-en depuis les « presque retenus » ci-dessous.</p>
+  {% endfor %}
+
+  <!-- Candidats (« presque retenus ») -->
+  <h2 style="margin:1.4rem 0 .5rem;font-size:1.05rem;">🎠 Les « presque retenus » <span class="muted" style="font-weight:400;font-size:.85rem;">— {{ candidates|length }} candidats sous la barre, à piocher</span></h2>
+  {% for e in candidates %}{{ ev_row(e, 'cand') }}{% else %}
+  <p class="muted text-sm">Aucun autre candidat sur ce territoire cette semaine.</p>
+  {% endfor %}
+
+  <!-- Prochaine étape -->
+  <div class="card" style="padding:.8rem 1rem;margin-top:1.4rem;background:#e8f0fe;border:1px solid #9db8e8;">
+    <b>Prochaine étape (Phase 2)</b> — un vrai <b>carrousel</b> pour les scores proches, et un bouton
+    <b>« 📧 Pousser vers Brevo »</b> qui crée le brouillon avec CETTE sélection (dans cet ordre). Pour
+    l'instant : compose et enregistre ici, l'envoi Brevo reste sur le script existant.
+  </div>
+</div>
+{% endblock %}
