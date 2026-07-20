@@ -236,6 +236,11 @@ def _build_payload(event: dict) -> dict:
         "meta":        meta,
     }
 
+    # Traductions : forcer la CRÉATION d'une nouvelle fiche (jamais de dédoublonnage —
+    # le titre en nom propre est souvent identique à l'original, cf. cs-publish.php).
+    if event.get("force_create"):
+        payload["force_create"] = True
+
     if (event.get("lieu") or "").strip():
         payload["venue"] = {"Venue": event["lieu"].strip(),
                             "City": (event.get("ville") or "").strip()}

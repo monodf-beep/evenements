@@ -151,7 +151,8 @@ def main(argv=None) -> int:
             "title": tr["title"], "description": tr["description"],
             "article_title": "", "article_md": "", "enrich_data": "",
             "seo_title": "", "seo_meta": "", "seo_slug": "", "seo_keyphrase": "",
-            "force_lang": tgt, "wp_post_id_as": None, "wp_post_id_cs": None,
+            "force_lang": tgt, "force_create": True,
+            "wp_post_id_as": None, "wp_post_id_cs": None,
         })
         new_ev.pop("id", None)
         wp_id = publish_to_as(new_ev)

@@ -153,6 +153,13 @@ function cs_publish_event(WP_REST_Request $req) {
         tribe_update_event($existing_id, $args);
         $post_id = $existing_id;
         $updated = true;
+    } elseif (!empty($b['force_create'])) {
+        // FORCE_CREATE : on saute le dédoublonnage et on crée toujours une nouvelle
+        // fiche. Indispensable pour les TRADUCTIONS : leur titre (nom propre : festival,
+        // artiste) est souvent IDENTIQUE à l'original ; sans ça, le dédoublonnage ci-
+        // dessous retrouverait l'original (même titre + date) et l'ÉCRASERAIT au lieu de
+        // créer la version dans l'autre langue.
+        $post_id = (int) tribe_create_event($args);
     } else {
         // IDEMPOTENCE : avant de créer, chercher un événement identique déjà en base
         // (même titre + même date de début). Évite les DOUBLONS quand wp_post_id est
