@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import usage
+from utils.eventness import non_event_reason
 from scripts.scraper_events import init_db
 
 log = get_logger("evaluator")
@@ -71,6 +72,13 @@ Savoie · Piemonte · Vallee-Aoste · Nice (corrige si la source l'a mal étique
 en cours, dans un lieu ? Si NON (actualité institutionnelle, réunion/convention/subvention/
 nomination, inauguration ou remise de prix DÉJÀ passée, travaux/voirie/mobilité, consultation
 publique) → "est_evenement": false et score 0. Sinon → true, continue.
+  ⚠️ PIÈGE PRESSE : un ARTICLE *au sujet d'*un événement n'est PAS l'événement. Rejette
+  (est_evenement=false, score 0) tout ce qui est angle journalistique — logistique/pratique
+  (« où circuler / se garer / stationner », « les meilleurs spots pour assister », plan de
+  circulation, horaires de bus), portrait/coulisses (« ces X qui… », « la caravane
+  publicitaire », interview), compte-rendu ou bilan (« s'est réuni », « retour sur »,
+  « ce qu'il faut retenir »), même si un GROS événement (Tour de France, festival connu)
+  est cité. Ne garde que l'ANNONCE d'une sortie datée + lieu à laquelle on peut assister.
 
 ÉTAPE 2 — SCORE D'IMPORTANCE (0-10). PAS de profondeur culturelle exigée : on mesure si
 l'événement est IMPORTANT (va réunir du monde, compte dans le territoire). Note chaque critère :
@@ -195,6 +203,18 @@ def main(argv=None) -> int:
                          "llm_justification='Événement passé (déjà terminé).' WHERE id=?",
                          (ev["id"],))
             log.info("[%d] passé → rejeté | %s", ev["id"], ev.get("title", "")[:50])
+            continue
+        # Pré-filtre GRATUIT bis : un ARTICLE de presse (logistique « où se garer »,
+        # compte-rendu « le conseil s'est réuni », portrait « caravane publicitaire »)
+        # n'est pas une sortie. Le LLM s'accroche au gros mot-clé et le note haut → on
+        # coupe avant l'appel, haute précision (aucun vrai événement attrapé).
+        news = non_event_reason(ev.get("title", ""), ev.get("description", ""))
+        if news:
+            conn.execute("UPDATE events_raw SET statut='rejected', llm_score=0, "
+                         "llm_justification=? WHERE id=?",
+                         ("Article de presse, pas un événement : %s." % news, ev["id"]))
+            log.info("[%d] non-événement (%s) → rejeté | %s", ev["id"], news,
+                     ev.get("title", "")[:50])
             continue
         result = evaluate_event(ev, client, model, calibration)
         if result is API_ERROR:
