@@ -25,10 +25,13 @@ ROOT="/root/evenements"
 PY="$ROOT/.venv/bin/python3"
 cd "$ROOT" || exit 1
 
-# Fenêtre de travail glissante : aujourd'hui → +90 jours (pour les étapes bornées
-# à une période : évaluation, enrichissement, visuels).
+# Fenêtre de travail glissante : aujourd'hui → +N jours (pour les étapes bornées à
+# une période : évaluation, enrichissement, visuels). Configurable via
+# PIPELINE_WINDOW_DAYS (.env) — défaut 180 j. Une fenêtre trop courte (ex. 90) laisse
+# les événements annoncés tôt (festivals/expos, fréquent côté italien) coincés en
+# 'pending' : jamais évalués → jamais publiés. Voir scripts/diagnose_italien.py.
 FROM="$(date +%F)"
-TO="$(date -d '+90 days' +%F)"
+TO="$(date -d "+${PIPELINE_WINDOW_DAYS:-180} days" +%F)"
 
 log() { echo "[$(date '+%F %T')] $*"; }
 
