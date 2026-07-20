@@ -45,6 +45,13 @@ log = get_logger("backoffice")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 NEWSLETTERS_FILE = ROOT / "config" / "newsletters.txt"
 
+# URL publique du backoffice — sert à fabriquer les liens de suivi /go/<id> lus
+# par WordPress. On la FORCE (au lieu de request.host_url) car derrière Traefik la
+# requête arrive en http sur la loopback : un lien http:// serait rejeté par le
+# fail-safe « https-only » de cs-regie-serve.php. Surchargée par BACKOFFICE_BASE_URL.
+PUBLIC_BASE_URL = os.getenv(
+    "BACKOFFICE_BASE_URL", "https://backoffice.agendasabauda.eu").rstrip("/")
+
 # Garantit que la base + le schéma existent, même sur un VPS frais où aucun
 # scraping n'a encore tourné : sinon le dashboard planterait sur "no such table".
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -829,7 +836,7 @@ def regie_page():
     return render_template("regie.html", active="regie", blocks=AD_BLOCKS,
                            campaigns=rows, occupied=occupied,
                            today=today.isoformat(),
-                           go_base=request.host_url.rstrip("/"))
+                           go_base=PUBLIC_BASE_URL)
 
 
 @app.route("/regie/add", methods=["POST"])
@@ -973,7 +980,7 @@ def regie_active_ads():
         "AND (date_fin   IS NULL OR date_fin=''   OR date_fin>=?) "
         "ORDER BY id ASC", (today, today)).fetchall()
     conn.close()
-    base = request.host_url.rstrip("/")
+    base = PUBLIC_BASE_URL  # https + host public, sinon rejet par l'allowlist WP
     ads = {}
     for r in rows:
         ads[r["bloc"]] = {
