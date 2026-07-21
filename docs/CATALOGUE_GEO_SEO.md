@@ -158,23 +158,40 @@ la donnée**, pas à l'aveugle.
 
 ---
 
-## Annexe — « espace élargi » : voisins hors sabaudo (idée notée, NON prioritaire)
+## Annexe — « espace élargi » : voisins hors sabaudo (arbitrage)
 
 Idée : depuis un point du territoire, proposer une sortie **au-delà**, chez un voisin proche —
-Saint-Julien → **Genève**, sud de Chambéry → **Grenoble**, Ovada/Alessandrino → **Gênes**, etc.
-À **garder**, mais avec une **critique assumée** (c'est plus de travail qu'il n'y paraît) :
+Saint-Julien → **Genève**, sud de Chambéry → **Grenoble**, Ovada → **Gênes**, etc. Tout n'est pas
+à mettre au même niveau.
 
-- **Dilution d'identité** : Genève, Grenoble, Gênes ne sont **pas** l'espace sabaudo. Les intégrer
-  brouille la promesse éditoriale et le sens « Cultura Sabauda ».
-- **Coût de sourcing** : chaque ville = nouveaux flux, évaluation, traduction, entretien. Lourd et
-  récurrent, pour un gain incertain.
-- **Concurrence frontale** : ces métropoles ont déjà des agendas locaux forts ; faible ROI SEO sans
-  autorité locale sur leur terrain.
-- **Version acceptable (un jour)** : un simple pointeur **« à proximité »** — et de préférence vers
-  l'**autre versant sabaudo** (module déjà prévu) —, PAS du sourcing complet de métropoles voisines.
+### La règle à 3 barrières (pour éviter le dérapage)
+Une ville voisine n'entre QUE si elle coche **les trois** :
+1. **Territoire de vie** — masse de frontaliers/résidents réellement tournés vers elle au quotidien.
+2. **Cadre transfrontalier formel** — Interreg / Grand Genève / ALCOTRA (légitimité + partenariat/
+   financement possible).
+3. **Sourcing faisable à bas coût** — langue partagée + open data / flux officiel (pas de scraping
+   from scratch, pas de traduction).
 
-**Décision : on note l'idée ici. Ce n'est PAS le but premier. À rouvrir plus tard, et seulement en
-version légère (pointeur de proximité), pas en couverture éditoriale complète.**
+→ **Genève coche les 3. Grenoble : aucune. Gênes : au mieux une.** La règle borne naturellement à
+Genève et dit **non** au reste.
+
+### Cas Genève — la seule extension défendable (phase 2)
+- **Territoire de vie** : ~200 000 frontaliers HS/Ain → Genève **est** leur centre culturel.
+  « que faire à Genève ce week-end » = intention forte côté Genevois savoyard.
+- **Cadre** : **Grand Genève / Interreg** → mission d'info culturelle transfrontalière légitime,
+  partenariat/financement possible (comme ALCOTRA pour le cœur FR-IT).
+- **Coût** : Genève **francophone → zéro traduction** ; **open data** culturelle de la Ville →
+  se brancher sur un **flux officiel** plutôt que scraper.
+- **Asymétrie assumée** : la valeur va surtout Savoyards → Genève (les Genevois s'en soucient peu).
+  OK : on sert **notre** audience frontalière, le business case tient même unilatéral.
+- **Nuance de périmètre à trancher** : les 4 territoires SONT déjà, en gros, l'espace **ALCOTRA
+  (FR-IT)** ; le **Grand Genève, c'est FR-CH** — un **second** cadre. Y aller = décision de
+  **mission/gouvernance**, pas seulement éditoriale.
+
+**Reco** : Genève = extension **phase 2** (après les 4 territoires + le SEO cœur), **version légère
+d'abord** — un module « à Genève, tout près » sur les pages du Genevois savoyard, alimenté par un
+**flux open-data officiel**, pour **mesurer la demande** avant d'investir + un **contact Grand
+Genève** pour cadrer un partenariat. **Grenoble / Gênes restent dehors.**
 
 ## Annexe — canaux de distribution (à garder pour plus tard)
 
