@@ -109,3 +109,18 @@ add_shortcode('cs_add_to_calendar', function () {
     <?php
     return ob_get_clean();
 });
+
+/**
+ * Affichage AUTOMATIQUE : ajoute le bouton en bas du contenu de chaque fiche
+ * événement, sans avoir à placer le shortcode à la main dans Elementor. Se
+ * désactive en définissant la constante CS_ATC_AUTO à false (ou en retirant ce
+ * bloc) si on préfère le placer soi-même via le shortcode.
+ */
+if (!defined('CS_ATC_AUTO')) { define('CS_ATC_AUTO', true); }
+add_filter('the_content', function ($content) {
+    if (CS_ATC_AUTO && is_singular('tribe_events') && in_the_loop() && is_main_query()
+        && strpos($content, 'cs-add-to-calendar') === false) {
+        $content .= do_shortcode('[cs_add_to_calendar]');
+    }
+    return $content;
+}, 20);
