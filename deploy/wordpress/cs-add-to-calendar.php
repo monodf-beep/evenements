@@ -21,7 +21,10 @@ Version: 2.0
 if (!defined('ABSPATH')) { exit; }
 
 if (!defined('CS_ATC_TITLE_PREFIX')) { define('CS_ATC_TITLE_PREFIX', '⛰️ '); }
-if (!defined('CS_ATC_AUTO'))         { define('CS_ATC_AUTO', true); }
+// Auto-placement via wp_footer DÉSACTIVÉ par défaut : sur un site Elementor, on
+// place le shortcode [cs_add_to_calendar] à la main dans le gabarit (emplacement
+// maîtrisé). Mettre à true pour réactiver l'injection automatique en bas de page.
+if (!defined('CS_ATC_AUTO'))         { define('CS_ATC_AUTO', false); }
 
 /** Époque UNIX (UTC) d'un bord de l'événement (méta _...UTC de TEC, sinon date locale). */
 function cs_atc_epoch($post_id, $which) {
