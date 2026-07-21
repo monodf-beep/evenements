@@ -416,7 +416,7 @@ def tasks_status() -> dict:
 
 
 def load_newsletters() -> list[dict]:
-    """Lit config/newsletters.txt : nom;domaine;territoire;statut."""
+    """Lit config/newsletters.txt : nom;domaine;territoire;statut[;url_inscription]."""
     rows: list[dict] = []
     if not NEWSLETTERS_FILE.exists():
         return rows
@@ -427,7 +427,8 @@ def load_newsletters() -> list[dict]:
         parts = [p.strip() for p in line.split(";")]
         if len(parts) >= 4:
             rows.append({"nom": parts[0], "domaine": parts[1],
-                         "territoire": parts[2], "statut": parts[3]})
+                         "territoire": parts[2], "statut": parts[3],
+                         "url": parts[4] if len(parts) >= 5 else ""})
     return rows
 
 

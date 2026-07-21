@@ -1,35 +1,104 @@
 # Registre des NEWSLETTERS culturelles suivies (canal Gmail).
-# Affiché à titre de suivi ; la collecte réelle se fait par le label Gmail « Agenda »
-# (voir scripts/gmail_collect.py), pas par ce fichier.
+# Affiché à titre de suivi dans le tableau de bord ; la collecte réelle se fait par le
+# label Gmail « Agenda » (voir scripts/gmail_collect.py), pas par ce fichier.
 #
-# Format (un par ligne) :  nom;domaine;territoire;statut
-#   statut : actif | attente | candidat | inactif
-#     actif    = inscription confirmée (double opt-in OK)
-#     attente  = inscrit, opt-in/captcha à finaliser
-#     candidat = à souscrire / bloqué (captcha, embed) — à retenter
+# Format (un par ligne) :  nom;domaine;territoire;statut;url_inscription
+#   statut :
+#     actif    = inscription confirmée (double opt-in OK) → on reçoit
+#     attente  = inscrit, opt-in/captcha à finaliser OU réception à vérifier
+#     candidat = À S'ABONNER (pas encore inscrit) — clique l'URL, confirme dans Gmail,
+#                puis applique le label « Agenda » au 1er mail reçu
 #     inactif  = pas de newsletter sur le site
+#   url_inscription : page où s'abonner (affichée en lien « s'abonner ↗ »).
 #
-# Mis à jour 2026-06-30 (run Claude-in-Chrome).
-
-# ============================ PIÉMONT ============================
-Salone Internazionale del Libro;email.salonelibro.it;Piemonte;actif
-Turismo Torino e Provincia;turismotorino.org;Piemonte;actif
-Fondazione Torino Musei (GAM/MAO/Palazzo Madama);fondazionetorinomusei.it;Piemonte;actif
-Circolo dei Lettori;circololettori.it;Piemonte;actif
-Città di Torino;comune.torino.it;Piemonte;inactif
-Regione Piemonte;regione.piemonte.it;Piemonte;inactif
-VisitPiemonte;visitpiemonte.com;Piemonte;inactif
-
-# ======================= NICE / ALPES-MARITIMES =======================
-Théâtre National de Nice (TNN);tnn.fr;Nice;actif
-Département des Alpes-Maritimes;departement06.fr;Nice;actif
-Office de Tourisme Nice Côte d'Azur;explorenicecotedazur.com;Nice;actif
-Ville de Menton;menton.fr;Nice;inactif
-Ville d'Antibes Juan-les-Pins;antibesjuanlespins.com;Nice;inactif
-Musées nationaux Alpes-Maritimes (Chagall);musees-nationaux-alpesmaritimes.fr;Nice;inactif
+# Rappel workflow pour passer candidat → actif :
+#   1) s'inscrire via l'URL   2) confirmer le double opt-in dans Gmail
+#   3) étiqueter le mail « Agenda »   4) passer la ligne en « actif » ici.
+#
+# Périmètre : l'arrondissement de Grasse (Cannes, Antibes, Grasse, Saint-Paul-de-Vence,
+# Vence…) est HORS espace sabaudo (cf. docs/CATALOGUE_GEO_SEO.md) → ne pas s'abonner ;
+# listé en commentaire en bas de la section Nice pour mémoire.
+#
+# Mis à jour 2026-07-21 (réconcilié avec docs/NEWSLETTERS_A_SABONNER.md + URLs).
 
 # ============================ SAVOIE / HAUTE-SAVOIE ============================
-Bonlieu scène nationale Annecy;bonlieu-annecy.com;Savoie;actif
+Bonlieu Scène Nationale (Annecy);bonlieu-annecy.com;Savoie;actif;https://www.bonlieu-annecy.com/inscription-newsletter
+Espace Malraux Scène Nationale (Chambéry);malrauxchambery.fr;Savoie;actif;https://billetterie.malrauxchambery.fr/3web_mailing_cherche?template=11720
+Cité des Arts Chambéry;chambery.fr;Savoie;actif;https://www.chambery.fr/522-newsletter-de-la-cite-des-arts.htm
+OT Lac d'Annecy;lac-annecy.com;Savoie;actif;https://www.lac-annecy.com/newsletter/
+Chambéry Montagnes (Grand Chambéry Tourisme);chamberymontagnes.com;Savoie;actif;https://www.chamberymontagnes.com/newsletter/
+Festival Musilac (Aix-les-Bains);musilac.com;Savoie;actif;https://www.musilac.com/
+Guitare en Scène (St-Julien-en-Genevois);guitare-en-scene.com;Savoie;actif;https://www.guitare-en-scene.com/
+Musiques en Stock (Cluses);musiquesenstock.fr;Savoie;actif;https://musiquesenstock.fr/
+Le Grand Bivouac (Albertville);grandbivouac.com;Savoie;actif;https://www.grandbivouac.com/fr
+OT Aix-les-Bains Riviera des Alpes;aixlesbains-rivieradesalpes.com;Savoie;actif;https://www.aixlesbains-rivieradesalpes.com/newsletter/
+Maison du Tourisme Pays d'Albertville;pays-albertville.com;Savoie;actif;https://www.pays-albertville.com/
+Musées d'Annecy (Château / Palais de l'Île);musees.annecy.fr;Savoie;actif;https://musees.annecy.fr/Newsletters/Newsletter-Annecy/Newsletter-Utilisateurs
+Musées de la Ville de Chambéry;chambery.fr;Savoie;actif;https://www.chambery.fr/536-newsletter-des-musee-de-la-ville-de-chambery.htm
+Savoie Mont Blanc (magazine);savoie-mont-blanc.com;Savoie;actif;https://www.savoie-mont-blanc.com/newsletter
+OT Chamonix-Mont-Blanc;chamonix.com;Savoie;actif;https://www.chamonix.com/newsletter,500,fr.html
+Le Dôme Théâtre (Albertville);dometheatre.com;Savoie;candidat;https://www.dometheatre.com
+Le Brise Glace / MJC Annecy (concerts);le-brise-glace.com;Savoie;candidat;https://www.le-brise-glace.com
+Château Rouge (Annemasse);chateau-rouge.net;Savoie;candidat;https://www.chateau-rouge.net/newsletters/
+Maison des Arts du Léman (Thonon);mal-thonon.org;Savoie;candidat;https://mal-thonon.org/inscription-newsletter/
+La Turbine (Cran-Gevrier, cinéma/sciences);cinema-laturbine.fr;Savoie;candidat;https://cinema-laturbine.fr/FR/72/newsletter-la-turbine-cran-gevrier.html
 
-# ============================ VALLÉE D'AOSTE ============================
-Office Régional du Tourisme (Lovevda);lovevda.it;Vallee-Aoste;actif
+# ============================ PIÉMONT ====================================
+GuidaTorino (agenda hebdo);guidatorino.com;Piemonte;actif;https://www.guidatorino.com/iscrizione-newsletter/
+Turismo Torino e Provincia;turismotorino.org;Piemonte;actif;https://turismotorino.org/it/iscrizione-newsletter
+Fondazione Piemonte dal Vivo (tout le Piémont);piemontedalvivo.it;Piemonte;actif;https://piemontedalvivo.it/newsletter/
+Salone Internazionale del Libro;salonelibro.it;Piemonte;actif;https://www.salonelibro.it/info/form-newsletter-pubblico-generico.html
+Fondazione Torino Musei (GAM/MAO/Palazzo Madama);fondazionetorinomusei.it;Piemonte;actif;https://www.fondazionetorinomusei.it/it/newsletter
+Circolo dei Lettori;circololettori.it;Piemonte;actif;https://www.circololettori.it/newsletter/
+LoveLanghe (traditions/sagre Langhe-Cuneo);langhe.net;Piemonte;actif;https://www.langhe.net/newsletter/
+# ⚡ GAP Couverture géo (Piémont hors-Turin — Langhe/Monferrato/Alba = 0) : PRIORITÉ
+Ente Turismo Langhe Monferrato Roero;enteturismolmr.it;Piemonte;candidat;https://www.enteturismolmr.it/newsletter/
+Collisioni (Alba/Barolo);collisioni.it;Piemonte;candidat;https://www.collisioni.it/
+Fiera del Tartufo Bianco d'Alba;fieradeltartufo.org;Piemonte;candidat;https://www.fieradeltartufo.org/
+# Autres candidats piémontais
+Mentelocale Torino (agenda hebdo);mentelocale.it;Piemonte;candidat;https://www.mentelocale.it/torino/
+Museo Nazionale del Cinema;museocinema.it;Piemonte;candidat;https://www.museocinema.it/it/newsletter/subscribe
+Museo Egizio;museoegizio.it;Piemonte;candidat;https://www.museoegizio.it/newsletter/
+Teatro Regio Torino;teatroregio.torino.it;Piemonte;candidat;https://www.teatroregio.torino.it/newsletter
+OGR Torino;ogrtorino.it;Piemonte;candidat;https://ogrtorino.it/newsletter
+MITO SettembreMusica;mitosettembremusica.it;Piemonte;candidat;https://www.mitosettembremusica.it/it
+Kappa FuturFestival;kappafuturfestival.it;Piemonte;candidat;https://www.kappafuturfestival.it/en/newsletter
+Torinodanza Festival;torinodanzafestival.it;Piemonte;candidat;https://www.torinodanzafestival.it/
+Teatro Stabile di Torino;teatrostabiletorino.it;Piemonte;candidat;https://www.teatrostabiletorino.it/
+Reggia di Venaria;lavenaria.it;Piemonte;candidat;https://lavenaria.it/it
+Cinema Massimo (Torino, art & essai);cinemamassimotorino.it;Piemonte;candidat;https://www.cinemamassimotorino.it/
+Institut français Italia (antenne Torino);institutfrancais.it;Piemonte;candidat;https://www.institutfrancais.it/
+VisitPiemonte DMO;visitpiemonte-dmo.org;Piemonte;candidat;https://www.visitpiemonte-dmo.org/newsletter/
+
+# ======================= NICE / ALPES-MARITIMES (Comté de Nice) =======================
+Théâtre National de Nice (TNN);tnn.fr;Nice;actif;https://www.tnn.fr/fr/
+Département des Alpes-Maritimes;departement06.fr;Nice;actif;https://www.departement06.fr/
+Office de Tourisme Nice Côte d'Azur (Explore);explorenicecotedazur.com;Nice;actif;https://www.explorenicecotedazur.com/
+Côte d'Azur France (CRT / Dépt 06);cotedazurfrance.fr;Nice;actif;https://cotedazurfrance.fr/sabonner_aux_newsletters/
+Menton, Riviera & Merveilles;menton-riviera-merveilles.fr;Nice;attente;https://www.menton-riviera-merveilles.fr/sinscrire-a-la-newsletter/
+Opéra Nice Côte d'Azur;opera-nice.org;Nice;actif;https://www.opera-nice.org/newsletter/
+Forum Sirius (agenda spectacles Nice);forumsirius.fr;Nice;actif;https://www.forumsirius.fr/orion/tdn.phtml?fiche=news
+MAMAC Nice;mamac-nice.org;Nice;candidat;https://www.mamac-nice.org/
+Musée Matisse Nice;musee-matisse-nice.org;Nice;candidat;https://www.musee-matisse-nice.org/
+Villa Arson (Nice);villa-arson.fr;Nice;candidat;https://villa-arson.fr/newsletter/
+Nice Jazz Festival;nicejazzfest.fr;Nice;candidat;https://www.nicejazzfest.fr/
+Forum Jacques Prévert (Carros);forumcarros.com;Nice;candidat;https://forumcarros.com/
+Les Écrans du Sud (réseau art & essai 06);seances-speciales.fr;Nice;candidat;https://seances-speciales.fr/
+Musées nationaux Alpes-Maritimes (Chagall);musees-nationaux-alpesmaritimes.fr;Nice;inactif;
+# — HORS espace sabaudo (arrondissement de Grasse) : NE PAS s'abonner —
+# Palais des Festivals Cannes ; Sortir à Cannes (SEMEC) ; Anthéa (Antibes) ;
+# Fondation Maeght (Saint-Paul-de-Vence) ; Théâtre de Grasse ; Jazz à Juan (Antibes) ;
+# Nuits du Sud (Vence) ; Antibes Juan-les-Pins Tourisme ; Cannes.com.
+
+# ============================ VALLÉE D'AOSTE ================================
+Forte di Bard (mostre/concerti);fortedibard.it;Vallee-Aoste;actif;https://www.fortedibard.it/iscrizione-newsletter/
+Fondation Grand Paradis (festival/castelli);grand-paradis.it;Vallee-Aoste;actif;https://www.grand-paradis.it/it/fondation-grand-paradis/newsletter
+LoveVDA — Office Régional du Tourisme (agenda régional bilingue);lovevda.it;Vallee-Aoste;attente;https://www.lovevda.it/it
+Musicastelle Outdoor;musicastellevda.it;Vallee-Aoste;actif;https://www.musicastellevda.it/contatti/
+Aosta Classica;aostaclassica.it;Vallee-Aoste;actif;https://aostaclassica.it/
+# ⚡ GAP Couverture géo (Courmayeur/Cervinia = 0) : PRIORITÉ
+Courmayeur Mont Blanc;courmayeurmontblanc.it;Vallee-Aoste;candidat;https://www.courmayeurmontblanc.it/
+Cervino / Cervinia Tourism;cervinia.it;Vallee-Aoste;candidat;https://cervinia.it/
+# Autres candidats valdôtains
+AperòNews (AostaSera, hebdo weekend);aostasera.it;Vallee-Aoste;candidat;http://eepurl.com/hoVAyj
+OT régional VdA (liste pro);turismo.vda.it;Vallee-Aoste;candidat;https://turismo.vda.it/iscrizione-alla-newsletter/
