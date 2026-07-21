@@ -843,6 +843,149 @@ def couverture():
     return render_template("couverture.html", active="couverture", **data)
 
 
+# ---------- Couverture GÉO (catalogue → pages hub SEO hyperlocal) ----------
+# Traduit docs/CATALOGUE_GEO_SEO.md en tableau de bord : pour chaque entité (ville,
+# massif, vallée, lac, station), combien d'événements PUBLIÉS à venir → laquelle franchit
+# le seuil et « gradue » en page dédiée. Le comptage se fait sur la ville (langue-agnostique).
+_GEO_SEUIL = 8                                           # nb d'événements pour mériter une page
+
+# (type, nom, priorité, [communes/termes cherchés dans la ville]). Les groupes (massifs,
+# vallées, lacs) listent leurs communes membres pour agréger.
+_GEO_CATALOGUE = {
+    "Savoie / Haute-Savoie": [
+        ("ville", "Annecy", "P1", ["annecy"]),
+        ("ville", "Chambéry", "P1", ["chambery"]),
+        ("ville", "Chamonix", "P1", ["chamonix"]),
+        ("ville", "Aix-les-Bains", "P2", ["aix les bains", "aix-les-bains"]),
+        ("ville", "Albertville", "P2", ["albertville"]),
+        ("ville", "Annemasse", "P2", ["annemasse"]),
+        ("ville", "Thonon-les-Bains", "P2", ["thonon"]),
+        ("ville", "Évian-les-Bains", "P2", ["evian"]),
+        ("ville", "Megève", "P2", ["megeve"]),
+        ("ville", "Moûtiers", "P3", ["moutiers"]),
+        ("ville", "Bourg-Saint-Maurice", "P3", ["bourg saint maurice", "bourg-saint-maurice"]),
+        ("ville", "Saint-Julien-en-Genevois", "P3", ["saint julien en genevois", "saint-julien"]),
+        ("lac", "Lac d'Annecy", "P1", ["annecy", "veyrier", "talloires", "menthon", "sevrier", "duingt"]),
+        ("lac", "Lac du Bourget", "P2", ["aix les bains", "bourget du lac", "chanaz"]),
+        ("massif", "Aravis", "P2", ["la clusaz", "grand bornand", "thones", "manigod", "saint jean de sixt"]),
+        ("massif", "Bauges", "P2", ["le chatelard", "lescheraines", "aillon", "la motte en bauges"]),
+        ("vallée", "Chablais", "P2", ["thonon", "evian", "morzine", "les gets", "abondance", "chatel", "avoriaz"]),
+        ("vallée", "Tarentaise", "P2", ["bourg saint maurice", "moutiers", "aime", "val d isere",
+                                        "tignes", "les arcs", "la plagne", "courchevel"]),
+        ("vallée", "Maurienne", "P2", ["saint jean de maurienne", "modane", "val cenis", "la toussuire"]),
+        ("vallée", "Pays du Mont-Blanc", "P2", ["chamonix", "saint gervais", "megeve", "combloux",
+                                                "les houches", "passy", "sallanches"]),
+    ],
+    "Piémont": [
+        ("ville", "Torino / Turin", "P1", ["torino", "turin"]),
+        ("ville", "Cuneo", "P2", ["cuneo"]),
+        ("ville", "Alba", "P1", ["alba"]),
+        ("ville", "Asti", "P2", ["asti"]),
+        ("ville", "Alessandria", "P2", ["alessandria"]),
+        ("ville", "Biella", "P2", ["biella"]),
+        ("ville", "Novara", "P2", ["novara"]),
+        ("ville", "Verbania", "P2", ["verbania"]),
+        ("ville", "Mondovì", "P3", ["mondovi"]),
+        ("ville", "Ivrea", "P2", ["ivrea"]),
+        ("ville", "Rivoli", "P2", ["rivoli"]),
+        ("colline", "Langhe", "P1", ["alba", "bra", "la morra", "barolo", "dogliani", "neive", "barbaresco", "cherasco"]),
+        ("colline", "Monferrato", "P1", ["casale monferrato", "nizza monferrato", "moncalvo", "acqui terme"]),
+        ("colline", "Roero", "P2", ["canale", "bra", "santo stefano roero"]),
+        ("vallate", "Val di Susa", "P2", ["susa", "bardonecchia", "oulx", "avigliana", "sestriere"]),
+        ("vallate", "Valsesia", "P2", ["varallo", "alagna"]),
+        ("lac", "Lago Maggiore", "P1", ["verbania", "stresa", "arona", "baveno"]),
+        ("lac", "Lago d'Orta", "P2", ["orta san giulio", "omegna"]),
+    ],
+    "Vallée d'Aoste": [
+        ("ville", "Aoste / Aosta", "P1", ["aoste", "aosta"]),
+        ("ville", "Courmayeur", "P1", ["courmayeur"]),
+        ("ville", "Cervinia", "P1", ["cervinia", "breuil"]),
+        ("ville", "Cogne", "P2", ["cogne"]),
+        ("ville", "Saint-Vincent", "P2", ["saint vincent", "saint-vincent"]),
+        ("ville", "La Thuile", "P2", ["la thuile"]),
+        ("ville", "Gressoney", "P2", ["gressoney"]),
+        ("ville", "Champoluc / Ayas", "P2", ["champoluc", "ayas"]),
+        ("ville", "Pila", "P2", ["pila"]),
+        ("vallée", "Valdigne", "P3", ["courmayeur", "la thuile", "morgex", "pre saint didier"]),
+        ("vallée", "Valtournenche", "P2", ["cervinia", "breuil", "valtournenche"]),
+    ],
+    "Nice / Alpes-Maritimes": [
+        ("ville", "Nice", "P1", ["nice"]),
+        ("ville", "Menton", "P1", ["menton"]),
+        ("ville", "Villefranche-sur-Mer", "P2", ["villefranche"]),
+        ("ville", "Beaulieu-sur-Mer", "P3", ["beaulieu"]),
+        ("ville", "Èze", "P2", ["eze"]),
+        ("ville", "Saint-Laurent-du-Var", "P3", ["saint laurent du var"]),
+        ("ville", "Roquebrune-Cap-Martin", "P3", ["roquebrune cap martin", "roquebrune-cap-martin"]),
+        ("cap", "Cap Ferrat", "P2", ["saint jean cap ferrat", "cap ferrat", "cap-ferrat"]),
+        ("vallée", "Vallée de la Roya", "P2", ["tende", "breil", "saorge", "la brigue", "fontan"]),
+        ("vallée", "Vallée de la Vésubie", "P2", ["saint martin vesubie", "roquebilliere", "lantosque"]),
+        ("vallée", "Vallée de la Tinée", "P3", ["saint sauveur", "isola", "saint etienne de tinee"]),
+        ("station", "Isola 2000 / Auron / Valberg", "P2", ["isola", "auron", "valberg"]),
+    ],
+}
+
+
+def _geo_match(nville: str, nlieu: str, terms: list) -> bool:
+    """Un événement (ville/lieu normalisés) appartient-il à l'entité (ses termes) ?
+    Termes ≥ 4 car. : correspondance souple (inclusion dans un sens ou l'autre) ; termes
+    courts : égalité stricte (évite les faux positifs type « bra » dans « brasserie »)."""
+    for t in terms:
+        if len(t) >= 4:
+            if (nville and (t in nville or nville in t)) or (len(t) >= 5 and t in nlieu):
+                return True
+        elif t == nville:
+            return True
+    return False
+
+
+def _geo_data(conn):
+    today = date.today().isoformat()
+    rows = conn.execute(
+        "SELECT ville, lieu, territoire FROM events_raw "
+        "WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
+        "AND COALESCE(date_event_start,'')<>'' "
+        "AND COALESCE(NULLIF(date_event_end,''), date_event_start) >= ?", (today,)).fetchall()
+    # Pré-normalise chaque événement une fois, rangé par territoire.
+    by_terr = {t: [] for t in _GEO_CATALOGUE}
+    for r in rows:
+        grp = _couv_terr_group(r["territoire"])
+        if grp in by_terr:
+            by_terr[grp].append((_couv_norm(r["ville"] or ""), _couv_norm(r["lieu"] or "")))
+    groups = []
+    for terr, entities in _GEO_CATALOGUE.items():
+        evs = by_terr.get(terr, [])
+        rows_out, matched_villes = [], set()
+        for typ, name, prio, terms in entities:
+            nterms = [_couv_norm(t) for t in terms]
+            n = 0
+            for i, (nville, nlieu) in enumerate(evs):
+                if _geo_match(nville, nlieu, nterms):
+                    n += 1
+                    if typ == "ville":
+                        matched_villes.add(i)
+            rows_out.append({"type": typ, "name": name, "prio": prio, "count": n,
+                             "ready": n >= _GEO_SEUIL})
+        rows_out.sort(key=lambda e: (-e["count"], e["name"]))
+        groups.append({
+            "territoire": terr, "total": len(evs),
+            "hors_villes": len(evs) - len(matched_villes),   # événements sans ville cataloguée
+            "ready": sum(1 for e in rows_out if e["ready"]),
+            "entities": rows_out,
+        })
+    return {"groups": groups, "seuil": _GEO_SEUIL}
+
+
+@app.route("/couverture-geo")
+@require_auth
+def couverture_geo():
+    """Combien d'événements publiés par entité géo → laquelle mérite une page (graduation)."""
+    conn = get_db()
+    data = _geo_data(conn)
+    conn.close()
+    return render_template("couverture_geo.html", active="couverture_geo", **data)
+
+
 # ---------- Composeur de newsletter (Phase 1 : voir / curer / ordonner) ----------
 # Une newsletter par TERRITOIRE, envoyée le vendredi matin. On la compose toute la
 # semaine (dès lundi). Sélection auto = retenus du territoire dans la fenêtre, triés

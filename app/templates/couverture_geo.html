@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% set active = 'couverture_geo' %}
+{% block title %}Couverture géo{% endblock %}
+{% block h1 %}Couverture géo — quelles pages créer{% endblock %}
+{% block subtitle %}<div class="sub">Pour chaque lieu du catalogue, le nombre d'<b>événements publiés à venir</b>. Au-dessus de <b>{{ seuil }}</b>, l'entité « gradue » → elle mérite sa <b>page hub</b> SEO. En dessous, on la garde en tag <code>noindex</code> jusqu'à ce qu'elle se remplisse.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:1000px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+
+  <div class="card" style="padding:.7rem 1rem;margin-bottom:1rem;font-size:.9rem;line-height:1.5;">
+    🎓 <b>Modèle de graduation</b> : une entité devient une page <b>quand elle a ≥ {{ seuil }} événements</b>
+    à venir <i>et</i> une intention de recherche réelle. Le comptage est <b>langue-agnostique</b> (FR+IT
+    ensemble) et se base sur la <b>ville</b>. Le détail des intentions est dans <code>docs/CATALOGUE_GEO_SEO.md</code>.
+  </div>
+
+  {% for g in groups %}
+  <div class="card" style="padding:0;margin-bottom:1.1rem;overflow:hidden;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:.7rem 1rem;background:rgba(0,0,0,.03);border-bottom:1px solid rgba(0,0,0,.06);">
+      <h2 style="margin:0;font-size:1.05rem;">{{ g.territoire }}</h2>
+      <div class="muted text-sm">
+        <b>{{ g.total }}</b> événements publiés à venir ·
+        <b style="color:#1a7f4b;">{{ g.ready }}</b> entité(s) prête(s) pour une page ·
+        {{ g.hors_villes }} hors ville cataloguée
+      </div>
+    </div>
+    <div style="padding:.4rem .6rem;">
+      {% for e in g.entities %}
+      <div style="display:flex;align-items:center;gap:.6rem;padding:.32rem .4rem;border-bottom:1px solid rgba(0,0,0,.04);">
+        <span style="width:1.4rem;text-align:center;" title="{{ e.type }}">
+          {%- if e.type == 'ville' %}🏙️{% elif e.type == 'lac' %}🏞️{% elif e.type in ('massif',) %}⛰️{% elif e.type == 'station' %}🎿{% elif e.type == 'cap' %}🏖️{% else %}🗺️{% endif -%}
+        </span>
+        <span style="flex:1;min-width:0;font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e.name }}</span>
+        <span class="muted" style="font-size:.68rem;font-weight:700;border:1px solid rgba(0,0,0,.15);border-radius:999px;padding:.02rem .4rem;">{{ e.prio }}</span>
+        <span style="font-size:.72rem;font-weight:700;min-width:2.2rem;text-align:right;">{{ e.count }}</span>
+        <span style="width:6rem;text-align:right;">
+          {% if e.ready %}
+            <span style="font-size:.7rem;font-weight:700;color:#1a7f4b;background:#e9f6ee;border-radius:999px;padding:.1rem .45rem;">✓ page</span>
+          {% else %}
+            <span class="muted" style="font-size:.7rem;">{{ e.count }}/{{ seuil }}</span>
+          {% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <p class="muted text-sm">
+    « ✓ page » = l'entité a assez d'offre pour une page hub crédible <b>maintenant</b>. Les autres
+    montent au fil des collectes. « hors ville cataloguée » = événements publiés dont la ville n'est
+    pas (encore) dans le catalogue — s'il est élevé, c'est un signal d'ajouter des entités.
+    Comptage v1 sur la ville : les groupes (massifs, vallées) s'appuient sur leurs communes membres.
+  </p>
+</div>
+{% endblock %}
