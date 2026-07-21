@@ -76,6 +76,15 @@ def save_ui_state(state: dict) -> None:
         pass
 _conn = sqlite3.connect(DB_PATH)
 init_db(_conn)
+# Colonnes de traduction (ajoutées par scripts.translate_events) : garanties ici pour que
+# les requêtes de l'app (ex. exclure les traductions de « À compléter ») ne plantent pas
+# sur une base où la traduction n'a jamais tourné.
+for _col in ("translation_of", "translated_at", "translated_lang"):
+    try:
+        _conn.execute(f"ALTER TABLE events_raw ADD COLUMN {_col} TEXT")
+    except sqlite3.OperationalError:
+        pass
+_conn.commit()
 _conn.close()
 
 TERRITORIES = ["Savoie", "Piemonte", "Vallee-Aoste", "Nice"]
@@ -167,6 +176,10 @@ def incomplete_clause(today: str) -> tuple[str, list]:
     empties = " OR ".join(parts)
     clause = (
         "statut IN ('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
+        # Les TRADUCTIONS sont des copies d'événements déjà publiés : on ne les complète
+        # jamais à la main (leur « source » est un pseudo-lien translated:NNN). On complète
+        # l'ORIGINAL, puis on retraduit. → hors file « À compléter ».
+        "AND COALESCE(translation_of,0)=0 "
         "AND (COALESCE(date_event_end, date_event_start, '')='' "
         "     OR COALESCE(date_event_end, date_event_start) >= ?) "
         f"AND ({empties})")
@@ -1879,6 +1892,15 @@ def preview(event_id: int):
     if not ev:
         return "Événement introuvable", 404
     ev = dict(ev)
+    # Fiche traduite : son url_source est un pseudo-lien « translated:NNN:lang ». On
+    # affiche à la place la VRAIE source de l'original (lien cliquable, vérifiable).
+    if (ev.get("url_source") or "").startswith("translated:") and ev.get("translation_of"):
+        conn2 = get_db()
+        orig = conn2.execute("SELECT url_source FROM events_raw WHERE id=?",
+                             (ev["translation_of"],)).fetchone()
+        conn2.close()
+        if orig and (orig["url_source"] or "") and not (orig["url_source"] or "").startswith("translated:"):
+            ev["url_source"] = orig["url_source"]
     ev["description_clean"] = clean_html(ev.get("description"))
     image = event_image(ev)
     is_radar = (ev.get("source_type") == "radar"
