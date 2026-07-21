@@ -19,14 +19,16 @@ Italie. Motif : « Territoire (dept. NN) » en France, « Territoire (prov. Nom)
 ## 2. Sous-divisions (dept. côté FR · prov. côté IT)
 
 Motif de libellé : `FR = "Piémont (prov. Alessandria)"` · `IT = "Piemonte (prov. Alessandria)"`.
-Seuls **« Piémont/Piemonte »** et **« dept./prov. »** se traduisent ; **le nom de la province/du
-département reste dans sa forme officielle** (sauf exonyme courant, cf. §3).
+Seuls **« territoire »** et **« dept./prov. »** se traduisent. Le nom entre parenthèses = le
+**nom de la province** (Italie) ou, en France, le **chef-lieu** (Chambéry / Annecy — pour
+distinguer les deux Savoie ; on ne met pas le numéro). Exonymes courants : cf. §3.
 
-### Savoie / Haute-Savoie — 2 départements
-| FR | IT | Chef-lieu |
+### Savoie / Haute-Savoie — 2 départements (libellés par **chef-lieu**, pas par numéro)
+En français on garde **« Savoie »** pour les deux, la distinction se fait par le chef-lieu.
+| FR | IT | correspond à |
 |---|---|---|
-| Savoie (dept. 73) | Savoia (prov. Chambéry) | Chambéry |
-| Haute-Savoie (dept. 74) | Savoia (prov. Annecy) | Annecy |
+| Savoie (dept. Chambéry) | Savoia (prov. Chambéry) | Savoie, dept. 73 |
+| Savoie (dept. Annecy) | Savoia (prov. Annecy) | Haute-Savoie, dept. 74 |
 
 ### Piémont — 8 provinces (nom conservé en FR)
 | FR | IT |
