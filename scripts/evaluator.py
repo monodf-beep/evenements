@@ -100,12 +100,6 @@ commerciale de vente). Le méga-concert de tournée est admis mais sans bonus «
 
 CATÉGORIE : choisis-en UNE parmi : {categories}.
 
-Événement à évaluer :
-Titre : {title}
-Description : {description}
-Lieu : {lieu}, {territoire}
-Source : {source_name}
-
 Réponds UNIQUEMENT en JSON valide, sans texte avant/après :
 {{"hors_perimetre": <true|false>,
   "territoire": "<Savoie|Piemonte|Vallee-Aoste|Nice ou "" si hors périmètre>",
@@ -121,22 +115,34 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant/après :
   "score": <0-10>,
   "justification": "<une phrase de synthèse>"}}"""
 
+# Le bloc événement (variable) est le SEUL contenu qui change d'un appel à l'autre :
+# il part en message user, tandis que les instructions (constantes) vont en SYSTÈME mis
+# en CACHE → l'énorme prompt d'instructions n'est plus refacturé à chaque événement.
+EVAL_USER = """Événement à évaluer :
+Titre : {title}
+Description : {description}
+Lieu : {lieu}, {territoire}
+Source : {source_name}"""
+
 
 def evaluate_event(event: dict, client: anthropic.Anthropic, model: str,
                    calibration: str = "") -> dict | None:
-    prompt = EVAL_PROMPT.format(
-        categories=" · ".join(CATEGORIES),
+    # Système = instructions constantes (+ calibrage, stable sur un run) → CACHÉ.
+    system_text = EVAL_PROMPT.format(categories=" · ".join(CATEGORIES)) + (calibration or "")
+    user_text = EVAL_USER.format(
         title=event.get("title", ""),
         description=(event.get("description") or "")[:800],
         lieu=event.get("lieu") or event.get("ville") or "",
         territoire=event.get("territoire", ""),
         source_name=event.get("source_name", ""),
-    ) + (calibration or "")   # exemples des ajustements de Franck (mémoire d'apprentissage)
+    )
     try:
         message = client.messages.create(
             model=model,
             max_tokens=1536,
-            messages=[{"role": "user", "content": prompt}],
+            system=[{"type": "text", "text": system_text,
+                     "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user_text}],
         )
         usage.record_message(model, message, label="évaluation")
         # Récupère le bloc TEXTE (le modèle peut émettre un bloc de raisonnement en 1er).
