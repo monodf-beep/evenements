@@ -62,7 +62,11 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
   color:#fff; font-weight:800; display:grid; place-items:center; font-family:Georgia,serif; }
 .brand b { color:#fff; display:block; font-size:.98rem; }
 .brand small { color:#8b96a8; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
-.nav { display:flex; flex-direction:column; gap:.15rem; margin-top:.4rem; }
+.nav { display:flex; flex-direction:column; gap:.15rem; margin-top:.4rem;
+  flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+/* filet de scroll discret quand le menu dépasse la hauteur de l'écran */
+.nav::-webkit-scrollbar { width:8px; }
+.nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.16); border-radius:8px; }
 .nav a { display:flex; align-items:center; gap:.55rem; padding:.55rem .7rem; border-radius:8px;
   color:#c2ccd9; font-size:.92rem; font-weight:500; }
 .nav a:hover { background:rgba(255,255,255,.07); color:#fff; text-decoration:none; }
