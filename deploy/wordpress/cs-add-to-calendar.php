@@ -128,9 +128,8 @@ add_action('init', function () {
     exit;
 }, 0);
 
-// ---- Le bloc affiché sur la fiche ----
-add_shortcode('cs_add_to_calendar', function () {
-    $id = get_the_ID();
+// ---- Le bloc affiché sur la fiche (rendu réutilisable) ----
+function cs_atc_render($id) {
     if (!$id || get_post_type($id) !== 'tribe_events') { return ''; }
     $start = cs_atc_epoch($id, 'start');
     if (!$start) { return ''; }                 // pas de date → pas de bouton
@@ -178,19 +177,45 @@ add_shortcode('cs_add_to_calendar', function () {
     </div>
     <?php
     return ob_get_clean();
+}
+
+// Shortcode : résout l'ID depuis la boucle, sinon depuis l'objet interrogé.
+add_shortcode('cs_add_to_calendar', function () {
+    $id = get_the_ID();
+    if (!$id || get_post_type($id) !== 'tribe_events') { $id = get_queried_object_id(); }
+    return cs_atc_render($id);
 });
 
-// ---- Affichage automatique en bas de la fiche ----
-// On ne s'appuie PAS sur in_the_loop()/is_main_query() : Elementor/GeneratePress
-// rendent le contenu hors de la boucle principale. On cible l'événement affiché
-// (get_the_ID == objet interrogé) et on n'ajoute la boîte qu'UNE fois par page.
-add_filter('the_content', function ($content) {
-    static $done = false;
-    if (!$done && CS_ATC_AUTO && is_singular('tribe_events')
-        && (int) get_the_ID() === (int) get_queried_object_id()
-        && strpos($content, 'cs-add-to-calendar') === false) {
-        $box = do_shortcode('[cs_add_to_calendar]');
-        if ($box !== '') { $done = true; $content .= $box; }
-    }
-    return $content;
-}, 20);
+// ---- Affichage automatique, INDÉPENDANT du constructeur ----
+// The Events Calendar/Elementor/GeneratePress ne passent pas toujours par
+// the_content : on ne peut donc pas s'y fier. wp_footer, lui, s'exécute TOUJOURS.
+// On y dépose l'encadré (fabriqué côté serveur) puis un petit script le place au
+// bon endroit dans la fiche. Aucune dépendance à un thème ou un builder.
+add_action('wp_footer', function () {
+    if (!CS_ATC_AUTO || !is_singular('tribe_events')) { return; }
+    $box = cs_atc_render(get_queried_object_id());
+    if ($box === '') { return; }
+    ?>
+    <template id="cs-atc-tpl"><?php echo $box; ?></template>
+    <script>
+    (function () {
+        if (document.querySelector('.cs-add-to-calendar')) { return; }
+        var tpl = document.getElementById('cs-atc-tpl');
+        if (!tpl || !tpl.content || !tpl.content.firstElementChild) { return; }
+        var node = tpl.content.firstElementChild.cloneNode(true);
+        var sel = [
+            '.elementor-widget-theme-post-content .elementor-widget-container',
+            '.tribe-events-single', '.tribe_events .entry-content',
+            'article .entry-content', '.entry-content', '.inside-article',
+            'main', '#primary', '#content'
+        ];
+        var host = null;
+        for (var i = 0; i < sel.length; i++) {
+            var e = document.querySelector(sel[i]);
+            if (e) { host = e; break; }
+        }
+        (host || document.body).appendChild(node);
+    })();
+    </script>
+    <?php
+}, 99);
