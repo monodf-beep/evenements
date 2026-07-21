@@ -56,12 +56,21 @@ def recurring_note(event: dict) -> str:
 def missing_fields(event: dict) -> list[tuple[str, str]]:
     """Liste des (clé, libellé) obligatoires ENCORE vides pour cet événement.
 
-    Cas RÉCURRENT : la date n'est pas requise (elle est remplacée par une note
-    renvoyant à la source), donc on ne la compte pas comme manquante."""
+    Cas RÉCURRENT : la date n'est pas requise (remplacée par une note renvoyant à la
+    source). Cas MULTI-LIEUX : lieu ET ville non requis (festival itinérant, programme
+    diffus sur toute une ville / plusieurs communes) → on n'exige pas un lieu unique."""
     recurring = is_recurring(event)
-    return [(key, label) for key, label in MANDATORY
-            if _empty(event.get(key))
-            and not (recurring and key == "date_event_start")]
+    multi = bool(event.get("multi_lieux"))
+    out = []
+    for key, label in MANDATORY:
+        if not _empty(event.get(key)):
+            continue
+        if recurring and key == "date_event_start":
+            continue
+        if multi and key in ("lieu", "ville"):
+            continue
+        out.append((key, label))
+    return out
 
 
 def missing_labels(event: dict) -> list[str]:

@@ -84,6 +84,12 @@ for _col in ("translation_of", "translated_at", "translated_lang"):
         _conn.execute(f"ALTER TABLE events_raw ADD COLUMN {_col} TEXT")
     except sqlite3.OperationalError:
         pass
+# Drapeau « lieux multiples » (festival itinérant / programme diffus) : relâche
+# l'exigence lieu/ville de la porte qualité.
+try:
+    _conn.execute("ALTER TABLE events_raw ADD COLUMN multi_lieux INTEGER DEFAULT 0")
+except sqlite3.OperationalError:
+    pass
 _conn.commit()
 _conn.close()
 
@@ -171,6 +177,9 @@ def incomplete_clause(today: str) -> tuple[str, list]:
         if k == "date_event_start":
             # Récurrent : date non requise (note « vérifiez sur la source »).
             parts.append("(COALESCE(date_event_start,'')='' AND COALESCE(recurring,0)=0)")
+        elif k in ("lieu", "ville"):
+            # Multi-lieux : lieu/ville non requis (festival itinérant, programme diffus).
+            parts.append(f"(COALESCE({k},'')='' AND COALESCE(multi_lieux,0)=0)")
         else:
             parts.append(f"COALESCE({k},'')=''")
     empties = " OR ".join(parts)
@@ -2038,6 +2047,10 @@ def complete_event(event_id: int):
             updates[k] = v
     if updates.get("date_event_start") and not updates.get("date_event_end"):
         updates["date_event_end"] = updates["date_event_start"]  # 1 jour → début = fin
+    # Case « lieux multiples » : appliquée seulement si le formulaire la porte
+    # (marqueur), pour ne pas l'effacer lors d'un post partiel (ex. Claude-in-Chrome).
+    if request.form.get("multi_lieux_present"):
+        updates["multi_lieux"] = 1 if request.form.get("multi_lieux") else 0
     if updates:
         if "date_event_start" in updates:
             updates["date_source"] = "manuel"

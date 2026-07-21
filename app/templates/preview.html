@@ -57,6 +57,11 @@
         <label class="text-sm">Ville<br><input type="text" name="ville" value="{{ e.ville or '' }}" placeholder="Ville"></label>
         <button class="btn btn-ok btn-sm" type="submit">💾 Enregistrer</button>
       </div>
+      <input type="hidden" name="multi_lieux_present" value="1">
+      <label class="text-sm" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:.55rem;">
+        <input type="checkbox" name="multi_lieux" value="1" {{ 'checked' if e.multi_lieux }}>
+        <b>Lieux multiples</b> — festival itinérant / programme diffus (pas de lieu unique) → sort de la file « À compléter » sans forcer un lieu.
+      </label>
     </form>
   </div>
 </details>
