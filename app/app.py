@@ -285,13 +285,15 @@ def inject_globals():
         conn = get_db()
         pending = conn.execute(
             "SELECT COUNT(*) n FROM events_raw WHERE statut='pending'").fetchone()["n"]
-        # Pastille « À valider » : ne compte QUE les à-venir (les passés ne se valident
-        # plus) ET au-delà du dernier « vu » (bouton de remise à zéro du tableau À valider).
-        _seen = int(load_ui_state().get("validate_seen_id", 0) or 0)
-        validate = conn.execute(
-            "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7 "
-            "AND COALESCE(NULLIF(date_event_end,''), date_event_start) >= ? AND id > ?",
-            (date.today().isoformat(), _seen)).fetchone()["n"]
+        # Pastille « À valider » (Cultura Sabauda). On/off : masquée tant que Franck ne
+        # travaille pas CS. Sinon elle compte QUE les à-venir (les passés ne se valident plus).
+        if load_ui_state().get("validate_badge_off"):
+            validate = 0
+        else:
+            validate = conn.execute(
+                "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7 "
+                "AND COALESCE(NULLIF(date_event_end,''), date_event_start) >= ?",
+                (date.today().isoformat(),)).fetchone()["n"]
         clause, cp = incomplete_clause(date.today().isoformat())
         tocomplete = conn.execute(
             f"SELECT COUNT(*) n FROM events_raw WHERE {clause}", cp).fetchone()["n"]
@@ -1824,38 +1826,34 @@ def validation():
         "index.html", events=events, alert=friendly_alert(),
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
         presets=PERIOD_PRESETS, has_period=bool(pfrom and pto),
-        n_queue=n_queue, n_past=n_past)
+        n_queue=n_queue, n_past=n_past,
+        badge_off=bool(load_ui_state().get("validate_badge_off")))
 
 
 @app.route("/validation/tidy", methods=["POST"])
 @require_auth
 def validation_tidy():
-    """Assainit la file « À valider » : archive les événements PASSÉS et/ou remet la
-    pastille à zéro (marque tout comme vu). Non destructif : « vu » ne touche pas les
-    fiches, seule la pastille se vide ; les archivés (passés) partent en 'rejected'."""
-    action = request.form.get("action", "both")
-    conn = get_db()
-    today = date.today().isoformat()
-    archived = 0
-    if action in ("archive_past", "both"):
+    """File « À valider » (Cultura Sabauda). action=archive_past : archive les événements
+    PASSÉS (→ 'rejected', réversible). action=badge_off/badge_on : masque/réaffiche la
+    pastille (tant que Franck ne travaille pas CS). Aucune touche aux fiches à-venir."""
+    action = request.form.get("action", "")
+    if action == "archive_past":
+        conn = get_db()
         cur = conn.execute(
             "UPDATE events_raw SET statut='rejected', "
             "llm_justification='Passé — archivé depuis À valider.' "
             "WHERE statut='evaluated' AND llm_score>=7 "
-            "AND COALESCE(NULLIF(date_event_end,''), date_event_start) < ?", (today,))
-        archived = cur.rowcount
+            "AND COALESCE(NULLIF(date_event_end,''), date_event_start) < ?",
+            (date.today().isoformat(),))
         conn.commit()
-    if action in ("mark_seen", "both"):
-        mx = conn.execute("SELECT COALESCE(MAX(id),0) m FROM events_raw "
-                          "WHERE statut='evaluated' AND llm_score>=7").fetchone()["m"]
-        save_ui_state({**load_ui_state(), "validate_seen_id": int(mx)})
-    conn.close()
-    msg = []
-    if archived:
-        msg.append("%d passé(s) archivé(s)" % archived)
-    if action in ("mark_seen", "both"):
-        msg.append("pastille remise à zéro")
-    flash("À valider : " + (", ".join(msg) if msg else "rien à faire") + ".", "ok")
+        conn.close()
+        flash("À valider : %d événement(s) passé(s) archivé(s)." % cur.rowcount, "ok")
+    elif action == "badge_off":
+        save_ui_state({**load_ui_state(), "validate_badge_off": True})
+        flash("Pastille « À valider » masquée. Réactive-la quand tu reprendras Cultura Sabauda.", "ok")
+    elif action == "badge_on":
+        st = load_ui_state(); st.pop("validate_badge_off", None); save_ui_state(st)
+        flash("Pastille « À valider » réaffichée.", "ok")
     return redirect(url_for("validation"))
 
 
