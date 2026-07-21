@@ -56,6 +56,24 @@ PUBLIC_BASE_URL = os.getenv(
 # Garantit que la base + le schéma existent, même sur un VPS frais où aucun
 # scraping n'a encore tourné : sinon le dashboard planterait sur "no such table".
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# État d'UI léger (préférences non critiques : ex. « pastille À valider vue jusqu'à
+# l'id N »). Fichier JSON dans data/ (gitignoré, propre au VPS).
+UI_STATE_FILE = DB_PATH.parent / "ui_state.json"
+
+
+def load_ui_state() -> dict:
+    try:
+        return json.loads(UI_STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_ui_state(state: dict) -> None:
+    try:
+        UI_STATE_FILE.write_text(json.dumps(state), encoding="utf-8")
+    except OSError:
+        pass
 _conn = sqlite3.connect(DB_PATH)
 init_db(_conn)
 _conn.close()
@@ -267,9 +285,13 @@ def inject_globals():
         conn = get_db()
         pending = conn.execute(
             "SELECT COUNT(*) n FROM events_raw WHERE statut='pending'").fetchone()["n"]
+        # Pastille « À valider » : ne compte QUE les à-venir (les passés ne se valident
+        # plus) ET au-delà du dernier « vu » (bouton de remise à zéro du tableau À valider).
+        _seen = int(load_ui_state().get("validate_seen_id", 0) or 0)
         validate = conn.execute(
-            "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7"
-        ).fetchone()["n"]
+            "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7 "
+            "AND COALESCE(NULLIF(date_event_end,''), date_event_start) >= ? AND id > ?",
+            (date.today().isoformat(), _seen)).fetchone()["n"]
         clause, cp = incomplete_clause(date.today().isoformat())
         tocomplete = conn.execute(
             f"SELECT COUNT(*) n FROM events_raw WHERE {clause}", cp).fetchone()["n"]
@@ -430,6 +452,29 @@ def load_newsletters() -> list[dict]:
                          "territoire": parts[2], "statut": parts[3],
                          "url": parts[4] if len(parts) >= 5 else ""})
     return rows
+
+
+def save_newsletter_statut(domaine: str, statut: str) -> bool:
+    """Réécrit config/newsletters.txt en changeant le statut de la ligne dont le domaine
+    correspond (préserve commentaires/ordre). Sert au bouton on/off du tableau de bord."""
+    if statut not in ("actif", "attente", "candidat", "inactif") or not domaine:
+        return False
+    if not NEWSLETTERS_FILE.exists():
+        return False
+    out, changed = [], False
+    for line in NEWSLETTERS_FILE.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if s and not s.startswith("#") and ";" in s:
+            parts = [p.strip() for p in s.split(";")]
+            if len(parts) >= 4 and parts[1] == domaine and not changed:
+                parts[3] = statut
+                out.append(";".join(parts))
+                changed = True
+                continue
+        out.append(line)
+    if changed:
+        NEWSLETTERS_FILE.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return changed
 
 
 @app.route("/")
@@ -832,6 +877,15 @@ def _couv_data(conn):
          for c, v in cats.items()), key=lambda x: -x["total"])
     return {"sections": sections, "cats": cat_rows, "undated": undated,
             "n_total": len(rows)}
+
+
+@app.route("/newsletters/toggle", methods=["POST"])
+@require_auth
+def newsletters_toggle():
+    """Bouton on/off du tableau de bord : bascule le statut d'une newsletter et enregistre.
+    candidat → attente (inscrit, à vérifier) ; attente ↔ actif (à vérifier / vérifié)."""
+    save_newsletter_statut(request.form.get("domaine", ""), request.form.get("statut", ""))
+    return redirect(url_for("dashboard") + "#sources")
 
 
 @app.route("/couverture")
@@ -1758,12 +1812,51 @@ def validation():
         events = conn.execute(
             "SELECT * FROM events_raw WHERE statut='evaluated' AND llm_score>=7 "
             "ORDER BY llm_score DESC, scrape_date DESC").fetchall()
+    today = date.today().isoformat()
+    n_queue = conn.execute(
+        "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7").fetchone()["n"]
+    n_past = conn.execute(
+        "SELECT COUNT(*) n FROM events_raw WHERE statut='evaluated' AND llm_score>=7 "
+        "AND COALESCE(NULLIF(date_event_end,''), date_event_start) < ?", (today,)).fetchone()["n"]
     conn.close()
     events = annotate_period([dict(e) for e in events], pfrom, pto)
     return render_template(
         "index.html", events=events, alert=friendly_alert(),
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
-        presets=PERIOD_PRESETS, has_period=bool(pfrom and pto))
+        presets=PERIOD_PRESETS, has_period=bool(pfrom and pto),
+        n_queue=n_queue, n_past=n_past)
+
+
+@app.route("/validation/tidy", methods=["POST"])
+@require_auth
+def validation_tidy():
+    """Assainit la file « À valider » : archive les événements PASSÉS et/ou remet la
+    pastille à zéro (marque tout comme vu). Non destructif : « vu » ne touche pas les
+    fiches, seule la pastille se vide ; les archivés (passés) partent en 'rejected'."""
+    action = request.form.get("action", "both")
+    conn = get_db()
+    today = date.today().isoformat()
+    archived = 0
+    if action in ("archive_past", "both"):
+        cur = conn.execute(
+            "UPDATE events_raw SET statut='rejected', "
+            "llm_justification='Passé — archivé depuis À valider.' "
+            "WHERE statut='evaluated' AND llm_score>=7 "
+            "AND COALESCE(NULLIF(date_event_end,''), date_event_start) < ?", (today,))
+        archived = cur.rowcount
+        conn.commit()
+    if action in ("mark_seen", "both"):
+        mx = conn.execute("SELECT COALESCE(MAX(id),0) m FROM events_raw "
+                          "WHERE statut='evaluated' AND llm_score>=7").fetchone()["m"]
+        save_ui_state({**load_ui_state(), "validate_seen_id": int(mx)})
+    conn.close()
+    msg = []
+    if archived:
+        msg.append("%d passé(s) archivé(s)" % archived)
+    if action in ("mark_seen", "both"):
+        msg.append("pastille remise à zéro")
+    flash("À valider : " + (", ".join(msg) if msg else "rien à faire") + ".", "ok")
+    return redirect(url_for("validation"))
 
 
 @app.route("/preview/<int:event_id>")

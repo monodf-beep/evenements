@@ -213,7 +213,7 @@
 </details>
 
 <!-- Configuration (repliable) -->
-<details class="box">
+<details class="box" id="sources">
   <summary>⚙️ Sources &amp; newsletters</summary>
   <div class="cols" style="margin-top:.8rem">
     <div>
@@ -234,12 +234,28 @@
         <tr>
           <td>{% if n.url %}<a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.nom }}</a>{% else %}{{ n.nom }}{% endif %}</td>
           <td>{{ n.territoire }}</td>
-          <td><span class="pill" style="background:{{ color }}"></span>{{ n.statut }}{% if n.statut in ('candidat','attente') and n.url %} · <a href="{{ n.url }}" target="_blank" rel="noopener">s'abonner ↗</a>{% endif %}</td>
+          <td style="white-space:nowrap;">
+            <span class="pill" style="background:{{ color }}"></span>{{ n.statut }}
+            {% if n.statut == 'candidat' and n.url %}
+              · <a href="{{ n.url }}" target="_blank" rel="noopener">s'abonner ↗</a>
+              <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
+                <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="attente">
+                <button type="submit" title="Marquer inscrit (à vérifier)" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .5rem;background:#e5e7eb;color:#374151;">✓ inscrit</button>
+              </form>
+            {% elif n.statut in ('attente','actif') %}
+              ·
+              <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
+                <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="{{ 'attente' if n.statut == 'actif' else 'actif' }}">
+                <button type="submit" title="Basculer vérifié / à vérifier" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .55rem;{% if n.statut == 'actif' %}background:#16a34a;color:#fff;{% else %}background:#fde68a;color:#92400e;{% endif %}">{{ 'ON · vérifié' if n.statut == 'actif' else 'OFF · à vérifier' }}</button>
+              </form>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </table></div>
     </div>
   </div>
 </details>
+<script>if(location.hash==='#sources'){var s=document.getElementById('sources');if(s)s.open=true;}</script>
 
 {% endblock %}

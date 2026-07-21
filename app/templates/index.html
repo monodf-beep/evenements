@@ -6,6 +6,28 @@
 
 {% block content %}
 
+{% if not has_period and (n_queue or n_past) %}
+<!-- Assainir la file À valider : archiver les passés + remettre la pastille à zéro -->
+<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:.55rem .9rem;margin-bottom:.8rem;">
+  <div class="text-sm">
+    <b>{{ n_queue }}</b> en attente de validation{% if n_past %} · dont <b style="color:#b45309;">{{ n_past }} déjà passé(s)</b>{% endif %}.
+    <span class="muted">La pastille ignore déjà les passés ; ici tu peux les <b>archiver</b> et <b>remettre le compteur à zéro</b>.</span>
+  </div>
+  <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+    {% if n_past %}
+    <form method="post" action="/validation/tidy" style="margin:0;" onsubmit="return confirm('Archiver les {{ n_past }} événement(s) déjà passé(s) ? (statut « rejeté », consultable, réversible)')">
+      <input type="hidden" name="action" value="archive_past">
+      <button class="btn btn-ghost btn-sm">🗓️ Archiver les {{ n_past }} passés</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/validation/tidy" style="margin:0;" onsubmit="return confirm('Archiver les passés ET remettre la pastille à zéro (marquer tout comme vu) ? Les fiches restent consultables, seule la pastille se vide.')">
+      <input type="hidden" name="action" value="both">
+      <button class="btn btn-ok btn-sm">🧹 J'ai vu · remettre à zéro</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 <!-- Barre de période -->
 <form class="period" method="GET" action="/validation" style="margin-bottom:.7rem">
   <span class="plabel">📅 Période :</span>
