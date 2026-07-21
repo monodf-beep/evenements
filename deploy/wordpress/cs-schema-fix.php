@@ -8,7 +8,7 @@ Description: Nettoie les données structurées Event (Yoast + The Events Calenda
   « Événements » de Google (levier trafic n°1). N'ajoute rien de faux : en cas de pollution,
   on SUPPRIME la description (mieux vaut pas de description qu'une pub dans le schema).
 Author: Cultura Sabauda
-Version: 1.0
+Version: 1.1
 
   INSTALLATION :
    A) Code Snippets : coller SANS la ligne « <?php », « Run everywhere ».
@@ -50,11 +50,39 @@ function cs_schema_clean_node($node) {
     return $node;
 }
 
+/**
+ * Construit un « offers » Schema.org à partir des métas posées par le publisher
+ * (as_gratuit = 1 si entrée libre ; as_tarif = tarif texte). Renvoie null si le prix
+ * est inconnu → on n'invente JAMAIS un prix. Devise EUR (tous nos territoires).
+ */
+function cs_schema_offer($post_id, $url) {
+    $gratuit = get_post_meta($post_id, 'as_gratuit', true);
+    if ($gratuit === '1' || $gratuit === 1) {
+        return array('@type' => 'Offer', 'price' => '0', 'priceCurrency' => 'EUR',
+                     'availability' => 'https://schema.org/InStock', 'url' => $url);
+    }
+    $tarif = trim((string) get_post_meta($post_id, 'as_tarif', true));
+    if ($tarif !== '' && preg_match('/(\d+(?:[.,]\d+)?)/', $tarif, $m)) {
+        return array('@type' => 'Offer', 'price' => str_replace(',', '.', $m[1]),
+                     'priceCurrency' => 'EUR', 'availability' => 'https://schema.org/InStock',
+                     'url' => $url);
+    }
+    return null;
+}
+
 // Yoast : filtre du graphe complet (The Events Calendar y injecte l'Event).
 add_filter('wpseo_schema_graph', function ($graph) {
     if (!is_array($graph)) { return $graph; }
+    $post_id = get_queried_object_id();
     foreach ($graph as $i => $node) {
         $graph[$i] = cs_schema_clean_node($node);
+        // Ajoute « offers » sur l'Event s'il est absent ET qu'on connaît le prix.
+        $types = isset($node['@type']) ? (array) $node['@type'] : array();
+        if ($post_id && in_array('Event', $types, true) && empty($graph[$i]['offers'])) {
+            $url = isset($node['url']) && $node['url'] ? $node['url'] : get_permalink($post_id);
+            $offer = cs_schema_offer($post_id, $url);
+            if ($offer) { $graph[$i]['offers'] = $offer; }
+        }
     }
     return $graph;
 }, 20);
