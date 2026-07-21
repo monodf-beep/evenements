@@ -20,6 +20,33 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 
 ---
 
+## ⚡ Priorité — combler les trous vus dans « Couverture géo » (21/07)
+
+La page **Couverture géo** a chiffré les zones à ZÉRO. La bonne nouvelle : les sources
+existent déjà ci-dessous, elles sont juste **non abonnées** `[ ]`. À faire **maintenant**,
+dans l'ordre, pour alimenter les pages P1 qui manquent d'offre :
+
+**Piémont hors-Turin** (aujourd'hui 72 % Turin ; Langhe/Monferrato/Alba = 0) :
+- **Ente Turismo Langhe Monferrato Roero** (Cuneo/Asti) — *le* pivot Langhe/Roero/Monferrato.
+- **Collisioni** (Alba/Barolo) · **Fiera del Tartufo Bianco d'Alba** — gros événements Alba.
+- Vérifier que **Piemonte dal Vivo** (déjà abonné) laisse bien passer le hors-Turin (filtre géo).
+
+**Vallée d'Aoste** (Courmayeur/Cervinia = 0) :
+- **LoveVDA — Office Régional du Tourisme** ⭐ — l'agenda régional bilingue, couvre TOUT
+  (Courmayeur, Cervinia, vallées) : **la source la plus rentable de la VdA**, à faire en 1er.
+- **Courmayeur Mont Blanc** · **Cervino / Cervinia**.
+
+**Menton = 0 alors que « Menton, Riviera & Merveilles » est déjà `[x]`** → ce n'est PAS un
+manque de source, mais un **problème de flux** : soit le label `Agenda` n'est pas appliqué à
+ces mails, soit le domaine expéditeur (souvent un ESP) n'est pas dans `config/whitelist_gmail.txt`,
+soit la newsletter mensuelle porte peu d'événements datés. **À diagnostiquer** (pas à re-sourcer).
+
+**Annecy faible (5) malgré Bonlieu `[x]`** : probablement des dates de saison lointaines (théâtre
+démarre en septembre) + agglo comptée à part (Cran-Gevrier, La Ravoire). À re-regarder après la
+prochaine collecte.
+
+---
+
 ## Savoie / Haute-Savoie
 - [x] ⭐ **Bonlieu Scène Nationale** (théâtre/danse/musique, Annecy) — https://www.bonlieu-annecy.com/inscription-newsletter
 - [x] ⭐ **Espace Malraux Scène Nationale** (théâtre/danse, Chambéry) — https://billetterie.malrauxchambery.fr/3web_mailing_cherche?template=11720
