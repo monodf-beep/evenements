@@ -884,6 +884,7 @@ _GEO_CATALOGUE = {
         ("ville", "Alessandria", "P2", ["alessandria"]),
         ("ville", "Biella", "P2", ["biella"]),
         ("ville", "Novara", "P2", ["novara"]),
+        ("ville", "Vercelli", "P2", ["vercelli"]),
         ("ville", "Verbania", "P2", ["verbania"]),
         ("ville", "Mondovì", "P3", ["mondovi"]),
         ("ville", "Ivrea", "P2", ["ivrea"]),
@@ -898,6 +899,8 @@ _GEO_CATALOGUE = {
     ],
     "Vallée d'Aoste": [
         ("ville", "Aoste / Aosta", "P1", ["aoste", "aosta"]),
+        ("ville", "Bard / Forte di Bard", "P1", ["bard"]),
+        ("ville", "Fénis", "P3", ["fenis"]),
         ("ville", "Courmayeur", "P1", ["courmayeur"]),
         ("ville", "Cervinia", "P1", ["cervinia", "breuil"]),
         ("ville", "Cogne", "P2", ["cogne"]),
