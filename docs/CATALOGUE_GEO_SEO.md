@@ -57,8 +57,8 @@ Chablais [massif] (P2) · Beaufortain (P3) · Bornes (P3) · Chartreuse [part. S
 Vanoise [parc] (P2) · Mont-Blanc [massif] **(P1)** · Belledonne [part.] (P3) · Val d'Arly (P3)
 
 **Vallées / microrégions** : Tarentaise (P2) · Maurienne (P2) · Chablais [région] (P2) ·
-Faucigny (P3) · Vallée de l'Arve (P3) · Genevois haut-savoyard (P3) · Avant-Pays savoyard (P3) ·
-Combe de Savoie (P3) · Pays de Thônes (P3) · Pays du Mont-Blanc (P2) · Vallée Verte (P3) ·
+Faucigny (P3) · Vallée de l'Arve (P3) · Genevois savoyard (P3) · Avant-Pays savoyard (P3) ·
+Combe de Savoie (P3) · Thônes (P3) · Pays du Mont-Blanc (P2) · Vallée Verte (P3) ·
 Val d'Arly (P3)
 
 **Lacs** : Lac d'Annecy **(P1, très fort en tourisme)** · Lac du Bourget (P2) ·
@@ -78,7 +78,7 @@ Casale Monferrato (P3) · Acqui Terme (P3) · Chieri (P3) · Rivoli [musée d'ar
 Moncalieri (P3) · Collegno (P3)
 
 **Colline / aree** : **Langhe (P1)** · **Monferrato (P1)** · **Roero (P2)** · Canavese (P3) ·
-Astigiano (P3) · Alto Piemonte (P3) · area Monviso (P3)
+Astigiano (P3) · Alto Piemonte (P3)
 
 **Vallate** : Val di Susa (P2) · Valli di Lanzo (P3) · Valsesia (P2) · Val Chisone (P3) ·
 Val Pellice (P3) · Val d'Ossola (P2) · Val Maira (P3) · Valle Stura (P3) · Valle Grana (P3) ·
@@ -87,7 +87,7 @@ Val Tanaro (P3)
 **Laghi** : Lago Maggiore **(P1)** · Lago d'Orta (P2) · Lago di Viverone (P3)
 
 **Montagna / stazioni** : Sestriere (P2) · Bardonecchia (P2) · Sauze d'Oulx (P3) ·
-Via Lattea (P3) · Limone Piemonte (P2) · Monte Rosa [versant piémontais] (P2) · Monviso (P3)
+Via Lattea (P3) · Limone Piemonte (P2) · Monviso (P3)
 
 ## 3. Vallée d'Aoste (Valle d'Aosta) — bilingue FR **et** IT
 
@@ -103,29 +103,37 @@ Valpelline (P3) · Valgrisenche (P3) · Val de Rhêmes (P3) · Valsavarenche (P3
 Val de Champorcher (P3) · Vallée du Grand-Saint-Bernard (P3)
 
 **Massifs / sommets** : Mont-Blanc / Monte Bianco **(P1)** · Cervin / Cervino / Matterhorn **(P1)** ·
-Mont-Rose / Monte Rosa (P2) · Grand-Paradis / Gran Paradiso **(P2, parc national)** ·
-Grand-Combin (P3)
+Grand-Paradis / Gran Paradiso **(P2, parc national)** · Grand-Combin (P3)
+*(Monte Rosa retiré comme sommet : faible intention **événementielle** ; on garde le domaine
+« Monterosa Ski » ci-dessous, qui, lui, a une vraie intention saisonnière.)*
 
 **Stations** : Courmayeur **(P1)** · Cervinia **(P1)** · Pila (P2) · La Thuile (P2) ·
 Monterosa Ski / Champoluc-Gressoney (P2) · Cogne (P2)
 
 ## 4. Nice / Alpes-Maritimes (06) — FR (+ intention IT frontalière)
 
-**Villes** : Nice **(P1)** · Cannes **(P1)** · Antibes (P2) · Menton **(P1, Fête du Citron)** ·
-Grasse (P2) · Cagnes-sur-Mer (P3) · Vence (P2) · Saint-Paul-de-Vence **(P2, Fondation Maeght)** ·
-Villefranche-sur-Mer (P2) · Beaulieu-sur-Mer (P3) · Èze (P2) · Saint-Laurent-du-Var (P3) ·
-Le Cannet (P3) · Mandelieu-la-Napoule (P3) · Villeneuve-Loubet (P3) · Mougins (P2) · Valbonne (P3) ·
-Roquebrune-Cap-Martin (P3) · Beausoleil (P3) · Sospel (P3) · Tende (P3)
+*Périmètre actif = **arrondissement de Nice**. L'**arrondissement de Grasse** (Cannes, Antibes,
+Grasse…) est **différé** — voir bloc en fin de section. Rappel : différer une **page-lieu** ≠
+retirer les **événements** — ceux de Saint-Paul-de-Vence (Fondation Maeght), Vence, Antibes…
+restent publiés sous le territoire Nice/06, ils n'ont juste pas (encore) de page dédiée.*
+
+**Villes** : Nice **(P1)** · Menton **(P1, Fête du Citron)** · Villefranche-sur-Mer (P2) ·
+Beaulieu-sur-Mer (P3) · Èze (P2) · Saint-Laurent-du-Var (P3) · Roquebrune-Cap-Martin (P3) ·
+Beausoleil (P3) · Sospel (P3) · Tende (P3) · Breil-sur-Roya (P3)
 
 **Microrégions / arrière-pays / vallées** : Côte d'Azur / Riviera **(P1)** · Arrière-pays niçois (P2) ·
-Pays de Grasse (P3) · Pays des Paillons (P3) · **Vallée de la Roya (P2)** · **Vallée de la Vésubie (P2)** ·
-Vallée de la Tinée (P3) · Vallée du Var (P3) · Mercantour [parc] **(P2)** · Massif de l'Estérel (P2) ·
-Préalpes d'Azur (P3)
+Pays des Paillons (P3) · **Vallée de la Roya (P2)** · **Vallée de la Vésubie (P2)** ·
+Vallée de la Tinée (P3) · Vallée du Var (P3) · Mercantour [parc] **(P2)**
 
-**Littoral / caps** : Cap d'Antibes (P3) · Cap Ferrat / Saint-Jean-Cap-Ferrat (P2) ·
-Baie des Anges (P3) · Golfe-Juan / Juan-les-Pins **(P2, jazz)**
+**Littoral / caps** : Cap Ferrat / Saint-Jean-Cap-Ferrat (P2) · Baie des Anges (P3)
 
-**Stations** (Alpes du Sud) : Isola 2000 (P2) · Auron (P2) · Valberg (P2) · Gréolières-les-Neiges (P3)
+**Stations** (Alpes du Sud / Mercantour) : Isola 2000 (P2) · Auron (P2) · Valberg (P2)
+
+> **Différé — arrondissement de Grasse** (à réactiver plus tard) : Cannes, Antibes, Grasse,
+> Cagnes-sur-Mer, Le Cannet, Mandelieu-la-Napoule, Mougins, Valbonne, Villeneuve-Loubet, Vence,
+> Saint-Paul-de-Vence, Vallauris / Golfe-Juan – Juan-les-Pins ; + Pays de Grasse, Préalpes d'Azur,
+> Massif de l'Estérel, Cap d'Antibes, Gréolières-les-Neiges. **Pas de page-lieu pour l'instant**
+> (leurs événements restent publiés sous Nice/06).
 
 ---
 
@@ -136,7 +144,7 @@ Baie des Anges (P3) · Golfe-Juan / Juan-les-Pins **(P2, jazz)**
 - **Savoie/Haute-Savoie** : Annecy · Chambéry · Chamonix · Lac d'Annecy · (Mont-Blanc)
 - **Piémont** : Torino · Alba · Langhe · Monferrato · Lago Maggiore
 - **Vallée d'Aoste** : Aoste/Aosta · Courmayeur · Cervinia (× FR **et** IT)
-- **Nice/06** : Nice · Cannes · Menton · Côte d'Azur
+- **Nice/06** : Nice · Menton · Côte d'Azur *(arrondissement de Grasse différé)*
 
 Puis les **P2** graduent au fil de la couverture, les **P3** restent en tags `noindex` jusqu'à
 mériter leur page.
@@ -149,6 +157,24 @@ franchissent le seuil et méritent d'être promues en page. La création se fait
 la donnée**, pas à l'aveugle.
 
 ---
+
+## Annexe — « espace élargi » : voisins hors sabaudo (idée notée, NON prioritaire)
+
+Idée : depuis un point du territoire, proposer une sortie **au-delà**, chez un voisin proche —
+Saint-Julien → **Genève**, sud de Chambéry → **Grenoble**, Ovada/Alessandrino → **Gênes**, etc.
+À **garder**, mais avec une **critique assumée** (c'est plus de travail qu'il n'y paraît) :
+
+- **Dilution d'identité** : Genève, Grenoble, Gênes ne sont **pas** l'espace sabaudo. Les intégrer
+  brouille la promesse éditoriale et le sens « Cultura Sabauda ».
+- **Coût de sourcing** : chaque ville = nouveaux flux, évaluation, traduction, entretien. Lourd et
+  récurrent, pour un gain incertain.
+- **Concurrence frontale** : ces métropoles ont déjà des agendas locaux forts ; faible ROI SEO sans
+  autorité locale sur leur terrain.
+- **Version acceptable (un jour)** : un simple pointeur **« à proximité »** — et de préférence vers
+  l'**autre versant sabaudo** (module déjà prévu) —, PAS du sourcing complet de métropoles voisines.
+
+**Décision : on note l'idée ici. Ce n'est PAS le but premier. À rouvrir plus tard, et seulement en
+version légère (pointeur de proximité), pas en couverture éditoriale complète.**
 
 ## Annexe — canaux de distribution (à garder pour plus tard)
 
