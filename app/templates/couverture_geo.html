@@ -42,6 +42,16 @@
       </div>
       {% endfor %}
     </div>
+    {% if g.top_hors %}
+    <div style="padding:.5rem 1rem;border-top:1px solid rgba(0,0,0,.06);background:rgba(180,120,20,.05);">
+      <div class="muted text-sm" style="margin-bottom:.3rem;"><b>Villes hors catalogue</b> qui produisent du volume — candidates à ajouter (ou zone volontairement différée) :</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.3rem;">
+        {% for v, n in g.top_hors %}
+        <span style="font-size:.76rem;border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:.1rem .5rem;background:#fff;">{{ v }} <b>{{ n }}</b></span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 

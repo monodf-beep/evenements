@@ -951,7 +951,8 @@ def _geo_data(conn):
     for r in rows:
         grp = _couv_terr_group(r["territoire"])
         if grp in by_terr:
-            by_terr[grp].append((_couv_norm(r["ville"] or ""), _couv_norm(r["lieu"] or "")))
+            by_terr[grp].append((_couv_norm(r["ville"] or ""), _couv_norm(r["lieu"] or ""),
+                                 (r["ville"] or "").strip()))
     groups = []
     for terr, entities in _GEO_CATALOGUE.items():
         evs = by_terr.get(terr, [])
@@ -959,7 +960,7 @@ def _geo_data(conn):
         for typ, name, prio, terms in entities:
             nterms = [_couv_norm(t) for t in terms]
             n = 0
-            for i, (nville, nlieu) in enumerate(evs):
+            for i, (nville, nlieu, _raw) in enumerate(evs):
                 if _geo_match(nville, nlieu, nterms):
                     n += 1
                     if typ == "ville":
@@ -967,11 +968,15 @@ def _geo_data(conn):
             rows_out.append({"type": typ, "name": name, "prio": prio, "count": n,
                              "ready": n >= _GEO_SEUIL})
         rows_out.sort(key=lambda e: (-e["count"], e["name"]))
+        # Villes NON cataloguées qui produisent du volume → candidates à ajouter.
+        hors = Counter(raw or "(sans ville)" for i, (_nv, _nl, raw) in enumerate(evs)
+                       if i not in matched_villes)
         groups.append({
             "territoire": terr, "total": len(evs),
             "hors_villes": len(evs) - len(matched_villes),   # événements sans ville cataloguée
             "ready": sum(1 for e in rows_out if e["ready"]),
             "entities": rows_out,
+            "top_hors": hors.most_common(12),
         })
     return {"groups": groups, "seuil": _GEO_SEUIL}
 
