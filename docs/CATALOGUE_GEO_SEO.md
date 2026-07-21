@@ -129,11 +129,20 @@ Vallée de la Tinée (P3) · Vallée du Var (P3) · Mercantour [parc] **(P2)**
 
 **Stations** (Alpes du Sud / Mercantour) : Isola 2000 (P2) · Auron (P2) · Valberg (P2)
 
-> **Différé — arrondissement de Grasse** (à réactiver plus tard) : Cannes, Antibes, Grasse,
-> Cagnes-sur-Mer, Le Cannet, Mandelieu-la-Napoule, Mougins, Valbonne, Villeneuve-Loubet, Vence,
-> Saint-Paul-de-Vence, Vallauris / Golfe-Juan – Juan-les-Pins ; + Pays de Grasse, Préalpes d'Azur,
-> Massif de l'Estérel, Cap d'Antibes, Gréolières-les-Neiges. **Pas de page-lieu pour l'instant**
-> (leurs événements restent publiés sous Nice/06).
+> **Différé — arrondissement de Grasse** (hors espace sabaudo, à réactiver plus tard « si besoin ») :
+> Cannes, Antibes, Grasse, Cagnes-sur-Mer, Le Cannet, Mandelieu-la-Napoule, Mougins, Valbonne,
+> Villeneuve-Loubet, Vence, Saint-Paul-de-Vence, Mouans-Sartoux, La Colle-sur-Loup, Vallauris /
+> Golfe-Juan – Juan-les-Pins ; + Pays de Grasse, Préalpes d'Azur, Massif de l'Estérel,
+> Cap d'Antibes, Gréolières-les-Neiges.
+>
+> **Raison de fond (décision du 21/07)** : l'espace sabaudo dans le 06 = le **Comté de Nice**
+> (Nice, Menton, vallées Roya/Vésubie/Tinée ≈ arrondissement de Nice). L'arrondissement de Grasse
+> relève historiquement de la **Provence** → **hors espace sabaudo**. On respecte le périmètre
+> sabaudo : ces lieux **n'ont pas de page** et on les **met de côté pour le moment**. Réouverture
+> possible plus tard, **comme Genève** (cf. annexe « espace élargi »), si le besoin se confirme.
+> *(NB : la Couverture géo a montré qu'ils portent ~24 événements — Fondation Maeght, Nuits du Sud,
+> Valbonne — actuellement publiés sous Nice/06. Décision séparée à prendre si on veut aussi
+> resserrer le sourcing au Comté de Nice et retirer ces fiches déjà en ligne.)*
 
 ---
 
