@@ -38,6 +38,7 @@ from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
 from utils import completeness as comp
+from utils import triage as triage_mod
 from utils import slack
 from dotenv import load_dotenv
 
@@ -2261,6 +2262,68 @@ def a_completer():
         presets=PERIOD_PRESETS, alert=friendly_alert())
 
 
+@app.route("/triage")
+@require_auth
+def triage():
+    """TRIAGE des fiches bloquées : pour chaque fiche « À compléter », on DEVINE la
+    cause (permanent → récurrent ; itinérant → multi-lieux ; sinon manuel) et on
+    propose la bonne action en 1 clic. Objectif : vider la file de tout ce qui est
+    résoluble par une simple case, pour ne garder que le vraiment ambigu."""
+    today = date.today().isoformat()
+    clause, cp = incomplete_clause(today)
+    sql = (f"SELECT * FROM events_raw WHERE {clause} "
+           "ORDER BY COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC")
+    conn = get_db()
+    rows = conn.execute(sql, list(cp)).fetchall()
+    conn.close()
+    buckets = {"recurring": [], "multi_lieux": [], "both": [], "manual": []}
+    for r in rows:
+        e = dict(r)
+        e["_triage"] = triage_mod.classify(e)
+        e["_img"] = event_image(e)
+        buckets[e["_triage"]["primary"]].append(e)
+    counts = {k: len(v) for k, v in buckets.items()}
+    counts["total"] = len(rows)
+    # Nombre de fiches qu'une simple case suffirait à compléter (gain immédiat).
+    counts["resolvable"] = sum(
+        1 for v in buckets.values() for e in v if e["_triage"]["resolved_by_flags"])
+    return render_template(
+        "triage.html", buckets=buckets, counts=counts, today=today,
+        active="triage", alert=friendly_alert())
+
+
+@app.route("/triage/apply", methods=["POST"])
+@require_auth
+def triage_apply():
+    """Applique EN LOT une relaxation éditoriale (récurrent OU multi-lieux) à toutes
+    les fiches de la file où le triage la suggère. Réversible (recurring_off /
+    multi_lieux_off). Ne publie rien et n'invente aucune donnée — relâche juste une
+    exigence. On RE-CALCULE la suggestion au moment de l'action (pas de confiance à
+    des ids venus du formulaire)."""
+    kind = request.form.get("kind", "")
+    if kind not in ("recurring", "multi_lieux"):
+        flash("⚠️ Action de triage inconnue.", "err")
+        return redirect(url_for("triage"))
+    today = date.today().isoformat()
+    clause, cp = incomplete_clause(today)
+    conn = get_db()
+    rows = conn.execute(f"SELECT * FROM events_raw WHERE {clause}", list(cp)).fetchall()
+    n = 0
+    for r in rows:
+        c = triage_mod.classify(dict(r))
+        if kind == "recurring" and c["suggest_recurring"]:
+            conn.execute("UPDATE events_raw SET recurring=1 WHERE id=?", (r["id"],))
+            n += 1
+        elif kind == "multi_lieux" and c["suggest_multi"]:
+            conn.execute("UPDATE events_raw SET multi_lieux=1 WHERE id=?", (r["id"],))
+            n += 1
+    conn.commit()
+    conn.close()
+    libelle = "récurrent" if kind == "recurring" else "multi-lieux"
+    flash(f"✅ {n} fiche(s) marquée(s) « {libelle} » — elles quittent la file.", "ok")
+    return redirect(url_for("triage"))
+
+
 def _apply_completion(conn, event_id: int, values: dict) -> tuple[bool, list[str]]:
     """Écrit les champs fournis (non vides) et renvoie (complet?, manques restants)."""
     clean = {k: v.strip() for k, v in values.items()
@@ -2467,6 +2530,16 @@ def action(event_id: int, action: str):
                      (event_id,))
         conn.commit()
         flash(f"↩️ « {title} » n'est plus récurrent.", "ok")
+    elif action == "multi_lieux":
+        # Festival itinérant / programme diffus sur plusieurs communes : lieu et ville
+        # ne sont plus exigés. La fiche quitte « À compléter » (cf. completeness).
+        conn.execute("UPDATE events_raw SET multi_lieux=1 WHERE id=?", (event_id,))
+        conn.commit()
+        flash(f"📍 « {title} » marqué multi-lieux — lieu/ville non requis.", "ok")
+    elif action == "multi_lieux_off":
+        conn.execute("UPDATE events_raw SET multi_lieux=0 WHERE id=?", (event_id,))
+        conn.commit()
+        flash(f"↩️ « {title} » n'est plus multi-lieux.", "ok")
 
     conn.close()
     nxt = request.form.get("next", "")
