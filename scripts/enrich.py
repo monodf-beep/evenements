@@ -254,6 +254,8 @@ def _final_text(message) -> str:
 def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str):
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR."""
     from utils.voix import voix_block
+    from utils import settings as pipeline_settings
+    _court = pipeline_settings.enrich_mode() == "court"
     prompt = voix_block() + ENRICH_PROMPT.format(
         title=ev.get("title", ""),
         dates=_dates_hint(ev),
@@ -263,15 +265,22 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         categorie=ev.get("llm_categorie") or "—",
         material=material,
     )
+    if _court:
+        prompt += ("\n\n[MODE COURT — Agenda Sabauda] Rédige un article CONCIS (~250-350 mots), "
+                   "SANS recherche web : appuie-toi uniquement sur les informations ci-dessus. "
+                   "Va à l'essentiel, une fiche claire et bien écrite suffit.")
     messages = [{"role": "user", "content": prompt}]
     try:
         # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
         # STREAMING : indispensable ici (recherche web + raisonnement = requêtes longues)
         # — évite les read-timeouts silencieux. On logge chaque tour pour la traçabilité.
-        kwargs = dict(model=model, max_tokens=MAX_TOKENS, messages=messages)
-        if USE_WEB_SEARCH:
+        # Mode COURT (Agenda) : tokens réduits, PAS de recherche web ni thinking → bien
+        # moins cher. Mode LONG (Cultura Sabauda) : plein (web + thinking + 8000 tokens).
+        _max = pipeline_settings.COURT_MAX_TOKENS if _court else MAX_TOKENS
+        kwargs = dict(model=model, max_tokens=_max, messages=messages)
+        if USE_WEB_SEARCH and not _court:
             kwargs["tools"] = [WEB_SEARCH_TOOL]
-        if USE_THINKING:
+        if USE_THINKING and not _court:
             kwargs["thinking"] = {"type": "adaptive"}
         for turn in range(1, (MAX_WEB_SEARCHES + 4) if USE_WEB_SEARCH else 2):
             log.info("[%d] appel API tour %d… (web=%s, thinking=%s)",
@@ -359,7 +368,12 @@ def main(argv: list[str]) -> int:
     if not api_key:
         log.error("ANTHROPIC_API_KEY non définie")
         return 1
-    model = os.getenv("ANTHROPIC_MODEL_ENRICH", DEFAULT_MODEL)
+    # Réglages back-office : on/off + court/long, et profil de modèle.
+    from utils import settings as pipeline_settings
+    if not pipeline_settings.enrich_enabled():
+        log.info("Enrichissement DÉSACTIVÉ (réglage back-office). Rien à faire.")
+        return 0
+    model = os.getenv("ANTHROPIC_MODEL_ENRICH") or pipeline_settings.model()
     ids = [int(a) for a in argv if a.isdigit()]
     dfrom = dto = ""
     if "--from" in argv:

@@ -890,6 +890,21 @@ def newsletters_toggle():
     return redirect(url_for("dashboard") + "#sources")
 
 
+@app.route("/reglages", methods=["GET", "POST"])
+@require_auth
+def reglages():
+    """Réglages de coût du pipeline : profil IA (éco/qualité) + mode d'enrichissement
+    (off/court/long), avec les conséquences expliquées. Lu par l'évaluateur/enrichissement."""
+    from utils import settings as psettings
+    if request.method == "POST":
+        psettings.save({"ai_profile": request.form.get("ai_profile", ""),
+                        "enrich_mode": request.form.get("enrich_mode", "")})
+        flash("Réglages enregistrés — appliqués au prochain passage du pipeline (cron ou lancement manuel).", "ok")
+        return redirect(url_for("reglages"))
+    return render_template("reglages.html", active="reglages",
+                           st=psettings.load(), model=psettings.model())
+
+
 @app.route("/couverture")
 @require_auth
 def couverture():

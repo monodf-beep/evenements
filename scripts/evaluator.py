@@ -173,7 +173,10 @@ def main(argv=None) -> int:
     if not api_key:
         log.error("ANTHROPIC_API_KEY non définie")
         return 1
-    model = os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL)
+    # Modèle : réglage back-office (profil éco = Haiku / qualité = Sonnet) ; l'env
+    # ANTHROPIC_MODEL, si posé, reste prioritaire (échappatoire power-user).
+    from utils import settings as pipeline_settings
+    model = os.getenv("ANTHROPIC_MODEL") or pipeline_settings.model()
     client = anthropic.Anthropic(api_key=api_key)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row

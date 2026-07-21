@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set active = 'reglages' %}
+{% block title %}Réglages / Coûts{% endblock %}
+{% block h1 %}Réglages & maîtrise des coûts{% endblock %}
+{% block subtitle %}<div class="sub">Deux boutons pour piloter la dépense IA du pipeline. Chaque option indique sa <b>conséquence</b>. Enregistré ici → appliqué au prochain passage (cron ou lancement manuel).</div>{% endblock %}
+
+{% block content %}
+<form method="post" action="/reglages" style="max-width:820px;">
+
+  <!-- Profil IA -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .3rem;">🤖 Profil du modèle IA <span class="muted" style="font-weight:400;font-size:.85rem;">(évaluation + enrichissement)</span></h2>
+  <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.3rem;">
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.ai_profile=='eco' %}outline:2px solid #16a34a;{% endif %}">
+      <input type="radio" name="ai_profile" value="eco" {{ 'checked' if st.ai_profile=='eco' }} style="margin-top:.25rem;">
+      <div><b>Économique — Haiku</b> <span style="font-size:.72rem;font-weight:700;color:#16a34a;background:#e9f6ee;border-radius:999px;padding:.05rem .45rem;">recommandé</span>
+        <div class="muted text-sm" style="margin-top:.15rem;">≈ <b>3× moins cher</b> (input $3→$1, output $15→$5). Qualité d'évaluation et de rédaction très correcte pour l'agenda de volume.</div></div>
+    </label>
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.ai_profile=='qualite' %}outline:2px solid #d97706;{% endif %}">
+      <input type="radio" name="ai_profile" value="qualite" {{ 'checked' if st.ai_profile=='qualite' }} style="margin-top:.25rem;">
+      <div><b>Qualité — Sonnet</b>
+        <div class="muted text-sm" style="margin-top:.15rem;">Évaluation plus fine et meilleure rédaction, mais <b>≈ 3× plus cher</b>. À réserver si tu constates un vrai manque de qualité en éco.</div></div>
+    </label>
+  </div>
+
+  <!-- Enrichissement -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .3rem;">📝 Articles enrichis <span class="muted" style="font-weight:400;font-size:.85rem;">(la rédaction longue = le plus gros poste de coût)</span></h2>
+  <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.3rem;">
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.enrich_mode=='off' %}outline:2px solid #9ca3af;{% endif %}">
+      <input type="radio" name="enrich_mode" value="off" {{ 'checked' if st.enrich_mode=='off' }} style="margin-top:.25rem;">
+      <div><b>Désactivé</b>
+        <div class="muted text-sm" style="margin-top:.15rem;"><b>Aucun coût d'enrichissement.</b> Les fiches gardent la <b>description de la source</b> — souvent correcte, mais parfois courte ou brute. Choisis-le si tu veux couper la dépense au maximum.</div></div>
+    </label>
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.enrich_mode=='court' %}outline:2px solid #16a34a;{% endif %}">
+      <input type="radio" name="enrich_mode" value="court" {{ 'checked' if st.enrich_mode=='court' }} style="margin-top:.25rem;">
+      <div><b>Court — Agenda Sabauda</b> <span style="font-size:.72rem;font-weight:700;color:#16a34a;background:#e9f6ee;border-radius:999px;padding:.05rem .45rem;">recommandé</span>
+        <div class="muted text-sm" style="margin-top:.15rem;">Article <b>concis (~250-350 mots)</b>, réécrit proprement, <b>SANS recherche web</b>. Tes fiches restent <b>bien décrites</b> pour un <b>coût modéré</b>. Le bon compromis pour l'agenda.</div></div>
+    </label>
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.enrich_mode=='long' %}outline:2px solid #d97706;{% endif %}">
+      <input type="radio" name="enrich_mode" value="long" {{ 'checked' if st.enrich_mode=='long' }} style="margin-top:.25rem;">
+      <div><b>Long — Cultura Sabauda</b>
+        <div class="muted text-sm" style="margin-top:.15rem;">Article <b>complet avec recherche web</b> (jusqu'à 8000 tokens) : le plus riche, mais le <b>plus cher</b>. À réserver au site premium <b>Cultura Sabauda</b> quand tu le travailleras.</div></div>
+    </label>
+  </div>
+
+  <div class="card" style="padding:.6rem .9rem;margin-bottom:1rem;background:rgba(0,0,0,.02);">
+    <div class="text-sm">Configuration actuelle : modèle <b>{{ model }}</b> · enrichissement <b>{{ st.enrich_mode }}</b>.
+    <span class="muted">Le profil IA vaut pour l'évaluation ET l'enrichissement. La SEO reste en Haiku.</span></div>
+  </div>
+
+  <button class="btn btn-ok" type="submit">💾 Enregistrer les réglages</button>
+</form>
+{% endblock %}
