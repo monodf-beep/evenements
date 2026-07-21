@@ -180,11 +180,17 @@ add_shortcode('cs_add_to_calendar', function () {
     return ob_get_clean();
 });
 
-// ---- Affichage automatique en bas de la fiche (pas besoin de toucher Elementor) ----
+// ---- Affichage automatique en bas de la fiche ----
+// On ne s'appuie PAS sur in_the_loop()/is_main_query() : Elementor/GeneratePress
+// rendent le contenu hors de la boucle principale. On cible l'événement affiché
+// (get_the_ID == objet interrogé) et on n'ajoute la boîte qu'UNE fois par page.
 add_filter('the_content', function ($content) {
-    if (CS_ATC_AUTO && is_singular('tribe_events') && in_the_loop() && is_main_query()
+    static $done = false;
+    if (!$done && CS_ATC_AUTO && is_singular('tribe_events')
+        && (int) get_the_ID() === (int) get_queried_object_id()
         && strpos($content, 'cs-add-to-calendar') === false) {
-        $content .= do_shortcode('[cs_add_to_calendar]');
+        $box = do_shortcode('[cs_add_to_calendar]');
+        if ($box !== '') { $done = true; $content .= $box; }
     }
     return $content;
 }, 20);
