@@ -1,93 +1,139 @@
-# Gabarit des pages HUB (lieu) + runbook de création — à exécuter côté WordPress
+# Plan complet des pages HUB + gabarit + runbook — à exécuter côté WordPress
 
-*But : créer les pages hub SEO hyperlocal (Torino, Nice, Aoste, Forte di Bard, Chambéry,
-Chablais…) avec **UN seul gabarit réutilisable** et un **listing d'événements dynamique**
-(jamais de page vide). Ce document est autonome : il peut être confié à une conversation
-qui a l'accès WordPress (Novamira / MCP JetEngine). Le CONTENU de chaque page (H1, intro,
-meta FR/IT) est dans `docs/pages/<lieu>.md`.*
+*Document autonome, à confier à une conversation qui a l'accès WordPress (Novamira / MCP
+JetEngine). Il contient : la **logique** (pourquoi ces pages, dans cet ordre), le **plan
+complet** (socle + vagues), le **gabarit** à construire une fois, et le **runbook** de
+création. Le contenu éditorial des pages « prêtes » est dans `docs/pages/<lieu>.md`.*
 
 ---
 
-## 0. Principe
+## A. Le principe (à comprendre avant de créer)
 
 - **Un gabarit unique** = une zone d'intro éditoriale (statique, par page) + un **listing
-  d'événements dynamique** (JetEngine) filtré par **lieu**.
+  d'événements dynamique** (JetEngine) filtré par **lieu**. Jamais de page vide.
+- **Graduation** : on ne crée une page « lieu » **que si elle a ≥ 8 événements à venir**
+  (sinon page à moitié vide = *thin content*, pénalisé). La page **`/couverture-geo`** du
+  back-office dit **qui est prêt** et **qui attend**. Ce n'est pas une question d'importance
+  mais de **matière disponible** : ex. Forte di Bard (11 événements) est prêt, Annecy (5) non
+  — Annecy graduera dès qu'il sera mieux sourcé.
+- **Bilingue Polylang** : chaque page a une version **FR** et une **IT**, liées (hreflang).
+- **URL perpétuelle** : jamais d'année dans le slug (la page cumule son autorité).
 - Le filtre par lieu s'appuie sur ce que le publisher pose déjà sur chaque `tribe_events` :
-  - **méta `as_ville`** (la ville de l'événement) → filtre VILLE (ex. « Chambéry »),
-  - **taxonomie `territoire`** (4 termes) → filtre TERRITOIRE,
-  - **`tribe_events_cat`** → filtre CATÉGORIE (pour les croisements ville×catégorie),
-  - dates `_EventStartDate` / `_EventEndDate` → borne « à venir ».
-- **Bilingue Polylang** : chaque page a une version **FR** et une **IT**, liées.
-- **URL perpétuelle** : jamais d'année dans le slug.
+  **méta `as_ville`** (ville), **taxonomie `territoire`** (4 termes), **`tribe_events_cat`**
+  (catégorie), dates `_EventStartDate` / `_EventEndDate` (borne « à venir »).
 
-## 1. Prérequis (à vérifier une fois)
+---
 
-- JetEngine actif (Query Builder + Listing Grid) ; The Events Calendar ; Polylang ; RankMath.
-- La méta `as_ville` est bien renseignée sur les `tribe_events` (c'est le cas via
-  `scripts/publisher_as.py`). Vérifier sur 2-3 fiches (champ personnalisé `as_ville`).
+## B. Le plan complet des pages (la feuille de route)
 
-## 2. Étape 0 — construire le gabarit réutilisable (UNE fois)
+### B0. SOCLE — 4 pages « territoire » (parentes, à créer EN PREMIER)
+Elles agrègent **tout** un territoire → **toujours pleines**, jamais de souci de seuil. Ce sont
+les **parents** du maillage interne (chaque page lieu y renvoie). Filtre = **tax query
+`territoire`**. Intro courte (modèle bilingue en **Annexe G**).
 
-### 2a. La « carte événement » (JetEngine Listing Grid item), si elle n'existe pas déjà
-Listing pour `tribe_events` affichant : image à la une · titre (lien) · date (de
-`_EventStartDate`, format `j F`) · ville (`as_ville`) · catégorie. Sobre, réutilisable partout.
+| Page territoire | Slug | Filtre listing | Langues |
+|---|---|---|---|
+| Savoie / Haute-Savoie | `territoire/savoie-haute-savoie` | `territoire = savoie-haute-savoie` | FR + IT |
+| Piémont | `territoire/piemonte` | `territoire = piemonte` | IT + FR |
+| Vallée d'Aoste | `territoire/vallee-aoste` | `territoire = vallee-aoste` | FR + IT (parité) |
+| Nice / Alpes-Maritimes | `territoire/nice-alpes-maritimes` | `territoire = nice-alpes-maritimes` | FR + IT |
 
-### 2b. La Query MODÈLE (à cloner par page)
-JetEngine **Query Builder**, type *Posts*, `post_type = tribe_events`, `post_status = publish` :
-- **Meta query** « à venir » : `_EventEndDate` `>=` `%current_date%` (repli `_EventStartDate`
-  si l'événement n'a pas de fin).
-- **Order by** : méta `_EventStartDate`, **ASC** (le plus proche d'abord).
-- **Posts per page** : 24 (avec pagination) ou « load more ».
-- Le **filtre lieu** est ajouté À LA COPIE, par page (cf. étape 1).
-
-### 2c. Le gabarit de page
-Une page WordPress (Gutenberg natif de préférence, sinon Elementor) structurée ainsi :
-`[H1]` → `[intro éditoriale]` → `[Listing Grid = carte 2a + Query de la page]` → (option)
-`[maillage interne]`. C'est CE gabarit qu'on duplique.
-
-## 3. Étape 1 — créer chaque page (runbook, à répéter par lieu et par langue)
-
-Pour la page **FR** puis la page **IT** (contenu dans `docs/pages/<lieu>.md`) :
-1. **Cloner la Query modèle** → y ajouter le filtre du lieu :
-   - page VILLE : **meta query** `as_ville` `IN` (liste du fichier), ex. `Chambéry` ;
-   - page ZONE (ex. Chablais) : `as_ville` `IN` (la liste de communes du fichier) ;
-   - page TERRITOIRE : **tax query** `territoire` = le terme.
-2. **Créer la page** : titre + **slug perpétuel** (du fichier) + coller l'**intro** (H1, texte),
-   insérer le **Listing Grid** (carte 2a + la Query de l'étape 1) + le **maillage interne**.
-3. **RankMath** : renseigner *Meta title* + *Meta description* (du fichier), langue correcte.
-4. **Polylang** : définir la langue de la page, puis **lier** la version FR et la version IT
-   (elles doivent pointer l'une vers l'autre → hreflang correct).
-5. **Indexation** : ces 6 pages ont l'offre (seuil franchi) → **index, follow**. (Une future
-   page sous le seuil = `noindex` jusqu'à graduation, cf. `docs/CATALOGUE_GEO_SEO.md`.)
-
-## 4. Les 6 pages à créer maintenant (offre suffisante — cf. Couverture géo)
+### B1. VAGUE 1 — 6 pages « lieu » PRÊTES (seuil franchi aujourd'hui)
+Contenu éditorial rédigé, dans `docs/pages/`.
 
 | Page | Type | Filtre listing | Langues | Contenu |
 |---|---|---|---|---|
-| **Torino / Turin** | ville | `as_ville ∈ {Torino, Turin}` | IT + FR | `docs/pages/torino.md` |
-| **Nice** | ville | `as_ville = Nice` | FR + IT | `docs/pages/nice.md` |
-| **Aoste / Aosta** | ville | `as_ville ∈ {Aoste, Aosta}` | FR + IT (à parité) | `docs/pages/aoste-aosta.md` |
-| **Forte di Bard** | lieu | `as_ville = Bard` | IT + FR | `docs/pages/forte-di-bard.md` |
-| **Chambéry** | ville | `as_ville = Chambéry` | FR + IT | `docs/pages/chambery.md` |
-| **Chablais** | zone | `as_ville ∈ {Thonon-les-Bains, Évian-les-Bains, Morzine, Les Gets, Abondance, Châtel, Avoriaz}` | FR + IT | `docs/pages/chablais.md` |
+| **Torino / Turin** (48 évts) | ville | `as_ville ∈ {Torino, Turin}` | IT + FR | `docs/pages/torino.md` |
+| **Nice** (17) | ville | `as_ville = Nice` | FR + IT | `docs/pages/nice.md` |
+| **Forte di Bard** (11) | lieu | `as_ville = Bard` | IT + FR | `docs/pages/forte-di-bard.md` |
+| **Aoste / Aosta** (9) | ville | `as_ville ∈ {Aoste, Aosta}` | FR + IT (parité) | `docs/pages/aoste-aosta.md` |
+| **Chambéry** (8) | ville | `as_ville = Chambéry` | FR + IT | `docs/pages/chambery.md` |
+| **Chablais** (8) | zone | `as_ville ∈ {Thonon-les-Bains, Évian-les-Bains, Morzine, Les Gets, Abondance, Châtel, Avoriaz}` | FR + IT | `docs/pages/chablais.md` |
 
-## 5. Rappels
+### B2. VAGUE 2 — les prochaines à GRADUER (au fil du sourcing, PAS maintenant)
+Dès qu'une entité passe **8 événements à venir** (surveiller `/couverture-geo`), on lui crée sa
+page — le contenu éditorial sera rédigé **à ce moment-là** (même gabarit). Les plus proches :
+- **Savoie/HS** : Thonon-les-Bains (6), Annecy (5), Lac d'Annecy (5), Tarentaise (5)
+- **Piémont** : Cuneo (4) — puis, une fois sourcés : **Langhe, Monferrato, Alba**
+- **Vallée d'Aoste** : Courmayeur, Cervinia (à sourcer)
+- **Nice/06** : Menton (à sourcer)
+> La **liste complète** des entités candidates (villes, massifs, vallées, lacs, stations) avec
+> priorités P1/P2/P3 est dans **`docs/CATALOGUE_GEO_SEO.md`**. On ne crée jamais à l'aveugle :
+> c'est la Couverture géo qui déclenche.
 
-- **URL perpétuelle** (pas d'année) ; garder la même URL d'une saison à l'autre.
-- **hreflang** via la liaison Polylang FR↔IT (indispensable).
-- **Maillage interne** : chaque page renvoie vers son hub territoire, ses catégories, ses
-  lieux/villes voisins (détaillé dans chaque fichier de contenu).
-- Ne PAS créer de page pour un lieu sous le seuil (thin content) — attendre la graduation.
+### B3. Formats complémentaires (PLUS TARD)
+- **`/[ville]/ce-week-end/`** — pages datées, roulantes (même filtre ville + fenêtre week-end).
+- **Croisements catégorie × ville** (« concerts à Chambéry »…) — graduent aussi au seuil.
 
 ---
 
-## 6. Prompt prêt à coller (pour la conversation WordPress / Novamira)
+## C. Le gabarit réutilisable (à construire UNE fois)
+
+### C1. La « carte événement » (JetEngine Listing Grid item), si absente
+Listing pour `tribe_events` : image à la une · titre (lien) · date (`_EventStartDate`, format
+`j F`) · ville (`as_ville`) · catégorie. Sobre, réutilisable partout.
+
+### C2. La Query MODÈLE (à cloner par page)
+JetEngine **Query Builder**, type *Posts*, `post_type = tribe_events`, `post_status = publish` :
+- **Meta query « à venir »** : `_EventEndDate` `>=` `%current_date%` (repli `_EventStartDate`).
+- **Order by** : méta `_EventStartDate`, **ASC**.
+- **Posts per page** : 24 (pagination ou « load more »).
+- Le **filtre lieu** est ajouté À LA COPIE, par page.
+
+### C3. Le gabarit de page
+Page WordPress (Gutenberg natif de préférence, sinon Elementor) :
+`[H1]` → `[intro éditoriale]` → `[Listing Grid = carte C1 + Query de la page]` → `[maillage
+interne]`. C'est CE gabarit qu'on duplique.
+
+## D. Runbook — créer chaque page (répéter par page ET par langue)
+1. **Cloner la Query modèle** + ajouter le filtre : page territoire → `tax territoire` ; page
+   ville → `meta as_ville IN (…)` ; page zone → `meta as_ville IN (liste de communes)`.
+2. **Créer la page** : titre + **slug perpétuel** + coller **H1 + intro** + insérer le **Listing
+   Grid** filtré + le **maillage interne**.
+3. **RankMath** : *Meta title* + *Meta description* (du fichier / annexe), bonne langue.
+4. **Polylang** : définir la langue, puis **lier** les versions FR ↔ IT.
+5. **Indexation** : pages du socle (B0) et vague 1 (B1) = **index, follow**. Toute page sous le
+   seuil = `noindex` jusqu'à graduation.
+6. **Vérifier qu'aucune page n'est vide** (le listing doit remonter des événements).
+
+## E. Rappels
+- URL perpétuelle (pas d'année). hreflang via la liaison Polylang. Ne jamais créer sous le seuil.
+- Ordre conseillé : **B0 (socle territoire) → B1 (les 6) → B2 au fil de l'eau**.
+
+---
+
+## F. Prompt prêt à coller (pour la conversation WordPress / Novamira)
 
 > Tu as l'accès WordPress (agendasabauda.eu : The Events Calendar + JetEngine + Polylang +
-> RankMath). Crée les **6 pages hub** décrites dans `docs/GABARIT_PAGES_HUB.md` §4, en suivant
-> le **runbook §2-§3** : construis (ou réutilise) le gabarit unique (carte événement + Query
-> modèle « à venir » filtrée par `as_ville`/`territoire`), puis pour chaque page crée la version
-> **FR** et la version **IT** à partir du contenu de `docs/pages/<lieu>.md` (H1, slug perpétuel,
-> intro, meta RankMath), insère le Listing Grid filtré, **lie les deux langues en Polylang**, et
-> mets les 6 pages en **index, follow**. Vérifie qu'aucune n'est vide (le listing doit remonter
-> des événements). Rends la liste des URLs créées.
+> RankMath). Objectif : bâtir les pages hub SEO selon `docs/GABARIT_PAGES_HUB.md`.
+> 1) Construis **une fois** le gabarit réutilisable (carte événement + Query modèle « à venir »
+> filtrable, §C). 2) Crée d'abord le **socle : 4 pages territoire** (§B0, filtre taxo
+> `territoire`, intro de l'annexe §G), FR + IT liées Polylang. 3) Crée ensuite les **6 pages
+> prêtes** (§B1) à partir du contenu de `docs/pages/<lieu>.md` (H1, slug perpétuel, intro, meta
+> RankMath), avec le Listing Grid filtré par `as_ville`, FR + IT liées. Mets socle + vague 1 en
+> **index, follow**. Vérifie qu'aucune page n'est vide. Rends la liste des URLs créées.
+> N'attaque PAS la vague 2 (§B2) : elle se fera plus tard, quand la Couverture géo l'indiquera.
+
+---
+
+## G. Annexe — intro des 4 pages territoire (socle)
+
+*Gabarit court, à adapter légèrement par territoire. Aucun événement en dur (listing dynamique).*
+
+- **Savoie / Haute-Savoie** — H1 FR « Que faire en Savoie et Haute-Savoie : l'agenda culturel » ·
+  IT « Cosa fare in Savoia e Alta Savoia » · Intro FR : « Concerts, expositions, festivals,
+  marchés et fêtes populaires des deux Savoie — d'Annecy à Chambéry, des lacs aux stations.
+  Retrouvez ici tout l'agenda du territoire, actualisé en continu. »
+- **Piémont** — H1 IT « Cosa fare in Piemonte: l'agenda degli eventi » · FR « Que faire en
+  Piémont » · Intro IT : « Concerti, mostre, festival, sagre e mercati in tutto il Piemonte —
+  da Torino alle Langhe e al Monferrato. Qui l'agenda del territorio, aggiornato di continuo. »
+- **Vallée d'Aoste** — H1 (parité FR/IT) « Que faire en Vallée d'Aoste / Cosa fare in Valle
+  d'Aosta » · Intro : agenda bilingue de la région — d'Aoste au Forte di Bard, des châteaux aux
+  vallées et stations.
+- **Nice / Alpes-Maritimes** — H1 FR « Que faire à Nice et dans les Alpes-Maritimes » · IT
+  « Cosa fare a Nizza e nelle Alpi Marittime » · Intro : l'agenda du territoire niçois, de la
+  ville aux vallées (Roya, Vésubie, Tinée) et à Menton.
+
+*Meta title (~55 car.) : « Agenda [territoire] — sorties & événements | Agenda Sabauda ».
+Meta description (~150 car.) : « Que faire en [territoire] ? Concerts, expos, festivals, marchés :
+l'agenda culturel du territoire, actualisé en continu. » (traduire en IT).*
