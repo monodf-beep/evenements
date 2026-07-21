@@ -62,10 +62,10 @@ ce week-end et les jours qui viennent.
 ## 🇮🇹 IT
 
 ### H1
-Cosa fare a Nizza: l'agenda degli eventi
+Cosa fare a Nizza Marittima: l'agenda degli eventi
 
 ### Meta title (~55 car.)
-Cosa fare a Nizza: agenda ed eventi — Agenda Sabauda
+Cosa fare a Nizza Marittima: eventi — Agenda Sabauda
 
 ### Meta description (~150 car.)
 Cosa fare a Nizza? Concerti, mostre, spettacoli, mercati e festival: l'agenda delle uscite della capitale della Contea di Nizza, aggiornato di continuo.

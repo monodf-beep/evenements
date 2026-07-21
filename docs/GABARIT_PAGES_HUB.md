@@ -14,7 +14,7 @@ création. Le contenu éditorial des pages « prêtes » est dans `docs/pages/<l
 - **Graduation** : on ne crée une page « lieu » **que si elle a ≥ 8 événements à venir**
   (sinon page à moitié vide = *thin content*, pénalisé). La page **`/couverture-geo`** du
   back-office dit **qui est prêt** et **qui attend**. Ce n'est pas une question d'importance
-  mais de **matière disponible** : ex. Forte di Bard (11 événements) est prêt, Annecy (5) non
+  mais de **matière disponible** : ex. Torino (48) ou Nice (17) sont prêts, mais Annecy (5) non
   — Annecy graduera dès qu'il sera mieux sourcé.
 - **Bilingue Polylang** : chaque page a une version **FR** et une **IT**, liées (hreflang).
 - **URL perpétuelle** : jamais d'année dans le slug (la page cumule son autorité).
@@ -38,14 +38,14 @@ les **parents** du maillage interne (chaque page lieu y renvoie). Filtre = **tax
 | Vallée d'Aoste | `territoire/vallee-aoste` | `territoire = vallee-aoste` | FR + IT (parité) |
 | Nice / Alpes-Maritimes | `territoire/nice-alpes-maritimes` | `territoire = nice-alpes-maritimes` | FR + IT |
 
-### B1. VAGUE 1 — 6 pages « lieu » PRÊTES (seuil franchi aujourd'hui)
-Contenu éditorial rédigé, dans `docs/pages/`.
+### B1. VAGUE 1 — 5 pages « lieu » PRÊTES (seuil franchi aujourd'hui)
+Contenu éditorial rédigé, dans `docs/pages/`. *(Forte di Bard retiré : un lieu-musée sans
+intention de recherche « ville » — ses événements restent publiés sous le territoire VdA.)*
 
 | Page | Type | Filtre listing | Langues | Contenu |
 |---|---|---|---|---|
 | **Torino / Turin** (48 évts) | ville | `as_ville ∈ {Torino, Turin}` | IT + FR | `docs/pages/torino.md` |
-| **Nice** (17) | ville | `as_ville = Nice` | FR + IT | `docs/pages/nice.md` |
-| **Forte di Bard** (11) | lieu | `as_ville = Bard` | IT + FR | `docs/pages/forte-di-bard.md` |
+| **Nice / Nizza Marittima** (17) | ville | `as_ville = Nice` | FR + IT | `docs/pages/nice.md` |
 | **Aoste / Aosta** (9) | ville | `as_ville ∈ {Aoste, Aosta}` | FR + IT (parité) | `docs/pages/aoste-aosta.md` |
 | **Chambéry** (8) | ville | `as_ville = Chambéry` | FR + IT | `docs/pages/chambery.md` |
 | **Chablais** (8) | zone | `as_ville ∈ {Thonon-les-Bains, Évian-les-Bains, Morzine, Les Gets, Abondance, Châtel, Avoriaz}` | FR + IT | `docs/pages/chablais.md` |
@@ -108,10 +108,11 @@ interne]`. C'est CE gabarit qu'on duplique.
 > RankMath). Objectif : bâtir les pages hub SEO selon `docs/GABARIT_PAGES_HUB.md`.
 > 1) Construis **une fois** le gabarit réutilisable (carte événement + Query modèle « à venir »
 > filtrable, §C). 2) Crée d'abord le **socle : 4 pages territoire** (§B0, filtre taxo
-> `territoire`, intro de l'annexe §G), FR + IT liées Polylang. 3) Crée ensuite les **6 pages
+> `territoire`, intro de l'annexe §G), FR + IT liées Polylang. 3) Crée ensuite les **5 pages
 > prêtes** (§B1) à partir du contenu de `docs/pages/<lieu>.md` (H1, slug perpétuel, intro, meta
 > RankMath), avec le Listing Grid filtré par `as_ville`, FR + IT liées. Mets socle + vague 1 en
-> **index, follow**. Vérifie qu'aucune page n'est vide. Rends la liste des URLs créées.
+> **index, follow**. Respecte les noms FR/IT de `docs/NOMMAGE_TERRITOIRES.md`. Vérifie qu'aucune
+> page n'est vide. Rends la liste des URLs créées.
 > N'attaque PAS la vague 2 (§B2) : elle se fera plus tard, quand la Couverture géo l'indiquera.
 
 ---
@@ -121,7 +122,7 @@ interne]`. C'est CE gabarit qu'on duplique.
 *Gabarit court, à adapter légèrement par territoire. Aucun événement en dur (listing dynamique).*
 
 - **Savoie / Haute-Savoie** — H1 FR « Que faire en Savoie et Haute-Savoie : l'agenda culturel » ·
-  IT « Cosa fare in Savoia e Alta Savoia » · Intro FR : « Concerts, expositions, festivals,
+  IT « Cosa fare in Savoia » · Intro FR : « Concerts, expositions, festivals,
   marchés et fêtes populaires des deux Savoie — d'Annecy à Chambéry, des lacs aux stations.
   Retrouvez ici tout l'agenda du territoire, actualisé en continu. »
 - **Piémont** — H1 IT « Cosa fare in Piemonte: l'agenda degli eventi » · FR « Que faire en
@@ -131,8 +132,8 @@ interne]`. C'est CE gabarit qu'on duplique.
   d'Aosta » · Intro : agenda bilingue de la région — d'Aoste au Forte di Bard, des châteaux aux
   vallées et stations.
 - **Nice / Alpes-Maritimes** — H1 FR « Que faire à Nice et dans les Alpes-Maritimes » · IT
-  « Cosa fare a Nizza e nelle Alpi Marittime » · Intro : l'agenda du territoire niçois, de la
-  ville aux vallées (Roya, Vésubie, Tinée) et à Menton.
+  « Cosa fare a Nizza Marittima e nelle Alpi Marittime » · Intro : l'agenda du territoire niçois,
+  de la ville aux vallées (Roya, Vésubie, Tinée) et à Menton.
 
 *Meta title (~55 car.) : « Agenda [territoire] — sorties & événements | Agenda Sabauda ».
 Meta description (~150 car.) : « Que faire en [territoire] ? Concerts, expos, festivals, marchés :

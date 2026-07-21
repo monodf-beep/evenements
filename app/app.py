@@ -971,8 +971,6 @@ _GEO_CATALOGUE = {
     ],
     "Vallée d'Aoste": [
         ("ville", "Aoste / Aosta", "P1", ["aoste", "aosta"]),
-        ("ville", "Bard / Forte di Bard", "P1", ["bard"]),
-        ("ville", "Fénis", "P3", ["fenis"]),
         ("ville", "Courmayeur", "P1", ["courmayeur"]),
         ("ville", "Cervinia", "P1", ["cervinia", "breuil"]),
         ("ville", "Cogne", "P2", ["cogne"]),
