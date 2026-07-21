@@ -1960,12 +1960,15 @@ def preview(event_id: int):
         conn2.close()
     except sqlite3.OperationalError:
         press_kits = []
+    # Partage réseaux : post Instagram prêt à copier (légende FR + IT, hashtags, alt).
+    from utils import social as social_mod
+    ig_post = social_mod.instagram_post(ev)
     return render_template("preview.html", e=ev, image=image,
                            image_host=image_host, is_radar=is_radar,
                            enriched=enriched, enrich_running=enrich_running,
                            press_kits=press_kits, score_detail=score_detail,
                            jsonld=jsonld, seo_faq=seo_faq, seo_tags=seo_tags,
-                           faq_jsonld=faq_jsonld)
+                           faq_jsonld=faq_jsonld, ig_post=ig_post)
 
 
 @app.route("/enrich/<int:event_id>", methods=["POST"])
