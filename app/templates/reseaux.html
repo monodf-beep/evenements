@@ -24,9 +24,17 @@
   <div style="margin-top:.5rem">
     {% if langs|length > 1 %}<div class="muted text-sm" style="margin-bottom:.15rem">{{ '🇫🇷 FR' if lg=='fr' else '🇮🇹 IT' }}</div>{% endif %}
     <textarea id="cap-{{ e.id }}-{{ lg }}" rows="7" style="width:100%;font-size:.8rem;font-family:inherit;padding:.45rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ e._caps[lg] }}</textarea>
-    <div class="muted text-sm" style="margin-top:.15rem">✏️ Modifiable — la version publiée sera celle affichée ici au moment du clic.</div>
+    <div class="muted text-sm" style="margin-top:.15rem">
+      {% if e._ai_caps[lg] %}✨ Légende réécrite (voix Enrico){% else %}📋 Légende auto (gratuite){% endif %}
+      — modifiable, la version publiée sera celle affichée ici au moment du clic.
+    </div>
     <div class="btn-row" style="margin-top:.3rem;flex-wrap:wrap">
       <button type="button" class="btn btn-sm" onclick="rxCopy('cap-{{ e.id }}-{{ lg }}', this)">📋 Copier{{ ' '+lg|upper if langs|length>1 }}</button>
+      <form method="POST" action="/reseaux/rewrite/{{ e.id }}" style="display:inline"
+            onsubmit="return confirm('Réécrire la légende via l\'IA (voix Enrico Nos Alpes, sans emphase, sans tics IA) ? Appel payant, quelques centimes.')">
+        <input type="hidden" name="lang" value="{{ lg }}">
+        <button class="btn btn-sm">🪄 Réécrire 💶</button>
+      </form>
       {% if ig_ready %}
         {% for kind, klabel in [('single','Post'), ('carousel','Carrousel'), ('story','Story')] %}
           {% if e._published[lg][kind] %}

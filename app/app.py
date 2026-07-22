@@ -116,6 +116,13 @@ try:
     _conn.execute("ALTER TABLE social_posts ADD COLUMN platform TEXT DEFAULT 'instagram'")
 except sqlite3.OperationalError:
     pass
+# Légende Instagram réécrite par LLM (voix Enrico Nos Alpes + anti-signes-IA), mise en
+# cache : générée à la demande (bouton, payant), jamais recalculée à chaque page vue.
+for _col in ("social_caption_fr", "social_caption_it"):
+    try:
+        _conn.execute(f"ALTER TABLE events_raw ADD COLUMN {_col} TEXT")
+    except sqlite3.OperationalError:
+        pass
 _conn.commit()
 _conn.close()
 
@@ -2402,7 +2409,11 @@ def reseaux():
     def _pack(e, langs):
         e = dict(e)
         e["_img"] = event_image(e)
-        e["_caps"] = {lg: social_mod.caption(e, lg) for lg in langs}
+        # Légende réécrite (Enrico + humanisée) si déjà générée pour cet événement,
+        # sinon la version gratuite auto-générée (cf. utils.social.caption_ai / caption).
+        e["_caps"] = {lg: e.get(f"social_caption_{lg}") or social_mod.caption(e, lg)
+                     for lg in langs}
+        e["_ai_caps"] = {lg: bool(e.get(f"social_caption_{lg}")) for lg in langs}
         e["_published"] = {lg: {k: published.get((e["id"], lg, k)) == "ok"
                                 for k in ("single", "carousel", "story")}
                            for lg in langs}
@@ -2418,6 +2429,51 @@ def reseaux():
                          "ig_ready": ig.configured(label)})
     return render_template("reseaux.html", accounts=accounts, today=today,
                            active="reseaux", posts_per_week=3)
+
+
+@app.route("/reseaux/rewrite/<int:event_id>", methods=["POST"])
+@require_auth
+def reseaux_rewrite(event_id: int):
+    """Réécrit la légende via LLM (voix Enrico Nos Alpes + anti-signes-IA, cf.
+    utils.social.caption_ai) pour UN événement, À LA DEMANDE — coût maîtrisé, jamais
+    automatique. Le résultat est mis en cache (events_raw.social_caption_<lang>)."""
+    import anthropic
+    from utils import social as social_mod
+    lang = request.form.get("lang", "fr")
+    if lang not in ("fr", "it"):
+        lang = "fr"
+    conn = get_db()
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    ev = dict(row)
+    title = (ev.get("title") or "")[:70]
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        conn.close()
+        flash("⚠️ Clé API absente — légende non réécrite.", "err")
+        return redirect(url_for("reseaux") + f"#e{event_id}")
+    model = (os.getenv("ANTHROPIC_MODEL_SEO") or os.getenv("ANTHROPIC_MODEL_VISUALS")
+             or "claude-haiku-4-5")
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        text = social_mod.caption_ai(ev, lang, client, model)
+    except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        usage.note_api_error(exc)
+        conn.close()
+        flash("⚠️ Appel API échoué (crédit/quota ?) — voir le bandeau d'alerte.", "err")
+        return redirect(url_for("reseaux") + f"#e{event_id}")
+    if not text:
+        conn.close()
+        flash(f"⚠️ « {title} » — réponse illisible du modèle, réessaie.", "err")
+        return redirect(url_for("reseaux") + f"#e{event_id}")
+    conn.execute(f"UPDATE events_raw SET social_caption_{lang}=? WHERE id=?",
+                (text, event_id))
+    conn.commit()
+    conn.close()
+    flash(f"✨ « {title} » — légende réécrite ({lang.upper()}, voix Enrico) 💶.", "ok")
+    return redirect(url_for("reseaux") + f"#e{event_id}")
 
 
 @app.route("/reseaux/publish/<int:event_id>", methods=["POST"])
