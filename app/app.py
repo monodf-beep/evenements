@@ -91,6 +91,12 @@ try:
     _conn.execute("ALTER TABLE events_raw ADD COLUMN multi_lieux INTEGER DEFAULT 0")
 except sqlite3.OperationalError:
     pass
+# Drapeau « 🌟 vaut le détour » : événement phare autorisé à apparaître sur les comptes
+# Instagram des AUTRES territoires (choix éditorial, cf. tableau Réseaux).
+try:
+    _conn.execute("ALTER TABLE events_raw ADD COLUMN worth_trip INTEGER DEFAULT 0")
+except sqlite3.OperationalError:
+    pass
 _conn.commit()
 _conn.close()
 
@@ -2327,6 +2333,65 @@ def triage_apply():
     return redirect(url_for("triage"))
 
 
+# --- Réseaux : tableau de publication Instagram, un « compte » par territoire ---------
+# Chaque compte publie les PRINCIPAUX événements de SON territoire (top score, à venir,
+# complets) + une section « 🌟 Vaut le détour » (événements phares des AUTRES territoires,
+# marqués worth_trip). Légende générée dans la langue du compte (VdA = FR puis IT).
+_RESEAUX_ACCOUNTS = [
+    ("Savoie / Haute-Savoie", ["fr"]),
+    ("Piémont", ["it"]),
+    ("Vallée d'Aoste", ["fr", "it"]),
+    ("Nice / Alpes-Maritimes", ["fr"]),
+]
+_RESEAUX_MAINS = 8       # nb de « principaux » remontés par territoire (on en choisit 3/sem)
+_RESEAUX_DETOURS = 3     # nb de « vaut le détour » proposés par compte
+
+
+@app.route("/reseaux")
+@require_auth
+def reseaux():
+    from utils import social as social_mod
+    today = date.today().isoformat()
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM events_raw "
+        "WHERE statut IN ('evaluated','published_cs','published_sub') "
+        "  AND duplicate_of IS NULL AND COALESCE(translation_of,0)=0 "
+        "  AND (COALESCE(date_event_end, date_event_start,'')='' "
+        "       OR COALESCE(date_event_end, date_event_start) >= ?) "
+        "ORDER BY COALESCE(llm_score,0) DESC, "
+        "         COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC",
+        (today,)).fetchall()
+    conn.close()
+    # Ne garder que les événements POSTABLES (complets) et les grouper par territoire.
+    by_terr: dict = {}
+    detour_pool: list = []
+    for r in rows:
+        e = dict(r)
+        if not comp.is_complete(e):
+            continue
+        grp = _couv_terr_group(e.get("territoire"))
+        by_terr.setdefault(grp, []).append(e)
+        if e.get("worth_trip"):
+            detour_pool.append(e)
+
+    def _pack(e, langs):
+        e = dict(e)
+        e["_img"] = event_image(e)
+        e["_caps"] = {lg: social_mod.caption(e, lg) for lg in langs}
+        return e
+
+    accounts = []
+    for label, langs in _RESEAUX_ACCOUNTS:
+        mains = [_pack(e, langs) for e in by_terr.get(label, [])[:_RESEAUX_MAINS]]
+        detours = [_pack(e, langs) for e in detour_pool
+                   if _couv_terr_group(e.get("territoire")) != label][:_RESEAUX_DETOURS]
+        accounts.append({"label": label, "langs": langs,
+                         "mains": mains, "detours": detours})
+    return render_template("reseaux.html", accounts=accounts, today=today,
+                           active="reseaux", posts_per_week=3)
+
+
 def _apply_completion(conn, event_id: int, values: dict) -> tuple[bool, list[str]]:
     """Écrit les champs fournis (non vides) et renvoie (complet?, manques restants)."""
     clean = {k: v.strip() for k, v in values.items()
@@ -2543,6 +2608,15 @@ def action(event_id: int, action: str):
         conn.execute("UPDATE events_raw SET multi_lieux=0 WHERE id=?", (event_id,))
         conn.commit()
         flash(f"↩️ « {title} » n'est plus multi-lieux.", "ok")
+    elif action == "worth_trip":
+        conn.execute("UPDATE events_raw SET worth_trip=1 WHERE id=?", (event_id,))
+        conn.commit()
+        flash(f"🌟 « {title} » — « vaut le détour » : il pourra être posté sur les "
+              "comptes des autres territoires.", "ok")
+    elif action == "worth_trip_off":
+        conn.execute("UPDATE events_raw SET worth_trip=0 WHERE id=?", (event_id,))
+        conn.commit()
+        flash(f"↩️ « {title} » n'est plus « vaut le détour ».", "ok")
 
     conn.close()
     nxt = request.form.get("next", "")

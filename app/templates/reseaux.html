@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% set active = 'reseaux' %}
+{% block title %}Réseaux — Agenda CS{% endblock %}
+{% block h1 %}Réseaux — Instagram par territoire{% endblock %}
+{% block subtitle %}<div class="sub">Un compte par territoire. Chaque compte publie ses <strong>principaux</strong> événements (top score, à venir, complets) + les <strong>🌟 vaut le détour</strong> des autres territoires. La légende est prête dans la bonne langue — tu copies, tu postes. Objectif indicatif : <strong>{{ posts_per_week }} posts/semaine/compte</strong>.</div>{% endblock %}
+
+{% block content %}
+
+{% macro carte(e, langs, is_detour=False) %}
+<div class="card" id="e{{ e.id }}" style="padding:.8rem;flex:1 1 300px;min-width:280px;max-width:360px">
+  <div style="display:flex;gap:.6rem">
+    {% if e._img %}<img src="{{ e._img }}" alt="" style="width:74px;height:74px;object-fit:cover;border-radius:.4rem;flex:0 0 auto">{% endif %}
+    <div style="min-width:0">
+      <div style="font-weight:700;font-size:.92rem;line-height:1.2">{{ e.title }}</div>
+      <div class="muted" style="font-size:.78rem;margin-top:.15rem">
+        {% if e.date_event_start %}📅 {{ e.date_event_start }}{% endif %}
+        {% if e.ville %} · 📍 {{ e.ville }}{% endif %}
+        {% if e.llm_score %} · ⭐ {{ e.llm_score }}{% endif %}
+      </div>
+      {% if is_detour %}<span class="pill" style="background:#fdf3d6;color:#7a5b00">🌟 {{ e.territoire }}</span>{% endif %}
+    </div>
+  </div>
+  {% for lg in langs %}
+  <div style="margin-top:.5rem">
+    {% if langs|length > 1 %}<div class="muted text-sm" style="margin-bottom:.15rem">{{ '🇫🇷 FR' if lg=='fr' else '🇮🇹 IT' }}</div>{% endif %}
+    <textarea id="cap-{{ e.id }}-{{ lg }}" rows="7" readonly style="width:100%;font-size:.8rem;font-family:inherit;padding:.45rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ e._caps[lg] }}</textarea>
+  </div>
+  {% endfor %}
+  <div class="btn-row" style="margin-top:.45rem">
+    {% for lg in langs %}
+    <button type="button" class="btn btn-sm" onclick="rxCopy('cap-{{ e.id }}-{{ lg }}', this)">📋 Copier{{ ' '+lg|upper if langs|length>1 }}</button>
+    {% endfor %}
+    <a href="/preview/{{ e.id }}#partage" class="btn btn-sm" target="_blank">👁</a>
+    {% if not is_detour %}
+    <form method="POST" action="/action/{{ e.id }}/{{ 'worth_trip_off' if e.worth_trip else 'worth_trip' }}" style="display:inline">
+      <input type="hidden" name="next" value="/reseaux#e{{ e.id }}">
+      <button class="btn btn-sm" title="Autoriser cet événement à apparaître sur les comptes des autres territoires">{{ '🌟 Retirer' if e.worth_trip else '🌟 Vaut le détour' }}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% for acc in accounts %}
+<section style="margin:1.2rem 0">
+  <h2 class="sec">📣 {{ acc.label }}
+    <span class="muted" style="font-size:.85rem;font-weight:400">
+      — {{ 'FR puis IT' if acc.langs|length>1 else ('Français' if acc.langs[0]=='fr' else 'Italien') }}</span>
+  </h2>
+
+  {% if acc.mains %}
+  <div style="display:flex;flex-wrap:wrap;gap:.7rem">
+    {% for e in acc.mains %}{{ carte(e, acc.langs) }}{% endfor %}
+  </div>
+  {% else %}
+  <div class="muted" style="padding:.5rem 0">Aucun événement complet à venir pour ce territoire pour l'instant.</div>
+  {% endif %}
+
+  {% if acc.detours %}
+  <div style="margin-top:.7rem">
+    <div style="font-weight:600;margin-bottom:.35rem">🌟 Ça vaut le détour <span class="muted" style="font-weight:400">— événements phares d'autres territoires</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:.7rem">
+      {% for e in acc.detours %}{{ carte(e, acc.langs, is_detour=True) }}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endfor %}
+
+<script>
+function rxCopy(id, btn) {
+  var el = document.getElementById(id); if (!el) return;
+  el.select(); el.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(el.value).then(function () {
+    var old = btn.textContent; btn.textContent = '✓';
+    setTimeout(function () { btn.textContent = old; }, 1200);
+  });
+}
+</script>
+{% endblock %}
