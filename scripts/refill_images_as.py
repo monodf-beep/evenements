@@ -21,6 +21,16 @@ photo troquée pour une bannière) avant de re-pousser.
    (correctif « unset post_status » de cs-publish.php) — sinon un événement publié
    serait repassé en brouillon au re-push. Vérifie que le correctif est déployé.
 
+Mode --unverified : rattrape les événements dont image_source est NULL — jamais
+passés par resolve_image (typiquement : url_image posée directement depuis l'enclosure
+du flux RSS, à l'ingestion, avant tout garde-fou). Invisibles à --lowres et --recheck,
+qui filtrent tous les deux sur des valeurs précises de image_source. Trouvé en
+production : un événement (« orchestre de la suisse romande ») affichait la photo
+D'UN AUTRE ARTICLE SANS RAPPORT (un fait-divers), simplement parce qu'un item RSS
+voisin partageait la même image d'illustration générique. --unverified force une
+RÉSOLUTION COMPLÈTE (règles + agent vision) sans comparaison de taille — l'image
+actuelle n'a aucune confiance a priori, même si elle est grande.
+
 Usage (sur le VPS) :
     .venv/bin/python scripts/refill_images_as.py --dry-run     # voir sans rien pousser
     .venv/bin/python scripts/refill_images_as.py               # tous les AS sans image
@@ -28,6 +38,8 @@ Usage (sur le VPS) :
     .venv/bin/python scripts/refill_images_as.py --no-web      # sans Commons (og+page+bannière)
     .venv/bin/python scripts/refill_images_as.py --lowres --dry-run   # images trop petites
     .venv/bin/python scripts/refill_images_as.py --lowres      # les remplacer + re-pousser
+    .venv/bin/python scripts/refill_images_as.py --unverified --dry-run   # jamais vérifiées
+    .venv/bin/python scripts/refill_images_as.py --unverified   # les re-résoudre + re-pousser
 """
 from __future__ import annotations
 import argparse
@@ -112,6 +124,20 @@ def select_lowres(conn: sqlite3.Connection, ids, min_dim: int) -> list[dict]:
     return out
 
 
+def select_unverified(conn: sqlite3.Connection, ids) -> list[dict]:
+    """Événements AS publiés dont image_source est NULL — jamais passés par
+    resolve_image, donc jamais vus par --lowres/--recheck (qui filtrent tous les deux
+    sur des valeurs précises de image_source). L'image en base n'a AUCUNE confiance a
+    priori, quelle que soit sa taille — voir le docstring du module."""
+    q = ("SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,'') <> '' "
+         "AND duplicate_of IS NULL AND COALESCE(url_image,'') <> '' AND image_source IS NULL")
+    params: list = []
+    if ids:
+        q += f" AND id IN ({','.join('?' * len(ids))})"
+        params += list(ids)
+    return [dict(r) for r in conn.execute(q, params).fetchall()]
+
+
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(
@@ -142,6 +168,10 @@ def main(argv=None) -> int:
                              "image_source est dans cette liste (ex. 'page,web') avec la chaîne "
                              "corrigée, et ne re-pousse QUE là où l'image change réellement. "
                              "Répare en masse les bandeaux attrapés par le scan de page.")
+    parser.add_argument("--unverified", action="store_true",
+                        help="Cible les événements dont image_source est NULL (jamais passés par "
+                             "resolve_image — invisibles à --lowres/--recheck). Force une résolution "
+                             "complète, sans confiance a priori dans l'image actuelle.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -165,6 +195,9 @@ def main(argv=None) -> int:
         rows = select_lowres(conn, args.ids, args.min_dim)
         log.info("%d image(s) à réévaluer (réelles < %dpx, ou bannières remplaçables).",
                  len(rows), args.min_dim)
+    elif args.unverified:
+        rows = select_unverified(conn, args.ids)
+        log.info("%d événement(s) jamais vérifiés (image_source NULL) à résoudre.", len(rows))
     else:
         rows = select_targets(conn, args.ids, args.wp_ids)
         log.info("%d événement(s) Agenda Sabauda sans image à traiter.", len(rows))
@@ -197,12 +230,25 @@ def main(argv=None) -> int:
     for ev in rows:
         title = (ev.get("title") or "")[:55]
         old_url = (ev.get("url_image") or "").strip()
-        # Récupération : on VIDE d'abord l'image parasite pour que resolve_image reparte
-        # de la chaîne (og:image → page → Commons → bannière) sans la reprendre.
-        if args.bad_url:
+        # Récupération : on VIDE d'abord l'image parasite/non fiable pour que
+        # resolve_image reparte de la chaîne (og:image → page → Commons → bannière)
+        # sans jamais s'appuyer sur l'ancienne URL.
+        if args.bad_url or args.unverified:
             ev["url_image"] = ""
         url, credit, source = resolve_image(ev, client, blocked, banners,
                                             verify_client=verify_client, verify_model=verify_model)
+
+        # Garde --unverified : même si l'image résolue est IDENTIQUE à l'ancienne (elle
+        # était donc déjà correcte), on enregistre sa source en base pour qu'elle ne
+        # soit plus jamais NULL — mais on ne re-pousse pas sur WordPress pour rien.
+        if args.unverified and url and url == old_url:
+            if not args.dry_run:
+                conn.execute("UPDATE events_raw SET image_credit=?, image_source=? WHERE id=?",
+                             (credit, source, ev["id"]))
+                conn.commit()
+            skipped_lowres += 1
+            log.info("[%s] confirmée (%s), pas de re-push — %s", ev["id"], source, title)
+            continue
 
         # Récupération : si la ré-résolution retombe sur l'image parasite, on la refuse
         # (repli bannière territoire plutôt que de re-publier le bandeau hors-sujet).
@@ -265,7 +311,8 @@ def main(argv=None) -> int:
             log.error("[%s] re-push échoué après 3 tentatives — %s", ev["id"], title)
 
     tail = (f" | gardées (pas mieux)={skipped_lowres}" if args.lowres
-            else f" | inchangées={skipped_lowres}" if args.recheck else "")
+            else f" | inchangées={skipped_lowres}" if args.recheck
+            else f" | confirmées sans re-push={skipped_lowres}" if args.unverified else "")
     log.info("Résolu — og=%d · page=%d · Commons=%d · bannière=%d · aucun=%d | re-poussés=%d%s%s",
              stats["og"], stats["page"], stats["commons"], stats["banner"], stats["none"],
              pushed, tail, "  (dry-run : rien poussé)" if args.dry_run else "")
