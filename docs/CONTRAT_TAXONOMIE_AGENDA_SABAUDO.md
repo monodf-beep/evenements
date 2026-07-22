@@ -5,7 +5,9 @@ back-office étiquette, WordPress affiche : les deux doivent parler des mêmes t
 les mêmes identifiants. Ce document est la source de vérité. Toute création ou renommage de
 catégorie passe d'abord par ici.*
 
-**Dernière synchronisation base :** 2026-07-21.
+**Dernière synchronisation base :** 2026-07-22. Renommage des slugs de territoire (`savoie`,
+`savoia`, `comte-de-nice`, `contea-di-nizza` ; anciens slugs redirigés en 301) et nom IT de Nice
+passé à « Contea di Nizza ». Convention de nommage détaillée : `docs/NOMMAGE_TERRITOIRES.md`.
 
 ---
 
@@ -60,10 +62,10 @@ complément si connue, jamais à la place.**
 
 | Territoire | FR (term_id · slug) | IT (term_id · slug) | Sous-territoires FR (term_id) |
 |---|---|---|---|
-| Savoie / Haute-Savoie | 3 · `savoie-haute-savoie` | 318 · `savoia-alta-savoia` | Annecy (4), Chambéry (5) |
+| Savoie | 3 · `savoie` | 318 · `savoia` | Annecy (4), Chambéry (5) |
 | Piémont | 6 · `piemont` | 321 · `piemonte` | Turin (7) |
 | Vallée d'Aoste | 8 · `vallee-d-aoste` | 324 · `valle-d-aosta` | Aoste (9) |
-| Comté de Nice | 10 · `nice-alpes-maritimes` | 327 · `nizza-alpi-marittime` | Nice (11) |
+| Comté de Nice | 10 · `comte-de-nice` | 327 · `contea-di-nizza` | Nice (11) |
 
 Ces valeurs sont la copie exacte de `cs_terr_canon_data()` (mu-plugin
 `cs-territoire-persistant.php`). Si l'une change, mettre à jour **les deux** au même moment.
