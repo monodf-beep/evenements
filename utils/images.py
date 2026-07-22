@@ -37,6 +37,41 @@ _CHROME_IMG = re.compile(
     r"logo|icon|sprite|favicon|placeholder|pixel|spinner|avatar|blank|1x1|"
     r"loader|badge|banniere|banner|header-|/theme/|/assets/(?:img/)?ui", re.I)
 
+# Sous ce seuil (plus petit côté, en px), une image reste visiblement floue une fois
+# étirée aux formats sociaux (1080 px et +) — un og:image standard (souvent 600×315
+# pour les cartes de partage) est SOUS ce seuil. Mieux vaut chercher plus loin dans
+# la chaîne (page → Commons → bannière) qu'accepter une image connue trop petite.
+MIN_DIM = 700
+_MAX_CHECK_BYTES = 3 * 1024 * 1024
+
+
+def _image_size(data: bytes) -> tuple[int, int]:
+    try:
+        from PIL import Image
+        import io
+        with Image.open(io.BytesIO(data)) as img:
+            return img.size
+    except Exception:
+        return (0, 0)
+
+
+def _big_enough(url: str, timeout: int = 8) -> bool:
+    """Télécharge (borné) une image candidate pour vérifier sa VRAIE résolution —
+    l'URL seule ne dit rien de la taille réelle du fichier."""
+    try:
+        r = requests.get(url, timeout=timeout, headers=_PAGE_UA, stream=True)
+        if r.status_code != 200:
+            return False
+        buf = b""
+        for chunk in r.iter_content(65536):
+            buf += chunk
+            if len(buf) > _MAX_CHECK_BYTES:
+                break
+        w, h = _image_size(buf)
+        return min(w, h) >= MIN_DIM
+    except requests.RequestException:
+        return False
+
 
 def fetch_og_image(url: str, timeout: int = 8) -> str:
     """Image de partage (og:image / twitter:image) d'une page officielle.
@@ -60,7 +95,7 @@ def fetch_og_image(url: str, timeout: int = 8) -> str:
             img = htmlmod.unescape(m.group(1).strip())
             if img.startswith("//"):
                 img = "https:" + img
-            if img.startswith("http"):
+            if img.startswith("http") and _big_enough(img):
                 return img
     return ""
 
@@ -110,11 +145,13 @@ def fetch_content_image(url: str, timeout: int = 8) -> str:
 
     if not candidates:
         return ""
-    # Priorité aux photos de dossier éditorial (/uploads/…), sinon la 1re valable.
-    for src in candidates:
-        if _CONTENT_HINT.search(src):
+    # Priorité aux photos de dossier éditorial (/uploads/…), sinon la 1re valable —
+    # dans chaque groupe, on écarte les images trop petites (floues une fois étirées).
+    hinted = [c for c in candidates if _CONTENT_HINT.search(c)]
+    for src in hinted + [c for c in candidates if c not in hinted]:
+        if _big_enough(src):
             return src
-    return candidates[0]
+    return ""
 
 
 def _clean(text: str) -> str:

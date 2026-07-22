@@ -22,6 +22,7 @@ Exemples :
 from __future__ import annotations
 import argparse
 import base64
+import io
 import json
 import os
 import re
@@ -37,6 +38,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils import images
 from utils.images import fetch_og_image
 from utils.sources import (is_blocked_image, is_logo_image,
                            load_blocked_image_domains)
@@ -191,6 +193,15 @@ def find_verified_image(ev: dict, client, blocked: set[str]) -> tuple[str, str]:
         return "", ""
     img_bytes, mime = _download(candidate)
     if not img_bytes:
+        return "", ""
+    try:
+        from PIL import Image
+        with Image.open(io.BytesIO(img_bytes)) as im:
+            w, h = im.size
+    except Exception:
+        w, h = 0, 0
+    if min(w, h) < images.MIN_DIM:  # trop petite : floue une fois étirée aux formats sociaux
+        log.info("Image écartée (résolution %dx%d < %dpx) : %s", w, h, images.MIN_DIM, candidate[:70])
         return "", ""
     if not verify_image(ev, proposal.get("subject", ""), img_bytes, mime, client):
         return "", ""
