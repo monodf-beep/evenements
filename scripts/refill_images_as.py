@@ -134,6 +134,11 @@ def main(argv=None) -> int:
                              "sous-chaîne (une image parasite partagée, ex. un bandeau de site), "
                              "les ré-résout et les re-pousse. Rejette toute nouvelle URL contenant "
                              "encore la sous-chaîne.")
+    parser.add_argument("--recheck", default="",
+                        help="RÉCUPÉRATION groupée : ré-résout tous les événements publiés dont "
+                             "image_source est dans cette liste (ex. 'page,web') avec la chaîne "
+                             "corrigée, et ne re-pousse QUE là où l'image change réellement. "
+                             "Répare en masse les bandeaux attrapés par le scan de page.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -145,6 +150,14 @@ def main(argv=None) -> int:
         rows = [dict(r) for r in conn.execute(q, (f"%{args.bad_url}%",)).fetchall()]
         log.info("%d événement(s) avec l'image parasite « %s » à ré-résoudre.",
                  len(rows), args.bad_url)
+    elif args.recheck:
+        sources = [s.strip() for s in args.recheck.split(",") if s.strip()]
+        ph = ",".join("?" * len(sources))
+        q = (f"SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,'') <> '' "
+             f"AND duplicate_of IS NULL AND COALESCE(image_source,'') IN ({ph})")
+        rows = [dict(r) for r in conn.execute(q, sources).fetchall()]
+        log.info("%d événement(s) (image_source ∈ %s) à ré-résoudre ; re-push seulement si l'image change.",
+                 len(rows), sources)
     elif args.lowres:
         rows = select_lowres(conn, args.ids, args.min_dim)
         log.info("%d image(s) à réévaluer (réelles < %dpx, ou bannières remplaçables).",
@@ -187,6 +200,13 @@ def main(argv=None) -> int:
         if args.bad_url and url and args.bad_url in url:
             url = pick_image(ev.get("territoire", ""), str(ev["id"]), banners) or ""
             credit, source = "", ("banner" if url else "none")
+
+        # Garde --recheck : on ne re-pousse QUE si l'image change vraiment (sinon
+        # l'événement était déjà correct — aucun appel WordPress inutile).
+        if args.recheck and (not url or url == old_url):
+            skipped_lowres += 1
+            log.info("[%s] inchangée (%s) — %s", ev["id"], source or "aucune", title)
+            continue
 
         # Garde --lowres : on ne remplace QUE par strictement plus grand, et jamais une
         # vraie photo par une bannière — sinon on garde l'existante et on ne re-pousse
@@ -235,7 +255,8 @@ def main(argv=None) -> int:
         else:
             log.error("[%s] re-push échoué après 3 tentatives — %s", ev["id"], title)
 
-    tail = f" | gardées (pas mieux)={skipped_lowres}" if args.lowres else ""
+    tail = (f" | gardées (pas mieux)={skipped_lowres}" if args.lowres
+            else f" | inchangées={skipped_lowres}" if args.recheck else "")
     log.info("Résolu — og=%d · page=%d · Commons=%d · bannière=%d · aucun=%d | re-poussés=%d%s%s",
              stats["og"], stats["page"], stats["commons"], stats["banner"], stats["none"],
              pushed, tail, "  (dry-run : rien poussé)" if args.dry_run else "")
