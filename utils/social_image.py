@@ -90,13 +90,32 @@ def _dept_map() -> "dict[str, str]":
     return _DEPT_BY_CITY
 
 
+def _dept_for_city(ville: str) -> "str | None":
+    """Département (73/74) pour une ville, ou None si inconnue/ambiguë.
+
+    Le champ `ville` de l'événement contient souvent une forme courte (« Évian »)
+    alors que la liste officielle des communes utilise le nom complet
+    (« Évian-les-Bains ») — repli par préfixe. Un préfixe qui touche des communes de
+    DEUX départements différents (ex. « Saint-Jean » → Maurienne 73 ET Aulps 74) est
+    ambigu : on ne devine pas, mieux vaut « Savoie » seul qu'un département faux."""
+    v = _norm_city(ville)
+    if not v:
+        return None
+    m = _dept_map()
+    exact = m.get(v)
+    if exact:
+        return exact
+    matches = {dept for key, dept in m.items() if key.startswith(v + "-")}
+    return matches.pop() if len(matches) == 1 else None
+
+
 def chip_label(territoire: str, ville: str = "") -> str:
     """Texte de la puce territoire. Pour la Savoie, précise le département quand la
     ville est reconnue (« SAVOIE (DEPT. 73) ») ; sinon, libellé générique du territoire."""
     tk = _terr_key(territoire)
     if tk == "savoie":
-        dept = _dept_map().get(_norm_city(ville))
-        if dept in ("73", "74"):
+        dept = _dept_for_city(ville)
+        if dept:
             return f"SAVOIE (DEPT. {dept})"
     return TERR_LABEL.get(tk, tk.upper())
 
