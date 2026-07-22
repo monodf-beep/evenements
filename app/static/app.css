@@ -74,6 +74,14 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 .nav-badge { margin-left:auto; background:var(--accent); color:#fff; font-size:.72rem;
   font-weight:700; padding:.06rem .42rem; border-radius:var(--radius-pill); }
 .nav a.on .nav-badge { background:#fff; color:var(--brand-ink); }
+/* Repère de SITE DE DESTINATION (culturasabauda.eu vs agendasabauda.eu), quand
+   plusieurs liens d'une même section publient sur des sites différents. */
+.nav-tag { font-size:.62rem; font-weight:700; letter-spacing:.03em; padding:.04rem .34rem;
+  border-radius:4px; }
+.nav-tag-cs { background:rgba(200,16,46,.25); color:#ffc2ca; }   /* culturasabauda.eu */
+.nav-tag-as { background:rgba(31,111,139,.3); color:#9fdcf0; }   /* agendasabauda.eu */
+.nav a.on .nav-tag-cs { background:rgba(255,255,255,.22); color:#fff; }
+.nav a.on .nav-tag-as { background:rgba(255,255,255,.22); color:#fff; }
 /* Intertitres de section (regroupement par produit dans la barre latérale) */
 .nav-section { font-size:.64rem; letter-spacing:.11em; text-transform:uppercase;
   color:#7c8798; font-weight:700; padding:.8rem .75rem .28rem; }

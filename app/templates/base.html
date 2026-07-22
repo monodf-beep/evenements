@@ -23,10 +23,13 @@
 
       <div class="nav-section">À traiter</div>
       <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
+        <span class="nav-tag nav-tag-cs" title="Publie sur culturasabauda.eu">CS</span>
         {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
       <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
+        <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span>
         {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
-      <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer</a>
+      <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer
+        <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span></a>
 
       <div class="nav-section">Publier & grandir</div>
       <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>
