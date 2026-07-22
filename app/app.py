@@ -2399,7 +2399,9 @@ def reseaux():
         e = dict(e)
         e["_img"] = event_image(e)
         e["_caps"] = {lg: social_mod.caption(e, lg) for lg in langs}
-        e["_published"] = {lg: published.get((e["id"], lg, "single")) == "ok" for lg in langs}
+        e["_published"] = {lg: {k: published.get((e["id"], lg, k)) == "ok"
+                                for k in ("single", "carousel", "story")}
+                           for lg in langs}
         return e
 
     accounts = []
@@ -2480,6 +2482,15 @@ def reseaux_publish(event_id: int):
                     raise RuntimeError("upload WordPress échoué")
                 urls.append(url)
             result = ig.publish_carousel(terr_label, urls, caption)
+        elif kind == "story":
+            img = social_image.story(
+                src, title=ev.get("title", ""), date_str=date_str,
+                territoire=ev.get("territoire", ""))
+            url = wp_media.upload_bytes(
+                social_image.to_jpeg(img), f"ig-{event_id}-{lang}-story.jpg", alt=alt)
+            if not url:
+                raise RuntimeError("upload WordPress échoué")
+            result = ig.publish_story(terr_label, url)
         else:
             img = social_image.single_post(
                 src, title=ev.get("title", ""), date_str=date_str,

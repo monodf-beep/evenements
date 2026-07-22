@@ -138,6 +138,35 @@ def single_post(photo, *, title, date_str, territoire, site="agendasabauda.eu", 
     return canvas.convert("RGB")
 
 
+def story(photo, *, title, date_str, territoire, site="agendasabauda.eu"):
+    """Story 1080×1920 : photo + texte, SANS légende (l'API Instagram n'accepte pas
+    de texte séparé sur les stories — tout doit être « cuit » dans l'image). Marges
+    hautes/basses réservées pour ne pas passer sous l'UI Instagram (avatar/minuteur
+    en haut, barre de réponse en bas)."""
+    W, H = 1080, 1920
+    TOP_SAFE, BOTTOM_SAFE = 230, 260
+    tk = _terr_key(territoire)
+    accent = TERR_ACCENT.get(tk, TERR_ACCENT[""])
+    canvas = _photo(photo, W, H).convert("RGBA")
+    canvas.alpha_composite(_scrim((W, H), int(H * 0.42)))
+    d = ImageDraw.Draw(canvas)
+    m = 70
+    if tk:
+        _chip(d, (m, TOP_SAFE), TERR_LABEL.get(tk, tk.upper()), accent)
+    ft = _font("bold", 70)
+    lines = _wrap(d, title, ft, W - 2 * m)[:4]
+    fd = _font("bold", 42)
+    total_h = len(lines) * 88 + 66
+    y = H - BOTTOM_SAFE - total_h
+    d.text((m, y), date_str, font=fd, fill=(255, 236, 200)); y += 66
+    for ln in lines:
+        d.text((m, y), ln, font=ft, fill=(255, 255, 255)); y += 88
+    if y < H - BOTTOM_SAFE:
+        fs = _font("bold", 34)
+        d.text((m, y + 10), "⛰  " + site, font=fs, fill=(255, 255, 255))
+    return canvas.convert("RGB")
+
+
 def _slide_bg(size):
     return Image.new("RGB", size, BRAND_BG)
 

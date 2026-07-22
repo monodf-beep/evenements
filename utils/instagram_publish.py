@@ -107,6 +107,34 @@ def publish_single(territoire_label: str, image_url: str, caption: str) -> dict:
         return {"ok": False, "error": str(exc)}
 
 
+def publish_story(territoire_label: str, image_url: str) -> dict:
+    """Publie une STORY (24h). L'API Instagram n'accepte pas de légende sur les
+    stories : le texte doit être « cuit » dans l'image (cf. utils.social_image.story)."""
+    if not configured(territoire_label):
+        return {"ok": False, "error": f"Compte Instagram non configuré pour « {territoire_label} »."}
+    ig_id, token = _account_id(territoire_label), _token(territoire_label)
+    try:
+        r = requests.post(f"{GRAPH}/{ig_id}/media",
+                          data={"image_url": image_url, "media_type": "STORIES",
+                                "access_token": token}, timeout=30)
+        r.raise_for_status()
+        creation_id = r.json()["id"]
+        _wait_ready(creation_id, token)
+        r2 = requests.post(f"{GRAPH}/{ig_id}/media_publish",
+                           data={"creation_id": creation_id, "access_token": token},
+                           timeout=30)
+        r2.raise_for_status()
+        media_id = r2.json()["id"]
+        log.info("Story publiée Instagram (%s) : media_id=%s", territoire_label, media_id)
+        return {"ok": True, "media_id": media_id}
+    except requests.HTTPError as exc:
+        msg = _api_error(exc.response)
+        log.warning("Échec story Instagram (%s) : %s", territoire_label, msg)
+        return {"ok": False, "error": msg}
+    except requests.RequestException as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def publish_carousel(territoire_label: str, image_urls: list[str], caption: str) -> dict:
     """Publie un CARROUSEL (2 à 10 images). Renvoie {ok: True, media_id} ou {ok: False, error}."""
     if not configured(territoire_label):

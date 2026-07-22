@@ -24,23 +24,25 @@
   <div style="margin-top:.5rem">
     {% if langs|length > 1 %}<div class="muted text-sm" style="margin-bottom:.15rem">{{ '🇫🇷 FR' if lg=='fr' else '🇮🇹 IT' }}</div>{% endif %}
     <textarea id="cap-{{ e.id }}-{{ lg }}" rows="7" readonly style="width:100%;font-size:.8rem;font-family:inherit;padding:.45rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ e._caps[lg] }}</textarea>
-    <div class="btn-row" style="margin-top:.3rem">
+    <div class="btn-row" style="margin-top:.3rem;flex-wrap:wrap">
       <button type="button" class="btn btn-sm" onclick="rxCopy('cap-{{ e.id }}-{{ lg }}', this)">📋 Copier{{ ' '+lg|upper if langs|length>1 }}</button>
       {% if ig_ready %}
-        {% if e._published[lg] %}
-        <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
-              onsubmit="return confirm('Déjà publié ({{ lg|upper }}). Republier quand même ?')">
-          <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="single">
-          <input type="hidden" name="force" value="1">
-          <button class="btn btn-sm">✅ Déjà publié — republier</button>
-        </form>
-        {% else %}
-        <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
-              onsubmit="return confirm('Publier sur Instagram ({{ lg|upper }}) maintenant ?')">
-          <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="single">
-          <button class="btn btn-sm btn-primary">🚀 Publier{{ ' '+lg|upper if langs|length>1 }}</button>
-        </form>
-        {% endif %}
+        {% for kind, klabel in [('single','Post'), ('carousel','Carrousel'), ('story','Story')] %}
+          {% if e._published[lg][kind] %}
+          <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
+                onsubmit="return confirm('{{ klabel }} déjà publié ({{ lg|upper }}). Republier quand même ?')">
+            <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
+            <input type="hidden" name="force" value="1">
+            <button class="btn btn-sm">✅ {{ klabel }} — republier</button>
+          </form>
+          {% else %}
+          <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
+                onsubmit="return confirm('Publier « {{ klabel }} » sur Instagram ({{ lg|upper }}) maintenant ?')">
+            <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
+            <button class="btn btn-sm btn-primary">🚀 {{ klabel }}</button>
+          </form>
+          {% endif %}
+        {% endfor %}
       {% endif %}
     </div>
   </div>
