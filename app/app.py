@@ -2545,7 +2545,7 @@ def reseaux_publish(event_id: int):
     Instagram du territoire. Nécessite IG_ACCOUNT_ID_<SLUG> / IG_TOKEN_<SLUG> pour ce
     territoire (cf. docs/RESEAUX_INSTAGRAM_SETUP.md) — sinon message clair, rien ne
     casse. Idempotent : republier exige une confirmation explicite (force=1)."""
-    from utils import social as social_mod, social_image, wp_media
+    from utils import social as social_mod, social_image, social_overlay, wp_media
     from utils import instagram_publish as ig
     lang = request.form.get("lang", "fr")
     kind = request.form.get("kind", "single")
@@ -2627,11 +2627,15 @@ def reseaux_publish(event_id: int):
                                       ev.get("date_event_end", ""), lang)
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
     alt = social_mod.alt_text(ev, lang)
+    territoire = ev.get("territoire", "")
+    full_title = ev.get("title", "")
     try:
         if kind == "carousel":
+            slide1 = social_overlay.compose(
+                "carrousel-1", territoire, src, title=full_title, date_str=date_str)
             slides = social_image.carousel(
-                src, title=ev.get("title", ""), date_str=date_str, where=where,
-                territoire=ev.get("territoire", ""))
+                src, title=full_title, date_str=date_str, where=where,
+                territoire=territoire, slide1_override=slide1)
             urls = []
             for i, sl in enumerate(slides):
                 url = wp_media.upload_bytes(
@@ -2641,18 +2645,22 @@ def reseaux_publish(event_id: int):
                 urls.append(url)
             result = ig.publish_carousel(terr_label, urls, caption)
         elif kind == "story":
-            img = social_image.story(
-                src, title=ev.get("title", ""), date_str=date_str,
-                territoire=ev.get("territoire", ""))
+            img = social_overlay.compose(
+                "story-9x16", territoire, src, title=full_title, date_str=date_str, where=where)
+            if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
+                img = social_image.story(
+                    src, title=full_title, date_str=date_str, territoire=territoire)
             url = wp_media.upload_bytes(
                 social_image.to_jpeg(img), f"ig-{event_id}-{lang}-story.jpg", alt=alt)
             if not url:
                 raise RuntimeError("upload WordPress échoué")
             result = ig.publish_story(terr_label, url)
         else:
-            img = social_image.single_post(
-                src, title=ev.get("title", ""), date_str=date_str,
-                territoire=ev.get("territoire", ""))
+            img = social_overlay.compose(
+                "post-4x5", territoire, src, title=full_title, date_str=date_str, where=where)
+            if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
+                img = social_image.single_post(
+                    src, title=full_title, date_str=date_str, territoire=territoire)
             url = wp_media.upload_bytes(
                 social_image.to_jpeg(img), f"ig-{event_id}-{lang}.jpg", alt=alt)
             if not url:

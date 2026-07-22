@@ -247,32 +247,39 @@ def _slide_bg(size):
 
 def carousel(photo, *, title, date_str, where, territoire, bullets=None,
              cta="Enregistre ce post. Invite qui tu veux y emmener.",
-             site="agendasabauda.eu"):
-    """Renvoie une liste de slides 1080×1350 : [accroche, détails, appel à l'action]."""
+             site="agendasabauda.eu", slide1_override=None):
+    """Renvoie une liste de slides 1080×1350 : [accroche, détails, appel à l'action].
+
+    slide1_override : image déjà prête (ex. rendu utils.social_overlay) à utiliser
+    telle quelle pour la 1re slide, au lieu de la construire ici."""
     W, H = 1080, 1350
     tk = _terr_key(territoire)
     accent = TERR_ACCENT.get(tk, TERR_ACCENT[""])
     slides = []
+    m = 70  # marge commune, réutilisée pour la chip des slides 2/3 même si la
+            # slide 1 vient toute faite (slide1_override) et saute ce bloc.
 
-    # Slide 1 — accroche (photo plein cadre + titre/date, ou repli abstrait si la
-    # photo source est trop petite pour être agrandie proprement).
-    if _fits_without_mush(photo, W, H):
-        s1 = _photo(photo, W, H).convert("RGBA")
-        s1.alpha_composite(_scrim((W, H), int(H * 0.5)))
+    if slide1_override is not None:
+        slides.append(slide1_override.convert("RGB"))
     else:
-        s1 = _abstract_bg((W, H), territoire)
-    d = ImageDraw.Draw(s1)
-    m = 70
-    if tk:
-        _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
-    ft = _font("bold", 74)
-    lines = _wrap_ellipsis(d, title, ft, W - 2 * m, 4)
-    fd = _font("bold", 42)
-    y = H - m - (len(lines) * 88 + 70)
-    d.text((m, y), date_str, font=fd, fill=(255, 236, 200)); y += 70
-    for ln in lines:
-        d.text((m, y), ln, font=ft, fill=(255, 255, 255)); y += 88
-    slides.append(s1.convert("RGB"))
+        # Slide 1 — accroche (photo plein cadre + titre/date, ou repli abstrait si
+        # la photo source est trop petite pour être agrandie proprement).
+        if _fits_without_mush(photo, W, H):
+            s1 = _photo(photo, W, H).convert("RGBA")
+            s1.alpha_composite(_scrim((W, H), int(H * 0.5)))
+        else:
+            s1 = _abstract_bg((W, H), territoire)
+        d = ImageDraw.Draw(s1)
+        if tk:
+            _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
+        ft = _font("bold", 74)
+        lines = _wrap_ellipsis(d, title, ft, W - 2 * m, 4)
+        fd = _font("bold", 42)
+        y = H - m - (len(lines) * 88 + 70)
+        d.text((m, y), date_str, font=fd, fill=(255, 236, 200)); y += 70
+        for ln in lines:
+            d.text((m, y), ln, font=ft, fill=(255, 255, 255)); y += 88
+        slides.append(s1.convert("RGB"))
 
     # Slide 2 — détails (fond crème).
     s2 = _slide_bg((W, H)); d = ImageDraw.Draw(s2)
