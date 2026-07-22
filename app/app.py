@@ -2461,14 +2461,29 @@ def reseaux_publish(event_id: int):
 
     img_url = event_image(ev)
     try:
-        src = requests.get(img_url, timeout=20,
-                           headers={"User-Agent": "Mozilla/5.0"}).content
-    except requests.RequestException:
+        img_resp = requests.get(
+            img_url, timeout=20,
+            headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                                   "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                     "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                     "Referer": f"{urlparse(img_url).scheme}://{urlparse(img_url).netloc}/"})
+        img_resp.raise_for_status()
+        content_type = img_resp.headers.get("Content-Type", "").split(";")[0].strip()
+        if not content_type.startswith("image/"):
+            conn.close()
+            flash(f"❌ « {title} » — l'URL de la photo n'a pas renvoyé une image "
+                  f"(reçu : {content_type or 'inconnu'}). Source probablement protégée "
+                  "contre le hotlinking, ou lien cassé.", "err")
+            return redirect(url_for("reseaux") + f"#e{event_id}")
+        src = img_resp.content
+    except requests.RequestException as exc:
         conn.close()
-        flash(f"❌ « {title} » — photo source injoignable.", "err")
+        flash(f"❌ « {title} » — photo source injoignable ({exc}).", "err")
         return redirect(url_for("reseaux") + f"#e{event_id}")
 
-    caption = social_mod.caption(ev, lang)
+    # Légende : celle éditée à la main dans /reseaux si fournie, sinon l'auto-générée.
+    caption_override = (request.form.get("caption", "") or "").strip()
+    caption = caption_override or social_mod.caption(ev, lang)
     date_str = social_mod.format_date(ev.get("date_event_start", ""),
                                       ev.get("date_event_end", ""), lang)
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)

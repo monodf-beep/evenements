@@ -23,22 +23,24 @@
   {% for lg in langs %}
   <div style="margin-top:.5rem">
     {% if langs|length > 1 %}<div class="muted text-sm" style="margin-bottom:.15rem">{{ '🇫🇷 FR' if lg=='fr' else '🇮🇹 IT' }}</div>{% endif %}
-    <textarea id="cap-{{ e.id }}-{{ lg }}" rows="7" readonly style="width:100%;font-size:.8rem;font-family:inherit;padding:.45rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ e._caps[lg] }}</textarea>
+    <textarea id="cap-{{ e.id }}-{{ lg }}" rows="7" style="width:100%;font-size:.8rem;font-family:inherit;padding:.45rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ e._caps[lg] }}</textarea>
+    <div class="muted text-sm" style="margin-top:.15rem">✏️ Modifiable — la version publiée sera celle affichée ici au moment du clic.</div>
     <div class="btn-row" style="margin-top:.3rem;flex-wrap:wrap">
       <button type="button" class="btn btn-sm" onclick="rxCopy('cap-{{ e.id }}-{{ lg }}', this)">📋 Copier{{ ' '+lg|upper if langs|length>1 }}</button>
       {% if ig_ready %}
         {% for kind, klabel in [('single','Post'), ('carousel','Carrousel'), ('story','Story')] %}
           {% if e._published[lg][kind] %}
           <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
-                onsubmit="return confirm('{{ klabel }} déjà publié ({{ lg|upper }}). Republier quand même ?')">
+                onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value; return confirm('{{ klabel }} déjà publié ({{ lg|upper }}). Republier avec la légende actuelle ?')">
             <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
-            <input type="hidden" name="force" value="1">
+            <input type="hidden" name="force" value="1"><input type="hidden" name="caption" value="">
             <button class="btn btn-sm">✅ {{ klabel }} — republier</button>
           </form>
           {% else %}
           <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
-                onsubmit="return confirm('Publier « {{ klabel }} » sur Instagram ({{ lg|upper }}) maintenant ?')">
+                onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value; return confirm('Publier « {{ klabel }} » sur Instagram ({{ lg|upper }}) avec la légende actuelle ?')">
             <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
+            <input type="hidden" name="caption" value="">
             <button class="btn btn-sm btn-primary">🚀 {{ klabel }}</button>
           </form>
           {% endif %}
