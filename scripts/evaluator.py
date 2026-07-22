@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import usage
 from utils.eventness import non_event_reason
+from utils.sources import is_excluded_event, load_excluded_events_filter
 from scripts.scraper_events import init_db
 
 log = get_logger("evaluator")
@@ -203,8 +204,18 @@ def main(argv=None) -> int:
     calibration = score_memory.calibration_block()
     if calibration:
         log.info("Calibrage : corrections de Franck injectées dans le prompt.")
+    excluded_re = load_excluded_events_filter()
     for event in pending:
         ev = dict(event)
+        # Pré-filtre GRATUIT ter : règle éditoriale explicite (config/
+        # excluded_event_keywords.txt) — ex. « jamais le 27e/23e BCA ». Rejet avant
+        # tout appel LLM, quel que soit le score qu'il aurait donné.
+        if is_excluded_event(ev.get("title", ""), ev.get("description", ""), excluded_re):
+            conn.execute("UPDATE events_raw SET statut='rejected', llm_score=0, "
+                         "llm_justification='Exclu par règle éditoriale (config/excluded_event_keywords.txt).' "
+                         "WHERE id=?", (ev["id"],))
+            log.info("[%d] exclu (règle éditoriale) → rejeté | %s", ev["id"], ev.get("title", "")[:50])
+            continue
         # Pré-filtre GRATUIT : un événement déjà passé est rejeté sans appeler le
         # LLM (on ne paie pas, et on ne publie que du à-venir / en cours).
         if is_past_event(ev, today):

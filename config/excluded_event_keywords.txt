@@ -1,0 +1,22 @@
+# Événements à NE JAMAIS valoriser (rejet déterministe, gratuit, avant tout appel LLM).
+#
+# Une ligne = une expression (mot ou phrase). Si le TITRE ou la DESCRIPTION d'un
+# événement la contient (accents ignorés, insensible à la casse), l'événement est
+# rejeté automatiquement — jamais noté par le LLM, jamais publié.
+#
+# Pour en ajouter une : une ligne suffit, aucun code à toucher (utils.sources
+# .load_excluded_events_filter relit ce fichier). Ligne vide et lignes # ignorées.
+#
+# Pour retirer un événement DÉJÀ publié qui correspond à une règle ajoutée après coup :
+#   .venv/bin/python -m scripts.audit_excluded_events            # liste (dry-run)
+#   .venv/bin/python -m scripts.audit_excluded_events --apply    # corbeille + rejette
+
+# ── 27e et 23e BCA (Bataillons de Chasseurs Alpins) — jamais valorisés ──
+27e BCA
+27 BCA
+27eme BCA
+27e bataillon de chasseurs alpins
+23e BCA
+23 BCA
+23eme BCA
+23e bataillon de chasseurs alpins

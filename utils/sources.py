@@ -268,6 +268,26 @@ def load_topic_filter(
     return off, eco
 
 
+_EXCLUDED_EVENTS_FILE = Path(__file__).resolve().parent.parent / "config" / "excluded_event_keywords.txt"
+
+
+def load_excluded_events_filter(path: Path | None = None):
+    """Regex des événements à NE JAMAIS valoriser (config/excluded_event_keywords.txt).
+
+    Règle éditoriale explicite (ex. « jamais le 27e/23e BCA »), pas un jugement de
+    pertinence — rejet déterministe et gratuit, avant tout appel LLM. Extensible sans
+    code : une ligne = une expression."""
+    return _compile_keywords(_load_keywords(path or _EXCLUDED_EVENTS_FILE))
+
+
+def is_excluded_event(title: str, description: str, excluded_re) -> bool:
+    """Vrai si le titre OU la description matche une règle d'exclusion éditoriale."""
+    if excluded_re is None:
+        return False
+    text = _strip_accents(f"{title or ''} {description or ''}").lower()
+    return bool(excluded_re.search(text))
+
+
 _PERIMETER_FILE = Path(__file__).resolve().parent.parent / "config" / "perimeter_keywords.txt"
 _BROAD_FILE = Path(__file__).resolve().parent.parent / "config" / "broad_sources.txt"
 
