@@ -75,9 +75,17 @@ chemin **vérifié en conditions réelles** (compte Savoie, juillet 2026).
    - en dernier recours, essayer un **autre navigateur** (une extension peut
      interférer avec la fenêtre de connexion).
 
-6. Une fois généré, le champ **« Token »** est rempli. C'est l'**IG_TOKEN**.
-   **Ne le fais jamais transiter en clair dans un chat** — copie-le directement
-   dans le `.env` du VPS.
+6. Une fois généré, le champ **« Token »** est rempli. C'est l'**IG_TOKEN** — il
+   commence par **`IGAA`** (pas `EAA`, c'est normal, c'est le format du nouveau
+   système). **Ne le fais jamais transiter en clair dans un chat** — copie-le
+   directement dans le `.env` du VPS.
+
+⚠️ **Piège déjà rencontré (compte Savoie)** : un token `IGAA...` doit être utilisé
+contre **`graph.instagram.com`**, PAS `graph.facebook.com` (réservé aux anciens
+tokens de Page, préfixe `EAA...`). Si l'erreur *« Invalid OAuth access token —
+Cannot parse access token »* apparaît alors que le token est bien copié en entier,
+c'est ce piège — déjà corrigé dans `utils/instagram_publish.py` (constante
+`GRAPH`), rien à refaire pour les prochains territoires.
 
 *(Étapes 1, 4, 6 : sans risque à déléguer à Claude Cowork. Étapes 2-3-5 impliquent
 une vraie connexion au compte : à faire par le propriétaire du compte lui-même.)*

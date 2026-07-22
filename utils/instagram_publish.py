@@ -27,7 +27,11 @@ from utils.logger import get_logger
 
 log = get_logger("instagram_publish")
 
-GRAPH = "https://graph.facebook.com/v21.0"
+# Les tokens émis par le NOUVEAU système (« API Instagram », connexion Instagram
+# directe — préfixe IGAA...) doivent taper sur graph.instagram.com, PAS
+# graph.facebook.com (réservé aux tokens de Page classiques, préfixe EAA...). Toute
+# notre config (cf. RESEAUX_INSTAGRAM_SETUP.md) utilise le nouveau système.
+GRAPH = "https://graph.instagram.com/v21.0"
 _POLL_TRIES, _POLL_DELAY = 8, 2.0
 
 
