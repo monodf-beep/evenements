@@ -13,10 +13,37 @@ coupée). On n'ajoute que du texte issu des champs réels de la fiche : rien d'i
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 from utils import card_image
+
+_LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "brand" / "agenda-sabauda-logo-white.png"
+_logo_cache: "Image.Image | None | bool" = False  # False = pas encore chargé
+
+
+def _logo():
+    """Logo « aS Agenda Sabauda » blanc (RGBA, fond transparent), ou None si absent."""
+    global _logo_cache
+    if _logo_cache is False:
+        try:
+            _logo_cache = Image.open(_LOGO_PATH).convert("RGBA")
+        except Exception:
+            _logo_cache = None
+    return _logo_cache
+
+
+def _paste_logo(canvas, x, y, target_h=56):
+    """Colle le logo blanc (redimensionné à target_h de haut) en (x,y). No-op si absent."""
+    logo = _logo()
+    if logo is None:
+        return
+    w, h = logo.size
+    if not h:
+        return
+    lw = round(w * target_h / h)
+    canvas.alpha_composite(logo.resize((lw, target_h), Image.LANCZOS), (x, y))
 
 # Palette marque (fond crème du site) + encre.
 BRAND_BG = (250, 248, 243)
@@ -143,6 +170,20 @@ def _scrim(size, height, strength=210):
     return black
 
 
+def _top_scrim(size, height, strength=150):
+    """Voile sombre en HAUT (fort→transparent vers le bas) : garantit que le logo
+    et la puce restent lisibles même sur une photo à ciel clair."""
+    w, h = size
+    grad = Image.new("L", (1, h), 0)
+    for y in range(h):
+        a = int(strength * (1 - y / height)) if y < height else 0
+        grad.putpixel((0, y), max(a, 0))
+    alpha = grad.resize((w, h))
+    black = Image.new("RGBA", (w, h), (0, 0, 0, 255))
+    black.putalpha(alpha)
+    return black
+
+
 def _chip(draw, xy, text, accent):
     x, y = xy
     f = _font("bold", 30)
@@ -232,12 +273,17 @@ def single_post(photo, *, title, date_str, territoire, ville="", site="agendasab
     if _fits_without_mush(photo, size, size):
         canvas = _photo(photo, size, size).convert("RGBA")
         canvas.alpha_composite(_scrim((size, size), int(size * 0.5)))
+        canvas.alpha_composite(_top_scrim((size, size), int(size * 0.16)))
     else:
         canvas = _abstract_bg((size, size), territoire)
     d = ImageDraw.Draw(canvas)
     m = 64
+    _paste_logo(canvas, m, m - 12)
     if tk:
-        _chip(d, (m, m), chip_label(territoire, ville), accent)
+        label = chip_label(territoire, ville)
+        fchip = _font("bold", 30)
+        chip_x = size - m - (d.textlength(label, font=fchip) + 18 * 2)
+        _chip(d, (chip_x, m), label, accent)
     # Titre + date en bas ; la signature réserve SA propre place (jamais de
     # chevauchement avec la dernière ligne du titre).
     ft = _font("bold", 66)
