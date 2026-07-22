@@ -9,7 +9,7 @@ accessible. Il n'invente aucune donnée : il n'utilise que les champs réels de 
 
 Bonnes pratiques appliquées (vérifiées en ligne, 2026) : accroche dans les 125 premiers
 caractères (avant le « … plus »), date/lieu explicites, CTA « enregistre / partage » +
-« lien en bio » (IG n'autorise pas de lien cliquable en légende), 3 à 5 hashtags ciblés
+« lien en bio » (IG n'autorise pas de lien cliquable en légende), 3 hashtags ciblés
 (au-delà, ça sent le spam et ça n'aide plus l'indexation). Le visuel/carrousel se
 construit ailleurs (utils.social_image) — ici, le texte.
 
@@ -40,7 +40,7 @@ _TERR_TAGS = {
 }
 
 # Marque + 1 mot large de repli (utilisé seulement s'il reste de la place dans le
-# plafond de 5 hashtags — la marque passe toujours en premier).
+# plafond de 3 hashtags — cède la place en premier aux tags spécifiques).
 _BRAND_TAG = "AgendaSabauda"
 _BROAD_TAG = {"fr": "sortir", "it": "cosafare"}
 
@@ -108,8 +108,8 @@ def format_date(start: str, end: str, lang: str) -> str:
     return f"{d1} {months[m1]} {y1}"
 
 
-def hashtags(event: dict, lang: str, limit: int = 5) -> list[str]:
-    """3 à 5 hashtags CIBLÉS (pas une liste large — au-delà, ça n'aide plus
+def hashtags(event: dict, lang: str, limit: int = 3) -> list[str]:
+    """3 hashtags CIBLÉS (pas une liste large — au-delà, ça n'aide plus
     l'indexation et ça sent le spam, cf. bonnes pratiques 2026). Priorité aux tags
     SPÉCIFIQUES (ville, catégorie, territoire) sur les génériques (marque, mot large)."""
     ville = _camel(event.get("ville", ""))
@@ -189,7 +189,7 @@ FORMAT DE SORTIE (JSON STRICT, rien d'autre) :
 {{"caption": "texte complet prêt à publier (accroche, ligne vide, infos pratiques \\n
   avec emoji 📅/📍 si dispo, ligne vide, CTA + \\"lien en bio\\" puisqu'IG n'autorise pas
   de lien cliquable, ligne vide, hashtags), "hashtags": ["motcle1", "motcle2", ...]}}
-- 3 à 5 hashtags MAXIMUM, ciblés (ville, catégorie, territoire) — pas de mots larges
+- 3 hashtags MAXIMUM, ciblés (ville, catégorie, territoire) — pas de mots larges
   répétés à chaque post.
 - Le champ "caption" contient DÉJÀ les hashtags à la fin (précédés de #), séparés
   par un espace, dans le même texte que le reste."""

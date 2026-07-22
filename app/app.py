@@ -953,7 +953,9 @@ def reglages():
     from utils import settings as psettings
     if request.method == "POST":
         psettings.save({"ai_profile": request.form.get("ai_profile", ""),
-                        "enrich_mode": request.form.get("enrich_mode", "")})
+                        "enrich_mode": request.form.get("enrich_mode", ""),
+                        "social_caption_auto": bool(request.form.get("social_caption_auto")),
+                        "social_caption_limit": request.form.get("social_caption_limit", 3)})
         flash("Réglages enregistrés — appliqués au prochain passage du pipeline (cron ou lancement manuel).", "ok")
         return redirect(url_for("reglages"))
     return render_template("reglages.html", active="reglages",
@@ -2373,6 +2375,62 @@ _RESEAUX_MAINS = 8       # nb de « principaux » remontés par territoire (on e
 _RESEAUX_DETOURS = 3     # nb de « vaut le détour » proposés par compte
 
 
+def _auto_rewrite_captions(by_terr: dict) -> int:
+    """Réécrit automatiquement (LLM, payant) les légendes des meilleurs événements
+    par territoire × langue, SI le réglage social_caption_auto est activé (cf.
+    /reglages). Plafonné à settings.social_caption_limit() par territoire × langue —
+    volume nécessairement petit (cadence réseaux = quelques posts/semaine, jamais
+    100/jour). Ne réécrit QUE les événements qui n'ont pas encore de légende IA en
+    cache (jamais de double coût). Mute les dicts de `by_terr` EN PLACE ; renvoie le
+    nombre de légendes générées. N'échoue jamais bruyamment : une erreur API laisse
+    simplement l'événement sur sa légende gratuite, journalisée seulement."""
+    from utils import settings as pipeline_settings
+    if not pipeline_settings.social_caption_auto():
+        return 0
+    limit = pipeline_settings.social_caption_limit()
+    if limit <= 0:
+        return 0
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return 0
+    import anthropic
+    from utils import social as social_mod
+    model = (os.getenv("ANTHROPIC_MODEL_SEO") or os.getenv("ANTHROPIC_MODEL_VISUALS")
+             or "claude-haiku-4-5")
+    client = anthropic.Anthropic(api_key=api_key)
+    conn = get_db()
+    n = 0
+    try:
+        for label, langs in _RESEAUX_ACCOUNTS:
+            candidates = by_terr.get(label, [])[:_RESEAUX_MAINS]
+            for lg in langs:
+                done = 0
+                for e in candidates:
+                    if done >= limit:
+                        break
+                    if e.get(f"social_caption_{lg}"):
+                        continue  # déjà en cache — jamais régénéré tout seul
+                    try:
+                        text = social_mod.caption_ai(e, lg, client, model)
+                    except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+                        usage.note_api_error(exc)
+                        log.warning("Auto-réécriture légende échouée (id=%s, %s) : %s",
+                                    e.get("id"), lg, exc)
+                        continue
+                    if not text:
+                        continue
+                    e[f"social_caption_{lg}"] = text
+                    conn.execute(f"UPDATE events_raw SET social_caption_{lg}=? WHERE id=?",
+                                (text, e["id"]))
+                    n += 1
+                    done += 1
+        if n:
+            conn.commit()
+    finally:
+        conn.close()
+    return n
+
+
 @app.route("/reseaux")
 @require_auth
 def reseaux():
@@ -2405,6 +2463,10 @@ def reseaux():
         by_terr.setdefault(grp, []).append(e)
         if e.get("worth_trip"):
             detour_pool.append(e)
+
+    n_auto = _auto_rewrite_captions(by_terr)
+    if n_auto:
+        flash(f"🪄 {n_auto} légende(s) réécrite(s) automatiquement (voix Enrico) 💶.", "ok")
 
     def _pack(e, langs):
         e = dict(e)

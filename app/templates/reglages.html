@@ -42,9 +42,29 @@
     </label>
   </div>
 
+  <!-- Réécriture légendes réseaux -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .3rem;">📣 Légendes réseaux <span class="muted" style="font-weight:400;font-size:.85rem;">(bouton 🪄 Réécrire dans /reseaux, voix Enrico Nos Alpes)</span></h2>
+  <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.3rem;">
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if not st.social_caption_auto %}outline:2px solid #16a34a;{% endif %}">
+      <input type="checkbox" name="social_caption_auto" value="1" {{ 'checked' if st.social_caption_auto }} style="margin-top:.25rem;">
+      <div><b>Automatiser</b> <span style="font-size:.72rem;font-weight:700;color:#16a34a;background:#e9f6ee;border-radius:999px;padding:.05rem .45rem;">off = gratuit</span>
+        <div class="muted text-sm" style="margin-top:.15rem;">
+          <b>Décoché (par défaut)</b> : la légende gratuite auto-générée s'affiche dans /reseaux, la réécriture IA ne part QUE si tu cliques toi-même « 🪄 Réécrire » — coût nul tant que tu ne cliques pas.<br>
+          <b>Coché</b> : à chaque ouverture de /reseaux, le back-office réécrit tout seul (voix Enrico) les meilleurs événements de chaque territoire × langue qui n'ont pas encore de légende IA en cache — plafonné ci-dessous, jamais plus. Coût = quelques centimes par légende générée, une seule fois par événement (mise en cache).
+        </div>
+      </div>
+    </label>
+    <label class="card" style="display:flex;gap:.7rem;align-items:center;padding:.7rem .9rem;">
+      <span style="font-weight:600;white-space:nowrap;">Plafond par territoire × langue</span>
+      <input type="number" name="social_caption_limit" min="0" max="10" value="{{ st.social_caption_limit }}" style="width:5rem;padding:.35rem .5rem;border:1px solid var(--line-2);border-radius:.4rem;">
+      <span class="muted text-sm">— avec 4 comptes (5 langue×territoire au total dont Vallée d'Aoste bilingue), un plafond de 3 = 15 réécritures maximum au total, pas 100.</span>
+    </label>
+  </div>
+
   <div class="card" style="padding:.6rem .9rem;margin-bottom:1rem;background:rgba(0,0,0,.02);">
-    <div class="text-sm">Configuration actuelle : modèle <b>{{ model }}</b> · enrichissement <b>{{ st.enrich_mode }}</b>.
-    <span class="muted">Le profil IA vaut pour l'évaluation ET l'enrichissement. La SEO reste en Haiku.</span></div>
+    <div class="text-sm">Configuration actuelle : modèle <b>{{ model }}</b> · enrichissement <b>{{ st.enrich_mode }}</b> ·
+    légendes réseaux <b>{{ 'auto (plafond ' ~ st.social_caption_limit ~ ')' if st.social_caption_auto else 'manuel (bouton)' }}</b>.
+    <span class="muted">Le profil IA vaut pour l'évaluation ET l'enrichissement. La SEO et les légendes réseaux restent en Haiku.</span></div>
   </div>
 
   <button class="btn btn-ok" type="submit">💾 Enregistrer les réglages</button>
