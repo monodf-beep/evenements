@@ -205,7 +205,7 @@ def single_post(photo, *, title, date_str, territoire, site="agendasabauda.eu", 
     for ln in lines:
         d.text((m, y), ln, font=ft, fill=(255, 255, 255))
         y += 78
-    d.text((m, y + 8), "⛰  " + site, font=fs, fill=(255, 255, 255))
+    d.text((m, y + 8), "●  " + site, font=fs, fill=(255, 255, 255))
     return canvas.convert("RGB")
 
 
@@ -237,7 +237,7 @@ def story(photo, *, title, date_str, territoire, site="agendasabauda.eu"):
         d.text((m, y), ln, font=ft, fill=(255, 255, 255)); y += 88
     if y < H - BOTTOM_SAFE:
         fs = _font("bold", 34)
-        d.text((m, y + 10), "⛰  " + site, font=fs, fill=(255, 255, 255))
+        d.text((m, y + 10), "●  " + site, font=fs, fill=(255, 255, 255))
     return canvas.convert("RGB")
 
 
@@ -292,9 +292,9 @@ def carousel(photo, *, title, date_str, where, territoire, bullets=None,
         d.text((m, y), ln, font=fh, fill=INK); y += 72
     y += 20
     fi = _font("bold", 40)
-    for label, val in (("📅", date_str), ("📍", where)):
+    for val in (date_str, where):
         if val:
-            for ln in _wrap(d, f"{label}  {val}", fi, W - 2 * m)[:2]:
+            for ln in _wrap(d, f"•  {val}", fi, W - 2 * m)[:2]:
                 d.text((m, y), ln, font=fi, fill=MUTED); y += 54
             y += 8
     if bullets:
@@ -315,7 +315,7 @@ def carousel(photo, *, title, date_str, where, territoire, bullets=None,
     for ln in lines:
         d.text((m, y), ln, font=fc, fill=INK); y += 80
     fs = _font("bold", 40)
-    d.text((m, H - m - 50), "⛰  " + site, font=fs, fill=accent)
+    d.text((m, H - m - 50), "●  " + site, font=fs, fill=accent)
     slides.append(s3)
     return slides
 
