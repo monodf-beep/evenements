@@ -6,7 +6,7 @@
 
 {% block content %}
 
-{% macro carte(e, langs, is_detour=False) %}
+{% macro carte(e, langs, ig_ready, is_detour=False) %}
 <div class="card" id="e{{ e.id }}" style="padding:.8rem;flex:1 1 300px;min-width:280px;max-width:360px">
   <div style="display:flex;gap:.6rem">
     {% if e._img %}<img src="{{ e._img }}" alt="" style="width:74px;height:74px;object-fit:cover;border-radius:.4rem;flex:0 0 auto">{% endif %}
@@ -24,12 +24,31 @@
   <div style="margin-top:.5rem">
     {% if langs|length > 1 %}<div class="muted text-sm" style="margin-bottom:.15rem">{{ '🇫🇷 FR' if lg=='fr' else '🇮🇹 IT' }}</div>{% endif %}
     <textarea id="cap-{{ e.id }}-{{ lg }}" rows="7" readonly style="width:100%;font-size:.8rem;font-family:inherit;padding:.45rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ e._caps[lg] }}</textarea>
+    <div class="btn-row" style="margin-top:.3rem">
+      <button type="button" class="btn btn-sm" onclick="rxCopy('cap-{{ e.id }}-{{ lg }}', this)">📋 Copier{{ ' '+lg|upper if langs|length>1 }}</button>
+      {% if ig_ready %}
+        {% if e._published[lg] %}
+        <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
+              onsubmit="return confirm('Déjà publié ({{ lg|upper }}). Republier quand même ?')">
+          <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="single">
+          <input type="hidden" name="force" value="1">
+          <button class="btn btn-sm">✅ Déjà publié — republier</button>
+        </form>
+        {% else %}
+        <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
+              onsubmit="return confirm('Publier sur Instagram ({{ lg|upper }}) maintenant ?')">
+          <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="single">
+          <button class="btn btn-sm btn-primary">🚀 Publier{{ ' '+lg|upper if langs|length>1 }}</button>
+        </form>
+        {% endif %}
+      {% endif %}
+    </div>
   </div>
   {% endfor %}
+  {% if not ig_ready %}
+  <div class="muted text-sm" style="margin-top:.4rem">⚙️ Compte Instagram non connecté pour ce territoire — copier/coller pour l'instant.</div>
+  {% endif %}
   <div class="btn-row" style="margin-top:.45rem">
-    {% for lg in langs %}
-    <button type="button" class="btn btn-sm" onclick="rxCopy('cap-{{ e.id }}-{{ lg }}', this)">📋 Copier{{ ' '+lg|upper if langs|length>1 }}</button>
-    {% endfor %}
     <a href="/preview/{{ e.id }}#partage" class="btn btn-sm" target="_blank">👁</a>
     {% if not is_detour %}
     <form method="POST" action="/action/{{ e.id }}/{{ 'worth_trip_off' if e.worth_trip else 'worth_trip' }}" style="display:inline">
@@ -45,12 +64,14 @@
 <section style="margin:1.2rem 0">
   <h2 class="sec">📣 {{ acc.label }}
     <span class="muted" style="font-size:.85rem;font-weight:400">
-      — {{ 'FR puis IT' if acc.langs|length>1 else ('Français' if acc.langs[0]=='fr' else 'Italien') }}</span>
+      — {{ 'FR puis IT' if acc.langs|length>1 else ('Français' if acc.langs[0]=='fr' else 'Italien') }}
+      {% if acc.ig_ready %} · <span style="color:#2f6b34">🟢 publication auto connectée</span>
+      {% else %} · <span>⚙️ compte non connecté (copier/coller)</span>{% endif %}</span>
   </h2>
 
   {% if acc.mains %}
   <div style="display:flex;flex-wrap:wrap;gap:.7rem">
-    {% for e in acc.mains %}{{ carte(e, acc.langs) }}{% endfor %}
+    {% for e in acc.mains %}{{ carte(e, acc.langs, acc.ig_ready) }}{% endfor %}
   </div>
   {% else %}
   <div class="muted" style="padding:.5rem 0">Aucun événement complet à venir pour ce territoire pour l'instant.</div>
@@ -60,7 +81,7 @@
   <div style="margin-top:.7rem">
     <div style="font-weight:600;margin-bottom:.35rem">🌟 Ça vaut le détour <span class="muted" style="font-weight:400">— événements phares d'autres territoires</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:.7rem">
-      {% for e in acc.detours %}{{ carte(e, acc.langs, is_detour=True) }}{% endfor %}
+      {% for e in acc.detours %}{{ carte(e, acc.langs, acc.ig_ready, is_detour=True) }}{% endfor %}
     </div>
   </div>
   {% endif %}

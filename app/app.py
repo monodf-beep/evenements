@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 from flask import (Flask, Response, flash, jsonify, redirect, render_template,
                    request, session, url_for)
 from markupsafe import Markup
+import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -97,6 +98,20 @@ try:
     _conn.execute("ALTER TABLE events_raw ADD COLUMN worth_trip INTEGER DEFAULT 0")
 except sqlite3.OperationalError:
     pass
+# Historique des publications Instagram (idempotence + statut visible dans /reseaux).
+_conn.execute("""
+    CREATE TABLE IF NOT EXISTS social_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        territoire_label TEXT NOT NULL,
+        lang TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL,
+        ig_media_id TEXT,
+        error TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+    )
+""")
 _conn.commit()
 _conn.close()
 
@@ -2350,7 +2365,7 @@ _RESEAUX_DETOURS = 3     # nb de « vaut le détour » proposés par compte
 @app.route("/reseaux")
 @require_auth
 def reseaux():
-    from utils import social as social_mod
+    from utils import social as social_mod, instagram_publish as ig
     today = date.today().isoformat()
     conn = get_db()
     rows = conn.execute(
@@ -2362,6 +2377,11 @@ def reseaux():
         "ORDER BY COALESCE(llm_score,0) DESC, "
         "         COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC",
         (today,)).fetchall()
+    published = {(r["event_id"], r["lang"], r["kind"]): r["status"]
+                 for r in conn.execute(
+                     "SELECT event_id, lang, kind, status FROM social_posts "
+                     "WHERE status='ok' AND id IN "
+                     "(SELECT MAX(id) FROM social_posts GROUP BY event_id, lang, kind)")}
     conn.close()
     # Ne garder que les événements POSTABLES (complets) et les grouper par territoire.
     by_terr: dict = {}
@@ -2379,6 +2399,7 @@ def reseaux():
         e = dict(e)
         e["_img"] = event_image(e)
         e["_caps"] = {lg: social_mod.caption(e, lg) for lg in langs}
+        e["_published"] = {lg: published.get((e["id"], lg, "single")) == "ok" for lg in langs}
         return e
 
     accounts = []
@@ -2387,9 +2408,102 @@ def reseaux():
         detours = [_pack(e, langs) for e in detour_pool
                    if _couv_terr_group(e.get("territoire")) != label][:_RESEAUX_DETOURS]
         accounts.append({"label": label, "langs": langs,
-                         "mains": mains, "detours": detours})
+                         "mains": mains, "detours": detours,
+                         "ig_ready": ig.configured(label)})
     return render_template("reseaux.html", accounts=accounts, today=today,
                            active="reseaux", posts_per_week=3)
+
+
+@app.route("/reseaux/publish/<int:event_id>", methods=["POST"])
+@require_auth
+def reseaux_publish(event_id: int):
+    """Génère le visuel (Pillow) + upload sur agendasabauda.eu + publie sur le compte
+    Instagram du territoire. Nécessite IG_ACCOUNT_ID_<SLUG> / IG_TOKEN_<SLUG> pour ce
+    territoire (cf. docs/RESEAUX_INSTAGRAM_SETUP.md) — sinon message clair, rien ne
+    casse. Idempotent : republier exige une confirmation explicite (force=1)."""
+    from utils import social as social_mod, social_image, wp_media
+    from utils import instagram_publish as ig
+    lang = request.form.get("lang", "fr")
+    kind = request.form.get("kind", "single")
+    force = request.form.get("force") == "1"
+    conn = get_db()
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    ev = dict(row)
+    terr_label = _couv_terr_group(ev.get("territoire"))
+    title = (ev.get("title") or "")[:70]
+
+    if not comp.is_complete(ev):
+        conn.close()
+        flash(f"⚠️ « {title} » incomplet — impossible à publier.", "err")
+        return redirect(url_for("reseaux"))
+    if not ig.configured(terr_label):
+        conn.close()
+        flash(f"⚙️ Compte Instagram non configuré pour « {terr_label} » — "
+              f"voir docs/RESEAUX_INSTAGRAM_SETUP.md.", "err")
+        return redirect(url_for("reseaux"))
+    if not force:
+        already = conn.execute(
+            "SELECT id FROM social_posts WHERE event_id=? AND lang=? AND kind=? "
+            "AND status='ok'", (event_id, lang, kind)).fetchone()
+        if already:
+            conn.close()
+            flash(f"↩️ « {title} » déjà publié — republie avec confirmation si voulu.", "err")
+            return redirect(url_for("reseaux") + f"#e{event_id}")
+
+    img_url = event_image(ev)
+    try:
+        src = requests.get(img_url, timeout=20,
+                           headers={"User-Agent": "Mozilla/5.0"}).content
+    except requests.RequestException:
+        conn.close()
+        flash(f"❌ « {title} » — photo source injoignable.", "err")
+        return redirect(url_for("reseaux") + f"#e{event_id}")
+
+    caption = social_mod.caption(ev, lang)
+    date_str = social_mod.format_date(ev.get("date_event_start", ""),
+                                      ev.get("date_event_end", ""), lang)
+    where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
+    alt = social_mod.alt_text(ev, lang)
+    try:
+        if kind == "carousel":
+            slides = social_image.carousel(
+                src, title=ev.get("title", ""), date_str=date_str, where=where,
+                territoire=ev.get("territoire", ""))
+            urls = []
+            for i, sl in enumerate(slides):
+                url = wp_media.upload_bytes(
+                    social_image.to_jpeg(sl), f"ig-{event_id}-{lang}-{i}.jpg", alt=alt)
+                if not url:
+                    raise RuntimeError("upload WordPress échoué")
+                urls.append(url)
+            result = ig.publish_carousel(terr_label, urls, caption)
+        else:
+            img = social_image.single_post(
+                src, title=ev.get("title", ""), date_str=date_str,
+                territoire=ev.get("territoire", ""))
+            url = wp_media.upload_bytes(
+                social_image.to_jpeg(img), f"ig-{event_id}-{lang}.jpg", alt=alt)
+            if not url:
+                raise RuntimeError("upload WordPress échoué")
+            result = ig.publish_single(terr_label, url, caption)
+    except Exception as exc:  # visuel/upload/API : jamais de 500, on journalise et informe
+        result = {"ok": False, "error": str(exc)}
+
+    conn.execute(
+        "INSERT INTO social_posts (event_id, territoire_label, lang, kind, status, "
+        "ig_media_id, error) VALUES (?,?,?,?,?,?,?)",
+        (event_id, terr_label, lang, kind, "ok" if result.get("ok") else "error",
+         result.get("media_id"), result.get("error")))
+    conn.commit()
+    conn.close()
+    if result.get("ok"):
+        flash(f"🚀 « {title} » publié sur Instagram ({terr_label}, {lang.upper()}).", "ok")
+    else:
+        flash(f"❌ Échec publication « {title} » : {result.get('error')}", "err")
+    return redirect(url_for("reseaux") + f"#e{event_id}")
 
 
 def _apply_completion(conn, event_id: int, values: dict) -> tuple[bool, list[str]]:
