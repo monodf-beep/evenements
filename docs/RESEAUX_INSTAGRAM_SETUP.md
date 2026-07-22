@@ -28,26 +28,59 @@ IG_TOKEN_NICE_ALPES_MARITIMES=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ## 2. Comment obtenir ces deux valeurs, par compte
 
-Prérequis (une fois par compte, dans l'app Instagram) :
-1. Le compte Instagram est en **Professionnel** (Business ou Creator).
-2. Il est **relié à une Page Facebook** (une Page dédiée par territoire, ou une Page
-   « Agenda Sabauda » avec cet onglet — au choix).
+⚠️ **Deux systèmes existent chez Meta pour publier sur Instagram** : l'ancien, basé
+sur une Page Facebook + Graph API Explorer (compliqué, jetons de Page, permissions
+`pages_show_list`/`instagram_basic`…) et le **nouveau**, basé sur une **connexion
+Instagram directe** (« API Instagram », permissions `instagram_business_*`). **On
+utilise le nouveau** — plus simple, pas besoin de jeton de Page. Ce qui suit est le
+chemin **vérifié en conditions réelles** (compte Savoie, juillet 2026).
 
-Puis, dans **Meta for Developers** (developers.facebook.com) :
-1. Créer **une seule app Meta** pour les 4 comptes (type « Entreprise »).
-2. Demander les permissions `instagram_basic` + `instagram_content_publish` +
-   `pages_show_list` + `pages_read_engagement` → passage en **App Review** (Meta
-   valide sous quelques jours ; jusque-là, l'app ne fonctionne qu'en mode test avec
-   les comptes que tu déclares explicitement testeurs).
-3. Avec l'outil **Graph API Explorer** (ou un échange de jeton), générer un **jeton
-   longue durée** (60 jours, renouvelable) pour la Page liée à CE territoire.
-4. Récupérer l'**Instagram Business Account ID** :
-   `GET /{page-id}?fields=instagram_business_account&access_token=...`
-   → le champ `instagram_business_account.id` est la valeur à mettre dans
-   `IG_ACCOUNT_ID_<SLUG>`.
+**Une seule app Meta sert pour les 4 comptes.** Une fois créée (App Meta →
+« Ajouter un produit » → **API Instagram**) :
 
-*(Cette étape peut être déléguée à Claude Cowork ou faite à la main dans l'interface
-Meta — le back-office n'a besoin que du résultat : les deux valeurs ci-dessus.)*
+1. **developers.facebook.com** → l'app → **Cas d'utilisation** → **API Instagram**
+   → **Autorisations et fonctionnalités**. Vérifier que `instagram_business_basic`
+   et `instagram_business_content_publish` sont bien **« Prête pour le test »**
+   (elles le sont par défaut dès que le produit API Instagram est ajouté — rien à
+   activer). *(Ignorer `instagram_basic`, `instagram_content_publish`,
+   `pages_show_list`, `pages_read_engagement` — ce sont les permissions de
+   l'ANCIEN système, pas les nôtres.)*
+
+2. **Cas d'utilisation → API Instagram → Rôles dans l'application → Rôles**
+   → onglet **« Testeurs Instagram »** → **« Ajouter des personnes »** → coche
+   **« Testeur(se) Instagram »** → tape le nom du compte (ex. `agendasabauda.savoie`)
+   → Ajouter. Le compte apparaît avec le statut **« En attente »**.
+
+3. **Le propriétaire du compte** (jamais un agent/automate — c'est un vrai mot de
+   passe) se connecte lui-même sur **instagram.com/accounts/manage_access/** avec
+   ce compte Instagram → onglet **« Invitations à tester »** → accepte l'invitation
+   de l'app.
+
+4. Retour sur **Cas d'utilisation → API Instagram → Configuration de l'API avec la
+   connexion Instagram**, section **« 2. Générez des tokens d'accès »** : le compte
+   apparaît automatiquement dans le tableau, avec son **ID** déjà affiché sous son
+   nom (ex. `17841410500624417`) — **c'est l'IG_ACCOUNT_ID**, pas besoin de requête
+   API séparée pour l'obtenir.
+
+5. Clique sur **« Générer un token »** à côté du compte. Une fenêtre de connexion
+   Instagram s'ouvre. **Si elle refuse la connexion** (« Impossible de se connecter »,
+   même avec les bons identifiants) : c'est presque toujours un souci de
+   session/contexte navigateur, pas les identifiants. Solutions qui ont marché :
+   - se connecter **d'abord** au compte sur instagram.com dans un **onglet
+     séparé**, puis refaire « Générer un token » ;
+   - si ça persiste, tout refaire **dans une seule fenêtre de navigation privée**,
+     du login jusqu'au clic sur « Générer un token », sans rien d'automatisé ;
+   - vérifier côté **appli mobile** qu'aucune alerte de sécurité Instagram
+     n'attend une confirmation ;
+   - en dernier recours, essayer un **autre navigateur** (une extension peut
+     interférer avec la fenêtre de connexion).
+
+6. Une fois généré, le champ **« Token »** est rempli. C'est l'**IG_TOKEN**.
+   **Ne le fais jamais transiter en clair dans un chat** — copie-le directement
+   dans le `.env` du VPS.
+
+*(Étapes 1, 4, 6 : sans risque à déléguer à Claude Cowork. Étapes 2-3-5 impliquent
+une vraie connexion au compte : à faire par le propriétaire du compte lui-même.)*
 
 ## 3. Une fois configuré
 
