@@ -68,6 +68,21 @@ def _wrap(draw, text, font, max_w):
     return lines
 
 
+def _wrap_ellipsis(draw, text, font, max_w, max_lines):
+    """Comme _wrap, mais si le texte dépasse max_lines, la dernière ligne affichée
+    se termine par « … » (raccourcie si besoin pour tenir dans la largeur) — jamais
+    de titre qui s'arrête net en plein mot sans indiquer qu'il continue."""
+    lines = _wrap(draw, text, font, max_w)
+    if len(lines) <= max_lines:
+        return lines
+    shown = lines[:max_lines]
+    last, ell = shown[-1], "…"
+    while last and draw.textlength(last + ell, font=font) > max_w:
+        last = last[:-1].rstrip()
+    shown[-1] = (last + ell) if last else ell
+    return shown
+
+
 def _scrim(size, height, strength=210):
     """Dégradé noir transparent (haut→bas) pour rendre le texte lisible sur la photo."""
     w, h = size
@@ -121,20 +136,21 @@ def single_post(photo, *, title, date_str, territoire, site="agendasabauda.eu", 
     m = 64
     if tk:
         _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
-    # Titre + date en bas.
+    # Titre + date en bas ; la signature réserve SA propre place (jamais de
+    # chevauchement avec la dernière ligne du titre).
     ft = _font("bold", 66)
-    lines = _wrap(d, title, ft, size - 2 * m)[:3]
+    lines = _wrap_ellipsis(d, title, ft, size - 2 * m, 3)
     fd = _font("bold", 40)
-    total_h = len(lines) * 78 + 64
+    fs = _font("bold", 30)
+    sig_h = 46
+    total_h = len(lines) * 78 + 64 + sig_h
     y = size - m - total_h
     d.text((m, y), date_str, font=fd, fill=(255, 236, 200))
     y += 64
     for ln in lines:
         d.text((m, y), ln, font=ft, fill=(255, 255, 255))
         y += 78
-    # Signature.
-    fs = _font("bold", 30)
-    d.text((m, size - m - 6), "⛰  " + site, font=fs, fill=(255, 255, 255))
+    d.text((m, y + 8), "⛰  " + site, font=fs, fill=(255, 255, 255))
     return canvas.convert("RGB")
 
 
@@ -154,7 +170,7 @@ def story(photo, *, title, date_str, territoire, site="agendasabauda.eu"):
     if tk:
         _chip(d, (m, TOP_SAFE), TERR_LABEL.get(tk, tk.upper()), accent)
     ft = _font("bold", 70)
-    lines = _wrap(d, title, ft, W - 2 * m)[:4]
+    lines = _wrap_ellipsis(d, title, ft, W - 2 * m, 4)
     fd = _font("bold", 42)
     total_h = len(lines) * 88 + 66
     y = H - BOTTOM_SAFE - total_h
@@ -172,7 +188,7 @@ def _slide_bg(size):
 
 
 def carousel(photo, *, title, date_str, where, territoire, bullets=None,
-             cta="Enregistre ce post — et invite qui tu veux y emmener.",
+             cta="Enregistre ce post. Invite qui tu veux y emmener.",
              site="agendasabauda.eu"):
     """Renvoie une liste de slides 1080×1350 : [accroche, détails, appel à l'action]."""
     W, H = 1080, 1350
@@ -188,7 +204,7 @@ def carousel(photo, *, title, date_str, where, territoire, bullets=None,
     if tk:
         _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
     ft = _font("bold", 74)
-    lines = _wrap(d, title, ft, W - 2 * m)[:4]
+    lines = _wrap_ellipsis(d, title, ft, W - 2 * m, 4)
     fd = _font("bold", 42)
     y = H - m - (len(lines) * 88 + 70)
     d.text((m, y), date_str, font=fd, fill=(255, 236, 200)); y += 70
@@ -203,7 +219,7 @@ def carousel(photo, *, title, date_str, where, territoire, bullets=None,
         _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
     y = m + 110
     fh = _font("bold", 60)
-    for ln in _wrap(d, title, fh, W - 2 * m)[:3]:
+    for ln in _wrap_ellipsis(d, title, fh, W - 2 * m, 3):
         d.text((m, y), ln, font=fh, fill=INK); y += 72
     y += 20
     fi = _font("bold", 40)
