@@ -26,7 +26,10 @@ User=root
 WorkingDirectory=/root/evenements
 # 1 worker : le backoffice est mono-utilisateur, et le suivi des lancements
 # manuels (waitpid des sous-process) suppose que le même process suit ses enfants.
-ExecStart=/root/evenements/.venv/bin/gunicorn -w 1 -b 127.0.0.1:8098 'app.app:app'
+# --timeout 180 : le défaut gunicorn (30s) est trop court pour un carrousel Instagram
+# (3 visuels générés + uploadés + 3 conteneurs IG + attente + publication — peut
+# facilement dépasser 30s, gunicorn tuait alors le worker en plein milieu → 500).
+ExecStart=/root/evenements/.venv/bin/gunicorn -w 1 -b 127.0.0.1:8098 --timeout 180 'app.app:app'
 Restart=on-failure
 RestartSec=5
 
