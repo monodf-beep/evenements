@@ -65,30 +65,11 @@ TERR_LABEL = {
 
 # La Savoie a 2 départements (jamais « Haute-Savoie », voir docs/NOMMAGE_TERRITOIRES.md
 # §2) — distingués par chef-lieu : Chambéry (73) / Annecy (74). Aucun champ en base ne
-# porte le département (doc : « mapping ville → département, absent en base, à bâtir
-# le jour venu ») — mapping ville → dept construit ici, volontairement borné aux
-# communes plausibles pour un agenda culturel. Ville inconnue → pas de suffixe
-# (mieux vaut « Savoie » seul qu'un département faux).
-_DEPT_73 = {
-    "chambery", "aix-les-bains", "aix les bains", "albertville", "moutiers",
-    "saint-jean-de-maurienne", "modane", "bourg-saint-maurice", "la motte-servolex",
-    "challes-les-eaux", "montmelian", "yenne", "la lechere", "ugine", "frontenex",
-    "saint-michel-de-maurienne", "les arcs", "tignes", "val-thorens", "val thorens",
-    "les menuires", "courchevel", "meribel", "la plagne", "valmorel",
-    "pralognan-la-vanoise", "val-d'isere", "val d'isere", "termignon", "lanslebourg",
-    "aussois", "valloire", "saint-francois-longchamp", "la rosiere", "peisey-nancroix",
-    "landry", "seez", "saint-jean-de-belleville", "saint-martin-de-belleville",
-}
-_DEPT_74 = {
-    "annecy", "thonon-les-bains", "thonon", "annemasse", "chamonix",
-    "chamonix-mont-blanc", "megeve", "sallanches", "cluses", "evian-les-bains",
-    "evian", "rumilly", "seynod", "cran-gevrier", "faverges", "bonneville",
-    "saint-gervais-les-bains", "saint-gervais", "la clusaz", "le grand-bornand",
-    "morzine", "les gets", "avoriaz", "talloires", "doussard", "duingt",
-    "menthon-saint-bernard", "annecy-le-vieux", "publier", "sciez", "yvoire",
-    "chatel", "samoens", "combloux", "praz-sur-arly", "ville-la-grand", "gaillard",
-    "cranves-sales", "saint-julien-en-genevois", "passy",
-}
+# porte le département (doc : « mapping ville → département, absent en base »). On le
+# déduit de la ville via la LISTE COMPLÈTE des 552 communes 73+74 (données officielles
+# geo.api.gouv.fr, figées dans config/communes_savoie_dept.json). Ville inconnue →
+# pas de suffixe (mieux vaut « Savoie » seul qu'un département faux).
+_DEPT_BY_CITY: "dict[str, str] | None" = None
 
 
 def _norm_city(name: str) -> str:
@@ -97,16 +78,26 @@ def _norm_city(name: str) -> str:
     return "".join(c for c in s if not unicodedata.combining(c))
 
 
+def _dept_map() -> "dict[str, str]":
+    global _DEPT_BY_CITY
+    if _DEPT_BY_CITY is None:
+        import json
+        path = Path(__file__).resolve().parent.parent / "config" / "communes_savoie_dept.json"
+        try:
+            _DEPT_BY_CITY = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            _DEPT_BY_CITY = {}
+    return _DEPT_BY_CITY
+
+
 def chip_label(territoire: str, ville: str = "") -> str:
     """Texte de la puce territoire. Pour la Savoie, précise le département quand la
     ville est reconnue (« SAVOIE (DEPT. 73) ») ; sinon, libellé générique du territoire."""
     tk = _terr_key(territoire)
     if tk == "savoie":
-        v = _norm_city(ville)
-        if v in _DEPT_73:
-            return "SAVOIE (DEPT. 73)"
-        if v in _DEPT_74:
-            return "SAVOIE (DEPT. 74)"
+        dept = _dept_map().get(_norm_city(ville))
+        if dept in ("73", "74"):
+            return f"SAVOIE (DEPT. {dept})"
     return TERR_LABEL.get(tk, tk.upper())
 
 

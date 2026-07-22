@@ -82,18 +82,29 @@ def select_targets(conn: sqlite3.Connection, ids, wp_ids) -> list[dict]:
 
 
 def select_lowres(conn: sqlite3.Connection, ids, min_dim: int) -> list[dict]:
-    """Événements AS publiés dont l'image RÉELLE stockée est plus petite que min_dim
-    (mesure réseau réelle — l'URL seule ne dit rien de la taille)."""
+    """Événements AS publiés qui gagneraient une vraie photo ≥ min_dim :
+      • image RÉELLE (og/page/web/commons) mais trop petite (floue une fois étirée) ;
+      • OU repli bannière : générique, à remplacer par une vraie photo si on en trouve
+        une (c'est le cas du château montré avec le fond abstrait alors qu'une photo
+        Commons existe).
+    La garde de non-dégradation (côté boucle) empêche tout remplacement qui n'améliore
+    pas — mesurer ici ne fait que présélectionner les candidats."""
     q = ("SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,'') <> '' "
          "AND duplicate_of IS NULL AND COALESCE(url_image,'') <> '' "
-         f"AND COALESCE(image_source,'') IN ({','.join('?' * len(_REAL_SOURCES))})")
-    params: list = list(_REAL_SOURCES)
+         f"AND COALESCE(image_source,'') IN ({','.join('?' * (len(_REAL_SOURCES) + 1))})")
+    params: list = [*_REAL_SOURCES, "banner"]
     if ids:
         q += f" AND id IN ({','.join('?' * len(ids))})"
         params += list(ids)
     out = []
     for r in conn.execute(q, params).fetchall():
         ev = dict(r)
+        # Une bannière est un repli générique : toujours candidate (on tentera mieux).
+        # Une vraie image n'est candidate que si elle est trop petite.
+        if ev.get("image_source") == "banner":
+            ev["_old_side"] = 0
+            out.append(ev)
+            continue
         side = images.remote_min_side(ev["url_image"])
         if side == 0 or side < min_dim:
             ev["_old_side"] = side
@@ -125,7 +136,7 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     if args.lowres:
         rows = select_lowres(conn, args.ids, args.min_dim)
-        log.info("%d image(s) trop petite(s) (< %dpx) déjà publiée(s) à réévaluer.",
+        log.info("%d image(s) à réévaluer (réelles < %dpx, ou bannières remplaçables).",
                  len(rows), args.min_dim)
     else:
         rows = select_targets(conn, args.ids, args.wp_ids)
