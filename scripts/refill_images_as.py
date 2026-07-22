@@ -44,7 +44,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import images
 from utils.sources import (is_logo_image, load_blocked_image_domains,
-                           load_territory_images)
+                           load_territory_images, pick_image)
 from scripts.scraper_events import init_db
 from scripts.visuals import resolve_image
 from scripts.publisher_as import publish_to_as
@@ -129,12 +129,23 @@ def main(argv=None) -> int:
                              "seules images manquantes) et ne remplace que par plus grand.")
     parser.add_argument("--min-dim", type=int, default=images.MIN_DIM,
                         help=f"Seuil du plus petit côté en mode --lowres (défaut {images.MIN_DIM}px).")
+    parser.add_argument("--bad-url", default="",
+                        help="RÉCUPÉRATION : cible les événements dont url_image contient cette "
+                             "sous-chaîne (une image parasite partagée, ex. un bandeau de site), "
+                             "les ré-résout et les re-pousse. Rejette toute nouvelle URL contenant "
+                             "encore la sous-chaîne.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     conn.row_factory = sqlite3.Row
-    if args.lowres:
+    if args.bad_url:
+        q = ("SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,'') <> '' "
+             "AND duplicate_of IS NULL AND url_image LIKE ?")
+        rows = [dict(r) for r in conn.execute(q, (f"%{args.bad_url}%",)).fetchall()]
+        log.info("%d événement(s) avec l'image parasite « %s » à ré-résoudre.",
+                 len(rows), args.bad_url)
+    elif args.lowres:
         rows = select_lowres(conn, args.ids, args.min_dim)
         log.info("%d image(s) à réévaluer (réelles < %dpx, ou bannières remplaçables).",
                  len(rows), args.min_dim)
@@ -165,7 +176,17 @@ def main(argv=None) -> int:
     for ev in rows:
         title = (ev.get("title") or "")[:55]
         old_url = (ev.get("url_image") or "").strip()
+        # Récupération : on VIDE d'abord l'image parasite pour que resolve_image reparte
+        # de la chaîne (og:image → page → Commons → bannière) sans la reprendre.
+        if args.bad_url:
+            ev["url_image"] = ""
         url, credit, source = resolve_image(ev, client, blocked, banners)
+
+        # Récupération : si la ré-résolution retombe sur l'image parasite, on la refuse
+        # (repli bannière territoire plutôt que de re-publier le bandeau hors-sujet).
+        if args.bad_url and url and args.bad_url in url:
+            url = pick_image(ev.get("territoire", ""), str(ev["id"]), banners) or ""
+            credit, source = "", ("banner" if url else "none")
 
         # Garde --lowres : on ne remplace QUE par strictement plus grand, et jamais une
         # vraie photo par une bannière — sinon on garde l'existante et on ne re-pousse

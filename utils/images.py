@@ -55,15 +55,13 @@ def _image_size(data: bytes) -> tuple[int, int]:
         return (0, 0)
 
 
-def remote_min_side(url: str, timeout: int = 10) -> int:
-    """Plus petit côté (px) d'une image distante — 0 si injoignable/illisible.
-    Télécharge de façon bornée (l'URL seule ne dit rien de la taille réelle)."""
-    if not url or not url.startswith("http"):
-        return 0
+def _min_side_once(url: str, ua: dict, timeout: int) -> "int | None":
+    """Une tentative de mesure. Renvoie le plus petit côté, 0 si l'image est lisible
+    mais illisible en tant qu'image, ou None si la requête a ÉCHOUÉ (à retenter)."""
     try:
-        r = requests.get(url, timeout=timeout, headers=_PAGE_UA, stream=True)
+        r = requests.get(url, timeout=timeout, headers=ua, stream=True)
         if r.status_code != 200:
-            return 0
+            return None
         buf = b""
         for chunk in r.iter_content(65536):
             buf += chunk
@@ -72,7 +70,30 @@ def remote_min_side(url: str, timeout: int = 10) -> int:
         w, h = _image_size(buf)
         return min(w, h)
     except requests.RequestException:
+        return None
+
+
+def remote_min_side(url: str, timeout: int = 10, retries: int = 2) -> int:
+    """Plus petit côté (px) d'une image distante — 0 si injoignable/illisible.
+
+    Télécharge de façon bornée (l'URL seule ne dit rien de la taille réelle). Fiabilisé
+    par des retries : Wikimedia (upload.wikimedia.org) renvoie par intermittence un 400
+    quand on enchaîne beaucoup de téléchargements — sans retry, une bonne photo serait
+    faussement mesurée à 0 puis remplacée à tort. On tente le UA descriptif Wikimedia
+    d'abord (Commons demande un UA identifiable), puis le UA navigateur en repli."""
+    if not url or not url.startswith("http"):
         return 0
+    wiki = "wikimedia.org" in url or "wikipedia.org" in url
+    uas = [_UA, _PAGE_UA] if wiki else [_PAGE_UA]
+    import time as _time
+    for attempt in range(retries + 1):
+        for ua in uas:
+            side = _min_side_once(url, ua, timeout)
+            if side is not None:
+                return side
+        if attempt < retries:
+            _time.sleep(0.6 * (attempt + 1))  # petit backoff : laisse passer le throttle
+    return 0
 
 
 def _big_enough(url: str, timeout: int = 8) -> bool:
@@ -103,7 +124,7 @@ def fetch_og_image(url: str, timeout: int = 8) -> str:
             img = htmlmod.unescape(m.group(1).strip())
             if img.startswith("//"):
                 img = "https:" + img
-            if img.startswith("http") and _big_enough(img):
+            if img.startswith("http"):
                 return img
     return ""
 
@@ -153,13 +174,16 @@ def fetch_content_image(url: str, timeout: int = 8) -> str:
 
     if not candidates:
         return ""
-    # Priorité aux photos de dossier éditorial (/uploads/…), sinon la 1re valable —
-    # dans chaque groupe, on écarte les images trop petites (floues une fois étirées).
-    hinted = [c for c in candidates if _CONTENT_HINT.search(c)]
-    for src in hinted + [c for c in candidates if c not in hinted]:
-        if _big_enough(src):
+    # Priorité aux photos de dossier éditorial (/uploads/…), sinon la 1re valable.
+    # NB : PAS de filtre de taille ici — une PETITE image PERTINENTE (la vraie photo
+    # de l'événement) vaut mieux qu'une GRANDE image PARASITE (bandeau/pub du site,
+    # ex. « DON D'ORGANES »). Si l'image retenue est trop petite pour un visuel social,
+    # c'est le rendu (utils.social_image) qui bascule sur le fond abstrait — jamais ici
+    # qu'on va chercher « plus grand » au risque d'attraper un habillage hors-sujet.
+    for src in candidates:
+        if _CONTENT_HINT.search(src):
             return src
-    return ""
+    return candidates[0]
 
 
 def _clean(text: str) -> str:
