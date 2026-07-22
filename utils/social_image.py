@@ -126,12 +126,67 @@ def _photo(data, w, h):
     return img.convert("RGB")
 
 
+# Au-delà de cet agrandissement, même avec le renforcement de netteté de
+# card_image._cover, une photo source trop petite reste visiblement floue en plein
+# cadre — mieux vaut alors le repli abstrait (couleur de marque) que le mou.
+MAX_UPSCALE = 1.5
+
+
+def _fits_without_mush(data, w, h) -> bool:
+    """La photo source est-elle assez grande pour remplir w×h sans agrandissement
+    excessif ? False aussi si l'image est illisible (repli abstrait par sécurité)."""
+    try:
+        img = Image.open(io.BytesIO(data)) if isinstance(data, (bytes, bytearray)) else Image.open(data)
+        iw, ih = img.size
+    except Exception:
+        return False
+    if not iw or not ih:
+        return False
+    return max(w / iw, h / ih) <= MAX_UPSCALE
+
+
+def _texture(size, opacity=36):
+    """Filigrane de crêtes (esprit skyline agenda) — même rôle discret que la texture
+    SVG du repli abstrait de la maquette, sans dépendre d'un asset externe."""
+    w, h = size
+    tex = Image.new("RGBA", size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(tex)
+    step, amp = 120, 30
+    n_rows = h // step + 2
+    for row in range(n_rows):
+        base_y = 70 + row * step
+        pts, x, up = [], -60, row % 2 == 0
+        while x <= w + 60:
+            pts.append((x, base_y - (amp if up else 0)))
+            up = not up
+            x += step // 2
+        d.line(pts, fill=(255, 255, 255, opacity), width=3)
+    return tex
+
+
+def _abstract_bg(size, territoire):
+    """Fond de repli quand la photo manque ou est trop petite pour être agrandie
+    proprement : couleur de territoire + filigrane + filet clair en haut (spec
+    « repli abstrait » de la maquette) — le reste (chip, titre, date, signature)
+    se dessine ensuite exactement comme sur un fond photo."""
+    w, h = size
+    tk = _terr_key(territoire)
+    accent = TERR_ACCENT.get(tk, TERR_ACCENT[""])
+    canvas = Image.new("RGBA", size, accent + (255,))
+    canvas.alpha_composite(_texture(size))
+    ImageDraw.Draw(canvas).rectangle([0, 0, w, 14], fill=(255, 255, 255, 70))
+    return canvas
+
+
 def single_post(photo, *, title, date_str, territoire, site="agendasabauda.eu", size=1080):
     """Post carré 1080×1080 : photo + bandeau signé (titre, date, territoire)."""
     tk = _terr_key(territoire)
     accent = TERR_ACCENT.get(tk, TERR_ACCENT[""])
-    canvas = _photo(photo, size, size).convert("RGBA")
-    canvas.alpha_composite(_scrim((size, size), int(size * 0.5)))
+    if _fits_without_mush(photo, size, size):
+        canvas = _photo(photo, size, size).convert("RGBA")
+        canvas.alpha_composite(_scrim((size, size), int(size * 0.5)))
+    else:
+        canvas = _abstract_bg((size, size), territoire)
     d = ImageDraw.Draw(canvas)
     m = 64
     if tk:
@@ -163,8 +218,11 @@ def story(photo, *, title, date_str, territoire, site="agendasabauda.eu"):
     TOP_SAFE, BOTTOM_SAFE = 230, 260
     tk = _terr_key(territoire)
     accent = TERR_ACCENT.get(tk, TERR_ACCENT[""])
-    canvas = _photo(photo, W, H).convert("RGBA")
-    canvas.alpha_composite(_scrim((W, H), int(H * 0.42)))
+    if _fits_without_mush(photo, W, H):
+        canvas = _photo(photo, W, H).convert("RGBA")
+        canvas.alpha_composite(_scrim((W, H), int(H * 0.42)))
+    else:
+        canvas = _abstract_bg((W, H), territoire)
     d = ImageDraw.Draw(canvas)
     m = 70
     if tk:
@@ -196,9 +254,13 @@ def carousel(photo, *, title, date_str, where, territoire, bullets=None,
     accent = TERR_ACCENT.get(tk, TERR_ACCENT[""])
     slides = []
 
-    # Slide 1 — accroche (photo plein cadre + titre/date).
-    s1 = _photo(photo, W, H).convert("RGBA")
-    s1.alpha_composite(_scrim((W, H), int(H * 0.5)))
+    # Slide 1 — accroche (photo plein cadre + titre/date, ou repli abstrait si la
+    # photo source est trop petite pour être agrandie proprement).
+    if _fits_without_mush(photo, W, H):
+        s1 = _photo(photo, W, H).convert("RGBA")
+        s1.alpha_composite(_scrim((W, H), int(H * 0.5)))
+    else:
+        s1 = _abstract_bg((W, H), territoire)
     d = ImageDraw.Draw(s1)
     m = 70
     if tk:

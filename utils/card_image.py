@@ -62,6 +62,11 @@ def _cover(img: Image.Image, tw: int, th: int, fx: float, fy: float) -> Image.Im
     scale = max(tw / img.width, th / img.height)
     rw, rh = round(img.width * scale), round(img.height * scale)
     resized = img.resize((rw, rh), Image.LANCZOS)
+    if scale > 1.05:
+        # Agrandissement réel (source plus petite que la cible) : LANCZOS seul rend
+        # l'image visiblement molle. Un renforcement léger de netteté compense sans
+        # créer d'artefacts, tant que l'agrandissement reste raisonnable.
+        resized = resized.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
     # Fenêtre tw×th positionnée pour que le point focal reste visible et centré si possible.
     left = round((rw - tw) * fx)
     top = round((rh - th) * fy)
