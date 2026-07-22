@@ -2585,15 +2585,36 @@ def reseaux_publish(event_id: int):
                                    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
                      "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
                      "Referer": f"{urlparse(img_url).scheme}://{urlparse(img_url).netloc}/"})
+        # Cloudflare (et défenses anti-robot similaires) répond parfois 200 avec une
+        # page de défi JS plutôt qu'un 403 franc — le Content-Type révèle le pot aux
+        # roses. On distingue ce cas d'un simple lien cassé : un en-tête ne le
+        # débloquera jamais, il faudrait un vrai navigateur (hors périmètre ici).
+        cf_challenge = img_resp.headers.get("cf-mitigated", "") == "challenge"
         img_resp.raise_for_status()
         content_type = img_resp.headers.get("Content-Type", "").split(";")[0].strip()
         if not content_type.startswith("image/"):
             conn.close()
-            flash(f"❌ « {title} » — l'URL de la photo n'a pas renvoyé une image "
-                  f"(reçu : {content_type or 'inconnu'}). Source probablement protégée "
-                  "contre le hotlinking, ou lien cassé.", "err")
+            if cf_challenge:
+                flash(f"❌ « {title} » — le site source protège ses images par un "
+                      "défi anti-robot Cloudflare : aucun en-tête ne peut le passer, "
+                      "il faudrait un vrai navigateur. Choisis un autre événement "
+                      "pour ce post, ou dépose la photo manuellement.", "err")
+            else:
+                flash(f"❌ « {title} » — l'URL de la photo n'a pas renvoyé une image "
+                      f"(reçu : {content_type or 'inconnu'}). Source probablement "
+                      "protégée contre le hotlinking, ou lien cassé.", "err")
             return redirect(url_for("reseaux") + f"#e{event_id}")
         src = img_resp.content
+    except requests.HTTPError as exc:
+        conn.close()
+        cf = exc.response is not None and exc.response.headers.get("cf-mitigated") == "challenge"
+        if cf:
+            flash(f"❌ « {title} » — le site source bloque avec un défi anti-robot "
+                  "Cloudflare (aucun en-tête ne le contourne). Choisis un autre "
+                  "événement pour ce post, ou dépose la photo manuellement.", "err")
+        else:
+            flash(f"❌ « {title} » — photo source injoignable ({exc}).", "err")
+        return redirect(url_for("reseaux") + f"#e{event_id}")
     except requests.RequestException as exc:
         conn.close()
         flash(f"❌ « {title} » — photo source injoignable ({exc}).", "err")
