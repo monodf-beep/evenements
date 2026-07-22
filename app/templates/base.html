@@ -15,32 +15,40 @@
       <span class="brand-mark" aria-hidden="true">CS</span>
       <div><b>Cultura Sabauda</b><small>Agenda</small></div>
     </div>
+    {% set _analyse = ['pilotage', 'couverture', 'couverture_geo', 'wireframe'] %}
+    {% set _aide = ['process', 'cowork', 'reglages'] %}
     <nav class="nav" aria-label="Navigation principale">
       <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Tableau de bord</a>
       <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Événements</a>
-      <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
 
-      <div class="nav-section">Cultura Sabauda</div>
+      <div class="nav-section">À traiter</div>
       <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
         {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
-
-      <div class="nav-section">Agenda Sabauda</div>
       <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
         {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
       <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer</a>
-      <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Régie pub
+
+      <div class="nav-section">Publier & grandir</div>
+      <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>
+      <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Régie pub
         {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</a>
-      <a href="/wireframe-home" class="{{ 'on' if active=='wireframe' }}" {% if active=='wireframe' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Wireframe home</a>
-      <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
-      <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
       <a href="/newsletter" class="{{ 'on' if active=='newsletter' }}" {% if active=='newsletter' %}aria-current="page"{% endif %}><span aria-hidden="true">📧</span> Newsletter</a>
       <a href="/partenariat" class="{{ 'on' if active=='partenariat' }}" {% if active=='partenariat' %}aria-current="page"{% endif %}><span aria-hidden="true">🤝</span> Partenariat / widget</a>
-      <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>
 
-      <div class="nav-section">Aide</div>
-      <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
-      <a href="/cowork" class="{{ 'on' if active=='cowork' }}" {% if active=='cowork' %}aria-current="page"{% endif %}><span aria-hidden="true">🤖</span> Cowork</a>
-      <a href="/reglages" class="{{ 'on' if active=='reglages' }}" {% if active=='reglages' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Réglages / Coûts</a>
+      <details {% if active in _analyse %}open{% endif %}>
+        <summary><span class="chev" aria-hidden="true">›</span> Analyse</summary>
+        <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
+        <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
+        <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
+        <a href="/wireframe-home" class="{{ 'on' if active=='wireframe' }}" {% if active=='wireframe' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Wireframe home</a>
+      </details>
+
+      <details {% if active in _aide %}open{% endif %}>
+        <summary><span class="chev" aria-hidden="true">›</span> Aide & réglages</summary>
+        <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
+        <a href="/cowork" class="{{ 'on' if active=='cowork' }}" {% if active=='cowork' %}aria-current="page"{% endif %}><span aria-hidden="true">🤖</span> Cowork</a>
+        <a href="/reglages" class="{{ 'on' if active=='reglages' }}" {% if active=='reglages' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Réglages / Coûts</a>
+      </details>
     </nav>
     <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>
   </aside>

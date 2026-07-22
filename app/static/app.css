@@ -77,6 +77,17 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 /* Intertitres de section (regroupement par produit dans la barre latérale) */
 .nav-section { font-size:.64rem; letter-spacing:.11em; text-transform:uppercase;
   color:#7c8798; font-weight:700; padding:.8rem .75rem .28rem; }
+/* Groupes secondaires REPLIABLES (Analyse, Aide) : réduit le nombre d'items toujours
+   visibles. <details> natif — s'ouvre au clic, ou tout seul si la page active est dedans
+   (cf. base.html). */
+.nav details summary { display:flex; align-items:center; gap:.4rem; cursor:pointer;
+  list-style:none; font-size:.64rem; letter-spacing:.11em; text-transform:uppercase;
+  color:#7c8798; font-weight:700; padding:.8rem .75rem .28rem; user-select:none; }
+.nav details summary::-webkit-details-marker { display:none; }
+.nav details summary::marker { content:''; }
+.nav details summary:hover { color:#c2ccd9; }
+.nav details summary .chev { transition:transform .15s; font-size:.9em; }
+.nav details[open] summary .chev { transform:rotate(90deg); }
 .nav-foot { margin-top:auto; padding-top:1rem; border-top:1px solid rgba(255,255,255,.12); }
 .nav-foot a { color:#8b96a8; font-size:.85rem; padding:.4rem .7rem; display:block; }
 
