@@ -112,6 +112,10 @@ _conn.execute("""
         created_at TEXT DEFAULT (datetime('now'))
     )
 """)
+try:
+    _conn.execute("ALTER TABLE social_posts ADD COLUMN platform TEXT DEFAULT 'instagram'")
+except sqlite3.OperationalError:
+    pass
 _conn.commit()
 _conn.close()
 
@@ -2505,13 +2509,36 @@ def reseaux_publish(event_id: int):
 
     conn.execute(
         "INSERT INTO social_posts (event_id, territoire_label, lang, kind, status, "
-        "ig_media_id, error) VALUES (?,?,?,?,?,?,?)",
+        "ig_media_id, error, platform) VALUES (?,?,?,?,?,?,?,?)",
         (event_id, terr_label, lang, kind, "ok" if result.get("ok") else "error",
-         result.get("media_id"), result.get("error")))
+         result.get("media_id"), result.get("error"), "instagram"))
+
+    # Cross-post best-effort : « un contenu, 3 canaux » (cf. RESEAUX_SOCIAUX_PLAN §4).
+    # Seulement pour le post simple, seulement si Instagram a réussi (même image, même
+    # légende), et SEULEMENT si le territoire est configuré — jamais bloquant, jamais
+    # d'échec Instagram à cause de Facebook/Threads.
+    cross_done = []
+    if result.get("ok") and kind == "single":
+        from utils import facebook_publish as fb, threads_publish as th
+        for platform_name, label, mod in (("facebook", "Facebook", fb),
+                                          ("threads", "Threads", th)):
+            if not mod.configured(terr_label):
+                continue
+            fn = mod.publish_photo if platform_name == "facebook" else mod.publish_single
+            r = fn(terr_label, url, caption)
+            conn.execute(
+                "INSERT INTO social_posts (event_id, territoire_label, lang, kind, "
+                "status, ig_media_id, error, platform) VALUES (?,?,?,?,?,?,?,?)",
+                (event_id, terr_label, lang, kind, "ok" if r.get("ok") else "error",
+                 r.get("post_id") or r.get("media_id"), r.get("error"), platform_name))
+            if r.get("ok"):
+                cross_done.append(label)
+
     conn.commit()
     conn.close()
     if result.get("ok"):
-        flash(f"🚀 « {title} » publié sur Instagram ({terr_label}, {lang.upper()}).", "ok")
+        extra = f" + {', '.join(cross_done)}" if cross_done else ""
+        flash(f"🚀 « {title} » publié sur Instagram ({terr_label}, {lang.upper()}){extra}.", "ok")
     else:
         flash(f"❌ Échec publication « {title} » : {result.get('error')}", "err")
     return redirect(url_for("reseaux") + f"#e{event_id}")
