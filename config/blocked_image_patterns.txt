@@ -1,0 +1,42 @@
+# Motifs d'URL d'images PARASITES à rejeter (habillage de site, pas la photo de l'événement).
+#
+# Une ligne = une sous-chaîne cherchée (insensible à la casse) dans l'URL de l'image.
+# Si l'URL en contient une, l'image est refusée par la chaîne de résolution
+# (utils.images / scripts.visuals) — elle ne sera JAMAIS choisie comme visuel.
+#
+# Complète ce fichier quand un nouveau bandeau/slider/pub est repéré : AUCUN code à
+# toucher, il est relu à chaque exécution. Diagnostic pour en trouver de nouveaux :
+#   SELECT url_image, COUNT(*) n FROM events_raw WHERE image_source IN ('og','page','web')
+#   GROUP BY url_image HAVING n > 2 ORDER BY n DESC;
+# (une image partagée par beaucoup d'événements SANS RAPPORT = presque toujours de l'habillage)
+#
+# Lignes vides et lignes # ignorées.
+
+# --- Campagnes nationales / institutionnelles affichées sur les sites de mairies ---
+don-organe
+don_organe
+dondorgane
+greffe
+territoire_engage
+_engage_te_
+# (les campagnes « territoire engagé pour le climat », dons d'organes, etc. — jamais un événement)
+
+# --- Images de test / placeholders laissés par les webmasters ---
+/test2
+/test-
+-test-carte
+placeholder
+
+# --- Sliders / carrousels de page d'accueil (pas un événement précis) ---
+-slide-
+/slide/
+slider
+homepage-
+accueil-slider
+
+# --- Bibliothèques d'images des plateformes d'emailing (newsletters, pas des affiches) ---
+mailinblue.com
+sendinblue.com
+/content_library/
+sib-
+brevo.com/images

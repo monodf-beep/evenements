@@ -124,6 +124,9 @@ def main(argv=None) -> int:
                         help="Résout l'image mais ne met à jour NI la base NI WordPress.")
     parser.add_argument("--no-web", action="store_true",
                         help="Pas de recherche Commons (og:image + page + bannière seulement).")
+    parser.add_argument("--no-verify", action="store_true",
+                        help="Désactive l'agent vision de vérification (plus rapide/moins cher, "
+                             "mais ne détecte plus les bandeaux/images hors-sujet non listés).")
     parser.add_argument("--lowres", action="store_true",
                         help="Cible les images RÉELLES trop petites déjà en base (au lieu des "
                              "seules images manquantes) et ne remplace que par plus grand.")
@@ -170,7 +173,7 @@ def main(argv=None) -> int:
         conn.close()
         return 0
 
-    # LLM = seulement la requête visuelle Commons (étage 3). Optionnel.
+    # LLM = requête visuelle Commons (étage 3) + AGENT vision de vérification. Optionnel.
     client = None
     if not args.no_web:
         api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -179,6 +182,11 @@ def main(argv=None) -> int:
             client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
         else:
             log.warning("ANTHROPIC_API_KEY absente : pas de Commons, og:image + page + bannière seulement.")
+    # Chemin PUBLICATION : la pertinence prime → l'agent vision vérifie chaque image
+    # (og/page/Commons) avant de la re-pousser, sauf --no-verify. Le modèle vision est
+    # économique (haiku par défaut).
+    verify_client = None if args.no_verify else client
+    verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
 
     banners = load_territory_images()
     blocked = load_blocked_image_domains()
@@ -193,7 +201,8 @@ def main(argv=None) -> int:
         # de la chaîne (og:image → page → Commons → bannière) sans la reprendre.
         if args.bad_url:
             ev["url_image"] = ""
-        url, credit, source = resolve_image(ev, client, blocked, banners)
+        url, credit, source = resolve_image(ev, client, blocked, banners,
+                                            verify_client=verify_client, verify_model=verify_model)
 
         # Récupération : si la ré-résolution retombe sur l'image parasite, on la refuse
         # (repli bannière territoire plutôt que de re-publier le bandeau hors-sujet).

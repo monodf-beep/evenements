@@ -135,47 +135,16 @@ def _download(url: str) -> tuple[bytes, str]:
 
 
 def verify_image(ev: dict, subject: str, img_bytes: bytes, mime: str, client) -> bool:
-    """Vérificateur VISION : l'image correspond-elle vraiment au sujet ? True/False."""
+    """Vérificateur VISION : l'image correspond-elle vraiment au sujet ? True/False.
+
+    Délègue à utils.image_verify.verify_relevance (agent partagé avec la chaîne
+    principale). NB : verify_relevance renvoie True en cas de panne technique (ne
+    bloque pas), mais ici — agent web de dernier recours — on exige un OK franc :
+    une image non lisible n'est pas acceptable, on refuse par défaut."""
     if not img_bytes or mime not in _OK_MIME:
         return False
-    b64 = base64.standard_b64encode(img_bytes).decode("ascii")
-    prompt = (
-        "Voici une image candidate pour illustrer un événement culturel. Dis si elle "
-        "est PERTINENTE et acceptable pour un média public.\n"
-        f"Événement : {_clean(ev.get('article_title') or ev.get('title'))}\n"
-        f"Lieu/ville : {_clean(ev.get('lieu'))} {_clean(ev.get('ville'))}\n"
-        f"Sujet attendu : {subject or '(illustration du sujet)'}\n\n"
-        "REFUSE si : capture d'écran, affiche pleine de texte, logo, photo sans "
-        "rapport, image de très mauvaise qualité, ou contenu inapproprié.\n"
-        'Réponds en JSON STRICT : {"ok": true|false, "raison": "…"}'
-    )
-    try:
-        msg = client.messages.create(
-            model=VERIFY_MODEL, max_tokens=150,
-            messages=[{"role": "user", "content": [
-                {"type": "image", "source": {"type": "base64",
-                                             "media_type": mime, "data": b64}},
-                {"type": "text", "text": prompt}]}])
-    except Exception as exc:
-        log.warning("Vérification vision échouée : %s", exc)
-        return False
-    try:
-        from utils import usage
-        usage.record_message(VERIFY_MODEL, msg, label="image_web_verify")
-    except Exception:
-        pass
-    raw = "".join(getattr(b, "text", "") for b in msg.content
-                  if getattr(b, "type", None) == "text").strip()
-    m = re.search(r"\{.*\}", raw, re.S)
-    if not m:
-        return False
-    try:
-        data = json.loads(m.group())
-    except (ValueError, TypeError):
-        return False
-    if not data.get("ok"):
-        log.info("Image refusée par le vérificateur : %s", (data.get("raison") or "")[:120])
-    return bool(data.get("ok"))
+    from utils import image_verify
+    return image_verify.verify_relevance(img_bytes, mime, ev, client, VERIFY_MODEL, subject)
 
 
 def find_verified_image(ev: dict, client, blocked: set[str]) -> tuple[str, str]:
