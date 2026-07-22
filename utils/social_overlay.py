@@ -26,7 +26,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from utils.social_image import (_abstract_bg, _fits_without_mush, _font,
-                                 _photo, _terr_key, _wrap_ellipsis)
+                                 _photo, _terr_key, _wrap_ellipsis, chip_label)
 
 ROOT = Path(__file__).resolve().parent.parent
 OVERLAY_DIR = ROOT / "assets" / "social_overlays"
@@ -38,6 +38,41 @@ _SPECS = {
     "story-9x16":  {"size": (1080, 1920), "erase": (1145, 1515), "sample_x": 1000},
     "carrousel-1": {"size": (1080, 1350), "erase": (1010, 1205), "sample_x": 1030},
 }
+
+# Puce territoire (« ● SAVOIE ») : elle aussi « cuite » en pixels dans l'export. Comme
+# c'est un aplat uni (pas un dégradé), pas besoin d'effacer : on redessine une puce au
+# moins aussi grande par-dessus (le texte ne peut que s'allonger : « SAVOIE » →
+# « SAVOIE (DEPT. 73) »), ancrée au même bord que l'originale (droite pour le post,
+# gauche pour le carrousel/la story) pour ne rien laisser dépasser de l'ancienne.
+_CHIP_ACCENT = (24, 54, 94, 255)  # couleur exacte échantillonnée dans les 3 exports
+_CHIP_SPECS = {
+    "post-4x5":    {"anchor": "right", "box": (823, 56, 1023, 130)},
+    "carrousel-1": {"anchor": "left",  "box": (60, 60, 275, 137)},
+    "story-9x16":  {"anchor": "left",  "box": (70, 380, 299, 461)},
+}
+
+
+def _redraw_chip(overlay, fmt: str, label: str) -> None:
+    spec = _CHIP_SPECS[fmt]
+    x0, y0, x1, y1 = spec["box"]
+    h = y1 - y0
+    d = ImageDraw.Draw(overlay)
+    fchip = _font("bold", 32)
+    tw = d.textlength(label, font=fchip)
+    dot_d, pad_l, pad_r, gap = 14, 24, 24, 12
+    box_w = round(dot_d + gap + tw + pad_l + pad_r)
+    if spec["anchor"] == "right":
+        nx0, nx1 = x1 - box_w, x1
+    else:
+        nx0, nx1 = x0, x0 + box_w
+    d.rounded_rectangle([nx0, y0, nx1, y1], radius=14, fill=_CHIP_ACCENT)
+    cy = (y0 + y1) // 2
+    dot_x0 = nx0 + pad_l
+    d.ellipse([dot_x0, cy - dot_d // 2, dot_x0 + dot_d, cy + dot_d // 2],
+              fill=(255, 255, 255, 255))
+    tb = d.textbbox((0, 0), label, font=fchip)
+    text_y = cy - (tb[3] - tb[1]) // 2 - tb[1]
+    d.text((dot_x0 + dot_d + gap, text_y), label, font=fchip, fill=(255, 255, 255, 255))
 
 
 def overlay_path(territoire: str, fmt: str) -> Path | None:
@@ -90,7 +125,7 @@ def _render_text(overlay, fmt, *, title, date_str, where):
 
 
 def compose(fmt: str, territoire: str, photo: bytes, *, title: str, date_str: str,
-            where: str = "") -> "Image.Image | None":
+            where: str = "", ville: str = "") -> "Image.Image | None":
     """Renvoie l'image composée (photo + overlay texté) ou None si pas d'overlay
     disponible pour ce territoire/format (l'appelant retombe sur social_image)."""
     if fmt not in _SPECS:
@@ -103,6 +138,7 @@ def compose(fmt: str, territoire: str, photo: bytes, *, title: str, date_str: st
     if overlay.size != (w, h):  # export incohérent avec la spec : on n'improvise pas
         return None
     overlay = _render_text(overlay, fmt, title=title, date_str=date_str, where=where)
+    _redraw_chip(overlay, fmt, chip_label(territoire, ville))
     if _fits_without_mush(photo, w, h):
         bg = _photo(photo, w, h).convert("RGBA")
     else:

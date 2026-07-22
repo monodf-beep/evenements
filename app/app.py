@@ -2628,14 +2628,15 @@ def reseaux_publish(event_id: int):
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
     alt = social_mod.alt_text(ev, lang)
     territoire = ev.get("territoire", "")
+    ville = ev.get("ville", "")
     full_title = ev.get("title", "")
     try:
         if kind == "carousel":
             slide1 = social_overlay.compose(
-                "carrousel-1", territoire, src, title=full_title, date_str=date_str)
+                "carrousel-1", territoire, src, title=full_title, date_str=date_str, ville=ville)
             slides = social_image.carousel(
                 src, title=full_title, date_str=date_str, where=where,
-                territoire=territoire, slide1_override=slide1)
+                territoire=territoire, ville=ville, slide1_override=slide1)
             urls = []
             for i, sl in enumerate(slides):
                 url = wp_media.upload_bytes(
@@ -2646,10 +2647,11 @@ def reseaux_publish(event_id: int):
             result = ig.publish_carousel(terr_label, urls, caption)
         elif kind == "story":
             img = social_overlay.compose(
-                "story-9x16", territoire, src, title=full_title, date_str=date_str, where=where)
+                "story-9x16", territoire, src, title=full_title, date_str=date_str,
+                where=where, ville=ville)
             if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
                 img = social_image.story(
-                    src, title=full_title, date_str=date_str, territoire=territoire)
+                    src, title=full_title, date_str=date_str, territoire=territoire, ville=ville)
             url = wp_media.upload_bytes(
                 social_image.to_jpeg(img), f"ig-{event_id}-{lang}-story.jpg", alt=alt)
             if not url:
@@ -2657,10 +2659,11 @@ def reseaux_publish(event_id: int):
             result = ig.publish_story(terr_label, url)
         else:
             img = social_overlay.compose(
-                "post-4x5", territoire, src, title=full_title, date_str=date_str, where=where)
+                "post-4x5", territoire, src, title=full_title, date_str=date_str,
+                where=where, ville=ville)
             if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
                 img = social_image.single_post(
-                    src, title=full_title, date_str=date_str, territoire=territoire)
+                    src, title=full_title, date_str=date_str, territoire=territoire, ville=ville)
             url = wp_media.upload_bytes(
                 social_image.to_jpeg(img), f"ig-{event_id}-{lang}.jpg", alt=alt)
             if not url:

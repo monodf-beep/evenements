@@ -36,6 +36,53 @@ TERR_LABEL = {
     "vallee-aoste": "VALLÉE D'AOSTE", "nice": "NICE",
 }
 
+# La Savoie a 2 départements (jamais « Haute-Savoie », voir docs/NOMMAGE_TERRITOIRES.md
+# §2) — distingués par chef-lieu : Chambéry (73) / Annecy (74). Aucun champ en base ne
+# porte le département (doc : « mapping ville → département, absent en base, à bâtir
+# le jour venu ») — mapping ville → dept construit ici, volontairement borné aux
+# communes plausibles pour un agenda culturel. Ville inconnue → pas de suffixe
+# (mieux vaut « Savoie » seul qu'un département faux).
+_DEPT_73 = {
+    "chambery", "aix-les-bains", "aix les bains", "albertville", "moutiers",
+    "saint-jean-de-maurienne", "modane", "bourg-saint-maurice", "la motte-servolex",
+    "challes-les-eaux", "montmelian", "yenne", "la lechere", "ugine", "frontenex",
+    "saint-michel-de-maurienne", "les arcs", "tignes", "val-thorens", "val thorens",
+    "les menuires", "courchevel", "meribel", "la plagne", "valmorel",
+    "pralognan-la-vanoise", "val-d'isere", "val d'isere", "termignon", "lanslebourg",
+    "aussois", "valloire", "saint-francois-longchamp", "la rosiere", "peisey-nancroix",
+    "landry", "seez", "saint-jean-de-belleville", "saint-martin-de-belleville",
+}
+_DEPT_74 = {
+    "annecy", "thonon-les-bains", "thonon", "annemasse", "chamonix",
+    "chamonix-mont-blanc", "megeve", "sallanches", "cluses", "evian-les-bains",
+    "evian", "rumilly", "seynod", "cran-gevrier", "faverges", "bonneville",
+    "saint-gervais-les-bains", "saint-gervais", "la clusaz", "le grand-bornand",
+    "morzine", "les gets", "avoriaz", "talloires", "doussard", "duingt",
+    "menthon-saint-bernard", "annecy-le-vieux", "publier", "sciez", "yvoire",
+    "chatel", "samoens", "combloux", "praz-sur-arly", "ville-la-grand", "gaillard",
+    "cranves-sales", "saint-julien-en-genevois", "passy",
+}
+
+
+def _norm_city(name: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (name or "").strip().lower())
+    return "".join(c for c in s if not unicodedata.combining(c))
+
+
+def chip_label(territoire: str, ville: str = "") -> str:
+    """Texte de la puce territoire. Pour la Savoie, précise le département quand la
+    ville est reconnue (« SAVOIE (DEPT. 73) ») ; sinon, libellé générique du territoire."""
+    tk = _terr_key(territoire)
+    if tk == "savoie":
+        v = _norm_city(ville)
+        if v in _DEPT_73:
+            return "SAVOIE (DEPT. 73)"
+        if v in _DEPT_74:
+            return "SAVOIE (DEPT. 74)"
+    return TERR_LABEL.get(tk, tk.upper())
+
+
 _FONT_CANDIDATES = {
     "bold": ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
              "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"],
@@ -106,7 +153,7 @@ def _chip(draw, xy, text, accent):
 
 
 def _terr_key(territoire: str) -> str:
-    t = (territoire or "").lower()
+    t = _norm_city(territoire)  # normalise aussi les accents ("Piémont" -> "piemont")
     if "piemont" in t:
         return "piemonte"
     if "aost" in t or "aoste" in t:
@@ -178,7 +225,7 @@ def _abstract_bg(size, territoire):
     return canvas
 
 
-def single_post(photo, *, title, date_str, territoire, site="agendasabauda.eu", size=1080):
+def single_post(photo, *, title, date_str, territoire, ville="", site="agendasabauda.eu", size=1080):
     """Post carré 1080×1080 : photo + bandeau signé (titre, date, territoire)."""
     tk = _terr_key(territoire)
     accent = TERR_ACCENT.get(tk, TERR_ACCENT[""])
@@ -190,7 +237,7 @@ def single_post(photo, *, title, date_str, territoire, site="agendasabauda.eu", 
     d = ImageDraw.Draw(canvas)
     m = 64
     if tk:
-        _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
+        _chip(d, (m, m), chip_label(territoire, ville), accent)
     # Titre + date en bas ; la signature réserve SA propre place (jamais de
     # chevauchement avec la dernière ligne du titre).
     ft = _font("bold", 66)
@@ -209,7 +256,7 @@ def single_post(photo, *, title, date_str, territoire, site="agendasabauda.eu", 
     return canvas.convert("RGB")
 
 
-def story(photo, *, title, date_str, territoire, site="agendasabauda.eu"):
+def story(photo, *, title, date_str, territoire, ville="", site="agendasabauda.eu"):
     """Story 1080×1920 : photo + texte, SANS légende (l'API Instagram n'accepte pas
     de texte séparé sur les stories — tout doit être « cuit » dans l'image). Marges
     hautes/basses réservées pour ne pas passer sous l'UI Instagram (avatar/minuteur
@@ -226,7 +273,7 @@ def story(photo, *, title, date_str, territoire, site="agendasabauda.eu"):
     d = ImageDraw.Draw(canvas)
     m = 70
     if tk:
-        _chip(d, (m, TOP_SAFE), TERR_LABEL.get(tk, tk.upper()), accent)
+        _chip(d, (m, TOP_SAFE), chip_label(territoire, ville), accent)
     ft = _font("bold", 70)
     lines = _wrap_ellipsis(d, title, ft, W - 2 * m, 4)
     fd = _font("bold", 42)
@@ -245,7 +292,7 @@ def _slide_bg(size):
     return Image.new("RGB", size, BRAND_BG)
 
 
-def carousel(photo, *, title, date_str, where, territoire, bullets=None,
+def carousel(photo, *, title, date_str, where, territoire, ville="", bullets=None,
              cta="Enregistre ce post. Invite qui tu veux y emmener.",
              site="agendasabauda.eu", slide1_override=None):
     """Renvoie une liste de slides 1080×1350 : [accroche, détails, appel à l'action].
@@ -271,7 +318,7 @@ def carousel(photo, *, title, date_str, where, territoire, bullets=None,
             s1 = _abstract_bg((W, H), territoire)
         d = ImageDraw.Draw(s1)
         if tk:
-            _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
+            _chip(d, (m, m), chip_label(territoire, ville), accent)
         ft = _font("bold", 74)
         lines = _wrap_ellipsis(d, title, ft, W - 2 * m, 4)
         fd = _font("bold", 42)
@@ -285,7 +332,7 @@ def carousel(photo, *, title, date_str, where, territoire, bullets=None,
     s2 = _slide_bg((W, H)); d = ImageDraw.Draw(s2)
     d.rectangle([0, 0, W, 12], fill=accent)
     if tk:
-        _chip(d, (m, m), TERR_LABEL.get(tk, tk.upper()), accent)
+        _chip(d, (m, m), chip_label(territoire, ville), accent)
     y = m + 110
     fh = _font("bold", 60)
     for ln in _wrap_ellipsis(d, title, fh, W - 2 * m, 3):
