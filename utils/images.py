@@ -55,22 +55,30 @@ def _image_size(data: bytes) -> tuple[int, int]:
         return (0, 0)
 
 
-def _big_enough(url: str, timeout: int = 8) -> bool:
-    """Télécharge (borné) une image candidate pour vérifier sa VRAIE résolution —
-    l'URL seule ne dit rien de la taille réelle du fichier."""
+def remote_min_side(url: str, timeout: int = 10) -> int:
+    """Plus petit côté (px) d'une image distante — 0 si injoignable/illisible.
+    Télécharge de façon bornée (l'URL seule ne dit rien de la taille réelle)."""
+    if not url or not url.startswith("http"):
+        return 0
     try:
         r = requests.get(url, timeout=timeout, headers=_PAGE_UA, stream=True)
         if r.status_code != 200:
-            return False
+            return 0
         buf = b""
         for chunk in r.iter_content(65536):
             buf += chunk
             if len(buf) > _MAX_CHECK_BYTES:
                 break
         w, h = _image_size(buf)
-        return min(w, h) >= MIN_DIM
+        return min(w, h)
     except requests.RequestException:
-        return False
+        return 0
+
+
+def _big_enough(url: str, timeout: int = 8) -> bool:
+    """Télécharge (borné) une image candidate pour vérifier sa VRAIE résolution —
+    l'URL seule ne dit rien de la taille réelle du fichier."""
+    return remote_min_side(url, timeout) >= MIN_DIM
 
 
 def fetch_og_image(url: str, timeout: int = 8) -> str:
