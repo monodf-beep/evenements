@@ -31,15 +31,16 @@ uniquement là où elle existe.*
 
 ## 1. Les 4 territoires (identité)
 
-| Territoire | FR | IT | Slug taxo (actuel) |
+| Territoire | FR | IT | Slug taxo (FR / IT) |
 |---|---|---|---|
-| Savoie | **Savoie** | **Savoia** | `savoie-haute-savoie` (*) |
-| Piémont | **Piémont** | **Piemonte** | `piemonte` |
-| Vallée d'Aoste | **Vallée d'Aoste** | **Valle d'Aosta** | `vallee-d-aoste` |
-| Comté de Nice | **Comté de Nice** | **Contea di Nizza** | `nice-alpes-maritimes` |
+| Savoie | **Savoie** | **Savoia** | `savoie` / `savoia` |
+| Piémont | **Piémont** | **Piemonte** | `piemont` / `piemonte` |
+| Vallée d'Aoste | **Vallée d'Aoste** | **Valle d'Aosta** | `vallee-d-aoste` / `valle-d-aosta` |
+| Comté de Nice | **Comté de Nice** | **Contea di Nizza** | `comte-de-nice` / `contea-di-nizza` |
 
-(*) Les slugs `savoie-haute-savoie` et `savoia-alta-savoia` contiennent encore les mots
-proscrits. Les changer suppose des redirections 301 (voir § 5, décision en attente).
+Slugs appliqués le 2026-07-22 : les anciens (`savoie-haute-savoie`, `nice-alpes-maritimes` et
+leurs versions IT) ont été retirés, avec redirections 301 en place (voir § 5). Le sous-terme ville
+« nice » conserve son slug, d'où `comte-de-nice` pour le territoire (évite la collision).
 
 **Contea di Nizza** est le pendant italien exact de « Comté de Nice », au même niveau
 d'identité que Savoie, Piémont et Vallée d'Aoste. On n'emploie **pas** « circondario di Nizza »
@@ -163,14 +164,14 @@ de **Nizza Monferrato** (province d'Asti). En texte courant italien, « Nizza »
 
 ## 5. Portée & mise en œuvre
 
-- **État live (2026-07-21).** Le wording visible est déjà purgé des mentions proscrites (§ 0) :
-  nom de terme IT ramené à « Savoia », H2 des hubs, descriptions, 4 snippets,
-  3 mu-plugins (bandeau territoire, menu IT, choix de langue), et le contenu des fiches, guides,
-  pages et extraits. À faire encore : passer le terme IT de Nice de « Nizza / Alpi Marittime » à
-  « **Contea di Nizza** ».
-- **Slugs.** `savoie-haute-savoie` et `savoia-alta-savoia` contiennent encore les mots proscrits.
-  Les changer (par ex. `savoie` / `savoia`) impose des **redirections 301** de l'ancien vers le
-  nouveau et la mise à jour des liens internes. **Décision en attente.**
+- **État live (2026-07-22).** Nommage entièrement appliqué : termes « Savoia » et
+  « **Contea di Nizza** », H2 des hubs, descriptions, snippets, mu-plugins (bandeau territoire,
+  menus IT, choix de langue, filtre, requêtes), et contenu des fiches, guides, pages et extraits.
+  « Alpes-Maritimes » n'est conservé que dans la prose factuelle des articles (vrai département,
+  souvent pour des lieux ex-provençaux hors du Comté de Nice historique).
+- **Slugs (fait, 2026-07-22).** Les 4 termes renommés : `savoie`, `savoia`, `comte-de-nice`,
+  `contea-di-nizza`. **Redirections 301** en place (mu-plugin `cs-redirections-301.php`, FR + IT)
+  et liens internes mis à jour.
 - **Exonymes pédagogiques.** À appliquer sur les hubs quand on le souhaite (Ciamberì (Chambéry),
   Coni (Cuneo), etc.). Aucun gain SEO attendu : c'est de la transmission, pas du référencement.
 - **Sous-division fine par événement** (prov./dept. dans le fil d'Ariane) : nécessite un mapping
