@@ -64,14 +64,26 @@ def _select(conn: sqlite3.Connection, limit: int) -> list[dict]:
     return rows[:limit] if limit else rows
 
 
-def _download(url: str) -> "Image.Image | None":
-    try:
-        r = requests.get(url, headers=_UA, timeout=15)
-        if r.status_code != 200:
-            return None
-        return Image.open(io.BytesIO(r.content)).convert("RGB")
-    except Exception:
-        return None
+def _download(url: str, retries: int = 2) -> "Image.Image | None":
+    """Télécharge une image source pour la planche — avec retry (backoff court) : sans
+    ça, une simple lenteur/429 passager (Wikimedia sous charge, site source lent) fait
+    tomber la case en placeholder rouge « image injoignable », que l'agent vision
+    signale ensuite à tort comme suspecte (échec technique confondu avec un problème
+    de pertinence). Constaté en prod : la majorité des premiers « suspects » du tout
+    premier run étaient de faux positifs de ce type."""
+    import time as _time
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(url, headers=_UA, timeout=15)
+            if r.status_code == 200:
+                return Image.open(io.BytesIO(r.content)).convert("RGB")
+            if r.status_code not in (429, 500, 502, 503, 504):
+                return None  # 403/404 etc. : pas la peine de retenter
+        except Exception:
+            pass
+        if attempt < retries:
+            _time.sleep(1.5 * (attempt + 1))
+    return None
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont:
@@ -99,9 +111,12 @@ def _wrap_title(draw, text: str, font, max_w: int) -> list[str]:
     return lines[:2]
 
 
-def build_grid(batch: list[dict]) -> bytes:
+def build_grid(batch: list[dict]) -> "tuple[bytes, set[int]]":
     """Compose la planche contact numérotée (JPEG) — vignette carrée + titre pour
-    chaque événement du lot, prête pour UN SEUL appel vision."""
+    chaque événement du lot, prête pour UN SEUL appel vision. Renvoie aussi l'ensemble
+    des NUMÉROS (1-based) dont le téléchargement a échoué malgré le retry — un échec
+    TECHNIQUE (site source lent/bloqué au moment précis de l'audit), pas un signal de
+    pertinence : à exclure des « suspects » (cf. judge_grid)."""
     n = len(batch)
     rows = (n + COLS - 1) // COLS
     cell_total_h = CELL_H + LABEL_H
@@ -110,6 +125,7 @@ def build_grid(batch: list[dict]) -> bytes:
     canvas = Image.new("RGB", (W, H), (245, 245, 245))
     draw = ImageDraw.Draw(canvas)
     fnum, ftitle = _font(22), _font(16)
+    failed: set[int] = set()
     for i, ev in enumerate(batch):
         col, row = i % COLS, i // COLS
         x = PADDING + col * (CELL_W + PADDING)
@@ -123,8 +139,9 @@ def build_grid(batch: list[dict]) -> bytes:
             thumb = thumb.crop((left, top, left + CELL_W, top + CELL_H))
             canvas.paste(thumb, (x, y))
         else:
-            draw.rectangle([x, y, x + CELL_W, y + CELL_H], fill=(200, 60, 60))
-            draw.text((x + 10, y + 10), "image injoignable", font=ftitle, fill=(255, 255, 255))
+            failed.add(i + 1)
+            draw.rectangle([x, y, x + CELL_W, y + CELL_H], fill=(90, 90, 90))
+            draw.text((x + 10, y + 10), "ÉCHEC TECHNIQUE\n(pas un signal)", font=ftitle, fill=(255, 255, 255))
         draw.rectangle([x, y, x + 38, y + 30], fill=(20, 20, 20))
         draw.text((x + 9, y + 4), str(i + 1), font=fnum, fill=(255, 255, 255))
         title = re.sub(r"\s+", " ", (ev.get("title") or "")).strip()
@@ -134,22 +151,30 @@ def build_grid(batch: list[dict]) -> bytes:
             ty += 20
     buf = io.BytesIO()
     canvas.save(buf, format="JPEG", quality=85)
-    return buf.getvalue()
+    return buf.getvalue(), failed
 
 
-def judge_grid(batch: list[dict], grid_bytes: bytes, client) -> list[dict]:
-    """UN appel vision sur toute la planche : renvoie les cases jugées hors-sujet."""
+def judge_grid(batch: list[dict], grid_bytes: bytes, client, failed: "set[int]" = frozenset()) -> list[dict]:
+    """UN appel vision sur toute la planche : renvoie les cases jugées hors-sujet.
+    `failed` : numéros déjà connus en échec de téléchargement (filtrés systématiquement,
+    même si l'agent les mentionne — défense en profondeur en plus de la consigne)."""
     legend = "\n".join(f"{i + 1}. {(ev.get('title') or '')[:80]}" for i, ev in enumerate(batch))
     prompt = (
         "Voici une PLANCHE CONTACT de photos d'événements culturels, numérotées de "
         f"1 à {len(batch)} (numéro visible en haut à gauche de chaque case), chacune "
         f"avec son titre affiché en dessous ET rappelé ici :\n{legend}\n\n"
-        "Repère les cases où la PHOTO n'a clairement AUCUN rapport avec son titre "
-        "(mauvais événement, image parasite récupérée par erreur sur la page source, "
-        "logo, capture d'écran, bandeau publicitaire…). Ne signale PAS une photo "
-        "simplement générique ou de qualité moyenne si elle reste plausible pour le "
-        "sujet — seulement les cas OUTRAGEUSEMENT hors-sujet, ceux qu'un humain "
-        "repérerait immédiatement d'un coup d'œil.\n"
+        "IMPORTANT : certaines cases sont GRISES avec le texte « ÉCHEC TECHNIQUE (pas "
+        "un signal) » — c'est un échec de TÉLÉCHARGEMENT de mon outil au moment de "
+        "l'audit (site source lent/bloqué), PAS un jugement sur l'image réelle. "
+        "IGNORE ces cases complètement, ne les signale JAMAIS, même si le texte semble "
+        "« sans rapport avec le titre ».\n\n"
+        "Pour toutes les AUTRES cases (une vraie photo est affichée), repère celles où "
+        "la PHOTO n'a clairement AUCUN rapport avec son titre (mauvais événement, image "
+        "parasite récupérée par erreur sur la page source, logo, capture d'écran, "
+        "bandeau publicitaire…). Ne signale PAS une photo simplement générique ou de "
+        "qualité moyenne si elle reste plausible pour le sujet — seulement les cas "
+        "OUTRAGEUSEMENT hors-sujet, ceux qu'un humain repérerait immédiatement d'un "
+        "coup d'œil.\n"
         'Réponds en JSON strict : {"flagged": [{"n": 3, "raison": "…"}, ...]} '
         '(liste vide si tout va bien).'
     )
@@ -180,7 +205,7 @@ def judge_grid(batch: list[dict], grid_bytes: bytes, client) -> list[dict]:
     out = []
     for item in data.get("flagged") or []:
         n = item.get("n")
-        if isinstance(n, int) and 1 <= n <= len(batch):
+        if isinstance(n, int) and 1 <= n <= len(batch) and n not in failed:
             ev = batch[n - 1]
             out.append({"id": ev["id"], "title": ev.get("title"), "url_image": ev["url_image"],
                        "wp_permalink_as": ev.get("wp_permalink_as"), "raison": item.get("raison", "")})
@@ -220,16 +245,19 @@ def main(argv=None) -> int:
     client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
 
     flagged_all = []
+    total_failed = 0
     for i, batch in enumerate(batches, 1):
         log.info("Planche %d/%d (%d événements)…", i, len(batches), len(batch))
-        grid = build_grid(batch)
-        flagged = judge_grid(batch, grid, client)
+        grid, failed = build_grid(batch)
+        total_failed += len(failed)
+        flagged = judge_grid(batch, grid, client, failed)
         flagged_all.extend(flagged)
         for f in flagged:
             log.warning("[%s] SUSPECT : %s — %s", f["id"], (f["title"] or "")[:60], f["raison"])
 
-    log.info("=== Audit visuel : %d suspect(s) sur %d audité(s) (%d planches) ===",
-             len(flagged_all), len(rows), len(batches))
+    log.info("=== Audit visuel : %d suspect(s) sur %d audité(s) (%d planches, %d échec(s) "
+             "de téléchargement — pas un signal, retente au prochain passage) ===",
+             len(flagged_all), len(rows), len(batches), total_failed)
 
     if flagged_all and not args.no_slack:
         base = (os.getenv("BACKOFFICE_BASE_URL") or "").rstrip("/")
