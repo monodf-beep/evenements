@@ -31,6 +31,12 @@ voisin partageait la même image d'illustration générique. --unverified force 
 RÉSOLUTION COMPLÈTE (règles + agent vision) sans comparaison de taille — l'image
 actuelle n'a aucune confiance a priori, même si elle est grande.
 
+Mode --refocus : recalcule le SEUL point focal (card_focal_x/y) d'un événement déjà
+publié, sans toucher à son image — pour les événements publiés AVANT l'ajout du point
+focal auto (utils.image_verify), dont le recadrage 4:3 centré par défaut coupe mal un
+titre composé sur l'affiche ou un visage. Cible ponctuelle (ids ou --wp-ids), écrase le
+point focal existant (à la différence des autres modes, qui ne l'écrivent que si NULL).
+
 Usage (sur le VPS) :
     .venv/bin/python scripts/refill_images_as.py --dry-run     # voir sans rien pousser
     .venv/bin/python scripts/refill_images_as.py               # tous les AS sans image
@@ -40,6 +46,7 @@ Usage (sur le VPS) :
     .venv/bin/python scripts/refill_images_as.py --lowres      # les remplacer + re-pousser
     .venv/bin/python scripts/refill_images_as.py --unverified --dry-run   # jamais vérifiées
     .venv/bin/python scripts/refill_images_as.py --unverified   # les re-résoudre + re-pousser
+    .venv/bin/python scripts/refill_images_as.py --wp-ids 1234 --refocus  # recadrage seul
 """
 from __future__ import annotations
 import argparse
@@ -124,6 +131,100 @@ def select_lowres(conn: sqlite3.Connection, ids, min_dim: int) -> list[dict]:
     return out
 
 
+def select_refocus(conn: sqlite3.Connection, ids, wp_ids) -> list[dict]:
+    """Événements ciblés pour un recalcul du SEUL point focal — l'image ACTUELLE est
+    conservée (pas de nouvelle recherche og/page/Commons), seul son cadrage 4:3 est
+    revu. Sert quand un événement a été publié AVANT l'ajout du point focal auto
+    (card_focal_x/y encore NULL) et que le recadrage centré par défaut coupe mal un
+    titre/visage — ex. une affiche dont le texte composé sur le côté est tronqué."""
+    if wp_ids:
+        placeholders = ",".join("?" * len(wp_ids))
+        q = (f"SELECT * FROM events_raw WHERE duplicate_of IS NULL "
+             f"AND CAST(wp_post_id_as AS TEXT) IN ({placeholders})")
+        rows = [dict(r) for r in conn.execute(q, [str(x) for x in wp_ids]).fetchall()]
+    else:
+        q = (f"SELECT * FROM events_raw WHERE duplicate_of IS NULL "
+             f"AND id IN ({','.join('?' * len(ids))})")
+        rows = [dict(r) for r in conn.execute(q, ids).fetchall()]
+    return [r for r in rows
+            if (r.get("url_image") or "").strip() and not is_logo_image(r["url_image"])]
+
+
+def _run_refocus(conn: sqlite3.Connection, args) -> int:
+    """Mode --refocus : recalcule le point focal de l'image ACTUELLE (aucune nouvelle
+    recherche) et republie. Nécessite ids ou --wp-ids (pas de sélection en masse)."""
+    if not args.ids and not args.wp_ids:
+        log.error("--refocus nécessite des ids précis ou --wp-ids (pas de sélection en masse).")
+        conn.close()
+        return 1
+    rows = select_refocus(conn, args.ids, args.wp_ids)
+    log.info("%d événement(s) à recadrer (image conservée).", len(rows))
+    if not rows:
+        conn.close()
+        return 0
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        log.error("ANTHROPIC_API_KEY absente — --refocus a besoin de l'agent vision.")
+        conn.close()
+        return 1
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+    verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
+
+    from utils import image_verify
+    from utils.images import _PAGE_UA, _MAX_CHECK_BYTES
+    import requests
+
+    pushed = 0
+    for ev in rows:
+        title = (ev.get("title") or "")[:55]
+        url = ev["url_image"]
+        try:
+            r = requests.get(url, headers=_PAGE_UA, timeout=15, stream=True)
+            if r.status_code != 200:
+                log.warning("[%s] image injoignable (%s) — %s", ev["id"], r.status_code, title)
+                continue
+            mime = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            buf = b""
+            for chunk in r.iter_content(65536):
+                buf += chunk
+                if len(buf) > _MAX_CHECK_BYTES:
+                    break
+        except requests.RequestException as exc:
+            log.warning("[%s] téléchargement échoué (%s) — %s", ev["id"], exc, title)
+            continue
+        ok, fx, fy = image_verify.verify_relevance(buf, mime, ev, client, verify_model)
+        if not ok:
+            log.warning("[%s] l'agent vision juge cette image hors-sujet (conservée quand même — "
+                        "--refocus ne change QUE le cadrage) — %s", ev["id"], title)
+        log.info("[%s] focal=(%.2f,%.2f) — %s", ev["id"], fx, fy, title)
+        if args.dry_run:
+            continue
+        conn.execute("UPDATE events_raw SET card_focal_x=?, card_focal_y=? WHERE id=?",
+                     (fx, fy, ev["id"]))
+        conn.commit()
+        ev["card_focal_x"], ev["card_focal_y"] = fx, fy
+        new_id = None
+        for attempt in range(3):
+            new_id = publish_to_as(ev)
+            if new_id:
+                break
+            if attempt < 2:
+                log.warning("[%s] re-push tentative %d échouée — retry dans %ds…",
+                            ev["id"], attempt + 1, 5 * (attempt + 1))
+                time.sleep(5 * (attempt + 1))
+        if new_id:
+            pushed += 1
+        else:
+            log.error("[%s] re-push échoué après 3 tentatives — %s", ev["id"], title)
+
+    log.info("Point focal recalculé — %d re-poussé(s) sur %d%s",
+             pushed, len(rows), "  (dry-run : rien poussé)" if args.dry_run else "")
+    conn.close()
+    return 0
+
+
 def select_unverified(conn: sqlite3.Connection, ids) -> list[dict]:
     """Événements AS publiés dont image_source est NULL — jamais passés par
     resolve_image, donc jamais vus par --lowres/--recheck (qui filtrent tous les deux
@@ -172,11 +273,21 @@ def main(argv=None) -> int:
                         help="Cible les événements dont image_source est NULL (jamais passés par "
                              "resolve_image — invisibles à --lowres/--recheck). Force une résolution "
                              "complète, sans confiance a priori dans l'image actuelle.")
+    parser.add_argument("--refocus", action="store_true",
+                        help="Recalcule UNIQUEMENT le point focal (card_focal_x/y) de l'image DÉJÀ "
+                             "en place — aucune nouvelle recherche d'image. Sert aux événements "
+                             "publiés avant l'ajout du point focal auto, dont le recadrage centré par "
+                             "défaut coupe mal un titre/visage. ÉCRASE le point focal existant (à la "
+                             "différence des autres modes) : usage ciblé (ids ou --wp-ids), pas en masse.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     conn.row_factory = sqlite3.Row
+
+    if args.refocus:
+        return _run_refocus(conn, args)
+
     if args.bad_url:
         q = ("SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,'') <> '' "
              "AND duplicate_of IS NULL AND url_image LIKE ?")
