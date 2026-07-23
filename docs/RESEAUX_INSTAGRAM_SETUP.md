@@ -145,8 +145,9 @@ la signature de CHAQUE requête webhook entrante (empêche quiconque d'appeler
 ### 5c. Abonnement webhook (dashboard Meta), une fois par app
 
 **Cas d'utilisation → API Instagram → Webhooks** → renseigner :
-- **URL de rappel** : `https://agendasabauda.eu` (ou le domaine du backoffice, à
-  vérifier) `/webhooks/instagram`
+- **URL de rappel** : `https://backoffice.agendasabauda.eu/webhooks/instagram`
+  (domaine du BACK-OFFICE, confirmé en juillet 2026 — ne pas confondre avec
+  `agendasabauda.eu`, le site public WordPress ; les deux tournent séparément).
 - **Jeton de vérification** : la même valeur que `IG_WEBHOOK_VERIFY_TOKEN`
 - Cocher le champ **`comments`** dans les champs à abonner.
 
