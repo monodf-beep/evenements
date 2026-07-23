@@ -271,11 +271,14 @@ def _build_payload(event: dict) -> dict:
     return payload
 
 
-def publish_to_as(event: dict) -> "tuple[int, str] | tuple[None, str]":
+def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]":
     """Publie/actualise l'événement en brouillon sur agendasabauda.eu (TEC).
-    Retourne (wp_post_id, permalink) ou (None, '') si échec. Le permalien est le
-    LIEN PRÉCIS de la fiche (pas la home) — cs-publish.php le renvoie déjà à chaque
-    appel, on le capture pour pouvoir pointer dessus ailleurs (ex. DM Instagram)."""
+    Retourne (wp_post_id, permalink, raw_image_url) ou (None, '', '') si échec.
+    Le permalien est le LIEN PRÉCIS de la fiche (pas la home) — cs-publish.php le
+    renvoie déjà à chaque appel, on le capture pour pouvoir pointer dessus ailleurs
+    (ex. DM Instagram). raw_image_url : copie de la photo ORIGINALE (non recadrée)
+    hébergée dans notre médiathèque WordPress — sert à republier sur Instagram sans
+    retélécharger depuis le site source (parfois bloqué par un anti-robot)."""
     load_dotenv(ROOT / ".env")
     wp_url  = os.getenv("WP_AS_URL", "").rstrip("/")
     wp_user = os.getenv("WP_AS_USER", "")
@@ -284,7 +287,7 @@ def publish_to_as(event: dict) -> "tuple[int, str] | tuple[None, str]":
     if not all([wp_url, wp_user, wp_pass]):
         log.error("Variables Agenda Sabauda manquantes "
                   "(WP_AS_URL, WP_AS_USER, WP_AS_APP_PASSWORD)")
-        return None, ""
+        return None, "", ""
 
     auth = (wp_user, wp_pass)
     payload = _build_payload(event)
@@ -351,6 +354,16 @@ def publish_to_as(event: dict) -> "tuple[int, str] | tuple[None, str]":
         if hero_url:
             payload["meta"]["as_image_original"] = hero_url
 
+    # Copie ORIGINALE (non recadrée, card=False) hébergée chez nous — réutilisée par
+    # /reseaux/publish pour composer les visuels Instagram sans retélécharger depuis le
+    # site source (certains bloquent le téléchargement par un défi anti-robot). '' si
+    # hero_source est vide (repli bannière : rien d'original à conserver).
+    raw_image_url = ""
+    if hero_source:
+        _, raw_image_url = _upload_featured_media(
+            wp_url, auth, hero_source, alt=alt,
+            caption=event.get("image_credit", "") or "", card=False)
+
     endpoint = f"{wp_url}/?rest_route=/cs/v1/event"
 
     # Diagnostic : ce qu'on envoie réellement (dates, lieu, taxonomies) — permet de
@@ -370,11 +383,11 @@ def publish_to_as(event: dict) -> "tuple[int, str] | tuple[None, str]":
         verb = "mis à jour" if body.get("updated") else "créé"
         log.info("Événement Agenda Sabauda %s id=%s : %s", verb, post_id,
                  (event.get("title", "") or "")[:60])
-        return post_id, permalink
+        return post_id, permalink, raw_image_url
     except requests.HTTPError as exc:
         log.error("Erreur Agenda Sabauda API (%s) : %s", exc.response.status_code,
                   exc.response.text[:300])
-        return None, ""
+        return None, "", ""
     except (requests.RequestException, ValueError) as exc:
         log.error("Connexion Agenda Sabauda impossible : %s", exc)
-        return None, ""
+        return None, "", ""

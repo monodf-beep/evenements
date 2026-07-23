@@ -205,9 +205,9 @@ def _run_refocus(conn: sqlite3.Connection, args) -> int:
                      (fx, fy, ev["id"]))
         conn.commit()
         ev["card_focal_x"], ev["card_focal_y"] = fx, fy
-        new_id, permalink = None, ""
+        new_id, permalink, raw_url = None, "", ""
         for attempt in range(3):
-            new_id, permalink = publish_to_as(ev)
+            new_id, permalink, raw_url = publish_to_as(ev)
             if new_id:
                 break
             if attempt < 2:
@@ -215,9 +215,10 @@ def _run_refocus(conn: sqlite3.Connection, args) -> int:
                             ev["id"], attempt + 1, 5 * (attempt + 1))
                 time.sleep(5 * (attempt + 1))
         if new_id:
-            if permalink:
-                conn.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=?",
-                             (permalink, ev["id"]))
+            if permalink or raw_url:
+                conn.execute("UPDATE events_raw SET wp_permalink_as=COALESCE(NULLIF(?,''), wp_permalink_as), "
+                             "wp_raw_image_url_as=COALESCE(NULLIF(?,''), wp_raw_image_url_as) WHERE id=?",
+                             (permalink, raw_url, ev["id"]))
                 conn.commit()
             pushed += 1
         else:
@@ -419,9 +420,9 @@ def main(argv=None) -> int:
         # publish_to_as refait sa PROPRE chaîne de repli (url_image → page source →
         # bannière) et met à jour l'événement existant (wp_post_id_as) sans le dépublier.
         # Retry : OVH mutualisé renvoie parfois un 504 sur l'upload d'une grande image.
-        new_id, permalink = None, ""
+        new_id, permalink, raw_url = None, "", ""
         for attempt in range(3):
-            new_id, permalink = publish_to_as(ev)
+            new_id, permalink, raw_url = publish_to_as(ev)
             if new_id:
                 break
             if attempt < 2:
@@ -429,9 +430,10 @@ def main(argv=None) -> int:
                             ev["id"], attempt + 1, 5 * (attempt + 1))
                 time.sleep(5 * (attempt + 1))
         if new_id:
-            if permalink:
-                conn.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=?",
-                             (permalink, ev["id"]))
+            if permalink or raw_url:
+                conn.execute("UPDATE events_raw SET wp_permalink_as=COALESCE(NULLIF(?,''), wp_permalink_as), "
+                             "wp_raw_image_url_as=COALESCE(NULLIF(?,''), wp_raw_image_url_as) WHERE id=?",
+                             (permalink, raw_url, ev["id"]))
                 conn.commit()
             pushed += 1
         else:

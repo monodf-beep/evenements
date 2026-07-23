@@ -115,11 +115,12 @@ def main(argv=None) -> int:
     ok = fail = 0
     for i, r in enumerate(rows, 1):
         event = dict(r)
-        wp_id, permalink = publish_to_as(event)
+        wp_id, permalink, raw_url = publish_to_as(event)
         if wp_id:
             conn.execute(
                 "UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
-                "published_as_date=datetime('now') WHERE id=?", (wp_id, permalink, event["id"]))
+                "wp_raw_image_url_as=?, published_as_date=datetime('now') WHERE id=?",
+                (wp_id, permalink, raw_url, event["id"]))
             conn.commit()
             ok += 1
         else:

@@ -35,7 +35,8 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.images import commons_search, fetch_og_image, fetch_content_image, remote_min_side, MIN_DIM
+from utils.images import (commons_search, fetch_og_image, fetch_content_image,
+                          remote_dims, looks_like_banner_shape, MIN_DIM)
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
                            load_territory_images, pick_image)
 from utils import image_verify
@@ -72,6 +73,13 @@ def visual_query(ev: dict, client, model: str) -> str:
         "général — une requête comme « Aoste Vallée d'Aoste » est trop vague si "
         "l'événement se passe précisément au Borgo di Sant'Orso : cherche plutôt "
         "« Sant'Orso Aoste » ou le nom exact du lieu.\n"
+        "COMBINE si possible le lieu précis avec le TYPE d'activité (marché, "
+        "artisanat, concert, marché de Noël…) déduit du titre/catégorie/description — "
+        "une requête « Sant'Orso Aoste marché artisanat » cible mieux qu'un simple nom "
+        "de lieu, qui peut ramener n'importe quelle photo touristique générique du site.\n"
+        "Si la SAISON est connue et pertinente pour une photo extérieure (pas un "
+        "intérieur/monument), ajoute-la à la requête (« marché de Noël hiver Aoste » "
+        "plutôt qu'une photo d'été du même lieu).\n"
         "Si l'événement n'a LUI-MÊME aucun rapport avec la nature/montagne, ÉVITE une "
         "requête qui ramènerait un paysage naturel générique (lac, sommet, vallée) sous "
         "prétexte que le territoire est alpin.\n"
@@ -158,7 +166,10 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
     # Étage 2 — og:image de la page officielle (jamais pour un radar : image de presse).
     if not _is_radar(ev):
         og = fetch_og_image(ev.get("url_source", ""))
-        if _acceptable(og, blocked, patterns):
+        # Forme (déterministe, TOUJOURS active — pas besoin de l'agent vision) : un
+        # og:image très plat ou très étroit est un bandeau d'habillage (souvent la même
+        # image sert de bannière de partage ET de header visuel du site), pas une photo.
+        if _acceptable(og, blocked, patterns) and not looks_like_banner_shape(*remote_dims(og)):
             ok, fx, fy = _verified(og, ev, verify_client, verify_model)
             if ok:
                 return og, "", "og", fx, fy
@@ -166,24 +177,30 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
         # offices de tourisme). L'info est sur la page, on la prend au lieu d'abandonner.
         content = fetch_content_image(ev.get("url_source", ""))
         if _acceptable(content, blocked, patterns):
-            ok, fx, fy = _verified(content, ev, verify_client, verify_model)
-            if ok:
-                # Assez grande, ou pas de recherche Commons possible → on la prend
-                # tout de suite (comportement historique, inchangé).
-                if client is None or remote_min_side(content) >= MIN_DIM:
-                    return content, "", "page", fx, fy
-                # Trop petite pour le rendu social (floue une fois étirée à 1080px+,
-                # déclenche le fond abstrait) : on la garde en réserve et on tente
-                # Commons — qui cherche PRÉCISÉMENT une photo du même sujet, donc pas
-                # le risque « grande image sans rapport » de l'incident DON D'ORGANES.
-                content_fallback = (content, "", "page", fx, fy)
+            content_w, content_h = remote_dims(content)
+            if not looks_like_banner_shape(content_w, content_h):
+                ok, fx, fy = _verified(content, ev, verify_client, verify_model)
+                if ok:
+                    # Assez grande, ou pas de recherche Commons possible → on la prend
+                    # tout de suite (comportement historique, inchangé).
+                    if client is None or min(content_w, content_h) >= MIN_DIM:
+                        return content, "", "page", fx, fy
+                    # Trop petite pour le rendu social (floue une fois étirée à 1080px+,
+                    # déclenche le fond abstrait) : on la garde en réserve et on tente
+                    # Commons — qui cherche PRÉCISÉMENT une photo du même sujet, donc pas
+                    # le risque « grande image sans rapport » de l'incident DON D'ORGANES.
+                    content_fallback = (content, "", "page", fx, fy)
     # Étage 3 — photo licenciable Wikimedia Commons (LLM = requête, code = fetch).
     if client is not None:
         q = visual_query(ev, client, MODEL)
         if q:
-            url, credit = commons_search(q)
+            url, credit, commons_title = commons_search(q)
             if _acceptable(url, blocked, patterns):
-                ok, fx, fy = _verified(url, ev, verify_client, verify_model, q)
+                # Le nom du fichier Commons (ex. « Marché Saint-Ours Aoste.jpg ») est un
+                # indice textuel de plus pour l'agent : utile quand l'image seule est
+                # ambiguë mais que le nom confirme (ou dément) le sujet exact.
+                subject = f"{q} (fichier Commons : « {commons_title} »)" if commons_title else q
+                ok, fx, fy = _verified(url, ev, verify_client, verify_model, subject)
                 if ok:
                     log.info("[%s] Commons « %s » → %s", ev["id"], q, url[:70])
                     return url, credit, "commons", fx, fy

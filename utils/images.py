@@ -44,6 +44,22 @@ _CHROME_IMG = re.compile(
 MIN_DIM = 700
 _MAX_CHECK_BYTES = 3 * 1024 * 1024
 
+# Au-delà de ce ratio (grand côté / petit côté), la FORME trahit un bandeau/bannière
+# d'habillage de site (large et plat, ou l'inverse — une colonne étroite et haute) plutôt
+# qu'une vraie photo éditoriale : une photo « normale », même en paysage large, dépasse
+# rarement le panoramique (~2:1 à 2.5:1). Vérification indépendante de MIN_DIM : une
+# bannière peut très bien mesurer 3000×750 (côté court = 750px, passe MIN_DIM) tout en
+# étant clairement un bandeau, pas une photo.
+MAX_ASPECT = 2.5
+
+
+def looks_like_banner_shape(w: int, h: int) -> bool:
+    """Vrai si les proportions (w, h) trahissent un bandeau/bannière (trop plat ou trop
+    étroit) plutôt qu'une photo éditoriale. False si dimensions inconnues (0)."""
+    if not w or not h:
+        return False
+    return max(w, h) / min(w, h) > MAX_ASPECT
+
 
 def _image_size(data: bytes) -> tuple[int, int]:
     try:
@@ -55,9 +71,9 @@ def _image_size(data: bytes) -> tuple[int, int]:
         return (0, 0)
 
 
-def _min_side_once(url: str, ua: dict, timeout: int) -> "int | None":
-    """Une tentative de mesure. Renvoie le plus petit côté, 0 si l'image est lisible
-    mais illisible en tant qu'image, ou None si la requête a ÉCHOUÉ (à retenter)."""
+def _dims_once(url: str, ua: dict, timeout: int) -> "tuple[int, int] | None":
+    """Une tentative de mesure. Renvoie (largeur, hauteur), (0, 0) si l'image est
+    lisible mais illisible en tant qu'image, ou None si la requête a ÉCHOUÉ (à retenter)."""
     try:
         r = requests.get(url, timeout=timeout, headers=ua, stream=True)
         if r.status_code != 200:
@@ -67,14 +83,13 @@ def _min_side_once(url: str, ua: dict, timeout: int) -> "int | None":
             buf += chunk
             if len(buf) > _MAX_CHECK_BYTES:
                 break
-        w, h = _image_size(buf)
-        return min(w, h)
+        return _image_size(buf)
     except requests.RequestException:
         return None
 
 
-def remote_min_side(url: str, timeout: int = 10, retries: int = 2) -> int:
-    """Plus petit côté (px) d'une image distante — 0 si injoignable/illisible.
+def remote_dims(url: str, timeout: int = 10, retries: int = 2) -> "tuple[int, int]":
+    """(largeur, hauteur) d'une image distante — (0, 0) si injoignable/illisible.
 
     Télécharge de façon bornée (l'URL seule ne dit rien de la taille réelle). Fiabilisé
     par des retries : Wikimedia (upload.wikimedia.org) renvoie par intermittence un 400
@@ -82,18 +97,23 @@ def remote_min_side(url: str, timeout: int = 10, retries: int = 2) -> int:
     faussement mesurée à 0 puis remplacée à tort. On tente le UA descriptif Wikimedia
     d'abord (Commons demande un UA identifiable), puis le UA navigateur en repli."""
     if not url or not url.startswith("http"):
-        return 0
+        return (0, 0)
     wiki = "wikimedia.org" in url or "wikipedia.org" in url
     uas = [_UA, _PAGE_UA] if wiki else [_PAGE_UA]
     import time as _time
     for attempt in range(retries + 1):
         for ua in uas:
-            side = _min_side_once(url, ua, timeout)
-            if side is not None:
-                return side
+            dims = _dims_once(url, ua, timeout)
+            if dims is not None:
+                return dims
         if attempt < retries:
             _time.sleep(0.6 * (attempt + 1))  # petit backoff : laisse passer le throttle
-    return 0
+    return (0, 0)
+
+
+def remote_min_side(url: str, timeout: int = 10, retries: int = 2) -> int:
+    """Plus petit côté (px) d'une image distante — 0 si injoignable/illisible."""
+    return min(remote_dims(url, timeout, retries))
 
 
 def _big_enough(url: str, timeout: int = 8) -> bool:
@@ -203,10 +223,15 @@ def _credit(meta: dict, license_short: str) -> str:
 
 
 def commons_search(query: str, *, min_width: int = 800, limit: int = 8,
-                   thumb_width: int = 2400, timeout: int = 10) -> tuple[str, str]:
-    """Cherche une photo licenciable sur Commons. Renvoie (url, crédit) ou ('', '').
+                   thumb_width: int = 2400, timeout: int = 10) -> tuple[str, str, str]:
+    """Cherche une photo licenciable sur Commons. Renvoie (url, crédit, titre_fichier)
+    ou ('', '', ''). Le titre (« File:Marché Saint-Ours Aoste.jpg ») est un indice
+    textuel utile à l'agent vision quand l'image seule est ambiguë mais que le nom du
+    fichier confirme (ou dément) le sujet — cf. utils.image_verify.verify_relevance.
 
-    Filtre : vraie photo (JPEG/PNG), largeur suffisante, pas un logo/blason/icône.
+    Filtre : vraie photo (JPEG/PNG), largeur suffisante, pas un logo/blason/icône, pas
+    une forme de bandeau (cf. looks_like_banner_shape — un fichier très plat ou très
+    étroit est un habillage, pas une photo, même large en pixels).
 
     thumb_width=2400 (pas 1200) : nos formats sociaux sont PORTRAIT (jusqu'à 1080×1920),
     et beaucoup de photos Commons sont PAYSAGE — une miniature de 1200px de large ne
@@ -219,7 +244,7 @@ def commons_search(query: str, *, min_width: int = 800, limit: int = 8,
     """
     query = (query or "").strip()
     if not query:
-        return "", ""
+        return "", "", ""
     params = {
         "action": "query", "format": "json", "generator": "search",
         "gsrsearch": query, "gsrnamespace": "6", "gsrlimit": str(limit),
@@ -229,10 +254,10 @@ def commons_search(query: str, *, min_width: int = 800, limit: int = 8,
     try:
         r = requests.get(_API, params=params, headers=_UA, timeout=timeout)
         if r.status_code != 200:
-            return "", ""
+            return "", "", ""
         pages = (r.json().get("query") or {}).get("pages") or {}
     except (requests.RequestException, ValueError):
-        return "", ""
+        return "", "", ""
 
     # Commons renvoie les pages dans un dict non ordonné : on suit l'ordre de
     # pertinence de la recherche (champ 'index').
@@ -242,11 +267,14 @@ def commons_search(query: str, *, min_width: int = 800, limit: int = 8,
             continue
         if int(info.get("width") or 0) < min_width:
             continue
+        if looks_like_banner_shape(int(info.get("width") or 0), int(info.get("height") or 0)):
+            continue
         full = info.get("url") or ""
         thumb = info.get("thumburl") or full
         if not thumb.startswith("http") or is_logo_image(full):
             continue
         meta = info.get("extmetadata") or {}
         license_short = _clean((meta.get("LicenseShortName") or {}).get("value", ""))
-        return thumb, _credit(meta, license_short)
-    return "", ""
+        title = (page.get("title") or "").removeprefix("File:")
+        return thumb, _credit(meta, license_short), title
+    return "", "", ""

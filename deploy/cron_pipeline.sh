@@ -74,6 +74,11 @@ case "$MODE" in
     # 3) Complétion haut de panier (coûteux, borné) + porte qualité
     step "lieux (web)"       "$PY" -m scripts.venues_web --cap 15 --min-score 7
     step "dates (web)"       "$PY" -m scripts.dates_web  --cap 15 --min-score 7
+    # Cible spécifiquement les événements encore en bannière générique (ou sans image) —
+    # recherche web + double vérif vision, seul étage capable de vraiment TROUVER une
+    # photo pertinente. Cooldown 7j intégré (WEB_COOLDOWN_DAYS) : ne re-tente pas tous
+    # les jours un cas déjà essayé récemment.
+    step "images (web)"      "$PY" -m scripts.images_web --cap 15 --min-score 7
     step "écarter les passés" "$PY" -m scripts.purge_past --execute
     run_autocomplete
     log "=== FIN PIPELINE ==="

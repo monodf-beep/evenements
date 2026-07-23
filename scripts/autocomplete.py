@@ -311,11 +311,12 @@ def main(argv=None) -> int:
 
         wp_id = None
         if publishable and publish_to_as and not ev.get("wp_post_id_as"):
-            wp_id, permalink = publish_to_as(ev)
+            wp_id, permalink, raw_url = publish_to_as(ev)
             if wp_id:
                 conn.execute(
                     "UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
-                    "published_as_date=datetime('now') WHERE id=?", (wp_id, permalink, ev["id"]))
+                    "wp_raw_image_url_as=?, published_as_date=datetime('now') WHERE id=?",
+                    (wp_id, permalink, raw_url, ev["id"]))
                 conn.commit()
 
         # Signal Slack UNIQUEMENT si l'état a changé (anti-spam).

@@ -150,7 +150,14 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Mot-clé « commente XXX et je t'envoie le lien en DM » (automatisation
                       # commentaire → réponse privée Instagram). Auto-déduit du titre
                       # (utils.social.dm_keyword), modifiable à la main avant publication.
-                      ("dm_keyword", "TEXT")):
+                      ("dm_keyword", "TEXT"),
+                      # Copie de la photo ORIGINALE (non recadrée) hébergée dans notre propre
+                      # médiathèque WordPress, posée au publish AS. Sert à /reseaux/publish :
+                      # reprendre CETTE copie plutôt que retélécharger depuis le site source à
+                      # chaque publication Instagram — certains sites source bloquent le
+                      # téléchargement par un défi anti-robot (Cloudflare…), notre propre
+                      # copie hébergée n'a jamais ce problème.
+                      ("wp_raw_image_url_as", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

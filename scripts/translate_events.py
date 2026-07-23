@@ -189,7 +189,7 @@ def main(argv=None) -> int:
             "wp_post_id_as": None, "wp_post_id_cs": None,
         })
         new_ev.pop("id", None)
-        wp_id, permalink = publish_to_as(new_ev)
+        wp_id, permalink, raw_url = publish_to_as(new_ev)
         if not wp_id:
             log.warning("[%s] publication de la traduction échouée.", ev["id"]); continue
         # Enregistre la fiche traduite (url_source synthétique — la colonne est UNIQUE).
@@ -197,14 +197,15 @@ def main(argv=None) -> int:
             "INSERT INTO events_raw (title, description, date_start, date_event_start, "
             "date_event_end, lieu, ville, territoire, url_source, url_image, organisateur, "
             "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
-            "wp_post_id_as, wp_permalink_as, published_as_date, translation_of, translated_lang, image_credit) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
+            "translation_of, translated_lang, image_credit) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
              ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
              f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
              ev.get("source_name"), ev.get("source_type"), ev.get("llm_score"),
              ev.get("user_score"), ev.get("llm_categorie"), ev.get("statut"), wp_id, permalink,
-             datetime.now().isoformat(timespec="seconds"), ev["id"], tgt, ev.get("image_credit")))
+             raw_url, datetime.now().isoformat(timespec="seconds"), ev["id"], tgt, ev.get("image_credit")))
         # Lie les deux fiches (Polylang) via l'endpoint.
         if all([wp_url, auth[0], auth[1]]):
             _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})

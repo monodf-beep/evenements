@@ -2579,7 +2579,12 @@ def reseaux_publish(event_id: int):
             flash(f"↩️ « {title} » déjà publié — republie avec confirmation si voulu.", "err")
             return redirect(url_for("reseaux") + f"#e{event_id}")
 
-    img_url = event_image(ev)
+    # Priorité à la copie déjà hébergée dans NOTRE médiathèque WordPress (posée au
+    # publish AS) plutôt qu'à l'image source d'origine : évite de retélécharger depuis
+    # le site source à chaque publication Instagram, où certains sites bloquent le
+    # téléchargement par un défi anti-robot (Cloudflare…) — notre copie n'a jamais ce
+    # souci. Repli sur l'image source si l'événement n'a pas encore été publié sur AS.
+    img_url = (ev.get("wp_raw_image_url_as") or "").strip() or event_image(ev)
     try:
         img_resp = requests.get(
             img_url, timeout=20,
@@ -2854,10 +2859,11 @@ def _autopush_if_ready(conn, event_id: int) -> tuple[bool, int | None]:
     end = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
     if not end or end < date.today().isoformat():
         return False, None
-    wp_id, permalink = publish_to_as(ev)
+    wp_id, permalink, raw_url = publish_to_as(ev)
     if wp_id:
         conn.execute("UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
-                     "published_as_date=datetime('now') WHERE id=?", (wp_id, permalink, event_id))
+                     "wp_raw_image_url_as=?, published_as_date=datetime('now') WHERE id=?",
+                     (wp_id, permalink, raw_url, event_id))
         conn.commit()
         return True, wp_id
     return False, None
@@ -2998,12 +3004,13 @@ def action(event_id: int, action: str):
     elif action == "publish_as":
         # PUBLIER vers agendasabauda.eu (événement TEC) — pendant de « Publier CS ».
         existed = event["wp_post_id_as"]
-        wp_id, permalink = publish_to_as(dict(event))
+        wp_id, permalink, raw_url = publish_to_as(dict(event))
         if wp_id:
             conn.execute("""
             UPDATE events_raw SET statut='published_sub',
-            published_as_date=datetime('now'), wp_post_id_as=?, wp_permalink_as=? WHERE id=?
-            """, (wp_id, permalink, event_id))
+            published_as_date=datetime('now'), wp_post_id_as=?, wp_permalink_as=?,
+            wp_raw_image_url_as=? WHERE id=?
+            """, (wp_id, permalink, raw_url, event_id))
             conn.commit()
             log.info("Publié Agenda Sabauda : event_id=%d wp_id=%d", event_id, wp_id)
             verbe = "mis à jour" if existed and wp_id == existed else "créé"
@@ -3107,8 +3114,15 @@ def set_focal(event_id: int):
     if image_changed:
         label = f"nouvelle image, {label}"
     if ev.get("wp_post_id_as"):
-        wp_id, _ = publish_to_as(ev)
+        wp_id, permalink, raw_url = publish_to_as(ev)
         if wp_id:
+            conn2 = get_db()
+            conn2.execute(
+                "UPDATE events_raw SET wp_permalink_as=COALESCE(NULLIF(?,''), wp_permalink_as), "
+                "wp_raw_image_url_as=COALESCE(NULLIF(?,''), wp_raw_image_url_as) WHERE id=?",
+                (permalink, raw_url, event_id))
+            conn2.commit()
+            conn2.close()
             flash(f"🖼 Cadrage enregistré ({label}) et vignette régénérée sur l'Agenda "
                   f"(WP #{wp_id}).", "ok")
         else:

@@ -173,6 +173,9 @@ def find_verified_image(ev: dict, client, blocked: set[str]) -> tuple[str, str, 
     if min(w, h) < images.MIN_DIM:  # trop petite : floue une fois étirée aux formats sociaux
         log.info("Image écartée (résolution %dx%d < %dpx) : %s", w, h, images.MIN_DIM, candidate[:70])
         return "", "", 0.5, 0.5
+    if images.looks_like_banner_shape(w, h):  # forme bandeau/habillage, pas une photo
+        log.info("Image écartée (forme bandeau %dx%d) : %s", w, h, candidate[:70])
+        return "", "", 0.5, 0.5
     ok, fx, fy = verify_image(ev, proposal.get("subject", ""), img_bytes, mime, client)
     if not ok:
         return "", "", 0.5, 0.5
