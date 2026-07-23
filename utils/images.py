@@ -203,10 +203,19 @@ def _credit(meta: dict, license_short: str) -> str:
 
 
 def commons_search(query: str, *, min_width: int = 800, limit: int = 8,
-                   thumb_width: int = 1200, timeout: int = 10) -> tuple[str, str]:
+                   thumb_width: int = 2400, timeout: int = 10) -> tuple[str, str]:
     """Cherche une photo licenciable sur Commons. Renvoie (url, crédit) ou ('', '').
 
     Filtre : vraie photo (JPEG/PNG), largeur suffisante, pas un logo/blason/icône.
+
+    thumb_width=2400 (pas 1200) : nos formats sociaux sont PORTRAIT (jusqu'à 1080×1920),
+    et beaucoup de photos Commons sont PAYSAGE — une miniature de 1200px de large ne
+    fait souvent que ~700px de haut sur une photo large, ce qui dépasse le seuil
+    d'agrandissement (utils.social_image.MAX_UPSCALE) et déclenche le repli abstrait à
+    tort, alors qu'une résolution suffisante existe (cas vécu : château de Montrottier,
+    miniature 1280×753 refusée alors que l'original fait 5337×3138). 2400px de large
+    couvre la hauteur nécessaire même sur une photo très large, pour un poids de fichier
+    qui reste raisonnable (JPEG re-encodé par Wikimedia, pas l'original brut).
     """
     query = (query or "").strip()
     if not query:
