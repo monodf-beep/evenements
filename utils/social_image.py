@@ -217,11 +217,23 @@ def _terr_key(territoire: str) -> str:
 
 
 def _photo(data, w, h):
-    res = card_image.make_card(data, width=w, mode="auto")
-    img = res.image
-    if img.size != (w, h):  # card_image rend du 4:3 ; on re-recadre au format voulu
-        img = card_image._cover(card_image._load(data), w, h, 0.5, 0.45)
-    return img.convert("RGB")
+    """Rend la photo au format EXACT (w, h) demandé par le canevas Instagram (carré
+    1080×1080, portrait 1080×1350/1920 — jamais 4:3 comme la carte du site).
+
+    Choix cover/letterbox RELATIF à ce format, pas au seuil absolu de card_image (pensé
+    pour la carte 4:3 du site, où même une photo large reste raisonnable en cover) :
+    tous les formats Instagram sont carrés ou portrait, donc c'est une source PAYSAGE
+    qui pose problème ici — un cover la couperait sévèrement sur les côtés pour remplir
+    un cadre étroit. Letterbox flouté (même technique que les affiches portrait côté
+    site) préserve l'image entière à la place. Une source portrait/carrée, elle, se
+    prête naturellement au cover (peu ou pas de perte)."""
+    img = card_image._load(data)
+    src_ratio = img.width / img.height if img.height else 1.0
+    if src_ratio > 1.05:  # nettement paysage
+        out = card_image._letterbox(img, w, h)
+    else:
+        out = card_image._cover(img, w, h, 0.5, 0.45)
+    return out.convert("RGB")
 
 
 # Au-delà de cet agrandissement, même avec le renforcement de netteté de

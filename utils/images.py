@@ -52,13 +52,23 @@ _MAX_CHECK_BYTES = 3 * 1024 * 1024
 # étant clairement un bandeau, pas une photo.
 MAX_ASPECT = 2.5
 
+# EN DESSOUS de ce ratio (grand côté / petit côté), l'image est jugée trop CARRÉE pour
+# être une vraie affiche/photo éditoriale d'événement — une affiche est quasi toujours
+# nettement portrait ou paysage (jamais 1:1 pile). Un carré trahit plutôt une vignette
+# CMS générique (miniature de partage social 1200×1200, avatar, recadrage automatique
+# d'un CMS) qui a perdu l'info réelle en la recadrant au carré. Repère de Franck.
+MIN_ASPECT = 1.15
+
 
 def looks_like_banner_shape(w: int, h: int) -> bool:
     """Vrai si les proportions (w, h) trahissent un bandeau/bannière (trop plat ou trop
-    étroit) plutôt qu'une photo éditoriale. False si dimensions inconnues (0)."""
+    étroit — au-delà de MAX_ASPECT) OU une vignette générique recadrée au carré (en
+    dessous de MIN_ASPECT), plutôt qu'une vraie affiche/photo éditoriale. False si
+    dimensions inconnues (0)."""
     if not w or not h:
         return False
-    return max(w, h) / min(w, h) > MAX_ASPECT
+    ratio = max(w, h) / min(w, h)
+    return ratio > MAX_ASPECT or ratio < MIN_ASPECT
 
 
 def _image_size(data: bytes) -> tuple[int, int]:
