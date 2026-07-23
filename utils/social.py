@@ -56,8 +56,8 @@ _CTA = {
 # automatique (webhook Instagram, cf. app.webhook_instagram). {kw} = mot-clé de
 # l'événement (utils.social.dm_keyword).
 _DM_CTA = {
-    "fr": "💬 Commente « {kw} » et je t'envoie le lien en DM 👇",
-    "it": "💬 Commenta « {kw} » e ti mando il link in DM 👇",
+    "fr": "💬 Commente « {kw} » et nous t'envoyons le lien en DM 👇",
+    "it": "💬 Commenta « {kw} » e ti mandiamo il link in DM 👇",
 }
 
 

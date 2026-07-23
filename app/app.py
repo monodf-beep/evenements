@@ -2804,7 +2804,8 @@ def webhook_instagram():
             link = (ev["wp_permalink_as"] or "").strip()
             msg = f"Salut 👋 Merci pour ton commentaire sur « {title} » !"
             if link:
-                msg += f" Voici toutes les infos 👇\n{link}"
+                msg += (" Voici le lien : toutes les infos, et tu peux l'ajouter "
+                        f"direct à ton agenda perso 👇\n{link}")
             result = ig.send_private_reply(territoire, comment_id, msg)
             if not result.get("ok"):
                 log.warning("Webhook Instagram : DM échoué (commentaire %s, événement %s) : %s",
