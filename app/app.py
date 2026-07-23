@@ -2769,6 +2769,7 @@ def webhook_instagram():
     payload = request.get_json(silent=True) or {}
     log.info("Webhook Instagram : payload = %s", payload)
     from utils import instagram_publish as ig
+    from utils import social as social_mod
     conn = get_db()
     for entry in payload.get("entry", []):
         ig_account_id = entry.get("id", "")
@@ -2810,11 +2811,14 @@ def webhook_instagram():
                 log.warning("Webhook Instagram : DM échoué (commentaire %s, événement %s) : %s",
                            comment_id, ev["id"], result.get("error"))
             elif link and result.get("recipient_id"):
-                # Second message, normal (pas une réponse privée) : un vrai bouton
-                # cliquable tout de suite, contrairement au lien en texte brut qui
+                # Second message, normal (pas une réponse privée) : de vrais boutons
+                # cliquables tout de suite, contrairement au lien en texte brut qui
                 # met un instant à devenir tapable côté Instagram.
-                btn = ig.send_link_button(territoire, result["recipient_id"], title,
-                                          "Voir l'événement", link)
+                buttons = [("Voir l'événement", link)]
+                gcal = social_mod.google_calendar_url(dict(ev))
+                if gcal:
+                    buttons.append(("Ajouter à mon agenda", gcal))
+                btn = ig.send_link_buttons(territoire, result["recipient_id"], title, buttons)
                 if not btn.get("ok"):
                     log.warning("Webhook Instagram : bouton lien échoué (commentaire %s, "
                                "événement %s) : %s", comment_id, ev["id"], btn.get("error"))

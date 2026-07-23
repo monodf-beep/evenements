@@ -138,7 +138,7 @@ def send_private_reply(territoire_label: str, comment_id: str, text: str) -> dic
     2024) — déclenché par le webhook (utils.instagram_webhook), jamais appelé
     directement au moment de la publication. Renvoie {ok, message_id, recipient_id}
     ou {ok: False, error}. `recipient_id` (IGSID) permet d'enchaîner un second
-    message normal (cf. send_link_button) — la réponse privée elle-même ne peut
+    message normal (cf. send_link_buttons) — la réponse privée elle-même ne peut
     PAS porter de bouton, seulement du texte (limite Meta sur ce type précis).
 
     Contraintes Meta (non contournables) : UNE seule réponse privée par
@@ -171,14 +171,15 @@ def send_private_reply(territoire_label: str, comment_id: str, text: str) -> dic
         return {"ok": False, "error": str(exc)}
 
 
-def send_link_button(territoire_label: str, recipient_id: str, title: str,
-                     button_label: str, url: str) -> dict:
-    """Envoie un message NORMAL (pas une réponse privée) avec un vrai bouton
-    cliquable menant à `url` (« Generic Template », API Meta) — instantanément
-    tapable, contrairement à un lien en texte brut qui met un instant à se
-    transformer en lien cliquable côté Instagram. Nécessite le recipient_id
-    (IGSID) renvoyé par un précédent send_private_reply() : on ne peut PAS ouvrir
-    une conversation directement par ce biais, seulement y répondre."""
+def send_link_buttons(territoire_label: str, recipient_id: str, title: str,
+                      buttons: list[tuple[str, str]]) -> dict:
+    """Envoie un message NORMAL (pas une réponse privée) avec de vrais boutons
+    cliquables (« Generic Template », API Meta) — instantanément tapables,
+    contrairement à un lien en texte brut qui met un instant à se transformer en
+    lien cliquable côté Instagram. `buttons` : liste de (libellé, url), 3 max
+    (limite Meta sur ce type de template). Nécessite le recipient_id (IGSID)
+    renvoyé par un précédent send_private_reply() : on ne peut PAS ouvrir une
+    conversation directement par ce biais, seulement y répondre."""
     if not configured(territoire_label):
         return {"ok": False, "error": f"Compte Instagram non configuré pour « {territoire_label} »."}
     ig_id, token = _account_id(territoire_label), _token(territoire_label)
@@ -194,7 +195,8 @@ def send_link_button(territoire_label: str, recipient_id: str, title: str,
                             "template_type": "generic",
                             "elements": [{
                                 "title": title[:80],
-                                "buttons": [{"type": "web_url", "url": url, "title": button_label[:20]}],
+                                "buttons": [{"type": "web_url", "url": url, "title": label[:20]}
+                                           for label, url in buttons[:3]],
                             }],
                         },
                     },
@@ -204,7 +206,7 @@ def send_link_button(territoire_label: str, recipient_id: str, title: str,
             timeout=30)
         r.raise_for_status()
         message_id = r.json().get("message_id")
-        log.info("Bouton lien envoyé (%s) à %s : message_id=%s", territoire_label, recipient_id, message_id)
+        log.info("Bouton(s) lien envoyé(s) (%s) à %s : message_id=%s", territoire_label, recipient_id, message_id)
         return {"ok": True, "message_id": message_id}
     except requests.HTTPError as exc:
         msg = _api_error(exc.response)

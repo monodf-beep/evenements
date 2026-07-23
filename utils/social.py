@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from datetime import date, timedelta
+from urllib.parse import quote
 
 _MONTHS = {
     "fr": ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
@@ -170,6 +172,30 @@ def alt_text(event: dict, lang: str = "fr") -> str:
     if lang == "it":
         return f"Locandina dell'evento « {title} »{(' a ' + ville) if ville else ''}."
     return f"Visuel de l'événement « {title} »{(' à ' + ville) if ville else ''}."
+
+
+def google_calendar_url(event: dict) -> str:
+    """Lien Google Agenda « ajout en un clic » — même principe que cs_atc_urls()
+    côté WordPress (deploy/wordpress/cs-add-to-calendar.php), reconstruit ici en
+    Python pour ne pas dépendre du PHP au moment d'envoyer le bouton DM. Nos dates
+    (`date_event_start`/`date_event_end`) sont toujours du « YYYY-MM-DD » sans heure
+    (événements journée entière) : on suit donc la branche « allday » de la version
+    PHP — fin exclusive (+1 jour). '' si la date de début est absente/invalide."""
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", (event.get("date_event_start") or "").strip())
+    if not m:
+        return ""
+    start = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    me = re.match(r"(\d{4})-(\d{2})-(\d{2})", (event.get("date_event_end") or "").strip())
+    end = date(int(me.group(1)), int(me.group(2)), int(me.group(3))) if me else start
+    if end < start:
+        end = start
+    title = re.sub(r"\s+", " ", (event.get("title") or "")).strip()
+    lieu = (event.get("lieu") or "").strip()
+    ville = (event.get("ville") or "").strip()
+    location = ", ".join(p for p in (lieu, ville) if p)
+    dates = f"{start.strftime('%Y%m%d')}/{(end + timedelta(days=1)).strftime('%Y%m%d')}"
+    return ("https://calendar.google.com/calendar/render?action=TEMPLATE"
+            f"&text={quote(title)}&dates={dates}&location={quote(location)}")
 
 
 # Mots trop génériques pour servir de mot-clé « commente XXX » (déclencheur DM
