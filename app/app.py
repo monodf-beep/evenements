@@ -2721,6 +2721,89 @@ def reseaux_publish(event_id: int):
     return redirect(url_for("reseaux") + f"#e{event_id}")
 
 
+def _dm_keyword_matches(text: str, keyword: str) -> bool:
+    """Comparaison tolérante aux accents/majuscules : le commentaire doit CONTENIR
+    le mot-clé, pas lui être identique (ex. « trop hâte pour MONTROTTIER » matche)."""
+    import unicodedata
+
+    def _norm(s: str) -> str:
+        n = unicodedata.normalize("NFKD", s or "")
+        return "".join(c for c in n if not unicodedata.combining(c)).upper()
+
+    keyword = _norm(keyword).strip()
+    return bool(keyword) and keyword in _norm(text)
+
+
+@app.route("/webhooks/instagram", methods=["GET", "POST"])
+def webhook_instagram():
+    """Réception des commentaires Instagram (Meta Webhooks) → réponse privée (DM)
+    automatique quand le commentaire contient le mot-clé de l'événement (events_raw
+    .dm_keyword). AUCUNE authentification back-office ici — c'est Meta qui appelle
+    cette route, jamais un utilisateur connecté. Toujours répondre 200 à Meta (même
+    en cas d'erreur de notre côté) pour éviter des retries en boucle.
+
+    Prérequis .env : IG_WEBHOOK_VERIFY_TOKEN (choisi par nous, collé aussi dans la
+    config webhook du dashboard Meta) + IG_APP_SECRET (secret de l'app Meta, pour
+    vérifier la signature des requêtes entrantes — jamais traiter un payload non
+    signé correctement, n'importe qui pourrait sinon déclencher de faux DM)."""
+    if request.method == "GET":
+        expected = os.getenv("IG_WEBHOOK_VERIFY_TOKEN", "")
+        if (expected and request.args.get("hub.mode") == "subscribe"
+                and request.args.get("hub.verify_token") == expected):
+            return request.args.get("hub.challenge", ""), 200
+        return "forbidden", 403
+
+    app_secret = os.getenv("IG_APP_SECRET", "")
+    if app_secret:
+        raw = request.get_data()
+        sig = request.headers.get("X-Hub-Signature-256", "")
+        expected_sig = "sha256=" + hmac.new(app_secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected_sig, sig):
+            log.warning("Webhook Instagram : signature invalide — ignoré.")
+            return "", 200
+    else:
+        log.warning("Webhook Instagram : IG_APP_SECRET absent — signature NON vérifiée.")
+
+    payload = request.get_json(silent=True) or {}
+    from utils import instagram_publish as ig
+    conn = get_db()
+    for entry in payload.get("entry", []):
+        ig_account_id = entry.get("id", "")
+        for change in entry.get("changes", []):
+            if change.get("field") != "comments":
+                continue
+            value = change.get("value") or {}
+            comment_id = value.get("id", "")
+            text = value.get("text", "") or ""
+            media_id = (value.get("media") or {}).get("id", "")
+            if not comment_id or not media_id:
+                continue
+            row = conn.execute(
+                "SELECT event_id FROM social_posts WHERE ig_media_id=? AND status='ok' "
+                "AND platform='instagram' LIMIT 1", (media_id,)).fetchone()
+            if not row:
+                continue
+            ev = conn.execute("SELECT * FROM events_raw WHERE id=?", (row["event_id"],)).fetchone()
+            if not ev or not _dm_keyword_matches(text, ev["dm_keyword"] or ""):
+                continue
+            territoire = ig.territoire_for_account_id(ig_account_id)
+            if not territoire:
+                log.warning("Webhook Instagram : compte IG %s non reconnu (aucun "
+                           "IG_ACCOUNT_ID_<SLUG> correspondant).", ig_account_id)
+                continue
+            title = (ev["title"] or "").strip()
+            link = (ev["wp_permalink_as"] or "").strip()
+            msg = f"Salut 👋 Merci pour ton commentaire sur « {title} » !"
+            if link:
+                msg += f" Voici toutes les infos 👇\n{link}"
+            result = ig.send_private_reply(territoire, comment_id, msg)
+            if not result.get("ok"):
+                log.warning("Webhook Instagram : DM échoué (commentaire %s, événement %s) : %s",
+                           comment_id, ev["id"], result.get("error"))
+    conn.close()
+    return "", 200
+
+
 def _apply_completion(conn, event_id: int, values: dict) -> tuple[bool, list[str]]:
     """Écrit les champs fournis (non vides) et renvoie (complet?, manques restants)."""
     clean = {k: v.strip() for k, v in values.items()

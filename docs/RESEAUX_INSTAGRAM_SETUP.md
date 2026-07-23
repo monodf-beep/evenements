@@ -106,3 +106,60 @@ une vraie connexion au compte : à faire par le propriétaire du compte lui-mêm
   `docs/RESEAUX_SOCIAUX_PLAN.md` §5).
 - **Géolocalisation** du post : à ajouter à la main si voulu.
 - **Collab / miniature de Reel** : à faire dans l'app.
+
+## 5. Automatisation « commente le mot-clé → DM avec le lien »
+
+*Chaque événement a un mot-clé (visible/modifiable dans `/reseaux`, déduit
+automatiquement du titre — ex. « MONTROTTIER »). Quand quelqu'un le commente sous
+le post correspondant, le back-office lui répond en DM PRIVÉ avec le lien de la
+fiche événement (qui inclut déjà « Ajoute-le à ton agenda »). Implémenté par
+`utils.instagram_publish.send_private_reply()` + la route `app.webhook_instagram`
+(`/webhooks/instagram`).*
+
+### 5a. Deux nouvelles permissions Meta (en plus de celles du §2)
+
+Sur **Cas d'utilisation → API Instagram → Autorisations et fonctionnalités**,
+demander en plus :
+- `instagram_business_manage_comments` (lire les commentaires — nécessaire pour le
+  webhook)
+- `instagram_business_manage_messages` (envoyer la réponse privée)
+
+Tant qu'elles ne sont pas approuvées par Meta (App Review — délai variable, hors de
+notre contrôle), le webhook peut être branché mais `send_private_reply()` échouera
+avec une erreur de permission : sans risque, ça ne bloque rien d'autre.
+
+### 5b. Deux nouvelles variables `.env` (VPS), UNE fois pour toute l'app (pas par territoire)
+
+```
+IG_WEBHOOK_VERIFY_TOKEN=choisis-une-chaine-aleatoire-longue
+IG_APP_SECRET=le-secret-de-l-app-meta (Paramètres de l'app → Basique → Clé secrète)
+```
+
+`IG_WEBHOOK_VERIFY_TOKEN` : n'importe quelle chaîne longue et imprévisible, choisie
+par nous — collée aussi côté Meta à l'étape suivante. Sert à vérifier que c'est bien
+Meta qui configure le webhook (poignée de main initiale).
+`IG_APP_SECRET` : le secret de l'app Meta (PAS un token de compte) — sert à vérifier
+la signature de CHAQUE requête webhook entrante (empêche quiconque d'appeler
+`/webhooks/instagram` en se faisant passer pour Meta et de déclencher de faux DM).
+
+### 5c. Abonnement webhook (dashboard Meta), une fois par app
+
+**Cas d'utilisation → API Instagram → Webhooks** → renseigner :
+- **URL de rappel** : `https://agendasabauda.eu` (ou le domaine du backoffice, à
+  vérifier) `/webhooks/instagram`
+- **Jeton de vérification** : la même valeur que `IG_WEBHOOK_VERIFY_TOKEN`
+- Cocher le champ **`comments`** dans les champs à abonner.
+
+Meta appelle alors l'URL en `GET` avec un défi (`hub.challenge`) pour vérifier —
+la route le gère automatiquement, rien à faire de plus si le token correspond.
+
+### 5d. Test de bout en bout
+
+1. Publier un post depuis `/reseaux` (le mot-clé est déjà mémorisé, `wp_permalink_as`
+   déjà rempli).
+2. Commenter ce post avec le mot-clé exact (accents/majuscules n'importent pas —
+   comparaison tolérante).
+3. Vérifier la réception du DM sur le compte qui a commenté.
+4. En cas de souci : logs du service `agenda-admin` (`journalctl -u agenda-admin -f`)
+   — la route journalise chaque échec (signature invalide, compte IG non reconnu,
+   erreur API Meta).

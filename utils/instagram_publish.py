@@ -55,6 +55,23 @@ def configured(territoire_label: str) -> bool:
     return bool(_account_id(territoire_label) and _token(territoire_label))
 
 
+# Même liste que app._RESEAUX_ACCOUNTS (labels) — dupliquée ici volontairement :
+# ce module n'importe pas app.py (pas de dépendance Flask), et cette liste ne
+# change quasiment jamais (un territoire = un compte Instagram business).
+_TERRITOIRES = ["Savoie / Haute-Savoie", "Piémont", "Vallée d'Aoste", "Nice / Alpes-Maritimes"]
+
+
+def territoire_for_account_id(ig_account_id: str) -> str:
+    """Retrouve le territoire (label) à partir d'un ig_account_id reçu par webhook —
+    l'inverse de _account_id(). Sert à savoir quel IG_TOKEN_<SLUG> utiliser pour
+    répondre à un commentaire arrivé sur CE compte Instagram. '' si aucun match."""
+    ig_account_id = str(ig_account_id or "")
+    for label in _TERRITOIRES:
+        if ig_account_id and _account_id(label) == ig_account_id:
+            return label
+    return ""
+
+
 def _wait_ready(container_id: str, token: str) -> bool:
     """Attend que le conteneur soit FINISHED (surtout utile pour les carrousels).
     N'échoue jamais bloquant : au-delà du délai, on tente la publication quand même."""
@@ -111,6 +128,40 @@ def publish_single(territoire_label: str, image_url: str, caption: str,
     except requests.HTTPError as exc:
         msg = _api_error(exc.response)
         log.warning("Échec publication Instagram (%s) : %s", territoire_label, msg)
+        return {"ok": False, "error": msg}
+    except requests.RequestException as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def send_private_reply(territoire_label: str, comment_id: str, text: str) -> dict:
+    """Répond en DM PRIVÉ à un commentaire (« Private Replies », API Meta depuis
+    2024) — déclenché par le webhook (utils.instagram_webhook), jamais appelé
+    directement au moment de la publication. Renvoie {ok, message_id} ou
+    {ok: False, error}.
+
+    Contraintes Meta (non contournables) : UNE seule réponse privée par
+    commentaire, jamais deux ; fenêtre de 7 jours max après le commentaire
+    (au-delà, Meta refuse) ; permissions requises côté app Meta :
+    instagram_business_basic + instagram_business_manage_messages (+
+    instagram_business_manage_comments pour recevoir le webhook)."""
+    if not configured(territoire_label):
+        return {"ok": False, "error": f"Compte Instagram non configuré pour « {territoire_label} »."}
+    ig_id, token = _account_id(territoire_label), _token(territoire_label)
+    try:
+        r = requests.post(
+            f"{GRAPH}/{ig_id}/messages",
+            json={"recipient": {"comment_id": comment_id}, "message": {"text": text}},
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            timeout=30)
+        r.raise_for_status()
+        message_id = r.json().get("message_id")
+        log.info("Réponse privée envoyée (%s) sur commentaire %s : message_id=%s",
+                 territoire_label, comment_id, message_id)
+        return {"ok": True, "message_id": message_id}
+    except requests.HTTPError as exc:
+        msg = _api_error(exc.response)
+        log.warning("Échec réponse privée (%s) sur commentaire %s : %s",
+                    territoire_label, comment_id, msg)
         return {"ok": False, "error": msg}
     except requests.RequestException as exc:
         return {"ok": False, "error": str(exc)}
