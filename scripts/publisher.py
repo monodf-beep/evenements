@@ -162,7 +162,21 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
     ancre le recadrage. Si la transformation échoue (image exotique), on retombe sur
     l'original (jamais bloquant)."""
     try:
-        img = requests.get(image_url, timeout=30, headers=_UA)
+        # Retry sur échec TRANSITOIRE du téléchargement SOURCE (429/5xx) — Wikimedia
+        # (upload.wikimedia.org) renvoie par intermittence un 429 sous charge (constaté
+        # en masse lors d'un rattrapage --recheck : plusieurs dizaines d'images pourtant
+        # bien choisies retombaient sur la bannière générique à cause de CE 429, pas d'un
+        # vrai échec — voir utils.images.remote_min_side qui a le même souci ailleurs).
+        img = None
+        for attempt in range(3):
+            img = requests.get(image_url, timeout=30, headers=_UA)
+            if img.status_code < 400 or img.status_code not in (429, 500, 502, 503, 504):
+                break
+            if attempt < 2:
+                log.warning("Téléchargement source tentative %d échoué (%s) — retry dans %ds… (%s)",
+                            attempt + 1, img.status_code, 3 * (attempt + 1), image_url)
+                import time as _time
+                _time.sleep(3 * (attempt + 1))
         img.raise_for_status()
         content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
         if not content_type.startswith("image/"):
