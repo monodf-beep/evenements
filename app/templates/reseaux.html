@@ -20,6 +20,10 @@
       {% if is_detour %}<span class="pill" style="background:#fdf3d6;color:#7a5b00">🌟 {{ e.territoire }}</span>{% endif %}
     </div>
   </div>
+  <div style="margin-top:.4rem">
+    <label class="muted text-sm" for="kw-{{ e.id }}">💬 Mot-clé DM (« commente XXX et je t'envoie le lien »)</label>
+    <input id="kw-{{ e.id }}" type="text" value="{{ e._keyword }}" style="width:100%;font-size:.8rem;font-family:inherit;padding:.35rem .45rem;border:1px solid #e7e1d4;border-radius:.4rem;text-transform:uppercase">
+  </div>
   {% for lg in langs %}
   <div style="margin-top:.5rem">
     {% if langs|length > 1 %}<div class="muted text-sm" style="margin-bottom:.15rem">{{ '🇫🇷 FR' if lg=='fr' else '🇮🇹 IT' }}</div>{% endif %}
@@ -28,6 +32,8 @@
       {% if e._ai_caps[lg] %}✨ Légende réécrite (voix Enrico){% else %}📋 Légende auto (gratuite){% endif %}
       — modifiable, la version publiée sera celle affichée ici au moment du clic.
     </div>
+    <label class="muted text-sm" for="alt-{{ e.id }}-{{ lg }}" style="display:block;margin-top:.35rem">🔎 Texte alternatif (accessibilité)</label>
+    <textarea id="alt-{{ e.id }}-{{ lg }}" rows="2" style="width:100%;font-size:.78rem;font-family:inherit;padding:.35rem .45rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ e._alts[lg] }}</textarea>
     <div class="btn-row" style="margin-top:.3rem;flex-wrap:wrap">
       <button type="button" class="btn btn-sm" onclick="rxCopy('cap-{{ e.id }}-{{ lg }}', this)">📋 Copier{{ ' '+lg|upper if langs|length>1 }}</button>
       <form method="POST" action="/reseaux/rewrite/{{ e.id }}" style="display:inline"
@@ -39,16 +45,24 @@
         {% for kind, klabel in [('single','Post'), ('carousel','Carrousel'), ('story','Story')] %}
           {% if e._published[lg][kind] %}
           <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
-                onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value; return confirm('{{ klabel }} déjà publié ({{ lg|upper }}). Republier avec la légende actuelle ?')">
+                onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value;
+                          this.alt_text.value = document.getElementById('alt-{{ e.id }}-{{ lg }}').value;
+                          this.dm_keyword.value = document.getElementById('kw-{{ e.id }}').value;
+                          return confirm('{{ klabel }} déjà publié ({{ lg|upper }}). Republier avec la légende actuelle ?')">
             <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
             <input type="hidden" name="force" value="1"><input type="hidden" name="caption" value="">
+            <input type="hidden" name="alt_text" value=""><input type="hidden" name="dm_keyword" value="">
             <button class="btn btn-sm">✅ {{ klabel }} — republier</button>
           </form>
           {% else %}
           <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
-                onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value; return confirm('Publier « {{ klabel }} » sur Instagram ({{ lg|upper }}) avec la légende actuelle ?')">
+                onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value;
+                          this.alt_text.value = document.getElementById('alt-{{ e.id }}-{{ lg }}').value;
+                          this.dm_keyword.value = document.getElementById('kw-{{ e.id }}').value;
+                          return confirm('Publier « {{ klabel }} » sur Instagram ({{ lg|upper }}) avec la légende actuelle ?')">
             <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
             <input type="hidden" name="caption" value="">
+            <input type="hidden" name="alt_text" value=""><input type="hidden" name="dm_keyword" value="">
             <button class="btn btn-sm btn-primary">🚀 {{ klabel }}</button>
           </form>
           {% endif %}

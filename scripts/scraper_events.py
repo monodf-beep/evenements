@@ -146,7 +146,11 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # d'accueil — cette fiche porte déjà le bloc « Ajoute-le à ton
                       # agenda » (Google/Apple/Outlook), donc UN lien couvre les deux
                       # usages (lire l'article + l'ajouter à son agenda).
-                      ("wp_permalink_as", "TEXT")):
+                      ("wp_permalink_as", "TEXT"),
+                      # Mot-clé « commente XXX et je t'envoie le lien en DM » (automatisation
+                      # commentaire → réponse privée Instagram). Auto-déduit du titre
+                      # (utils.social.dm_keyword), modifiable à la main avant publication.
+                      ("dm_keyword", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

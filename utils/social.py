@@ -159,6 +159,48 @@ def alt_text(event: dict, lang: str = "fr") -> str:
     return f"Visuel de l'événement « {title} »{(' à ' + ville) if ville else ''}."
 
 
+# Mots trop génériques pour servir de mot-clé « commente XXX » (déclencheur DM
+# automatique) : ils reviennent dans plein de titres différents, donc n'identifient
+# pas UN événement précis. Le mot-clé doit être mémorable ET propre à CET événement.
+_DM_STOPWORDS = {
+    "le", "la", "les", "l", "un", "une", "des", "du", "de", "d", "au", "aux", "à",
+    "et", "en", "sur", "dans", "avec", "pour", "par", "ce", "cette", "ces", "son",
+    "sa", "ses", "il", "elle", "on", "au fil", "the",
+    "visite", "visites", "festival", "festivals", "concert", "concerts", "soiree",
+    "soirees", "journee", "journees", "fete", "fetes", "expo", "exposition",
+    "expositions", "spectacle", "spectacles", "atelier", "ateliers", "rencontre",
+    "rencontres", "edition", "grande", "grand", "special", "speciale", "nouveau",
+    "nouvelle", "annuel", "annuelle", "programme", "presente", "presentent",
+    "international", "internazionale", "national", "nazionale", "regional",
+    "regionale", "traditionnel", "traditionnelle", "tradizionale", "premiere",
+    "prima", "gratuit", "gratuita", "gratuite", "libre",
+}
+
+
+def _strip_accents(s: str) -> str:
+    n = unicodedata.normalize("NFKD", s)
+    return "".join(c for c in n if not unicodedata.combining(c))
+
+
+def dm_keyword(title: str) -> str:
+    """Mot-clé « commente XXX pour recevoir le lien en DM », déduit du titre.
+
+    Priorité aux mots CAPITALISÉS hors mots génériques (§_DM_STOPWORDS) — en
+    français/italien, un nom propre en milieu de titre (lieu, artiste) qui identifie
+    CET événement précis, pas juste sa catégorie ; un adjectif générique même long
+    (« internazionale ») reste en minuscule et n'est choisi qu'en dernier recours.
+    Parmi les candidats retenus, le plus long. Normalisé (majuscules, sans accent)
+    pour une reconnaissance tolérante aux fautes/variantes dans les commentaires.
+    '' si le titre ne donne rien d'exploitable — l'appelant retombe sur un mot fixe."""
+    words = re.findall(r"[A-Za-zÀ-ÿ]{4,}", title or "")
+    candidates = [w for w in words if _strip_accents(w).lower() not in _DM_STOPWORDS]
+    if not candidates:
+        return ""
+    capitalized = [w for w in candidates if w[0].isupper()]
+    best = max(capitalized or candidates, key=len)
+    return _strip_accents(best).upper()
+
+
 # ---------------------------------------------------------------------------------
 # caption_ai — réécriture LLM, à la demande (PAYANT), pour les événements phares.
 # ---------------------------------------------------------------------------------

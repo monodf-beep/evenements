@@ -2476,6 +2476,8 @@ def reseaux():
         e["_caps"] = {lg: e.get(f"social_caption_{lg}") or social_mod.caption(e, lg)
                      for lg in langs}
         e["_ai_caps"] = {lg: bool(e.get(f"social_caption_{lg}")) for lg in langs}
+        e["_alts"] = {lg: social_mod.alt_text(e, lg) for lg in langs}
+        e["_keyword"] = e.get("dm_keyword") or social_mod.dm_keyword(e.get("title") or "")
         e["_published"] = {lg: {k: published.get((e["id"], lg, k)) == "ok"
                                 for k in ("single", "carousel", "story")}
                            for lg in langs}
@@ -2620,13 +2622,23 @@ def reseaux_publish(event_id: int):
         flash(f"❌ « {title} » — photo source injoignable ({exc}).", "err")
         return redirect(url_for("reseaux") + f"#e{event_id}")
 
-    # Légende : celle éditée à la main dans /reseaux si fournie, sinon l'auto-générée.
+    # Légende / texte alternatif : ceux édités à la main dans /reseaux si fournis,
+    # sinon l'auto-généré.
     caption_override = (request.form.get("caption", "") or "").strip()
     caption = caption_override or social_mod.caption(ev, lang)
     date_str = social_mod.format_date(ev.get("date_event_start", ""),
                                       ev.get("date_event_end", ""), lang)
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
-    alt = social_mod.alt_text(ev, lang)
+    alt_override = (request.form.get("alt_text", "") or "").strip()
+    alt = alt_override or social_mod.alt_text(ev, lang)
+    # Mot-clé DM (commentaire → réponse privée) : édité à la main si fourni, sinon
+    # auto-déduit du titre — PERSISTÉ (pas juste au moment du clic, le webhook devra
+    # le relire n'importe quand plus tard).
+    keyword = (request.form.get("dm_keyword", "") or "").strip().upper() \
+        or social_mod.dm_keyword(ev.get("title") or "")
+    if keyword != (ev.get("dm_keyword") or ""):
+        conn.execute("UPDATE events_raw SET dm_keyword=? WHERE id=?", (keyword, event_id))
+        conn.commit()
     territoire = ev.get("territoire", "")
     ville = ev.get("ville", "")
     full_title = ev.get("title", "")
