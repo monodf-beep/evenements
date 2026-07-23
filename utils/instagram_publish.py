@@ -136,8 +136,10 @@ def publish_single(territoire_label: str, image_url: str, caption: str,
 def send_private_reply(territoire_label: str, comment_id: str, text: str) -> dict:
     """Répond en DM PRIVÉ à un commentaire (« Private Replies », API Meta depuis
     2024) — déclenché par le webhook (utils.instagram_webhook), jamais appelé
-    directement au moment de la publication. Renvoie {ok, message_id} ou
-    {ok: False, error}.
+    directement au moment de la publication. Renvoie {ok, message_id, recipient_id}
+    ou {ok: False, error}. `recipient_id` (IGSID) permet d'enchaîner un second
+    message normal (cf. send_link_button) — la réponse privée elle-même ne peut
+    PAS porter de bouton, seulement du texte (limite Meta sur ce type précis).
 
     Contraintes Meta (non contournables) : UNE seule réponse privée par
     commentaire, jamais deux ; fenêtre de 7 jours max après le commentaire
@@ -154,14 +156,59 @@ def send_private_reply(territoire_label: str, comment_id: str, text: str) -> dic
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             timeout=30)
         r.raise_for_status()
-        message_id = r.json().get("message_id")
+        body = r.json()
+        message_id = body.get("message_id")
+        recipient_id = body.get("recipient_id")
         log.info("Réponse privée envoyée (%s) sur commentaire %s : message_id=%s",
                  territoire_label, comment_id, message_id)
-        return {"ok": True, "message_id": message_id}
+        return {"ok": True, "message_id": message_id, "recipient_id": recipient_id}
     except requests.HTTPError as exc:
         msg = _api_error(exc.response)
         log.warning("Échec réponse privée (%s) sur commentaire %s : %s",
                     territoire_label, comment_id, msg)
+        return {"ok": False, "error": msg}
+    except requests.RequestException as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def send_link_button(territoire_label: str, recipient_id: str, title: str,
+                     button_label: str, url: str) -> dict:
+    """Envoie un message NORMAL (pas une réponse privée) avec un vrai bouton
+    cliquable menant à `url` (« Generic Template », API Meta) — instantanément
+    tapable, contrairement à un lien en texte brut qui met un instant à se
+    transformer en lien cliquable côté Instagram. Nécessite le recipient_id
+    (IGSID) renvoyé par un précédent send_private_reply() : on ne peut PAS ouvrir
+    une conversation directement par ce biais, seulement y répondre."""
+    if not configured(territoire_label):
+        return {"ok": False, "error": f"Compte Instagram non configuré pour « {territoire_label} »."}
+    ig_id, token = _account_id(territoire_label), _token(territoire_label)
+    try:
+        r = requests.post(
+            f"{GRAPH}/{ig_id}/messages",
+            json={
+                "recipient": {"id": recipient_id},
+                "message": {
+                    "attachment": {
+                        "type": "template",
+                        "payload": {
+                            "template_type": "generic",
+                            "elements": [{
+                                "title": title[:80],
+                                "buttons": [{"type": "web_url", "url": url, "title": button_label[:20]}],
+                            }],
+                        },
+                    },
+                },
+            },
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            timeout=30)
+        r.raise_for_status()
+        message_id = r.json().get("message_id")
+        log.info("Bouton lien envoyé (%s) à %s : message_id=%s", territoire_label, recipient_id, message_id)
+        return {"ok": True, "message_id": message_id}
+    except requests.HTTPError as exc:
+        msg = _api_error(exc.response)
+        log.warning("Échec envoi bouton (%s) à %s : %s", territoire_label, recipient_id, msg)
         return {"ok": False, "error": msg}
     except requests.RequestException as exc:
         return {"ok": False, "error": str(exc)}

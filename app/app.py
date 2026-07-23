@@ -2804,12 +2804,20 @@ def webhook_instagram():
             link = (ev["wp_permalink_as"] or "").strip()
             msg = f"Salut 👋 Merci pour ton commentaire sur « {title} » !"
             if link:
-                msg += (" Voici le lien : toutes les infos, et tu peux l'ajouter "
-                        f"direct à ton agenda perso 👇\n{link}")
+                msg += " Toutes les infos juste en dessous 👇"
             result = ig.send_private_reply(territoire, comment_id, msg)
             if not result.get("ok"):
                 log.warning("Webhook Instagram : DM échoué (commentaire %s, événement %s) : %s",
                            comment_id, ev["id"], result.get("error"))
+            elif link and result.get("recipient_id"):
+                # Second message, normal (pas une réponse privée) : un vrai bouton
+                # cliquable tout de suite, contrairement au lien en texte brut qui
+                # met un instant à devenir tapable côté Instagram.
+                btn = ig.send_link_button(territoire, result["recipient_id"], title,
+                                          "Voir l'événement", link)
+                if not btn.get("ok"):
+                    log.warning("Webhook Instagram : bouton lien échoué (commentaire %s, "
+                               "événement %s) : %s", comment_id, ev["id"], btn.get("error"))
     conn.close()
     return "", 200
 
