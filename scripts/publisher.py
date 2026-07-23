@@ -188,17 +188,39 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
             except Exception as exc:  # jamais bloquant : on garde l'original
                 log.warning("Vignette 4:3 impossible (%s) — image d'origine conservée.", exc)
 
-        resp = requests.post(
-            f"{wp_url}/?rest_route=/wp/v2/media",
-            data=data,
-            auth=auth,
-            headers={
-                **_headers(auth),
-                "Content-Type": content_type,
-                "Content-Disposition": f'attachment; filename="{name}"',
-            },
-            timeout=60,
-        )
+        # Retry sur échec TRANSITOIRE (504/502/timeout — fréquent sur l'hébergement
+        # mutualisé OVH lors de l'upload d'une image). Sans retry, un aléa réseau fait
+        # échouer l'upload de la vignette 4:3 déjà générée ci-dessus → cs-publish.php
+        # retombe sur son repli `image_url` (l'affiche BRUTE, non recadrée) comme image
+        # à la une, ce qui produit dans la grille une carte avec marges blanches au lieu
+        # du letterbox flou — jamais généré côté serveur. Un 4xx (auth, payload rejeté)
+        # ne se répare pas en réessayant : on abandonne tout de suite dans ce cas.
+        resp = None
+        for attempt in range(3):
+            try:
+                resp = requests.post(
+                    f"{wp_url}/?rest_route=/wp/v2/media",
+                    data=data,
+                    auth=auth,
+                    headers={
+                        **_headers(auth),
+                        "Content-Type": content_type,
+                        "Content-Disposition": f'attachment; filename="{name}"',
+                    },
+                    timeout=60,
+                )
+                if resp.status_code < 500:
+                    break
+            except requests.RequestException:
+                resp = None
+            if attempt < 2:
+                log.warning("Upload média tentative %d échouée (%s) — retry dans %ds…",
+                            attempt + 1, image_url, 3 * (attempt + 1))
+                import time as _time
+                _time.sleep(3 * (attempt + 1))
+        if resp is None:
+            log.warning("Upload média impossible après 3 tentatives : %s", image_url)
+            return None
         resp.raise_for_status()
         media_id = resp.json().get("id")
         log.info("Média uploadé WP id=%s : %s", media_id, image_url)

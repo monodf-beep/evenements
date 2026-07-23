@@ -110,17 +110,20 @@ def _acceptable(url: str, blocked: set[str], patterns: list) -> bool:
         and not is_logo_image(url) and not image_verify.looks_parasitic(url, patterns)
 
 
-def _verified(url: str, ev: dict, verify_client, verify_model: str, subject: str = "") -> bool:
+def _verified(url: str, ev: dict, verify_client, verify_model: str,
+             subject: str = "") -> tuple[bool, float, float]:
     """AGENT vision (optionnel) : si un client est fourni, l'image doit correspondre à
-    l'événement. Sans client, on fait confiance aux règles déterministes."""
+    l'événement — et on récupère au passage le POINT FOCAL suggéré (visage / texte en
+    bas à protéger d'un recadrage 4:3, cf. utils.image_verify). Sans client, on fait
+    confiance aux règles déterministes (focal centré par défaut)."""
     if verify_client is None:
-        return True
+        return True, 0.5, 0.5
     from utils.images import _PAGE_UA, _MAX_CHECK_BYTES  # réutilise le téléchargement borné
     import requests
     try:
         r = requests.get(url, headers=_PAGE_UA, timeout=15, stream=True)
         if r.status_code != 200:
-            return True  # injoignable pour la vérif : ne bloque pas (le push refera sa chaîne)
+            return True, 0.5, 0.5  # injoignable pour la vérif : ne bloque pas (le push refera sa chaîne)
         mime = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         buf = b""
         for chunk in r.iter_content(65536):
@@ -128,14 +131,18 @@ def _verified(url: str, ev: dict, verify_client, verify_model: str, subject: str
             if len(buf) > _MAX_CHECK_BYTES:
                 break
     except requests.RequestException:
-        return True
+        return True, 0.5, 0.5
     return image_verify.verify_relevance(buf, mime, ev, verify_client, verify_model, subject)
 
 
 def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
-                  verify_client=None, verify_model: str = "claude-haiku-4-5") -> tuple[str, str, str]:
-    """Renvoie (url, credit, source) selon la chaîne 4 étages. url='' seulement si
-    aucune bannière n'est configurée pour le territoire.
+                  verify_client=None,
+                  verify_model: str = "claude-haiku-4-5") -> tuple[str, str, str, float, float]:
+    """Renvoie (url, credit, source, focal_x, focal_y) selon la chaîne 4 étages. url=''
+    seulement si aucune bannière n'est configurée pour le territoire. focal_x/y ∈ [0,1] :
+    point focal suggéré par l'agent vision (visage / texte en bas à protéger d'un
+    recadrage 4:3 « cover » — sans effet sur une affiche portrait, jamais recadrée).
+    (0.5, 0.5) si pas d'agent vision ou rien de particulier à protéger.
 
     RÈGLES (toujours) : chaque candidat passe _acceptable (domaine/logo/parasite).
     AGENT (si verify_client) : og / page / Commons sont vérifiés par vision — une image
@@ -144,26 +151,32 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
     # Étage 2 — og:image de la page officielle (jamais pour un radar : image de presse).
     if not _is_radar(ev):
         og = fetch_og_image(ev.get("url_source", ""))
-        if _acceptable(og, blocked, patterns) and _verified(og, ev, verify_client, verify_model):
-            return og, "", "og"
+        if _acceptable(og, blocked, patterns):
+            ok, fx, fy = _verified(og, ev, verify_client, verify_model)
+            if ok:
+                return og, "", "og", fx, fy
         # Étage 2b — repli : 1re vraie photo de CONTENU (pages sans og:image, ex.
         # offices de tourisme). L'info est sur la page, on la prend au lieu d'abandonner.
         content = fetch_content_image(ev.get("url_source", ""))
-        if _acceptable(content, blocked, patterns) and _verified(content, ev, verify_client, verify_model):
-            return content, "", "page"
+        if _acceptable(content, blocked, patterns):
+            ok, fx, fy = _verified(content, ev, verify_client, verify_model)
+            if ok:
+                return content, "", "page", fx, fy
     # Étage 3 — photo licenciable Wikimedia Commons (LLM = requête, code = fetch).
     if client is not None:
         q = visual_query(ev, client, MODEL)
         if q:
             url, credit = commons_search(q)
-            if _acceptable(url, blocked, patterns) and _verified(url, ev, verify_client, verify_model, q):
-                log.info("[%s] Commons « %s » → %s", ev["id"], q, url[:70])
-                return url, credit, "commons"
+            if _acceptable(url, blocked, patterns):
+                ok, fx, fy = _verified(url, ev, verify_client, verify_model, q)
+                if ok:
+                    log.info("[%s] Commons « %s » → %s", ev["id"], q, url[:70])
+                    return url, credit, "commons", fx, fy
     # Étage 4 — bannière de marque du territoire (repli garanti, jamais parasite).
     banner = pick_image(ev.get("territoire", ""), key=str(ev["id"]), images=banners)
     if banner:
-        return banner, "", "banner"
-    return "", "", ""
+        return banner, "", "banner", 0.5, 0.5
+    return "", "", "", 0.5, 0.5
 
 
 def select_events(conn: sqlite3.Connection, ids, dfrom, dto) -> list[dict]:
@@ -219,15 +232,19 @@ def main(argv=None) -> int:
     verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
     counts = {"og": 0, "page": 0, "commons": 0, "banner": 0, "none": 0}
     for ev in rows:
-        url, credit, source = resolve_image(ev, client, blocked, banners,
-                                            verify_client=verify_client, verify_model=verify_model)
+        url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners,
+                                                     verify_client=verify_client, verify_model=verify_model)
         if not url:
             counts["none"] += 1
             log.warning("[%s] aucun visuel (pas de bannière pour %s)", ev["id"], ev.get("territoire"))
             continue
+        # card_focal_x/y : seulement si jamais réglé (NULL) — ne JAMAIS écraser un
+        # cadrage choisi à la main au back-office (éditeur de point focal).
         conn.execute(
-            "UPDATE events_raw SET url_image=?, image_credit=?, image_source=? WHERE id=?",
-            (url, credit, source, ev["id"]))
+            "UPDATE events_raw SET url_image=?, image_credit=?, image_source=?, "
+            "card_focal_x=COALESCE(card_focal_x, ?), card_focal_y=COALESCE(card_focal_y, ?) "
+            "WHERE id=?",
+            (url, credit, source, fx, fy, ev["id"]))
         conn.commit()
         counts[source] += 1
     log.info("Visuels posés — og:image=%d · page=%d · Commons=%d · bannière=%d · échec=%d",

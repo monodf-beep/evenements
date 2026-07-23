@@ -83,8 +83,34 @@ la pertinence prime**, l'agent vérifie. Modèle réglable via `ANTHROPIC_MODEL_
 - `--lowres` — remplace les images trop petites par une plus grande (jamais une
   dégradation, jamais une vraie photo troquée pour une bannière).
 
+## Recadrage / point focal (juillet 2026)
+
+L'agent vision (défense 2) ne se contente plus d'accepter/refuser : quand il valide
+une image, il propose aussi un **point focal** `(focal_x, focal_y ∈ [0,1])` — utile
+seulement si l'image est PAYSAGE et sera recadrée en 4:3 « cover » (une affiche
+PORTRAIT part en letterbox, cf. `utils.card_image`, jamais recadrée). Le focal évite
+que le recadrage coupe un **visage** ou une **zone de texte informatif** (horaires,
+prix, adresse) incrustée en bas de la photo.
+
+`scripts.visuals.resolve_image(...)` renvoie désormais `(url, credit, source,
+focal_x, focal_y)`. Écrit dans `events_raw.card_focal_x/y` **seulement si NULL** —
+un cadrage réglé à la main au back-office (`/set-focal/<id>`) n'est **jamais**
+écrasé par la suggestion automatique.
+
+## Vignette 4:3 sans « marges blanches »
+
+`utils.card_image.make_card()` produit TOUJOURS une image qui remplit entièrement le
+cadre 4:3 (recadrage « cover » ou letterbox flou) — jamais de marge blanche. Si une
+carte affiche quand même des marges blanches côté WordPress, ce n'est pas cette
+vignette qui est montrée : `scripts/publisher_as.py` téléverse la vignette 4:3 en
+`featured_media_id` (prioritaire), mais si cet upload échoue (timeout/504, fréquent
+sur l'hébergement mutualisé), `cs-publish.php` retombe sur `image_url` — l'affiche
+BRUTE, non recadrée, jamais générée par `card_image` — comme image à la une. Deux
+protections : `scripts/publisher.py::_upload_featured_media` réessaie 3 fois sur
+échec transitoire (5xx/timeout) avant d'abandonner ; en cas de carte déjà cassée,
+`refill_images_as.py --wp-ids <id WordPress>` force un nouvel upload carté.
+
 ## Ce qui n'est PAS de ce ressort
 
 - **Image trop petite** → le rendu social bascule sur le **fond abstrait**
   (`utils.social_image._abstract_bg`) ; on ne va jamais chercher une autre image.
-- **Recadrage / point focal** → `utils.card_image` (vignette 4:3, jamais de tête coupée).

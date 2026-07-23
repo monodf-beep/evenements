@@ -82,15 +82,20 @@ def season_fr(date_str: str) -> str:
 
 
 def verify_relevance(img_bytes: bytes, mime: str, event: dict, client, model: str,
-                     subject: str = "") -> bool:
-    """AGENT VISION : l'image correspond-elle vraiment à l'événement ? True/False.
+                     subject: str = "") -> tuple[bool, float, float]:
+    """AGENT VISION : l'image correspond-elle vraiment à l'événement ? Et si elle est
+    RECADRÉE en 4:3 « cover » (photo paysage), quel point focal (x,y ∈ [0,1]) évite de
+    couper un visage ou une zone de texte informatif en bas de l'image ? (Sans effet sur
+    une affiche portrait : celle-ci part en letterbox, jamais recadrée — voir
+    utils/card_image.py.)
 
-    Refuse explicitement les bandeaux/pubs/logos/captures/affiches-tout-texte et les
-    images sans rapport. Tolérant en cas d'échec technique (renvoie True) SEULEMENT si
-    l'appel plante — l'appelant décide alors ; ici on préfère ne pas bloquer sur une
-    panne réseau. Un refus DE CONTENU (l'image ne colle pas) renvoie bien False."""
+    Renvoie (ok, focal_x, focal_y). Refuse explicitement (ok=False) les bandeaux/pubs/
+    logos/captures/affiches-tout-texte et les images sans rapport. Tolérant en cas
+    d'échec technique (renvoie (True, 0.5, 0.5)) SEULEMENT si l'appel plante — l'appelant
+    décide alors ; ici on préfère ne pas bloquer sur une panne réseau. Un refus DE CONTENU
+    (l'image ne colle pas) renvoie bien ok=False."""
     if not img_bytes or mime not in _OK_MIME or client is None:
-        return True  # rien à vérifier / pas de client → on laisse passer (règles déjà filtrées)
+        return True, 0.5, 0.5  # rien à vérifier / pas de client → laisse passer, cadrage centré
     b64 = base64.standard_b64encode(img_bytes).decode("ascii")
     season = season_fr(event.get("date_event_start", ""))
     dates = event.get("date_event_start", "")
@@ -120,17 +125,30 @@ def verify_relevance(img_bytes: bytes, mime: str, event: dict, client, model: st
         "le territoire environnant est montagneux, ce n'est pas le sujet de CET "
         "événement.\n"
         "ACCEPTE (ok=true) une vraie photo du lieu précis, de l'artiste, du thème, ou "
-        "une affiche propre et lisible de l'événement.\n"
-        'Réponds en JSON STRICT : {"ok": true|false, "raison": "…"}'
+        "une affiche propre et lisible de l'événement.\n\n"
+        "POINT FOCAL (utile seulement si l'image est au format PAYSAGE et sera "
+        "RECADRÉE en 4:3 — une affiche PORTRAIT n'est jamais recadrée, ignore cette "
+        "partie pour elle) : donne focal_x, focal_y ∈ [0,1] pour que le recadrage NE "
+        "COUPE JAMAIS un visage ni une zone de texte informatif (horaires, prix, "
+        "adresse) incrustée en bas de l'image.\n"
+        "  • focal_y = position verticale de la zone à PRÉSERVER dans le cadre : proche "
+        "de 0 si un visage est en haut de l'image, proche de 1 si un visage — ou du "
+        "texte à protéger — est en bas, 0.5 si centré ou si rien de particulier à "
+        "protéger.\n"
+        "  • focal_x = idem à l'horizontale (0=gauche, 0.5=centre, 1=droite) pour un "
+        "visage décentré.\n"
+        "  • Si aucun visage ni texte à protéger : focal_x=0.5, focal_y=0.5.\n"
+        'Réponds en JSON STRICT : {"ok": true|false, "raison": "…", '
+        '"focal_x": 0.5, "focal_y": 0.5}'
     )
     try:
         msg = client.messages.create(
-            model=model, max_tokens=150,
+            model=model, max_tokens=200,
             messages=[{"role": "user", "content": [
                 {"type": "image", "source": {"type": "base64", "media_type": mime, "data": b64}},
                 {"type": "text", "text": prompt}]}])
     except Exception:
-        return True  # panne technique : ne bloque pas (les règles déterministes ont déjà filtré)
+        return True, 0.5, 0.5  # panne technique : ne bloque pas (les règles déterministes ont déjà filtré)
     try:
         from utils import usage
         usage.record_message(model, msg, label="image_verify")
@@ -140,9 +158,16 @@ def verify_relevance(img_bytes: bytes, mime: str, event: dict, client, model: st
                   if getattr(b, "type", None) == "text").strip()
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
-        return True
+        return True, 0.5, 0.5
     try:
         data = json.loads(m.group())
     except (ValueError, TypeError):
-        return True
-    return bool(data.get("ok"))
+        return True, 0.5, 0.5
+
+    def _c(v, d=0.5):
+        try:
+            return min(max(float(v), 0.0), 1.0)
+        except (TypeError, ValueError):
+            return d
+
+    return bool(data.get("ok")), _c(data.get("focal_x")), _c(data.get("focal_y"))

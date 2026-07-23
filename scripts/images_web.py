@@ -134,35 +134,36 @@ def _download(url: str) -> tuple[bytes, str]:
         return b"", ""
 
 
-def verify_image(ev: dict, subject: str, img_bytes: bytes, mime: str, client) -> bool:
-    """Vérificateur VISION : l'image correspond-elle vraiment au sujet ? True/False.
+def verify_image(ev: dict, subject: str, img_bytes: bytes, mime: str, client) -> tuple[bool, float, float]:
+    """Vérificateur VISION : l'image correspond-elle vraiment au sujet ? Et quel point
+    focal (x,y) préserve un visage / du texte informatif si l'image est recadrée ?
 
     Délègue à utils.image_verify.verify_relevance (agent partagé avec la chaîne
-    principale). NB : verify_relevance renvoie True en cas de panne technique (ne
+    principale). NB : verify_relevance renvoie ok=True en cas de panne technique (ne
     bloque pas), mais ici — agent web de dernier recours — on exige un OK franc :
     une image non lisible n'est pas acceptable, on refuse par défaut."""
     if not img_bytes or mime not in _OK_MIME:
-        return False
+        return False, 0.5, 0.5
     from utils import image_verify
     return image_verify.verify_relevance(img_bytes, mime, ev, client, VERIFY_MODEL, subject)
 
 
-def find_verified_image(ev: dict, client, blocked: set[str]) -> tuple[str, str]:
-    """Cherche puis VÉRIFIE une image. Renvoie (url, credit) ou ('', '')."""
+def find_verified_image(ev: dict, client, blocked: set[str]) -> tuple[str, str, float, float]:
+    """Cherche puis VÉRIFIE une image. Renvoie (url, credit, focal_x, focal_y) ou ('', '', 0.5, 0.5)."""
     proposal = search_image(ev, client)
     if not proposal:
-        return "", ""
+        return "", "", 0.5, 0.5
     # Candidat : URL directe si donnée, sinon og:image de la page officielle.
     candidate = (proposal.get("image_url") or "").strip()
     if not candidate and proposal.get("page_url"):
         candidate = fetch_og_image(proposal["page_url"].strip())
     if not candidate or not candidate.startswith("http"):
-        return "", ""
+        return "", "", 0.5, 0.5
     if is_blocked_image(candidate, blocked) or is_logo_image(candidate):
-        return "", ""
+        return "", "", 0.5, 0.5
     img_bytes, mime = _download(candidate)
     if not img_bytes:
-        return "", ""
+        return "", "", 0.5, 0.5
     try:
         from PIL import Image
         with Image.open(io.BytesIO(img_bytes)) as im:
@@ -171,10 +172,11 @@ def find_verified_image(ev: dict, client, blocked: set[str]) -> tuple[str, str]:
         w, h = 0, 0
     if min(w, h) < images.MIN_DIM:  # trop petite : floue une fois étirée aux formats sociaux
         log.info("Image écartée (résolution %dx%d < %dpx) : %s", w, h, images.MIN_DIM, candidate[:70])
-        return "", ""
-    if not verify_image(ev, proposal.get("subject", ""), img_bytes, mime, client):
-        return "", ""
-    return candidate, _clean(proposal.get("credit", ""))
+        return "", "", 0.5, 0.5
+    ok, fx, fy = verify_image(ev, proposal.get("subject", ""), img_bytes, mime, client)
+    if not ok:
+        return "", "", 0.5, 0.5
+    return candidate, _clean(proposal.get("credit", "")), fx, fy
 
 
 def _select(conn, args, today: str):
@@ -236,12 +238,16 @@ def main(argv=None) -> int:
     blocked = load_blocked_image_domains()
     ok = 0
     for i, r in enumerate(rows, 1):
-        url, credit = find_verified_image(dict(r), client, blocked)
+        url, credit, fx, fy = find_verified_image(dict(r), client, blocked)
         mark_web_attempt(conn, "image_web_at", r["id"])   # tentative armée (réussie ou non)
         if url:
+            # card_focal_x/y : seulement si jamais réglé (NULL) — ne JAMAIS écraser un
+            # cadrage choisi à la main au back-office (éditeur de point focal).
             conn.execute(
-                "UPDATE events_raw SET url_image=?, image_credit=?, image_source='web' WHERE id=?",
-                (url, credit, r["id"]))
+                "UPDATE events_raw SET url_image=?, image_credit=?, image_source='web', "
+                "card_focal_x=COALESCE(card_focal_x, ?), card_focal_y=COALESCE(card_focal_y, ?) "
+                "WHERE id=?",
+                (url, credit, fx, fy, r["id"]))
             conn.commit()
             ok += 1
             log.info("Image vérifiée id=%s : %s", r["id"], url[:70])

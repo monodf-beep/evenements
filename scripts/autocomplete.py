@@ -135,18 +135,27 @@ def _fill_image(ev: dict, client, blocked, banners, allow_web: bool,
     if comp.has_real_image(ev):
         return {}
     # 1) recherche web + vérificateur vision (meilleure photo pertinente)
+    # card_focal_x/y : seulement si jamais réglé (NULL) — ne JAMAIS écraser un
+    # cadrage choisi à la main au back-office (éditeur de point focal).
+    has_manual_focal = ev.get("card_focal_x") is not None or ev.get("card_focal_y") is not None
     if allow_web and client is not None and web_cooldown_ok(ev, "image_web_at"):
         from scripts.images_web import find_verified_image
-        url, credit = find_verified_image(ev, client, blocked)
+        url, credit, fx, fy = find_verified_image(ev, client, blocked)
         mark_web_attempt(conn, "image_web_at", event_id)
         if url:
-            return {"url_image": url, "image_credit": credit, "image_source": "web"}
+            out = {"url_image": url, "image_credit": credit, "image_source": "web"}
+            if not has_manual_focal:
+                out["card_focal_x"], out["card_focal_y"] = fx, fy
+            return out
     # 2) chaîne déterministe (og:image → Commons → bannière). On ne garde la
     #    bannière que si on veut boucher le trou pour atteindre la complétude.
     from scripts.visuals import resolve_image
-    url, credit, source = resolve_image(ev, client, blocked, banners)
+    url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners)
     if url and (source != "banner" or (want_banner and comp._empty(ev.get("url_image")))):
-        return {"url_image": url, "image_credit": credit, "image_source": source}
+        out = {"url_image": url, "image_credit": credit, "image_source": source}
+        if not has_manual_focal:
+            out["card_focal_x"], out["card_focal_y"] = fx, fy
+        return out
     return {}
 
 

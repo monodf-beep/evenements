@@ -235,8 +235,9 @@ def main(argv=None) -> int:
         # sans jamais s'appuyer sur l'ancienne URL.
         if args.bad_url or args.unverified:
             ev["url_image"] = ""
-        url, credit, source = resolve_image(ev, client, blocked, banners,
-                                            verify_client=verify_client, verify_model=verify_model)
+        url, credit, source, focal_x, focal_y = resolve_image(
+            ev, client, blocked, banners,
+            verify_client=verify_client, verify_model=verify_model)
 
         # Garde --unverified : même si l'image résolue est IDENTIQUE à l'ancienne (elle
         # était donc déjà correcte), on enregistre sa source en base pour qu'elle ne
@@ -279,11 +280,18 @@ def main(argv=None) -> int:
             ev["url_image"] = url
             ev["image_credit"] = credit
             ev["image_source"] = source
+            # Point focal : seulement si l'événement n'en a pas déjà un choisi à la main
+            # (back-office) — jamais écrasé par la suggestion automatique de l'agent.
+            if ev.get("card_focal_x") is None and ev.get("card_focal_y") is None:
+                ev["card_focal_x"] = focal_x
+                ev["card_focal_y"] = focal_y
             stats[source] += 1
             if not args.dry_run:
                 conn.execute(
-                    "UPDATE events_raw SET url_image=?, image_credit=?, image_source=? WHERE id=?",
-                    (url, credit, source, ev["id"]))
+                    "UPDATE events_raw SET url_image=?, image_credit=?, image_source=?, "
+                    "card_focal_x=COALESCE(card_focal_x, ?), card_focal_y=COALESCE(card_focal_y, ?) "
+                    "WHERE id=?",
+                    (url, credit, source, focal_x, focal_y, ev["id"]))
                 conn.commit()
             log.info("[%s] image %-7s %s — %s", ev["id"], source, url[:58], title)
         else:
