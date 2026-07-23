@@ -56,11 +56,16 @@ PADDING = 12
 def _select(conn: sqlite3.Connection, limit: int) -> list[dict]:
     """TOUT le catalogue retenu avec une vraie photo (pas la bannière générique — on
     sait déjà qu'elle est générique, inutile de faire juger l'agent dessus)."""
-    q = ("SELECT id, title, url_image, image_source, wp_permalink_as FROM events_raw "
-         "WHERE duplicate_of IS NULL AND statut IN ({}) AND COALESCE(url_image,'') <> '' "
-         "AND COALESCE(image_source,'') <> 'banner' ORDER BY id DESC"
+    q = ("SELECT id, title, url_image, image_source, wp_permalink_as, wp_raw_image_url_as "
+         "FROM events_raw WHERE duplicate_of IS NULL AND statut IN ({}) "
+         "AND COALESCE(url_image,'') <> '' AND COALESCE(image_source,'') <> 'banner' ORDER BY id DESC"
         ).format(",".join("?" * len(comp.RETAINED_STATUTS)))
     rows = [dict(r) for r in conn.execute(q, comp.RETAINED_STATUTS).fetchall()]
+    for r in rows:
+        # Priorité à notre copie hébergée (posée au publish AS) : évite de retélécharger
+        # depuis le site source, parfois lent/bloqué (anti-robot) — même logique que
+        # /reseaux/publish (app.py), et ça réduit d'autant les faux « échec technique ».
+        r["audit_image_url"] = (r.get("wp_raw_image_url_as") or "").strip() or r["url_image"]
     return rows[:limit] if limit else rows
 
 
@@ -130,7 +135,7 @@ def build_grid(batch: list[dict]) -> "tuple[bytes, set[int]]":
         col, row = i % COLS, i // COLS
         x = PADDING + col * (CELL_W + PADDING)
         y = PADDING + row * (cell_total_h + PADDING)
-        img = _download(ev["url_image"])
+        img = _download(ev.get("audit_image_url") or ev["url_image"])
         if img is not None:
             scale = max(CELL_W / img.width, CELL_H / img.height)
             rw, rh = round(img.width * scale), round(img.height * scale)
