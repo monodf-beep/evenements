@@ -293,14 +293,18 @@ def publish_to_as(event: dict) -> int | None:
     url_image = (event.get("url_image") or "").strip()
     alt = event.get("seo_keyphrase") or event.get("title", "") or ""
     media_id = None
+    hero_source = ""  # URL réellement retenue comme image à la une (pas la bannière
+                      # générique) — sert au grand visuel de fiche ci-dessous.
     if url_image and not _is_logo(url_image):
         # Vraie affiche → vignette standardisée 4:3. Point focal ET mode (auto/cover/
         # letterbox) réglables à la main au back-office (éditeur de cadrage).
-        media_id = _upload_featured_media(
+        media_id, _ = _upload_featured_media(
             wp_url, auth, url_image, alt=alt,
             caption=event.get("image_credit", "") or "",
             card=True, focal=_focal(event),
             mode=(event.get("card_mode") or "auto"))
+        if media_id:
+            hero_source = url_image
     # Repli 1 — PAGE SOURCE : l'affiche directe manque, a échoué (403/429), ou était un
     # logo → on tente d'extraire une vraie photo depuis la fiche organisateur (souvent
     # accessible même quand le média direct est bloqué). Mieux qu'une bannière générique.
@@ -308,11 +312,13 @@ def publish_to_as(event: dict) -> int | None:
         recovered = _recover_image(event)
         if recovered:
             log.info("Affiche récupérée depuis la page source (%s)", recovered)
-            media_id = _upload_featured_media(
+            media_id, _ = _upload_featured_media(
                 wp_url, auth, recovered, alt=alt,
                 caption=event.get("image_credit", "") or "",
                 card=True, focal=_focal(event),
                 mode=(event.get("card_mode") or "auto"))
+            if media_id:
+                hero_source = recovered
     # Repli 2 — BANNIÈRE TERRITOIRE quand tout le reste a échoué (logo écarté sans page
     # exploitable, image bloquée + page bloquée, aucune image). Comble les cartes vides.
     if not media_id:
@@ -322,10 +328,26 @@ def publish_to_as(event: dict) -> int | None:
                 log.info("Logo écarté au push (%s) → bannière territoire", url_image)
             elif url_image:
                 log.info("Téléversement affiche échoué (%s) → bannière territoire", url_image)
-            media_id = _upload_featured_media(
+            media_id, _ = _upload_featured_media(
                 wp_url, auth, banner, alt=alt, card=True, focal=(0.5, 0.5))
+            # hero_source reste vide : pas de « grand visuel original » pour une
+            # bannière générique — la fiche n'affichera rien à ce sujet.
     if media_id:
         payload["featured_media_id"] = media_id
+
+    # Grand visuel de la FICHE (as_image_original) : MÊME point focal que la vignette de
+    # grille, mais au format « héros » 16:9 (plus large) au lieu de 4:3 — évite de couper
+    # un titre/visage composé sur le côté d'une affiche large (constaté en production :
+    # « Jazz Art », titre tronqué par le recadrage centré par défaut du thème WordPress).
+    # Remplace l'URL brute (non recadrée) envoyée par défaut dans _build_payload.
+    if hero_source:
+        _, hero_url = _upload_featured_media(
+            wp_url, auth, hero_source, alt=alt,
+            caption=event.get("image_credit", "") or "",
+            card=True, focal=_focal(event),
+            mode=(event.get("card_mode") or "auto"), ratio=(16, 9))
+        if hero_url:
+            payload["meta"]["as_image_original"] = hero_url
 
     endpoint = f"{wp_url}/?rest_route=/cs/v1/event"
 

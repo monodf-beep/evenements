@@ -151,14 +151,16 @@ def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
 def _upload_featured_media(wp_url: str, auth, image_url: str,
                            alt: str = "", caption: str = "",
                            card: bool = False, focal=(0.5, 0.5),
-                           mode: str = "auto") -> int | None:
+                           mode: str = "auto",
+                           ratio: "tuple[int, int] | None" = None) -> "tuple[int | None, str]":
     """Télécharge l'image source et l'envoie dans la médiathèque WordPress.
 
-    Retourne le media_id (à passer en featured_media) ou None si échec.
-    Jamais bloquant : un échec d'upload laisse le post sans vignette.
+    Retourne (media_id, source_url) — (None, '') si échec. Jamais bloquant : un échec
+    d'upload laisse le post sans vignette.
     alt/caption : texte alternatif (SEO, avec l'expression clé) et légende (crédit photo).
-    card : si True, l'image est standardisée en VIGNETTE 4:3 (cover-focal ou letterbox,
-    cf. utils.card_image) AVANT l'upload — pour une grille uniforme. `focal` (x,y) ∈ [0,1]
+    card : si True, l'image est standardisée (cover-focal ou letterbox, cf.
+    utils.card_image) AVANT l'upload, au ratio `ratio` (4:3 par défaut, la grille — passer
+    ex. (16, 9) pour un autre usage, ex. le grand visuel de fiche). `focal` (x,y) ∈ [0,1]
     ancre le recadrage. Si la transformation échoue (image exotique), on retombe sur
     l'original (jamais bloquant)."""
     try:
@@ -181,7 +183,7 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
         content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
         if not content_type.startswith("image/"):
             log.warning("URL image non-image (%s) : %s", content_type or "?", image_url)
-            return None
+            return None, ""
 
         # Nom de fichier : basename de l'URL, sinon dérivé du type MIME.
         name = os.path.basename(urlparse(image_url).path) or "image"
@@ -191,16 +193,19 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
 
         data = img.content
         if card:
-            # Standardisation 4:3 (import paresseux : Pillow n'est requis que si demandé).
+            # Standardisation au ratio demandé (import paresseux : Pillow n'est requis
+            # que si demandé).
             try:
                 from utils.card_image import make_card_bytes
-                data, used_mode = make_card_bytes(img.content, focal=focal, mode=mode or "auto")
+                data, used_mode = make_card_bytes(img.content, focal=focal, mode=mode or "auto",
+                                                  ratio=ratio)
                 content_type = "image/jpeg"
                 stem = name.rsplit(".", 1)[0]
                 name = f"{stem}-carte.jpg"
-                log.info("Vignette 4:3 générée (%s) pour %s", used_mode, image_url)
+                log.info("Vignette générée (%s, ratio %s) pour %s", used_mode,
+                         ratio or "4:3", image_url)
             except Exception as exc:  # jamais bloquant : on garde l'original
-                log.warning("Vignette 4:3 impossible (%s) — image d'origine conservée.", exc)
+                log.warning("Vignette impossible (%s) — image d'origine conservée.", exc)
 
         # Retry sur échec TRANSITOIRE (504/502/timeout — fréquent sur l'hébergement
         # mutualisé OVH lors de l'upload d'une image). Sans retry, un aléa réseau fait
@@ -234,9 +239,11 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
                 _time.sleep(3 * (attempt + 1))
         if resp is None:
             log.warning("Upload média impossible après 3 tentatives : %s", image_url)
-            return None
+            return None, ""
         resp.raise_for_status()
-        media_id = resp.json().get("id")
+        payload = resp.json()
+        media_id = payload.get("id")
+        source_url = payload.get("source_url") or ""
         log.info("Média uploadé WP id=%s : %s", media_id, image_url)
         # Renseigne le texte alternatif (SEO) et la légende (crédit photo).
         if media_id and (alt or caption):
@@ -247,14 +254,14 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
                     auth=auth, headers=_headers(auth), timeout=20)
             except requests.RequestException:
                 pass  # non bloquant : la vignette est déjà en place
-        return media_id
+        return media_id, source_url
     except requests.HTTPError as exc:
         log.warning("Upload média refusé (%s) : %s", exc.response.status_code,
                     exc.response.text[:200])
-        return None
+        return None, ""
     except (requests.RequestException, ValueError) as exc:
         log.warning("Upload média impossible : %s", exc)
-        return None
+        return None, ""
 
 
 def publish_to_cs(event: dict) -> int | None:
@@ -344,7 +351,7 @@ def publish_to_cs(event: dict) -> int | None:
     # _thumbnail_url en meta ne définit PAS la vignette via l'API REST.
     # alt = expression clé (SEO) ; légende = crédit photo.
     if event.get("url_image"):
-        media_id = _upload_featured_media(
+        media_id, _ = _upload_featured_media(
             wp_url, auth, event["url_image"],
             alt=event.get("seo_keyphrase") or event.get("title", ""),
             caption=event.get("image_credit", ""))

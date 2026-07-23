@@ -89,25 +89,29 @@ def _letterbox(img: Image.Image, tw: int, th: int) -> Image.Image:
 
 
 def make_card(data, *, focal=(0.5, 0.5), width: int = DEFAULT_WIDTH,
-              mode: str = "auto") -> CardResult:
-    """Renvoie la vignette 4:3 (CardResult). `mode` : 'auto' | 'cover' | 'letterbox'.
+              mode: str = "auto", ratio: "tuple[int, int] | None" = None) -> CardResult:
+    """Renvoie la vignette (CardResult) au ratio `ratio` (largeur, hauteur) — 4:3 par
+    défaut (grille). `mode` : 'auto' | 'cover' | 'letterbox'.
 
-    'auto' : cover si l'image est assez paysage, sinon letterbox (affiche préservée)."""
+    'auto' : cover si l'image est assez paysage, sinon letterbox (affiche préservée).
+    `ratio` permet de réutiliser la même logique focal-aware pour un autre format,
+    ex. (16, 9) pour le grand visuel de fiche (plus large que la carte de grille)."""
+    rw, rh = ratio if ratio else (RATIO_W, RATIO_H)
     img = _load(data)
     tw = int(width)
-    th = round(tw * RATIO_H / RATIO_W)
-    ratio = img.width / img.height if img.height else 1.0
+    th = round(tw * rh / rw)
+    src_ratio = img.width / img.height if img.height else 1.0
     use = mode
     if mode == "auto":
-        use = "cover" if ratio >= LETTERBOX_BELOW else "letterbox"
+        use = "cover" if src_ratio >= LETTERBOX_BELOW else "letterbox"
     out = _cover(img, tw, th, focal[0], focal[1]) if use == "cover" else _letterbox(img, tw, th)
-    return CardResult(image=out, mode=use, source_ratio=ratio)
+    return CardResult(image=out, mode=use, source_ratio=src_ratio)
 
 
 def make_card_bytes(data, *, focal=(0.5, 0.5), width: int = DEFAULT_WIDTH,
-                    mode: str = "auto") -> tuple[bytes, str]:
+                    mode: str = "auto", ratio: "tuple[int, int] | None" = None) -> tuple[bytes, str]:
     """Comme make_card mais renvoie (bytes JPEG, mode) — prêt à uploader vers WordPress."""
-    res = make_card(data, focal=focal, width=width, mode=mode)
+    res = make_card(data, focal=focal, width=width, mode=mode, ratio=ratio)
     buf = io.BytesIO()
     res.image.save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
     return buf.getvalue(), res.mode
