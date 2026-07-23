@@ -61,14 +61,27 @@ def _final_text(message) -> str:
 
 def visual_query(ev: dict, client, model: str) -> str:
     """Le LLM propose une requête de photo Wikimedia Commons. '' si rien de visuel."""
+    from utils.image_verify import season_fr
+    season = season_fr(ev.get("date_event_start", ""))
     prompt = (
         "Tu aides à illustrer un événement culturel par une PHOTO réutilisable "
         "(Wikimedia Commons). Donne une requête de recherche COURTE (2 à 5 mots), "
         "visant une vraie photographie : le lieu emblématique, le monument, la ville, "
-        "ou le thème. Évite les noms de personnes, les affiches, les logos, le texte.\n\n"
+        "ou le thème.\n"
+        "PRÉFÈRE le lieu PRÉCIS (monument, quartier, salle) à la ville ou au territoire "
+        "général — une requête comme « Aoste Vallée d'Aoste » est trop vague si "
+        "l'événement se passe précisément au Borgo di Sant'Orso : cherche plutôt "
+        "« Sant'Orso Aoste » ou le nom exact du lieu.\n"
+        "Si l'événement n'a LUI-MÊME aucun rapport avec la nature/montagne, ÉVITE une "
+        "requête qui ramènerait un paysage naturel générique (lac, sommet, vallée) sous "
+        "prétexte que le territoire est alpin.\n"
+        "Évite les noms de personnes, les affiches, les logos, le texte.\n\n"
         f"Titre : {ev.get('title','')}\n"
+        f"Lieu précis : {ev.get('lieu','')}\n"
         f"Ville : {ev.get('ville','')}\n"
         f"Territoire : {ev.get('territoire','')}\n"
+        f"Dates : {ev.get('date_event_start','')} → {ev.get('date_event_end','')}"
+        + (f" (saison : {season})" if season else "") + "\n"
         f"Catégorie : {ev.get('llm_categorie','')}\n"
         f"Description : {(ev.get('description') or '')[:400]}\n\n"
         'Réponds en JSON strict : {"query": "…", "ok": true} '

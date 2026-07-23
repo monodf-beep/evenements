@@ -62,6 +62,25 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", text or "")).strip()
 
 
+_SEASON_FR = {12: "hiver", 1: "hiver", 2: "hiver",
+              3: "printemps", 4: "printemps", 5: "printemps",
+              6: "été", 7: "été", 8: "été",
+              9: "automne", 10: "automne", 11: "automne"}
+
+
+def season_fr(date_str: str) -> str:
+    """Saison FR déduite d'une date AAAA-MM-JJ — repère pour juger une photo
+    EXTÉRIEURE (inutile pour un intérieur/monument, mais évite une prairie verte en
+    pleine photo d'un événement de janvier, ou de la neige en pleine photo d'un
+    événement de juillet). '' si date absente/illisible."""
+    if not date_str or len(date_str) < 7:
+        return ""
+    try:
+        return _SEASON_FR.get(int(date_str[5:7]), "")
+    except ValueError:
+        return ""
+
+
 def verify_relevance(img_bytes: bytes, mime: str, event: dict, client, model: str,
                      subject: str = "") -> bool:
     """AGENT VISION : l'image correspond-elle vraiment à l'événement ? True/False.
@@ -73,20 +92,35 @@ def verify_relevance(img_bytes: bytes, mime: str, event: dict, client, model: st
     if not img_bytes or mime not in _OK_MIME or client is None:
         return True  # rien à vérifier / pas de client → on laisse passer (règles déjà filtrées)
     b64 = base64.standard_b64encode(img_bytes).decode("ascii")
+    season = season_fr(event.get("date_event_start", ""))
+    dates = event.get("date_event_start", "")
+    if event.get("date_event_end") and event["date_event_end"] != dates:
+        dates += f" → {event['date_event_end']}"
     prompt = (
         "Voici une image candidate pour illustrer un ÉVÉNEMENT CULTUREL sur un média "
         "public. Dis si elle est PERTINENTE et publiable pour CET événement précis.\n"
         f"Titre : {_clean(event.get('article_title') or event.get('title'))}\n"
-        f"Lieu / ville : {_clean(event.get('lieu'))} {_clean(event.get('ville'))}\n"
+        f"Lieu précis : {_clean(event.get('lieu'))}\n"
+        f"Ville : {_clean(event.get('ville'))}\n"
+        f"Dates : {dates}" + (f" (saison : {season})" if season else "") + "\n"
         f"Catégorie : {event.get('llm_categorie') or ''}\n"
         + (f"Sujet attendu : {subject}\n" if subject else "")
         + "\nREFUSE (ok=false) si l'image est : un bandeau ou une bannière de campagne "
         "(don d'organes, sécurité routière, climat…), une publicité, un logo, une "
         "capture d'écran, une affiche pleine de texte illisible, un visuel d'habillage "
         "de site (slider, en-tête), une image de très mauvaise qualité, ou tout "
-        "simplement SANS RAPPORT avec l'événement. ACCEPTE (ok=true) une vraie photo "
-        "du lieu, de l'artiste, du thème, ou une affiche propre et lisible de "
-        "l'événement.\n"
+        "simplement SANS RAPPORT avec l'événement.\n"
+        "REFUSE AUSSI (même si le sujet général semble correct) :\n"
+        "  • une SAISON incompatible et visible (verdure/soleil éclatant pour un "
+        "événement d'hiver, neige pour un événement d'été…) — sauf photo d'intérieur "
+        "ou de monument où la saison ne se voit pas ;\n"
+        "  • un PAYSAGE NATUREL générique (montagne, lac, sommet, vallée) si "
+        "l'événement se déroule dans un cadre urbain/bâti précis (centre historique, "
+        "place, salle, musée…) et n'a lui-même aucun rapport avec la nature — même si "
+        "le territoire environnant est montagneux, ce n'est pas le sujet de CET "
+        "événement.\n"
+        "ACCEPTE (ok=true) une vraie photo du lieu précis, de l'artiste, du thème, ou "
+        "une affiche propre et lisible de l'événement.\n"
         'Réponds en JSON STRICT : {"ok": true|false, "raison": "…"}'
     )
     try:
