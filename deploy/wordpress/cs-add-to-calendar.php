@@ -4,26 +4,31 @@ Plugin Name: Agenda Sabauda — Bouton « Ajouter à mon agenda »
 Description: Sur chaque fiche événement (The Events Calendar), affiche un bloc qui
   invite le visiteur à ajouter l'événement à SON agenda (Google / Apple / Outlook)
   « pour ne pas oublier, et inviter les personnes avec qui il veut y aller ».
-  L'événement transféré est COMPLET (titre marqué ⛰️ pour être reconnu Agenda Sabauda
-  dès la vue calendrier, date/heure, adresse complète pour l'itinéraire, description
-  signée + lien). Apple/Outlook desktop passent par NOTRE fichier .ics (?cs_ics=ID)
-  pour un rendu identique à Google. N'invente aucune donnée : lit l'événement réel.
+  L'événement transféré est COMPLET (titre marqué du préfixe Agenda Sabauda, date/
+  heure, adresse complète pour l'itinéraire, description signée + lien, FR/IT via
+  Polylang). Apple/Outlook desktop passent par NOTRE fichier .ics (?cs_ics=ID) pour
+  un rendu identique à Google. N'invente aucune donnée : lit l'événement réel.
+  Inclut aussi cs_atc_mini() (bouton compact + menu pour les cartes de liste, avec
+  bandeau "emmène quelqu'un avec toi" après un premier ajout) et
+  cs_atc_inapp_script() (navigateur intégré Instagram : redirige Android vers
+  Chrome, affiche une instruction sur iOS — cf. plus bas, Apple interdit la
+  redirection automatique depuis un WebView tiers).
 Author: Cultura Sabauda
-Version: 2.0
+Version: 3.0
 
-  INSTALLATION :
-   A) Code Snippets : coller SANS la ligne « <?php », « Run everywhere ».
-   B) mu-plugin : déposer dans wp-content/mu-plugins/cs-add-to-calendar.php.
-  RÉGLAGES (facultatif) : définir CS_ATC_TITLE_PREFIX (repère de titre, défaut « ⛰️ »)
-  ou CS_ATC_AUTO=false (pour placer soi-même le shortcode [cs_add_to_calendar]).
+  DÉPLOIEMENT RÉEL : ce fichier vit dans WordPress comme snippet « Code Snippets »
+  (id 69, « CS — Ajouter à mon agenda »), PAS comme fichier mu-plugin sur le disque.
+  Ce fichier .php dans le repo Git est un MIROIR pour revue/historique — toute
+  modification doit être appliquée dans WordPress (Novamira/Code Snippets), puis
+  reportée ici, jamais l'inverse.
+  RÉGLAGES (facultatif) : définir CS_ATC_TITLE_PREFIX (repère de titre, défaut
+  « Agenda Sabauda · ») ou CS_ATC_AUTO=false (pour placer soi-même le shortcode
+  [cs_add_to_calendar]).
 */
 
 if (!defined('ABSPATH')) { exit; }
 
-if (!defined('CS_ATC_TITLE_PREFIX')) { define('CS_ATC_TITLE_PREFIX', '⛰️ '); }
-// Auto-placement via wp_footer DÉSACTIVÉ par défaut : sur un site Elementor, on
-// place le shortcode [cs_add_to_calendar] à la main dans le gabarit (emplacement
-// maîtrisé). Mettre à true pour réactiver l'injection automatique en bas de page.
+if (!defined('CS_ATC_TITLE_PREFIX')) { define('CS_ATC_TITLE_PREFIX', 'Agenda Sabauda · '); }
 if (!defined('CS_ATC_AUTO'))         { define('CS_ATC_AUTO', false); }
 
 /** Époque UNIX (UTC) d'un bord de l'événement (méta _...UTC de TEC, sinon date locale). */
@@ -42,28 +47,42 @@ function cs_atc_epoch($post_id, $which) {
 
 /** Titre marqué du repère Agenda Sabauda (visible en vue calendrier). */
 function cs_atc_title($post_id) {
-    return CS_ATC_TITLE_PREFIX . get_the_title($post_id);
+    return CS_ATC_TITLE_PREFIX . html_entity_decode(get_the_title($post_id), ENT_QUOTES, 'UTF-8');
 }
 
 /** Adresse la plus complète possible (pour que l'itinéraire fonctionne). */
 function cs_atc_location($post_id) {
-    if (function_exists('tribe_get_full_address')) {
-        $full = trim((string) tribe_get_full_address($post_id));
-        if ($full !== '') { return $full; }
+    $it = function_exists('pll_get_post_language') && pll_get_post_language($post_id) === 'it';
+    $parts = array();
+    $vid = get_post_meta($post_id, '_EventVenueID', true);
+    if ($vid) {
+        $vname = get_the_title($vid);
+        $addr  = get_post_meta($vid, '_VenueAddress', true);
+        $city  = get_post_meta($vid, '_VenueCity', true);
+        $zip   = get_post_meta($vid, '_VenueZip', true);
+        if ($vname) { $parts[] = $vname; }
+        if ($addr)  { $parts[] = $addr; }
+        $cityline = trim($zip . ' ' . $city);
+        if ($cityline !== '') { $parts[] = $cityline; }
     }
-    if (function_exists('tribe_get_venue')) {
-        $venue = tribe_get_venue($post_id);
-        $city  = function_exists('tribe_get_city') ? tribe_get_city($post_id) : '';
-        $loc = trim($venue . (($venue && $city) ? ', ' : '') . $city);
-        if ($loc !== '') { return $loc; }
+    if (empty($parts)) {
+        $as = get_post_meta($post_id, 'as_ville', true);
+        if ($as) { $parts[] = $as; }
     }
-    return (string) get_post_meta($post_id, 'as_ville', true);
+    $terms = get_the_terms($post_id, 'territoire');
+    $tname = ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
+    if (preg_match('/piemont|piémont|valle|vall|aosta|aoste/i', $tname)) { $parts[] = $it ? 'Italia' : 'Italie'; }
+    elseif (preg_match('/savoie|savoia|nice|nizza|marit/i', $tname)) { $parts[] = $it ? 'Francia' : 'France'; }
+    $parts = array_map(function ($x) { return trim(wp_strip_all_tags((string) $x)); }, $parts);
+    $parts = array_filter($parts, function ($x) { return $x !== ''; });
+    return implode(', ', $parts);
 }
 
 /** Description signée Agenda Sabauda + résumé propre (sans la pub de l'encart) + lien. */
 function cs_atc_description($post_id, $url) {
-    $out = array("Événement de l'Agenda Sabauda — l'agenda culturel des Alpes de l'espace sabaudo.");
-    $raw = wp_strip_all_tags((string) get_the_excerpt($post_id));
+    $it = function_exists('pll_get_post_language') && pll_get_post_language($post_id) === 'it';
+    $out = array($it ? "Evento dell'Agenda Sabauda, l'agenda culturale delle Alpi dello spazio sabaudo." : "Événement de l'Agenda Sabauda, l'agenda culturel des Alpes de l'espace sabaudo.");
+    $raw = html_entity_decode(wp_strip_all_tags((string) get_the_excerpt($post_id)), ENT_QUOTES, 'UTF-8');
     if ($raw === '') { $raw = wp_strip_all_tags((string) get_post_field('post_content', $post_id)); }
     $raw = trim(preg_replace('/\s+/', ' ', $raw));
     // On n'insère JAMAIS le texte de l'encart publicitaire.
@@ -75,9 +94,9 @@ function cs_atc_description($post_id, $url) {
         $out[] = $raw;
     }
     $out[] = '';
-    $out[] = 'Ajoute-le à ton agenda pour ne pas oublier, et invite les personnes avec qui tu veux y aller.';
+    $out[] = $it ? 'Aggiungilo al tuo calendario per non dimenticarlo, e invita chi vuoi.' : 'Ajoute-le à ton agenda pour ne pas oublier, et invite les personnes avec qui tu veux y aller.';
     $out[] = '';
-    $out[] = 'Toutes les infos : ' . $url;
+    $out[] = ($it ? 'Tutte le info : ' : 'Toutes les infos : ') . $url;
     return implode("\n", $out);
 }
 
@@ -85,6 +104,41 @@ function cs_atc_description($post_id, $url) {
 function cs_atc_ics_escape($t) {
     return str_replace(array("\\", ";", ",", "\r\n", "\n", "\r"),
                        array("\\\\", "\\;", "\\,", "\\n", "\\n", "\\n"), (string) $t);
+}
+
+/** Bandeau navigateur intégré Instagram : redirige Android vers Chrome (fiable),
+ * affiche une instruction sur iOS (Apple interdit la redirection automatique
+ * depuis un WebView tiers — aucun contournement possible côté code). */
+function cs_atc_inapp_script($it) {
+    static $done = false;
+    if ($done) { return ''; }
+    $done = true;
+    $msg = $it
+        ? 'Per aggiungere questo evento al tuo calendario: tocca i ⋯ in alto, poi «Apri nel browser».'
+        : 'Pour ajouter cet événement à ton agenda : touche les ⋯ en haut de l’écran, puis « Ouvrir dans le navigateur ».';
+    ob_start(); ?>
+    <script>
+    (function(){
+        var ua = navigator.userAgent || '';
+        if (ua.indexOf('Instagram') === -1) { return; }
+        if (/Android/i.test(ua)) {
+            var target = location.href.replace(/^https?:\/\//, '');
+            var fallback = encodeURIComponent(location.href);
+            location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + fallback + ';end';
+            return;
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            var box = document.querySelector('.cs-add-to-calendar');
+            if (!box || !box.parentNode) { return; }
+            var banner = document.createElement('div');
+            banner.style.cssText = 'margin:0 0 10px;padding:10px 14px;background:#FFF4D6;border:1px solid #E3C876;border-radius:6px;font-family:\'Nunito Sans\',sans-serif;font-size:13px;color:#5B4A16';
+            banner.textContent = <?php echo json_encode($msg); ?>;
+            box.parentNode.insertBefore(banner, box);
+        });
+    })();
+    </script>
+    <?php
+    return ob_get_clean();
 }
 
 // ---- Notre fichier .ics : https://agendasabauda.eu/?cs_ics=ID ----
@@ -132,10 +186,11 @@ add_action('init', function () {
 }, 0);
 
 // ---- Le bloc affiché sur la fiche (rendu réutilisable) ----
-function cs_atc_render($id) {
-    if (!$id || get_post_type($id) !== 'tribe_events') { return ''; }
+function cs_atc_urls($id) {
+    if (!$id || get_post_type($id) !== 'tribe_events') { return null; }
+    $it = function_exists('pll_get_post_language') && pll_get_post_language($id) === 'it';
     $start = cs_atc_epoch($id, 'start');
-    if (!$start) { return ''; }                 // pas de date → pas de bouton
+    if (!$start) { return null; }                // pas de date -> pas de bouton
     $end = cs_atc_epoch($id, 'end');
     if (!$end || $end < $start) { $end = $start + 3600; }
     $allday = get_post_meta($id, '_EventAllDay', true) === 'yes';
@@ -165,19 +220,133 @@ function cs_atc_render($id) {
         . '&enddt='   . rawurlencode(gmdate('Y-m-d\TH:i:s\Z', $end))
         . '&body='    . rawurlencode($details)
         . '&location='. rawurlencode($loc);
-    $ics = add_query_arg('cs_ics', $id, home_url('/'));   // notre .ics (Apple/Outlook desktop)
+    $ics = add_query_arg('cs_ics', $id, home_url('/'));
 
-    $btn = 'display:inline-block;margin:.25rem .4rem .25rem 0;padding:.55rem .95rem;'
-         . 'border:1px solid #c9c2b4;border-radius:.5rem;background:#faf8f3;color:#3a2f1e;'
-         . 'font-weight:600;text-decoration:none;line-height:1.2;';
+    return array('it' => $it, 'google' => $google, 'outlook' => $outlook, 'ics' => $ics);
+}
+
+function cs_atc_render($id) {
+    $u = cs_atc_urls($id);
+    if (!$u) { return ''; }
+    $it = $u['it']; $google = $u['google']; $outlook = $u['outlook']; $ics = $u['ics'];
+
+    $btn = 'display:inline-block;margin:0 8px 8px 0;padding:9px 14px;border:1px solid #1D1D1B;background:#fff;color:#1D1D1B;font-family:sans-serif;font-size:13px;font-weight:700;text-decoration:none;line-height:1.2;';
     ob_start(); ?>
-    <div class="cs-add-to-calendar" style="margin:1.25rem 0;padding:1rem 1.1rem;border:1px solid #e7e1d4;border-radius:.75rem;background:#fdfcf9;">
-        <div style="font-weight:800;font-size:1.05rem;margin-bottom:.15rem;">Ajoute-le à ton agenda</div>
-        <div style="margin-bottom:.7rem;color:#5b5240;">Pour ne pas oublier — et invite les personnes avec qui tu veux y aller.</div>
+    <div class="cs-add-to-calendar" style="margin:24px 0;padding:18px 20px;border:1px solid #E3DCCE;background:#FBF7F0">
+        <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:18px;color:#1D1D1B;margin-bottom:4px"><?php echo $it ? 'Aggiungilo al tuo calendario' : 'Ajoute-le à ton agenda'; ?></div>
+        <div style="font-family:'Nunito Sans',sans-serif;font-size:13px;color:#6F6B62;margin-bottom:12px"><?php echo $it ? 'Per non dimenticarlo, e invita le persone con cui vuoi andarci.' : 'Pour ne pas oublier, et invite les personnes avec qui tu veux y aller.'; ?></div>
         <a href="<?php echo esc_url($google); ?>" target="_blank" rel="nofollow noopener" style="<?php echo esc_attr($btn); ?>">📅 Google Agenda</a>
         <a href="<?php echo esc_url($ics); ?>" style="<?php echo esc_attr($btn); ?>">🍎 Apple / iCal</a>
         <a href="<?php echo esc_url($outlook); ?>" target="_blank" rel="nofollow noopener" style="<?php echo esc_attr($btn); ?>">📆 Outlook</a>
     </div>
+    <?php
+    echo cs_atc_inapp_script($it);
+    return ob_get_clean();
+}
+
+/** Bouton compact + menu (Google/Apple/Outlook) pour les cartes de liste. */
+function cs_atc_mini($id) {
+    $u = cs_atc_urls($id);
+    if (!$u) { return ''; }
+    $it = $u['it'];
+    $label = 'Agenda';
+    $item1 = $it ? 'Google Calendar' : 'Google Agenda';
+    $item2 = 'Apple / iCal';
+    $item3 = 'Outlook';
+    $inv_titre = $it ? 'Porta qualcuno con te' : 'Emmene quelqu\'un avec toi';
+    $inv_texte = $it
+        ? "L'evento e nella tua agenda. Apri Google Calendar (o Outlook) e aggiungi l'email di una persona cara come invitato: ricevera l'invito direttamente."
+        : "L'evenement est dans ton agenda. Ouvre Google Agenda (ou Outlook) et ajoute l'e-mail d'un proche comme invite : il recevra l'invitation directement.";
+    $inv_compris = $it ? 'Capito' : 'Compris';
+    static $style_done = false;
+    ob_start();
+    if (!$style_done) {
+        $style_done = true;
+        ?>
+        <style>
+        .cs-card-title-link{position:static}
+        .cs-card-title-link::after{content:'';position:absolute;inset:0}
+        .cs-card-row{position:relative;z-index:0} .cs-card-row:has(.cs-atc-mini[open]){z-index:50} .cs-atc-mini{position:relative;z-index:2}
+        .cs-atc-mini summary{list-style:none;cursor:pointer}
+        .cs-atc-mini summary::-webkit-details-marker{display:none}
+        .cs-atc-mini summary::marker{content:''}
+        .cs-atc-mini[open] summary{background:#EFE7D6}
+        .cs-atc-mini__menu{position:absolute;top:calc(100% + 4px);left:0;z-index:10;background:#fff;border:1px solid #E3DCCE;border-radius:6px;min-width:150px;padding:4px}
+        .cs-atc-mini__menu a{display:block;padding:8px 10px;font-family:'Nunito Sans',sans-serif;font-size:12px;color:#1D1D1B;text-decoration:none;border-radius:4px}
+        .cs-atc-mini__menu a:hover{background:#FBF7F0}
+        .cs-invite-banner{position:relative;z-index:1;display:flex;align-items:center;gap:14px;background:#FBF7F0;border:1px solid #E3DCCE;border-radius:8px;padding:12px 14px;margin:2px 0 0}
+        .cs-invite-banner__img{width:72px;height:72px;flex-shrink:0}
+        @media (min-width:600px){ .cs-invite-banner__img{width:96px;height:96px} }
+        @media (min-width:900px){ .cs-invite-banner__img{width:120px;height:120px} }
+        .cs-invite-banner__body{flex:1;min-width:0}
+        .cs-invite-banner__title{font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;margin:0 0 4px}
+        .cs-invite-banner__text{font-family:'Nunito Sans',sans-serif;font-size:12.5px;line-height:1.5;color:#4A4A48;margin:0 0 8px}
+        .cs-invite-banner__close{border:0;background:transparent;padding:0;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:700;color:#8A6D3B;text-decoration:underline;cursor:pointer}
+        </style>
+        <script>
+        (function(){
+            document.addEventListener('click', function(e){
+                var open = document.querySelector('.cs-atc-mini[open]');
+                if (!open) { return; }
+                if (open.contains(e.target)) { return; }
+                var card = open.closest('.cs-card-row');
+                if (card && card.contains(e.target)) { e.preventDefault(); }
+                open.removeAttribute('open');
+            }, true);
+            function csInsertInviteBanner(card){
+                if (!card || (card.nextElementSibling && card.nextElementSibling.classList.contains('cs-invite-banner'))) { return; }
+                var tpl = card.querySelector('.cs-invite-tpl');
+                if (!tpl) { return; }
+                var node = tpl.content.firstElementChild.cloneNode(true);
+                card.insertAdjacentElement('afterend', node);
+                var closeBtn = node.querySelector('.cs-invite-banner__close');
+                if (closeBtn) { closeBtn.addEventListener('click', function(){ node.remove(); }); }
+            }
+            document.addEventListener('click', function(e){
+                var link = e.target.closest('.cs-atc-mini__link');
+                if (!link) { return; }
+                var mini = link.closest('.cs-atc-mini');
+                if (mini) { mini.removeAttribute('open'); }
+                var card = link.closest('.cs-card-row');
+                if (!card || sessionStorage.getItem('cs_invite_shown')) { return; }
+                var eventId = mini ? mini.getAttribute('data-event-id') : '';
+                sessionStorage.setItem('cs_invite_shown', '1');
+                if (eventId) { sessionStorage.setItem('cs_invite_pending', eventId); }
+                csInsertInviteBanner(card);
+            }, true);
+            document.addEventListener('DOMContentLoaded', function(){
+                var csPendingId = sessionStorage.getItem('cs_invite_pending');
+                if (!csPendingId) { return; }
+                sessionStorage.removeItem('cs_invite_pending');
+                var csPendingCard = document.querySelector('.cs-card-row[data-event-id="' + csPendingId.replace(/"/g, '') + '"]');
+                if (csPendingCard) { csInsertInviteBanner(csPendingCard); }
+            });
+        })();
+        </script>
+        <?php
+    }
+    ?>
+    <details class="cs-atc-mini" data-event-id="<?php echo esc_attr($id); ?>">
+      <summary style="display:inline-flex;align-items:center;gap:3px;background:#FBF7F0;border:1px solid #C9BFAD;border-radius:20px;padding:5px 9px 5px 7px;font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;color:#1D1D1B" aria-label="<?php echo $it ? 'Aggiungi al calendario' : 'Ajouter à mon agenda'; ?>">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v5"></path><path d="M16 3v4"></path><path d="M8 3v4"></path><path d="M4 11h16"></path><path d="M16 19h6"></path><path d="M19 16v6"></path></svg>
+        <?php echo esc_html($label); ?>
+      </summary>
+      <div class="cs-atc-mini__menu">
+        <a class="cs-atc-mini__link" href="<?php echo esc_url($u['google']); ?>" target="_blank" rel="nofollow noopener"><?php echo esc_html($item1); ?></a>
+        <a class="cs-atc-mini__link" href="<?php echo esc_url($u['ics']); ?>"><?php echo esc_html($item2); ?></a>
+        <a class="cs-atc-mini__link" href="<?php echo esc_url($u['outlook']); ?>" target="_blank" rel="nofollow noopener"><?php echo esc_html($item3); ?></a>
+      </div>
+    </details>
+    <template class="cs-invite-tpl">
+      <div class="cs-invite-banner">
+        <?php $cs_inv_img = get_option('cs_invite_illustration_url', ''); if ($cs_inv_img): ?><img class="cs-invite-banner__img" src="<?php echo esc_url($cs_inv_img); ?>" alt="" aria-hidden="true"><?php else: ?><div class="cs-invite-banner__img" aria-hidden="true"></div><?php endif; ?>
+        <div class="cs-invite-banner__body">
+          <div class="cs-invite-banner__title"><?php echo esc_html($inv_titre); ?></div>
+          <div class="cs-invite-banner__text"><?php echo esc_html($inv_texte); ?></div>
+          <button type="button" class="cs-invite-banner__close"><?php echo esc_html($inv_compris); ?></button>
+        </div>
+      </div>
+    </template>
     <?php
     return ob_get_clean();
 }
