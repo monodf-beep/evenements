@@ -18,6 +18,7 @@
     {% set _analyse = ['pilotage', 'couverture', 'couverture_geo', 'wireframe'] %}
     {% set _aide = ['process', 'cowork', 'reglages'] %}
     <nav class="nav" aria-label="Navigation principale">
+      <a href="/semaine" class="{{ 'on' if active=='semaine' }}" {% if active=='semaine' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> Cette semaine</a>
       <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Tableau de bord</a>
       <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Événements</a>
 

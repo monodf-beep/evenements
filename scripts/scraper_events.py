@@ -157,7 +157,18 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # chaque publication Instagram — certains sites source bloquent le
                       # téléchargement par un défi anti-robot (Cloudflare…), notre propre
                       # copie hébergée n'a jamais ce problème.
-                      ("wp_raw_image_url_as", "TEXT")):
+                      ("wp_raw_image_url_as", "TEXT"),
+                      # File « Cette semaine » (app./semaine) : suivi de relecture PAR
+                      # FRANCK, distinct de la vérification automatique (agent vision).
+                      # Comparaison au CONTENU actuel (pas juste "vu une fois") : dès que
+                      # url_image ou le texte publié change, la tâche redevient à faire
+                      # d'elle-même (le _url/_hash stocké ne correspond plus au contenu
+                      # courant) — aucun code ailleurs n'a besoin d'invalider quoi que ce
+                      # soit explicitement.
+                      ("image_reviewed_at", "TEXT"),
+                      ("image_reviewed_url", "TEXT"),
+                      ("text_reviewed_at", "TEXT"),
+                      ("text_reviewed_hash", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

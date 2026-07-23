@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set active = 'semaine' %}
+{% block title %}Cette semaine — Agenda{% endblock %}
+{% block h1 %}Cette semaine{% endblock %}
+{% block subtitle %}<div class="sub">Une tâche = une décision : ✅ « ça va » ou 🔄 modifier. La liste se vide au fil de l'eau — une tâche revient d'elle-même si la photo ou le texte change ensuite.</div>{% endblock %}
+
+{% block content %}
+
+<div class="card" style="padding:1rem 1.2rem;margin-bottom:1rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
+  <div>
+    <div style="font-size:1.9rem;font-weight:700;line-height:1">{{ total }}</div>
+    <div class="muted" style="font-size:.85rem">restant{{ 's' if total != 1 }}</div>
+  </div>
+  <div>
+    <div style="font-size:1.9rem;font-weight:700;line-height:1;color:#2b8a3e">{{ done_week }}</div>
+    <div class="muted" style="font-size:.85rem">fait{{ 's' if done_week != 1 }} ces 7 derniers jours</div>
+  </div>
+  {% if total > tasks|length %}
+    <div class="muted" style="font-size:.85rem">Affiché : les {{ tasks|length }} plus urgents (événement le plus proche d'abord) — reviens après les avoir traités pour voir la suite.</div>
+  {% endif %}
+</div>
+
+{% if not tasks %}
+  <div class="card" style="padding:1.4rem;text-align:center">
+    🎉 Rien en attente — toutes les photos et tous les textes des événements retenus ont été relus.
+  </div>
+{% else %}
+
+{% for t in tasks %}
+{% set e = t.event %}
+<div class="card" id="e{{ e.id }}-{{ t.kind }}" style="padding:1rem;margin-bottom:.9rem">
+  <div style="display:flex;gap:1rem;align-items:flex-start">
+
+    {% if t.kind == 'photo' %}
+      {% if e._img %}
+        <img src="{{ e._img }}" alt="" style="width:140px;height:105px;object-fit:cover;border-radius:6px;flex:none">
+      {% else %}
+        <div style="width:140px;height:105px;border-radius:6px;background:#eee;display:flex;align-items:center;justify-content:center;flex:none" class="muted">sans photo</div>
+      {% endif %}
+    {% endif %}
+
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;gap:1rem;align-items:baseline">
+        <span class="chip" style="background:{{ '#e7f0ff;color:#1856b8' if t.kind=='photo' else '#fff3e0;color:#9a5b00' }};border-radius:4px;padding:.1rem .5rem;font-size:.78rem;font-weight:600">
+          {{ '🖼 PHOTO' if t.kind == 'photo' else '📝 TEXTE' }}
+        </span>
+        <span class="muted" style="font-size:.82rem;white-space:nowrap">
+          {% if e.recurring %}🔁 récurrent{% else %}{{ e.date_event_start or 'date ?' }}{% endif %}
+        </span>
+      </div>
+      <b style="display:block;margin:.3rem 0 .15rem">{{ e.article_title or e.title }}</b>
+      <div class="muted" style="font-size:.85rem;margin-bottom:.5rem">
+        {{ e.lieu or 'lieu ?' }}{% if e.ville %}, {{ e.ville }}{% endif %}
+        · {{ e.territoire }}
+        · <a href="/preview/{{ e.id }}" target="_blank" rel="noopener">fiche #{{ e.id }} ↗</a>
+      </div>
+
+      {% if t.kind == 'texte' %}
+        <div style="max-height:6.5rem;overflow:hidden;position:relative;background:#fafafa;border-radius:6px;padding:.6rem .8rem;margin-bottom:.6rem;font-size:.88rem;line-height:1.5">
+          {{ e._content|safe }}
+        </div>
+      {% endif %}
+
+      <div class="btn-row" style="gap:.5rem">
+        <form method="POST" action="/semaine/valider/{{ e.id }}/{{ t.kind }}" style="display:inline">
+          <button class="btn btn-primary btn-sm">✅ Ça va</button>
+        </form>
+        <a href="/preview/{{ e.id }}#{{ 'photo' if t.kind == 'photo' else 'texte' }}" class="btn btn-ghost btn-sm">🔄 Modifier</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

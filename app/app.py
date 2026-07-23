@@ -33,7 +33,7 @@ sys.path.insert(0, str(ROOT))
 
 import re
 
-from scripts.publisher import publish_to_cs
+from scripts.publisher import publish_to_cs, build_post
 from scripts.publisher_as import publish_to_as
 from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
@@ -2297,6 +2297,82 @@ def a_completer():
         territories=TERRITORIES, today=today, active="tocomplete",
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
         presets=PERIOD_PRESETS, alert=friendly_alert())
+
+
+# --------------------------------------------------------------------------- #
+# « Cette semaine » (demande de Franck) : file de travail UNIQUE — une tâche =
+# une décision atomique (photo à valider, texte à relire), au lieu de naviguer
+# entre une dizaine de pages pour savoir quoi faire. Une tâche redevient à faire
+# d'elle-même dès que son contenu change (comparaison directe au contenu actuel,
+# pas une invalidation à gérer partout ailleurs dans le code où l'image/texte
+# peut changer — cron, back-office, republication…).
+# --------------------------------------------------------------------------- #
+_SEMAINE_CAP = 20
+
+
+def _text_hash(event: dict) -> str:
+    _, content = build_post(event)
+    return hashlib.md5(content.encode("utf-8")).hexdigest()
+
+
+def _semaine_tasks(conn) -> list[dict]:
+    """Photo à valider + texte à relire, pour chaque événement retenu — triés par
+    date d'événement la plus proche (le plus urgent à relire en premier)."""
+    q = (f"SELECT * FROM events_raw WHERE statut IN "
+         f"({','.join('?' * len(comp.RETAINED_STATUTS))}) AND duplicate_of IS NULL "
+         "ORDER BY COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC")
+    rows = [dict(r) for r in conn.execute(q, comp.RETAINED_STATUTS).fetchall()]
+    tasks = []
+    for e in rows:
+        if comp.has_real_image(e) and (e.get("image_reviewed_url") or "") != (e.get("url_image") or ""):
+            tasks.append({"kind": "photo", "event": e})
+        if (e.get("text_reviewed_hash") or "") != _text_hash(e):
+            tasks.append({"kind": "texte", "event": e})
+    return tasks
+
+
+@app.route("/semaine")
+@require_auth
+def semaine():
+    conn = get_db()
+    tasks = _semaine_tasks(conn)
+    since = (datetime.now() - timedelta(days=7)).isoformat(timespec="seconds")
+    done_week = conn.execute(
+        "SELECT (SELECT COUNT(*) FROM events_raw WHERE image_reviewed_at >= ?) + "
+        "(SELECT COUNT(*) FROM events_raw WHERE text_reviewed_at >= ?) n",
+        (since, since)).fetchone()["n"]
+    conn.close()
+    for t in tasks:
+        e = t["event"]
+        e["_img"] = event_image(e)
+        if t["kind"] == "texte":
+            _, e["_content"] = build_post(e)
+    return render_template(
+        "semaine.html", tasks=tasks[:_SEMAINE_CAP], total=len(tasks),
+        done_week=done_week, active="semaine")
+
+
+@app.route("/semaine/valider/<int:event_id>/<champ>", methods=["POST"])
+@require_auth
+def semaine_valider(event_id, champ):
+    """Marque une tâche faite (« ça va ») — champ = 'photo' | 'texte'. Reprend d'elle-
+    même si le contenu concerné change ensuite (cf. _semaine_tasks)."""
+    conn = get_db()
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return redirect(url_for("semaine"))
+    ev = dict(row)
+    now = datetime.now().isoformat(timespec="seconds")
+    if champ == "photo":
+        conn.execute("UPDATE events_raw SET image_reviewed_at=?, image_reviewed_url=? WHERE id=?",
+                     (now, ev.get("url_image") or "", event_id))
+    elif champ == "texte":
+        conn.execute("UPDATE events_raw SET text_reviewed_at=?, text_reviewed_hash=? WHERE id=?",
+                     (now, _text_hash(ev), event_id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("semaine") + f"#e{event_id}-{champ}")
 
 
 @app.route("/triage")
