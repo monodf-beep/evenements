@@ -78,6 +78,13 @@
       L'image d'origine, elle, n'est jamais modifiée.
     </p>
     <form method="post" action="/set-focal/{{ e.id }}" id="focalForm" style="margin:0;">
+      <label class="text-sm" style="display:block;margin-bottom:.5rem;">
+        <b>URL de l'image</b> — colle un autre lien pour remplacer complètement la photo
+        (pas seulement son cadrage) :
+        <input type="url" name="url_image" value="{{ image }}" placeholder="https://…"
+               style="width:100%;margin-top:.25rem;padding:.4rem .55rem;border:1px solid var(--border,#3334);
+                      border-radius:.4rem;font-size:.85rem;background:transparent;color:inherit;">
+      </label>
       <input type="hidden" name="focal_x" id="focal_x" value="{{ '%.4f'|format(e.card_focal_x if e.card_focal_x is not none else 0.5) }}">
       <input type="hidden" name="focal_y" id="focal_y" value="{{ '%.4f'|format(e.card_focal_y if e.card_focal_y is not none else 0.5) }}">
       <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start;">

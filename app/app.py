@@ -3067,14 +3067,32 @@ def set_focal(event_id: int):
     if not row:
         conn.close()
         return "Événement introuvable", 404
-    conn.execute("UPDATE events_raw SET card_focal_x=?, card_focal_y=?, card_mode=? "
-                 "WHERE id=?", (fx, fy, mode or None, event_id))
+
+    # Remplacement de l'image : possible même une fois l'événement complet (avant,
+    # seul le flux « À compléter » le permettait). Si l'URL change, le point focal
+    # de l'ANCIENNE image ne veut plus rien dire pour la nouvelle → repli sur le
+    # centre/auto plutôt que d'appliquer un cadrage désormais hors-sujet.
+    new_url = (request.form.get("url_image", "") or "").strip()
+    old_url = (row["url_image"] or "").strip()
+    image_changed = bool(new_url) and new_url != old_url
+    if image_changed:
+        fx, fy, mode = 0.5, 0.5, ""
+        conn.execute(
+            "UPDATE events_raw SET url_image=?, image_credit='', image_source='manual', "
+            "card_focal_x=?, card_focal_y=?, card_mode=? WHERE id=?",
+            (new_url, fx, fy, mode or None, event_id))
+        log.info("Image remplacée à la main id=%d : %s", event_id, new_url[:80])
+    else:
+        conn.execute("UPDATE events_raw SET card_focal_x=?, card_focal_y=?, card_mode=? "
+                     "WHERE id=?", (fx, fy, mode or None, event_id))
     conn.commit()
     ev = dict(conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone())
     conn.close()
     log.info("Cadrage vignette id=%d : focal=(%.2f,%.2f) mode=%s", event_id, fx, fy,
              mode or "auto")
     label = {"": "auto", "cover": "recadrage", "letterbox": "affiche entière"}[mode]
+    if image_changed:
+        label = f"nouvelle image, {label}"
     if ev.get("wp_post_id_as"):
         wp_id, _ = publish_to_as(ev)
         if wp_id:
