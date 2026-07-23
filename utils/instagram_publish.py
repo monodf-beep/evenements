@@ -82,17 +82,22 @@ def _api_error(resp) -> str:
         return resp.text[:200]
 
 
-def publish_single(territoire_label: str, image_url: str, caption: str) -> dict:
-    """Publie UNE image. Renvoie {ok: True, media_id} ou {ok: False, error}."""
+def publish_single(territoire_label: str, image_url: str, caption: str,
+                   alt_text: str = "") -> dict:
+    """Publie UNE image. Renvoie {ok: True, media_id} ou {ok: False, error}.
+
+    alt_text : texte alternatif (accessibilité + recherche interne Instagram),
+    supporté par l'API depuis mars 2025 pour les images — PAS pour les stories."""
     if not configured(territoire_label):
         return {"ok": False, "error": f"Compte Instagram non configuré pour "
                 f"« {territoire_label} » (IG_ACCOUNT_ID_{_slug(territoire_label)} / "
                 f"IG_TOKEN_{_slug(territoire_label)} manquants)."}
     ig_id, token = _account_id(territoire_label), _token(territoire_label)
     try:
-        r = requests.post(f"{GRAPH}/{ig_id}/media",
-                          data={"image_url": image_url, "caption": caption,
-                                "access_token": token}, timeout=30)
+        data = {"image_url": image_url, "caption": caption, "access_token": token}
+        if alt_text:
+            data["alt_text"] = alt_text[:1000]  # limite Meta
+        r = requests.post(f"{GRAPH}/{ig_id}/media", data=data, timeout=30)
         r.raise_for_status()
         creation_id = r.json()["id"]
         _wait_ready(creation_id, token)
@@ -112,8 +117,9 @@ def publish_single(territoire_label: str, image_url: str, caption: str) -> dict:
 
 
 def publish_story(territoire_label: str, image_url: str) -> dict:
-    """Publie une STORY (24h). L'API Instagram n'accepte pas de légende sur les
-    stories : le texte doit être « cuit » dans l'image (cf. utils.social_image.story)."""
+    """Publie une STORY (24h). L'API Instagram n'accepte ni légende ni texte
+    alternatif sur les stories (limitation de l'API, pas de nous) : le texte doit
+    être « cuit » dans l'image (cf. utils.social_image.story)."""
     if not configured(territoire_label):
         return {"ok": False, "error": f"Compte Instagram non configuré pour « {territoire_label} »."}
     ig_id, token = _account_id(territoire_label), _token(territoire_label)
@@ -139,8 +145,12 @@ def publish_story(territoire_label: str, image_url: str) -> dict:
         return {"ok": False, "error": str(exc)}
 
 
-def publish_carousel(territoire_label: str, image_urls: list[str], caption: str) -> dict:
-    """Publie un CARROUSEL (2 à 10 images). Renvoie {ok: True, media_id} ou {ok: False, error}."""
+def publish_carousel(territoire_label: str, image_urls: list[str], caption: str,
+                     alt_text: str = "") -> dict:
+    """Publie un CARROUSEL (2 à 10 images). Renvoie {ok: True, media_id} ou {ok: False, error}.
+
+    alt_text : même texte alternatif appliqué à CHAQUE image du carrousel (l'API ne
+    prend l'alt text que par enfant, pas au niveau du conteneur parent)."""
     if not configured(territoire_label):
         return {"ok": False, "error": f"Compte Instagram non configuré pour « {territoire_label} »."}
     if not (2 <= len(image_urls) <= 10):
@@ -149,9 +159,10 @@ def publish_carousel(territoire_label: str, image_urls: list[str], caption: str)
     try:
         children = []
         for url in image_urls:
-            r = requests.post(f"{GRAPH}/{ig_id}/media",
-                              data={"image_url": url, "is_carousel_item": "true",
-                                    "access_token": token}, timeout=30)
+            data = {"image_url": url, "is_carousel_item": "true", "access_token": token}
+            if alt_text:
+                data["alt_text"] = alt_text[:1000]
+            r = requests.post(f"{GRAPH}/{ig_id}/media", data=data, timeout=30)
             r.raise_for_status()
             cid = r.json()["id"]
             _wait_ready(cid, token)

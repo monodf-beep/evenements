@@ -2644,7 +2644,7 @@ def reseaux_publish(event_id: int):
                 if not url:
                     raise RuntimeError("upload WordPress échoué")
                 urls.append(url)
-            result = ig.publish_carousel(terr_label, urls, caption)
+            result = ig.publish_carousel(terr_label, urls, caption, alt_text=alt)
         elif kind == "story":
             img = social_overlay.compose(
                 "story-9x16", territoire, src, title=full_title, date_str=date_str,
@@ -2668,7 +2668,7 @@ def reseaux_publish(event_id: int):
                 social_image.to_jpeg(img), f"ig-{event_id}-{lang}.jpg", alt=alt)
             if not url:
                 raise RuntimeError("upload WordPress échoué")
-            result = ig.publish_single(terr_label, url, caption)
+            result = ig.publish_single(terr_label, url, caption, alt_text=alt)
     except Exception as exc:  # visuel/upload/API : jamais de 500, on journalise et informe
         result = {"ok": False, "error": str(exc)}
 
