@@ -2753,9 +2753,11 @@ def webhook_instagram():
             return request.args.get("hub.challenge", ""), 200
         return "forbidden", 403
 
+    raw = request.get_data()
+    log.info("Webhook Instagram : requête POST reçue (%d octets).", len(raw))
+
     app_secret = os.getenv("IG_APP_SECRET", "")
     if app_secret:
-        raw = request.get_data()
         sig = request.headers.get("X-Hub-Signature-256", "")
         expected_sig = "sha256=" + hmac.new(app_secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected_sig, sig):
@@ -2765,6 +2767,7 @@ def webhook_instagram():
         log.warning("Webhook Instagram : IG_APP_SECRET absent — signature NON vérifiée.")
 
     payload = request.get_json(silent=True) or {}
+    log.info("Webhook Instagram : payload = %s", payload)
     from utils import instagram_publish as ig
     conn = get_db()
     for entry in payload.get("entry", []):
@@ -2776,15 +2779,21 @@ def webhook_instagram():
             comment_id = value.get("id", "")
             text = value.get("text", "") or ""
             media_id = (value.get("media") or {}).get("id", "")
+            log.info("Webhook Instagram : commentaire %r (media=%s) sur compte %s",
+                     text, media_id, ig_account_id)
             if not comment_id or not media_id:
                 continue
             row = conn.execute(
                 "SELECT event_id FROM social_posts WHERE ig_media_id=? AND status='ok' "
                 "AND platform='instagram' LIMIT 1", (media_id,)).fetchone()
             if not row:
+                log.info("Webhook Instagram : media_id %s introuvable dans social_posts — "
+                         "aucun événement associé.", media_id)
                 continue
             ev = conn.execute("SELECT * FROM events_raw WHERE id=?", (row["event_id"],)).fetchone()
             if not ev or not _dm_keyword_matches(text, ev["dm_keyword"] or ""):
+                log.info("Webhook Instagram : commentaire %r ne matche pas le mot-clé %r "
+                         "(événement %s).", text, ev["dm_keyword"] if ev else None, row["event_id"])
                 continue
             territoire = ig.territoire_for_account_id(ig_account_id)
             if not territoire:
