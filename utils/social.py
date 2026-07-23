@@ -51,6 +51,15 @@ _CTA = {
            "con cui vuoi andarci.\n🔗 Tutte le info: link in bio."),
 }
 
+# Accroche « commente XXX » — PREMIÈRE ligne de la légende (avant le « … plus »
+# d'Instagram, ~125 caractères) : c'est le déclencheur de la réponse privée
+# automatique (webhook Instagram, cf. app.webhook_instagram). {kw} = mot-clé de
+# l'événement (utils.social.dm_keyword).
+_DM_CTA = {
+    "fr": "💬 Commente « {kw} » et je t'envoie le lien en DM 👇",
+    "it": "💬 Commenta « {kw} » e ti mando il link in DM 👇",
+}
+
 
 def _terr_key(territoire: str) -> str:
     t = (territoire or "").lower()
@@ -137,7 +146,11 @@ def caption(event: dict, lang: str = "fr") -> str:
     """Légende Instagram complète pour l'événement, dans la langue demandée."""
     title = re.sub(r"\s+", " ", (event.get("title") or "")).strip()
     hook = _first_sentence(event.get("seo_answer") or "") or title
-    lines = [hook, ""]
+    keyword = (event.get("dm_keyword") or "").strip() or dm_keyword(title)
+    lines = []
+    if keyword:
+        lines += [_DM_CTA[lang].format(kw=keyword), ""]
+    lines += [hook, ""]
     dt = format_date(event.get("date_event_start", ""), event.get("date_event_end", ""), lang)
     if dt:
         lines.append(f"📅 {dt}")
