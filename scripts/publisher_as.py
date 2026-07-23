@@ -271,9 +271,11 @@ def _build_payload(event: dict) -> dict:
     return payload
 
 
-def publish_to_as(event: dict) -> int | None:
+def publish_to_as(event: dict) -> "tuple[int, str] | tuple[None, str]":
     """Publie/actualise l'événement en brouillon sur agendasabauda.eu (TEC).
-    Retourne le wp_post_id (côté agenda) ou None."""
+    Retourne (wp_post_id, permalink) ou (None, '') si échec. Le permalien est le
+    LIEN PRÉCIS de la fiche (pas la home) — cs-publish.php le renvoie déjà à chaque
+    appel, on le capture pour pouvoir pointer dessus ailleurs (ex. DM Instagram)."""
     load_dotenv(ROOT / ".env")
     wp_url  = os.getenv("WP_AS_URL", "").rstrip("/")
     wp_user = os.getenv("WP_AS_USER", "")
@@ -282,7 +284,7 @@ def publish_to_as(event: dict) -> int | None:
     if not all([wp_url, wp_user, wp_pass]):
         log.error("Variables Agenda Sabauda manquantes "
                   "(WP_AS_URL, WP_AS_USER, WP_AS_APP_PASSWORD)")
-        return None
+        return None, ""
 
     auth = (wp_user, wp_pass)
     payload = _build_payload(event)
@@ -364,14 +366,15 @@ def publish_to_as(event: dict) -> int | None:
         resp.raise_for_status()
         body = resp.json()
         post_id = body.get("id")
+        permalink = body.get("url") or ""
         verb = "mis à jour" if body.get("updated") else "créé"
         log.info("Événement Agenda Sabauda %s id=%s : %s", verb, post_id,
                  (event.get("title", "") or "")[:60])
-        return post_id
+        return post_id, permalink
     except requests.HTTPError as exc:
         log.error("Erreur Agenda Sabauda API (%s) : %s", exc.response.status_code,
                   exc.response.text[:300])
-        return None
+        return None, ""
     except (requests.RequestException, ValueError) as exc:
         log.error("Connexion Agenda Sabauda impossible : %s", exc)
-        return None
+        return None, ""

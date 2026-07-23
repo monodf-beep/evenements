@@ -2737,10 +2737,10 @@ def _autopush_if_ready(conn, event_id: int) -> tuple[bool, int | None]:
     end = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
     if not end or end < date.today().isoformat():
         return False, None
-    wp_id = publish_to_as(ev)
+    wp_id, permalink = publish_to_as(ev)
     if wp_id:
-        conn.execute("UPDATE events_raw SET wp_post_id_as=?, "
-                     "published_as_date=datetime('now') WHERE id=?", (wp_id, event_id))
+        conn.execute("UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
+                     "published_as_date=datetime('now') WHERE id=?", (wp_id, permalink, event_id))
         conn.commit()
         return True, wp_id
     return False, None
@@ -2881,12 +2881,12 @@ def action(event_id: int, action: str):
     elif action == "publish_as":
         # PUBLIER vers agendasabauda.eu (événement TEC) — pendant de « Publier CS ».
         existed = event["wp_post_id_as"]
-        wp_id = publish_to_as(dict(event))
+        wp_id, permalink = publish_to_as(dict(event))
         if wp_id:
             conn.execute("""
             UPDATE events_raw SET statut='published_sub',
-            published_as_date=datetime('now'), wp_post_id_as=? WHERE id=?
-            """, (wp_id, event_id))
+            published_as_date=datetime('now'), wp_post_id_as=?, wp_permalink_as=? WHERE id=?
+            """, (wp_id, permalink, event_id))
             conn.commit()
             log.info("Publié Agenda Sabauda : event_id=%d wp_id=%d", event_id, wp_id)
             verbe = "mis à jour" if existed and wp_id == existed else "créé"
@@ -2972,7 +2972,7 @@ def set_focal(event_id: int):
              mode or "auto")
     label = {"": "auto", "cover": "recadrage", "letterbox": "affiche entière"}[mode]
     if ev.get("wp_post_id_as"):
-        wp_id = publish_to_as(ev)
+        wp_id, _ = publish_to_as(ev)
         if wp_id:
             flash(f"🖼 Cadrage enregistré ({label}) et vignette régénérée sur l'Agenda "
                   f"(WP #{wp_id}).", "ok")

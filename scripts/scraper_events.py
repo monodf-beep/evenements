@@ -138,7 +138,15 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Mode de vignette forcé à la main : '' (auto) | 'cover'
                       # (recadrer au point focal) | 'letterbox' (affiche entière sur
                       # fond flou — utile quand le titre de l'affiche est coupé).
-                      ("card_mode", "TEXT")):
+                      ("card_mode", "TEXT"),
+                      # URL PRÉCISE de la fiche événement sur agendasabauda.eu (le
+                      # permalien WP, renvoyé par cs-publish.php à chaque publish/
+                      # update). Sert à pointer un lien direct (ex. DM Instagram
+                      # « commente et je t'envoie le lien ») au lieu de la page
+                      # d'accueil — cette fiche porte déjà le bloc « Ajoute-le à ton
+                      # agenda » (Google/Apple/Outlook), donc UN lien couvre les deux
+                      # usages (lire l'article + l'ajouter à son agenda).
+                      ("wp_permalink_as", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

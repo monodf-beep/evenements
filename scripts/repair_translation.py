@@ -78,14 +78,15 @@ def main(argv=None) -> int:
     fixed = 0
     for src, t in broken:
         # 1. Restaurer l'original sur son post WP (branche mise à jour : wp_post_id_as présent).
-        wp_id = publish_to_as(src)
+        wp_id, permalink = publish_to_as(src)
         if not wp_id:
             log.warning("[%s] ré-publication de l'original échouée — on n'efface rien.", src["id"])
             continue
         # 2. Supprimer la fausse fiche traduite (redondante).
         conn.execute("DELETE FROM events_raw WHERE id=?", (t["id"],))
         # 3. Rendre l'original re-traduisible.
-        conn.execute("UPDATE events_raw SET translated_at=NULL WHERE id=?", (src["id"],))
+        conn.execute("UPDATE events_raw SET translated_at=NULL, wp_permalink_as=COALESCE(?, wp_permalink_as) "
+                     "WHERE id=?", (permalink or None, src["id"]))
         conn.commit()
         fixed += 1
         log.info("[%s] réparé : original restauré sur WP#%s, fausse traduction id=%s supprimée.",
