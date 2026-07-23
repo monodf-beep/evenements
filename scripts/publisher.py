@@ -148,8 +148,23 @@ def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
         return None
 
 
+def _media_slug(title: str, suffix: str = "") -> str:
+    """Nom de fichier/titre média LISIBLE dérivé du titre de l'événement — jamais le nom
+    de fichier de l'URL source (souvent un hash opaque type CDN/Wikimedia, ex.
+    « 6a1fec783405f1c822ac64fc.png » : illisible dans la médiathèque WordPress, repéré
+    par Franck). '' si pas de titre (repli sur l'ancien comportement, cf. appelant)."""
+    import re
+    import unicodedata
+    n = unicodedata.normalize("NFKD", (title or "").strip().lower())
+    n = "".join(c for c in n if not unicodedata.combining(c))
+    n = re.sub(r"[^a-z0-9]+", "-", n).strip("-")[:60]
+    if not n:
+        return ""
+    return f"{n}-{suffix}" if suffix else n
+
+
 def _upload_featured_media(wp_url: str, auth, image_url: str,
-                           alt: str = "", caption: str = "",
+                           alt: str = "", caption: str = "", title: str = "",
                            card: bool = False, focal=(0.5, 0.5),
                            mode: str = "auto",
                            ratio: "tuple[int, int] | None" = None) -> "tuple[int | None, str]":
@@ -158,6 +173,10 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
     Retourne (media_id, source_url) — (None, '') si échec. Jamais bloquant : un échec
     d'upload laisse le post sans vignette.
     alt/caption : texte alternatif (SEO, avec l'expression clé) et légende (crédit photo).
+    title : titre LISIBLE de l'événement — sert à nommer le fichier ET le champ « titre »
+    du média dans la bibliothèque WordPress (sinon WordPress affiche le nom de fichier
+    de la source, souvent un hash illisible). '' → repli sur l'ancien comportement
+    (nom dérivé de l'URL).
     card : si True, l'image est standardisée (cover-focal ou letterbox, cf.
     utils.card_image) AVANT l'upload, au ratio `ratio` (4:3 par défaut, la grille — passer
     ex. (16, 9) pour un autre usage, ex. le grand visuel de fiche). `focal` (x,y) ∈ [0,1]
@@ -185,11 +204,16 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
             log.warning("URL image non-image (%s) : %s", content_type or "?", image_url)
             return None, ""
 
-        # Nom de fichier : basename de l'URL, sinon dérivé du type MIME.
-        name = os.path.basename(urlparse(image_url).path) or "image"
-        if "." not in name:
-            ext = mimetypes.guess_extension(content_type) or ".jpg"
-            name = f"{name}{ext}"
+        # Nom de fichier LISIBLE dérivé du titre si fourni, sinon repli sur le nom de
+        # l'URL source (souvent un hash opaque — cf. _media_slug).
+        ext = mimetypes.guess_extension(content_type) or ".jpg"
+        slug = _media_slug(title)
+        if slug:
+            name = f"{slug}{ext}"
+        else:
+            name = os.path.basename(urlparse(image_url).path) or "image"
+            if "." not in name:
+                name = f"{name}{ext}"
 
         data = img.content
         if card:
@@ -245,12 +269,17 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
         media_id = payload.get("id")
         source_url = payload.get("source_url") or ""
         log.info("Média uploadé WP id=%s : %s", media_id, image_url)
-        # Renseigne le texte alternatif (SEO) et la légende (crédit photo).
-        if media_id and (alt or caption):
+        # Renseigne le texte alternatif (SEO), la légende (crédit photo) ET le TITRE —
+        # sans ça, WordPress affiche le nom de fichier (donc le hash de la source) dans
+        # la médiathèque au lieu du titre de l'événement.
+        if media_id and (alt or caption or title):
             try:
+                meta = {"alt_text": alt, "caption": caption}
+                if title:
+                    meta["title"] = title
                 requests.post(
                     f"{wp_url}/?rest_route=/wp/v2/media/{media_id}",
-                    json={"alt_text": alt, "caption": caption},
+                    json=meta,
                     auth=auth, headers=_headers(auth), timeout=20)
             except requests.RequestException:
                 pass  # non bloquant : la vignette est déjà en place
@@ -354,7 +383,7 @@ def publish_to_cs(event: dict) -> int | None:
         media_id, _ = _upload_featured_media(
             wp_url, auth, event["url_image"],
             alt=event.get("seo_keyphrase") or event.get("title", ""),
-            caption=event.get("image_credit", ""))
+            caption=event.get("image_credit", ""), title=event.get("title", ""))
         if media_id:
             payload["featured_media"] = media_id
         else:

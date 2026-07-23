@@ -305,7 +305,7 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
         # letterbox) réglables à la main au back-office (éditeur de cadrage).
         media_id, _ = _upload_featured_media(
             wp_url, auth, url_image, alt=alt,
-            caption=event.get("image_credit", "") or "",
+            caption=event.get("image_credit", "") or "", title=event.get("title", ""),
             card=True, focal=_focal(event),
             mode=(event.get("card_mode") or "auto"))
         if media_id:
@@ -319,7 +319,7 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
             log.info("Affiche récupérée depuis la page source (%s)", recovered)
             media_id, _ = _upload_featured_media(
                 wp_url, auth, recovered, alt=alt,
-                caption=event.get("image_credit", "") or "",
+                caption=event.get("image_credit", "") or "", title=event.get("title", ""),
                 card=True, focal=_focal(event),
                 mode=(event.get("card_mode") or "auto"))
             if media_id:
@@ -334,7 +334,8 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
             elif url_image:
                 log.info("Téléversement affiche échoué (%s) → bannière territoire", url_image)
             media_id, _ = _upload_featured_media(
-                wp_url, auth, banner, alt=alt, card=True, focal=(0.5, 0.5))
+                wp_url, auth, banner, alt=alt, title=event.get("title", ""),
+                card=True, focal=(0.5, 0.5))
             # hero_source reste vide : pas de « grand visuel original » pour une
             # bannière générique — la fiche n'affichera rien à ce sujet.
     if media_id:
@@ -349,6 +350,7 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
         _, hero_url = _upload_featured_media(
             wp_url, auth, hero_source, alt=alt,
             caption=event.get("image_credit", "") or "",
+            title=f"{event.get('title', '')} — fiche",
             card=True, focal=_focal(event),
             mode=(event.get("card_mode") or "auto"), ratio=(16, 9))
         if hero_url:
@@ -362,7 +364,8 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
     if hero_source:
         _, raw_image_url = _upload_featured_media(
             wp_url, auth, hero_source, alt=alt,
-            caption=event.get("image_credit", "") or "", card=False)
+            caption=event.get("image_credit", "") or "",
+            title=f"{event.get('title', '')} — original", card=False)
 
     endpoint = f"{wp_url}/?rest_route=/cs/v1/event"
 
