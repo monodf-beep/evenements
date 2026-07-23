@@ -16,6 +16,10 @@
 #     40 6 * * * /root/evenements/deploy/cron_pipeline.sh autocomplete >> /root/evenements/logs/cron_pipeline.log 2>&1
 #     # Brouillon newsletter — lundi 7h00 (envoi manuel ensuite)
 #     0 7 * * 1  /root/evenements/deploy/cron_pipeline.sh newsletter  >> /root/evenements/logs/cron_pipeline.log 2>&1
+#     # Audit visuel en lot (planches contact + agent vision, tout le catalogue) —
+#     # dimanche 5h00, digest Slack des photos suspectes. Coût borné mais réel (une
+#     # planche ~20 événements = 1 appel vision) : hebdo, pas quotidien.
+#     0 5 * * 0  /root/evenements/deploy/cron_pipeline.sh images-audit >> /root/evenements/logs/cron_pipeline.log 2>&1
 #
 #   (rends-le exécutable une fois : chmod +x /root/evenements/deploy/cron_pipeline.sh)
 # ============================================================================
@@ -56,6 +60,9 @@ case "$MODE" in
     ;;
   newsletter)
     step "newsletter (brouillon)" "$PY" -m scripts.newsletter
+    ;;
+  images-audit)
+    step "audit visuel (planches contact)" "$PY" -m scripts.image_audit
     ;;
   full|*)
     log "=== PIPELINE QUOTIDIEN (fenêtre $FROM → $TO) ==="
