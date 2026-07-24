@@ -168,7 +168,15 @@ def init_db(conn: sqlite3.Connection) -> None:
                       ("image_reviewed_at", "TEXT"),
                       ("image_reviewed_url", "TEXT"),
                       ("text_reviewed_at", "TEXT"),
-                      ("text_reviewed_hash", "TEXT")):
+                      ("text_reviewed_hash", "TEXT"),
+                      # Finition Instagram MANUELLE (/reseaux/publish) : l'API Graph ne sait
+                      # ni attacher une musique de la bibliothèque Instagram, ni poser un tag
+                      # natif, ni laisser un brouillon éditable (tout appel API publie
+                      # immédiatement et définitivement) — Franck choisit PAR publication de
+                      # finir lui-même dans l'app plutôt que de passer par l'API. done_at à
+                      # NULL tant que ce n'est pas fait -> alimente la file /semaine.
+                      ("ig_manual_mode", "INTEGER DEFAULT 0"),
+                      ("ig_manual_done_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

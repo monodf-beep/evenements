@@ -44,7 +44,7 @@
       {% if ig_ready %}
         {% for kind, klabel in [('single','Post'), ('carousel','Carrousel'), ('story','Story')] %}
           {% if e._published[lg][kind] %}
-          <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
+          <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline-flex;align-items:center;gap:.35rem"
                 onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value;
                           this.alt_text.value = document.getElementById('alt-{{ e.id }}-{{ lg }}').value;
                           this.dm_keyword.value = document.getElementById('kw-{{ e.id }}').value;
@@ -52,10 +52,13 @@
             <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
             <input type="hidden" name="force" value="1"><input type="hidden" name="caption" value="">
             <input type="hidden" name="alt_text" value=""><input type="hidden" name="dm_keyword" value="">
+            <label class="muted text-sm" style="display:inline-flex;align-items:center;gap:.2rem;white-space:nowrap">
+              <input type="checkbox" name="ig_manual_mode" value="1"> 📱 Je le posterai moi-même (musique, tag natif…)
+            </label>
             <button class="btn btn-sm">✅ {{ klabel }} — republier</button>
           </form>
           {% else %}
-          <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline"
+          <form method="POST" action="/reseaux/publish/{{ e.id }}" style="display:inline-flex;align-items:center;gap:.35rem"
                 onsubmit="this.caption.value = document.getElementById('cap-{{ e.id }}-{{ lg }}').value;
                           this.alt_text.value = document.getElementById('alt-{{ e.id }}-{{ lg }}').value;
                           this.dm_keyword.value = document.getElementById('kw-{{ e.id }}').value;
@@ -63,6 +66,9 @@
             <input type="hidden" name="lang" value="{{ lg }}"><input type="hidden" name="kind" value="{{ kind }}">
             <input type="hidden" name="caption" value="">
             <input type="hidden" name="alt_text" value=""><input type="hidden" name="dm_keyword" value="">
+            <label class="muted text-sm" style="display:inline-flex;align-items:center;gap:.2rem;white-space:nowrap">
+              <input type="checkbox" name="ig_manual_mode" value="1"> 📱 Je le posterai moi-même (musique, tag natif…)
+            </label>
             <button class="btn btn-sm btn-primary">🚀 {{ klabel }}</button>
           </form>
           {% endif %}

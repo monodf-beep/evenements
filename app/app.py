@@ -117,6 +117,24 @@ try:
     _conn.execute("ALTER TABLE social_posts ADD COLUMN platform TEXT DEFAULT 'instagram'")
 except sqlite3.OperationalError:
     pass
+# Publications Instagram PROGRAMMÉES (l'API Graph n'offre aucune programmation
+# native pour un outil tiers) : Franck choisit un jour/heure, cette table garde
+# l'intention, et scripts/ig_scheduler.py (cron séparé, toutes les 15 min) publie
+# au bon moment via le MÊME chemin que la publication immédiate (_do_publish_instagram).
+_conn.execute("""
+    CREATE TABLE IF NOT EXISTS ig_scheduled_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        territoire_label TEXT NOT NULL,
+        lang TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        scheduled_at TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT DEFAULT (datetime('now')),
+        published_at TEXT,
+        error TEXT
+    )
+""")
 # Légende Instagram réécrite par LLM (voix Enrico Nos Alpes + anti-signes-IA), mise en
 # cache : générée à la demande (bouton, payant), jamais recalculée à chaque page vue.
 for _col in ("social_caption_fr", "social_caption_it"):
@@ -2338,6 +2356,11 @@ def _semaine_tasks(conn) -> list[dict]:
             tasks.append({"kind": "photo", "event": e})
         if (e.get("text_reviewed_hash") or "") != _text_hash(e):
             tasks.append({"kind": "texte", "event": e})
+        # Finition Instagram manuelle (choisie sur /reseaux/publish) : reste dans la
+        # file tant que Franck n'a pas cliqué « C'est posté » — pas de comparaison au
+        # contenu (rien à comparer, la case n'est pas ré-évaluée automatiquement).
+        if e.get("ig_manual_mode") and not e.get("ig_manual_done_at"):
+            tasks.append({"kind": "instagram-manuel", "event": e})
     return tasks
 
 
@@ -2352,6 +2375,7 @@ def semaine():
         "(SELECT COUNT(*) FROM events_raw WHERE text_reviewed_at >= ?) n",
         (since, since)).fetchone()["n"]
     conn.close()
+    from utils import social as social_mod
     for t in tasks:
         if t["kind"] == "organisateur":
             continue
@@ -2359,6 +2383,8 @@ def semaine():
         e["_img"] = event_image(e)
         if t["kind"] == "texte":
             _, e["_content"] = build_post(e)
+        elif t["kind"] == "instagram-manuel":
+            e["_caption"] = social_mod.caption(e, social_mod.default_lang(e.get("territoire", "")))
     # Mode rattrapage (?rattrapage=1) : Franck veut TOUT voir d'un coup, pas de plafond.
     shown = tasks if request.args.get("rattrapage") == "1" else tasks[:_SEMAINE_CAP]
     return render_template(
@@ -2369,8 +2395,10 @@ def semaine():
 @app.route("/semaine/valider/<int:event_id>/<champ>", methods=["POST"])
 @require_auth
 def semaine_valider(event_id, champ):
-    """Marque une tâche faite (« ça va ») — champ = 'photo' | 'texte'. Reprend d'elle-
-    même si le contenu concerné change ensuite (cf. _semaine_tasks)."""
+    """Marque une tâche faite (« ça va ») — champ = 'photo' | 'texte' | 'instagram-manuel'.
+    Reprend d'elle-même si le contenu concerné change ensuite (cf. _semaine_tasks) ;
+    'instagram-manuel' ne reprend PAS tout seul (ig_manual_mode reste à 1 tant que
+    Franck ne republie pas en manuel), c'est une simple date de fin de tâche."""
     conn = get_db()
     row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
     if not row:
@@ -2384,6 +2412,8 @@ def semaine_valider(event_id, champ):
     elif champ == "texte":
         conn.execute("UPDATE events_raw SET text_reviewed_at=?, text_reviewed_hash=? WHERE id=?",
                      (now, _text_hash(ev), event_id))
+    elif champ == "instagram-manuel":
+        conn.execute("UPDATE events_raw SET ig_manual_done_at=? WHERE id=?", (now, event_id))
     conn.commit()
     conn.close()
     return redirect(url_for("semaine") + f"#e{event_id}-{champ}")
@@ -2678,6 +2708,7 @@ def reseaux_publish(event_id: int):
     lang = request.form.get("lang", "fr")
     kind = request.form.get("kind", "single")
     force = request.form.get("force") == "1"
+    manual_mode = request.form.get("ig_manual_mode") == "1"
     conn = get_db()
     row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
     if not row:
@@ -2692,6 +2723,24 @@ def reseaux_publish(event_id: int):
         conn.close()
         flash(f"⚠️ « {title} » incomplet — impossible à publier.", "err")
         return redirect(url_for("reseaux"))
+
+    # Finition Instagram MANUELLE : musique/tag natif impossibles via l'API Graph, et
+    # tout appel API publie immédiatement (pas de brouillon) — donc quand Franck coche
+    # cette case, on n'appelle JAMAIS l'API. Ni compte configuré, ni génération/upload
+    # de visuel requis ici : /preview propose légende + visuel source à copier/coller,
+    # et /semaine relance tant que ce n'est pas marqué posté (cf. _semaine_tasks).
+    if manual_mode:
+        keyword = (request.form.get("dm_keyword", "") or "").strip().upper() \
+            or social_mod.dm_keyword(ev.get("title") or "")
+        conn.execute(
+            "UPDATE events_raw SET ig_manual_mode=1, ig_manual_done_at=NULL, "
+            "dm_keyword=? WHERE id=?", (keyword, event_id))
+        conn.commit()
+        conn.close()
+        flash(f"📱 « {title} » mis de côté pour une publication manuelle — légende et "
+              "visuel prêts sur la fiche, poste-le toi-même dans l'app Instagram.", "ok")
+        return redirect(url_for("preview", event_id=event_id))
+
     if not ig.configured(terr_label):
         conn.close()
         flash(f"⚙️ Compte Instagram non configuré pour « {terr_label} » — "

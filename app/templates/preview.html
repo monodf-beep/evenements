@@ -235,6 +235,34 @@
     </div>
   </div>
 </div>
+{% if e.ig_manual_mode and not e.ig_manual_done_at %}
+<!-- Finition Instagram MANUELLE : musique/tag natif impossibles via l'API Graph (tout
+     appel API publie direct, pas de brouillon) — Franck a choisi de poster lui-même. -->
+<div id="instagram-manuel" class="card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:1rem 0;padding:1rem 1.1rem;border-color:#e0b8d6">
+  <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:.5rem">
+    <strong>📱 À poster toi-même</strong>
+    <span class="muted text-sm">Copie la légende, télécharge le visuel, finis la publication (musique, tag natif…) directement dans l'app Instagram.</span>
+  </div>
+  <div style="display:flex;gap:.9rem;flex-wrap:wrap">
+    {% if image %}
+    <div style="flex:0 0 auto">
+      <img src="{{ image }}" alt="" style="width:150px;height:150px;object-fit:cover;border-radius:.5rem;border:1px solid #e7e1d4">
+      <div class="muted text-sm" style="margin-top:.3rem;max-width:150px"><a href="{{ image }}" download>⬇️ Télécharger le visuel</a></div>
+    </div>
+    {% endif %}
+    <div style="flex:1 1 320px;min-width:280px">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+        <button type="button" class="btn btn-sm" onclick="csCopy('igmancap-{{ e.id }}', this)">📋 Copier</button>
+      </div>
+      <textarea id="igmancap-{{ e.id }}" rows="9" readonly style="width:100%;font-family:inherit;font-size:.85rem;padding:.5rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ ig_post[ig_post.default_lang].caption }}</textarea>
+      <form method="post" action="/semaine/valider/{{ e.id }}/instagram-manuel" style="margin-top:.6rem">
+        <button class="btn btn-primary btn-sm">✅ C'est posté</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <script>
 function csCopy(id, btn) {
   var el = document.getElementById(id);

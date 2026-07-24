@@ -53,7 +53,7 @@
 <div class="card" id="e{{ e.id }}-{{ t.kind }}" style="padding:1rem;margin-bottom:.9rem">
   <div style="display:flex;gap:1rem;align-items:flex-start">
 
-    {% if t.kind == 'photo' %}
+    {% if t.kind == 'photo' or t.kind == 'instagram-manuel' %}
       {% if e._img %}
         <img src="{{ e._img }}" alt="" style="width:140px;height:105px;object-fit:cover;border-radius:6px;flex:none">
       {% else %}
@@ -63,8 +63,8 @@
 
     <div style="flex:1;min-width:0">
       <div style="display:flex;justify-content:space-between;gap:1rem;align-items:baseline">
-        <span class="chip" style="background:{{ '#e7f0ff;color:#1856b8' if t.kind=='photo' else '#fff3e0;color:#9a5b00' }};border-radius:4px;padding:.1rem .5rem;font-size:.78rem;font-weight:600">
-          {{ '🖼 PHOTO' if t.kind == 'photo' else '📝 TEXTE' }}
+        <span class="chip" style="background:{{ '#e7f0ff;color:#1856b8' if t.kind=='photo' else ('#fde8f4;color:#a3196e' if t.kind=='instagram-manuel' else '#fff3e0;color:#9a5b00') }};border-radius:4px;padding:.1rem .5rem;font-size:.78rem;font-weight:600">
+          {% if t.kind == 'photo' %}🖼 PHOTO{% elif t.kind == 'instagram-manuel' %}📱 INSTAGRAM{% else %}📝 TEXTE{% endif %}
         </span>
         <span class="muted" style="font-size:.82rem;white-space:nowrap">
           {% if e.recurring %}🔁 récurrent{% else %}{{ e.date_event_start or 'date ?' }}{% endif %}
@@ -83,17 +83,42 @@
         </div>
       {% endif %}
 
-      <div class="btn-row" style="gap:.5rem">
-        <form method="POST" action="/semaine/valider/{{ e.id }}/{{ t.kind }}" style="display:inline">
-          <button class="btn btn-primary btn-sm">✅ Ça va</button>
-        </form>
-        <a href="/preview/{{ e.id }}#{{ 'photo' if t.kind == 'photo' else 'texte' }}" class="btn btn-ghost btn-sm">🔄 Modifier</a>
+      {% if t.kind == 'instagram-manuel' %}
+        <div class="muted" style="font-size:.85rem;margin-bottom:.4rem">À finir toi-même dans l'app Instagram (musique, tag natif…) — visuel et légende ci-dessous.</div>
+        <textarea id="semcap-{{ e.id }}" rows="4" readonly style="width:100%;font-size:.82rem;font-family:inherit;padding:.5rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical;margin-bottom:.6rem">{{ e._caption }}</textarea>
+      {% endif %}
+
+      <div class="btn-row" style="gap:.5rem;flex-wrap:wrap">
+        {% if t.kind == 'instagram-manuel' %}
+          <button type="button" class="btn btn-sm" onclick="semCopy('semcap-{{ e.id }}', this)">📋 Copier</button>
+          {% if e._img %}<a href="{{ e._img }}" download class="btn btn-sm">⬇️ Télécharger le visuel</a>{% endif %}
+          <form method="POST" action="/semaine/valider/{{ e.id }}/{{ t.kind }}" style="display:inline">
+            <button class="btn btn-primary btn-sm">✅ C'est posté</button>
+          </form>
+        {% else %}
+          <form method="POST" action="/semaine/valider/{{ e.id }}/{{ t.kind }}" style="display:inline">
+            <button class="btn btn-primary btn-sm">✅ Ça va</button>
+          </form>
+          <a href="/preview/{{ e.id }}#{{ 'photo' if t.kind == 'photo' else 'texte' }}" class="btn btn-ghost btn-sm">🔄 Modifier</a>
+        {% endif %}
       </div>
     </div>
   </div>
 </div>
 {% endif %}
 {% endfor %}
+
+<script>
+function semCopy(id, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.select(); el.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(el.value).then(function () {
+    var old = btn.textContent; btn.textContent = '✓ Copié';
+    setTimeout(function () { btn.textContent = old; }, 1500);
+  });
+}
+</script>
 
 {% endif %}
 {% endblock %}
