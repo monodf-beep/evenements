@@ -27,6 +27,10 @@
 #   Graph n'offre aucune programmation native, scripts/ig_scheduler.py fait le
 #   travail toutes les 15 min) :
 #     */15 * * * * cd /root/evenements && .venv/bin/python3 -m scripts.ig_scheduler >> logs/ig_scheduler.log 2>&1
+#
+#   Rappel Slack hebdomadaire pour la session « Cette semaine » (adapte le jour/
+#   l'heure au créneau que tu veux vraiment tenir — exemple : lundi 9h) :
+#     0 9 * * 1  cd /root/evenements && .venv/bin/python3 -m scripts.semaine_reminder >> logs/semaine_reminder.log 2>&1
 # ============================================================================
 set -uo pipefail
 

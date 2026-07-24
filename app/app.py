@@ -42,6 +42,7 @@ from utils import completeness as comp
 from utils import triage as triage_mod
 from utils import slack
 from utils import organizers
+from utils import semaine as semaine_mod
 from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
@@ -2335,40 +2336,11 @@ def a_completer():
 _SEMAINE_CAP = 20
 
 
-def _text_hash(event: dict) -> str:
-    _, content = build_post(event)
-    return hashlib.md5(content.encode("utf-8")).hexdigest()
-
-
-def _semaine_tasks(conn) -> list[dict]:
-    """Photo à valider + texte à relire, pour chaque événement retenu, + un candidat
-    de handle Instagram organisateur à confirmer/refuser — triés par date
-    d'événement la plus proche (le plus urgent à relire en premier). Les candidats
-    organisateur n'ont pas de date propre : ils passent en tête (traités vite, ils
-    débloquent des mentions pour PLUSIEURS événements futurs d'un coup)."""
-    q = (f"SELECT * FROM events_raw WHERE statut IN "
-         f"({','.join('?' * len(comp.RETAINED_STATUTS))}) AND duplicate_of IS NULL "
-         "ORDER BY COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC")
-    rows = [dict(r) for r in conn.execute(q, comp.RETAINED_STATUTS).fetchall()]
-    tasks = [{"kind": "organisateur", "row": row} for row in organizers.pending_candidates(conn)]
-    for e in rows:
-        if comp.has_real_image(e) and (e.get("image_reviewed_url") or "") != (e.get("url_image") or ""):
-            tasks.append({"kind": "photo", "event": e})
-        if (e.get("text_reviewed_hash") or "") != _text_hash(e):
-            tasks.append({"kind": "texte", "event": e})
-        # Finition Instagram manuelle (choisie sur /reseaux/publish) : reste dans la
-        # file tant que Franck n'a pas cliqué « C'est posté » — pas de comparaison au
-        # contenu (rien à comparer, la case n'est pas ré-évaluée automatiquement).
-        if e.get("ig_manual_mode") and not e.get("ig_manual_done_at"):
-            tasks.append({"kind": "instagram-manuel", "event": e})
-    return tasks
-
-
 @app.route("/semaine")
 @require_auth
 def semaine():
     conn = get_db()
-    tasks = _semaine_tasks(conn)
+    tasks = semaine_mod.tasks(conn)
     since = (datetime.now() - timedelta(days=7)).isoformat(timespec="seconds")
     done_week = conn.execute(
         "SELECT (SELECT COUNT(*) FROM events_raw WHERE image_reviewed_at >= ?) + "
@@ -2396,7 +2368,7 @@ def semaine():
 @require_auth
 def semaine_valider(event_id, champ):
     """Marque une tâche faite (« ça va ») — champ = 'photo' | 'texte' | 'instagram-manuel'.
-    Reprend d'elle-même si le contenu concerné change ensuite (cf. _semaine_tasks) ;
+    Reprend d'elle-même si le contenu concerné change ensuite (cf. utils.semaine.tasks) ;
     'instagram-manuel' ne reprend PAS tout seul (ig_manual_mode reste à 1 tant que
     Franck ne republie pas en manuel), c'est une simple date de fin de tâche."""
     conn = get_db()
@@ -2411,7 +2383,7 @@ def semaine_valider(event_id, champ):
                      (now, ev.get("url_image") or "", event_id))
     elif champ == "texte":
         conn.execute("UPDATE events_raw SET text_reviewed_at=?, text_reviewed_hash=? WHERE id=?",
-                     (now, _text_hash(ev), event_id))
+                     (now, semaine_mod.text_hash(ev), event_id))
     elif champ == "instagram-manuel":
         conn.execute("UPDATE events_raw SET ig_manual_done_at=? WHERE id=?", (now, event_id))
     conn.commit()
@@ -2899,7 +2871,7 @@ def reseaux_publish(event_id: int):
     # tout appel API publie immédiatement (pas de brouillon) — donc quand Franck coche
     # cette case, on n'appelle JAMAIS l'API. Ni compte configuré, ni génération/upload
     # de visuel requis ici : /preview propose légende + visuel source à copier/coller,
-    # et /semaine relance tant que ce n'est pas marqué posté (cf. _semaine_tasks).
+    # et /semaine relance tant que ce n'est pas marqué posté (cf. utils.semaine.tasks).
     if manual_mode:
         keyword = (request.form.get("dm_keyword", "") or "").strip().upper() \
             or social_mod.dm_keyword(ev.get("title") or "")
