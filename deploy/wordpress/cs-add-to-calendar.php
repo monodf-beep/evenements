@@ -151,6 +151,7 @@ add_action('init', function () {
     if (!$start) { status_header(404); exit; }
     $end = cs_atc_epoch($id, 'end');
     if (!$end || $end < $start) { $end = $start + 3600; }
+    $eff_start = cs_atc_effective_start($start, $end);
     $allday = get_post_meta($id, '_EventAllDay', true) === 'yes';
     $url = get_permalink($id);
 
@@ -161,12 +162,13 @@ add_action('init', function () {
     if ($allday) {
         $ls = get_post_meta($id, '_EventStartDate', true);
         $le = get_post_meta($id, '_EventEndDate', true);
-        $ds = $ls ? date('Ymd', strtotime($ls)) : gmdate('Ymd', $start);
+        $ds = ($eff_start !== $start) ? gmdate('Ymd', $eff_start)
+            : ($ls ? date('Ymd', strtotime($ls)) : gmdate('Ymd', $start));
         $de = date('Ymd', ($le ? strtotime($le) : $end) + 86400); // fin exclusive
         $lines[] = 'DTSTART;VALUE=DATE:' . $ds;
         $lines[] = 'DTEND;VALUE=DATE:' . $de;
     } else {
-        $lines[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $start);
+        $lines[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $eff_start);
         $lines[] = 'DTEND:'   . gmdate('Ymd\THis\Z', $end);
     }
     $lines[] = 'SUMMARY:'     . cs_atc_ics_escape(cs_atc_title($id));
@@ -185,6 +187,17 @@ add_action('init', function () {
     exit;
 }, 0);
 
+/** Point de départ EFFECTIF pour "ajouter à mon agenda personnel" (Google/Outlook/
+ * ICS — PAS l'affichage de la fiche elle-même, qui reste la vraie date) : si
+ * l'événement est déjà EN COURS au moment du clic (a commencé, pas encore fini),
+ * on démarre l'entrée à AUJOURD'HUI plutôt qu'à la date de début réelle. Sinon un
+ * événement long (avril → octobre) crée, pour qui clique en juillet, une entrée
+ * d'agenda personnel qui « commence » trois mois dans le passé. */
+function cs_atc_effective_start($start, $end) {
+    $now = time();
+    return ($now > $start && $now < $end) ? $now : $start;
+}
+
 // ---- Le bloc affiché sur la fiche (rendu réutilisable) ----
 function cs_atc_urls($id) {
     if (!$id || get_post_type($id) !== 'tribe_events') { return null; }
@@ -193,6 +206,7 @@ function cs_atc_urls($id) {
     if (!$start) { return null; }                // pas de date -> pas de bouton
     $end = cs_atc_epoch($id, 'end');
     if (!$end || $end < $start) { $end = $start + 3600; }
+    $eff_start = cs_atc_effective_start($start, $end);
     $allday = get_post_meta($id, '_EventAllDay', true) === 'yes';
 
     $title   = cs_atc_title($id);
@@ -203,11 +217,12 @@ function cs_atc_urls($id) {
     if ($allday) {
         $ls = get_post_meta($id, '_EventStartDate', true);
         $le = get_post_meta($id, '_EventEndDate', true);
-        $gs = $ls ? date('Ymd', strtotime($ls)) : gmdate('Ymd', $start);
+        $gs = ($eff_start !== $start) ? gmdate('Ymd', $eff_start)
+            : ($ls ? date('Ymd', strtotime($ls)) : gmdate('Ymd', $start));
         $ge = date('Ymd', ($le ? strtotime($le) : $end) + 86400);
         $dates = $gs . '/' . $ge;
     } else {
-        $dates = gmdate('Ymd\THis\Z', $start) . '/' . gmdate('Ymd\THis\Z', $end);
+        $dates = gmdate('Ymd\THis\Z', $eff_start) . '/' . gmdate('Ymd\THis\Z', $end);
     }
     $google = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
         . '&text='     . rawurlencode($title)
@@ -216,7 +231,7 @@ function cs_atc_urls($id) {
         . '&location=' . rawurlencode($loc);
     $outlook = 'https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent'
         . '&subject=' . rawurlencode($title)
-        . '&startdt=' . rawurlencode(gmdate('Y-m-d\TH:i:s\Z', $start))
+        . '&startdt=' . rawurlencode(gmdate('Y-m-d\TH:i:s\Z', $eff_start))
         . '&enddt='   . rawurlencode(gmdate('Y-m-d\TH:i:s\Z', $end))
         . '&body='    . rawurlencode($details)
         . '&location='. rawurlencode($loc);
