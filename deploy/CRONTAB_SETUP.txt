@@ -1,0 +1,51 @@
+================================================================================
+AGENDA SABAUDA — Crontab Configuration
+================================================================================
+
+Installation (on your VPS as root):
+  crontab -e
+  (paste the entries below)
+  OR
+  crontab deploy/CRONTAB_SETUP.txt
+
+Setup (one-time):
+  chmod +x /root/evenements/deploy/cron_pipeline.sh
+  mkdir -p /root/evenements/logs
+
+================================================================================
+
+# Agenda Sabauda — collecte, préparation, porte qualité
+# Fenêtre de travail glissante : 180 jours par défaut (PIPELINE_WINDOW_DAYS)
+
+# Pipeline complet — quotidien à 6h05
+5 6 * * * /root/evenements/deploy/cron_pipeline.sh >> /root/evenements/logs/cron_pipeline.log 2>&1
+
+# Auto-complétion seule — 6h40 (rattrape ce qui reste, optionnel)
+40 6 * * * /root/evenements/deploy/cron_pipeline.sh autocomplete >> /root/evenements/logs/cron_pipeline.log 2>&1
+
+# Brouillon newsletter — lundi 7h00 (envoi manuel ensuite)
+0 7 * * 1 /root/evenements/deploy/cron_pipeline.sh newsletter >> /root/evenements/logs/cron_pipeline.log 2>&1
+
+# Audit visuel (planches contact + agent vision) — dimanche 5h00
+# Digest Slack des photos suspectes, hebdomadaire (coût non-nul)
+0 5 * * 0 /root/evenements/deploy/cron_pipeline.sh images-audit >> /root/evenements/logs/cron_pipeline.log 2>&1
+
+# Rappel Slack hebdomadaire — lundi 9h00 pour la session « Cette semaine »
+0 9 * * 1 cd /root/evenements && .venv/bin/python3 -m scripts.semaine_reminder >> /root/evenements/logs/semaine_reminder.log 2>&1
+
+# Publications Instagram programmées — toutes les 15 min (scheduler séparé)
+# L'API Graph n'offre pas de programmation native ; ce script fait le travail
+*/15 * * * * cd /root/evenements && .venv/bin/python3 -m scripts.ig_scheduler >> /root/evenements/logs/ig_scheduler.log 2>&1
+
+================================================================================
+
+Monitoring logs:
+  tail -f /root/evenements/logs/cron_pipeline.log
+  tail -f /root/evenements/logs/semaine_reminder.log
+  tail -f /root/evenements/logs/ig_scheduler.log
+
+Testing (before enabling in crontab):
+  /root/evenements/deploy/cron_pipeline.sh          # full pipeline
+  /root/evenements/deploy/cron_pipeline.sh autocomplete     # quick test
+  .venv/bin/python3 -m scripts.semaine_reminder --dry-run   # preview message
+  .venv/bin/python3 -m scripts.ig_scheduler --help  # check options
