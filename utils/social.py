@@ -100,8 +100,12 @@ def _first_sentence(text: str, limit: int = 150) -> str:
     return s
 
 
-def format_date(start: str, end: str, lang: str) -> str:
-    """« vendredi ... » simplifié : « 15 août 2026 », ou « du 15 au 18 août 2026 »."""
+def format_date(start: str, end: str, lang: str, today: "date | None" = None) -> str:
+    """« vendredi ... » simplifié : « 15 août 2026 », « du 15 au 18 août 2026 », ou —
+    pour un événement LONG déjà EN COURS (ex. exposition avril→octobre consultée en
+    juillet) — « jusqu'au 31 octobre 2026 ». Afficher la date de début déjà passée
+    laisserait croire à tort que l'événement est fini, ou pas encore commencé.
+    `today` injectable pour les tests ; par défaut la date du jour."""
     def parts(d):
         m = re.match(r"(\d{4})-(\d{2})-(\d{2})", (d or "").strip())
         return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
@@ -112,6 +116,13 @@ def format_date(start: str, end: str, lang: str) -> str:
     y1, m1, d1 = ps
     if pe and pe != ps:
         y2, m2, d2 = pe
+        try:
+            d_start, d_end = date(y1, m1, d1), date(y2, m2, d2)
+            if d_start < (today or date.today()) <= d_end:
+                jusquau = "jusqu'au" if lang == "fr" else "fino al"
+                return f"{jusquau} {d2} {months[m2]} {y2}"
+        except ValueError:
+            pass  # date invalide (ex. 31 février saisi par erreur) : repli sur le format normal
         du, au = ("du", "au") if lang == "fr" else ("dal", "al")
         if (y1, m1) == (y2, m2):
             return f"{du} {d1} {au} {d2} {months[m1]} {y1}"
@@ -197,6 +208,14 @@ def google_calendar_url(event: dict) -> str:
     end = date(int(me.group(1)), int(me.group(2)), int(me.group(3))) if me else start
     if end < start:
         end = start
+    # Point de départ EFFECTIF : si l'événement est déjà en cours au moment du clic
+    # (long événement démarré il y a des semaines, pas encore fini), on démarre
+    # l'entrée d'agenda personnel à AUJOURD'HUI plutôt qu'à la vraie date de début —
+    # sinon la personne qui clique aujourd'hui se retrouve avec un événement qui
+    # « commence » trois mois dans le passé dans son propre agenda.
+    today = date.today()
+    if start < today <= end:
+        start = today
     title = re.sub(r"\s+", " ", (event.get("title") or "")).strip()
     lieu = (event.get("lieu") or "").strip()
     ville = (event.get("ville") or "").strip()
