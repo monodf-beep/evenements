@@ -2604,6 +2604,12 @@ def reseaux():
                      "SELECT event_id, lang, kind, status FROM social_posts "
                      "WHERE status='ok' AND id IN "
                      "(SELECT MAX(id) FROM social_posts GROUP BY event_id, lang, kind)")}
+    scheduled: dict = {}
+    for r in conn.execute(
+            "SELECT event_id, lang, kind, scheduled_at FROM ig_scheduled_posts "
+            "WHERE status='pending' ORDER BY scheduled_at ASC"):
+        scheduled.setdefault(r["event_id"], []).append(
+            {"lang": r["lang"], "kind": r["kind"], "scheduled_at": r["scheduled_at"]})
     # Ne garder que les événements POSTABLES (complets) et les grouper par territoire.
     by_terr: dict = {}
     detour_pool: list = []
@@ -2637,6 +2643,7 @@ def reseaux():
         e["_published"] = {lg: {k: published.get((e["id"], lg, k)) == "ok"
                                 for k in ("single", "carousel", "story")}
                            for lg in langs}
+        e["_scheduled"] = scheduled.get(e["id"], [])
         return e
 
     accounts = []
@@ -2696,19 +2703,183 @@ def reseaux_rewrite(event_id: int):
     return redirect(url_for("reseaux") + f"#e{event_id}")
 
 
+def _do_publish_instagram(ev: dict, terr_label: str, lang: str, kind: str, conn,
+                          *, caption_override: str = "", alt_override: str = "",
+                          dm_keyword_override: str = "") -> dict:
+    """Chemin de publication PARTAGÉ par la publication immédiate (/reseaux/publish)
+    et la publication programmée (scripts/ig_scheduler.py) : résolution image,
+    construction légende, choix single/carousel/story, appel Graph API, journal
+    social_posts, cross-post Facebook/Threads best-effort. UN SEUL endroit à
+    maintenir pour ces deux appelants — ne PAS dupliquer cette logique ailleurs.
+    Ne flashe rien, ne redirige rien : renvoie {ok, error, title, terr_label,
+    cross_done} et laisse l'appelant décider de la présentation."""
+    from utils import social as social_mod, social_image, social_overlay, wp_media
+    from utils import instagram_publish as ig
+    event_id = ev["id"]
+    title = (ev.get("title") or "")[:70]
+
+    if not ig.configured(terr_label):
+        return {"ok": False, "title": title, "terr_label": terr_label,
+                "error": f"Compte Instagram non configuré pour « {terr_label} » — "
+                         f"voir docs/RESEAUX_INSTAGRAM_SETUP.md."}
+
+    # Priorité à la copie déjà hébergée dans NOTRE médiathèque WordPress (posée au
+    # publish AS) plutôt qu'à l'image source d'origine : évite de retélécharger depuis
+    # le site source à chaque publication Instagram, où certains sites bloquent le
+    # téléchargement par un défi anti-robot (Cloudflare…) — notre copie n'a jamais ce
+    # souci. Repli sur l'image source si l'événement n'a pas encore été publié sur AS.
+    img_url = (ev.get("wp_raw_image_url_as") or "").strip() or event_image(ev)
+    try:
+        img_resp = requests.get(
+            img_url, timeout=20,
+            headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                                   "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                     "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                     "Referer": f"{urlparse(img_url).scheme}://{urlparse(img_url).netloc}/"})
+        # Cloudflare (et défenses anti-robot similaires) répond parfois 200 avec une
+        # page de défi JS plutôt qu'un 403 franc — le Content-Type révèle le pot aux
+        # roses. On distingue ce cas d'un simple lien cassé : un en-tête ne le
+        # débloquera jamais, il faudrait un vrai navigateur (hors périmètre ici).
+        cf_challenge = img_resp.headers.get("cf-mitigated", "") == "challenge"
+        img_resp.raise_for_status()
+        content_type = img_resp.headers.get("Content-Type", "").split(";")[0].strip()
+        if not content_type.startswith("image/"):
+            if cf_challenge:
+                err = (f"« {title} » — le site source protège ses images par un défi "
+                       "anti-robot Cloudflare : aucun en-tête ne peut le passer, il "
+                       "faudrait un vrai navigateur. Choisis un autre événement pour "
+                       "ce post, ou dépose la photo manuellement.")
+            else:
+                err = (f"« {title} » — l'URL de la photo n'a pas renvoyé une image "
+                       f"(reçu : {content_type or 'inconnu'}). Source probablement "
+                       "protégée contre le hotlinking, ou lien cassé.")
+            return {"ok": False, "title": title, "terr_label": terr_label, "error": err}
+        src = img_resp.content
+    except requests.HTTPError as exc:
+        cf = exc.response is not None and exc.response.headers.get("cf-mitigated") == "challenge"
+        if cf:
+            err = (f"« {title} » — le site source bloque avec un défi anti-robot "
+                   "Cloudflare (aucun en-tête ne le contourne). Choisis un autre "
+                   "événement pour ce post, ou dépose la photo manuellement.")
+        else:
+            err = f"« {title} » — photo source injoignable ({exc})."
+        return {"ok": False, "title": title, "terr_label": terr_label, "error": err}
+    except requests.RequestException as exc:
+        return {"ok": False, "title": title, "terr_label": terr_label,
+                "error": f"« {title} » — photo source injoignable ({exc})."}
+
+    # Légende / texte alternatif : ceux édités à la main dans /reseaux si fournis,
+    # sinon l'auto-généré.
+    caption = caption_override or social_mod.caption(ev, lang)
+    date_str = social_mod.format_date(ev.get("date_event_start", ""),
+                                      ev.get("date_event_end", ""), lang)
+    where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
+    alt = alt_override or social_mod.alt_text(ev, lang)
+    # Mot-clé DM (commentaire → réponse privée) : édité à la main si fourni, sinon
+    # auto-déduit du titre — PERSISTÉ (pas juste au moment du clic, le webhook devra
+    # le relire n'importe quand plus tard).
+    keyword = dm_keyword_override.strip().upper() or social_mod.dm_keyword(ev.get("title") or "")
+    if keyword != (ev.get("dm_keyword") or ""):
+        conn.execute("UPDATE events_raw SET dm_keyword=? WHERE id=?", (keyword, event_id))
+        conn.commit()
+    territoire = ev.get("territoire", "")
+    ville = ev.get("ville", "")
+    full_title = ev.get("title", "")
+    try:
+        if kind == "carousel":
+            slide1 = social_overlay.compose(
+                "carrousel-1", territoire, src, title=full_title, date_str=date_str, ville=ville)
+            slides = social_image.carousel(
+                src, title=full_title, date_str=date_str, where=where,
+                territoire=territoire, ville=ville, slide1_override=slide1)
+            urls = []
+            for i, sl in enumerate(slides):
+                url = wp_media.upload_bytes(
+                    social_image.to_jpeg(sl), f"ig-{event_id}-{lang}-{i}.jpg", alt=alt)
+                if not url:
+                    raise RuntimeError("upload WordPress échoué")
+                urls.append(url)
+            result = ig.publish_carousel(terr_label, urls, caption, alt_text=alt)
+            cross_url = urls[0] if urls else None
+        elif kind == "story":
+            img = social_overlay.compose(
+                "story-9x16", territoire, src, title=full_title, date_str=date_str,
+                where=where, ville=ville)
+            if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
+                img = social_image.story(
+                    src, title=full_title, date_str=date_str, territoire=territoire, ville=ville)
+            url = wp_media.upload_bytes(
+                social_image.to_jpeg(img), f"ig-{event_id}-{lang}-story.jpg", alt=alt)
+            if not url:
+                raise RuntimeError("upload WordPress échoué")
+            result = ig.publish_story(terr_label, url)
+            cross_url = url
+        else:
+            img = social_overlay.compose(
+                "post-4x5", territoire, src, title=full_title, date_str=date_str,
+                where=where, ville=ville)
+            if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
+                img = social_image.single_post(
+                    src, title=full_title, date_str=date_str, territoire=territoire, ville=ville)
+            url = wp_media.upload_bytes(
+                social_image.to_jpeg(img), f"ig-{event_id}-{lang}.jpg", alt=alt)
+            if not url:
+                raise RuntimeError("upload WordPress échoué")
+            result = ig.publish_single(terr_label, url, caption, alt_text=alt)
+            cross_url = url
+    except Exception as exc:  # visuel/upload/API : jamais de 500, on journalise et informe
+        result = {"ok": False, "error": str(exc)}
+        cross_url = None
+
+    conn.execute(
+        "INSERT INTO social_posts (event_id, territoire_label, lang, kind, status, "
+        "ig_media_id, error, platform) VALUES (?,?,?,?,?,?,?,?)",
+        (event_id, terr_label, lang, kind, "ok" if result.get("ok") else "error",
+         result.get("media_id"), result.get("error"), "instagram"))
+
+    # Cross-post best-effort : « un contenu, 3 canaux » (cf. RESEAUX_SOCIAUX_PLAN §4).
+    # Seulement pour le post simple, seulement si Instagram a réussi (même image, même
+    # légende), et SEULEMENT si le territoire est configuré — jamais bloquant, jamais
+    # d'échec Instagram à cause de Facebook/Threads.
+    cross_done = []
+    if result.get("ok") and kind == "single" and cross_url:
+        from utils import facebook_publish as fb, threads_publish as th
+        for platform_name, label, mod in (("facebook", "Facebook", fb),
+                                          ("threads", "Threads", th)):
+            if not mod.configured(terr_label):
+                continue
+            fn = mod.publish_photo if platform_name == "facebook" else mod.publish_single
+            r = fn(terr_label, cross_url, caption)
+            conn.execute(
+                "INSERT INTO social_posts (event_id, territoire_label, lang, kind, "
+                "status, ig_media_id, error, platform) VALUES (?,?,?,?,?,?,?,?)",
+                (event_id, terr_label, lang, kind, "ok" if r.get("ok") else "error",
+                 r.get("post_id") or r.get("media_id"), r.get("error"), platform_name))
+            if r.get("ok"):
+                cross_done.append(label)
+
+    conn.commit()
+    return {"ok": bool(result.get("ok")), "error": result.get("error"),
+            "title": title, "terr_label": terr_label, "cross_done": cross_done}
+
+
 @app.route("/reseaux/publish/<int:event_id>", methods=["POST"])
 @require_auth
 def reseaux_publish(event_id: int):
     """Génère le visuel (Pillow) + upload sur agendasabauda.eu + publie sur le compte
     Instagram du territoire. Nécessite IG_ACCOUNT_ID_<SLUG> / IG_TOKEN_<SLUG> pour ce
     territoire (cf. docs/RESEAUX_INSTAGRAM_SETUP.md) — sinon message clair, rien ne
-    casse. Idempotent : republier exige une confirmation explicite (force=1)."""
-    from utils import social as social_mod, social_image, social_overlay, wp_media
+    casse. Idempotent : republier exige une confirmation explicite (force=1). Un
+    scheduled_at futur enregistre l'intention (ig_scheduled_posts) au lieu de publier
+    tout de suite — c'est scripts/ig_scheduler.py (cron séparé) qui appellera alors
+    _do_publish_instagram au bon moment, EXACTEMENT le même chemin qu'ici."""
+    from utils import social as social_mod
     from utils import instagram_publish as ig
     lang = request.form.get("lang", "fr")
     kind = request.form.get("kind", "single")
     force = request.form.get("force") == "1"
     manual_mode = request.form.get("ig_manual_mode") == "1"
+    scheduled_at = (request.form.get("scheduled_at", "") or "").strip()
     conn = get_db()
     row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
     if not row:
@@ -2755,147 +2926,34 @@ def reseaux_publish(event_id: int):
             flash(f"↩️ « {title} » déjà publié — republie avec confirmation si voulu.", "err")
             return redirect(url_for("reseaux") + f"#e{event_id}")
 
-    # Priorité à la copie déjà hébergée dans NOTRE médiathèque WordPress (posée au
-    # publish AS) plutôt qu'à l'image source d'origine : évite de retélécharger depuis
-    # le site source à chaque publication Instagram, où certains sites bloquent le
-    # téléchargement par un défi anti-robot (Cloudflare…) — notre copie n'a jamais ce
-    # souci. Repli sur l'image source si l'événement n'a pas encore été publié sur AS.
-    img_url = (ev.get("wp_raw_image_url_as") or "").strip() or event_image(ev)
-    try:
-        img_resp = requests.get(
-            img_url, timeout=20,
-            headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                                   "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-                     "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-                     "Referer": f"{urlparse(img_url).scheme}://{urlparse(img_url).netloc}/"})
-        # Cloudflare (et défenses anti-robot similaires) répond parfois 200 avec une
-        # page de défi JS plutôt qu'un 403 franc — le Content-Type révèle le pot aux
-        # roses. On distingue ce cas d'un simple lien cassé : un en-tête ne le
-        # débloquera jamais, il faudrait un vrai navigateur (hors périmètre ici).
-        cf_challenge = img_resp.headers.get("cf-mitigated", "") == "challenge"
-        img_resp.raise_for_status()
-        content_type = img_resp.headers.get("Content-Type", "").split(";")[0].strip()
-        if not content_type.startswith("image/"):
-            conn.close()
-            if cf_challenge:
-                flash(f"❌ « {title} » — le site source protège ses images par un "
-                      "défi anti-robot Cloudflare : aucun en-tête ne peut le passer, "
-                      "il faudrait un vrai navigateur. Choisis un autre événement "
-                      "pour ce post, ou dépose la photo manuellement.", "err")
-            else:
-                flash(f"❌ « {title} » — l'URL de la photo n'a pas renvoyé une image "
-                      f"(reçu : {content_type or 'inconnu'}). Source probablement "
-                      "protégée contre le hotlinking, ou lien cassé.", "err")
-            return redirect(url_for("reseaux") + f"#e{event_id}")
-        src = img_resp.content
-    except requests.HTTPError as exc:
-        conn.close()
-        cf = exc.response is not None and exc.response.headers.get("cf-mitigated") == "challenge"
-        if cf:
-            flash(f"❌ « {title} » — le site source bloque avec un défi anti-robot "
-                  "Cloudflare (aucun en-tête ne le contourne). Choisis un autre "
-                  "événement pour ce post, ou dépose la photo manuellement.", "err")
-        else:
-            flash(f"❌ « {title} » — photo source injoignable ({exc}).", "err")
-        return redirect(url_for("reseaux") + f"#e{event_id}")
-    except requests.RequestException as exc:
-        conn.close()
-        flash(f"❌ « {title} » — photo source injoignable ({exc}).", "err")
-        return redirect(url_for("reseaux") + f"#e{event_id}")
-
-    # Légende / texte alternatif : ceux édités à la main dans /reseaux si fournis,
-    # sinon l'auto-généré.
-    caption_override = (request.form.get("caption", "") or "").strip()
-    caption = caption_override or social_mod.caption(ev, lang)
-    date_str = social_mod.format_date(ev.get("date_event_start", ""),
-                                      ev.get("date_event_end", ""), lang)
-    where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
-    alt_override = (request.form.get("alt_text", "") or "").strip()
-    alt = alt_override or social_mod.alt_text(ev, lang)
-    # Mot-clé DM (commentaire → réponse privée) : édité à la main si fourni, sinon
-    # auto-déduit du titre — PERSISTÉ (pas juste au moment du clic, le webhook devra
-    # le relire n'importe quand plus tard).
-    keyword = (request.form.get("dm_keyword", "") or "").strip().upper() \
-        or social_mod.dm_keyword(ev.get("title") or "")
-    if keyword != (ev.get("dm_keyword") or ""):
-        conn.execute("UPDATE events_raw SET dm_keyword=? WHERE id=?", (keyword, event_id))
-        conn.commit()
-    territoire = ev.get("territoire", "")
-    ville = ev.get("ville", "")
-    full_title = ev.get("title", "")
-    try:
-        if kind == "carousel":
-            slide1 = social_overlay.compose(
-                "carrousel-1", territoire, src, title=full_title, date_str=date_str, ville=ville)
-            slides = social_image.carousel(
-                src, title=full_title, date_str=date_str, where=where,
-                territoire=territoire, ville=ville, slide1_override=slide1)
-            urls = []
-            for i, sl in enumerate(slides):
-                url = wp_media.upload_bytes(
-                    social_image.to_jpeg(sl), f"ig-{event_id}-{lang}-{i}.jpg", alt=alt)
-                if not url:
-                    raise RuntimeError("upload WordPress échoué")
-                urls.append(url)
-            result = ig.publish_carousel(terr_label, urls, caption, alt_text=alt)
-        elif kind == "story":
-            img = social_overlay.compose(
-                "story-9x16", territoire, src, title=full_title, date_str=date_str,
-                where=where, ville=ville)
-            if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
-                img = social_image.story(
-                    src, title=full_title, date_str=date_str, territoire=territoire, ville=ville)
-            url = wp_media.upload_bytes(
-                social_image.to_jpeg(img), f"ig-{event_id}-{lang}-story.jpg", alt=alt)
-            if not url:
-                raise RuntimeError("upload WordPress échoué")
-            result = ig.publish_story(terr_label, url)
-        else:
-            img = social_overlay.compose(
-                "post-4x5", territoire, src, title=full_title, date_str=date_str,
-                where=where, ville=ville)
-            if img is None:  # pas d'overlay pour ce territoire -> repli Pillow
-                img = social_image.single_post(
-                    src, title=full_title, date_str=date_str, territoire=territoire, ville=ville)
-            url = wp_media.upload_bytes(
-                social_image.to_jpeg(img), f"ig-{event_id}-{lang}.jpg", alt=alt)
-            if not url:
-                raise RuntimeError("upload WordPress échoué")
-            result = ig.publish_single(terr_label, url, caption, alt_text=alt)
-    except Exception as exc:  # visuel/upload/API : jamais de 500, on journalise et informe
-        result = {"ok": False, "error": str(exc)}
-
-    conn.execute(
-        "INSERT INTO social_posts (event_id, territoire_label, lang, kind, status, "
-        "ig_media_id, error, platform) VALUES (?,?,?,?,?,?,?,?)",
-        (event_id, terr_label, lang, kind, "ok" if result.get("ok") else "error",
-         result.get("media_id"), result.get("error"), "instagram"))
-
-    # Cross-post best-effort : « un contenu, 3 canaux » (cf. RESEAUX_SOCIAUX_PLAN §4).
-    # Seulement pour le post simple, seulement si Instagram a réussi (même image, même
-    # légende), et SEULEMENT si le territoire est configuré — jamais bloquant, jamais
-    # d'échec Instagram à cause de Facebook/Threads.
-    cross_done = []
-    if result.get("ok") and kind == "single":
-        from utils import facebook_publish as fb, threads_publish as th
-        for platform_name, label, mod in (("facebook", "Facebook", fb),
-                                          ("threads", "Threads", th)):
-            if not mod.configured(terr_label):
-                continue
-            fn = mod.publish_photo if platform_name == "facebook" else mod.publish_single
-            r = fn(terr_label, url, caption)
+    # Programmation : Meta n'offre aucune programmation native pour un outil tiers,
+    # donc on garde nous-mêmes l'intention et un cron à nous (ig_scheduler.py)
+    # appellera _do_publish_instagram au moment choisi — rien n'est publié ici.
+    if scheduled_at:
+        try:
+            when = datetime.fromisoformat(scheduled_at)
+        except ValueError:
+            when = None
+        if when and when > datetime.now():
             conn.execute(
-                "INSERT INTO social_posts (event_id, territoire_label, lang, kind, "
-                "status, ig_media_id, error, platform) VALUES (?,?,?,?,?,?,?,?)",
-                (event_id, terr_label, lang, kind, "ok" if r.get("ok") else "error",
-                 r.get("post_id") or r.get("media_id"), r.get("error"), platform_name))
-            if r.get("ok"):
-                cross_done.append(label)
+                "INSERT INTO ig_scheduled_posts (event_id, territoire_label, lang, "
+                "kind, scheduled_at, status) VALUES (?,?,?,?,?,'pending')",
+                (event_id, terr_label, lang, kind, when.isoformat(timespec="minutes")))
+            conn.commit()
+            conn.close()
+            flash(f"🗓️ « {title} » programmé pour le {when.strftime('%d/%m/%Y %H:%M')}.", "ok")
+            return redirect(url_for("reseaux") + f"#e{event_id}")
+        # Date invalide ou passée : on ignore silencieusement et on publie tout de
+        # suite (mieux vaut publier que perdre le clic de Franck).
 
-    conn.commit()
+    result = _do_publish_instagram(
+        ev, terr_label, lang, kind, conn,
+        caption_override=(request.form.get("caption", "") or "").strip(),
+        alt_override=(request.form.get("alt_text", "") or "").strip(),
+        dm_keyword_override=(request.form.get("dm_keyword", "") or ""))
     conn.close()
-    if result.get("ok"):
-        extra = f" + {', '.join(cross_done)}" if cross_done else ""
+    if result["ok"]:
+        extra = f" + {', '.join(result['cross_done'])}" if result.get("cross_done") else ""
         flash(f"🚀 « {title} » publié sur Instagram ({terr_label}, {lang.upper()}){extra}.", "ok")
     else:
         flash(f"❌ Échec publication « {title} » : {result.get('error')}", "err")

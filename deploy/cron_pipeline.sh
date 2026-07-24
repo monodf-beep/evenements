@@ -22,6 +22,11 @@
 #     0 5 * * 0  /root/evenements/deploy/cron_pipeline.sh images-audit >> /root/evenements/logs/cron_pipeline.log 2>&1
 #
 #   (rends-le exécutable une fois : chmod +x /root/evenements/deploy/cron_pipeline.sh)
+#
+#   Publications Instagram PROGRAMMÉES (cron SÉPARÉ, hors modes ci-dessus — l'API
+#   Graph n'offre aucune programmation native, scripts/ig_scheduler.py fait le
+#   travail toutes les 15 min) :
+#     */15 * * * * cd /root/evenements && .venv/bin/python3 -m scripts.ig_scheduler >> logs/ig_scheduler.log 2>&1
 # ============================================================================
 set -uo pipefail
 
