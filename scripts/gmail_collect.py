@@ -178,10 +178,21 @@ def _walk(payload: dict):
 
 
 def parse_message(msg: dict) -> dict:
-    """Extrait expéditeur, objet, date, corps texte et 1re image d'un message Gmail."""
+    """Extrait expéditeur, objet, date et corps texte d'un message Gmail.
+
+    PAS d'image ici (volontaire) : une newsletter décrit souvent PLUSIEURS
+    événements dans le MÊME email, et la 1re <img> du HTML est quasi toujours
+    l'en-tête/logo du template de l'expéditeur — pas une photo de l'événement.
+    Constaté en masse en production : le même en-tête Mailinblue (« newsletter »)
+    collé comme url_image sur 40 événements sans AUCUN rapport entre eux (Katy
+    Perry, Orelsan, un salon de peinture, l'orchestre de la Suisse romande…),
+    simplement parce qu'ils venaient d'emails du même expéditeur. On laisse
+    url_image vide : la chaîne existante (scripts.visuals → og:image de la VRAIE
+    page de l'événement si l'URL a été extraite, sinon Commons, sinon bannière)
+    trouve une image bien plus fiable ensuite."""
     payload = msg.get("payload", {})
     headers = payload.get("headers", [])
-    text_plain, text_html, image = "", "", ""
+    text_plain, text_html = "", ""
     for part in _walk(payload):
         mime = part.get("mimeType", "")
         body = part.get("body", {})
@@ -190,23 +201,15 @@ def parse_message(msg: dict) -> dict:
             text_plain = _b64(data)
         elif mime == "text/html" and data and not text_html:
             text_html = _b64(data)
-        elif mime.startswith("image/") and not image:
-            # image attachée — on garde l'URL si dispo (rare en newsletter), sinon ignore
-            image = body.get("attachmentId", "") and ""
     # On PRÉFÈRE le HTML avec liens préservés (les URLs d'articles sont dans les
     # <a href>) ; le text/plain est le repli quand il n'y a pas de partie HTML.
     body_text = _linkify_html(text_html) if text_html else text_plain
-    if not image:
-        m = re.search(r'<img[^>]+src=["\']?(https?://[^"\'>\s]+)', text_html, re.I)
-        if m:
-            image = m.group(1)
     return {
         "message_id": msg.get("id", ""),
         "sender": _header(headers, "From"),
         "subject": _header(headers, "Subject"),
         "date": _header(headers, "Date"),
         "body": body_text[:6000],
-        "image": image,
     }
 
 
@@ -294,7 +297,7 @@ def insert_events(conn: sqlite3.Connection, events: list, email: dict,
             (ev.get("ville") or "").strip(),
             territoire,
             url,
-            email.get("image", ""),
+            "",  # url_image : jamais depuis l'email (cf. parse_message) — résolu ensuite par scripts.visuals
             email.get("sender", "")[:200],
         ))
         if cur.rowcount:
