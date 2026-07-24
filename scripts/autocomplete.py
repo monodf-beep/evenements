@@ -129,7 +129,7 @@ def _fill_venue(ev: dict, client, model_extract: str, allow_web: bool,
     return {}
 
 
-def _fill_image(ev: dict, client, blocked, banners, allow_web: bool,
+def _fill_image(ev: dict, client, blocked, banners, cat_banners, allow_web: bool,
                 want_banner: bool, conn, event_id: int) -> dict:
     # Déjà une vraie photo → rien à faire.
     if comp.has_real_image(ev):
@@ -150,7 +150,7 @@ def _fill_image(ev: dict, client, blocked, banners, allow_web: bool,
     # 2) chaîne déterministe (og:image → Commons → bannière). On ne garde la
     #    bannière que si on veut boucher le trou pour atteindre la complétude.
     from scripts.visuals import resolve_image
-    url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners)
+    url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners, cat_banners=cat_banners)
     if url and (source != "banner" or (want_banner and comp._empty(ev.get("url_image")))):
         out = {"url_image": url, "image_credit": credit, "image_source": source}
         if not has_manual_focal:
@@ -159,7 +159,7 @@ def _fill_image(ev: dict, client, blocked, banners, allow_web: bool,
     return {}
 
 
-def complete_event(ev: dict, conn, client, blocked, banners, *,
+def complete_event(ev: dict, conn, client, blocked, banners, cat_banners, *,
                    allow_web: bool, want_banner: bool, model_extract: str) -> dict:
     """Applique les passes de complétion et renvoie l'événement à jour (en base)."""
     updates: dict = {}
@@ -167,7 +167,7 @@ def complete_event(ev: dict, conn, client, blocked, banners, *,
     for filler in (
         lambda: _fill_date(ev, client, model_extract, allow_web, conn, eid),
         lambda: _fill_venue(ev, client, model_extract, allow_web, conn, eid),
-        lambda: _fill_image({**ev, **updates}, client, blocked, banners,
+        lambda: _fill_image({**ev, **updates}, client, blocked, banners, cat_banners,
                             allow_web, want_banner, conn, eid),
     ):
         got = filler()
@@ -275,9 +275,11 @@ def main(argv=None) -> int:
         log.warning("ANTHROPIC_API_KEY absente : complétion déterministe seulement.")
     model_extract = os.getenv("ANTHROPIC_MODEL_EXTRACT", "claude-haiku-4-5")
 
-    from utils.sources import load_blocked_image_domains, load_territory_images
+    from utils.sources import (load_blocked_image_domains, load_territory_images,
+                               load_territory_category_images)
     blocked = load_blocked_image_domains()
     banners = load_territory_images()
+    cat_banners = load_territory_category_images()
 
     allow_web = not args.no_web
     want_banner = not args.no_banner
@@ -291,7 +293,7 @@ def main(argv=None) -> int:
     wp_as_base = (os.getenv("WP_AS_URL", "") or "").rstrip("/")
 
     for i, ev in enumerate(incomplete, 1):
-        ev = complete_event(ev, conn, client, blocked, banners,
+        ev = complete_event(ev, conn, client, blocked, banners, cat_banners,
                             allow_web=allow_web, want_banner=want_banner,
                             model_extract=model_extract)
         now_complete = comp.is_complete(ev)

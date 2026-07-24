@@ -63,7 +63,8 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import images
 from utils.sources import (is_logo_image, load_blocked_image_domains,
-                           load_territory_images, pick_image)
+                           load_territory_images, load_territory_category_images,
+                           pick_banner_image)
 from scripts.scraper_events import init_db
 from scripts.visuals import resolve_image
 from scripts.publisher_as import publish_to_as
@@ -338,6 +339,7 @@ def main(argv=None) -> int:
     verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
 
     banners = load_territory_images()
+    cat_banners = load_territory_category_images()
     blocked = load_blocked_image_domains()
     stats = {"og": 0, "page": 0, "commons": 0, "banner": 0, "none": 0}
     pushed = 0
@@ -353,7 +355,8 @@ def main(argv=None) -> int:
             ev["url_image"] = ""
         url, credit, source, focal_x, focal_y = resolve_image(
             ev, client, blocked, banners,
-            verify_client=verify_client, verify_model=verify_model)
+            verify_client=verify_client, verify_model=verify_model,
+            cat_banners=cat_banners)
 
         # Garde --unverified : même si l'image résolue est IDENTIQUE à l'ancienne (elle
         # était donc déjà correcte), on enregistre sa source en base pour qu'elle ne
@@ -370,7 +373,8 @@ def main(argv=None) -> int:
         # Récupération : si la ré-résolution retombe sur l'image parasite, on la refuse
         # (repli bannière territoire plutôt que de re-publier le bandeau hors-sujet).
         if args.bad_url and url and args.bad_url in url:
-            url = pick_image(ev.get("territoire", ""), str(ev["id"]), banners) or ""
+            url = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
+                                    str(ev["id"]), cat_banners, banners) or ""
             credit, source = "", ("banner" if url else "none")
 
         # Garde --recheck : on ne re-pousse QUE si l'image change vraiment (sinon

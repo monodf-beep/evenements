@@ -35,9 +35,9 @@ from utils.logger import get_logger
 # On réutilise la mise en forme de l'article et le mapping de catégorie du
 # publisher historique (mêmes règles éditoriales, y compris charte §8 sur le radar).
 from scripts.publisher import build_post, _map_category, _upload_featured_media
-# Détection des logos/pictogrammes + bannières de repli par territoire + filtres image.
-from utils.sources import (is_logo_image, load_territory_images, pick_image,
-                           is_blocked_image, load_blocked_image_domains)
+# Détection des logos/pictogrammes + bannières de repli par territoire × catégorie + filtres image.
+from utils.sources import (is_logo_image, load_territory_images, load_territory_category_images,
+                           pick_banner_image, is_blocked_image, load_blocked_image_domains)
 
 log = get_logger("publisher_as")
 
@@ -121,11 +121,12 @@ def _is_logo(url) -> bool:
     return bool(url) and is_logo_image(url)
 
 
-def _banner(event: dict, banners: dict) -> str:
-    """Bannière de repli (vignette générique propre) pour le territoire, ou "".
-    Déterministe par id → varie d'un événement à l'autre au sein d'un territoire."""
-    return pick_image(event.get("territoire", ""), key=str(event.get("id", "")),
-                      images=banners)
+def _banner(event: dict, banners: dict, cat_banners: dict | None = None) -> str:
+    """Bannière de repli territoire × catégorie (vignette pertinente propre), ou
+    la bannière générique du territoire si la catégorie est absente/inconnue."""
+    return pick_banner_image(event.get("territoire", ""), event.get("llm_categorie", ""),
+                             key=str(event.get("id", "")),
+                             cat_images=cat_banners or {}, fallback_images=banners)
 
 
 def _is_radar(event: dict) -> bool:
@@ -327,7 +328,7 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
     # Repli 2 — BANNIÈRE TERRITOIRE quand tout le reste a échoué (logo écarté sans page
     # exploitable, image bloquée + page bloquée, aucune image). Comble les cartes vides.
     if not media_id:
-        banner = _banner(event, load_territory_images())
+        banner = _banner(event, load_territory_images(), load_territory_category_images())
         if banner:
             if _is_logo(url_image):
                 log.info("Logo écarté au push (%s) → bannière territoire", url_image)

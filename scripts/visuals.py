@@ -38,7 +38,8 @@ from utils.logger import get_logger
 from utils.images import (commons_search, fetch_og_image, fetch_content_image,
                           remote_dims, looks_like_banner_shape, MIN_DIM)
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
-                           load_territory_images, pick_image)
+                           load_territory_images, load_territory_category_images,
+                           pick_banner_image)
 from utils import image_verify
 from scripts.scraper_events import init_db
 
@@ -145,7 +146,8 @@ def _verified(url: str, ev: dict, verify_client, verify_model: str,
 
 def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
                   verify_client=None,
-                  verify_model: str = "claude-haiku-4-5") -> tuple[str, str, str, float, float]:
+                  verify_model: str = "claude-haiku-4-5",
+                  cat_banners: dict | None = None) -> tuple[str, str, str, float, float]:
     """Renvoie (url, credit, source, focal_x, focal_y) selon la chaîne 4 étages. url=''
     seulement si aucune bannière n'est configurée pour le territoire. focal_x/y ∈ [0,1] :
     point focal suggéré par l'agent vision (visage / texte en bas à protéger d'un
@@ -208,8 +210,9 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
     # pertinente — toujours préférable à la bannière générique.
     if content_fallback:
         return content_fallback
-    # Étage 4 — bannière de marque du territoire (repli garanti, jamais parasite).
-    banner = pick_image(ev.get("territoire", ""), key=str(ev["id"]), images=banners)
+    # Étage 4 — bannière territoire × catégorie (repli garanti, jamais parasite).
+    banner = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
+                               str(ev["id"]), cat_banners or {}, banners)
     if banner:
         return banner, "", "banner", 0.5, 0.5
     return "", "", "", 0.5, 0.5
@@ -263,13 +266,15 @@ def main(argv=None) -> int:
         log.warning("ANTHROPIC_API_KEY absente : pas de recherche Commons, og:image + bannière seulement.")
 
     banners = load_territory_images()
+    cat_banners = load_territory_category_images()
     blocked = load_blocked_image_domains()
     verify_client = client if args.verify else None
     verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
     counts = {"og": 0, "page": 0, "commons": 0, "banner": 0, "none": 0}
     for ev in rows:
         url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners,
-                                                     verify_client=verify_client, verify_model=verify_model)
+                                                     verify_client=verify_client, verify_model=verify_model,
+                                                     cat_banners=cat_banners)
         if not url:
             counts["none"] += 1
             log.warning("[%s] aucun visuel (pas de bannière pour %s)", ev["id"], ev.get("territoire"))

@@ -391,6 +391,40 @@ def pick_image(territory: str, key: str, images: dict[str, list[str]]) -> str:
     return pool[idx]
 
 
+_CATEGORY_IMAGES_FILE = Path(__file__).resolve().parent.parent / "config" / "territory_category_images.txt"
+
+
+def load_territory_category_images(path: Path | None = None) -> dict[str, dict[str, str]]:
+    """Charge les images de substitution par (territoire, catégorie) :
+    {territoire: {catégorie: url}} — plus pertinentes visuellement que la simple
+    bannière de marque par territoire (config/territory_images.txt, qui reste le
+    repli ultime si la catégorie est absente/inconnue)."""
+    path = path or _CATEGORY_IMAGES_FILE
+    images: dict[str, dict[str, str]] = {}
+    if not path.exists():
+        return images
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or line.count(";") < 2:
+            continue
+        territory, category, url = (p.strip() for p in line.split(";", 2))
+        if territory and category and url:
+            images.setdefault(territory, {})[category] = url
+    return images
+
+
+def pick_banner_image(territory: str, category: str, key: str,
+                      cat_images: dict[str, dict[str, str]],
+                      fallback_images: dict[str, list[str]]) -> str:
+    """Bannière de repli : territoire × catégorie si disponible (plus pertinente),
+    sinon la bannière générique du territoire (repli historique, catégorie absente/
+    inconnue ou territoire hors des 4 couverts par le set catégorisé)."""
+    url = (cat_images.get(territory) or {}).get(category, "")
+    if url:
+        return url
+    return pick_image(territory, key, fallback_images)
+
+
 _OFFICIAL_FILE = Path(__file__).resolve().parent.parent / "config" / "official_links.txt"
 
 
