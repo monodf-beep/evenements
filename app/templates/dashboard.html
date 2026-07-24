@@ -119,12 +119,20 @@
 </div>
 </details>
 
-{% for key, t in runs %}
-  {% if loop.first %}<div class="section-title">Derniers lancements</div>{% endif %}
-  <div class="card" style="padding:.6rem .9rem;margin-bottom:.5rem"><strong>{{ t.icon }} {{ t.label }}</strong>
-    <span class="muted" style="font-size:.8rem">· {{ t.started }}</span><br>
-    <code style="font-size:.8rem;color:#475569">{{ t.tail }}</code></div>
-{% endfor %}
+{% if runs %}
+{% set ns = namespace(fail=0) %}
+{% for key, t in runs %}{% if '✗' in t.tail or 'Traceback' in t.tail or 'Error' in t.tail %}{% set ns.fail = ns.fail + 1 %}{% endif %}{% endfor %}
+<details class="box"{% if ns.fail %} open{% endif %}>
+  <summary>🕓 Derniers lancements <span class="muted text-sm">({{ runs|length }}{% if ns.fail %} · <span style="color:#b91c1c">{{ ns.fail }} échec{{ 's' if ns.fail != 1 }}</span>{% endif %})</span></summary>
+  <div style="margin-top:.6rem">
+  {% for key, t in runs %}
+    <div class="card" style="padding:.6rem .9rem;margin-bottom:.5rem"><strong>{{ t.icon }} {{ t.label }}</strong>
+      <span class="muted" style="font-size:.8rem">· {{ t.started }}</span><br>
+      <code style="font-size:.8rem;color:#475569">{{ t.tail }}</code></div>
+  {% endfor %}
+  </div>
+</details>
+{% endif %}
 
 <!-- Coûts -->
 <div class="section-title">Coûts API</div>
@@ -212,50 +220,50 @@
   </div>
 </details>
 
-<!-- Configuration (repliable) -->
-<details class="box" id="sources">
-  <summary>⚙️ Sources &amp; newsletters</summary>
-  <div class="cols" style="margin-top:.8rem">
-    <div>
-      <h3>Sources RSS ({{ src_total }})</h3>
-      <div class="table-wrap"><table>
-        <tr><th>Territoire</th><th>Flux</th></tr>
-        {% for terr in territories %}<tr><td>{{ terr }}</td><td>{{ src_counts.get(terr, 0) }}</td></tr>{% endfor %}
-      </table></div>
-    </div>
-    <div>
-      {% set n_todo = newsletters | selectattr('statut', 'in', ['candidat','attente']) | list | length %}
-      <h3>📬 Newsletters ({{ nl_active }} actives · <span style="color:#2563eb;">{{ n_todo }} à s'abonner</span>)</h3>
-      <p class="muted text-sm" style="margin:.1rem 0 .5rem;">Workflow : <b>s'abonner</b> (lien) → <b>confirmer</b> le mail dans Gmail → appliquer le label <b>« Agenda »</b> → passer la ligne en « actif ». <span class="pill" style="background:#2563eb"></span> candidat = à faire · <span class="pill" style="background:#d97706"></span> attente = à vérifier · <span class="pill" style="background:#16a34a"></span> actif.</p>
-      <div class="table-wrap"><table>
-        <tr><th>Source</th><th>Territoire</th><th>Statut</th></tr>
-        {% for n in newsletters %}
-        {% set color = {'actif':'#16a34a','attente':'#d97706','candidat':'#2563eb','inactif':'#9ca3af'}.get(n.statut, '#9ca3af') %}
-        <tr>
-          <td>{% if n.url %}<a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.nom }}</a>{% else %}{{ n.nom }}{% endif %}</td>
-          <td>{{ n.territoire }}</td>
-          <td style="white-space:nowrap;">
-            <span class="pill" style="background:{{ color }}"></span>{{ n.statut }}
-            {% if n.statut == 'candidat' and n.url %}
-              · <a href="{{ n.url }}" target="_blank" rel="noopener">s'abonner ↗</a>
-              <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
-                <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="attente">
-                <button type="submit" title="Marquer inscrit (à vérifier)" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .5rem;background:#e5e7eb;color:#374151;">✓ inscrit</button>
-              </form>
-            {% elif n.statut in ('attente','actif') %}
-              ·
-              <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
-                <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="{{ 'attente' if n.statut == 'actif' else 'actif' }}">
-                <button type="submit" title="Basculer vérifié / à vérifier" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .55rem;{% if n.statut == 'actif' %}background:#16a34a;color:#fff;{% else %}background:#fde68a;color:#92400e;{% endif %}">{{ 'ON · vérifié' if n.statut == 'actif' else 'OFF · à vérifier' }}</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </table></div>
-    </div>
+<!-- Sources RSS (repliable) -->
+<details class="box" id="sources-rss">
+  <summary>Sources RSS ({{ src_total }})</summary>
+  <div style="margin-top:.8rem">
+    <div class="table-wrap"><table>
+      <tr><th>Territoire</th><th>Flux</th></tr>
+      {% for terr in territories %}<tr><td>{{ terr }}</td><td>{{ src_counts.get(terr, 0) }}</td></tr>{% endfor %}
+    </table></div>
   </div>
 </details>
-<script>if(location.hash==='#sources'){var s=document.getElementById('sources');if(s)s.open=true;}</script>
+
+<!-- Newsletters (repliable) -->
+<details class="box" id="newsletters">
+  <summary>📬 Newsletters ({{ nl_active }} actives · <span style="color:#2563eb;">{{ newsletters | selectattr('statut', 'in', ['candidat','attente']) | list | length }} à s'abonner</span>)</summary>
+  <div style="margin-top:.8rem">
+    <p class="muted text-sm" style="margin:.1rem 0 .5rem;">Workflow : <b>s'abonner</b> (lien) → <b>confirmer</b> le mail dans Gmail → appliquer le label <b>« Agenda »</b> → passer la ligne en « actif ». <span class="pill" style="background:#2563eb"></span> candidat = à faire · <span class="pill" style="background:#d97706"></span> attente = à vérifier · <span class="pill" style="background:#16a34a"></span> actif.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Source</th><th>Territoire</th><th>Statut</th></tr>
+      {% for n in newsletters %}
+      {% set color = {'actif':'#16a34a','attente':'#d97706','candidat':'#2563eb','inactif':'#9ca3af'}.get(n.statut, '#9ca3af') %}
+      <tr>
+        <td>{% if n.url %}<a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.nom }}</a>{% else %}{{ n.nom }}{% endif %}</td>
+        <td>{{ n.territoire }}</td>
+        <td style="white-space:nowrap;">
+          <span class="pill" style="background:{{ color }}"></span>{{ n.statut }}
+          {% if n.statut == 'candidat' and n.url %}
+            · <a href="{{ n.url }}" target="_blank" rel="noopener">s'abonner ↗</a>
+            <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
+              <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="attente">
+              <button type="submit" title="Marquer inscrit (à vérifier)" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .5rem;background:#e5e7eb;color:#374151;">✓ inscrit</button>
+            </form>
+          {% elif n.statut in ('attente','actif') %}
+            ·
+            <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
+              <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="{{ 'attente' if n.statut == 'actif' else 'actif' }}">
+              <button type="submit" title="Basculer vérifié / à vérifier" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .55rem;{% if n.statut == 'actif' %}background:#16a34a;color:#fff;{% else %}background:#fde68a;color:#92400e;{% endif %}">{{ 'ON · vérifié' if n.statut == 'actif' else 'OFF · à vérifier' }}</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table></div>
+  </div>
+</details>
+<script>if(location.hash==='#sources-rss'){var s=document.getElementById('sources-rss');if(s)s.open=true;}if(location.hash==='#newsletters'){var n=document.getElementById('newsletters');if(n)n.open=true;}</script>
 
 {% endblock %}
