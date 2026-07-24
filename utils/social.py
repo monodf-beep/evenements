@@ -159,8 +159,16 @@ def caption(event: dict, lang: str = "fr") -> str:
     lieu = (event.get("lieu") or "").strip()
     ville = (event.get("ville") or "").strip()
     where = ", ".join([p for p in (lieu, ville) if p])
-    if where:
+    # Mention organisateur : SEULEMENT si un handle a été CONFIRMÉ à la main par
+    # Franck (utils.organizers) — jamais deviné ici (cette fonction reste pure,
+    # aucun accès DB ; le champ est injecté par l'appelant avant caption()).
+    handle = (event.get("_organizer_handle") or "").strip()
+    if where and handle:
+        lines.append(f"📍 {where} · @{handle}")
+    elif where:
         lines.append(f"📍 {where}")
+    elif handle:
+        lines.append(f"📍 @{handle}")
     lines += ["", _CTA[lang], "", " ".join("#" + t for t in hashtags(event, lang))]
     return "\n".join(lines).strip()
 

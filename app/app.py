@@ -41,6 +41,7 @@ from utils import usage
 from utils import completeness as comp
 from utils import triage as triage_mod
 from utils import slack
+from utils import organizers
 from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
@@ -123,6 +124,9 @@ for _col in ("social_caption_fr", "social_caption_it"):
         _conn.execute(f"ALTER TABLE events_raw ADD COLUMN {_col} TEXT")
     except sqlite3.OperationalError:
         pass
+# Mémoire des handles Instagram d'organisateurs, confirmés une fois par Franck puis
+# réutilisés silencieusement (mentions automatiques, cf. utils/organizers.py).
+organizers.ensure_table(_conn)
 _conn.commit()
 _conn.close()
 
@@ -1996,6 +2000,9 @@ def preview(event_id: int):
         press_kits = []
     # Partage réseaux : post Instagram prêt à copier (légende FR + IT, hashtags, alt).
     from utils import social as social_mod
+    conn3 = get_db()
+    ev["_organizer_handle"] = organizers.confirmed_handle(conn3, ev.get("organisateur") or "")
+    conn3.close()
     ig_post = social_mod.instagram_post(ev)
     return render_template("preview.html", e=ev, image=image,
                            image_host=image_host, is_radar=is_radar,
@@ -2316,13 +2323,16 @@ def _text_hash(event: dict) -> str:
 
 
 def _semaine_tasks(conn) -> list[dict]:
-    """Photo à valider + texte à relire, pour chaque événement retenu — triés par
-    date d'événement la plus proche (le plus urgent à relire en premier)."""
+    """Photo à valider + texte à relire, pour chaque événement retenu, + un candidat
+    de handle Instagram organisateur à confirmer/refuser — triés par date
+    d'événement la plus proche (le plus urgent à relire en premier). Les candidats
+    organisateur n'ont pas de date propre : ils passent en tête (traités vite, ils
+    débloquent des mentions pour PLUSIEURS événements futurs d'un coup)."""
     q = (f"SELECT * FROM events_raw WHERE statut IN "
          f"({','.join('?' * len(comp.RETAINED_STATUTS))}) AND duplicate_of IS NULL "
          "ORDER BY COALESCE(NULLIF(date_event_start,''),'9999-12-31') ASC")
     rows = [dict(r) for r in conn.execute(q, comp.RETAINED_STATUTS).fetchall()]
-    tasks = []
+    tasks = [{"kind": "organisateur", "row": row} for row in organizers.pending_candidates(conn)]
     for e in rows:
         if comp.has_real_image(e) and (e.get("image_reviewed_url") or "") != (e.get("url_image") or ""):
             tasks.append({"kind": "photo", "event": e})
@@ -2343,12 +2353,16 @@ def semaine():
         (since, since)).fetchone()["n"]
     conn.close()
     for t in tasks:
+        if t["kind"] == "organisateur":
+            continue
         e = t["event"]
         e["_img"] = event_image(e)
         if t["kind"] == "texte":
             _, e["_content"] = build_post(e)
+    # Mode rattrapage (?rattrapage=1) : Franck veut TOUT voir d'un coup, pas de plafond.
+    shown = tasks if request.args.get("rattrapage") == "1" else tasks[:_SEMAINE_CAP]
     return render_template(
-        "semaine.html", tasks=tasks[:_SEMAINE_CAP], total=len(tasks),
+        "semaine.html", tasks=shown, total=len(tasks),
         done_week=done_week, active="semaine")
 
 
@@ -2373,6 +2387,39 @@ def semaine_valider(event_id, champ):
     conn.commit()
     conn.close()
     return redirect(url_for("semaine") + f"#e{event_id}-{champ}")
+
+
+@app.route("/semaine/organisateur/<key>/confirmer", methods=["POST"])
+@require_auth
+def semaine_organisateur_confirmer(key):
+    """Confirme le handle Instagram d'un organisateur — mémorisé et réutilisé
+    silencieusement ensuite dans toutes les légendes (utils.social.caption), sans
+    plus jamais redemander à Franck pour ce même organisateur."""
+    handle = (request.form.get("handle") or "").lstrip("@").strip()
+    conn = get_db()
+    if handle:
+        now = datetime.now().isoformat(timespec="seconds")
+        conn.execute(
+            "UPDATE organizer_ig_handles SET handle=?, status='confirmed', confirmed_at=? "
+            "WHERE organisateur_key=?", (handle, now, key))
+        conn.commit()
+        flash(f"✅ Compte Instagram confirmé : @{handle}.", "ok")
+    else:
+        flash("⚠️ Handle vide — rien d'enregistré.", "err")
+    conn.close()
+    return redirect(url_for("semaine") + "#organisateur-" + key)
+
+
+@app.route("/semaine/organisateur/<key>/refuser", methods=["POST"])
+@require_auth
+def semaine_organisateur_refuser(key):
+    """Aucun compte à mentionner pour cet organisateur — ne redemande plus."""
+    conn = get_db()
+    conn.execute("UPDATE organizer_ig_handles SET status='none' WHERE organisateur_key=?", (key,))
+    conn.commit()
+    conn.close()
+    flash("🚫 Aucun compte retenu pour cet organisateur.", "ok")
+    return redirect(url_for("semaine"))
 
 
 @app.route("/triage")
@@ -2527,7 +2574,6 @@ def reseaux():
                      "SELECT event_id, lang, kind, status FROM social_posts "
                      "WHERE status='ok' AND id IN "
                      "(SELECT MAX(id) FROM social_posts GROUP BY event_id, lang, kind)")}
-    conn.close()
     # Ne garder que les événements POSTABLES (complets) et les grouper par territoire.
     by_terr: dict = {}
     detour_pool: list = []
@@ -2535,10 +2581,14 @@ def reseaux():
         e = dict(r)
         if not comp.is_complete(e):
             continue
+        # Mention organisateur (si confirmée) : injectée AVANT tout appel à
+        # social_mod.caption (cf. _pack ci-dessous), pendant que conn est encore ouverte.
+        e["_organizer_handle"] = organizers.confirmed_handle(conn, e.get("organisateur") or "")
         grp = _couv_terr_group(e.get("territoire"))
         by_terr.setdefault(grp, []).append(e)
         if e.get("worth_trip"):
             detour_pool.append(e)
+    conn.close()
 
     n_auto = _auto_rewrite_captions(by_terr)
     if n_auto:
@@ -2634,6 +2684,7 @@ def reseaux_publish(event_id: int):
         conn.close()
         return "Événement introuvable", 404
     ev = dict(row)
+    ev["_organizer_handle"] = organizers.confirmed_handle(conn, ev.get("organisateur") or "")
     terr_label = _couv_terr_group(ev.get("territoire"))
     title = (ev.get("title") or "")[:70]
 

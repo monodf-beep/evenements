@@ -86,6 +86,9 @@ case "$MODE" in
     # photo pertinente. Cooldown 7j intégré (WEB_COOLDOWN_DAYS) : ne re-tente pas tous
     # les jours un cas déjà essayé récemment.
     step "images (web)"      "$PY" -m scripts.images_web --cap 15 --min-score 7
+    # Handles Instagram d'organisateurs (recherche web) : propose des candidats à
+    # confirmer dans /semaine, jamais publiés tant que Franck ne les a pas validés.
+    step "organisateurs (web)" "$PY" -m scripts.organizer_handles --cap 10
     step "écarter les passés" "$PY" -m scripts.purge_past --execute
     run_autocomplete
     log "=== FIN PIPELINE ==="
