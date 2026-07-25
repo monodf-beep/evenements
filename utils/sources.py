@@ -273,6 +273,15 @@ def load_topic_filter(
     return off, eco
 
 
+_RADAR_CULTURAL_FILE = Path(__file__).resolve().parent.parent / "config" / "radar_cultural_exceptions.txt"
+
+
+def load_radar_cultural_filter(path: Path | None = None):
+    """Regex des marqueurs culturels/touristiques (config/radar_cultural_exceptions.txt)
+    — filtre POSITIF pour les sources radar, voir is_radar_relevant()."""
+    return _compile_keywords(_load_keywords(path or _RADAR_CULTURAL_FILE))
+
+
 _EXCLUDED_EVENTS_FILE = Path(__file__).resolve().parent.parent / "config" / "excluded_event_keywords.txt"
 
 
@@ -364,6 +373,22 @@ def is_offtopic(title: str, offtopic_re, economic_re) -> bool:
     if economic_re is not None and economic_re.search(norm):
         return False  # angle économique détecté → on garde
     return True
+
+
+def is_radar_relevant(text: str, cultural_re) -> bool:
+    """Vrai si un texte radar (presse généraliste) mentionne un marqueur culturel/
+    touristique connu (config/radar_cultural_exceptions.txt) — filtre POSITIF pour
+    les sources radar : plus robuste qu'une liste de mots hors-sujet à énumérer (le
+    vocabulaire du fait-divers est trop varié — « chute », « percute », « noyade »…
+    jamais exhaustif), alors qu'un vrai signal culturel porte quasi toujours un mot
+    du champ lexical (festival, concert, musée, patrimoine…). Sans configuration
+    (cultural_re=None), on ne filtre rien (True, comportement permissif par défaut).
+    """
+    if cultural_re is None:
+        return True
+    if not text:
+        return False
+    return bool(cultural_re.search(_strip_accents(text).lower()))
 
 
 _IMAGES_FILE = Path(__file__).resolve().parent.parent / "config" / "territory_images.txt"

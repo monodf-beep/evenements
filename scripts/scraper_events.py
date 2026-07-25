@@ -17,13 +17,10 @@ sys.path.insert(0, str(ROOT))
 from urllib.parse import urlparse
 
 from utils.logger import get_logger
-from utils.sources import (is_blocked_image, is_broad_source, is_offtopic, is_out_of_scope,
-                           load_blocked_image_domains, load_broad_sources,
-                           load_out_of_zone, load_perimeter_filter, load_topic_filter,
+from utils.sources import (is_blocked_image, is_broad_source, is_out_of_scope,
+                           is_radar_relevant, load_blocked_image_domains, load_broad_sources,
+                           load_out_of_zone, load_perimeter_filter, load_radar_cultural_filter,
                            mentions_perimeter)
-
-_RADAR_OFFTOPIC_FILE = ROOT / "config" / "radar_offtopic_keywords.txt"
-_RADAR_CULTURAL_FILE = ROOT / "config" / "radar_cultural_exceptions.txt"
 
 
 def _domain(url: str) -> str:
@@ -291,7 +288,7 @@ def best_content(entry: dict) -> str:
 
 def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
                   perimeter_re=None, broad: set | None = None, out_re=None,
-                  radar_offtopic_re=None, radar_cultural_re=None) -> int:
+                  radar_cultural_re=None) -> int:
     log.info("Scraping : %s", source["name"])
     try:
         feed = feedparser.parse(source["url"])
@@ -325,11 +322,12 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
         if is_out_of_scope(material, out_re, perimeter_re):
             skipped += 1
             continue
-        # 3) Source RADAR (presse généraliste) : écarte le fait-divers/actu générale
-        #    (accident, douanes, résultats du bac…) qui n'a rien d'un événement culturel
-        #    — sauf si un marqueur culturel/touristique le sauve (garde-fou volontairement
-        #    large, cf. config/radar_cultural_exceptions.txt).
-        if source.get("type") == "radar" and is_offtopic(material, radar_offtopic_re, radar_cultural_re):
+        # 3) Source RADAR (presse généraliste) : gardée seulement si un marqueur
+        #    culturel/touristique est présent (config/radar_cultural_exceptions.txt).
+        #    Filtre POSITIF, pas une liste de mots hors-sujet à énumérer — le
+        #    vocabulaire du fait-divers est trop varié pour être exhaustif, alors
+        #    qu'un vrai signal culturel porte quasi toujours un mot du champ lexical.
+        if source.get("type") == "radar" and not is_radar_relevant(material, radar_cultural_re):
             skipped_topic += 1
             continue
         image = extract_image(entry)
@@ -376,18 +374,19 @@ def main() -> int:
     perimeter_re = load_perimeter_filter()
     broad = load_broad_sources()
     out_re = load_out_of_zone()
-    radar_offtopic_re, radar_cultural_re = load_topic_filter(
-        _RADAR_OFFTOPIC_FILE, _RADAR_CULTURAL_FILE)
+    radar_cultural_re = load_radar_cultural_filter()
     sources = load_sources()
     if not sources:
         log.error("Aucune source configurée dans %s", SOURCES_FILE)
         return 1
     total = sum(scrape_source(s, conn, blocked, perimeter_re, broad, out_re,
-                              radar_offtopic_re, radar_cultural_re) for s in sources)
+                              radar_cultural_re) for s in sources)
     cleaned = clean_out_of_perimeter(conn, perimeter_re, broad, out_re)
+    cleaned_topic = clean_radar_offtopic(conn, radar_cultural_re)
     conn.close()
-    log.info("=== Scraping terminé : %d nouveaux événements (%d hors périmètre rejetés) ===",
-             total, cleaned)
+    log.info("=== Scraping terminé : %d nouveaux événements "
+             "(%d hors périmètre rejetés, %d hors-sujet radar rejetés) ===",
+             total, cleaned, cleaned_topic)
     return 0
 
 
@@ -417,6 +416,32 @@ def clean_out_of_perimeter(conn: sqlite3.Connection, perimeter_re, broad: set,
                      "Hors périmètre (source large, aucun lieu couvert cité).")
             conn.execute("UPDATE events_raw SET statut='rejected', llm_justification=? "
                          "WHERE id=?", (motif, r[0]))
+            n += 1
+    if n:
+        conn.commit()
+    return n
+
+
+def clean_radar_offtopic(conn: sqlite3.Connection, radar_cultural_re) -> int:
+    """Rejette rétroactivement les événements RADAR 'pending' sans marqueur culturel/
+    touristique (config/radar_cultural_exceptions.txt) — même filtre POSITIF que
+    scrape_source() étage 3, appliqué au stock déjà en base (rattrape un radar
+    resserré après coup, ou une exécution avant l'ajout du filtre). Idempotent,
+    scopé aux seules sources radar et au statut 'pending' (jamais un événement déjà
+    évalué ou retenu par Franck)."""
+    if radar_cultural_re is None:
+        return 0
+    rows = conn.execute(
+        "SELECT id, title, description FROM events_raw "
+        "WHERE statut = 'pending' AND source_type = 'radar' AND duplicate_of IS NULL").fetchall()
+    n = 0
+    for r in rows:
+        material = f"{r[1]}\n{r[2] or ''}"
+        if not is_radar_relevant(material, radar_cultural_re):
+            conn.execute(
+                "UPDATE events_raw SET statut='rejected', "
+                "llm_justification='Radar hors-sujet (aucun marqueur culturel/touristique).' "
+                "WHERE id=?", (r[0],))
             n += 1
     if n:
         conn.commit()

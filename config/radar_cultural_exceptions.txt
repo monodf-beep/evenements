@@ -1,11 +1,19 @@
-# Marqueurs CULTURELS/TOURISTIQUES qui SAUVENT un titre radar même s'il matche un
-# mot hors-sujet (config/radar_offtopic_keywords.txt) — garde-fou pour ne jamais
-# jeter une vraie annonce d'événement qui croise accidentellement un mot du fait-
-# divers (ex. « incendie » dans « spectacle son et lumière évoquant l'incendie du
-# château »). Volontairement LARGE : mieux vaut garder un radar limite que perdre
-# un vrai événement.
+# Marqueurs CULTURELS/TOURISTIQUES — filtre POSITIF pour les sources RADAR (presse
+# généraliste, ex. ledauphine.com) : un titre radar n'est gardé QUE s'il matche une
+# de ces expressions (utils.sources.is_radar_relevant). Volontairement LARGE :
+# mieux vaut garder un radar limite que perdre un vrai événement.
 #
-# Une ligne = une expression (mêmes règles que radar_offtopic_keywords.txt).
+# Pourquoi un filtre POSITIF plutôt qu'une liste de mots hors-sujet à bloquer
+# (config/radar_offtopic_keywords.txt, ancienne approche) : le vocabulaire du
+# fait-divers est trop varié pour être énuméré exhaustivement (« chute », « percute
+# des policiers », « noyade »… chaque nouveau cas ramène un mot qu'on n'avait pas
+# prévu), alors qu'un vrai signal culturel porte quasi toujours un mot de ce champ
+# lexical. Constaté sur un lot réel de 31 articles Le Dauphiné : le filtre négatif
+# laissait passer la plupart des faits-divers, le filtre positif les élimine tous
+# sans effort de maintenance supplémentaire.
+#
+# Une ligne = une expression (comparaison insensible à la casse et aux accents,
+# bornée par mot — cf. utils.sources._compile_keywords).
 
 festival
 concert
@@ -42,9 +50,22 @@ animation culturelle
 bibliotheque
 biblioteca
 conference
+rencontre
 rencontre litteraire
 salon du livre
 salon du
+lecture
+lectures
+musique
+scene
+scenes ouvertes
+dj
+graff
+graffiti
+projection
+folklore
+folklorique
+traditions
 festival de musique
 festival du film
 festival international
