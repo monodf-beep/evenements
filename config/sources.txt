@@ -164,3 +164,30 @@ https://www.interreg-alcotra.eu/rss.xml;Savoie;Interreg ALCOTRA (transfrontalier
 # -- Traditions / mono-événement --
 https://www.nicecarnaval.com/feed/;Nice;Carnaval de Nice;officielle;;Nice
 https://www.langhe.net/feed/;Piemonte;LoveLanghe (traditions/sagre Langhe);tourisme
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-22 — sourcing des 7 entités P1 vides (docs/CATALOGUE_GEO_SEO.md).
+# Flux vérifié HTTP 200 + RSS réel ce jour. Pour les 4 autres entités concernées
+# (Alba, Cervinia, Menton, et Alba/Langhe déjà couverts en amont), voir note plus
+# bas : soit aucun flux RSS exploitable trouvé, soit domaine bloqué/injoignable
+# depuis cet environnement de recherche (à retester depuis le VPS).
+# ═════════════════════════════════════════════════════════════════════════════
+https://visitstresaebaveno.it/feed/;Piemonte;OT Stresa e Baveno (Lago Maggiore);tourisme;;Stresa
+
+# À CONFIRMER depuis le VPS (domaine injoignable/bloqué depuis l'environnement de
+# recherche ; DNS résout, connexion refusée — comportement identique aux flux
+# §116 ci-dessus). Source primaire officielle identifiée : l'agenda public de la
+# Ville de Menton (agenda-menton.fr), qui relaie tous les événements municipaux et
+# ouvre l'accès aux associations partenaires. Chemin RSS exact non confirmé
+# (plateforme non-WordPress) — à identifier depuis le VPS avant activation.
+# https://www.agenda-menton.fr/ ;Nice;Agenda officiel Ville de Menton;institution;;Menton
+#
+# Cervinia (Vallée d'Aoste) : cervinia.it/feed/ répond 200 mais sert l'app SPA
+# (Nuxt), pas un flux RSS exploitable. Aucun flux dédié trouvé ; rendezvous-vda.it
+# (déjà en base, tourisme) et lovevda.it (portail régional VDA, pas de /rss.xml
+# détecté à ce chemin) sont les meilleurs candidats de repli déjà couverts.
+#
+# Alba (Piémont) : comune.alba.cn.it/feed/ renvoie 410 Gone (flux désactivé,
+# remplacé en mars 2026 par le nouveau portail « Alba Cultura Eventi », pas de RSS
+# public identifié). turismoinlanga.it/feed/ (déjà en base, tourisme) couvre déjà
+# le territoire Langhe/Alba/Roero.

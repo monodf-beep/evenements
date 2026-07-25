@@ -35,9 +35,8 @@ from utils.logger import get_logger
 # On réutilise la mise en forme de l'article et le mapping de catégorie du
 # publisher historique (mêmes règles éditoriales, y compris charte §8 sur le radar).
 from scripts.publisher import build_post, _map_category, _upload_featured_media
-# Détection des logos/pictogrammes + bannières de repli par territoire + filtres image.
-from utils.sources import (is_logo_image, load_territory_images, pick_image,
-                           is_blocked_image, load_blocked_image_domains)
+# Détection des logos/pictogrammes + filtres image.
+from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains
 
 log = get_logger("publisher_as")
 
@@ -119,13 +118,6 @@ def _is_logo(url) -> bool:
     (détecté par utils.sources.is_logo_image) — à écarter comme vignette."""
     url = (url or "").strip()
     return bool(url) and is_logo_image(url)
-
-
-def _banner(event: dict, banners: dict) -> str:
-    """Bannière de repli (vignette générique propre) pour le territoire, ou "".
-    Déterministe par id → varie d'un événement à l'autre au sein d'un territoire."""
-    return pick_image(event.get("territoire", ""), key=str(event.get("id", "")),
-                      images=banners)
 
 
 def _is_radar(event: dict) -> bool:
@@ -303,17 +295,12 @@ def publish_to_as(event: dict) -> int | None:
                 caption=event.get("image_credit", "") or "",
                 card=True, focal=_focal(event),
                 mode=(event.get("card_mode") or "auto"))
-    # Repli 2 — BANNIÈRE TERRITOIRE quand tout le reste a échoué (logo écarté sans page
-    # exploitable, image bloquée + page bloquée, aucune image). Comble les cartes vides.
-    if not media_id:
-        banner = _banner(event, load_territory_images())
-        if banner:
-            if _is_logo(url_image):
-                log.info("Logo écarté au push (%s) → bannière territoire", url_image)
-            elif url_image:
-                log.info("Téléversement affiche échoué (%s) → bannière territoire", url_image)
-            media_id = _upload_featured_media(
-                wp_url, auth, banner, alt=alt, card=True, focal=(0.5, 0.5))
+    # Repli 2 (retiré le 2026-07-23) : la bannière territoire générique (partagée avec
+    # observatoire-business-sabaudo, config/territory_images.txt) n'est plus utilisée ici.
+    # Le site agendasabauda.eu affiche désormais son propre repli territoire × catégorie
+    # (cs_fallback_visual, côté WordPress) quand aucune image n'est fournie — plus fin
+    # et propre au projet. Ne rien téléverser laisse featured_media_id absent, ce qui
+    # déclenche ce repli côté site.
     if media_id:
         payload["featured_media_id"] = media_id
 
