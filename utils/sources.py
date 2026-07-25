@@ -461,14 +461,15 @@ def _canon_territory(value: str) -> str:
     v = _strip_accents(value or "").lower()
     if not v:
         return ""
-    if "savoie" in v:                                    # Savoie / Haute-Savoie
+    if "savoi" in v:                                     # Savoie / Haute-Savoie / Savoia (IT)
         return "Savoie"
     if "piemont" in v or "piedmont" in v:                # Piémont / Piemonte / Piedmont
         return "Piemonte"
-    if "aost" in v:                                      # Vallée d'Aoste / Valle d'Aosta
+    if "aost" in v:                                      # Vallée d'Aoste / Valle d'Aosta / Aoste
         return "Vallee-Aoste"
-    if "nice" in v or "maritim" in v or "azur" in v:     # Nice / Alpes-Maritimes / Côte d'Azur
-        return "Nice"
+    # bilingue FR/IT : « Nizza » / « Contea di Nizza » ne contiennent pas « nice »
+    if "nice" in v or "nizza" in v or "maritim" in v or "azur" in v:
+        return "Nice"                                    # Nice / Nizza / Alpes-Maritimes / Côte d'Azur
     return ""
 
 
