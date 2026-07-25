@@ -136,6 +136,14 @@ Registre soutenu mais accessible, phrases claires, pas de jargon gratuit. Biling
 **FR/IT** assumé (la langue du territoire est une valeur). Pas de superlatifs creux
 (« incontournable », « magique », « à ne pas manquer »).
 
+**Casse — jamais de TOUT EN CAPITALES.** Un titre, un intertitre ou un nom d'événement
+ne s'écrit **jamais entièrement en majuscules**, même quand la source (affiche, flux RSS,
+billetterie) le fournit ainsi — ex. « COREOGRAFIE DEL POSSIBILE » → « Coreografie del
+Possibile ». Les capitales intégrales, c'est **crier** ; c'est illisible et mauvais pour le
+SEO. On **normalise en casse normale** : capitale à l'initiale + noms propres, en
+respectant la langue (règles FR/IT). On **préserve** les sigles/acronymes réels (FIAF, MAO,
+ONU) et la casse voulue d'une marque (iMac, PSG). En cas de doute, casse de phrase.
+
 ## 7. Éthique & UX — dark patterns proscrits
 
 L'écosystème **n'utilise aucun dark pattern**. Sont **interdits** :
