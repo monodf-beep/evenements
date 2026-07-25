@@ -985,6 +985,51 @@ def reglages():
                            st=psettings.load(), model=psettings.model())
 
 
+def _parse_cron_log(path: Path, max_bytes: int = 250_000) -> dict | None:
+    """Extrait le DERNIER passage du pipeline quotidien depuis logs/cron_pipeline.log.
+    Renvoie {started, ended, steps:[{name, ok}], enrich_seen, translate_seen} ou None."""
+    try:
+        text = path.read_text(errors="replace")[-max_bytes:]
+    except OSError:
+        return None
+    starts = [m.start() for m in re.finditer(r"=== PIPELINE QUOTIDIEN", text)]
+    if not starts:
+        return None
+    block = text[starts[-1]:]
+    m0 = re.search(r"\[([\d\-:\s]+)\][^\n]*PIPELINE QUOTIDIEN", block)
+    started = (m0.group(1).strip() if m0 else "")
+    steps: list[dict] = []
+    for line in block.splitlines():
+        m = re.search(r"\]\s*(✓|✗)\s+(.+?)(\s*\(échec.*)?$", line)
+        if m:
+            steps.append({"name": m.group(2).strip(), "ok": m.group(1) == "✓"})
+    names = " ".join(s["name"] for s in steps)
+    return {"started": started, "ended": "FIN PIPELINE" in block, "steps": steps,
+            "enrich_seen": "enrichissement" in names, "translate_seen": "traduction" in names}
+
+
+# Planification déclarée (miroir lisible de deploy/CRONTAB_SETUP.txt — pour affichage).
+_PIPELINE_SCHEDULE = [
+    ("Pipeline complet", "tous les jours 6h05", "collecte → éval → visuels → enrichissement (rédaction FR) → autocomplete (publication) → traduction IT"),
+    ("Autocomplete", "tous les jours 6h40", "repasse compléter/pousser les fiches complètes"),
+    ("Newsletter (brouillon)", "lundi 7h00", "brouillon Brevo de la semaine"),
+    ("Audit visuel", "dimanche 5h00", "planches contact des images"),
+    ("Instagram", "toutes les 15 min", "publie les posts programmés"),
+]
+
+
+@app.route("/pipeline")
+@require_auth
+def pipeline_view():
+    """Visibilité du pipeline AUTOMATIQUE (cron) : dernier passage, étapes, planning.
+    La création d'article (enrichissement) et la traduction IT tournent en cron —
+    plus besoin de bouton. On peut couper la dépense via /reglages (enrich_mode)."""
+    from utils import settings as psettings
+    run = _parse_cron_log(ROOT / "logs" / "cron_pipeline.log")
+    return render_template("pipeline.html", active="pipeline", run=run,
+                           schedule=_PIPELINE_SCHEDULE, st=psettings.load())
+
+
 @app.route("/couverture")
 @require_auth
 def couverture():
