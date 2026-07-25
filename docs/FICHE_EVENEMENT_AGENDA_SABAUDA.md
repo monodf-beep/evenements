@@ -86,7 +86,7 @@ sequenceDiagram
 9. Rail **« Au même endroit »** (voir §5)
 10. Rail **« Même catégorie »** (voir §5)
 11. Bouton Instagram (territoire de l'événement, voir §6)
-12. Bouton Facebook (**toujours `href="#"`, jamais corrigé** — voir §6)
+12. Bouton Facebook (**masqué depuis le 2026-07-26**, aucun compte n'existe — voir §6)
 13. Formulaire de recherche
 14. Bloc « Ajouter à mon agenda » (voir `AJOUTER_AU_CALENDRIER_AGENDA_SABAUDA.md`)
 15. Bandeau newsletter (texte adapté à la ville de l'événement si connue)
@@ -172,9 +172,12 @@ Peterson presents... »), 14 voisins bruts trouvés dans la fenêtre.
   homepages) : pour un événement d'un autre territoire, ou une fiche en IT,
   `cs_instagram_account()` renvoie `null` et le bloc `<a>` Instagram est
   **entièrement masqué** (pas de repli vers Savoie).
-- **Facebook** : **toujours `href="#"`, non corrigé.** Aucun compte Facebook
-  par territoire n'existe/n'a été fourni à ce jour. À traiter le jour où un
-  compte Facebook existera (même mécanique que Instagram, à dupliquer).
+- **Facebook** : **masqué depuis le 2026-07-26.** Le bouton était un lien mort
+  (`href="#"`) : aucun compte Facebook n'existe pour aucun territoire. Rendu
+  conditionnel via `$cs_fb_acc = null` (même logique que l'Instagram voisin) :
+  le `<a>` n'est plus jamais affiché. Réactivation triviale le jour où un compte
+  existera (renseigner `$cs_fb_acc` avec une clé `url`). Ancien code sauvegardé
+  dans l'option `cs_snippet56_backup_fb_*`.
 
 ---
 

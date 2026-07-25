@@ -51,11 +51,11 @@
   (Ce week-end / Tout l'agenda) · Recherche contextuelle
 - [x] Composants : carte événement · carrousel · newsletter · module transfrontalier
   (« Ça vaut le déplacement ») · Ajouter à mon agenda (+ rappels J-7/J-1)
-- [ ] 🤖 **Gabarit 404 sur-mesure** — **confirmé absent** (aucun handler `is_404`).
-  Recherche + portes principales, pour ne pas être un cul-de-sac.
-- [ ] 🤖 **Bouton Facebook de la fiche** : lien mort `href="#"`. À masquer tant
-  qu'aucun compte n'existe (même traitement qu'Instagram), réapparition auto le
-  jour où un compte FB est fourni.
+- [x] 🤖 **Gabarit 404 sur-mesure** (snippet 99, 2026-07-26) : vrai code HTTP 404,
+  bilingue FR/IT, formulaire de recherche + 4 portes territoires + accueil.
+- [x] 🤖 **Bouton Facebook de la fiche** (snippet 56, 2026-07-26) : lien mort
+  `href="#"` masqué (via `$cs_fb_acc = null`), même logique conditionnelle
+  qu'Instagram, réactivation triviale le jour où un compte FB existera.
 
 ## 2. Design / maquettes — 🎨🧑 EN COURS (hors périmètre repo)
 - [ ] DA finale figée (typo, couleurs) → base du thème enfant

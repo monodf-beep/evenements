@@ -40,6 +40,8 @@
 | **3e rail « Près d'ici, mêmes dates »** (2026-07-24) | Fenêtre début → +3 jours | idem §5 |
 | **Badges statut** (2026-07-24) | « Dernier jour » / « En cours » ; « Complet » exclu (meta non fiable) | idem §4 |
 | Instagram par événement | Territoire de l'événement, Savoie FR uniquement sinon masqué | idem §6 |
+| **Bouton Facebook mort masqué** (2026-07-26) | Lien `href="#"` retiré (snippet 56), réactivable comme Instagram | idem §6 |
+| **Gabarit 404 sur-mesure** (2026-07-26) | Vrai HTTP 404, bilingue, recherche + 4 portes territoires (snippet 99) | — |
 
 ### Ajouter à mon agenda
 | Sujet | Détail | Doc |
