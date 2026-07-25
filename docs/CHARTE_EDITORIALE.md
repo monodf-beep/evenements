@@ -100,6 +100,36 @@ risque juridique retomberait sur l'éditeur nommé. Le bon canal pour « passer 
 paywall » légalement, c'est l'**accréditation presse** (levier 1). Si un événement
 n'a **aucune** source libre et **aucun** dossier, il reste mince et n'est pas mis en avant.
 
+## 5 bis. Faits structurés obligatoires (selon le type)
+
+L'enrichissement ne produit pas qu'une prose : il doit **garantir la présence des faits
+que l'abonné cherche**, faits que §5 (levier 2) nous autorise justement à récupérer partout
+(ils ne sont pas protégés). La prose peut être maigre (1-2 paragraphes pour un score < 7,
+c'est acceptable) ; **les faits, eux, sont obligatoires dès que la matière les contient**,
+quel que soit le score, et **quel que soit le mode** (court comme long).
+
+Règle de forme : **un programme, un line-up, un déroulé de séances = une LISTE**, jamais un
+paragraphe qui les noie. C'est de la structure, pas de l'expression — on la préserve telle
+quelle. (Côté code, la liste passe par un champ dédié du schéma d'enrichissement pour ne
+jamais être perdue à la compression, même en mode court.)
+
+| Type d'événement | Faits obligatoires (si présents dans la matière) | Piège fréquent à ne pas rater |
+|---|---|---|
+| **Exposition** | **horaires d'ouverture**, tarif/gratuité, artistes, plage de dates | les **horaires ≠ la plage de dates** : « du 5 juin au 30 août » ne suffit pas |
+| **Concert / série** | **line-up + horaires**, salle, billetterie | — |
+| **Spectacle** | distribution/casting, durée, réservation | — |
+| **Festival / multi-jours** | **programme par jour** (liste), line-up complet | ne pas résumer le programme en prose : le rendre en liste |
+| **Sagra / gastronomie** | ce qu'on **mange/boit**, dates, prix | — |
+| **Marché** (fleurs, antiquaires, brocante, artisanat) | **récurrence** (« chaque 1er dimanche »), horaires, type d'exposants | une date unique alors que c'est un rendez-vous récurrent |
+| **Conférence** | intervenant, sujet, **langue (FR/IT)**, inscription | — |
+| **Sport** (course, match, compétition) | discipline, **horaire de départ**, parcours/lieu, catégories | **deux publics** : *spectateurs* (venir voir, souvent gratuit) ≠ *participants* (s'inscrire, payer) — ce sont deux infos pratiques distinctes |
+| **Cinéma** (séance, festival, plein air) | film(s) + **horaires de séance**, lieu, tarif, invité éventuel | **VO/VF / langue** (capital sur territoire bilingue, §6) ; plein air : gratuité + heure (tombée de nuit) |
+| **Fêtes populaires** (fête patronale, carnaval, feux) | **programme multi-jours** (temps forts : défilé, feu d'artifice, bal), gratuité | **récurrence** (annuelle, date fixe ou mobile) |
+
+Principe transverse : **une info pratique manquante que la matière contenait est une
+erreur**, pas une simplification. Mieux vaut deux paragraphes honnêtes + une liste de faits
+complète qu'un bel article qui a perdu les horaires.
+
 ## 6. Ton & langue
 
 Registre soutenu mais accessible, phrases claires, pas de jargon gratuit. Bilingue
@@ -153,3 +183,36 @@ source (image de l'un, texte complet de l'autre, lien officiel d'un troisième).
   sur la home Cultura Sabauda.
 - Le **site dédié** (volume/SEO) peut auto-publier des fiches **enrichies et relues**,
   jamais l'écho brut d'un flux.
+
+## 11. Rythme de la newsletter (canal automatique)
+
+La newsletter est le seul canal **entièrement automatique** : aucun humain ne rattrape une
+édition ratée. Sa règle d'or est donc **la fraîcheur**. Les retours des éditeurs de
+newsletters d'événements locaux qui tiennent dans la durée convergent : *ce qui fait
+revenir l'abonné n'est pas un thème qui change, c'est une voix constante + des événements
+qui, eux, changent* — la fraîcheur vient de la **fenêtre temporelle courte**, pas d'un
+habillage éditorial renouvelé.
+
+**Axe par défaut = temporel, pas thématique.** Un tri par score seul est un piège : un
+événement long (une expo sur 3 mois) chevauche chaque fenêtre hebdomadaire et **squatte la
+tête de la newsletter pendant toute sa durée**. On structure donc par **statut temporel** :
+
+- **héros / « à la une » = ce qui *ouvre* cette semaine** (le neuf) ;
+- **« ça continue » = les événements longs déjà annoncés**, rétrogradés en liste compacte —
+  jamais repris en héros ;
+- **« dernière chance » = ce qui *ferme* bientôt** — service réel et **factuel** (donc pas
+  un dark pattern §7, contrairement à une urgence inventée).
+
+Ainsi un événement de 3 mois apparaît **à son ouverture**, puis discrètement, puis à sa
+fermeture — jamais douze fois en tête.
+
+**Autres règles :**
+- **Tri assumé, pas déversement.** Une sélection resserrée (poignée d'événements réellement
+  mis en avant) vaut mieux qu'une liste exhaustive : la rareté est un signal de qualité.
+- **Passe de fraîcheur avant génération.** On vérifie que les événements retenus sont
+  encore **à venir et non annulés** — l'abonné ne doit pas ouvrir sur du périmé ou du complet.
+- **Pas de fuite de texte interne.** Le résumé d'une carte n'affiche jamais la
+  *justification de scoring* du LLM (texte écrit pour le back-office, pas pour un lecteur) :
+  à défaut de chapô rédigé, on retombe sur une description propre, pas sur du texte technique.
+- Le **thème** (« spécial sagre d'été ») reste possible comme **variante ponctuelle**
+  assumée, jamais comme mécanique de base.
