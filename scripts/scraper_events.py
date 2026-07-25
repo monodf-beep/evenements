@@ -301,7 +301,7 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
     # Source LARGE (couverture > périmètre) : on ne gardera que les événements
     # qui citent un lieu du périmètre (évite Avignon, Grenoble… via Le Dauphiné).
     is_large = is_broad_source(_domain(source["url"]), broad or set())
-    inserted = skipped = 0
+    inserted = skipped = skipped_topic = 0
     for entry in feed.entries:
         url = entry.get("link", "").strip()
         if not url:
@@ -330,7 +330,7 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
         #    — sauf si un marqueur culturel/touristique le sauve (garde-fou volontairement
         #    large, cf. config/radar_cultural_exceptions.txt).
         if source.get("type") == "radar" and is_offtopic(material, radar_offtopic_re, radar_cultural_re):
-            skipped += 1
+            skipped_topic += 1
             continue
         image = extract_image(entry)
         if is_blocked_image(image, blocked):
@@ -356,7 +356,12 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
         except sqlite3.IntegrityError:
             pass  # doublon race condition
     conn.commit()
-    tail = f" ({skipped} hors périmètre écartés)" if skipped else ""
+    bits = []
+    if skipped:
+        bits.append(f"{skipped} hors périmètre écartés")
+    if skipped_topic:
+        bits.append(f"{skipped_topic} hors-sujet écartés (radar)")
+    tail = f" ({', '.join(bits)})" if bits else ""
     log.info("%s : %d nouveaux événements%s", source["name"], inserted, tail)
     return inserted
 
