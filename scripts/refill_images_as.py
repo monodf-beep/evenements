@@ -353,10 +353,13 @@ def main(argv=None) -> int:
         # sans jamais s'appuyer sur l'ancienne URL.
         if args.bad_url or args.unverified:
             ev["url_image"] = ""
+        # keep_existing : on ne dégrade JAMAIS une og/page déjà valide (garde Fix 1,
+        # cf. scripts.visuals.resolve_image). Seul --lowres a le droit de remplacer
+        # l'image actuelle — et uniquement par strictement plus grand (garde plus bas).
         url, credit, source, focal_x, focal_y = resolve_image(
             ev, client, blocked, banners,
             verify_client=verify_client, verify_model=verify_model,
-            cat_banners=cat_banners)
+            cat_banners=cat_banners, keep_existing=not args.lowres)
 
         # Garde --unverified : même si l'image résolue est IDENTIQUE à l'ancienne (elle
         # était donc déjà correcte), on enregistre sa source en base pour qu'elle ne

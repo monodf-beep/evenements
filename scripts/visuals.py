@@ -62,29 +62,47 @@ def _final_text(message) -> str:
 
 
 def visual_query(ev: dict, client, model: str) -> str:
-    """Le LLM propose une requête de photo Wikimedia Commons. '' si rien de visuel."""
+    """Le LLM propose une requête de photo Wikimedia Commons. '' si rien de visuel.
+
+    RÈGLE CARDINALE (incident « Yerai Cortés » de juillet 2026) : la requête doit
+    porter sur le SUJET de l'événement (artiste, groupe, œuvre, conférencier), pas
+    sur le nom du LIEU. Une recherche « Fondation Maeght » ramène l'architecture et
+    l'HISTOIRE du lieu — dont un portrait de son architecte (Josep Lluís Sert) —,
+    jamais le concert de flamenco qui s'y tient. Le lieu seul n'est un bon sujet
+    QUE s'il est lui-même le sujet (visite d'un monument) et jamais au prix d'un
+    portrait d'une personne associée au lieu."""
     from utils.image_verify import season_fr
     season = season_fr(ev.get("date_event_start", ""))
     prompt = (
         "Tu aides à illustrer un événement culturel par une PHOTO réutilisable "
         "(Wikimedia Commons). Donne une requête de recherche COURTE (2 à 5 mots), "
-        "visant une vraie photographie : le lieu emblématique, le monument, la ville, "
-        "ou le thème.\n"
-        "PRÉFÈRE le lieu PRÉCIS (monument, quartier, salle) à la ville ou au territoire "
-        "général — une requête comme « Aoste Vallée d'Aoste » est trop vague si "
-        "l'événement se passe précisément au Borgo di Sant'Orso : cherche plutôt "
-        "« Sant'Orso Aoste » ou le nom exact du lieu.\n"
-        "COMBINE si possible le lieu précis avec le TYPE d'activité (marché, "
-        "artisanat, concert, marché de Noël…) déduit du titre/catégorie/description — "
-        "une requête « Sant'Orso Aoste marché artisanat » cible mieux qu'un simple nom "
-        "de lieu, qui peut ramener n'importe quelle photo touristique générique du site.\n"
+        "visant une vraie photographie du SUJET de l'événement.\n"
+        "PRIORITÉ ABSOLUE — cible le SUJET, pas le lieu :\n"
+        "  • Si l'événement porte sur une PERSONNE, un GROUPE, une ŒUVRE ou un "
+        "ENSEMBLE nommés (concert d'un artiste, exposition d'un peintre, conférence "
+        "d'un intervenant, pièce, film…), la requête doit viser CE sujet précis "
+        "— ex. « Yerai Cortés » pour un concert de Yerai Cortés, PAS « Fondation "
+        "Maeght » (le lieu). Le nom de l'artiste/de l'œuvre est le meilleur sujet.\n"
+        "  • Le nom du LIEU seul (« Fondation Maeght », « Auditorium de Lyon ») ramène "
+        "l'architecture, l'histoire du site et les personnalités qui lui sont "
+        "associées (son architecte, son fondateur) — HORS-SUJET pour l'événement. Ne "
+        "l'utilise comme requête QUE si le lieu est LUI-MÊME le sujet (visite/"
+        "découverte d'un monument, patrimoine) et qu'aucune personne/œuvre nommée "
+        "n'est identifiable ; vise alors le BÂTIMENT (« château de Montrottier »), "
+        "jamais une personne liée au lieu.\n"
+        "Si aucun sujet nommé n'est identifiable (marché, fête populaire, animation), "
+        "cible le lieu PRÉCIS + le TYPE d'activité — une requête comme « Aoste Vallée "
+        "d'Aoste » est trop vague si l'événement se passe au Borgo di Sant'Orso : "
+        "cherche « Sant'Orso Aoste marché artisanat », qui cible mieux qu'un simple "
+        "nom de lieu (lequel ramène n'importe quelle photo touristique générique).\n"
         "Si la SAISON est connue et pertinente pour une photo extérieure (pas un "
         "intérieur/monument), ajoute-la à la requête (« marché de Noël hiver Aoste » "
         "plutôt qu'une photo d'été du même lieu).\n"
         "Si l'événement n'a LUI-MÊME aucun rapport avec la nature/montagne, ÉVITE une "
         "requête qui ramènerait un paysage naturel générique (lac, sommet, vallée) sous "
         "prétexte que le territoire est alpin.\n"
-        "Évite les noms de personnes, les affiches, les logos, le texte.\n\n"
+        "Évite les affiches, les logos, le texte. N'inclus JAMAIS le nom d'une personne "
+        "qui n'est PAS le sujet de l'événement (architecte/fondateur du lieu…).\n\n"
         f"Titre : {ev.get('title','')}\n"
         f"Lieu précis : {ev.get('lieu','')}\n"
         f"Ville : {ev.get('ville','')}\n"
@@ -147,7 +165,8 @@ def _verified(url: str, ev: dict, verify_client, verify_model: str,
 def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
                   verify_client=None,
                   verify_model: str = "claude-haiku-4-5",
-                  cat_banners: dict | None = None) -> tuple[str, str, str, float, float]:
+                  cat_banners: dict | None = None,
+                  *, keep_existing: bool = True) -> tuple[str, str, str, float, float]:
     """Renvoie (url, credit, source, focal_x, focal_y) selon la chaîne 4 étages. url=''
     seulement si aucune bannière n'est configurée pour le territoire. focal_x/y ∈ [0,1] :
     point focal suggéré par l'agent vision (visage / texte en bas à protéger d'un
@@ -156,8 +175,30 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
 
     RÈGLES (toujours) : chaque candidat passe _acceptable (domaine/logo/parasite).
     AGENT (si verify_client) : og / page / Commons sont vérifiés par vision — une image
-    qui ne correspond pas à l'événement est refusée et on descend d'un étage."""
+    qui ne correspond pas à l'événement est refusée et on descend d'un étage.
+
+    keep_existing (défaut True) : NE JAMAIS DÉGRADER une image déjà valide. Si
+    l'événement porte DÉJÀ une vraie photo (image_source ∈ {og, page}) qui passe les
+    défenses, on la conserve telle quelle — on ne la remplace pas par un résultat de
+    moindre confiance (Commons/bannière). Passe keep_existing=False seulement quand le
+    but EST de remplacer l'image actuelle (mode --lowres : troquer une petite photo
+    valide contre une plus grande du même sujet)."""
     patterns = image_verify.load_blocked_patterns()
+    # ── Fix 1 : ne JAMAIS dégrader une image DÉJÀ valide ─────────────────────────
+    # Si l'événement a déjà une vraie photo (og:image / photo de page) qui passe les
+    # DEUX défenses (règles déterministes + agent vision quand il est disponible), on
+    # la CONSERVE : pas question de la troquer contre un résultat Commons de moindre
+    # confiance (incident « Yerai Cortés » : la bonne og de la Fondation Maeght écrasée
+    # par une photo hors-sujet trouvée par recherche Commons sur le nom du lieu). Les
+    # modes qui distrust l'image existante la vident en amont (--bad-url/--unverified :
+    # ev['url_image']='') ou passent keep_existing=False (--lowres).
+    if keep_existing:
+        existing = (ev.get("url_image") or "").strip()
+        existing_src = (ev.get("image_source") or "").strip()
+        if existing and existing_src in ("og", "page") and _acceptable(existing, blocked, patterns):
+            ok, fx, fy = _verified(existing, ev, verify_client, verify_model)
+            if ok:
+                return existing, ev.get("image_credit") or "", existing_src, fx, fy
     # Repli 'page' tenu en réserve : accepté seulement si assez grand pour le rendu
     # social, OU si Commons n'est pas disponible pour faire mieux (voir plus bas) —
     # jamais rejeté d'office (la leçon DON D'ORGANES reste valable : une petite photo
