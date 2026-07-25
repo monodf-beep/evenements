@@ -3,6 +3,49 @@
 Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`).
 
+## Journal de session — 2026-07-25/26
+
+Légende propriétaire : 🤖 Claude Code (repo) · 🧑 Franck (VPS/décision) · 🎨 Claude Design (WordPress).
+
+### ✅ Fait cette session (commité, branche `claude/quirky-davinci-jvqrnw`)
+- 🤖 **Charte** : §5 bis « faits structurés obligatoires par type » (10 types + pièges :
+  horaires≠dates, spectateurs vs participants, VO/VF, récurrence…) + §11 « rythme newsletter ».
+- 🤖 **`enrich.py`** : champ `programme` (LISTE) dans le schéma + rendu markdown + consignes par type.
+- 🤖 **`newsletter.py`** : axe TEMPOREL (ouvre / continue / dernière chance) au lieu du tri par
+  score qui laissait un événement long squatter le héros ; anti-répétition PERSISTANTE
+  (table `newsletter_sent`) ; fin de la fuite de `llm_justification` ; **fix responsive** mobile
+  (media query dans `newsletter_variants` — débordement 624→485 px).
+- 🤖 **Audit Observatoire** (4 agents) : **zéro dépendance code réelle**. Couplages restants =
+  voulus (fichiers `# SYNCED FROM`, VPS/Traefik commun). Seul point dur = **clé Brevo partagée**.
+- 🤖 **Fuite bannière « Observatoire économique » (§9)** : `pick_banner_image` réécrit
+  (`_canon_territory` FR+IT — Nizza/Savoia inclus ; résout UNIQUEMENT dans le set catégorie
+  Agenda, sinon "") ; `config/territory_images.txt` **vidé** des URLs Brevo ;
+  `upgrade_category_banners_as.py` durci (attrape `%mailinblue%`).
+- 🤖 **Dédup** : `cleanup_as_dupes.py --include-published` + envoi `force:true` au mu-plugin.
+- 🤖 **Docs reconciliées** avec l'état LIVE (sélections/hubs déjà en ligne) : `SELECTIONS_HOME.md`,
+  `TODO_LANCEMENT.md`. + URL Page Facebook Savoie consignée (`RESEAUX_FACEBOOK_THREADS_SETUP.md`).
+
+### 🔎 Diagnostics posés (pas des bugs)
+- **Bannière « Espace Sabaudo » visible** = artefact **WordPress** (thème GeneratePress / masthead PNG),
+  PAS le pipeline (vérifié : posts sans image à la une → placeholder de thème). → 🎨.
+- **Sélections vides** (Annecy…) = **volume faible** sur filtre ville×week-end, pas un bug de filtre
+  (la sélection large `/selections/ce-week-end/` liste bien ~8 événements).
+
+### ⏳ Reste à faire
+- 🧑 **Déployer `cs-trash.php` sur OVH** : `push-wordpress.sh` échoue (`WP_DEPLOY_SSH` absent du `.env`).
+  Sinon **trasher à la main** les 8 doublons publiés (WP# 2319, 2356, 2329, 2340, 2323, 2205, 2271, 2228)
+  dans wp-admin. Puis re-lancer le ménage pour les futurs.
+- 🤖 **Durcir la résolution d'image** (bug Yerai) : (a) ne PAS re-résoudre quand une og:image valide
+  existe ; (b) recherche Commons par **sujet** (artiste/événement), pas par **lieu** (« Fondation Maeght »
+  → l'architecte Sert au lieu de Yerai Cortés) ; (c) agent vision qui rejette le hors-sujet.
+- 🧑 **Poser l'image Yerai à la main** en attendant le durcissement.
+- 🧑 **Décisions produit** : clé Brevo dédiée Agenda ; client OAuth Google = même que l'Observatoire ? ;
+  seuil ville 8 vs 15 ; sélections auto vs manuel.
+- 🎨 **Claude Design** : hero « Espace Sabaudo » (masthead) ; formulation « espace Sabaudo » sur les
+  couvertures ; repli JetEngine des sélections vides (→ requête plus large).
+- 🤖/🧑 **Code mort `utils/sources.py`** (filtre radar « économique » de l'Observatoire) : inerte, mais
+  fichier `SYNCED` → à retirer côté Observatoire aussi (décision partagée).
+
 ## Le pipeline, étape par étape — où placent-on agents & règles ?
 
 ```
