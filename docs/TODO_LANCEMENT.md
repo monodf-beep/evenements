@@ -73,9 +73,11 @@ décisions, et de design. Détail par lot ci-dessous.
   (« Ça vaut le déplacement ») · Ajouter à mon agenda (+ rappels J-7/J-1)
 - [x] 🤖 **Gabarit 404 sur-mesure** (snippet 99, 2026-07-26) : vrai code HTTP 404,
   bilingue FR/IT, formulaire de recherche + 4 portes territoires + accueil.
-- [x] 🤖 **Bouton Facebook de la fiche** (snippet 56, 2026-07-26) : lien mort
-  `href="#"` masqué (via `$cs_fb_acc = null`), même logique conditionnelle
-  qu'Instagram, réactivation triviale le jour où un compte FB existera.
+- [x] 🤖 **Bouton Facebook de la fiche** (snippet 56, 2026-07-26) : bouton de
+  **suivi** (lien vers la future page FB d'Agenda Sabauda), désactivé pour
+  l'instant (`$cs_fb_acc = null`) car la page n'existe pas encore. 🧑 **À
+  réactiver dès que la page Facebook sera créée** (renseigner l'URL). Aucun
+  bouton de partage FB sur le site (ce n'était pas demandé).
 
 ## 2. Design / maquettes — 🎨🧑 EN COURS (hors périmètre repo)
 - [ ] DA finale figée (typo, couleurs) → base du thème enfant

@@ -172,12 +172,17 @@ Peterson presents... »), 14 voisins bruts trouvés dans la fenêtre.
   homepages) : pour un événement d'un autre territoire, ou une fiche en IT,
   `cs_instagram_account()` renvoie `null` et le bloc `<a>` Instagram est
   **entièrement masqué** (pas de repli vers Savoie).
-- **Facebook** : **masqué depuis le 2026-07-26.** Le bouton était un lien mort
-  (`href="#"`) : aucun compte Facebook n'existe pour aucun territoire. Rendu
-  conditionnel via `$cs_fb_acc = null` (même logique que l'Instagram voisin) :
-  le `<a>` n'est plus jamais affiché. Réactivation triviale le jour où un compte
-  existera (renseigner `$cs_fb_acc` avec une clé `url`). Ancien code sauvegardé
-  dans l'option `cs_snippet56_backup_fb_*`.
+- **Facebook** : c'est un bouton de **suivi** (lien vers la page Facebook
+  d'Agenda Sabauda), PAS un bouton de partage. **Désactivé depuis le
+  2026-07-26** car la page Facebook n'existe pas encore (le bouton pointait sur
+  un `href="#"` mort). Rendu conditionnel via `$cs_fb_acc = null` (même logique
+  que l'Instagram voisin) : le `<a>` n'est plus affiché tant que `$cs_fb_acc`
+  est nul. **Réactivation dès que la page Facebook existera** : renseigner
+  `$cs_fb_acc = ['url' => 'https://www.facebook.com/...']` (clé `url`). Ancien
+  code sauvegardé dans l'option `cs_snippet56_backup_fb_*`.
+  À noter : il n'existe **aucun bouton de partage Facebook** sur le site. La
+  chaîne « Partager sur Facebook » visible dans le source est une i18n interne
+  d'Elementor (`elementorFrontendConfig`), chargée partout mais jamais rendue.
 
 ---
 

@@ -42,7 +42,7 @@
 | Instagram par événement | Territoire de l'événement, Savoie FR uniquement sinon masqué | idem §6 |
 | **Bouton Facebook mort masqué** (2026-07-26) | Lien `href="#"` retiré (snippet 56), réactivable comme Instagram | idem §6 |
 | **Gabarit 404 sur-mesure** (2026-07-26) | Vrai HTTP 404, bilingue, recherche + 4 portes territoires (snippet 99) | — |
-| **Page guide Cuisine Nissarde publiée** (2026-07-26) | Article « Le Fil » FR (post 3648), rattaché Comté de Nice + Gastronomie, remonte auto dans le hub. IT à traduire | `CUISINE_NISSARDE_PAGE_GUIDE.md` |
+| **Page guide Cuisine Nissarde publiée FR + IT** (2026-07-26) | Article « Le Fil » FR (post 3648) + IT (post 3650), liés Polylang, rattachés Comté de Nice + Gastronomie, remontent auto dans les hubs | `CUISINE_NISSARDE_PAGE_GUIDE.md` |
 
 ### Ajouter à mon agenda
 | Sujet | Détail | Doc |
