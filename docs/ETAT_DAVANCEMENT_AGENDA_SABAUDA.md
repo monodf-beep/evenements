@@ -78,11 +78,20 @@ choix (section suivante) ou dépendent d'un tiers.
 
 ## 🤔 Décision attendue (le prochain pas dépend d'un choix)
 
-| # | Sujet | Choix à faire |
-|---|---|---|
-| D1 | Photo par événement | Diagnostic fait. Action ? (a) sourcing manuel des 22 événements FR sans source, (b) process d'import qui exige/récupère une image, (c) laisser le repli faire le travail |
-| D2 | Cuisine Nissarde | 29 établissements en main. En faire quoi ? (a) événements « permanents », (b) page guide dédiée, (c) article « Le Fil », (d) rien pour l'instant |
-| D3 | Priorité « Ce week-end » | Cette section rafle le plus gros morceau en premier sur les petits pools IT, ce qui assèche les autres. Revoir sa priorité dans l'allocateur ? (changement de code possible) |
+| # | Sujet | État au 2026-07-26 | Choix à faire |
+|---|---|---|---|
+| D2 | Cuisine Nissarde | **Préparé** : dataset + brouillon de page guide dans le repo (`docs/data/cuisine_nissarde_2025_2026.md`, `docs/CUISINE_NISSARDE_PAGE_GUIDE.md`). Reco : **une page guide evergreen dans « Le Fil »** (pas des fiches événement, ce sont des établissements permanents) | (a) publier la page guide, (b) autre forme, (c) attendre. **+ vérifier le décompte 29 vs 30** (Socca du Cours / Chez Marie Thé = 1 ou 2 établissements ?) |
+| D1 | Photo par événement | **Diagnostic corrigé + liste actionnable prête** (`docs/data/photos_manquantes_evenements.md`) : 19 FR + 23 IT événements futurs affichent une image de repli. Le sourcing d'une vraie photo est un travail humain (pas automatisable sans risque) | Sourcer les visuels (humain), en priorité les 6 événements sans source. Ou : accepter le repli comme état permanent |
+
+### ✅ Décision résolue
+
+- **D3 — Priorité « Ce week-end »** : simulation chiffrée sur les 10 variantes ×
+  3 scénarios d'ordre. Conclusion : rétrograder « Ce week-end » n'apporte
+  **aucun gain le week-end** (pools disjoints) et **au mieux 1-2 sections vides
+  en moins en semaine, uniquement en Vallée d'Aoste**, sans **jamais** afficher
+  un seul événement de plus. Les trous sont de la **vraie pénurie de contenu**
+  (surtout IT), qu'aucun ré-ordonnancement ne corrige. **Recommandation retenue :
+  ne rien changer** (garder « Ce week-end » en premier, section SEO phare).
 
 ---
 
