@@ -402,11 +402,16 @@ en juillet) :
 
 - Snippet 88 : un lien Instagram par territoire (`cs_instagram_territoire_map()`).
 - Aujourd'hui **seul le compte Savoie existe**
-  (`instagram.com/agendasabauda.savoie`). Les 3 autres sont prévus mais vides.
-- Tant qu'un territoire n'a pas de compte, le bouton retombe sur le compte Savoie
-  et le libellé le précise explicitement (« Suivre Agenda Sabauda Savoie sur
-  Instagram »), pour éviter la confusion. Compléter la map dès que les autres
-  comptes existeront.
+  (`instagram.com/agendasabauda.savoie`). Les 3 autres n'existent pas encore.
+- **Comportement live (depuis le 2026-07-24, changé sur demande explicite)** :
+  le bouton Instagram ne s'affiche **que** pour `territoire = savoie` **ET**
+  `langue = fr`. Dans tous les autres cas (Piémont, VdA, Nice, ou Savoie en IT),
+  la fonction `cs_instagram_account()` renvoie `null` et le bouton est **retiré
+  entièrement** (pas de repli vers le compte Savoie, pas de bouton mort).
+- Ce choix évite d'afficher un compte Savoie sous un autre territoire (ce que
+  faisait l'ancien repli, source de confusion). Pour activer un territoire, il
+  suffira d'ajouter son URL réelle dans `cs_instagram_territoire_map()` : le code
+  le branchera automatiquement, sans autre modification.
 
 ---
 
@@ -447,7 +452,13 @@ Leviers possibles si on veut réduire les trous (à décider, non appliqués) :
 - Augmenter le nombre d'événements traduits en IT (action éditoriale).
 - Revoir la priorité de « Ce week-end » (qui rafle le plus gros morceau en
   premier sur les petits pools).
-- Traduire le texte JetEngine « No data was found » en FR/IT.
+
+**Fait le 2026-07-25** : le message « No data was found » (défaut JetEngine,
+affiché en anglais dans les sections vides, y compris en FR/IT) est désormais
+**traduit** — « Aucun événement pour le moment » (FR) / « Nessun evento al
+momento » (IT), via un filtre `gettext` (snippet 98) qui lit la langue Polylang
+courante. La section vide reste affichée (signal de pénurie assumé), mais dans
+la bonne langue.
 
 ---
 
@@ -561,6 +572,7 @@ n'est pas la bonne solution.
 | 87 | CS - Fallback visuel = thumbnail | Repli image partout. |
 | 88 | CS - Instagram par territoire | Lien Instagram adapté au territoire. |
 | 93 | CS - Colonne role pages (admin) | Colonne « Rôle » dans wp-admin → Pages (§11bis), scope `admin` seul. |
+| 98 | CS - Traduire No data was found (JetEngine FR/IT) | Filtre `gettext` traduisant le message de grille vide selon la langue Polylang (§10). |
 
 **mu-plugins** :
 

@@ -167,7 +167,11 @@ Peterson presents... »), 14 voisins bruts trouvés dans la fenêtre.
   événement précis** (via sa taxonomie `territoire`), pas le cookie/GET
   site-wide — nouvelle fonction `cs_instagram_canon_for_event($event_id)`
   (snippet 88). Le libellé du bouton précise le compte suivi (« Suivre Agenda
-  Sabauda Savoie sur Instagram »).
+  Sabauda Savoie sur Instagram »). **Le bouton n'apparaît que si l'événement
+  est en Savoie ET la fiche en français** (même règle que la home, §9 doc
+  homepages) : pour un événement d'un autre territoire, ou une fiche en IT,
+  `cs_instagram_account()` renvoie `null` et le bloc `<a>` Instagram est
+  **entièrement masqué** (pas de repli vers Savoie).
 - **Facebook** : **toujours `href="#"`, non corrigé.** Aucun compte Facebook
   par territoire n'existe/n'a été fourni à ce jour. À traiter le jour où un
   compte Facebook existera (même mécanique que Instagram, à dupliquer).
