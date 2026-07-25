@@ -1,4 +1,8 @@
 # SYNCED FROM observatoire-business-sabaudo — ne pas diverger (extraction future cultura-core)
+# DIVERGENCE ASSUMÉE (Agenda) : pick_banner_image ne sert plus le repli « Observatoire
+# économique » (fuite de marque, charte §9) — il résout exclusivement dans le set
+# catégorie Agenda (config/territory_category_images.txt) et renvoie "" à défaut.
+# À répercuter lors de l'extraction cultura-core (ne PAS écraser avec la version amont).
 """Dérive le domaine et le libellé d'une source à partir d'un enregistrement de veille.
 
 Sert à créditer les sources dans la newsletter (favicon + nom) sans rien inventer :
@@ -443,16 +447,63 @@ def load_territory_category_images(path: Path | None = None) -> dict[str, dict[s
     return images
 
 
+def _canon_territory(value: str) -> str:
+    """Normalise une valeur de territoire vers la clé CANONIQUE du set catégorie
+    (`Savoie` | `Piemonte` | `Vallee-Aoste` | `Nice`), ou "" si non reconnue.
+
+    Tolérant : minuscule + accents retirés, insensible aux slashes/tirets. Absorbe
+    toutes les variantes rencontrées en base (« Haute-Savoie », « Piémont »,
+    « Vallée d'Aoste », « Comté de Nice », « Nice/Alpes-Maritimes », slugs
+    « nice-alpes-maritimes »…). Même logique de détection par mot-clé que
+    scripts/publisher_as.py:_map_territoire, mais renvoie les clés du set CATÉGORIE
+    (config/territory_category_images.txt) et non les slugs WP.
+    """
+    v = _strip_accents(value or "").lower()
+    if not v:
+        return ""
+    if "savoie" in v:                                    # Savoie / Haute-Savoie
+        return "Savoie"
+    if "piemont" in v or "piedmont" in v:                # Piémont / Piemonte / Piedmont
+        return "Piemonte"
+    if "aost" in v:                                      # Vallée d'Aoste / Valle d'Aosta
+        return "Vallee-Aoste"
+    if "nice" in v or "maritim" in v or "azur" in v:     # Nice / Alpes-Maritimes / Côte d'Azur
+        return "Nice"
+    return ""
+
+
 def pick_banner_image(territory: str, category: str, key: str,
                       cat_images: dict[str, dict[str, str]],
                       fallback_images: dict[str, list[str]]) -> str:
-    """Bannière de repli : territoire × catégorie si disponible (plus pertinente),
-    sinon la bannière générique du territoire (repli historique, catégorie absente/
-    inconnue ou territoire hors des 4 couverts par le set catégorisé)."""
-    url = (cat_images.get(territory) or {}).get(category, "")
-    if url:
-        return url
-    return pick_image(territory, key, fallback_images)
+    """Visuel de repli Agenda, TOUJOURS pris dans le set catégorie (hébergé sur
+    agendasabauda.eu). Ne sert JAMAIS la bannière « Observatoire économique » —
+    charte §9 : « pas d'image plutôt qu'un visuel inadapté ».
+
+    Résolution :
+      1. `_canon_territory(territory)` → clé du set catégorie ; si inconnu → "" ;
+      2. dans le sous-dico du territoire, la catégorie exacte si présente ;
+      3. sinon, à défaut de catégorie, une image Agenda DÉTERMINISTE (hash de `key`,
+         même principe que pick_image) parmi les valeurs du territoire — jamais la
+         bannière de marque territoriale ;
+      4. sinon → "" (aucune image ; PAS de repli Observatoire).
+
+    `fallback_images` : conservé pour compat d'appel uniquement (anciennement les
+    bannières territoire de config/territory_images.txt). PLUS UTILISÉ ici — le repli
+    Observatoire fuitait comme image à la une (violation charte §9), retiré.
+    """
+    import hashlib
+
+    canon = _canon_territory(territory)
+    if not canon:
+        return ""
+    by_cat = cat_images.get(canon) or {}
+    if category in by_cat:
+        return by_cat[category]
+    if by_cat:
+        pool = sorted(by_cat.values())              # ordre stable → choix reproductible
+        idx = int(hashlib.md5((key or "").encode("utf-8")).hexdigest(), 16) % len(pool)
+        return pool[idx]
+    return ""
 
 
 _OFFICIAL_FILE = Path(__file__).resolve().parent.parent / "config" / "official_links.txt"
