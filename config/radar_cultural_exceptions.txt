@@ -133,3 +133,26 @@ foires
 brocantes
 carnavals
 defiles
+
+# --- Sport : grands événements avec date/lieu (Sport fait partie des 11 catégories
+# officielles) — délibérément exclus les termes trop génériques ("match", "gara" seuls)
+# qui accrocheraient n'importe quel résultat sportif courant plutôt qu'un événement ---
+championnat
+championnats
+championnat de france
+championnats de france
+championship
+coupe du monde
+coupe de france
+coupe d'europe
+jeux olympiques
+tournoi
+tournois
+grand prix
+marathon
+triathlon
+criterium
+rallye
+campionato
+campionati
+torneo
