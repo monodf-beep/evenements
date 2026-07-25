@@ -157,7 +157,7 @@ et le **contenu agrégé sans valeur ajoutée** sont explicitement du **spam** a
 - **Valider** chaque gabarit au **Rich Results Test**, puis **surveiller** le rapport
   « Événements » de Search Console (Valide / Avertissement / Erreur).
 
-*(Le JSON-LD complet prêt à coller est dans `REGLES_SEO_GEO_AEO_AGENDA_SABAUDO.md` §4.)*
+*(Le JSON-LD complet prêt à coller est dans `REGLES_SEO_GEO_AEO_AGENDA_SABAUDA.md` §4.)*
 
 ---
 

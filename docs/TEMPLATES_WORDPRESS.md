@@ -11,7 +11,7 @@ territoires + villes). Ordre = priorité de lancement.*
 
 | # | Template | Fichier | Contenu clé |
 |---|---|---|---|
-| 1 | **Home** | `front-page.php` | ⚠️ **Construit, structure réelle différente de la ligne ci-dessous** (obsolète depuis 2026-07-06) → voir `docs/REGLES_HOMEPAGES_AGENDA_SABAUDO.md` pour l'état réel (à la une, ce week-end, 7 prochains jours, ça vaut le déplacement, 3 colonnes). ~~Les strates mobiles : carrousel → recherche → 6 tuiles → à la une → ce week-end → le fil → tuiles secondaires → newsletter → footer.~~ |
+| 1 | **Home** | `front-page.php` | ⚠️ **Construit, structure réelle différente de la ligne ci-dessous** (obsolète depuis 2026-07-06) → voir `docs/REGLES_HOMEPAGES_AGENDA_SABAUDA.md` pour l'état réel (à la une, ce week-end, 7 prochains jours, ça vaut le déplacement, 3 colonnes). ~~Les strates mobiles : carrousel → recherche → 6 tuiles → à la une → ce week-end → le fil → tuiles secondaires → newsletter → footer.~~ |
 | 2 | **Hub « Ce week-end »** (clé SEO) | page + gabarit (requête dates) | Titre + dates + intro pérenne + **filtres date/ville/catégorie** + liste exhaustive. URL evergreen `/fr/ce-week-end/`. |
 | 3 | **« Tout l'agenda »** | page + gabarit | La **seule** page exhaustive, filtrable date · ville · catégorie · territoire. |
 | 4 | **Hub territoire** | `taxonomy-territoire.php` | Intro pérenne + « ce week-end en X » + flux local filtrable + encart **« De l'autre côté des Alpes »** (module transfrontalier). Sert les 4 territoires. |
@@ -22,7 +22,7 @@ territoires + villes). Ordre = priorité de lancement.*
 
 | # | Template | Base | Ce qu'on change |
 |---|---|---|---|
-| 7 | **Fiche événement** | TEC `single-event` | **Construit** → voir `docs/FICHE_EVENEMENT_AGENDA_SABAUDO.md` pour l'état réel. ⚠️ Seulement **2 rails** live (même lieu / catégorie), le 3e (mêmes dates) prévu ici n'a pas été implémenté. |
+| 7 | **Fiche événement** | TEC `single-event` | **Construit** → voir `docs/FICHE_EVENEMENT_AGENDA_SABAUDA.md` pour l'état réel. Les **3 rails** sont live (même lieu / catégorie / mêmes dates), badges Dernier jour / En cours live (Complet exclu). |
 | 8 | **Hub catégorie** | archive catégorie TEC | **Intro éditoriale pérenne** au-dessus (nos textes FR/IT sont écrits) + cartes au **gabarit constant**. Sert les 11 catégories. |
 | 9 | **Hub lieu** | TEC `single-venue` (`/luoghi/`) | Style GuidaTorino minimal : fil d'Ariane → H1 (lieu) → « Événements à venir » → carte → adresse. Aucune prose. |
 | 10 | **Recherche** | `search.php` | Résultats orientés **événements** (date + lieu + pilule), pas des articles bruts. |

@@ -7,7 +7,7 @@ Elementor + Polylang. On NE crée PAS de CPT `evenement` : la carte habille un `
 **Sources de vérité de ce fichier**
 - Tokens live : `wordpress/design-system/tokens.css` (appliqués sur le site via Code Snippets).
 - Contrat méta FIGÉ : `docs/CONTRAT_META_AS.md` (8 clés `as_*`, immuables).
-- Brief design : `docs/BRIEF_DESIGN_AGENDA_SABAUDO.md` §8.1 (carte, 4 variantes) + §7.1 (dates).
+- Brief design : `docs/BRIEF_DESIGN_AGENDA_SABAUDA.md` §8.1 (carte, 4 variantes) + §7.1 (dates).
 - Build Crocoblock : `docs/BUILD_WORDPRESS_CROCOBLOCK.md` §2–3.
 
 **Règles design VERROUILLÉES (rappel, non négociable)**

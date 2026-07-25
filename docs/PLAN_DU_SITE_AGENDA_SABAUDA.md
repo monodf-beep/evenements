@@ -1,7 +1,7 @@
 # Agenda Sabauda — Plan du site & contenus fondateurs
 
 *Document de travail — 02/07/2026. À utiliser en parallèle de la maquette Claude Design.
-Complète le brief `BRIEF_DESIGN_AGENDA_SABAUDO.md` : ici on fige l'arborescence, les 3 modules
+Complète le brief `BRIEF_DESIGN_AGENDA_SABAUDA.md` : ici on fige l'arborescence, les 3 modules
 de home retenus par Franck (6 tuiles, « En évidence », nav thématique), et les textes prêts à
 coller (À propos FR/IT).*
 

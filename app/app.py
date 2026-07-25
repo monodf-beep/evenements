@@ -520,7 +520,7 @@ def pilotage():
     """Onglet « Pilotage » : santé ÉDITORIALE / couverture, calculée uniquement
     depuis la base (aucune API externe, rien qui casse). Le pilotage du TRAFIC
     (impressions, clics, position) vit dans Looker Studio, pas ici — cf.
-    docs/MARKETING_ET_PILOTAGE_AGENDA_SABAUDO.md."""
+    docs/MARKETING_ET_PILOTAGE_AGENDA_SABAUDA.md."""
     today = date.today().isoformat()
     # « À venir » = se termine (ou commence, à défaut de fin) aujourd'hui ou après.
     end_expr = "COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''))"

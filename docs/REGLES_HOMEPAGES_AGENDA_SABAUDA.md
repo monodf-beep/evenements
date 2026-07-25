@@ -6,7 +6,7 @@
 > images de repli, et les points critiques (là où le manque de contenu source
 > fait apparaître des trous). À versionner dans le dépôt GitHub du projet.
 >
-> Dernière mise à jour du code décrit : 2026-07-24.
+> Dernière mise à jour du code décrit : 2026-07-25.
 >
 > Voir aussi `docs/NOMMAGE_TERRITOIRES.md` (convention de nommage des
 > territoires/sous-divisions, antérieure à ce document) et
@@ -250,15 +250,27 @@ Règles appliquées par l'allocateur :
   - Au-delà de ce budget, une section qui manque de contenu **reste courte** :
     « No data was found » reste alors un **signal fiable** de vraie pénurie,
     jamais masqué artificiellement.
-- **Lignes complètes** (`cs_home_row_size`) : `ala-une` et `jour` sont arrondis à
-  un multiple de leur pas (4), `weekend` à 3. C'est ce qui produit le
-  comportement « 4 ou 8 » de la section « 7 prochains jours » (jamais 5, 6 ou 7 ;
-  jamais au-delà de 8). **L'arrondi vaut aussi vers le bas jusqu'à 0** : si le
-  nombre trouvé est inférieur à une ligne complète (ex. 3 alors que le pas est 4),
-  on affiche 0 (« No data was found ») plutôt qu'une ligne incomplète — bug
-  corrigé le 2026-07-24 (trouvé sur Vallée d'Aoste : « jour » affichait 3).
-  Vérifié depuis sur les 10 variantes de home (5 FR + 5 IT) : `jour` toujours
-  ∈ {0, 4, 8}, `ala-une` jamais > 4, `weekend` toujours multiple de 3.
+- **Lignes complètes** (`cs_home_row_size`) : seule **`jour`** est arrondie à un
+  multiple de son pas (4) — **y compris vers 0** si le stock est inférieur à une
+  ligne complète. C'est ce qui produit le comportement « 4 ou 8 » de la section
+  « 7 prochains jours » (jamais 5, 6 ou 7 ; jamais au-delà de 8) : ici, la règle
+  métier explicite (jamais de nombre intermédiaire) justifie l'arrondi à 0.
+  Vérifié sur les 10 variantes de home (5 FR + 5 IT) : `jour` toujours ∈
+  {0, 4, 8}.
+- **⚠️ Bug trouvé et corrigé le 2026-07-25 : `ala-une` et `weekend` avaient le
+  même arrondi-à-zéro, à tort.** Contrairement à `jour`, ni « à la une »
+  (règle : 3 fixe desktop / 4 mobile) ni « ce week-end » n'ont de règle métier
+  imposant un multiple — ce n'était qu'une extrapolation du principe de `jour`,
+  appliquée sans nécessité. Conséquence réelle observée : sur IT Savoia, 2
+  événements jamais utilisés ailleurs existaient pour « à la une » mais étaient
+  arrondis à 0 (floor(2/4)×4 = 0), affichant « No data was found » alors que du
+  contenu réel existait ; pire, la section « jour » avait quand même consommé
+  le budget de réutilisation en tentant de compenser son propre manque, pour un
+  résultat lui aussi arrondi à 0 — double perte. Corrigé : `cs_home_row_size`
+  ne force plus de multiple que pour `jour`. Le plafond d'affichage (3 desktop
+  / 4 mobile pour `ala-une`) reste géré uniquement par le CSS `nth-child`
+  (snippet 77), indépendamment de l'allocateur. Vérifié après correction :
+  IT Savoia « à la une » passe de 0 à 3 items affichés.
 
 ### Ordre de priorité et logique de réservation
 

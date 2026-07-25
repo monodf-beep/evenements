@@ -1,7 +1,7 @@
 # Spec — Agent(s) SEO du dashboard (backoffice Agenda Sabauda)
 
 *Cadrage critique de l'idée « un agent SEO dans le dashboard pour l'utiliser sur les principaux
-événements ». Écrit après recherche (voir `GUIDE_INDEXATION_AGENDA_SABAUDO.md`). Ton : franc,
+événements ». Écrit après recherche (voir `GUIDE_INDEXATION_AGENDA_SABAUDA.md`). Ton : franc,
 comme demandé.*
 
 ---

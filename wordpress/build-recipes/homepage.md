@@ -7,7 +7,7 @@ d'exécution. Stack : GeneratePress + The Events Calendar (`tribe_events`) + Cro
 **Principe directeur (hérité de `BUILD_WORDPRESS_CROCOBLOCK.md`) : TEC est la donnée, JetEngine
 la mise en forme. On garde `tribe_events`, aucun CPT `evenement`.**
 
-Sources : `docs/PLAN_DU_SITE_AGENDA_SABAUDO.md` §2 (3 modules), `docs/BRIEF_DESIGN_AGENDA_SABAUDO.md`
+Sources : `docs/PLAN_DU_SITE_AGENDA_SABAUDA.md` §2 (3 modules), `docs/BRIEF_DESIGN_AGENDA_SABAUDA.md`
 §6.1 + H1 (~l.243), `docs/TEMPLATES_WORDPRESS.md` (ordre des strates), `docs/BUILD_WORDPRESS_CROCOBLOCK.md`
 (contrat de données + requêtes), `wordpress/design-system/tokens.css` (variables `--cs-*`).
 

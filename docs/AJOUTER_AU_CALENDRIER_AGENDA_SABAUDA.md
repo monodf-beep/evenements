@@ -41,7 +41,7 @@ pour la personne qui clique aujourd'hui. Deux symptômes :
 1. L'entrée créée dans Google/Outlook/Apple semblait déjà terminée.
 2. Le texte affiché sur la fiche disait « du 1er avril au 31 octobre »,
    laissant croire à tort que l'événement était fini ou pas commencé (corrigé
-   séparément, voir `FICHE_EVENEMENT_AGENDA_SABAUDO.md` §3).
+   séparément, voir `FICHE_EVENEMENT_AGENDA_SABAUDA.md` §3).
 
 **Correction** : fonction `cs_atc_effective_start($start, $end)`.
 
@@ -156,12 +156,12 @@ sans être intrusif :
 | Élément | Fichier |
 |---|---|
 | Toute la logique (`cs_atc_*`, endpoint `.ics`) | Snippet 69 « CS — Ajouter à mon agenda » |
-| Appelé depuis | Fiche événement (`cs_atc_render`, voir `FICHE_EVENEMENT_AGENDA_SABAUDO.md` §2 point 14) |
+| Appelé depuis | Fiche événement (`cs_atc_render`, voir `FICHE_EVENEMENT_AGENDA_SABAUDA.md` §2 point 14) |
 | Appelé depuis | Cartes de liste (`cs_atc_mini`, snippet 21 `cs_card_compact`) |
 | Affichage automatique alternatif (désactivé) | `CS_ATC_AUTO` (constante `false` par défaut) — mécanisme `wp_footer` + JS pour insérer le bloc sans dépendre du thème/builder, non utilisé actuellement (bloc inséré explicitement à la place) |
 
 **Anciennes versions** : les snippets **67** et **68** (même nom) sont en
 statut `active=-1` (corbeille dans Code Snippets) — des versions de brouillon
 antérieures au 69, sans effet sur le site. Pas le même piège que la fiche
-événement (§0 de `FICHE_EVENEMENT_AGENDA_SABAUDO.md`), où les deux snippets
+événement (§0 de `FICHE_EVENEMENT_AGENDA_SABAUDA.md`), où les deux snippets
 concurrents sont bien actifs tous les deux.

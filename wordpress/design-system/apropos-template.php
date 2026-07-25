@@ -5,7 +5,7 @@
  * (Ce week-end / Tout l'agenda / Proposer un événement...).
  *
  * Texte FR prêt à coller, tel que rédigé dans
- * docs/PLAN_DU_SITE_AGENDA_SABAUDO.md §4 "Texte « À propos »" — copié tel
+ * docs/PLAN_DU_SITE_AGENDA_SABAUDA.md §4 "Texte « À propos »" — copié tel
  * quel, non réécrit. Version IT ignorée pour l'instant (pas de page /it/).
  *
  * Header/footer de marque déjà injectés site-wide par le snippet #19

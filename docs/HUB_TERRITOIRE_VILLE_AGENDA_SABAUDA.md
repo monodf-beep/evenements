@@ -11,7 +11,7 @@
 
 ## 0. Deux systèmes, un seul vraiment utilisé pour les territoires
 
-Comme pour la fiche événement (`FICHE_EVENEMENT_AGENDA_SABAUDO.md` §0), il y a
+Comme pour la fiche événement (`FICHE_EVENEMENT_AGENDA_SABAUDA.md` §0), il y a
 ici une bascule d'un ancien système vers un nouveau — mais gérée proprement
 cette fois, **par redirection explicite**, pas par un doublon de snippet
 silencieux :

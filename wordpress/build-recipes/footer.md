@@ -4,7 +4,7 @@
 dans WordPress. Stack : GeneratePress (thème) + The Events Calendar (données) + Crocoblock
 JetThemeCore/JetEngine (Theme Part « Footer ») + Elementor (édition) + Polylang (FR/IT).*
 
-Sources : `docs/BRIEF_DESIGN_AGENDA_SABAUDO.md` §5 (footer riche) · `docs/PLAN_DU_SITE_AGENDA_SABAUDO.md`
+Sources : `docs/BRIEF_DESIGN_AGENDA_SABAUDA.md` §5 (footer riche) · `docs/PLAN_DU_SITE_AGENDA_SABAUDA.md`
 §1 (arborescence), §2.3 (nav thématique), §4 (À propos FR/IT) · `docs/STRATEGIE_MARQUE_ET_TERRITOIRES.md`
 · `docs/legal/` (mentions, crédits photos) · `wordpress/design-system/tokens.css` (variables `--cs-*`).
 

@@ -49,12 +49,12 @@ texte. Ce document définit le remplacement illustré de cet aplat.
 Motif : `fallback-{territoire-slug}-{categorie-slug}.jpg`
 
 Slugs territoire : `savoie`, `piemont`, `vallee-d-aoste`, `comte-de-nice`
-(cf. `docs/CONTRAT_TAXONOMIE_AGENDA_SABAUDO.md` §2).
+(cf. `docs/CONTRAT_TAXONOMIE_AGENDA_SABAUDA.md` §2).
 
 Slugs catégorie : `cinema`, `concerts-musique`, `conferences-rencontres`, `curiosites`,
 `expositions-patrimoine`, `festivals`, `fetes-traditions`, `gastronomie-sagre`,
 `jeune-public-famille`, `marches-foires`, `spectacle-vivant`, `sport`
-(cf. `docs/CONTRAT_TAXONOMIE_AGENDA_SABAUDO.md` §1).
+(cf. `docs/CONTRAT_TAXONOMIE_AGENDA_SABAUDA.md` §1).
 
 ### 5.1 Liste complète (48 fichiers)
 

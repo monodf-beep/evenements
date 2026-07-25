@@ -27,7 +27,7 @@ const env = loadEnv();
 const BASE = env.WP_AS_URL?.replace(/\/$/, '');
 const AUTH = 'Basic ' + Buffer.from(`${env.WP_AS_USER}:${(env.WP_AS_APP_PASSWORD || '').replace(/\s+/g, '')}`).toString('base64');
 
-// Réglages cibles (accroche = baseline documentée dans docs/BRIEF_DESIGN_AGENDA_SABAUDO.md)
+// Réglages cibles (accroche = baseline documentée dans docs/BRIEF_DESIGN_AGENDA_SABAUDA.md)
 const SETTINGS = {
   title: 'Agenda Sabauda',
   description: 'Que faire dans les Alpes, de Chambéry à Turin',

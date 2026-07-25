@@ -100,7 +100,7 @@ Résumé de ce qu'elles contiennent (donc de ce qu'il faudra comparer, une fois 
   6.5rem)`**, `line-height: 0.95`, `letter-spacing: 0.05em`, couleur `var(--cs-bleu)` (#18365E).
   C'est la seule mention trouvée de « Alumni Sans Pinstripe » dans tout le repo local — **non
   confirmée contre une maquette réelle**, seulement contre le brief texte
-  (`docs/BRIEF_DESIGN_AGENDA_SABAUDO.md`, non lu dans cette passe).
+  (`docs/BRIEF_DESIGN_AGENDA_SABAUDA.md`, non lu dans cette passe).
 - Pas de hauteur de hero en px (juste le padding).
 - Grilles de cartes : `repeat(3, 1fr)` ≥1024px, `repeat(2, 1fr)` ≥768px, 1 colonne mobile ; ratio
   image carte fixé `3/2`.

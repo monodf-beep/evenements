@@ -1,8 +1,8 @@
 # Règles de partage social (Open Graph / X) · Agenda Sabauda
 
 *Ce qui se passe quand quelqu'un colle une URL du site dans WhatsApp, Facebook, LinkedIn,
-Slack, Discord ou X. À lire avec `REGLES_SEO_GEO_AEO_AGENDA_SABAUDO.md` (référencement) et
-`BRIEF_DESIGN_AGENDA_SABAUDO.md` (charte).*
+Slack, Discord ou X. À lire avec `REGLES_SEO_GEO_AEO_AGENDA_SABAUDA.md` (référencement) et
+`BRIEF_DESIGN_AGENDA_SABAUDA.md` (charte).*
 
 **Implémentation vivante :** `wp-content/mu-plugins/cs-open-graph.php` sur le site.
 Rollback : supprimer ce fichier, Yoast reprend seul la main.
