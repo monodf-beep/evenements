@@ -6,6 +6,22 @@ plusieurs événements) qui alimentent le carrousel du haut de home. Stack : CPT
 `PILE_BUILD_WORDPRESS.md`. Chaque sélection = **une page rankable** + un item du
 carrousel + une source pour la newsletter et le social.*
 
+> **MISE À JOUR — état réel vérifié en live (2026-07-25).** Ce système n'est PLUS au
+> stade « spec » : le CPT `selection` et le carrousel sont **construits et en ligne**.
+> La home (thème **GeneratePress**, pas Elementor) pointe vers de vraies pages de
+> sélection, brandées avec de vraies photos de couverture (pas la bannière Observatoire) :
+> `/selections/ce-week-end/`, `/selections/que-faire-a-annecy-ce-week-end/`,
+> `/selections/les-nouveautes/`, `/selections/ca-vaut-le-deplacement/`,
+> `/selections/quelle-sagre-ce-mois/`. Les URLs réelles du site n'ont PAS de préfixe
+> `/fr/` ni `/territoire/` : hubs catégorie en `/evenements/categorie/<cat>/`, accès
+> temporels en `/aujourdhui/`, `/ce-week-end/`, `/tout-l-agenda/`.
+> **Problème restant** : certaines sélections s'affichent VIDES (« Aucun événement à
+> afficher ») — la tuyauterie de méta est bonne (`publisher_as` pousse `as_ville`,
+> `as_score`, `_EventStartDate`), donc c'est surtout du **volume** (villes sous le
+> seuil, ex. Annecy) et/ou du **réglage de filtre JetEngine**, pas un manque de CPT.
+> Les docs `TODO_LANCEMENT.md` (§2c « carrousel non coché ») et `CONSTRUCTION_PAGES.md`
+> sont donc **en retard** sur cet aspect.
+
 ---
 
 ## Principe : 2 modes de production

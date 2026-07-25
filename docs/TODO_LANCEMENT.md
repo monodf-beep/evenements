@@ -4,6 +4,16 @@
 [x] fait · [ ] à faire · 🤖 moi (Claude Code, dans le repo) · 🧑 Franck · 🎨 Claude Design ·
 ⚙️ config manuelle wp-admin (ou Claude-in-Chrome).*
 
+> **⚠️ MISE À JOUR — vérifié en live (2026-07-25).** Plusieurs items « non cochés » ici
+> sont en réalité **construits et en ligne** : le site tourne sous **GeneratePress**, le
+> **carrousel de sélections** existe (`/selections/*` liées depuis la home, pages brandées
+> avec vraies photos), les **hubs catégorie/territoire/temporels** répondent
+> (`/evenements/categorie/<cat>/`, `/ce-week-end/`, `/tout-l-agenda/`). Détail et cibles
+> réelles dans `SELECTIONS_HOME.md` (encadré « état réel »). Reste vrai : certaines
+> sélections sont VIDES (volume/filtre), le **hero « Espace Sabaudo »** en haut de home
+> garde encore la marque Observatoire (asset WordPress → 🎨 Claude Design), et des
+> **doublons publiés** existent (corrigés par `cleanup_as_dupes --include-published`).
+
 ---
 
 ## 0. Backoffice & stratégie — ✅ FAIT
