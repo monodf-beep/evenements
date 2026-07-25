@@ -17,9 +17,13 @@ sys.path.insert(0, str(ROOT))
 from urllib.parse import urlparse
 
 from utils.logger import get_logger
-from utils.sources import (is_blocked_image, is_broad_source, is_out_of_scope,
+from utils.sources import (is_blocked_image, is_broad_source, is_offtopic, is_out_of_scope,
                            load_blocked_image_domains, load_broad_sources,
-                           load_out_of_zone, load_perimeter_filter, mentions_perimeter)
+                           load_out_of_zone, load_perimeter_filter, load_topic_filter,
+                           mentions_perimeter)
+
+_RADAR_OFFTOPIC_FILE = ROOT / "config" / "radar_offtopic_keywords.txt"
+_RADAR_CULTURAL_FILE = ROOT / "config" / "radar_cultural_exceptions.txt"
 
 
 def _domain(url: str) -> str:
@@ -286,7 +290,8 @@ def best_content(entry: dict) -> str:
 
 
 def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
-                  perimeter_re=None, broad: set | None = None, out_re=None) -> int:
+                  perimeter_re=None, broad: set | None = None, out_re=None,
+                  radar_offtopic_re=None, radar_cultural_re=None) -> int:
     log.info("Scraping : %s", source["name"])
     try:
         feed = feedparser.parse(source["url"])
@@ -318,6 +323,13 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
         #    (Avignon, Lyon, Milano…) SANS aucun lieu couvert. Détection positive,
         #    indépendante du domaine — rattrape le radar mal rangé.
         if is_out_of_scope(material, out_re, perimeter_re):
+            skipped += 1
+            continue
+        # 3) Source RADAR (presse généraliste) : écarte le fait-divers/actu générale
+        #    (accident, douanes, résultats du bac…) qui n'a rien d'un événement culturel
+        #    — sauf si un marqueur culturel/touristique le sauve (garde-fou volontairement
+        #    large, cf. config/radar_cultural_exceptions.txt).
+        if source.get("type") == "radar" and is_offtopic(material, radar_offtopic_re, radar_cultural_re):
             skipped += 1
             continue
         image = extract_image(entry)
@@ -359,11 +371,14 @@ def main() -> int:
     perimeter_re = load_perimeter_filter()
     broad = load_broad_sources()
     out_re = load_out_of_zone()
+    radar_offtopic_re, radar_cultural_re = load_topic_filter(
+        _RADAR_OFFTOPIC_FILE, _RADAR_CULTURAL_FILE)
     sources = load_sources()
     if not sources:
         log.error("Aucune source configurée dans %s", SOURCES_FILE)
         return 1
-    total = sum(scrape_source(s, conn, blocked, perimeter_re, broad, out_re) for s in sources)
+    total = sum(scrape_source(s, conn, blocked, perimeter_re, broad, out_re,
+                              radar_offtopic_re, radar_cultural_re) for s in sources)
     cleaned = clean_out_of_perimeter(conn, perimeter_re, broad, out_re)
     conn.close()
     log.info("=== Scraping terminé : %d nouveaux événements (%d hors périmètre rejetés) ===",

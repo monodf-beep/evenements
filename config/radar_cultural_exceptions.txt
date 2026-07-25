@@ -1,0 +1,72 @@
+# Marqueurs CULTURELS/TOURISTIQUES qui SAUVENT un titre radar même s'il matche un
+# mot hors-sujet (config/radar_offtopic_keywords.txt) — garde-fou pour ne jamais
+# jeter une vraie annonce d'événement qui croise accidentellement un mot du fait-
+# divers (ex. « incendie » dans « spectacle son et lumière évoquant l'incendie du
+# château »). Volontairement LARGE : mieux vaut garder un radar limite que perdre
+# un vrai événement.
+#
+# Une ligne = une expression (mêmes règles que radar_offtopic_keywords.txt).
+
+festival
+concert
+spectacle
+exposition
+exposicion
+mostra
+musee
+museo
+theatre
+teatro
+cinema
+cine
+danse
+danza
+patrimoine
+patrimonio
+culturel
+culturelle
+culturale
+artiste
+artista
+vernissage
+marche de noel
+marche artisanal
+foire
+fete
+festa
+sagra
+gastronomie
+gastronomique
+atelier creatif
+animation culturelle
+bibliotheque
+biblioteca
+conference
+rencontre litteraire
+salon du livre
+salon du
+festival de musique
+festival du film
+festival international
+son et lumiere
+feu d'artifice
+feux d'artifice
+fanfare
+chorale
+orchestre
+opera
+ballet
+peinture
+sculpture
+photographie
+artisanat
+brocante
+vide-grenier
+kermesse
+carnaval
+defile
+commemoration
+ceremonie
+patrimoine culturel
+journees du patrimoine
+nuit des musees
