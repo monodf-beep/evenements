@@ -63,6 +63,11 @@ _LOGO_NAME_TOKENS = frozenset((
     "logo", "logos", "sprite", "icon", "icons", "favicon", "placeholder",
     "default", "avatar", "blason", "stemma", "flag", "banner", "badge",
     "header", "footer", "wordmark", "brandmark", "emblem", "crest",
+    # Icônes « suivez-nous » auto-hébergées par le site source (pas de vraie photo) —
+    # repéré : une icône « facebook.png » locale glissée comme photo de contenu, non
+    # bloquée par domaine (elle n'est PAS servie par facebook.com/fbcdn.net).
+    "facebook", "twitter", "linkedin", "youtube", "pinterest", "whatsapp",
+    "telegram", "tiktok", "share", "social",
 ))
 
 
