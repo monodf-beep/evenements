@@ -62,8 +62,14 @@ def fetch_list(wp_url: str, auth) -> list[dict]:
     return resp.json()
 
 
-def find_duplicates(events: list[dict]) -> list[dict]:
-    """Renvoie la liste des exemplaires À METTRE À LA CORBEILLE (les non-gardés)."""
+def find_duplicates(events: list[dict], include_published: bool = False) -> list[dict]:
+    """Renvoie la liste des exemplaires À METTRE À LA CORBEILLE (les non-gardés).
+
+    Par défaut on ne touche JAMAIS un exemplaire publié (sécurité). Avec
+    `include_published`, on peut mettre à la corbeille un doublon publié — mais
+    UNIQUEMENT si l'exemplaire gardé est LUI AUSSI publié : on ne retire jamais la
+    seule copie en ligne d'un événement (cas Yerai : 2 posts publiés → on garde le
+    meilleur, on corbeille l'autre)."""
     groups: dict[str, list[dict]] = defaultdict(list)
     for ev in events:
         groups[_key(ev)].append(ev)
@@ -73,10 +79,13 @@ def find_duplicates(events: list[dict]) -> list[dict]:
             continue
         grp_sorted = sorted(grp, key=_keep_score, reverse=True)
         keep = grp_sorted[0]
+        keep_published = keep.get("status") in ("publish", "private")
         for dup in grp_sorted[1:]:
-            # On ne met JAMAIS à la corbeille un exemplaire publié.
             if dup.get("status") in ("publish", "private"):
-                continue
+                # Doublon publié : intouchable sauf --include-published ET si le gardé
+                # est publié (sinon on retirerait la seule copie en ligne).
+                if not (include_published and keep_published):
+                    continue
             dup["_keep_id"] = keep["id"]
             to_trash.append(dup)
     return to_trash
@@ -118,6 +127,10 @@ def main(argv=None) -> int:
                         "protège les « image seule ».")
     p.add_argument("--past", action="store_true", help="Aussi les événements passés.")
     p.add_argument("--all", action="store_true", help="Doublons + incomplets + passés.")
+    p.add_argument("--include-published", action="store_true",
+                   help="Autoriser la corbeille d'un doublon PUBLIÉ quand un meilleur "
+                        "exemplaire publié existe (jamais la seule copie en ligne). "
+                        "À utiliser pour nettoyer des doublons déjà en ligne.")
     p.add_argument("--cap", type=int, default=300, help="Nombre max d'exemplaires traités.")
     p.add_argument("--delay", type=float, default=0.4, help="Pause (s) entre deux appels.")
     args = p.parse_args(argv)
@@ -139,8 +152,9 @@ def main(argv=None) -> int:
     by_id = {e["id"]: e for e in events}
     # 1) Doublons (on garde le meilleur exemplaire).
     reasons: dict[int, str] = {}
-    for r in find_duplicates(events):
-        reasons[r["id"]] = f"doublon (on garde WP#{r['_keep_id']})"
+    for r in find_duplicates(events, include_published=args.include_published):
+        pub = " · PUBLIÉ" if r.get("status") in ("publish", "private") else ""
+        reasons[r["id"]] = f"doublon (on garde WP#{r['_keep_id']}){pub}"
     # 2) Incomplets « déchet » + passés (côté WordPress, attrape les orphelins).
     do_incomplete = args.incomplete or args.all
     do_past = args.past or args.all
