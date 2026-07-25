@@ -186,7 +186,16 @@ def _shell(inner: str, *, preheader: str) -> str:
     return (
         '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-        "<title>Agenda Sabauda</title></head>"
+        "<title>Agenda Sabauda</title>"
+        # Responsive mobile (ADDITIF) : sur ≤600px, le conteneur fixe 600px et les grandes
+        # images (width=528) passent en fluide. Sans ça, la largeur mini imposée par ces
+        # attributs déborde du viewport et rogne le texte à droite. Ciblage par attribut
+        # pour n'toucher QUE ces éléments (favicons 16/24 et logo 44 intacts) ; desktop et
+        # clients sans media query (Outlook) gardent le rendu 600px inchangé.
+        "<style>@media only screen and (max-width:600px){"
+        'table[width="600"]{width:100%!important}'
+        'img[width="528"]{width:100%!important;max-width:100%!important;height:auto!important}'
+        "}</style></head>"
         # Signature unique du gabarit — permet de distinguer à coup sûr un brouillon
         # fraîchement généré d'un ancien (chercher ASABAUDO-MAGAZINE-2026A).
         "<!-- ASABAUDO-MAGAZINE-2026A · gabarit magazine (Le tour des territoires) -->"

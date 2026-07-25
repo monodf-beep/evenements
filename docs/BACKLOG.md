@@ -32,8 +32,9 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 ## Tâches à réfléchir
 
 ### Images (signalé par Franck)
-- [ ] Récupérer l'**image OG** (`og:image`) de la page source quand le flux n'a pas de
-      photo (scraping HTML léger de l'URL de l'événement).
+- [x] Récupérer l'**image OG** (`og:image`) de la page source quand le flux n'a pas de
+      photo. FAIT : `enrich.py` (repli à l'enrichissement) + cascade complète `scripts/visuals.py`
+      (og:image → 1re photo de contenu → recherche Commons → bannière territoire/catégorie).
 - [ ] Définir l'**alternative « pas de photo »** : ne rien afficher (état actuel) vs
       générer un **visuel culturel** par territoire/catégorie (≠ bannière éco de
       l'Observatoire, qui est inadaptée). Décider du style.
@@ -87,9 +88,16 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
       pas de fuite de scoring).
       Reste optionnel : appliquer la même trace au canal MANUEL (app.py) — écarté (clé de
       territoire groupée différente, et l'humain contrôle déjà sa sélection).
-- [ ] **Responsive** : le template `variant_magazine` est fluide (viewport + conteneur
-      600px/max-width:100%, colonne unique) — OK par construction. À vérifier visuellement une
-      fois : rendu mobile réel + une liste `## Programme` longue (rendu thème WordPress).
+- [x] **Responsive** : bug trouvé et corrigé. Le `max-width:100%` sur le conteneur fixe
+      `width="600"` ne collapsait PAS (les attributs `width="600"/"528"` imposaient une largeur
+      mini > viewport → texte rogné à droite sur mobile). Mesuré : scrollWidth 624px (débordait)
+      → 485px après correction. Fix ADDITIF dans `utils/newsletter_variants._shell` : un
+      `<style>@media (max-width:600px)` qui passe le conteneur et les grandes images en fluide,
+      ciblé par attribut (favicons/logo intacts). Desktop et clients sans media query (Outlook)
+      inchangés. Vérifié au rendu Chromium (mobile + desktop). NB : `variant_magazine` est
+      PARTAGÉ avec l'Observatoire → le fix améliore les deux, sans toucher au desktop.
+- [ ] Reste à vérifier une fois en conditions réelles : une liste `## Programme` LONGUE dans un
+      article (rendu par le thème WordPress, hors template email).
 
 ### Enrichissement — faits structurés (charte §5 bis)
 - [x] **Champ `programme` (LISTE)** ajouté au schéma JSON d'`enrich.py` + rendu markdown
