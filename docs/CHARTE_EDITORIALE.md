@@ -163,11 +163,10 @@ FR ne doit pas produire une mauvaise version IT.
 - **Casse** : casse de phrase, **jamais** le *title case* anglais (Chaque Mot En Majuscule)
   ni le tout-capitales. Mois et jours en **minuscule** (« 5 luglio », « domenica »). Sigles
   réels et marques préservés.
-- **Toponymes dans la langue de l'article** *(défaut à valider)* : FR = Turin, Aoste, Nice,
-  Verceil ; IT = **Torino, Aosta, Nizza, Vercelli**. On nomme dans la langue du lecteur, et
-  on garde la chaîne **ville → province → territoire** (§2/§3) traduite en conséquence
-  (Savoia, Piemonte, Valle d'Aosta, Contea di Nizza). *Décision Franck : confirmer cette
-  politique — ou garder un exonyme unique.*
+- **Toponymes dans la langue de l'article** *(décidé)* : FR = Turin, Aoste, Nice, Verceil ;
+  IT = **Torino, Aosta, Nizza, Vercelli**. On nomme dans la langue du lecteur, et on garde
+  la chaîne **ville → province → territoire** (§2/§3) traduite en conséquence (Savoia,
+  Piemonte, Valle d'Aosta, Contea di Nizza).
 - **Faits vs expression** (§5) : les faits (dates, programme, lieu) sont identiques dans les
   deux langues ; seule l'**expression** est réécrite. Un `programme` en liste se traduit
   ligne à ligne, sans en perdre.
