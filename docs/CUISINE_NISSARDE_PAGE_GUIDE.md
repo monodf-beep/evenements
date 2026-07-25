@@ -4,7 +4,7 @@
 > sans validation. Contenu evergreen (article « Le Fil »), rattaché au territoire Comté de
 > Nice (`nice`) et à la catégorie « Gastronomie & Sagre ».
 >
-> **Données sources** : `docs/data/cuisine_nissarde_2025_2026.md` (recopie fidèle du
+> **Données sources** : `docs/CUISINE_NISSARDE_DONNEES.md` (recopie fidèle du
 > dossier de presse OT Nice Côte d'Azur 2025/26). Vérifier l'écart de décompte Merenda
 > (8 entrées listées vs 7 annoncées) avant mise en ligne.
 >

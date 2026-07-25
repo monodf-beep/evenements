@@ -5,7 +5,7 @@
 > au fil des sessions. Pour le détail technique de chaque brique, voir les docs
 > dédiés référencés en regard.
 >
-> Dernière mise à jour : 2026-07-25.
+> Dernière mise à jour : 2026-07-26.
 
 ---
 
@@ -62,8 +62,8 @@
 | Sujet | Détail |
 |---|---|
 | Retrait bannière territoire générique | `publisher_as.py` : le site gère son propre repli désormais |
-| Diagnostic couverture photo | 22,6% des événements sans photo ; levier = 22 événements FR sans URL source (41% de manque) |
-| Liste Cuisine Nissarde 2025/26 | 29 établissements labellisés récupérés (dossier de presse officiel OT Nice) |
+| Diagnostic couverture photo (corrigé 2026-07-26) | Les images de repli sont bakeées comme `_thumbnail_id` : détecter « sans vraie photo » = tester le slug `fallback-`, pas un thumbnail vide. Réel : 19 FR + 23 IT événements futurs sur image de repli. Voir `PHOTOS_MANQUANTES_EVENEMENTS.md` |
+| Liste Cuisine Nissarde 2025/26 | 29 établissements labellisés récupérés (dossier de presse officiel OT Nice), structurés dans `CUISINE_NISSARDE_DONNEES.md` |
 
 ---
 
@@ -80,8 +80,8 @@ choix (section suivante) ou dépendent d'un tiers.
 
 | # | Sujet | État au 2026-07-26 | Choix à faire |
 |---|---|---|---|
-| D2 | Cuisine Nissarde | **Préparé** : dataset + brouillon de page guide dans le repo (`docs/data/cuisine_nissarde_2025_2026.md`, `docs/CUISINE_NISSARDE_PAGE_GUIDE.md`). Reco : **une page guide evergreen dans « Le Fil »** (pas des fiches événement, ce sont des établissements permanents) | (a) publier la page guide, (b) autre forme, (c) attendre. **+ vérifier le décompte 29 vs 30** (Socca du Cours / Chez Marie Thé = 1 ou 2 établissements ?) |
-| D1 | Photo par événement | **Diagnostic corrigé + liste actionnable prête** (`docs/data/photos_manquantes_evenements.md`) : 19 FR + 23 IT événements futurs affichent une image de repli. Le sourcing d'une vraie photo est un travail humain (pas automatisable sans risque) | Sourcer les visuels (humain), en priorité les 6 événements sans source. Ou : accepter le repli comme état permanent |
+| D2 | Cuisine Nissarde | **Préparé** : dataset + brouillon de page guide dans le repo (`docs/CUISINE_NISSARDE_DONNEES.md`, `docs/CUISINE_NISSARDE_PAGE_GUIDE.md`). Reco : **une page guide evergreen dans « Le Fil »** (pas des fiches événement, ce sont des établissements permanents) | (a) publier la page guide, (b) autre forme, (c) attendre. **+ vérifier le décompte 29 vs 30** (Socca du Cours / Chez Marie Thé = 1 ou 2 établissements ?) |
+| D1 | Photo par événement | **Diagnostic corrigé + liste actionnable prête** (`docs/PHOTOS_MANQUANTES_EVENEMENTS.md`) : 19 FR + 23 IT événements futurs affichent une image de repli. Le sourcing d'une vraie photo est un travail humain (pas automatisable sans risque) | Sourcer les visuels (humain), en priorité les 6 événements sans source. Ou : accepter le repli comme état permanent |
 
 ### ✅ Décision résolue
 
