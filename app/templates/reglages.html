@@ -30,10 +30,15 @@
       <div><b>Désactivé</b>
         <div class="muted text-sm" style="margin-top:.15rem;"><b>Aucun coût d'enrichissement.</b> Les fiches gardent la <b>description de la source</b> — souvent correcte, mais parfois courte ou brute. Choisis-le si tu veux couper la dépense au maximum.</div></div>
     </label>
-    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.enrich_mode=='court' %}outline:2px solid #16a34a;{% endif %}">
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.enrich_mode=='auto' %}outline:2px solid #16a34a;{% endif %}">
+      <input type="radio" name="enrich_mode" value="auto" {{ 'checked' if st.enrich_mode=='auto' }} style="margin-top:.25rem;">
+      <div><b>Auto — le score décide</b> <span style="font-size:.72rem;font-weight:700;color:#16a34a;background:#e9f6ee;border-radius:999px;padding:.05rem .45rem;">recommandé</span>
+        <div class="muted text-sm" style="margin-top:.15rem;">Chaque événement reçoit le bon style : <b>score ≥ 7 → long</b> (article complet, recherche web — <b>Cultura Sabauda</b>) ; <b>en dessous → court</b> (fiche concise — Agenda). C'est la charte appliquée automatiquement, sans réglage à changer.</div></div>
+    </label>
+    <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.enrich_mode=='court' %}outline:2px solid #9ca3af;{% endif %}">
       <input type="radio" name="enrich_mode" value="court" {{ 'checked' if st.enrich_mode=='court' }} style="margin-top:.25rem;">
-      <div><b>Court — Agenda Sabauda</b> <span style="font-size:.72rem;font-weight:700;color:#16a34a;background:#e9f6ee;border-radius:999px;padding:.05rem .45rem;">recommandé</span>
-        <div class="muted text-sm" style="margin-top:.15rem;">Article <b>concis (~250-350 mots)</b>, réécrit proprement, <b>SANS recherche web</b>. Tes fiches restent <b>bien décrites</b> pour un <b>coût modéré</b>. Le bon compromis pour l'agenda.</div></div>
+      <div><b>Court (forcé) — Agenda Sabauda</b>
+        <div class="muted text-sm" style="margin-top:.15rem;">Force l'article <b>concis (~250-350 mots)</b> pour TOUS, <b>SANS recherche web</b>. À choisir seulement si tu veux couper le coût de la recherche web même sur les événements phares.</div></div>
     </label>
     <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if st.enrich_mode=='long' %}outline:2px solid #d97706;{% endif %}">
       <input type="radio" name="enrich_mode" value="long" {{ 'checked' if st.enrich_mode=='long' }} style="margin-top:.25rem;">

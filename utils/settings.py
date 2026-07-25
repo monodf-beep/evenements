@@ -4,8 +4,9 @@
 Boutons, avec conséquences expliquées côté UI :
   • ai_profile  : « eco » (Haiku, ~3× moins cher) | « qualite » (Sonnet, meilleure rédaction)
   • enrich_mode : « off » (pas d'article, la fiche garde la description de la source)
-                | « court » (article concis, sans recherche web — pour Agenda Sabauda)
-                | « long »  (article complet + recherche web — pour Cultura Sabauda, cher)
+                | « auto »  (le SCORE décide : ≥7 → long, sinon court — RECOMMANDÉ)
+                | « court » (force l'article concis, sans recherche web — Agenda Sabauda)
+                | « long »  (force l'article complet + recherche web — Cultura Sabauda, cher)
   • social_caption_auto  : réécriture LLM des légendes réseaux (voix Enrico) — off par
     défaut (bouton manuel « 🪄 Réécrire » dans /reseaux). Si ON, /reseaux réécrit tout
     seul les meilleurs événements de chaque territoire n'ayant pas encore de légende
@@ -23,10 +24,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SETTINGS_FILE = ROOT / "data" / "pipeline_settings.json"
 
-_DEFAULTS = {"ai_profile": "eco", "enrich_mode": "court",
+_DEFAULTS = {"ai_profile": "eco", "enrich_mode": "auto",
              "social_caption_auto": False, "social_caption_limit": 3}
 _PROFILES = ("eco", "qualite")
-_ENRICH_MODES = ("off", "court", "long")
+_ENRICH_MODES = ("off", "auto", "court", "long")
 _MODEL_ECO = "claude-haiku-4-5"
 _MODEL_QUAL = "claude-sonnet-5"
 COURT_MAX_TOKENS = 1800

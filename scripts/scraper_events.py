@@ -283,7 +283,10 @@ def best_content(entry: dict) -> str:
     full = max(parts, key=len) if parts else ""
     summary = entry.get("summary", "") or ""
     text = full if len(full) >= len(summary) else summary
-    return text.strip()[:10000]
+    # Retire les artefacts de scraping (spacers Elementor, pied de flux RSS
+    # « appeared first on / proviene da », boutons) — garde les faits.
+    from utils.clean_text import strip_boilerplate
+    return strip_boilerplate(text.strip())[:10000]
 
 
 def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,

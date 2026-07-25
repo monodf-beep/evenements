@@ -55,6 +55,9 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 DEFAULT_MODEL = "claude-sonnet-5"
 # Seuil : on n'enrichit que les événements retenus (cf. CHARTE §5, coût maîtrisé).
 MIN_SCORE = int(os.getenv("ENRICH_MIN_SCORE", "7"))
+# En mode "auto", un événement dont le score atteint ce seuil reçoit l'article LONG
+# (Cultura Sabauda, recherche web) ; en dessous, l'article COURT (Agenda). CHARTE §3.
+LONG_MIN_SCORE = int(os.getenv("ENRICH_LONG_MIN_SCORE", "7"))
 # Taille de lot : l'enrichissement (web + rédaction) coûte cher → petit lot.
 BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
 # Plafond de recherches web par événement (outil serveur).
@@ -232,7 +235,9 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
         d = (row["description"] or "").strip()
         if d and d not in parts:
             parts.append(d)
-    rss = re.sub(r"(?s)<[^>]+>", " ", "\n\n---\n\n".join(parts))[:6000]
+    from utils.clean_text import strip_boilerplate
+    rss = re.sub(r"(?s)<[^>]+>", " ", "\n\n---\n\n".join(parts))
+    rss = strip_boilerplate(rss)[:6000]   # retire spacers Elementor, pied RSS, boutons
 
     press = gather_press_kits(conn, ev)
     if press:
@@ -276,7 +281,18 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR."""
     from utils.voix import voix_block
     from utils import settings as pipeline_settings
-    _court = pipeline_settings.enrich_mode() == "court"
+    # Choix du style par ÉVÉNEMENT (CHARTE §3/§5) :
+    #  - mode "auto" (défaut) : le SCORE décide — ≥ LONG_MIN_SCORE → LONG (article complet
+    #    Cultura Sabauda, recherche web) ; en dessous → COURT (fiche concise Agenda) ;
+    #  - "court"/"long" forcent globalement ; "off" est géré en amont (pas d'appel).
+    _mode = pipeline_settings.enrich_mode()
+    _score = int(ev.get("llm_score") or 0)
+    if _mode == "long":
+        _court = False
+    elif _mode == "court":
+        _court = True
+    else:  # "auto"
+        _court = _score < LONG_MIN_SCORE
     prompt = voix_block() + ENRICH_PROMPT.format(
         title=ev.get("title", ""),
         dates=_dates_hint(ev),
