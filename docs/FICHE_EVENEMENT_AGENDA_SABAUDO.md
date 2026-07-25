@@ -9,32 +9,35 @@
 
 ---
 
-## 0. ⚠️ Piège : deux snippets actifs, un seul réellement exécuté
+## 0. ⚠️ Piège trouvé et corrigé : un snippet mort était actif
 
-Il existe **deux implémentations concurrentes** de la fiche événement dans
+Il existait **deux implémentations concurrentes** de la fiche événement dans
 Code Snippets, toutes les deux actives, sur le même hook :
 
-| Snippet | Nom | Priorité `template_redirect` | Statut réel |
+| Snippet | Nom | Priorité `template_redirect` | Statut |
 |---|---|---|---|
 | **56** | CS · Gabarit Fiche Événement (tribe_events) | **1** | **LIVE** — celui qui s'affiche |
-| 13 | CS · Fiche événement (meta) | 5 | **MORT** — ne s'exécute jamais |
+| 13 | CS · Fiche événement (meta) | 5 | **Désactivé le 2026-07-24** (était mort de toute façon) |
 
-Les deux font `get_header()` + rendu + `get_footer()` + `exit` sur
+Les deux faisaient `get_header()` + rendu + `get_footer()` + `exit` sur
 `is_singular('tribe_events')`. Comme WordPress exécute les callbacks de même
-hook dans l'ordre de priorité croissante, le snippet 56 (priorité 1) s'exécute
-et sort (`exit`) **avant** que le snippet 13 (priorité 5) ait la moindre
-chance de s'exécuter. Le code du snippet 13 est donc **totalement inerte**,
-bien que marqué actif — un piège pour quiconque (humain ou IA) lit le snippet
-13 en le prenant pour la vérité live (ça a failli arriver en écrivant ce
-document).
+hook dans l'ordre de priorité croissante, le snippet 56 (priorité 1)
+s'exécutait et sortait (`exit`) **avant** que le snippet 13 (priorité 5) ait
+la moindre chance de s'exécuter. Le code du snippet 13 était donc
+**totalement inerte**, bien que marqué actif — un piège pour quiconque
+(humain ou IA) lit le snippet 13 en le prenant pour la vérité live (**ça a
+concrètement fait écrire une erreur dans la première version de ce document,
+voir §4**).
 
-**Conséquence concrète** : le snippet 13 documente/prévoit **3 rails**
-(Au même endroit → Même catégorie → Près d'ici, mêmes dates). Le snippet 56,
-le seul réellement affiché, n'en a que **2** (Au même endroit → Même
-catégorie). Voir §5.
+**Conséquence** : le snippet 13 documentait/prévoyait **3 rails** (Au même
+endroit → Même catégorie → Près d'ici, mêmes dates) et un système de badges
+de statut (« Complet », « Dernier jour »…). Le snippet 56, le seul réellement
+affiché, n'a **ni l'un ni l'autre en totalité** — voir §4 et §5.
 
-**Action recommandée (non faite) : désactiver ou supprimer le snippet 13**
-pour éviter toute confusion future. Ce document ne décrit que le snippet 56.
+**Action effectuée (2026-07-24)** : snippet 13 **désactivé** (pas supprimé,
+réversible). Vérifié après coup : la fiche événement continue de fonctionner
+normalement (statut 200, contenu inchangé) — confirme qu'il était bien
+totalement mort. Ce document ne décrit que le snippet 56.
 
 ---
 
@@ -107,20 +110,26 @@ route, qui affichait auparavant « Date : 01/04/2026 - 31/10/2026 » — trompeu
 
 ---
 
-## 4. Badges de statut
+## 4. Badges de statut : prévus, jamais construits
 
-Fonction `cs_event_badges()` (snippet 13 — **cette fonction-là est bien
-utilisée par le snippet 56**, contrairement au reste du snippet 13, car elle
-est définie avec `function_exists()` et appelée depuis ailleurs). Règles :
+**Correction (2026-07-24) : cette section était fausse dans la première
+version de ce document.** `cs_event_badges()` (« Complet », « Dernier jour »,
+« En cours »…) est bien définie dans le snippet 13 — mais **le snippet 56 ne
+l'appelle jamais**. Vérifié en cherchant `cs_event_badges`/`badge`/`Complet`/
+`Dernier jour` dans le code du snippet 56 : absents. Seul le libellé
+« Gratuit » existe côté 56, dans la section **Prix** (§2 point 7), pas comme
+badge visuel séparé.
 
-1. **`as_statut` = complet/annulé/reporté** → **écrase tout le reste**, badge
-   unique (« Complet », « Annulé » en accent rouge, « Reporté »).
-2. Sinon, si la fin est dans ≤ 2 jours : « Dernier jour » (si ≤ 0) ou
-   « Plus que N jour(s) » — accent rouge.
-3. Sinon, si l'événement a déjà commencé (fin > 2 jours mais début ≤
-   maintenant) : badge « En cours » (neutre).
-4. En plus, indépendamment : badge « Gratuit » si `_EventCost` vide, "0" ou
-   littéralement "gratuit".
+**Il n'y a donc aucun badge de statut visible sur la fiche événement
+aujourd'hui.** C'était une fonctionnalité prévue (brief §8.3) mais jamais
+réellement branchée sur le gabarit live. À construire si souhaité — reprendre
+la logique de `cs_event_badges()` (règles ci-dessous, conservées à titre de
+spécification) et l'appeler depuis le snippet 56 :
+
+1. `as_statut` = complet/annulé/reporté → écrase tout le reste, badge unique.
+2. Sinon, fin dans ≤ 2 jours → « Dernier jour » / « Plus que N jour(s) ».
+3. Sinon, déjà commencé → badge « En cours ».
+4. Indépendamment : badge « Gratuit » si `_EventCost` vide/0/« gratuit ».
 
 ---
 
@@ -180,8 +189,8 @@ Polylang, comme n'importe quel autre custom post type traduit.
 - `cs_instagram_account()`, `cs_instagram_canon_for_event()`,
   `cs_terr_canon_data()` (via mu-plugin `cs-territoire-persistant.php`) —
   snippet 88.
-- `cs_event_badges()` — snippet 13 (fonction seule, réutilisée malgré le reste
-  du snippet mort — voir §0/§4).
+- `cs_event_badges()` — n'existe plus (snippet 13 désactivé le 2026-07-24) et
+  n'était de toute façon jamais appelée par le snippet 56 — voir §0/§4.
 
 ---
 
@@ -190,5 +199,5 @@ Polylang, comme n'importe quel autre custom post type traduit.
 | Prévu (2026-07-06) | Réalité (2026-07-24) |
 |---|---|
 | 3 rails (même lieu / catégorie / dates) | 2 rails seulement (dates non implémenté) |
-| — | Section badges (« Dernier jour », « Complet »…), non détaillée dans le plan d'origine |
+| Badges d'état (§8.3 du brief) | **Jamais construits** malgré le code prêt (snippet 13, désormais désactivé) — voir §4 |
 | — | Ancres de navigation « Dans cette fiche » (Quand / Où & prix / Carte), non prévues dans le plan |
