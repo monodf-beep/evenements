@@ -182,7 +182,9 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     ok = fail = 0
     for i, (eid, _why) in enumerate(to_trash, 1):
-        if trash_one(wp_url, auth, eid):
+        # force = autoriser la corbeille d'un doublon PUBLIÉ (le mu-plugin cs-trash.php
+        # refuse un publié sans "force":true). N'agit que si --include-published.
+        if trash_one(wp_url, auth, eid, force=args.include_published):
             # Si un événement de la base pointait ce brouillon, on le délie.
             conn.execute("UPDATE events_raw SET wp_post_id_as=NULL, published_as_date=NULL "
                          "WHERE wp_post_id_as=?", (eid,))
