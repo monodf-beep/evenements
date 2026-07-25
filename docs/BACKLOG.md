@@ -69,6 +69,32 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 - [ ] **Suivi des accréditations** (option 2, non retenue pour l'instant) : registre des
       organisateurs accrédités → priorité + relances aux lieux clés.
 
+### Newsletter (canal automatique)
+- [x] **Charte §11 — rythme temporel**. Axe « ouvre / continue / dernière chance » au lieu
+      d'un tri par score qui laissait un événement long (expo sur 3 mois) squatter le héros
+      chaque semaine. Fondé sur les bonnes pratiques des newsletters d'événements locaux.
+- [x] **`newsletter.py` — axe temporel** (`_split_temporal`) : répartition déterministe en
+      3 seaux (ouvre = héros + cartes ; dernière chance + continue = sommaire compact borné
+      `MAX_CONTINUE`). Mode `temporal=False` pour la composition MANUELLE (l'ordre humain fait
+      foi — `app.py` newsletter_brevo). Retrait de la fuite de `llm_justification` (scoring)
+      dans `_summary` : plus de texte back-office dans les cartes / le preheader.
+- [ ] **Anti-répétition inter-envois PERSISTANTE** : le keying par date d'ouverture empêche le
+      squat du héros, mais rien ne mémorise ce qui a DÉJÀ été envoyé d'une semaine à l'autre
+      (le seau « continue » réapparaît, borné mais présent). À faire : table `newsletter_sent`
+      (event_id, date) + exclusion/rétrogradation. Écarté ce soir (migration de schéma, hors
+      périmètre du chantier).
+- [ ] **Responsive** : le template `variant_magazine` est fluide (viewport + conteneur
+      600px/max-width:100%, colonne unique) — OK par construction. À vérifier visuellement une
+      fois : rendu mobile réel + une liste `## Programme` longue (rendu thème WordPress).
+
+### Enrichissement — faits structurés (charte §5 bis)
+- [x] **Champ `programme` (LISTE)** ajouté au schéma JSON d'`enrich.py` + rendu markdown
+      (`## Programme`, défensif) : un programme / line-up / déroulé n'est plus noyé en prose et
+      survit au mode court.
+- [x] **Consignes par type** dans le prompt (expo, concert, spectacle, festival, sagra, marché,
+      conférence, sport, cinéma, fêtes populaires) avec les pièges : horaires ≠ dates,
+      spectateurs vs participants (sport), VO/VF (cinéma), récurrence (marchés/fêtes).
+
 ### Qualité de la collecte
 - [ ] **Déduplication multi-sources** ⟵ signalé par Franck. Un même événement arrive
       par plusieurs flux (institutionnel + radar + office de tourisme). Aujourd'hui la
