@@ -188,8 +188,8 @@ def _shell(inner: str, *, preheader: str) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
         "<title>Agenda Sabauda</title></head>"
         # Signature unique du gabarit — permet de distinguer à coup sûr un brouillon
-        # fraîchement généré d'un ancien (chercher ASABAUDO-MAGAZINE-2026A).
-        "<!-- ASABAUDO-MAGAZINE-2026A · gabarit magazine (Le tour des territoires) -->"
+        # fraîchement généré d'un ancien (chercher ASABAUDA-MAGAZINE-2026A).
+        "<!-- ASABAUDA-MAGAZINE-2026A · gabarit magazine (Le tour des territoires) -->"
         f'<body style="margin:0;padding:0;background:{BG};font-family:{_FONT};">'
         f'<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{escape(preheader)}</div>'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{BG};padding:24px 12px;">'
