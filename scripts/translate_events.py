@@ -85,11 +85,53 @@ def _target(src_lang: str) -> str:
 def translate_title_desc(client, model, title: str, desc: str, target: str) -> dict | None:
     """Renvoie {'title':..., 'description':...} traduits, ou None si échec."""
     tgt = _LANG_NAME[target]
+    # Toponymes selon la langue cible (charte §6 bis : on nomme dans la langue du lecteur,
+    # en gardant la chaîne ville → province → territoire).
+    if target == "it":
+        topo = ('Torino (pas "Turin"), Aosta, Nizza, Vercelli ; territoires : Savoia, '
+                'Piemonte, Valle d\'Aosta, Contea di Nizza')
+        superl = ('« imperdibile », « da non perdere », « evento clou », « magico », '
+                  '« unico/straordinario » (quand c\'est vide), « il migliore »')
+        darkp = ('fausse urgence (« ultimi posti! », « solo oggi », « affrettati »), '
+                 'clickbait (« non crederai… »), confirmshaming')
+        casse_lang = ('En italien, MOIS et JOURS en MINUSCULE (« 5 luglio », « domenica »). '
+                      'Jamais de title case anglais (Chaque Mot En Majuscule).')
+        boussole = 'Boussole de registre : le magazine *Internazionale*. Pas de calque du français.'
+    else:
+        topo = ('Turin (pas "Torino"), Aoste, Nice, Verceil ; territoires : Savoie, '
+                'Piémont, Vallée d\'Aoste, Comté de Nice')
+        superl = '« incontournable », « magique », « à ne pas manquer », « événement phare »'
+        darkp = ('fausse urgence (« plus que 2 places ! », « dernier jour »), clickbait '
+                 '(« vous n\'allez pas croire… »), confirmshaming')
+        casse_lang = 'En français, mois et jours en minuscule. Jamais de title case anglais.'
+        boussole = 'Registre soutenu mais accessible, comme le média *Internazionale*. Pas de calque de l\'italien.'
     prompt = (
-        f"Traduis en {tgt} ce titre et cette description d'un événement culturel. "
-        f"Garde les NOMS PROPRES (lieux, artistes, festivals) tels quels, ne traduis pas "
-        f"les noms de villes qui n'ont pas d'exonyme courant, conserve les dates et les "
-        f"chiffres. Ton neutre et informatif. Réponds UNIQUEMENT en JSON : "
+        f"Tu produis la version {tgt} d'un événement culturel de l'espace alpin occidental "
+        f"(Savoie · Piémont · Vallée d'Aoste · Nice), pour un média bilingue exigeant "
+        f"(esprit *Internazionale* / *Le Monde Diplomatique*).\n\n"
+        f"RÈGLE MÈRE — TRADUIRE N'EST PAS RECOPIER : la version {tgt} obéit à la MÊME charte "
+        f"éditoriale que la source. Tu RÉ-APPLIQUES la charte, tu ne translittères pas un "
+        f"défaut. Si le titre ou le texte source viole une règle (racoleur, TOUT EN "
+        f"CAPITALES, superlatif creux, dark pattern), tu le CORRIGES dans la version {tgt} — "
+        f"tu ne recopies jamais le défaut. Une mauvaise source ne doit pas produire une "
+        f"mauvaise traduction.\n\n"
+        f"CASSE : jamais de titre/nom TOUT EN CAPITALES, même si la source l'écrit ainsi "
+        f'("COREOGRAFIE DEL POSSIBILE" → "Coreografie del Possibile"). Casse de phrase '
+        f"(initiale + noms propres, selon la langue). {casse_lang} "
+        f"Préserve les vrais sigles/acronymes (FIAF, MAO, ONU) et la casse voulue d'une "
+        f"marque (iMac, PSG).\n\n"
+        f"SUPERLATIFS CREUX INTERDITS en {tgt} : {superl}. Reste factuel et incarné.\n\n"
+        f"DARK PATTERNS INTERDITS en {tgt} (le lecteur d'abord, jamais le clic) : {darkp}.\n\n"
+        f"TOPONYMES dans la langue cible : {topo}. Garde la chaîne ville → province → "
+        f"territoire. Conserve les NOMS PROPRES réels (lieux, artistes, festivals, œuvres) "
+        f"et n'invente pas d'exonyme pour une ville qui n'en a pas de courant.\n\n"
+        f"FAITS PRÉSERVÉS (les faits ne changent pas d'une langue à l'autre) : dates, "
+        f"programme, line-up, lieu, horaires, tarifs, chiffres IDENTIQUES à la source. "
+        f"Seule l'EXPRESSION est réécrite. Un programme / une liste se traduit LIGNE À "
+        f"LIGNE, sans en perdre ni en fusionner aucune.\n\n"
+        f"REGISTRE : soutenu mais accessible, phrases claires, pas de jargon gratuit. "
+        f"{boussole}\n\n"
+        f"Réponds UNIQUEMENT en JSON : "
         f'{{"title": "...", "description": "..."}}.\n\n'
         f"TITRE : {title}\n\nDESCRIPTION : {desc[:2000]}")
     try:
