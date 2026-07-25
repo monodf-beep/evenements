@@ -272,9 +272,15 @@ def _build_payload(event: dict) -> dict:
     return payload
 
 
-def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]":
+def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str] | tuple[None, str, str]":
     """Publie/actualise l'événement en brouillon sur agendasabauda.eu (TEC).
     Retourne (wp_post_id, permalink, raw_image_url) ou (None, '', '') si échec.
+
+    skip_media=True → mise à jour TEXTE SEUL : on ne retéléverse AUCUNE image. Utile
+    pour une passe qui ne touche que le texte (ex. conformité éditoriale) — évite de
+    marteler les sources/Wikimedia (429) et de dégrader une bonne photo en bannière.
+    WordPress conserve alors l'image à la une existante (cs-publish ne la change que si
+    on lui en fournit une).
     Le permalien est le LIEN PRÉCIS de la fiche (pas la home) — cs-publish.php le
     renvoie déjà à chaque appel, on le capture pour pouvoir pointer dessus ailleurs
     (ex. DM Instagram). raw_image_url : copie de la photo ORIGINALE (non recadrée)
@@ -301,7 +307,7 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
     media_id = None
     hero_source = ""  # URL réellement retenue comme image à la une (pas la bannière
                       # générique) — sert au grand visuel de fiche ci-dessous.
-    if url_image and not _is_logo(url_image):
+    if not skip_media and url_image and not _is_logo(url_image):
         # Vraie affiche → vignette standardisée 4:3. Point focal ET mode (auto/cover/
         # letterbox) réglables à la main au back-office (éditeur de cadrage).
         media_id, _ = _upload_featured_media(
@@ -314,7 +320,7 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
     # Repli 1 — PAGE SOURCE : l'affiche directe manque, a échoué (403/429), ou était un
     # logo → on tente d'extraire une vraie photo depuis la fiche organisateur (souvent
     # accessible même quand le média direct est bloqué). Mieux qu'une bannière générique.
-    if not media_id:
+    if not skip_media and not media_id:
         recovered = _recover_image(event)
         if recovered:
             log.info("Affiche récupérée depuis la page source (%s)", recovered)
@@ -327,7 +333,7 @@ def publish_to_as(event: dict) -> "tuple[int, str, str] | tuple[None, str, str]"
                 hero_source = recovered
     # Repli 2 — BANNIÈRE TERRITOIRE quand tout le reste a échoué (logo écarté sans page
     # exploitable, image bloquée + page bloquée, aucune image). Comble les cartes vides.
-    if not media_id:
+    if not skip_media and not media_id:
         banner = _banner(event, load_territory_images(), load_territory_category_images())
         if banner:
             if _is_logo(url_image):

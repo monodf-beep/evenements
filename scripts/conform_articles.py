@@ -149,6 +149,8 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Passe de conformité éditoriale (charte).")
     parser.add_argument("ids", nargs="*", type=int)
     parser.add_argument("--execute", action="store_true", help="Agir (sinon DRY-RUN).")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="(défaut) N'écrit rien — juste l'aperçu. Alias explicite.")
     parser.add_argument("--cap", type=int, default=30, help="Nb max d'articles traités.")
     args = parser.parse_args(argv)
 
@@ -188,7 +190,9 @@ def main(argv: list[str]) -> int:
         # Re-push WordPress (met à jour le post existant via wp_post_id_as).
         ev.update({"enrich_data": json.dumps(new_data, ensure_ascii=False),
                    "article_title": title, "article_md": md})
-        post_id, _perma, _img = publish_to_as(ev)
+        # skip_media=True : passe de TEXTE — on ne retéléverse pas l'image (sinon on
+        # martèle Wikimedia/429 et on peut dégrader une bonne photo en bannière).
+        post_id, _perma, _img = publish_to_as(ev, skip_media=True)
         if post_id:
             pushed += 1
             log.info("[%s] re-poussé sur WordPress (post %s).", ev["id"], post_id)
