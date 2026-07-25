@@ -40,3 +40,18 @@ sendinblue.com
 /content_library/
 sib-
 brevo.com/images
+
+# --- Icônes de drapeaux des plugins multilingues (WPML, Polylang…) — repérées via une
+# page gpff.it dont og:image/photo de contenu pointait vers le drapeau anglais du
+# sélecteur de langue plutôt qu'une vraie photo. Le nom de fichier seul ("en.png",
+# "it.png"…) ne trahit rien à is_logo_image ; c'est le DOSSIER qui l'indique. ---
+sitepress-multilingual-cms
+/res/flags/
+/lang-switcher
+language-switcher
+
+# --- Facebook : og:image d'une page/événement Facebook scrapée sans authentification
+# renvoie quasi toujours l'icône générique de partage ou la photo de profil de la
+# page, jamais une photo spécifique à l'événement. ---
+fbcdn.net
+facebook.com/tr

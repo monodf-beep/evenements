@@ -24,3 +24,10 @@ actu.fr
 msn.com
 yahoo.com
 googleusercontent.com
+
+# Facebook : og:image d'une page/événement scrapée sans authentification renvoie
+# l'icône générique de partage ou la photo de profil de la page, jamais une photo
+# spécifique à l'événement (repéré dans la médiathèque WordPress — icônes "f" bleues
+# répétées sur plusieurs événements sans rapport).
+facebook.com
+fbcdn.net
