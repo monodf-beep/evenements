@@ -42,8 +42,12 @@ monde* / *compte dans le territoire*. Somme de 5 critères (0-10) :
 - **Spécificité territoriale** (0-1) — identitaire vs générique/franchise.
 
 **Deux niveaux de valorisation** (comme GuidaTorino : « cosa fare » mis en avant + catalogue) :
-- score **≥ 7** → **mise en avant** (home, article rédigé — file « À valider ») ;
+- score **≥ 7** → **mise en avant** (home, **article LONG** rédigé + recherche web — file « À valider ») ;
 - score **< 7** mais vrai événement → **catalogue** (site dédié, cherchable) — *jamais rejeté*.
+  Le catalogue reçoit lui aussi un **article COURT** (1-2 paragraphes, sans recherche web),
+  **jamais la description brute** — avec les **faits structurés** obligatoires (§5 bis :
+  programme en liste, horaires, tarifs). Le choix long/court est **automatique par score**
+  (réglage `auto`, `utils/settings`).
 - non-événement → **rejeté**.
 
 La **profondeur / l'escalier** (§1, §5) n'est **plus un filtre** : c'est un **principe de

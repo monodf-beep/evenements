@@ -53,10 +53,15 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 # Modèle dédié à l'enrichissement (recherche web + rédaction). Sonnet 5 par défaut :
 # bon rapport qualité/prix et compatible avec l'outil de recherche web dynamique.
 DEFAULT_MODEL = "claude-sonnet-5"
-# Seuil : on n'enrichit que les événements retenus (cf. CHARTE §5, coût maîtrisé).
-MIN_SCORE = int(os.getenv("ENRICH_MIN_SCORE", "7"))
-# En mode "auto", un événement dont le score atteint ce seuil reçoit l'article LONG
-# (Cultura Sabauda, recherche web) ; en dessous, l'article COURT (Agenda). CHARTE §3.
+# PLANCHER d'enrichissement : TOUT événement retenu (statut 'evaluated', non rejeté)
+# au-dessus de ce score reçoit AU MOINS un article COURT (CHARTE §3 : score < 7 = vrai
+# événement → catalogue, jamais la description brute). Les non-événements sont déjà
+# écartés par le statut ('rejected'), pas par ce seuil. Court = pas de recherche web
+# → coût faible ; le débit reste borné par ENRICH_BATCH. Relever ce seuil si on veut
+# réserver la rédaction aux événements plus notables.
+MIN_SCORE = int(os.getenv("ENRICH_MIN_SCORE", "1"))
+# Seuil du LONG : au-dessus, article COMPLET (Cultura Sabauda, recherche web) ; entre
+# MIN_SCORE et ici, article COURT (Agenda). CHARTE §3 (mise en avant vs catalogue).
 LONG_MIN_SCORE = int(os.getenv("ENRICH_LONG_MIN_SCORE", "7"))
 # Taille de lot : l'enrichissement (web + rédaction) coûte cher → petit lot.
 BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
@@ -303,9 +308,11 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         material=material,
     )
     if _court:
-        prompt += ("\n\n[MODE COURT — Agenda Sabauda] Rédige un article CONCIS (~250-350 mots), "
-                   "SANS recherche web : appuie-toi uniquement sur les informations ci-dessus. "
-                   "Va à l'essentiel, une fiche claire et bien écrite suffit.")
+        prompt += ("\n\n[MODE COURT — Agenda Sabauda] Rédige un article CONCIS (1-2 paragraphes, "
+                   "~250-350 mots), SANS recherche web : appuie-toi uniquement sur les informations "
+                   "ci-dessus. Va à l'essentiel — MAIS garde les FAITS STRUCTURÉS OBLIGATOIRES (§5 bis) : "
+                   "le champ \"programme\" (liste : horaires, séances, line-up…), les tarifs et la langue "
+                   "sont OBLIGATOIRES dès que la matière les contient, même en version courte.")
     messages = [{"role": "user", "content": prompt}]
     try:
         # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
