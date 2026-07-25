@@ -14,6 +14,26 @@
 
 ---
 
+## Reste à faire en un coup d'œil (au 2026-07-26)
+
+**Le socle fonctionnel du site est construit, en ligne et vérifié.** Ce qui reste
+n'est presque plus du code de construction :
+
+- 🤖 **Côté Claude (repo/WP)** : quasiment plus rien de bloquant. Restent, à la
+  demande : la **traduction IT** de la page Cuisine Nissarde, et les **dettes
+  pipeline** (dédup multi-sources, pré-filtre territoire, `og:image` sans photo,
+  `cultura-core`) qui sont optionnelles / améliorations.
+- 🧑 **Côté Franck (le vrai chemin critique vers l'ouverture)** : **sécurité**
+  (mot de passe FTP + clé API), **remplir Annecy + Chambéry** au seuil, **GSC**,
+  et les **décisions stratégiques** (ambition, seuil de score, cron, Brevo).
+- 🎨 **Côté Design** : figer la **DA finale**.
+
+Autrement dit : il ne reste plus de « construction de site » majeure à faire en
+autonomie. La suite dépend surtout de contenu (sourcing), de sécurité, de
+décisions, et de design. Détail par lot ci-dessous.
+
+---
+
 ## 0. Backoffice & stratégie — ✅ FAIT
 - [x] Filtres périmètre + rejet des événements passés (`evaluator`, `sources`)
 - [x] Dashboard : onglet Actifs · tri qualité · filtre hors-radar · vocabulaire unifié
@@ -110,5 +130,5 @@
 ### Le chemin critique restant
 Le socle fonctionnel du site est **construit et en ligne**. Le chemin critique
 n'est plus « construire le site » mais : 🎨 **figer la DA** → 🧑 **remplir
-Annecy + Chambéry** au seuil → **404 + hygiène sécurité** → **ouverture publique**
+Annecy + Chambéry** au seuil → 🧑 **hygiène sécurité** → **ouverture publique**
 → leviers de croissance (newsletter, widget, backlinks).
