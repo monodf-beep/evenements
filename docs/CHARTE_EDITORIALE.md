@@ -144,6 +144,37 @@ SEO. On **normalise en casse normale** : capitale à l'initiale + noms propres, 
 respectant la langue (règles FR/IT). On **préserve** les sigles/acronymes réels (FIAF, MAO,
 ONU) et la casse voulue d'une marque (iMac, PSG). En cas de doute, casse de phrase.
 
+## 6 bis. Italien & bilinguisme (FR/IT)
+
+Le site est **bilingue** : chaque contenu a une version FR et une version IT (pages
+jumelles Polylang, `scripts/translate_events.py`). **Règle mère : la version IT obéit à
+la MÊME charte que la version FR** (escalier §1, périmètre §2, ton §6, casse §6, dark
+patterns §7, images §9). **Traduire n'est pas recopier** : on *ré-applique* la charte en
+italien, on ne translittère pas un titre racoleur ou tout-capitales. Une mauvaise version
+FR ne doit pas produire une mauvaise version IT.
+
+- **Registre** : soutenu mais accessible, comme en FR. Boussole : *Internazionale* (le
+  média italien de référence de notre positionnement §1). Pas de calques du français.
+- **Superlatifs creux interdits (équivalents IT)** : « imperdibile », « da non perdere »,
+  « evento clou », « magico », « unico/straordinario » (quand c'est vide), « il migliore ».
+  Même bannissement qu'en FR (« incontournable », « magique »…).
+- **Dark patterns en italien** (§7) : fausse urgence (« ultimi posti! », « solo oggi »,
+  « affrettati »), clickbait (« non crederai… »), confirmshaming — **interdits** aussi.
+- **Casse** : casse de phrase, **jamais** le *title case* anglais (Chaque Mot En Majuscule)
+  ni le tout-capitales. Mois et jours en **minuscule** (« 5 luglio », « domenica »). Sigles
+  réels et marques préservés.
+- **Toponymes dans la langue de l'article** *(défaut à valider)* : FR = Turin, Aoste, Nice,
+  Verceil ; IT = **Torino, Aosta, Nizza, Vercelli**. On nomme dans la langue du lecteur, et
+  on garde la chaîne **ville → province → territoire** (§2/§3) traduite en conséquence
+  (Savoia, Piemonte, Valle d'Aosta, Contea di Nizza). *Décision Franck : confirmer cette
+  politique — ou garder un exonyme unique.*
+- **Faits vs expression** (§5) : les faits (dates, programme, lieu) sont identiques dans les
+  deux langues ; seule l'**expression** est réécrite. Un `programme` en liste se traduit
+  ligne à ligne, sans en perdre.
+
+Enforcement : `scripts/translate_events.py` doit porter ces règles dans son prompt (pas une
+traduction littérale) — même logique que le garde-fou casse ajouté à `scripts/enrich.py`.
+
 ## 7. Éthique & UX — dark patterns proscrits
 
 L'écosystème **n'utilise aucun dark pattern**. Sont **interdits** :
