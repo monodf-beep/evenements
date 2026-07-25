@@ -52,6 +52,10 @@ def main(argv=None) -> int:
         description="Bascule les événements en bannière générique vers la bannière territoire × catégorie.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Affiche ce qui serait changé sans toucher ni la base ni WordPress.")
+    parser.add_argument("ids", nargs="*", type=int,
+                        help="Limite à ces ids ET force le re-push WordPress même si l'image "
+                             "en base est déjà à jour — rattrape un run interrompu (id déjà "
+                             "corrigé en base mais jamais re-poussé sur WordPress).")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -61,19 +65,24 @@ def main(argv=None) -> int:
     banners = load_territory_images()
     cat_banners = load_territory_category_images()
 
-    rows = [dict(r) for r in conn.execute(
-        "SELECT * FROM events_raw WHERE COALESCE(image_source,'') = 'banner' "
-        "AND duplicate_of IS NULL").fetchall()]
+    q = "SELECT * FROM events_raw WHERE COALESCE(image_source,'') = 'banner' AND duplicate_of IS NULL"
+    params: list = []
+    if args.ids:
+        q += f" AND id IN ({','.join('?' * len(args.ids))})"
+        params = args.ids
+    rows = [dict(r) for r in conn.execute(q, params).fetchall()]
     log.info("%d événement(s) sur bannière générique à réévaluer.", len(rows))
 
+    force = bool(args.ids)
     updated = pushed = unchanged = 0
     for ev in rows:
         title = (ev.get("title") or "")[:55]
         old_url = (ev.get("url_image") or "").strip()
         new_url = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
                                     str(ev["id"]), cat_banners, banners)
+        changed = bool(new_url) and new_url != old_url
 
-        if not new_url or new_url == old_url:
+        if not new_url or (not changed and not force):
             unchanged += 1
             log.info("[%s] déjà correcte — %s", ev["id"], title)
             continue
@@ -83,11 +92,12 @@ def main(argv=None) -> int:
         if args.dry_run:
             continue
 
-        conn.execute("UPDATE events_raw SET url_image=?, image_credit='' WHERE id=?",
-                     (new_url, ev["id"]))
-        conn.commit()
+        if changed:
+            conn.execute("UPDATE events_raw SET url_image=?, image_credit='' WHERE id=?",
+                         (new_url, ev["id"]))
+            conn.commit()
 
-        if not (ev.get("wp_post_id_as") or "").strip():
+        if not ev.get("wp_post_id_as"):
             continue  # pas encore publié : la mise à jour DB suffit (newsletter à jour)
 
         ev["url_image"] = new_url
