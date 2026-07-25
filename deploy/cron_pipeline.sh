@@ -100,6 +100,9 @@ case "$MODE" in
     step "organisateurs (web)" "$PY" -m scripts.organizer_handles --cap 10
     step "écarter les passés" "$PY" -m scripts.purge_past --execute
     run_autocomplete
+    # Traduction IT (après publication FR) : génère/rafraîchit les pages jumelles
+    # italiennes en appliquant la charte §6 bis (translate_events porte les règles).
+    step "traduction IT"     "$PY" -m scripts.translate_events --apply --cap 20
     log "=== FIN PIPELINE ==="
     ;;
 esac
