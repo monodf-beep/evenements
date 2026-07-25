@@ -51,6 +51,10 @@ _MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juille
 # Nb de cartes détaillées (« Le tour des territoires ») ; au-delà, le reste passe
 # en sommaire numéroté (« Aussi cette semaine »).
 MAX_CARDS = 6
+# Borne déterministe du seau « ça continue » (événements longs déjà annoncés) : par
+# nature ils reviennent chaque semaine, on en limite le nombre pour ne pas alourdir le
+# sommaire. Tri stable par importance, aucun état persistant (cf. build_data).
+MAX_CONTINUE = 6
 
 
 def _clean(text: str) -> str:
@@ -74,7 +78,12 @@ def _fmt_range(start: str, end: str) -> str:
 
 
 def _summary(ev: dict) -> str:
-    """Résumé de carte : chapô rédigé > justification > description brute."""
+    """Résumé de carte : chapô rédigé, à défaut description nettoyée.
+
+    On n'utilise JAMAIS `llm_justification` : c'est la justification de SCORING, écrite
+    pour le back-office, pas pour un lecteur (charte §11 « pas de fuite de texte
+    interne »). La cascade est donc : chapô rédigé (enrich_data.article.chapo) → sinon
+    description brute nettoyée."""
     if ev.get("enrich_data"):
         try:
             chapo = (json.loads(ev["enrich_data"]).get("article") or {}).get("chapo", "").strip()
@@ -82,8 +91,6 @@ def _summary(ev: dict) -> str:
                 return chapo
         except (ValueError, TypeError):
             pass
-    if (ev.get("llm_justification") or "").strip():
-        return ev["llm_justification"].strip()
     return _clean(ev.get("description"))[:220]
 
 
@@ -126,7 +133,12 @@ def build_item(ev: dict, banners: dict | None = None, cat_banners: dict | None =
 
 def select_events(conn: sqlite3.Connection, territoire: str, pfrom: str, pto: str,
                   limit: int) -> list[dict]:
-    """Événements RETENUS du territoire qui chevauchent la fenêtre, par importance."""
+    """Événements RETENUS du territoire qui chevauchent la fenêtre, par importance.
+
+    Pool de candidats (toutes dates confondues qui touchent la fenêtre) ; la
+    répartition en seaux temporels (ouvre / dernière chance / continue) est faite
+    ensuite par `_split_temporal`. Le tri llm_score DESC est conservé pour que chaque
+    seau hérite d'un ordre d'importance stable et déterministe."""
     rows = conn.execute(
         "SELECT * FROM events_raw WHERE territoire = ? "
         "AND statut IN ('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
@@ -136,15 +148,103 @@ def select_events(conn: sqlite3.Connection, territoire: str, pfrom: str, pto: st
     return [dict(r) for r in rows]
 
 
-def build_data(rows: list[dict], *, week_label: str, tagline: str) -> dict:
-    """Répartit les événements en héros / cartes / sommaire pour le gabarit magazine."""
+def _split_temporal(rows: list[dict], pfrom: str, pto: str
+                    ) -> tuple[list[dict], list[dict], list[dict]]:
+    """Range les événements (déjà triés par importance) en 3 seaux TEMPORELS (charte §11).
+
+    Fenêtre [pfrom, pto], comparaison lexicographique sur dates ISO (déterministe,
+    sans LLM) :
+    - « ouvre »          : `date_event_start` DANS la fenêtre (pfrom ≤ start ≤ pto).
+                           C'est le NEUF → héros + cartes détaillées.
+    - « dernière chance » : commencé AVANT (start < pfrom) et se termine DANS la
+                           fenêtre (pfrom ≤ end ≤ pto) → service factuel (pas d'urgence
+                           inventée, §7).
+    - « continue »        : commencé AVANT (start < pfrom) et se poursuit APRÈS la
+                           fenêtre → liste compacte « ça continue », JAMAIS héros.
+
+    « dernière chance » PRIME sur « continue » : un événement en cours qui ferme cette
+    semaine est signalé comme fermeture, pas comme simple continuité (les deux
+    conditions se chevauchent, l'ordre des `elif` tranche). Un événement long
+    n'apparaît donc qu'à son OUVERTURE (une fois), puis en « continue », puis à sa
+    FERMETURE. L'ordre llm_score DESC issu de select_events est préservé (tri stable)."""
+    ouvre: list[dict] = []
+    derniere: list[dict] = []
+    continue_: list[dict] = []
+    for ev in rows:
+        start = ev.get("date_event_start") or ""
+        end = ev.get("date_event_end") or ""
+        if not start:
+            continue  # sans date de début, pas de statut temporel (déjà filtré en SQL)
+        if pfrom <= start <= pto:
+            ouvre.append(ev)
+        elif start < pfrom and end and pfrom <= end <= pto:
+            derniere.append(ev)
+        elif start < pfrom:
+            continue_.append(ev)
+    return ouvre, derniere, continue_
+
+
+def build_data(rows: list[dict], *, week_label: str, tagline: str,
+               pfrom: str = "", pto: str = "", temporal: bool = True) -> dict:
+    """Répartit les événements sur le gabarit magazine.
+
+    Deux modes :
+    - `temporal=True` (défaut, canal AUTOMATIQUE, charte §11) : range par AXE TEMPOREL
+      (ouvre / dernière chance / continue) — nécessite `pfrom`/`pto`. C'est ce mode qui
+      empêche un événement long de squatter le héros chaque semaine.
+    - `temporal=False` (composition MANUELLE) : respecte l'ordre d'entrée des `rows`
+      (l'humain a déjà choisi et ordonné la sélection). On ne re-range PAS : héros = 1er,
+      cartes = suivants, sommaire = le reste.
+
+    Mapping seaux → gabarit `variant_magazine` (mode temporel) :
+    - « ouvre » (le neuf) → héros (1er, le plus important) + cartes détaillées
+      (« Le tour des territoires », jusqu'à MAX_CARDS), triés par importance ;
+    - « dernière chance » + « ça continue » → sommaire compact « Aussi cette semaine ».
+
+    Choix de mapping du sommaire (documenté) : le gabarit n'expose qu'UNE liste
+    compacte numérotée, sans libellé de statut ni sous-titre par item (`_signaux_block`
+    ne lit que title/url/territory). On ne peut donc PAS y afficher deux sous-listes
+    étiquetées « Ça continue » / « Dernière chance ». On retient l'ordre le plus
+    actionnable pour l'abonné : « dernière chance » d'ABORD (ça ferme, service factuel),
+    puis le surplus d'ouvertures qui n'a pas tenu en cartes (fraîcheur), puis
+    « ça continue ».
+
+    Anti-répétition : le keying implicite par date d'OUVERTURE fait qu'un événement long
+    n'est héros qu'une seule fois. Le seau « continue » revient d'une semaine à l'autre
+    par nature ; on le BORNE de façon déterministe (MAX_CONTINUE, tri stable par
+    importance) sans état persistant. Anti-répétition inter-envois PERSISTANTE (mémoire
+    des événements déjà envoyés) = à faire, cf. docs/BACKLOG.md."""
     banners = load_territory_images()
     cat_banners = load_territory_category_images()
-    items = [build_item(ev, banners, cat_banners) for ev in rows]
-    hero = items[0] if items else None
-    rest = items[1:]
-    cards = rest[:MAX_CARDS]
-    signaux = rest[MAX_CARDS:]
+
+    # Composition manuelle : l'humain a ordonné la sélection → on n'en change pas l'ordre.
+    if not temporal or not (pfrom and pto):
+        items = [build_item(ev, banners, cat_banners) for ev in rows]
+        hero = items[0] if items else None
+        rest = items[1:]
+        return _pack_data(week_label, tagline, hero, rest[:MAX_CARDS], rest[MAX_CARDS:])
+
+    ouvre_rows, derniere_rows, continue_rows = _split_temporal(rows, pfrom, pto)
+
+    # Le NEUF alimente le héros puis les cartes détaillées ; l'éventuel surplus repart
+    # en sommaire compact (voir plus bas).
+    ouvre = [build_item(ev, banners, cat_banners) for ev in ouvre_rows]
+    hero = ouvre[0] if ouvre else None
+    cards = ouvre[1:1 + MAX_CARDS]
+    ouvre_overflow = ouvre[1 + MAX_CARDS:]
+
+    derniere = [build_item(ev, banners, cat_banners) for ev in derniere_rows]
+    # « continue » borné (anti-répétition déterministe, tri stable déjà par score).
+    continue_ = [build_item(ev, banners, cat_banners) for ev in continue_rows[:MAX_CONTINUE]]
+
+    # Sommaire « Aussi cette semaine » : dernière chance → surplus d'ouvertures → continue.
+    signaux = derniere + ouvre_overflow + continue_
+    return _pack_data(week_label, tagline, hero, cards, signaux)
+
+
+def _pack_data(week_label: str, tagline: str, hero: dict | None,
+               cards: list[dict], signaux: list[dict]) -> dict:
+    """Assemble le dict attendu par `variant_magazine` (forme unique, deux modes)."""
     preheader = (hero["summary"][:120] if hero else tagline[:120])
     return {
         "week_label": week_label,
@@ -230,7 +330,7 @@ def main(argv=None) -> int:
     week_label = f"Du {_fmt_day(pfrom)} au {_fmt_day(pto)}"
     subject = f"Agenda Sabauda — {territoire}, à l'affiche cette semaine"
     tagline = f"Les sorties à vivre en {territoire}"
-    data = build_data(rows, week_label=week_label, tagline=tagline)
+    data = build_data(rows, week_label=week_label, tagline=tagline, pfrom=pfrom, pto=pto)
     html = variant_magazine(data)
 
     # Vérité terrain : on écrit le HTML EXACT localement pour l'inspecter.

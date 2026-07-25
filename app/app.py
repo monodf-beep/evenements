@@ -1351,7 +1351,8 @@ def newsletter_brevo():
         wl = f"Du {_fmt_day(edition_iso)} au {_fmt_day(_nl_window(edition)[1])}"
         subject = f"Agenda Sabauda — {terr}, à l'affiche cette semaine"
         tagline = f"Les sorties à vivre en {terr}"
-        html = variant_magazine(build_data(ordered, week_label=wl, tagline=tagline))
+        # Composition MANUELLE : l'ordre choisi par l'humain fait foi → pas d'axe temporel.
+        html = variant_magazine(build_data(ordered, week_label=wl, tagline=tagline, temporal=False))
         try:
             cid = create_draft_campaign(
                 api_key=api_key, name=f"Agenda Sabauda — {terr} — {wl}", subject=subject,
