@@ -106,6 +106,22 @@ ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
 - Œuvre / exposition : artiste, période, intérêt.
 - Date / récurrence : rendez-vous historique ? édition anniversaire ?
 
+FAITS STRUCTURÉS OBLIGATOIRES (CHARTE §5 bis) — dès que la MATIÈRE les contient, tu DOIS
+les restituer, quel que soit le format d'article. Un programme / line-up / déroulé de
+séances se rend TOUJOURS en LISTE (champ "programme"), jamais noyé en prose. Selon le type :
+- Exposition : horaires d'ouverture (≠ la simple plage de dates !), tarif/gratuité, artistes.
+- Concert / série : line-up + horaires, salle, billetterie.
+- Spectacle : distribution/casting, durée, réservation.
+- Festival / multi-jours : programme PAR JOUR (liste), line-up complet.
+- Sagra / gastronomie : ce qu'on mange/boit, dates, prix.
+- Marché : récurrence (« chaque 1er dimanche »), horaires, type d'exposants.
+- Conférence : intervenant, sujet, LANGUE (FR/IT), inscription.
+- Sport : distingue les DEUX publics — spectateurs (venir voir, souvent gratuit, horaire
+  de passage) vs participants (inscription, tarif d'engagement, catégories). Ne les mélange pas.
+- Cinéma : film(s) + horaires de séance, VO/VF (langue !), lieu, tarif ; plein air : gratuité + heure.
+- Fêtes populaires : programme multi-jours (temps forts : défilé, feu d'artifice, bal), gratuité, récurrence.
+Une info pratique que la matière contenait mais que tu as omise est une ERREUR, pas un résumé.
+
 EXPLOITER LA PRESSE POUR LES FAITS (pas pour le texte) :
 - Tu PEUX consulter la presse, y compris via des extraits de recherche, pour en tirer
   des FAITS : dates, lieu, programme, distribution/casting, tarifs. Les faits ne sont
@@ -149,6 +165,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel + l'angle>",
     "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà. MARKDOWN structuré pour la lisibilité (Yoast) : si le corps dépasse ~250 mots, découpe-le avec des sous-titres '## ' tous les 2-3 paragraphes ; phrases COURTES (vise <20 mots) ; enchaîne naturellement, SANS transitions scolaires ni connecteurs clichés (cf. voix) ; mets en GRAS les faits clés (dates, noms propres, lieux, chiffres)>",
+    "programme": ["<UNE entrée par ligne de programme : jour/heure + intitulé (concert, séance, temps fort…). LISTE, jamais de la prose. Vide [] si l'événement n'a pas de programme/line-up dans la matière>"],
     "encadre": "<encadré pratique : dates, lieu, accès, gratuité, lien officiel>"
   }}
 }}"""
@@ -327,6 +344,12 @@ def build_article_md(data: dict) -> tuple[str, str]:
     corps = (art.get("corps") or "").strip()
     encadre = (art.get("encadre") or "").strip()
     sources = [s for s in (data.get("sources") or []) if s]
+    # Programme (CHARTE §5 bis) : faits structurés en LISTE, y compris en mode court.
+    # Défensif : le champ peut être absent, None, vide, ou (erreur LLM) une chaîne.
+    prog = art.get("programme")
+    if isinstance(prog, str):
+        prog = [prog]
+    programme = [str(p).strip() for p in prog if str(p).strip()] if isinstance(prog, list) else []
 
     md = []
     if titre:
@@ -335,6 +358,8 @@ def build_article_md(data: dict) -> tuple[str, str]:
         md.append(f"**{chapo}**")
     if corps:
         md.append(corps)
+    if programme:
+        md.append("## Programme\n\n" + "\n".join(f"- {p}" for p in programme))
     if encadre:
         md.append("## En pratique\n\n" + encadre)
     if sources:

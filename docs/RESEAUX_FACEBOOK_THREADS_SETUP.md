@@ -23,6 +23,19 @@ THREADS_TOKEN_SAVOIE_HAUTE_SAVOIE=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 *(même paire pour PIEMONT, VALLEE_D_AOSTE, NICE_ALPES_MARITIMES — mêmes slugs
 que pour Instagram et Brevo.)*
 
+### Pages Facebook par territoire (URL publiques)
+
+Adresses canoniques des Pages (à créer/activer côté Meta ; certaines ne sont pas
+encore en ligne). C'est la référence pour renseigner `FB_PAGE_ID_<SLUG>` (§2 point 4)
+et pour les liens sortants (pied de newsletter, site).
+
+| Territoire | Slug | URL de la Page | Statut |
+|---|---|---|---|
+| Savoie / Haute-Savoie | `SAVOIE_HAUTE_SAVOIE` | https://www.facebook.com/agendasabauda-savoie/ | ⏳ pas encore active (prévue) |
+| Piémont | `PIEMONT` | *(à définir)* | — |
+| Vallée d'Aoste | `VALLEE_D_AOSTE` | *(à définir)* | — |
+| Nice / Alpes-Maritimes | `NICE_ALPES_MARITIMES` | *(à définir)* | — |
+
 ## 2. Facebook — Page Access Token via UTILISATEUR SYSTÈME (recommandé)
 
 Contrairement au token Instagram (60 jours, à renouveler), un token de Page généré
