@@ -1,8 +1,11 @@
 # Guide - Les tables labellisées « Cuisine Nissarde » (proposition de page)
 
-> **Statut** : proposition de contenu éditorial prêt à publier. Ne rien mettre en ligne
-> sans validation. Contenu evergreen (article « Le Fil »), rattaché au territoire Comté de
-> Nice (`nice`) et à la catégorie « Gastronomie & Sagre ».
+> **Statut** : ✅ **PUBLIÉ le 2026-07-26** en FR — article « Le Fil » post **3648**,
+> URL `/cuisine-nissarde-tables-labellisees/`, rattaché Comté de Nice (`nice`) +
+> Gastronomie & Sagre (terme 17). Remonte automatiquement dans le hub Comté de Nice.
+> À la publication : intro reformulée pour ne donner **aucun total chiffré**
+> contesté (le dossier de presse OT annonce 7 Merenda mais en liste 8) ; note de
+> production retirée. **Reste à faire : la version IT** (voir bloc en bas).
 >
 > **Données sources** : `docs/CUISINE_NISSARDE_DONNEES.md` (recopie fidèle du
 > dossier de presse OT Nice Côte d'Azur 2025/26). Vérifier l'écart de décompte Merenda

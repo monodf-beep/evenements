@@ -42,6 +42,7 @@
 | Instagram par événement | Territoire de l'événement, Savoie FR uniquement sinon masqué | idem §6 |
 | **Bouton Facebook mort masqué** (2026-07-26) | Lien `href="#"` retiré (snippet 56), réactivable comme Instagram | idem §6 |
 | **Gabarit 404 sur-mesure** (2026-07-26) | Vrai HTTP 404, bilingue, recherche + 4 portes territoires (snippet 99) | — |
+| **Page guide Cuisine Nissarde publiée** (2026-07-26) | Article « Le Fil » FR (post 3648), rattaché Comté de Nice + Gastronomie, remonte auto dans le hub. IT à traduire | `CUISINE_NISSARDE_PAGE_GUIDE.md` |
 
 ### Ajouter à mon agenda
 | Sujet | Détail | Doc |
@@ -82,8 +83,14 @@ choix (section suivante) ou dépendent d'un tiers.
 
 | # | Sujet | État au 2026-07-26 | Choix à faire |
 |---|---|---|---|
-| D2 | Cuisine Nissarde | **Préparé** : dataset + brouillon de page guide dans le repo (`docs/CUISINE_NISSARDE_DONNEES.md`, `docs/CUISINE_NISSARDE_PAGE_GUIDE.md`). Reco : **une page guide evergreen dans « Le Fil »** (pas des fiches événement, ce sont des établissements permanents) | (a) publier la page guide, (b) autre forme, (c) attendre. **+ vérifier le décompte 29 vs 30** (Socca du Cours / Chez Marie Thé = 1 ou 2 établissements ?) |
 | D1 | Photo par événement | **Diagnostic corrigé + liste actionnable prête** (`docs/PHOTOS_MANQUANTES_EVENEMENTS.md`) : 19 FR + 23 IT événements futurs affichent une image de repli. Le sourcing d'une vraie photo est un travail humain (pas automatisable sans risque) | Sourcer les visuels (humain), en priorité les 6 événements sans source. Ou : accepter le repli comme état permanent |
+| D2b | Cuisine Nissarde IT | La page FR est **publiée** (post 3648). La version IT (`/it/il-filo/...`) reste à traduire et lier via Polylang | Traduire quand utile (le contenu FR est en ligne en attendant) |
+
+> **Décompte Cuisine Nissarde tranché** : l'écart 29 vs 30 vient d'une
+> incohérence du dossier de presse OT lui-même (il annonce 7 Merenda mais en
+> liste 8). Impossible à résoudre de l'extérieur. La page publiée ne donne donc
+> **aucun total chiffré** : elle attribue les catégories à l'OT et présente « la
+> liste officielle », fidèle à la source.
 
 ### ✅ Décision résolue
 

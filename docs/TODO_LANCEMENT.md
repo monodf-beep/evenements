@@ -79,8 +79,9 @@
 - [~] Combler les trous (Pilotage) : territoires/catégories vides · **photos** :
   19 FR + 23 IT événements futurs sur image de repli (liste dans
   `PHOTOS_MANQUANTES_EVENEMENTS.md`), sourcing humain
-- [ ] 🧑 **Cuisine Nissarde** : décider la forme (reco : page guide « Le Fil »,
-  prête dans `CUISINE_NISSARDE_PAGE_GUIDE.md`) + trancher le décompte 29 vs 30
+- [x] **Cuisine Nissarde** : page guide « Le Fil » FR **publiée** (post 3648,
+  `/cuisine-nissarde-tables-labellisees/`), rattachée Comté de Nice + Gastronomie.
+  Reste : [ ] traduire la version IT.
 
 ## 6. Pipeline — dettes ouvertes 🤖 (extrait de `BACKLOG.md`)
 - [ ] **Dédup multi-sources** (`same_story` → fusion vers la source la plus riche)
