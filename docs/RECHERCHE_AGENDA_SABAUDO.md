@@ -8,32 +8,37 @@
 
 ---
 
-## 0. ⚠️ Piège du même type que la fiche événement : un filtre probablement mort
+## 0. ⚠️ Piège trouvé et corrigé : un snippet mort était actif
 
-Deux snippets actifs sur la recherche :
+Deux snippets existaient sur la recherche :
 
 | Snippet | Nom | Mécanisme | Statut |
 |---|---|---|---|
-| 18 | CS Recherche (inclut événements) | `pre_get_posts` + `the_excerpt` (Boucle WP **native**) | **Probablement mort en partie** |
-| **23** | CS · Gabarit Recherche | `template_redirect` sur `is_search()`, rendu complet | **LIVE** — confirmé (placeholder détecté en direct) |
+| 18 | CS Recherche (inclut événements) | `pre_get_posts` + `the_excerpt` (Boucle WP **native**) | **Désactivé le 2026-07-24** (confirmé mort) |
+| **23** | CS · Gabarit Recherche | `template_redirect` sur `is_search()`, rendu complet | **LIVE** — celui qui s'affiche |
 
 Le snippet 23 fait sa propre boucle complète (`get_header()` + rendu manuel +
 `get_footer()` + `exit`), avec ses **propres objets `WP_Query`** distincts,
-et affiche les événements via `cs_card_compact()` directement — **sans jamais
-appeler `the_excerpt()`**. Le filtre `the_excerpt` du snippet 18 (qui ajoutait
-une pastille date+territoire sous chaque résultat événement) ne peut donc
-**jamais se déclencher** sur la page de recherche réellement affichée.
+et affiche les événements via `cs_card_compact()` directement — sans jamais
+appeler `the_excerpt()`.
 
-**Non vérifié avec certitude** (contrairement au cas des badges, corrigé après
-vérification) : le `pre_get_posts` du snippet 18 (élargit `post_type` à
-`tribe_events`) pourrait encore avoir un effet résiduel sur la requête
-principale WordPress, même si le snippet 23 ne s'en sert pas pour construire
-son affichage — à vérifier si on veut nettoyer ce snippet.
+**Vérifié en direct (2026-07-24)**, même méthode que pour les badges de la
+fiche événement (marqueur temporaire dans chaque hook, requête réelle sur le
+site, lecture du résultat) :
 
-**Ce que fait réellement le snippet 18 aujourd'hui, avec certitude** : rien
-de visible. Toute la présentation (y compris la pastille date/territoire) est
-gérée en interne par `cs_card_compact()` (snippet 21) via le rendu du
-snippet 23.
+- `the_excerpt` du snippet 18 : **ne se déclenche jamais**.
+- `pre_get_posts` du snippet 18 : se déclenche bien (modifie `post_type` de la
+  requête principale), mais cette requête principale n'est **jamais rendue** —
+  le snippet 23 sort (`exit`) avant que WordPress n'ait l'occasion d'afficher
+  son résultat.
+
+**Conclusion confirmée, pas juste probable** : le snippet 18 n'avait **aucun
+effet visible** sur le site. Désactivé (pas supprimé, réversible). Vérifié
+après coup : recherche par ville, par catégorie, et recherche vide
+(raccourcis) fonctionnent toutes normalement.
+
+Toute la présentation (y compris la pastille date/territoire) est gérée en
+interne par `cs_card_compact()` (snippet 21) via le rendu du snippet 23.
 
 ---
 
@@ -157,8 +162,7 @@ ville/catégorie qui utilise les **termes propres à la langue courante**
 
 ## 8. Écarts / points d'attention
 
-- Snippet 18 à auditer/nettoyer (§0) — écrit pour un usage qui n'est
-  vraisemblablement plus le chemin live depuis le 2026-07-23.
+- Snippet 18 désactivé le 2026-07-24 (§0) — nettoyage effectué.
 - La reconnaissance de ville dépend entièrement de la qualité du champ
   `_VenueCity` des lieux en base (`tribe_venue`) — une ville mal orthographiée
   ou absente de ce champ sur un lieu n'apparaîtra jamais dans
