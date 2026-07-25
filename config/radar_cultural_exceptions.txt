@@ -91,3 +91,45 @@ ceremonie
 patrimoine culturel
 journees du patrimoine
 nuit des musees
+
+# --- Vocabulaire italien manquant (constaté sur des cas réels : DegustaVigna —
+# "eventi tra i vigneti" ; Bref, festival de courts-métrages — "cortometraggi") ---
+evento
+eventi
+gastronomia
+degustazione
+cortometraggio
+cortometraggi
+rassegna
+manifestazione culturale
+
+# --- Pluriels (bornage par mot exact — "culturelle" ne matche PAS "culturelles",
+# "sagra"/"festa" ne matchent PAS leurs pluriels irréguliers italiens "sagre"/
+# "feste" ; cas réels perdus : « Sagre e feste di luglio », « manifestations
+# culturelles ») ---
+culturels
+culturelles
+manifestation culturelle
+manifestations culturelles
+sagre
+feste
+festivals
+concerts
+expositions
+spectacles
+artistes
+conferences
+ceremonies
+commemorations
+orchestres
+theatres
+musees
+chorales
+fanfares
+sculptures
+peintures
+photographies
+foires
+brocantes
+carnavals
+defiles
