@@ -11,6 +11,14 @@
 > WordPress, voir **`ETAT_DAVANCEMENT_AGENDA_SABAUDA.md`** et les docs par gabarit
 > (`REGLES_HOMEPAGES`, `FICHE_EVENEMENT`, `HUB_TERRITOIRE_VILLE`, `RECHERCHE`,
 > `AJOUTER_AU_CALENDRIER`).
+>
+> **Coordination deux sessions (2026-07-26)** : ce fichier est édité par deux
+> branches Claude en parallèle. La branche `claude/quirky-davinci-jvqrnw` couvre
+> le **pipeline** (enrich, newsletter, dédup, dossiers de presse) ; la branche
+> `claude/agenda-sabauda-homepage-test-exckrp` couvre le **site WordPress**
+> (gabarits, contenu, docs). Les deux journaux de session sont consignés dans
+> `BACKLOG.md`. À la fusion, préférer la version la plus cochée de la section 1
+> (site) et conserver la section « Outillage de build » + les items pipeline.
 
 ---
 
@@ -78,6 +86,20 @@ décisions, et de design. Détail par lot ci-dessous.
   l'instant (`$cs_fb_acc = null`) car la page n'existe pas encore. 🧑 **À
   réactiver dès que la page Facebook sera créée** (renseigner l'URL). Aucun
   bouton de partage FB sur le site (ce n'était pas demandé).
+
+### Pile de build (tranchée — voir docs dédiés)
+Décision d'outillage figée (16 juillet), conservée ici pour mémoire :
+- **Habillage** (header/footer, couleurs, polices) → **thème enfant GeneratePress**
+  + `theme.json`/`tokens.css`.
+- **Colonnes / éléments éditoriaux** → **Gutenberg natif** ; **dynamique** (listings,
+  hubs) → **JetEngine Blocks + Query Builder** ; **Elementor** actif mais non prioritaire.
+- **Pub / bannière / popup pub** → **Ad Inserter** uniquement (consent-gated, Complianz).
+- **Popup non-pub** (newsletter/annonce) → Popup Maker.
+- Détail : `PILE_BUILD_WORDPRESS.md`, `REGIE_ANNONCEURS.md` (+ scaffold
+  `deploy/wordpress/cs-regie.php`), `SELECTIONS_HOME.md` (carrousel de sélections).
+- ⚠️ Point ouvert : **Polylang vs WPML** pour le dynamique JetEngine (Crocoblock
+  certifié WPML, pas Polylang) — budgéter WPML ~99 €/an seulement si le multilingue
+  dynamique devient central.
 
 ## 2. Design / maquettes — 🎨🧑 EN COURS (hors périmètre repo)
 - [ ] DA finale figée (typo, couleurs) → base du thème enfant

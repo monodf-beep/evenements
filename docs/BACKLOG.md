@@ -3,6 +3,109 @@
 Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`).
 
+## Journal de session — 2026-07-25/26
+
+Légende propriétaire : 🤖 Claude Code (repo) · 🧑 Franck (VPS/décision) · 🎨 Claude Design (WordPress).
+
+### ✅ Fait cette session (commité, branche `claude/quirky-davinci-jvqrnw`)
+- 🤖 **Charte** : §5 bis « faits structurés obligatoires par type » (10 types + pièges :
+  horaires≠dates, spectateurs vs participants, VO/VF, récurrence…) + §11 « rythme newsletter ».
+- 🤖 **`enrich.py`** : champ `programme` (LISTE) dans le schéma + rendu markdown + consignes par type.
+- 🤖 **`newsletter.py`** : axe TEMPOREL (ouvre / continue / dernière chance) au lieu du tri par
+  score qui laissait un événement long squatter le héros ; anti-répétition PERSISTANTE
+  (table `newsletter_sent`) ; fin de la fuite de `llm_justification` ; **fix responsive** mobile
+  (media query dans `newsletter_variants` — débordement 624→485 px).
+- 🤖 **Audit Observatoire** (4 agents) : **zéro dépendance code réelle**. Couplages restants =
+  voulus (fichiers `# SYNCED FROM`, VPS/Traefik commun). Seul point dur = **clé Brevo partagée**.
+- 🤖 **Fuite bannière « Observatoire économique » (§9)** : `pick_banner_image` réécrit
+  (`_canon_territory` FR+IT — Nizza/Savoia inclus ; résout UNIQUEMENT dans le set catégorie
+  Agenda, sinon "") ; `config/territory_images.txt` **vidé** des URLs Brevo ;
+  `upgrade_category_banners_as.py` durci (attrape `%mailinblue%`).
+- 🤖 **Dédup** : `cleanup_as_dupes.py --include-published` + envoi `force:true` au mu-plugin.
+- 🤖 **Docs reconciliées** avec l'état LIVE (sélections/hubs déjà en ligne) : `SELECTIONS_HOME.md`,
+  `TODO_LANCEMENT.md`. + URL Page Facebook Savoie consignée (`RESEAUX_FACEBOOK_THREADS_SETUP.md`).
+
+### 🔎 Diagnostics posés (pas des bugs)
+- **Bannière « Espace Sabaudo » visible** = artefact **WordPress** (thème GeneratePress / masthead PNG),
+  PAS le pipeline (vérifié : posts sans image à la une → placeholder de thème). → 🎨.
+- **Sélections vides** (Annecy…) = **volume faible** sur filtre ville×week-end, pas un bug de filtre
+  (la sélection large `/selections/ce-week-end/` liste bien ~8 événements).
+
+### ⏳ Reste à faire
+- 🧑 **Déployer `cs-trash.php` sur OVH** : `push-wordpress.sh` échoue (`WP_DEPLOY_SSH` absent du `.env`).
+  Sinon **trasher à la main** les 8 doublons publiés (WP# 2319, 2356, 2329, 2340, 2323, 2205, 2271, 2228)
+  dans wp-admin. Puis re-lancer le ménage pour les futurs.
+- 🤖 **Durcir la résolution d'image** (bug Yerai) : (a) ne PAS re-résoudre quand une og:image valide
+  existe ; (b) recherche Commons par **sujet** (artiste/événement), pas par **lieu** (« Fondation Maeght »
+  → l'architecte Sert au lieu de Yerai Cortés) ; (c) agent vision qui rejette le hors-sujet.
+- 🧑 **Poser l'image Yerai à la main** en attendant le durcissement.
+- 🧑 **Décisions produit** : clé Brevo dédiée Agenda ; client OAuth Google = même que l'Observatoire ? ;
+  seuil ville 8 vs 15 ; sélections auto vs manuel.
+- 🎨 **Claude Design** : hero « Espace Sabaudo » (masthead) ; formulation « espace Sabaudo » sur les
+  couvertures ; repli JetEngine des sélections vides (→ requête plus large).
+- 🤖/🧑 **Code mort `utils/sources.py`** (filtre radar « économique » de l'Observatoire) : inerte, mais
+  fichier `SYNCED` → à retirer côté Observatoire aussi (décision partagée).
+
+## Journal de session — 2026-07-26 (site WordPress, branche `claude/agenda-sabauda-homepage-test-exckrp`)
+
+*Session parallèle à celle ci-dessus. Périmètre : le **site WordPress live**
+(gabarits, contenu, docs), pas le pipeline Python. Peu de recouvrement avec la
+session pipeline. Même légende propriétaire.*
+
+### ✅ Fait cette session (commité + vérifié en prod)
+- 🤖 **Allocateur home** (snippet 44) : `ala-une` et `weekend` ne tombent plus à 0
+  quand le stock est sous une ligne complète (bug IT Savoia : 0 au lieu de 3).
+  Seul `jour` garde la règle « 4 ou 8 ».
+- 🤖 **« No data was found » traduit** FR/IT (snippet 98, filtre `gettext` selon
+  la langue Polylang) : les sections vides s'affichent « Aucun evenement pour le
+  moment » / « Nessun evento al momento ».
+- 🤖 **Fiche événement** (snippet 56) : 3e rail « Près d'ici, mêmes dates » ;
+  badges « Dernier jour »/« En cours » (Complet exclu, meta non fiable) ;
+  Instagram Savoie-FR uniquement (masqué sinon) ; **bouton de suivi Facebook
+  désactivé** (`$cs_fb_acc = null`) car la page n'est pas encore active.
+- 🤖 **Ajouter à mon agenda** (snippet 69) : rappels **J-7 / J-1** via `VALARM`
+  dans le `.ics` (impossible via les liens directs Google/Outlook, aucun
+  paramètre fiable).
+- 🤖 **Gabarit 404 sur-mesure** (snippet 99) : vrai HTTP 404, bilingue, recherche
+  + 4 portes territoires.
+- 🤖 **Page guide « Cuisine Nissarde »** publiée **FR (post 3648) + IT (post
+  3650)**, liées Polylang, rattachées Comté de Nice + Gastronomie (remontent
+  auto dans les hubs). Source : dossier de presse OT Nice 2025/26.
+- 🤖 **Docs** : renommage `SABAUDO`→`SABAUDA` (13 fichiers + réf croisées) ;
+  réconciliation de `TODO_LANCEMENT.md` avec le live ; création de
+  `ETAT_DAVANCEMENT_AGENDA_SABAUDA.md` (as-built détaillé, complément de ce
+  BACKLOG) ; correction des docs par gabarit (FICHE, HUB, RECHERCHE,
+  REGLES_HOMEPAGES).
+
+### 🔎 Diagnostics posés (pas des bugs)
+- **Photos** : les images de repli `fallback-*` sont **bakeées comme
+  `_thumbnail_id`** → détecter « sans vraie photo » = tester le slug `fallback-`,
+  PAS un thumbnail vide (un diagnostic naïf renvoie 0 à tort). Réel : **19 FR +
+  23 IT** événements futurs sur repli (liste : `PHOTOS_MANQUANTES_EVENEMENTS.md`).
+  → complément WordPress du chantier « alternative pas-de-photo » ci-dessous.
+- **« Partager sur Facebook »** vu dans le source = i18n **Elementor** dormante
+  (`elementorFrontendConfig`), **jamais rendue** : il n'existe aucun bouton de
+  partage Facebook sur le site.
+- **Catalogue IT** : nettement plus de sections vides que le FR (volume de
+  traductions, pas un défaut technique — l'état vide s'affiche bien en italien).
+
+### ⏳ Reste à faire
+- 🧑 **Réactiver le bouton de suivi Facebook** dès que la **page Savoie** sera
+  active. URL canonique `https://www.facebook.com/agendasabauda-savoie/`
+  (statut « prévue » dans `RESEAUX_FACEBOOK_THREADS_SETUP.md`). À rendre
+  **territoire-aware** comme Instagram (une URL par territoire).
+- 🤖/🧑 **Alternative « pas de photo »** (COMMUN avec la session pipeline, cf.
+  §Images du BACKLOG) : côté site, 42 événements futurs affichent un repli. À
+  décider ensemble : repli générique (état actuel) vs vrai visuel par
+  territoire/catégorie.
+- 🤖 **Étiquettes** (Gratuit / En famille / Transfrontalier / massifs) : pas de
+  taxonomie dédiée, seulement des `post_tag` ad hoc. À structurer si on veut des
+  hubs d'étiquette propres.
+- 🧑 **Communs aux deux sessions** : hygiène sécurité (mot de passe FTP OVH + clé
+  API Anthropic), sourcing Annecy/Chambéry au seuil, GSC, décisions stratégiques.
+
+---
+
 ## Le pipeline, étape par étape — où placent-on agents & règles ?
 
 ```
@@ -32,8 +135,9 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 ## Tâches à réfléchir
 
 ### Images (signalé par Franck)
-- [ ] Récupérer l'**image OG** (`og:image`) de la page source quand le flux n'a pas de
-      photo (scraping HTML léger de l'URL de l'événement).
+- [x] Récupérer l'**image OG** (`og:image`) de la page source quand le flux n'a pas de
+      photo. FAIT : `enrich.py` (repli à l'enrichissement) + cascade complète `scripts/visuals.py`
+      (og:image → 1re photo de contenu → recherche Commons → bannière territoire/catégorie).
 - [ ] Définir l'**alternative « pas de photo »** : ne rien afficher (état actuel) vs
       générer un **visuel culturel** par territoire/catégorie (≠ bannière éco de
       l'Observatoire, qui est inadaptée). Décider du style.
@@ -68,6 +172,43 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
       WP) — aujourd'hui les photos HD sont juste enregistrées sous `data/press_kits/`.
 - [ ] **Suivi des accréditations** (option 2, non retenue pour l'instant) : registre des
       organisateurs accrédités → priorité + relances aux lieux clés.
+
+### Newsletter (canal automatique)
+- [x] **Charte §11 — rythme temporel**. Axe « ouvre / continue / dernière chance » au lieu
+      d'un tri par score qui laissait un événement long (expo sur 3 mois) squatter le héros
+      chaque semaine. Fondé sur les bonnes pratiques des newsletters d'événements locaux.
+- [x] **`newsletter.py` — axe temporel** (`_split_temporal`) : répartition déterministe en
+      3 seaux (ouvre = héros + cartes ; dernière chance + continue = sommaire compact borné
+      `MAX_CONTINUE`). Mode `temporal=False` pour la composition MANUELLE (l'ordre humain fait
+      foi — `app.py` newsletter_brevo). Retrait de la fuite de `llm_justification` (scoring)
+      dans `_summary` : plus de texte back-office dans les cartes / le preheader.
+- [x] **Anti-répétition inter-envois PERSISTANTE** : table `newsletter_sent` (territoire,
+      edition, event_id, slot) — CLI-owned, distincte de `newsletter_editions` (compos
+      manuelles) pour éviter tout conflit de clé. `main()` lit les ids déjà listés en sommaire
+      les semaines passées (`_seen_continue_ids`) et les retire du seau « continue » → un
+      événement long n'y figure qu'UNE fois sur toute sa durée ; il est ensuite tracé
+      (`_record_sent`) après création du brouillon. Testé (héros non répété, sommaire purgé,
+      pas de fuite de scoring).
+      Reste optionnel : appliquer la même trace au canal MANUEL (app.py) — écarté (clé de
+      territoire groupée différente, et l'humain contrôle déjà sa sélection).
+- [x] **Responsive** : bug trouvé et corrigé. Le `max-width:100%` sur le conteneur fixe
+      `width="600"` ne collapsait PAS (les attributs `width="600"/"528"` imposaient une largeur
+      mini > viewport → texte rogné à droite sur mobile). Mesuré : scrollWidth 624px (débordait)
+      → 485px après correction. Fix ADDITIF dans `utils/newsletter_variants._shell` : un
+      `<style>@media (max-width:600px)` qui passe le conteneur et les grandes images en fluide,
+      ciblé par attribut (favicons/logo intacts). Desktop et clients sans media query (Outlook)
+      inchangés. Vérifié au rendu Chromium (mobile + desktop). NB : `variant_magazine` est
+      PARTAGÉ avec l'Observatoire → le fix améliore les deux, sans toucher au desktop.
+- [ ] Reste à vérifier une fois en conditions réelles : une liste `## Programme` LONGUE dans un
+      article (rendu par le thème WordPress, hors template email).
+
+### Enrichissement — faits structurés (charte §5 bis)
+- [x] **Champ `programme` (LISTE)** ajouté au schéma JSON d'`enrich.py` + rendu markdown
+      (`## Programme`, défensif) : un programme / line-up / déroulé n'est plus noyé en prose et
+      survit au mode court.
+- [x] **Consignes par type** dans le prompt (expo, concert, spectacle, festival, sagra, marché,
+      conférence, sport, cinéma, fêtes populaires) avec les pièges : horaires ≠ dates,
+      spectateurs vs participants (sport), VO/VF (cinéma), récurrence (marchés/fêtes).
 
 ### Qualité de la collecte
 - [ ] **Déduplication multi-sources** ⟵ signalé par Franck. Un même événement arrive
