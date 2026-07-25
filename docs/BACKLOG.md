@@ -78,11 +78,15 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
       `MAX_CONTINUE`). Mode `temporal=False` pour la composition MANUELLE (l'ordre humain fait
       foi — `app.py` newsletter_brevo). Retrait de la fuite de `llm_justification` (scoring)
       dans `_summary` : plus de texte back-office dans les cartes / le preheader.
-- [ ] **Anti-répétition inter-envois PERSISTANTE** : le keying par date d'ouverture empêche le
-      squat du héros, mais rien ne mémorise ce qui a DÉJÀ été envoyé d'une semaine à l'autre
-      (le seau « continue » réapparaît, borné mais présent). À faire : table `newsletter_sent`
-      (event_id, date) + exclusion/rétrogradation. Écarté ce soir (migration de schéma, hors
-      périmètre du chantier).
+- [x] **Anti-répétition inter-envois PERSISTANTE** : table `newsletter_sent` (territoire,
+      edition, event_id, slot) — CLI-owned, distincte de `newsletter_editions` (compos
+      manuelles) pour éviter tout conflit de clé. `main()` lit les ids déjà listés en sommaire
+      les semaines passées (`_seen_continue_ids`) et les retire du seau « continue » → un
+      événement long n'y figure qu'UNE fois sur toute sa durée ; il est ensuite tracé
+      (`_record_sent`) après création du brouillon. Testé (héros non répété, sommaire purgé,
+      pas de fuite de scoring).
+      Reste optionnel : appliquer la même trace au canal MANUEL (app.py) — écarté (clé de
+      territoire groupée différente, et l'humain contrôle déjà sa sélection).
 - [ ] **Responsive** : le template `variant_magazine` est fluide (viewport + conteneur
       600px/max-width:100%, colonne unique) — OK par construction. À vérifier visuellement une
       fois : rendu mobile réel + une liste `## Programme` longue (rendu thème WordPress).

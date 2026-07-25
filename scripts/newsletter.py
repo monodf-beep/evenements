@@ -51,9 +51,9 @@ _MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juille
 # Nb de cartes détaillées (« Le tour des territoires ») ; au-delà, le reste passe
 # en sommaire numéroté (« Aussi cette semaine »).
 MAX_CARDS = 6
-# Borne déterministe du seau « ça continue » (événements longs déjà annoncés) : par
-# nature ils reviennent chaque semaine, on en limite le nombre pour ne pas alourdir le
-# sommaire. Tri stable par importance, aucun état persistant (cf. build_data).
+# Borne déterministe du seau « ça continue » (événements longs déjà annoncés), APRÈS
+# retrait de ceux déjà listés lors d'éditions passées (anti-répétition persistante,
+# cf. _seen_continue_ids). Limite le nombre pour ne pas alourdir le sommaire.
 MAX_CONTINUE = 6
 
 
@@ -118,6 +118,9 @@ def build_item(ev: dict, banners: dict | None = None, cat_banners: dict | None =
         image = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
                                   str(ev.get("id", "")), cat_banners or {}, banners)
     return {
+        # `_id` : privé, ignoré par le gabarit ; sert à tracer ce qui est parti en
+        # newsletter (anti-répétition persistante, cf. _record_sent).
+        "_id": ev.get("id"),
         "title": (ev.get("article_title") or ev.get("title") or "").strip(),
         "summary": _summary(ev),
         "image": image,
@@ -184,8 +187,56 @@ def _split_temporal(rows: list[dict], pfrom: str, pto: str
     return ouvre, derniere, continue_
 
 
+def _ensure_sent_table(conn: sqlite3.Connection) -> None:
+    """Historique des événements réellement mis en NEWSLETTER (canal automatique).
+    Sert l'anti-répétition PERSISTANTE (§11). Volontairement DISTINCT de
+    `newsletter_editions` (compositions manuelles côté app, clé de territoire groupée)
+    pour éviter tout conflit de clé. Simple CREATE IF NOT EXISTS — même schéma d'appoint
+    que le reste du pipeline, pas de migration lourde."""
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS newsletter_sent ("
+        "territoire TEXT NOT NULL, edition TEXT NOT NULL, event_id INTEGER NOT NULL, "
+        "slot TEXT, sent_at TEXT, PRIMARY KEY (territoire, edition, event_id))")
+
+
+def _seen_continue_ids(conn: sqlite3.Connection, territoire: str, edition: str) -> set:
+    """Ids déjà listés en SOMMAIRE compact (slot 'signal') lors d'éditions ANTÉRIEURES du
+    même territoire. Un événement long n'a droit qu'à UNE apparition en « ça continue » :
+    au-delà, on le retire (il reste au catalogue). Le héros, lui, ne se répète pas par
+    construction (keying par date d'ouverture)."""
+    _ensure_sent_table(conn)
+    rows = conn.execute(
+        "SELECT DISTINCT event_id FROM newsletter_sent "
+        "WHERE territoire=? AND slot='signal' AND edition < ?",
+        (territoire, edition)).fetchall()
+    return {r["event_id"] for r in rows}
+
+
+def _record_sent(conn: sqlite3.Connection, territoire: str, edition: str, data: dict) -> None:
+    """Trace ce qui vient d'être mis dans la newsletter (héros/carte/sommaire), pour
+    l'anti-répétition des éditions suivantes. Idempotent (upsert sur la clé)."""
+    _ensure_sent_table(conn)
+    entries: list[tuple[dict, str]] = []
+    if data.get("hero"):
+        entries.append((data["hero"], "hero"))
+    entries += [(it, "card") for it in data.get("items") or []]
+    entries += [(it, "signal") for it in data.get("signaux") or []]
+    for item, slot in entries:
+        eid = item.get("_id")
+        if eid is None:
+            continue
+        conn.execute(
+            "INSERT INTO newsletter_sent (territoire, edition, event_id, slot, sent_at) "
+            "VALUES (?,?,?,?,datetime('now','localtime')) "
+            "ON CONFLICT(territoire, edition, event_id) DO UPDATE SET "
+            "slot=excluded.slot, sent_at=excluded.sent_at",
+            (territoire, edition, eid, slot))
+    conn.commit()
+
+
 def build_data(rows: list[dict], *, week_label: str, tagline: str,
-               pfrom: str = "", pto: str = "", temporal: bool = True) -> dict:
+               pfrom: str = "", pto: str = "", temporal: bool = True,
+               seen: set | None = None) -> dict:
     """Répartit les événements sur le gabarit magazine.
 
     Deux modes :
@@ -209,11 +260,11 @@ def build_data(rows: list[dict], *, week_label: str, tagline: str,
     puis le surplus d'ouvertures qui n'a pas tenu en cartes (fraîcheur), puis
     « ça continue ».
 
-    Anti-répétition : le keying implicite par date d'OUVERTURE fait qu'un événement long
-    n'est héros qu'une seule fois. Le seau « continue » revient d'une semaine à l'autre
-    par nature ; on le BORNE de façon déterministe (MAX_CONTINUE, tri stable par
-    importance) sans état persistant. Anti-répétition inter-envois PERSISTANTE (mémoire
-    des événements déjà envoyés) = à faire, cf. docs/BACKLOG.md."""
+    Anti-répétition : le keying par date d'OUVERTURE fait qu'un événement long n'est héros
+    qu'une seule fois. En plus, `seen` (ids déjà listés en sommaire lors d'éditions
+    passées, cf. _seen_continue_ids) est retiré du seau « continue » → un événement long
+    n'y figure qu'UNE fois sur toute sa durée. Reste le bornage déterministe MAX_CONTINUE
+    (tri stable par importance)."""
     banners = load_territory_images()
     cat_banners = load_territory_category_images()
 
@@ -234,8 +285,12 @@ def build_data(rows: list[dict], *, week_label: str, tagline: str,
     ouvre_overflow = ouvre[1 + MAX_CARDS:]
 
     derniere = [build_item(ev, banners, cat_banners) for ev in derniere_rows]
-    # « continue » borné (anti-répétition déterministe, tri stable déjà par score).
-    continue_ = [build_item(ev, banners, cat_banners) for ev in continue_rows[:MAX_CONTINUE]]
+    # « continue » : anti-répétition PERSISTANTE — on retire les événements déjà listés en
+    # sommaire lors d'une édition précédente (ils ont eu leur apparition, ils restent au
+    # catalogue), puis bornage déterministe (MAX_CONTINUE, tri stable par score).
+    seen = seen or set()
+    fresh_continue = [ev for ev in continue_rows if ev.get("id") not in seen]
+    continue_ = [build_item(ev, banners, cat_banners) for ev in fresh_continue[:MAX_CONTINUE]]
 
     # Sommaire « Aussi cette semaine » : dernière chance → surplus d'ouvertures → continue.
     signaux = derniere + ouvre_overflow + continue_
@@ -321,16 +376,19 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = select_events(conn, territoire, pfrom, pto, args.limit)
-    conn.close()
+    # Anti-répétition persistante : ce qui a déjà été listé en sommaire les semaines passées.
+    seen = _seen_continue_ids(conn, territoire, pfrom)
     log.info("%d événement(s) %s du %s au %s", len(rows), territoire, pfrom, pto)
     if not rows:
+        conn.close()
         log.warning("Aucun événement retenu sur la période — brouillon non créé.")
         return 1
 
     week_label = f"Du {_fmt_day(pfrom)} au {_fmt_day(pto)}"
     subject = f"Agenda Sabauda — {territoire}, à l'affiche cette semaine"
     tagline = f"Les sorties à vivre en {territoire}"
-    data = build_data(rows, week_label=week_label, tagline=tagline, pfrom=pfrom, pto=pto)
+    data = build_data(rows, week_label=week_label, tagline=tagline,
+                      pfrom=pfrom, pto=pto, seen=seen)
     html = variant_magazine(data)
 
     # Vérité terrain : on écrit le HTML EXACT localement pour l'inspecter.
@@ -350,9 +408,13 @@ def main(argv=None) -> int:
             subject=subject, sender_name=sender_name, sender_email=sender_email,
             list_ids=list_ids, html_content=html)
     except BrevoError as exc:
+        conn.close()
         log.error("Création du brouillon Brevo échouée : %s", exc)
         return 1
 
+    # Le brouillon existe : on trace ce qui a été mis en avant (anti-répétition future).
+    _record_sent(conn, territoire, pfrom, data)
+    conn.close()
     log.info("=== Brouillon Brevo créé (id=%s) — objet : %s ===", cid, subject)
     log.info("À relire/envoyer ici : %s", campaign_edit_url(cid))
     log.info("⚠ Aucun envoi automatique — validation et envoi manuels par toi.")
