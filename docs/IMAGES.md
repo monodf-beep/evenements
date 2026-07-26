@@ -26,12 +26,13 @@ Le cœur est `scripts/visuals.py → resolve_image()`. Chaque événement sans i
 | **2** | **og:image** de la page officielle | **code** (déterministe) | 0 | Jamais pour un *radar* (ce serait une image de presse). |
 | **2b** | **1re vraie photo de contenu** de la page | **code** | 0 | Pour les pages sans og:image (offices de tourisme…). |
 | **3** | **Wikimedia Commons** | **LLM** rédige la requête, **code** cherche/filtre | ~1 appel Haiku | Photo licenciable + crédit. |
-| **3-bis** | **Agent web** (recherche + vision) | **LLM** cherche, **2e LLM** vérifie | recherche web + vision | Dernier recours, haut du panier seulement (`scripts/images_web.py`). |
-| **4** | **Bannière** territoire × catégorie | **code** | 0 | Repli **garanti**, jamais parasite. |
+| **3b** | **Europeana** (musées/bibliothèques du territoire) | **LLM** requête (la même), **code** filtre | ~0 | Licenciable + crédit. **INACTIF sans `EUROPEANA_API_KEY`** (expérimental, à valider). |
+| **3-bis** | **Agent web** (recherche + vision) | **LLM** cherche, **2e LLM** vérifie | recherche web + vision | **Dernier recours** (le plus cher), haut du panier (`scripts/images_web.py`). |
+| **4** | **Bannière** territoire × catégorie (`fallback-*`) | **code** | 0 | Repli **garanti**, jamais parasite. |
 
 **Répartition LLM / code (charte `docs/LLM_OU_CODE.md`)** : le LLM ne fait que le **jugement** (« quoi photographier », « cette image colle-t-elle ? »). La **recherche, le filtrage et le repli restent déterministes**.
 
-Ordre réel dans le pipeline automatique (`autocomplete._fill_image`) : on tente d'abord **l'agent web** (meilleure photo pertinente) si autorisé et hors cooldown, **puis** la chaîne déterministe og→Commons→bannière.
+Ordre réel dans le pipeline automatique (`autocomplete._fill_image`), **depuis 2026-07-26** : on lance d'abord la **chaîne déterministe** (og → contenu → Commons → Europeana) — gratuite/économique ; l'**agent web payant n'intervient qu'en dernier recours**, si le déterministe n'a rien donné de mieux qu'une bannière. *(Avant, l'agent web passait en premier — coûteux et souvent inutile puisque l'og:image officielle suffit.)*
 
 ---
 
@@ -115,14 +116,31 @@ En cas de panne technique (image injoignable), on **ne bloque pas** — les règ
 **Variables d'environnement** :
 - `VISUALS_CAP` (défaut 80) — plafond d'événements par lancement.
 - `ANTHROPIC_MODEL_VISUALS` / `_VISION` / `_SEARCH` — modèles par étape (défauts : Haiku pour requête & vision, Sonnet pour recherche web).
+- `AUTOCOMPLETE_VERIFY_IMAGES` (défaut **on**) — vérif vision **dès la pose** dans le pipeline auto ; `=0` pour couper (économie).
+- `EUROPEANA_API_KEY` — active l'étage 3b Europeana (absent = étage sauté, sans erreur).
 
 ---
 
-## 9. Questions ouvertes / pistes (pour tes retours)
+## 9. Décisions & questions
 
-1. **Seuils** : `MIN_DIM=700`, `MAX_ASPECT=2.5`, `MIN_ASPECT=1.15`, `thumb_width=2400` — te conviennent, ou on ajuste ?
-2. **Agent web en premier** : aujourd'hui le pipeline auto tente la recherche web **avant** Commons. Coût vs qualité : on garde cet ordre, ou Commons d'abord (moins cher) et web seulement si Commons échoue ?
-3. **Vérif vision** : par défaut elle tourne surtout à la publication (gratuit ailleurs). Faut-il l'activer plus tôt/systématiquement (plus sûr, plus cher) ?
-4. **Sources licenciables** : aujourd'hui Commons + og officiel. Ouvrir à d'autres banques libres (Europeana, collections de musées du territoire) ? Ça collerait à la ligne sabaude.
-5. **Crédit** : bien affiché partout (carte, réseaux, WordPress) ? À vérifier avec toi.
-6. **Vocabulaire des requêtes** : faut-il que `visual_query` intègre le lexique sabaud (chercher « marché de la Saint-Ours Aoste » plutôt qu'un générique) — jonction avec le chantier rédaction ?
+### Tranché / fait (2026-07-26)
+- **Ordre agent-web / Commons (A) — FAIT** : chaîne déterministe (og→contenu→Commons→Europeana) d'abord, agent web payant en dernier recours. Économie sans perte (l'og officielle suffit le plus souvent).
+- **Vérif vision plus tôt (B) — FAIT** : agent vision actif **dès la pose** dans le pipeline auto (`AUTOCOMPLETE_VERIFY_IMAGES`, défaut on). Écarte les hors-sujet en amont.
+- **Nouvelle source licenciable (C) — FAIT (à activer)** : étage 3b **Europeana** (musées/bibliothèques du territoire), inactif sans `EUROPEANA_API_KEY`. **Expérimental** : à valider en conditions réelles (pertinence/qualité des fonds variable) avant de s'y fier.
+
+### Encore ouvert
+- **Seuils** : `MIN_DIM=700`, `MAX_ASPECT=2.5`, `MIN_ASPECT=1.15`, `thumb_width=2400` — te conviennent, ou on ajuste ?
+- **Crédit** : bien affiché partout (carte, réseaux, WordPress) ? (`as_image_credit` écrit au push, ligne 202 de `publisher_as`.)
+- **Vocabulaire des requêtes** : `visual_query` pourrait intégrer le lexique sabaud (« marché de la Saint-Ours Aoste » plutôt qu'un générique) — jonction chantier rédaction.
+
+---
+
+## 10. Modèle de repli : bake vs runtime (tranché)
+
+**Constat prouvé (event 2222, live) :** le repli WordPress `cs_fallback_visual` (snippet 87) filtre `_thumbnail_id` au **niveau données** (pas seulement l'affichage) → quand un événement n'a pas de vraie miniature, Yoast en dérive l'`og:image` = `fallback-{terr}-{cat}-og1200x630.png`, **sans aucun bake côté pipeline**. Les crawlers (front-end) voient donc le bon fallback de catégorie.
+
+**Piège :** snippet 87 est **scope front-end** (inactif en REST/admin/CLI). Un consommateur lisant la featured image hors front-end ne verrait rien — **mais vérifié côté pipeline : aucun ne le fait** (`ig_scheduler` lit `url_image`/`wp_raw_image` en base, jamais la featured media via REST ; tous les `featured_media` du code sont des écritures au push).
+
+**Décision : arrêter de baker une copie par événement** (`_banner()` upload dans `publisher_as`). Le runtime couvre le front-end (og/partage/SEO) ; le signal « pas de photo » reste honnête via `image_source='banner'` (l'audit le filtre déjà). Pas besoin de la piste « attachement partagé » (#3) tant qu'aucun consommateur REST n'apparaît.
+
+*Reste à faire (coordonné avec la conversation site) : (1) retirer le bake `_banner()` de `publisher_as` ; (2) nettoyer côté WordPress les ~42 vignettes déjà bakées pour qu'elles repassent au repli runtime ; (3) donner au compositeur social sa propre bannière de catégorie quand `url_image` est vide.*

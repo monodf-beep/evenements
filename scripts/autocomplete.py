@@ -134,24 +134,38 @@ def _fill_image(ev: dict, client, blocked, banners, cat_banners, allow_web: bool
     # Déjà une vraie photo → rien à faire.
     if comp.has_real_image(ev):
         return {}
-    # 1) recherche web + vérificateur vision (meilleure photo pertinente)
     # card_focal_x/y : seulement si jamais réglé (NULL) — ne JAMAIS écraser un
     # cadrage choisi à la main au back-office (éditeur de point focal).
     has_manual_focal = ev.get("card_focal_x") is not None or ev.get("card_focal_y") is not None
+    # AGENT vision dès la POSE (pas seulement au push) : écarte un hors-sujet plus tôt.
+    # Pilotable : AUTOCOMPLETE_VERIFY_IMAGES=0 pour couper (économie).
+    verify = os.getenv("AUTOCOMPLETE_VERIFY_IMAGES", "1").strip().lower() not in ("0", "false", "no", "off", "")
+    verify_client = client if verify else None
+    verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
+    # 1) chaîne DÉTERMINISTE d'abord (og:image → contenu → Commons → Europeana) :
+    #    gratuite/économique. On ne lance l'agent web (payant) que si elle échoue.
+    from scripts.visuals import resolve_image
+    url, credit, source, fx, fy = resolve_image(
+        ev, client, blocked, banners, cat_banners=cat_banners,
+        verify_client=verify_client, verify_model=verify_model)
+    if url and source != "banner":
+        out = {"url_image": url, "image_credit": credit, "image_source": source}
+        if not has_manual_focal:
+            out["card_focal_x"], out["card_focal_y"] = fx, fy
+        return out
+    # 2) agent WEB (payant : recherche web + vérificateur vision) EN DERNIER RECOURS,
+    #    seulement si le déterministe n'a rien donné de mieux qu'une bannière.
     if allow_web and client is not None and web_cooldown_ok(ev, "image_web_at"):
         from scripts.images_web import find_verified_image
-        url, credit, fx, fy = find_verified_image(ev, client, blocked)
+        wurl, wcredit, wfx, wfy = find_verified_image(ev, client, blocked)
         mark_web_attempt(conn, "image_web_at", event_id)
-        if url:
-            out = {"url_image": url, "image_credit": credit, "image_source": "web"}
+        if wurl:
+            out = {"url_image": wurl, "image_credit": wcredit, "image_source": "web"}
             if not has_manual_focal:
-                out["card_focal_x"], out["card_focal_y"] = fx, fy
+                out["card_focal_x"], out["card_focal_y"] = wfx, wfy
             return out
-    # 2) chaîne déterministe (og:image → Commons → bannière). On ne garde la
-    #    bannière que si on veut boucher le trou pour atteindre la complétude.
-    from scripts.visuals import resolve_image
-    url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners, cat_banners=cat_banners)
-    if url and (source != "banner" or (want_banner and comp._empty(ev.get("url_image")))):
+    # 3) bannière du déterministe, seulement pour boucher le trou (complétude).
+    if url and source == "banner" and want_banner and comp._empty(ev.get("url_image")):
         out = {"url_image": url, "image_credit": credit, "image_source": source}
         if not has_manual_focal:
             out["card_focal_x"], out["card_focal_y"] = fx, fy

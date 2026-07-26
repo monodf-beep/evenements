@@ -11,6 +11,7 @@ Aucune clé d'API (l'API Commons est ouverte).
 from __future__ import annotations
 
 import html as htmlmod
+import os
 import re
 
 import requests
@@ -287,4 +288,69 @@ def commons_search(query: str, *, min_width: int = 800, limit: int = 8,
         license_short = _clean((meta.get("LicenseShortName") or {}).get("value", ""))
         title = (page.get("title") or "").removeprefix("File:")
         return thumb, _credit(meta, license_short), title
+    return "", "", ""
+
+
+# ── Europeana : musées, archives et bibliothèques européens (dont collections du
+# territoire sabaud). Source LICENCIABLE complémentaire de Commons. INACTIVE tant
+# qu'EUROPEANA_API_KEY n'est pas configurée (clé gratuite : pro.europeana.eu). Même
+# posture de droits que Commons (reusability=open) + mêmes filtres (vraie image,
+# taille, pas une forme de bandeau). EXPÉRIMENTAL : à valider en conditions réelles
+# avant de s'y fier (la qualité/pertinence des retours Europeana varie selon les fonds).
+_EUROPEANA_API = "https://api.europeana.eu/record/v2/search.json"
+
+
+def _first(v):
+    """Europeana renvoie souvent des listes ; on prend le 1er élément utile."""
+    if isinstance(v, list):
+        return v[0] if v else ""
+    return v or ""
+
+
+def _short_rights(rights_url: str) -> str:
+    """Étiquette de licence courte depuis l'URL de droits Europeana."""
+    u = (rights_url or "").lower()
+    if "publicdomain" in u or "/zero/" in u:
+        return "domaine public"
+    m = re.search(r"/licenses/([a-z-]+)/([0-9.]+)", u)
+    return f"CC {m.group(1).upper()} {m.group(2)}" if m else ""
+
+
+def europeana_search(query: str, *, min_width: int = 800, limit: int = 8,
+                     timeout: int = 10) -> tuple[str, str, str]:
+    """Cherche une image librement réutilisable sur Europeana. Renvoie (url, crédit,
+    titre) ou ('', '', ''). Inactive (renvoie vide) sans EUROPEANA_API_KEY.
+
+    Filtre : licence ouverte (reusability=open : CC0 / domaine public / CC-BY…), vraie
+    image (pas un logo/blason), largeur suffisante, pas une forme de bandeau. On préfère
+    l'image plein format (edmIsShownBy) et on retombe sur l'aperçu (edmPreview)."""
+    key = os.getenv("EUROPEANA_API_KEY", "").strip()
+    query = (query or "").strip()
+    if not key or not query:
+        return "", "", ""
+    params = {
+        "wskey": key, "query": query, "rows": str(limit),
+        "reusability": "open", "media": "true", "thumbnail": "true",
+        "qf": "TYPE:IMAGE", "profile": "rich",
+    }
+    try:
+        r = requests.get(_EUROPEANA_API, params=params, headers=_UA, timeout=timeout)
+        if r.status_code != 200:
+            return "", "", ""
+        items = (r.json().get("items") or [])
+    except (requests.RequestException, ValueError):
+        return "", "", ""
+    for it in items:
+        url = _first(it.get("edmIsShownBy")) or _first(it.get("edmPreview"))
+        url = str(url or "")
+        if not url.startswith("http") or is_logo_image(url):
+            continue
+        w, h = remote_dims(url)
+        if w and h and (min(w, h) < min_width or looks_like_banner_shape(w, h)):
+            continue
+        provider = _clean(_first(it.get("dataProvider")) or _first(it.get("provider")))
+        rights = _short_rights(_first(it.get("rights")))
+        credit = " · ".join(p for p in (provider or None, "Europeana", rights or None) if p)[:200]
+        title = _clean(_first(it.get("title")))
+        return url, credit, title
     return "", "", ""

@@ -35,8 +35,9 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.images import (commons_search, fetch_og_image, fetch_content_image,
-                          remote_dims, looks_like_banner_shape, MIN_DIM)
+from utils.images import (commons_search, europeana_search, fetch_og_image,
+                          fetch_content_image, remote_dims, looks_like_banner_shape,
+                          MIN_DIM)
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
                            load_territory_images, load_territory_category_images,
                            pick_banner_image)
@@ -247,6 +248,15 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
                 if ok:
                     log.info("[%s] Commons « %s » → %s", ev["id"], q, url[:70])
                     return url, credit, "commons", fx, fy
+            # Étage 3b — Europeana (musées/bibliothèques du territoire), même requête.
+            # Inactif sans EUROPEANA_API_KEY → europeana_search renvoie '' (no-op).
+            eu_url, eu_credit, eu_title = europeana_search(q)
+            if _acceptable(eu_url, blocked, patterns):
+                eu_subject = f"{q} (Europeana : « {eu_title} »)" if eu_title else q
+                ok, fx, fy = _verified(eu_url, ev, verify_client, verify_model, eu_subject)
+                if ok:
+                    log.info("[%s] Europeana « %s » → %s", ev["id"], q, eu_url[:70])
+                    return eu_url, eu_credit, "europeana", fx, fy
     # Commons n'a rien donné de mieux : on ressort la photo de page, petite mais
     # pertinente — toujours préférable à la bannière générique.
     if content_fallback:
@@ -311,7 +321,7 @@ def main(argv=None) -> int:
     blocked = load_blocked_image_domains()
     verify_client = client if args.verify else None
     verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
-    counts = {"og": 0, "page": 0, "commons": 0, "banner": 0, "none": 0}
+    counts = {"og": 0, "page": 0, "commons": 0, "europeana": 0, "banner": 0, "none": 0}
     for ev in rows:
         url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners,
                                                      verify_client=verify_client, verify_model=verify_model,
@@ -329,8 +339,9 @@ def main(argv=None) -> int:
             (url, credit, source, fx, fy, ev["id"]))
         conn.commit()
         counts[source] += 1
-    log.info("Visuels posés — og:image=%d · page=%d · Commons=%d · bannière=%d · échec=%d",
-             counts["og"], counts["page"], counts["commons"], counts["banner"], counts["none"])
+    log.info("Visuels posés — og:image=%d · page=%d · Commons=%d · Europeana=%d · bannière=%d · échec=%d",
+             counts["og"], counts["page"], counts["commons"], counts["europeana"],
+             counts["banner"], counts["none"])
     conn.close()
     return 0
 
