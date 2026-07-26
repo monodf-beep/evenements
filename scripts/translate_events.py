@@ -83,9 +83,11 @@ def _target(src_lang: str) -> str:
     return "it" if src_lang == "fr" else "fr"
 
 
-def translate_title_desc(client, model, title: str, desc: str, target: str,
-                         voix: str = "") -> dict | None:
-    """Renvoie {'title':..., 'description':...} traduits, ou None si échec.
+def _charte_prompt(target: str, voix: str = "") -> str:
+    """Bloc de consignes éditoriales (voix + charte de traduction) COMMUN à toutes les
+    traductions FR↔IT — titre/description ET article enrichi. Régit ton, casse,
+    superlatifs, dark patterns, toponymes et préservation des faits. Factorisé pour que
+    `translate_title_desc` et `translate_article` appliquent EXACTEMENT les mêmes règles.
 
     voix : bloc de voix éditoriale (utils.voix.voix_block()) préfixé au prompt — il
     RÉGIT le ton, le vocabulaire interdit, la doctrine d'appartenance et les patterns,
@@ -111,7 +113,7 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
                  '(« vous n\'allez pas croire… »), confirmshaming')
         casse_lang = 'En français, mois et jours en minuscule. Jamais de title case anglais.'
         boussole = 'Registre soutenu mais accessible, comme le média *Internazionale*. Pas de calque de l\'italien.'
-    prompt = (
+    return (
         voix +
         (f"\n\nSi une VOIX ÉDITORIALE est fournie ci-dessus, elle RÉGIT le ton, le style, "
          f"le vocabulaire interdit, la doctrine d'appartenance (gentilés, jamais la "
@@ -142,7 +144,28 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
         f"Seule l'EXPRESSION est réécrite. Un programme / une liste se traduit LIGNE À "
         f"LIGNE, sans en perdre ni en fusionner aucune.\n\n"
         f"REGISTRE : soutenu mais accessible, phrases claires, pas de jargon gratuit. "
-        f"{boussole}\n\n"
+        f"{boussole}\n\n")
+
+
+def _extract_json(resp) -> str:
+    """Extrait le texte d'une réponse Anthropic et retire un éventuel fence ```json."""
+    txt = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+    if txt.startswith("```"):
+        txt = txt.strip("`")
+        txt = txt[4:] if txt.lower().startswith("json") else txt
+    return txt
+
+
+def translate_title_desc(client, model, title: str, desc: str, target: str,
+                         voix: str = "") -> dict | None:
+    """Renvoie {'title':..., 'description':...} traduits, ou None si échec.
+
+    voix : bloc de voix éditoriale (utils.voix.voix_block()) préfixé au prompt — il
+    RÉGIT le ton, le vocabulaire interdit, la doctrine d'appartenance et les patterns,
+    en italien comme en français. La traduction RE-VÉRIFIE contre ces règles."""
+    tgt = _LANG_NAME[target]
+    prompt = (
+        _charte_prompt(target, voix) +
         f"Réponds UNIQUEMENT en JSON : "
         f'{{"title": "...", "description": "..."}}.\n\n'
         f"TITRE : {title}\n\nDESCRIPTION : {desc[:2000]}")
@@ -150,16 +173,105 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
         resp = client.messages.create(
             model=model, max_tokens=1500,
             messages=[{"role": "user", "content": prompt}])
-        txt = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
-        if txt.startswith("```"):
-            txt = txt.strip("`")
-            txt = txt[4:] if txt.lower().startswith("json") else txt
+        txt = _extract_json(resp)
         data = json.loads(txt[txt.find("{"): txt.rfind("}") + 1])
         t, d = (data.get("title") or "").strip(), (data.get("description") or "").strip()
         return {"title": t, "description": d} if t else None
     except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
         log.warning("Traduction échouée : %s", exc)
         return None
+
+
+def translate_article(client, model, enrich_json: str, target: str,
+                      voix: str = "") -> str | None:
+    """Traduit la STRUCTURE `enrich_data` (l'article éditorial « escalier ») vers `target`
+    pour donner à la fiche traduite la MÊME matière enrichie que la source.
+
+    On ne traduit QUE les champs TEXTUELS de `article` — titre, chapô, corps (markdown),
+    programme (liste ligne à ligne) et encadré — en appliquant EXACTEMENT la même charte
+    que `translate_title_desc` (via `_charte_prompt`). Les FAITS (dates, chiffres, noms
+    propres, line-up) et tous les champs non textuels (sources, confiance, a_verifier…)
+    sont RECOPIÉS tels quels. Renvoie le JSON `enrich_data` traduit (mêmes clés), ou None
+    si parse/appel échoue ou s'il n'y a rien de textuel à traduire."""
+    try:
+        data = json.loads(enrich_json)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    art = data.get("article")
+    if not isinstance(art, dict) or not art:
+        return None
+
+    # Champs textuels présents à traduire (on n'envoie que ceux qui existent).
+    payload: dict = {}
+    for k in ("titre", "chapo", "corps", "encadre"):
+        v = art.get(k)
+        if isinstance(v, str) and v.strip():
+            payload[k] = v
+    prog = art.get("programme")
+    if isinstance(prog, str):
+        prog_src = [prog]
+    elif isinstance(prog, list):
+        prog_src = [str(p) for p in prog]
+    else:
+        prog_src = []
+    if prog_src:
+        payload["programme"] = prog_src
+    if not payload:
+        return None  # article sans texte traduisible → rien à faire
+
+    tgt = _LANG_NAME[target]
+    prompt = (
+        _charte_prompt(target, voix) +
+        f"Tu traduis en {tgt} l'ARTICLE éditorial enrichi d'un événement culturel "
+        f"(structure « escalier » : titre, chapô, corps, programme, encadré). Tu ne "
+        f"réécris QUE l'EXPRESSION : les FAITS restent IDENTIQUES (dates, chiffres, noms "
+        f"propres, lieux, line-up, horaires, tarifs).\n\n"
+        f"MARKDOWN — préserve rigoureusement la STRUCTURE du champ « corps » : sous-titres "
+        f"« ## » et « ### » (mêmes niveaux, mêmes emplacements), gras « **…** », italique "
+        f"« *…* », listes et sauts de paragraphe. Tu traduis le TEXTE dans les marqueurs, "
+        f"jamais les marqueurs eux-mêmes.\n\n"
+        f"« programme » est une LISTE : traduis-la LIGNE À LIGNE, en rendant EXACTEMENT le "
+        f"même nombre d'entrées, dans le même ordre, sans en perdre, ajouter ni fusionner "
+        f"aucune.\n\n"
+        f"Réponds UNIQUEMENT en JSON, avec EXACTEMENT les mêmes clés que l'entrée ci-dessous "
+        f"(« programme » = liste de MÊME longueur), sans autre commentaire :\n"
+        f"{json.dumps(payload, ensure_ascii=False)}")
+    try:
+        resp = client.messages.create(
+            model=model, max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}])
+        txt = _extract_json(resp)
+        out = json.loads(txt[txt.find("{"): txt.rfind("}") + 1])
+        if not isinstance(out, dict):
+            return None
+    except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
+        log.warning("Traduction de l'article échouée : %s", exc)
+        return None
+
+    # Reconstruit l'article : on part de l'original (faits/champs non textuels préservés)
+    # et on remplace UNIQUEMENT les champs textuels effectivement retraduits.
+    new_art = dict(art)
+    for k in ("titre", "chapo", "corps", "encadre"):
+        if k in payload:
+            v = out.get(k)
+            if isinstance(v, str) and v.strip():
+                new_art[k] = v
+    if "programme" in payload:
+        op = out.get("programme")
+        if isinstance(op, str):
+            op = [op]
+        if isinstance(op, list) and len(op) == len(prog_src):
+            new_art["programme"] = [str(x) for x in op]
+        else:
+            # Longueur incohérente → on GARDE le programme source (aucune ligne perdue),
+            # quitte à laisser ces faits non traduits plutôt qu'en tronquer.
+            log.warning("Programme traduit incohérent (%s≠%s lignes) — original conservé.",
+                        len(op) if isinstance(op, list) else "?", len(prog_src))
+    new_data = dict(data)
+    new_data["article"] = new_art
+    return json.dumps(new_data, ensure_ascii=False)
 
 
 def main(argv=None) -> int:
@@ -235,10 +347,25 @@ def main(argv=None) -> int:
                                   ev.get("description", "") or "", tgt, voix)
         if not tr:
             continue
+        # Parité éditoriale : si la source porte un article enrichi (enrich_data), on le
+        # TRADUIT pour que la fiche cible reçoive le même « escalier » que la version FR
+        # (build_post le rend depuis enrich_data). Repli : sans enrich_data, on retombe
+        # sur la description traduite seule (comportement historique).
+        src_enrich = (ev.get("enrich_data") or "").strip()
+        tr_enrich = ""
+        tr_art_title = ""
+        if src_enrich:
+            ea = translate_article(client, args.model, src_enrich, tgt, voix)
+            if ea:
+                tr_enrich = ea
+                try:
+                    tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
+                except (ValueError, TypeError):
+                    tr_art_title = ""
         new_ev = dict(ev)
         new_ev.update({
             "title": tr["title"], "description": tr["description"],
-            "article_title": "", "article_md": "", "enrich_data": "",
+            "article_title": tr_art_title, "article_md": "", "enrich_data": tr_enrich,
             "seo_title": "", "seo_meta": "", "seo_slug": "", "seo_keyphrase": "",
             "force_lang": tgt, "force_create": True,
             "wp_post_id_as": None, "wp_post_id_cs": None,
@@ -253,14 +380,15 @@ def main(argv=None) -> int:
             "date_event_end, lieu, ville, territoire, url_source, url_image, organisateur, "
             "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
             "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
-            "translation_of, translated_lang, image_credit) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "translation_of, translated_lang, article_title, enrich_data, image_credit) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
              ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
              f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
              ev.get("source_name"), ev.get("source_type"), ev.get("llm_score"),
              ev.get("user_score"), ev.get("llm_categorie"), ev.get("statut"), wp_id, permalink,
-             raw_url, datetime.now().isoformat(timespec="seconds"), ev["id"], tgt, ev.get("image_credit")))
+             raw_url, datetime.now().isoformat(timespec="seconds"), ev["id"], tgt,
+             tr_art_title, tr_enrich, ev.get("image_credit")))
         # Lie les deux fiches (Polylang) via l'endpoint.
         if all([wp_url, auth[0], auth[1]]):
             _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
