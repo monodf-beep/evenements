@@ -7,7 +7,7 @@
 ## Le principe (deux règles cardinales)
 
 1. **Le gentilé du territoire, jamais la nationalité.** Un lieu, une personne, un groupe de nos territoires se nomme *savoyard, piémontais, valdôtain, niçois* — jamais « français » ni « italien » comme appartenance.
-2. **Les Alpes relient, elles ne séparent pas.** Aucune « frontière », aucun « franchissement », aucun « de part et d'autre ». Nous sommes *dans* un espace alpin partagé.
+2. **Les Alpes relient, elles ne séparent pas.** Aucune « frontière », aucun « franchissement », aucun « de part et d'autre », aucun « versant ». Les limites se disent **provinciales**. Nous sommes *dans* l'**espace sabaud** (*lo spazio sabaudo*), un espace partagé.
 
 **Symétrie non négociable :** on refuse **à la fois** l'étiquette « française » **et** l'étiquette « italienne »/irrédentiste. Dire « Nizza italiana » ou « Savoia italiana » est aussi faux que « ville française » : les deux nationalisent un territoire dont l'identité est **sabaude et alpine**, pas nationale.
 
@@ -17,8 +17,7 @@
 
 | Territoire | Gentilé correct | Variantes / autonyme | Piège |
 |---|---|---|---|
-| Savoie | **savoyard·e** | *savoyârd* (arpitan) | jamais « français de Savoie » |
-| Haute-Savoie | **haut-savoyard·e** | — | trait d'union ; pluriel *hauts-savoyards* |
+| Savoie **et Haute-Savoie** (73 & 74) | **savoyard·e** | *savoyârd* (arpitan) | jamais « français de Savoie ». **Jamais « haut-savoyard » non plus** : on dit « savoyard de [la ville] » (savoyard d'Annecy, de Thonon…) |
 | Chablais | **chablaisien·ne** | — | correct mais peu codifié |
 | Maurienne | **mauriennais·e** | — | **deux n** |
 | Tarentaise | **tarin·e** | — | **piège : pas « tarentais »** |
@@ -58,7 +57,9 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 
 ## 4. ✅ Tournures à ADOPTER (transversal)
 
-- **Nommer par la ville/le territoire** : « l'élégance turinoise », « la cité piémontaise », « le baroque piémontais » (pas « italien »), « città savoiarda », « capoluogo della Savoia ».
+- **Nommer par la ville/le territoire** : « l'élégance turinoise », « la cité piémontaise », « le baroque piémontais » (pas « italien »).
+- **Villes de Savoie, en version IT** : « città savoiarda », « capoluogo della Savoia ». Préciser la province : dept 73 → **« prov. Ciambèri »** (Chambéry) ; dept 74 → **« prov. Annecy »**. Ex. : *Chambéry, città savoiarda, capoluogo della Savoia (prov. Ciambèri)*.
+- **Atmosphère** : « **atmosfera sabauda** » pour dire l'ambiance d'une ville (registre sensible, enraciné, non touristique).
 - **Le concret enraciné plutôt que l'adjectif** : produits, lieux, gens, saisons, métiers précis (bicerin, aperitivo turinois, Slow Food/Bra, *socca*, *ganses*, une remue, un *rüsch* walser). **Précision = respect.**
 - **Les gens par leur gentilé + leur langue** : « les Valdôtains, minorité francophone et arpitanophone » ; « i Nizzardi » ; « i Savoiardi » ; « la popolazione sabauda ».
 - **L'identité comme continuité interne** : « Turin, capitale du duché de Savoie transférée de Chambéry » ; « Nizza sabauda » ; « Nice savoyarde jusqu'en 1860 » — l'axe Nice–Turin–Chambéry est **une continuité, pas un franchissement**.
@@ -74,7 +75,7 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 | ❌ | Pourquoi | ✅ Remplacer par |
 |---|---|---|
 | « un petit coin de France » (VdA) | annexion symbolique | « territoire francophone autonome », « région de langue française de l'arc alpin » |
-| « la seule région francophone d'Italie » | rabat sur l'appartenance nationale | « terre de langue française et arpitane », « région bilingue à statut spécial » |
+| « la seule région francophone d'Italie » | rabat sur l'appartenance nationale | « terre de langue française et savoyarde », « région bilingue à statut spécial » |
 | « cittadina francese », « nel sud-est della Francia » (Chambéry, Annecy) | efface l'identité savoyarde | « città savoiarda », « capoluogo della Savoia », « in Savoia » |
 | « l'Italie baroque… du Piémont », « dolce vita nel nord Italia » | nationalise + exotise | « le baroque turinois », « l'art de vivre piémontais » |
 
@@ -87,23 +88,26 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 | « italianità di Nizza » (Garibaldi), « genocidio culturale » | thèse militante / hyperbole | citer entre guillemets + contexte critique ; « politiche di assimilazione / francesizzazione » |
 
 ### c) Mots-frontière
+*Règles Franck : la limite se dit **provinciale** (jamais « frontière », « ligne de crête », « partage des eaux », « seuil alpin ») ; on ne parle **pas de « versant »** ; on privilégie **sabaud** et les noms de lieux.*
+
 | ❌ | ✅ Remplacer par |
 |---|---|
-| la frontière (franco-italienne) | la ligne de crête, le partage des eaux, l'espace sabaud |
-| transalpin / transalpino / oltralpe | inter-alpin, d'un versant à l'autre, de l'arc alpin occidental, sabaud |
-| traverser / franchir les Alpes | passer le col, emprunter le Mont-Cenis, cheminer d'une vallée à l'autre |
-| de part et d'autre (des Alpes / de la frontière) | sur les deux versants, de Chambéry à Turin, de la Savoie au Piémont |
-| côté français / côté italien | versant savoyard / versant piémontais, en Maurienne / en val de Suse |
-| le Mont-Blanc « côté italien », le tunnel « porte de l'Italie » | le versant valdôtain du massif, la liaison Chamonix–Courmayeur |
+| la frontière (franco-italienne) | la **limite provinciale** (ex. entre la Savoie et le Piémont) · l'espace sabaud |
+| transalpin / transalpino / oltralpe | **sabaud** · de l'espace sabaud (*lo spazio sabaudo*) |
+| traverser / franchir les Alpes | passer le col · emprunter le Mont-Cenis · rejoindre Turin depuis Chambéry |
+| de part et d'autre (des Alpes / de la frontière) | de Chambéry à Turin · de la Savoie au Piémont |
+| côté français / côté italien | en Savoie / en Piémont · nommer la province (en Maurienne, en val de Suse) |
+| le Mont-Blanc « côté italien », le tunnel « porte de l'Italie » | le Mont-Blanc de Courmayeur · la liaison Chamonix–Courmayeur |
 
 ### d) Exotisation touristique
 | ❌ | ✅ Remplacer par |
 |---|---|
 | « villages où le temps s'est arrêté », « écrin », « pittoresque » | des lieux, gens et usages réels (Cogne, Issime, la Tinée…) |
 | « Venezia francese », « perla della Riviera Francese », « version italienne de Détroit » | nommer la ville pour elle-même (Annecy, ville lacustre de Savoie ; Turin, ville-usine et sa reconversion) |
-| « lusso sfrenato, super yacht, Ferrari », « jet-set » | la vie quotidienne, la culture populaire, les métiers |
-| « nos voisins transalpins », « escapade transalpine » | « l'espace alpin partagé », « les Piémontais » |
+| « nos voisins transalpins », « escapade transalpine » | « l'espace sabaud » (*lo spazio sabaudo*), « les Piémontais » |
 | « bon plan méconnu, ville secrète sous-cotée » | présenter le lieu pour lui-même, comme capitale culturelle |
+
+*Note : le vocabulaire du **luxe et du jet-set** (super yacht, Ferrari, cinq-étoiles) reste **autorisé** — nul besoin de le remplacer par « la vie quotidienne / les métiers ». C'est une réalité de la Côte, pas une exotisation en soi.*
 
 ---
 
@@ -112,7 +116,7 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 - **Maison de Savoie** — dynastie née vers 1003 (Humbert aux Blanches Mains), à cheval sur les deux versants ; fil rouge des quatre territoires, ni « italienne » ni « française ».
 - **États de Savoie / Stati sabaudi** — ensemble pluriterritorial (Savoie, Piémont, Nice, Aoste, Sardaigne) jusqu'au XIXᵉ s. **Le cadre-antidote au récit des « deux côtés ».**
 - **Duché de Savoie** — capitale à **Chambéry** jusqu'en 1562, puis Turin : Chambéry et Turin, même histoire.
-- **Aire sabaude / sabaudienne** — l'adjectif savant (*sabaud*) qui nomme l'espace sans nationalité. C'est le nom même du média (*Cultura Sabauda*).
+- **Aire sabaude / sabaudienne** — l'adjectif savant (*sabaud*) qui nomme l'espace sans nationalité. C'est le nom même du média (*Cultura Sabauda*). **Les formes italiennes *sabaudo / sabauda / sabaude / sabaudi* s'emploient aussi telles quelles en français** (ex. « atmosfera sabauda », « patrimonio sabaudo »).
 - **Arc alpin occidental / Alpes latines** — cadre géoculturel réunissant Savoie, Piémont, Vallée d'Aoste, Ligurie, Nice, Romandie. Un espace, pas une ligne.
 - **Cols-passages** — Mont-Cenis, Petit- et Grand-Saint-Bernard, Montgenèvre : à nommer comme **liens et lieux de rencontre**, jamais comme séparations.
 - **Autonomie valdôtaine** (statut spécial 1945–48) et **Émile Chanoux** (1906–1944) — le fait politique structurant de la VdA et sa figure de résistance.
@@ -127,25 +131,36 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 
 | Au lieu de | Dire |
 |---|---|
-| frontière | ligne de crête · seuil alpin · espace sabaud |
-| frontalier / zone frontalière | riverain du col · des deux versants · vallées voisines |
-| transalpin | inter-alpin · d'un versant à l'autre · de l'arc alpin occidental |
-| traverser / franchir les Alpes | passer le col · emprunter le Mont-Cenis · cheminer d'une vallée à l'autre |
-| de part et d'autre | sur les deux versants · de Chambéry à Turin |
-| côté français / italien | versant savoyard / piémontais |
-| relations franco-italiennes | liens intra-alpins · voisinages de versant · parenté sabaude |
+| frontière | **limite provinciale** (ex. entre Savoie et Piémont) · espace sabaud |
+| frontalier / zone frontalière | des provinces voisines · entre Savoie et Piémont |
+| transalpin | **sabaud** · de l'espace sabaud (*lo spazio sabaudo*) |
+| traverser / franchir les Alpes | passer le col · emprunter le Mont-Cenis · rejoindre Turin depuis Chambéry |
+| de part et d'autre | de Chambéry à Turin · de la Savoie au Piémont |
+| côté français / côté italien | en Savoie / en Piémont · nommer la province |
+| relations franco-italiennes (entre **nos** territoires) | liens sabauds · entre Savoie et Piémont — **jamais « franco-italien »** |
+| relations franco-italiennes (Lyon–Milan, Paris–Rome) | **« franco-italien » reste OK** : ce ne sont pas nos territoires |
+| la France / les Français (vus d'ici) | **outre-Rhône, outre-Var** (*altro Rodano, altro Var*) — *sous réserve de la recherche en cours* |
 | immigré / étranger installé | habitant venu de… · installé·e à… · [gentilé] d'adoption |
 | enclave / région isolée | haute vallée · pays de cols |
 
 ---
 
-## 8. Cas sensibles à trancher (décision éditoriale)
+## 8. Décisions éditoriales
 
-1. **« Néo-savoyard » et Cⁱᵉ** — à bannir (voir §2) ? Ma reco : oui, remplacer par « d'adoption / installé·e à / de cœur ». **À valider.**
-2. **« Transfrontalier »** — utile pour nommer un vrai programme (ALCOTRA, Interreg) et il *relie*, mais il contient « frontière ». Ma reco : **toléré en contexte institutionnel/factuel, proscrit en prose éditoriale** (préférer inter-alpin, d'un versant à l'autre).
-3. **1860** — dire « annexion à la France » (factuel) sans « cession/rapt » (récit français-victimaire) ni « restitution à l'Italie » (récit irrédentiste). **Neutralité assumée.**
-4. **Citations irrédentistes** (« italianità di Nizza » — Garibaldi) — utilisables **comme objet historique entre guillemets et contextualisées**, jamais comme thèse portée.
-5. **Registre nissart/niçard** — le réserver à la langue et au fait culturel ; « niçois » pour les gens.
+### Tranché par Franck (26 juillet 2026)
+- **« Néo-savoyard » et Cⁱᵉ : BANNIS.** → « savoyard·e d'adoption / installé·e à… / de cœur » (§2).
+- **Jamais « haut-savoyard » :** 73 et 74 → « savoyard de [la ville] ».
+- **Limites = provinciales.** Proscrits : « frontière », « ligne de crête », « partage des eaux », « seuil alpin », **« versant »**. Le cadre-espace se dit **sabaud** (*spazio sabaudo*), pas « alpin partagé ».
+- **« Franco-italien » :** interdit **entre nos territoires** (dire « sabaud », « entre Savoie et Piémont ») ; **admis** pour Lyon–Milan, Paris–Rome (ce ne sont pas nos territoires).
+- **Luxe / jet-set (Côte) : autorisé** — pas une exotisation à corriger.
+- **Formes *sabaudo/a/e/i* : employables telles quelles en français.**
+- **Désigner la France depuis chez nous : « outre-Rhône / outre-Var »** (*altro Rodano / altro Var*) — **en attente du verdict de la recherche** sur l'attestation historique.
+
+### Encore à confirmer
+- **« Transfrontalier »** — nomme un vrai programme (ALCOTRA, Interreg) mais contient « frontière ». Reco : toléré en contexte institutionnel/factuel, proscrit en prose (préférer « sabaud », « entre Savoie et Piémont »). **À valider.**
+- **1860** — « annexion à la France » (factuel), sans « cession/rapt » ni « restitution à l'Italie ». **Neutralité assumée.**
+- **Citations irrédentistes** (« italianità di Nizza » — Garibaldi) — utilisables comme objet historique entre guillemets et contextualisées, jamais comme thèse.
+- **Registre nissart/niçard** — la langue et le fait culturel ; « niçois » pour les gens.
 
 ---
 
