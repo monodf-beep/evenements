@@ -176,7 +176,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "article": {{
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel + l'angle>",
-    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà. MARKDOWN structuré pour la lisibilité (Yoast) : si le corps dépasse ~250 mots, découpe-le avec des sous-titres '## ' tous les 2-3 paragraphes ; phrases COURTES (vise <20 mots) ; enchaîne naturellement, SANS transitions scolaires ni connecteurs clichés (cf. voix) ; mets en GRAS les faits clés (dates, noms propres, lieux, chiffres). ÉVITE le TIRET CADRATIN (— ou –) : c'est une signature d'écriture IA — préfère la virgule, la parenthèse, le deux-points ou le point. N'écris PAS d'encadré pratique dans le corps (dates/lieu/tarif) : le site l'affiche déjà nativement — le corps reste ÉDITORIAL>",
+    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà. MARKDOWN structuré pour la lisibilité (Yoast) : si le corps dépasse ~250 mots, découpe-le avec des sous-titres '## ' tous les 2-3 paragraphes ; phrases COURTES (vise <20 mots) ; enchaîne naturellement, SANS transitions scolaires ni connecteurs clichés (cf. voix). GRAS RARE et ciblé : au plus 1-2 termes VRAIMENT clés (un concept, l'angle) sur TOUT l'article, JAMAIS sur les noms propres, lieux, dates ou chiffres (déjà dans l'encadré natif) ; dans le doute, PAS de gras. N'utilise PAS le tiret cadratin (— ou –), signature d'écriture IA : préfère la virgule, la parenthèse, le deux-points ou le point. Français soigné, aucun anglicisme (écris « programmes », pas « programs »). N'écris PAS d'encadré pratique dans le corps (dates/lieu/tarif) : le site l'affiche déjà nativement, le corps reste ÉDITORIAL>",
     "programme": ["<UNE entrée par ligne de programme : jour/heure + intitulé (concert, séance, temps fort…). LISTE, jamais de la prose. Vide [] si l'événement n'a pas de programme/line-up dans la matière>"],
     "encadre": "<encadré pratique : dates, lieu, accès, gratuité, lien officiel>"
   }}
@@ -379,12 +379,26 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         return None
 
 
+def _no_em_dash(text: str) -> str:
+    """Retire le TIRET CADRATIN (— U+2014) et le tiret demi-cadratin ESPACÉ (–), signature
+    d'écriture IA, de façon DÉTERMINISTE — sans dépendre de l'humeur du modèle. On remplace
+    par une virgule. On NE touche PAS au trait d'union « - » (Saint-Paul-de-Vence, nu-jazz)
+    ni aux plages collées « 700–1500 » (demi-cadratin sans espaces)."""
+    text = re.sub(r"\s*—\s*", ", ", text)          # cadratin (U+2014), collé ou espacé
+    text = re.sub(r"\s+–\s+", ", ", text)           # demi-cadratin ESPACÉ seulement
+    text = re.sub(r",\s*,", ",", text)               # virgules doubles résiduelles
+    text = re.sub(r"\s+([.,;:!?])", r"\1", text)     # espace avant ponctuation
+    return text
+
+
 def build_article_md(data: dict) -> tuple[str, str]:
     """Assemble (titre, markdown) depuis le JSON de l'agent (déterministe)."""
     art = data.get("article") or {}
     titre = (art.get("titre") or "").strip()
-    chapo = (art.get("chapo") or "").strip()
-    corps = (art.get("corps") or "").strip()
+    # Corps et chapô : on garantit l'absence de tiret cadratin en CODE (le modèle n'est
+    # pas déterministe, l'instruction ne suffit pas). Titres/programme laissés intacts.
+    chapo = _no_em_dash((art.get("chapo") or "").strip())
+    corps = _no_em_dash((art.get("corps") or "").strip())
     encadre = (art.get("encadre") or "").strip()
     sources = [s for s in (data.get("sources") or []) if s]
     # Programme (CHARTE §5 bis) : faits structurés en LISTE, y compris en mode court.
