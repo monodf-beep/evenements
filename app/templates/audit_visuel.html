@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set active = 'audit_visuel' %}
+{% block title %}Audit visuel{% endblock %}
+{% block h1 %}🖼️ Audit visuel{% endblock %}
+{% block subtitle %}<div class="sub">Planche contact des événements retenus portant une <b>vraie photo</b> (pas la bannière générique). Contrôle humain d'un coup d'œil : si une image détonne avec son titre, <b>relance</b> la recherche d'image. Complément de l'audit auto (agent vision + Slack).</div>{% endblock %}
+
+{% block head %}
+<style>
+  .av-toolbar{display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end;margin-bottom:1rem;}
+  .av-toolbar label{display:flex;flex-direction:column;gap:.2rem;font-size:.8rem;font-weight:600;color:#5b5347;}
+  .av-toolbar input{padding:.35rem .5rem;border:1px solid #d9cfbd;border-radius:6px;font:inherit;}
+  .av-count{margin-left:auto;align-self:center;font-size:.85rem;color:#7a715f;}
+  .av-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.9rem;}
+  .av-card{background:#fff;border:1px solid #ece5d8;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .av-thumb{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;background:#efe9dd;}
+  .av-body{padding:.55rem .65rem;display:flex;flex-direction:column;gap:.35rem;flex:1;}
+  .av-title{font-weight:600;font-size:.85rem;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .av-meta{font-size:.72rem;color:#7a715f;display:flex;flex-wrap:wrap;gap:.3rem;}
+  .av-tag{background:#f3ede1;border-radius:5px;padding:.05rem .4rem;}
+  .av-src{font-size:.68rem;color:#a99;}
+  .av-actions{display:flex;gap:.4rem;align-items:center;margin-top:auto;padding-top:.35rem;}
+  .av-actions a{font-size:.75rem;font-weight:600;text-decoration:none;}
+  .av-actions form{margin:0;margin-left:auto;}
+  .av-actions button{padding:.3rem .6rem;font-size:.75rem;font-weight:600;white-space:nowrap;cursor:pointer;}
+</style>
+{% endblock %}
+
+{% block content %}
+<form class="av-toolbar" method="get" action="/audit-visuel">
+  <label>Du (date_event_start ≥)
+    <input type="date" name="from" value="{{ dfrom }}">
+  </label>
+  <label>Au (≤)
+    <input type="date" name="to" value="{{ dto }}">
+  </label>
+  <label>Limite
+    <input type="number" name="limit" min="1" max="600" value="{{ limit }}" style="width:6rem;">
+  </label>
+  <button type="submit">Filtrer</button>
+  <span class="av-count">{{ events|length }} vignette(s)</span>
+</form>
+
+{% if not events %}
+  <div class="card" style="padding:1.1rem 1.2rem;">Aucune photo à auditer sur ce périmètre 🎉</div>
+{% else %}
+<div class="av-grid">
+  {% for e in events %}
+  <div class="av-card">
+    <a href="/preview/{{ e.id }}" title="Ouvrir la fiche {{ e.id }}">
+      <img class="av-thumb" src="{{ e.thumb }}" alt="Visuel de « {{ e.title }} »" loading="lazy">
+    </a>
+    <div class="av-body">
+      <div class="av-title">{{ e.title or 'Sans titre' }}</div>
+      <div class="av-meta">
+        {% if e.territoire %}<span class="av-tag">📍 {{ e.territoire }}</span>{% endif %}
+        {% if e.llm_categorie %}<span class="av-tag">{{ e.llm_categorie }}</span>{% endif %}
+      </div>
+      <div class="av-src">source image : {{ e.image_source or '?' }} · fiche {{ e.id }}</div>
+      <div class="av-actions">
+        <a href="/preview/{{ e.id }}">Fiche →</a>
+        <form method="post" action="/audit-visuel?{% if dfrom %}from={{ dfrom }}&amp;{% endif %}{% if dto %}to={{ dto }}&amp;{% endif %}limit={{ limit }}"
+              onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='…';">
+          <input type="hidden" name="action" value="relancer_image">
+          <input type="hidden" name="event_id" value="{{ e.id }}">
+          <button type="submit" title="Re-chercher une image (og:image → Commons → bannière)">🔄 relancer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

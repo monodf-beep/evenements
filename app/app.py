@@ -1133,6 +1133,107 @@ def couverture():
     return render_template("couverture.html", active="couverture", **data)
 
 
+# ---------- Audit visuel « planches contact » (contrôle humain d'un coup d'œil) ----------
+def _relancer_image(conn, event_id: int) -> None:
+    """Re-cherche une image pour un événement via la chaîne scripts.visuals.resolve_image
+    (og:image → photo de page → Wikimedia Commons/Europeana → bannière), met à jour
+    url_image / image_source / crédit / point focal en base et flash le résultat.
+
+    Appelé depuis l'écran « Audit visuel » quand une photo posée s'avère hors-sujet.
+    keep_existing=False : on veut EXPRÈS remplacer l'image actuelle jugée douteuse, donc
+    on vide url_image côté copie mémoire pour forcer resolve_image à repartir du haut de
+    la chaîne au lieu de conserver la photo existante."""
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        flash(f"Fiche {event_id} introuvable.", "err")
+        return
+    ev = dict(row)
+    ev["url_image"] = ""  # force la re-recherche depuis le début de la chaîne
+    try:
+        from scripts import visuals as vz
+        client = None
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if api_key:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+        banners = vz.load_territory_images()
+        cat_banners = vz.load_territory_category_images()
+        blocked = vz.load_blocked_image_domains()
+        verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
+        # verify_client=client : on ACTIVE l'agent vision (comme --verify) — on relance
+        # justement parce qu'une image douteuse est passée, autant vérifier la nouvelle.
+        url, credit, source, fx, fy = vz.resolve_image(
+            ev, client, blocked, banners,
+            verify_client=client, verify_model=verify_model,
+            cat_banners=cat_banners, keep_existing=False)
+    except Exception as exc:  # noqa: BLE001 — on veut afficher toute erreur à l'humain
+        log.warning("Relance image [%s] échouée : %s", event_id, exc)
+        flash(f"Fiche {event_id} : relance image échouée ({exc}).", "err")
+        return
+    if not url:
+        flash(f"Fiche {event_id} : aucune image trouvée (pas de bannière pour le territoire).", "err")
+        return
+    conn.execute(
+        "UPDATE events_raw SET url_image=?, image_credit=?, image_source=?, "
+        "card_focal_x=?, card_focal_y=? WHERE id=?",
+        (url, credit, source, fx, fy, event_id))
+    conn.commit()
+    flash(f"Fiche {event_id} : nouvelle image posée (source : {source}).", "ok")
+
+
+@app.route("/audit-visuel", methods=["GET", "POST"])
+@require_auth
+def audit_visuel():
+    """Planche contact HTML : grille de vignettes (photo + titre + territoire + catégorie
+    + lien fiche) des événements retenus portant une VRAIE image (pas la bannière
+    générique), pour un contrôle visuel humain d'un coup d'œil. Pendant interactif du
+    cron scripts/image_audit.py (qui, lui, fait juger un agent vision + digest Slack).
+    Action POST « relancer_image » : re-pose une image via resolve_image."""
+    conn = get_db()
+    if request.method == "POST":
+        if request.form.get("action") == "relancer_image" and request.form.get("event_id"):
+            try:
+                _relancer_image(conn, int(request.form["event_id"]))
+            except (TypeError, ValueError):
+                flash("Identifiant d'événement invalide.", "err")
+        conn.close()
+        # Conserve les filtres de période/limite dans la redirection.
+        keep = {k: v for k, v in request.args.items() if k in ("from", "to", "limit")}
+        return redirect(url_for("audit_visuel", **keep))
+
+    dfrom = (request.args.get("from") or "").strip()
+    dto = (request.args.get("to") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 120)
+    except (TypeError, ValueError):
+        limit = 120
+    limit = max(1, min(limit, 600))  # garde-fou : borne le nombre de vignettes chargées
+    # Mêmes critères que scripts.image_audit._select : retenus, non doublon, vraie photo
+    # (url_image non vide, image_source != 'banner'), + filtre de période optionnel.
+    q = ("SELECT id, title, url_image, image_source, territoire, llm_categorie, "
+         "wp_raw_image_url_as, date_event_start "
+         "FROM events_raw WHERE duplicate_of IS NULL AND statut IN ({}) "
+         "AND COALESCE(url_image,'') <> '' AND COALESCE(image_source,'') <> 'banner' "
+        ).format(",".join("?" * len(comp.RETAINED_STATUTS)))
+    params = list(comp.RETAINED_STATUTS)
+    if dfrom:
+        q += "AND COALESCE(date_event_start,'') >= ? "
+        params.append(dfrom)
+    if dto:
+        q += "AND COALESCE(date_event_start,'') <= ? "
+        params.append(dto)
+    q += "ORDER BY id DESC LIMIT ?"
+    params.append(limit)
+    rows = [dict(r) for r in conn.execute(q, params).fetchall()]
+    conn.close()
+    for r in rows:
+        # Priorité à notre copie hébergée (posée au publish AS) — comme image_audit :
+        # évite de retélécharger depuis un site source parfois lent/bloqué.
+        r["thumb"] = (r.get("wp_raw_image_url_as") or "").strip() or r["url_image"]
+    return render_template("audit_visuel.html", active="audit_visuel",
+                           events=rows, dfrom=dfrom, dto=dto, limit=limit)
+
+
 # ---------- Couverture GÉO (catalogue → pages hub SEO hyperlocal) ----------
 # Traduit docs/CATALOGUE_GEO_SEO.md en tableau de bord : pour chaque entité (ville,
 # massif, vallée, lac, station), combien d'événements PUBLIÉS à venir → laquelle franchit

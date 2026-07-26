@@ -15,7 +15,7 @@
       <span class="brand-mark" aria-hidden="true">CS</span>
       <div><b>Cultura Sabauda</b><small>Agenda</small></div>
     </div>
-    {% set _analyse = ['pilotage', 'couverture', 'couverture_geo', 'wireframe'] %}
+    {% set _analyse = ['pilotage', 'couverture', 'couverture_geo', 'audit_visuel', 'wireframe'] %}
     {% set _aide = ['process', 'pipeline', 'voix', 'cowork', 'reglages'] %}
     <nav class="nav" aria-label="Navigation principale">
       <a href="/semaine" class="{{ 'on' if active=='semaine' }}" {% if active=='semaine' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> Cette semaine</a>
@@ -46,6 +46,7 @@
         <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
         <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
         <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
+        <a href="/audit-visuel" class="{{ 'on' if active=='audit_visuel' }}" {% if active=='audit_visuel' %}aria-current="page"{% endif %}><span aria-hidden="true">🖼️</span> Audit visuel</a>
         <a href="/wireframe-home" class="{{ 'on' if active=='wireframe' }}" {% if active=='wireframe' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Wireframe home</a>
       </details>
 
