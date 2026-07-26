@@ -25,7 +25,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SETTINGS_FILE = ROOT / "data" / "pipeline_settings.json"
 
 _DEFAULTS = {"ai_profile": "eco", "enrich_mode": "auto",
-             "social_caption_auto": False, "social_caption_limit": 3}
+             "social_caption_auto": False, "social_caption_limit": 3,
+             "voix_active": ""}   # nom de fichier de la voix choisie ("" = défaut/auto)
 _PROFILES = ("eco", "qualite")
 _ENRICH_MODES = ("off", "auto", "court", "long")
 _MODEL_ECO = "claude-haiku-4-5"
@@ -44,6 +45,8 @@ def load() -> dict:
             if raw.get("enrich_mode") in _ENRICH_MODES:
                 d["enrich_mode"] = raw["enrich_mode"]
             d["social_caption_auto"] = bool(raw.get("social_caption_auto", False))
+            if isinstance(raw.get("voix_active"), str):
+                d["voix_active"] = raw["voix_active"]
             try:
                 lim = int(raw.get("social_caption_limit", d["social_caption_limit"]))
                 d["social_caption_limit"] = max(0, min(lim, SOCIAL_CAPTION_LIMIT_MAX))
@@ -62,6 +65,8 @@ def save(patch: dict) -> dict:
         d["enrich_mode"] = patch["enrich_mode"]
     if "social_caption_auto" in patch:
         d["social_caption_auto"] = bool(patch["social_caption_auto"])
+    if "voix_active" in patch:
+        d["voix_active"] = str(patch["voix_active"] or "")
     if "social_caption_limit" in patch:
         try:
             d["social_caption_limit"] = max(0, min(int(patch["social_caption_limit"]),
@@ -105,6 +110,11 @@ def model_qualite() -> str:
 
 def enrich_mode() -> str:
     return load()["enrich_mode"]
+
+
+def voix_active() -> str:
+    """Nom de fichier de la voix choisie au back-office ('' = défaut/auto)."""
+    return load()["voix_active"]
 
 
 def enrich_enabled() -> bool:

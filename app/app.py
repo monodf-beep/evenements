@@ -1030,12 +1030,19 @@ def pipeline_view():
                            schedule=_PIPELINE_SCHEDULE, st=psettings.load())
 
 
-@app.route("/voix")
+@app.route("/voix", methods=["GET", "POST"])
 @require_auth
 def voix_view():
-    """Voix éditoriale ACTIVE (le ton appliqué à la rédaction). Rend visible qu'elle est
-    chargée et pas cassée, et depuis quelle source (Obsidian branché ou filet du dépôt)."""
+    """Voix éditoriale ACTIVE (le ton appliqué à la rédaction). Montre qu'elle est chargée
+    et pas cassée, depuis quelle source, et permet de CHOISIR la voix parmi celles de
+    l'atelier Obsidian (dossier VOIX_DIR / docs/voix)."""
     from utils import voix as voixmod
+    from utils import settings as psettings
+    if request.method == "POST":
+        # Sauf si OBSIDIAN_VOIX_PATH force une voix par env, on enregistre le choix.
+        psettings.save({"voix_active": request.form.get("voix_active", "")})
+        flash("Voix active enregistrée — appliquée au prochain run.", "ok")
+        return redirect(url_for("voix_view"))
     return render_template("voix.html", active="voix", st=voixmod.voix_status())
 
 

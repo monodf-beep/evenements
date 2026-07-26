@@ -41,15 +41,61 @@ def _max_chars() -> int:
 # Voix CANONIQUE versionnée dans le dépôt : sert de source par défaut ET de garde-fou
 # (la voix est TOUJOURS vivante, même sans Obsidian). OBSIDIAN_VOIX_PATH la surcharge/
 # complète (système en couches). C'est le même fichier qu'on peut ouvrir dans Obsidian.
-_DEFAULT_VOIX = ROOT / "docs" / "VOIX.md"
+_DEFAULT_VOIX = ROOT / "docs" / "voix" / "VOIX.md"
+
+
+# Dossier de voix : atelier Obsidian synchronisé sur le VPS (VOIX_DIR), sinon docs/voix/
+# du dépôt. Chaque .md = une voix sélectionnable au back-office.
+def _voix_dir() -> "Path | None":
+    d = os.getenv("VOIX_DIR", "").strip()
+    p = Path(d) if d else (ROOT / "docs" / "voix")
+    return p if p.is_dir() else None
+
+
+def available_voix() -> list[dict]:
+    """Toutes les voix SÉLECTIONNABLES : les .md du dossier de voix (Obsidian via VOIX_DIR,
+    sinon docs/voix/), plus le filet docs/VOIX.md. Chaque entrée : name/title/chars/path."""
+    out, seen = [], set()
+    d = _voix_dir()
+    folders = [d] if d else []
+    for folder in folders:
+        for f in sorted(folder.glob("*.md")):
+            rp = str(f.resolve())
+            if rp in seen:
+                continue
+            try:
+                raw = _strip_obsidian(f.read_text(encoding="utf-8"))
+            except OSError:
+                continue
+            seen.add(rp)
+            out.append({"name": f.name, "title": _title_of(raw), "chars": len(raw), "path": str(f)})
+    if _DEFAULT_VOIX.exists() and str(_DEFAULT_VOIX.resolve()) not in seen:
+        try:
+            raw = _strip_obsidian(_DEFAULT_VOIX.read_text(encoding="utf-8"))
+            out.append({"name": _DEFAULT_VOIX.name, "title": _title_of(raw),
+                        "chars": len(raw), "path": str(_DEFAULT_VOIX)})
+        except OSError:
+            pass
+    return out
 
 
 def _sources() -> list[str]:
-    """Liste ordonnée des chemins de voix. OBSIDIAN_VOIX_PATH si défini, sinon le
-    fichier canonique du dépôt (docs/VOIX.md) — la voix n'est donc jamais 'vide'."""
+    """Chemins de voix à charger, par priorité :
+    1) OBSIDIAN_VOIX_PATH (override explicite, système EN COUCHES pour power users) ;
+    2) la voix CHOISIE au back-office (settings.voix_active), résolue dans le dossier ;
+    3) filet : docs/VOIX.md. La voix n'est donc jamais 'vide'."""
     spec = _spec().strip()
     if spec:
         return [s.strip() for s in spec.split(os.pathsep) if s.strip()]
+    try:
+        from utils import settings as _ps
+        chosen = _ps.voix_active().strip()
+    except Exception:
+        chosen = ""
+    if chosen:
+        for v in available_voix():
+            if v["name"] == chosen or Path(v["path"]).name == chosen:
+                return [v["path"]]
     return [str(_DEFAULT_VOIX)]
 
 
@@ -134,8 +180,16 @@ def voix_status() -> dict:
         sources.append({"path": s, "exists": p.exists(), "is_dir": p.is_dir(),
                         "files": files, "chars": sum(f["chars"] for f in files)})
     text = load_voix()
+    try:
+        from utils import settings as _ps
+        chosen = _ps.voix_active()
+    except Exception:
+        chosen = ""
+    d = _voix_dir()
     return {"sources": sources, "active": bool(text), "total_chars": len(text),
-            "from_env": bool(_spec().strip()), "text": text}
+            "from_env": bool(_spec().strip()), "text": text,
+            "available": available_voix(), "chosen": chosen,
+            "voix_dir": str(d) if d else ""}
 
 
 def voix_block(prefix: str = "") -> str:
