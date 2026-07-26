@@ -68,14 +68,11 @@ def _publish(ev: dict, terr_label: str, lang: str, kind: str, conn) -> dict:
     except requests.RequestException as exc:
         return {"ok": False, "error": f"« {title} » — photo source injoignable ({exc})."}
 
-    caption = ev.get(f"social_caption_{lang}") or social_mod.caption(ev, lang)
-    # Crédit image (attribution licence Commons/Europeana/… — jamais pour une
-    # bannière). social_mod.caption() l'ajoute déjà ; une légende réécrite via LLM
-    # et stockée (social_caption_*) ne le contient pas : on l'ajoute ici sans
-    # doublonner si déjà présent.
-    credit_line = social_mod.image_credit_line(ev)
-    if credit_line and credit_line not in caption:
-        caption = f"{caption}\n\n{credit_line}".strip()
+    # Composition de la légende finale (dont l'ajout du crédit image sans doublonner)
+    # centralisée dans social_mod.finalize_caption — SOURCE DE VÉRITÉ unique partagée
+    # avec app.app._do_publish_instagram. Une légende réécrite via LLM et stockée
+    # (social_caption_*) sert de caption_override.
+    caption = social_mod.finalize_caption(ev, lang, ev.get(f"social_caption_{lang}"))
     date_str = social_mod.format_date(ev.get("date_event_start", ""),
                                       ev.get("date_event_end", ""), lang)
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)

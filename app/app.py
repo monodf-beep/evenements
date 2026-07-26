@@ -3039,15 +3039,10 @@ def _do_publish_instagram(ev: dict, terr_label: str, lang: str, kind: str, conn,
                 "error": f"« {title} » — photo source injoignable ({exc})."}
 
     # Légende / texte alternatif : ceux édités à la main dans /reseaux si fournis,
-    # sinon l'auto-généré.
-    caption = caption_override or social_mod.caption(ev, lang)
-    # Crédit image (attribution licence Commons/Europeana/… — jamais pour une
-    # bannière). social_mod.caption() l'ajoute déjà ; une légende éditée/réécrite à la
-    # main (caption_override) ne le contient pas : on l'ajoute ici, en fin de légende,
-    # sans doublonner si déjà présent — même logique que scripts/ig_scheduler.py.
-    credit_line = social_mod.image_credit_line(ev)
-    if credit_line and credit_line not in caption:
-        caption = f"{caption}\n\n{credit_line}".strip()
+    # sinon l'auto-généré. Composition (dont l'ajout du crédit image sans doublonner)
+    # centralisée dans social_mod.finalize_caption — SOURCE DE VÉRITÉ unique partagée
+    # avec scripts/ig_scheduler.py._publish.
+    caption = social_mod.finalize_caption(ev, lang, caption_override or None)
     date_str = social_mod.format_date(ev.get("date_event_start", ""),
                                       ev.get("date_event_end", ""), lang)
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)

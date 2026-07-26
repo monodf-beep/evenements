@@ -206,6 +206,28 @@ def caption(event: dict, lang: str = "fr") -> str:
     return "\n".join(lines).strip()
 
 
+def finalize_caption(event: dict, lang: str = "fr", caption_override: str | None = None) -> str:
+    """Légende Instagram FINALE, prête à publier — SOURCE DE VÉRITÉ unique partagée
+    par la publication immédiate (app.app._do_publish_instagram) et la publication
+    programmée (scripts.ig_scheduler._publish).
+
+    Part de `caption_override` si fourni et non vide (légende éditée/réécrite à la
+    main dans /reseaux, ou stockée en base via social_caption_*), sinon de
+    `caption(event, lang)` (auto-généré). Ajoute ensuite le crédit image
+    (`image_credit_line(event)`) en fin de légende, séparé par une ligne vide, SI ce
+    crédit est non vide ET n'est pas déjà présent dans la légende.
+
+    Cet anti-doublon `not in caption` est essentiel : `caption()` inclut DÉJÀ le
+    crédit, donc pour l'auto-généré rien n'est réajouté ; seule une légende réécrite
+    à la main (qui ne le contient pas) se voit compléter le crédit. Renvoie la
+    légende finale, nettoyée (strip)."""
+    caption_text = caption_override or caption(event, lang)
+    credit_line = image_credit_line(event)
+    if credit_line and credit_line not in caption_text:
+        caption_text = f"{caption_text}\n\n{credit_line}".strip()
+    return caption_text.strip()
+
+
 def alt_text(event: dict, lang: str = "fr") -> str:
     """Texte alternatif accessible pour l'image (à coller dans « Réglages avancés »)."""
     title = re.sub(r"\s+", " ", (event.get("title") or "")).strip()
