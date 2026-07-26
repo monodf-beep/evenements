@@ -44,6 +44,7 @@ from utils.lang import detect_lang
 from scripts.scraper_events import init_db
 from scripts.publisher_as import publish_to_as
 from scripts.link_translations_as import _post_link
+from utils.voix import voix_block
 
 log = get_logger("translate-events")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -82,8 +83,13 @@ def _target(src_lang: str) -> str:
     return "it" if src_lang == "fr" else "fr"
 
 
-def translate_title_desc(client, model, title: str, desc: str, target: str) -> dict | None:
-    """Renvoie {'title':..., 'description':...} traduits, ou None si échec."""
+def translate_title_desc(client, model, title: str, desc: str, target: str,
+                         voix: str = "") -> dict | None:
+    """Renvoie {'title':..., 'description':...} traduits, ou None si échec.
+
+    voix : bloc de voix éditoriale (utils.voix.voix_block()) préfixé au prompt — il
+    RÉGIT le ton, le vocabulaire interdit, la doctrine d'appartenance et les patterns,
+    en italien comme en français. La traduction RE-VÉRIFIE contre ces règles."""
     tgt = _LANG_NAME[target]
     # Toponymes selon la langue cible (charte §6 bis : on nomme dans la langue du lecteur,
     # en gardant la chaîne ville → province → territoire).
@@ -106,6 +112,12 @@ def translate_title_desc(client, model, title: str, desc: str, target: str) -> d
         casse_lang = 'En français, mois et jours en minuscule. Jamais de title case anglais.'
         boussole = 'Registre soutenu mais accessible, comme le média *Internazionale*. Pas de calque de l\'italien.'
     prompt = (
+        voix +
+        (f"\n\nSi une VOIX ÉDITORIALE est fournie ci-dessus, elle RÉGIT le ton, le style, "
+         f"le vocabulaire interdit, la doctrine d'appartenance (gentilés, jamais la "
+         f"nationalité ; pas de mots-frontière ni d'irrédentisme) et les patterns — EN {tgt.upper()} "
+         f"comme en français. Tu RÉ-APPLIQUES ces règles en {tgt}, tu ne recopies pas un défaut. "
+         f"En cas de désaccord, la voix prime sur ce qui suit.\n\n" if voix else "") +
         f"Tu produis la version {tgt} d'un événement culturel de l'espace alpin occidental "
         f"(Savoie · Piémont · Vallée d'Aoste · Nice), pour un média bilingue exigeant "
         f"(esprit *Internazionale* / *Le Monde Diplomatique*).\n\n"
@@ -198,6 +210,7 @@ def main(argv=None) -> int:
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=api_key) if (api_key and args.apply) else None
+    voix = voix_block()  # règles éditoriales (bilingues via le lexique) injectées à la traduction
     wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
     auth = (os.getenv("WP_AS_USER", ""), os.getenv("WP_AS_APP_PASSWORD", ""))
 
@@ -219,7 +232,7 @@ def main(argv=None) -> int:
         if not (client and api_key):
             log.error("ANTHROPIC_API_KEY absente — impossible de traduire."); break
         tr = translate_title_desc(client, args.model, ev.get("title", ""),
-                                  ev.get("description", "") or "", tgt)
+                                  ev.get("description", "") or "", tgt, voix)
         if not tr:
             continue
         new_ev = dict(ev)

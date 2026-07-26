@@ -153,11 +153,11 @@ Tout l'appareil éditorial appliqué **en français** doit s'appliquer **aussi e
 
 **Racine commune de tout ce qui suit :** `translate_events` **ne passe pas par la voix/charte** que `enrich` applique en FR. Il « translittère » avec quelques règles codées en dur, au lieu de **re-vérifier** contre l'appareil éditorial complet en italien. Trois recommandations, par priorité.
 
-### Reco 1 — Injecter la voix dans la traduction *(LE correctif structurant)*
-Charger la voix éditoriale (même mécanisme que `enrich` : `utils.voix.load_voix()`) et la **préfixer au prompt de traduction**. La voix — bilingue via le lexique canonique — porte le **vocabulaire interdit**, la **doctrine d'appartenance**, les **patterns**. La traduction cesse alors de recopier : elle **re-vérifie en italien**. Les bouts codés en dur (toponymes, superlatifs) deviennent un simple **rappel de format**, la source de vérité étant la voix. → résout d'un coup la symétrie des règles, les exonymes et l'appartenance.
+### Reco 1 — Injecter la voix dans la traduction *(LE correctif structurant)* — ✅ FAIT (2026-07-26)
+`translate_events` charge maintenant la voix (`utils.voix.voix_block()`) et la **préfixe au prompt de traduction**, avec le préambule « la voix prime, tu ré-appliques les règles EN ITALIEN ». La voix — bilingue via le lexique canonique — porte le **vocabulaire interdit**, la **doctrine d'appartenance**, les **patterns**. La traduction cesse de recopier : elle **re-vérifie en italien**. Les bouts codés en dur (toponymes, superlatifs) restent comme **rappel de format**, la source de vérité étant la voix. → règle la symétrie des règles, les exonymes et l'appartenance. **Pleine puissance quand le lexique canonique sera dans la voix chargée sur le VPS (chantier autre conversation).**
 
-### Reco 2 — Traduire l'article enrichi, pas la description brute *(parité éditoriale)*
-Aujourd'hui la fiche cible part de la **description** → l'italien n'a pas l'article « escalier ». Recommandation : traduire **`article_title` + `article_md`** (en préservant la structure markdown : sous-titres, listes programme, gras) au lieu de la description. C'est **moins cher** qu'un ré-enrichissement (pas de recherche web refaite) et **sans dérive de faits** (on ré-exprime un article déjà recherché). L'italien reçoit alors le **même niveau éditorial** que le français.
+### Reco 2 — Traduire l'article enrichi, pas la description brute *(parité éditoriale)* — à valider
+Aujourd'hui la fiche cible part de la **description** → l'italien n'a pas l'article « escalier ». **Précision technique** : `publisher.build_post` construit l'article depuis **`enrich_data`** (le JSON *titre/chapo/corps/programme/encadré*), pas depuis `article_md` — et `translate_events` met `enrich_data=""` sur la cible. Donc Reco 2 = **traduire la structure `enrich_data`** (chaque champ, en préservant les listes programme ligne à ligne) et la poser sur la fiche cible. Le nettoyage déterministe (`polish_prose` : tiret cadratin, gras) s'appliquera alors **aussi en italien** (build_post le passe). Coût : un appel Haiku sur ~2-4k tokens/fiche. **Sans dérive de faits** (on ré-exprime un article déjà recherché), bien **moins cher** qu'un ré-enrichissement.
 *Alternative écartée (plus chère, risque de divergence) : ré-enrichir de zéro en italien.*
 
 ### Reco 3 — Expliciter exonymes & interdits de frontière dans le prompt
@@ -171,4 +171,4 @@ Même si la Reco 1 les apporte via la voix, garder dans le prompt de traduction 
 
 ---
 
-**Si tu valides, je peux implémenter Reco 1 + Reco 2 dans `translate_events` dès maintenant** (chargement de la voix + traduction de l'article enrichi), et les documenter ici. Reco 1 gagne en pleine puissance une fois le lexique canonique injecté dans la voix (chantier de l'autre conversation), mais le **branchement** peut se faire tde suite.
+**Reco 1 est faite.** Reste **Reco 2** (traduire `enrich_data` pour la parité éditoriale) : à lancer sur ton go, avec l'arbitrage de coût ci-dessus.
