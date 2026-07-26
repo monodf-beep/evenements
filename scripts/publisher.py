@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils.clean_text import polish_prose
 
 log = get_logger("publisher")
 
@@ -82,9 +83,9 @@ def build_post(event: dict) -> tuple[str, str]:
     if art:
         parts = []
         if art.get("chapo"):
-            parts.append(f"<p><strong>{_md_inline(art['chapo'].strip())}</strong></p>")
+            parts.append(f"<p><strong>{_md_inline(polish_prose(art['chapo'].strip()))}</strong></p>")
         if art.get("corps"):
-            parts.append(_md_to_html(art["corps"]))
+            parts.append(_md_to_html(polish_prose(art["corps"])))
         # Programme (CHARTE §5 bis) : faits structurés en LISTE — horaires, séances,
         # line-up. Rendu en <ul> (défensif : absent/None/chaîne/liste).
         prog = art.get("programme")

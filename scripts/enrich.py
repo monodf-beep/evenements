@@ -379,26 +379,16 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         return None
 
 
-def _no_em_dash(text: str) -> str:
-    """Retire le TIRET CADRATIN (— U+2014) et le tiret demi-cadratin ESPACÉ (–), signature
-    d'écriture IA, de façon DÉTERMINISTE — sans dépendre de l'humeur du modèle. On remplace
-    par une virgule. On NE touche PAS au trait d'union « - » (Saint-Paul-de-Vence, nu-jazz)
-    ni aux plages collées « 700–1500 » (demi-cadratin sans espaces)."""
-    text = re.sub(r"\s*—\s*", ", ", text)          # cadratin (U+2014), collé ou espacé
-    text = re.sub(r"\s+–\s+", ", ", text)           # demi-cadratin ESPACÉ seulement
-    text = re.sub(r",\s*,", ",", text)               # virgules doubles résiduelles
-    text = re.sub(r"\s+([.,;:!?])", r"\1", text)     # espace avant ponctuation
-    return text
-
-
 def build_article_md(data: dict) -> tuple[str, str]:
     """Assemble (titre, markdown) depuis le JSON de l'agent (déterministe)."""
+    from utils.clean_text import polish_prose
     art = data.get("article") or {}
     titre = (art.get("titre") or "").strip()
-    # Corps et chapô : on garantit l'absence de tiret cadratin en CODE (le modèle n'est
-    # pas déterministe, l'instruction ne suffit pas). Titres/programme laissés intacts.
-    chapo = _no_em_dash((art.get("chapo") or "").strip())
-    corps = _no_em_dash((art.get("corps") or "").strip())
+    # Corps et chapô : nettoyage déterministe en CODE (tiret cadratin, gras sur chiffres)
+    # car le modèle n'est pas fiable. Le rendu (build_post) l'applique aussi. Titres/
+    # programme laissés intacts.
+    chapo = polish_prose((art.get("chapo") or "").strip())
+    corps = polish_prose((art.get("corps") or "").strip())
     encadre = (art.get("encadre") or "").strip()
     sources = [s for s in (data.get("sources") or []) if s]
     # Programme (CHARTE §5 bis) : faits structurés en LISTE, y compris en mode court.

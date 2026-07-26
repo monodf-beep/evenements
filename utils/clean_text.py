@@ -25,6 +25,32 @@ _UI_BITS = re.compile(
     r"prenota subito|prenota ora|book now|réserver maintenant|scopri di più)\b")
 
 
+_BOLD = re.compile(r"\*\*([^*]+?)\*\*")
+
+
+def _debold_if_digit(m: "re.Match") -> str:
+    """Retire le gras d'un passage qui contient un chiffre (date, heure, tarif) : la
+    charte interdit le gras sur les dates/chiffres et le modèle n'est pas fiable là-dessus."""
+    inner = m.group(1)
+    return inner if re.search(r"\d", inner) else m.group(0)
+
+
+def polish_prose(text: str) -> str:
+    """Nettoyage DÉTERMINISTE du corps rédactionnel au RENDU, indépendant de l'humeur du
+    modèle (qui n'est pas déterministe). À appliquer sur le corps/chapô AVANT le rendu HTML :
+    - tiret cadratin (— U+2014) et demi-cadratin ESPACÉ (–) → virgule (signature d'écriture IA) ;
+    - dé-graisse tout passage **…** contenant un chiffre (dates/heures/tarifs) ;
+    NE touche PAS au trait d'union « - » (Saint-Paul-de-Vence) ni aux plages collées « 700–1500 »."""
+    if not text:
+        return text
+    t = re.sub(r"\s*—\s*", ", ", text)          # cadratin, collé ou espacé
+    t = re.sub(r"\s+–\s+", ", ", t)              # demi-cadratin ESPACÉ seulement
+    t = _BOLD.sub(_debold_if_digit, t)           # gras interdit sur dates/chiffres
+    t = re.sub(r",\s*,", ",", t)                 # virgules doubles résiduelles
+    t = re.sub(r"[ \t]+([.,;:!?])", r"\1", t)    # espace avant ponctuation
+    return t
+
+
 def strip_boilerplate(text: str) -> str:
     """Retire les artefacts de scraping d'une description, en préservant les faits."""
     if not text:
