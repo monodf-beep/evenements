@@ -102,7 +102,21 @@ La traduction n'est pas neutre : elle applique une **voix IT** propre, en miroir
 | **Dark patterns interdits** | « plus que 2 places ! », « dernier jour », clickbait, confirmshaming | « ultimi posti! », « solo oggi », « affrettati », « non crederai… », confirmshaming |
 | **Casse** | mois/jours en minuscule ; jamais de Title Case anglais | mois/jours en minuscule (« 5 luglio », « domenica ») ; jamais de Title Case |
 
-**Toujours** : casse de phrase (jamais TOUT EN CAPITALES, même si la source l'écrit ainsi → « COREOGRAFIE DEL POSSIBILE » devient « Coreografie del Possibile ») ; on **préserve** les vrais sigles (FIAF, MAO, ONU), la casse d'une marque (iMac), et les **noms propres réels** (on n'invente pas d'exonyme pour une ville qui n'en a pas).
+**Toujours** : casse de phrase (jamais TOUT EN CAPITALES, même si la source l'écrit ainsi → « COREOGRAFIE DEL POSSIBILE » devient « Coreografie del Possibile ») ; on **préserve** les vrais sigles (FIAF, MAO, ONU), la casse d'une marque (iMac), et les **noms propres réels**.
+
+### Exonymes : la règle
+On **utilise l'exonyme** de la langue du lecteur **quand il existe et est courant** : côté IT → *Torino, Nizza, Aosta, Vercelli* ; côté FR → *Turin, Nice, Aoste, Verceil*. Mais :
+- on garde la **chaîne ville → province → territoire** dans la langue cible (*Torino · Piemonte* ; *Nizza · Contea di Nizza*) ;
+- on **n'invente jamais** un exonyme pour une ville/un lieu qui n'en a pas de courant (on garde le nom réel) ;
+- les **noms propres** (artistes, festivals, œuvres, lieux nommés) restent **tels quels**.
+
+### La symétrie des règles (le vrai enjeu)
+Tout l'appareil éditorial appliqué **en français** doit s'appliquer **aussi en italien**, et la traduction doit **re-vérifier** contre lui, pas seulement translittérer :
+- **lexique & vocabulaire interdit** (superlatifs creux, dark patterns) — dans leur version **italienne** ;
+- **doctrine d'appartenance** — en italien : *savoiardo / piemontese / valdostano / nizzardo*, **jamais** « italiana » ni « francese » comme appartenance ; **jamais** de mots-frontière (`oltralpe`, `transalpino`, `al di là delle Alpi`, `confine`), **jamais** d'irrédentisme (« Nizza italiana », « terre irredente ») ; espace **sabaudo** ;
+- **interdits de style IA** (tiret cadratin, gras sur chiffres) — le nettoyage déterministe au rendu s'applique quelle que soit la langue.
+
+⚠️ **Aujourd'hui, rien de tout cela n'est garanti côté IT** : `translate_events` n'injecte pas la voix (voir §9).
 
 ---
 
@@ -135,10 +149,26 @@ La traduction n'est pas neutre : elle applique une **voix IT** propre, en miroir
 
 ---
 
-## 9. Points à interroger / pistes (pour tes retours)
+## 9. Mes préconisations
 
-1. **La version cible est plus LÉGÈRE que la source.** On traduit la **description**, pas l'**article enrichi** (`article_md`) : côté italien, un événement savoyard n'a donc pas l'article éditorial « escalier » que la version FR a reçu. Est-ce voulu (coût), ou veut-on que la version cible ait, elle aussi, un **article enrichi** (traduire `article_md`, ou ré-enrichir dans la langue cible) ? *C'est le point éditorial le plus important.*
-2. **Toponymes & superlatifs IT sont codés en dur** dans `translate_title_desc` — ils recoupent le **lexique sabaud canonique** (Torino/Turin, Contea di Nizza, imperdibile…). Même risque que pour `visual_query` : deux sources de vérité. À terme, faire pointer la voix IT vers le lexique canonique.
-3. **La doctrine d'appartenance** (gentilé, jamais la nationalité ; Alpes non-frontière ; « au-delà du Var/Rhône ») n'est **pas encore** rappelée dans le prompt de traduction. Faut-il l'y injecter (comme la charte l'est pour l'enrichissement) pour que la version IT respecte les mêmes interdits ?
-4. **Seuil `--min-score 6`** : on ne traduit que le bon score. Élargir pour couvrir davantage le versant maigre, ou garder resserré pour le coût ?
-5. **Crédit image** : bien repris sur la fiche traduite (`image_credit` copié) — OK, à confirmer visuellement.
+**Racine commune de tout ce qui suit :** `translate_events` **ne passe pas par la voix/charte** que `enrich` applique en FR. Il « translittère » avec quelques règles codées en dur, au lieu de **re-vérifier** contre l'appareil éditorial complet en italien. Trois recommandations, par priorité.
+
+### Reco 1 — Injecter la voix dans la traduction *(LE correctif structurant)*
+Charger la voix éditoriale (même mécanisme que `enrich` : `utils.voix.load_voix()`) et la **préfixer au prompt de traduction**. La voix — bilingue via le lexique canonique — porte le **vocabulaire interdit**, la **doctrine d'appartenance**, les **patterns**. La traduction cesse alors de recopier : elle **re-vérifie en italien**. Les bouts codés en dur (toponymes, superlatifs) deviennent un simple **rappel de format**, la source de vérité étant la voix. → résout d'un coup la symétrie des règles, les exonymes et l'appartenance.
+
+### Reco 2 — Traduire l'article enrichi, pas la description brute *(parité éditoriale)*
+Aujourd'hui la fiche cible part de la **description** → l'italien n'a pas l'article « escalier ». Recommandation : traduire **`article_title` + `article_md`** (en préservant la structure markdown : sous-titres, listes programme, gras) au lieu de la description. C'est **moins cher** qu'un ré-enrichissement (pas de recherche web refaite) et **sans dérive de faits** (on ré-exprime un article déjà recherché). L'italien reçoit alors le **même niveau éditorial** que le français.
+*Alternative écartée (plus chère, risque de divergence) : ré-enrichir de zéro en italien.*
+
+### Reco 3 — Expliciter exonymes & interdits de frontière dans le prompt
+Même si la Reco 1 les apporte via la voix, garder dans le prompt de traduction un rappel net : exonyme **si courant**, chaîne ville→province→territoire, **jamais** de mots-frontière ni d'irrédentisme en italien (`oltralpe`, `transalpino`, « Nizza italiana »…). Détail §5.
+
+### À trancher par toi (coût)
+- **Reco 2** : traduire l'article enrichi = un appel Haiku sur ~2-4k tokens par fiche. Acceptable, ou on garde la description pour le versant secondaire ?
+- **`--min-score 6`** : élargir pour mieux couvrir le versant maigre (Piémont côté FR, Savoie côté IT), ou garder resserré pour le coût ?
+
+*(Crédit image : `image_credit` est bien recopié sur la fiche traduite — OK.)*
+
+---
+
+**Si tu valides, je peux implémenter Reco 1 + Reco 2 dans `translate_events` dès maintenant** (chargement de la voix + traduction de l'article enrichi), et les documenter ici. Reco 1 gagne en pleine puissance une fois le lexique canonique injecté dans la voix (chantier de l'autre conversation), mais le **branchement** peut se faire tde suite.
