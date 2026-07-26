@@ -120,7 +120,7 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 - **Arc alpin occidental / Alpes latines** — cadre géoculturel réunissant Savoie, Piémont, Vallée d'Aoste, Ligurie, Nice, Romandie. Un espace, pas une ligne.
 - **Cols-passages** — Mont-Cenis, Petit- et Grand-Saint-Bernard, Montgenèvre : à nommer comme **liens et lieux de rencontre**, jamais comme séparations.
 - **« Deçà / delà les monts » (*cismontano / oltremontano*)** — désignation officielle des États de Savoie pour leur relation **interne** : Savoie « en deçà », Piémont « au-delà », le duc gouvernant « à cheval deçà et delà les monts ». Devise attestée : ***« non citra nec ultra sed intra montes »*** (« ni en deçà, ni au-delà des monts, mais **entre** eux »). **La formule sabaude authentique pour dire l'axe Savoie ↔ Piémont** — l'espace comme entre-deux, pas comme frontière. (Ne désigne PAS la France : c'est une relativité *interne* à l'aire sabaude.)
-- **Désigner la France depuis chez nous** — le Var (limite du comté de Nice, 1388→1860) et le Rhône (limite France/Savoie, traité de Lyon 1601→1860) sont des frontières historiques réelles. « **Au-delà du Var / du Rhône** » est donc géographiquement fondé, mais **non attesté comme nom figé de la France** : c'est un **marqueur-maison à assumer** (glosé la 1ʳᵉ fois : « au-delà du Var, la France vue de Nice »). Proscrire *oltralpe* (attesté mais mot-frontière, cousin de « transalpin »).
+- **Désigner la France depuis chez nous** — le Var (limite du comté de Nice, 1388→1860) et le Rhône (limite France/Savoie, traité de Lyon 1601→1860) sont des frontières historiques réelles. « **Au-delà du Var / du Rhône** » est donc géographiquement fondé, mais **non attesté comme nom figé de la France** : c'est un **marqueur-maison assumé** (glosé la 1ʳᵉ fois : « au-delà du Var, la France vue de Nice »). Le procédé est **vivant et attesté** dans l'aire sabaude-padane — **Oltrepò** (au-delà du Pô), **Oltregiogo** (au-delà des cols) — donc la forme prolonge un usage réel, elle n'est pas arbitraire. Proscrire *oltralpe* (attesté mais mot-frontière, cousin de « transalpin »).
 - **Autonomie valdôtaine** (statut spécial 1945–48) et **Émile Chanoux** (1906–1944) — le fait politique structurant de la VdA et sa figure de résistance.
 - **Dedizione di Nizza alla Savoia (1388)** — rattachement volontaire ; fonde cinq siècles d'autonomie niçoise. **Nizza sabauda** jusqu'en 1860.
 - **1860 (Traité de Turin, 24 mars) + plébiscite** — cadre **factuel** de l'annexion de la Savoie et de Nice à la France (à préférer aux récits « cédée/trahie » comme « restituée à l'Italie »).
@@ -157,14 +157,13 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 - **« Franco-italien » :** interdit **entre nos territoires** (dire « sabaud », « entre Savoie et Piémont ») ; **admis** pour Lyon–Milan, Paris–Rome (ce ne sont pas nos territoires).
 - **Luxe / jet-set (Côte) : autorisé** — pas une exotisation à corriger.
 - **Formes *sabaudo/a/e/i* : employables telles quelles en français.**
-- **Désigner la France depuis chez nous : « outre-Rhône / outre-Var »** (*altro Rodano / altro Var*) — **en attente du verdict de la recherche** sur l'attestation historique.
+- **Désigner la France depuis chez nous : « au-delà du Var » (de Nice) / « au-delà du Rhône » (de Savoie)** — signature-maison ADOPTÉE, glosée la 1ʳᵉ fois. Procédé attesté dans l'aire (Oltrepò, Oltregiogo). *Oltralpe* écarté (mot-frontière).
+- **« Transfrontalier » :** toléré en contexte institutionnel/factuel (nommer un programme ALCOTRA/Interreg), **proscrit en prose** (préférer « sabaud », « entre Savoie et Piémont »).
+- **1860 :** « annexion à la France » (factuel), sans « cession/rapt » ni « restitution à l'Italie ». Neutralité assumée.
+- **Citations irrédentistes** (« italianità di Nizza » — Garibaldi) : comme objet historique entre guillemets et contextualisé, jamais comme thèse.
+- **Registre nissart/niçard :** la langue et le fait culturel ; « niçois » pour les gens.
 
-### Encore à confirmer
-- **Désigner la France** — recherche faite : « au-delà du Var / du Rhône » est fondé géographiquement (frontières réelles 1388/1601→1860) mais **n'est pas un nom historique figé** de la France. **À trancher : adopte-t-on « au-delà du Var/Rhône » comme signature-maison (glosée la 1ʳᵉ fois) — oui / non ?** (« deçà/delà les monts » ne convient pas ici : il désigne l'axe *interne* Savoie↔Piémont, pas la France.) *Oltralpe* écarté (mot-frontière).
-- **« Transfrontalier »** — nomme un vrai programme (ALCOTRA, Interreg) mais contient « frontière ». Reco : toléré en contexte institutionnel/factuel, proscrit en prose (préférer « sabaud », « entre Savoie et Piémont »). **À valider.**
-- **1860** — « annexion à la France » (factuel), sans « cession/rapt » ni « restitution à l'Italie ». **Neutralité assumée.**
-- **Citations irrédentistes** (« italianità di Nizza » — Garibaldi) — utilisables comme objet historique entre guillemets et contextualisées, jamais comme thèse.
-- **Registre nissart/niçard** — la langue et le fait culturel ; « niçois » pour les gens.
+*Tous les points ci-dessus sont validés (Franck, 26 juillet 2026). Le lexique est stable ; reste à le réconcilier avec l'atelier Obsidian puis à en distiller la couche injectable.*
 
 ---
 
