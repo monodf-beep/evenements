@@ -44,21 +44,26 @@ def _max_chars() -> int:
 _DEFAULT_VOIX = ROOT / "docs" / "voix" / "VOIX.md"
 
 
-# Dossier de voix : atelier Obsidian synchronisé sur le VPS (VOIX_DIR), sinon docs/voix/
-# du dépôt. Chaque .md = une voix sélectionnable au back-office.
-def _voix_dir() -> "Path | None":
+# Dossiers de voix : ateliers Obsidian synchronisés sur le VPS (VOIX_DIR peut lister
+# PLUSIEURS dossiers séparés par os.pathsep), sinon docs/voix/ du dépôt. Chaque .md =
+# une voix sélectionnable au back-office.
+def _voix_dirs() -> "list[Path]":
     d = os.getenv("VOIX_DIR", "").strip()
-    p = Path(d) if d else (ROOT / "docs" / "voix")
-    return p if p.is_dir() else None
+    if d:
+        return [p for p in (Path(s.strip()) for s in d.split(os.pathsep) if s.strip())
+                if p.is_dir()]
+    fallback = ROOT / "docs" / "voix"
+    return [fallback] if fallback.is_dir() else []
 
 
-def available_voix() -> list[dict]:
-    """Toutes les voix SÉLECTIONNABLES : les .md du dossier de voix (Obsidian via VOIX_DIR,
-    sinon docs/voix/), plus le filet docs/VOIX.md. Chaque entrée : name/title/chars/path."""
+def available_voix(include_oversize: bool = False) -> list[dict]:
+    """Toutes les voix SÉLECTIONNABLES : les .md des dossiers de voix (Obsidian via
+    VOIX_DIR, sinon docs/voix/), DANS L'ORDRE, plus le filet docs/VOIX.md. Chaque entrée :
+    name/title/chars/path/folder/oversize. Si include_oversize est False, on EXCLUT les
+    entrées oversize (docs de référence trop gros qui seraient tronqués)."""
     out, seen = [], set()
-    d = _voix_dir()
-    folders = [d] if d else []
-    for folder in folders:
+    limit = _max_chars()
+    for folder in _voix_dirs():
         for f in sorted(folder.glob("*.md")):
             rp = str(f.resolve())
             if rp in seen:
@@ -68,12 +73,19 @@ def available_voix() -> list[dict]:
             except OSError:
                 continue
             seen.add(rp)
-            out.append({"name": f.name, "title": _title_of(raw), "chars": len(raw), "path": str(f)})
+            oversize = len(raw) > limit
+            if oversize and not include_oversize:
+                continue
+            out.append({"name": f.name, "title": _title_of(raw), "chars": len(raw),
+                        "path": str(f), "folder": f.parent.name, "oversize": oversize})
     if _DEFAULT_VOIX.exists() and str(_DEFAULT_VOIX.resolve()) not in seen:
         try:
             raw = _strip_obsidian(_DEFAULT_VOIX.read_text(encoding="utf-8"))
-            out.append({"name": _DEFAULT_VOIX.name, "title": _title_of(raw),
-                        "chars": len(raw), "path": str(_DEFAULT_VOIX)})
+            oversize = len(raw) > limit
+            if include_oversize or not oversize:
+                out.append({"name": _DEFAULT_VOIX.name, "title": _title_of(raw),
+                            "chars": len(raw), "path": str(_DEFAULT_VOIX),
+                            "folder": _DEFAULT_VOIX.parent.name, "oversize": oversize})
         except OSError:
             pass
     return out
@@ -82,20 +94,35 @@ def available_voix() -> list[dict]:
 def _sources() -> list[str]:
     """Chemins de voix à charger, par priorité :
     1) OBSIDIAN_VOIX_PATH (override explicite, système EN COUCHES pour power users) ;
-    2) la voix CHOISIE au back-office (settings.voix_active), résolue dans le dossier ;
-    3) filet : docs/VOIX.md. La voix n'est donc jamais 'vide'."""
+    2) les COUCHES choisies au back-office (settings.voix_layers), résolues dans les
+       dossiers, DANS L'ORDRE (chaque couche surcharge la précédente) ;
+    3) la voix mono-CHOISIE au back-office (settings.voix_active), résolue ;
+    4) filet : docs/VOIX.md. La voix n'est donc jamais 'vide'."""
     spec = _spec().strip()
     if spec:
         return [s.strip() for s in spec.split(os.pathsep) if s.strip()]
     try:
         from utils import settings as _ps
-        chosen = _ps.voix_active().strip()
     except Exception:
-        chosen = ""
-    if chosen:
-        for v in available_voix():
-            if v["name"] == chosen or Path(v["path"]).name == chosen:
-                return [v["path"]]
+        _ps = None
+    if _ps is not None:
+        try:
+            layers = _ps.voix_layers()
+        except Exception:
+            layers = []
+        if layers:
+            m = {v["name"]: v["path"] for v in available_voix(include_oversize=True)}
+            picked = [m[n] for n in layers if n in m]
+            if picked:
+                return picked
+        try:
+            chosen = _ps.voix_active().strip()
+        except Exception:
+            chosen = ""
+        if chosen:
+            for v in available_voix(include_oversize=True):
+                if v["name"] == chosen or Path(v["path"]).name == chosen:
+                    return [v["path"]]
     return [str(_DEFAULT_VOIX)]
 
 
@@ -146,14 +173,27 @@ def load_voix() -> str:
 
 
 def _title_of(text: str) -> str:
-    """Titre lisible d'une note : 1er titre markdown, sinon 1re ligne non vide."""
+    """Titre lisible d'une note : 1er titre markdown (# ...) nettoyé, sinon 1re ligne non
+    vide. On IGNORE les lignes de citation Obsidian (commençant par « > ») et les lignes
+    vides, pour éviter les titres du type « > Voix de Enrico... »."""
+    fallback = ""
     for line in (text or "").splitlines():
         line = line.strip()
+        if not line or line.startswith(">"):
+            continue
         if line.startswith("#"):
             return line.lstrip("# ").strip()[:90]
-        if line:
-            return line[:90]
-    return ""
+        if not fallback:
+            fallback = line[:90]
+    return fallback
+
+
+def env_layer_names() -> list[str]:
+    """Basenames des couches FORCÉES par l'env (OBSIDIAN_VOIX_PATH), pour « adopter » ces
+    couches dans voix_layers. Renvoie [] si l'env ne pilote pas la voix."""
+    if not _spec().strip():
+        return []
+    return [Path(s).name for s in _sources()]
 
 
 def _voix_files(p: Path) -> list:
@@ -185,11 +225,17 @@ def voix_status() -> dict:
         chosen = _ps.voix_active()
     except Exception:
         chosen = ""
-    d = _voix_dir()
+    try:
+        from utils import settings as _ps2
+        layers = _ps2.voix_layers()
+    except Exception:
+        layers = []
+    dirs = _voix_dirs()
     return {"sources": sources, "active": bool(text), "total_chars": len(text),
             "from_env": bool(_spec().strip()), "text": text,
-            "available": available_voix(), "chosen": chosen,
-            "voix_dir": str(d) if d else ""}
+            "available": available_voix(), "chosen": chosen, "layers": layers,
+            "voix_dirs": [str(d) for d in dirs],
+            "voix_dir": str(dirs[0]) if dirs else ""}
 
 
 def voix_block(prefix: str = "") -> str:

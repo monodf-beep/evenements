@@ -1039,9 +1039,28 @@ def voix_view():
     from utils import voix as voixmod
     from utils import settings as psettings
     if request.method == "POST":
-        # Sauf si OBSIDIAN_VOIX_PATH force une voix par env, on enregistre le choix.
-        psettings.save({"voix_active": request.form.get("voix_active", "")})
-        flash("Voix active enregistrée — appliquée au prochain run.", "ok")
+        # Deux actions : "adopt" importe les couches forcées par l'env dans voix_layers ;
+        # "save" (défaut) enregistre les couches cochées, ordonnées par priorité.
+        action = request.form.get("action", "save")
+        if action == "adopt":
+            names = voixmod.env_layer_names()
+            psettings.save({"voix_layers": names})
+            flash("Couches Obsidian adoptées — retire OBSIDIAN_VOIX_PATH du .env pour piloter ici.", "ok")
+        else:
+            n = int(request.form.get("n", "0") or 0)
+            picked = []
+            for i in range(n):
+                if request.form.get(f"sel_{i}"):
+                    name = request.form.get(f"name_{i}", "")
+                    try:
+                        order = int(request.form.get(f"ord_{i}", "0") or 0)
+                    except (TypeError, ValueError):
+                        order = 0
+                    if name:
+                        picked.append((order, i, name))
+            picked.sort(key=lambda t: (t[0], t[1]))
+            psettings.save({"voix_layers": [p[2] for p in picked]})
+            flash("Couches de voix enregistrées — appliquées au prochain run.", "ok")
         return redirect(url_for("voix_view"))
     return render_template("voix.html", active="voix", st=voixmod.voix_status())
 

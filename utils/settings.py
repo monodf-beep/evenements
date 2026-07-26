@@ -26,7 +26,8 @@ SETTINGS_FILE = ROOT / "data" / "pipeline_settings.json"
 
 _DEFAULTS = {"ai_profile": "eco", "enrich_mode": "auto",
              "social_caption_auto": False, "social_caption_limit": 3,
-             "voix_active": ""}   # nom de fichier de la voix choisie ("" = défaut/auto)
+             "voix_active": "",   # nom de fichier de la voix choisie ("" = défaut/auto)
+             "voix_layers": []}   # couches de voix choisies (ordre = priorité de surcharge)
 _PROFILES = ("eco", "qualite")
 _ENRICH_MODES = ("off", "auto", "court", "long")
 _MODEL_ECO = "claude-haiku-4-5"
@@ -47,6 +48,8 @@ def load() -> dict:
             d["social_caption_auto"] = bool(raw.get("social_caption_auto", False))
             if isinstance(raw.get("voix_active"), str):
                 d["voix_active"] = raw["voix_active"]
+            if isinstance(raw.get("voix_layers"), list):
+                d["voix_layers"] = [str(x) for x in raw["voix_layers"]]
             try:
                 lim = int(raw.get("social_caption_limit", d["social_caption_limit"]))
                 d["social_caption_limit"] = max(0, min(lim, SOCIAL_CAPTION_LIMIT_MAX))
@@ -67,6 +70,9 @@ def save(patch: dict) -> dict:
         d["social_caption_auto"] = bool(patch["social_caption_auto"])
     if "voix_active" in patch:
         d["voix_active"] = str(patch["voix_active"] or "")
+    if "voix_layers" in patch:
+        v = patch["voix_layers"] or []
+        d["voix_layers"] = [str(x) for x in v] if isinstance(v, list) else []
     if "social_caption_limit" in patch:
         try:
             d["social_caption_limit"] = max(0, min(int(patch["social_caption_limit"]),
@@ -115,6 +121,11 @@ def enrich_mode() -> str:
 def voix_active() -> str:
     """Nom de fichier de la voix choisie au back-office ('' = défaut/auto)."""
     return load()["voix_active"]
+
+
+def voix_layers() -> list:
+    """Couches de voix choisies au back-office (ordre = priorité de surcharge)."""
+    return load()["voix_layers"]
 
 
 def enrich_enabled() -> bool:
