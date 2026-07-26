@@ -141,6 +141,12 @@ En cas de panne technique (image injoignable), on **ne bloque pas** — les règ
 
 **Piège :** snippet 87 est **scope front-end** (inactif en REST/admin/CLI). Un consommateur lisant la featured image hors front-end ne verrait rien — **mais vérifié côté pipeline : aucun ne le fait** (`ig_scheduler` lit `url_image`/`wp_raw_image` en base, jamais la featured media via REST ; tous les `featured_media` du code sont des écritures au push).
 
-**Décision : arrêter de baker une copie par événement** (`_banner()` upload dans `publisher_as`). Le runtime couvre le front-end (og/partage/SEO) ; le signal « pas de photo » reste honnête via `image_source='banner'` (l'audit le filtre déjà). Pas besoin de la piste « attachement partagé » (#3) tant qu'aucun consommateur REST n'apparaît.
+**Décision : arrêter de baker une copie par événement.** Le runtime couvre le front-end (og/partage/SEO) ; le signal « pas de photo » reste honnête via `image_source='banner'` (l'audit le filtre déjà). Pas besoin de la piste « attachement partagé » (#3) tant qu'aucun consommateur REST n'apparaît.
 
-*Reste à faire (coordonné avec la conversation site) : (1) retirer le bake `_banner()` de `publisher_as` ; (2) nettoyer côté WordPress les ~42 vignettes déjà bakées pour qu'elles repassent au repli runtime ; (3) donner au compositeur social sa propre bannière de catégorie quand `url_image` est vide.*
+**FAIT côté pipeline (2026-07-26, `publisher_as`)** — trois verrous :
+1. La featured media n'est **plus téléversée** quand `image_source == 'banner'` (l'affiche/récupération réelles, elles, montent toujours).
+2. Le **Repli 2 `_banner()` est retiré** du flux de push (fonction conservée mais non appelée).
+3. `image_url` et `as_image_original` sont **vidés** pour une bannière (sinon l'endpoint la re-télécharge → re-bake).
+Résultat : événement sans vraie photo → `_thumbnail_id` vide → repli runtime WordPress. La bannière **reste dans `url_image`** (carte back-office + compositeur réseaux couverts ; pas de trou social à combler — le point #3 initial devient sans objet).
+
+*Reste à faire, côté SITE (conversation dédiée) : nettoyer les ~42 vignettes déjà bakées dans la média-thèque WordPress pour qu'elles repassent au repli runtime. Rien de bloquant : les nouveaux push sont déjà propres.*

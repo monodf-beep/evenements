@@ -204,7 +204,7 @@ def _build_payload(event: dict) -> dict:
         # en 4:3 pour la grille ; la FICHE, elle, affiche l'affiche entière via ce champ.
         # JAMAIS un logo/pictogramme (« voir l'affiche en grand » n'aurait aucun sens) :
         # dans ce cas on laisse vide → la fiche montrera la bannière territoire seule.
-        "as_image_original":        "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
+        "as_image_original":        "" if (_is_logo(event.get("url_image")) or event.get("image_source") == "banner") else (event.get("url_image", "") or ""),
         # Lieu + ville en plat : la carte-événement JetEngine les lit directement
         # (le Venue TEC reste par ailleurs pour la carte/adresse).
         "as_lieu":                  (event.get("lieu") or "").strip(),
@@ -226,7 +226,7 @@ def _build_payload(event: dict) -> dict:
         "score":       event.get("llm_score"),
         # On ne transmet pas un logo comme image : l'endpoint pourrait la re-télécharger
         # en repli. La vraie vignette part en featured_media_id (téléversée ci-dessous).
-        "image_url":   "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
+        "image_url":   "" if (_is_logo(event.get("url_image")) or event.get("image_source") == "banner") else (event.get("url_image", "") or ""),
         "image_alt":   event.get("seo_keyphrase") or event.get("title", "") or "",
         # Site officiel de l'événement (champ natif TEC « EventURL ») = même valeur
         # que as_source_officielle_url. Jamais la source radar (charte §8).
@@ -307,9 +307,15 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
     media_id = None
     hero_source = ""  # URL réellement retenue comme image à la une (pas la bannière
                       # générique) — sert au grand visuel de fiche ci-dessous.
-    if not skip_media and url_image and not _is_logo(url_image):
+    if not skip_media and url_image and not _is_logo(url_image) \
+            and event.get("image_source") != "banner":
         # Vraie affiche → vignette standardisée 4:3. Point focal ET mode (auto/cover/
         # letterbox) réglables à la main au back-office (éditeur de cadrage).
+        # ANTI-BAKE (2026-07-26) : une bannière de repli (image_source='banner') n'est
+        # PLUS téléversée en featured media. On laisse le _thumbnail_id VIDE → le repli
+        # runtime WordPress (snippet 87 cs_fallback_visual) sert la bannière de catégorie
+        # à l'affichage, et Yoast en dérive l'og:image. Zéro copie bakée par événement,
+        # signal « pas de photo » honnête (thumbnail vide). Prouvé sur l'event 2222.
         media_id, _ = _upload_featured_media(
             wp_url, auth, url_image, alt=alt,
             caption=event.get("image_credit", "") or "", title=event.get("title", ""),
@@ -331,20 +337,16 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
                 mode=(event.get("card_mode") or "auto"))
             if media_id:
                 hero_source = recovered
-    # Repli 2 — BANNIÈRE TERRITOIRE quand tout le reste a échoué (logo écarté sans page
-    # exploitable, image bloquée + page bloquée, aucune image). Comble les cartes vides.
-    if not skip_media and not media_id:
-        banner = _banner(event, load_territory_images(), load_territory_category_images())
-        if banner:
-            if _is_logo(url_image):
-                log.info("Logo écarté au push (%s) → bannière territoire", url_image)
-            elif url_image:
-                log.info("Téléversement affiche échoué (%s) → bannière territoire", url_image)
-            media_id, _ = _upload_featured_media(
-                wp_url, auth, banner, alt=alt, title=event.get("title", ""),
-                card=True, focal=(0.5, 0.5))
-            # hero_source reste vide : pas de « grand visuel original » pour une
-            # bannière générique — la fiche n'affichera rien à ce sujet.
+    # Repli 2 (bannière territoire bakée en featured media) — RETIRÉ le 2026-07-26.
+    # On ne bake plus AUCUNE bannière : quand il n'y a pas de vraie photo (ni affiche, ni
+    # récupération page), on laisse le _thumbnail_id VIDE. Le repli runtime WordPress
+    # (snippet 87) sert la bannière fallback-{terr}-{cat} à l'affichage ET nourrit l'og:image
+    # (Yoast lit le thumbnail via get_post_meta, filtré par le snippet — prouvé sur 2222).
+    # Bénéfices : plus de vignette bakée par événement dans la média-thèque, plus de piège
+    # de détection (thumbnail vide = pas de photo), bannière modifiable sans re-bake. La
+    # bannière reste dans url_image (image_source='banner') pour la carte back-office et le
+    # compositeur réseaux ; l'audit la distingue déjà (image_source='banner').
+    # `_banner()` + imports territoire conservés (utilisables ailleurs) mais non appelés ici.
     if media_id:
         payload["featured_media_id"] = media_id
 
