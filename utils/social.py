@@ -155,6 +155,25 @@ def hashtags(event: dict, lang: str, limit: int = 3) -> list[str]:
     return out[:limit]
 
 
+# Sources d'image soumises à ATTRIBUTION (licence) : Wikimedia Commons, Europeana,
+# ou une page/OG/web externe. Le crédit (event['image_credit']) doit alors figurer
+# dans la légende du post réseau, comme il figure déjà côté WordPress (as_image_credit).
+# On n'ajoute JAMAIS de crédit pour 'banner' (visuel maison, aucune attribution due).
+_CREDIT_SOURCES = {"og", "page", "commons", "europeana", "web"}
+
+
+def image_credit_line(event: dict) -> str:
+    """Ligne de crédit image discrète (« 📷 … ») à ajouter en fin de légende, ou ''
+    si aucune attribution n'est requise. Requiert un crédit non vide ET une source
+    licenciable (§_CREDIT_SOURCES, surtout PAS 'banner'). Défensif : '' si les
+    champs manquent ou si la source est inconnue."""
+    credit = (event.get("image_credit") or "").strip()
+    source = (event.get("image_source") or "").strip().lower()
+    if not credit or source not in _CREDIT_SOURCES:
+        return ""
+    return f"📷 {credit}"
+
+
 def caption(event: dict, lang: str = "fr") -> str:
     """Légende Instagram complète pour l'événement, dans la langue demandée."""
     title = re.sub(r"\s+", " ", (event.get("title") or "")).strip()
@@ -181,6 +200,9 @@ def caption(event: dict, lang: str = "fr") -> str:
     elif handle:
         lines.append(f"📍 @{handle}")
     lines += ["", _CTA[lang], "", " ".join("#" + t for t in hashtags(event, lang))]
+    credit = image_credit_line(event)
+    if credit:
+        lines += ["", credit]
     return "\n".join(lines).strip()
 
 

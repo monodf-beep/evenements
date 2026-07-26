@@ -69,6 +69,13 @@ def _publish(ev: dict, terr_label: str, lang: str, kind: str, conn) -> dict:
         return {"ok": False, "error": f"« {title} » — photo source injoignable ({exc})."}
 
     caption = ev.get(f"social_caption_{lang}") or social_mod.caption(ev, lang)
+    # Crédit image (attribution licence Commons/Europeana/… — jamais pour une
+    # bannière). social_mod.caption() l'ajoute déjà ; une légende réécrite via LLM
+    # et stockée (social_caption_*) ne le contient pas : on l'ajoute ici sans
+    # doublonner si déjà présent.
+    credit_line = social_mod.image_credit_line(ev)
+    if credit_line and credit_line not in caption:
+        caption = f"{caption}\n\n{credit_line}".strip()
     date_str = social_mod.format_date(ev.get("date_event_start", ""),
                                       ev.get("date_event_end", ""), lang)
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
