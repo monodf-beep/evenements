@@ -40,16 +40,21 @@
   <label>Limite
     <input type="number" name="limit" min="1" max="600" value="{{ limit }}" style="width:6rem;">
   </label>
+  <label style="flex-direction:row;align-items:center;gap:.4rem;">
+    <input type="checkbox" name="flagged" value="1" {% if flagged_only %}checked{% endif %}
+           onchange="this.form.submit()">
+    seulement les signalées
+  </label>
   <button type="submit">Filtrer</button>
-  <span class="av-count">{{ events|length }} vignette(s)</span>
+  <span class="av-count">{{ events|length }} vignette(s){% if flagged_only %} signalée(s){% endif %}</span>
 </form>
 
 <div class="av-toolbar" style="margin-top:-.4rem;">
   <form class="av-juger" method="post"
-        action="/audit-visuel?{% if dfrom %}from={{ dfrom }}&amp;{% endif %}{% if dto %}to={{ dto }}&amp;{% endif %}limit={{ limit }}"
+        action="/audit-visuel?{% if dfrom %}from={{ dfrom }}&amp;{% endif %}{% if dto %}to={{ dto }}&amp;{% endif %}{% if flagged_only %}flagged=1&amp;{% endif %}limit={{ limit }}"
         onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='⚖️ jugement en cours…';">
     <input type="hidden" name="action" value="juger">
-    <button type="submit" title="Fait juger l'agent vision (Claude) sur les vignettes affichées et surligne les cases hors-sujet">⚖️ Juger la sélection (vision)</button>
+    <button type="submit" title="Lance l'audit vision (Claude) en arrière-plan sur la sélection ; les cases hors-sujet se surlignent au rafraîchissement (quelques minutes)">⚖️ Lancer l'audit vision</button>
   </form>
   <span class="av-count" style="margin-left:0;">Compare la photo au titre en un seul appel — les cases hors-sujet ressortent en rouge.</span>
 </div>
@@ -73,7 +78,7 @@
       <div class="av-src">source image : {{ e.image_source or '?' }} · fiche {{ e.id }}</div>
       <div class="av-actions">
         <a href="/preview/{{ e.id }}">Fiche →</a>
-        <form method="post" action="/audit-visuel?{% if dfrom %}from={{ dfrom }}&amp;{% endif %}{% if dto %}to={{ dto }}&amp;{% endif %}limit={{ limit }}"
+        <form method="post" action="/audit-visuel?{% if dfrom %}from={{ dfrom }}&amp;{% endif %}{% if dto %}to={{ dto }}&amp;{% endif %}{% if flagged_only %}flagged=1&amp;{% endif %}limit={{ limit }}"
               onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='…';">
           <input type="hidden" name="action" value="relancer_image">
           <input type="hidden" name="event_id" value="{{ e.id }}">

@@ -217,6 +217,54 @@ def judge_grid(batch: list[dict], grid_bytes: bytes, client, failed: "set[int]" 
     return out
 
 
+def _ensure_audit_flags_table(conn: sqlite3.Connection) -> None:
+    """Table de PERSISTANCE des verdicts de l'audit visuel (idempotente, même pattern que
+    `checks`). Une ligne par événement signalé hors-sujet ; `resolved_at` non nul = soldé
+    (image re-posée, ou re-jugée OK au passage suivant). Partagée avec le back-office
+    (app.py._ensure_audit_flags_table : même DDL)."""
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS image_audit_flags (
+        event_id INTEGER PRIMARY KEY,
+        reason TEXT,
+        flagged_at TEXT,
+        resolved_at TEXT
+    )""")
+    conn.commit()
+
+
+def _persist_flags(conn: sqlite3.Connection, audited_ids: "list[int]",
+                   flagged: "list[dict]", failed_ids: "set[int]") -> None:
+    """Écrit les verdicts en base : UPSERT un flag actif (resolved_at=NULL) pour chaque
+    image signalée hors-sujet ; marque resolved_at=now pour tout événement AUDITÉ jugé OK
+    (ni signalé, ni en échec technique de téléchargement — ceux-là seront re-jugés au
+    prochain passage). Robuste : jamais d'exception remontée au cron (best-effort)."""
+    _ensure_audit_flags_table(conn)
+    flagged_ids: set[int] = set()
+    for f in flagged:
+        try:
+            conn.execute(
+                "INSERT INTO image_audit_flags (event_id, reason, flagged_at, resolved_at) "
+                "VALUES (?, ?, datetime('now'), NULL) "
+                "ON CONFLICT(event_id) DO UPDATE SET reason=excluded.reason, "
+                "flagged_at=CASE WHEN image_audit_flags.resolved_at IS NULL "
+                "THEN image_audit_flags.flagged_at ELSE datetime('now') END, "
+                "resolved_at=NULL",
+                (f["id"], f.get("raison") or ""))
+            flagged_ids.add(f["id"])
+        except Exception as exc:  # noqa: BLE001 — un flag qui échoue ne doit pas tout stopper
+            log.warning("Flag d'audit [%s] non persisté : %s", f.get("id"), exc)
+    for eid in audited_ids:
+        if eid in flagged_ids or eid in failed_ids:
+            continue
+        try:
+            conn.execute(
+                "UPDATE image_audit_flags SET resolved_at=datetime('now') "
+                "WHERE event_id=? AND resolved_at IS NULL", (eid,))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Résolution de flag [%s] échouée : %s", eid, exc)
+    conn.commit()
+
+
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Audit visuel en lot (planches contact + agent vision).")
@@ -251,10 +299,13 @@ def main(argv=None) -> int:
 
     flagged_all = []
     total_failed = 0
+    failed_ids: set[int] = set()
     for i, batch in enumerate(batches, 1):
         log.info("Planche %d/%d (%d événements)…", i, len(batches), len(batch))
         grid, failed = build_grid(batch)
         total_failed += len(failed)
+        for n in failed:  # n : numéro 1-based dans le lot → id événement
+            failed_ids.add(batch[n - 1]["id"])
         flagged = judge_grid(batch, grid, client, failed)
         flagged_all.extend(flagged)
         for f in flagged:
@@ -263,6 +314,14 @@ def main(argv=None) -> int:
     log.info("=== Audit visuel : %d suspect(s) sur %d audité(s) (%d planches, %d échec(s) "
              "de téléchargement — pas un signal, retente au prochain passage) ===",
              len(flagged_all), len(rows), len(batches), total_failed)
+
+    # Persiste les verdicts (le back-office /audit-visuel les affiche sans clic, avec badge).
+    # Best-effort : le cron ne doit JAMAIS tomber là-dessus. (--dry-run est déjà sorti plus haut,
+    # donc aucune écriture en dry-run.)
+    try:
+        _persist_flags(conn, [r["id"] for r in rows], flagged_all, failed_ids)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Persistance des flags d'audit échouée : %s", exc)
 
     if flagged_all and not args.no_slack:
         base = (os.getenv("BACKOFFICE_BASE_URL") or "").rstrip("/")

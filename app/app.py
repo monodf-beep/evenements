@@ -398,8 +398,18 @@ def inject_globals():
         conn.close()
     except Exception:
         pass
+    audit = 0
+    try:
+        conn = get_db()
+        _ensure_audit_flags_table(conn)
+        audit = conn.execute(
+            "SELECT COUNT(*) n FROM image_audit_flags WHERE resolved_at IS NULL").fetchone()["n"]
+        conn.close()
+    except Exception:
+        pass
     return {"nav": {"pending": pending, "validate": validate,
-                    "tocomplete": tocomplete, "regie": regie, "verifier": verifier},
+                    "tocomplete": tocomplete, "regie": regie, "verifier": verifier,
+                    "audit": audit},
             "nav_alert": friendly_alert(),
             # Bases WordPress (liens directs vers les brouillons créés) :
             #   wp_base    → culturasabauda.eu (article, wp_post_id_cs)
@@ -1089,6 +1099,44 @@ def _ensure_checks_table(conn):
     conn.commit()
 
 
+def _ensure_audit_flags_table(conn):
+    """Verdicts persistés de l'audit visuel (idempotent, même pattern que `checks`).
+    Même DDL que scripts/image_audit.py._ensure_audit_flags_table : le cron ÉCRIT, le
+    back-office LIT (et écrit aussi via « juger » / « relancer »)."""
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS image_audit_flags (
+        event_id INTEGER PRIMARY KEY,
+        reason TEXT,
+        flagged_at TEXT,
+        resolved_at TEXT
+    )""")
+    conn.commit()
+
+
+def _persist_audit_flags(conn, audited_ids, flagged_map):
+    """Aligne image_audit_flags sur un jugement à la demande : flag (UPSERT) les images
+    signalées, résout (resolved_at=now) les autres vignettes jugées OK. Cohérent avec le
+    cron scripts/image_audit._persist_flags."""
+    _ensure_audit_flags_table(conn)
+    flagged_ids = set(flagged_map or {})
+    for eid, reason in (flagged_map or {}).items():
+        conn.execute(
+            "INSERT INTO image_audit_flags (event_id, reason, flagged_at, resolved_at) "
+            "VALUES (?, ?, datetime('now'), NULL) "
+            "ON CONFLICT(event_id) DO UPDATE SET reason=excluded.reason, "
+            "flagged_at=CASE WHEN image_audit_flags.resolved_at IS NULL "
+            "THEN image_audit_flags.flagged_at ELSE datetime('now') END, "
+            "resolved_at=NULL",
+            (eid, reason or ""))
+    for eid in audited_ids:
+        if eid in flagged_ids:
+            continue
+        conn.execute(
+            "UPDATE image_audit_flags SET resolved_at=datetime('now') "
+            "WHERE event_id=? AND resolved_at IS NULL", (eid,))
+    conn.commit()
+
+
 @app.route("/verifier", methods=["GET", "POST"])
 @require_auth
 def verifier_view():
@@ -1178,28 +1226,46 @@ def _relancer_image(conn, event_id: int) -> None:
         "card_focal_x=?, card_focal_y=? WHERE id=?",
         (url, credit, source, fx, fy, event_id))
     conn.commit()
+    # La photo douteuse est remplacée : on solde le flag d'audit (la nouvelle image sera
+    # re-jugée au prochain passage du cron). Best-effort — ne bloque pas la relance.
+    try:
+        _ensure_audit_flags_table(conn)
+        conn.execute(
+            "UPDATE image_audit_flags SET resolved_at=datetime('now') "
+            "WHERE event_id=? AND resolved_at IS NULL", (event_id,))
+        conn.commit()
+    except Exception:  # noqa: BLE001
+        pass
     flash(f"Fiche {event_id} : nouvelle image posée (source : {source}).", "ok")
 
 
-def _audit_visuel_rows(conn, dfrom: str, dto: str, limit: int) -> list:
+def _audit_visuel_rows(conn, dfrom: str, dto: str, limit: int, flagged_only: bool = False) -> list:
     """Vignettes de la planche contact HTML pour la période/limite données. Mêmes
     critères que scripts.image_audit._select : retenus, non doublon, vraie photo
     (url_image non vide, image_source != 'banner'), + filtre de période optionnel.
     Chaque ligne reçoit `thumb`/`audit_image_url` (notre copie hébergée en priorité,
-    comme image_audit) — la seconde clé est celle qu'attend image_audit.build_grid."""
-    q = ("SELECT id, title, url_image, image_source, territoire, llm_categorie, "
-         "wp_raw_image_url_as, date_event_start "
-         "FROM events_raw WHERE duplicate_of IS NULL AND statut IN ({}) "
-         "AND COALESCE(url_image,'') <> '' AND COALESCE(image_source,'') <> 'banner' "
+    comme image_audit) — la seconde clé est celle qu'attend image_audit.build_grid.
+    LEFT JOIN image_audit_flags (non résolus) : chaque carte signalée par le cron reçoit
+    `flag_raison` et ressort surlignée AU CHARGEMENT. `flagged_only` ne garde que les
+    événements portant un flag actif (sur tout le catalogue, borné par `limit`)."""
+    _ensure_audit_flags_table(conn)
+    q = ("SELECT e.id, e.title, e.url_image, e.image_source, e.territoire, e.llm_categorie, "
+         "e.wp_raw_image_url_as, e.date_event_start, f.reason AS flag_raison "
+         "FROM events_raw e "
+         "LEFT JOIN image_audit_flags f ON f.event_id = e.id AND f.resolved_at IS NULL "
+         "WHERE e.duplicate_of IS NULL AND e.statut IN ({}) "
+         "AND COALESCE(e.url_image,'') <> '' AND COALESCE(e.image_source,'') <> 'banner' "
         ).format(",".join("?" * len(comp.RETAINED_STATUTS)))
     params = list(comp.RETAINED_STATUTS)
+    if flagged_only:
+        q += "AND f.event_id IS NOT NULL "
     if dfrom:
-        q += "AND COALESCE(date_event_start,'') >= ? "
+        q += "AND COALESCE(e.date_event_start,'') >= ? "
         params.append(dfrom)
     if dto:
-        q += "AND COALESCE(date_event_start,'') <= ? "
+        q += "AND COALESCE(e.date_event_start,'') <= ? "
         params.append(dto)
-    q += "ORDER BY id DESC LIMIT ?"
+    q += "ORDER BY e.id DESC LIMIT ?"
     params.append(limit)
     rows = [dict(r) for r in conn.execute(q, params).fetchall()]
     for r in rows:
@@ -1263,33 +1329,46 @@ def audit_visuel():
     except (TypeError, ValueError):
         limit = 120
     limit = max(1, min(limit, 600))  # garde-fou : borne le nombre de vignettes chargées
+    flagged_only = (request.args.get("flagged") or "").strip() in ("1", "true", "on")
 
     if request.method == "POST":
         action = request.form.get("action")
         if action == "juger":
-            # On RE-RENDER (pas de redirect) pour pouvoir surligner les cases signalées.
-            rows = _audit_visuel_rows(conn, dfrom, dto, limit)
+            # Le jugement vision (téléchargements + appels) est LENT : le faire dans la
+            # requête tuait le worker gunicorn (WORKER TIMEOUT → 500). On lance donc
+            # l'audit en ARRIÈRE-PLAN — c'est le MÊME script que le cron, qui PERSISTE
+            # ses verdicts dans image_audit_flags ; les cases signalées apparaîtront au
+            # rafraîchissement (le badge et le surlignage se mettent à jour tout seuls).
             conn.close()
-            flagged_map = _audit_visuel_juger(rows)
-            for r in rows:
-                r["flag_raison"] = (flagged_map or {}).get(r["id"])
-            return render_template("audit_visuel.html", active="audit_visuel",
-                                   events=rows, dfrom=dfrom, dto=dto, limit=limit,
-                                   judged=flagged_map is not None)
+            try:
+                subprocess.Popen(
+                    [sys.executable, "-m", "scripts.image_audit",
+                     "--limit", str(limit), "--no-slack"],
+                    cwd=str(ROOT), start_new_session=True,
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                flash("Audit vision lancé en arrière-plan — les images signalées "
+                      "apparaîtront au rafraîchissement (quelques minutes selon le "
+                      "nombre d'images).", "ok")
+            except Exception as exc:  # noqa: BLE001 — on montre l'échec à l'humain
+                flash(f"Impossible de lancer l'audit : {exc}", "err")
+            keep = {k: v for k, v in request.args.items()
+                    if k in ("from", "to", "limit", "flagged")}
+            return redirect(url_for("audit_visuel", **keep))
         if action == "relancer_image" and request.form.get("event_id"):
             try:
                 _relancer_image(conn, int(request.form["event_id"]))
             except (TypeError, ValueError):
                 flash("Identifiant d'événement invalide.", "err")
         conn.close()
-        # Conserve les filtres de période/limite dans la redirection.
-        keep = {k: v for k, v in request.args.items() if k in ("from", "to", "limit")}
+        # Conserve les filtres de période/limite/signalées dans la redirection.
+        keep = {k: v for k, v in request.args.items() if k in ("from", "to", "limit", "flagged")}
         return redirect(url_for("audit_visuel", **keep))
 
-    rows = _audit_visuel_rows(conn, dfrom, dto, limit)
+    rows = _audit_visuel_rows(conn, dfrom, dto, limit, flagged_only)
     conn.close()
     return render_template("audit_visuel.html", active="audit_visuel",
-                           events=rows, dfrom=dfrom, dto=dto, limit=limit)
+                           events=rows, dfrom=dfrom, dto=dto, limit=limit,
+                           flagged_only=flagged_only)
 
 
 # ---------- Couverture GÉO (catalogue → pages hub SEO hyperlocal) ----------
