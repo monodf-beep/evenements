@@ -26,7 +26,9 @@ _CREDIT_HINTS = ("credit", "billing", "balance", "insufficient", "quota",
 PRICES = {
     "claude-opus-4-8": (15.0, 75.0),
     "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-sonnet-5": (3.0, 15.0),  # tarif à confirmer (aligné sur claude-sonnet-4-6)
     "claude-haiku-4-5": (1.0, 5.0),
+    "claude-haiku-4-5-20251001": (1.0, 5.0),  # tarif à confirmer (aligné sur claude-haiku-4-5)
 }
 _DEFAULT_PRICE = (3.0, 15.0)
 _WEB_SEARCH_PER_1K = 10.0  # USD pour 1000 recherches web (outil serveur)

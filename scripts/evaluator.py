@@ -27,8 +27,13 @@ from scripts.scraper_events import init_db
 
 log = get_logger("evaluator")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-DEFAULT_MODEL = "claude-sonnet-5"
+# (Le modèle n'est PAS fixé ici : il vient de settings.model() / ANTHROPIC_MODEL
+#  dans main() ; l'ancien DEFAULT_MODEL était du code mort, retiré.)
 BATCH_SIZE = 100
+
+# Seuil de rétention « mise en avant » : score >= RETAIN_MIN_SCORE → à valider
+# (home) ; en dessous → catalogue. Source unique, défaut 7 (compat ENRICH_MIN_SCORE).
+RETAIN_MIN_SCORE = int(os.getenv("RETAIN_MIN_SCORE", os.getenv("ENRICH_MIN_SCORE", "7")))
 
 # Sentinel : échec d'APPEL API (réseau / statut). L'événement reste 'pending'
 # et sera réévalué au prochain run — jamais rejeté à tort pour une panne API.
@@ -254,11 +259,11 @@ def main(argv=None) -> int:
         # ÉTAPE 0 : hors des 4 territoires → rejet (2e garde après le filtre
         # déterministe du scraper : rattrape le lieu cité en passant que le
         # match de mots-clés laisse passer). Sinon, gate est_evenement + importance.
-        # Un vrai événement n'est JAMAIS rejeté d'office : score >= 7 → à valider
-        # (mise en avant home) ; sinon → catalogue (site dédié).
+        # Un vrai événement n'est JAMAIS rejeté d'office : score >= RETAIN_MIN_SCORE
+        # → à valider (mise en avant home) ; sinon → catalogue (site dédié).
         if hors or not est:
             new_statut, score = "rejected", 0
-        elif score >= 7:
+        elif score >= RETAIN_MIN_SCORE:
             new_statut = "evaluated"
         else:
             new_statut = "published_sub"
