@@ -22,6 +22,10 @@
   .av-actions a{font-size:.75rem;font-weight:600;text-decoration:none;}
   .av-actions form{margin:0;margin-left:auto;}
   .av-actions button{padding:.3rem .6rem;font-size:.75rem;font-weight:600;white-space:nowrap;cursor:pointer;}
+  .av-juger{margin:0;}
+  .av-juger button{padding:.45rem .75rem;font-size:.8rem;font-weight:700;cursor:pointer;border:1px solid #c9a94a;background:#f7edc9;border-radius:6px;}
+  .av-card.flagged{border-color:#d33;border-width:2px;box-shadow:0 0 0 2px rgba(221,51,51,.22);}
+  .av-flag{background:#fdecea;color:#a11122;font-size:.72rem;line-height:1.25;padding:.3rem .45rem;border-radius:5px;font-weight:600;}
 </style>
 {% endblock %}
 
@@ -40,17 +44,28 @@
   <span class="av-count">{{ events|length }} vignette(s)</span>
 </form>
 
+<div class="av-toolbar" style="margin-top:-.4rem;">
+  <form class="av-juger" method="post"
+        action="/audit-visuel?{% if dfrom %}from={{ dfrom }}&amp;{% endif %}{% if dto %}to={{ dto }}&amp;{% endif %}limit={{ limit }}"
+        onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='⚖️ jugement en cours…';">
+    <input type="hidden" name="action" value="juger">
+    <button type="submit" title="Fait juger l'agent vision (Claude) sur les vignettes affichées et surligne les cases hors-sujet">⚖️ Juger la sélection (vision)</button>
+  </form>
+  <span class="av-count" style="margin-left:0;">Compare la photo au titre en un seul appel — les cases hors-sujet ressortent en rouge.</span>
+</div>
+
 {% if not events %}
   <div class="card" style="padding:1.1rem 1.2rem;">Aucune photo à auditer sur ce périmètre 🎉</div>
 {% else %}
 <div class="av-grid">
   {% for e in events %}
-  <div class="av-card">
+  <div class="av-card{% if e.flag_raison %} flagged{% endif %}">
     <a href="/preview/{{ e.id }}" title="Ouvrir la fiche {{ e.id }}">
       <img class="av-thumb" src="{{ e.thumb }}" alt="Visuel de « {{ e.title }} »" loading="lazy">
     </a>
     <div class="av-body">
       <div class="av-title">{{ e.title or 'Sans titre' }}</div>
+      {% if e.flag_raison %}<div class="av-flag">⚠️ Signalée hors-sujet : {{ e.flag_raison }}</div>{% endif %}
       <div class="av-meta">
         {% if e.territoire %}<span class="av-tag">📍 {{ e.territoire }}</span>{% endif %}
         {% if e.llm_categorie %}<span class="av-tag">{{ e.llm_categorie }}</span>{% endif %}

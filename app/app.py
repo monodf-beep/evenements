@@ -1181,35 +1181,12 @@ def _relancer_image(conn, event_id: int) -> None:
     flash(f"Fiche {event_id} : nouvelle image posée (source : {source}).", "ok")
 
 
-@app.route("/audit-visuel", methods=["GET", "POST"])
-@require_auth
-def audit_visuel():
-    """Planche contact HTML : grille de vignettes (photo + titre + territoire + catégorie
-    + lien fiche) des événements retenus portant une VRAIE image (pas la bannière
-    générique), pour un contrôle visuel humain d'un coup d'œil. Pendant interactif du
-    cron scripts/image_audit.py (qui, lui, fait juger un agent vision + digest Slack).
-    Action POST « relancer_image » : re-pose une image via resolve_image."""
-    conn = get_db()
-    if request.method == "POST":
-        if request.form.get("action") == "relancer_image" and request.form.get("event_id"):
-            try:
-                _relancer_image(conn, int(request.form["event_id"]))
-            except (TypeError, ValueError):
-                flash("Identifiant d'événement invalide.", "err")
-        conn.close()
-        # Conserve les filtres de période/limite dans la redirection.
-        keep = {k: v for k, v in request.args.items() if k in ("from", "to", "limit")}
-        return redirect(url_for("audit_visuel", **keep))
-
-    dfrom = (request.args.get("from") or "").strip()
-    dto = (request.args.get("to") or "").strip()
-    try:
-        limit = int(request.args.get("limit") or 120)
-    except (TypeError, ValueError):
-        limit = 120
-    limit = max(1, min(limit, 600))  # garde-fou : borne le nombre de vignettes chargées
-    # Mêmes critères que scripts.image_audit._select : retenus, non doublon, vraie photo
-    # (url_image non vide, image_source != 'banner'), + filtre de période optionnel.
+def _audit_visuel_rows(conn, dfrom: str, dto: str, limit: int) -> list:
+    """Vignettes de la planche contact HTML pour la période/limite données. Mêmes
+    critères que scripts.image_audit._select : retenus, non doublon, vraie photo
+    (url_image non vide, image_source != 'banner'), + filtre de période optionnel.
+    Chaque ligne reçoit `thumb`/`audit_image_url` (notre copie hébergée en priorité,
+    comme image_audit) — la seconde clé est celle qu'attend image_audit.build_grid."""
     q = ("SELECT id, title, url_image, image_source, territoire, llm_categorie, "
          "wp_raw_image_url_as, date_event_start "
          "FROM events_raw WHERE duplicate_of IS NULL AND statut IN ({}) "
@@ -1225,11 +1202,92 @@ def audit_visuel():
     q += "ORDER BY id DESC LIMIT ?"
     params.append(limit)
     rows = [dict(r) for r in conn.execute(q, params).fetchall()]
-    conn.close()
     for r in rows:
-        # Priorité à notre copie hébergée (posée au publish AS) — comme image_audit :
-        # évite de retélécharger depuis un site source parfois lent/bloqué.
-        r["thumb"] = (r.get("wp_raw_image_url_as") or "").strip() or r["url_image"]
+        thumb = (r.get("wp_raw_image_url_as") or "").strip() or r["url_image"]
+        r["thumb"] = thumb
+        r["audit_image_url"] = thumb
+    return rows
+
+
+def _audit_visuel_juger(rows: list) -> "dict | None":
+    """Fait juger l'agent vision de scripts.image_audit sur les vignettes AFFICHÉES
+    (mêmes filtres) : compose les planches contact (lots de 20), les envoie une par une
+    au juge et agrège les cases signalées hors-sujet. Renvoie {event_id: raison} (peut
+    être vide) ou None si l'audit n'a pas pu tourner. Flashe un message dans tous les
+    cas. Réutilise image_audit.build_grid / judge_grid — aucune logique réimplémentée."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        flash("Audit vision impossible : ANTHROPIC_API_KEY absente de l'environnement.", "err")
+        return None
+    if not rows:
+        flash("Aucune vignette à juger sur ce périmètre.", "err")
+        return None
+    try:
+        import anthropic
+        from scripts import image_audit as ia
+        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
+        flagged_all = []
+        for i in range(0, len(rows), 20):  # mêmes lots de 20 que image_audit.main
+            batch = rows[i:i + 20]
+            grid, failed = ia.build_grid(batch)
+            flagged_all.extend(ia.judge_grid(batch, grid, client, failed))
+    except Exception as exc:  # noqa: BLE001 — on veut afficher toute erreur à l'humain
+        log.warning("Audit vision (à la demande) échoué : %s", exc)
+        flash(f"Audit vision échoué ({exc}).", "err")
+        return None
+    flagged_map = {f["id"]: (f.get("raison") or "photo hors-sujet") for f in flagged_all}
+    if flagged_map:
+        resume = ", ".join(f"#{fid}" for fid in flagged_map)
+        flash(f"Audit vision : {len(flagged_map)} image(s) signalée(s) hors-sujet sur "
+              f"{len(rows)} vignette(s) — {resume}.", "err")
+    else:
+        flash(f"Audit vision : aucune image suspecte sur {len(rows)} vignette(s). 🎉", "ok")
+    return flagged_map
+
+
+@app.route("/audit-visuel", methods=["GET", "POST"])
+@require_auth
+def audit_visuel():
+    """Planche contact HTML : grille de vignettes (photo + titre + territoire + catégorie
+    + lien fiche) des événements retenus portant une VRAIE image (pas la bannière
+    générique), pour un contrôle visuel humain d'un coup d'œil. Pendant interactif du
+    cron scripts/image_audit.py (qui, lui, fait juger un agent vision + digest Slack).
+    Actions POST : « relancer_image » (re-pose une image via resolve_image) et
+    « juger » (fait juger l'agent vision de image_audit sur les vignettes affichées et
+    surligne les cases signalées)."""
+    conn = get_db()
+    dfrom = (request.args.get("from") or "").strip()
+    dto = (request.args.get("to") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 120)
+    except (TypeError, ValueError):
+        limit = 120
+    limit = max(1, min(limit, 600))  # garde-fou : borne le nombre de vignettes chargées
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "juger":
+            # On RE-RENDER (pas de redirect) pour pouvoir surligner les cases signalées.
+            rows = _audit_visuel_rows(conn, dfrom, dto, limit)
+            conn.close()
+            flagged_map = _audit_visuel_juger(rows)
+            for r in rows:
+                r["flag_raison"] = (flagged_map or {}).get(r["id"])
+            return render_template("audit_visuel.html", active="audit_visuel",
+                                   events=rows, dfrom=dfrom, dto=dto, limit=limit,
+                                   judged=flagged_map is not None)
+        if action == "relancer_image" and request.form.get("event_id"):
+            try:
+                _relancer_image(conn, int(request.form["event_id"]))
+            except (TypeError, ValueError):
+                flash("Identifiant d'événement invalide.", "err")
+        conn.close()
+        # Conserve les filtres de période/limite dans la redirection.
+        keep = {k: v for k, v in request.args.items() if k in ("from", "to", "limit")}
+        return redirect(url_for("audit_visuel", **keep))
+
+    rows = _audit_visuel_rows(conn, dfrom, dto, limit)
+    conn.close()
     return render_template("audit_visuel.html", active="audit_visuel",
                            events=rows, dfrom=dfrom, dto=dto, limit=limit)
 
@@ -2983,6 +3041,13 @@ def _do_publish_instagram(ev: dict, terr_label: str, lang: str, kind: str, conn,
     # Légende / texte alternatif : ceux édités à la main dans /reseaux si fournis,
     # sinon l'auto-généré.
     caption = caption_override or social_mod.caption(ev, lang)
+    # Crédit image (attribution licence Commons/Europeana/… — jamais pour une
+    # bannière). social_mod.caption() l'ajoute déjà ; une légende éditée/réécrite à la
+    # main (caption_override) ne le contient pas : on l'ajoute ici, en fin de légende,
+    # sans doublonner si déjà présent — même logique que scripts/ig_scheduler.py.
+    credit_line = social_mod.image_credit_line(ev)
+    if credit_line and credit_line not in caption:
+        caption = f"{caption}\n\n{credit_line}".strip()
     date_str = social_mod.format_date(ev.get("date_event_start", ""),
                                       ev.get("date_event_end", ""), lang)
     where = ", ".join(p for p in (ev.get("lieu"), ev.get("ville")) if p)
