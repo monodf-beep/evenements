@@ -173,6 +173,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "infos_pratiques": "<dates, lieu, accès, tarif/gratuité, lien officiel — factuel>",
   "sources": ["<url officielle/libre consultée>", "..."],
   "confiance": "<haute|moyenne|faible>",
+  "a_verifier": ["<fait factuel PRÉCIS à contrôler humainement : nom peut-être mal orthographié, line-up ambigu (1 ou 2 artistes ?), date/horaire incertain, prix/gratuité non confirmé, affirmation absente de la matière. Court (max ~12 mots). Liste vide [] si tu es SÛR. Ne signale QUE de vrais doutes, jamais de remplissage : c'est un garde-fou HUMAIN, pas une formalité>"],
   "article": {{
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel + l'angle>",
@@ -379,6 +380,37 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         return None
 
 
+_CHECKS_DDL = """
+CREATE TABLE IF NOT EXISTS checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now')),
+    resolved_at TEXT
+)"""
+
+
+def _ensure_checks_table(conn: sqlite3.Connection) -> None:
+    """Table des points « à vérifier » (garde-fou humain sur les faits). Idempotent."""
+    conn.execute(_CHECKS_DDL)
+    conn.commit()
+
+
+def sync_checks(conn: sqlite3.Connection, event_id: int, labels) -> None:
+    """Resynchronise les points EN ATTENTE d'un événement avec les doutes de l'agent.
+    On retire les 'pending' existants (l'enrichissement fait foi) et on réinsère la
+    nouvelle liste ; les points déjà 'done' (vérifiés par l'humain) sont conservés.
+    Défensif : labels peut être None, une chaîne, ou une liste."""
+    _ensure_checks_table(conn)
+    if isinstance(labels, str):
+        labels = [labels]
+    clean = [str(x).strip() for x in labels if str(x).strip()] if isinstance(labels, list) else []
+    conn.execute("DELETE FROM checks WHERE event_id=? AND status='pending'", (event_id,))
+    for label in clean:
+        conn.execute("INSERT INTO checks (event_id, label) VALUES (?, ?)", (event_id, label))
+
+
 def build_article_md(data: dict) -> tuple[str, str]:
     """Assemble (titre, markdown) depuis le JSON de l'agent (déterministe)."""
     from utils.clean_text import polish_prose
@@ -458,6 +490,7 @@ def main(argv: list[str]) -> int:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
+    _ensure_checks_table(conn)
 
     events = select_events(conn, ids, dfrom, dto)
     log.info("ids à traiter : %s", [e["id"] for e in events])
@@ -505,9 +538,15 @@ def main(argv: list[str]) -> int:
         WHERE id=?
         """, (model, json.dumps(result, ensure_ascii=False), title, md, ev["id"]))
         conn.commit()
+        # File « À vérifier » : les doutes factuels signalés par l'agent sont poussés au
+        # back-office (garde-fou humain). On resynchronise les points EN ATTENTE (les
+        # points déjà « vérifiés » sont conservés).
+        labels = result.get("a_verifier")
+        sync_checks(conn, ev["id"], labels)
+        conn.commit()
         done += 1
-        log.info("[%d] enrichi (confiance=%s) | %s", ev["id"],
-                 result.get("confiance", "?"), ev.get("title", "")[:60])
+        log.info("[%d] enrichi (confiance=%s) | %d à vérifier | %s", ev["id"],
+                 result.get("confiance", "?"), len(labels or []), ev.get("title", "")[:60])
 
     conn.close()
     log.info("=== Enrichissement terminé : %d/%d ===", done, len(events))

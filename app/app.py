@@ -389,8 +389,17 @@ def inject_globals():
         conn.close()
     except Exception:
         pass
+    verifier = 0
+    try:
+        conn = get_db()
+        _ensure_checks_table(conn)
+        verifier = conn.execute(
+            "SELECT COUNT(*) n FROM checks WHERE status='pending'").fetchone()["n"]
+        conn.close()
+    except Exception:
+        pass
     return {"nav": {"pending": pending, "validate": validate,
-                    "tocomplete": tocomplete, "regie": regie},
+                    "tocomplete": tocomplete, "regie": regie, "verifier": verifier},
             "nav_alert": friendly_alert(),
             # Bases WordPress (liens directs vers les brouillons créés) :
             #   wp_base    → culturasabauda.eu (article, wp_post_id_cs)
@@ -1063,6 +1072,55 @@ def voix_view():
             flash("Couches de voix enregistrées — appliquées au prochain run.", "ok")
         return redirect(url_for("voix_view"))
     return render_template("voix.html", active="voix", st=voixmod.voix_status())
+
+
+def _ensure_checks_table(conn):
+    """Table des points « à vérifier » (garde-fou humain sur les faits). Idempotent.
+    Même DDL que scripts/enrich.py._ensure_checks_table."""
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS checks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        label TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT DEFAULT (datetime('now')),
+        resolved_at TEXT
+    )""")
+    conn.commit()
+
+
+@app.route("/verifier", methods=["GET", "POST"])
+@require_auth
+def verifier_view():
+    """File « À vérifier » : les faits que le pipeline signale comme incertains, poussés à
+    l'humain. On solde un point d'un clic (bouton « vérifié »)."""
+    conn = get_db()
+    _ensure_checks_table(conn)
+    if request.method == "POST":
+        done_id = request.form.get("done_check_id")
+        if done_id:
+            conn.execute(
+                "UPDATE checks SET status='done', resolved_at=datetime('now') WHERE id=?",
+                (done_id,))
+            conn.commit()
+            flash("Point vérifié.", "ok")
+        conn.close()
+        return redirect(url_for("verifier_view"))
+    rows = conn.execute(
+        "SELECT c.id, c.event_id, c.label, e.article_title, e.title "
+        "FROM checks c LEFT JOIN events_raw e ON e.id=c.event_id "
+        "WHERE c.status='pending' ORDER BY c.event_id, c.id").fetchall()
+    conn.close()
+    groups, index = [], {}
+    for r in rows:
+        eid = r["event_id"]
+        if eid not in index:
+            index[eid] = len(groups)
+            groups.append({"event_id": eid,
+                           "titre": (r["article_title"] or r["title"] or f"Fiche {eid}"),
+                           "checks": []})
+        groups[index[eid]]["checks"].append({"id": r["id"], "label": r["label"]})
+    return render_template("verifier.html", active="verifier", groups=groups)
 
 
 @app.route("/couverture")

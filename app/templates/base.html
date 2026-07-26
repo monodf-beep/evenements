@@ -31,6 +31,8 @@
         {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
       <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer
         <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span></a>
+      <a href="/verifier" class="{{ 'on' if active=='verifier' }}" {% if active=='verifier' %}aria-current="page"{% endif %}><span aria-hidden="true">⚠️</span> À vérifier
+        {% if nav.verifier %}<span class="nav-badge">{{ nav.verifier }}</span>{% endif %}</a>
 
       <div class="nav-section">Publier & grandir</div>
       <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>

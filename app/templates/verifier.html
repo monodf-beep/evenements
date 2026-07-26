@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% set active = 'verifier' %}
+{% block title %}À vérifier{% endblock %}
+{% block h1 %}À vérifier{% endblock %}
+{% block subtitle %}<div class="sub">Les faits que le pipeline signale comme <b>incertains</b> : un humain confirme, puis solde le point. Garde-fou éditorial (« fact-checking humain indispensable »).</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+  {% if not groups %}
+    <div class="card" style="padding:1.1rem 1.2rem;">Rien à vérifier 🎉</div>
+  {% else %}
+    <div class="muted text-sm" style="margin-bottom:.9rem;">
+      {{ groups|length }} événement(s) avec des points à contrôler.
+    </div>
+    {% for g in groups %}
+    <div class="card" style="padding:.7rem 1rem;margin-bottom:.8rem;">
+      <div style="font-weight:600;margin-bottom:.5rem;">
+        {{ g.titre }} <span class="muted text-sm">· fiche {{ g.event_id }}</span>
+      </div>
+      {% for c in g.checks %}
+      <div style="display:flex;gap:.7rem;align-items:center;justify-content:space-between;padding:.35rem 0;border-top:1px solid #ece5d8;">
+        <div style="flex:1;">⚠️ {{ c.label }}</div>
+        <form method="post" action="/verifier" style="margin:0;">
+          <input type="hidden" name="done_check_id" value="{{ c.id }}">
+          <button type="submit" style="padding:.3rem .7rem;font-weight:600;white-space:nowrap;">✓ vérifié</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+</div>
+{% endblock %}
