@@ -1,6 +1,9 @@
 # Lexique éditorial — l'espace alpin occidental
 
-*Synthèse documentaire (26 juillet 2026). Territoires : **Savoie · Piémont · Vallée d'Aoste · Nice**. Issue de 5 recherches ciblées (~90 sources FR et IT) : Piémont/Turin vu de France, Vallée d'Aoste vue de France, Savoie vue d'Italie, Nice vue d'Italie, vocabulaire positif à bâtir. **À réconcilier avec le lexique Obsidian existant** — ce fichier est la matière brute de la recherche, pas encore la couche injectée dans le pipeline.*
+> ⚠️ **NON-CANONIQUE — archive de recherche (26/07/2026).**
+> Le lexique **canonique** vit désormais dans **`obsidian-vault : 01-Commun/Lexique sabaud.md`** (unifié par la conversation dédiée). **Ne pas éditer ici** ni le prendre pour référence : toute évolution passe par Obsidian. Ce fichier est conservé pour la **trace de la recherche** (sources) et le **journal des décisions** (§8) qui ont nourri le lexique canonique.
+
+*Synthèse documentaire (26 juillet 2026). Territoires : **Savoie · Piémont · Vallée d'Aoste · Nice**. Issue de 5 recherches ciblées (~90 sources FR et IT) : Piémont/Turin vu de France, Vallée d'Aoste vue de France, Savoie vue d'Italie, Nice vue d'Italie, vocabulaire positif à bâtir.*
 
 ---
 
