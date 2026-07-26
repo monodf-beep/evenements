@@ -85,6 +85,16 @@ def build_post(event: dict) -> tuple[str, str]:
             parts.append(f"<p><strong>{_md_inline(art['chapo'].strip())}</strong></p>")
         if art.get("corps"):
             parts.append(_md_to_html(art["corps"]))
+        # Programme (CHARTE §5 bis) : faits structurés en LISTE — horaires, séances,
+        # line-up. Rendu en <ul> (défensif : absent/None/chaîne/liste).
+        prog = art.get("programme")
+        if isinstance(prog, str):
+            prog = [prog]
+        prog = [str(p).strip() for p in prog if str(p).strip()] if isinstance(prog, list) else []
+        if prog:
+            parts.append("<h3>Programme</h3>\n<ul>")
+            parts += [f"<li>{_md_inline(p)}</li>" for p in prog]
+            parts.append("</ul>")
         if art.get("encadre"):
             parts.append("<h3>En pratique</h3>")
             parts.append(_md_to_html(art["encadre"]))
