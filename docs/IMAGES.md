@@ -34,6 +34,27 @@ Le cœur est `scripts/visuals.py → resolve_image()`. Chaque événement sans i
 
 Ordre réel dans le pipeline automatique (`autocomplete._fill_image`), **depuis 2026-07-26** : on lance d'abord la **chaîne déterministe** (og → contenu → Commons → Europeana) — gratuite/économique ; l'**agent web payant n'intervient qu'en dernier recours**, si le déterministe n'a rien donné de mieux qu'une bannière. *(Avant, l'agent web passait en premier — coûteux et souvent inutile puisque l'og:image officielle suffit.)*
 
+### Schéma — la cascade d'illustration
+
+```mermaid
+flowchart TD
+  start([Événement à illustrer]) --> has{Vraie photo<br/>déjà en base ?}
+  has -->|oui| keep[On la garde<br/>jamais dégradée]
+  has -->|non| det[/CHAÎNE DÉTERMINISTE — gratuite, tentée d'abord/]
+  det --> og[Étage 2 · og:image de la page officielle]
+  og --> content[Étage 2b · 1re vraie photo de contenu]
+  content --> commons[Étage 3 · Wikimedia Commons]
+  commons --> euro[Étage 3b · Europeana · si clé]
+  euro --> vision{{Agent vision :<br/>l'image colle au sujet ?}}
+  vision -->|oui| ok([✅ Photo retenue + point focal])
+  vision -->|non — à chaque étage on descend| web[Étage 3-bis · AGENT WEB<br/>payant · DERNIER recours]
+  web --> vision
+  web -->|rien| fb[Étage 4 · PAS de bake<br/>thumbnail laissé VIDE]
+  fb --> rt[[Repli runtime WordPress<br/>bannière fallback-territoire-catégorie<br/>+ og:image via Yoast]]
+```
+
+**Deux défenses filtrent chaque candidat** avant de le retenir (détail §3) : des **règles déterministes** (domaine/logo/forme, gratuites) puis l'**agent vision** (payant, « ça correspond vraiment ? »).
+
 ---
 
 ## 3. Les deux défenses (anti-hors-sujet)
@@ -86,11 +107,24 @@ En cas de panne technique (image injoignable), on **ne bloque pas** — les règ
 - `MIN_ASPECT = 1.15` : en dessous (trop carré), c'est une **vignette CMS générique** (miniature de partage 1:1, avatar) qui a perdu l'info réelle. *(Repère de Franck.)*
 - `commons_search(thumb_width=2400)` : nos formats sociaux sont **portrait** (jusqu'à 1080×1920) et beaucoup de photos Commons sont paysage — une miniature 1200px de large ne fait que ~700px de haut. 2400px couvre la hauteur *(cas château de Montrottier : original 5337×3138, miniature 1280 refusée à tort).*
 
-**Rendu** (`card_image.py`, `social_image.py`) :
-- **Affiche portrait** → **letterbox** (jamais recadrée, on garde tout le visuel).
-- **Photo paysage** → **cover 4:3** recadré autour du **point focal** (x,y ∈ [0,1]) fourni par l'agent vision, pour ne couper ni visage, ni titre incrusté, ni zone de texte.
-- Agrandissement **plafonné** (`MAX_UPSCALE`) : au-delà, on bascule sur un **fond abstrait** dérivé de l'image plutôt qu'une bouillie de pixels.
-- Le **point focal réglé à la main** au back-office n'est **jamais** écrasé par le pipeline (`COALESCE`).
+**Rendu** (`card_image.py`, `social_image.py`) — trois cas à ne pas confondre :
+1. **Affiche portrait / photo au mauvais ratio, mais assez grande** → **letterbox** : l'image est montrée **entière** (jamais recadrée), et les bandes autour sont remplies par une **version floutée et agrandie de l'image elle-même**. *(C'est le « fond flouté » dont tu parlais.)*
+2. **Photo paysage assez grande** → **cover 4:3/16:9** recadré autour du **point focal** (x,y ∈ [0,1]) fourni par l'agent vision, pour ne couper ni visage, ni titre incrusté, ni texte.
+3. **Photo trop petite** (agrandissement > `MAX_UPSCALE = 1.5`) → on **ne l'étire PAS** (ça ferait de la bouillie) : **fond abstrait couleur de marque** du territoire (`_abstract_bg`), pas un flou de l'image.
+
+Le **point focal réglé à la main** au back-office n'est **jamais** écrasé par le pipeline (`COALESCE`).
+
+### Schéma — quel rendu selon l'image
+
+```mermaid
+flowchart TD
+  img([Image retenue]) --> big{Assez grande ?<br/>agrandissement ≤ 1.5×}
+  big -->|non trop petite| abs[[Fond abstrait<br/>couleur de marque du territoire]]
+  big -->|oui| ratio{Format de l'image}
+  ratio -->|portrait / mauvais ratio| lb[[Letterbox :<br/>image entière + bandes = son propre flou agrandi]]
+  ratio -->|paysage| cov[[Cover recadré<br/>au point focal — protège visage/texte]]
+  none([Aucune photo]) --> rt[[Repli runtime WordPress<br/>bannière de catégorie]]
+```
 
 ---
 
@@ -98,7 +132,8 @@ En cas de panne technique (image injoignable), on **ne bloque pas** — les règ
 
 - **Pipeline quotidien** — `autocomplete.py` complète les fiches retenues incomplètes (dont l'image : agent web puis chaîne déterministe). `gmail_collect.py` appelle aussi `visuals`.
 - **Back-office** — bouton **« Compléter les visuels »** (lance `visuals` sur une période) et **éditeur de point focal** (route `/…focal…` dans `app.py`).
-- **Publication** — `publisher_as` téléverse l'image en featured media WordPress au push (sauf `skip_media=True` = mise à jour texte seul), avec récupération og et repli bannière.
+- **Publication** — `publisher_as` téléverse **la vraie photo** en featured media WordPress au push (sauf `skip_media=True` = mise à jour texte seul), avec récupération depuis la page source si besoin. **Une bannière de repli n'est plus bakée** (anti-bake, §10) : sans vraie photo, le `_thumbnail_id` reste vide et le runtime WordPress s'en charge.
+- **Audit visuel a posteriori** — cron dominical `image_audit.py` : compose des **planches contact** (~20 vignettes + titres) et demande à l'agent vision de repérer, en **un seul appel**, les images qui ne collent pas à leur événement. Filet de sécurité sur **tout le catalogue** (y compris les images du flux RSS, jamais vérifiées à la pose). Digest Slack. **⚠️ Pas encore d'écran back-office** — voir §11.
 
 ---
 
@@ -128,10 +163,10 @@ En cas de panne technique (image injoignable), on **ne bloque pas** — les règ
 - **Vérif vision plus tôt (B) — FAIT** : agent vision actif **dès la pose** dans le pipeline auto (`AUTOCOMPLETE_VERIFY_IMAGES`, défaut on). Écarte les hors-sujet en amont.
 - **Nouvelle source licenciable (C) — FAIT (à activer)** : étage 3b **Europeana** (musées/bibliothèques du territoire), inactif sans `EUROPEANA_API_KEY`. **Expérimental** : à valider en conditions réelles (pertinence/qualité des fonds variable) avant de s'y fier.
 
-### Encore ouvert
-- **Seuils** : `MIN_DIM=700`, `MAX_ASPECT=2.5`, `MIN_ASPECT=1.15`, `thumb_width=2400` — te conviennent, ou on ajuste ?
-- **Crédit** : bien affiché partout (carte, réseaux, WordPress) ? (`as_image_credit` écrit au push, ligne 202 de `publisher_as`.)
-- **Vocabulaire des requêtes** : `visual_query` pourrait intégrer le lexique sabaud (« marché de la Saint-Ours Aoste » plutôt qu'un générique) — jonction chantier rédaction.
+### Tranché par moi (Franck m'a laissé décider)
+- **Seuils — on GARDE tels quels** : `MIN_DIM=700`, `MAX_ASPECT=2.5`, `MIN_ASPECT=1.15`, `thumb_width=2400`, `MAX_UPSCALE=1.5`. Chacun est né d'un incident réel (Montrottier, vignettes carrées, don d'organes) ; les toucher sans motif rouvrirait ces bugs. On n'ajuste que si un cas concret le réclame.
+- **Crédit — suffisant côté WordPress + back-office, à compléter côté réseaux** : le crédit vit dans `as_image_credit` (fiche WP) et l'aperçu back-office. Il n'est **pas incrusté** sur les visuels réseaux (`social_image` ne l'écrit pas). Décision : pour les images sous licence (Commons/Europeana), **ajouter le crédit au TEXTE de la légende** du post social (pas sur l'image) — petit correctif à venir, faible priorité.
+- **Vocabulaire des requêtes — on garde `visual_query` tel quel pour l'instant** : il cible déjà le terme local précis (« Sant'Orso Aoste marché » plutôt qu'un générique). L'intégration du lexique sabaud complet attendra qu'il soit figé (chantier rédaction / autre conversation) — sinon on duplique une source de vérité mouvante.
 
 ---
 
@@ -150,3 +185,16 @@ En cas de panne technique (image injoignable), on **ne bloque pas** — les règ
 Résultat : événement sans vraie photo → `_thumbnail_id` vide → repli runtime WordPress. La bannière **reste dans `url_image`** (carte back-office + compositeur réseaux couverts ; pas de trou social à combler — le point #3 initial devient sans objet).
 
 *Reste à faire, côté SITE (conversation dédiée) : nettoyer les ~42 vignettes déjà bakées dans la média-thèque WordPress pour qu'elles repassent au repli runtime. Rien de bloquant : les nouveaux push sont déjà propres.*
+
+---
+
+## 11. Chantier : l'audit visuel dans le back-office (à développer)
+
+**Ce qui existe** : `scripts/image_audit.py` compose des **planches contact** (~20 vignettes + titres) et l'agent vision repère en un seul appel les images qui ne collent pas. Aujourd'hui : **cron dominical + digest Slack**, rien à l'écran.
+
+**Ce qui manque (identifié par Franck)** : un **écran back-office** pour
+- **parcourir les planches** (voir la grille, pas juste lire un digest Slack) ;
+- **agir en un clic** sur une case signalée : relancer la recherche d'image, forcer la bannière runtime, ou ouvrir l'éditeur de point focal ;
+- déclencher un audit **à la demande** sur une période / un territoire, sans attendre le cron.
+
+Esquisse : une route `/audit-visuel` réutilisant la logique de `image_audit.py` (déjà écrite), rendant la planche en HTML, avec les actions ci-dessus branchées sur les fonctions image existantes (`resolve_image`, éditeur de cadrage). **Non commencé** — à prioriser avec toi.
