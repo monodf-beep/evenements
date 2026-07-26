@@ -119,6 +119,8 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 - **Aire sabaude / sabaudienne** — l'adjectif savant (*sabaud*) qui nomme l'espace sans nationalité. C'est le nom même du média (*Cultura Sabauda*). **Les formes italiennes *sabaudo / sabauda / sabaude / sabaudi* s'emploient aussi telles quelles en français** (ex. « atmosfera sabauda », « patrimonio sabaudo »).
 - **Arc alpin occidental / Alpes latines** — cadre géoculturel réunissant Savoie, Piémont, Vallée d'Aoste, Ligurie, Nice, Romandie. Un espace, pas une ligne.
 - **Cols-passages** — Mont-Cenis, Petit- et Grand-Saint-Bernard, Montgenèvre : à nommer comme **liens et lieux de rencontre**, jamais comme séparations.
+- **« Deçà / delà les monts » (*cismontano / oltremontano*)** — désignation officielle des États de Savoie : Savoie « en deçà », Piémont « au-delà », le duc gouvernant « à cheval deçà et delà les monts ». Devise attestée : ***« non citra nec ultra sed intra montes »*** (« ni en deçà, ni au-delà des monts, mais **entre** eux »). **La formule sabaude authentique de la relativité géographique** — l'espace comme entre-deux, pas comme frontière.
+- **Désigner la France depuis chez nous** — le Var (limite du comté de Nice, 1388→1860) et le Rhône (limite France/Savoie, traité de Lyon 1601→1860) sont des frontières historiques réelles. « **Au-delà du Var / du Rhône** » est donc géographiquement fondé, mais **non attesté comme nom figé de la France** : c'est un marqueur-maison à assumer (glosé la 1ʳᵉ fois). Proscrire *oltralpe* (mot-frontière). Alternative attestée : « deçà/delà les monts » ci-dessus.
 - **Autonomie valdôtaine** (statut spécial 1945–48) et **Émile Chanoux** (1906–1944) — le fait politique structurant de la VdA et sa figure de résistance.
 - **Dedizione di Nizza alla Savoia (1388)** — rattachement volontaire ; fonde cinq siècles d'autonomie niçoise. **Nizza sabauda** jusqu'en 1860.
 - **1860 (Traité de Turin, 24 mars) + plébiscite** — cadre **factuel** de l'annexion de la Savoie et de Nice à la France (à préférer aux récits « cédée/trahie » comme « restituée à l'Italie »).
@@ -139,7 +141,7 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 | côté français / côté italien | en Savoie / en Piémont · nommer la province |
 | relations franco-italiennes (entre **nos** territoires) | liens sabauds · entre Savoie et Piémont — **jamais « franco-italien »** |
 | relations franco-italiennes (Lyon–Milan, Paris–Rome) | **« franco-italien » reste OK** : ce ne sont pas nos territoires |
-| la France / les Français (vus d'ici) | **outre-Rhône, outre-Var** (*altro Rodano, altro Var*) — *sous réserve de la recherche en cours* |
+| la France / les Français (vus d'ici) | **au-delà du Var** (de Nice) · **au-delà du Rhône** (de Savoie) — marqueur-maison à **gloser la 1ʳᵉ fois** ; ou la forme attestée **« deçà / delà les monts »** (voir §6). Éviter *oltralpe* (= mot-frontière) |
 | immigré / étranger installé | habitant venu de… · installé·e à… · [gentilé] d'adoption |
 | enclave / région isolée | haute vallée · pays de cols |
 
@@ -157,6 +159,7 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 - **Désigner la France depuis chez nous : « outre-Rhône / outre-Var »** (*altro Rodano / altro Var*) — **en attente du verdict de la recherche** sur l'attestation historique.
 
 ### Encore à confirmer
+- **Désigner la France** — recherche faite : « au-delà du Var / du Rhône » est fondé géographiquement mais **n'est pas un nom historique figé** de la France (néologisme-maison à assumer, glosé). La forme **attestée** et fidèle à la doctrine est **« deçà / delà les monts »** (§6). **À trancher : (a) marqueur-maison « au-delà du Var/Rhône », (b) « deçà/delà les monts » attesté, (c) les deux selon le contexte.** *Oltralpe* écarté (mot-frontière).
 - **« Transfrontalier »** — nomme un vrai programme (ALCOTRA, Interreg) mais contient « frontière ». Reco : toléré en contexte institutionnel/factuel, proscrit en prose (préférer « sabaud », « entre Savoie et Piémont »). **À valider.**
 - **1860** — « annexion à la France » (factuel), sans « cession/rapt » ni « restitution à l'Italie ». **Neutralité assumée.**
 - **Citations irrédentistes** (« italianità di Nizza » — Garibaldi) — utilisables comme objet historique entre guillemets et contextualisées, jamais comme thèse.
