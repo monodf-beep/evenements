@@ -99,19 +99,40 @@ def load_voix() -> str:
     return "\n\n".join(layers)[:_max_chars()].strip()
 
 
+def _title_of(text: str) -> str:
+    """Titre lisible d'une note : 1er titre markdown, sinon 1re ligne non vide."""
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if line.startswith("#"):
+            return line.lstrip("# ").strip()[:90]
+        if line:
+            return line[:90]
+    return ""
+
+
+def _voix_files(p: Path) -> list:
+    """Fichiers .md effectivement chargés pour un chemin (un dossier = ses .md triés)."""
+    if p.is_dir():
+        return sorted(p.glob("*.md"))
+    return [p] if p.exists() else []
+
+
 def voix_status() -> dict:
-    """État de la voix pour le back-office : sources (existe/taille), actif, total.
-    Permet de VOIR que la voix est vivante et pas cassée."""
+    """État de la voix pour le back-office : QUELLES voix sont chargées (nom + titre +
+    taille), depuis quelle source, actif/absent. Permet de VOIR que c'est vivant et pas
+    cassé, et EXACTEMENT quelle(s) voix est appliquée (plusieurs notes possibles)."""
     sources = []
     for s in _sources():
         p = Path(s)
-        info = {"path": s, "exists": p.exists(), "is_dir": p.is_dir(), "chars": 0}
-        if info["exists"]:
+        files = []
+        for f in _voix_files(p):
             try:
-                info["chars"] = len(_strip_obsidian(_read_path(p)))
+                raw = _strip_obsidian(f.read_text(encoding="utf-8"))
             except OSError:
-                info["exists"] = False
-        sources.append(info)
+                continue
+            files.append({"name": f.name, "title": _title_of(raw), "chars": len(raw)})
+        sources.append({"path": s, "exists": p.exists(), "is_dir": p.is_dir(),
+                        "files": files, "chars": sum(f["chars"] for f in files)})
     text = load_voix()
     return {"sources": sources, "active": bool(text), "total_chars": len(text),
             "from_env": bool(_spec().strip()), "text": text}
