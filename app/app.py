@@ -1030,6 +1030,15 @@ def pipeline_view():
                            schedule=_PIPELINE_SCHEDULE, st=psettings.load())
 
 
+@app.route("/voix")
+@require_auth
+def voix_view():
+    """Voix éditoriale ACTIVE (le ton appliqué à la rédaction). Rend visible qu'elle est
+    chargée et pas cassée, et depuis quelle source (Obsidian branché ou filet du dépôt)."""
+    from utils import voix as voixmod
+    return render_template("voix.html", active="voix", st=voixmod.voix_status())
+
+
 @app.route("/couverture")
 @require_auth
 def couverture():

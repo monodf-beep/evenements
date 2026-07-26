@@ -38,6 +38,21 @@ def _max_chars() -> int:
     return int(os.getenv("VOIX_MAX_CHARS", "6000"))
 
 
+# Voix CANONIQUE versionnée dans le dépôt : sert de source par défaut ET de garde-fou
+# (la voix est TOUJOURS vivante, même sans Obsidian). OBSIDIAN_VOIX_PATH la surcharge/
+# complète (système en couches). C'est le même fichier qu'on peut ouvrir dans Obsidian.
+_DEFAULT_VOIX = ROOT / "docs" / "VOIX.md"
+
+
+def _sources() -> list[str]:
+    """Liste ordonnée des chemins de voix. OBSIDIAN_VOIX_PATH si défini, sinon le
+    fichier canonique du dépôt (docs/VOIX.md) — la voix n'est donc jamais 'vide'."""
+    spec = _spec().strip()
+    if spec:
+        return [s.strip() for s in spec.split(os.pathsep) if s.strip()]
+    return [str(_DEFAULT_VOIX)]
+
+
 def _strip_obsidian(text: str) -> str:
     """Retire la syntaxe Obsidian pour ne garder que le texte utile pour le LLM."""
     # Frontmatter YAML en tête (--- ... ---).
@@ -72,10 +87,7 @@ def load_voix() -> str:
     Plusieurs chemins (séparés par « : ») sont chargés DANS L'ORDRE et concaténés :
     voix commune d'abord, surcharge projet ensuite. Un chemin manquant est ignoré."""
     layers = []
-    for spec in _spec().split(os.pathsep):
-        spec = spec.strip()
-        if not spec:
-            continue
+    for spec in _sources():
         try:
             txt = _strip_obsidian(_read_path(Path(spec)))
         except OSError:
@@ -85,6 +97,24 @@ def load_voix() -> str:
     if not layers:
         return ""
     return "\n\n".join(layers)[:_max_chars()].strip()
+
+
+def voix_status() -> dict:
+    """État de la voix pour le back-office : sources (existe/taille), actif, total.
+    Permet de VOIR que la voix est vivante et pas cassée."""
+    sources = []
+    for s in _sources():
+        p = Path(s)
+        info = {"path": s, "exists": p.exists(), "is_dir": p.is_dir(), "chars": 0}
+        if info["exists"]:
+            try:
+                info["chars"] = len(_strip_obsidian(_read_path(p)))
+            except OSError:
+                info["exists"] = False
+        sources.append(info)
+    text = load_voix()
+    return {"sources": sources, "active": bool(text), "total_chars": len(text),
+            "from_env": bool(_spec().strip()), "text": text}
 
 
 def voix_block(prefix: str = "") -> str:

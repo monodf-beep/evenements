@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% set active = 'voix' %}
+{% block title %}Voix éditoriale{% endblock %}
+{% block h1 %}Voix éditoriale{% endblock %}
+{% block subtitle %}<div class="sub">Le <b>ton</b> réellement appliqué à la rédaction (et aux traductions). Cette page montre qu'il est <b>chargé et vivant</b>, et depuis quelle source. La voix <b>prime</b> sur le prompt.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+  <!-- Statut -->
+  <div class="card" style="padding:.8rem 1rem;margin-bottom:1.1rem;">
+    {% if st.active %}
+      <b style="color:#16a34a;">● Voix active</b> — {{ st.total_chars }} caractères appliqués.
+    {% else %}
+      <b style="color:#b91c1c;">● Voix ABSENTE</b> — la rédaction tourne sur le prompt seul (filet). À rebrancher.
+    {% endif %}
+    <div class="muted text-sm" style="margin-top:.35rem;">
+      Source :
+      {% if st.from_env %}<b>Obsidian</b> (via <code>OBSIDIAN_VOIX_PATH</code>) — branché ✅
+      {% else %}<b>dépôt</b> (<code>docs/VOIX.md</code>, filet) — Obsidian <b>pas encore branché</b>.
+        Pour le connecter : régler <code>OBSIDIAN_VOIX_PATH</code> sur ta note synchronisée.{% endif %}
+    </div>
+  </div>
+
+  <!-- Sources -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .4rem;">🔌 Sources chargées</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1.2rem;">
+    <thead><tr style="text-align:left;border-bottom:1px solid #e5e7eb;">
+      <th style="padding:.35rem .3rem;">Chemin</th><th style="padding:.35rem .3rem;">État</th><th style="padding:.35rem .3rem;">Taille</th></tr></thead>
+    <tbody>
+      {% for s in st.sources %}
+      <tr style="border-bottom:1px solid #f1f1f1;">
+        <td style="padding:.35rem .3rem;"><code>{{ s.path }}</code>{% if s.is_dir %} <span class="muted">(dossier)</span>{% endif %}</td>
+        <td style="padding:.35rem .3rem;">{% if s.exists %}<span style="color:#16a34a;">✓ trouvé</span>{% else %}<span style="color:#b91c1c;">✗ introuvable</span>{% endif %}</td>
+        <td style="padding:.35rem .3rem;">{{ s.chars }} car.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Contenu appliqué -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .4rem;">📄 Texte appliqué</h2>
+  <div class="muted text-sm" style="margin-bottom:.4rem;">Exactement ce qui est injecté en tête des prompts de rédaction.</div>
+  <pre style="white-space:pre-wrap;background:#faf7f1;border:1px solid #ece5d8;border-radius:8px;padding:.9rem 1rem;font-size:.85rem;line-height:1.5;overflow-x:auto;">{{ st.text or '(vide)' }}</pre>
+
+</div>
+{% endblock %}
