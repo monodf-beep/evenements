@@ -282,22 +282,34 @@ def _final_text(message) -> str:
     return "\n".join(out)
 
 
-def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str):
-    """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR."""
-    from utils.voix import voix_block
+def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
+    """Décide le PALIER (court/long) et le MODÈLE pour un événement (CHARTE §3).
+
+    - mode "auto" (défaut) : le SCORE décide — ≥ LONG_MIN_SCORE → LONG, sinon COURT ;
+      "court"/"long" forcent ; "off" est géré en amont.
+    - modèle PAR PALIER : long (phare) → qualité (Sonnet, structure + gras) ;
+      court (catalogue) → éco (Haiku, moins cher). ANTHROPIC_MODEL_ENRICH force un
+      modèle unique si défini (test / contrôle de coût)."""
     from utils import settings as pipeline_settings
-    # Choix du style par ÉVÉNEMENT (CHARTE §3/§5) :
-    #  - mode "auto" (défaut) : le SCORE décide — ≥ LONG_MIN_SCORE → LONG (article complet
-    #    Cultura Sabauda, recherche web) ; en dessous → COURT (fiche concise Agenda) ;
-    #  - "court"/"long" forcent globalement ; "off" est géré en amont (pas d'appel).
-    _mode = pipeline_settings.enrich_mode()
-    _score = int(ev.get("llm_score") or 0)
-    if _mode == "long":
-        _court = False
-    elif _mode == "court":
-        _court = True
+    score = int(ev.get("llm_score") or 0)
+    if mode == "long":
+        court = False
+    elif mode == "court":
+        court = True
     else:  # "auto"
-        _court = _score < LONG_MIN_SCORE
+        court = score < LONG_MIN_SCORE
+    forced = os.getenv("ANTHROPIC_MODEL_ENRICH", "").strip()
+    model = forced or (pipeline_settings.model_eco() if court
+                       else pipeline_settings.model_qualite())
+    return court, model
+
+
+def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str,
+                 court: bool):
+    """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR.
+    `court`/`model` sont décidés par l'appelant via _tier_model."""
+    from utils.voix import voix_block
+    _court = court
     prompt = voix_block() + ENRICH_PROMPT.format(
         title=ev.get("title", ""),
         dates=_dates_hint(ev),
@@ -425,7 +437,7 @@ def main(argv: list[str]) -> int:
     if not pipeline_settings.enrich_enabled():
         log.info("Enrichissement DÉSACTIVÉ (réglage back-office). Rien à faire.")
         return 0
-    model = os.getenv("ANTHROPIC_MODEL_ENRICH") or pipeline_settings.model()
+    mode = pipeline_settings.enrich_mode()   # off/auto/court/long — le palier est décidé par événement
     ids = [int(a) for a in argv if a.isdigit()]
     dfrom = dto = ""
     if "--from" in argv:
@@ -441,8 +453,9 @@ def main(argv: list[str]) -> int:
 
     events = select_events(conn, ids, dfrom, dto)
     log.info("ids à traiter : %s", [e["id"] for e in events])
-    log.info("%d événement(s) à enrichir (modèle : %s, seuil score ≥ %d)",
-             len(events), model, MIN_SCORE)
+    log.info("%d événement(s) à enrichir (mode=%s ; long→%s, court→%s ; plancher score ≥ %d)",
+             len(events), mode, pipeline_settings.model_qualite(),
+             pipeline_settings.model_eco(), MIN_SCORE)
 
     done = 0
     for event in events:
@@ -457,7 +470,10 @@ def main(argv: list[str]) -> int:
                 ev["url_image"] = og
                 log.info("[%d] image récupérée (og:image) : %s", ev["id"], og[:80])
         material = gather_material(conn, ev)
-        result = enrich_event(ev, material, client, model)
+        court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
+        log.info("[%d] palier=%s modèle=%s (score=%s)", ev["id"],
+                 "court" if court else "long", model, ev.get("llm_score"))
+        result = enrich_event(ev, material, client, model, court)
         if result is API_ERROR:
             # Trace visible côté back-office (sinon l'utilisateur ne voit « rien »).
             conn.execute(

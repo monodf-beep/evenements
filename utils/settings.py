@@ -93,6 +93,16 @@ def model() -> str:
     return _MODEL_ECO if ai_profile() == "eco" else _MODEL_QUAL
 
 
+def model_eco() -> str:
+    """Modèle économique (Haiku) — articles COURTS / catalogue."""
+    return _MODEL_ECO
+
+
+def model_qualite() -> str:
+    """Modèle qualité (Sonnet) — articles LONGS / phares (structure + gras)."""
+    return _MODEL_QUAL
+
+
 def enrich_mode() -> str:
     return load()["enrich_mode"]
 
