@@ -95,14 +95,24 @@ def build_post(event: dict) -> tuple[str, str]:
             parts.append("<h3>Programme</h3>\n<ul>")
             parts += [f"<li>{_md_inline(p)}</li>" for p in prog]
             parts.append("</ul>")
-        if art.get("encadre"):
-            parts.append("<h3>En pratique</h3>")
-            parts.append(_md_to_html(art["encadre"]))
-        sources = [s for s in (data.get("sources") or []) if s]
-        if sources:
+        # PAS d'encadré « En pratique » ici : le bloc pratique (Quand/Où/Tarif/Catégorie)
+        # est rendu NATIVEMENT par The Events Calendar (méta as_*). Le répéter en prose
+        # ferait doublon. L'article reste ÉDITORIAL (chapô + corps + programme).
+        # Sources : uniquement des URLs http(s) propres (on ignore prose/markdown/URL
+        # bricolée que le LLM aurait glissée), dédupliquées, en excluant l'auto-lien.
+        seen = set()
+        clean_sources = []
+        for s in (data.get("sources") or []):
+            s = (s or "").strip()
+            if (s.startswith("http://") or s.startswith("https://")) \
+                    and " " not in s and s not in seen \
+                    and "agendasabauda.eu" not in s:   # jamais un lien vers nous-mêmes
+                seen.add(s)
+                clean_sources.append(s)
+        if clean_sources:
             parts.append("<h3>Sources</h3><ul>")
             parts += [f'<li><a href="{html.escape(s)}" target="_blank" '
-                      f'rel="noopener">{html.escape(s)}</a></li>' for s in sources]
+                      f'rel="noopener">{html.escape(s)}</a></li>' for s in clean_sources]
             parts.append("</ul>")
         return title, "\n".join(parts)
 

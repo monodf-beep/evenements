@@ -60,6 +60,11 @@ RÉDACTION** (comment on traite un sujet) et un atout pour choisir les mises en 
 3. **Contexte géographique** — lieu précis, **ville, province/département, territoire**.
 4. **Corps** — le savoir transmis, le regard ; relie au territoire et au-delà.
 5. **Encadré pratique** — dates, lieu, accès, tarif/gratuité, lien officiel.
+   ⚠️ **Sur le site (The Events Calendar), l'encadré pratique est rendu NATIVEMENT**
+   (Quand / Où / Tarif / Catégorie, via les champs `as_*`). On ne le **répète donc PAS**
+   en prose dans le corps de l'article : le corps reste **éditorial** (chapô + corps +
+   programme en liste). Les faits pratiques alimentent les **champs structurés**, pas un
+   second bloc texte (sinon doublon à l'affichage).
 6. **Crédit source** — voir §8.
 
 ## 5. Enrichissement (recherche d'information)
@@ -147,6 +152,12 @@ Possibile ». Les capitales intégrales, c'est **crier** ; c'est illisible et ma
 SEO. On **normalise en casse normale** : capitale à l'initiale + noms propres, en
 respectant la langue (règles FR/IT). On **préserve** les sigles/acronymes réels (FIAF, MAO,
 ONU) et la casse voulue d'une marque (iMac, PSG). En cas de doute, casse de phrase.
+
+**Signaux d'écriture IA à éviter.** Le **tiret cadratin** (« — », « – ») en incise est la
+signature n°1 d'un texte généré : on l'évite, on préfère la **virgule**, la **parenthèse**,
+le **deux-points** ou le **point**. Idem pour les autres tics : « il ne s'agit pas seulement
+de X, mais de Y », les triades systématiques (« rythme, mémoire et transmission »), les chutes
+en « une invitation à… ». Écris **simple et incarné**, pas « augmenté ».
 
 ## 6 bis. Italien & bilinguisme (FR/IT)
 

@@ -176,7 +176,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "article": {{
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel + l'angle>",
-    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà. MARKDOWN structuré pour la lisibilité (Yoast) : si le corps dépasse ~250 mots, découpe-le avec des sous-titres '## ' tous les 2-3 paragraphes ; phrases COURTES (vise <20 mots) ; enchaîne naturellement, SANS transitions scolaires ni connecteurs clichés (cf. voix) ; mets en GRAS les faits clés (dates, noms propres, lieux, chiffres)>",
+    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà. MARKDOWN structuré pour la lisibilité (Yoast) : si le corps dépasse ~250 mots, découpe-le avec des sous-titres '## ' tous les 2-3 paragraphes ; phrases COURTES (vise <20 mots) ; enchaîne naturellement, SANS transitions scolaires ni connecteurs clichés (cf. voix) ; mets en GRAS les faits clés (dates, noms propres, lieux, chiffres). ÉVITE le TIRET CADRATIN (— ou –) : c'est une signature d'écriture IA — préfère la virgule, la parenthèse, le deux-points ou le point. N'écris PAS d'encadré pratique dans le corps (dates/lieu/tarif) : le site l'affiche déjà nativement — le corps reste ÉDITORIAL>",
     "programme": ["<UNE entrée par ligne de programme : jour/heure + intitulé (concert, séance, temps fort…). LISTE, jamais de la prose. Vide [] si l'événement n'a pas de programme/line-up dans la matière>"],
     "encadre": "<encadré pratique : dates, lieu, accès, gratuité, lien officiel>"
   }}
@@ -287,9 +287,9 @@ def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
 
     - mode "auto" (défaut) : le SCORE décide — ≥ LONG_MIN_SCORE → LONG, sinon COURT ;
       "court"/"long" forcent ; "off" est géré en amont.
-    - modèle PAR PALIER : long (phare) → qualité (Sonnet, structure + gras) ;
-      court (catalogue) → éco (Haiku, moins cher). ANTHROPIC_MODEL_ENRICH force un
-      modèle unique si défini (test / contrôle de coût)."""
+    - modèle : Haiku PARTOUT par défaut (économique). Pour donner aux PHARES un
+      modèle supérieur : ENRICH_LONG_MODEL=claude-sonnet-5. ANTHROPIC_MODEL_ENRICH
+      force un modèle unique pour tout (voir plus bas)."""
     from utils import settings as pipeline_settings
     score = int(ev.get("llm_score") or 0)
     if mode == "long":
@@ -298,9 +298,13 @@ def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
         court = True
     else:  # "auto"
         court = score < LONG_MIN_SCORE
+    # Modèle : Haiku (éco) partout PAR DÉFAUT — on ne dépense pas tant que le prompt
+    # renforcé (gras/structure) n'a pas été jugé insuffisant. Pour offrir aux PHARES
+    # (long) un modèle supérieur : ENRICH_LONG_MODEL=claude-sonnet-5. ANTHROPIC_MODEL_ENRICH
+    # force un modèle UNIQUE pour tout (test / contrôle de coût).
     forced = os.getenv("ANTHROPIC_MODEL_ENRICH", "").strip()
-    model = forced or (pipeline_settings.model_eco() if court
-                       else pipeline_settings.model_qualite())
+    long_model = os.getenv("ENRICH_LONG_MODEL", "").strip() or pipeline_settings.model_eco()
+    model = forced or (pipeline_settings.model_eco() if court else long_model)
     return court, model
 
 
