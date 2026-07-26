@@ -68,6 +68,22 @@ def _sig_tokens(title: str) -> set[str]:
     return {t for t in toks if len(t) >= 3 and t not in _STOP}
 
 
+def _title_years(title: str) -> set[str]:
+    """Années (nombres à 4 chiffres) présentes dans un titre, via les tokens
+    significatifs — exactement l'extraction utilisée par cross_lang_same."""
+    return {t for t in _sig_tokens(title) if t.isdigit() and len(t) == 4}
+
+
+def _years_incompatible(a: str, b: str) -> bool:
+    """True si les DEUX titres portent une année et qu'elles sont DISJOINTES
+    (deux éditions d'années différentes → NE PAS fusionner). Règle identique à
+    cross_lang_same. Conservateur : si au moins un titre n'a pas d'année, on ne
+    bloque pas (renvoie False) — en cas de doute on ne prive pas d'une fusion
+    légitime, on ajoute seulement une garde contre les fusions à tort."""
+    ya, yb = _title_years(a), _title_years(b)
+    return bool(ya and yb and ya.isdisjoint(yb))
+
+
 def cross_lang_same(a: str, b: str) -> bool:
     """True si deux titres décrivent le MÊME événement malgré des langues différentes.
 
@@ -78,9 +94,7 @@ def cross_lang_same(a: str, b: str) -> bool:
     if len(ta) < 2 or len(tb) < 2:
         return False
     shared = ta & tb
-    years_a = {t for t in ta if t.isdigit() and len(t) == 4}
-    years_b = {t for t in tb if t.isdigit() and len(t) == 4}
-    if years_a and years_b and years_a.isdisjoint(years_b):
+    if _years_incompatible(a, b):
         return False                      # éditions d'années différentes
     # Il faut ≥ 2 tokens communs qui NE SOIENT PAS des années : deux vrais mots
     # distinctifs partagés (noms propres). L'année seule (+ un genre comme « jazz »)
@@ -144,7 +158,13 @@ def _groups(events: list[dict], cross_lang: bool = False) -> list[list[dict]]:
                 # même histoire (titres proches) — et, SI demandé, même événement
                 # inter-langue FR/IT (désactivé par défaut : bilingue = à lier, pas
                 # à fusionner).
-                if same_story(ti, tj) or (cross_lang and cross_lang_same(ti, tj)):
+                # Garde années : same_story compare les titres SANS regarder les
+                # dates → deux éditions successives (« Festival X 2025 » vs « … 2026 »)
+                # se ressemblent. On applique la MÊME règle que cross_lang_same :
+                # années présentes des deux côtés et disjointes ⇒ pas de fusion.
+                # (cross_lang_same porte déjà cette garde en interne.)
+                if (same_story(ti, tj) and not _years_incompatible(ti, tj)) \
+                        or (cross_lang and cross_lang_same(ti, tj)):
                     union(i, j)
 
     buckets: dict[int, list[dict]] = {}
