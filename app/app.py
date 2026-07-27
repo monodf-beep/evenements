@@ -2416,11 +2416,14 @@ def preview(event_id: int):
     if isinstance(enriched, dict) and isinstance(enriched.get("article"), dict):
         try:
             from scripts.publisher import _md_to_html, _md_inline
+            from utils.clean_text import polish_prose
             _art = enriched["article"]
+            # MÊME nettoyage déterministe que la publication (gras/tirets) : le preview
+            # doit montrer l'article TEL QU'IL SERA publié, pas le markdown brut du modèle.
             if _art.get("corps"):
-                _art["corps_html"] = _md_to_html(_art["corps"])
+                _art["corps_html"] = _md_to_html(polish_prose(_art["corps"]))
             if _art.get("chapo"):
-                _art["chapo_html"] = _md_inline(_art["chapo"])
+                _art["chapo_html"] = _md_inline(polish_prose(_art["chapo"]))
         except Exception:  # noqa: BLE001 — rendu markdown non bloquant
             pass
     enrich_running = _running_state().get("enrich", False)

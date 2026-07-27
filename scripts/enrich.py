@@ -35,6 +35,7 @@ import os
 import re
 import sqlite3
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 import requests
@@ -108,14 +109,17 @@ OFFICIELLE et le DOSSIER DE PRESSE (sources primaires). N'affirme aucun fait qui
 pas ; en cas de doute, baisse la confiance.
 
 STRUCTURE — PYRAMIDE INVERSÉE (l'info d'abord), JAMAIS l'escalier de magazine :
-1. ACCROCHE : quoi, quand, où, la tête d'affiche ou la raison d'y aller ;
-2. ESSENTIEL (le cœur) : la PROGRAMMATION CONCRÈTE — têtes d'affiche, line-up, temps forts,
-   horaires. EXPLOITE TOUJOURS le programme présent dans la MATIÈRE (ne dis JAMAIS « à venir »
-   si on l'a déjà) ; complète par recherche web. Si le line-up de CETTE édition n'est pas
-   encore annoncé, DONNE CELUI DE L'ÉDITION PRÉCÉDENTE (« en 2025 : Katy Perry, … ») pour que
-   le lecteur sache ce qu'est l'événement — un article « programmation à venir » n'apprend
-   rien et est un ÉCHEC ;
-3. IDENTITÉ (1-2 items) : ce qui FAIT cet événement (têtes d'affiche marquantes, affluence,
+1. ACCROCHE : quoi, quand, où, la raison d'y aller (tête d'affiche, temps fort, nouveauté) ;
+2. ESSENTIEL (le cœur) : la PROGRAMMATION CONCRÈTE, avec la substance PROPRE AU GENRE — pour
+   un concert pop/variété, les têtes d'affiche ; pour un festival de musique CLASSIQUE, les
+   œuvres, compositeurs, orchestres, solistes, chefs et lieux ; pour une expo, les artistes
+   et œuvres ; pour un spectacle, la pièce et la troupe ; plus les temps forts et horaires.
+   Ne plaque PAS une logique « têtes d'affiche » sur un genre qui n'en a pas. EXPLOITE
+   TOUJOURS le programme présent dans la MATIÈRE (ne dis JAMAIS « à venir » si on l'a déjà) ;
+   complète par recherche web. Si le programme de CETTE édition n'est pas encore annoncé,
+   DONNE CELUI DE L'ÉDITION PRÉCÉDENTE (« en 2025 : … ») pour que le lecteur sache ce qu'est
+   l'événement — un article « programmation à venir » n'apprend rien et est un ÉCHEC ;
+3. IDENTITÉ (1-2 items) : ce qui FAIT cet événement (artistes/œuvres marquants, affluence,
    ce qui revient chaque année) ;
 4. STOP. On reste sur CET événement. INTERDIT : le contexte historique/économique du lieu
    (le thermalisme d'Aix, l'économie du tourisme…), ce qui se passe ailleurs, toute montée
@@ -359,18 +363,40 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
     return "\n\n".join(sections) or "(aucune — titre seul)"
 
 
+def _parse_day(s: str) -> "date | None":
+    """Parse une date ISO tolérante (garde les 10 premiers caractères). None si illisible."""
+    try:
+        return date.fromisoformat((s or "").strip()[:10])
+    except ValueError:
+        return None
+
+
 def _dates_hint(ev: dict) -> str:
-    """Dates réelles de l'événement pour le prompt (préférées à la date brute du flux,
-    qui n'est que la date de publication RSS). Permet l'angle « en cours jusqu'au X »."""
+    """Dates réelles de l'événement pour le prompt, AVEC LE STATUT calculé par rapport à
+    AUJOURD'HUI (déterministe). Le modèle ne connaît pas la date du jour : sans ça, il
+    annonce au futur (« à venir », « billetterie pas encore publiée ») un événement déjà
+    commencé. On lui impose le cadre temporel."""
     s = (ev.get("date_event_start") or "").strip()
     e = (ev.get("date_event_end") or "").strip()
-    if s and e and s != e:
-        return f"du {s} au {e} (événement en cours sur cette plage)"
-    if s:
-        return s
-    if e:
-        return f"jusqu'au {e} (en cours)"
-    return ev.get("date_start") or "à confirmer"
+    today = datetime.now().date()
+    ds, de = _parse_day(s), _parse_day(e)
+    start_d, end_d = ds, (de or ds)
+    plage = f"du {s} au {e}" if (s and e and s != e) else (s or (f"jusqu'au {e}" if e else ""))
+    now_str = today.isoformat()
+    if start_d and end_d:
+        if today < start_d:
+            return (f"{plage or s} — À VENIR (nous sommes le {now_str}). Écris au futur proche, "
+                    "sans inventer d'infos non encore publiées.")
+        if today > end_d:
+            return (f"{plage or e} — DÉJÀ TERMINÉ (nous sommes le {now_str}). NE l'annonce PAS "
+                    "comme à venir ; parle au passé, ou n'en fais pas la promotion.")
+        return (f"{plage or e} — EN COURS aujourd'hui {now_str} (commencé le "
+                f"{start_d.isoformat()}, se termine le {end_d.isoformat()}). Écris au PRÉSENT "
+                "« en cours jusqu'au … » ; n'écris JAMAIS « à venir », « prochainement », ni "
+                "que le programme ou la billetterie « n'est pas encore » publié : l'événement "
+                "a commencé.")
+    # Dates non exploitables : filet minimal.
+    return plage or ev.get("date_start") or "à confirmer"
 
 
 def _final_text(message) -> str:
@@ -538,7 +564,9 @@ def build_article_md(data: dict) -> tuple[str, str]:
     if titre:
         md.append(f"# {titre}")
     if chapo:
-        md.append(f"**{chapo}**")
+        # PAS de gras forcé sur le chapô : l'accroche Agenda porte dates/noms/chiffres,
+        # sur lesquels la charte interdit le gras. Le chapô se distingue par sa position.
+        md.append(chapo)
     if corps:
         md.append(corps)
     if programme:
@@ -591,17 +619,27 @@ def reader_review(article: dict, ev: dict, client, model: str,
         "rédacteur, tu es ce lecteur précis, avec ses attentes et ses agacements) :\n"
         f"\"\"\"\n{who}\n\"\"\"\n\n"
         "Lis ce preview d'événement et réponds franchement, DE TON POINT DE VUE : est-ce que "
-        "ça t'APPREND quelque chose d'utile et de concret sur CET événement — des NOMS (têtes "
-        "d'affiche), des temps forts, ce qui le distingue — ou est-ce creux (« festival au "
-        "bord du lac, programmation à venir ») ? Un bon preview te donne envie d'y aller ET "
-        "t'apprend quelque chose.\n\n"
+        "ça t'APPREND quelque chose d'utile et de concret sur CET événement, ou est-ce creux "
+        "(« festival au bord du lac, programmation à venir ») ? Un bon preview te donne envie "
+        "d'y aller ET t'apprend quelque chose.\n\n"
+        "JUGE LA SUBSTANCE SELON LE TYPE D'ÉVÉNEMENT, pas selon un modèle unique : la « tête "
+        "d'affiche » n'a de sens que pour un concert pop/variété. Pour un festival de musique "
+        "CLASSIQUE, la substance ce sont les œuvres, compositeurs, orchestres, solistes, "
+        "chefs, lieux ; pour une expo, les artistes et les œuvres ; pour un spectacle, la "
+        "pièce et la troupe ; pour une fête, le programme et les temps forts. Ne réclame pas "
+        "des noms « grand public » quand le genre n'en a pas : demande la substance de CE "
+        "genre-là.\n"
+        "L'événement est dans TON territoire : juge s'il te parle et si tu peux y aller "
+        "(accès, distance depuis chez toi, prix quand c'est pertinent) — mais ne pénalise pas "
+        "un événement RÉEL et proche juste parce qu'un détail pratique manque encore.\n\n"
         f"TITRE : {art.get('titre') or ev.get('title')}\n"
         f"CATÉGORIE : {ev.get('llm_categorie', '')}\n"
         f"ARTICLE :\n{corps}\n\n"
         'Réponds en JSON STRICT : {"interet": <0-5, 0=creux 5=riche>, '
-        '"manques": ["<ce qui te manque, selon TES attentes>"], '
+        '"manques": ["<ce qui te manque VRAIMENT, selon TES attentes et le genre>"], '
         '"verdict": "ok"|"revise", "note": "<1 phrase de conseil au rédacteur>"}. '
-        'verdict = "revise" dès que interet <= 2, ou qu\'il manque l\'essentiel pour TOI.'
+        'verdict = "revise" seulement si l\'article est réellement creux pour TOI (interet <= 2) '
+        "ou s'il lui manque une substance qui EXISTE et qu'il aurait dû donner."
     )
     try:
         msg = client.messages.create(model=model, max_tokens=400,
@@ -624,17 +662,20 @@ def reader_review(article: dict, ev: dict, client, model: str,
 
 
 def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
-    """Fait relire l'article par TOUT LE PANEL de personas (docs/personas/). Renvoie un
-    verdict agrégé : {"reviews": [...], "verdict": "ok"|"revise", "mean": <float>}.
-    Le panel demande une révision si la MAJORITÉ des personas votent « revise ». {} si aucun
-    persona n'est défini (le panel est alors désactivé, non bloquant)."""
+    """Fait relire l'article par le panel de personas CIBLÉ SUR LE TERRITOIRE de l'événement
+    (un événement de Menton est jugé par des lecteurs de Nice, pas de Maurienne — sinon la
+    note mesure la distance, pas la qualité). Renvoie un verdict agrégé :
+    {"reviews": [...], "verdict": "ok"|"revise", "mean": <float>}. Révision si la MAJORITÉ
+    vote « revise ». {} si aucun persona (panel désactivé, non bloquant)."""
     try:
         from utils import personas as personas_mod
-        panel = personas_mod.load_personas()
+        panel = personas_mod.personas_for(ev.get("territoire", ""))
     except Exception:  # noqa: BLE001 — non bloquant
         panel = []
     if not panel:
         return {}
+    log.info("[%s] panel ciblé territoire=%s : %s", ev.get("id"),
+             ev.get("territoire") or "?", ", ".join(p["title"].split(",")[0] for p in panel))
     try:
         cap = int(os.getenv("ENRICH_READER_PERSONAS", "0") or 0)
     except ValueError:
@@ -669,9 +710,13 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
             (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else ""))
     critique = "\n".join(lignes) or "Article jugé creux par le panel."
     extra = ("[RETOURS DE LECTEURS sur ton brouillon précédent — CORRIGE-LE]\n" + critique +
-             "\nRends l'article plus SUBSTANTIEL et CONCRET : donne des têtes d'affiche et des "
-             "temps forts (du programme fourni, ou à défaut de l'ÉDITION PRÉCÉDENTE via "
-             "recherche web). Ne meuble pas : le lecteur doit APPRENDRE quelque chose.")
+             "\nRends l'article plus SUBSTANTIEL et CONCRET, avec les éléments propres AU TYPE "
+             "d'événement (classique : œuvres, compositeurs, orchestres, solistes, chefs, "
+             "lieux ; pop : têtes d'affiche ; expo : artistes et œuvres ; spectacle : pièce et "
+             "troupe), pris du programme fourni ou, à défaut, de l'ÉDITION PRÉCÉDENTE via "
+             "recherche web. N'INVENTE RIEN : si une info (nom, tarif, horaire) n'est pas "
+             "publiée, ne la fabrique pas — dis simplement ce qui est connu. Ne meuble pas : "
+             "le lecteur doit APPRENDRE quelque chose de réel.")
     revised = enrich_event(ev, material, client, model, court, extra_task=extra)
     return revised if (revised and revised is not API_ERROR) else result
 

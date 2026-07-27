@@ -1,3 +1,6 @@
+---
+aire: Piemonte
+---
 # Manuela Gallo, 46 ans — Barriera di Milano (Turin, Piémont)
 
 *Née à Turin de parents calabrais venus travailler à la FIAT. Aide-soignante en horaires

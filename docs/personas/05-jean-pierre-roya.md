@@ -1,3 +1,6 @@
+---
+aire: Nice
+---
 # Jean-Pierre Ottonelli, 68 ans — Breil-sur-Roya (arrière-pays niçois)
 
 *Retraité (ancien cheminot), veuf, vit seul dans la maison familiale au village, enfants

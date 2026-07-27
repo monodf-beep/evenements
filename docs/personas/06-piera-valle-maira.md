@@ -1,3 +1,6 @@
+---
+aire: Piemonte
+---
 # Piera Bernardi, 61 ans — Dronero, Valle Maira (Piémont)
 
 *Institutrice retraitée, veuve, vit dans un bourg de vallée occitane, enfants partis à

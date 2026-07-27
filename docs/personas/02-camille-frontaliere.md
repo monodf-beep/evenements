@@ -1,3 +1,6 @@
+---
+aire: Savoie
+---
 # Camille Deffieux, 38 ans — Saint-Julien-en-Genevois (Haute-Savoie)
 
 *Gestionnaire dans une société financière à Genève (frontalière), conjoint frontalier

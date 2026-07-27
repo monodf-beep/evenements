@@ -60,9 +60,20 @@ def _title_of(text: str) -> str:
     return ""
 
 
+def _parse_aire(text: str) -> str:
+    """Lit le frontmatter YAML `aire:` (territoire de référence du persona) AVANT nettoyage.
+    "" si absent. Valeurs alignées sur events_raw.territoire (Savoie, Piemonte, Vallee-Aoste,
+    Nice)."""
+    m = re.match(r"\A\s*---\n(.*?)\n---\n", text or "", flags=re.S)
+    if not m:
+        return ""
+    a = re.search(r"(?im)^\s*aire\s*:\s*(\S+)", m.group(1))
+    return a.group(1).strip() if a else ""
+
+
 def load_personas() -> list[dict]:
     """Tous les personas SÉLECTIONNABLES, triés par nom de fichier (l'ordre 01-, 02-…
-    pilote la priorité). Chaque entrée : name/title/text/path. [] si dossier vide."""
+    pilote la priorité). Chaque entrée : name/title/text/path/aire. [] si dossier vide."""
     out, seen = [], set()
     for folder in _dirs():
         for f in sorted(folder.glob("*.md")):
@@ -72,15 +83,30 @@ def load_personas() -> list[dict]:
             if rp in seen:
                 continue
             try:
-                raw = _strip_obsidian(f.read_text(encoding="utf-8"))
+                rawfile = f.read_text(encoding="utf-8")
             except OSError:
                 continue
+            aire = _parse_aire(rawfile)
+            raw = _strip_obsidian(rawfile)
             if not raw:
                 continue
             seen.add(rp)
             out.append({"name": f.name, "title": _title_of(raw),
-                        "text": raw, "path": str(f)})
+                        "text": raw, "path": str(f), "aire": aire})
     return out
+
+
+def personas_for(territoire: str) -> list[dict]:
+    """Personas à mobiliser pour un événement d'un territoire donné : ceux dont l'aire
+    correspond (relecture CIBLÉE — un événement de Menton est jugé par des lecteurs de Nice,
+    pas de Maurienne). Filet : si le territoire est inconnu ou sans persona dédié, on renvoie
+    TOUT le panel (mieux vaut une relecture large que pas de relecture)."""
+    panel = load_personas()
+    t = (territoire or "").strip().lower()
+    if not t:
+        return panel
+    matched = [p for p in panel if (p.get("aire") or "").strip().lower() == t]
+    return matched or panel
 
 
 def personas_status() -> dict:

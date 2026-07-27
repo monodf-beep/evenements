@@ -26,26 +26,62 @@ _UI_BITS = re.compile(
 
 
 _BOLD = re.compile(r"\*\*([^*]+?)\*\*")
+# Au-delà de ce nombre de mots, un passage n'est plus une « expression structurante »
+# (concept-clé) mais une phrase : le gras y est interdit.
+_BOLD_MAXWORDS = 6
+# Plafond d'expressions en gras dans un même texte (charte : 3 à 5, parcimonieux).
+_BOLD_MAXSPANS = 5
 
 
-def _debold_if_digit(m: "re.Match") -> str:
-    """Retire le gras d'un passage qui contient un chiffre (date, heure, tarif) : la
-    charte interdit le gras sur les dates/chiffres et le modèle n'est pas fiable là-dessus."""
-    inner = m.group(1)
-    return inner if re.search(r"\d", inner) else m.group(0)
+def _bad_bold(inner: str) -> bool:
+    """Le gras est INTERDIT (charte) sur : chiffres/dates/heures/tarifs, noms propres et
+    titres cités, et sur des passages trop longs. Il ne porte QUE sur de courtes
+    expressions-concepts. Le modèle n'étant pas fiable là-dessus, on tranche en code."""
+    s = inner.strip()
+    if re.search(r"\d", s):                          # dates, heures, tarifs, quantités
+        return True
+    if any(q in s for q in ("«", "»", "“", "”", '"')):  # titres cités
+        return True
+    words = re.findall(r"\S+", s)
+    if len(words) > _BOLD_MAXWORDS:                  # phrase entière mise en gras
+        return True
+    # Noms propres / Title Case : majorité de mots significatifs capitalisés
+    # (« Paul-Emmanuel Thomas », « Festival de Musique de Menton », « Menton »).
+    sig = [w for w in words if len(w) > 2]
+    if sig and sum(1 for w in sig if w[:1].isupper()) / len(sig) >= 0.6:
+        return True
+    return False
+
+
+def _enforce_bold(text: str) -> str:
+    """Applique la règle de gras de façon DÉTERMINISTE : dé-graisse tout passage interdit
+    (chiffres, noms propres, titres, phrases), puis PLAFONNE le nombre d'expressions en
+    gras — au-delà de _BOLD_MAXSPANS, on dé-graisse (le gras doit rester parcimonieux)."""
+    kept = 0
+
+    def repl(m: "re.Match") -> str:
+        nonlocal kept
+        inner = m.group(1)
+        if _bad_bold(inner):
+            return inner
+        kept += 1
+        return inner if kept > _BOLD_MAXSPANS else m.group(0)
+
+    return _BOLD.sub(repl, text)
 
 
 def polish_prose(text: str) -> str:
     """Nettoyage DÉTERMINISTE du corps rédactionnel au RENDU, indépendant de l'humeur du
     modèle (qui n'est pas déterministe). À appliquer sur le corps/chapô AVANT le rendu HTML :
     - tiret cadratin (— U+2014) et demi-cadratin ESPACÉ (–) → virgule (signature d'écriture IA) ;
-    - dé-graisse tout passage **…** contenant un chiffre (dates/heures/tarifs) ;
+    - fait RESPECTER la règle de gras (chiffres, noms propres, titres, phrases → dégraissés ;
+      plafond de 5 expressions) ;
     NE touche PAS au trait d'union « - » (Saint-Paul-de-Vence) ni aux plages collées « 700–1500 »."""
     if not text:
         return text
     t = re.sub(r"\s*—\s*", ", ", text)          # cadratin, collé ou espacé
     t = re.sub(r"\s+–\s+", ", ", t)              # demi-cadratin ESPACÉ seulement
-    t = _BOLD.sub(_debold_if_digit, t)           # gras interdit sur dates/chiffres
+    t = _enforce_bold(t)                          # règle de gras (charte) imposée en code
     t = re.sub(r",\s*,", ",", t)                 # virgules doubles résiduelles
     t = re.sub(r"[ \t]+([.,;:!?])", r"\1", t)    # espace avant ponctuation
     return t

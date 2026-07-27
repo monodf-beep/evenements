@@ -1,3 +1,6 @@
+---
+aire: Savoie
+---
 # Kévin Béraud, 34 ans — Saint-Jean-de-Maurienne (Savoie)
 
 *Technicien de maintenance en usine (métallurgie), horaires postés. En couple, deux

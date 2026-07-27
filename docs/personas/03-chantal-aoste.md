@@ -1,3 +1,6 @@
+---
+aire: Vallee-Aoste
+---
 # Chantal Bréan, 44 ans — Aoste (Vallée d'Aoste)
 
 *Fonctionnaire de l'administration régionale, mariée, deux ados au lycée bilingue, vit au

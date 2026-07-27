@@ -20,16 +20,25 @@ un article d'agenda, et ce qui le déçoit (ses drapeaux rouges). Reste concret 
 sert à faire remonter un MANQUE de fond (pas de têtes d'affiche, pas de programme, langue
 de bois), pas à réécrire la charte de style (c'est le rôle de la voix).
 
-## Le panel actuel (6 personas sourcés)
+## Le panel actuel (8 personas sourcés, 2 par aire)
 Issus d'une recherche territoriale (voir `RECHERCHE.md`), curés pour couvrir les axes
-capital culturel × moyens × mobilité × urbain/rural × âge × langue, sans caricature :
-1. **Kévin** — ouvrier de vallée, famille, Maurienne (Savoie) : concret, prix, proximité.
-2. **Camille** — frontalière aisée mais pauvre en temps, Genevois (Haute-Savoie) : décider vite.
-3. **Chantal** — fonctionnaire bilingue cultivée, Aoste : sens + qualité de la traduction FR/IT.
-4. **Manuela** — quartier populaire sans voiture, Turin : gratuité, transport, anti-mépris de classe.
-5. **Jean-Pierre** — retraité de l'arrière-pays isolé, Roya (Nice) : proximité, inclusion, mémoire.
-6. **Piera** — rurale grande lectrice, Valle Maira (Piémont) : valoriser le proche, distances honnêtes.
+capital culturel × moyens × mobilité × urbain/rural × âge × langue, sans caricature.
+Chaque persona porte une **aire** (frontmatter `aire:`) alignée sur `events_raw.territoire` :
+
+| Aire (`territoire`) | Personas |
+|---|---|
+| **Savoie** | Kévin (ouvrier de vallée, Maurienne) · Camille (frontalière pauvre en temps, Genevois) |
+| **Vallee-Aoste** | Chantal (fonctionnaire bilingue, Aoste) · Rémy (agriculteur, vallée du Lys) |
+| **Piemonte** | Manuela (quartier populaire sans voiture, Turin) · Piera (rurale grande lectrice, Valle Maira) |
+| **Nice** | Jean-Pierre (retraité de l'arrière-pays, Roya) · Karine (Niçoise sans voiture, Riquier) |
+
+## Relecture CIBLÉE par territoire
+Un événement n'est relu QUE par les personas de son aire (`ev.territoire`) : un événement
+de Menton (`Nice`) est jugé par Jean-Pierre et Karine, pas par un ouvrier de Maurienne.
+Sinon la note mesure la distance, pas la qualité. Si le territoire est inconnu ou sans
+persona dédié, tout le panel relit (filet). Bonus : ~2 relecteurs par article au lieu de 8
+→ moins cher.
 
 ## Réglages
 - `ENRICH_READER_REVIEW=0` désactive tout le panel.
-- `ENRICH_READER_PERSONAS=3` limite le nombre de personas consultés (défaut : tous).
+- `ENRICH_READER_PERSONAS=3` limite le nombre de personas consultés (défaut : tous ceux de l'aire).
