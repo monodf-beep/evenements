@@ -1196,7 +1196,9 @@ def _relancer_image(conn, event_id: int) -> None:
         flash(f"Fiche {event_id} introuvable.", "err")
         return
     ev = dict(row)
+    old_url = (row["url_image"] or "").strip()
     ev["url_image"] = ""  # force la re-recherche depuis le début de la chaîne
+    cat_banners = banners = None
     try:
         from scripts import visuals as vz
         client = None
@@ -1218,14 +1220,47 @@ def _relancer_image(conn, event_id: int) -> None:
         log.warning("Relance image [%s] échouée : %s", event_id, exc)
         flash(f"Fiche {event_id} : relance image échouée ({exc}).", "err")
         return
-    if not url:
-        flash(f"Fiche {event_id} : aucune image trouvée (pas de bannière pour le territoire).", "err")
-        return
+    # Si la re-résolution retombe sur la MÊME image (requête générique → Commons rend le
+    # même résultat, ex. un portrait de la personnalité) ou ne trouve rien, on ne laisse
+    # PAS l'image signalée en place : repli sur la bannière territoriale (propre, jamais
+    # hors-sujet). Le sens du bouton « relancer » depuis l'audit : faire DISPARAÎTRE
+    # l'image douteuse, pas re-tomber dessus.
+    if not url or url == old_url:
+        from utils.sources import pick_banner_image
+        burl = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
+                                 str(event_id), cat_banners or {}, banners or {})
+        if not burl:
+            flash(f"Fiche {event_id} : aucune meilleure image ni bannière disponible.", "err")
+            return
+        url, credit, source, fx, fy = burl, "", "banner", 0.5, 0.5
+    ev["url_image"], ev["image_credit"], ev["image_source"] = url, credit, source
+    ev["card_focal_x"], ev["card_focal_y"] = fx, fy
     conn.execute(
         "UPDATE events_raw SET url_image=?, image_credit=?, image_source=?, "
         "card_focal_x=?, card_focal_y=? WHERE id=?",
         (url, credit, source, fx, fy, event_id))
     conn.commit()
+    # RE-PUSH vers WordPress — SANS ça, la base change mais le site NON (le bug « je clique
+    # sur relancer mais rien ne change » : l'ancienne version ne re-poussait jamais).
+    pushed = False
+    try:
+        from scripts.publisher_as import publish_to_as
+        new_id, permalink, raw_url = publish_to_as(ev)
+        if new_id:
+            pushed = True
+            # Sur repli bannière, publish_to_as ne ré-héberge pas d'original (anti-bake) →
+            # on VIDE wp_raw_image_url_as pour que l'audit ne réaffiche pas l'ancienne
+            # photo hébergée (c'est la cause de « l'audit montre X, la fiche montre Y »).
+            if source == "banner":
+                conn.execute("UPDATE events_raw SET wp_raw_image_url_as='' WHERE id=?", (event_id,))
+            if permalink or raw_url:
+                conn.execute(
+                    "UPDATE events_raw SET wp_permalink_as=COALESCE(NULLIF(?,''), wp_permalink_as), "
+                    "wp_raw_image_url_as=COALESCE(NULLIF(?,''), wp_raw_image_url_as) WHERE id=?",
+                    (permalink, raw_url, event_id))
+            conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Relance image [%s] : re-push WP échoué : %s", event_id, exc)
     # La photo douteuse est remplacée : on solde le flag d'audit (la nouvelle image sera
     # re-jugée au prochain passage du cron). Best-effort — ne bloque pas la relance.
     try:
@@ -1236,7 +1271,8 @@ def _relancer_image(conn, event_id: int) -> None:
         conn.commit()
     except Exception:  # noqa: BLE001
         pass
-    flash(f"Fiche {event_id} : nouvelle image posée (source : {source}).", "ok")
+    _wp = " et publiée sur le site" if pushed else " (⚠️ re-push WordPress échoué — réessaie)"
+    flash(f"Fiche {event_id} : nouvelle image posée (source : {source}){_wp}.", "ok")
 
 
 def _audit_visuel_rows(conn, dfrom: str, dto: str, limit: int, flagged_only: bool = False) -> list:

@@ -12,7 +12,13 @@
   .av-count{margin-left:auto;align-self:center;font-size:.85rem;color:#7a715f;}
   .av-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.9rem;}
   .av-card{background:#fff;border:1px solid #ece5d8;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
-  .av-thumb{display:block;width:100%;aspect-ratio:1/1;object-fit:contain;background:#2a2a2a;}
+  .av-thumbwrap{position:relative;display:block;width:100%;aspect-ratio:1/1;overflow:hidden;background:#2a2a2a;}
+  /* Fond flou = la MÊME photo agrandie derrière (comme la carte publiée en letterbox),
+     au lieu de bandes noires quand la photo ne remplit pas le carré. */
+  .av-thumbwrap::before{content:"";position:absolute;inset:0;background-image:var(--bg);
+    background-size:cover;background-position:center;filter:blur(18px) brightness(.75);
+    transform:scale(1.15);}
+  .av-thumb{position:relative;display:block;width:100%;height:100%;object-fit:contain;}
   .av-body{padding:.55rem .65rem;display:flex;flex-direction:column;gap:.35rem;flex:1;}
   .av-title{font-weight:600;font-size:.85rem;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
   .av-meta{font-size:.72rem;color:#7a715f;display:flex;flex-wrap:wrap;gap:.3rem;}
@@ -65,7 +71,8 @@
 <div class="av-grid">
   {% for e in events %}
   <div id="av-{{ e.id }}" class="av-card{% if e.flag_raison %} flagged{% endif %}">
-    <a href="/preview/{{ e.id }}" title="Ouvrir la fiche {{ e.id }}">
+    <a class="av-thumbwrap" href="/preview/{{ e.id }}" title="Ouvrir la fiche {{ e.id }}"
+       style="--bg:url('{{ e.thumb }}')">
       <img class="av-thumb" src="{{ e.thumb }}" alt="Visuel de « {{ e.title }} »" loading="lazy">
     </a>
     <div class="av-body">
