@@ -174,9 +174,14 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
         f'{{"title": "...", "description": "..."}}.\n\n'
         f"TITRE : {title}\n\nDESCRIPTION : {desc[:2000]}")
     try:
+        # 3000 (au lieu de 1500, calibré pour Haiku) : avec Sonnet une description longue
+        # peut dépasser et tronquer le JSON avant l'accolade finale (« Expecting value »).
         resp = client.messages.create(
-            model=model, max_tokens=1500,
+            model=model, max_tokens=3000,
             messages=[{"role": "user", "content": prompt}])
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            log.warning("Traduction titre/description tronquée (max_tokens) — ignorée.")
+            return None
         txt = _extract_json(resp)
         data = json.loads(txt[txt.find("{"): txt.rfind("}") + 1])
         t, d = (data.get("title") or "").strip(), (data.get("description") or "").strip()
