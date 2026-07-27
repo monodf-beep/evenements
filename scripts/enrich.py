@@ -221,24 +221,102 @@ def gather_press_kits(conn: sqlite3.Connection, ev: dict) -> str:
     return "\n\n===\n\n".join(chunks)[:12000]
 
 
-def fetch_official_page(url: str, timeout: int = 8) -> str:
-    """Récupère le TEXTE de la page officielle de l'événement (source primaire, libre).
-    Déterministe : le code va chercher la matière, le LLM la rédige. Skip radar/Gmail.
-    Ne franchit aucun mur d'accès — lit simplement la page publique."""
+def _html_to_text(doc: str) -> str:
+    """Retire scripts/styles/navigation, puis les balises, puis décode les entités."""
+    doc = re.sub(r"(?is)<(script|style|nav|header|footer|noscript)[^>]*>.*?</\1>", " ", doc)
+    doc = re.sub(r"(?s)<[^>]+>", " ", doc)
+    doc = htmlmod.unescape(doc)
+    return re.sub(r"\s+", " ", doc).strip()
+
+
+def _get_html(url: str, timeout: int = 8) -> str:
+    """HTML brut d'une page publique (ou "" si inaccessible). Ne franchit aucun mur."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ""
     try:
         r = requests.get(url, timeout=timeout, headers=_UA)
         if r.status_code != 200 or not r.text:
             return ""
-        doc = r.text
+        return r.text
     except Exception:
         return ""
-    # Retire scripts/styles/navigation, puis les balises, puis décode les entités.
-    doc = re.sub(r"(?is)<(script|style|nav|header|footer|noscript)[^>]*>.*?</\1>", " ", doc)
-    doc = re.sub(r"(?s)<[^>]+>", " ", doc)
-    doc = htmlmod.unescape(doc)
-    return re.sub(r"\s+", " ", doc).strip()[:6000]
+
+
+def fetch_official_page(url: str, timeout: int = 8) -> str:
+    """Récupère le TEXTE de la page officielle de l'événement (source primaire, libre).
+    Déterministe : le code va chercher la matière, le LLM la rédige. Skip radar/Gmail."""
+    doc = _get_html(url, timeout)
+    return _html_to_text(doc)[:6000] if doc else ""
+
+
+# Ancres/URL qui trahissent une page « programmation / line-up / affiche » — FR + IT.
+# On les suit depuis la page d'accueil pour récupérer les VRAIES têtes d'affiche.
+_PROG_HINTS = (
+    "programm", "line-up", "lineup", "line_up", "affiche", "artist", "artisti",
+    "concert", "spettacol", "spectacle", "cartellone", "edition", "édition",
+    "au-programme", "en-scene", "en-scène", "invit", "guest", "intervenant",
+    "au-menu", "temps-fort",
+)
+# Ancres à IGNORER (bruit : billetterie, mentions, contact, cookies…).
+_PROG_STOP = ("billet", "ticket", "cookie", "mentions", "contact", "privacy",
+              "cgv", "newsletter", "login", "compte", "panier", "boutique")
+
+
+def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
+    """Depuis le HTML d'accueil, renvoie jusqu'à `limit` URLs INTERNES qui ressemblent à
+    des pages programmation/line-up (même domaine), triées par pertinence de l'ancre."""
+    from urllib.parse import urljoin, urlparse
+    base_host = urlparse(base_url).netloc.lower()
+    if not base_host:
+        return []
+    scored: dict[str, int] = {}
+    for m in re.finditer(r'(?is)<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', html):
+        href, anchor = m.group(1), _html_to_text(m.group(2)).lower()
+        if href.startswith(("#", "mailto:", "tel:", "javascript:")):
+            continue
+        absu = urljoin(base_url, href)
+        pu = urlparse(absu)
+        if pu.scheme not in ("http", "https") or pu.netloc.lower() != base_host:
+            continue
+        hay = (pu.path + " " + anchor).lower()
+        if any(s in hay for s in _PROG_STOP):
+            continue
+        score = sum(2 for h in _PROG_HINTS if h in anchor) + \
+            sum(1 for h in _PROG_HINTS if h in pu.path.lower())
+        if score <= 0:
+            continue
+        clean = absu.split("#")[0]
+        if clean.rstrip("/") == base_url.split("#")[0].rstrip("/"):
+            continue  # pas la page d'accueil elle-même
+        scored[clean] = max(scored.get(clean, 0), score)
+    ordered = sorted(scored, key=lambda u: scored[u], reverse=True)
+    return ordered[:limit]
+
+
+def fetch_official_material(url: str, timeout: int = 8) -> str:
+    """Lecture APPROFONDIE du site officiel : page d'accueil PLUS les pages internes
+    « programmation / line-up / affiche » qu'elle référence (jusqu'à ENRICH_SITE_SUBPAGES,
+    défaut 2). C'est là que vivent les VRAIES têtes d'affiche. Désactivable via
+    ENRICH_SITE_DEEP=0 (on retombe alors sur la seule page d'accueil)."""
+    html = _get_html(url, timeout)
+    if not html:
+        return ""
+    landing = _html_to_text(html)[:6000]
+    if os.getenv("ENRICH_SITE_DEEP", "1") != "1":
+        return landing
+    try:
+        n_sub = int(os.getenv("ENRICH_SITE_SUBPAGES", "2") or 2)
+    except ValueError:
+        n_sub = 2
+    if n_sub <= 0:
+        return landing
+    blocks = [landing] if landing else []
+    for link in _programme_links(html, url, limit=n_sub):
+        txt = _html_to_text(_get_html(link, timeout))[:5000]
+        if txt:
+            blocks.append(f"[PAGE PROGRAMMATION — {link}]\n{txt}")
+            log.info("site officiel : page programmation lue (%s)", link[:90])
+    return "\n\n".join(blocks)
 
 
 def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
@@ -264,13 +342,13 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
     press = gather_press_kits(conn, ev)
     if press:
         press = re.sub(r"(?s)<[^>]+>", " ", press)
-    page = fetch_official_page(ev.get("url_source", ""))
+    page = fetch_official_material(ev.get("url_source", ""))
 
     sections = []
     if press:
         sections.append(f"[DOSSIER(S) DE PRESSE — source primaire, prioritaire]\n{press}")
     if page:
-        sections.append(f"[PAGE OFFICIELLE DE L'ÉVÉNEMENT — récupérée en direct, source primaire]\n{page}")
+        sections.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — accueil + programmation, lu en direct, source primaire]\n{page}")
     if rss:
         sections.append(f"[SIGNAUX FLUX / RADAR]\n{rss}")
     return "\n\n".join(sections) or "(aucune — titre seul)"
