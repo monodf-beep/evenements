@@ -90,7 +90,7 @@ personne, un groupe, un organisme.
 
 ## « alpin » comme étiquette de territoire : PROSCRIT
 On ne nomme JAMAIS nos territoires « alpins » : ni « espace alpin », ni « territoires
-alpins », ni « identité alpine », ni « aire alpine ». On **nomme les territoires** (Savoie,
+alpins », ni « identité alpine », ni « aire alpine », ni « rives alpines ». On **nomme les territoires** (Savoie,
 Piémont, Vallée d'Aoste, Nice) ou on dit **« espace sabaud / sabaudo »**, **« aire sabaude »**.
 (« Les Alpes » comme MONTAGNES, décor géographique concret, reste possible — c'est l'étiquette
 d'appartenance « alpin » qui est bannie.)
