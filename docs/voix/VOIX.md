@@ -25,6 +25,10 @@ langue). Relier le particulier à l'universel, sans jamais gonfler.
 - Pas de superlatifs creux : « incontournable », « magique », « à ne pas manquer »,
   « immanquable » (IT : « imperdibile », « da non perdere », « evento clou », « unico »).
 - Pas de faux balancements « il ne s'agit pas seulement de X, mais de Y ».
+- **Pas de fausse profondeur par la négation.** PROSCRIT : « Aix-les-Bains n'est pas un site
+  neutre », « ce n'est pas un simple décor / hasard », « rien n'est laissé au hasard », « loin
+  d'être anodin ». Ces tournures annoncent un sens qu'elles ne livrent pas. On dit ce que le
+  lieu/l'événement EST et FAIT, jamais ce qu'il « n'est pas ».
 - Pas de **triades** systématiques (« rythme, mémoire et transmission »).
 - Pas de chutes toutes faites (« une invitation à… », « un voyage au cœur de… »).
 - Pas de connecteurs scolaires (« par ailleurs », « en effet », « force est de constater »).
