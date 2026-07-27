@@ -42,6 +42,11 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+# Charge le .env DÈS l'import : les réglages ENRICH_* (recherche web, thinking, seuils…)
+# sont lus en globals ci-dessous, donc AVANT que main() n'appelle load_dotenv. Sans ça,
+# une variable posée dans .env (ex. ENRICH_WEB_SEARCH=1) serait ignorée à l'import.
+# load_dotenv n'écrase pas l'environnement déjà défini : un export shell garde la priorité.
+load_dotenv(ROOT / ".env")
 from utils.logger import get_logger
 from utils import usage
 from utils.images import fetch_og_image
