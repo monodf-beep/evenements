@@ -131,6 +131,15 @@ S'il n'apprend rien de concret (des NOMS, des temps forts, ce qui distingue l'é
 l'article a échoué : va chercher la matière (programme fourni, édition précédente par
 recherche web) au lieu de meubler avec des généralités.
 
+INTERDIT ABSOLU — MÉTA-COMMENTAIRE SUR L'INFO MANQUANTE. N'écris JAMAIS que l'info te manque
+(« à ce stade, la matière disponible ne précise ni les compositeurs, ni les tarifs… »,
+« le programme n'est pas encore connu », « les détails restent à confirmer »). Tu écris ce
+que tu SAIS, un point c'est tout — et tu te tais sur le reste. Un article qui parle de son
+propre vide est le PIRE des échecs. Si après recherche tu n'as vraiment pas de programme
+concret, cherche l'ÉDITION PRÉCÉDENTE ; si tu n'as toujours rien, écris court et factuel
+sur ce qui est certain, sans jamais commenter ce qui manque. Les doutes vont dans le champ
+« a_verifier » (back-office), JAMAIS dans le corps de l'article.
+
 ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
 - Lieu (théâtre, musée, château, abbaye…) : histoire/identité, importance patrimoniale.
 - Artiste / groupe : origine (local ? de territoires proches ? renommée), genre.
@@ -736,8 +745,10 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
              "lieux ; pop : têtes d'affiche ; expo : artistes et œuvres ; spectacle : pièce et "
              "troupe), pris du programme fourni ou, à défaut, de l'ÉDITION PRÉCÉDENTE via "
              "recherche web. N'INVENTE RIEN : si une info (nom, tarif, horaire) n'est pas "
-             "publiée, ne la fabrique pas — dis simplement ce qui est connu. Ne meuble pas : "
-             "le lecteur doit APPRENDRE quelque chose de réel.")
+             "publiée, ne la fabrique pas — mais NE COMMENTE PAS non plus son absence "
+             "(« à ce stade, la matière ne précise pas… » est INTERDIT). Écris seulement les "
+             "faits certains, sans jamais parler de ce qui manque. Ne meuble pas : le lecteur "
+             "doit APPRENDRE quelque chose de réel.")
     revised = enrich_event(ev, material, client, model, court, extra_task=extra)
     return revised if (revised and revised is not API_ERROR) else result
 
