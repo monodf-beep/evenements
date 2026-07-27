@@ -48,7 +48,11 @@ from utils.voix import voix_block
 
 log = get_logger("translate-events")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL_TRANSLATE", "claude-haiku-4-5")
+# La traduction de l'ARTICLE (long markdown « escalier » + voix) demande un modèle
+# fiable : Haiku traduisait les champs courts (titre, chapô) mais recopiait le long
+# « corps » en français (constaté en test). Défaut Sonnet ; surchargeable par env pour
+# revenir à un modèle économique si besoin.
+DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL_TRANSLATE", "claude-sonnet-5")
 
 _LANG_NAME = {"fr": "français", "it": "italien"}
 
@@ -228,6 +232,12 @@ def translate_article(client, model, enrich_json: str, target: str,
         f"(structure « escalier » : titre, chapô, corps, programme, encadré). Tu ne "
         f"réécris QUE l'EXPRESSION : les FAITS restent IDENTIQUES (dates, chiffres, noms "
         f"propres, lieux, line-up, horaires, tarifs).\n\n"
+        f"IMPÉRATIF — TRADUIS INTÉGRALEMENT le contenu de CHAQUE champ, en particulier le "
+        f"long champ « corps » (souvent plusieurs paragraphes). Aucune phrase, aucun mot ne "
+        f"doit RESTER dans la langue d'origine : seuls les noms propres, dates et chiffres "
+        f"sont inchangés. « Préserver la structure » ne concerne QUE les marqueurs markdown "
+        f"(##, ###, **, *, listes, sauts de ligne), JAMAIS le texte — qui doit être rendu "
+        f"entièrement en {tgt}. Ne recopie jamais un champ tel quel.\n\n"
         f"MARKDOWN — préserve rigoureusement la STRUCTURE du champ « corps » : sous-titres "
         f"« ## » et « ### » (mêmes niveaux, mêmes emplacements), gras « **…** », italique "
         f"« *…* », listes et sauts de paragraphe. Tu traduis le TEXTE dans les marqueurs, "
