@@ -167,6 +167,27 @@
       {% set c = enriched.confiance or 'moyenne' %}
       <span class="conf conf-{{ c }}">confiance {{ c }}</span>
     </div>
+    {% if enriched.source %}
+      {% set srcof = enriched.source.officielle %}
+      <div style="font-family:-apple-system,sans-serif;font-size:.8rem;margin-bottom:.6rem;
+                  border-radius:6px;padding:.4rem .6rem;
+                  background:{{ '#eef7ee' if srcof else '#fdf3e6' }};
+                  border:1px solid {{ '#bfe0bf' if srcof else '#f0d3a0' }};">
+        {% if srcof %}
+          ✅ <b>Source officielle</b> — écrit depuis la page presse/programme
+          ({{ enriched.source.pages|length }} page(s) officielle(s) lue(s)).
+          {% if enriched.source.pages %}
+            <div style="margin-top:.25rem;">
+              {% for u in enriched.source.pages %}<a href="{{ u }}" target="_blank" rel="noopener" style="display:block;color:var(--muted);word-break:break-all;">{{ u }}</a>{% endfor %}
+            </div>
+          {% endif %}
+        {% else %}
+          ⚠️ <b>Page presse NON trouvée</b> — écrit
+          {{ 'en repli sur la recherche web' if enriched.source.web else 'à partir des signaux du flux seul' }}.
+          La chaîne « source officielle » n'a pas abouti (site injoignable ou sans page presse suivable).
+        {% endif %}
+      </div>
+    {% endif %}
     {% if art.titre %}<h2>{{ art.titre }}</h2>{% endif %}
     {% if art.chapo %}<div class="chapo">{{ art.chapo_html|safe if art.chapo_html else art.chapo }}</div>{% endif %}
     {% if art.corps %}<div class="corps">{{ art.corps_html|safe if art.corps_html else art.corps }}</div>{% endif %}

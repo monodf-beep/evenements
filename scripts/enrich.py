@@ -256,17 +256,25 @@ def _html_to_text(doc: str) -> str:
     return re.sub(r"\s+", " ", doc).strip()
 
 
-def _get_html(url: str, timeout: int = 8) -> str:
-    """HTML brut d'une page publique (ou "" si inaccessible). Ne franchit aucun mur."""
+def _fetch(url: str, timeout: int = 8) -> tuple:
+    """(HTML, URL_FINALE_après_redirections). Cruciale : une variante de domaine
+    (musique-menton.fr → www.festival-musique-menton.fr) redirige, et c'est l'URL FINALE
+    qui doit servir de base pour suivre les liens internes (sinon ils paraissent externes).
+    ("", "") si inaccessible. Ne franchit aucun mur."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
-        return ""
+        return "", ""
     try:
         r = requests.get(url, timeout=timeout, headers=_UA)
         if r.status_code != 200 or not r.text:
-            return ""
-        return r.text
+            return "", ""
+        return r.text, r.url
     except Exception:
-        return ""
+        return "", ""
+
+
+def _get_html(url: str, timeout: int = 8) -> str:
+    """HTML brut d'une page publique (ou "" si inaccessible)."""
+    return _fetch(url, timeout)[0]
 
 
 def fetch_official_page(url: str, timeout: int = 8) -> str:
@@ -438,16 +446,17 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
     le lit DIRECTEMENT. On lit ensuite sa page presse/programme (programme réel + visuels HD).
     Renvoie (texte_matière, pages) où `pages` = [{'url','html'}, …] des pages OFFICIELLES
     lues (pour en extraire les affiches). Désactivable via ENRICH_SITE_DEEP=0."""
-    html = _get_html(url, timeout)
+    html, url = _fetch(url, timeout)   # url = URL FINALE (après redirections) → bonne base
     resolved = ""
     if not html:
         # Source bloquée/inaccessible : résoudre le vrai site officiel et le lire en direct.
-        resolved = resolve_official_site(title, lieu, client)
-        if resolved:
-            html = _get_html(resolved, timeout)
+        cand = resolve_official_site(title, lieu, client)
+        if cand:
+            html, url = _fetch(cand, timeout)   # suit la redirection (variante → canonique)
             if html:
-                url = resolved
-                log.info("site officiel résolu par recherche web : %s", resolved[:90])
+                resolved = url
+                log.info("site officiel résolu par recherche web : %s → %s",
+                         cand[:70], url[:90])
         if not html:
             return "", []
     landing = _html_to_text(html)[:6000]
@@ -464,7 +473,7 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
     # officielle), soit un lien sortant depuis un agrégateur accessible.
     official = "" if resolved else _find_official_site(html, url, title)
     if official and official != url:
-        ohtml = _get_html(official, timeout)
+        ohtml, official = _fetch(official, timeout)   # base = URL finale du site officiel
         if ohtml:
             pages.append({"url": official, "html": ohtml})
             otext = _html_to_text(ohtml)[:6000]
@@ -1087,6 +1096,15 @@ def main(argv: list[str]) -> int:
                 panel = reader_panel(result, ev, client, review_model) or panel
             if panel:
                 result["reader_panel"] = panel
+        # STATUT DE SOURCE (back-office) : l'article a-t-il été écrit depuis la matière
+        # OFFICIELLE (page presse/programme du site officiel) ou en repli sur la recherche
+        # web ? On stocke le fait + les pages officielles lues, pour l'afficher au preview.
+        if isinstance(result, dict):
+            result["source"] = {
+                "officielle": bool(has_official),
+                "pages": [p.get("url") for p in (official_pages or []) if p.get("url")],
+                "web": bool(USE_WEB_SEARCH and allow_web and not court),
+            }
         title, md = build_article_md(result)
         conn.execute("""
         UPDATE events_raw SET
