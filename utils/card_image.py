@@ -101,16 +101,14 @@ def make_card(data, *, focal=(0.5, 0.5), width: int = DEFAULT_WIDTH,
     tw = int(width)
     th = round(tw * rh / rw)
     src_ratio = img.width / img.height if img.height else 1.0
-    target_ratio = tw / th if th else 1.0
     use = mode
     if mode == "auto":
-        # Cover (recadrage plein cadre) tant que la source n'est ni trop ÉTROITE (portrait
-        # → letterbox, affiche préservée) ni BEAUCOUP plus large que la cible. Un bandeau
-        # très large (ex. « Jazz Art » 1600×630, ratio 2.54) recadré en 4:3 perdrait ses
-        # côtés (titre coupé) : au-delà de 1.7× le ratio cible, on letterbox pour le montrer
-        # ENTIER sur fond flou. Borne haute seulement : aucun changement côté paysage usuel.
-        too_wide = src_ratio > target_ratio * 1.7
-        use = "cover" if (src_ratio >= LETTERBOX_BELOW and not too_wide) else "letterbox"
+        # Choix éditorial (Franck) : on ne COUPE JAMAIS — l'image est toujours montrée
+        # ENTIÈRE sur un fond flou (letterbox), affiches comme photos paysage. 'cover'
+        # (remplir le cadre au point focal, quitte à rogner les bords) reste disponible en
+        # mode MANUEL via card_mode. Un « mixte intelligent » (cover si la source est proche
+        # du ratio cible, sinon letterbox) pourra être réintroduit plus tard.
+        use = "letterbox"
     out = _cover(img, tw, th, focal[0], focal[1]) if use == "cover" else _letterbox(img, tw, th)
     return CardResult(image=out, mode=use, source_ratio=src_ratio)
 
