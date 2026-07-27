@@ -30,6 +30,13 @@ log = get_logger("publisher")
 _UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
 
+# Wikimedia (Commons/upload.wikimedia.org) EXIGE un User-Agent descriptif identifiable
+# (règle User-Agent policy). Un UA navigateur générique se fait throttler agressivement
+# (429 Too Many Requests) dès qu'on enchaîne les téléchargements en lot — constaté lors
+# d'un rattrapage --recheck où des dizaines de bonnes photos retombaient sur la bannière.
+# On présente donc le bot avec contact pour ces domaines, cf. utils.images._UA.
+_WIKI_UA = {"User-Agent": "CulturaSabaudaBot/1.0 (agenda; contact@culturasabauda.eu)"}
+
 
 def _headers(auth) -> dict:
     """En-têtes communs : navigateur + auth de secours via un en-tête PERSONNALISÉ.
@@ -209,16 +216,25 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
         # en masse lors d'un rattrapage --recheck : plusieurs dizaines d'images pourtant
         # bien choisies retombaient sur la bannière générique à cause de CE 429, pas d'un
         # vrai échec — voir utils.images.remote_min_side qui a le même souci ailleurs).
+        # UA descriptif Wikimedia D'ABORD pour les URLs Commons (sinon 429), UA navigateur
+        # en repli (certains hébergeurs renvoient 403 au bot). Backoff plus généreux
+        # (5s/10s/20s) que l'upload : sous throttle Wikimedia, 3s ne suffit pas.
+        import time as _time
+        _wiki = "wikimedia.org" in image_url or "wikipedia.org" in image_url
+        _uas = [_WIKI_UA, _UA] if _wiki else [_UA]
         img = None
-        for attempt in range(3):
-            img = requests.get(image_url, timeout=30, headers=_UA)
-            if img.status_code < 400 or img.status_code not in (429, 500, 502, 503, 504):
+        for attempt in range(4):
+            for _ua in _uas:
+                img = requests.get(image_url, timeout=30, headers=_ua)
+                if img.status_code < 400 or img.status_code not in (429, 500, 502, 503, 504):
+                    break
+            if img is not None and (img.status_code < 400 or img.status_code not in (429, 500, 502, 503, 504)):
                 break
-            if attempt < 2:
+            if attempt < 3:
+                _wait = 5 * (2 ** attempt)
                 log.warning("Téléchargement source tentative %d échoué (%s) — retry dans %ds… (%s)",
-                            attempt + 1, img.status_code, 3 * (attempt + 1), image_url)
-                import time as _time
-                _time.sleep(3 * (attempt + 1))
+                            attempt + 1, img.status_code, _wait, image_url)
+                _time.sleep(_wait)
         img.raise_for_status()
         content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
         if not content_type.startswith("image/"):

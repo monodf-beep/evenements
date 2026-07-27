@@ -265,6 +265,9 @@ def main(argv=None) -> int:
                              "seules images manquantes) et ne remplace que par plus grand.")
     parser.add_argument("--min-dim", type=int, default=images.MIN_DIM,
                         help=f"Seuil du plus petit côté en mode --lowres (défaut {images.MIN_DIM}px).")
+    parser.add_argument("--throttle", type=float, default=1.5,
+                        help="Pause (s) entre deux événements pour ménager Wikimedia/Commons "
+                             "(429 Too Many Requests en lot). Défaut 1.5s ; 0 pour désactiver.")
     parser.add_argument("--bad-url", default="",
                         help="RÉCUPÉRATION : cible les événements dont url_image contient cette "
                              "sous-chaîne (une image parasite partagée, ex. un bandeau de site), "
@@ -345,7 +348,11 @@ def main(argv=None) -> int:
     pushed = 0
 
     skipped_lowres = 0
-    for ev in rows:
+    for _i, ev in enumerate(rows):
+        # Étalement : une courte pause entre événements évite de saturer Wikimedia/Commons
+        # (429 en lot) — resolve_image ET publish_to_as téléchargent chacun des images.
+        if _i and args.throttle > 0:
+            time.sleep(args.throttle)
         title = (ev.get("title") or "")[:55]
         old_url = (ev.get("url_image") or "").strip()
         # Récupération : on VIDE d'abord l'image parasite/non fiable pour que
