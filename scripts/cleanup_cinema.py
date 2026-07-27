@@ -173,7 +173,10 @@ def main(argv=None) -> int:
         title = _clean(rep.get("title"))[:52]
         for ev in grp:
             is_rejected = ev.get("statut") == "rejected"
-            if not garder and not is_rejected:
+            # À retirer : soit pas encore rejeté, soit déjà rejeté mais TOUJOURS en ligne
+            # (wp_post_id_as non vidé — corbeille échouée au tour d'avant, ex. plugin trop
+            # vieux) → on retente la corbeille. Sinon (déjà rejeté ET retiré) : rien.
+            if not garder and (not is_rejected or ev.get("wp_post_id_as")):
                 to_reject.append((ev, verdict))
             elif garder and is_rejected:
                 to_restore.append((ev, verdict))
