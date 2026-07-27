@@ -321,29 +321,95 @@ def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
     return ordered[:limit]
 
 
-def fetch_official_material(url: str, timeout: int = 8) -> str:
-    """Lecture APPROFONDIE du site officiel : page d'accueil PLUS les pages internes
-    « programmation / line-up / affiche » qu'elle référence (jusqu'à ENRICH_SITE_SUBPAGES,
-    défaut 2). C'est là que vivent les VRAIES têtes d'affiche. Désactivable via
-    ENRICH_SITE_DEEP=0 (on retombe alors sur la seule page d'accueil)."""
+# Domaines qui ne sont JAMAIS le site officiel d'un événement : réseaux sociaux,
+# billetteries, agrégateurs, plateformes. On ne les prend pas pour « la source ».
+_NOT_OFFICIAL = (
+    "facebook.", "fb.me", "fb.com", "instagram.", "twitter.", "x.com", "youtube.",
+    "youtu.be", "tiktok.", "linkedin.", "google.", "goo.gl", "wikipedia.", "billetweb.",
+    "weezevent.", "fnac", "ticketmaster.", "digitick.", "eventbrite.", "helloasso.",
+    "yurplan.", "shotgun.", "dice.fm", "tripadvisor.", "spotify.", "deezer.", "apple.",
+    "agendaculturel.", "mapstr.", "waze.", "instagr.am", "bit.ly",
+)
+# Mots trop génériques pour discriminer un domaine officiel (on les garde mais ils pèsent
+# comme les autres : c'est le CUMUL de correspondances qui distingue le bon domaine).
+_TITLE_STOP = {"festival", "concert", "spectacle", "exposition", "salon", "foire", "fete",
+               "fête", "edition", "édition", "saison", "rencontres", "journees", "journées"}
+
+
+def _event_tokens(title: str) -> list[str]:
+    """Mots significatifs du titre (>3 lettres) pour reconnaître le domaine officiel."""
+    return [w for w in re.findall(r"[a-zà-ÿ0-9]+", (title or "").lower())
+            if len(w) > 3 and w not in _TITLE_STOP]
+
+
+def _find_official_site(html: str, base_url: str, title: str) -> str:
+    """Depuis une page (souvent un AGRÉGATEUR), trouve le lien SORTANT vers le vrai site
+    OFFICIEL de l'événement : un domaine externe dont le nom recoupe le titre, ou pointé par
+    une ancre « site officiel ». "" si rien de fiable (on ne devine pas)."""
+    from urllib.parse import urlparse
+    base_host = urlparse(base_url).netloc.lower().lstrip("www.")
+    toks = _event_tokens(title)
+    best, best_score = "", 0
+    for m in re.finditer(r'(?is)<a\b[^>]*href=["\'](https?://[^"\']+)["\'][^>]*>(.*?)</a>', html):
+        href, anchor = m.group(1), _html_to_text(m.group(2)).lower()
+        host = urlparse(href).netloc.lower()
+        if not host or host.lstrip("www.") == base_host:
+            continue                                   # lien interne à l'agrégateur
+        if any(bad in host for bad in _NOT_OFFICIAL):
+            continue                                   # réseau/billetterie/agrégateur
+        score = sum(1 for t in toks if t in host)      # recoupement titre ↔ domaine
+        if any(k in anchor for k in ("site officiel", "officiel", "site web",
+                                     "site internet", "site du", "en savoir plus")):
+            score += 3
+        if score > best_score:
+            best, best_score = f"{urlparse(href).scheme}://{host}/", score
+    return best if best_score >= 2 else ""
+
+
+def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[str]:
+    """Suit les pages presse/programme d'un site et renvoie leurs textes balisés."""
+    out = []
+    for link in _programme_links(html, url, limit=n_sub):
+        txt = _html_to_text(_get_html(link, timeout))[:5000]
+        if txt:
+            out.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{txt}")
+            log.info("%s : page presse/programme lue (%s)", tag, link[:90])
+    return out
+
+
+def fetch_official_material(url: str, timeout: int = 8, title: str = "") -> str:
+    """SOURCE OFFICIELLE = première source (règle Franck). Si `url` est un AGRÉGATEUR, on
+    remonte au vrai site officiel de l'événement (lien sortant qui recoupe le titre), puis on
+    lit sa page presse/programme (programme réel + visuels HD). Sinon on lit `url` en
+    profondeur. Désactivable via ENRICH_SITE_DEEP=0."""
     html = _get_html(url, timeout)
     if not html:
         return ""
     landing = _html_to_text(html)[:6000]
-    if os.getenv("ENRICH_SITE_DEEP", "1") != "1":
-        return landing
+    deep = os.getenv("ENRICH_SITE_DEEP", "1") == "1"
     try:
         n_sub = int(os.getenv("ENRICH_SITE_SUBPAGES", "3") or 3)
     except ValueError:
-        n_sub = 2
-    if n_sub <= 0:
+        n_sub = 3
+    if not deep or n_sub <= 0:
         return landing
-    blocks = [landing] if landing else []
-    for link in _programme_links(html, url, limit=n_sub):
-        txt = _html_to_text(_get_html(link, timeout))[:5000]
-        if txt:
-            blocks.append(f"[PAGE PROGRAMMATION — {link}]\n{txt}")
-            log.info("site officiel : page programmation lue (%s)", link[:90])
+    blocks: list[str] = []
+    # 1) Remonter au SITE OFFICIEL si la source est un agrégateur.
+    official = _find_official_site(html, url, title)
+    if official:
+        ohtml = _get_html(official, timeout)
+        if ohtml:
+            otext = _html_to_text(ohtml)[:6000]
+            if otext:
+                blocks.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — {official}]\n{otext}")
+                log.info("site officiel trouvé via la source : %s", official[:90])
+            blocks += _deep_read(ohtml, official, timeout, n_sub, "site officiel")
+    # 2) La page source (agrégateur, ou site officiel direct) reste de la matière utile.
+    if landing:
+        blocks.append(f"[PAGE SOURCE — {url}]\n{landing}")
+    # 3) Si la source EST le site officiel (aucun lien sortant retenu), lire ses sous-pages.
+    if not official:
+        blocks += _deep_read(html, url, timeout, n_sub, "site officiel")
     return "\n\n".join(blocks)
 
 
@@ -370,7 +436,7 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
     press = gather_press_kits(conn, ev)
     if press:
         press = re.sub(r"(?s)<[^>]+>", " ", press)
-    page = fetch_official_material(ev.get("url_source", ""))
+    page = fetch_official_material(ev.get("url_source", ""), title=ev.get("title", ""))
 
     sections = []
     if press:
