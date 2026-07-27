@@ -1355,10 +1355,16 @@ def audit_visuel():
                     if k in ("from", "to", "limit", "flagged")}
             return redirect(url_for("audit_visuel", **keep))
         if action == "relancer_image" and request.form.get("event_id"):
+            anchor = ""
             try:
-                _relancer_image(conn, int(request.form["event_id"]))
+                eid = int(request.form["event_id"])
+                _relancer_image(conn, eid)
+                anchor = f"#av-{eid}"  # revenir À LA CARTE, pas en haut de page
             except (TypeError, ValueError):
                 flash("Identifiant d'événement invalide.", "err")
+            conn.close()
+            keep = {k: v for k, v in request.args.items() if k in ("from", "to", "limit", "flagged")}
+            return redirect(url_for("audit_visuel", **keep) + anchor)
         conn.close()
         # Conserve les filtres de période/limite/signalées dans la redirection.
         keep = {k: v for k, v in request.args.items() if k in ("from", "to", "limit", "flagged")}

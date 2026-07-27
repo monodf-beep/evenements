@@ -64,7 +64,7 @@
 {% else %}
 <div class="av-grid">
   {% for e in events %}
-  <div class="av-card{% if e.flag_raison %} flagged{% endif %}">
+  <div id="av-{{ e.id }}" class="av-card{% if e.flag_raison %} flagged{% endif %}">
     <a href="/preview/{{ e.id }}" title="Ouvrir la fiche {{ e.id }}">
       <img class="av-thumb" src="{{ e.thumb }}" alt="Visuel de « {{ e.title }} »" loading="lazy">
     </a>
