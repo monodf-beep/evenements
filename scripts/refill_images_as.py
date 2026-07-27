@@ -282,6 +282,11 @@ def main(argv=None) -> int:
                         help="Cible les événements dont image_source est NULL (jamais passés par "
                              "resolve_image — invisibles à --lowres/--recheck). Force une résolution "
                              "complète, sans confiance a priori dans l'image actuelle.")
+    parser.add_argument("--flagged", action="store_true",
+                        help="AUTO-CORRECTION : cible les images SIGNALÉES hors-sujet par l'audit "
+                             "vision (image_audit_flags, flag actif), les ré-résout depuis zéro "
+                             "(agent web officiel → sinon bannière) et solde le flag. Sert au cron "
+                             "après l'audit — l'agent corrige seul ce qu'il a signalé.")
     parser.add_argument("--refocus", action="store_true",
                         help="Recalcule UNIQUEMENT le point focal (card_focal_x/y) de l'image DÉJÀ "
                              "en place — aucune nouvelle recherche d'image. Sert aux événements "
@@ -318,6 +323,16 @@ def main(argv=None) -> int:
     elif args.unverified:
         rows = select_unverified(conn, args.ids)
         log.info("%d événement(s) jamais vérifiés (image_source NULL) à résoudre.", len(rows))
+    elif args.flagged:
+        # Événements avec un flag d'audit ACTIF (resolved_at NULL) — publiés uniquement.
+        q = ("SELECT e.* FROM events_raw e JOIN image_audit_flags f ON f.event_id = e.id "
+             "WHERE f.resolved_at IS NULL AND COALESCE(e.wp_post_id_as,'') <> '' "
+             "AND e.duplicate_of IS NULL")
+        try:
+            rows = [dict(r) for r in conn.execute(q).fetchall()]
+        except sqlite3.OperationalError:
+            rows = []  # table absente (aucun audit encore passé) → rien à corriger
+        log.info("%d image(s) signalée(s) par l'audit à corriger automatiquement.", len(rows))
     else:
         rows = select_targets(conn, args.ids, args.wp_ids)
         log.info("%d événement(s) Agenda Sabauda sans image à traiter.", len(rows))
@@ -358,7 +373,7 @@ def main(argv=None) -> int:
         # Récupération : on VIDE d'abord l'image parasite/non fiable pour que
         # resolve_image reparte de la chaîne (og:image → page → Commons → bannière)
         # sans jamais s'appuyer sur l'ancienne URL.
-        if args.bad_url or args.unverified:
+        if args.bad_url or args.unverified or args.flagged:
             ev["url_image"] = ""
         # keep_existing : on ne dégrade JAMAIS une og/page déjà valide (garde Fix 1,
         # cf. scripts.visuals.resolve_image). Seul --lowres a le droit de remplacer
@@ -450,6 +465,12 @@ def main(argv=None) -> int:
                              (permalink, raw_url, ev["id"]))
                 conn.commit()
             pushed += 1
+            # Auto-correction : l'image signalée a été remplacée et re-poussée → on solde
+            # le flag d'audit (elle sera re-jugée au prochain passage vision si besoin).
+            if args.flagged:
+                conn.execute("UPDATE image_audit_flags SET resolved_at=datetime('now') "
+                             "WHERE event_id=? AND resolved_at IS NULL", (ev["id"],))
+                conn.commit()
         else:
             log.error("[%s] re-push échoué après 3 tentatives — %s", ev["id"], title)
 

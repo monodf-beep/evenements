@@ -72,6 +72,10 @@ case "$MODE" in
     ;;
   images-audit)
     step "audit visuel (planches contact)" "$PY" -m scripts.image_audit
+    # Auto-correction : l'agent re-résout AUTOMATIQUEMENT chaque image que l'audit vient
+    # de signaler hors-sujet (agent web officiel → sinon bannière neutre, jamais pire) et
+    # solde le flag. « L'agent gère après l'audit » sans intervention humaine.
+    step "auto-correction images signalées" "$PY" -m scripts.refill_images_as --flagged
     ;;
   full|*)
     log "=== PIPELINE QUOTIDIEN (fenêtre $FROM → $TO) ==="
@@ -85,6 +89,9 @@ case "$MODE" in
     step "datation"          "$PY" -m scripts.dates
     step "lieux"             "$PY" -m scripts.venues
     step "évaluation"        "$PY" -m scripts.evaluator --from "$FROM" --to "$TO"
+    # Écarte les séances de cinéma commerciales (garde festivals/rétros/hommages
+    # institutionnels) — tri par organisateur, jumeaux FR/IT ensemble, réversible.
+    step "tri cinéma"        "$PY" -m scripts.cleanup_cinema --execute
     step "visuels"           "$PY" -m scripts.visuals   --from "$FROM" --to "$TO"
     step "enrichissement"    "$PY" -m scripts.enrich     --from "$FROM" --to "$TO"
     # 3) Complétion haut de panier (coûteux, borné) + porte qualité
