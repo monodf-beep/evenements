@@ -234,6 +234,23 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
                     # Commons — qui cherche PRÉCISÉMENT une photo du même sujet, donc pas
                     # le risque « grande image sans rapport » de l'incident DON D'ORGANES.
                     content_fallback = (content, "", "page", fx, fy)
+    # Étage 2c — AGENT WEB : la VRAIE image D'ABORD (affiche officielle, photo de la page
+    # de l'événement / du lieu / de l'artiste), AVANT de se rabattre sur une photo Commons
+    # GÉNÉRIQUE (ex. un portrait quelconque de la personnalité au lieu de l'affiche de CET
+    # événement — cf. « Dialoghi con George Clooney »). L'agent privilégie déjà l'officiel
+    # et évite les photos d'agence/presse (posture de droits, charte §8), et un second agent
+    # vision vérifie la pertinence. Gaté par env (coût : 1 recherche web + vision / event) —
+    # VISUALS_WEB_IMAGE=0 pour désactiver (ex. gros rattrapage à moindre coût).
+    if client is not None and os.getenv("VISUALS_WEB_IMAGE", "1") == "1":
+        try:
+            from scripts.images_web import find_verified_image
+            w_url, w_credit, wfx, wfy = find_verified_image(ev, client, blocked)
+        except Exception as exc:  # jamais bloquant : on continue vers Commons
+            log.warning("[%s] agent image web indisponible : %s", ev.get("id"), exc)
+            w_url = ""
+        if w_url:
+            log.info("[%s] Web (officiel/affiche) → %s", ev["id"], w_url[:70])
+            return w_url, w_credit, "web", wfx, wfy
     # Étage 3 — photo licenciable Wikimedia Commons (LLM = requête, code = fetch).
     if client is not None:
         q = visual_query(ev, client, MODEL)
