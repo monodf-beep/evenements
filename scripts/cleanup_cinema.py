@@ -55,20 +55,18 @@ _REJECT_LIKE = "%Séance de cinéma%"
 
 CLASSIFY_PROMPT = """Tu tries des événements de catégorie CINÉMA pour un agenda culturel.
 
-RÈGLE. Le critère décisif est l'ORGANISATEUR / le lieu :
-- EXCLURE (garder=false) : une projection en programmation COURANTE d'une salle
-  COMMERCIALE (Pathé, UGC, Gaumont, multiplexe, cinéma privé) — un film « à l'affiche »,
-  une séance ordinaire, sans dimension événementielle.
-- GARDER (garder=true) : un rendez-vous cinéma à dimension CULTURELLE porté par une
-  ASSOCIATION, une COLLECTIVITÉ territoriale (ville, région), une INSTITUTION culturelle
-  (cinémathèque, musée, médiathèque), un FESTIVAL ou un ciné-club soutenu : festival,
-  rétrospective, hommage à un cinéaste, cycle thématique, avant-première événementielle,
-  cinéma en plein air organisé par la ville/une association.
-Une simple PROJECTION DE FILM ordinaire (un long-métrage à l'affiche : « Carol »,
-« Les Minions »…) est EXCLUE même si l'organisateur est inconnu — c'est le type même de
-ce qu'on ne veut pas. Le « en cas de doute, GARDER » ne vaut QUE pour un vrai rendez-vous
-événementiel (festival, rétrospective, hommage, cycle, avant-première, plein air) dont
-l'organisateur n'est pas clair — jamais pour une séance de film isolée.
+RÈGLE STRICTE. On ne GARDE (garder=true) QUE les vrais FESTIVALS DE CINÉMA : un événement
+MULTI-FILMS à identité de festival — nom de festival, édition numérotée, programmation sur
+plusieurs jours, sélection ou compétition (ex. « Torino Film Festival », un festival dédié
+à Marilyn Monroe, un festival du documentaire).
+
+On EXCLUT (garder=false) TOUT LE RESTE, même porté par une institution culturelle ou un
+cinéma d'art et d'essai :
+- projection d'un film ordinaire (salle commerciale OU non) ;
+- RÉTROSPECTIVE, CYCLE ou HOMMAGE à un réalisateur (ex. « Les films de Bong Joon-ho ») ;
+- ciné en PLEIN AIR, séance unique, avant-première isolée, ciné-club.
+Le critère : est-ce un FESTIVAL identifié (garder) ou une simple PROGRAMMATION de
+projections, aussi culturelle soit-elle (exclure) ? En cas de doute → EXCLURE.
 
 Événement :
 Titre : {title}
@@ -168,11 +166,10 @@ def main(argv=None) -> int:
         garder = bool(verdict.get("garder"))
         kind = verdict.get("type", "?")
         orga = verdict.get("organisateur", "?")
-        # Garde-fou déterministe : une séance de film ordinaire, ou un organisateur
-        # clairement commercial, est TOUJOURS exclue — quoi qu'ait répondu le modèle
-        # (le « doute → garder » ne doit pas rattraper une projection courante).
-        if kind.strip().lower() in ("séance courante", "seance courante") or orga.strip().lower() == "commercial":
-            garder = False
+        # Garde-fou déterministe : on ne garde QUE les FESTIVALS. Tout autre type
+        # (rétrospective, cycle, hommage, plein air, avant-première, séance…) est exclu,
+        # quel que soit l'organisateur ou ce qu'a répondu le modèle.
+        garder = kind.strip().lower() == "festival"
         title = _clean(rep.get("title"))[:52]
         for ev in grp:
             is_rejected = ev.get("statut") == "rejected"
