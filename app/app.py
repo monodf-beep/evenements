@@ -2399,6 +2399,19 @@ def preview(event_id: int):
             enriched = json.loads(ev["enrich_data"])
         except (ValueError, TypeError):
             enriched = None
+    # Le preview affichait le corps/chapô en MARKDOWN BRUT (**gras** et « ## » littéraux →
+    # « rien en gras »). On rend le markdown en HTML — MÊME conversion que la publication
+    # WordPress (scripts.publisher._md_to_html) — pour juger le VRAI article.
+    if isinstance(enriched, dict) and isinstance(enriched.get("article"), dict):
+        try:
+            from scripts.publisher import _md_to_html, _md_inline
+            _art = enriched["article"]
+            if _art.get("corps"):
+                _art["corps_html"] = _md_to_html(_art["corps"])
+            if _art.get("chapo"):
+                _art["chapo_html"] = _md_inline(_art["chapo"])
+        except Exception:  # noqa: BLE001 — rendu markdown non bloquant
+            pass
     enrich_running = _running_state().get("enrich", False)
     # SEO/GEO/AEO : le JSON-LD Event est DÉTERMINISTE (construit depuis la base,
     # toujours affiché) ; les champs title/méta/réponse/FAQ sont générés à la

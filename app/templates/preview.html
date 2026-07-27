@@ -168,8 +168,8 @@
       <span class="conf conf-{{ c }}">confiance {{ c }}</span>
     </div>
     {% if art.titre %}<h2>{{ art.titre }}</h2>{% endif %}
-    {% if art.chapo %}<div class="chapo">{{ art.chapo }}</div>{% endif %}
-    {% if art.corps %}<div class="corps">{{ art.corps }}</div>{% endif %}
+    {% if art.chapo %}<div class="chapo">{{ art.chapo_html|safe if art.chapo_html else art.chapo }}</div>{% endif %}
+    {% if art.corps %}<div class="corps">{{ art.corps_html|safe if art.corps_html else art.corps }}</div>{% endif %}
     {% if enriched.contexte_lieu %}<div class="ctx"><b>Lieu :</b> {{ enriched.contexte_lieu }}</div>{% endif %}
     {% if enriched.contexte_entites %}<div class="ctx"><b>Contexte :</b> {{ enriched.contexte_entites }}</div>{% endif %}
     {% if enriched.angle %}<div class="ctx"><b>Angle (escalier) :</b> {{ enriched.angle }}</div>{% endif %}
