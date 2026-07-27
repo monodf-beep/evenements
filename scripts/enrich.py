@@ -487,30 +487,38 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
         (*params, BATCH_SIZE)).fetchall()
 
 
-def reader_review(article: dict, ev: dict, client, model: str) -> dict:
-    """AGENT PERSONA LECTEUR : lit l'article comme un LECTEUR d'agenda (pas un rédacteur) et
-    renvoie un retour au rédacteur. Une seule question : « est-ce que ça m'apprend quelque
-    chose d'utile et concret sur CET événement ? ». {} si l'appel échoue.
-    Renvoie {"interet": 0-5, "manques": [...], "verdict": "ok"|"revise", "note": "..."}."""
+def reader_review(article: dict, ev: dict, client, model: str,
+                  persona: dict | None = None) -> dict:
+    """AGENT PERSONA LECTEUR : lit l'article dans la peau d'UN persona (docs/personas/) et
+    renvoie son retour au rédacteur. La question centrale reste : « est-ce que ça m'apprend
+    quelque chose d'utile et concret sur CET événement ? ». {} si l'appel échoue.
+    Renvoie {"persona": "...", "interet": 0-5, "manques": [...], "verdict": "ok"|"revise",
+    "note": "..."}."""
     import re as _re
     art = (article.get("article") or {}) if isinstance(article, dict) else {}
     corps = (art.get("corps") or "")[:3000]
     if not corps:
         return {}
+    who = (persona or {}).get("text") or (
+        "Tu es un LECTEUR de l'agenda culturel Agenda Sabauda (PAS un rédacteur), pressé et "
+        "exigeant : tu veux apprendre quelque chose de concret sur CET événement.")
+    pname = (persona or {}).get("title") or "Lecteur"
     prompt = (
-        "Tu es un LECTEUR de l'agenda culturel Agenda Sabauda (PAS un rédacteur). Tu lis ce "
-        "preview d'événement et tu réponds franchement : est-ce que ça t'APPREND quelque chose "
-        "d'utile et de concret sur CET événement — des NOMS (têtes d'affiche), des temps forts, "
-        "ce qui le distingue — ou est-ce creux (« festival au bord du lac, programmation à "
-        "venir ») ? Un bon preview te donne envie d'y aller ET t'apprend quelque chose.\n\n"
+        "Tu incarnes CE persona lecteur de l'agenda culturel Agenda Sabauda (tu n'es PAS un "
+        "rédacteur, tu es ce lecteur précis, avec ses attentes et ses agacements) :\n"
+        f"\"\"\"\n{who}\n\"\"\"\n\n"
+        "Lis ce preview d'événement et réponds franchement, DE TON POINT DE VUE : est-ce que "
+        "ça t'APPREND quelque chose d'utile et de concret sur CET événement — des NOMS (têtes "
+        "d'affiche), des temps forts, ce qui le distingue — ou est-ce creux (« festival au "
+        "bord du lac, programmation à venir ») ? Un bon preview te donne envie d'y aller ET "
+        "t'apprend quelque chose.\n\n"
         f"TITRE : {art.get('titre') or ev.get('title')}\n"
         f"CATÉGORIE : {ev.get('llm_categorie', '')}\n"
         f"ARTICLE :\n{corps}\n\n"
         'Réponds en JSON STRICT : {"interet": <0-5, 0=creux 5=riche>, '
-        '"manques": ["<ce qui manque, ex. aucune tête d\'affiche>"], '
+        '"manques": ["<ce qui te manque, selon TES attentes>"], '
         '"verdict": "ok"|"revise", "note": "<1 phrase de conseil au rédacteur>"}. '
-        'verdict = "revise" dès que interet <= 2, ou qu\'il manque l\'essentiel (les noms, '
-        "les temps forts)."
+        'verdict = "revise" dès que interet <= 2, ou qu\'il manque l\'essentiel pour TOI.'
     )
     try:
         msg = client.messages.create(model=model, max_tokens=400,
@@ -524,20 +532,61 @@ def reader_review(article: dict, ev: dict, client, model: str) -> dict:
         return {}
     try:
         out = json.loads(m.group())
-        return out if isinstance(out, dict) else {}
     except (ValueError, TypeError):
         return {}
+    if not isinstance(out, dict):
+        return {}
+    out["persona"] = pname
+    return out
 
 
-def revise_article(result: dict, review: dict, ev: dict, material: str,
+def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
+    """Fait relire l'article par TOUT LE PANEL de personas (docs/personas/). Renvoie un
+    verdict agrégé : {"reviews": [...], "verdict": "ok"|"revise", "mean": <float>}.
+    Le panel demande une révision si la MAJORITÉ des personas votent « revise ». {} si aucun
+    persona n'est défini (le panel est alors désactivé, non bloquant)."""
+    try:
+        from utils import personas as personas_mod
+        panel = personas_mod.load_personas()
+    except Exception:  # noqa: BLE001 — non bloquant
+        panel = []
+    if not panel:
+        return {}
+    try:
+        cap = int(os.getenv("ENRICH_READER_PERSONAS", "0") or 0)
+    except ValueError:
+        cap = 0
+    if cap > 0:
+        panel = panel[:cap]
+    reviews = []
+    for p in panel:
+        r = reader_review(article, ev, client, model, persona=p)
+        if r:
+            reviews.append(r)
+    if not reviews:
+        return {}
+    votes = sum(1 for r in reviews if r.get("verdict") == "revise")
+    scores = [r["interet"] for r in reviews if isinstance(r.get("interet"), (int, float))]
+    mean = round(sum(scores) / len(scores), 1) if scores else None
+    verdict = "revise" if votes * 2 >= len(reviews) else "ok"  # majorité (ou moitié)
+    return {"reviews": reviews, "verdict": verdict, "mean": mean, "votes": votes}
+
+
+def revise_article(result: dict, panel: dict, ev: dict, material: str,
                    client, model: str, court: bool):
-    """Réécrit l'article en tenant compte du retour LECTEUR. Renvoie le nouveau result, ou
-    l'ancien si la révision échoue."""
-    critique = "interet=%s ; manque : %s ; conseil : %s" % (
-        review.get("interet"), ", ".join(review.get("manques") or []) or "—",
-        review.get("note") or "—")
-    extra = ("[RETOUR D'UN LECTEUR sur ton brouillon précédent — CORRIGE-LE] " + critique +
-             ". Rends l'article plus SUBSTANTIEL et CONCRET : donne des têtes d'affiche et des "
+    """Réécrit l'article en tenant compte des retours DU PANEL de lecteurs. Renvoie le
+    nouveau result, ou l'ancien si la révision échoue."""
+    lignes = []
+    for r in (panel.get("reviews") or []):
+        if r.get("verdict") != "revise":
+            continue
+        lignes.append("- %s (intérêt %s) : %s%s" % (
+            r.get("persona", "Lecteur"), r.get("interet"),
+            r.get("note") or "—",
+            (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else ""))
+    critique = "\n".join(lignes) or "Article jugé creux par le panel."
+    extra = ("[RETOURS DE LECTEURS sur ton brouillon précédent — CORRIGE-LE]\n" + critique +
+             "\nRends l'article plus SUBSTANTIEL et CONCRET : donne des têtes d'affiche et des "
              "temps forts (du programme fourni, ou à défaut de l'ÉDITION PRÉCÉDENTE via "
              "recherche web). Ne meuble pas : le lecteur doit APPRENDRE quelque chose.")
     revised = enrich_event(ev, material, client, model, court, extra_task=extra)
@@ -608,20 +657,21 @@ def main(argv: list[str]) -> int:
                 (model, ev["id"]))
             conn.commit()
             continue
-        # AGENT LECTEUR : sur les articles développés (palier long), un persona lecteur
-        # relit le brouillon et, s'il le juge creux (pas de têtes d'affiche, pas de temps
-        # forts), on demande UNE révision au rédacteur. Le retour est stocké pour le
-        # back-office. Non bloquant, et seulement sur le long (le court est un catalogue).
+        # PANEL LECTEURS : sur les articles développés (palier long), tout le panel de
+        # personas (docs/personas/) relit le brouillon. Si la majorité le juge creux (pas de
+        # têtes d'affiche, pas de temps forts), on demande UNE révision au rédacteur. Les
+        # retours sont stockés pour le back-office. Non bloquant, long uniquement (le court
+        # est un catalogue).
         if not court and os.getenv("ENRICH_READER_REVIEW", "1") == "1":
             review_model = pipeline_settings.model_eco()
-            review = reader_review(result, ev, client, review_model)
-            if review.get("verdict") == "revise":
-                log.info("[%d] lecteur: intérêt=%s → révision", ev["id"],
-                         review.get("interet"))
-                result = revise_article(result, review, ev, material, client, model, court)
-                review = reader_review(result, ev, client, review_model) or review
-            if review:
-                result["reader_review"] = review
+            panel = reader_panel(result, ev, client, review_model)
+            if panel.get("verdict") == "revise":
+                log.info("[%d] panel lecteurs: moyenne=%s, %s vote(s) révision → révision",
+                         ev["id"], panel.get("mean"), panel.get("votes"))
+                result = revise_article(result, panel, ev, material, client, model, court)
+                panel = reader_panel(result, ev, client, review_model) or panel
+            if panel:
+                result["reader_panel"] = panel
         title, md = build_article_md(result)
         conn.execute("""
         UPDATE events_raw SET

@@ -16,7 +16,7 @@
       <div><b>Cultura Sabauda</b><small>Agenda</small></div>
     </div>
     {% set _analyse = ['pilotage', 'couverture', 'couverture_geo', 'audit_visuel', 'wireframe'] %}
-    {% set _aide = ['process', 'pipeline', 'voix', 'cowork', 'reglages'] %}
+    {% set _aide = ['process', 'pipeline', 'voix', 'personas', 'cowork', 'reglages'] %}
     <nav class="nav" aria-label="Navigation principale">
       <a href="/semaine" class="{{ 'on' if active=='semaine' }}" {% if active=='semaine' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> Cette semaine</a>
       <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Tableau de bord</a>
@@ -56,6 +56,7 @@
         <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
         <a href="/pipeline" class="{{ 'on' if active=='pipeline' }}" {% if active=='pipeline' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Pipeline auto</a>
         <a href="/voix" class="{{ 'on' if active=='voix' }}" {% if active=='voix' %}aria-current="page"{% endif %}><span aria-hidden="true">🗣️</span> Voix éditoriale</a>
+        <a href="/personas" class="{{ 'on' if active=='personas' }}" {% if active=='personas' %}aria-current="page"{% endif %}><span aria-hidden="true">👓</span> Personas lecteurs</a>
         <a href="/cowork" class="{{ 'on' if active=='cowork' }}" {% if active=='cowork' %}aria-current="page"{% endif %}><span aria-hidden="true">🤖</span> Cowork</a>
         <a href="/reglages" class="{{ 'on' if active=='reglages' }}" {% if active=='reglages' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Réglages / Coûts</a>
       </details>

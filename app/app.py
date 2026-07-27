@@ -1084,6 +1084,17 @@ def voix_view():
     return render_template("voix.html", active="voix", st=voixmod.voix_status())
 
 
+@app.route("/personas")
+@require_auth
+def personas_view():
+    """Panel de personas LECTEURS (docs/personas/ ou dossier PERSONAS_DIR). Montre qui
+    relit les articles développés après rédaction, pour que Franck puisse les relire et
+    les éditer. Lecture seule : on édite les personas dans le dépôt / Obsidian."""
+    from utils import personas as personas_mod
+    return render_template("personas.html", active="personas",
+                           st=personas_mod.personas_status())
+
+
 def _ensure_checks_table(conn):
     """Table des points « à vérifier » (garde-fou humain sur les faits). Idempotent.
     Même DDL que scripts/enrich.py._ensure_checks_table."""

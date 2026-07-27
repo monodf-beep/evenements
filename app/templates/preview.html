@@ -179,20 +179,29 @@
         {% for s in enriched.sources %}<a href="{{ s }}" target="_blank" rel="noopener">{{ s }}</a><br>{% endfor %}
       </div>
     {% endif %}
-    {% if enriched.reader_review %}
-      {% set rr = enriched.reader_review %}
-      {% set ok = (rr.verdict == 'ok') %}
+    {% if enriched.reader_panel and enriched.reader_panel.reviews %}
+      {% set panel = enriched.reader_panel %}
+      {% set ok = (panel.verdict == 'ok') %}
       <div style="font-family:-apple-system,sans-serif;font-size:.82rem;margin-top:.8rem;
                   border-radius:8px;padding:.6rem .8rem;
                   background:{{ '#eef7ee' if ok else '#fdf3e6' }};
                   border:1px solid {{ '#bfe0bf' if ok else '#f0d3a0' }};
                   color:var(--ink-2);">
-        👓 <b>Retour lecteur</b> · intérêt
-        <b>{{ rr.interet if rr.interet is not none else '?' }}/5</b>
-        · {{ 'validé' if ok else 'révisé' }}
-        {% if rr.note %}<div style="margin-top:.3rem;">« {{ rr.note }} »</div>{% endif %}
-        {% if rr.manques %}<div style="margin-top:.3rem;color:var(--muted);">Manques signalés :
-          {{ rr.manques|join(' · ') }}</div>{% endif %}
+        👓 <b>Panel lecteurs</b> · intérêt moyen
+        <b>{{ panel.mean if panel.mean is not none else '?' }}/5</b>
+        · {{ 'validé' if ok else 'révisé après retours' }}
+        <div style="margin-top:.5rem;display:grid;gap:.4rem;">
+          {% for rr in panel.reviews %}
+            <div style="border-left:3px solid {{ '#bfe0bf' if rr.verdict == 'ok' else '#e6a94d' }};
+                        padding-left:.5rem;">
+              <b>{{ rr.persona or 'Lecteur' }}</b> —
+              intérêt {{ rr.interet if rr.interet is not none else '?' }}/5
+              {% if rr.note %}<div>« {{ rr.note }} »</div>{% endif %}
+              {% if rr.manques %}<div style="color:var(--muted);">Manque :
+                {{ rr.manques|join(' · ') }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
       </div>
     {% endif %}
   </div>
