@@ -599,12 +599,13 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
 
 
 def reader_review(article: dict, ev: dict, client, model: str,
-                  persona: dict | None = None) -> dict:
+                  persona: dict | None = None, mode: str = "local") -> dict:
     """AGENT PERSONA LECTEUR : lit l'article dans la peau d'UN persona (docs/personas/) et
-    renvoie son retour au rédacteur. La question centrale reste : « est-ce que ça m'apprend
-    quelque chose d'utile et concret sur CET événement ? ». {} si l'appel échoue.
-    Renvoie {"persona": "...", "interet": 0-5, "manques": [...], "verdict": "ok"|"revise",
-    "note": "..."}."""
+    renvoie son retour au rédacteur. `mode` : "local" (l'événement est dans SON territoire :
+    accès, pertinence quotidienne) ou "visite" (l'événement est dans une aire adjacente : le
+    persona juge si ça vaut un aller-retour / week-end). {} si l'appel échoue. Renvoie
+    {"persona": ..., "role": "local"|"visite", "interet": 0-5, "manques": [...],
+    "verdict": "ok"|"revise", "note": ...}."""
     import re as _re
     art = (article.get("article") or {}) if isinstance(article, dict) else {}
     corps = (art.get("corps") or "")[:3000]
@@ -614,6 +615,17 @@ def reader_review(article: dict, ev: dict, client, model: str,
         "Tu es un LECTEUR de l'agenda culturel Agenda Sabauda (PAS un rédacteur), pressé et "
         "exigeant : tu veux apprendre quelque chose de concret sur CET événement.")
     pname = (persona or {}).get("title") or "Lecteur"
+    mode_txt = (
+        "L'événement est dans TON territoire : juge s'il te parle et si tu peux y aller "
+        "(accès, distance depuis chez toi, prix quand c'est pertinent) — mais ne pénalise "
+        "pas un événement RÉEL et proche juste parce qu'un détail pratique manque encore."
+        if mode == "local" else
+        "ATTENTION : cet événement n'est PAS chez toi, il est dans une aire VOISINE de la "
+        "tienne. Tu ne juges donc PAS l'accès quotidien, mais la valeur de DÉPLACEMENT : "
+        "est-ce un assez bon motif pour faire l'aller-retour ou un week-end depuis chez toi ? "
+        "Qu'est-ce qui donnerait envie de faire la route ? Ne pénalise pas la simple distance "
+        "(elle est admise, tu es prêt à te déplacer si ça vaut le coup) : juge si l'article te "
+        "DONNE une vraie raison de venir.")
     prompt = (
         "Tu incarnes CE persona lecteur de l'agenda culturel Agenda Sabauda (tu n'es PAS un "
         "rédacteur, tu es ce lecteur précis, avec ses attentes et ses agacements) :\n"
@@ -629,9 +641,7 @@ def reader_review(article: dict, ev: dict, client, model: str,
         "pièce et la troupe ; pour une fête, le programme et les temps forts. Ne réclame pas "
         "des noms « grand public » quand le genre n'en a pas : demande la substance de CE "
         "genre-là.\n"
-        "L'événement est dans TON territoire : juge s'il te parle et si tu peux y aller "
-        "(accès, distance depuis chez toi, prix quand c'est pertinent) — mais ne pénalise pas "
-        "un événement RÉEL et proche juste parce qu'un détail pratique manque encore.\n\n"
+        f"{mode_txt}\n\n"
         f"TITRE : {art.get('titre') or ev.get('title')}\n"
         f"CATÉGORIE : {ev.get('llm_categorie', '')}\n"
         f"ARTICLE :\n{corps}\n\n"
@@ -658,6 +668,7 @@ def reader_review(article: dict, ev: dict, client, model: str,
     if not isinstance(out, dict):
         return {}
     out["persona"] = pname
+    out["role"] = mode
     return out
 
 
@@ -667,33 +678,42 @@ def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
     note mesure la distance, pas la qualité). Renvoie un verdict agrégé :
     {"reviews": [...], "verdict": "ok"|"revise", "mean": <float>}. Révision si la MAJORITÉ
     vote « revise ». {} si aucun persona (panel désactivé, non bloquant)."""
+    territoire = ev.get("territoire", "")
     try:
         from utils import personas as personas_mod
-        panel = personas_mod.personas_for(ev.get("territoire", ""))
+        locaux = personas_mod.personas_for(territoire)
+        visiteurs = personas_mod.personas_visiting(territoire)
     except Exception:  # noqa: BLE001 — non bloquant
-        panel = []
-    if not panel:
+        locaux, visiteurs = [], []
+    if not locaux:
         return {}
-    log.info("[%s] panel ciblé territoire=%s : %s", ev.get("id"),
-             ev.get("territoire") or "?", ", ".join(p["title"].split(",")[0] for p in panel))
     try:
         cap = int(os.getenv("ENRICH_READER_PERSONAS", "0") or 0)
     except ValueError:
         cap = 0
     if cap > 0:
-        panel = panel[:cap]
-    reviews = []
-    for p in panel:
-        r = reader_review(article, ev, client, model, persona=p)
-        if r:
-            reviews.append(r)
+        locaux = locaux[:cap]
+    log.info("[%s] panel territoire=%s | locaux: %s | visiteurs: %s", ev.get("id"),
+             territoire or "?",
+             ", ".join(p["title"].split(",")[0] for p in locaux) or "—",
+             ", ".join(p["title"].split(",")[0] for p in visiteurs) or "—")
+
+    reviews = [r for r in (reader_review(article, ev, client, model, persona=p, mode="local")
+                           for p in locaux) if r]
+    visite_reviews = [r for r in (reader_review(article, ev, client, model, persona=p,
+                                                 mode="visite") for p in visiteurs) if r]
     if not reviews:
         return {}
+    # La NOTE et la décision de révision sont pilotées par les LOCAUX (le public premier) ;
+    # les visiteurs sont un signal complémentaire (« ça vaut le déplacement ? »).
     votes = sum(1 for r in reviews if r.get("verdict") == "revise")
     scores = [r["interet"] for r in reviews if isinstance(r.get("interet"), (int, float))]
     mean = round(sum(scores) / len(scores), 1) if scores else None
-    verdict = "revise" if votes * 2 >= len(reviews) else "ok"  # majorité (ou moitié)
-    return {"reviews": reviews, "verdict": verdict, "mean": mean, "votes": votes}
+    vscores = [r["interet"] for r in visite_reviews if isinstance(r.get("interet"), (int, float))]
+    vmean = round(sum(vscores) / len(vscores), 1) if vscores else None
+    verdict = "revise" if votes * 2 >= len(reviews) else "ok"  # majorité (ou moitié) des locaux
+    return {"reviews": reviews, "visite_reviews": visite_reviews,
+            "verdict": verdict, "mean": mean, "vmean": vmean, "votes": votes}
 
 
 def revise_article(result: dict, panel: dict, ev: dict, material: str,
@@ -701,11 +721,12 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
     """Réécrit l'article en tenant compte des retours DU PANEL de lecteurs. Renvoie le
     nouveau result, ou l'ancien si la révision échoue."""
     lignes = []
-    for r in (panel.get("reviews") or []):
+    for r in (panel.get("reviews") or []) + (panel.get("visite_reviews") or []):
         if r.get("verdict") != "revise":
             continue
-        lignes.append("- %s (intérêt %s) : %s%s" % (
-            r.get("persona", "Lecteur"), r.get("interet"),
+        role = "visiteur" if r.get("role") == "visite" else "local"
+        lignes.append("- %s (%s, intérêt %s) : %s%s" % (
+            r.get("persona", "Lecteur"), role, r.get("interet"),
             r.get("note") or "—",
             (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else ""))
     critique = "\n".join(lignes) or "Article jugé creux par le panel."

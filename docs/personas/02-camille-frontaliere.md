@@ -1,5 +1,6 @@
 ---
 aire: Savoie
+visite: Vallee-Aoste, Piemonte
 ---
 # Camille Deffieux, 38 ans — Saint-Julien-en-Genevois (Haute-Savoie)
 

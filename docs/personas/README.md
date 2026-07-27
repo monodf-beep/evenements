@@ -32,12 +32,29 @@ Chaque persona porte une **aire** (frontmatter `aire:`) alignée sur `events_raw
 | **Piemonte** | Manuela (quartier populaire sans voiture, Turin) · Piera (rurale grande lectrice, Valle Maira) |
 | **Nice** | Jean-Pierre (retraité de l'arrière-pays, Roya) · Karine (Niçoise sans voiture, Riquier) |
 
-## Relecture CIBLÉE par territoire
-Un événement n'est relu QUE par les personas de son aire (`ev.territoire`) : un événement
-de Menton (`Nice`) est jugé par Jean-Pierre et Karine, pas par un ouvrier de Maurienne.
-Sinon la note mesure la distance, pas la qualité. Si le territoire est inconnu ou sans
-persona dédié, tout le panel relit (filet). Bonus : ~2 relecteurs par article au lieu de 8
-→ moins cher.
+## Relecture CIBLÉE : deux notes (locaux + visiteur)
+Un événement a **deux publics**, jugés séparément :
+
+1. **Locaux (sur place)** — personas dont l'`aire` == `ev.territoire`. Ils jugent l'accès,
+   la pertinence quotidienne, le prix. **Ce sont eux qui pilotent la note et la révision.**
+2. **Visiteur d'une aire voisine** — persona d'une AUTRE aire qui irait plausiblement là-bas
+   (corridor déclaré dans son frontmatter `visite:`). Il juge une autre question : « est-ce
+   que ça vaut l'aller-retour / le week-end ? ». Signal complémentaire, ne déclenche pas la
+   révision.
+
+La distance n'est donc plus pénalisée à tort : un événement de Menton est jugé par des
+Niçois (locaux) et par Piera (Cuneo, qui irait via Tende) — **jamais par un Savoyard**, pour
+qui Nice n'est pas un corridor. Corridors actuels (`visite:`) :
+
+| Persona | Aire | Irait en visite à |
+|---|---|---|
+| Camille (Genevois) | Savoie | Vallée d'Aoste (Courmayeur), Piémont (Turin) |
+| Chantal (Aoste) | Vallee-Aoste | Piémont (Turin), Savoie |
+| Piera (Cuneo) | Piemonte | Nice (col de Tende) |
+
+Les personas enracinés (Kévin, Rémy, Manuela, Jean-Pierre, Karine) n'ont pas de `visite:` :
+ils ne font pas de sorties culturelles lointaines. Édite ces tags pour ajuster les corridors.
+Filet : territoire inconnu → tout le panel relit (locaux), aucun visiteur.
 
 ## Réglages
 - `ENRICH_READER_REVIEW=0` désactive tout le panel.

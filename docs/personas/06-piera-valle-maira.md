@@ -1,5 +1,6 @@
 ---
 aire: Piemonte
+visite: Nice
 ---
 # Piera Bernardi, 61 ans — Dronero, Valle Maira (Piémont)
 

@@ -184,10 +184,12 @@
                   background:{{ '#eef7ee' if ok else '#fdf3e6' }};
                   border:1px solid {{ '#bfe0bf' if ok else '#f0d3a0' }};
                   color:var(--ink-2);">
-        👓 <b>Panel lecteurs</b> · intérêt moyen
+        👓 <b>Panel lecteurs</b> · locaux
         <b>{{ panel.mean if panel.mean is not none else '?' }}/5</b>
+        {% if panel.vmean is not none %}· visiteurs <b>{{ panel.vmean }}/5</b>{% endif %}
         · {{ 'validé' if ok else 'révisé après retours' }}
         <div style="margin-top:.5rem;display:grid;gap:.4rem;">
+          <div style="font-weight:600;color:var(--muted);">Sur place (locaux)</div>
           {% for rr in panel.reviews %}
             <div style="border-left:3px solid {{ '#bfe0bf' if rr.verdict == 'ok' else '#e6a94d' }};
                         padding-left:.5rem;">
@@ -198,6 +200,19 @@
                 {{ rr.manques|join(' · ') }}</div>{% endif %}
             </div>
           {% endfor %}
+          {% if panel.visite_reviews %}
+            <div style="font-weight:600;color:var(--muted);margin-top:.3rem;">Visiteur d'une aire voisine (vaut le déplacement ?)</div>
+            {% for rr in panel.visite_reviews %}
+              <div style="border-left:3px dashed {{ '#bfe0bf' if rr.verdict == 'ok' else '#e6a94d' }};
+                          padding-left:.5rem;">
+                <b>{{ rr.persona or 'Lecteur' }}</b> —
+                intérêt {{ rr.interet if rr.interet is not none else '?' }}/5
+                {% if rr.note %}<div>« {{ rr.note }} »</div>{% endif %}
+                {% if rr.manques %}<div style="color:var(--muted);">Manque :
+                  {{ rr.manques|join(' · ') }}</div>{% endif %}
+              </div>
+            {% endfor %}
+          {% endif %}
         </div>
       </div>
     {% endif %}

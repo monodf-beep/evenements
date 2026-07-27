@@ -60,15 +60,26 @@ def _title_of(text: str) -> str:
     return ""
 
 
-def _parse_aire(text: str) -> str:
-    """Lit le frontmatter YAML `aire:` (territoire de référence du persona) AVANT nettoyage.
-    "" si absent. Valeurs alignées sur events_raw.territoire (Savoie, Piemonte, Vallee-Aoste,
-    Nice)."""
+def _frontmatter(text: str) -> str:
+    """Bloc frontmatter YAML brut (--- … ---) en tête, ou "" si absent."""
     m = re.match(r"\A\s*---\n(.*?)\n---\n", text or "", flags=re.S)
-    if not m:
-        return ""
-    a = re.search(r"(?im)^\s*aire\s*:\s*(\S+)", m.group(1))
+    return m.group(1) if m else ""
+
+
+def _parse_aire(text: str) -> str:
+    """Lit `aire:` (territoire de référence du persona). "" si absent. Valeurs alignées sur
+    events_raw.territoire (Savoie, Piemonte, Vallee-Aoste, Nice)."""
+    a = re.search(r"(?im)^\s*aire\s*:\s*(\S+)", _frontmatter(text))
     return a.group(1).strip() if a else ""
+
+
+def _parse_visite(text: str) -> list[str]:
+    """Lit `visite:` (aires où ce persona irait PLAUSIBLEMENT en visite — corridors réels,
+    pas n'importe quel éloignement). Liste séparée par virgules/espaces. [] si absent."""
+    v = re.search(r"(?im)^\s*visite\s*:\s*(.+)$", _frontmatter(text))
+    if not v:
+        return []
+    return [s.strip() for s in re.split(r"[,\s]+", v.group(1).strip()) if s.strip()]
 
 
 def load_personas() -> list[dict]:
@@ -87,26 +98,42 @@ def load_personas() -> list[dict]:
             except OSError:
                 continue
             aire = _parse_aire(rawfile)
+            visite = _parse_visite(rawfile)
             raw = _strip_obsidian(rawfile)
             if not raw:
                 continue
             seen.add(rp)
-            out.append({"name": f.name, "title": _title_of(raw),
-                        "text": raw, "path": str(f), "aire": aire})
+            out.append({"name": f.name, "title": _title_of(raw), "text": raw,
+                        "path": str(f), "aire": aire, "visite": visite})
     return out
 
 
 def personas_for(territoire: str) -> list[dict]:
-    """Personas à mobiliser pour un événement d'un territoire donné : ceux dont l'aire
-    correspond (relecture CIBLÉE — un événement de Menton est jugé par des lecteurs de Nice,
-    pas de Maurienne). Filet : si le territoire est inconnu ou sans persona dédié, on renvoie
-    TOUT le panel (mieux vaut une relecture large que pas de relecture)."""
+    """LOCAUX : personas dont l'aire == territoire de l'événement (relecture CIBLÉE — un
+    événement de Menton est jugé par des lecteurs de Nice, pas de Maurienne). Filet : si le
+    territoire est inconnu ou sans persona dédié, on renvoie TOUT le panel."""
     panel = load_personas()
     t = (territoire or "").strip().lower()
     if not t:
         return panel
     matched = [p for p in panel if (p.get("aire") or "").strip().lower() == t]
     return matched or panel
+
+
+def personas_visiting(territoire: str) -> list[dict]:
+    """VISITEURS : personas d'une AUTRE aire qui iraient plausiblement dans ce territoire
+    (corridor réel déclaré dans `visite:`). Ex. Piera (Cuneo) irait à Nice, pas Manuela
+    (Turin). [] si territoire inconnu (pas de note visiteur dans ce cas)."""
+    t = (territoire or "").strip().lower()
+    if not t:
+        return []
+    out = []
+    for p in load_personas():
+        if (p.get("aire") or "").strip().lower() == t:
+            continue  # c'est un local, pas un visiteur
+        if any(a.strip().lower() == t for a in (p.get("visite") or [])):
+            out.append(p)
+    return out
 
 
 def personas_status() -> dict:

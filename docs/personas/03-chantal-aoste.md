@@ -1,5 +1,6 @@
 ---
 aire: Vallee-Aoste
+visite: Piemonte, Savoie
 ---
 # Chantal Bréan, 44 ans — Aoste (Vallée d'Aoste)
 
