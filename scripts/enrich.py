@@ -496,31 +496,49 @@ _IMG_SKIP = ("logo", "sponsor", "partenaire", "partner", "icon", "favicon", "pix
 _IMG_RE = re.compile(r'(?i)(?:src|href)\s*=\s*["\']([^"\']+\.(?:jpe?g|png|webp))(?:\?[^"\']*)?["\']')
 
 
+_OG_RE = re.compile(
+    r'(?is)<meta[^>]+(?:property|name)\s*=\s*["\'](?:og:image|twitter:image)[^"\']*["\']'
+    r'[^>]+content\s*=\s*["\']([^"\']+)["\']')
+_OG_RE2 = re.compile(
+    r'(?is)<meta[^>]+content\s*=\s*["\']([^"\']+)["\'][^>]+'
+    r'(?:property|name)\s*=\s*["\'](?:og:image|twitter:image)')
+
+
 def extract_press_visuals(pages: list) -> dict:
     """Depuis les pages OFFICIELLES lues (dossier de presse), trouve l'AFFICHE de l'événement
-    en PORTRAIT et en PAYSAGE (visuels HD). Télécharge les meilleurs candidats pour mesurer
-    leur orientation. Renvoie {'portrait':url|None, 'wide':url|None, 'poster':url|None}."""
+    en PORTRAIT et en PAYSAGE (visuels HD). Priorise l'og:image (presque toujours l'affiche),
+    puis les images bien nommées, puis les autres ; télécharge les candidats pour mesurer leur
+    orientation. Renvoie {'portrait':url|None, 'wide':url|None, 'poster':url|None}."""
     from urllib.parse import urljoin, urlparse
     from utils.images import remote_dims
     cands: dict[str, int] = {}
     for p in pages or []:
         html, base = p.get("html", ""), p.get("url", "")
+        # og:image / twitter:image : signal le plus fiable de l'affiche officielle.
+        for rx in (_OG_RE, _OG_RE2):
+            for m in rx.finditer(html or ""):
+                u = urljoin(base, m.group(1).strip()).split("?")[0]
+                if u and " " not in u and urlparse(u).scheme.startswith("http"):
+                    cands[u] = max(cands.get(u, 0), 10)
         for m in _IMG_RE.finditer(html or ""):
             u = urljoin(base, m.group(1)).split("?")[0]
             low = u.lower()
             if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
                 continue
             score = sum(2 for h in _AFFICHE_HINT if h in low)
-            cands[u] = max(cands.get(u, 0), score)
-    if not cands:
-        return {}
-    # On mesure d'abord les mieux nommés (affiche/visuel…), plafonné pour le coût.
-    ordered = sorted(cands, key=lambda u: cands[u], reverse=True)[:8]
+            if score:
+                cands[u] = max(cands.get(u, 0), score)
+    # CONSERVATEUR : on ne retient QUE l'og:image ou une image au nom d'affiche explicite —
+    # jamais une image anonyme (les CMS servent 50+ photos hachées ; en prendre une « au
+    # hasard » comme affiche serait faux). Mieux vaut une affiche sûre (ou rien) qu'un
+    # visuel arbitraire ; le multi-format restant se règle à l'audit visuel.
+    ordered = [u for u in sorted(cands, key=lambda u: cands[u], reverse=True) if cands[u] > 0]
+    ordered = ordered[:12]
     portrait = wide = None
     pa = wa = 0
     for u in ordered:
         w, h = remote_dims(u)
-        if w < 400 or h < 400:          # trop petit → logo/vignette, pas une affiche
+        if w < 350 or h < 350:          # trop petit → logo/vignette, pas une affiche
             continue
         area, ratio = w * h, w / h
         if ratio <= 0.9 and area > pa:          # portrait
