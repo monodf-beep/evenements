@@ -398,17 +398,29 @@ def resolve_official_site(title: str, lieu: str, client) -> str:
          "de sa page d'accueil (https://…), rien d'autre. PAS un agrégateur (agendaculturel, "
          "infoconcert, billetreduc…), PAS un réseau social, PAS une billetterie.\n"
          f"Événement : {title}\nLieu : {lieu}")
+    messages = [{"role": "user", "content": q}]
     try:
-        msg = client.messages.create(model=_ps.model_eco(), max_tokens=400,
-                                     tools=[WEB_SEARCH_TOOL],
-                                     messages=[{"role": "user", "content": q}])
-    except Exception:  # noqa: BLE001 — non bloquant
+        # L'outil de recherche web (serveur) renvoie un `pause_turn` : le modèle cherche puis
+        # a besoin d'un second tour pour formuler la réponse. On boucle comme le rédacteur.
+        for _ in range(MAX_WEB_SEARCHES + 3):
+            with client.messages.stream(model=_ps.model_eco(), max_tokens=600,
+                                        tools=[WEB_SEARCH_TOOL], messages=messages) as stream:
+                msg = stream.get_final_message()
+            if msg.stop_reason == "pause_turn":
+                messages.append({"role": "assistant", "content": msg.content})
+                continue
+            break
+    except Exception as exc:  # noqa: BLE001 — non bloquant
+        log.warning("résolution site officiel : échec API (%s)", type(exc).__name__)
         return ""
     m = re.search(r'https?://[^\s"\'<>)]+', _final_text(msg))
     if not m:
+        log.warning("résolution site officiel : aucune URL dans la réponse pour '%s'",
+                    (title or "")[:60])
         return ""
     host = urlparse(m.group(0)).netloc.lower()
     if not host or any(bad in host for bad in _NOT_OFFICIAL):
+        log.info("résolution site officiel : URL écartée (%s)", host)
         return ""
     return f"https://{host}/"
 
