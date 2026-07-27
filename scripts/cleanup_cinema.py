@@ -55,18 +55,21 @@ _REJECT_LIKE = "%Séance de cinéma%"
 
 CLASSIFY_PROMPT = """Tu tries des événements de catégorie CINÉMA pour un agenda culturel.
 
-RÈGLE STRICTE. On ne GARDE (garder=true) QUE les vrais FESTIVALS DE CINÉMA : un événement
-MULTI-FILMS à identité de festival — nom de festival, édition numérotée, programmation sur
-plusieurs jours, sélection ou compétition (ex. « Torino Film Festival », un festival dédié
-à Marilyn Monroe, un festival du documentaire).
+RÈGLE. On GARDE (garder=true) UNIQUEMENT deux choses :
+- les vrais FESTIVALS DE CINÉMA (événement multi-films à identité de festival : nom de
+  festival, édition numérotée, programmation sur plusieurs jours, sélection/compétition —
+  ex. « Torino Film Festival », un festival dédié à Marilyn Monroe, un festival du doc) ;
+- le CINÉMA EN PLEIN AIR (projections estivales en EXTÉRIEUR organisées par une ville, une
+  association ou un lieu culturel — un rendez-vous événementiel de plein air, ex. « Cinéma
+  sous les étoiles », « Ciné plein air »).
 
-On EXCLUT (garder=false) TOUT LE RESTE, même porté par une institution culturelle ou un
-cinéma d'art et d'essai :
-- projection d'un film ordinaire (salle commerciale OU non) ;
+On EXCLUT (garder=false) TOUT LE RESTE, même en salle d'art et d'essai ou en lieu
+institutionnel :
 - RÉTROSPECTIVE, CYCLE ou HOMMAGE à un réalisateur (ex. « Les films de Bong Joon-ho ») ;
-- ciné en PLEIN AIR, séance unique, avant-première isolée, ciné-club.
-Le critère : est-ce un FESTIVAL identifié (garder) ou une simple PROGRAMMATION de
-projections, aussi culturelle soit-elle (exclure) ? En cas de doute → EXCLURE.
+- projection d'un film en salle (commerciale OU non), séance unique, ciné-club,
+  avant-première isolée.
+Le critère : festival OU plein air → garder ; simple programmation de projections en salle
+(aussi culturelle soit-elle) → exclure. En cas de doute hors plein air → EXCLURE.
 
 Événement :
 Titre : {title}
@@ -166,10 +169,10 @@ def main(argv=None) -> int:
         garder = bool(verdict.get("garder"))
         kind = verdict.get("type", "?")
         orga = verdict.get("organisateur", "?")
-        # Garde-fou déterministe : on ne garde QUE les FESTIVALS. Tout autre type
-        # (rétrospective, cycle, hommage, plein air, avant-première, séance…) est exclu,
-        # quel que soit l'organisateur ou ce qu'a répondu le modèle.
-        garder = kind.strip().lower() == "festival"
+        # Garde-fou déterministe : on garde les FESTIVALS et le CINÉMA EN PLEIN AIR.
+        # Tout autre type (rétrospective, cycle, hommage, avant-première, séance…) est
+        # exclu, quel que soit l'organisateur ou ce qu'a répondu le modèle.
+        garder = kind.strip().lower() in ("festival", "plein air", "plein-air")
         title = _clean(rep.get("title"))[:52]
         for ev in grp:
             is_rejected = ev.get("statut") == "rejected"
