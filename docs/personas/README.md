@@ -20,6 +20,16 @@ un article d'agenda, et ce qui le déçoit (ses drapeaux rouges). Reste concret 
 sert à faire remonter un MANQUE de fond (pas de têtes d'affiche, pas de programme, langue
 de bois), pas à réécrire la charte de style (c'est le rôle de la voix).
 
+## Le panel actuel (6 personas sourcés)
+Issus d'une recherche territoriale (voir `RECHERCHE.md`), curés pour couvrir les axes
+capital culturel × moyens × mobilité × urbain/rural × âge × langue, sans caricature :
+1. **Kévin** — ouvrier de vallée, famille, Maurienne (Savoie) : concret, prix, proximité.
+2. **Camille** — frontalière aisée mais pauvre en temps, Genevois (Haute-Savoie) : décider vite.
+3. **Chantal** — fonctionnaire bilingue cultivée, Aoste : sens + qualité de la traduction FR/IT.
+4. **Manuela** — quartier populaire sans voiture, Turin : gratuité, transport, anti-mépris de classe.
+5. **Jean-Pierre** — retraité de l'arrière-pays isolé, Roya (Nice) : proximité, inclusion, mémoire.
+6. **Piera** — rurale grande lectrice, Valle Maira (Piémont) : valoriser le proche, distances honnêtes.
+
 ## Réglages
 - `ENRICH_READER_REVIEW=0` désactive tout le panel.
 - `ENRICH_READER_PERSONAS=3` limite le nombre de personas consultés (défaut : tous).

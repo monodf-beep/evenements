@@ -22,8 +22,8 @@ ROOT = Path(__file__).resolve().parent.parent
 # LISTE de dossiers séparés par os.pathsep (comme VOIX_DIR). Chaque .md = un persona.
 PERSONAS_ENV = "PERSONAS_DIR"
 _DEFAULT_DIR = ROOT / "docs" / "personas"
-# Fichiers ignorés (méta, pas des personas).
-_SKIP = {"readme.md"}
+# Fichiers ignorés (méta/doc, pas des personas).
+_SKIP = {"readme.md", "recherche.md"}
 
 
 def _dirs() -> "list[Path]":
