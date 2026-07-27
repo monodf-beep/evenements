@@ -334,6 +334,14 @@ def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
         if clean.rstrip("/") == base_url.split("#")[0].rstrip("/"):
             continue  # pas la page d'accueil elle-même
         scored[clean] = max(scored.get(clean, 0), score)
+    # IFRAMES internes : les dossiers de presse sont souvent chargés en iframe (ex.
+    # « Téléchargez l'affiche… » → <iframe src="/presse/">). On les suit comme des pages.
+    for m in re.finditer(r'(?is)<iframe[^>]+src=["\']([^"\']+)["\']', html):
+        absu = urljoin(base_url, m.group(1)).split("#")[0]
+        pu = urlparse(absu)
+        if pu.scheme in ("http", "https") and pu.netloc.lower() == base_host \
+                and absu.rstrip("/") != base_url.split("#")[0].rstrip("/"):
+            scored[absu] = max(scored.get(absu, 0), 6)
     ordered = sorted(scored, key=lambda u: scored[u], reverse=True)
     return ordered[:limit]
 
@@ -383,9 +391,24 @@ def _find_official_site(html: str, base_url: str, title: str) -> str:
     return best if best_score >= 2 else ""
 
 
+def _same_domain_iframes(html: str, base_url: str) -> list[str]:
+    """URLs des iframes INTERNES d'une page (les dossiers de presse y sont souvent chargés :
+    <iframe src="/presse/">)."""
+    from urllib.parse import urljoin, urlparse
+    base_host = urlparse(base_url).netloc.lower()
+    out = []
+    for m in re.finditer(r'(?is)<iframe[^>]+src=["\']([^"\']+)["\']', html or ""):
+        absu = urljoin(base_url, m.group(1)).split("#")[0]
+        pu = urlparse(absu)
+        if pu.scheme in ("http", "https") and pu.netloc.lower() == base_host:
+            out.append(absu)
+    return out
+
+
 def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[tuple]:
     """Suit les pages presse/programme d'un site. Renvoie [(link, html, texte), …] : le HTML
-    sert à en extraire les AFFICHES (visuels HD), le texte à nourrir la rédaction."""
+    sert à en extraire les AFFICHES (visuels HD), le texte à nourrir la rédaction. Suit AUSSI
+    les iframes internes de chaque sous-page (dossier de presse embarqué : /presse/…)."""
     out = []
     for link in _programme_links(html, url, limit=n_sub):
         h = _get_html(link, timeout)
@@ -393,6 +416,12 @@ def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[
         if txt:
             out.append((link, h, txt))
             log.info("%s : page presse/programme lue (%s)", tag, link[:90])
+        # Dossier de presse chargé en iframe DANS cette sous-page (affiches + PDF).
+        for ifr in _same_domain_iframes(h, link)[:2]:
+            ih = _get_html(ifr, timeout)
+            if ih:
+                out.append((ifr, ih, _html_to_text(ih)[:2000]))
+                log.info("%s : dossier de presse (iframe) lu (%s)", tag, ifr[:90])
     return out
 
 
@@ -513,28 +542,41 @@ _OG_RE2 = re.compile(
     r'(?:property|name)\s*=\s*["\'](?:og:image|twitter:image)')
 
 
-def extract_press_visuals(pages: list) -> dict:
+_DIM_RE = re.compile(r"\d{2,4}\s*[x×]\s*\d{2,4}")   # « 120x176 », « 320 x 240 » : format d'affiche
+
+
+def extract_press_visuals(pages: list, title: str = "") -> dict:
     """Depuis les pages OFFICIELLES lues (dossier de presse), trouve l'AFFICHE de l'événement
-    en PORTRAIT et en PAYSAGE (visuels HD). Priorise l'og:image (presque toujours l'affiche),
-    puis les images bien nommées, puis les autres ; télécharge les candidats pour mesurer leur
-    orientation. Renvoie {'portrait':url|None, 'wide':url|None, 'poster':url|None}."""
-    from urllib.parse import urljoin, urlparse
+    en PORTRAIT et en PAYSAGE (visuels HD). Priorise l'og:image, puis les fichiers au nom
+    d'affiche / de FORMAT (120x176…) / reprenant le titre ; télécharge les candidats pour
+    mesurer leur orientation. Renvoie {'portrait':url|None, 'wide':url|None, 'poster':url|None}."""
+    from urllib.parse import urljoin, urlparse, quote
     from utils.images import remote_dims
+    toks = _event_tokens(title)
+
+    def _abs(base, ref):
+        # Résout et encode les espaces (« 120x176 - Festival ….jpg ») pour le téléchargement.
+        return quote(urljoin(base, ref.strip()).split("?")[0], safe=":/%?&=#")
+
     cands: dict[str, int] = {}
     for p in pages or []:
         html, base = p.get("html", ""), p.get("url", "")
         # og:image / twitter:image : signal le plus fiable de l'affiche officielle.
         for rx in (_OG_RE, _OG_RE2):
             for m in rx.finditer(html or ""):
-                u = urljoin(base, m.group(1).strip()).split("?")[0]
-                if u and " " not in u and urlparse(u).scheme.startswith("http"):
+                u = _abs(base, m.group(1))
+                if u and urlparse(u).scheme.startswith("http"):
                     cands[u] = max(cands.get(u, 0), 10)
         for m in _IMG_RE.finditer(html or ""):
-            u = urljoin(base, m.group(1)).split("?")[0]
-            low = u.lower()
+            raw = m.group(1)
+            u = _abs(base, raw)
+            low = raw.lower()
             if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
                 continue
             score = sum(2 for h in _AFFICHE_HINT if h in low)
+            if _DIM_RE.search(low):                 # nom de FORMAT d'affiche (120x176…)
+                score += 3
+            score += sum(1 for t in toks if t in low)   # le titre dans le nom de fichier
             if score:
                 cands[u] = max(cands.get(u, 0), score)
     # CONSERVATEUR : on ne retient QUE l'og:image ou une image au nom d'affiche explicite —
@@ -1035,7 +1077,7 @@ def main(argv: list[str]) -> int:
         # AFFICHES OFFICIELLES : depuis les pages presse lues, on récupère l'affiche de
         # l'événement en portrait ET paysage (visuels HD), qui priment sur toute autre image.
         try:
-            vis = extract_press_visuals(official_pages)
+            vis = extract_press_visuals(official_pages, title=ev.get("title", ""))
         except Exception as exc:  # noqa: BLE001 — non bloquant
             log.warning("[%d] extraction affiches : %s", ev["id"], type(exc).__name__)
             vis = {}
