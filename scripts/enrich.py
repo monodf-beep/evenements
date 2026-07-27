@@ -83,7 +83,16 @@ USE_THINKING = os.getenv("ENRICH_THINKING", "0").lower() in ("1", "true", "yes",
 # sur la clé. Par défaut OFF — on fournit nous-mêmes la PAGE OFFICIELLE comme matière
 # (déterministe, fiable, moins cher). ENRICH_WEB_SEARCH=1 pour l'ajouter en bonus.
 USE_WEB_SEARCH = os.getenv("ENRICH_WEB_SEARCH", "0").lower() in ("1", "true", "yes", "on")
-_UA = {"User-Agent": "Mozilla/5.0 (compatible; CulturaSabaudaBot/1.0)"}
+# En-têtes de VRAI navigateur : beaucoup de sites (agrégateurs, sites de festivals)
+# bloquent un User-Agent « …Bot » ou l'absence d'Accept/Accept-Language. On lit des pages
+# PUBLIQUES (programme, presse) pour la rédaction éditoriale, sans franchir de mur d'accès.
+_UA = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"),
+    "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,"
+               "image/webp,*/*;q=0.8"),
+    "Accept-Language": "fr-FR,fr;q=0.9,it;q=0.8,en;q=0.7",
+}
 
 # Sentinel : échec d'APPEL API. L'événement n'est pas marqué → réenrichi plus tard.
 API_ERROR = object()
