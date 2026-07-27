@@ -267,17 +267,24 @@ def fetch_official_page(url: str, timeout: int = 8) -> str:
     return _html_to_text(doc)[:6000] if doc else ""
 
 
-# Ancres/URL qui trahissent une page « programmation / line-up / affiche » — FR + IT.
-# On les suit depuis la page d'accueil pour récupérer les VRAIES têtes d'affiche.
+# Ancres/URL qui trahissent une page « presse / programmation / line-up / affiche » — FR+IT.
+# On les suit depuis la page d'accueil : la SOURCE OFFICIELLE (site + dossier de presse) FAIT
+# FOI, avant tout. Les pages « presse » (relations-presse, espace presse, dossier de presse)
+# concentrent le programme réel ET les visuels HD (affiche portrait + paysage) : on les suit
+# en PRIORITÉ (score doublé, voir _programme_links).
+_PRESS_HINTS = (
+    "presse", "press", "dossier", "communiqu", "media-kit", "mediakit", "presskit",
+    "espace-pro", "cartella-stampa", "ufficio-stampa", "rassegna-stampa",
+)
 _PROG_HINTS = (
     "programm", "line-up", "lineup", "line_up", "affiche", "artist", "artisti",
     "concert", "spettacol", "spectacle", "cartellone", "edition", "édition",
     "au-programme", "en-scene", "en-scène", "invit", "guest", "intervenant",
     "au-menu", "temps-fort",
-)
+) + _PRESS_HINTS
 # Ancres à IGNORER (bruit : billetterie, mentions, contact, cookies…).
 _PROG_STOP = ("billet", "ticket", "cookie", "mentions", "contact", "privacy",
-              "cgv", "newsletter", "login", "compte", "panier", "boutique")
+              "cgv", "newsletter", "login", "compte", "panier", "boutique", "impressum")
 
 
 def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
@@ -301,6 +308,9 @@ def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
             continue
         score = sum(2 for h in _PROG_HINTS if h in anchor) + \
             sum(1 for h in _PROG_HINTS if h in pu.path.lower())
+        # PRIORITÉ à la page presse : elle concentre programme + visuels HD officiels.
+        if any(h in hay for h in _PRESS_HINTS):
+            score += 5
         if score <= 0:
             continue
         clean = absu.split("#")[0]
@@ -323,7 +333,7 @@ def fetch_official_material(url: str, timeout: int = 8) -> str:
     if os.getenv("ENRICH_SITE_DEEP", "1") != "1":
         return landing
     try:
-        n_sub = int(os.getenv("ENRICH_SITE_SUBPAGES", "2") or 2)
+        n_sub = int(os.getenv("ENRICH_SITE_SUBPAGES", "3") or 3)
     except ValueError:
         n_sub = 2
     if n_sub <= 0:
