@@ -245,6 +245,50 @@ def select_unverified(conn: sqlite3.Connection, ids) -> list[dict]:
     return [dict(r) for r in conn.execute(q, params).fetchall()]
 
 
+def _run_rerender(conn: sqlite3.Connection, args) -> int:
+    """Mode --rerender : re-pousse les fiches publiées SANS toucher à l'image ni au point
+    focal — régénère seulement les vignettes (carte 4:3 + héros 16:9) avec la logique de
+    cadrage COURANTE (ex. le passage au letterbox par défaut). Aucune recherche d'image,
+    aucun appel vision : rapide et bon marché. Sélection en masse par défaut (toutes les
+    fiches AS avec une vraie image, hors bannières qui n'ont pas de vignette à régénérer)."""
+    if args.ids:
+        ph = ",".join("?" * len(args.ids))
+        rows = [dict(r) for r in conn.execute(
+            f"SELECT * FROM events_raw WHERE duplicate_of IS NULL AND id IN ({ph})",
+            args.ids).fetchall()]
+    else:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM events_raw WHERE duplicate_of IS NULL "
+            "AND COALESCE(wp_post_id_as,0) > 0 AND COALESCE(url_image,'') <> '' "
+            "AND COALESCE(image_source,'') <> 'banner' "
+            "ORDER BY COALESCE(date_event_start,'')").fetchall()]
+    log.info("%d fiche(s) publiée(s) à ré-générer (letterbox, image conservée).", len(rows))
+    if args.dry_run:
+        log.info("(dry-run : rien re-poussé)")
+        conn.close()
+        return 0
+    pushed = 0
+    for i, ev in enumerate(rows):
+        if i and args.throttle > 0:
+            time.sleep(args.throttle)  # ménage Wikimedia (publish re-télécharge la source)
+        new_id, permalink, raw_url = publish_to_as(ev)
+        if new_id:
+            pushed += 1
+            if permalink or raw_url:
+                conn.execute(
+                    "UPDATE events_raw SET wp_permalink_as=COALESCE(NULLIF(?,''), wp_permalink_as), "
+                    "wp_raw_image_url_as=COALESCE(NULLIF(?,''), wp_raw_image_url_as) WHERE id=?",
+                    (permalink, raw_url, ev["id"]))
+                conn.commit()
+        else:
+            log.warning("[%s] re-render échoué — %s", ev["id"], (ev.get("title") or "")[:50])
+        if (i + 1) % 25 == 0:
+            log.info("… %d/%d re-poussées", i + 1, len(rows))
+    log.info("Re-render letterbox terminé — %d/%d re-poussées.", pushed, len(rows))
+    conn.close()
+    return 0
+
+
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(
@@ -287,6 +331,12 @@ def main(argv=None) -> int:
                              "vision (image_audit_flags, flag actif), les ré-résout depuis zéro "
                              "(agent web officiel → sinon bannière) et solde le flag. Sert au cron "
                              "après l'audit — l'agent corrige seul ce qu'il a signalé.")
+    parser.add_argument("--rerender", action="store_true",
+                        help="Re-pousse les fiches publiées SANS changer l'image ni le point "
+                             "focal — régénère seulement les vignettes (carte 4:3 + héros 16:9) "
+                             "avec la logique de cadrage COURANTE (ex. passage au letterbox par "
+                             "défaut). Aucune recherche d'image, aucun appel vision. En masse par "
+                             "défaut (toutes les fiches AS avec vraie image), ou ids/--wp-ids.")
     parser.add_argument("--refocus", action="store_true",
                         help="Recalcule UNIQUEMENT le point focal (card_focal_x/y) de l'image DÉJÀ "
                              "en place — aucune nouvelle recherche d'image. Sert aux événements "
@@ -298,6 +348,9 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     conn.row_factory = sqlite3.Row
+
+    if args.rerender:
+        return _run_rerender(conn, args)
 
     if args.refocus:
         return _run_refocus(conn, args)
