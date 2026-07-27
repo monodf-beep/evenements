@@ -191,6 +191,55 @@ def _media_slug(title: str, suffix: str = "") -> str:
     return f"{n}-{suffix}" if suffix else n
 
 
+# Cache mono-entrée des octets sources (durée du process). publish_to_as ré-uploade la
+# MÊME image source à 3 déclinaisons CONSÉCUTIVES (carte 4:3, héros 16:9, original) : sans
+# cache, Wikimedia est téléchargé 3× par événement → salve de 429. Le cache ramène ça à 1.
+# On ne garde QUE la dernière URL (les 3 appels sont consécutifs) — pas de croissance
+# mémoire dans le process gunicorn long-vécu qui importe aussi ce module.
+_SOURCE_CACHE: "dict[str, tuple[bytes, str]]" = {}
+
+
+def _fetch_source_bytes(image_url: str) -> "tuple[bytes, str]":
+    """Télécharge l'image source → (octets, content_type), avec retry 429/5xx et UA
+    Wikimedia descriptif. Résultat MIS EN CACHE (mono-entrée, voir _SOURCE_CACHE) pour ne
+    pas re-télécharger la même source aux 3 déclinaisons. Lève une exception requests sur
+    échec dur (gérée par l'appelant, jamais bloquant).
+
+    UA descriptif Wikimedia D'ABORD pour les URLs Commons (un UA navigateur générique se
+    fait throttler, 429), UA navigateur en repli (certains hébergeurs renvoient 403 au
+    bot). Backoff exponentiel 5/10/20s : sous throttle Wikimedia, 3s ne suffit pas."""
+    cached = _SOURCE_CACHE.get(image_url)
+    if cached is not None:
+        return cached
+    _SOURCE_CACHE.clear()  # mono-entrée : on ne conserve jamais plus d'une image en RAM
+    import time as _time
+    wiki = "wikimedia.org" in image_url or "wikipedia.org" in image_url
+    uas = [_WIKI_UA, _UA] if wiki else [_UA]
+
+    def _ok(resp) -> bool:
+        return resp is not None and (resp.status_code < 400
+                                     or resp.status_code not in (429, 500, 502, 503, 504))
+
+    img = None
+    for attempt in range(4):
+        for ua in uas:
+            img = requests.get(image_url, timeout=30, headers=ua)
+            if _ok(img):
+                break
+        if _ok(img):
+            break
+        if attempt < 3:
+            wait = 5 * (2 ** attempt)
+            log.warning("Téléchargement source tentative %d échoué (%s) — retry dans %ds… (%s)",
+                        attempt + 1, img.status_code, wait, image_url)
+            _time.sleep(wait)
+    img.raise_for_status()
+    content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
+    result = (img.content, content_type)
+    _SOURCE_CACHE[image_url] = result
+    return result
+
+
 def _upload_featured_media(wp_url: str, auth, image_url: str,
                            alt: str = "", caption: str = "", title: str = "",
                            card: bool = False, focal=(0.5, 0.5),
@@ -211,32 +260,10 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
     ancre le recadrage. Si la transformation échoue (image exotique), on retombe sur
     l'original (jamais bloquant)."""
     try:
-        # Retry sur échec TRANSITOIRE du téléchargement SOURCE (429/5xx) — Wikimedia
-        # (upload.wikimedia.org) renvoie par intermittence un 429 sous charge (constaté
-        # en masse lors d'un rattrapage --recheck : plusieurs dizaines d'images pourtant
-        # bien choisies retombaient sur la bannière générique à cause de CE 429, pas d'un
-        # vrai échec — voir utils.images.remote_min_side qui a le même souci ailleurs).
-        # UA descriptif Wikimedia D'ABORD pour les URLs Commons (sinon 429), UA navigateur
-        # en repli (certains hébergeurs renvoient 403 au bot). Backoff plus généreux
-        # (5s/10s/20s) que l'upload : sous throttle Wikimedia, 3s ne suffit pas.
-        import time as _time
-        _wiki = "wikimedia.org" in image_url or "wikipedia.org" in image_url
-        _uas = [_WIKI_UA, _UA] if _wiki else [_UA]
-        img = None
-        for attempt in range(4):
-            for _ua in _uas:
-                img = requests.get(image_url, timeout=30, headers=_ua)
-                if img.status_code < 400 or img.status_code not in (429, 500, 502, 503, 504):
-                    break
-            if img is not None and (img.status_code < 400 or img.status_code not in (429, 500, 502, 503, 504)):
-                break
-            if attempt < 3:
-                _wait = 5 * (2 ** attempt)
-                log.warning("Téléchargement source tentative %d échoué (%s) — retry dans %ds… (%s)",
-                            attempt + 1, img.status_code, _wait, image_url)
-                _time.sleep(_wait)
-        img.raise_for_status()
-        content_type = img.headers.get("Content-Type", "").split(";")[0].strip()
+        # Téléchargement source (bytes) — mutualisé/mis en cache par _fetch_source_bytes :
+        # les 3 déclinaisons (carte, héros, original) d'un même événement ne frappent
+        # Wikimedia qu'UNE fois. Retry 429/5xx + UA Wikimedia descriptif y sont gérés.
+        source_bytes, content_type = _fetch_source_bytes(image_url)
         if not content_type.startswith("image/"):
             log.warning("URL image non-image (%s) : %s", content_type or "?", image_url)
             return None, ""
@@ -252,13 +279,13 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
             if "." not in name:
                 name = f"{name}{ext}"
 
-        data = img.content
+        data = source_bytes
         if card:
             # Standardisation au ratio demandé (import paresseux : Pillow n'est requis
             # que si demandé).
             try:
                 from utils.card_image import make_card_bytes
-                data, used_mode = make_card_bytes(img.content, focal=focal, mode=mode or "auto",
+                data, used_mode = make_card_bytes(source_bytes, focal=focal, mode=mode or "auto",
                                                   ratio=ratio)
                 content_type = "image/jpeg"
                 stem = name.rsplit(".", 1)[0]
