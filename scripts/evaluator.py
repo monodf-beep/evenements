@@ -85,6 +85,14 @@ publique) → "est_evenement": false et score 0. Sinon → true, continue.
   publicitaire », interview), compte-rendu ou bilan (« s'est réuni », « retour sur »,
   « ce qu'il faut retenir »), même si un GROS événement (Tour de France, festival connu)
   est cité. Ne garde que l'ANNONCE d'une sortie datée + lieu à laquelle on peut assister.
+  🎬 PIÈGE CINÉMA : une SÉANCE de cinéma ordinaire (projection d'un film dans la
+  programmation courante d'une salle, ciné-club récurrent, séance unique de film sans
+  dimension événementielle) n'a PAS sa place dans l'agenda → "est_evenement": true mais
+  "score": 0. On GARDE en revanche, scorés normalement, les vrais ÉVÉNEMENTS cinéma :
+  FESTIVALS de cinéma, rétrospectives thématiques dédiées, avant-premières
+  événementielles, projections en plein air à programmation spéciale, hommages et
+  rencontres avec un cinéaste. Le critère : est-ce un simple passage à l'affiche (exclu)
+  ou un rendez-vous cinéma à part entière (gardé) ?
 
 ÉTAPE 2 — SCORE D'IMPORTANCE (0-10). PAS de profondeur culturelle exigée : on mesure si
 l'événement est IMPORTANT (va réunir du monde, compte dans le territoire). Note chaque critère :
