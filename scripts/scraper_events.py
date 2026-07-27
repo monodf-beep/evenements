@@ -121,6 +121,8 @@ def init_db(conn: sqlite3.Connection) -> None:
                       ("venue_web_at", "TEXT"),
                       ("date_web_at", "TEXT"),
                       ("image_web_at", "TEXT"),
+                      # Cooldown de la recherche de la version PAYSAGE (multi-format).
+                      ("image_wide_at", "TEXT"),
                       # Score ajusté À LA MAIN par Franck (prime sur llm_score à
                       # l'affichage) + horodatage. Nourrit la mémoire d'apprentissage
                       # (utils/score_memory.py) qui recalibre l'évaluateur.
