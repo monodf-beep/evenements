@@ -49,6 +49,9 @@ _RETAINED = ("evaluated", "published_cs", "published_sub")
 # Marqueur laissé par CE script sur ses propres rejets → permet de les ré-examiner
 # (et d'en rétablir un rejeté à tort) sans ressusciter les rejets « normaux ».
 _MARK = "nettoyage cinéma"
+# Motif de sélection des rejets À RÉ-EXAMINER : couvre l'ancien libellé (« nettoyage
+# rétroactif ») ET le nouveau — tous nos rejets cinéma commencent par « Séance de cinéma ».
+_REJECT_LIKE = "%Séance de cinéma%"
 
 CLASSIFY_PROMPT = """Tu tries des événements de catégorie CINÉMA pour un agenda culturel.
 
@@ -138,7 +141,7 @@ def main(argv=None) -> int:
         f"SELECT * FROM events_raw WHERE llm_categorie IN ({cat_ph}) AND duplicate_of IS NULL "
         f"AND (statut IN ({st_ph}) OR (statut='rejected' AND llm_justification LIKE ?)) "
         "ORDER BY COALESCE(date_event_start,'') LIMIT ?",
-        (*_CINEMA, *_RETAINED, f"%{_MARK}%", args.cap)).fetchall()
+        (*_CINEMA, *_RETAINED, _REJECT_LIKE, args.cap)).fetchall()
     rows = [dict(r) for r in rows]
 
     # Regroupe les jumeaux FR/IT → un seul classement par groupe, appliqué à tous.
