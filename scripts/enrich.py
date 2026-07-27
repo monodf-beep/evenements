@@ -314,6 +314,7 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR.
     `court`/`model` sont décidés par l'appelant via _tier_model."""
     from utils.voix import voix_block
+    from utils import settings as pipeline_settings  # COURT_MAX_TOKENS (mode court)
     _court = court
     prompt = voix_block() + ENRICH_PROMPT.format(
         title=ev.get("title", ""),
