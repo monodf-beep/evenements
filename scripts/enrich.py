@@ -386,14 +386,52 @@ def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[
     return out
 
 
-def fetch_official_material(url: str, timeout: int = 8, title: str = "") -> str:
-    """SOURCE OFFICIELLE = première source (règle Franck). Si `url` est un AGRÉGATEUR, on
-    remonte au vrai site officiel de l'événement (lien sortant qui recoupe le titre), puis on
-    lit sa page presse/programme (programme réel + visuels HD). Sinon on lit `url` en
-    profondeur. Désactivable via ENRICH_SITE_DEEP=0."""
-    html = _get_html(url, timeout)
-    if not html:
+def resolve_official_site(title: str, lieu: str, client) -> str:
+    """Trouve le SITE OFFICIEL d'un événement par une recherche web CIBLÉE (1 requête), quand
+    la source (souvent un agrégateur) est inaccessible depuis le VPS (403). Renvoie l'URL de
+    la page d'accueil officielle, ou "" (réseau social / billetterie / agrégateur écartés)."""
+    if client is None:
         return ""
+    from urllib.parse import urlparse
+    from utils import settings as _ps
+    q = ("Trouve le SITE OFFICIEL de cet événement culturel et réponds UNIQUEMENT par l'URL "
+         "de sa page d'accueil (https://…), rien d'autre. PAS un agrégateur (agendaculturel, "
+         "infoconcert, billetreduc…), PAS un réseau social, PAS une billetterie.\n"
+         f"Événement : {title}\nLieu : {lieu}")
+    try:
+        msg = client.messages.create(model=_ps.model_eco(), max_tokens=400,
+                                     tools=[WEB_SEARCH_TOOL],
+                                     messages=[{"role": "user", "content": q}])
+    except Exception:  # noqa: BLE001 — non bloquant
+        return ""
+    m = re.search(r'https?://[^\s"\'<>)]+', _final_text(msg))
+    if not m:
+        return ""
+    host = urlparse(m.group(0)).netloc.lower()
+    if not host or any(bad in host for bad in _NOT_OFFICIAL):
+        return ""
+    return f"https://{host}/"
+
+
+def fetch_official_material(url: str, timeout: int = 8, title: str = "",
+                            lieu: str = "", client=None) -> str:
+    """SOURCE OFFICIELLE = première source (règle Franck). On lit `url` ; si c'est un
+    AGRÉGATEUR, on remonte au site officiel (lien sortant qui recoupe le titre). Si la source
+    est INACCESSIBLE (403 depuis le VPS), on résout le site officiel par recherche web puis on
+    le lit DIRECTEMENT. On lit ensuite sa page presse/programme (programme réel + visuels HD).
+    Désactivable via ENRICH_SITE_DEEP=0."""
+    html = _get_html(url, timeout)
+    resolved = ""
+    if not html:
+        # Source bloquée/inaccessible : résoudre le vrai site officiel et le lire en direct.
+        resolved = resolve_official_site(title, lieu, client)
+        if resolved:
+            html = _get_html(resolved, timeout)
+            if html:
+                url = resolved
+                log.info("site officiel résolu par recherche web : %s", resolved[:90])
+        if not html:
+            return ""
     landing = _html_to_text(html)[:6000]
     deep = os.getenv("ENRICH_SITE_DEEP", "1") == "1"
     try:
@@ -403,9 +441,10 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "") -> str:
     if not deep or n_sub <= 0:
         return landing
     blocks: list[str] = []
-    # 1) Remonter au SITE OFFICIEL si la source est un agrégateur.
-    official = _find_official_site(html, url, title)
-    if official:
+    # Site officiel à lire en profondeur : soit `url` lui-même (résolu, ou source déjà
+    # officielle), soit un lien sortant depuis un agrégateur accessible.
+    official = "" if resolved else _find_official_site(html, url, title)
+    if official and official != url:
         ohtml = _get_html(official, timeout)
         if ohtml:
             otext = _html_to_text(ohtml)[:6000]
@@ -413,20 +452,20 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "") -> str:
                 blocks.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — {official}]\n{otext}")
                 log.info("site officiel trouvé via la source : %s", official[:90])
             blocks += _deep_read(ohtml, official, timeout, n_sub, "site officiel")
-    # 2) La page source (agrégateur, ou site officiel direct) reste de la matière utile.
     if landing:
         blocks.append(f"[PAGE SOURCE — {url}]\n{landing}")
-    # 3) Si la source EST le site officiel (aucun lien sortant retenu), lire ses sous-pages.
-    if not official:
+    # `url` EST le site officiel (résolu, ou direct sans lien sortant) → lire ses sous-pages.
+    if not official or official == url:
         blocks += _deep_read(html, url, timeout, n_sub, "site officiel")
     return "\n\n".join(blocks)
 
 
-def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
+def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     """Agrège (déterministe) la matière, par ordre de priorité :
-    1) dossiers de presse rattachés ; 2) PAGE OFFICIELLE récupérée en direct ;
-    3) signaux flux/radar (description + doublons fusionnés). Le LLM rédige à partir
-    de cette matière RÉELLE — il n'a pas à « connaître » l'événement."""
+    1) dossiers de presse rattachés ; 2) SITE OFFICIEL récupéré en direct (résolu par
+    recherche web si la source est bloquée) ; 3) signaux flux/radar. Le LLM rédige à partir
+    de cette matière RÉELLE — il n'a pas à « connaître » l'événement. `client` sert au
+    secours « résoudre le site officiel »."""
     parts = []
     own = (ev.get("description") or "").strip()
     if own:
@@ -445,7 +484,8 @@ def gather_material(conn: sqlite3.Connection, ev: dict) -> str:
     press = gather_press_kits(conn, ev)
     if press:
         press = re.sub(r"(?s)<[^>]+>", " ", press)
-    page = fetch_official_material(ev.get("url_source", ""), title=ev.get("title", ""))
+    page = fetch_official_material(ev.get("url_source", ""), title=ev.get("title", ""),
+                                   lieu=ev.get("lieu") or ev.get("ville") or "", client=client)
 
     sections = []
     if press:
@@ -891,7 +931,7 @@ def main(argv: list[str]) -> int:
                 conn.commit()
                 ev["url_image"] = og
                 log.info("[%d] image récupérée (og:image) : %s", ev["id"], og[:80])
-        material = gather_material(conn, ev)
+        material = gather_material(conn, ev, client=client)
         court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
         # La source officielle fait foi : si on a déjà la matière officielle (page presse/
         # programme ou dossier de presse), on COUPE la recherche web (redondante, lente,
