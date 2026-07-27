@@ -172,11 +172,27 @@
     {% if art.corps %}<div class="corps">{{ art.corps_html|safe if art.corps_html else art.corps }}</div>{% endif %}
     {% if enriched.contexte_lieu %}<div class="ctx"><b>Lieu :</b> {{ enriched.contexte_lieu }}</div>{% endif %}
     {% if enriched.contexte_entites %}<div class="ctx"><b>Contexte :</b> {{ enriched.contexte_entites }}</div>{% endif %}
-    {% if enriched.angle %}<div class="ctx"><b>Angle (escalier) :</b> {{ enriched.angle }}</div>{% endif %}
+    {% if enriched.angle %}<div class="ctx"><b>Accroche :</b> {{ enriched.angle }}</div>{% endif %}
     {% if art.encadre %}<div class="encadre"><b>En pratique</b><br>{{ art.encadre }}</div>{% endif %}
     {% if enriched.sources %}
       <div class="src"><b>Sources consultées (officielles/libres) :</b><br>
         {% for s in enriched.sources %}<a href="{{ s }}" target="_blank" rel="noopener">{{ s }}</a><br>{% endfor %}
+      </div>
+    {% endif %}
+    {% if enriched.reader_review %}
+      {% set rr = enriched.reader_review %}
+      {% set ok = (rr.verdict == 'ok') %}
+      <div style="font-family:-apple-system,sans-serif;font-size:.82rem;margin-top:.8rem;
+                  border-radius:8px;padding:.6rem .8rem;
+                  background:{{ '#eef7ee' if ok else '#fdf3e6' }};
+                  border:1px solid {{ '#bfe0bf' if ok else '#f0d3a0' }};
+                  color:var(--ink-2);">
+        👓 <b>Retour lecteur</b> · intérêt
+        <b>{{ rr.interet if rr.interet is not none else '?' }}/5</b>
+        · {{ 'validé' if ok else 'révisé' }}
+        {% if rr.note %}<div style="margin-top:.3rem;">« {{ rr.note }} »</div>{% endif %}
+        {% if rr.manques %}<div style="margin-top:.3rem;color:var(--muted);">Manques signalés :
+          {{ rr.manques|join(' · ') }}</div>{% endif %}
       </div>
     {% endif %}
   </div>

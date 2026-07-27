@@ -104,13 +104,23 @@ pas ; en cas de doute, baisse la confiance.
 
 STRUCTURE — PYRAMIDE INVERSÉE (l'info d'abord), JAMAIS l'escalier de magazine :
 1. ACCROCHE : quoi, quand, où, la tête d'affiche ou la raison d'y aller ;
-2. ESSENTIEL (le cœur) : la PROGRAMMATION de cette édition — line-up, temps forts, horaires,
-   ce qui change cette année ;
-3. RAPPEL bref et FACULTATIF (1-2 items max) : « Nᵉ édition », « l'an dernier, X » ;
+2. ESSENTIEL (le cœur) : la PROGRAMMATION CONCRÈTE — têtes d'affiche, line-up, temps forts,
+   horaires. EXPLOITE TOUJOURS le programme présent dans la MATIÈRE (ne dis JAMAIS « à venir »
+   si on l'a déjà) ; complète par recherche web. Si le line-up de CETTE édition n'est pas
+   encore annoncé, DONNE CELUI DE L'ÉDITION PRÉCÉDENTE (« en 2025 : Katy Perry, … ») pour que
+   le lecteur sache ce qu'est l'événement — un article « programmation à venir » n'apprend
+   rien et est un ÉCHEC ;
+3. IDENTITÉ (1-2 items) : ce qui FAIT cet événement (têtes d'affiche marquantes, affluence,
+   ce qui revient chaque année) ;
 4. STOP. On reste sur CET événement. INTERDIT : le contexte historique/économique du lieu
    (le thermalisme d'Aix, l'économie du tourisme…), ce qui se passe ailleurs, toute montée
    vers une « question universelle ». Ça, c'est Cultura Sabauda ; ici on veut l'événement.
 Longueur : COURT et dense — vise 150 à 300 mots. Utile et concret vaut mieux que long.
+
+RÈGLE DE SUBSTANCE : avant de conclure, demande-toi « qu'est-ce que le lecteur APPREND ? ».
+S'il n'apprend rien de concret (des NOMS, des temps forts, ce qui distingue l'événement),
+l'article a échoué : va chercher la matière (programme fourni, édition précédente par
+recherche web) au lieu de meubler avec des généralités.
 
 ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
 - Lieu (théâtre, musée, château, abbaye…) : histoire/identité, importance patrimoniale.
@@ -316,9 +326,11 @@ def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
 
 
 def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str,
-                 court: bool):
+                 court: bool, extra_task: str = ""):
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR.
-    `court`/`model` sont décidés par l'appelant via _tier_model."""
+    `court`/`model` sont décidés par l'appelant via _tier_model. `extra_task` : consigne
+    supplémentaire ajoutée en fin de prompt (ex. retour de l'agent persona lecteur pour une
+    révision)."""
     from utils.voix import voix_block
     from utils import settings as pipeline_settings  # COURT_MAX_TOKENS (mode court)
     _court = court
@@ -337,6 +349,8 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
                    "ci-dessus. Va droit à l'essentiel — MAIS garde les FAITS STRUCTURÉS OBLIGATOIRES "
                    "(§5 bis) : le champ \"programme\" (liste : horaires, séances, line-up…), les tarifs "
                    "et la langue sont OBLIGATOIRES dès que la matière les contient.")
+    if extra_task:
+        prompt += "\n\n" + extra_task
     messages = [{"role": "user", "content": prompt}]
     try:
         # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
@@ -473,6 +487,63 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
         (*params, BATCH_SIZE)).fetchall()
 
 
+def reader_review(article: dict, ev: dict, client, model: str) -> dict:
+    """AGENT PERSONA LECTEUR : lit l'article comme un LECTEUR d'agenda (pas un rédacteur) et
+    renvoie un retour au rédacteur. Une seule question : « est-ce que ça m'apprend quelque
+    chose d'utile et concret sur CET événement ? ». {} si l'appel échoue.
+    Renvoie {"interet": 0-5, "manques": [...], "verdict": "ok"|"revise", "note": "..."}."""
+    import re as _re
+    art = (article.get("article") or {}) if isinstance(article, dict) else {}
+    corps = (art.get("corps") or "")[:3000]
+    if not corps:
+        return {}
+    prompt = (
+        "Tu es un LECTEUR de l'agenda culturel Agenda Sabauda (PAS un rédacteur). Tu lis ce "
+        "preview d'événement et tu réponds franchement : est-ce que ça t'APPREND quelque chose "
+        "d'utile et de concret sur CET événement — des NOMS (têtes d'affiche), des temps forts, "
+        "ce qui le distingue — ou est-ce creux (« festival au bord du lac, programmation à "
+        "venir ») ? Un bon preview te donne envie d'y aller ET t'apprend quelque chose.\n\n"
+        f"TITRE : {art.get('titre') or ev.get('title')}\n"
+        f"CATÉGORIE : {ev.get('llm_categorie', '')}\n"
+        f"ARTICLE :\n{corps}\n\n"
+        'Réponds en JSON STRICT : {"interet": <0-5, 0=creux 5=riche>, '
+        '"manques": ["<ce qui manque, ex. aucune tête d\'affiche>"], '
+        '"verdict": "ok"|"revise", "note": "<1 phrase de conseil au rédacteur>"}. '
+        'verdict = "revise" dès que interet <= 2, ou qu\'il manque l\'essentiel (les noms, '
+        "les temps forts)."
+    )
+    try:
+        msg = client.messages.create(model=model, max_tokens=400,
+                                     messages=[{"role": "user", "content": prompt}])
+    except Exception:  # noqa: BLE001 — non bloquant
+        return {}
+    raw = "".join(getattr(b, "text", "") for b in msg.content
+                  if getattr(b, "type", None) == "text")
+    m = _re.search(r"\{.*\}", raw, _re.S)
+    if not m:
+        return {}
+    try:
+        out = json.loads(m.group())
+        return out if isinstance(out, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def revise_article(result: dict, review: dict, ev: dict, material: str,
+                   client, model: str, court: bool):
+    """Réécrit l'article en tenant compte du retour LECTEUR. Renvoie le nouveau result, ou
+    l'ancien si la révision échoue."""
+    critique = "interet=%s ; manque : %s ; conseil : %s" % (
+        review.get("interet"), ", ".join(review.get("manques") or []) or "—",
+        review.get("note") or "—")
+    extra = ("[RETOUR D'UN LECTEUR sur ton brouillon précédent — CORRIGE-LE] " + critique +
+             ". Rends l'article plus SUBSTANTIEL et CONCRET : donne des têtes d'affiche et des "
+             "temps forts (du programme fourni, ou à défaut de l'ÉDITION PRÉCÉDENTE via "
+             "recherche web). Ne meuble pas : le lecteur doit APPRENDRE quelque chose.")
+    revised = enrich_event(ev, material, client, model, court, extra_task=extra)
+    return revised if (revised and revised is not API_ERROR) else result
+
+
 def main(argv: list[str]) -> int:
     load_dotenv(ROOT / ".env")
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -537,6 +608,20 @@ def main(argv: list[str]) -> int:
                 (model, ev["id"]))
             conn.commit()
             continue
+        # AGENT LECTEUR : sur les articles développés (palier long), un persona lecteur
+        # relit le brouillon et, s'il le juge creux (pas de têtes d'affiche, pas de temps
+        # forts), on demande UNE révision au rédacteur. Le retour est stocké pour le
+        # back-office. Non bloquant, et seulement sur le long (le court est un catalogue).
+        if not court and os.getenv("ENRICH_READER_REVIEW", "1") == "1":
+            review_model = pipeline_settings.model_eco()
+            review = reader_review(result, ev, client, review_model)
+            if review.get("verdict") == "revise":
+                log.info("[%d] lecteur: intérêt=%s → révision", ev["id"],
+                         review.get("interet"))
+                result = revise_article(result, review, ev, material, client, model, court)
+                review = reader_review(result, ev, client, review_model) or review
+            if review:
+                result["reader_review"] = review
         title, md = build_article_md(result)
         conn.execute("""
         UPDATE events_raw SET
