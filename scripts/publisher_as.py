@@ -307,6 +307,10 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
     media_id = None
     hero_source = ""  # URL réellement retenue comme image à la une (pas la bannière
                       # générique) — sert au grand visuel de fiche ci-dessous.
+    # Multi-format : la carte 4:3 (+ la copie réseaux) préfère l'affiche PORTRAIT dédiée
+    # (url_image_portrait) quand elle existe ; le grand visuel 16:9 prend la version PAYSAGE
+    # (url_image_wide). Vide → on retombe sur l'image principale. Cf. scripts/images_wide.
+    card_source = (event.get("url_image_portrait") or "").strip() or url_image
     if not skip_media and url_image and not _is_logo(url_image) \
             and event.get("image_source") != "banner":
         # Vraie affiche → vignette standardisée 4:3. Point focal ET mode (auto/cover/
@@ -317,9 +321,12 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
         # à l'affichage, et Yoast en dérive l'og:image. Zéro copie bakée par événement,
         # signal « pas de photo » honnête (thumbnail vide). Prouvé sur l'event 2222.
         media_id, _ = _upload_featured_media(
-            wp_url, auth, url_image, alt=alt,
+            wp_url, auth, card_source, alt=alt,
             caption=event.get("image_credit", "") or "", title=event.get("title", ""),
-            card=True, focal=_focal(event),
+            card=True,
+            # Focal centré si on sert l'affiche portrait DÉDIÉE (le focal réglé à la main
+            # vaut pour l'image principale, pas pour cette autre image).
+            focal=(0.5, 0.5) if card_source != url_image else _focal(event),
             mode=(event.get("card_mode") or "auto"))
         if media_id:
             hero_source = url_image
@@ -379,8 +386,10 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
     # hero_source est vide (repli bannière : rien d'original à conserver).
     raw_image_url = ""
     if hero_source:
+        # Copie réseaux : l'affiche PORTRAIT dédiée si elle existe (les visuels Instagram
+        # sont verticaux/carrés), sinon l'image principale.
         _, raw_image_url = _upload_featured_media(
-            wp_url, auth, hero_source, alt=alt,
+            wp_url, auth, card_source, alt=alt,
             caption=event.get("image_credit", "") or "",
             title=f"{event.get('title', '')} — original", card=False)
 

@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-"""Version PAYSAGE de l'affiche (multi-format) — pour le grand visuel 16:9 de la fiche.
+"""Multi-format : l'affiche officielle en PORTRAIT **et** en PAYSAGE (haut de panier).
 
-Beaucoup d'événements ont une AFFICHE PORTRAIT : belle sur la carte 4:3 et les réseaux,
-mais qui laisse de grosses bandes une fois recadrée au format 16:9 du grand visuel de
-fiche. Ce script cherche, via l'agent web, une VERSION PAYSAGE du même sujet (photo
-horizontale de l'artiste / du lieu / de l'événement, bandeau officiel), la VÉRIFIE
-(vraiment paysage + pertinente, agent vision), la stocke dans url_image_wide et re-pousse
-la fiche pour que le 16:9 la prenne (cf. scripts.publisher_as, scripts.scraper_events).
+Les gros événements (festival, musée, mairie, grande fondation — score ≥ 7) ont en général
+un vrai kit promo : l'affiche déclinée en **portrait** (verticale) ET en **paysage**
+(horizontale). On veut les deux, pour servir chaque format à l'emplacement où il rend le
+mieux, SANS jamais couper :
 
-Posture de droits (charte §8) : on vise l'image OFFICIELLE / institutionnelle (page de
-l'événement, du lieu, de l'artiste, Wikimedia Commons), jamais une photo d'agence/presse.
+  • url_image_portrait (verticale) → carte 4:3 + réseaux ;
+  • url_image_wide     (horizontale) → grand visuel 16:9 de la fiche.
 
-Réservé au haut du panier : publié, VRAIE affiche PORTRAIT, pas encore de paysage. Cooldown
-intégré (image_wide_at, WEB_COOLDOWN_DAYS). DRY-RUN par défaut.
+Un seul appel d'agent web propose les deux orientations (source OFFICIELLE de l'événement,
+du lieu ou de l'organisateur ; jamais d'agence, charte §8), un agent vision vérifie chacune
+(vraiment portrait / vraiment paysage + pertinente), on stocke celles trouvées et on
+re-pousse (publisher_as sert alors le bon format par emplacement).
+
+Réservé au haut du panier : publié, score ≥ 7, au moins une orientation encore manquante.
+Cooldown intégré (image_wide_at). DRY-RUN par défaut.
 
 Exemples :
   .venv/bin/python3 -m scripts.images_wide --dry-run
-  .venv/bin/python3 -m scripts.images_wide --cap 15 --apply
+  .venv/bin/python3 -m scripts.images_wide --apply --cap 15 --min-score 7
 """
 from __future__ import annotations
 import argparse
@@ -45,39 +48,40 @@ from scripts.publisher_as import publish_to_as
 
 log = get_logger("images_wide")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-# Un « paysage » utile pour le 16:9 : nettement plus large que haut (au moins ~6:5).
-_WIDE_MIN_RATIO = 1.2
+_WIDE_MIN_RATIO = 1.3     # paysage : nettement plus large que haut
+_PORTRAIT_MAX_RATIO = 0.9  # portrait : nettement plus haut que large
 
 
-def search_wide(ev: dict, client) -> dict:
-    """Agent web : propose une image PAYSAGE (URL directe) + un sujet attendu. {} si rien."""
+def search_both(ev: dict, client) -> dict:
+    """Agent web : propose l'affiche officielle en PORTRAIT et en PAYSAGE. {} si rien."""
     prompt = (
-        "Tu cherches une image PAYSAGE (horizontale, proche du 16:9) pour le GRAND visuel "
-        "d'un événement culturel : une PHOTO large du sujet (artiste sur scène, salle, lieu, "
-        "œuvre) ou un bandeau officiel HORIZONTAL. SURTOUT PAS une affiche portrait.\n"
-        "Ordre de préférence : page OFFICIELLE de l'événement / du lieu / de l'artiste, puis "
-        "Wikimedia Commons. ÉVITE les photos d'agence de presse / sous copyright strict. "
-        "Utilise la recherche web. Réponds UNIQUEMENT si tu es sûr et que l'image est bien "
-        "horizontale.\n\n"
+        "Tu cherches le VISUEL OFFICIEL d'un événement culturel, dans DEUX orientations si "
+        "elles existent :\n"
+        "  • PORTRAIT (verticale) : l'affiche du programme, format vertical ;\n"
+        "  • PAYSAGE (horizontale) : un bandeau officiel ou une photo large du sujet.\n"
+        "Source OFFICIELLE : page de l'événement, du lieu, de l'organisateur (institution, "
+        "festival, mairie). ÉVITE les photos d'agence de presse / sous copyright strict. "
+        "Utilise la recherche web. Ne renvoie une orientation QUE si tu es sûr, et que "
+        "l'image est bien dans cette orientation ; laisse vide sinon.\n\n"
         f"Événement : {_clean(ev.get('article_title') or ev.get('title'))}\n"
         f"Lieu : {_clean(ev.get('lieu'))} · Ville : {_clean(ev.get('ville'))}\n"
         f"Catégorie : {ev.get('llm_categorie') or ''} · Territoire : {ev.get('territoire') or ''}\n"
         f"Description : {_clean(ev.get('description'))[:400]}\n\n"
-        'Réponds en JSON STRICT : {"image_url": "URL directe .jpg/.png paysage ou vide", '
-        '"credit": "auteur / source ou vide", "subject": "ce que la photo montre (2-8 mots)", '
-        '"found": true|false}'
+        'Réponds en JSON STRICT : {"portrait_url": "URL directe .jpg/.png verticale ou vide", '
+        '"wide_url": "URL directe .jpg/.png horizontale ou vide", "credit": "auteur/source ou '
+        'vide", "subject": "ce que montre l\'affiche (2-8 mots)", "found": true|false}'
     )
     try:
         msg = client.messages.create(
-            model=SEARCH_MODEL, max_tokens=500,
+            model=SEARCH_MODEL, max_tokens=600,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 4}],
             messages=[{"role": "user", "content": prompt}])
     except Exception as exc:  # jamais bloquant
-        log.warning("Recherche paysage échouée : %s", exc)
+        log.warning("Recherche multi-format échouée : %s", exc)
         return {}
     try:
         from utils import usage
-        usage.record_message(SEARCH_MODEL, msg, label="image_wide_search")
+        usage.record_message(SEARCH_MODEL, msg, label="image_multi_search")
     except Exception:
         pass
     raw = "".join(getattr(b, "text", "") for b in msg.content
@@ -92,35 +96,36 @@ def search_wide(ev: dict, client) -> dict:
     return data if data.get("found") else {}
 
 
-def find_wide(ev: dict, client, blocked: set[str]) -> "tuple[str, str, float, float]":
-    """Cherche PUIS vérifie une image PAYSAGE. (url, credit, fx, fy) ou ('', '', .5, .5)."""
-    prop = search_wide(ev, client)
-    if not prop:
-        return "", "", 0.5, 0.5
-    cand = (prop.get("image_url") or "").strip()
+def _verify_orientation(cand: str, ev: dict, subject: str, want: str, client,
+                        blocked: set[str]) -> str:
+    """Télécharge + contrôle qu'un candidat est bien dans l'orientation voulue ('wide' ou
+    'portrait'), assez grand, non bloqué/logo, ET pertinent (vision). '' si refusé."""
+    cand = (cand or "").strip()
     if not cand or not cand.startswith("http"):
-        return "", "", 0.5, 0.5
+        return ""
     if is_blocked_image(cand, blocked) or is_logo_image(cand):
-        return "", "", 0.5, 0.5
+        return ""
     img_bytes, mime = _download(cand)
     if not img_bytes:
-        return "", "", 0.5, 0.5
+        return ""
     try:
         from PIL import Image
         with Image.open(io.BytesIO(img_bytes)) as im:
             w, h = im.size
     except Exception:
         w, h = 0, 0
-    if min(w, h) < images.MIN_DIM:
-        log.info("Paysage écarté (résolution %dx%d < %dpx) : %s", w, h, images.MIN_DIM, cand[:70])
-        return "", "", 0.5, 0.5
-    if not (h and w >= h * _WIDE_MIN_RATIO):  # pas assez horizontale → inutile pour le 16:9
-        log.info("Écarté (pas paysage : %dx%d) : %s", w, h, cand[:70])
-        return "", "", 0.5, 0.5
-    ok, fx, fy = verify_image(ev, prop.get("subject", ""), img_bytes, mime, client)
-    if not ok:
-        return "", "", 0.5, 0.5
-    return cand, _clean(prop.get("credit", "")), fx, fy
+    if not w or not h or min(w, h) < images.MIN_DIM:
+        log.info("  %s écarté (résolution %dx%d) : %s", want, w, h, cand[:60])
+        return ""
+    ratio = w / h
+    if want == "wide" and ratio < _WIDE_MIN_RATIO:
+        log.info("  écarté (pas paysage : %dx%d) : %s", w, h, cand[:60])
+        return ""
+    if want == "portrait" and ratio > _PORTRAIT_MAX_RATIO:
+        log.info("  écarté (pas portrait : %dx%d) : %s", w, h, cand[:60])
+        return ""
+    ok, _, _ = verify_image(ev, subject, img_bytes, mime, client)
+    return cand if ok else ""
 
 
 def _select(conn, args, today: str) -> list[dict]:
@@ -128,10 +133,12 @@ def _select(conn, args, today: str) -> list[dict]:
         "COALESCE(wp_post_id_as,0) > 0",           # publié sur Agenda Sabauda
         "duplicate_of IS NULL",
         "COALESCE(image_source,'') IN ('og','page','web','commons')",  # une VRAIE affiche
-        "COALESCE(url_image_wide,'') = ''",        # pas encore de version paysage
         "COALESCE(url_image,'') <> ''",
+        "COALESCE(user_score, llm_score, 0) >= ?",  # haut de panier
+        # au moins une des deux orientations manque encore
+        "(COALESCE(url_image_wide,'') = '' OR COALESCE(url_image_portrait,'') = '')",
     ]
-    params: list = []
+    params: list = [args.min_score]
     if args.ids:
         where.append(f"id IN ({','.join('?' * len(args.ids))})")
         params += list(args.ids)
@@ -145,9 +152,10 @@ def _select(conn, args, today: str) -> list[dict]:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Cherche une version PAYSAGE de l'affiche (multi-format, grand visuel 16:9).")
+        description="Multi-format : affiche officielle en portrait ET paysage (score ≥ 7).")
     parser.add_argument("ids", nargs="*", type=int, help="Ids précis (défaut : sélection auto).")
     parser.add_argument("--cap", type=int, default=15, help="Nombre max par run.")
+    parser.add_argument("--min-score", type=int, default=7, help="Score minimum (défaut 7).")
     parser.add_argument("--apply", action="store_true", help="Agir (sinon DRY-RUN).")
     parser.add_argument("--dry-run", action="store_true",
                         help="(défaut) simule sans rien écrire — présent pour cohérence.")
@@ -165,46 +173,48 @@ def main(argv=None) -> int:
     today = date.today().isoformat()
 
     conn = sqlite3.connect(DB_PATH)
-    init_db(conn)  # garantit url_image_wide / image_wide_at même sur une base ancienne
+    init_db(conn)  # garantit url_image_wide / url_image_portrait / image_wide_at
     conn.row_factory = sqlite3.Row
     rows = _select(conn, args, today)
-    log.info("%d fiche(s) avec affiche à examiner pour une version paysage (cap %d) — %s",
-             len(rows), args.cap, "APPLIQUE" if args.apply else "DRY-RUN")
+    log.info("%d fiche(s) haut de panier à compléter (portrait/paysage, cap %d, score ≥ %d) — %s",
+             len(rows), args.cap, args.min_score, "APPLIQUE" if args.apply else "DRY-RUN")
 
-    found = pushed = skipped_shape = 0
+    got_wide = got_portrait = pushed = 0
     for i, r in enumerate(rows):
         ev = dict(r)
         title = (ev.get("title") or "")[:55]
-        # On cherche un paysage dès que l'affiche actuelle n'est PAS déjà assez large pour
-        # le 16:9 (ratio < 1.6) : un 4:3, un 3:2 ou un portrait y perd du contenu au
-        # recadrage (le cas Jazz Art). Une vraie image paysage (≥ 16:10) remplit déjà bien
-        # → inutile de chercher. Dims illisibles (0×0) → on tente quand même.
-        w, h = images.remote_dims(ev.get("url_image") or "")
-        if w and h and (w / h) >= 1.6:
-            skipped_shape += 1
-            if args.apply:
-                mark_web_attempt(conn, "image_wide_at", ev["id"])  # cooldown : déjà paysage
-            log.info("[%s] affiche déjà paysage (%dx%d) — pas de paysage dédié — %s",
-                     ev["id"], w, h, title)
-            if args.delay and i < len(rows) - 1:
-                time.sleep(args.delay)
-            continue
-
-        url, credit, fx, fy = find_wide(ev, client, blocked)
+        prop = search_both(ev, client)
         if args.apply:
             mark_web_attempt(conn, "image_wide_at", ev["id"])  # cooldown quel que soit le résultat
-        if not url:
-            log.info("[%s] aucune version paysage fiable trouvée — %s", ev["id"], title)
+        subject = (prop.get("subject") or "") if prop else ""
+        new_wide = new_portrait = ""
+        if prop:
+            if not (ev.get("url_image_wide") or "").strip():
+                new_wide = _verify_orientation(prop.get("wide_url"), ev, subject, "wide", client, blocked)
+            if not (ev.get("url_image_portrait") or "").strip():
+                new_portrait = _verify_orientation(prop.get("portrait_url"), ev, subject, "portrait", client, blocked)
+        if not new_wide and not new_portrait:
+            log.info("[%s] aucune orientation fiable trouvée — %s", ev["id"], title)
             if args.delay and i < len(rows) - 1:
                 time.sleep(args.delay)
             continue
-        found += 1
-        log.info("[%s] paysage → %s — %s", ev["id"], url[:65], title)
+        if new_wide:
+            got_wide += 1
+            log.info("[%s] paysage  → %s — %s", ev["id"], new_wide[:60], title)
+        if new_portrait:
+            got_portrait += 1
+            log.info("[%s] portrait → %s — %s", ev["id"], new_portrait[:60], title)
         if args.apply:
-            conn.execute("UPDATE events_raw SET url_image_wide=? WHERE id=?", (url, ev["id"]))
+            sets, vals = [], []
+            if new_wide:
+                sets.append("url_image_wide=?"); vals.append(new_wide)
+            if new_portrait:
+                sets.append("url_image_portrait=?"); vals.append(new_portrait)
+            vals.append(ev["id"])
+            conn.execute(f"UPDATE events_raw SET {', '.join(sets)} WHERE id=?", vals)
             conn.commit()
-            ev["url_image_wide"] = url
-            # Re-push : le grand visuel 16:9 est régénéré à partir de la version paysage.
+            ev["url_image_wide"] = new_wide or ev.get("url_image_wide")
+            ev["url_image_portrait"] = new_portrait or ev.get("url_image_portrait")
             new_id, permalink, raw_url = publish_to_as(ev)
             if new_id:
                 pushed += 1
@@ -212,8 +222,8 @@ def main(argv=None) -> int:
             time.sleep(args.delay)
 
     conn.close()
-    log.info("Paysage — trouvés=%d · re-poussés=%d · sautés (déjà paysage)=%d%s",
-             found, pushed, skipped_shape, "  (dry-run : rien écrit)" if not args.apply else "")
+    log.info("Multi-format — paysages=%d · portraits=%d · re-poussés=%d%s",
+             got_wide, got_portrait, pushed, "  (dry-run : rien écrit)" if not args.apply else "")
     return 0
 
 

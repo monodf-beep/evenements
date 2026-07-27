@@ -161,11 +161,14 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # téléchargement par un défi anti-robot (Cloudflare…), notre propre
                       # copie hébergée n'a jamais ce problème.
                       ("wp_raw_image_url_as", "TEXT"),
-                      # Multi-format : version PAYSAGE de l'affiche (quand url_image est un
-                      # portrait). Utilisée pour le GRAND visuel 16:9 de la fiche (qui, avec
-                      # un portrait, ferait de grosses bandes) ; la carte 4:3 et les réseaux
-                      # gardent url_image (l'affiche entière). Vide → on retombe sur url_image.
+                      # Multi-format (haut de panier, score ≥ 7) : l'affiche officielle
+                      # déclinée dans les DEUX orientations, chacune servie à l'emplacement
+                      # où elle rend le mieux (scripts/images_wide, cf. docs/IMAGES.md) :
+                      #  • url_image_wide     = version PAYSAGE → grand visuel 16:9 de la fiche ;
+                      #  • url_image_portrait = version PORTRAIT (l'affiche) → carte 4:3 + réseaux.
+                      # Vide → on retombe sur url_image. Cooldown commun : image_wide_at.
                       ("url_image_wide", "TEXT"),
+                      ("url_image_portrait", "TEXT"),
                       # File « Cette semaine » (app./semaine) : suivi de relecture PAR
                       # FRANCK, distinct de la vérification automatique (agent vision).
                       # Comparaison au CONTENU actuel (pas juste "vu une fois") : dès que

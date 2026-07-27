@@ -102,9 +102,9 @@ case "$MODE" in
     # photo pertinente. Cooldown 7j intégré (WEB_COOLDOWN_DAYS) : ne re-tente pas tous
     # les jours un cas déjà essayé récemment.
     step "images (web)"      "$PY" -m scripts.images_web --cap 15 --min-score 7
-    # Multi-format : pour les affiches PORTRAIT, cherche une version PAYSAGE (grand visuel
-    # 16:9 de la fiche, évite les bandes). Cooldown intégré. Coût borné (--cap).
-    step "images paysage"    "$PY" -m scripts.images_wide --apply --cap 15
+    # Multi-format (haut de panier) : l'affiche officielle en PORTRAIT (carte 4:3 + réseaux)
+    # ET en PAYSAGE (grand visuel 16:9), les deux en un appel. Cooldown intégré, borné.
+    step "images multi-format" "$PY" -m scripts.images_wide --apply --cap 15 --min-score 7
     # Handles Instagram d'organisateurs (recherche web) : propose des candidats à
     # confirmer dans /semaine, jamais publiés tant que Franck ne les a pas validés.
     step "organisateurs (web)" "$PY" -m scripts.organizer_handles --cap 10
