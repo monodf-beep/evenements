@@ -402,8 +402,11 @@ def resolve_official_site(title: str, lieu: str, client) -> str:
     try:
         # L'outil de recherche web (serveur) renvoie un `pause_turn` : le modèle cherche puis
         # a besoin d'un second tour pour formuler la réponse. On boucle comme le rédacteur.
+        # Modèle QUALITÉ (Sonnet) : l'outil de recherche web serveur n'est pas supporté par
+        # l'éco (Haiku) → BadRequestError. On reste sur une seule requête, donc coût contenu.
+        search_model = os.getenv("ENRICH_LONG_MODEL", "").strip() or _ps.model_qualite()
         for _ in range(MAX_WEB_SEARCHES + 3):
-            with client.messages.stream(model=_ps.model_eco(), max_tokens=600,
+            with client.messages.stream(model=search_model, max_tokens=600,
                                         tools=[WEB_SEARCH_TOOL], messages=messages) as stream:
                 msg = stream.get_final_message()
             if msg.stop_reason == "pause_turn":
