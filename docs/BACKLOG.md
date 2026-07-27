@@ -45,6 +45,16 @@ Légende propriétaire : 🤖 Claude Code (repo) · 🧑 Franck (VPS/décision) 
   couvertures ; repli JetEngine des sélections vides (→ requête plus large).
 - 🤖/🧑 **Code mort `utils/sources.py`** (filtre radar « économique » de l'Observatoire) : inerte, mais
   fichier `SYNCED` → à retirer côté Observatoire aussi (décision partagée).
+- 🤖 **Cultura Sabauda : rédacteur + panel dédiés (chantier différé — décision « Agenda d'abord »).**
+  Constat : `enrich.py` a UN seul prompt, désormais 100 % Agenda (pyramide inversée), et
+  `publisher.py` (CS) lit le MÊME `article_md` que `publisher_as.py` (AS). Donc l'escalier de
+  Cultura Sabauda n'est plus branché : ce qui part sur CS sort en style Agenda. Les 6 personas
+  et le panel lecteurs (`docs/personas/`) sont le dispositif **Agenda uniquement**.
+  Quand CS redevient prioritaire : (a) rendre `enrich.py` conscient de la publication — escalier
+  pour CS, pyramide pour AS ; (b) construire un panel de personas CS distinct (lecteurs d'essai,
+  lentille « qu'est-ce que ça m'apprend de durable / honnêteté de l'idée / anti-cliché »), pas les
+  lecteurs d'agenda actuels. Vérifier au passage si des posts CS sont publiés en style Agenda
+  aujourd'hui (régression réelle) ou si CS est de facto en veille.
 
 ## Le pipeline, étape par étape — où placent-on agents & règles ?
 
