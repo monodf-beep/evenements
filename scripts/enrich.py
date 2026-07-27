@@ -375,13 +375,15 @@ def _find_official_site(html: str, base_url: str, title: str) -> str:
     return best if best_score >= 2 else ""
 
 
-def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[str]:
-    """Suit les pages presse/programme d'un site et renvoie leurs textes balisés."""
+def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[tuple]:
+    """Suit les pages presse/programme d'un site. Renvoie [(link, html, texte), …] : le HTML
+    sert à en extraire les AFFICHES (visuels HD), le texte à nourrir la rédaction."""
     out = []
     for link in _programme_links(html, url, limit=n_sub):
-        txt = _html_to_text(_get_html(link, timeout))[:5000]
+        h = _get_html(link, timeout)
+        txt = _html_to_text(h)[:5000]
         if txt:
-            out.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{txt}")
+            out.append((link, h, txt))
             log.info("%s : page presse/programme lue (%s)", tag, link[:90])
     return out
 
@@ -429,12 +431,13 @@ def resolve_official_site(title: str, lieu: str, client) -> str:
 
 
 def fetch_official_material(url: str, timeout: int = 8, title: str = "",
-                            lieu: str = "", client=None) -> str:
+                            lieu: str = "", client=None) -> tuple:
     """SOURCE OFFICIELLE = première source (règle Franck). On lit `url` ; si c'est un
     AGRÉGATEUR, on remonte au site officiel (lien sortant qui recoupe le titre). Si la source
     est INACCESSIBLE (403 depuis le VPS), on résout le site officiel par recherche web puis on
     le lit DIRECTEMENT. On lit ensuite sa page presse/programme (programme réel + visuels HD).
-    Désactivable via ENRICH_SITE_DEEP=0."""
+    Renvoie (texte_matière, pages) où `pages` = [{'url','html'}, …] des pages OFFICIELLES
+    lues (pour en extraire les affiches). Désactivable via ENRICH_SITE_DEEP=0."""
     html = _get_html(url, timeout)
     resolved = ""
     if not html:
@@ -446,7 +449,7 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
                 url = resolved
                 log.info("site officiel résolu par recherche web : %s", resolved[:90])
         if not html:
-            return ""
+            return "", []
     landing = _html_to_text(html)[:6000]
     deep = os.getenv("ENRICH_SITE_DEEP", "1") == "1"
     try:
@@ -454,25 +457,79 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
     except ValueError:
         n_sub = 3
     if not deep or n_sub <= 0:
-        return landing
+        return landing, ([{"url": url, "html": html}] if resolved else [])
     blocks: list[str] = []
+    pages: list[dict] = []
     # Site officiel à lire en profondeur : soit `url` lui-même (résolu, ou source déjà
     # officielle), soit un lien sortant depuis un agrégateur accessible.
     official = "" if resolved else _find_official_site(html, url, title)
     if official and official != url:
         ohtml = _get_html(official, timeout)
         if ohtml:
+            pages.append({"url": official, "html": ohtml})
             otext = _html_to_text(ohtml)[:6000]
             if otext:
                 blocks.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — {official}]\n{otext}")
                 log.info("site officiel trouvé via la source : %s", official[:90])
-            blocks += _deep_read(ohtml, official, timeout, n_sub, "site officiel")
+            for link, lhtml, ltxt in _deep_read(ohtml, official, timeout, n_sub, "site officiel"):
+                pages.append({"url": link, "html": lhtml})
+                blocks.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{ltxt}")
     if landing:
         blocks.append(f"[PAGE SOURCE — {url}]\n{landing}")
     # `url` EST le site officiel (résolu, ou direct sans lien sortant) → lire ses sous-pages.
     if not official or official == url:
-        blocks += _deep_read(html, url, timeout, n_sub, "site officiel")
-    return "\n\n".join(blocks)
+        if resolved:
+            pages.append({"url": url, "html": html})   # la page d'accueil officielle
+        for link, lhtml, ltxt in _deep_read(html, url, timeout, n_sub, "site officiel"):
+            pages.append({"url": link, "html": lhtml})
+            blocks.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{ltxt}")
+    return "\n\n".join(blocks), pages
+
+
+# Indices de FICHIER pour reconnaître une affiche officielle (visuel HD de l'événement).
+_AFFICHE_HINT = ("affiche", "visuel", "poster", "programme", "couv", "cover", "print",
+                 "bandeau", "key-visual", "keyvisual", "-kv", "manifesto", "locandina")
+# Images à IGNORER (habillage du site, pas l'affiche de l'événement).
+_IMG_SKIP = ("logo", "sponsor", "partenaire", "partner", "icon", "favicon", "pixel",
+             "avatar", "picto", "cookie", "/menu", "footer", "header-", "flag-", "drapeau",
+             "facebook", "instagram", "twitter", "spinner", "loader")
+_IMG_RE = re.compile(r'(?i)(?:src|href)\s*=\s*["\']([^"\']+\.(?:jpe?g|png|webp))(?:\?[^"\']*)?["\']')
+
+
+def extract_press_visuals(pages: list) -> dict:
+    """Depuis les pages OFFICIELLES lues (dossier de presse), trouve l'AFFICHE de l'événement
+    en PORTRAIT et en PAYSAGE (visuels HD). Télécharge les meilleurs candidats pour mesurer
+    leur orientation. Renvoie {'portrait':url|None, 'wide':url|None, 'poster':url|None}."""
+    from urllib.parse import urljoin, urlparse
+    from utils.images import remote_dims
+    cands: dict[str, int] = {}
+    for p in pages or []:
+        html, base = p.get("html", ""), p.get("url", "")
+        for m in _IMG_RE.finditer(html or ""):
+            u = urljoin(base, m.group(1)).split("?")[0]
+            low = u.lower()
+            if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
+                continue
+            score = sum(2 for h in _AFFICHE_HINT if h in low)
+            cands[u] = max(cands.get(u, 0), score)
+    if not cands:
+        return {}
+    # On mesure d'abord les mieux nommés (affiche/visuel…), plafonné pour le coût.
+    ordered = sorted(cands, key=lambda u: cands[u], reverse=True)[:8]
+    portrait = wide = None
+    pa = wa = 0
+    for u in ordered:
+        w, h = remote_dims(u)
+        if w < 400 or h < 400:          # trop petit → logo/vignette, pas une affiche
+            continue
+        area, ratio = w * h, w / h
+        if ratio <= 0.9 and area > pa:          # portrait
+            portrait, pa = u, area
+        elif ratio >= 1.3 and area > wa:        # paysage
+            wide, wa = u, area
+    if not portrait and not wide:
+        return {}
+    return {"portrait": portrait, "wide": wide, "poster": portrait or wide}
 
 
 def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
@@ -499,8 +556,9 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     press = gather_press_kits(conn, ev)
     if press:
         press = re.sub(r"(?s)<[^>]+>", " ", press)
-    page = fetch_official_material(ev.get("url_source", ""), title=ev.get("title", ""),
-                                   lieu=ev.get("lieu") or ev.get("ville") or "", client=client)
+    page, official_pages = fetch_official_material(
+        ev.get("url_source", ""), title=ev.get("title", ""),
+        lieu=ev.get("lieu") or ev.get("ville") or "", client=client)
 
     sections = []
     if press:
@@ -509,7 +567,7 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
         sections.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — accueil + programmation, lu en direct, source primaire]\n{page}")
     if rss:
         sections.append(f"[SIGNAUX FLUX / RADAR]\n{rss}")
-    return "\n\n".join(sections) or "(aucune — titre seul)"
+    return "\n\n".join(sections) or "(aucune — titre seul)", official_pages
 
 
 def _parse_day(s: str) -> "date | None":
@@ -946,7 +1004,30 @@ def main(argv: list[str]) -> int:
                 conn.commit()
                 ev["url_image"] = og
                 log.info("[%d] image récupérée (og:image) : %s", ev["id"], og[:80])
-        material = gather_material(conn, ev, client=client)
+        material, official_pages = gather_material(conn, ev, client=client)
+        # AFFICHES OFFICIELLES : depuis les pages presse lues, on récupère l'affiche de
+        # l'événement en portrait ET paysage (visuels HD), qui priment sur toute autre image.
+        try:
+            vis = extract_press_visuals(official_pages)
+        except Exception as exc:  # noqa: BLE001 — non bloquant
+            log.warning("[%d] extraction affiches : %s", ev["id"], type(exc).__name__)
+            vis = {}
+        if vis:
+            sets, params = [], []
+            if vis.get("portrait"):
+                sets.append("url_image_portrait=?"); params.append(vis["portrait"])
+            if vis.get("wide"):
+                sets.append("url_image_wide=?"); params.append(vis["wide"])
+            # Image de carte : l'affiche officielle prime si aucune n'est déjà posée.
+            if vis.get("poster") and not (ev.get("url_image") or "").strip():
+                sets.append("url_image=?"); params.append(vis["poster"])
+                ev["url_image"] = vis["poster"]
+            if sets:
+                conn.execute(f"UPDATE events_raw SET {', '.join(sets)} WHERE id=?",
+                             (*params, ev["id"]))
+                conn.commit()
+                log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
+                         bool(vis.get("portrait")), bool(vis.get("wide")))
         court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
         # La source officielle fait foi : si on a déjà la matière officielle (page presse/
         # programme ou dossier de presse), on COUPE la recherche web (redondante, lente,
