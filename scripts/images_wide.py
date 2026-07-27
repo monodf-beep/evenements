@@ -149,6 +149,8 @@ def main(argv=None) -> int:
     parser.add_argument("ids", nargs="*", type=int, help="Ids précis (défaut : sélection auto).")
     parser.add_argument("--cap", type=int, default=15, help="Nombre max par run.")
     parser.add_argument("--apply", action="store_true", help="Agir (sinon DRY-RUN).")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="(défaut) simule sans rien écrire — présent pour cohérence.")
     parser.add_argument("--force", action="store_true", help="Ignorer le cooldown.")
     parser.add_argument("--delay", type=float, default=1.0, help="Pause (s) entre événements.")
     args = parser.parse_args(argv)
