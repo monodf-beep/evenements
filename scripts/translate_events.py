@@ -300,6 +300,66 @@ def translate_article(client, model, enrich_json: str, target: str,
     return json.dumps(new_data, ensure_ascii=False)
 
 
+def _retranslate(conn, args, client, voix) -> int:
+    """RE-TRADUIT le jumeau EXISTANT des ids ORIGINAUX donnés : régénère titre + description
+    + article (enrich_data) depuis l'original avec les règles courantes et MET À JOUR la fiche
+    traduite en place (garde son id, son wp_post_id_as → update WP, sa liaison Polylang).
+    Sert au re-travail rétroactif — ne crée jamais de doublon."""
+    if not args.ids:
+        log.error("--retranslate nécessite des ids (fiches ORIGINALES dont on re-traduit le jumeau).")
+        conn.close()
+        return 1
+    ph = ",".join("?" * len(args.ids))
+    twins = [dict(r) for r in conn.execute(
+        f"SELECT * FROM events_raw WHERE translation_of IN ({ph}) AND duplicate_of IS NULL",
+        args.ids).fetchall()]
+    log.info("%d jumeau(x) à re-traduire%s.", len(twins), "" if args.apply else " (simulation)")
+    done = 0
+    for tw in twins:
+        orig = conn.execute("SELECT * FROM events_raw WHERE id=?", (tw["translation_of"],)).fetchone()
+        if not orig:
+            continue
+        orig = dict(orig)
+        tgt = (tw.get("translated_lang") or _target(detect_lang(
+            orig.get("title", ""), orig.get("description", ""), orig.get("territoire", "")))).strip()
+        log.info("[orig %s → jumeau %s] re-traduction %s : %s", orig["id"], tw["id"], tgt,
+                 (orig.get("title") or "")[:50])
+        if not args.apply:
+            continue
+        if not client:
+            log.error("ANTHROPIC_API_KEY absente — impossible de re-traduire."); break
+        tr = translate_title_desc(client, args.model, orig.get("title", ""),
+                                  orig.get("description", "") or "", tgt, voix)
+        if not tr:
+            continue
+        tr_enrich = tr_art_title = ""
+        src_enrich = (orig.get("enrich_data") or "").strip()
+        if src_enrich:
+            ea = translate_article(client, args.model, src_enrich, tgt, voix)
+            if ea:
+                tr_enrich = ea
+                try:
+                    tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
+                except (ValueError, TypeError):
+                    tr_art_title = ""
+        conn.execute(
+            "UPDATE events_raw SET title=?, description=?, article_title=?, enrich_data=?, "
+            "translated_at=datetime('now') WHERE id=?",
+            (tr["title"], tr["description"], tr_art_title, tr_enrich, tw["id"]))
+        conn.commit()
+        # Met à jour la fiche WP traduite EXISTANTE (garde wp_post_id_as → update, pas de doublon).
+        upd = dict(tw)
+        upd.update({"title": tr["title"], "description": tr["description"],
+                    "article_title": tr_art_title, "enrich_data": tr_enrich, "force_lang": tgt})
+        publish_to_as(upd)
+        done += 1
+        log.info("[jumeau %s] re-traduit (%s) : %s", tw["id"], tgt, tr["title"][:50])
+    log.info("Re-traduction terminée — %d jumeau(x) mis à jour%s.", done,
+             "" if args.apply else "  (simulation : rien écrit)")
+    conn.close()
+    return 0
+
+
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Traduit les événements à bon score (FR↔IT).")
@@ -309,6 +369,13 @@ def main(argv=None) -> int:
     parser.add_argument("--territoire", default="",
                         help="Filtre territoire (slug : %s)." % ", ".join(_TERR_KEYS))
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("ids", nargs="*", type=int,
+                        help="Ids d'événements ORIGINAUX dont on RE-TRADUIT le jumeau existant "
+                             "(avec --retranslate) — sert au re-travail rétroactif.")
+    parser.add_argument("--retranslate", action="store_true",
+                        help="RE-TRADUIT le jumeau EXISTANT des ids donnés (met à jour la fiche "
+                             "traduite en place avec les règles courantes : article complet, voix, "
+                             "toponymes) au lieu de créer une nouvelle traduction.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -351,6 +418,9 @@ def main(argv=None) -> int:
     voix = voix_block()  # règles éditoriales (bilingues via le lexique) injectées à la traduction
     wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
     auth = (os.getenv("WP_AS_USER", ""), os.getenv("WP_AS_APP_PASSWORD", ""))
+
+    if args.retranslate:
+        return _retranslate(conn, args, client, voix)
 
     done = skipped = 0
     for ev in rows:
