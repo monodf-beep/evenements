@@ -175,14 +175,16 @@ def main(argv=None) -> int:
     for i, r in enumerate(rows):
         ev = dict(r)
         title = (ev.get("title") or "")[:55]
-        # On ne cherche un paysage QUE si l'affiche actuelle est PORTRAIT — sinon le 16:9
-        # se remplit déjà bien en « cover » et une recherche web serait du gaspillage.
+        # On cherche un paysage dès que l'affiche actuelle n'est PAS déjà assez large pour
+        # le 16:9 (ratio < 1.6) : un 4:3, un 3:2 ou un portrait y perd du contenu au
+        # recadrage (le cas Jazz Art). Une vraie image paysage (≥ 16:10) remplit déjà bien
+        # → inutile de chercher. Dims illisibles (0×0) → on tente quand même.
         w, h = images.remote_dims(ev.get("url_image") or "")
-        if not (w and h and h > w):
+        if w and h and (w / h) >= 1.6:
             skipped_shape += 1
             if args.apply:
-                mark_web_attempt(conn, "image_wide_at", ev["id"])  # cooldown : pas portrait
-            log.info("[%s] affiche non portrait (%dx%d) — pas de paysage nécessaire — %s",
+                mark_web_attempt(conn, "image_wide_at", ev["id"])  # cooldown : déjà paysage
+            log.info("[%s] affiche déjà paysage (%dx%d) — pas de paysage dédié — %s",
                      ev["id"], w, h, title)
             if args.delay and i < len(rows) - 1:
                 time.sleep(args.delay)
