@@ -356,12 +356,20 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
     # « Jazz Art », titre tronqué par le recadrage centré par défaut du thème WordPress).
     # Remplace l'URL brute (non recadrée) envoyée par défaut dans _build_payload.
     if hero_source:
+        # Multi-format : si une version PAYSAGE dédiée existe (url_image_wide), c'est ELLE
+        # qui alimente le 16:9 (un portrait d'affiche y ferait de grosses bandes) ; sinon on
+        # retombe sur l'affiche (letterbox). Le paysage est une AUTRE image que l'affiche →
+        # point focal centré et cover (le focal réglé à la main vaut pour l'affiche portrait).
+        wide_source = (event.get("url_image_wide") or "").strip()
+        hero_img = wide_source or hero_source
         _, hero_url = _upload_featured_media(
-            wp_url, auth, hero_source, alt=alt,
+            wp_url, auth, hero_img, alt=alt,
             caption=event.get("image_credit", "") or "",
             title=f"{event.get('title', '')} — fiche",
-            card=True, focal=_focal(event),
-            mode=(event.get("card_mode") or "auto"), ratio=(16, 9))
+            card=True,
+            focal=(0.5, 0.5) if wide_source else _focal(event),
+            mode=("cover" if wide_source else (event.get("card_mode") or "auto")),
+            ratio=(16, 9))
         if hero_url:
             payload["meta"]["as_image_original"] = hero_url
 
