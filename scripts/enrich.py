@@ -92,19 +92,25 @@ ENRICH_PROMPT = """Si une VOIX ÉDITORIALE est fournie ci-dessus, elle RÉGIT le
 style et les interdits (connecteurs, mise en forme, marqueurs) : en cas de désaccord avec
 ce qui suit, la voix prime. Ce prompt, lui, définit ta TÂCHE et le FORMAT de sortie.
 
-Tu es l'agent éditorial de Cultura Sabauda, média culturel bilingue
-FR/IT couvrant l'espace alpin occidental : Savoie/Haute-Savoie, Piémont, Vallée d'Aoste,
-Nice/Alpes-Maritimes. Registre « Internazionale + Le Monde Diplomatique » : sérieux,
-exigeant, evergreen — l'inverse d'un annuaire touristique.
+Tu es l'agent éditorial d'Agenda Sabauda, l'agenda culturel bilingue FR/IT des territoires
+sabauds : Savoie/Haute-Savoie, Piémont, Vallée d'Aoste, Nice/Alpes-Maritimes. Un lecteur
+d'agenda veut SAVOIR CE QUI SE PASSE : quoi, quand, qui, comment y aller. Pas un essai de
+magazine.
 
-MISSION : RÉDIGE un article prêt à relire à partir de la MATIÈRE fournie ci-dessous
-(page officielle de l'événement, dossier de presse, flux). Appuie-toi EN PRIORITÉ sur
-la PAGE OFFICIELLE et le DOSSIER DE PRESSE : ce sont tes sources primaires. N'affirme
-aucun fait qui ne figure ni dans cette matière ni dans un savoir historique/géographique
-solidement établi ; en cas de doute, baisse la confiance.
+MISSION : RÉDIGE un PREVIEW d'événement, COURT et INFORMATIF, à partir de la MATIÈRE fournie
+ci-dessous (page officielle, dossier de presse, flux). Appuie-toi EN PRIORITÉ sur la PAGE
+OFFICIELLE et le DOSSIER DE PRESSE (sources primaires). N'affirme aucun fait qui n'y figure
+pas ; en cas de doute, baisse la confiance.
 
-PRINCIPE DE L'ESCALIER : partir de l'ancrage local concret pour monter vers une question
-qui dépasse le territoire (mémoire, transmission, identité alpine, art, langue).
+STRUCTURE — PYRAMIDE INVERSÉE (l'info d'abord), JAMAIS l'escalier de magazine :
+1. ACCROCHE : quoi, quand, où, la tête d'affiche ou la raison d'y aller ;
+2. ESSENTIEL (le cœur) : la PROGRAMMATION de cette édition — line-up, temps forts, horaires,
+   ce qui change cette année ;
+3. RAPPEL bref et FACULTATIF (1-2 items max) : « Nᵉ édition », « l'an dernier, X » ;
+4. STOP. On reste sur CET événement. INTERDIT : le contexte historique/économique du lieu
+   (le thermalisme d'Aix, l'économie du tourisme…), ce qui se passe ailleurs, toute montée
+   vers une « question universelle ». Ça, c'est Cultura Sabauda ; ici on veut l'événement.
+Longueur : COURT et dense — vise 150 à 300 mots. Utile et concret vaut mieux que long.
 
 ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
 - Lieu (théâtre, musée, château, abbaye…) : histoire/identité, importance patrimoniale.
@@ -169,7 +175,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
 {{
   "contexte_lieu": "<ce que la recherche apprend du lieu, ou ''>",
   "contexte_entites": "<artiste/conférencier/plat/œuvre : origine, renommée, intérêt, ou ''>",
-  "angle": "<l'escalier : du local à l'universel, une à deux phrases>",
+  "angle": "<l'accroche : en une phrase, la raison d'aller à CET événement (tête d'affiche, temps fort, nouveauté) — jamais une montée vers l'universel>",
   "infos_pratiques": "<dates, lieu, accès, tarif/gratuité, lien officiel — factuel>",
   "sources": ["<url officielle/libre consultée>", "..."],
   "confiance": "<haute|moyenne|faible>",
@@ -177,7 +183,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "article": {{
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel + l'angle>",
-    "corps": "<le savoir transmis, le regard ; relie le territoire et au-delà. MARKDOWN structuré pour la lisibilité (Yoast) : si le corps dépasse ~250 mots, découpe-le avec des sous-titres '## ' tous les 2-3 paragraphes ; phrases COURTES (vise <20 mots) ; enchaîne naturellement, SANS transitions scolaires ni connecteurs clichés (cf. voix). GRAS UTILE : mets en gras 3 à 5 expressions structurantes réparties sur l'article (le concept-clé, l'angle éditorial, un mot-pivot par chapitre) pour guider l'œil du lecteur pressé. Vise environ UN gras par section '## '. JAMAIS sur les noms propres, lieux, dates ou chiffres (déjà dans l'encadré natif). Reste sur des EXPRESSIONS courtes (2-5 mots), jamais des phrases entières ; jamais plus de 5 sur tout l'article. N'utilise PAS le tiret cadratin (— ou –), signature d'écriture IA : préfère la virgule, la parenthèse, le deux-points ou le point. Français soigné, aucun anglicisme (écris « programmes », pas « programs »). N'écris PAS d'encadré pratique dans le corps (dates/lieu/tarif) : le site l'affiche déjà nativement, le corps reste ÉDITORIAL>",
+    "corps": "<le PREVIEW de l'événement en PYRAMIDE INVERSÉE : accroche (quoi/quand/tête d'affiche), puis la PROGRAMMATION de cette édition (line-up, temps forts, horaires, nouveautés), puis au plus un rappel bref. On reste sur CET événement : AUCUN contexte historique/économique du lieu ou du territoire, AUCUNE montée vers l'universel, RIEN sur ce qui se passe ailleurs (ça, c'est Cultura Sabauda, pas ici). COURT : 150-300 mots ; au plus un ou deux sous-titres '## ' si vraiment nécessaire. Phrases COURTES (<20 mots), CONCRÈTES, de JOURNALISTE : on dit ce qui se passe, jamais ce que « ça raconte » (pas de « X n'est pas neutre », pas de fausse profondeur). GRAS UTILE : 3 à 5 expressions structurantes (tête d'affiche, temps fort, nouveauté), JAMAIS sur noms propres, lieux, dates ou chiffres. PAS de tiret cadratin (— ou –) : virgule, parenthèse, deux-points, point. Français soigné, aucun anglicisme (« programmes », pas « programs »). N'écris PAS l'encadré pratique (dates/lieu/tarif) dans le corps : le site l'affiche nativement>",
     "programme": ["<UNE entrée par ligne de programme : jour/heure + intitulé (concert, séance, temps fort…). LISTE, jamais de la prose. Vide [] si l'événement n'a pas de programme/line-up dans la matière>"],
     "encadre": "<encadré pratique : dates, lieu, accès, gratuité, lien officiel>"
   }}
@@ -326,11 +332,11 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         material=material,
     )
     if _court:
-        prompt += ("\n\n[MODE COURT — Agenda Sabauda] Rédige un article CONCIS (1-2 paragraphes, "
-                   "~250-350 mots), SANS recherche web : appuie-toi uniquement sur les informations "
-                   "ci-dessus. Va à l'essentiel — MAIS garde les FAITS STRUCTURÉS OBLIGATOIRES (§5 bis) : "
-                   "le champ \"programme\" (liste : horaires, séances, line-up…), les tarifs et la langue "
-                   "sont OBLIGATOIRES dès que la matière les contient, même en version courte.")
+        prompt += ("\n\n[MODE COURT — petit événement] Encore plus BREF (~120-200 mots, 1-2 "
+                   "paragraphes), SANS recherche web : appuie-toi uniquement sur les informations "
+                   "ci-dessus. Va droit à l'essentiel — MAIS garde les FAITS STRUCTURÉS OBLIGATOIRES "
+                   "(§5 bis) : le champ \"programme\" (liste : horaires, séances, line-up…), les tarifs "
+                   "et la langue sont OBLIGATOIRES dès que la matière les contient.")
     messages = [{"role": "user", "content": prompt}]
     try:
         # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
