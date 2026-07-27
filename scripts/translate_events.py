@@ -252,9 +252,17 @@ def translate_article(client, model, enrich_json: str, target: str,
         f"(« programme » = liste de MÊME longueur), sans autre commentaire :\n"
         f"{json.dumps(payload, ensure_ascii=False)}")
     try:
+        # 8000 : l'article COMPLET traduit (long corps + programme + encadré) dépasse
+        # facilement 4000 tokens ; tronquée, la réponse n'a plus d'accolade fermante et le
+        # JSON est illisible (« Expecting value » → repli description seule). On garde une
+        # marge large, et on détecte une éventuelle troncature pour ne pas publier un
+        # article amputé.
         resp = client.messages.create(
-            model=model, max_tokens=4000,
+            model=model, max_tokens=8000,
             messages=[{"role": "user", "content": prompt}])
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            log.warning("Traduction de l'article tronquée (max_tokens) — article ignoré.")
+            return None
         txt = _extract_json(resp)
         out = json.loads(txt[txt.find("{"): txt.rfind("}") + 1])
         if not isinstance(out, dict):
