@@ -74,7 +74,7 @@ BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
 # Plafond de recherches web par événement (outil serveur).
 MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "3"))
 # Budget de sortie de l'article JSON.
-MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "8000"))
+MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "12000"))
 # Raisonnement étendu : COÛTEUX et LENT (runs de ~5 min, budget de tokens épuisé avant
 # le JSON → stop_reason=max_tokens). Inutile pour « chercher + rédiger en JSON ».
 # Désactivé par défaut ; ENRICH_THINKING=1 pour l'activer (articles plus fouillés, plus chers).
@@ -520,11 +520,12 @@ def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
 
 
 def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str,
-                 court: bool, extra_task: str = ""):
+                 court: bool, extra_task: str = "", allow_web: bool = True):
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR.
     `court`/`model` sont décidés par l'appelant via _tier_model. `extra_task` : consigne
     supplémentaire ajoutée en fin de prompt (ex. retour de l'agent persona lecteur pour une
-    révision)."""
+    révision). `allow_web` : autorise la recherche web (coupée quand on a déjà la matière
+    officielle — la source officielle fait foi, le web n'est qu'un secours)."""
     from utils.voix import voix_block
     from utils import settings as pipeline_settings  # COURT_MAX_TOKENS (mode court)
     _court = court
@@ -553,14 +554,15 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         # Mode COURT (Agenda) : tokens réduits, PAS de recherche web ni thinking → bien
         # moins cher. Mode LONG (Cultura Sabauda) : plein (web + thinking + 8000 tokens).
         _max = pipeline_settings.COURT_MAX_TOKENS if _court else MAX_TOKENS
+        web_on = USE_WEB_SEARCH and allow_web and not _court
         kwargs = dict(model=model, max_tokens=_max, messages=messages)
-        if USE_WEB_SEARCH and not _court:
+        if web_on:
             kwargs["tools"] = [WEB_SEARCH_TOOL]
         if USE_THINKING and not _court:
             kwargs["thinking"] = {"type": "adaptive"}
-        for turn in range(1, (MAX_WEB_SEARCHES + 4) if USE_WEB_SEARCH else 2):
+        for turn in range(1, (MAX_WEB_SEARCHES + 4) if web_on else 2):
             log.info("[%d] appel API tour %d… (web=%s, thinking=%s)",
-                     ev["id"], turn, USE_WEB_SEARCH, USE_THINKING)
+                     ev["id"], turn, web_on, USE_THINKING)
             kwargs["messages"] = messages
             with client.messages.stream(**kwargs) as stream:
                 message = stream.get_final_message()
@@ -802,7 +804,7 @@ def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
 
 
 def revise_article(result: dict, panel: dict, ev: dict, material: str,
-                   client, model: str, court: bool):
+                   client, model: str, court: bool, allow_web: bool = True):
     """Réécrit l'article en tenant compte des retours DU PANEL de lecteurs. Renvoie le
     nouveau result, ou l'ancien si la révision échoue."""
     lignes = []
@@ -825,7 +827,8 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
              "(« à ce stade, la matière ne précise pas… » est INTERDIT). Écris seulement les "
              "faits certains, sans jamais parler de ce qui manque. Ne meuble pas : le lecteur "
              "doit APPRENDRE quelque chose de réel.")
-    revised = enrich_event(ev, material, client, model, court, extra_task=extra)
+    revised = enrich_event(ev, material, client, model, court, extra_task=extra,
+                           allow_web=allow_web)
     return revised if (revised and revised is not API_ERROR) else result
 
 
@@ -875,9 +878,15 @@ def main(argv: list[str]) -> int:
                 log.info("[%d] image récupérée (og:image) : %s", ev["id"], og[:80])
         material = gather_material(conn, ev)
         court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
-        log.info("[%d] palier=%s modèle=%s (score=%s)", ev["id"],
-                 "court" if court else "long", model, ev.get("llm_score"))
-        result = enrich_event(ev, material, client, model, court)
+        # La source officielle fait foi : si on a déjà la matière officielle (page presse/
+        # programme ou dossier de presse), on COUPE la recherche web (redondante, lente,
+        # coûteuse, source de troncature). Le web ne reste qu'un secours quand on n'a rien.
+        has_official = ("[PAGE PRESSE/PROGRAMME" in material or "[DOSSIER" in material)
+        allow_web = not has_official
+        log.info("[%d] palier=%s modèle=%s (score=%s) | matière officielle=%s → web=%s",
+                 ev["id"], "court" if court else "long", model, ev.get("llm_score"),
+                 has_official, USE_WEB_SEARCH and allow_web and not court)
+        result = enrich_event(ev, material, client, model, court, allow_web=allow_web)
         if result is API_ERROR:
             # Trace visible côté back-office (sinon l'utilisateur ne voit « rien »).
             conn.execute(
@@ -904,7 +913,8 @@ def main(argv: list[str]) -> int:
             if panel.get("verdict") == "revise":
                 log.info("[%d] panel lecteurs: moyenne=%s, %s vote(s) révision → révision",
                          ev["id"], panel.get("mean"), panel.get("votes"))
-                result = revise_article(result, panel, ev, material, client, model, court)
+                result = revise_article(result, panel, ev, material, client, model, court,
+                                        allow_web=allow_web)
                 panel = reader_panel(result, ev, client, review_model) or panel
             if panel:
                 result["reader_panel"] = panel
