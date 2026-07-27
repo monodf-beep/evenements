@@ -172,3 +172,27 @@ Même si la Reco 1 les apporte via la voix, garder dans le prompt de traduction 
 ---
 
 **Reco 1 est faite.** Reste **Reco 2** (traduire `enrich_data` pour la parité éditoriale) : à lancer sur ton go, avec l'arbitrage de coût ci-dessus.
+
+---
+
+## Mises à jour (27 juillet 2026) — Reco 2 faite + règles
+
+**Parité éditoriale : faite.** `translate_events` traduit désormais l'**article enrichi
+complet** (`enrich_data` : titre, chapô, **corps markdown**, programme, encadré) et pose
+`article_title` + `enrich_data` sur la fiche jumelle — pas seulement la description. La
+fiche IT reçoit le même « escalier » que la FR (`translate_article`).
+
+**Règles de traduction (leçons de mise au point) :**
+- **Traduire toute la PROSE**, corps compris — ne jamais recopier un champ tel quel (Haiku
+  laissait le long corps en français ; on force la traduction intégrale).
+- **Garder inchangés les noms propres** : nom officiel de l'événement, personnes, œuvres.
+- **Toponymes** : nom usuel de la langue cible quand il existe (Aoste→Aosta, Turin→Torino,
+  Nice→Nizza), **mais garder tel quel un toponyme valdôtain** sans équivalent — la Vallée
+  d'Aoste est officiellement **bilingue FR/IT**, ses noms de lieux français sont légitimes,
+  on ne les italianise pas de force.
+- **Voix** : `voix_block()` est injecté dans le prompt → la charte (vocabulaire interdit,
+  doctrine d'appartenance) s'applique **en italien comme en français**.
+- **Modèle** : Sonnet par défaut (`ANTHROPIC_MODEL_TRANSLATE`) — Haiku bâclait le corps.
+  `max_tokens` relevé (8000 article / 3000 titre-desc) : l'article complet dépasse 4000 et
+  la réponse tronquée donnait un JSON vide → repli/échec. Détection de troncature
+  (`stop_reason == max_tokens`) pour ne jamais publier un article amputé.

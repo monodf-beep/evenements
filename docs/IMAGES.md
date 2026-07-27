@@ -198,3 +198,26 @@ Résultat : événement sans vraie photo → `_thumbnail_id` vide → repli runt
 - déclencher un audit **à la demande** sur une période / un territoire, sans attendre le cron.
 
 Esquisse : une route `/audit-visuel` réutilisant la logique de `image_audit.py` (déjà écrite), rendant la planche en HTML, avec les actions ci-dessus branchées sur les fonctions image existantes (`resolve_image`, éditeur de cadrage). **Non commencé** — à prioriser avec toi.
+
+---
+
+## Mises à jour (27 juillet 2026) — règles ajoutées
+
+**Écran back-office `/audit-visuel`** : fait. Planche contact des vraies photos, fond flou (même image agrandie derrière, pas de bandes noires), bouton « relancer » et **audit vision** à la demande. Persiste les verdicts (`image_audit_flags`) + badge de nav.
+
+**La VRAIE image d'abord.** La chaîne insère un **étage agent web** (`scripts/images_web.find_verified_image`) *avant* Commons : recherche web privilégiant l'**affiche / la page officielle** de l'événement, du lieu ou de l'artiste (jamais d'agence, charte §8), vérifiée par vision. Commons n'est plus que le repli générique. Motif : Commons n'a qu'un portrait quelconque de la personnalité (cas « Dialoghi con George Clooney »), jamais l'affiche de CET événement — que Google trouve car il indexe tout le web. Gaté par `VISUALS_WEB_IMAGE` (défaut on).
+
+**Superviseur vision durci** (`utils/image_verify.verify_relevance`). Refuse désormais aussi :
+- **mauvais genre / discipline** (guitariste métal pour un festival *classique*, hip-hop pour de l'opéra…) ;
+- **image générique de remplissage** (foule de concert quelconque, projecteur, typographie décorative) qui n'est ni le sujet nommé ni l'affiche ;
+- **une personne identifiable précise quand le titre ne nomme personne** (festival/thème générique → une photo d'un interprète quelconque est presque toujours fausse). Ces cas basculent sur la bannière.
+
+**« relancer » (audit)** : re-pousse VRAIMENT vers WordPress (avant, il ne mettait à jour que la base → « rien ne change ») et, si la ré-résolution rend la même image, **bascule sur la bannière** — le bouton fait toujours *disparaître* l'image douteuse.
+
+**Auto-correction** : `refill_images_as --flagged` re-résout automatiquement chaque image que l'audit vient de signaler (agent web → sinon bannière, jamais pire) et solde le flag. Branché dans le cron après l'audit → « l'agent gère après l'audit ».
+
+**Cadrage — letterbox PAR DÉFAUT (choix Franck).** On ne **coupe jamais** : le mode `auto` de `utils/card_image.make_card` letterbox systématiquement (image entière sur fond flou), affiches comme photos paysage. `cover` (remplir le cadre, rogner les bords) reste dispo en **manuel** via `card_mode`. Pour convertir l'existant : `refill_images_as --rerender` (re-pousse toutes les fiches publiées, sans vision ni recherche).
+
+**Multi-format (portrait + paysage).** Une affiche PORTRAIT est belle en 4:3 / réseaux mais fait des bandes en 16:9. `scripts/images_wide` cherche une **version paysage** officielle du sujet (agent web, vérifiée « vraiment paysage + pertinente »), la stocke dans `url_image_wide` et re-pousse ; le grand visuel 16:9 (`publisher_as`) la prend. Se déclenche dès que l'affiche courante n'est pas déjà assez large (ratio < 1.6). Colonne `url_image_wide` + cooldown `image_wide_at`.
+
+**Téléchargement Wikimedia (429).** `publisher.py` : UA descriptif bot (`CulturaSabaudaBot/…`) d'abord pour Commons (un UA navigateur se fait throttler), backoff 5/10/20s, et **téléchargement source mis en cache** (les 3 déclinaisons carte/héros/original d'un même event ne frappent Wikimedia qu'une fois). `refill_images_as --throttle` (1.5s) espace les événements en lot.

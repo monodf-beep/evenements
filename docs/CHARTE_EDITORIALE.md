@@ -269,3 +269,23 @@ fermeture — jamais douze fois en tête.
   à défaut de chapô rédigé, on retombe sur une description propre, pas sur du texte technique.
 - Le **thème** (« spécial sagre d'été ») reste possible comme **variante ponctuelle**
   assumée, jamais comme mécanique de base.
+
+## Cinéma — que garde-t-on ? (règle du 27 juillet 2026)
+
+Le cinéma est admis, mais **PAS la programmation de projections en salle**. On distingue :
+
+- **GARDÉ** : les vrais **festivals de cinéma** (événement multi-films à identité de
+  festival : nom, édition, sélection — ex. Torino Film Festival, un festival dédié à
+  Marilyn) **et** le **cinéma en plein air** (projections estivales en extérieur portées
+  par une ville, une association ou un lieu culturel — un rendez-vous événementiel).
+- **EXCLU** (score 0), même en salle d'art et d'essai ou en lieu institutionnel : les
+  **rétrospectives, cycles et hommages** à un réalisateur (ex. « Les films de Bong
+  Joon-ho » au Cinema Massimo), les **projections d'un film en salle** (commerciale ou
+  non), séances uniques, ciné-clubs, avant-premières isolées.
+
+Le critère : *festival ou plein air → garder ; simple programmation de projections
+(aussi culturelle soit-elle) → exclure*. En cas de doute hors plein air, **exclure**.
+Une source qui ne promeut que du cinéma commercial n'entre pas (couvert par cette règle,
+puisque non-festival). Implémenté à l'évaluation (`scripts/evaluator` — piège cinéma) et
+en nettoyage rétroactif (`scripts/cleanup_cinema`, tri par organisateur, jumeaux FR/IT
+traités ensemble, réversible via la corbeille WordPress `cs/v1/trash`).
