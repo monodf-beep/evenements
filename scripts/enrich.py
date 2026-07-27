@@ -1097,11 +1097,17 @@ def main(argv: list[str]) -> int:
                 conn.commit()
                 log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
                          bool(vis.get("portrait")), bool(vis.get("wide")))
-        court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
-        # La source officielle fait foi : si on a déjà la matière officielle (page presse/
-        # programme ou dossier de presse), on COUPE la recherche web (redondante, lente,
-        # coûteuse, source de troncature). Le web ne reste qu'un secours quand on n'a rien.
         has_official = ("[PAGE PRESSE/PROGRAMME" in material or "[DOSSIER" in material)
+        court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
+        # SCORE AVANT : si on a la matière officielle (dossier de presse), on POUSSE l'article
+        # COMPLET (complétion maximale) même si le llm_score l'aurait mis en court — on a tout
+        # pour bien faire. (En mode auto seulement ; court/long forcés restent respectés.)
+        if has_official and court and mode == "auto":
+            court = False
+            model = os.getenv("ENRICH_LONG_MODEL", "").strip() or pipeline_settings.model_qualite()
+            log.info("[%d] matière officielle → article COMPLET (complétion max)", ev["id"])
+        # La source officielle fait foi : si on a déjà la matière officielle, on COUPE la
+        # recherche web (redondante, lente, source de troncature) — secours seulement sinon.
         allow_web = not has_official
         log.info("[%d] palier=%s modèle=%s (score=%s) | matière officielle=%s → web=%s",
                  ev["id"], "court" if court else "long", model, ev.get("llm_score"),
@@ -1147,6 +1153,21 @@ def main(argv: list[str]) -> int:
                 "pages": [p.get("url") for p in (official_pages or []) if p.get("url")],
                 "web": bool(USE_WEB_SEARCH and allow_web and not court),
             }
+            # SCORE HOME (curation de la home Agenda) : la qualité éditoriale domine, mais
+            # une source directe (dossier de presse) + les visuels officiels prouvent qu'on
+            # a l'info ET l'image, sans deviner → ça monte la fiche. 0-10.
+            pm = (result.get("reader_panel") or {}).get("mean")
+            has_p = bool(vis.get("portrait")) if isinstance(vis, dict) else False
+            has_w = bool(vis.get("wide")) if isinstance(vis, dict) else False
+            affiches = "deux" if (has_p and has_w) else ("une" if (has_p or has_w) else "aucune")
+            q = (pm or 0) / 5 * 6                    # qualité éditoriale (panel local) : 0-6
+            src = 2.5 if has_official else 0.0        # source directe fiable : +2,5
+            aff = 1.5 if (has_p and has_w) else (0.75 if (has_p or has_w) else 0.0)  # visuels
+            result["home"] = {"score": round(min(10.0, q + src + aff), 1),
+                              "panel": pm, "source_officielle": bool(has_official),
+                              "affiches": affiches}
+            log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s)", ev["id"],
+                     result["home"]["score"], pm, has_official, affiches)
         title, md = build_article_md(result)
         conn.execute("""
         UPDATE events_raw SET

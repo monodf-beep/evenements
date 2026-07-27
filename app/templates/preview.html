@@ -164,8 +164,17 @@
   <div class="article">
     <div style="display:flex;justify-content:space-between;align-items:center;font-family:-apple-system,sans-serif;font-size:.78rem;color:var(--muted);margin-bottom:.6rem;">
       <span>✍️ Article rédigé par l'agent · {{ e.enrich_model or '—' }}</span>
-      {% set c = enriched.confiance or 'moyenne' %}
-      <span class="conf conf-{{ c }}">confiance {{ c }}</span>
+      <span style="display:flex;gap:.4rem;align-items:center;">
+        {% if enriched.home and enriched.home.score is not none %}
+          <span title="Score home = qualité panel + source officielle + affiches"
+                style="font-weight:700;border-radius:6px;padding:.1rem .45rem;
+                       background:{{ '#e7f3ea' if enriched.home.score >= 6 else '#f3efe7' }};
+                       border:1px solid {{ '#bfe0bf' if enriched.home.score >= 6 else '#e0d3bf' }};">
+            🏠 {{ enriched.home.score }}/10</span>
+        {% endif %}
+        {% set c = enriched.confiance or 'moyenne' %}
+        <span class="conf conf-{{ c }}">confiance {{ c }}</span>
+      </span>
     </div>
     {% if enriched.source %}
       {% set srcof = enriched.source.officielle %}
@@ -176,6 +185,7 @@
         {% if srcof %}
           ✅ <b>Source officielle</b> — écrit depuis la page presse/programme
           ({{ enriched.source.pages|length }} page(s) officielle(s) lue(s)).
+          {% if enriched.home %}<b>Affiches : {{ enriched.home.affiches }}</b>{% endif %}
           {% if enriched.source.pages %}
             <div style="margin-top:.25rem;">
               {% for u in enriched.source.pages %}<a href="{{ u }}" target="_blank" rel="noopener" style="display:block;color:var(--muted);word-break:break-all;">{{ u }}</a>{% endfor %}
