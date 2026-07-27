@@ -359,7 +359,10 @@ def main(argv=None) -> int:
     banners = load_territory_images()
     cat_banners = load_territory_category_images()
     blocked = load_blocked_image_domains()
-    stats = {"og": 0, "page": 0, "commons": 0, "banner": 0, "none": 0}
+    # defaultdict : robuste à toute source renvoyée par resolve_image (og, page, commons,
+    # europeana, web — l'agent web officiel —, banner, none…) sans KeyError.
+    from collections import defaultdict
+    stats: "dict[str, int]" = defaultdict(int)
     pushed = 0
 
     skipped_lowres = 0
@@ -477,8 +480,10 @@ def main(argv=None) -> int:
     tail = (f" | gardées (pas mieux)={skipped_lowres}" if args.lowres
             else f" | inchangées={skipped_lowres}" if args.recheck
             else f" | confirmées sans re-push={skipped_lowres}" if args.unverified else "")
-    log.info("Résolu — og=%d · page=%d · Commons=%d · bannière=%d · aucun=%d | re-poussés=%d%s%s",
-             stats["og"], stats["page"], stats["commons"], stats["banner"], stats["none"],
+    log.info("Résolu — og=%d · page=%d · web=%d · Commons=%d · Europeana=%d · bannière=%d · "
+             "aucun=%d | re-poussés=%d%s%s",
+             stats["og"], stats["page"], stats["web"], stats["commons"], stats["europeana"],
+             stats["banner"], stats["none"],
              pushed, tail, "  (dry-run : rien poussé)" if args.dry_run else "")
     conn.close()
     return 0
