@@ -64,7 +64,11 @@ RÈGLE. Le critère décisif est l'ORGANISATEUR / le lieu :
   (cinémathèque, musée, médiathèque), un FESTIVAL ou un ciné-club soutenu : festival,
   rétrospective, hommage à un cinéaste, cycle thématique, avant-première événementielle,
   cinéma en plein air organisé par la ville/une association.
-En cas de DOUTE sur l'organisateur, GARDER (on ne retire que le clairement commercial).
+Une simple PROJECTION DE FILM ordinaire (un long-métrage à l'affiche : « Carol »,
+« Les Minions »…) est EXCLUE même si l'organisateur est inconnu — c'est le type même de
+ce qu'on ne veut pas. Le « en cas de doute, GARDER » ne vaut QUE pour un vrai rendez-vous
+événementiel (festival, rétrospective, hommage, cycle, avant-première, plein air) dont
+l'organisateur n'est pas clair — jamais pour une séance de film isolée.
 
 Événement :
 Titre : {title}
@@ -164,6 +168,11 @@ def main(argv=None) -> int:
         garder = bool(verdict.get("garder"))
         kind = verdict.get("type", "?")
         orga = verdict.get("organisateur", "?")
+        # Garde-fou déterministe : une séance de film ordinaire, ou un organisateur
+        # clairement commercial, est TOUJOURS exclue — quoi qu'ait répondu le modèle
+        # (le « doute → garder » ne doit pas rattraper une projection courante).
+        if kind.strip().lower() in ("séance courante", "seance courante") or orga.strip().lower() == "commercial":
+            garder = False
         title = _clean(rep.get("title"))[:52]
         for ev in grp:
             is_rejected = ev.get("statut") == "rejected"
