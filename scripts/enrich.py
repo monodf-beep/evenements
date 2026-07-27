@@ -798,7 +798,13 @@ def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
     mean = round(sum(scores) / len(scores), 1) if scores else None
     vscores = [r["interet"] for r in visite_reviews if isinstance(r.get("interet"), (int, float))]
     vmean = round(sum(vscores) / len(vscores), 1) if vscores else None
-    verdict = "revise" if votes * 2 >= len(reviews) else "ok"  # majorité (ou moitié) des locaux
+    # Révision déclenchée par la NOTE des locaux, pas un demi-vote : un article correct
+    # (≥ seuil) ne doit pas subir une réécriture coûteuse. ENRICH_REVISE_UNDER (défaut 3).
+    try:
+        seuil = float(os.getenv("ENRICH_REVISE_UNDER", "3") or 3)
+    except ValueError:
+        seuil = 3.0
+    verdict = "revise" if (mean is not None and mean < seuil) else "ok"
     return {"reviews": reviews, "visite_reviews": visite_reviews,
             "verdict": verdict, "mean": mean, "vmean": vmean, "votes": votes}
 
