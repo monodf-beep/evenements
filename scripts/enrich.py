@@ -119,16 +119,22 @@ OFFICIELLE et le DOSSIER DE PRESSE (sources primaires). N'affirme aucun fait qui
 pas ; en cas de doute, baisse la confiance.
 
 STRUCTURE — PYRAMIDE INVERSÉE (l'info d'abord), JAMAIS l'escalier de magazine :
-1. ACCROCHE : quoi, quand, où, la raison d'y aller (tête d'affiche, temps fort, nouveauté) ;
+1. ACCROCHE : quoi, quand, où, la raison d'y aller (tête d'affiche, temps fort, nouveauté).
+   N'y mets QUE des éléments CONFIRMÉS pour CETTE édition. Ne fais JAMAIS passer un nom de
+   l'an dernier pour la programmation à venir (ce serait un appât malhonnête) ;
 2. ESSENTIEL (le cœur) : la PROGRAMMATION CONCRÈTE, avec la substance PROPRE AU GENRE — pour
    un concert pop/variété, les têtes d'affiche ; pour un festival de musique CLASSIQUE, les
    œuvres, compositeurs, orchestres, solistes, chefs et lieux ; pour une expo, les artistes
    et œuvres ; pour un spectacle, la pièce et la troupe ; plus les temps forts et horaires.
-   Ne plaque PAS une logique « têtes d'affiche » sur un genre qui n'en a pas. EXPLOITE
-   TOUJOURS le programme présent dans la MATIÈRE (ne dis JAMAIS « à venir » si on l'a déjà) ;
-   complète par recherche web. Si le programme de CETTE édition n'est pas encore annoncé,
-   DONNE CELUI DE L'ÉDITION PRÉCÉDENTE (« en 2025 : … ») pour que le lecteur sache ce qu'est
-   l'événement — un article « programmation à venir » n'apprend rien et est un ÉCHEC ;
+   Ne plaque PAS une logique « têtes d'affiche » sur un genre qui n'en a pas.
+   RÈGLE TEMPORELLE — sois HONNÊTE sur l'ÉDITION (regarde la ligne « dates » : à venir / en
+   cours / terminé) :
+   - Programme de CETTE édition connu (dans la MATIÈRE) → donne-le, sans dire « à venir ».
+   - Programme de CETTE édition PAS encore annoncé (édition future) → dis-le clairement
+     (« programmation à venir »), et donne l'édition PRÉCÉDENTE UNIQUEMENT comme repère de
+     passé, EXPLICITEMENT datée (« l'édition 2026 réunissait Katy Perry, Orelsan… »). JAMAIS
+     présenter l'an dernier comme la programmation de l'édition à venir.
+   - Ne MÉLANGE jamais deux éditions sans dire clairement laquelle est laquelle ;
 3. IDENTITÉ (1-2 items) : ce qui FAIT cet événement (artistes/œuvres marquants, affluence,
    ce qui revient chaque année) ;
 4. STOP. On reste sur CET événement. INTERDIT : le contexte historique/économique du lieu
@@ -1103,8 +1109,10 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
              "\nRends l'article plus SUBSTANTIEL et CONCRET, avec les éléments propres AU TYPE "
              "d'événement (classique : œuvres, compositeurs, orchestres, solistes, chefs, "
              "lieux ; pop : têtes d'affiche ; expo : artistes et œuvres ; spectacle : pièce et "
-             "troupe), pris du programme fourni ou, à défaut, de l'ÉDITION PRÉCÉDENTE via "
-             "recherche web. N'INVENTE RIEN : si une info (nom, tarif, horaire) n'est pas "
+             "troupe), pris du programme de CETTE édition. Si CETTE édition n'a pas encore de "
+             "programme annoncé, dis-le honnêtement (« programmation à venir ») et ne cite "
+             "l'édition PRÉCÉDENTE qu'EXPLICITEMENT datée (« en 2026 : … »), jamais comme si "
+             "c'était la programmation à venir. N'INVENTE RIEN : si une info (nom, tarif, horaire) n'est pas "
              "publiée, ne la fabrique pas — mais NE COMMENTE PAS non plus son absence "
              "(« à ce stade, la matière ne précise pas… » est INTERDIT). Écris seulement les "
              "faits certains, sans jamais parler de ce qui manque. Ne meuble pas : le lecteur "
