@@ -57,6 +57,12 @@
         <label class="text-sm">Ville<br><input type="text" name="ville" value="{{ e.ville or '' }}" placeholder="Ville"></label>
         <button class="btn btn-ok btn-sm" type="submit">💾 Enregistrer</button>
       </div>
+      <label class="text-sm" style="display:block;margin-top:.55rem;">
+        🔒 <b>Site officiel de l'événement</b> (verrou déterministe) — colle l'URL exacte du
+        site officiel ; le pipeline la lira <b>directement</b>, sans deviner ni recherche web.<br>
+        <input type="url" name="url_officiel" value="{{ e.url_officiel or '' }}"
+               placeholder="https://www.site-officiel-du-festival.fr/" style="width:100%;max-width:520px;margin-top:.2rem;">
+      </label>
       <input type="hidden" name="multi_lieux_present" value="1">
       <label class="text-sm" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:.55rem;">
         <input type="checkbox" name="multi_lieux" value="1" {{ 'checked' if e.multi_lieux }}>

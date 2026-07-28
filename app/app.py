@@ -2540,7 +2540,7 @@ def seo_optimize(event_id: int):
 # Champs qu'on autorise à compléter/corriger À LA MAIN depuis l'aperçu (liste blanche
 # stricte : les clés viennent d'ici, jamais de l'utilisateur → pas d'injection SQL).
 _MANUAL_FIELDS = ("date_event_start", "date_event_end", "lieu", "ville",
-                  "territoire", "llm_categorie")
+                  "territoire", "llm_categorie", "url_officiel")
 
 
 @app.route("/complete/<int:event_id>", methods=["POST"])
