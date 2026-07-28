@@ -473,6 +473,7 @@ def resolve_official_site(title: str, lieu: str, client) -> str:
          "infoconcert, billetreduc…), PAS un réseau social, PAS une billetterie.\n"
          f"Événement : {title}\nLieu : {lieu}")
     messages = [{"role": "user", "content": q}]
+    log.info("résolution du site officiel en cours (recherche web)… : %s", (title or "")[:60])
     try:
         # L'outil de recherche web (serveur) renvoie un `pause_turn` : le modèle cherche puis
         # a besoin d'un second tour pour formuler la réponse. On boucle comme le rédacteur.
