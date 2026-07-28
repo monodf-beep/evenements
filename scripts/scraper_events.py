@@ -169,6 +169,11 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Vide → on retombe sur url_image. Cooldown commun : image_wide_at.
                       ("url_image_wide", "TEXT"),
                       ("url_image_portrait", "TEXT"),
+                      # URL du SITE OFFICIEL de l'événement, mémorisée dès qu'une résolution
+                      # a donné de la matière officielle (page presse). Réutilisée telle
+                      # quelle aux runs suivants → déterministe, plus de recherche web à
+                      # refaire, plus de variantes de domaine aléatoires.
+                      ("url_officiel", "TEXT"),
                       # File « Cette semaine » (app./semaine) : suivi de relecture PAR
                       # FRANCK, distinct de la vérification automatique (agent vision).
                       # Comparaison au CONTENU actuel (pas juste "vu une fois") : dès que

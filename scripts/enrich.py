@@ -560,17 +560,13 @@ def extract_press_visuals(pages: list, title: str = "") -> dict:
         # Résout et encode les espaces (« 120x176 - Festival ….jpg ») pour le téléchargement.
         return quote(urljoin(base, ref.strip()).split("?")[0], safe=":/%?&=#")
 
+    # On ne retient QUE des images « affiche-grade » : issues du DOSSIER DE PRESSE (chemin
+    # /presse/…), au nom de FORMAT (120x176…), ou au nom d'affiche explicite. JAMAIS une
+    # og:image ou une photo au hasard (sinon on pose une photo d'artiste ou un visuel social
+    # comme affiche, ce qui est faux). Mieux vaut aucune affiche qu'une mauvaise.
     cands: dict[str, int] = {}
     for p in pages or []:
         html, base = p.get("html", ""), p.get("url", "")
-        # og:image / twitter:image : signal le plus fiable de l'affiche officielle.
-        for rx in (_OG_RE, _OG_RE2):
-            for m in rx.finditer(html or ""):
-                u = _abs(base, m.group(1))
-                if u and urlparse(u).scheme.startswith("http"):
-                    cands[u] = max(cands.get(u, 0), 10)
-        # Une image du DOSSIER DE PRESSE (chemin /presse/, /dossier…) EST l'affiche officielle
-        # → elle prime sur l'og:image (qui peut être un visuel web/social différent).
         from_kit = any(k in (base or "").lower() for k in _KIT_PATH)
         for m in _IMG_RE.finditer(html or ""):
             raw = m.group(1)
@@ -578,18 +574,15 @@ def extract_press_visuals(pages: list, title: str = "") -> dict:
             low = (raw + " " + u).lower()
             if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
                 continue
-            score = sum(2 for h in _AFFICHE_HINT if h in low)
-            if _DIM_RE.search(low):                 # nom de FORMAT d'affiche (120x176…)
-                score += 3
-            score += sum(1 for t in toks if t in low)   # le titre dans le nom de fichier
-            if from_kit or any(k in low for k in _KIT_PATH):
-                score += 15                         # image DU dossier de presse = prioritaire
-            if score:
-                cands[u] = max(cands.get(u, 0), score)
-    # CONSERVATEUR : on ne retient QUE l'og:image ou une image au nom d'affiche explicite —
-    # jamais une image anonyme (les CMS servent 50+ photos hachées ; en prendre une « au
-    # hasard » comme affiche serait faux). On choisit par SCORE (dossier de presse d'abord),
-    # puis on tranche l'orientation par la mesure réelle.
+            is_kit = from_kit or any(k in low for k in _KIT_PATH)
+            has_name = any(h in low for h in _AFFICHE_HINT)
+            has_dim = bool(_DIM_RE.search(low))
+            if not (is_kit or has_name or has_dim):
+                continue                            # pas « affiche-grade » → ignoré
+            score = (15 if is_kit else 0) + (3 if has_dim else 0) \
+                + sum(2 for h in _AFFICHE_HINT if h in low) \
+                + sum(1 for t in toks if t in low)
+            cands[u] = max(cands.get(u, 0), score)
     ordered = [u for u in sorted(cands, key=lambda u: cands[u], reverse=True) if cands[u] > 0]
     ordered = ordered[:12]
     portrait = wide = None
@@ -636,8 +629,11 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     press = gather_press_kits(conn, ev)
     if press:
         press = re.sub(r"(?s)<[^>]+>", " ", press)
+    # URL OFFICIELLE mémorisée (résolution déjà réussie) : on la lit DIRECTEMENT — plus de
+    # recherche web, plus de variante de domaine aléatoire. Sinon on part de la source.
+    src_url = (ev.get("url_officiel") or "").strip() or ev.get("url_source", "")
     page, official_pages = fetch_official_material(
-        ev.get("url_source", ""), title=ev.get("title", ""),
+        src_url, title=ev.get("title", ""),
         lieu=ev.get("lieu") or ev.get("ville") or "", client=client)
 
     sections = []
@@ -1110,6 +1106,18 @@ def main(argv: list[str]) -> int:
                 log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
                          bool(vis.get("portrait")), bool(vis.get("wide")))
         has_official = ("[PAGE PRESSE/PROGRAMME" in material or "[DOSSIER" in material)
+        # MÉMORISER l'URL officielle dès qu'une résolution a payé (pages presse trouvées) :
+        # les runs suivants la liront directement → déterministe, plus de recherche web ni
+        # de variante de domaine aléatoire (musique-menton.fr vs festival-musique-menton.fr).
+        if has_official and not (ev.get("url_officiel") or "").strip() and official_pages:
+            from urllib.parse import urlparse as _up
+            _p = _up(official_pages[0]["url"])
+            if _p.scheme and _p.netloc:
+                base = f"{_p.scheme}://{_p.netloc}/"
+                conn.execute("UPDATE events_raw SET url_officiel=? WHERE id=?", (base, ev["id"]))
+                conn.commit()
+                ev["url_officiel"] = base
+                log.info("[%d] URL officielle mémorisée : %s", ev["id"], base)
         court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
         # SCORE AVANT : si on a la matière officielle (dossier de presse), on POUSSE l'article
         # COMPLET (complétion maximale) même si le llm_score l'aurait mis en court — on a tout
