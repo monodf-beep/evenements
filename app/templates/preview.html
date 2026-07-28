@@ -8,7 +8,7 @@
 {% block content %}
 <div class="article-page">
 
-<!-- Barre d'actions : classer / publier -->
+<!-- Barre d'actions : classer / publier — TOUJOURS visible, au-dessus des onglets -->
 <div class="card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.6rem .8rem">
   <span class="muted text-sm" style="margin-right:.2rem">Actions :</span>
   <form method="post" action="/action/{{ e.id }}/publish_cs" style="margin:0">
@@ -40,6 +40,20 @@
   {% if e.lieu %}{{ e.lieu }} · {% endif %}{% if e.ville %}{{ e.ville }} · {% endif %}
   <span class="badge grey">{{ e.territoire or '—' }}</span>
 </div>
+
+<!-- Onglets : la fiche est dense → un onglet par usage. Les ancres historiques
+     (#seo, #partage, #cadrage…) ouvrent automatiquement le bon onglet (script en bas). -->
+<div class="tabs" role="tablist" aria-label="Sections de la fiche">
+  <button type="button" class="tab" data-pane="edition" role="tab">✍️ Édition</button>
+  <button type="button" class="tab" data-pane="article" role="tab">📰 Article &amp; panel
+    {% if enriched and enriched.home and enriched.home.score is not none %}<span class="tab-hint">🏠 {{ enriched.home.score }}</span>{% endif %}</button>
+  <button type="button" class="tab" data-pane="visuels" role="tab">🖼 Visuels
+    {% if not e.url_image_portrait and not e.url_image_wide %}<span class="tab-hint warn">!</span>{% endif %}</button>
+  <button type="button" class="tab" data-pane="promo" role="tab">🚀 SEO &amp; réseaux</button>
+</div>
+
+<!-- ═══════════ Onglet ÉDITION : corriger, sourcer, enrichir ═══════════ -->
+<div class="tabpane" id="pane-edition" role="tabpanel" hidden>
 
 <!-- Compléter à la main : date / lieu / ville (sans API — pilotable aussi par Claude-Chrome) -->
 <details class="card" id="completer" style="margin:.6rem 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"{% if not e.date_event_start or not e.lieu or not e.ville %} open{% endif %}>
@@ -85,6 +99,187 @@
   </div>
 </details>
 
+<form method="post" action="/enrich/{{ e.id }}" style="margin:1rem 0;font-family:-apple-system,sans-serif;">
+  <button class="btn {% if enriched %}btn-ghost{% else %}btn-primary{% endif %}" {% if enrich_running %}disabled{% endif %}>
+    {% if enrich_running %}✍️ Enrichissement en cours…{% elif enriched %}🔄 Ré-enrichir (💶){% else %}✍️ Enrichir + rédiger (agent web) 💶{% endif %}
+  </button>
+  {% if e.enrich_status == 'error' %}<span class="text-xs" style="color:var(--danger-ink);margin-left:.6rem;">Dernier essai : réponse illisible de l'agent — réessaie.</span>{% endif %}
+  {% if e.enrich_status == 'api_error' %}<span class="text-xs" style="color:var(--danger-ink);margin-left:.6rem;">Dernier essai : l'appel à l'API a échoué (quota, ou recherche web indisponible). Vérifie le bandeau d'alerte et le log <code>run_enrich.log</code>.</span>{% endif %}
+</form>
+
+<details {% if not enriched %}open{% endif %} style="margin:1rem 0;font-family:-apple-system,sans-serif;font-size:.9rem;">
+  <summary style="cursor:pointer;color:var(--muted);">Matière source (brut RSS)</summary>
+  <div style="margin-top:.6rem;font-size:1.05rem;">
+    {% if e.description_clean %}<p>{{ e.description_clean }}</p>{% else %}<p><em>Pas de description fournie par la source.</em></p>{% endif %}
+  </div>
+</details>
+
+{% if press_kits %}
+  <div style="font-family:-apple-system,sans-serif;font-size:.9rem;background:var(--info-soft);border:1px solid #bcd6fb;
+              border-radius:8px;padding:.7rem .9rem;margin:1rem 0;color:var(--info-ink);">
+    📎 <b>{{ press_kits|length }} dossier(s) de presse rattaché(s)</b> — matière primaire pour la rédaction.
+    {% for k in press_kits %}
+      <div style="margin-top:.3rem;color:var(--ink-2);">• {{ k.subject }}{% if k.n_photos %} — {{ k.n_photos }} photo(s) HD{% endif %}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="credits">
+  <div><strong>Crédits</strong></div>
+  {% if is_radar %}
+    <div style="color:var(--warn-ink)">📡 Détecté via radar (presse) — <strong>non lié</strong>. À confirmer à la source officielle (page du lieu/organisateur).</div>
+  {% elif e.url_source %}
+    <div>↗ <a href="{{ e.url_source }}" target="_blank" rel="noopener">Source : {{ e.source_name or e.url_source }}</a></div>
+  {% elif e.source_name %}
+    <div>Source : {{ e.source_name }}</div>
+  {% endif %}
+  {% if e.organisateur %}<div>👤 Organisateur : {{ e.organisateur }}</div>{% endif %}
+  {% if image and image_host %}<div>🖼 Crédit photo : {{ image_host }}</div>{% endif %}
+</div>
+
+<div class="note">
+  <span class="s">Score d'importance — {{ e.llm_score if e.llm_score is not none else '—' }}/10</span>
+  {% if e.llm_categorie %} · <span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}<br>
+  {% if e.llm_justification %}<em>{{ e.llm_justification }}</em><br>{% endif %}
+  {% if score_detail %}
+  <table style="font-size:.85rem;border-collapse:collapse;margin:.6rem 0;width:100%">
+    <tbody>
+    {% set labels = {'notoriete_lieu':'Notoriété du lieu (0-3)','organisateur_moyens':'Organisateur & moyens (0-2)','edition_tradition':'Édition & tradition (0-2)','rayonnement':'Rayonnement (0-2)','specificite_territoriale':'Spécificité territoriale (0-1)'} %}
+    {% for key, lbl in labels.items() %}{% if score_detail.get(key) %}
+    <tr>
+      <td style="padding:.2rem .4rem;border-bottom:1px solid var(--line);white-space:nowrap"><strong>{{ score_detail[key].points }}</strong> · {{ lbl }}</td>
+      <td style="padding:.2rem .4rem;border-bottom:1px solid var(--line);color:var(--muted)">{{ score_detail[key].note }}</td>
+    </tr>
+    {% endif %}{% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  Statut actuel : <span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) if status_labels else e.statut }}</span>
+</div>
+
+</div><!-- /pane-edition -->
+
+<!-- ═══════════ Onglet ARTICLE & PANEL ═══════════ -->
+<div class="tabpane" id="pane-article" role="tabpanel" hidden>
+
+{% if enriched and enriched.article %}
+  {% set art = enriched.article %}
+  <div class="article">
+    <div style="display:flex;justify-content:space-between;align-items:center;font-family:-apple-system,sans-serif;font-size:.78rem;color:var(--muted);margin-bottom:.6rem;">
+      <span>✍️ Article rédigé par l'agent · {{ e.enrich_model or '—' }}</span>
+      <span style="display:flex;gap:.4rem;align-items:center;">
+        {% if enriched.home and enriched.home.score is not none %}
+          <span title="Score home = qualité panel + source officielle + affiches"
+                style="font-weight:700;border-radius:6px;padding:.1rem .45rem;
+                       background:{{ '#e7f3ea' if enriched.home.score >= 6 else '#f3efe7' }};
+                       border:1px solid {{ '#bfe0bf' if enriched.home.score >= 6 else '#e0d3bf' }};">
+            🏠 {{ enriched.home.score }}/10</span>
+        {% endif %}
+        {% set c = enriched.confiance or 'moyenne' %}
+        <span class="conf conf-{{ c }}">confiance {{ c }}</span>
+      </span>
+    </div>
+    {% if enriched.source %}
+      {% set srcof = enriched.source.officielle %}
+      <div style="font-family:-apple-system,sans-serif;font-size:.8rem;margin-bottom:.6rem;
+                  border-radius:6px;padding:.4rem .6rem;
+                  background:{{ '#eef7ee' if srcof else '#fdf3e6' }};
+                  border:1px solid {{ '#bfe0bf' if srcof else '#f0d3a0' }};">
+        {% if srcof %}
+          ✅ <b>Source officielle</b> — écrit depuis la page presse/programme
+          ({{ enriched.source.pages|length }} page(s) officielle(s) lue(s)).
+          {% if enriched.home %}<b>Affiches : {{ enriched.home.affiches }}</b>{% endif %}
+          {% if enriched.source.pages %}
+            <div style="margin-top:.25rem;">
+              {% for u in enriched.source.pages %}<a href="{{ u }}" target="_blank" rel="noopener" style="display:block;color:var(--muted);word-break:break-all;">{{ u }}</a>{% endfor %}
+            </div>
+          {% endif %}
+        {% else %}
+          ⚠️ <b>Page presse NON trouvée</b> — écrit
+          {{ 'en repli sur la recherche web' if enriched.source.web else 'à partir des signaux du flux seul' }}.
+          La chaîne « source officielle » n'a pas abouti (site injoignable ou sans page presse suivable).
+        {% endif %}
+        {% if enriched.source.dossier %}
+          {% set dp = enriched.source.dossier %}
+          <div style="margin-top:.4rem;padding-top:.35rem;border-top:1px dashed #d9cfbf;">
+            📁 <b>Dossier de presse :</b>
+            {% if dp.statut == 'public' %}
+              <span style="color:#16a34a;">public — affiche récupérée automatiquement.</span>
+            {% elif dp.statut == 'accreditation' %}
+              <span style="color:#b45309;font-weight:600;">RÉSERVÉ (accréditation requise)</span> —
+              il faut <b>demander l'accès presse</b> à l'organisateur pour récupérer l'affiche et les visuels.
+            {% elif dp.statut == 'sans_affiche' %}
+              <span style="color:#b45309;">page presse publique, mais aucune affiche téléchargeable trouvée</span>
+              (site en JavaScript ?) — colle l'affiche à la main (onglet Édition).
+            {% else %}
+              <span class="muted">aucune page dossier de presse repérée.</span>
+            {% endif %}
+            {% if dp.url %}<a href="{{ dp.url }}" target="_blank" rel="noopener" style="display:block;color:var(--muted);word-break:break-all;">{{ dp.url }}</a>{% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+    {% if art.titre %}<h2>{{ art.titre }}</h2>{% endif %}
+    {% if art.chapo %}<div class="chapo">{{ art.chapo_html|safe if art.chapo_html else art.chapo }}</div>{% endif %}
+    {% if art.corps %}<div class="corps">{{ art.corps_html|safe if art.corps_html else art.corps }}</div>{% endif %}
+    {% if art.encadre %}<div class="encadre"><b>En pratique</b><br>{{ art.encadre }}</div>{% endif %}
+    {% if enriched.sources %}
+      <div class="src"><b>Sources consultées (officielles/libres) :</b><br>
+        {% for s in enriched.sources %}<a href="{{ s }}" target="_blank" rel="noopener">{{ s }}</a><br>{% endfor %}
+      </div>
+    {% endif %}
+    {% if enriched.reader_panel and enriched.reader_panel.reviews %}
+      {% set panel = enriched.reader_panel %}
+      {% set ok = (panel.verdict == 'ok') %}
+      <div style="font-family:-apple-system,sans-serif;font-size:.82rem;margin-top:.8rem;
+                  border-radius:8px;padding:.6rem .8rem;
+                  background:{{ '#eef7ee' if ok else '#fdf3e6' }};
+                  border:1px solid {{ '#bfe0bf' if ok else '#f0d3a0' }};
+                  color:var(--ink-2);">
+        👓 <b>Panel lecteurs</b> · locaux
+        <b>{{ panel.mean if panel.mean is not none else '?' }}/5</b>
+        {% if panel.vmean is not none %}· visiteurs <b>{{ panel.vmean }}/5</b>{% endif %}
+        · {{ 'validé' if ok else 'révisé après retours' }}
+        <div style="margin-top:.5rem;display:grid;gap:.4rem;">
+          <div style="font-weight:600;color:var(--muted);">Sur place (locaux)</div>
+          {% for rr in panel.reviews %}
+            <div style="border-left:3px solid {{ '#bfe0bf' if rr.verdict == 'ok' else '#e6a94d' }};
+                        padding-left:.5rem;">
+              <b>{{ rr.persona or 'Lecteur' }}</b> —
+              intérêt {{ rr.interet if rr.interet is not none else '?' }}/5
+              {% if rr.note %}<div>« {{ rr.note }} »</div>{% endif %}
+              {% if rr.manques %}<div style="color:var(--muted);">Manque :
+                {{ rr.manques|join(' · ') }}</div>{% endif %}
+            </div>
+          {% endfor %}
+          {% if panel.visite_reviews %}
+            <div style="font-weight:600;color:var(--muted);margin-top:.3rem;">Visiteur d'une aire voisine (vaut le déplacement ?)</div>
+            {% for rr in panel.visite_reviews %}
+              <div style="border-left:3px dashed {{ '#bfe0bf' if rr.verdict == 'ok' else '#e6a94d' }};
+                          padding-left:.5rem;">
+                <b>{{ rr.persona or 'Lecteur' }}</b> —
+                intérêt {{ rr.interet if rr.interet is not none else '?' }}/5
+                {% if rr.note %}<div>« {{ rr.note }} »</div>{% endif %}
+                {% if rr.manques %}<div style="color:var(--muted);">Manque :
+                  {{ rr.manques|join(' · ') }}</div>{% endif %}
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="card" style="font-family:-apple-system,sans-serif;padding:1rem 1.1rem;margin:.6rem 0;">
+    <p class="muted" style="margin:0;">Pas encore d'article rédigé. Lance l'enrichissement depuis l'onglet <b>✍️ Édition</b>.</p>
+  </div>
+{% endif %}
+
+</div><!-- /pane-article -->
+
+<!-- ═══════════ Onglet VISUELS : hero, affiches, cadrage ═══════════ -->
+<div class="tabpane" id="pane-visuels" role="tabpanel" hidden>
+
 {% if image %}<img class="hero" src="{{ image }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% endif %}
 
 {% if e.url_image_portrait or e.url_image_wide %}
@@ -111,6 +306,10 @@
       </div>
     {% endif %}
   </div>
+</div>
+{% else %}
+<div class="card" style="margin:.6rem 0;padding:.7rem .9rem;font-family:-apple-system,sans-serif;">
+  <span class="muted text-sm">Aucune affiche officielle (portrait/paysage) pour l'instant — colle-les à la main dans l'onglet <b>✍️ Édition</b> si le dossier de presse en fournit.</span>
 </div>
 {% endif %}
 
@@ -205,139 +404,10 @@
 </script>
 {% endif %}
 
-{% if enriched and enriched.article %}
-  {% set art = enriched.article %}
-  <div class="article">
-    <div style="display:flex;justify-content:space-between;align-items:center;font-family:-apple-system,sans-serif;font-size:.78rem;color:var(--muted);margin-bottom:.6rem;">
-      <span>✍️ Article rédigé par l'agent · {{ e.enrich_model or '—' }}</span>
-      <span style="display:flex;gap:.4rem;align-items:center;">
-        {% if enriched.home and enriched.home.score is not none %}
-          <span title="Score home = qualité panel + source officielle + affiches"
-                style="font-weight:700;border-radius:6px;padding:.1rem .45rem;
-                       background:{{ '#e7f3ea' if enriched.home.score >= 6 else '#f3efe7' }};
-                       border:1px solid {{ '#bfe0bf' if enriched.home.score >= 6 else '#e0d3bf' }};">
-            🏠 {{ enriched.home.score }}/10</span>
-        {% endif %}
-        {% set c = enriched.confiance or 'moyenne' %}
-        <span class="conf conf-{{ c }}">confiance {{ c }}</span>
-      </span>
-    </div>
-    {% if enriched.source %}
-      {% set srcof = enriched.source.officielle %}
-      <div style="font-family:-apple-system,sans-serif;font-size:.8rem;margin-bottom:.6rem;
-                  border-radius:6px;padding:.4rem .6rem;
-                  background:{{ '#eef7ee' if srcof else '#fdf3e6' }};
-                  border:1px solid {{ '#bfe0bf' if srcof else '#f0d3a0' }};">
-        {% if srcof %}
-          ✅ <b>Source officielle</b> — écrit depuis la page presse/programme
-          ({{ enriched.source.pages|length }} page(s) officielle(s) lue(s)).
-          {% if enriched.home %}<b>Affiches : {{ enriched.home.affiches }}</b>{% endif %}
-          {% if enriched.source.pages %}
-            <div style="margin-top:.25rem;">
-              {% for u in enriched.source.pages %}<a href="{{ u }}" target="_blank" rel="noopener" style="display:block;color:var(--muted);word-break:break-all;">{{ u }}</a>{% endfor %}
-            </div>
-          {% endif %}
-        {% else %}
-          ⚠️ <b>Page presse NON trouvée</b> — écrit
-          {{ 'en repli sur la recherche web' if enriched.source.web else 'à partir des signaux du flux seul' }}.
-          La chaîne « source officielle » n'a pas abouti (site injoignable ou sans page presse suivable).
-        {% endif %}
-        {% if enriched.source.dossier %}
-          {% set dp = enriched.source.dossier %}
-          <div style="margin-top:.4rem;padding-top:.35rem;border-top:1px dashed #d9cfbf;">
-            📁 <b>Dossier de presse :</b>
-            {% if dp.statut == 'public' %}
-              <span style="color:#16a34a;">public — affiche récupérée automatiquement.</span>
-            {% elif dp.statut == 'accreditation' %}
-              <span style="color:#b45309;font-weight:600;">RÉSERVÉ (accréditation requise)</span> —
-              il faut <b>demander l'accès presse</b> à l'organisateur pour récupérer l'affiche et les visuels.
-            {% elif dp.statut == 'sans_affiche' %}
-              <span style="color:#b45309;">page presse publique, mais aucune affiche téléchargeable trouvée</span>
-              (site en JavaScript ?) — colle l'affiche à la main ci-dessous.
-            {% else %}
-              <span class="muted">aucune page dossier de presse repérée.</span>
-            {% endif %}
-            {% if dp.url %}<a href="{{ dp.url }}" target="_blank" rel="noopener" style="display:block;color:var(--muted);word-break:break-all;">{{ dp.url }}</a>{% endif %}
-          </div>
-        {% endif %}
-      </div>
-    {% endif %}
-    {% if art.titre %}<h2>{{ art.titre }}</h2>{% endif %}
-    {% if art.chapo %}<div class="chapo">{{ art.chapo_html|safe if art.chapo_html else art.chapo }}</div>{% endif %}
-    {% if art.corps %}<div class="corps">{{ art.corps_html|safe if art.corps_html else art.corps }}</div>{% endif %}
-    {% if art.encadre %}<div class="encadre"><b>En pratique</b><br>{{ art.encadre }}</div>{% endif %}
-    {% if enriched.sources %}
-      <div class="src"><b>Sources consultées (officielles/libres) :</b><br>
-        {% for s in enriched.sources %}<a href="{{ s }}" target="_blank" rel="noopener">{{ s }}</a><br>{% endfor %}
-      </div>
-    {% endif %}
-    {% if enriched.reader_panel and enriched.reader_panel.reviews %}
-      {% set panel = enriched.reader_panel %}
-      {% set ok = (panel.verdict == 'ok') %}
-      <div style="font-family:-apple-system,sans-serif;font-size:.82rem;margin-top:.8rem;
-                  border-radius:8px;padding:.6rem .8rem;
-                  background:{{ '#eef7ee' if ok else '#fdf3e6' }};
-                  border:1px solid {{ '#bfe0bf' if ok else '#f0d3a0' }};
-                  color:var(--ink-2);">
-        👓 <b>Panel lecteurs</b> · locaux
-        <b>{{ panel.mean if panel.mean is not none else '?' }}/5</b>
-        {% if panel.vmean is not none %}· visiteurs <b>{{ panel.vmean }}/5</b>{% endif %}
-        · {{ 'validé' if ok else 'révisé après retours' }}
-        <div style="margin-top:.5rem;display:grid;gap:.4rem;">
-          <div style="font-weight:600;color:var(--muted);">Sur place (locaux)</div>
-          {% for rr in panel.reviews %}
-            <div style="border-left:3px solid {{ '#bfe0bf' if rr.verdict == 'ok' else '#e6a94d' }};
-                        padding-left:.5rem;">
-              <b>{{ rr.persona or 'Lecteur' }}</b> —
-              intérêt {{ rr.interet if rr.interet is not none else '?' }}/5
-              {% if rr.note %}<div>« {{ rr.note }} »</div>{% endif %}
-              {% if rr.manques %}<div style="color:var(--muted);">Manque :
-                {{ rr.manques|join(' · ') }}</div>{% endif %}
-            </div>
-          {% endfor %}
-          {% if panel.visite_reviews %}
-            <div style="font-weight:600;color:var(--muted);margin-top:.3rem;">Visiteur d'une aire voisine (vaut le déplacement ?)</div>
-            {% for rr in panel.visite_reviews %}
-              <div style="border-left:3px dashed {{ '#bfe0bf' if rr.verdict == 'ok' else '#e6a94d' }};
-                          padding-left:.5rem;">
-                <b>{{ rr.persona or 'Lecteur' }}</b> —
-                intérêt {{ rr.interet if rr.interet is not none else '?' }}/5
-                {% if rr.note %}<div>« {{ rr.note }} »</div>{% endif %}
-                {% if rr.manques %}<div style="color:var(--muted);">Manque :
-                  {{ rr.manques|join(' · ') }}</div>{% endif %}
-              </div>
-            {% endfor %}
-          {% endif %}
-        </div>
-      </div>
-    {% endif %}
-  </div>
-{% endif %}
+</div><!-- /pane-visuels -->
 
-<details {% if not enriched %}open{% endif %} style="margin:1rem 0;font-family:-apple-system,sans-serif;font-size:.9rem;">
-  <summary style="cursor:pointer;color:var(--muted);">Matière source (brut RSS)</summary>
-  <div style="margin-top:.6rem;font-size:1.05rem;">
-    {% if e.description_clean %}<p>{{ e.description_clean }}</p>{% else %}<p><em>Pas de description fournie par la source.</em></p>{% endif %}
-  </div>
-</details>
-
-{% if press_kits %}
-  <div style="font-family:-apple-system,sans-serif;font-size:.9rem;background:var(--info-soft);border:1px solid #bcd6fb;
-              border-radius:8px;padding:.7rem .9rem;margin:1rem 0;color:var(--info-ink);">
-    📎 <b>{{ press_kits|length }} dossier(s) de presse rattaché(s)</b> — matière primaire pour la rédaction.
-    {% for k in press_kits %}
-      <div style="margin-top:.3rem;color:var(--ink-2);">• {{ k.subject }}{% if k.n_photos %} — {{ k.n_photos }} photo(s) HD{% endif %}</div>
-    {% endfor %}
-  </div>
-{% endif %}
-
-<form method="post" action="/enrich/{{ e.id }}" style="margin:1rem 0;font-family:-apple-system,sans-serif;">
-  <button class="btn {% if enriched %}btn-ghost{% else %}btn-primary{% endif %}" {% if enrich_running %}disabled{% endif %}>
-    {% if enrich_running %}✍️ Enrichissement en cours…{% elif enriched %}🔄 Ré-enrichir (💶){% else %}✍️ Enrichir + rédiger (agent web) 💶{% endif %}
-  </button>
-  {% if e.enrich_status == 'error' %}<span class="text-xs" style="color:var(--danger-ink);margin-left:.6rem;">Dernier essai : réponse illisible de l'agent — réessaie.</span>{% endif %}
-  {% if e.enrich_status == 'api_error' %}<span class="text-xs" style="color:var(--danger-ink);margin-left:.6rem;">Dernier essai : l'appel à l'API a échoué (quota, ou recherche web indisponible). Vérifie le bandeau d'alerte et le log <code>run_enrich.log</code>.</span>{% endif %}
-</form>
+<!-- ═══════════ Onglet SEO & RÉSEAUX ═══════════ -->
+<div class="tabpane" id="pane-promo" role="tabpanel" hidden>
 
 <!-- Partage réseaux — post Instagram prêt à copier (légende + hashtags + alt) -->
 <div id="partage" class="card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:1rem 0;padding:1rem 1.1rem">
@@ -452,38 +522,47 @@ function csCopy(id, btn) {
   {% endif %}
 </div>
 
-<div class="credits">
-  <div><strong>Crédits</strong></div>
-  {% if is_radar %}
-    <div style="color:var(--warn-ink)">📡 Détecté via radar (presse) — <strong>non lié</strong>. À confirmer à la source officielle (page du lieu/organisateur).</div>
-  {% elif e.url_source %}
-    <div>↗ <a href="{{ e.url_source }}" target="_blank" rel="noopener">Source : {{ e.source_name or e.url_source }}</a></div>
-  {% elif e.source_name %}
-    <div>Source : {{ e.source_name }}</div>
-  {% endif %}
-  {% if e.organisateur %}<div>👤 Organisateur : {{ e.organisateur }}</div>{% endif %}
-  {% if image and image_host %}<div>🖼 Crédit photo : {{ image_host }}</div>{% endif %}
-</div>
+</div><!-- /pane-promo -->
 
-<div class="note">
-  <span class="s">Score d'importance — {{ e.llm_score if e.llm_score is not none else '—' }}/10</span>
-  {% if e.llm_categorie %} · <span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}<br>
-  {% if e.llm_justification %}<em>{{ e.llm_justification }}</em><br>{% endif %}
-  {% if score_detail %}
-  <table style="font-size:.85rem;border-collapse:collapse;margin:.6rem 0;width:100%">
-    <tbody>
-    {% set labels = {'notoriete_lieu':'Notoriété du lieu (0-3)','organisateur_moyens':'Organisateur & moyens (0-2)','edition_tradition':'Édition & tradition (0-2)','rayonnement':'Rayonnement (0-2)','specificite_territoriale':'Spécificité territoriale (0-1)'} %}
-    {% for key, lbl in labels.items() %}{% if score_detail.get(key) %}
-    <tr>
-      <td style="padding:.2rem .4rem;border-bottom:1px solid var(--line);white-space:nowrap"><strong>{{ score_detail[key].points }}</strong> · {{ lbl }}</td>
-      <td style="padding:.2rem .4rem;border-bottom:1px solid var(--line);color:var(--muted)">{{ score_detail[key].note }}</td>
-    </tr>
-    {% endif %}{% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-  Statut actuel : <span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) if status_labels else e.statut }}</span>
-</div>
+</div><!-- /article-page -->
 
-</div>
+<script>
+(function(){
+  // Onglets de la fiche. L'onglet choisi est mémorisé dans le hash (#pane-…) pour
+  // survivre au rafraîchissement auto pendant l'enrichissement. Les ANCRES HISTORIQUES
+  // pointées depuis d'autres écrans ouvrent le bon onglet puis scrollent vers la cible.
+  var MAP = { 'seo':'promo', 'partage':'promo', 'instagram-manuel':'promo',
+              'cadrage':'visuels', 'photo':'visuels',
+              'completer':'edition', 'texte':'article' };
+  var DEFAULT_PANE = {{ "'article'" if enriched and enriched.article else "'edition'" }};
+  var tabs = document.querySelectorAll('.tabs .tab');
+  function show(pane, scrollTo){
+    document.querySelectorAll('.tabpane').forEach(function(p){ p.hidden = (p.id !== 'pane-'+pane); });
+    tabs.forEach(function(t){
+      var on = t.getAttribute('data-pane') === pane;
+      t.classList.toggle('on', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (scrollTo){
+      var el = document.getElementById(scrollTo);
+      if (el){ if (el.tagName === 'DETAILS') el.open = true; el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    }
+  }
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      var pane = t.getAttribute('data-pane');
+      history.replaceState(null, '', '#pane-' + pane);
+      show(pane);
+    });
+  });
+  var h = (location.hash || '').replace('#', '');
+  if (h.indexOf('pane-') === 0 && document.getElementById(h)) {
+    show(h.slice(5));
+  } else if (MAP[h]) {
+    show(MAP[h], h);
+  } else {
+    show(DEFAULT_PANE);
+  }
+})();
+</script>
 {% endblock %}

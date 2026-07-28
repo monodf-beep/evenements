@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% set active = 'dash' %}
-{% block title %}Tableau de bord — Agenda CS{% endblock %}
-{% block h1 %}Tableau de bord{% endblock %}
-{% block subtitle %}<div class="sub">Agrège, évalue et prépare les événements culturels — tout part en brouillon, rien n'est publié sans toi.</div>{% endblock %}
+{% block title %}Aujourd'hui — Agenda CS{% endblock %}
+{% block h1 %}Aujourd'hui{% endblock %}
+{% block subtitle %}<div class="sub">Ce qui t'attend, tes outils du jour — tout part en brouillon, rien n'est publié sans toi.</div>{% endblock %}
 
 {% block content %}
 
@@ -27,7 +27,34 @@
   </div>
 </div>
 
+<!-- À traiter : les files qui demandent une action, en un coup d'œil (badges du menu). -->
+{% set _todo = [
+  ('/validation', '🗓️', 'À valider CS', nav.validate),
+  ('/a-completer', '🛠️', 'À compléter', nav.tocomplete),
+  ('/verifier', '⚠️', 'À vérifier', nav.verifier),
+  ('/audit-visuel', '🖼️', 'Audit visuel', nav.audit),
+  ('/events?dated=undated', '📌', 'Sans date', biz.undated),
+  ('/events?img=0', '🖼', 'Sans photo', biz.retained_nophoto),
+] %}
+{% if _todo | selectattr(3) | list %}
+<div class="section-title">À traiter</div>
+<div class="kpis">
+  {% for href, ic, lbl, n in _todo if n %}
+  <a class="kpi" href="{{ href }}"><div class="v">{{ n }}</div><div class="l">{{ ic }} {{ lbl }}</div></a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Quotidien : les 3 écrans de tous les jours, à portée de clic. -->
+<div class="section-title">Ton quotidien</div>
+<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+  <a class="kpi" href="/pilotage"><div class="v">🧭</div><div class="l"><b>Pilotage</b> — santé éditoriale &amp; couverture</div></a>
+  <a class="kpi" href="/newsletter"><div class="v">📧</div><div class="l"><b>Newsletter</b> — {{ nl_active }} source(s) active(s), brouillon Brevo</div></a>
+  <a class="kpi" href="/reseaux"><div class="v">📣</div><div class="l"><b>Réseaux</b> — publications Instagram &amp; co</div></a>
+</div>
+
 <!-- KPIs : le vocabulaire des 2 destinations est UNIFIÉ (Cultura Sabauda / Agenda Sabauda) -->
+<div class="section-title">Le stock</div>
 <div class="kpis">
   <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés (actifs)</div></a>
   <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
@@ -35,15 +62,6 @@
   <a class="kpi" href="{{ wp_base }}/wp-admin/edit.php?post_status=draft" target="_blank" rel="noopener"><div class="v">{{ drafts_cs }}</div><div class="l">Brouillons CS</div></a>
   <a class="kpi" href="{{ wp_as_base }}/wp-admin/edit.php?post_status=draft&post_type=tribe_events" target="_blank" rel="noopener"><div class="v">{{ drafts_as }}</div><div class="l">Brouillons Agenda</div></a>
 </div>
-
-<!-- Alertes métier : UNIQUEMENT ce qui bloque, cliquable → la vue filtrée. Le reste
-     (photos, SEO) est descendu dans « Détails » pour ne pas surcharger l'œil. -->
-{% if biz.undated or biz.retained_nophoto %}
-<div class="alerts-inline">
-  {% if biz.undated %}<a href="/events?dated=undated"><span aria-hidden="true">📌</span> {{ biz.undated }} sans date</a>{% endif %}
-  {% if biz.retained_nophoto %}<a href="/events?img=0"><span aria-hidden="true">🖼</span> {{ biz.retained_nophoto }} retenu(s) sans photo</a>{% endif %}
-</div>
-{% endif %}
 
 <!-- Pipeline : REPLIÉ par défaut — tout tourne automatiquement (cron). On ne
      l'ouvre que pour lancer une étape à la main. Évite le mur de boutons. -->

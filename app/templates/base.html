@@ -21,44 +21,54 @@
       <span class="brand-mark" aria-hidden="true">CS</span>
       <div><b>Cultura Sabauda</b><small>Agenda</small></div>
     </div>
-    {% set _analyse = ['pilotage', 'couverture', 'couverture_geo', 'audit_visuel', 'wireframe'] %}
+    {# Menu en 4 blocs : Quotidien (les 3 écrans de Franck) toujours visibles, le reste
+       en groupes repliables. Un groupe s'ouvre seul quand on est sur une de ses pages ;
+       le résumé « À traiter » porte le TOTAL des pastilles même replié. #}
+    {% set _traiter = ['semaine', 'validation', 'tocomplete', 'triage', 'verifier', 'audit_visuel', 'events'] %}
+    {% set _analyse = ['couverture', 'couverture_geo', 'wireframe', 'regie', 'partenariat'] %}
     {% set _aide = ['process', 'pipeline', 'voix', 'personas', 'cowork', 'reglages'] %}
+    {% set _todo_total = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
     <nav class="nav" aria-label="Navigation principale">
-      <a href="/semaine" class="{{ 'on' if active=='semaine' }}" {% if active=='semaine' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> Cette semaine</a>
-      <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Tableau de bord</a>
-      <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Événements</a>
+      <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Aujourd'hui
+        {% if _todo_total and active!='dash' %}<span class="nav-badge">{{ _todo_total }}</span>{% endif %}</a>
 
-      <div class="nav-section">À traiter</div>
-      <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
-        <span class="nav-tag nav-tag-cs" title="Publie sur culturasabauda.eu">CS</span>
-        {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
-      <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
-        <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span>
-        {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
-      <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer
-        <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span></a>
-      <a href="/verifier" class="{{ 'on' if active=='verifier' }}" {% if active=='verifier' %}aria-current="page"{% endif %}><span aria-hidden="true">⚠️</span> À vérifier
-        {% if nav.verifier %}<span class="nav-badge">{{ nav.verifier }}</span>{% endif %}</a>
-
-      <div class="nav-section">Publier & grandir</div>
-      <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>
-      <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Régie pub
-        {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</a>
+      <div class="nav-section">Quotidien</div>
+      <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
       <a href="/newsletter" class="{{ 'on' if active=='newsletter' }}" {% if active=='newsletter' %}aria-current="page"{% endif %}><span aria-hidden="true">📧</span> Newsletter</a>
-      <a href="/partenariat" class="{{ 'on' if active=='partenariat' }}" {% if active=='partenariat' %}aria-current="page"{% endif %}><span aria-hidden="true">🤝</span> Partenariat / widget</a>
+      <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>
 
-      <details {% if active in _analyse %}open{% endif %}>
-        <summary><span class="chev" aria-hidden="true">›</span> Analyse</summary>
-        <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
-        <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
-        <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
+      <details {% if active in _traiter %}open{% endif %}>
+        <summary><span class="chev" aria-hidden="true">›</span> À traiter
+          {% if _todo_total %}<span class="nav-badge">{{ _todo_total }}</span>{% endif %}</summary>
+        <a href="/semaine" class="{{ 'on' if active=='semaine' }}" {% if active=='semaine' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> Cette semaine</a>
+        <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
+          <span class="nav-tag nav-tag-cs" title="Publie sur culturasabauda.eu">CS</span>
+          {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
+        <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
+          <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span>
+          {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
+        <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer
+          <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span></a>
+        <a href="/verifier" class="{{ 'on' if active=='verifier' }}" {% if active=='verifier' %}aria-current="page"{% endif %}><span aria-hidden="true">⚠️</span> À vérifier
+          {% if nav.verifier %}<span class="nav-badge">{{ nav.verifier }}</span>{% endif %}</a>
         <a href="/audit-visuel" class="{{ 'on' if active=='audit_visuel' }}" {% if active=='audit_visuel' %}aria-current="page"{% endif %}><span aria-hidden="true">🖼️</span> Audit visuel
           {% if nav.audit %}<span class="nav-badge">{{ nav.audit }}</span>{% endif %}</a>
+        <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Tous les événements</a>
+      </details>
+
+      <details {% if active in _analyse %}open{% endif %}>
+        <summary><span class="chev" aria-hidden="true">›</span> Développer &amp; analyser
+          {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</summary>
+        <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Régie pub
+          {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</a>
+        <a href="/partenariat" class="{{ 'on' if active=='partenariat' }}" {% if active=='partenariat' %}aria-current="page"{% endif %}><span aria-hidden="true">🤝</span> Partenariat / widget</a>
+        <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
+        <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
         <a href="/wireframe-home" class="{{ 'on' if active=='wireframe' }}" {% if active=='wireframe' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Wireframe home</a>
       </details>
 
       <details {% if active in _aide %}open{% endif %}>
-        <summary><span class="chev" aria-hidden="true">›</span> Aide & réglages</summary>
+        <summary><span class="chev" aria-hidden="true">›</span> Aide &amp; réglages</summary>
         <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
         <a href="/pipeline" class="{{ 'on' if active=='pipeline' }}" {% if active=='pipeline' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Pipeline auto</a>
         <a href="/voix" class="{{ 'on' if active=='voix' }}" {% if active=='voix' %}aria-current="page"{% endif %}><span aria-hidden="true">🗣️</span> Voix éditoriale</a>

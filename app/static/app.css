@@ -393,3 +393,23 @@ details.box > summary { cursor:pointer; font-weight:600; padding:.35rem 0; }
   /* Colonne justification : on la borne pour laisser de la place aux actions. */
   .table-cards td:nth-child(6) { max-width:280px; }
 }
+
+/* ---------- Fiche événement : onglets par usage (refonte back-office) ----------
+   La fiche est dense : Édition / Article & panel / Visuels / SEO & réseaux.
+   Les panes sont masquées via [hidden] ; l'onglet actif porte .on. */
+.tabs { display:flex; flex-wrap:wrap; gap:.35rem; margin:.9rem 0 .2rem;
+  border-bottom:2px solid var(--line); padding-bottom:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+.tabs .tab { appearance:none; border:1px solid var(--line); border-bottom:none;
+  background:var(--surface-2, #f4f1ea); color:var(--muted); cursor:pointer;
+  font-size:.88rem; font-weight:600; padding:.5rem .9rem;
+  border-radius:10px 10px 0 0; margin-bottom:-2px; }
+.tabs .tab:hover { color:var(--ink, #222); }
+.tabs .tab.on { background:var(--surface); color:var(--ink, #222);
+  border-color:var(--line); border-bottom:2px solid var(--surface); }
+.tab-hint { margin-left:.35rem; font-size:.72rem; font-weight:700;
+  background:var(--brand-soft, #e8eef6); border-radius:999px; padding:.05rem .4rem; }
+.tab-hint.warn { background:#fde8c8; color:#92400e; }
+.tabpane[hidden] { display:none; }
+.tabpane { animation:fadein .12s ease-in; }
+@keyframes fadein { from { opacity:.55; } to { opacity:1; } }
