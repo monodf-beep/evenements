@@ -757,6 +757,22 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
         lieu=ev.get("lieu") or ev.get("ville") or "", client=client,
         is_official=bool(locked),
         trusted_source=_source_trusted(ev.get("url_source", "")))
+    # La PAGE SOURCE reste lue MÊME quand url_officiel est verrouillée : pour un flux de
+    # lieu (tier « officielle »), c'est LA page de l'événement (line-up, dates) — le site
+    # verrouillé sert au dossier de presse/programme général. Sans ça, verrouiller ferait
+    # PERDRE la matière événement (régression 1452 : Fondation Maeght réduite à /about/).
+    src0 = (ev.get("url_source") or "").strip()
+    if locked and src0 and not src0.startswith("gmail:") and "news.google.com" not in src0:
+        s_html, s_final = _fetch(src0)
+        if s_html:
+            s_txt = _html_to_text(s_html)[:6000]
+            if s_txt:
+                bloc = f"[PAGE DE L'ÉVÉNEMENT (source) — {s_final}]\n{s_txt}"
+                page = (page + "\n\n" + bloc) if page else bloc
+            if _source_trusted(src0):
+                # Flux du lieu/organisateur : sa page événement EST officielle → sert aussi
+                # à l'extraction d'affiches.
+                official_pages = list(official_pages or []) + [{"url": s_final, "html": s_html}]
 
     sections = []
     if press:
