@@ -193,6 +193,9 @@ def _build_payload(event: dict) -> dict:
 
     meta = {
         "as_score":                 event.get("llm_score", ""),
+        # Score HOME (0-10) : qualité du rendu (panel + source officielle + affiches), pour le
+        # tri des sections éditoriales de la home. Vide si non enrichi.
+        "as_home_score":            event.get("home_score") if event.get("home_score") is not None else "",
         "as_gratuit":               _is_free(prix),
         "as_tarif":                 "" if _is_free(prix) else prix,
         "as_horaire":               event.get("horaire", "") or "",

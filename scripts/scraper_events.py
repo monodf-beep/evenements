@@ -88,6 +88,11 @@ def init_db(conn: sqlite3.Connection) -> None:
                       ("enrich_data", "TEXT"),
                       ("article_title", "TEXT"),
                       ("article_md", "TEXT"),
+                      # Score HOME (0-10) : qualité du RENDU après rédaction (panel lecteurs
+                      # + source officielle + affiches). Distinct de llm_score (importance
+                      # AVANT rédaction). Sert au tri des sections « À la une / En évidence »
+                      # de la home (méta as_home_score côté WordPress).
+                      ("home_score", "REAL"),
                       # Vraie date de l'événement extraite du texte (scripts/dates.py)
                       ("date_event_start", "TEXT"),
                       ("date_event_end", "TEXT"),

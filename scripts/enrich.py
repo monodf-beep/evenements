@@ -35,6 +35,7 @@ import os
 import re
 import sqlite3
 import sys
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
@@ -292,6 +293,9 @@ def fetch_official_page(url: str, timeout: int = 8) -> str:
 _PRESS_HINTS = (
     "presse", "press", "dossier", "communiqu", "media-kit", "mediakit", "presskit",
     "espace-pro", "cartella-stampa", "ufficio-stampa", "rassegna-stampa",
+    # Italien natif : « stampa » (racine : area stampa, comunicati stampa, stampa nu) et
+    # « comunicat » (comunicati/comunicato) — les libellés IT les plus fréquents.
+    "stampa", "comunicat",
 )
 _PROG_HINTS = (
     "programm", "line-up", "lineup", "line_up", "affiche", "artist", "artisti",
@@ -361,31 +365,52 @@ _TITLE_STOP = {"festival", "concert", "spectacle", "exposition", "salon", "foire
                "fête", "edition", "édition", "saison", "rencontres", "journees", "journées"}
 
 
+def _fold(s: str) -> str:
+    """Minuscule + retrait des accents (NFKD) : « humanité » → « humanite », pour comparer un
+    token de titre à un domaine désaccentué (fete.humanite.fr…)."""
+    return "".join(c for c in unicodedata.normalize("NFKD", (s or "").lower())
+                   if not unicodedata.combining(c))
+
+
+def _strip_www(host: str) -> str:
+    """Retire le PRÉFIXE www. (et non des caractères : lstrip('www.') mangeait les hosts en
+    'w', ex. 'wine-festival' → 'ine-festival')."""
+    return re.sub(r"^www\.", "", (host or "").lower())
+
+
+_TITLE_STOP_FOLDED = {"festival", "concert", "spectacle", "exposition", "salon", "foire",
+                      "fete", "edition", "saison", "rencontres", "journees"}
+
+
 def _event_tokens(title: str) -> list[str]:
-    """Mots significatifs du titre (>3 lettres) pour reconnaître le domaine officiel."""
-    return [w for w in re.findall(r"[a-zà-ÿ0-9]+", (title or "").lower())
-            if len(w) > 3 and w not in _TITLE_STOP]
+    """Mots significatifs du titre (>3 lettres, désaccentués) pour reconnaître le domaine
+    officiel. On retire les mots trop génériques (_TITLE_STOP_FOLDED)."""
+    return [w for w in re.findall(r"[a-z0-9]+", _fold(title))
+            if len(w) > 3 and w not in _TITLE_STOP_FOLDED]
 
 
 def _find_official_site(html: str, base_url: str, title: str) -> str:
     """Depuis une page (souvent un AGRÉGATEUR), trouve le lien SORTANT vers le vrai site
-    OFFICIEL de l'événement : un domaine externe dont le nom recoupe le titre, ou pointé par
-    une ancre « site officiel ». "" si rien de fiable (on ne devine pas)."""
+    OFFICIEL de l'événement : un domaine externe dont le nom recoupe le titre. Un token LONG
+    (≥ 8 lettres, ex. « interceltique ») suffit ; une ancre « site officiel » ne compte QUE
+    si un token du titre est aussi présent (sinon « en savoir plus » sauterait vers un
+    sponsor). "" si rien de fiable — on ne devine pas."""
     from urllib.parse import urlparse
-    base_host = urlparse(base_url).netloc.lower().lstrip("www.")
+    base_host = _strip_www(urlparse(base_url).netloc)
     toks = _event_tokens(title)
     best, best_score = "", 0
     for m in re.finditer(r'(?is)<a\b[^>]*href=["\'](https?://[^"\']+)["\'][^>]*>(.*?)</a>', html):
         href, anchor = m.group(1), _html_to_text(m.group(2)).lower()
         host = urlparse(href).netloc.lower()
-        if not host or host.lstrip("www.") == base_host:
+        if not host or _strip_www(host) == base_host:
             continue                                   # lien interne à l'agrégateur
         if any(bad in host for bad in _NOT_OFFICIAL):
             continue                                   # réseau/billetterie/agrégateur
-        score = sum(1 for t in toks if t in host)      # recoupement titre ↔ domaine
-        if any(k in anchor for k in ("site officiel", "officiel", "site web",
-                                     "site internet", "site du", "en savoir plus")):
-            score += 3
+        fhost = _fold(host)
+        tokmatch = sum(2 if len(t) >= 8 else 1 for t in toks if t in fhost)
+        strong_anchor = any(k in anchor for k in
+                            ("site officiel", "officiel", "site web", "site internet", "site du"))
+        score = tokmatch + (3 if (strong_anchor and tokmatch > 0) else 0)
         if score > best_score:
             best, best_score = f"{urlparse(href).scheme}://{host}/", score
     return best if best_score >= 2 else ""
@@ -476,17 +501,26 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
     `is_official` : `url` EST déjà le site officiel connu (url_officiel mémorisée) → on le lit
     directement, SANS chercher un lien sortant (évite de sauter vers un site tiers, ex. le site
     des « Amis du festival »). Renvoie (texte_matière, pages)."""
+    from urllib.parse import urlparse as _up
     html, url = _fetch(url, timeout)   # url = URL FINALE (après redirections) → bonne base
+    if not html and is_official:
+        # URL officielle VERROUILLÉE mais injoignable (transitoire) : NE PAS re-résoudre —
+        # sinon on sauterait vers un autre domaine. On saute ce run proprement.
+        return "", []
     resolved = url if (html and is_official) else ""   # connu officiel → traité comme résolu
-    if not html:
-        # Source bloquée/inaccessible : résoudre le vrai site officiel et le lire en direct.
+    agg_landing = ""
+    src_is_agg = bool(html) and any(b in _up(url).netloc.lower() for b in _NOT_OFFICIAL)
+    if (not html or src_is_agg) and not is_official:
+        # Source BLOQUÉE (403) ou AGRÉGATEUR accessible : on remonte au VRAI site officiel par
+        # recherche web (un agrégateur ne doit JAMAIS être pris/mémorisé comme officiel — G2).
+        if src_is_agg:
+            agg_landing = _html_to_text(html)[:4000]   # texte agrégateur = matière d'appoint
         cand = resolve_official_site(title, lieu, client)
         if cand:
-            html, url = _fetch(cand, timeout)   # suit la redirection (variante → canonique)
-            if html:
-                resolved = url
-                log.info("site officiel résolu par recherche web : %s → %s",
-                         cand[:70], url[:90])
+            h2, u2 = _fetch(cand, timeout)
+            if h2:
+                html, url, resolved = h2, u2, u2
+                log.info("site officiel résolu par recherche web : %s → %s", cand[:70], u2[:90])
         if not html:
             return "", []
     landing = _html_to_text(html)[:6000]
@@ -495,12 +529,15 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
         n_sub = int(os.getenv("ENRICH_SITE_SUBPAGES", "3") or 3)
     except ValueError:
         n_sub = 3
+    # `url` est-il ENCORE un agrégateur (résolution échouée) ? Si oui, on ne le lira JAMAIS
+    # comme « officiel » et on ne le mémorisera pas.
+    cur_is_agg = any(b in _up(url).netloc.lower() for b in _NOT_OFFICIAL)
     if not deep or n_sub <= 0:
-        return landing, ([{"url": url, "html": html}] if resolved else [])
+        return landing, ([{"url": url, "html": html}] if (resolved and not cur_is_agg) else [])
     blocks: list[str] = []
     pages: list[dict] = []
-    # Site officiel à lire en profondeur : soit `url` lui-même (résolu, ou source déjà
-    # officielle), soit un lien sortant depuis un agrégateur accessible.
+    # Site officiel à lire en profondeur : soit `url` lui-même (résolu/direct), soit un lien
+    # sortant depuis une page-source accessible.
     official = "" if resolved else _find_official_site(html, url, title)
     if official and official != url:
         ohtml, official = _fetch(official, timeout)   # base = URL finale du site officiel
@@ -513,10 +550,13 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
             for link, lhtml, ltxt in _deep_read(ohtml, official, timeout, n_sub, "site officiel"):
                 pages.append({"url": link, "html": lhtml})
                 blocks.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{ltxt}")
+    if agg_landing:
+        blocks.append(f"[PAGE SOURCE (agrégateur, matière d'appoint)]\n{agg_landing}")
     if landing:
         blocks.append(f"[PAGE SOURCE — {url}]\n{landing}")
-    # `url` EST le site officiel (résolu, ou direct sans lien sortant) → lire ses sous-pages.
-    if not official or official == url:
+    # `url` EST le site officiel (résolu/direct sans lien sortant) → lire ses sous-pages.
+    # JAMAIS si c'est encore un agrégateur (on ne tague pas ses pages « officielles » — G2).
+    if (not official or official == url) and not cur_is_agg:
         if resolved:
             pages.append({"url": url, "html": html})   # la page d'accueil officielle
         for link, lhtml, ltxt in _deep_read(html, url, timeout, n_sub, "site officiel"):
@@ -544,8 +584,13 @@ _OG_RE2 = re.compile(
 
 
 _DIM_RE = re.compile(r"\d{2,4}\s*[x×]\s*\d{2,4}")   # « 120x176 », « 320 x 240 » : format d'affiche
+# Suffixe de VIGNETTE WordPress (« photo-800x600.jpg », « img-1024x683-scaled.jpg ») : ce
+# n'est PAS un format d'affiche, c'est une image de contenu redimensionnée. À exclure.
+_WP_THUMB = re.compile(r"-\d{2,4}x\d{2,4}(?:-scaled)?\.(?:jpe?g|png|webp)$", re.I)
 # Chemins qui trahissent le DOSSIER DE PRESSE (ses images = les affiches officielles).
-_KIT_PATH = ("/presse", "/dossier", "presskit", "kit-presse", "cartella-stampa", "/medias")
+# « /medias » retiré (trop générique → matchait des galeries de contenu). Ajouts IT.
+_KIT_PATH = ("/presse", "/dossier", "presskit", "kit-presse", "cartella-stampa",
+             "ufficio-stampa", "area-stampa", "-stampa", "comunicat", "press-area")
 
 
 def extract_press_visuals(pages: list, title: str = "") -> dict:
@@ -577,15 +622,18 @@ def extract_press_visuals(pages: list, title: str = "") -> dict:
                 continue
             is_kit = from_kit or any(k in low for k in _KIT_PATH)
             has_name = any(h in low for h in _AFFICHE_HINT)
-            has_dim = bool(_DIM_RE.search(low))
-            if not (is_kit or has_name or has_dim):
-                continue                            # pas « affiche-grade » → ignoré
+            # Un nom de FORMAT (120x176) est un indice, mais PAS une éligibilité à lui seul
+            # (sinon les vignettes WordPress -800x600 deviennent des affiches). Et on exclut
+            # explicitement le suffixe de vignette WP.
+            has_dim = bool(_DIM_RE.search(low)) and not _WP_THUMB.search(u)
+            if not (is_kit or has_name):
+                continue                            # affiche-grade = dossier de presse OU nom d'affiche
             score = (15 if is_kit else 0) + (3 if has_dim else 0) \
                 + sum(2 for h in _AFFICHE_HINT if h in low) \
                 + sum(1 for t in toks if t in low)
             cands[u] = max(cands.get(u, 0), score)
     ordered = [u for u in sorted(cands, key=lambda u: cands[u], reverse=True) if cands[u] > 0]
-    ordered = ordered[:12]
+    ordered = ordered[:6]                           # coût borné (téléchargements de mesure)
     portrait = wide = None
     for u in ordered:                               # ordre de SCORE décroissant
         if portrait and wide:
@@ -1075,8 +1123,12 @@ def main(argv: list[str]) -> int:
     for event in events:
         ev = dict(event)
         # Vignette de secours : si le flux n'a pas d'image, prendre l'og:image de la
-        # page officielle (déterministe). Sert à la fiche ET à l'image à la une WordPress.
-        if not (ev.get("url_image") or "").strip():
+        # page source (déterministe) — SAUF si la source est un agrégateur (son og:image est
+        # une carte sociale/logo générique, pas l'événement — M4).
+        from urllib.parse import urlparse as _up0
+        _src_host = _up0(ev.get("url_source", "") or "").netloc.lower()
+        _src_agg = any(b in _src_host for b in _NOT_OFFICIAL)
+        if not (ev.get("url_image") or "").strip() and not _src_agg:
             og = fetch_og_image(ev.get("url_source", ""))
             if og:
                 conn.execute("UPDATE events_raw SET url_image=? WHERE id=?", (og, ev["id"]))
@@ -1091,23 +1143,24 @@ def main(argv: list[str]) -> int:
         except Exception as exc:  # noqa: BLE001 — non bloquant
             log.warning("[%d] extraction affiches : %s", ev["id"], type(exc).__name__)
             vis = {}
-        if vis:
-            sets, params = [], []
-            if vis.get("portrait"):
-                sets.append("url_image_portrait=?"); params.append(vis["portrait"])
-            if vis.get("wide"):
-                sets.append("url_image_wide=?"); params.append(vis["wide"])
+        # AUTO-CORRECTIF (M1) : dès qu'on a REGARDÉ de la matière officielle (official_pages
+        # non vide), on RÉÉCRIT portrait/paysage — y compris à NULL si aucune affiche fiable
+        # ce run — pour effacer une éventuelle mauvaise affiche mémorisée avant. Si on n'a rien
+        # regardé (source injoignable), on ne touche à rien.
+        if official_pages:
+            vis = vis or {}
+            sets = ["url_image_portrait=?", "url_image_wide=?"]
+            params = [vis.get("portrait"), vis.get("wide")]
             # Image de carte : l'affiche du DOSSIER DE PRESSE prime et REMPLACE (source
             # officielle qui fait foi) ; sinon on ne pose que si aucune image n'existe.
             if vis.get("poster") and (vis.get("from_kit") or not (ev.get("url_image") or "").strip()):
                 sets.append("url_image=?"); params.append(vis["poster"])
                 ev["url_image"] = vis["poster"]
-            if sets:
-                conn.execute(f"UPDATE events_raw SET {', '.join(sets)} WHERE id=?",
-                             (*params, ev["id"]))
-                conn.commit()
-                log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
-                         bool(vis.get("portrait")), bool(vis.get("wide")))
+            conn.execute(f"UPDATE events_raw SET {', '.join(sets)} WHERE id=?",
+                         (*params, ev["id"]))
+            conn.commit()
+            log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
+                     bool(vis.get("portrait")), bool(vis.get("wide")))
         has_official = ("[PAGE PRESSE/PROGRAMME" in material or "[DOSSIER" in material)
         # MÉMORISER l'URL officielle dès qu'une résolution a payé (pages presse trouvées) :
         # les runs suivants la liront directement → déterministe, plus de recherche web ni
@@ -1115,7 +1168,8 @@ def main(argv: list[str]) -> int:
         if has_official and not (ev.get("url_officiel") or "").strip() and official_pages:
             from urllib.parse import urlparse as _up
             _p = _up(official_pages[0]["url"])
-            if _p.scheme and _p.netloc:
+            _agg = any(b in _p.netloc.lower() for b in _NOT_OFFICIAL)
+            if _p.scheme and _p.netloc and not _agg:   # jamais mémoriser un agrégateur (G2)
                 base = f"{_p.scheme}://{_p.netloc}/"
                 conn.execute("UPDATE events_raw SET url_officiel=? WHERE id=?", (base, ev["id"]))
                 conn.commit()
@@ -1195,9 +1249,10 @@ def main(argv: list[str]) -> int:
         conn.execute("""
         UPDATE events_raw SET
             enrich_status='enriched', enriched_at=datetime('now'), enrich_model=?,
-            enrich_data=?, article_title=?, article_md=?
+            enrich_data=?, article_title=?, article_md=?, home_score=?
         WHERE id=?
-        """, (model, json.dumps(result, ensure_ascii=False), title, md, ev["id"]))
+        """, (model, json.dumps(result, ensure_ascii=False), title, md,
+              (result.get("home") or {}).get("score"), ev["id"]))
         conn.commit()
         # File « À vérifier » : les doutes factuels signalés par l'agent sont poussés au
         # back-office (garde-fou humain). On resynchronise les points EN ATTENTE (les
