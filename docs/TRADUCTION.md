@@ -133,8 +133,8 @@ Tout l'appareil éditorial appliqué **en français** doit s'appliquer **aussi e
 
 ## 7. Où ça se déclenche (câblage)
 
-- **Cron quotidien** — « Pipeline complet, tous les jours 6h05 » : collecte → éval → visuels → **enrichissement (rédaction FR)** → autocomplete (publication) → **traduction IT**. La traduction tourne donc **en fin de pipeline**, une fois les fiches publiées.
-- **Manuel (VPS)** — `python -m scripts.translate_events …` (simulation, puis `--apply`), utile pour **remplir un versant maigre** par territoire.
+- **Cron quotidien** — « Pipeline complet, tous les jours 6h05 » : collecte → éval → visuels → **enrichissement (rédaction FR)** → autocomplete (publication) → **jumelage FR/IT natif (mécanisme B, gratuit)** → **traduction IT (mécanisme A)**. Le jumelage tourne **avant** la traduction : il lie les paires déjà bilingues à la source et alimente le garde-fou qui empêche `translate_events` de produire une 3e fiche redondante pour un événement qui a déjà une jumelle native. *(Câblé le 28/07/2026 — avant cette date, `link_translations_as` ne tournait jamais automatiquement.)*
+- **Manuel (VPS)** — `python -m scripts.translate_events …` (simulation, puis `--apply`), utile pour **remplir un versant maigre** par territoire. `python -m scripts.link_translations_as …` pour relier manuellement à tout moment.
 - Les **fiches traduites** ne se complètent jamais à la main (leur `url_source` est un pseudo-lien `translated:…`) : l'app les exclut des files « À compléter ».
 
 ---

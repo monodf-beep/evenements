@@ -110,6 +110,12 @@ case "$MODE" in
     step "organisateurs (web)" "$PY" -m scripts.organizer_handles --cap 10
     step "écarter les passés" "$PY" -m scripts.purge_past --execute
     run_autocomplete
+    # Jumelage FR/IT natif (gratuit, sans LLM) : les sources déjà bilingues (Vallée
+    # d'Aoste…) publient le MÊME événement dans les deux langues — on les LIE (Polylang +
+    # events_raw.translation_of) au lieu de laisser translate_events en produire une 3e
+    # fiche redondante. Doit tourner AVANT la traduction : c'est lui qui alimente le
+    # garde-fou anti-redondance de translate_events.
+    step "jumelage FR/IT (natif)" "$PY" -m scripts.link_translations_as --apply
     # Traduction IT (après publication FR) : génère/rafraîchit les pages jumelles
     # italiennes en appliquant la charte §6 bis (translate_events porte les règles).
     step "traduction IT"     "$PY" -m scripts.translate_events --apply --cap 20
