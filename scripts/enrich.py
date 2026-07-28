@@ -498,15 +498,41 @@ def resolve_official_site(title: str, lieu: str, client) -> str:
     return f"https://{host}/"
 
 
+_SRC_TIERS: "dict | None" = None
+
+
+def _source_trusted(url_source: str) -> bool:
+    """La SOURCE est-elle un flux tier « officielle » (lieu/organisateur primaire, cf.
+    config/sources.txt) ? Seules ces sources peuvent faire foi de LEUR PROPRE domaine ;
+    radar/presse, guides, institutions, tourisme doivent être résolus vers l'organisateur."""
+    global _SRC_TIERS
+    from urllib.parse import urlparse
+    if _SRC_TIERS is None:
+        try:
+            from scripts.scraper_events import load_sources
+            _SRC_TIERS = {}
+            for s in load_sources():
+                host = _strip_www(urlparse(s.get("url", "")).netloc)
+                if host:
+                    _SRC_TIERS[host] = (s.get("type") or "").lower()
+        except Exception:  # noqa: BLE001 — non bloquant
+            _SRC_TIERS = {}
+    host = _strip_www(urlparse(url_source or "").netloc)
+    return _SRC_TIERS.get(host, "") == "officielle"
+
+
 def fetch_official_material(url: str, timeout: int = 8, title: str = "",
-                            lieu: str = "", client=None, is_official: bool = False) -> tuple:
-    """SOURCE OFFICIELLE = première source (règle Franck). On lit `url` ; si c'est un
-    AGRÉGATEUR, on remonte au site officiel (lien sortant qui recoupe le titre). Si la source
-    est INACCESSIBLE (403 depuis le VPS), on résout le site officiel par recherche web puis on
-    le lit DIRECTEMENT. On lit ensuite sa page presse/programme (programme réel + visuels HD).
-    `is_official` : `url` EST déjà le site officiel connu (url_officiel mémorisée) → on le lit
-    directement, SANS chercher un lien sortant (évite de sauter vers un site tiers, ex. le site
-    des « Amis du festival »). Renvoie (texte_matière, pages)."""
+                            lieu: str = "", client=None, is_official: bool = False,
+                            trusted_source: bool = False) -> tuple:
+    """SOURCE OFFICIELLE = première source (règle Franck). On lit `url` ; si ce N'EST PAS le
+    site de l'organisateur, on remonte au vrai site officiel (lien sortant, sinon recherche
+    web), puis on lit sa page presse/programme (programme réel + visuels HD).
+    `is_official` : `url` EST le site officiel connu (url_officiel mémorisée) → lue direct.
+    `trusted_source` : la SOURCE est un flux tier « officielle » (lieu/organisateur primaire,
+    cf. config/sources.txt) → son propre domaine PEUT faire foi. Toute autre source (radar/
+    presse, guide, institution, tourisme) est traitée comme un AGRÉGATEUR : jamais lue comme
+    officielle, jamais mémorisée (cas guidatorino pris pour le site de la Tranvia).
+    Renvoie (texte_matière, pages)."""
     from urllib.parse import urlparse as _up
     html, url = _fetch(url, timeout)   # url = URL FINALE (après redirections) → bonne base
     if not html and is_official:
@@ -515,28 +541,39 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
         return "", []
     resolved = url if (html and is_official) else ""   # connu officiel → traité comme résolu
     agg_landing = ""
-    src_is_agg = bool(html) and any(b in _up(url).netloc.lower() for b in _NOT_OFFICIAL)
+    src_is_agg = bool(html) and not is_official and (
+        any(b in _up(url).netloc.lower() for b in _NOT_OFFICIAL) or not trusted_source)
     if (not html or src_is_agg) and not is_official:
-        # Source BLOQUÉE (403) ou AGRÉGATEUR accessible : on remonte au VRAI site officiel par
-        # recherche web (un agrégateur ne doit JAMAIS être pris/mémorisé comme officiel — G2).
+        # Source BLOQUÉE (403) ou NON-ORGANISATRICE accessible : on remonte au VRAI site
+        # officiel — d'abord par LIEN SORTANT (gratuit), sinon par recherche web.
         if src_is_agg:
-            agg_landing = _html_to_text(html)[:4000]   # texte agrégateur = matière d'appoint
-        cand = resolve_official_site(title, lieu, client)
-        if cand:
-            h2, u2 = _fetch(cand, timeout)
-            if h2:
-                html, url, resolved = h2, u2, u2
-                log.info("site officiel résolu par recherche web : %s → %s", cand[:70], u2[:90])
-        if not html:
-            return "", []
+            agg_landing = _html_to_text(html)[:4000]   # texte de la source = matière d'appoint
+            out = _find_official_site(html, url, title)
+            if out:
+                h2, u2 = _fetch(out, timeout)
+                if h2 and not any(b in _up(u2).netloc.lower() for b in _NOT_OFFICIAL):
+                    html, url, resolved = h2, u2, u2
+                    log.info("site officiel trouvé via la source : %s", u2[:90])
+        if not resolved:
+            cand = resolve_official_site(title, lieu, client)
+            if cand:
+                h2, u2 = _fetch(cand, timeout)
+                if h2:
+                    html, url, resolved = h2, u2, u2
+                    log.info("site officiel résolu par recherche web : %s → %s",
+                             cand[:70], u2[:90])
+        if not resolved:
+            # Rien d'officiel atteignable : la source reste de la MATIÈRE, jamais « officielle ».
+            body = f"[PAGE SOURCE (non officielle, matière d'appoint)]\n{agg_landing}" \
+                if agg_landing else ""
+            return body, []
     landing = _html_to_text(html)[:6000]
     deep = os.getenv("ENRICH_SITE_DEEP", "1") == "1"
     try:
         n_sub = int(os.getenv("ENRICH_SITE_SUBPAGES", "3") or 3)
     except ValueError:
         n_sub = 3
-    # `url` est-il ENCORE un agrégateur (résolution échouée) ? Si oui, on ne le lira JAMAIS
-    # comme « officiel » et on ne le mémorisera pas.
+    # `url` est-il ENCORE un domaine interdit ? (filet — ne devrait plus arriver ici)
     cur_is_agg = any(b in _up(url).netloc.lower() for b in _NOT_OFFICIAL)
     if not deep or n_sub <= 0:
         return landing, ([{"url": url, "html": html}] if (resolved and not cur_is_agg) else [])
@@ -718,7 +755,8 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     page, official_pages = fetch_official_material(
         src_url, title=ev.get("title", ""),
         lieu=ev.get("lieu") or ev.get("ville") or "", client=client,
-        is_official=bool(locked))
+        is_official=bool(locked),
+        trusted_source=_source_trusted(ev.get("url_source", "")))
 
     sections = []
     if press:
@@ -1293,11 +1331,26 @@ def main(argv: list[str]) -> int:
             q = (pm or 0) / 5 * 6                    # qualité éditoriale (panel local) : 0-6
             src = 2.5 if has_official else 0.0        # source directe fiable : +2,5
             aff = 1.5 if (has_p and has_w) else (0.75 if (has_p or has_w) else 0.0)  # visuels
-            result["home"] = {"score": round(min(10.0, q + src + aff), 1),
-                              "panel": pm, "source_officielle": bool(has_official),
-                              "affiches": affiches}
-            log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s)", ev["id"],
-                     result["home"]["score"], pm, has_official, affiches)
+            hs = round(min(10.0, q + src + aff), 1)
+            # PLACEMENT : où cette fiche PEUT aller sur le site et en newsletter, déduit du
+            # score et des visuels. Sans affiche, pas de mise en avant visuelle (hero/En
+            # évidence/newsletter avec image) : la note baisse ET le placement le dit.
+            has_aff = has_p or has_w
+            if hs >= 8 and has_p and has_w:
+                place = ("À la une (hero home) · En évidence · newsletter AVEC visuel — "
+                         "combo complet")
+            elif hs >= 6 and has_aff:
+                place = "En évidence (home) · sélections · newsletter AVEC visuel"
+            elif hs >= 6:
+                place = ("sélections & listes (texte) · newsletter en brève SANS visuel — "
+                         "pas de mise en avant home tant qu'il n'y a pas d'affiche")
+            else:
+                place = "catalogue / listes seulement (agenda, archives)"
+            result["home"] = {"score": hs, "panel": pm,
+                              "source_officielle": bool(has_official),
+                              "affiches": affiches, "placement": place}
+            log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
+                     ev["id"], hs, pm, has_official, affiches, place)
         title, md = build_article_md(result)
         conn.execute("""
         UPDATE events_raw SET

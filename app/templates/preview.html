@@ -179,6 +179,18 @@
         <span class="conf conf-{{ c }}">confiance {{ c }}</span>
       </span>
     </div>
+    {% if enriched.home and enriched.home.placement %}
+      <div style="font-family:-apple-system,sans-serif;font-size:.8rem;margin-bottom:.6rem;
+                  border-radius:6px;padding:.4rem .6rem;background:var(--brand-soft,#eef2f8);
+                  border:1px solid #cbd8ea;">
+        📍 <b>Placement possible :</b> {{ enriched.home.placement }}
+        {% if enriched.home.affiches == 'aucune' %}
+          <div style="margin-top:.2rem;color:#b45309;">Sans affiche, la note baisse et la fiche
+          reste hors des mises en avant visuelles — colle une affiche (onglet ✍️ Édition) ou
+          demande le dossier de presse pour la débloquer.</div>
+        {% endif %}
+      </div>
+    {% endif %}
     {% if enriched.source %}
       {% set srcof = enriched.source.officielle %}
       <div style="font-family:-apple-system,sans-serif;font-size:.8rem;margin-bottom:.6rem;
@@ -226,6 +238,14 @@
     {% if enriched.sources %}
       <div class="src"><b>Sources consultées (officielles/libres) :</b><br>
         {% for s in enriched.sources %}<a href="{{ s }}" target="_blank" rel="noopener">{{ s }}</a><br>{% endfor %}
+      </div>
+    {% endif %}
+    {% if enriched and not (enriched.reader_panel and enriched.reader_panel.reviews) %}
+      <div class="muted text-sm" style="font-family:-apple-system,sans-serif;margin-top:.8rem;
+                  border:1px dashed var(--line);border-radius:8px;padding:.5rem .7rem;">
+        👓 Pas de panel lecteurs pour cette fiche (enrichie avant l'arrivée du panel, ou
+        article court). <b>Ré-enrichis</b> (onglet ✍️ Édition) pour obtenir l'avis du panel
+        et le score 🏠.
       </div>
     {% endif %}
     {% if enriched.reader_panel and enriched.reader_panel.reviews %}
