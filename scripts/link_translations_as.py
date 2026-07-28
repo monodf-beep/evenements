@@ -43,9 +43,17 @@ _UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
 
 
 def _norm_image(url: str) -> str:
-    """Clé d'image normalisée (hôte+chemin, sans query) — "" si logo/vide."""
+    """Clé d'image normalisée (hôte+chemin, sans query) — "" si logo/vide/BANNIÈRE DE
+    REPLI. Une bannière générique (`fallback-{territoire}-{catégorie}.png`, posée par
+    `pick_banner_image` quand aucune vraie photo n'a été trouvée) est PARTAGÉE par tous
+    les événements sans image d'un même territoire/catégorie — la traiter comme un signal
+    d'affiche commune agrégerait des événements sans rapport (bug constaté : Jamiroquai,
+    Candlelight ABBA, Funky Académie… tous « liés » par la même bannière Savoie/concerts)."""
     url = (url or "").strip()
     if not url or is_logo_image(url):
+        return ""
+    path = urlparse(url.lower()).path
+    if path.rsplit("/", 1)[-1].startswith("fallback-"):
         return ""
     p = urlparse(url.lower())
     return f"{p.netloc}{p.path}"
