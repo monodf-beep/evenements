@@ -63,6 +63,19 @@
         <input type="url" name="url_officiel" value="{{ e.url_officiel or '' }}"
                placeholder="https://www.site-officiel-du-festival.fr/" style="width:100%;max-width:520px;margin-top:.2rem;">
       </label>
+      <div class="text-sm" style="margin-top:.55rem;">
+        🖼 <b>Affiches à la main</b> — quand l'extraction auto échoue (dossier de presse
+        derrière accréditation, site en JavaScript) : ouvre l'affiche officielle, clic droit,
+        « copier l'adresse de l'image », et colle ci-dessous.
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.25rem;">
+          <label style="flex:1;min-width:220px;">Affiche PORTRAIT (carte, réseaux)<br>
+            <input type="url" name="url_image_portrait" value="{{ e.url_image_portrait or '' }}"
+                   placeholder="https://…/affiche-portrait.jpg" style="width:100%;"></label>
+          <label style="flex:1;min-width:220px;">Affiche PAYSAGE (hero 16:9)<br>
+            <input type="url" name="url_image_wide" value="{{ e.url_image_wide or '' }}"
+                   placeholder="https://…/affiche-paysage.jpg" style="width:100%;"></label>
+        </div>
+      </div>
       <input type="hidden" name="multi_lieux_present" value="1">
       <label class="text-sm" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:.55rem;">
         <input type="checkbox" name="multi_lieux" value="1" {{ 'checked' if e.multi_lieux }}>

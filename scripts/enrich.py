@@ -1143,24 +1143,26 @@ def main(argv: list[str]) -> int:
         except Exception as exc:  # noqa: BLE001 — non bloquant
             log.warning("[%d] extraction affiches : %s", ev["id"], type(exc).__name__)
             vis = {}
-        # AUTO-CORRECTIF (M1) : dès qu'on a REGARDÉ de la matière officielle (official_pages
-        # non vide), on RÉÉCRIT portrait/paysage — y compris à NULL si aucune affiche fiable
-        # ce run — pour effacer une éventuelle mauvaise affiche mémorisée avant. Si on n'a rien
-        # regardé (source injoignable), on ne touche à rien.
-        if official_pages:
-            vis = vis or {}
-            sets = ["url_image_portrait=?", "url_image_wide=?"]
-            params = [vis.get("portrait"), vis.get("wide")]
+        # On n'écrit une affiche que si on en TROUVE une ce run (NON destructif : ne jamais
+        # effacer une affiche déjà posée, surtout manuelle — cf. verrou manuel au back-office).
+        # Le filtre affiche-grade (G1) garantit qu'on ne pose plus de fausse affiche.
+        if vis:
+            sets, params = [], []
+            if vis.get("portrait"):
+                sets.append("url_image_portrait=?"); params.append(vis["portrait"])
+            if vis.get("wide"):
+                sets.append("url_image_wide=?"); params.append(vis["wide"])
             # Image de carte : l'affiche du DOSSIER DE PRESSE prime et REMPLACE (source
             # officielle qui fait foi) ; sinon on ne pose que si aucune image n'existe.
             if vis.get("poster") and (vis.get("from_kit") or not (ev.get("url_image") or "").strip()):
                 sets.append("url_image=?"); params.append(vis["poster"])
                 ev["url_image"] = vis["poster"]
-            conn.execute(f"UPDATE events_raw SET {', '.join(sets)} WHERE id=?",
-                         (*params, ev["id"]))
-            conn.commit()
-            log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
-                     bool(vis.get("portrait")), bool(vis.get("wide")))
+            if sets:
+                conn.execute(f"UPDATE events_raw SET {', '.join(sets)} WHERE id=?",
+                             (*params, ev["id"]))
+                conn.commit()
+                log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
+                         bool(vis.get("portrait")), bool(vis.get("wide")))
         has_official = ("[PAGE PRESSE/PROGRAMME" in material or "[DOSSIER" in material)
         # MÉMORISER l'URL officielle dès qu'une résolution a payé (pages presse trouvées) :
         # les runs suivants la liront directement → déterministe, plus de recherche web ni
