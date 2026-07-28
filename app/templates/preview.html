@@ -534,7 +534,9 @@ function csCopy(id, btn) {
   var MAP = { 'seo':'promo', 'partage':'promo', 'instagram-manuel':'promo',
               'cadrage':'visuels', 'photo':'visuels',
               'completer':'edition', 'texte':'article' };
-  var DEFAULT_PANE = {{ "'article'" if enriched and enriched.article else "'edition'" }};
+  {# Pas de guillemets DANS l'expression Jinja : l'autoescape de Flask les transformerait
+     en &#39; → erreur de syntaxe JS → onglets morts (panes toutes masquées). #}
+  var DEFAULT_PANE = '{{ 'article' if enriched and enriched.article else 'edition' }}';
   var tabs = document.querySelectorAll('.tabs .tab');
   function show(pane, scrollTo){
     document.querySelectorAll('.tabpane').forEach(function(p){ p.hidden = (p.id !== 'pane-'+pane); });
