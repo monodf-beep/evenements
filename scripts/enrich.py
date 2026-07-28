@@ -543,6 +543,8 @@ _OG_RE2 = re.compile(
 
 
 _DIM_RE = re.compile(r"\d{2,4}\s*[x×]\s*\d{2,4}")   # « 120x176 », « 320 x 240 » : format d'affiche
+# Chemins qui trahissent le DOSSIER DE PRESSE (ses images = les affiches officielles).
+_KIT_PATH = ("/presse", "/dossier", "presskit", "kit-presse", "cartella-stampa", "/medias")
 
 
 def extract_press_visuals(pages: list, title: str = "") -> dict:
@@ -567,38 +569,47 @@ def extract_press_visuals(pages: list, title: str = "") -> dict:
                 u = _abs(base, m.group(1))
                 if u and urlparse(u).scheme.startswith("http"):
                     cands[u] = max(cands.get(u, 0), 10)
+        # Une image du DOSSIER DE PRESSE (chemin /presse/, /dossier…) EST l'affiche officielle
+        # → elle prime sur l'og:image (qui peut être un visuel web/social différent).
+        from_kit = any(k in (base or "").lower() for k in _KIT_PATH)
         for m in _IMG_RE.finditer(html or ""):
             raw = m.group(1)
             u = _abs(base, raw)
-            low = raw.lower()
+            low = (raw + " " + u).lower()
             if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
                 continue
             score = sum(2 for h in _AFFICHE_HINT if h in low)
             if _DIM_RE.search(low):                 # nom de FORMAT d'affiche (120x176…)
                 score += 3
             score += sum(1 for t in toks if t in low)   # le titre dans le nom de fichier
+            if from_kit or any(k in low for k in _KIT_PATH):
+                score += 15                         # image DU dossier de presse = prioritaire
             if score:
                 cands[u] = max(cands.get(u, 0), score)
     # CONSERVATEUR : on ne retient QUE l'og:image ou une image au nom d'affiche explicite —
     # jamais une image anonyme (les CMS servent 50+ photos hachées ; en prendre une « au
-    # hasard » comme affiche serait faux). Mieux vaut une affiche sûre (ou rien) qu'un
-    # visuel arbitraire ; le multi-format restant se règle à l'audit visuel.
+    # hasard » comme affiche serait faux). On choisit par SCORE (dossier de presse d'abord),
+    # puis on tranche l'orientation par la mesure réelle.
     ordered = [u for u in sorted(cands, key=lambda u: cands[u], reverse=True) if cands[u] > 0]
     ordered = ordered[:12]
     portrait = wide = None
-    pa = wa = 0
-    for u in ordered:
+    for u in ordered:                               # ordre de SCORE décroissant
+        if portrait and wide:
+            break
         w, h = remote_dims(u)
         if w < 350 or h < 350:          # trop petit → logo/vignette, pas une affiche
             continue
-        area, ratio = w * h, w / h
-        if ratio <= 0.9 and area > pa:          # portrait
-            portrait, pa = u, area
-        elif ratio >= 1.3 and area > wa:        # paysage
-            wide, wa = u, area
+        ratio = w / h
+        if ratio <= 0.9 and portrait is None:       # portrait le mieux noté
+            portrait = u
+        elif ratio >= 1.3 and wide is None:         # paysage le mieux noté
+            wide = u
     if not portrait and not wide:
         return {}
-    return {"portrait": portrait, "wide": wide, "poster": portrait or wide}
+    # L'affiche officielle du dossier de presse prime comme image principale.
+    kit = next((u for u in (portrait, wide) if u and any(k in u.lower() for k in _KIT_PATH)), None)
+    return {"portrait": portrait, "wide": wide,
+            "poster": kit or portrait or wide, "from_kit": bool(kit)}
 
 
 def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
@@ -1087,8 +1098,9 @@ def main(argv: list[str]) -> int:
                 sets.append("url_image_portrait=?"); params.append(vis["portrait"])
             if vis.get("wide"):
                 sets.append("url_image_wide=?"); params.append(vis["wide"])
-            # Image de carte : l'affiche officielle prime si aucune n'est déjà posée.
-            if vis.get("poster") and not (ev.get("url_image") or "").strip():
+            # Image de carte : l'affiche du DOSSIER DE PRESSE prime et REMPLACE (source
+            # officielle qui fait foi) ; sinon on ne pose que si aucune image n'existe.
+            if vis.get("poster") and (vis.get("from_kit") or not (ev.get("url_image") or "").strip()):
                 sets.append("url_image=?"); params.append(vis["poster"])
                 ev["url_image"] = vis["poster"]
             if sets:

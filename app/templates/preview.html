@@ -68,6 +68,33 @@
 
 {% if image %}<img class="hero" src="{{ image }}" alt="" loading="lazy" decoding="async">{% endif %}
 
+{% if e.url_image_portrait or e.url_image_wide %}
+<div class="card" style="margin:.6rem 0;padding:.7rem .9rem;font-family:-apple-system,sans-serif;">
+  <div style="font-weight:700;margin-bottom:.5rem;">🖼 Affiches officielles
+    {% set nb = (1 if e.url_image_portrait else 0) + (1 if e.url_image_wide else 0) %}
+    <span style="font-weight:600;color:{{ '#16a34a' if nb == 2 else '#b8860b' }};">
+      — {{ 'portrait + paysage (combo complet)' if nb == 2 else ('portrait seul' if e.url_image_portrait else 'paysage seul') }}</span>
+    {% if enriched and enriched.source and enriched.source.officielle %}
+      <span class="muted text-sm">· source : dossier de presse officiel</span>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+    {% if e.url_image_portrait %}
+      <div style="text-align:center;">
+        <img src="{{ e.url_image_portrait }}" alt="affiche portrait" style="height:220px;width:auto;border-radius:.4rem;border:1px solid #e7e1d4;">
+        <div class="muted text-sm" style="margin-top:.25rem;">Portrait (carte, réseaux) · <a href="{{ e.url_image_portrait }}" target="_blank" rel="noopener" download>⬇️</a></div>
+      </div>
+    {% endif %}
+    {% if e.url_image_wide %}
+      <div style="text-align:center;">
+        <img src="{{ e.url_image_wide }}" alt="affiche paysage" style="height:220px;width:auto;border-radius:.4rem;border:1px solid #e7e1d4;">
+        <div class="muted text-sm" style="margin-top:.25rem;">Paysage (hero 16:9) · <a href="{{ e.url_image_wide }}" target="_blank" rel="noopener" download>⬇️</a></div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 {% if image %}
 <details class="card" id="cadrage" style="margin:.6rem 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <summary style="cursor:pointer;color:var(--muted);font-size:.9rem;">🖼 Ajuster le cadrage de la vignette (4:3)</summary>
