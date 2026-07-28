@@ -2399,7 +2399,10 @@ def preview(event_id: int):
         if orig and (orig["url_source"] or "") and not (orig["url_source"] or "").startswith("translated:"):
             ev["url_source"] = orig["url_source"]
     ev["description_clean"] = clean_html(ev.get("description"))
-    # PAIRE FR/IT : lier les deux versions d'un même événement sur la fiche.
+    # PAIRE FR/IT : lier les deux versions d'un même événement sur la fiche. Deux langues
+    # seulement sur ce site → celle de l'AUTRE fiche se déduit (jamais supposer que
+    # l'original est forcément en FR : un événement piémontais peut être scrapé en IT et
+    # traduit VERS le FR — ce serait alors l'inverse).
     pair = None
     conn3 = get_db()
     try:
@@ -2408,17 +2411,28 @@ def preview(event_id: int):
                 "SELECT id, title, statut, wp_post_id_as FROM events_raw WHERE id=?",
                 (ev["translation_of"],)).fetchone()
             if o:
-                pair = {"kind": "twin", "other": dict(o),
-                        "lang": (ev.get("translated_lang") or "it")}
+                this_lang = ev.get("translated_lang") or "it"
+                pair = {"kind": "twin", "other": dict(o), "lang": this_lang,
+                        "this_lang": this_lang, "other_lang": ("fr" if this_lang == "it" else "it")}
         else:
             t = conn3.execute(
                 "SELECT id, title, statut, wp_post_id_as, translated_lang FROM events_raw "
                 "WHERE translation_of=? AND duplicate_of IS NULL", (ev["id"],)).fetchone()
             if t:
-                pair = {"kind": "original", "other": dict(t),
-                        "lang": (t["translated_lang"] or "it")}
+                other_lang = t["translated_lang"] or "it"
+                pair = {"kind": "original", "other": dict(t), "lang": other_lang,
+                        "this_lang": ("fr" if other_lang == "it" else "it"), "other_lang": other_lang}
     finally:
         conn3.close()
+    # Pas encore de jumelle : langue CIBLE que produirait translate_events (l'inverse de
+    # la langue détectée de CETTE fiche — jamais supposer que c'est toujours l'italien,
+    # un événement piémontais scrapé en IT se traduit VERS le FR).
+    pending_lang = None
+    if not pair:
+        from utils.lang import detect_lang
+        src_lang = detect_lang(ev.get("title", ""), ev.get("description", ""),
+                               ev.get("territoire", ""))
+        pending_lang = "fr" if src_lang == "it" else "it"
     image = event_image(ev)
     is_radar = (ev.get("source_type") == "radar"
                 or "(radar)" in (ev.get("source_name") or ""))
@@ -2490,6 +2504,7 @@ def preview(event_id: int):
     conn3.close()
     ig_post = social_mod.instagram_post(ev)
     return render_template("preview.html", e=ev, image=image, pair=pair,
+                           pending_lang=pending_lang,
                            image_host=image_host, is_radar=is_radar,
                            enriched=enriched, enrich_running=enrich_running,
                            press_kits=press_kits, score_detail=score_detail,

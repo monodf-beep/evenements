@@ -81,10 +81,11 @@
     <td class="full cell-title" data-label=""><a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
       {% set tw = twins.get(e.id) if twins else none %}
       {% if tw %}
+        {% set tw_lang = tw.translated_lang or 'it' %}
         <a class="badge" href="/preview/{{ tw.id }}" target="_blank" rel="noopener"
-           title="Version {{ (tw.translated_lang or 'it')|upper }} — statut {{ tw.statut }}{% if tw.wp_post_id_as %} · WP #{{ tw.wp_post_id_as }}{% endif %}"
+           title="Version {{ tw_lang|upper }} — statut {{ tw.statut }}{% if tw.wp_post_id_as %} · WP #{{ tw.wp_post_id_as }}{% endif %}"
            style="background:#eef2f8;border:1px solid #cbd8ea;color:#1f4c8f;text-decoration:none;">
-          🇮🇹 {{ (tw.translated_lang or 'it')|upper }} #{{ tw.id }}</a>
+          {{ '🇫🇷' if tw_lang == 'fr' else '🇮🇹' }} {{ tw_lang|upper }} #{{ tw.id }}</a>
       {% endif %}
       {% set ready = e.enrich_status == 'enriched' and e.url_image and (e.date_event_start or e.date_event_end) %}
       {% if ready %}<br><span class="badge ready" title="Article + photo + date : publiable tel quel">✓ prêt à publier</span>
