@@ -2399,6 +2399,26 @@ def preview(event_id: int):
         if orig and (orig["url_source"] or "") and not (orig["url_source"] or "").startswith("translated:"):
             ev["url_source"] = orig["url_source"]
     ev["description_clean"] = clean_html(ev.get("description"))
+    # PAIRE FR/IT : lier les deux versions d'un même événement sur la fiche.
+    pair = None
+    conn3 = get_db()
+    try:
+        if ev.get("translation_of"):
+            o = conn3.execute(
+                "SELECT id, title, statut, wp_post_id_as FROM events_raw WHERE id=?",
+                (ev["translation_of"],)).fetchone()
+            if o:
+                pair = {"kind": "twin", "other": dict(o),
+                        "lang": (ev.get("translated_lang") or "it")}
+        else:
+            t = conn3.execute(
+                "SELECT id, title, statut, wp_post_id_as, translated_lang FROM events_raw "
+                "WHERE translation_of=? AND duplicate_of IS NULL", (ev["id"],)).fetchone()
+            if t:
+                pair = {"kind": "original", "other": dict(t),
+                        "lang": (t["translated_lang"] or "it")}
+    finally:
+        conn3.close()
     image = event_image(ev)
     is_radar = (ev.get("source_type") == "radar"
                 or "(radar)" in (ev.get("source_name") or ""))
@@ -2469,7 +2489,7 @@ def preview(event_id: int):
     ev["_organizer_handle"] = organizers.confirmed_handle(conn3, ev.get("organisateur") or "")
     conn3.close()
     ig_post = social_mod.instagram_post(ev)
-    return render_template("preview.html", e=ev, image=image,
+    return render_template("preview.html", e=ev, image=image, pair=pair,
                            image_host=image_host, is_radar=is_radar,
                            enriched=enriched, enrich_running=enrich_running,
                            press_kits=press_kits, score_detail=score_detail,
@@ -2626,8 +2646,15 @@ def events():
         base_where.append("statut = ?"); base_params.append(statut)
     if terr:
         base_where.append("territoire = ?"); base_params.append(terr)
+    # PAIRES FR/IT : une ligne par PAIRE — l'original porte la ligne, sa version traduite
+    # s'affiche en chip 🇮🇹 sur la même ligne (jamais en ligne séparée).
+    base_where.append("COALESCE(translation_of,0)=0")
     if q:
-        base_where.append("title LIKE ?"); base_params.append(f"%{q}%")
+        # La recherche couvre AUSSI les titres des versions traduites (trouver « Fiera »
+        # doit remonter la paire même si l'original est en français).
+        base_where.append("(title LIKE ? OR id IN (SELECT translation_of FROM events_raw "
+                          "WHERE COALESCE(translation_of,0)!=0 AND title LIKE ?))")
+        base_params.append(f"%{q}%"); base_params.append(f"%{q}%")
     # Type de source : radar (presse, à confirmer) · newsletter (Gmail) · officiel
     # (flux de lieux/institutions, territoire fiable). Aide à isoler le bruit radar.
     if src == "radar":
@@ -2677,6 +2704,16 @@ def events():
     rows = conn.execute(
         f"SELECT * FROM events_raw {wsql} ORDER BY {order} LIMIT ? OFFSET ?",
         params + [PAGE_SIZE, (page - 1) * PAGE_SIZE]).fetchall()
+    # Jumeaux (versions traduites) des lignes de la page → chip 🇮🇹 sur la ligne originale.
+    twins = {}
+    _ids = [r["id"] for r in rows]
+    if _ids:
+        _ph = ",".join("?" * len(_ids))
+        for t in conn.execute(
+                "SELECT id, translation_of, translated_lang, statut, wp_post_id_as "
+                f"FROM events_raw WHERE translation_of IN ({_ph}) AND duplicate_of IS NULL",
+                _ids):
+            twins[t["translation_of"]] = dict(t)
     statut_counts = {r["statut"]: r["n"] for r in conn.execute(
         "SELECT statut, COUNT(*) n FROM events_raw GROUP BY statut")}
     total_all = sum(statut_counts.values())
@@ -2696,6 +2733,7 @@ def events():
     pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     return render_template(
         "events.html", events=annotate_period([dict(r) for r in rows], pfrom, pto),
+        twins=twins,
         statut=statut, territoire=terr, q=q, img=img, src=src, page=page, pages=pages, total=total,
         with_img=with_img, without_img=without_img, src_counts=src_counts,
         total_all=total_all, actifs_count=actifs_count,

@@ -41,6 +41,34 @@
   <span class="badge grey">{{ e.territoire or '—' }}</span>
 </div>
 
+{# Paire FR/IT : les deux versions du même événement, liées dans les deux sens. #}
+{% if pair %}
+  <div class="card" style="font-family:-apple-system,sans-serif;font-size:.85rem;
+              display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;
+              padding:.5rem .8rem;margin:.5rem 0;background:var(--brand-soft,#eef2f8);">
+    {% if pair.kind == 'original' %}
+      <span>🇫🇷 <b>Cette fiche (originale)</b></span>
+      <span aria-hidden="true">↔</span>
+      <span>🇮🇹 Version {{ pair.lang|upper }} :
+        <a href="/preview/{{ pair.other.id }}"><b>#{{ pair.other.id }}</b> — {{ pair.other.title|truncate(60) }}</a>
+        <span class="st st-{{ pair.other.statut }}">{{ status_labels.get(pair.other.statut, pair.other.statut) if status_labels else pair.other.statut }}</span>
+        {% if pair.other.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ pair.other.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ WP #{{ pair.other.wp_post_id_as }}</a>{% endif %}
+      </span>
+    {% else %}
+      <span>🇮🇹 <b>Cette fiche est la version {{ pair.lang|upper }}</b></span>
+      <span aria-hidden="true">↔</span>
+      <span>🇫🇷 Originale :
+        <a href="/preview/{{ pair.other.id }}"><b>#{{ pair.other.id }}</b> — {{ pair.other.title|truncate(60) }}</a>
+        <span class="st st-{{ pair.other.statut }}">{{ status_labels.get(pair.other.statut, pair.other.statut) if status_labels else pair.other.statut }}</span>
+      </span>
+    {% endif %}
+  </div>
+{% elif not e.translation_of and e.statut in ('evaluated', 'published_sub') %}
+  <div class="muted text-sm" style="font-family:-apple-system,sans-serif;margin:.4rem 0;">
+    🇮🇹 Pas encore de version italienne (elle se crée à la traduction du lot).
+  </div>
+{% endif %}
+
 <!-- Onglets : la fiche est dense → un onglet par usage. Les ancres historiques
      (#seo, #partage, #cadrage…) ouvrent automatiquement le bon onglet (script en bas). -->
 <div class="tabs" role="tablist" aria-label="Sections de la fiche">
