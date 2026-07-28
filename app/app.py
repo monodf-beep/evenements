@@ -3303,6 +3303,8 @@ def reseaux_publish(event_id: int):
     force = request.form.get("force") == "1"
     manual_mode = request.form.get("ig_manual_mode") == "1"
     scheduled_at = (request.form.get("scheduled_at", "") or "").strip()
+    # Retour : l'écran Réseaux par défaut, ou la page d'origine (fiche/onglet 🚀).
+    nxt = (request.form.get("next", "") or "").strip()
     conn = get_db()
     row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
     if not row:
@@ -3316,7 +3318,7 @@ def reseaux_publish(event_id: int):
     if not comp.is_complete(ev):
         conn.close()
         flash(f"⚠️ « {title} » incomplet — impossible à publier.", "err")
-        return redirect(url_for("reseaux"))
+        return redirect(nxt or url_for("reseaux"))
 
     # Finition Instagram MANUELLE : musique/tag natif impossibles via l'API Graph, et
     # tout appel API publie immédiatement (pas de brouillon) — donc quand Franck coche
@@ -3339,7 +3341,7 @@ def reseaux_publish(event_id: int):
         conn.close()
         flash(f"⚙️ Compte Instagram non configuré pour « {terr_label} » — "
               f"voir docs/RESEAUX_INSTAGRAM_SETUP.md.", "err")
-        return redirect(url_for("reseaux"))
+        return redirect(nxt or url_for("reseaux"))
     if not force:
         already = conn.execute(
             "SELECT id FROM social_posts WHERE event_id=? AND lang=? AND kind=? "
@@ -3347,7 +3349,7 @@ def reseaux_publish(event_id: int):
         if already:
             conn.close()
             flash(f"↩️ « {title} » déjà publié — republie avec confirmation si voulu.", "err")
-            return redirect(url_for("reseaux") + f"#e{event_id}")
+            return redirect(nxt or (url_for("reseaux") + f"#e{event_id}"))
 
     # Programmation : Meta n'offre aucune programmation native pour un outil tiers,
     # donc on garde nous-mêmes l'intention et un cron à nous (ig_scheduler.py)
@@ -3365,7 +3367,7 @@ def reseaux_publish(event_id: int):
             conn.commit()
             conn.close()
             flash(f"🗓️ « {title} » programmé pour le {when.strftime('%d/%m/%Y %H:%M')}.", "ok")
-            return redirect(url_for("reseaux") + f"#e{event_id}")
+            return redirect(nxt or (url_for("reseaux") + f"#e{event_id}"))
         # Date invalide ou passée : on ignore silencieusement et on publie tout de
         # suite (mieux vaut publier que perdre le clic de Franck).
 
@@ -3380,7 +3382,7 @@ def reseaux_publish(event_id: int):
         flash(f"🚀 « {title} » publié sur Instagram ({terr_label}, {lang.upper()}){extra}.", "ok")
     else:
         flash(f"❌ Échec publication « {title} » : {result.get('error')}", "err")
-    return redirect(url_for("reseaux") + f"#e{event_id}")
+    return redirect(nxt or (url_for("reseaux") + f"#e{event_id}"))
 
 
 def _dm_keyword_matches(text: str, keyword: str) -> bool:

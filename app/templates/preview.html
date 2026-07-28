@@ -450,10 +450,34 @@
           <button type="button" class="btn btn-sm" onclick="csCopy('igcap-{{ lg }}-{{ e.id }}', this)">📋 Copier la légende</button>
           <button type="button" class="btn btn-sm" onclick="csCopy('igalt-{{ lg }}-{{ e.id }}', this)">📋 Copier l'alt</button>
         </div>
-        <textarea id="igcap-{{ lg }}-{{ e.id }}" rows="9" readonly style="width:100%;font-family:inherit;font-size:.85rem;padding:.5rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ ig_post[lg].caption }}</textarea>
-        <input id="igalt-{{ lg }}-{{ e.id }}" type="text" readonly value="{{ ig_post[lg].alt }}" style="width:100%;margin-top:.3rem;font-family:inherit;font-size:.8rem;padding:.35rem .5rem;border:1px solid #e7e1d4;border-radius:.4rem;color:#5b5240">
+        <textarea id="igcap-{{ lg }}-{{ e.id }}" rows="9" style="width:100%;font-family:inherit;font-size:.85rem;padding:.5rem;border:1px solid #e7e1d4;border-radius:.4rem;resize:vertical">{{ ig_post[lg].caption }}</textarea>
+        <input id="igalt-{{ lg }}-{{ e.id }}" type="text" value="{{ ig_post[lg].alt }}" style="width:100%;margin-top:.3rem;font-family:inherit;font-size:.8rem;padding:.35rem .5rem;border:1px solid #e7e1d4;border-radius:.4rem;color:#5b5240">
+        {# Publier DEPUIS LA FICHE : même route que l'écran Réseaux (/reseaux/publish),
+           avec la légende ÉDITABLE ci-dessus. next → on revient sur cet onglet. #}
+        <form method="POST" action="/reseaux/publish/{{ e.id }}"
+              style="display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;margin-top:.4rem;"
+              onsubmit="this.caption.value = document.getElementById('igcap-{{ lg }}-{{ e.id }}').value;
+                        this.alt_text.value = document.getElementById('igalt-{{ lg }}-{{ e.id }}').value;
+                        return confirm('Publier sur Instagram ({{ lg|upper }}) avec la légende ci-dessus ?')">
+          <input type="hidden" name="lang" value="{{ lg }}">
+          <input type="hidden" name="caption" value=""><input type="hidden" name="alt_text" value="">
+          <input type="hidden" name="dm_keyword" value="{{ e.dm_keyword or '' }}">
+          <input type="hidden" name="next" value="/preview/{{ e.id }}#pane-promo">
+          <select name="kind" class="text-sm" style="padding:.3rem .4rem;border:1px solid #e7e1d4;border-radius:.4rem;">
+            <option value="single">Post</option>
+            <option value="carousel">Carrousel</option>
+            <option value="story">Story</option>
+          </select>
+          <input type="datetime-local" name="scheduled_at" class="text-sm" title="Laisser vide = publier maintenant ; sinon programmé"
+                 style="padding:.3rem .4rem;border:1px solid #e7e1d4;border-radius:.4rem;">
+          <label class="muted text-sm" style="display:inline-flex;align-items:center;gap:.25rem;white-space:nowrap;">
+            <input type="checkbox" name="ig_manual_mode" value="1"> 📱 je posterai moi-même
+          </label>
+          <button class="btn btn-sm btn-primary">🚀 Publier ({{ lg|upper }})</button>
+        </form>
       </div>
       {% endfor %}
+      <p class="muted text-xs" style="margin:.2rem 0 0;">La légende est éditable avant envoi. Republier un post déjà publié demandera une confirmation (écran Réseaux). Champ date rempli = publication programmée.</p>
     </div>
   </div>
 </div>
