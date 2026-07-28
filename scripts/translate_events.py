@@ -33,6 +33,7 @@ import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import anthropic
 from dotenv import load_dotenv
@@ -55,6 +56,12 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL_TRANSLATE", "claude-sonnet-5")
 
 _LANG_NAME = {"fr": "français", "it": "italien"}
+
+
+def _slug_of(permalink: str) -> str:
+    """Dernier segment du permalien = le slug WordPress. "" si permalien absent/vide."""
+    path = urlparse((permalink or "").strip()).path.rstrip("/")
+    return path.rsplit("/", 1)[-1] if path else ""
 
 # Filtre territoire optionnel (--territoire) : slug → mots-clés cherchés dans le champ
 # territoire normalisé. Sert à REMPLIR un versant maigre (ex. Piémont côté FR).
@@ -469,6 +476,9 @@ def main(argv=None) -> int:
             "seo_title": "", "seo_meta": "", "seo_slug": "", "seo_keyphrase": "",
             "force_lang": tgt, "force_create": True,
             "wp_post_id_as": None, "wp_post_id_cs": None,
+            # URL commune à la paire (retour Franck : sans ça, impossible de s'y
+            # retrouver) — la fiche traduite reprend le slug de l'original.
+            "slug": _slug_of(ev.get("wp_permalink_as")),
         })
         new_ev.pop("id", None)
         wp_id, permalink, raw_url = publish_to_as(new_ev)

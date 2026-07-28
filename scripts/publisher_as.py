@@ -245,6 +245,14 @@ def _build_payload(event: dict) -> dict:
     if event.get("force_create"):
         payload["force_create"] = True
 
+    # Slug explicite (paires FR/IT) : sans ça, WordPress dérive le slug du TITRE — deux
+    # titres dans deux langues donnent deux URLs sans rapport, impossible de retrouver la
+    # paire à l'œil (retour Franck). Polylang autorise le MÊME slug dans les deux langues
+    # (le préfixe /fr//it/ suffit à les distinguer) : on réutilise donc le slug de
+    # l'original pour la fiche traduite.
+    if (event.get("slug") or "").strip():
+        payload["slug"] = event["slug"].strip()
+
     if (event.get("lieu") or "").strip():
         payload["venue"] = {"Venue": event["lieu"].strip(),
                             "City": (event.get("ville") or "").strip()}

@@ -81,6 +81,13 @@ function cs_publish_event(WP_REST_Request $req) {
         'post_excerpt' => (string) ($b['excerpt'] ?? ''),
         'post_status'  => $pub_status,
     );
+    // Slug explicite (paires FR/IT) : la fiche traduite reprend le slug de l'originale —
+    // Polylang autorise un slug identique entre langues (le préfixe /fr//it/ suffit à les
+    // distinguer), et une URL commune permet de retrouver la paire d'un coup d'œil.
+    // Seulement à la CRÉATION : on ne modifie jamais le slug d'une fiche déjà publiée.
+    if (!empty($b['slug']) && empty($b['wp_post_id'])) {
+        $args['post_name'] = sanitize_title((string) $b['slug']);
+    }
     // Dates : NORMALISER en 'Y-m-d H:i:s'. tribe_create_event retombe silencieusement
     // sur AUJOURD'HUI si on lui passe une date « seule » (ex. « 2025-07-22 ») ou un
     // format qu'il ne reconnaît pas. On force donc un datetime complet. Pas d'heure
