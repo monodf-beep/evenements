@@ -468,15 +468,16 @@ def resolve_official_site(title: str, lieu: str, client) -> str:
 
 
 def fetch_official_material(url: str, timeout: int = 8, title: str = "",
-                            lieu: str = "", client=None) -> tuple:
+                            lieu: str = "", client=None, is_official: bool = False) -> tuple:
     """SOURCE OFFICIELLE = première source (règle Franck). On lit `url` ; si c'est un
     AGRÉGATEUR, on remonte au site officiel (lien sortant qui recoupe le titre). Si la source
     est INACCESSIBLE (403 depuis le VPS), on résout le site officiel par recherche web puis on
     le lit DIRECTEMENT. On lit ensuite sa page presse/programme (programme réel + visuels HD).
-    Renvoie (texte_matière, pages) où `pages` = [{'url','html'}, …] des pages OFFICIELLES
-    lues (pour en extraire les affiches). Désactivable via ENRICH_SITE_DEEP=0."""
+    `is_official` : `url` EST déjà le site officiel connu (url_officiel mémorisée) → on le lit
+    directement, SANS chercher un lien sortant (évite de sauter vers un site tiers, ex. le site
+    des « Amis du festival »). Renvoie (texte_matière, pages)."""
     html, url = _fetch(url, timeout)   # url = URL FINALE (après redirections) → bonne base
-    resolved = ""
+    resolved = url if (html and is_official) else ""   # connu officiel → traité comme résolu
     if not html:
         # Source bloquée/inaccessible : résoudre le vrai site officiel et le lire en direct.
         cand = resolve_official_site(title, lieu, client)
@@ -631,10 +632,12 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
         press = re.sub(r"(?s)<[^>]+>", " ", press)
     # URL OFFICIELLE mémorisée (résolution déjà réussie) : on la lit DIRECTEMENT — plus de
     # recherche web, plus de variante de domaine aléatoire. Sinon on part de la source.
-    src_url = (ev.get("url_officiel") or "").strip() or ev.get("url_source", "")
+    locked = (ev.get("url_officiel") or "").strip()
+    src_url = locked or ev.get("url_source", "")
     page, official_pages = fetch_official_material(
         src_url, title=ev.get("title", ""),
-        lieu=ev.get("lieu") or ev.get("ville") or "", client=client)
+        lieu=ev.get("lieu") or ev.get("ville") or "", client=client,
+        is_official=bool(locked))
 
     sections = []
     if press:
