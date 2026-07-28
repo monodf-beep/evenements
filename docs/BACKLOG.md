@@ -1,7 +1,46 @@
 # Backlog & tâches à réfléchir — Agenda Cultura Sabauda
 
 Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
-`docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`).
+`docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
+`docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
+
+## Journal de session — 2026-07-27/28 (nuit)
+
+### ✅ Fait (branche `claude/quirky-davinci-jvqrnw`)
+- 🤖 **Panel de personas lecteurs** : 8 personas sourcés (recherche territoriale, `docs/personas/`),
+  ciblage par territoire (locaux + visiteur d'aire voisine via `visite:`), révision si moyenne < 3.
+- 🤖 **Chaîne « source officielle fait foi »** (`docs/SOURCE_OFFICIELLE.md`) : agrégateur bloqué →
+  résolution du site officiel par recherche web (vérifiée) → lecture pages presse/programme +
+  dossier de presse en iframe → **mémorisation `url_officiel`** (déterministe) + **verrou manuel**
+  au back-office. Recherche web coupée si matière officielle trouvée.
+- 🤖 **Affiches** portrait + paysage depuis le dossier de presse (affiche-grade only), affichées +
+  téléchargeables + **verrou manuel** (sites JS/gated). **Statut dossier de presse** au back-office
+  (public / accréditation requise / sans affiche / absent).
+- 🤖 **Deux scores** : avant (matière officielle → article complet) + **score home** 0-10 (panel +
+  source + affiches) → colonne `home_score` → méta `as_home_score`.
+- 🤖 **Garde-fous déterministes** : gras (charte), cadrage temporel (à venir/en cours/terminé +
+  anti « bluff rétro »), interdit méta-vide, substance par genre, hotlink (no-referrer).
+- 🤖 **Durcissement pré-campagne** (revue multi-agents) : G1 fausses affiches (vignettes WP), G2
+  agrégateur mémorisé comme officiel, G3 saut vers sponsor ; généralisation FR (accents,
+  mono-token) + IT (`stampa`/`comunicat`).
+
+### ⏳ Reste à faire / décisions
+- 🧑 **Vérifier la date de l'événement 825 (Musilac)** : 2027 futur (le cadrage temporel corrige)
+  ou 2026 passé (question de filtrage). Cf. la commande sqlite fournie en session.
+- 🧑 **Demander l'accréditation presse** pour les événements au statut `accreditation` (ex. Musilac)
+  → récupérer affiche + dossier de presse.
+- 🎨 **WordPress/JetEngine** : trier « À la une » / « En évidence » sur la méta `as_home_score`
+  (cf. `docs/CABLAGE_HOME.md`) + **backfill** (`scripts/backfill_home_score.py`) puis republier.
+- 🧑 **Décisions éditoriales score home** : quelles sections basculent sur `as_home_score` (vs
+  `as_score`/importance) ; seuil « En évidence » (back-office traite ≥ 6 comme « bon »).
+- 🤖 **Valider large** : lancer sur événements FR grand public + IT/Piémont/Vallée d'Aoste avant
+  la campagne complète.
+- 🤖 **Option B (article vivant)** : gros événement annoncé loin, programme non sorti → article qui
+  s'enrichit à mesure des annonces (chantier de fond, à voir au back-office).
+
+---
+
+## Journal de session — 2026-07-25/26
 
 ## Journal de session — 2026-07-25/26
 
