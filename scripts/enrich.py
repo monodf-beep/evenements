@@ -412,14 +412,19 @@ def _find_official_site(html: str, base_url: str, title: str) -> str:
             continue                                   # lien interne à l'agrégateur
         if any(bad in host for bad in _NOT_OFFICIAL):
             continue                                   # réseau/billetterie/agrégateur
+        # Sous-domaine SANS RAPPORT avec le titre (hotelcavour.fortedibard.it — l'hôtel du
+        # lieu, pas Raf ni Cazzullo) → on remonte au DOMAINE RACINE avant de scorer, sinon
+        # le score compte les tokens du domaine parent (« forte », « bard ») et fige l'hôtel.
+        labels = host.split(".")
+        if len(labels) > 2 and labels[0] != "www" and not any(t in _fold(labels[0]) for t in toks):
+            host = ".".join(labels[-2:])
         fhost = _fold(host)
         tokmatch = sum(2 if len(t) >= 8 else 1 for t in toks if t in fhost)
         strong_anchor = any(k in anchor for k in
                             ("site officiel", "officiel", "site web", "site internet", "site du"))
         score = tokmatch + (3 if (strong_anchor and tokmatch > 0) else 0)
         cand = f"{urlparse(href).scheme}://{host}/"
-        # À score égal, préférer le DOMAINE RACINE (www.fortedibard.it) à un sous-domaine
-        # (hotelcavour.fortedibard.it — l'hôtel du lieu, pas le site de l'événement).
+        # À score égal, préférer le DOMAINE RACINE (www.fortedibard.it) à un sous-domaine.
         if score > best_score or (score == best_score and best and
                                   len(_strip_www(host)) < len(_strip_www(urlparse(best).netloc))):
             best, best_score = cand, score
