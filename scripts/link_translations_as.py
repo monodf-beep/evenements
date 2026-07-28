@@ -104,20 +104,36 @@ def _groups(events: list[dict]) -> list[list[dict]]:
     return [g for g in buckets.values() if len(g) > 1]
 
 
-def _link_map(group: list[dict]) -> dict[str, int]:
-    """Construit {langue: wp_post_id_as} pour un groupe (une fiche par langue).
-    En cas de collision (2 fiches même langue), on garde la 1re et on journalise."""
-    out: dict[str, int] = {}
+def _link_map(group: list[dict]) -> dict[str, dict]:
+    """Construit {langue: {"id": id événement, "wp": wp_post_id_as}} pour un groupe (une
+    fiche par langue). En cas de collision (2 fiches même langue), on garde la 1re et on
+    journalise."""
+    out: dict[str, dict] = {}
     for ev in sorted(group, key=lambda e: e["id"]):
         lang = _lang(ev)
         pid = int(ev["wp_post_id_as"])
         if lang in out:
             log.warning("Collision de langue %s dans le groupe « %s » : on garde WP#%s, "
                         "on ignore id=%d (WP#%s)", lang,
-                        (ev.get("title", "") or "")[:40], out[lang], ev["id"], pid)
+                        (ev.get("title", "") or "")[:40], out[lang]["wp"], ev["id"], pid)
             continue
-        out[lang] = pid
+        out[lang] = {"id": ev["id"], "wp": pid}
     return out
+
+
+def _mark_pair_in_db(conn: sqlite3.Connection, pair: dict[str, dict]) -> None:
+    """Écrit translation_of/translated_lang en base sur la fiche SECONDAIRE de la paire,
+    pour que le back-office (badge 🇮🇹, fiche liée, liste groupée) la reconnaisse — le lien
+    Polylang côté WordPress ne suffit pas, `app.py` lit `events_raw.translation_of`.
+    Primaire = FR si présent (le site est français d'abord), sinon la 1re langue triée."""
+    langs = sorted(pair, key=lambda l: (l != "fr", l))
+    primary, secondaries = langs[0], langs[1:]
+    primary_id = pair[primary]["id"]
+    for lang in secondaries:
+        sec_id = pair[lang]["id"]
+        conn.execute("UPDATE events_raw SET translation_of=?, translated_lang=? WHERE id=?",
+                    (primary_id, lang, sec_id))
+    conn.commit()
 
 
 def _post_link(wp_url: str, auth, translations: dict[str, int]) -> bool:
@@ -159,7 +175,7 @@ def main(argv=None) -> int:
         return 0
 
     for p in pairs:
-        pretty = ", ".join(f"{lang}=WP#{pid}" for lang, pid in sorted(p.items()))
+        pretty = ", ".join(f"{lang}=WP#{v['wp']}" for lang, v in sorted(p.items()))
         log.info("%s traductions : %s", "LIER" if args.apply else "(simulation)", pretty)
 
     if not args.apply:
@@ -171,11 +187,17 @@ def main(argv=None) -> int:
     if not all([wp_url, auth[0], auth[1]]):
         log.error("Variables Agenda Sabauda manquantes (WP_AS_URL/USER/APP_PASSWORD).")
         return 1
+    conn = sqlite3.connect(DB_PATH)
     ok = 0
     for p in pairs:
-        if _post_link(wp_url, auth, p):
+        wp_only = {lang: v["wp"] for lang, v in p.items()}
+        if _post_link(wp_url, auth, wp_only):
             ok += 1
-    log.info("=== Liage terminé : %d/%d paire(s) liée(s). ===", ok, len(pairs))
+            # Écrit le lien en base AUSSI : sans ça, le back-office (badge 🇮🇹, fiche
+            # groupée) ignore la paire — seul le lien WordPress/Polylang serait à jour.
+            _mark_pair_in_db(conn, p)
+    conn.close()
+    log.info("=== Liage terminé : %d/%d paire(s) liée(s) (WordPress + base). ===", ok, len(pairs))
     return 0
 
 

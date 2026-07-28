@@ -403,6 +403,10 @@ def main(argv=None) -> int:
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
         "AND COALESCE(translation_of,0)=0 AND COALESCE(translated_at,'')='' "
+        # Déjà une jumelle NATIVE liée (link_translations_as, mécanisme B — source déjà
+        # bilingue) : ne pas retraduire, ce serait une 3e fiche redondante.
+        "AND id NOT IN (SELECT translation_of FROM events_raw "
+        "               WHERE COALESCE(translation_of,0)!=0) "
         "AND COALESCE(user_score, llm_score, 0) >= ? "
         "ORDER BY COALESCE(user_score, llm_score, 0) DESC, id ASC",
         (args.min_score,)).fetchall()]
