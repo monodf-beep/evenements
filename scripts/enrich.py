@@ -860,12 +860,15 @@ def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
 
 
 def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str,
-                 court: bool, extra_task: str = "", allow_web: bool = True):
+                 court: bool, extra_task: str = "", allow_web: bool = True,
+                 web_domains: "list | None" = None):
     """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR.
     `court`/`model` sont décidés par l'appelant via _tier_model. `extra_task` : consigne
     supplémentaire ajoutée en fin de prompt (ex. retour de l'agent persona lecteur pour une
     révision). `allow_web` : autorise la recherche web (coupée quand on a déjà la matière
-    officielle — la source officielle fait foi, le web n'est qu'un secours)."""
+    officielle — la source officielle fait foi, le web n'est qu'un secours).
+    `web_domains` : RESTREINT la recherche à ces domaines (le site officiel) — la révision
+    peut alors creuser le site officiel, jamais le web ouvert (règle Franck)."""
     from utils.voix import voix_block
     from utils import settings as pipeline_settings  # COURT_MAX_TOKENS (mode court)
     _court = court
@@ -897,7 +900,12 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         web_on = USE_WEB_SEARCH and allow_web and not _court
         kwargs = dict(model=model, max_tokens=_max, messages=messages)
         if web_on:
-            kwargs["tools"] = [WEB_SEARCH_TOOL]
+            _tool = dict(WEB_SEARCH_TOOL)
+            if web_domains:
+                # Recherche BORNÉE au(x) domaine(s) officiel(s) : creuser le site officiel,
+                # jamais le web ouvert.
+                _tool["allowed_domains"] = [d for d in web_domains if d][:20]
+            kwargs["tools"] = [_tool]
         if USE_THINKING and not _court:
             kwargs["thinking"] = {"type": "adaptive"}
         for turn in range(1, (MAX_WEB_SEARCHES + 4) if web_on else 2):
@@ -1150,9 +1158,11 @@ def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
 
 
 def revise_article(result: dict, panel: dict, ev: dict, material: str,
-                   client, model: str, court: bool, allow_web: bool = True):
+                   client, model: str, court: bool, allow_web: bool = True,
+                   web_domains: "list | None" = None):
     """Réécrit l'article en tenant compte des retours DU PANEL de lecteurs. Renvoie le
-    nouveau result, ou l'ancien si la révision échoue."""
+    nouveau result, ou l'ancien si la révision échoue. `web_domains` : la recherche de la
+    révision est restreinte au SITE OFFICIEL (jamais le web ouvert)."""
     lignes = []
     for r in (panel.get("reviews") or []) + (panel.get("visite_reviews") or []):
         if r.get("verdict") != "revise":
@@ -1163,10 +1173,12 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
             r.get("note") or "—",
             (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else ""))
     critique = "\n".join(lignes) or "Article jugé creux par le panel."
+    web_note = ("\nTu PEUX chercher les RÉPONSES PRÉCISES à ces manques (horaires, parcours, "
+                "points d'accès, gratuité…) — la recherche est RESTREINTE AU SITE OFFICIEL de "
+                "l'événement : creuse ses pages, rien d'autre."
+                if web_domains else "")
     extra = ("[RETOURS DE LECTEURS sur ton brouillon précédent — CORRIGE-LE]\n" + critique +
-             "\nTu PEUX utiliser la recherche web pour trouver les RÉPONSES PRÉCISES à ces "
-             "manques (horaires, parcours, points d'accès, gratuité…) sur les sources "
-             "officielles — c'est exactement ce que le lecteur attend." +
+             web_note +
              "\nRends l'article plus SUBSTANTIEL et CONCRET, avec les éléments propres AU TYPE "
              "d'événement (classique : œuvres, compositeurs, orchestres, solistes, chefs, "
              "lieux ; pop : têtes d'affiche ; expo : artistes et œuvres ; spectacle : pièce et "
@@ -1179,7 +1191,7 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
              "faits certains, sans jamais parler de ce qui manque. Ne meuble pas : le lecteur "
              "doit APPRENDRE quelque chose de réel.")
     revised = enrich_event(ev, material, client, model, court, extra_task=extra,
-                           allow_web=allow_web)
+                           allow_web=allow_web, web_domains=web_domains)
     return revised if (revised and revised is not API_ERROR) else result
 
 
@@ -1328,12 +1340,17 @@ def main(argv: list[str]) -> int:
                 # limitée → le rédacteur sur-corrige). Si le panel note la révision plus
                 # bas que le brouillon initial, on revient au brouillon initial.
                 first_result, first_panel = result, panel
-                # La révision a le DROIT de chercher sur le web : les manques du panel
-                # (horaires de passage, parcours, accès, gratuité…) sont précisément des
-                # faits ABSENTS de la matière — sans recherche, la révision ne peut pas y
-                # répondre et tourne à vide (cas Tour Féminin).
+                # La révision peut CREUSER LE SITE OFFICIEL (règle Franck : jamais le web
+                # ouvert) : les manques du panel (horaires, parcours, accès, gratuité…) sont
+                # des faits absents de la matière — la recherche est RESTREINTE aux domaines
+                # officiels connus de l'événement. Sans domaine officiel, comportement inchangé.
+                _off_doms = sorted({_strip_www(_up0(p.get("url") or "").netloc)
+                                    for p in (official_pages or [])} |
+                                   {_strip_www(_up0(ev.get("url_officiel") or "").netloc)})
+                _off_doms = [d for d in _off_doms if d]
                 revised = revise_article(result, panel, ev, material, client, model, court,
-                                         allow_web=True)
+                                         allow_web=(allow_web or bool(_off_doms)),
+                                         web_domains=_off_doms or None)
                 rev_panel = reader_panel(revised, ev, client, review_model)
                 fm = first_panel.get("mean") or 0
                 rm = (rev_panel or {}).get("mean") or 0
