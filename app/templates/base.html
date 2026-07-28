@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+{# Beaucoup d'images sources (dossiers de presse, sites officiels) sont protégées en
+   HOTLINK : le serveur renvoie 403 si le Referer est le back-office. On n'envoie donc
+   AUCUN Referer → les images (affiches, visuels) s'affichent. À la publication, le
+   pipeline télécharge côté serveur (sans Referer) et ré-héberge sur WordPress. #}
+<meta name="referrer" content="no-referrer">
+<meta name="referrer" content="never">
 <title>{% block title %}Agenda Cultura Sabauda{% endblock %}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 {% block head %}{% endblock %}

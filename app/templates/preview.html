@@ -72,7 +72,7 @@
   </div>
 </details>
 
-{% if image %}<img class="hero" src="{{ image }}" alt="" loading="lazy" decoding="async">{% endif %}
+{% if image %}<img class="hero" src="{{ image }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% endif %}
 
 {% if e.url_image_portrait or e.url_image_wide %}
 <div class="card" style="margin:.6rem 0;padding:.7rem .9rem;font-family:-apple-system,sans-serif;">
@@ -87,13 +87,13 @@
   <div style="display:flex;gap:1rem;flex-wrap:wrap;">
     {% if e.url_image_portrait %}
       <div style="text-align:center;">
-        <img src="{{ e.url_image_portrait }}" alt="affiche portrait" style="height:220px;width:auto;border-radius:.4rem;border:1px solid #e7e1d4;">
+        <img src="{{ e.url_image_portrait }}" alt="affiche portrait" referrerpolicy="no-referrer" style="height:220px;width:auto;border-radius:.4rem;border:1px solid #e7e1d4;">
         <div class="muted text-sm" style="margin-top:.25rem;">Portrait (carte, réseaux) · <a href="{{ e.url_image_portrait }}" target="_blank" rel="noopener" download>⬇️</a></div>
       </div>
     {% endif %}
     {% if e.url_image_wide %}
       <div style="text-align:center;">
-        <img src="{{ e.url_image_wide }}" alt="affiche paysage" style="height:220px;width:auto;border-radius:.4rem;border:1px solid #e7e1d4;">
+        <img src="{{ e.url_image_wide }}" alt="affiche paysage" referrerpolicy="no-referrer" style="height:220px;width:auto;border-radius:.4rem;border:1px solid #e7e1d4;">
         <div class="muted text-sm" style="margin-top:.25rem;">Paysage (hero 16:9) · <a href="{{ e.url_image_wide }}" target="_blank" rel="noopener" download>⬇️</a></div>
       </div>
     {% endif %}
