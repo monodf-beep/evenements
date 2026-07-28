@@ -71,3 +71,38 @@ function cs_link_translations(WP_REST_Request $req) {
     pll_save_post_translations($clean);
     return new WP_REST_Response(array('linked' => $clean), 200);
 }
+
+/**
+ * (3) SLUG COMMUN À LA PAIRE — route dédiée, DEMANDE EXPLICITE (jamais posée en silence
+ * par cs/v1/event, cf. cs-publish.php). Sert à aligner le slug d'une fiche IT/FR déjà
+ * publiée sur celui de sa jumelle, une fois les deux appariées (link_translations_as,
+ * mécanisme B) : sans URL commune, impossible de retrouver visuellement la paire.
+ * wp_update_post() seul — jamais tribe_update_event() — pour ne toucher QUE le slug,
+ * rien d'autre du post.
+ */
+add_action('rest_api_init', function () {
+    register_rest_route('cs/v1', '/set-slug', array(
+        'methods'             => 'POST',
+        'callback'            => 'cs_set_slug',
+        'permission_callback' => function () { return current_user_can('edit_posts'); },
+    ));
+});
+
+function cs_set_slug(WP_REST_Request $req) {
+    $b = $req->get_json_params();
+    $pid  = (int) ($b['post_id'] ?? 0);
+    $slug = sanitize_title((string) ($b['slug'] ?? ''));
+    if (!$pid || !$slug || get_post_type($pid) !== 'tribe_events') {
+        return new WP_Error('bad_request', 'post_id/slug invalide.', array('status' => 400));
+    }
+    $old_slug = get_post_field('post_name', $pid);
+    $result = wp_update_post(array('ID' => $pid, 'post_name' => $slug), true);
+    if (is_wp_error($result)) {
+        return new WP_Error('update_failed', $result->get_error_message(), array('status' => 500));
+    }
+    return new WP_REST_Response(array(
+        'id' => $pid, 'old_slug' => $old_slug,
+        'new_slug' => get_post_field('post_name', $pid),
+        'permalink' => get_permalink($pid),
+    ), 200);
+}

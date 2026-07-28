@@ -105,9 +105,8 @@ def _groups(events: list[dict]) -> list[list[dict]]:
 
 
 def _link_map(group: list[dict]) -> dict[str, dict]:
-    """Construit {langue: {"id": id événement, "wp": wp_post_id_as}} pour un groupe (une
-    fiche par langue). En cas de collision (2 fiches même langue), on garde la 1re et on
-    journalise."""
+    """Construit {langue: {"id":…, "wp":…, "permalink":…}} pour un groupe (une fiche par
+    langue). En cas de collision (2 fiches même langue), on garde la 1re et on journalise."""
     out: dict[str, dict] = {}
     for ev in sorted(group, key=lambda e: e["id"]):
         lang = _lang(ev)
@@ -117,8 +116,13 @@ def _link_map(group: list[dict]) -> dict[str, dict]:
                         "on ignore id=%d (WP#%s)", lang,
                         (ev.get("title", "") or "")[:40], out[lang]["wp"], ev["id"], pid)
             continue
-        out[lang] = {"id": ev["id"], "wp": pid}
+        out[lang] = {"id": ev["id"], "wp": pid, "permalink": ev.get("wp_permalink_as") or ""}
     return out
+
+
+def _slug_of(permalink: str) -> str:
+    path = urlparse((permalink or "").strip()).path.rstrip("/")
+    return path.rsplit("/", 1)[-1] if path else ""
 
 
 def _mark_pair_in_db(conn: sqlite3.Connection, pair: dict[str, dict]) -> None:
@@ -134,6 +138,42 @@ def _mark_pair_in_db(conn: sqlite3.Connection, pair: dict[str, dict]) -> None:
         conn.execute("UPDATE events_raw SET translation_of=?, translated_lang=? WHERE id=?",
                     (primary_id, lang, sec_id))
     conn.commit()
+
+
+def _align_slug(wp_url: str, auth, conn: sqlite3.Connection, pair: dict[str, dict]) -> None:
+    """Aligne le slug de la fiche SECONDAIRE sur celui de la PRIMAIRE (même règle que
+    _mark_pair_in_db : FR primaire si présent). Retour Franck : « les URL des paires
+    doivent avoir du commun sinon c'est impossible de s'y retrouver ». Ne touche RIEN si
+    le slug est déjà identique (idempotent, journalise seulement les vrais changements)."""
+    langs = sorted(pair, key=lambda l: (l != "fr", l))
+    primary, secondaries = langs[0], langs[1:]
+    primary_slug = _slug_of(pair[primary]["permalink"])
+    if not primary_slug:
+        log.warning("Pas de permalien connu pour la primaire WP#%s — alignement de "
+                    "slug ignoré pour ce groupe.", pair[primary]["wp"])
+        return
+    token = base64.b64encode(f"{auth[0]}:{auth[1]}".encode("utf-8")).decode("ascii")
+    endpoint = f"{wp_url}/?rest_route=/cs/v1/set-slug"
+    for lang in secondaries:
+        sec = pair[lang]
+        if _slug_of(sec["permalink"]) == primary_slug:
+            continue                                   # déjà aligné
+        try:
+            resp = requests.post(endpoint, json={"post_id": sec["wp"], "slug": primary_slug},
+                                 auth=auth, headers={**_UA, "X-CS-Auth": token}, timeout=30)
+            resp.raise_for_status()
+            new_permalink = resp.json().get("permalink") or ""
+            log.info("Slug aligné : WP#%s → « %s » (%s)", sec["wp"], primary_slug,
+                     new_permalink or "?")
+            if new_permalink:
+                conn.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=?",
+                            (new_permalink, sec["id"]))
+                conn.commit()
+        except requests.HTTPError as exc:
+            log.error("Alignement de slug refusé pour WP#%s (%s) : %s", sec["wp"],
+                      exc.response.status_code, exc.response.text[:200])
+        except requests.RequestException as exc:
+            log.error("Alignement de slug impossible pour WP#%s : %s", sec["wp"], exc)
 
 
 def _post_link(wp_url: str, auth, translations: dict[str, int]) -> bool:
@@ -196,6 +236,8 @@ def main(argv=None) -> int:
             # Écrit le lien en base AUSSI : sans ça, le back-office (badge 🇮🇹, fiche
             # groupée) ignore la paire — seul le lien WordPress/Polylang serait à jour.
             _mark_pair_in_db(conn, p)
+            # URL commune à la paire (slug de la secondaire aligné sur la primaire).
+            _align_slug(wp_url, auth, conn, p)
     conn.close()
     log.info("=== Liage terminé : %d/%d paire(s) liée(s) (WordPress + base). ===", ok, len(pairs))
     return 0

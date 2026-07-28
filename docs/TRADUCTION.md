@@ -77,6 +77,8 @@ Beaucoup de sources (Vallée d'Aoste, transfrontalier) publient le **même évé
 
 Le liage passe par le même endpoint `cs/v1/link-translations`. **Dry-run par défaut**, `--apply` pour exécuter.
 
+**URL commune à la paire** (retour Franck, 28/07/2026) : `link_translations_as --apply` écrit aussi `translation_of`/`translated_lang` en base (pour le badge/groupement back-office, cf. §6) et **aligne le slug** de la fiche secondaire sur celui de la primaire (endpoint dédié `cs/v1/set-slug`, `wp_update_post` — ne touche QUE le slug, rien d'autre du post). Idempotent : ignore les paires déjà alignées.
+
 ---
 
 ## 4. La détection de langue (`utils/lang.py → detect_lang`)
