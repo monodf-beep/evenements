@@ -1253,9 +1253,21 @@ def main(argv: list[str]) -> int:
             if panel.get("verdict") == "revise":
                 log.info("[%d] panel lecteurs: moyenne=%s, %s vote(s) révision → révision",
                          ev["id"], panel.get("mean"), panel.get("votes"))
-                result = revise_article(result, panel, ev, material, client, model, court,
-                                        allow_web=allow_web)
-                panel = reader_panel(result, ev, client, review_model) or panel
+                # On GARDE LA MEILLEURE version : une révision peut faire PIRE (matière
+                # limitée → le rédacteur sur-corrige). Si le panel note la révision plus
+                # bas que le brouillon initial, on revient au brouillon initial.
+                first_result, first_panel = result, panel
+                revised = revise_article(result, panel, ev, material, client, model, court,
+                                         allow_web=allow_web)
+                rev_panel = reader_panel(revised, ev, client, review_model)
+                fm = first_panel.get("mean") or 0
+                rm = (rev_panel or {}).get("mean") or 0
+                if rev_panel and rm >= fm:
+                    result, panel = revised, rev_panel
+                else:
+                    result, panel = first_result, first_panel
+                    log.info("[%d] révision MOINS bien notée (%.1f < %.1f) → on garde le "
+                             "brouillon initial", ev["id"], rm, fm)
             if panel:
                 result["reader_panel"] = panel
         # STATUT DE SOURCE (back-office) : l'article a-t-il été écrit depuis la matière
