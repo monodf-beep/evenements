@@ -242,6 +242,24 @@
           {{ 'en repli sur la recherche web' if enriched.source.web else 'à partir des signaux du flux seul' }}.
           La chaîne « source officielle » n'a pas abouti (site injoignable ou sans page presse suivable).
         {% endif %}
+        {% if enriched.source.dossier %}
+          {% set dp = enriched.source.dossier %}
+          <div style="margin-top:.4rem;padding-top:.35rem;border-top:1px dashed #d9cfbf;">
+            📁 <b>Dossier de presse :</b>
+            {% if dp.statut == 'public' %}
+              <span style="color:#16a34a;">public — affiche récupérée automatiquement.</span>
+            {% elif dp.statut == 'accreditation' %}
+              <span style="color:#b45309;font-weight:600;">RÉSERVÉ (accréditation requise)</span> —
+              il faut <b>demander l'accès presse</b> à l'organisateur pour récupérer l'affiche et les visuels.
+            {% elif dp.statut == 'sans_affiche' %}
+              <span style="color:#b45309;">page presse publique, mais aucune affiche téléchargeable trouvée</span>
+              (site en JavaScript ?) — colle l'affiche à la main ci-dessous.
+            {% else %}
+              <span class="muted">aucune page dossier de presse repérée.</span>
+            {% endif %}
+            {% if dp.url %}<a href="{{ dp.url }}" target="_blank" rel="noopener" style="display:block;color:var(--muted);word-break:break-all;">{{ dp.url }}</a>{% endif %}
+          </div>
+        {% endif %}
       </div>
     {% endif %}
     {% if art.titre %}<h2>{{ art.titre }}</h2>{% endif %}

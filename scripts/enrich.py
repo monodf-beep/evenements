@@ -593,6 +593,33 @@ _KIT_PATH = ("/presse", "/dossier", "presskit", "kit-presse", "cartella-stampa",
              "ufficio-stampa", "area-stampa", "-stampa", "comunicat", "press-area")
 
 
+# Signaux d'un dossier de presse RÉSERVÉ (accréditation / login) — FR + IT.
+_GATED_SIGNALS = ("login-form", "mot de passe", "accrédit", "accredit", "identifiant",
+                  "s'identifier", "espace réservé", "réservé à la presse", "accès presse",
+                  "area riservata", "accesso riservato", "password", "connexion presse")
+
+
+def press_kit_status(pages: list, has_affiche: bool) -> dict:
+    """Statut du DOSSIER DE PRESSE pour le back-office, pour que Franck SACHE s'il existe et
+    s'il faut demander l'accès. Renvoie {"url": <page presse|"">, "statut": ...} où statut =
+    'public' (accessible, affiche récupérée), 'accreditation' (existe mais réservé → demander
+    l'accès), 'sans_affiche' (public mais pas d'affiche téléchargeable → coller à la main),
+    'absent'."""
+    press_url, gated = "", False
+    for p in pages or []:
+        u = (p.get("url") or "")
+        low = u.lower()
+        if any(k in low for k in _PRESS_HINTS) or any(k in low for k in _KIT_PATH):
+            press_url = press_url or u
+            if any(s in (p.get("html") or "").lower() for s in _GATED_SIGNALS):
+                gated = True
+    if not press_url:
+        return {"url": "", "statut": "absent"}
+    if has_affiche:
+        return {"url": press_url, "statut": "public"}
+    return {"url": press_url, "statut": "accreditation" if gated else "sans_affiche"}
+
+
 def extract_press_visuals(pages: list, title: str = "") -> dict:
     """Depuis les pages OFFICIELLES lues (dossier de presse), trouve l'AFFICHE de l'événement
     en PORTRAIT et en PAYSAGE (visuels HD). Priorise l'og:image, puis les fichiers au nom
@@ -1227,10 +1254,14 @@ def main(argv: list[str]) -> int:
         # OFFICIELLE (page presse/programme du site officiel) ou en repli sur la recherche
         # web ? On stocke le fait + les pages officielles lues, pour l'afficher au preview.
         if isinstance(result, dict):
+            _has_aff = bool((vis or {}).get("portrait") or (vis or {}).get("wide"))
             result["source"] = {
                 "officielle": bool(has_official),
                 "pages": [p.get("url") for p in (official_pages or []) if p.get("url")],
                 "web": bool(USE_WEB_SEARCH and allow_web and not court),
+                # Statut du dossier de presse (public / accréditation / sans affiche / absent)
+                # pour que Franck sache s'il faut demander l'accès.
+                "dossier": press_kit_status(official_pages, _has_aff),
             }
             # SCORE HOME (curation de la home Agenda) : la qualité éditoriale domine, mais
             # une source directe (dossier de presse) + les visuels officiels prouvent qu'on
