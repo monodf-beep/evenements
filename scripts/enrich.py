@@ -417,8 +417,12 @@ def _find_official_site(html: str, base_url: str, title: str) -> str:
         strong_anchor = any(k in anchor for k in
                             ("site officiel", "officiel", "site web", "site internet", "site du"))
         score = tokmatch + (3 if (strong_anchor and tokmatch > 0) else 0)
-        if score > best_score:
-            best, best_score = f"{urlparse(href).scheme}://{host}/", score
+        cand = f"{urlparse(href).scheme}://{host}/"
+        # À score égal, préférer le DOMAINE RACINE (www.fortedibard.it) à un sous-domaine
+        # (hotelcavour.fortedibard.it — l'hôtel du lieu, pas le site de l'événement).
+        if score > best_score or (score == best_score and best and
+                                  len(_strip_www(host)) < len(_strip_www(urlparse(best).netloc))):
+            best, best_score = cand, score
     return best if best_score >= 2 else ""
 
 
@@ -1160,6 +1164,9 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
             (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else ""))
     critique = "\n".join(lignes) or "Article jugé creux par le panel."
     extra = ("[RETOURS DE LECTEURS sur ton brouillon précédent — CORRIGE-LE]\n" + critique +
+             "\nTu PEUX utiliser la recherche web pour trouver les RÉPONSES PRÉCISES à ces "
+             "manques (horaires, parcours, points d'accès, gratuité…) sur les sources "
+             "officielles — c'est exactement ce que le lecteur attend." +
              "\nRends l'article plus SUBSTANTIEL et CONCRET, avec les éléments propres AU TYPE "
              "d'événement (classique : œuvres, compositeurs, orchestres, solistes, chefs, "
              "lieux ; pop : têtes d'affiche ; expo : artistes et œuvres ; spectacle : pièce et "
@@ -1260,7 +1267,17 @@ def main(argv: list[str]) -> int:
             from urllib.parse import urlparse as _up
             _p = _up(official_pages[0]["url"])
             _agg = any(b in _p.netloc.lower() for b in _NOT_OFFICIAL)
-            if _p.scheme and _p.netloc and not _agg:   # jamais mémoriser un agrégateur (G2)
+            # PERTINENCE avant mémorisation : les pages lues doivent MENTIONNER l'événement
+            # (au moins un mot significatif du titre). Sinon le résolveur a rendu un site
+            # générique (nice.fr et ses pages « conseil municipal » pour la Farandole) —
+            # on garde la matière du run, mais on ne fige RIEN.
+            _joined = _fold(" ".join((p.get("html") or "")[:20000] for p in official_pages))
+            _toks = _event_tokens(ev.get("title", ""))
+            _relevant = (not _toks) or any(t in _joined for t in _toks)
+            if not _relevant:
+                log.info("[%d] URL officielle NON mémorisée (%s : pages sans mention du titre)",
+                         ev["id"], _p.netloc)
+            elif _p.scheme and _p.netloc and not _agg:  # jamais mémoriser un agrégateur (G2)
                 base = f"{_p.scheme}://{_p.netloc}/"
                 conn.execute("UPDATE events_raw SET url_officiel=? WHERE id=?", (base, ev["id"]))
                 conn.commit()
@@ -1311,8 +1328,12 @@ def main(argv: list[str]) -> int:
                 # limitée → le rédacteur sur-corrige). Si le panel note la révision plus
                 # bas que le brouillon initial, on revient au brouillon initial.
                 first_result, first_panel = result, panel
+                # La révision a le DROIT de chercher sur le web : les manques du panel
+                # (horaires de passage, parcours, accès, gratuité…) sont précisément des
+                # faits ABSENTS de la matière — sans recherche, la révision ne peut pas y
+                # répondre et tourne à vide (cas Tour Féminin).
                 revised = revise_article(result, panel, ev, material, client, model, court,
-                                         allow_web=allow_web)
+                                         allow_web=True)
                 rev_panel = reader_panel(revised, ev, client, review_model)
                 fm = first_panel.get("mean") or 0
                 rm = (rev_panel or {}).get("mean") or 0
@@ -1343,23 +1364,38 @@ def main(argv: list[str]) -> int:
             pm = (result.get("reader_panel") or {}).get("mean")
             has_p = bool(vis.get("portrait")) if isinstance(vis, dict) else False
             has_w = bool(vis.get("wide")) if isinstance(vis, dict) else False
-            affiches = "deux" if (has_p and has_w) else ("une" if (has_p or has_w) else "aucune")
+            # PHOTO OFFICIELLE (règle Franck) : une photo qui vient du SITE OFFICIEL (ex. la
+            # photo Cazzullo de la page événement du Forte di Bard) vaut mise en avant même
+            # sans affiche — la note reste haute. On compare le domaine de url_image aux
+            # domaines officiels lus (pages + url_officiel).
+            photo_off = False
+            _img_host = _strip_www(_up0(ev.get("url_image") or "").netloc)
+            if _img_host:
+                _off_hosts = {_strip_www(_up0(p.get("url") or "").netloc)
+                              for p in (official_pages or [])}
+                _off_hosts.add(_strip_www(_up0(ev.get("url_officiel") or "").netloc))
+                photo_off = _img_host in {h for h in _off_hosts if h}
+            affiches = ("deux" if (has_p and has_w) else
+                        "une" if (has_p or has_w) else
+                        "photo officielle" if photo_off else "aucune")
             q = (pm or 0) / 5 * 6                    # qualité éditoriale (panel local) : 0-6
             src = 2.5 if has_official else 0.0        # source directe fiable : +2,5
-            aff = 1.5 if (has_p and has_w) else (0.75 if (has_p or has_w) else 0.0)  # visuels
+            aff = (1.5 if (has_p and has_w)           # visuels : affiches > photo officielle
+                   else 0.75 if (has_p or has_w or photo_off) else 0.0)
             hs = round(min(10.0, q + src + aff), 1)
             # PLACEMENT : où cette fiche PEUT aller sur le site et en newsletter, déduit du
-            # score et des visuels. Sans affiche, pas de mise en avant visuelle (hero/En
-            # évidence/newsletter avec image) : la note baisse ET le placement le dit.
-            has_aff = has_p or has_w
+            # score et des visuels. Affiche officielle OU photo du site officiel → mise en
+            # avant visuelle possible ; le HERO reste réservé au combo d'affiches.
+            has_visu = has_p or has_w or photo_off
             if hs >= 8 and has_p and has_w:
                 place = ("À la une (hero home) · En évidence · newsletter AVEC visuel — "
                          "combo complet")
-            elif hs >= 6 and has_aff:
-                place = "En évidence (home) · sélections · newsletter AVEC visuel"
+            elif hs >= 6 and has_visu:
+                place = ("En évidence (home) · sélections · newsletter AVEC visuel"
+                         + (" (photo du site officiel)" if (photo_off and not (has_p or has_w)) else ""))
             elif hs >= 6:
                 place = ("sélections & listes (texte) · newsletter en brève SANS visuel — "
-                         "pas de mise en avant home tant qu'il n'y a pas d'affiche")
+                         "pas de mise en avant home sans affiche ni photo officielle")
             else:
                 place = "catalogue / listes seulement (agenda, archives)"
             result["home"] = {"score": hs, "panel": pm,
