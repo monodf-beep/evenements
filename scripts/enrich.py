@@ -52,6 +52,7 @@ load_dotenv(ROOT / ".env")
 from utils.logger import get_logger
 from utils import usage
 from utils.images import fetch_og_image
+from scripts.dates import extract_time
 from scripts.scraper_events import init_db
 
 log = get_logger("enrich")
@@ -1427,13 +1428,28 @@ def main(argv: list[str]) -> int:
             log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
                      ev["id"], hs, pm, has_official, affiches, place)
         title, md = build_article_md(result)
+        # Heure de DÉBUT réelle (déterministe, zéro coût — scripts.dates.extract_time) :
+        # l'agent écrit souvent l'heure en PROSE (« à 21h30 ») sans qu'elle soit jamais
+        # structurée ailleurs → cs-publish.php force sinon une fiche « journée entière »
+        # (00:00-23:59) qui contredit le Schema.org Event affiché. Ordre de priorité :
+        # infos_pratiques et l'encadré (factuels) avant le programme et la prose.
+        art = result.get("article") or {}
+        _prog = art.get("programme")
+        _prog_text = " ".join(str(p) for p in _prog) if isinstance(_prog, list) else str(_prog or "")
+        time_start = ""
+        for _txt in (result.get("infos_pratiques", ""), art.get("encadre", ""),
+                    _prog_text, art.get("chapo", ""), art.get("corps", "")):
+            time_start = extract_time(_txt or "")
+            if time_start:
+                break
         conn.execute("""
         UPDATE events_raw SET
             enrich_status='enriched', enriched_at=datetime('now'), enrich_model=?,
-            enrich_data=?, article_title=?, article_md=?, home_score=?
+            enrich_data=?, article_title=?, article_md=?, home_score=?,
+            time_start=COALESCE(NULLIF(?,''), time_start)
         WHERE id=?
         """, (model, json.dumps(result, ensure_ascii=False), title, md,
-              (result.get("home") or {}).get("score"), ev["id"]))
+              (result.get("home") or {}).get("score"), time_start, ev["id"]))
         conn.commit()
         # File « À vérifier » : les doutes factuels signalés par l'agent sont poussés au
         # back-office (garde-fou humain). On resynchronise les points EN ATTENTE (les

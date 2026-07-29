@@ -201,6 +201,34 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
     return ("", "", "none")
 
 
+# Heure : UNIQUEMENT des motifs avec un mot-clé de contexte sans ambiguïté (« à »/« dès »
+# français, « ore » italien). Pas de motif « nu » (« 21h30 » seul) : sur un site culturel,
+# une durée s'écrit pareil (« Zootopie 2, 1h45 », « un film de 2h30 ») — même philosophie
+# que parse_dates : gratuit, sans LLM, ZÉRO tentative de deviner sur du texte ambigu.
+_TIME_RE = re.compile(
+    r"\bore\s+(?P<h1>[01]?\d|2[0-3])(?:[:.hH](?P<m1>[0-5]\d))?\b"    # italien : « ore 21 », « ore 21:30 »
+    r"|\b(?:à|dès)\s+(?P<h2>[01]?\d|2[0-3])[hH](?P<m2>[0-5]\d)?\b",  # français : « à 21h30 », « dès 20h »
+    re.IGNORECASE)
+
+# « à » est ambigu quand il CLÔT une plage (« ouvert de 9h à 18h » → 18h est la fermeture,
+# pas un début) : on écarte un match « à » précédé de près par un autre « Xh ».
+_RANGE_BEFORE = re.compile(r"[01]?\d[hH]\d{0,2}\s*(?:-|–|—)?\s*$")
+
+
+def extract_time(text: str) -> str:
+    """Heure de DÉBUT réelle « HH:MM », ou "" si rien de fiable. Déterministe, gratuit.
+    Prend le PREMIER motif fiable trouvé (l'heure de début est presque toujours
+    mentionnée avant une éventuelle heure de fin dans un texte français/italien)."""
+    t = _strip(text) if text else ""
+    for m in _TIME_RE.finditer(t):
+        if m.group("h2") is not None and _RANGE_BEFORE.search(t[max(0, m.start() - 12):m.start()]):
+            continue  # « de 9h à 18h » : 18h ferme une plage, pas une heure de début
+        h = m.group("h1") if m.group("h1") is not None else m.group("h2")
+        mn = m.group("m1") or m.group("m2") or "00"
+        return f"{int(h):02d}:{mn}"
+    return ""
+
+
 def dates_from_page(html: str) -> tuple[str, str, str]:
     """Extrait une date depuis le HTML d'une page d'événement, du plus FIABLE au moins :
     1) JSON-LD schema.org Event (startDate/endDate) — le standard des sites d'événements ;

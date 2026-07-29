@@ -34,6 +34,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 # On réutilise la mise en forme de l'article et le mapping de catégorie du
 # publisher historique (mêmes règles éditoriales, y compris charte §8 sur le radar).
+from scripts.dates import extract_time
 from scripts.publisher import build_post, _map_category, _upload_featured_media
 # Détection des logos/pictogrammes + bannières de repli par territoire × catégorie + filtres image.
 from utils.sources import (is_logo_image, load_territory_images, load_territory_category_images,
@@ -215,12 +216,20 @@ def _build_payload(event: dict) -> dict:
     }
 
     start_iso, end_iso = _iso_dates(event)
+    # Heure de DÉBUT réelle (« HH:MM ») si connue — sinon la fiche reste en journée
+    # entière (comportement historique, cs-publish.php). Priorité à time_start (posé à
+    # l'enrichissement, scripts/enrich.py) ; repli déterministe sur la description pour
+    # les événements jamais enrichis (court, ou publiés avant ce champ).
+    start_time = (event.get("time_start") or "").strip()
+    if not re.fullmatch(r"[0-2]\d:[0-5]\d", start_time):
+        start_time = extract_time(event.get("description") or "")
     payload = {
         "wp_post_id":  event.get("wp_post_id_as") or None,
         "title":       title,
         "content":     content,
         "start_date":  start_iso,
         "end_date":    end_iso,
+        "start_time":  start_time,
         "category":    _map_category(event.get("llm_categorie")),
         "territoire":  _map_territoire(event.get("territoire", "")),
         # Langue Polylang (site bilingue FR/IT) : détectée sur le texte, départagée par

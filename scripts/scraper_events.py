@@ -197,7 +197,14 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # finir lui-même dans l'app plutôt que de passer par l'API. done_at à
                       # NULL tant que ce n'est pas fait -> alimente la file /semaine.
                       ("ig_manual_mode", "INTEGER DEFAULT 0"),
-                      ("ig_manual_done_at", "TEXT")):
+                      ("ig_manual_done_at", "TEXT"),
+                      # Heure de DÉBUT réelle (« HH:MM »), extraite déterministe (regex,
+                      # scripts/dates.extract_time) — JAMAIS devinée par LLM, coût zéro.
+                      # Vide = heure inconnue → l'événement reste publié en journée entière
+                      # (comportement historique, cs-publish.php). Corrige le Schema.org
+                      # Event qui affichait 00:00-23:59 même quand l'heure réelle (ex.
+                      # « 21h30 ») était visible dans le texte mais jamais transmise à TEC.
+                      ("time_start", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

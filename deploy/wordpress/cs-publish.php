@@ -90,15 +90,30 @@ function cs_publish_event(WP_REST_Request $req) {
     }
     // Dates : NORMALISER en 'Y-m-d H:i:s'. tribe_create_event retombe silencieusement
     // sur AUJOURD'HUI si on lui passe une date « seule » (ex. « 2025-07-22 ») ou un
-    // format qu'il ne reconnaît pas. On force donc un datetime complet. Pas d'heure
-    // fiable depuis les sources → on traite en JOURNÉE ENTIÈRE (all-day).
+    // format qu'il ne reconnaît pas. On force donc un datetime complet.
     $start_ts = !empty($b['start_date']) ? strtotime((string) $b['start_date']) : false;
     if ($start_ts) {
         $end_ts = !empty($b['end_date']) ? strtotime((string) $b['end_date']) : $start_ts;
         if (!$end_ts || $end_ts < $start_ts) { $end_ts = $start_ts; }
-        $args['EventStartDate'] = date('Y-m-d', $start_ts) . ' 00:00:00';
-        $args['EventEndDate']   = date('Y-m-d', $end_ts)   . ' 23:59:59';
-        $args['EventAllDay']    = 'yes';
+        // Heure de DÉBUT réelle (« HH:MM », extraite déterministe côté Python) : sans
+        // ça, le Schema.org Event affichait 00:00-23:59 même quand l'heure exacte (ex.
+        // « 21h30 ») était visible dans l'article — divergence donnée structurée / page
+        // visible, signalée par l'audit SEO du 2026-07-29. Pas d'heure connue → repli
+        // JOURNÉE ENTIÈRE (comportement historique, inchangé).
+        $start_time = (!empty($b['start_time']) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $b['start_time']))
+            ? (string) $b['start_time'] : '';
+        if ($start_time !== '') {
+            $args['EventStartDate'] = date('Y-m-d', $start_ts) . ' ' . $start_time . ':00';
+            // Pas d'heure de fin fiable non plus (on ne l'extrait pas) : même heure que
+            // le début plutôt que d'inventer une durée — TEC affiche alors un point de
+            // départ précis sans revendiquer une fin qu'on ne connaît pas.
+            $args['EventEndDate'] = date('Y-m-d', $end_ts) . ' ' . $start_time . ':00';
+            $args['EventAllDay']  = 'no';
+        } else {
+            $args['EventStartDate'] = date('Y-m-d', $start_ts) . ' 00:00:00';
+            $args['EventEndDate']   = date('Y-m-d', $end_ts)   . ' 23:59:59';
+            $args['EventAllDay']    = 'yes';
+        }
     }
     // Site officiel de l'événement (champ natif TEC « EventURL »).
     if (!empty($b['website'])) { $args['EventURL'] = esc_url_raw((string) $b['website']); }
