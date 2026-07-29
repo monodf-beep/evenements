@@ -31,6 +31,8 @@ import json
 import os
 import sqlite3
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -311,38 +313,30 @@ def translate_article(client, model, enrich_json: str, target: str,
     return json.dumps(new_data, ensure_ascii=False)
 
 
-def _retranslate(conn, args, client, voix) -> int:
-    """RE-TRADUIT le jumeau EXISTANT des ids ORIGINAUX donnés : régénère titre + description
-    + article (enrich_data) depuis l'original avec les règles courantes et MET À JOUR la fiche
-    traduite en place (garde son id, son wp_post_id_as → update WP, sa liaison Polylang).
-    Sert au re-travail rétroactif — ne crée jamais de doublon."""
-    if not args.ids:
-        log.error("--retranslate nécessite des ids (fiches ORIGINALES dont on re-traduit le jumeau).")
-        conn.close()
-        return 1
-    ph = ",".join("?" * len(args.ids))
-    twins = [dict(r) for r in conn.execute(
-        f"SELECT * FROM events_raw WHERE translation_of IN ({ph}) AND duplicate_of IS NULL",
-        args.ids).fetchall()]
-    log.info("%d jumeau(x) à re-traduire%s.", len(twins), "" if args.apply else " (simulation)")
-    done = 0
-    for tw in twins:
+def _retranslate_one(tw: dict, args, client, voix) -> str:
+    """RE-TRADUIT un jumeau EXISTANT (voir `_retranslate`), avec sa PROPRE connexion SQLite
+    (WAL) — permet l'appel en parallèle sur plusieurs jumeaux (cf. `_retranslate`,
+    ThreadPoolExecutor). Renvoie 'done' | 'skip' | 'error'."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
         orig = conn.execute("SELECT * FROM events_raw WHERE id=?", (tw["translation_of"],)).fetchone()
         if not orig:
-            continue
+            return "skip"
         orig = dict(orig)
         tgt = (tw.get("translated_lang") or _target(detect_lang(
             orig.get("title", ""), orig.get("description", ""), orig.get("territoire", "")))).strip()
         log.info("[orig %s → jumeau %s] re-traduction %s : %s", orig["id"], tw["id"], tgt,
                  (orig.get("title") or "")[:50])
         if not args.apply:
-            continue
+            return "skip"
         if not client:
-            log.error("ANTHROPIC_API_KEY absente — impossible de re-traduire."); break
+            log.error("[jumeau %s] ANTHROPIC_API_KEY absente — impossible de re-traduire.", tw["id"])
+            return "error"
         tr = translate_title_desc(client, args.model, orig.get("title", ""),
                                   orig.get("description", "") or "", tgt, voix)
         if not tr:
-            continue
+            return "error"
         tr_enrich = tr_art_title = ""
         src_enrich = (orig.get("enrich_data") or "").strip()
         if src_enrich:
@@ -363,12 +357,146 @@ def _retranslate(conn, args, client, voix) -> int:
         upd.update({"title": tr["title"], "description": tr["description"],
                     "article_title": tr_art_title, "enrich_data": tr_enrich, "force_lang": tgt})
         publish_to_as(upd)
-        done += 1
         log.info("[jumeau %s] re-traduit (%s) : %s", tw["id"], tgt, tr["title"][:50])
+        return "done"
+    finally:
+        conn.close()
+
+
+def _retranslate(args, client, voix) -> int:
+    """RE-TRADUIT le jumeau EXISTANT des ids ORIGINAUX donnés : régénère titre + description
+    + article (enrich_data) depuis l'original avec les règles courantes et MET À JOUR la fiche
+    traduite en place (garde son id, son wp_post_id_as → update WP, sa liaison Polylang).
+    Sert au re-travail rétroactif — ne crée jamais de doublon. EN PARALLÈLE (TRANSLATE_WORKERS,
+    déf. 3) : chaque jumeau est indépendant, cf. `_retranslate_one` (sa propre connexion)."""
+    if not args.ids:
+        log.error("--retranslate nécessite des ids (fiches ORIGINALES dont on re-traduit le jumeau).")
+        return 1
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    ph = ",".join("?" * len(args.ids))
+    twins = [dict(r) for r in conn.execute(
+        f"SELECT * FROM events_raw WHERE translation_of IN ({ph}) AND duplicate_of IS NULL",
+        args.ids).fetchall()]
+    conn.close()
+    log.info("%d jumeau(x) à re-traduire%s.", len(twins), "" if args.apply else " (simulation)")
+    try:
+        workers = max(1, int(os.getenv("TRANSLATE_WORKERS", "3") or 3))
+    except ValueError:
+        workers = 3
+    results: list[str] = []
+    if twins:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="retranslate") as ex:
+            futures = [ex.submit(_retranslate_one, tw, args, client, voix) for tw in twins]
+            for fut in futures:
+                try:
+                    results.append(fut.result())
+                except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
+                    log.warning("worker en échec (exception non gérée) : %s", exc)
+                    results.append("error")
+    done = results.count("done")
     log.info("Re-traduction terminée — %d jumeau(x) mis à jour%s.", done,
              "" if args.apply else "  (simulation : rien écrit)")
-    conn.close()
     return 0
+
+
+def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
+                   auth: tuple, img_lang: dict, img_lang_lock: threading.Lock) -> str:
+    """Traduit UN événement de bout en bout (titre/description + article + publication WP
+    + liaison Polylang), avec sa PROPRE connexion SQLite (WAL) — permet l'appel en parallèle
+    sur plusieurs événements (cf. main(), ThreadPoolExecutor). Renvoie 'done' | 'skip' |
+    'error'. La réservation de `img_lang` (dédup affiche) se fait ICI, sous verrou, AVANT
+    tout travail — jamais après coup : sinon deux threads pourraient tous deux voir
+    l'affiche « libre » avant que l'un des deux ne l'ait marquée prise."""
+    # Langue RÉELLE = celle de l'article déjà rédigé s'il existe (jamais le seul
+    # titre brut) : scripts.enrich écrit TOUJOURS en français par défaut, un titre
+    # italien à la source peut donc déjà porter un article français. Sans ce
+    # contrôle, on traduirait un article déjà français « vers » le français —
+    # produisant un quasi-doublon au lieu d'une vraie traduction (constaté : id 4122).
+    src = effective_lang(ev)
+    tgt = _target(src)
+    img = ev.get("url_image") or ""
+    if img:
+        with img_lang_lock:
+            if img in img_lang.get(tgt, set()):
+                log.info("[%s] jumelle %s déjà présente (même affiche) — ignoré : %s",
+                         ev["id"], tgt, (ev.get("title") or "")[:50])
+                return "skip"
+            img_lang.setdefault(tgt, set()).add(img)  # réservé — voir docstring
+    log.info("[%s] %s→%s (score %s) : %s", ev["id"], src, tgt,
+             ev.get("user_score") if ev.get("user_score") is not None else ev.get("llm_score"),
+             (ev.get("title") or "")[:60])
+    if not args.apply:
+        return "skip"
+    if not (client and api_key):
+        log.error("[%s] ANTHROPIC_API_KEY absente — impossible de traduire.", ev["id"])
+        return "error"
+    tr = translate_title_desc(client, args.model, ev.get("title", ""),
+                              ev.get("description", "") or "", tgt, voix)
+    if not tr:
+        return "error"
+    # Parité éditoriale : si la source porte un article enrichi (enrich_data), on le
+    # TRADUIT pour que la fiche cible reçoive le même « escalier » que la version FR
+    # (build_post le rend depuis enrich_data). Repli : sans enrich_data, on retombe
+    # sur la description traduite seule (comportement historique).
+    src_enrich = (ev.get("enrich_data") or "").strip()
+    tr_enrich = ""
+    tr_art_title = ""
+    if src_enrich:
+        ea = translate_article(client, args.model, src_enrich, tgt, voix)
+        if ea:
+            tr_enrich = ea
+            try:
+                tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
+            except (ValueError, TypeError):
+                tr_art_title = ""
+    new_ev = dict(ev)
+    new_ev.update({
+        "title": tr["title"], "description": tr["description"],
+        "article_title": tr_art_title, "article_md": "", "enrich_data": tr_enrich,
+        "seo_title": "", "seo_meta": "", "seo_slug": "", "seo_keyphrase": "",
+        "force_lang": tgt, "force_create": True,
+        "wp_post_id_as": None, "wp_post_id_cs": None,
+        # URL commune à la paire (retour Franck : sans ça, impossible de s'y
+        # retrouver) — la fiche traduite reprend le slug de l'original.
+        "slug": _slug_of(ev.get("wp_permalink_as")),
+    })
+    new_ev.pop("id", None)
+    wp_id, permalink, raw_url = publish_to_as(new_ev)
+    if not wp_id:
+        log.warning("[%s] publication de la traduction échouée.", ev["id"])
+        return "error"
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        # Enregistre la fiche traduite (url_source synthétique — la colonne est UNIQUE).
+        # enrich_status='enriched' : défense en profondeur (en plus de l'exclusion
+        # translation_of dans enrich.select_events) — cette fiche ne doit JAMAIS être
+        # reprise par scripts.enrich, qui écrirait un article français par-dessus.
+        conn.execute(
+            "INSERT INTO events_raw (title, description, date_start, date_event_start, "
+            "date_event_end, lieu, ville, territoire, url_source, url_image, organisateur, "
+            "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
+            "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
+            "translation_of, translated_lang, article_title, enrich_data, image_credit, "
+            "enrich_status) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
+             ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
+             f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
+             ev.get("source_name"), ev.get("source_type"), ev.get("llm_score"),
+             ev.get("user_score"), ev.get("llm_categorie"), ev.get("statut"), wp_id, permalink,
+             raw_url, datetime.now().isoformat(timespec="seconds"), ev["id"], tgt,
+             tr_art_title, tr_enrich, ev.get("image_credit"), "enriched"))
+        # Lie les deux fiches (Polylang) via l'endpoint.
+        if all([wp_url, auth[0], auth[1]]):
+            _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
+        conn.execute("UPDATE events_raw SET translated_at=? WHERE id=?",
+                     (datetime.now().isoformat(timespec="seconds"), ev["id"]))
+        conn.commit()
+    finally:
+        conn.close()
+    log.info("[%s] traduit → WP#%s (%s), lié.", ev["id"], wp_id, tgt)
+    return "done"
 
 
 def main(argv=None) -> int:
@@ -437,97 +565,37 @@ def main(argv=None) -> int:
     wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
     auth = (os.getenv("WP_AS_USER", ""), os.getenv("WP_AS_APP_PASSWORD", ""))
 
+    conn.close()
+
     if args.retranslate:
-        return _retranslate(conn, args, client, voix)
+        return _retranslate(args, client, voix)
 
-    done = skipped = 0
-    for ev in rows:
-        # Langue RÉELLE = celle de l'article déjà rédigé s'il existe (jamais le seul
-        # titre brut) : scripts.enrich écrit TOUJOURS en français par défaut, un titre
-        # italien à la source peut donc déjà porter un article français. Sans ce
-        # contrôle, on traduirait un article déjà français « vers » le français —
-        # produisant un quasi-doublon au lieu d'une vraie traduction (constaté : id 4122).
-        src = effective_lang(ev)
-        tgt = _target(src)
-        img = ev.get("url_image") or ""
-        if img and img in img_lang.get(tgt, set()):
-            skipped += 1
-            log.info("[%s] jumelle %s déjà présente (même affiche) — ignoré : %s",
-                     ev["id"], tgt, (ev.get("title") or "")[:50])
-            continue
-        log.info("[%s] %s→%s (score %s) : %s", ev["id"], src, tgt,
-                 ev.get("user_score") if ev.get("user_score") is not None else ev.get("llm_score"),
-                 (ev.get("title") or "")[:60])
-        if not args.apply:
-            continue
-        if not (client and api_key):
-            log.error("ANTHROPIC_API_KEY absente — impossible de traduire."); break
-        tr = translate_title_desc(client, args.model, ev.get("title", ""),
-                                  ev.get("description", "") or "", tgt, voix)
-        if not tr:
-            continue
-        # Parité éditoriale : si la source porte un article enrichi (enrich_data), on le
-        # TRADUIT pour que la fiche cible reçoive le même « escalier » que la version FR
-        # (build_post le rend depuis enrich_data). Repli : sans enrich_data, on retombe
-        # sur la description traduite seule (comportement historique).
-        src_enrich = (ev.get("enrich_data") or "").strip()
-        tr_enrich = ""
-        tr_art_title = ""
-        if src_enrich:
-            ea = translate_article(client, args.model, src_enrich, tgt, voix)
-            if ea:
-                tr_enrich = ea
+    # PARALLÉLISATION (TRANSLATE_WORKERS, déf. 3) : chaque événement passe par 1-2 appels
+    # LLM (titre/description + article complet) + une publication WP — en séquentiel, un
+    # lot de 10 prenait facilement 15-20 min. `img_lang_lock` protège la réservation
+    # d'affiche (dédup « même image = même événement bilingue ») : SANS lui, deux threads
+    # pourraient chacun voir l'affiche « libre » avant que l'un des deux ne l'ait marquée
+    # prise, et produire deux traductions pour le même événement.
+    img_lang_lock = threading.Lock()
+    try:
+        workers = max(1, int(os.getenv("TRANSLATE_WORKERS", "3") or 3))
+    except ValueError:
+        workers = 3
+    results: list[str] = []
+    if rows:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="translate") as ex:
+            futures = [ex.submit(_translate_one, ev, args, client, api_key, voix, wp_url,
+                                 auth, img_lang, img_lang_lock) for ev in rows]
+            for fut in futures:
                 try:
-                    tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
-                except (ValueError, TypeError):
-                    tr_art_title = ""
-        new_ev = dict(ev)
-        new_ev.update({
-            "title": tr["title"], "description": tr["description"],
-            "article_title": tr_art_title, "article_md": "", "enrich_data": tr_enrich,
-            "seo_title": "", "seo_meta": "", "seo_slug": "", "seo_keyphrase": "",
-            "force_lang": tgt, "force_create": True,
-            "wp_post_id_as": None, "wp_post_id_cs": None,
-            # URL commune à la paire (retour Franck : sans ça, impossible de s'y
-            # retrouver) — la fiche traduite reprend le slug de l'original.
-            "slug": _slug_of(ev.get("wp_permalink_as")),
-        })
-        new_ev.pop("id", None)
-        wp_id, permalink, raw_url = publish_to_as(new_ev)
-        if not wp_id:
-            log.warning("[%s] publication de la traduction échouée.", ev["id"]); continue
-        # Enregistre la fiche traduite (url_source synthétique — la colonne est UNIQUE).
-        # enrich_status='enriched' : défense en profondeur (en plus de l'exclusion
-        # translation_of dans enrich.select_events) — cette fiche ne doit JAMAIS être
-        # reprise par scripts.enrich, qui écrirait un article français par-dessus.
-        conn.execute(
-            "INSERT INTO events_raw (title, description, date_start, date_event_start, "
-            "date_event_end, lieu, ville, territoire, url_source, url_image, organisateur, "
-            "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
-            "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
-            "translation_of, translated_lang, article_title, enrich_data, image_credit, "
-            "enrich_status) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
-             ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
-             f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
-             ev.get("source_name"), ev.get("source_type"), ev.get("llm_score"),
-             ev.get("user_score"), ev.get("llm_categorie"), ev.get("statut"), wp_id, permalink,
-             raw_url, datetime.now().isoformat(timespec="seconds"), ev["id"], tgt,
-             tr_art_title, tr_enrich, ev.get("image_credit"), "enriched"))
-        # Lie les deux fiches (Polylang) via l'endpoint.
-        if all([wp_url, auth[0], auth[1]]):
-            _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
-        conn.execute("UPDATE events_raw SET translated_at=? WHERE id=?",
-                     (datetime.now().isoformat(timespec="seconds"), ev["id"]))
-        conn.commit()
-        img_lang.setdefault(tgt, set()).add(img)
-        done += 1
-        log.info("[%s] traduit → WP#%s (%s), lié.", ev["id"], wp_id, tgt)
+                    results.append(fut.result())
+                except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
+                    log.warning("worker en échec (exception non gérée) : %s", exc)
+                    results.append("error")
 
+    done, skipped = results.count("done"), results.count("skip")
     log.info("=== Traduction terminée : %d traduit(s), %d ignoré(s)%s ===",
              done, skipped, "" if args.apply else "  (simulation : rien écrit)")
-    conn.close()
     return 0
 
 

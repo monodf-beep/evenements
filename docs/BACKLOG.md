@@ -35,6 +35,25 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
   --published-only` sur le VPS avec le correctif (bien plus court — normalement guidatorino
   et ses 2 fiches, plus éventuellement 1-2 autres cas de presse locale), puis republier avec
   `--ids` la liste (courte, cette fois) que le script imprime.
+- ✅ **Fait — RÉGLÉ EN LIVE, confirmé sur le VPS** : les 4 fiches concernées (guidatorino
+  ×2, ici.fr, aostaoggi.it) republiées avec succès (`publish_batch_as --ids 159 1552 2943
+  3521`, 4/4 ok).
+- 🤖 **Parallélisation `enrich.py` / `translate_events.py`** : chaque événement passait
+  entièrement en séquentiel (lecture pages officielles + rédaction + panel + révision côté
+  enrich ; traduction titre/desc + article + publication WP côté translate) — un lot de 10
+  prenait 45-90 min. Extraction du corps de boucle en fonction PAR ÉVÉNEMENT
+  (`_process_one_event` / `_translate_one` / `_retranslate_one`), chacune avec sa PROPRE
+  connexion SQLite (WAL — plusieurs écrivains coexistent, déjà configuré dans
+  `scripts.scraper_events.init_db`), dispatchées via `ThreadPoolExecutor`. Réglages
+  `ENRICH_WORKERS` / `TRANSLATE_WORKERS` (déf. 3 chacun, `.env.example`). Points de
+  vigilance traités : l'ancien `break` sur panne API (enrich) devient un `threading.Event`
+  partagé (les workers déjà lancés finissent, les autres abandonnent) ; la dédup « même
+  affiche → pas de 2e traduction » (translate) est protégée par un `threading.Lock` avec
+  réservation AVANT le travail (pas après coup, sinon deux threads pourraient tous deux
+  passer le contrôle avant que l'un des deux ne réserve). Testé (hors LLM/réseau réels,
+  mocké) : 6 événements enrichis/traduits concurremment sans corruption DB ni doublon
+  WP ; le verrou de dédup image tient sous concurrence (8 événements à affiche partagée
+  → 1 seule traduction produite).
 - 🤖 **Visibilité + pilotage du score home** (répond à la question « pourquoi la home
   n'affiche pas les mieux notés ») : colonne `home_score` + tri `?sort=home` dans `/events`
   (back-office), badge 🏠 déjà présent en fiche (`/preview`). **Nouveau : override manuel**

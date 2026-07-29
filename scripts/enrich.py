@@ -35,7 +35,9 @@ import os
 import re
 import sqlite3
 import sys
+import threading
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
 
@@ -1265,41 +1267,22 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
     return revised if (revised and revised is not API_ERROR) else result
 
 
-def main(argv: list[str]) -> int:
-    load_dotenv(ROOT / ".env")
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        log.error("ANTHROPIC_API_KEY non définie")
-        return 1
-    # Réglages back-office : on/off + court/long, et profil de modèle.
-    from utils import settings as pipeline_settings
-    if not pipeline_settings.enrich_enabled():
-        log.info("Enrichissement DÉSACTIVÉ (réglage back-office). Rien à faire.")
-        return 0
-    mode = pipeline_settings.enrich_mode()   # off/auto/court/long — le palier est décidé par événement
-    ids = [int(a) for a in argv if a.isdigit()]
-    dfrom = dto = ""
-    if "--from" in argv:
-        dfrom = argv[argv.index("--from") + 1] if argv.index("--from") + 1 < len(argv) else ""
-    if "--to" in argv:
-        dto = argv[argv.index("--to") + 1] if argv.index("--to") + 1 < len(argv) else ""
-    # Timeout dur : une requête (même longue avec recherche web) ne doit jamais
-    # pendre indéfiniment — au pire elle échoue proprement et c'est loggé.
-    client = anthropic.Anthropic(api_key=api_key, timeout=180.0)
+def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -> str:
+    """Traite UN événement de bout en bout (matière → rédaction → panel → score → écriture
+    DB), avec sa PROPRE connexion SQLite (WAL : plusieurs écrivains coexistent, cf.
+    scripts/scraper_events.init_db) — permet d'appeler cette fonction en parallèle sur
+    plusieurs événements (cf. main(), ThreadPoolExecutor). Renvoie 'done' | 'error' |
+    'api_error' | 'skip'. `stop_flag` : threading.Event positionné par l'appelant dès
+    qu'un premier worker rencontre une erreur API — les autres workers EN COURS finissent
+    leur événement, mais un worker qui n'a pas encore commencé abandonne proprement (même
+    esprit que le `break` de l'ancienne boucle séquentielle : ne pas s'acharner si l'API
+    est en panne, sans pour autant perdre le travail déjà engagé)."""
+    if stop_flag.is_set():
+        return "skip"
+    ev = dict(event)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    init_db(conn)
-    _ensure_checks_table(conn)
-
-    events = select_events(conn, ids, dfrom, dto)
-    log.info("ids à traiter : %s", [e["id"] for e in events])
-    log.info("%d événement(s) à enrichir (mode=%s ; long→%s, court→%s ; plancher score ≥ %d)",
-             len(events), mode, pipeline_settings.model_qualite(),
-             pipeline_settings.model_eco(), MIN_SCORE)
-
-    done = 0
-    for event in events:
-        ev = dict(event)
+    try:
         # Vignette de secours : si le flux n'a pas d'image, prendre l'og:image de la
         # page source (déterministe) — SAUF si la source est un agrégateur (son og:image est
         # une carte sociale/logo générique, pas l'événement — M4).
@@ -1386,15 +1369,16 @@ def main(argv: list[str]) -> int:
                 "UPDATE events_raw SET enrich_status='api_error', "
                 "enriched_at=datetime('now'), enrich_model=? WHERE id=?", (model, ev["id"]))
             conn.commit()
-            log.warning("[%d] erreur API — marqué 'api_error', arrêt du lot", ev["id"])
-            break
+            log.warning("[%d] erreur API — marqué 'api_error'", ev["id"])
+            stop_flag.set()
+            return "api_error"
         if result is None:
             conn.execute(
                 "UPDATE events_raw SET enrich_status='error', "
                 "enriched_at=datetime('now'), enrich_model=? WHERE id=?",
                 (model, ev["id"]))
             conn.commit()
-            continue
+            return "error"
         # GARDE-FOU SOURCES (charte §8) : ne garde, dans « sources », que des URLs au domaine
         # VÉRIFIÉ officiel — le prompt seul ne suffit pas (cas vécu : guidatorino.com, un
         # guide touristique tiers, cité comme source d'un événement dont il n'est ni
@@ -1530,12 +1514,75 @@ def main(argv: list[str]) -> int:
         labels = result.get("a_verifier")
         sync_checks(conn, ev["id"], labels)
         conn.commit()
-        done += 1
         log.info("[%d] enrichi (confiance=%s) | %d à vérifier | %s", ev["id"],
                  result.get("confiance", "?"), len(labels or []), ev.get("title", "")[:60])
+        return "done"
+    finally:
+        conn.close()
 
+
+def main(argv: list[str]) -> int:
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        log.error("ANTHROPIC_API_KEY non définie")
+        return 1
+    # Réglages back-office : on/off + court/long, et profil de modèle.
+    from utils import settings as pipeline_settings
+    if not pipeline_settings.enrich_enabled():
+        log.info("Enrichissement DÉSACTIVÉ (réglage back-office). Rien à faire.")
+        return 0
+    mode = pipeline_settings.enrich_mode()   # off/auto/court/long — le palier est décidé par événement
+    ids = [int(a) for a in argv if a.isdigit()]
+    dfrom = dto = ""
+    if "--from" in argv:
+        dfrom = argv[argv.index("--from") + 1] if argv.index("--from") + 1 < len(argv) else ""
+    if "--to" in argv:
+        dto = argv[argv.index("--to") + 1] if argv.index("--to") + 1 < len(argv) else ""
+    # Timeout dur : une requête (même longue avec recherche web) ne doit jamais
+    # pendre indéfiniment — au pire elle échoue proprement et c'est loggé.
+    client = anthropic.Anthropic(api_key=api_key, timeout=180.0)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    init_db(conn)
+    _ensure_checks_table(conn)
+
+    events = select_events(conn, ids, dfrom, dto)
     conn.close()
-    log.info("=== Enrichissement terminé : %d/%d ===", done, len(events))
+    log.info("ids à traiter : %s", [e["id"] for e in events])
+    log.info("%d événement(s) à enrichir (mode=%s ; long→%s, court→%s ; plancher score ≥ %d)",
+             len(events), mode, pipeline_settings.model_qualite(),
+             pipeline_settings.model_eco(), MIN_SCORE)
+
+    # PARALLÉLISATION : chaque événement passe par plusieurs allers-retours réseau lents
+    # (lecture des pages officielles, appels LLM rédaction + panel + révision) — en
+    # séquentiel, un lot de 10 prenait 45-90 min. `ENRICH_WORKERS` (déf. 3, prudent pour ne
+    # pas cogner le rate-limit Anthropic ni les sites sources) traite plusieurs événements
+    # à la fois ; chaque worker a sa PROPRE connexion SQLite (WAL), donc aucune écriture ne
+    # se marche dessus. `stop_flag` reproduit l'ancien arrêt-sur-erreur-API : dès qu'un
+    # worker voit l'API en panne, les workers pas encore lancés abandonnent (ceux déjà en
+    # cours finissent proprement, leur travail n'est jamais perdu).
+    try:
+        workers = max(1, int(os.getenv("ENRICH_WORKERS", "3") or 3))
+    except ValueError:
+        workers = 3
+    stop_flag = threading.Event()
+    results: list[str] = []
+    if events:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="enrich") as ex:
+            futures = [ex.submit(_process_one_event, ev, client, mode, pipeline_settings,
+                                 stop_flag) for ev in events]
+            for fut in futures:
+                try:
+                    results.append(fut.result())
+                except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
+                    log.warning("worker en échec (exception non gérée) : %s", exc)
+                    results.append("error")
+
+    done = results.count("done")
+    log.info("=== Enrichissement terminé : %d/%d (%d erreur(s), %d ignoré(s) après panne API) ===",
+             done, len(events), results.count("error") + results.count("api_error"),
+             results.count("skip"))
     return 0
 
 
