@@ -117,9 +117,15 @@ def check_urls(urls: list[str], cap: int, delay: float = 0.3) -> list[dict]:
     """Vérifie chaque URL (bornée par --cap). Renvoie les problèmes trouvés."""
     findings = []
     checked = 0
+    total = min(len(urls), cap)
     for url in urls[:cap]:
         resp = _get_bounded(url)
         checked += 1
+        # Battement de cœur : sans ça, le script est SILENCIEUX tant qu'il ne trouve
+        # rien à signaler — une longue vérification sans problème ressemble alors à un
+        # blocage (confusion constatée en conditions réelles, deux fois de suite).
+        if checked % 50 == 0 or checked == total:
+            log.info("… %d/%d URL(s) vérifiée(s)", checked, total)
         time.sleep(delay)  # poli envers le serveur — pas un run quotidien agressif
         if resp is None:
             findings.append({"page_url": url, "severity": "high",
