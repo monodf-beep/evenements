@@ -54,9 +54,13 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
+    # duplicate_of/statut='merged' exclus : ce sont des doublons déjà tranchés par ailleurs
+    # (ex. id 4122, fusionné avec 2387 lors du tout premier correctif de cette session) —
+    # les restaurer les ferait repasser à tort pour des victimes de CE bug-ci.
     rows = conn.execute(
         "SELECT id, url_source, translation_of, translated_lang, enriched_at, translated_at, "
-        "wp_post_id_as, title FROM events_raw WHERE url_source LIKE 'translated:%'").fetchall()
+        "wp_post_id_as, title FROM events_raw WHERE url_source LIKE 'translated:%' "
+        "AND duplicate_of IS NULL AND COALESCE(statut,'') != 'merged'").fetchall()
     log.info("%d fiche(s) créée(s) historiquement par translate_events.py.", len(rows))
 
     broken = []
