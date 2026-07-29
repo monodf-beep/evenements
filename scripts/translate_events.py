@@ -392,11 +392,14 @@ def main(argv=None) -> int:
 
     # Index des affiches par langue (dédup : ne pas re-traduire un événement dont la
     # jumelle dans la langue cible existe déjà — même image = même événement bilingue).
+    # effective_lang, PAS detect_lang sur le seul titre : sinon un événement au titre
+    # italien mais à l'article déjà français se classe lui-même en « it » et se retrouve
+    # à bloquer SA PROPRE traduction (sa propre image « existe déjà » côté it — lui).
     img_lang: dict[str, set] = {"fr": set(), "it": set()}
-    for r in conn.execute("SELECT title, description, territoire, url_image FROM events_raw "
-                          "WHERE COALESCE(url_image,'')<>'' AND COALESCE(wp_post_id_as,0)>0 "
-                          "AND duplicate_of IS NULL"):
-        img_lang[detect_lang(r["title"] or "", r["description"] or "", r["territoire"] or "")].add(r["url_image"])
+    for r in conn.execute("SELECT title, description, territoire, url_image, article_title, "
+                          "enrich_data FROM events_raw WHERE COALESCE(url_image,'')<>'' "
+                          "AND COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL"):
+        img_lang[effective_lang(dict(r))].add(r["url_image"])
 
     terr_keys = None
     if args.territoire:
