@@ -407,9 +407,21 @@ def inject_globals():
         conn.close()
     except Exception:
         pass
+    seo = 0
+    try:
+        conn = get_db()
+        _ensure_seo_tables(conn)
+        # Pastille SEO : seulement critique/élevé (pas le moyen/faible/info, sinon bruit
+        # permanent — le tableau de bord lui-même montre tout).
+        seo = conn.execute(
+            "SELECT COUNT(*) n FROM seo_findings WHERE status='todo' "
+            "AND severity IN ('critical','high')").fetchone()["n"]
+        conn.close()
+    except Exception:
+        pass
     return {"nav": {"pending": pending, "validate": validate,
                     "tocomplete": tocomplete, "regie": regie, "verifier": verifier,
-                    "audit": audit},
+                    "audit": audit, "seo": seo},
             "nav_alert": friendly_alert(),
             # Bases WordPress (liens directs vers les brouillons créés) :
             #   wp_base    → culturasabauda.eu (article, wp_post_id_cs)
@@ -1146,6 +1158,76 @@ def _persist_audit_flags(conn, audited_ids, flagged_map):
             "UPDATE image_audit_flags SET resolved_at=datetime('now') "
             "WHERE event_id=? AND resolved_at IS NULL", (eid,))
     conn.commit()
+
+
+def _ensure_seo_tables(conn):
+    """Tableau de bord SEO : deux tables, idempotent (même pattern que `checks`).
+    `seo_runs` = historique des audits (coût, portée) ; `seo_findings` = les trouvailles,
+    une par ligne, avec statut humain (todo/done/dismissed) — jamais auto-appliqué pour
+    l'éditorial (titres, schema métier) ; les correctifs mécaniques sûrs (meta manquante,
+    alt text, headers) peuvent être automatisés plus tard, cf. décision Franck 2026-07-29."""
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS seo_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        started_at TEXT DEFAULT (datetime('now')),
+        scope TEXT,
+        pages_count INTEGER,
+        agents_used TEXT,
+        tokens_used INTEGER,
+        notes TEXT
+    )""")
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS seo_findings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER,
+        page_url TEXT,
+        category TEXT,
+        severity TEXT NOT NULL DEFAULT 'medium',
+        title TEXT NOT NULL,
+        description TEXT,
+        recommendation TEXT,
+        source_agent TEXT,
+        status TEXT NOT NULL DEFAULT 'todo',
+        created_at TEXT DEFAULT (datetime('now')),
+        resolved_at TEXT
+    )""")
+    conn.commit()
+
+
+@app.route("/seo", methods=["GET", "POST"])
+@require_auth
+def seo_view():
+    """Tableau de bord SEO : trouvailles des audits (manuels pour l'instant), groupées par
+    sévérité. Un clic solde un point (fait) ou l'écarte (pas pertinent) — jamais d'action
+    automatique sur le site depuis cet écran."""
+    conn = get_db()
+    _ensure_seo_tables(conn)
+    if request.method == "POST":
+        fid = request.form.get("finding_id")
+        new_status = request.form.get("new_status")
+        if fid and new_status in ("done", "dismissed"):
+            conn.execute(
+                "UPDATE seo_findings SET status=?, resolved_at=datetime('now') WHERE id=?",
+                (new_status, fid))
+            conn.commit()
+            flash("Point vérifié." if new_status == "done" else "Point écarté.", "ok")
+        conn.close()
+        return redirect(url_for("seo_view"))
+    findings = [dict(r) for r in conn.execute(
+        "SELECT * FROM seo_findings WHERE status='todo' "
+        "ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 "
+        "WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END, id DESC").fetchall()]
+    resolved_count = conn.execute(
+        "SELECT COUNT(*) n FROM seo_findings WHERE status!='todo'").fetchone()["n"]
+    runs = [dict(r) for r in conn.execute(
+        "SELECT * FROM seo_runs ORDER BY id DESC LIMIT 10").fetchall()]
+    conn.close()
+    by_sev = {"critical": [], "high": [], "medium": [], "low": [], "info": []}
+    for f in findings:
+        by_sev.setdefault(f.get("severity") or "medium", by_sev["medium"]).append(f)
+    return render_template("seo.html", active="seo", by_sev=by_sev,
+                           total_todo=len(findings), resolved_count=resolved_count,
+                           runs=runs)
 
 
 @app.route("/verifier", methods=["GET", "POST"])

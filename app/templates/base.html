@@ -25,7 +25,7 @@
        en groupes repliables. Un groupe s'ouvre seul quand on est sur une de ses pages ;
        le résumé « À traiter » porte le TOTAL des pastilles même replié. #}
     {% set _traiter = ['semaine', 'validation', 'tocomplete', 'triage', 'verifier', 'audit_visuel', 'events'] %}
-    {% set _analyse = ['couverture', 'couverture_geo', 'wireframe', 'regie', 'partenariat'] %}
+    {% set _analyse = ['couverture', 'couverture_geo', 'wireframe', 'regie', 'partenariat', 'seo'] %}
     {% set _aide = ['process', 'pipeline', 'voix', 'personas', 'cowork', 'reglages'] %}
     {% set _todo_total = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
     <nav class="nav" aria-label="Navigation principale">
@@ -65,6 +65,8 @@
         <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
         <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
         <a href="/wireframe-home" class="{{ 'on' if active=='wireframe' }}" {% if active=='wireframe' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Wireframe home</a>
+        <a href="/seo" class="{{ 'on' if active=='seo' }}" {% if active=='seo' %}aria-current="page"{% endif %}><span aria-hidden="true">🔍</span> SEO
+          {% if nav.seo %}<span class="nav-badge">{{ nav.seo }}</span>{% endif %}</a>
       </details>
 
       <details {% if active in _aide %}open{% endif %}>
