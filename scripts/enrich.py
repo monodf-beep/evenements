@@ -75,8 +75,11 @@ LONG_MIN_SCORE = int(os.getenv("ENRICH_LONG_MIN_SCORE", "7"))
 BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
 # Plafond de recherches web par événement (outil serveur).
 MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "3"))
-# Budget de sortie de l'article JSON.
-MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "12000"))
+# Budget de sortie de l'article JSON. 12000 s'est révélé trop juste sur un événement à
+# matière riche (panel + programme détaillé) : stop_reason=max_tokens → JSON tronqué →
+# article perdu (aucun repli partiel). 16000 laisse de la marge sans coût significatif
+# (le budget n'est consommé que si la réponse en a réellement besoin).
+MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "16000"))
 # Raisonnement étendu : COÛTEUX et LENT (runs de ~5 min, budget de tokens épuisé avant
 # le JSON → stop_reason=max_tokens). Inutile pour « chercher + rédiger en JSON ».
 # Désactivé par défaut ; ENRICH_THINKING=1 pour l'activer (articles plus fouillés, plus chers).
