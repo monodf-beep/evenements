@@ -206,15 +206,28 @@ def main(argv=None) -> int:
          "site_health_check.py (déterministe, sans LLM)",
          f"{len(all_urls)} URL(s) au sitemap, {min(len(all_urls), args.cap)} vérifiée(s)."))
     run_id = cur.lastrowid
+    written = skipped_dup = 0
     for f in findings:
+        # Déduplication contre les points DÉJÀ ouverts (todo) : ce script tourne chaque
+        # semaine en cron — sans ça, le même problème non résolu se réinsérerait à
+        # l'identique à chaque passage (constaté : deux runs manuels le même jour ont
+        # bien failli doubler les 31 mêmes trouvailles).
+        exists = conn.execute(
+            "SELECT 1 FROM seo_findings WHERE page_url=? AND title=? AND status='todo'",
+            (f["page_url"], f["title"])).fetchone()
+        if exists:
+            skipped_dup += 1
+            continue
         conn.execute(
             "INSERT INTO seo_findings (run_id, page_url, category, severity, title, "
             "description, recommendation, source_agent) VALUES (?,?,?,?,?,?,?,?)",
             (run_id, f["page_url"], "technique", f["severity"], f["title"],
              f["description"], f["recommendation"], "site_health_check"))
+        written += 1
     conn.commit()
     conn.close()
-    log.info("=== %d problème(s) écrit(s) dans /seo (run #%d). ===", len(findings), run_id)
+    log.info("=== %d problème(s) écrit(s), %d déjà ouvert(s) (ignoré(s)) — run #%d. ===",
+             written, skipped_dup, run_id)
     return 0
 
 
