@@ -117,6 +117,17 @@ def build_post(event: dict) -> tuple[str, str]:
                     and "agendasabauda.eu" not in s:   # jamais un lien vers nous-mêmes
                 seen.add(s)
                 clean_sources.append(s)
+        # GARDE-FOU DÉTERMINISTE (charte §8) — filet, en plus du filtrage déjà fait à
+        # l'enrichissement (scripts/enrich.py:filter_official_sources) : reconstruit à
+        # chaque publication/republication depuis enrich_data, il rattrape aussi les
+        # fiches enrichies AVANT ce garde-fou. Un domaine non vérifié officiel (agrégateur,
+        # guide touristique tiers — cas vécu guidatorino.com) n'est jamais crédité/lié.
+        if clean_sources:
+            from scripts.enrich import filter_official_sources
+            official_pages = [{"url": u} for u in ((data.get("source") or {}).get("pages") or [])]
+            clean_sources, _dropped = filter_official_sources(
+                clean_sources, official_pages, event.get("url_officiel"),
+                event.get("url_source"))
         if clean_sources:
             parts.append("<h3>Sources</h3><ul>")
             parts += [f'<li><a href="{html.escape(s)}" target="_blank" '

@@ -535,6 +535,40 @@ def _source_trusted(url_source: str) -> bool:
     return _SRC_TIERS.get(host, "") == "officielle"
 
 
+def filter_official_sources(sources: list, official_pages: list, url_officiel: str = "",
+                            url_source: str = "") -> tuple[list, list]:
+    """GARDE-FOU DÉTERMINISTE (charte §8 : seules les sources institutionnelles/officielles
+    sont créditées/liées) : ne garde, dans la liste « sources » écrite par l'agent, que les
+    URLs dont le DOMAINE est VÉRIFIÉ officiel — une page effectivement lue comme matière
+    officielle (`official_pages`), l'URL officielle mémorisée, ou un flux tier enregistré
+    « officielle » dans `config/sources.txt`. Le prompt demande déjà à l'agent de ne citer
+    que des pages officielles/libres, mais un modèle peut s'y tromper (agrégateur/guide
+    touristique pris pour une page « libre » consultable, ex. guidatorino.com cité comme
+    source d'un événement dont il n'est ni l'organisateur ni une institution) — ce filtre
+    est le dernier mot, pas le prompt seul. Renvoie (sources_gardées, sources_écartées)."""
+    from urllib.parse import urlparse as _up
+    allowed = {_strip_www(_up(p.get("url") or "").netloc) for p in (official_pages or [])}
+    allowed.discard("")
+    ho = _strip_www(_up(url_officiel or "").netloc)
+    if ho:
+        allowed.add(ho)
+    if url_source and _source_trusted(url_source):
+        hs = _strip_www(_up(url_source).netloc)
+        if hs:
+            allowed.add(hs)
+    kept, dropped = [], []
+    for s in (sources or []):
+        s = (s or "").strip()
+        if not s:
+            continue
+        host = _strip_www(_up(s).netloc)
+        if host and host in allowed and not any(b in host for b in _NOT_OFFICIAL):
+            kept.append(s)
+        else:
+            dropped.append(s)
+    return kept, dropped
+
+
 def fetch_official_material(url: str, timeout: int = 8, title: str = "",
                             lieu: str = "", client=None, is_official: bool = False,
                             trusted_source: bool = False) -> tuple:
@@ -1340,6 +1374,18 @@ def main(argv: list[str]) -> int:
                 (model, ev["id"]))
             conn.commit()
             continue
+        # GARDE-FOU SOURCES (charte §8) : ne garde, dans « sources », que des URLs au domaine
+        # VÉRIFIÉ officiel — le prompt seul ne suffit pas (cas vécu : guidatorino.com, un
+        # guide touristique tiers, cité comme source d'un événement dont il n'est ni
+        # l'organisateur ni une institution).
+        if isinstance(result, dict) and result.get("sources"):
+            kept, dropped = filter_official_sources(
+                result.get("sources"), official_pages, ev.get("url_officiel"),
+                ev.get("url_source"))
+            if dropped:
+                log.warning("[%d] source(s) écartée(s) (domaine non institutionnel vérifié) : %s",
+                            ev["id"], ", ".join(dropped))
+            result["sources"] = kept
         # PANEL LECTEURS : sur les articles développés (palier long), tout le panel de
         # personas (docs/personas/) relit le brouillon. Si la majorité le juge creux (pas de
         # têtes d'affiche, pas de temps forts), on demande UNE révision au rédacteur. Les

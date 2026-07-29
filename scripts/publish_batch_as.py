@@ -41,6 +41,13 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
 def _select(conn, args, today: str):
+    if args.ids:
+        # Ciblage PRÉCIS (ex. republier après un correctif de contenu, cf.
+        # scripts/audit_bad_sources.py) : ignore les filtres de sélection habituels,
+        # republie ces ids tels quels (déjà publiés ou non).
+        ph = ",".join("?" * len(args.ids))
+        return conn.execute(
+            f"SELECT * FROM events_raw WHERE id IN ({ph})", args.ids).fetchall()
     where = [
         "statut IN ('evaluated','published_cs','published_sub')",
         "duplicate_of IS NULL",
@@ -64,6 +71,10 @@ def _select(conn, args, today: str):
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Publication en lot vers Agenda Sabauda.")
     parser.add_argument("--cap", type=int, default=50, help="Nombre max d'événements par run.")
+    parser.add_argument("--ids", type=int, nargs="+", default=None,
+                        help="Ne republie que ces ids précis (ignore statut/date/score, "
+                             "republie même si déjà publiés). Ex. après un correctif de "
+                             "contenu — cf. scripts/audit_bad_sources.py.")
     parser.add_argument("--min-score", type=int, default=None,
                         help="Score minimum (défaut : aucun seuil — toute la masse retenue).")
     parser.add_argument("--delay", type=float, default=1.5,
@@ -87,9 +98,10 @@ def main(argv=None) -> int:
 
     # PORTE QUALITÉ : seuls les événements COMPLETS partent en brouillon (les
     # incomplets restent dans le dashboard, à charge de l'agent d'auto-complétion).
-    # cf. utils/completeness.py + scripts/autocomplete.py.
+    # cf. utils/completeness.py + scripts/autocomplete.py. Ids EXPLICITES (--ids) : la
+    # décision de republier est déjà prise (ex. correctif de contenu), on ne re-filtre pas.
     skipped = []
-    if not args.allow_incomplete:
+    if not args.allow_incomplete and not args.ids:
         kept = []
         for ev in rows:
             (kept if comp.is_complete(ev) else skipped).append(ev)

@@ -9,6 +9,19 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 ### ✅ Fait (branche `claude/quirky-davinci-jvqrnw`)
 - 🤖 **Fix traduction** : `json.loads(..., strict=False)` — un saut de ligne brut renvoyé par
   le modèle faisait échouer silencieusement certaines re-traductions (ex. id=1552).
+- 🤖 **Alerte source non institutionnelle (charte §8)** : un article publié créditait
+  guidatorino.com (guide touristique tiers) comme source, alors que le prompt seul ne
+  l'interdit pas assez explicitement. Garde-fou déterministe à deux niveaux : filtrage à
+  l'enrichissement (`scripts/enrich.py:filter_official_sources`, ne garde que les domaines
+  VÉRIFIÉS officiels — pages effectivement lues, `url_officiel`, flux tier « officielle » de
+  `config/sources.txt`) + filet à CHAQUE republication (`scripts/publisher.py:build_post`,
+  relit `enrich_data` à chaque fois → corrige aussi les fiches enrichies AVANT ce correctif,
+  sans réécriture DB ni coût LLM). Script de diagnostic en lecture seule :
+  `scripts.audit_bad_sources` (repère les fiches concernées) + nouveau `--ids` sur
+  `publish_batch_as` pour republier précisément celles-là.
+- 🧑 **Reste à faire** : lancer `.venv/bin/python -m scripts.audit_bad_sources
+  --published-only` sur le VPS pour trouver l'id exact de l'événement guidatorino (et tout
+  autre cas déjà publié), puis republier avec `--ids`.
 - 🤖 **Visibilité + pilotage du score home** (répond à la question « pourquoi la home
   n'affiche pas les mieux notés ») : colonne `home_score` + tri `?sort=home` dans `/events`
   (back-office), badge 🏠 déjà présent en fiche (`/preview`). **Nouveau : override manuel**
