@@ -26,6 +26,17 @@ Côté JetEngine : lecture par **« Meta Field »** en tapant la clé **exacteme
 
 ---
 
+## Extensions post-gel (ajoutées après le figeage initial, non renommables non plus)
+
+| Clé méta | Type | Écrite par le publisher | Lue / affichée par JetEngine |
+|---|---|---|---|
+| `as_home_score` | décimal `0`–`10` | score HOME = qualité panel lecteurs + source officielle + affiches (`scripts/enrich.py`, colonne `home_score`) | tri des sections « À la une »/« En évidence » — **à câbler** (cf. `docs/CABLAGE_HOME.md`) |
+| `as_home_override` | `''` / `featured` / `excluded` | override MANUEL posé au back-office (`/set-home-override`), prime sur `as_home_score` | **à câbler** : à lire en PRIORITÉ — `excluded` retire la fiche de toute section mise en avant, `featured` la force en tête, `''` = laisser `as_home_score` décider |
+| `as_lieu` / `as_ville` | texte | lieu/ville en plat (doublon du Venue TEC, pour un binding trivial) | carte-événement JetEngine |
+| `as_image_original` | URL | image officielle NON recadrée | fiche événement (affiche en grand) |
+
+---
+
 ## Ce qui n'est PAS une méta `as_*` (déjà fourni ailleurs)
 
 | Donnée | Source | Lecture JetEngine |

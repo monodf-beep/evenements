@@ -2792,6 +2792,9 @@ def events():
     is_ready = "(CASE WHEN enrich_status = 'enriched' THEN 1 ELSE 0 END)"
     if sort == "score":
         order = "COALESCE(llm_score,-1) DESC, scrape_date DESC, id DESC"
+    elif sort == "home":
+        order = ("(CASE home_override WHEN 'featured' THEN 1 ELSE 0 END) DESC, "
+                 "COALESCE(home_score,-1) DESC, scrape_date DESC, id DESC")
     elif sort == "date":
         order = ("date_event_start ASC, id DESC" if pfrom and pto and dated != "undated"
                  else "scrape_date DESC, id DESC")
@@ -3963,6 +3966,35 @@ def set_score(event_id: int):
     nxt = request.form.get("next", "")
     if not nxt.startswith("/") or nxt.startswith("//"):
         nxt = url_for("a_completer")
+    return redirect(nxt if "#" in nxt else f"{nxt}#e{event_id}")
+
+
+@app.route("/set-home-override/<int:event_id>", methods=["POST"])
+@require_auth
+def set_home_override(event_id: int):
+    """Force ou exclut MANUELLEMENT la mise en avant home d'une fiche, indépendamment du
+    home_score calculé (panel lecteurs + source officielle + affiches). 'auto' efface
+    l'override (le score reprend la main). Poussé à WordPress en méta as_home_override —
+    à lire en PRIORITÉ par les requêtes JetEngine, avant le tri sur as_home_score."""
+    ov = (request.form.get("override") or "").strip()
+    if ov not in ("auto", "featured", "excluded"):
+        flash("⚠️ Choix invalide.", "err")
+        return redirect(request.form.get("next", "") or url_for("events"))
+    conn = get_db()
+    row = conn.execute("SELECT title FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    conn.execute("UPDATE events_raw SET home_override=?, home_override_at=datetime('now') "
+                 "WHERE id=?", ("" if ov == "auto" else ov, event_id))
+    conn.commit()
+    conn.close()
+    labels = {"auto": "auto (score)", "featured": "🏠 forcé en avant",
+              "excluded": "🚫 exclu de la home"}
+    flash(f"« {(row['title'] or '')[:50]} » : mise en avant home → {labels[ov]}.", "ok")
+    nxt = request.form.get("next", "")
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = url_for("events")
     return redirect(nxt if "#" in nxt else f"{nxt}#e{event_id}")
 
 

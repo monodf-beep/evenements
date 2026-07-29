@@ -198,6 +198,13 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # NULL tant que ce n'est pas fait -> alimente la file /semaine.
                       ("ig_manual_mode", "INTEGER DEFAULT 0"),
                       ("ig_manual_done_at", "TEXT"),
+                      # Mise en avant home : override MANUEL du home_score calculé (panel +
+                      # source officielle + affiches). '' (défaut) = auto, le score décide ·
+                      # 'featured' = forcé en avant même si le score est moyen · 'excluded' =
+                      # jamais mis en avant même bien noté. Poussé en méta WP as_home_override,
+                      # à lire en PRIORITÉ par les requêtes JetEngine avant le tri as_home_score.
+                      ("home_override", "TEXT"),
+                      ("home_override_at", "TEXT"),
                       # Heure de DÉBUT réelle (« HH:MM »), extraite déterministe (regex,
                       # scripts/dates.extract_time) — JAMAIS devinée par LLM, coût zéro.
                       # Vide = heure inconnue → l'événement reste publié en journée entière

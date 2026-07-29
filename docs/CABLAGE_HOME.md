@@ -7,6 +7,19 @@ stocké en méta **`as_score`** (numérique) ; dates via **`_EventStartDate`** ;
 **`territoire`** et **`tribe_events_cat`** ; fraîcheur via **`post_date`**. Langue : forcer
 `'lang' => pll_current_language()` dans le filtre des args (décision étape 5).*
 
+> **MISE À JOUR (2026-07-29) — deux scores distincts, ne pas confondre.** `as_score` =
+> **pertinence** (l'événement mérite-il d'être publié, évalué AVANT rédaction). `as_home_score`
+> (0-10) = **qualité de mise en avant** (panel de personas lecteurs + source officielle +
+> affiches officielles, calculé APRÈS rédaction — cf. `docs/CONTRAT_META_AS.md` §Extensions).
+> Les sections « À la une »/« En évidence » ci-dessous doivent trier sur **`as_home_score`**,
+> pas `as_score` — c'est le signal qui reflète vraiment « on a l'info ET l'image, sans deviner ».
+> **Avant tout tri par score**, filtrer `as_home_override != 'excluded'` ; puis faire
+> remonter en tête les `as_home_override == 'featured'` (indépendamment du score) ; le reste
+> trié par `as_home_score` DÉCROISSANT. C'est l'override manuel posé par Franck au
+> back-office (`/set-home-override`) — sans lui, une fiche peu engageante mais bien notée
+> peut squatter le haut de la home, et inversement un vrai coup de cœur mal cadré n'y monte
+> jamais.
+
 ---
 
 ## Prompt à coller dans la session connectée à Novamira
@@ -17,7 +30,12 @@ qui applique sa règle. Stack JetEngine + Gutenberg. Par étapes, verify-first, 
 confirmation avant chaque écriture. Ne touche pas au CPT « selection » en cours.
 
 Rappels techniques (déjà vérifiés) :
-- Score = méta « as_score » (numérique) sur chaque tribe_events.
+- Score de PERTINENCE = méta « as_score » (numérique, avant rédaction).
+- Score de MISE EN AVANT = méta « as_home_score » (décimal 0-10, panel lecteurs + source
+  officielle + affiches, calculé après rédaction) — c'est CELUI-LÀ qui doit trier « À la
+  une »/« En évidence », pas as_score.
+- Override manuel = méta « as_home_override » (''/featured/excluded), posé par Franck au
+  back-office : à lire en PRIORITÉ, avant le tri par as_home_score (voir étapes 2-3).
 - Date de début = méta « _EventStartDate » (Y-m-d H:i:s).
 - Taxonomies : « territoire », « tribe_events_cat ».
 - Fraîcheur = post_date. Langue : forcer 'lang' => pll_current_language() dans le
@@ -35,13 +53,17 @@ AUJOURD'HUI 00:00 et +7 jours 23:59, tri _EventStartDate ASC, limite 8. Branche-
 le Listing Grid « aujourd'hui ». But : ne plus jamais afficher « No data was found ».
 
 ÉTAPE 2 — « À la une / En vedette »
-Requête « evenement-vedette » : tribe_events, date ≥ aujourd'hui, tri par as_score
+Requête « evenement-vedette » : tribe_events, date ≥ aujourd'hui, Meta Query as_home_override
+!= 'excluded', tri par (1) as_home_override = 'featured' en tête puis (2) as_home_score
 DÉCROISSANT (meta_value_num), limite 1. Branche-la sur le bloc « En vedette » (1 grande
-carte). Note : sur Agenda Sabauda les scores sont < 7, mais le tri relatif reste valide.
+carte). Si JetEngine ne sait pas faire un tri à deux clés dont une textuelle, deux requêtes
+suffisent : d'abord une requête « featured » (as_home_override = 'featured', limite 1),
+et si elle est vide, repli sur la requête triée as_home_score.
 
 ÉTAPE 3 — « En évidence »
-Requête « evenements-evidence » : tribe_events, date ≥ aujourd'hui ET as_score ≥ 5
-(Meta Query numérique), tri as_score DÉCROISSANT, limite 3–4. Branche sur « En évidence ».
+Requête « evenements-evidence » : tribe_events, date ≥ aujourd'hui, as_home_override !=
+'excluded', ET as_home_score ≥ 5 (Meta Query numérique) OU as_home_override = 'featured',
+tri as_home_score DÉCROISSANT, limite 3–4. Branche sur « En évidence ».
 (Si trop peu de résultats, abaisse le seuil — dis-moi le nombre obtenu.)
 
 ÉTAPE 4 — « Nouveautés sur Agenda Sabauda » (aujourd'hui = faux articles codés en dur)

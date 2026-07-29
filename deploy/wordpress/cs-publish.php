@@ -239,7 +239,7 @@ function cs_publish_event(WP_REST_Request $req) {
 
     // --- Méta du contrat « as_* » (voir docs/CONTRAT_META_AS.md) ---------------
     $meta = isset($b['meta']) && is_array($b['meta']) ? $b['meta'] : array();
-    $allowed = array('as_score', 'as_home_score', 'as_gratuit', 'as_tarif', 'as_horaire',
+    $allowed = array('as_score', 'as_home_score', 'as_home_override', 'as_gratuit', 'as_tarif', 'as_horaire',
         'as_billetterie_url', 'as_source_officielle_url', 'as_verifie_le', 'as_image_credit',
         // Lieu + ville EN PLAT (en plus du Venue TEC) : binding JetEngine trivial
         // pour la carte-événement (pas de relation vers le CPT Venue à gérer).

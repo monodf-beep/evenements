@@ -61,9 +61,10 @@
   <span class="sep"></span>
   <span class="muted" style="font-size:.85rem">Tri :</span>
   {% set sortbase = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&src=' ~ src ~ '&preset=' ~ preset ~ '&dfrom=' ~ dfrom ~ '&dto=' ~ dto ~ '&dated=' ~ dated %}
-  <a class="pbtn {{ 'on' if sort not in ('date','score') }}" href="{{ sortbase }}&sort=qualite" title="Photo + score + article prêt en haut">⭐ qualité</a>
+  <a class="pbtn {{ 'on' if sort not in ('date','score','home') }}" href="{{ sortbase }}&sort=qualite" title="Photo + score + article prêt en haut">⭐ qualité</a>
   <a class="pbtn {{ 'on' if sort == 'date' }}" href="{{ sortbase }}&sort=date">date</a>
   <a class="pbtn {{ 'on' if sort == 'score' }}" href="{{ sortbase }}&sort=score">score ↓</a>
+  <a class="pbtn {{ 'on' if sort == 'home' }}" href="{{ sortbase }}&sort=home" title="Score home = qualité panel lecteurs + source officielle + affiches">🏠 home ↓</a>
 </form>
 
 {% if not events %}
@@ -124,7 +125,17 @@
       {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ CS WP #{{ e.wp_post_id_cs }}</a>{% endif %}
       {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ Agenda WP #{{ e.wp_post_id_as }}</a>{% endif %}
     </td>
-    <td data-label="Score">{{ e.llm_score if e.llm_score is not none else '—' }}</td>
+    <td data-label="Score">
+      {{ e.llm_score if e.llm_score is not none else '—' }}
+      {% if e.home_score is not none %}
+        <br><span class="badge grey" title="Score home = qualité panel lecteurs + source officielle + affiches">🏠 {{ e.home_score }}/10</span>
+      {% endif %}
+      {% if e.home_override == 'featured' %}
+        <br><span class="badge ready" title="Forcé en avant à la main, indépendamment du score">🏠 forcé</span>
+      {% elif e.home_override == 'excluded' %}
+        <br><span class="badge fail" title="Exclu de la mise en avant à la main, indépendamment du score">🚫 exclu</span>
+      {% endif %}
+    </td>
     <td class="full cell-actions" data-label="">
       <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
       <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon article Cultura Sabauda (culturasabauda.eu)">🚀 Publier CS</button></form>

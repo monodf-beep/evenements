@@ -205,6 +205,15 @@
                        border:1px solid {{ '#bfe0bf' if enriched.home.score >= 6 else '#e0d3bf' }};">
             🏠 {{ enriched.home.score }}/10</span>
         {% endif %}
+        <form method="POST" action="/set-home-override/{{ e.id }}" style="display:flex;gap:.2rem;margin:0;"
+              title="Décide qui met en avant cette fiche sur la home : le score (auto), toi (forcé), ou jamais (exclu)">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          {% set ov = e.home_override or 'auto' %}
+          {% for val, lbl in [('auto','auto'), ('featured','🏠 forcer'), ('excluded','🚫 exclure')] %}
+            <button name="override" value="{{ val }}" class="btn btn-sm {{ 'btn-primary' if ov == val else 'btn-ghost' }}"
+                    style="padding:.1rem .4rem;font-size:.72rem;">{{ lbl }}</button>
+          {% endfor %}
+        </form>
         {% set c = enriched.confiance or 'moyenne' %}
         <span class="conf conf-{{ c }}">confiance {{ c }}</span>
       </span>

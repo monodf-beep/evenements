@@ -4,6 +4,28 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-07-29 (soir)
+
+### ✅ Fait (branche `claude/quirky-davinci-jvqrnw`)
+- 🤖 **Fix traduction** : `json.loads(..., strict=False)` — un saut de ligne brut renvoyé par
+  le modèle faisait échouer silencieusement certaines re-traductions (ex. id=1552).
+- 🤖 **Visibilité + pilotage du score home** (répond à la question « pourquoi la home
+  n'affiche pas les mieux notés ») : colonne `home_score` + tri `?sort=home` dans `/events`
+  (back-office), badge 🏠 déjà présent en fiche (`/preview`). **Nouveau : override manuel**
+  `home_override` (`''`=auto · `featured` · `excluded`), posé via boutons en fiche
+  (`/set-home-override/<id>`), poussé en méta WP `as_home_override` (whitelist
+  `cs-publish.php` + doc `CONTRAT_META_AS.md`).
+
+### ⏳ Reste à faire / décisions
+- 🎨 **Câblage JetEngine effectif** de `as_home_score` + `as_home_override` sur les sections
+  « À la une »/« En évidence » de la home — instructions à jour dans `docs/CABLAGE_HOME.md`
+  (étapes 2-3), mais le câblage lui-même se fait côté WordPress (session Novamira/Claude
+  Design), pas dans ce repo. Tant que ce n'est pas fait, la home reste chronologique
+  (sélections en mode auto, `docs/SELECTIONS_HOME.md`) et ignore le score home.
+- 🧑 **Gros événements multi-sites (ex. Journées du Patrimoine)** : comment le pipeline doit
+  représenter un « méta-événement » qui regroupe des dizaines de lieux/sites participants —
+  à cadrer plus tard (pas urgent, noté ici pour ne pas l'oublier).
+
 ## Journal de session — 2026-07-27/28 (nuit)
 
 ### ✅ Fait (branche `claude/quirky-davinci-jvqrnw`)

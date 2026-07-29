@@ -197,6 +197,10 @@ def _build_payload(event: dict) -> dict:
         # Score HOME (0-10) : qualité du rendu (panel + source officielle + affiches), pour le
         # tri des sections éditoriales de la home. Vide si non enrichi.
         "as_home_score":            event.get("home_score") if event.get("home_score") is not None else "",
+        # Override MANUEL (back-office /set-home-override) : '' = auto (as_home_score
+        # décide) · 'featured' = forcé en avant · 'excluded' = jamais mis en avant. À lire
+        # en PRIORITÉ par les requêtes JetEngine de la home, avant le tri sur as_home_score.
+        "as_home_override":         event.get("home_override") or "",
         "as_gratuit":               _is_free(prix),
         "as_tarif":                 "" if _is_free(prix) else prix,
         "as_horaire":               event.get("horaire", "") or "",
