@@ -20,6 +20,9 @@
 #     # dimanche 5h00, digest Slack des photos suspectes. Coût borné mais réel (une
 #     # planche ~20 événements = 1 appel vision) : hebdo, pas quotidien.
 #     0 5 * * 0  /root/evenements/deploy/cron_pipeline.sh images-audit >> /root/evenements/logs/cron_pipeline.log 2>&1
+#     # Veille sitemap/liens internes (déterministe, ZÉRO coût API) — samedi 4h00,
+#     # alimente le tableau de bord /seo.
+#     0 4 * * 6  /root/evenements/deploy/cron_pipeline.sh site-health >> /root/evenements/logs/cron_pipeline.log 2>&1
 #
 #   (rends-le exécutable une fois : chmod +x /root/evenements/deploy/cron_pipeline.sh)
 #
@@ -76,6 +79,12 @@ case "$MODE" in
     # de signaler hors-sujet (agent web officiel → sinon bannière neutre, jamais pire) et
     # solde le flag. « L'agent gère après l'audit » sans intervention humaine.
     step "auto-correction images signalées" "$PY" -m scripts.refill_images_as --flagged
+    ;;
+  site-health)
+    # Veille sitemap/liens internes — déterministe, ZÉRO coût API (pas de LLM). Trouve
+    # le genre de dérive découverte le 2026-07-29 (sitemap référençant d'anciennes URLs
+    # /territoire/xxx/ qui redirigent en 301). Alimente le tableau de bord /seo.
+    step "veille sitemap/liens" "$PY" -m scripts.site_health_check --apply
     ;;
   full|*)
     log "=== PIPELINE QUOTIDIEN (fenêtre $FROM → $TO) ==="
