@@ -70,6 +70,29 @@ def _get(url: str, timeout: int = 15) -> requests.Response | None:
         return None
 
 
+def _get_bounded(url: str, wall_clock_timeout: int = 20) -> requests.Response | None:
+    """Comme _get, mais avec un plafond de temps ABSOLU garanti. Le `timeout` de
+    `requests` se réinitialise à chaque octet reçu — un serveur qui envoie 1 octet
+    toutes les 10 s ne déclenche JAMAIS son propre timeout (constaté en conditions
+    réelles : un run est resté bloqué >9 min sur une seule URL malgré timeout=15).
+    Le thread éventuellement bloqué est ABANDONNÉ (daemon) sans attendre sa fin —
+    fuite de thread acceptable pour un script court-vécu, jamais un hang du script."""
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
+    # PAS de `with` : ThreadPoolExecutor.__exit__ fait shutdown(wait=True), qui
+    # attendrait le thread bloqué — exactement le hang qu'on corrige. shutdown(wait=
+    # False) explicite : le thread pendu est abandonné, jamais attendu.
+    ex = ThreadPoolExecutor(max_workers=1, thread_name_prefix="url-check")
+    fut = ex.submit(_get, url)
+    try:
+        return fut.result(timeout=wall_clock_timeout)
+    except _FutTimeout:
+        log.warning("Timeout ABSOLU (%ds) sur %s — serveur trop lent/qui traîne.",
+                   wall_clock_timeout, url)
+        return None
+    finally:
+        ex.shutdown(wait=False)
+
+
 def _sub_sitemaps(index_url: str) -> list[str]:
     """Sitemap index Yoast → liste des sous-sitemaps (post-sitemap.xml,
     territoire-sitemap.xml, etc.)."""
@@ -95,7 +118,7 @@ def check_urls(urls: list[str], cap: int, delay: float = 0.3) -> list[dict]:
     findings = []
     checked = 0
     for url in urls[:cap]:
-        resp = _get(url)
+        resp = _get_bounded(url)
         checked += 1
         time.sleep(delay)  # poli envers le serveur — pas un run quotidien agressif
         if resp is None:
