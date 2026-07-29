@@ -104,9 +104,29 @@ def _groups(events: list[dict]) -> list[list[dict]]:
     return [g for g in buckets.values() if len(g) > 1]
 
 
+def _article_text(ev: dict) -> str:
+    """Texte de l'ARTICLE RÉDIGÉ (titre + chapô + début du corps), pour vérifier sa
+    langue RÉELLE — jamais le titre brut scrapé, qui peut être dans une langue et
+    l'article rédigé (par notre pipeline, toujours en français par défaut) dans une
+    autre. Vide si l'événement n'a pas encore été enrichi."""
+    import json as _json
+    title = (ev.get("article_title") or "").strip()
+    body = ""
+    if ev.get("enrich_data"):
+        try:
+            art = (_json.loads(ev["enrich_data"]) or {}).get("article") or {}
+            body = f"{art.get('chapo', '')} {art.get('corps', '')}"[:500]
+        except (ValueError, TypeError):
+            pass
+    return f"{title} {body}".strip()
+
+
 def _link_map(group: list[dict]) -> dict[str, dict]:
-    """Construit {langue: {"id":…, "wp":…, "permalink":…}} pour un groupe (une fiche par
-    langue). En cas de collision (2 fiches même langue), on garde la 1re et on journalise."""
+    """Construit {langue: {"id":…, "wp":…, "permalink":…, "article_lang":…}} pour un
+    groupe (une fiche par langue). En cas de collision (2 fiches même langue), on garde
+    la 1re et on journalise. `article_lang` : langue RÉELLE de l'article déjà rédigé
+    (detect_lang sur le texte écrit, pas le titre brut source) — "" si pas encore
+    enrichi. Sert à ne jamais jumeler sur la foi du seul titre scrapé (cf. _check_pair_langs)."""
     out: dict[str, dict] = {}
     for ev in sorted(group, key=lambda e: e["id"]):
         lang = _lang(ev)
@@ -116,7 +136,10 @@ def _link_map(group: list[dict]) -> dict[str, dict]:
                         "on ignore id=%d (WP#%s)", lang,
                         (ev.get("title", "") or "")[:40], out[lang]["wp"], ev["id"], pid)
             continue
-        out[lang] = {"id": ev["id"], "wp": pid, "permalink": ev.get("wp_permalink_as") or ""}
+        atext = _article_text(ev)
+        article_lang = (detect_lang(atext, "", ev.get("territoire", "")) if atext else "")
+        out[lang] = {"id": ev["id"], "wp": pid, "permalink": ev.get("wp_permalink_as") or "",
+                     "title": ev.get("title", ""), "article_lang": article_lang}
     return out
 
 
@@ -176,6 +199,40 @@ def _align_slug(wp_url: str, auth, conn: sqlite3.Connection, pair: dict[str, dic
             log.error("Alignement de slug impossible pour WP#%s : %s", sec["wp"], exc)
 
 
+def _flag_lang_mismatch(conn: sqlite3.Connection, event_id: int, expected: str, found: str) -> None:
+    """Pousse un point « à vérifier » (même table que enrich.py) — jamais un blocage
+    silencieux, un humain doit trancher (vraie erreur de contenu ? faux jumelage ?)."""
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS checks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL, label TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')),
+        resolved_at TEXT)""")
+    conn.execute(
+        "INSERT INTO checks (event_id, label) VALUES (?, ?)",
+        (event_id, f"Jumelage FR/IT écarté : étiqueté « {expected} » mais l'article rédigé "
+                   f"semble être en « {found} » — vérifier (mauvais jumelage ? mauvaise langue ?)."))
+    conn.commit()
+
+
+def _check_pair_langs(conn: sqlite3.Connection, pair: dict[str, dict]) -> bool:
+    """True si la paire est sûre à jumeler : pour chaque langue dont l'article est DÉJÀ
+    rédigé, la langue réelle du texte doit correspondre à la langue assignée. Sinon on
+    N'ÉCRIT RIEN (ni Polylang, ni translation_of) et on pousse un point à vérifier —
+    mieux vaut rater un jumelage que d'en créer un trompeur (constaté : un événement
+    italien à la source, mais rédigé en français par notre pipeline, étiqueté « version
+    IT » sur la seule foi de son titre scrapé — l'article affiché ne correspondait pas)."""
+    ok = True
+    for lang, v in pair.items():
+        found = v.get("article_lang") or ""
+        if found and found != lang:
+            log.warning("[%s] Jumelage écarté : étiqueté « %s » mais l'article rédigé "
+                       "semble être en « %s » (%s).", v["id"], lang, found,
+                       (v.get("title") or "")[:50])
+            _flag_lang_mismatch(conn, v["id"], lang, found)
+            ok = False
+    return ok
+
+
 def _post_link(wp_url: str, auth, translations: dict[str, int]) -> bool:
     token = base64.b64encode(f"{auth[0]}:{auth[1]}".encode("utf-8")).decode("ascii")
     endpoint = f"{wp_url}/?rest_route=/cs/v1/link-translations"
@@ -204,12 +261,22 @@ def main(argv=None) -> int:
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE wp_post_id_as IS NOT NULL "
         "AND duplicate_of IS NULL").fetchall()]
-    conn.close()
     log.info("%d événement(s) publié(s) sur l'Agenda à examiner", len(rows))
 
     groups = _groups(rows)
     pairs = [_link_map(g) for g in groups]
     pairs = [p for p in pairs if len(p) >= 2]           # au moins 2 langues
+    # Contrôle de langue AVANT tout jumelage (même en simulation, pour voir le problème
+    # tôt) : une paire dont l'article déjà rédigé ne correspond pas à la langue assignée
+    # n'est jamais liée — mieux vaut la rater que jumeler sur la foi du seul titre source.
+    safe_pairs = [p for p in pairs if _check_pair_langs(conn, p)]
+    skipped = len(pairs) - len(safe_pairs)
+    if skipped:
+        log.info("%d paire(s) écartée(s) pour incohérence de langue (voir « à vérifier »).",
+                 skipped)
+    conn.commit()
+    conn.close()
+    pairs = safe_pairs
     if not pairs:
         log.info("Aucune paire de traductions détectée.")
         return 0
