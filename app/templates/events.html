@@ -131,7 +131,15 @@
         <br><span class="badge grey" title="Score home = qualité panel lecteurs + source officielle + affiches">🏠 {{ e.home_score }}/10</span>
       {% endif %}
       {% if e.home_override == 'featured' %}
-        <br><span class="badge ready" title="Forcé en avant à la main, indépendamment du score">🏠 forcé</span>
+        <br><span class="badge ready" title="Forcé en avant à la main, indépendamment du score">🏠 forcé{% if e.home_order %} #{{ e.home_order }}{% endif %}</span>
+        <form method="POST" action="/set-home-order/{{ e.id }}/up" style="display:inline;">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="btn btn-ghost btn-sm" style="padding:0 .25rem;" title="Monter dans l'ordre des fiches forcées">▲</button>
+        </form>
+        <form method="POST" action="/set-home-order/{{ e.id }}/down" style="display:inline;">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="btn btn-ghost btn-sm" style="padding:0 .25rem;" title="Descendre dans l'ordre des fiches forcées">▼</button>
+        </form>
       {% elif e.home_override == 'excluded' %}
         <br><span class="badge fail" title="Exclu de la mise en avant à la main, indépendamment du score">🚫 exclu</span>
       {% endif %}

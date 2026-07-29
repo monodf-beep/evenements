@@ -224,6 +224,9 @@ def _build_payload(event: dict) -> dict:
         # décide) · 'featured' = forcé en avant · 'excluded' = jamais mis en avant. À lire
         # en PRIORITÉ par les requêtes JetEngine de la home, avant le tri sur as_home_score.
         "as_home_override":         event.get("home_override") or "",
+        # Rang manuel PARMI les fiches 'featured' (flèches ▲▼ back-office, /set-home-order).
+        # N'a de sens que comparé aux AUTRES as_home_order='featured' — plus petit = plus haut.
+        "as_home_order":            event.get("home_order") if event.get("home_order") is not None else "",
         # Détail du score home (panel lecteurs + statut affiche) — cf. _panel_meta.
         **_panel_meta(event),
         "as_gratuit":               _is_free(prix),

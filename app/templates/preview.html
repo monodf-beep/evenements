@@ -214,6 +214,18 @@
                     style="padding:.1rem .4rem;font-size:.72rem;">{{ lbl }}</button>
           {% endfor %}
         </form>
+        {% if ov == 'featured' %}
+          <span style="display:flex;gap:.1rem;">
+            <form method="POST" action="/set-home-order/{{ e.id }}/up" style="margin:0;">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <button class="btn btn-ghost btn-sm" style="padding:.1rem .3rem;" title="Monter dans l'ordre des fiches forcées">▲</button>
+            </form>
+            <form method="POST" action="/set-home-order/{{ e.id }}/down" style="margin:0;">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <button class="btn btn-ghost btn-sm" style="padding:.1rem .3rem;" title="Descendre dans l'ordre des fiches forcées">▼</button>
+            </form>
+          </span>
+        {% endif %}
         {% set c = enriched.confiance or 'moyenne' %}
         <span class="conf conf-{{ c }}">confiance {{ c }}</span>
       </span>

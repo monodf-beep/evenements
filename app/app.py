@@ -2794,6 +2794,7 @@ def events():
         order = "COALESCE(llm_score,-1) DESC, scrape_date DESC, id DESC"
     elif sort == "home":
         order = ("(CASE home_override WHEN 'featured' THEN 1 ELSE 0 END) DESC, "
+                 "COALESCE(home_order,999999) ASC, "
                  "COALESCE(home_score,-1) DESC, scrape_date DESC, id DESC")
     elif sort == "date":
         order = ("date_event_start ASC, id DESC" if pfrom and pto and dated != "undated"
@@ -3995,6 +3996,52 @@ def set_home_override(event_id: int):
     nxt = request.form.get("next", "")
     if not nxt.startswith("/") or nxt.startswith("//"):
         nxt = url_for("events")
+    return redirect(nxt if "#" in nxt else f"{nxt}#e{event_id}")
+
+
+def _normalize_featured_order(conn) -> list:
+    """Range les fiches 'featured' par home_order actuel (NULL en dernier), puis leur
+    assigne un rang 1..N propre et contigu — nécessaire avant tout échange (les flèches
+    ▲▼ permutent deux rangs adjacents, ça suppose une numérotation sans trou)."""
+    rows = conn.execute(
+        "SELECT id FROM events_raw WHERE home_override='featured' "
+        "ORDER BY COALESCE(home_order, 999999), id").fetchall()
+    for i, r in enumerate(rows, 1):
+        conn.execute("UPDATE events_raw SET home_order=? WHERE id=?", (i, r["id"]))
+    conn.commit()
+    return [r["id"] for r in rows]
+
+
+@app.route("/set-home-order/<int:event_id>/<direction>", methods=["POST"])
+@require_auth
+def set_home_order(event_id: int, direction: str):
+    """Monte/descend une fiche 'featured' d'un cran PARMI LES AUTRES fiches 'featured'
+    (échange de rang avec la voisine) — pilote l'ordre d'affichage quand plusieurs fiches
+    sont forcées en avant en même temps. Poussé à WordPress en méta as_home_order."""
+    if direction not in ("up", "down"):
+        return "Direction invalide", 400
+    conn = get_db()
+    row = conn.execute("SELECT title, home_override FROM events_raw WHERE id=?",
+                       (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        return "Événement introuvable", 404
+    nxt = request.form.get("next", "")
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = url_for("events")
+    if row["home_override"] != "featured":
+        conn.close()
+        flash("⚠️ Seules les fiches « forcées en avant » ont un ordre à régler.", "err")
+        return redirect(nxt if "#" in nxt else f"{nxt}#e{event_id}")
+    ids = _normalize_featured_order(conn)
+    idx = ids.index(event_id)
+    swap_idx = idx - 1 if direction == "up" else idx + 1
+    if 0 <= swap_idx < len(ids):
+        conn.execute("UPDATE events_raw SET home_order=? WHERE id=?", (swap_idx + 1, event_id))
+        conn.execute("UPDATE events_raw SET home_order=? WHERE id=?", (idx + 1, ids[swap_idx]))
+        conn.commit()
+        flash(f"« {(row['title'] or '')[:50]} » : ordre home {'monté' if direction == 'up' else 'descendu'}.", "ok")
+    conn.close()
     return redirect(nxt if "#" in nxt else f"{nxt}#e{event_id}")
 
 

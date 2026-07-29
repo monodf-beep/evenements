@@ -205,6 +205,11 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # à lire en PRIORITÉ par les requêtes JetEngine avant le tri as_home_score.
                       ("home_override", "TEXT"),
                       ("home_override_at", "TEXT"),
+                      # Rang manuel PARMI les fiches 'featured' (home_override) : plus petit
+                      # = plus haut. NULL = pas encore rangée (retombe en fin de liste). Réglé
+                      # via les flèches ▲▼ du back-office (/set-home-order) — n'a de sens que
+                      # comparé aux AUTRES fiches 'featured', poussé en méta WP as_home_order.
+                      ("home_order", "INTEGER"),
                       # Heure de DÉBUT réelle (« HH:MM »), extraite déterministe (regex,
                       # scripts/dates.extract_time) — JAMAIS devinée par LLM, coût zéro.
                       # Vide = heure inconnue → l'événement reste publié en journée entière

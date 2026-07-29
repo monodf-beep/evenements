@@ -63,6 +63,11 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
   ce statut (avant, seul le résultat final était gardé, sans trace de si une révision avait
   eu lieu). Whitelist `cs-publish.php` + doc `CONTRAT_META_AS.md` à jour. **Affichage réel
   sur la fiche/l'admin WP = à câbler côté Novamira** (comme `as_home_score`), pas fait ici.
+- 🤖 **Flèches ▲▼ pour l'ordre des fiches « forcées »** (demande Franck, précision sur le
+  chantier home_score) : nouvelle colonne `home_order` (rang manuel, PARMI les fiches
+  `home_override='featured'` seulement), flèches dans `/events` (liste) et `/preview`
+  (fiche), route `/set-home-order/<id>/<up|down>` — échange le rang avec la voisine.
+  Poussé en méta WP `as_home_order`. Testé (logique de permutation isolée).
 - 🤖 **Visibilité + pilotage du score home** (répond à la question « pourquoi la home
   n'affiche pas les mieux notés ») : colonne `home_score` + tri `?sort=home` dans `/events`
   (back-office), badge 🏠 déjà présent en fiche (`/preview`). **Nouveau : override manuel**
