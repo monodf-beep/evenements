@@ -18,6 +18,8 @@ Usage (VPS) :
 """
 from __future__ import annotations
 import argparse
+import difflib
+import json
 import os
 import sqlite3
 import sys
@@ -43,12 +45,45 @@ def _ensure_checks_table(conn: sqlite3.Connection) -> None:
         resolved_at TEXT)""")
 
 
+def _corps(row: dict) -> str:
+    if not row.get("enrich_data"):
+        return ""
+    try:
+        return ((json.loads(row["enrich_data"]) or {}).get("article") or {}).get("corps") or ""
+    except (ValueError, TypeError):
+        return ""
+
+
+def _classify(src: dict, t: dict) -> str:
+    """Regroupe chaque paire suspecte en une action : comparer le CORPS (pas juste le
+    titre, souvent proche même sur deux événements différents) tranche entre « même texte
+    republié dans l'autre langue par erreur » (à fusionner/délier) et « vrai contenu
+    distinct mal étiqueté » (à re-traduire)."""
+    a, b = _corps(src), _corps(t)
+    if not a or not b:
+        return "DOUBLON PROBABLE (à fusionner/délier)"  # rien à comparer : prudence
+    ratio = difflib.SequenceMatcher(None, a, b).ratio()
+    return ("DOUBLON PROBABLE (à fusionner/délier)" if ratio >= 0.6
+            else "À RE-TRADUIRE (contenu distinct, mauvaise langue)")
+
+
+_LABEL_PREFIX = "Audit rétroactif jumelage FR/IT"
+
+
 def _flag(conn: sqlite3.Connection, event_id: int, label: str, apply_: bool) -> bool:
-    already = conn.execute(
-        "SELECT 1 FROM checks WHERE event_id=? AND status='pending' AND label=?",
-        (event_id, label)).fetchone()
-    if already:
-        return False
+    # Préfixe stable (pas le libellé exact) : une classification qui change d'un run à
+    # l'autre (le CORPS a bougé entre-temps) MET À JOUR le point existant au lieu de le
+    # dupliquer à côté de l'ancien.
+    existing = conn.execute(
+        "SELECT id, label FROM checks WHERE event_id=? AND status='pending' AND label LIKE ?",
+        (event_id, _LABEL_PREFIX + "%")).fetchone()
+    if existing:
+        if existing["label"] == label:
+            return False
+        if apply_:
+            conn.execute("UPDATE checks SET label=? WHERE id=?", (label, existing["id"]))
+            conn.commit()
+        return True
     if apply_:
         conn.execute("INSERT INTO checks (event_id, label) VALUES (?, ?)", (event_id, label))
         conn.commit()
@@ -73,6 +108,7 @@ def main(argv=None) -> int:
 
     suspects = 0
     pushed = 0
+    buckets: dict[str, list] = {}
     for t in pairs:
         t = dict(t)
         src_row = conn.execute("SELECT * FROM events_raw WHERE id=?", (t["translation_of"],)).fetchone()
@@ -92,12 +128,18 @@ def main(argv=None) -> int:
         if not problems:
             continue
         suspects += 1
-        label = ("Audit rétroactif jumelage FR/IT : " + " ; ".join(problems) +
+        classification = _classify(src, t)
+        label = (f"Audit rétroactif jumelage FR/IT [{classification}] : " + " ; ".join(problems) +
                  f" — original « {(src.get('title') or '')[:45]}» (WP#{src.get('wp_post_id_as')}), "
                  f"traduction WP#{t.get('wp_post_id_as')}.")
-        log.warning("[%s ↔ %s] %s", src["id"], t["id"], " ; ".join(problems))
+        log.warning("[%s ↔ %s] %s | %s", src["id"], t["id"], classification, " ; ".join(problems))
+        buckets.setdefault(classification, []).append((src["id"], t["id"]))
         if _flag(conn, t["id"], label, args.apply):
             pushed += 1
+
+    for cls, items in buckets.items():
+        log.info("  %s : %d paire(s) — ids traduction : %s", cls, len(items),
+                 ", ".join(str(i[1]) for i in items))
 
     if args.apply:
         log.info("=== Audit terminé : %d suspect(s) / %d paire(s), %d point(s) poussé(s) dans `checks`. ===",
