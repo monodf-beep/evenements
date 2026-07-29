@@ -19,6 +19,17 @@ stocké en méta **`as_score`** (numérique) ; dates via **`_EventStartDate`** ;
 > back-office (`/set-home-override`) — sans lui, une fiche peu engageante mais bien notée
 > peut squatter le haut de la home, et inversement un vrai coup de cœur mal cadré n'y monte
 > jamais.
+>
+> **MISE À JOUR (2026-07-29, suite) — ordre manuel + détail panel.** Quand PLUSIEURS fiches
+> sont `as_home_override = 'featured'` en même temps, `as_home_order` (entier, flèches ▲▼ du
+> back-office) donne leur ordre RELATIF entre elles (plus petit = plus haut) — à utiliser en
+> tri secondaire, APRÈS le groupement featured-en-tête et AVANT le tri par `as_home_score`.
+> Par ailleurs, 6 nouvelles métas de DÉTAIL (non destinées au tri, juste à l'AFFICHAGE
+> éditorial, cf. étape 7) : `as_panel_mean`/`as_panel_vmean` (note du panel de personas,
+> locaux/visiteurs, /5), `as_panel_votes`, `as_panel_verdict` (`ok`/`revise`),
+> `as_panel_revision` (`aucune`/`appliquée`/`tentée` — l'article a-t-il été corrigé grâce aux
+> retours du panel), `as_affiches` (`aucune`/`une`/`deux`/`photo officielle`), `as_placement`
+> (texte libre). Détail complet : `docs/CONTRAT_META_AS.md` §Extensions post-gel.
 
 ---
 
@@ -36,6 +47,11 @@ Rappels techniques (déjà vérifiés) :
   une »/« En évidence », pas as_score.
 - Override manuel = méta « as_home_override » (''/featured/excluded), posé par Franck au
   back-office : à lire en PRIORITÉ, avant le tri par as_home_score (voir étapes 2-3).
+- Ordre manuel PARMI les featured = méta « as_home_order » (entier, plus petit = plus haut,
+  vide sinon) : tri secondaire, entre le groupement featured-en-tête et le tri as_home_score.
+- Détail panel/relecture (AFFICHAGE éditorial seulement, jamais de tri dessus) : métas
+  « as_panel_mean », « as_panel_vmean », « as_panel_votes », « as_panel_verdict »,
+  « as_panel_revision », « as_affiches », « as_placement » (voir étape 7).
 - Date de début = méta « _EventStartDate » (Y-m-d H:i:s).
 - Taxonomies : « territoire », « tribe_events_cat ».
 - Fraîcheur = post_date. Langue : forcer 'lang' => pll_current_language() dans le
@@ -54,17 +70,28 @@ le Listing Grid « aujourd'hui ». But : ne plus jamais afficher « No data was 
 
 ÉTAPE 2 — « À la une / En vedette »
 Requête « evenement-vedette » : tribe_events, date ≥ aujourd'hui, Meta Query as_home_override
-!= 'excluded', tri par (1) as_home_override = 'featured' en tête puis (2) as_home_score
-DÉCROISSANT (meta_value_num), limite 1. Branche-la sur le bloc « En vedette » (1 grande
-carte). Si JetEngine ne sait pas faire un tri à deux clés dont une textuelle, deux requêtes
-suffisent : d'abord une requête « featured » (as_home_override = 'featured', limite 1),
-et si elle est vide, repli sur la requête triée as_home_score.
+!= 'excluded', tri par (1) as_home_override = 'featured' en tête, (2) as_home_order CROISSANT
+(meta_value_num — départage les featured entre elles, vide/absent en dernier), puis
+(3) as_home_score DÉCROISSANT (meta_value_num), limite 1. Branche-la sur le bloc « En
+vedette » (1 grande carte). Si JetEngine ne sait pas faire un tri à 3 clés dont une
+textuelle, plusieurs requêtes suffisent : d'abord « featured » triée as_home_order (limite
+1), et si elle est vide, repli sur la requête triée as_home_score.
 
 ÉTAPE 3 — « En évidence »
 Requête « evenements-evidence » : tribe_events, date ≥ aujourd'hui, as_home_override !=
 'excluded', ET as_home_score ≥ 5 (Meta Query numérique) OU as_home_override = 'featured',
-tri as_home_score DÉCROISSANT, limite 3–4. Branche sur « En évidence ».
+tri (1) as_home_override = 'featured' en tête, (2) as_home_order CROISSANT, (3)
+as_home_score DÉCROISSANT, limite 3–4. Branche sur « En évidence ».
 (Si trop peu de résultats, abaisse le seuil — dis-moi le nombre obtenu.)
+
+ÉTAPE 7 — Détail panel/relecture dans l'admin (confort d'édition, PAS de tri dessus)
+Dans une JetEngine → Meta Box attachée à tribe_events (celle déjà recommandée pour les
+8 clés du contrat, cf. CONTRAT_META_AS.md), ajoute en lecture les champs as_panel_mean,
+as_panel_vmean, as_panel_votes, as_panel_verdict, as_panel_revision, as_affiches,
+as_placement — pour que Franck voie, SANS ouvrir le back-office séparé, si une fiche a été
+relue par le panel de personas et corrigée grâce à leurs retours (as_panel_revision =
+'appliquée'), avant de décider un as_home_override. Pas d'affichage PUBLIC prévu pour ces
+champs (données de coulisses), juste l'admin.
 
 ÉTAPE 4 — « Nouveautés sur Agenda Sabauda » (aujourd'hui = faux articles codés en dur)
 Requête « evenements-nouveautes » : tribe_events, date ≥ aujourd'hui, tri par post_date
@@ -102,6 +129,7 @@ Commence par l'ÉTAPE 0 (cartographie) et donne-la-moi.
 3. **Étape 4** (nouveautés) — remplace les faux articles.
 4. **Étape 5** (catégories) — sections « par envie ».
 5. **Étape 6** (transfrontalier) — après la sélection test.
+6. **Étape 7** (détail panel en admin) — confort, aucun impact visiteur, à faire quand il y a un moment.
 
 *Rappel : toutes ces sections tirent du même vivier d'événements ; leur qualité dépend du
 **contenu** (plus d'événements, surtout italiens). Le câblage rend la home vivante ; le
