@@ -108,3 +108,26 @@ def detect_lang(title: str = "", description: str = "", territoire: str = "") ->
             return lang
     # 4. Dernier recours : le léger avantage texte, sinon 'fr'.
     return "it" if it > fr else "fr"
+
+
+def effective_lang(ev: dict) -> str:
+    """Langue à utiliser pour DÉCIDER une traduction/un jumelage : l'ARTICLE déjà rédigé
+    fait foi s'il existe, jamais le seul titre brut. `scripts.enrich` écrit TOUJOURS en
+    français par défaut, indépendamment de la langue du titre scrapé (site français
+    d'abord) — un événement au titre italien peut donc déjà porter un article français.
+    Sans le vérifier, translate_events.py a pu traduire un article DÉJÀ français « vers »
+    le français (constaté : id 4122, quasi-doublon de l'article français de id 2387),
+    et link_translations_as a pu jumeler sur la foi du seul titre. Sans article, repli
+    sur le titre/la description bruts (comportement historique)."""
+    article_title = (ev.get("article_title") or "").strip()
+    body = ""
+    if ev.get("enrich_data"):
+        import json
+        try:
+            art = (json.loads(ev["enrich_data"]) or {}).get("article") or {}
+            body = f"{art.get('chapo', '')} {art.get('corps', '')}"[:500]
+        except (ValueError, TypeError):
+            pass
+    if article_title or body:
+        return detect_lang(article_title, body, ev.get("territoire", ""))
+    return detect_lang(ev.get("title", ""), ev.get("description", ""), ev.get("territoire", ""))

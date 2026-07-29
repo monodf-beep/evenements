@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.lang import detect_lang
+from utils.lang import detect_lang, effective_lang
 from utils.sources import is_logo_image
 from scripts.dedupe import cross_lang_same
 from scripts.scraper_events import init_db
@@ -60,8 +60,11 @@ def _norm_image(url: str) -> str:
 
 
 def _lang(ev: dict) -> str:
-    return detect_lang(ev.get("title", ""), ev.get("description", ""),
-                       ev.get("territoire", ""))
+    # L'ARTICLE déjà rédigé fait foi (s'il existe), jamais le seul titre brut scrapé :
+    # scripts.enrich écrit TOUJOURS en français par défaut, un titre italien à la source
+    # peut donc déjà porter un article français — sans ça, le jumelage se ferait sur la
+    # foi d'un signal obsolète dès qu'un article existe (cf. utils.lang.effective_lang).
+    return effective_lang(ev)
 
 
 def _match(a: dict, b: dict) -> bool:
@@ -260,7 +263,16 @@ def main(argv=None) -> int:
     init_db(conn)
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE wp_post_id_as IS NOT NULL "
-        "AND duplicate_of IS NULL").fetchall()]
+        "AND duplicate_of IS NULL "
+        # Jamais retoucher un événement déjà lié par translate_events.py (mécanisme A) —
+        # ni le côté déjà marqué « traduction de » (translation_of renseigné), ni son
+        # original (déjà cible du translation_of d'un autre). Sans ce filtre, le
+        # mécanisme B pouvait apparier une paire DÉJÀ correctement établie et écraser la
+        # relation avec une direction contradictoire (constaté : id 2387 ↔ 4122).
+        "AND COALESCE(translation_of,0)=0 "
+        "AND id NOT IN (SELECT translation_of FROM events_raw "
+        "               WHERE COALESCE(translation_of,0)!=0)"
+    ).fetchall()]
     log.info("%d événement(s) publié(s) sur l'Agenda à examiner", len(rows))
 
     groups = _groups(rows)

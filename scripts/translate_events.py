@@ -41,7 +41,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.lang import detect_lang
+from utils.lang import detect_lang, effective_lang
 from scripts.scraper_events import init_db
 from scripts.publisher_as import publish_to_as
 from scripts.link_translations_as import _post_link
@@ -435,7 +435,12 @@ def main(argv=None) -> int:
 
     done = skipped = 0
     for ev in rows:
-        src = detect_lang(ev.get("title", ""), ev.get("description", ""), ev.get("territoire", ""))
+        # Langue RÉELLE = celle de l'article déjà rédigé s'il existe (jamais le seul
+        # titre brut) : scripts.enrich écrit TOUJOURS en français par défaut, un titre
+        # italien à la source peut donc déjà porter un article français. Sans ce
+        # contrôle, on traduirait un article déjà français « vers » le français —
+        # produisant un quasi-doublon au lieu d'une vraie traduction (constaté : id 4122).
+        src = effective_lang(ev)
         tgt = _target(src)
         img = ev.get("url_image") or ""
         if img and img in img_lang.get(tgt, set()):
