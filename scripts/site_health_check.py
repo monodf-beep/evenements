@@ -22,9 +22,7 @@ import os
 import re
 import sqlite3
 import sys
-import time
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -70,27 +68,6 @@ def _get(url: str, timeout: int = 15) -> requests.Response | None:
         return None
 
 
-def _get_bounded(url: str, wall_clock_timeout: int = 20) -> requests.Response | None:
-    """Comme _get, mais avec un plafond de temps ABSOLU garanti. Le `timeout` de
-    `requests` se réinitialise à chaque octet reçu — un serveur qui envoie 1 octet
-    toutes les 10 s ne déclenche JAMAIS son propre timeout (constaté en conditions
-    réelles : un run est resté bloqué >9 min sur une seule URL malgré timeout=15).
-    Le thread éventuellement bloqué est ABANDONNÉ (daemon) sans attendre sa fin —
-    fuite de thread acceptable pour un script court-vécu, jamais un hang du script."""
-    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
-    # PAS de `with` : ThreadPoolExecutor.__exit__ fait shutdown(wait=True), qui
-    # attendrait le thread bloqué — exactement le hang qu'on corrige. shutdown(wait=
-    # False) explicite : le thread pendu est abandonné, jamais attendu.
-    ex = ThreadPoolExecutor(max_workers=1, thread_name_prefix="url-check")
-    fut = ex.submit(_get, url)
-    try:
-        return fut.result(timeout=wall_clock_timeout)
-    except _FutTimeout:
-        log.warning("Timeout ABSOLU (%ds) sur %s — serveur trop lent/qui traîne.",
-                   wall_clock_timeout, url)
-        return None
-    finally:
-        ex.shutdown(wait=False)
 
 
 def _sub_sitemaps(index_url: str) -> list[str]:
@@ -113,20 +90,36 @@ def _urls_in_sitemap(sitemap_url: str) -> list[str]:
     return re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", resp.text)
 
 
-def check_urls(urls: list[str], cap: int, delay: float = 0.3) -> list[dict]:
-    """Vérifie chaque URL (bornée par --cap). Renvoie les problèmes trouvés."""
+def check_urls(urls: list[str], cap: int, workers: int = 5) -> list[dict]:
+    """Vérifie chaque URL (bornée par --cap), EN PARALLÈLE (`workers` requêtes à la
+    fois — même valeur par défaut que « Concurrent requests » dans la config de crawl
+    documentée par le skill claude-seo). Constaté en conditions réelles : en séquentiel
+    (1 à la fois), 721 URLs sur ce site WordPress prenaient 15-20 minutes (~1,3-2 s par
+    page, poids/plugins). Renvoie les problèmes trouvés.
+
+    Chaque requête reste bornée par un timeout ABSOLU (20 s, ThreadPoolExecutor.result)
+    — le `timeout` de `requests` seul se réinitialise à chaque octet reçu et ne suffit
+    PAS à se protéger d'un serveur qui envoie les données au compte-goutte (constaté :
+    un run est resté bloqué >9 min sur une seule URL malgré timeout=15 côté requests)."""
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
     findings = []
     checked = 0
-    total = min(len(urls), cap)
-    for url in urls[:cap]:
-        resp = _get_bounded(url)
+    batch = urls[:cap]
+    total = len(batch)
+    ex = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="url-check")
+    futures = [ex.submit(_get, url) for url in batch]
+    for url, fut in zip(batch, futures):
+        try:
+            resp = fut.result(timeout=20)
+        except _FutTimeout:
+            log.warning("Timeout ABSOLU (20s) sur %s — serveur trop lent/qui traîne.", url)
+            resp = None
         checked += 1
         # Battement de cœur : sans ça, le script est SILENCIEUX tant qu'il ne trouve
         # rien à signaler — une longue vérification sans problème ressemble alors à un
         # blocage (confusion constatée en conditions réelles, deux fois de suite).
         if checked % 50 == 0 or checked == total:
             log.info("… %d/%d URL(s) vérifiée(s)", checked, total)
-        time.sleep(delay)  # poli envers le serveur — pas un run quotidien agressif
         if resp is None:
             findings.append({"page_url": url, "severity": "high",
                             "title": "URL du sitemap injoignable",
@@ -151,6 +144,7 @@ def check_urls(urls: list[str], cap: int, delay: float = 0.3) -> list[dict]:
                                               f"({final}), et mettre à jour les liens internes "
                                               "en dur qui pointent encore vers l'ancienne."})
     log.info("%d URL(s) vérifiée(s), %d problème(s) trouvé(s)", checked, len(findings))
+    ex.shutdown(wait=False)  # jamais attendre un éventuel thread encore bloqué
     return findings
 
 
