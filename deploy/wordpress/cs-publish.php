@@ -246,7 +246,11 @@ function cs_publish_event(WP_REST_Request $req) {
         'as_lieu', 'as_ville',
         // URL de l'image ORIGINALE (non recadrée) : la vignette mise en avant est en
         // 4:3 pour la grille ; la FICHE affiche l'affiche entière via ce méta.
-        'as_image_original');
+        'as_image_original',
+        // Détail du panel de personas lecteurs (scripts.enrich.reader_panel) + statut
+        // affiche/placement — cf. docs/CONTRAT_META_AS.md, section Extensions post-gel.
+        'as_panel_mean', 'as_panel_vmean', 'as_panel_votes', 'as_panel_verdict',
+        'as_panel_revision', 'as_affiches', 'as_placement');
     foreach ($allowed as $k) {
         if (array_key_exists($k, $meta)) {
             update_post_meta($post_id, $k, sanitize_text_field((string) $meta[$k]));

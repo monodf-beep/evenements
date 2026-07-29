@@ -34,6 +34,13 @@ Côté JetEngine : lecture par **« Meta Field »** en tapant la clé **exacteme
 | `as_home_override` | `''` / `featured` / `excluded` | override MANUEL posé au back-office (`/set-home-override`), prime sur `as_home_score` | **à câbler** : à lire en PRIORITÉ — `excluded` retire la fiche de toute section mise en avant, `featured` la force en tête, `''` = laisser `as_home_score` décider |
 | `as_lieu` / `as_ville` | texte | lieu/ville en plat (doublon du Venue TEC, pour un binding trivial) | carte-événement JetEngine |
 | `as_image_original` | URL | image officielle NON recadrée | fiche événement (affiche en grand) |
+| `as_panel_mean` | décimal `0`–`5` ou vide | moyenne du panel de personas LOCAUX (`scripts.enrich.reader_panel`) | détail du score, back-office éditorial — vide si jamais relu (court, ou enrichi avant le panel) |
+| `as_panel_vmean` | décimal `0`–`5` ou vide | moyenne du panel de personas VISITEURS (aire adjacente — « ça vaut le déplacement ? ») | idem |
+| `as_panel_votes` | entier ou vide | nb de lecteurs ayant voté « révision » | idem |
+| `as_panel_verdict` | `ok` / `revise` / vide | verdict du panel sur la version FINALE (après révision éventuelle) | idem |
+| `as_panel_revision` | `aucune` / `appliquée` / `tentée` / vide | l'article a-t-il été réécrit suite aux retours du panel, et la réécriture a-t-elle été retenue (`tentée` = réécrit mais le brouillon initial notait mieux → réécriture écartée) | idem — répond à « a-t-on relu et corrigé grâce au panel ? » |
+| `as_affiches` | `aucune` / `une` / `deux` / `photo officielle` / vide | statut des visuels officiels trouvés (dossier de presse ou photo du site officiel) | badge visuel possible sur la fiche/l'admin |
+| `as_placement` | texte libre | où cette fiche PEUT aller (hero home, en évidence, catalogue…), déduit du score + visuels | aide à la décision éditoriale, pas un champ à afficher au public |
 
 ---
 

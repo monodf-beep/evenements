@@ -1397,6 +1397,10 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         if not court and os.getenv("ENRICH_READER_REVIEW", "1") == "1":
             review_model = pipeline_settings.model_eco()
             panel = reader_panel(result, ev, client, review_model)
+            # Statut de révision (back-office + WP, cf. as_panel_revision) : 'aucune' (le
+            # panel a validé direct) · 'appliquée' (révisé ET la révision a gagné) ·
+            # 'tentée' (révisé mais le brouillon initial notait mieux — révision écartée).
+            revision = "aucune"
             if panel.get("verdict") == "revise":
                 log.info("[%d] panel lecteurs: moyenne=%s, %s vote(s) révision → révision",
                          ev["id"], panel.get("mean"), panel.get("votes"))
@@ -1420,11 +1424,14 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                 rm = (rev_panel or {}).get("mean") or 0
                 if rev_panel and rm >= fm:
                     result, panel = revised, rev_panel
+                    revision = "appliquée"
                 else:
                     result, panel = first_result, first_panel
+                    revision = "tentée"
                     log.info("[%d] révision MOINS bien notée (%.1f < %.1f) → on garde le "
                              "brouillon initial", ev["id"], rm, fm)
             if panel:
+                panel["revision"] = revision
                 result["reader_panel"] = panel
         # STATUT DE SOURCE (back-office) : l'article a-t-il été écrit depuis la matière
         # OFFICIELLE (page presse/programme du site officiel) ou en repli sur la recherche

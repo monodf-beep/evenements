@@ -54,6 +54,15 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
   mocké) : 6 événements enrichis/traduits concurremment sans corruption DB ni doublon
   WP ; le verrou de dédup image tient sous concurrence (8 événements à affiche partagée
   → 1 seule traduction produite).
+- 🤖 **Scores détaillés + relecture panel sur WordPress** (demande Franck) : 7 nouvelles
+  métas `as_panel_*` / `as_affiches` / `as_placement`, extraites d'`enrich_data` à la
+  publication (`scripts.publisher_as._panel_meta`) — moyenne panel locaux/visiteurs, nb de
+  votes révision, verdict, **et surtout `as_panel_revision`** (`aucune`/`appliquée`/
+  `tentée`) qui répond à « a-t-on relu et corrigé grâce aux retours du panel ? ». Nouveau
+  suivi côté `scripts/enrich.py` : la boucle panel/révision marque maintenant explicitement
+  ce statut (avant, seul le résultat final était gardé, sans trace de si une révision avait
+  eu lieu). Whitelist `cs-publish.php` + doc `CONTRAT_META_AS.md` à jour. **Affichage réel
+  sur la fiche/l'admin WP = à câbler côté Novamira** (comme `as_home_score`), pas fait ici.
 - 🤖 **Visibilité + pilotage du score home** (répond à la question « pourquoi la home
   n'affiche pas les mieux notés ») : colonne `home_score` + tri `?sort=home` dans `/events`
   (back-office), badge 🏠 déjà présent en fiche (`/preview`). **Nouveau : override manuel**

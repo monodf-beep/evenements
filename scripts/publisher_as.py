@@ -183,6 +183,29 @@ def _focal(event: dict) -> tuple[float, float]:
     return (_c(event.get("card_focal_x")), _c(event.get("card_focal_y")))
 
 
+def _panel_meta(event: dict) -> dict:
+    """Détail du panel de personas lecteurs (scripts.enrich.reader_panel), extrait de
+    enrich_data pour l'exposer côté WP (as_panel_*) — mean/vmean/verdict tels quels,
+    'aucune'/'appliquée'/'tentée' si le brouillon initial notait mieux (cf.
+    scripts.enrich, bloc PANEL LECTEURS). Champs vides si jamais relu (court, ou
+    enrichi avant l'arrivée du panel)."""
+    try:
+        data = json.loads(event.get("enrich_data") or "") or {}
+    except (ValueError, TypeError):
+        data = {}
+    panel = data.get("reader_panel") or {}
+    home = data.get("home") or {}
+    return {
+        "as_panel_mean":    panel.get("mean") if panel.get("mean") is not None else "",
+        "as_panel_vmean":   panel.get("vmean") if panel.get("vmean") is not None else "",
+        "as_panel_votes":   panel.get("votes") if panel.get("votes") is not None else "",
+        "as_panel_verdict": panel.get("verdict") or "",
+        "as_panel_revision": panel.get("revision") or "",
+        "as_affiches":      home.get("affiches") or "",
+        "as_placement":     home.get("placement") or "",
+    }
+
+
 def _build_payload(event: dict) -> dict:
     """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
     title, content = build_post(event)
@@ -201,6 +224,8 @@ def _build_payload(event: dict) -> dict:
         # décide) · 'featured' = forcé en avant · 'excluded' = jamais mis en avant. À lire
         # en PRIORITÉ par les requêtes JetEngine de la home, avant le tri sur as_home_score.
         "as_home_override":         event.get("home_override") or "",
+        # Détail du score home (panel lecteurs + statut affiche) — cf. _panel_meta.
+        **_panel_meta(event),
         "as_gratuit":               _is_free(prix),
         "as_tarif":                 "" if _is_free(prix) else prix,
         "as_horaire":               event.get("horaire", "") or "",
