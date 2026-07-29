@@ -191,7 +191,10 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
             log.warning("Traduction titre/description tronquée (max_tokens) — ignorée.")
             return None
         txt = _extract_json(resp)
-        data = json.loads(txt[txt.find("{"): txt.rfind("}") + 1])
+        # strict=False : le modèle laisse parfois un caractère de contrôle brut (saut de
+        # ligne non échappé) dans une valeur JSON — le parseur strict rejette sinon un texte
+        # par ailleurs valide (« Invalid control character »).
+        data = json.loads(txt[txt.find("{"): txt.rfind("}") + 1], strict=False)
         t, d = (data.get("title") or "").strip(), (data.get("description") or "").strip()
         return {"title": t, "description": d} if t else None
     except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
@@ -277,7 +280,7 @@ def translate_article(client, model, enrich_json: str, target: str,
             log.warning("Traduction de l'article tronquée (max_tokens) — article ignoré.")
             return None
         txt = _extract_json(resp)
-        out = json.loads(txt[txt.find("{"): txt.rfind("}") + 1])
+        out = json.loads(txt[txt.find("{"): txt.rfind("}") + 1], strict=False)
         if not isinstance(out, dict):
             return None
     except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
