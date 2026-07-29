@@ -131,8 +131,13 @@ def main(argv=None) -> int:
         description="Vérifie la santé du sitemap/des liens internes (déterministe, zéro coût API).")
     parser.add_argument("--apply", action="store_true",
                         help="Écrit les trouvailles dans /seo (sinon simulation).")
-    parser.add_argument("--cap", type=int, default=300,
-                        help="Nb max d'URLs vérifiées par run (défaut 300).")
+    # Contrairement aux autres --cap du projet (protègent un BUDGET API), celui-ci ne
+    # protège rien de coûteux — juste des requêtes HTTP espacées de 0,3 s. Sans état
+    # entre les runs, un plafond trop bas revérifierait éternellement les mêmes
+    # premières URLs sans jamais couvrir le reste (constaté : 721 URLs, plafond à 300).
+    # Défaut large pour couvrir tout le site en un passage (~4 min pour 800 URLs).
+    parser.add_argument("--cap", type=int, default=1500,
+                        help="Nb max d'URLs vérifiées par run (défaut 1500 — couvre tout le site).")
     parser.add_argument("--base-url", default=os.getenv("WP_AS_URL", "https://agendasabauda.eu"))
     args = parser.parse_args(argv)
 
