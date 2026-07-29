@@ -1030,9 +1030,14 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
         return conn.execute(
             f"SELECT * FROM events_raw WHERE id IN ({qmarks})", ids).fetchall()
     # Événements retenus (≥ seuil), pas encore enrichis. Les doublons 'merged' sont
-    # exclus : leur matière est déjà agrégée vers le gagnant.
+    # exclus : leur matière est déjà agrégée vers le gagnant. Les fiches TRADUITES
+    # (translation_of renseigné) sont exclues aussi : enrich écrit TOUJOURS en français
+    # par défaut, donc les « enrichir » écraserait silencieusement la traduction déjà
+    # produite par translate_events.py (constaté en vrai : id 4312, l'italien de
+    # Niccolò Fabi effacé et remplacé par un article français fraîchement généré).
     where = ["statut IN ('evaluated', 'published_sub')", "llm_score >= ?",
-             "(enrich_status IS NULL OR enrich_status = '')", "(duplicate_of IS NULL)"]
+             "(enrich_status IS NULL OR enrich_status = '')", "(duplicate_of IS NULL)",
+             "COALESCE(translation_of,0)=0"]
     params: list = [MIN_SCORE]
     if dfrom and dto:  # circonscrit à la période de travail (chevauchement)
         where.append("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?")

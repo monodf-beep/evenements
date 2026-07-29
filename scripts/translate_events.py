@@ -493,20 +493,24 @@ def main(argv=None) -> int:
         if not wp_id:
             log.warning("[%s] publication de la traduction échouée.", ev["id"]); continue
         # Enregistre la fiche traduite (url_source synthétique — la colonne est UNIQUE).
+        # enrich_status='enriched' : défense en profondeur (en plus de l'exclusion
+        # translation_of dans enrich.select_events) — cette fiche ne doit JAMAIS être
+        # reprise par scripts.enrich, qui écrirait un article français par-dessus.
         conn.execute(
             "INSERT INTO events_raw (title, description, date_start, date_event_start, "
             "date_event_end, lieu, ville, territoire, url_source, url_image, organisateur, "
             "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
             "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
-            "translation_of, translated_lang, article_title, enrich_data, image_credit) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "translation_of, translated_lang, article_title, enrich_data, image_credit, "
+            "enrich_status) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
              ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
              f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
              ev.get("source_name"), ev.get("source_type"), ev.get("llm_score"),
              ev.get("user_score"), ev.get("llm_categorie"), ev.get("statut"), wp_id, permalink,
              raw_url, datetime.now().isoformat(timespec="seconds"), ev["id"], tgt,
-             tr_art_title, tr_enrich, ev.get("image_credit")))
+             tr_art_title, tr_enrich, ev.get("image_credit"), "enriched"))
         # Lie les deux fiches (Polylang) via l'endpoint.
         if all([wp_url, auth[0], auth[1]]):
             _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
