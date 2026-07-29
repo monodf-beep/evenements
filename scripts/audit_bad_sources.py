@@ -64,12 +64,20 @@ def main(argv=None) -> int:
             data = json.loads(r["enrich_data"])
         except (ValueError, TypeError):
             continue
-        sources = data.get("sources") or []
-        if not sources:
+        # Même pré-nettoyage QUE build_post (scripts/publisher.py) avant le filtre : sinon
+        # on compte comme « écartée » de la prose que le LLM aurait glissée dans « sources »
+        # (pas une URL) — jamais publiée de toute façon, donc pas un cas réel à republier.
+        raw_sources = data.get("sources") or []
+        seen, http_sources = set(), []
+        for s in raw_sources:
+            s = (s or "").strip()
+            if (s.startswith("http://") or s.startswith("https://")) \
+                    and " " not in s and s not in seen and "agendasabauda.eu" not in s:
+                seen.add(s)
+                http_sources.append(s)
+        if not http_sources:
             continue
-        official_pages = [{"url": u} for u in ((data.get("source") or {}).get("pages") or [])]
-        kept, dropped = filter_official_sources(
-            sources, official_pages, r.get("url_officiel"), r.get("url_source"))
+        kept, dropped = filter_official_sources(http_sources)
         if dropped:
             flagged.append({**r, "dropped": dropped, "kept": kept})
 

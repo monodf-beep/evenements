@@ -1,0 +1,14 @@
+# Domaines à NE JAMAIS créditer/lier comme « source » d'un article (charte §8) : guides
+# touristiques tiers, agrégateurs, presse/médias — aucun n'est l'organisateur ni une
+# institution, même quand la page est publiquement lisible et a servi de matière d'appoint.
+# Une ligne = un domaine (sans www, sans schéma). Extensible sans code, cf.
+# scripts/enrich.py:filter_official_sources (agi à l'enrichissement) et
+# scripts/publisher.py:build_post (filet à chaque republication).
+#
+# Cas constaté (2026-07-29) : guidatorino.com cité comme source d'un événement dont il
+# n'est ni l'organisateur ni une institution (c'est un guide touristique privé de Turin).
+guidatorino.com
+# Presse/média régionale (radio, actu locale) : jamais créditée comme source (charte §8,
+# 2e alinéa) — même règle que le radar presse pour les événements.
+ici.fr
+aostaoggi.it

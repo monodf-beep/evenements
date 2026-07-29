@@ -19,9 +19,22 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
   sans réécriture DB ni coût LLM). Script de diagnostic en lecture seule :
   `scripts.audit_bad_sources` (repère les fiches concernées) + nouveau `--ids` sur
   `publish_batch_as` pour republier précisément celles-là.
-- 🧑 **Reste à faire** : lancer `.venv/bin/python -m scripts.audit_bad_sources
-  --published-only` sur le VPS pour trouver l'id exact de l'événement guidatorino (et tout
-  autre cas déjà publié), puis republier avec `--ids`.
+- 🚨 **CORRECTIF URGENT (même soir)** : la 1ʳᵉ version de `filter_official_sources` était en
+  liste BLANCHE (n'autorisait qu'un domaine « vu » par le résolveur officiel cette fois —
+  `official_pages`/`url_officiel`). Testée en vrai sur les 112 fiches publiées : **61/112
+  (54 %) auraient perdu une source LÉGITIME** (musilac.com, comune.torino.it,
+  castellodirivoli.org, nice.fr, abbonamentomusei.it… tous de vrais organisateurs/
+  institutions, juste jamais passés par le résolveur déterministe sur cette fiche
+  historique) — bien pire que le bug d'origine. **La commande `--ids …` imprimée par l'audit
+  n'a PAS été exécutée**, elle aurait cassé 60 fiches saines. Corrigé : liste NOIRE
+  (`config/non_institutional_sources.txt`, extensible sans code comme les autres listes du
+  dossier), permissive par défaut — un domaine reste gardé sauf s'il est CONNU non
+  institutionnel. Revalidé sur les cas réels : plus aucun faux positif, guidatorino.com/
+  ici.fr/aostaoggi.it toujours écartés.
+- 🧑 **Reste à faire** : relancer `.venv/bin/python -m scripts.audit_bad_sources
+  --published-only` sur le VPS avec le correctif (bien plus court — normalement guidatorino
+  et ses 2 fiches, plus éventuellement 1-2 autres cas de presse locale), puis republier avec
+  `--ids` la liste (courte, cette fois) que le script imprime.
 - 🤖 **Visibilité + pilotage du score home** (répond à la question « pourquoi la home
   n'affiche pas les mieux notés ») : colonne `home_score` + tri `?sort=home` dans `/events`
   (back-office), badge 🏠 déjà présent en fiche (`/preview`). **Nouveau : override manuel**
