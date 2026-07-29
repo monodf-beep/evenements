@@ -28,6 +28,12 @@ DEFAULT_WIDTH = 1200
 # En dessous de ce ratio largeur/hauteur, l'image est jugée « portrait » → letterbox
 # (un vrai portrait recadré en 4:3 perdrait trop de contenu). ≥ 1.0 = carré/paysage.
 LETTERBOX_BELOW = 1.0
+# Mixte intelligent (mode 'auto', validé avec Franck le 2026-07-29) : une photo dont le
+# ratio est déjà PROCHE du 4:3 cible peut être recadrée « cover » sans perte visible —
+# un carré (1:1) ou un 3:2 photo classique n'y perdent quasi rien. Au-delà de cet écart
+# relatif au ratio cible, on repasse en letterbox (affiche/portrait, panorama large : le
+# recadrage couperait trop). ~0.30 laisse passer 1:1 et 3:2, exclut le 16:9 (0,78 d'écart).
+COVER_TOLERANCE = 0.30
 # Force du flou du fond letterbox (px).
 BLUR_RADIUS = 40
 # Qualité JPEG de sortie.
@@ -103,12 +109,14 @@ def make_card(data, *, focal=(0.5, 0.5), width: int = DEFAULT_WIDTH,
     src_ratio = img.width / img.height if img.height else 1.0
     use = mode
     if mode == "auto":
-        # Choix éditorial (Franck) : on ne COUPE JAMAIS — l'image est toujours montrée
-        # ENTIÈRE sur un fond flou (letterbox), affiches comme photos paysage. 'cover'
-        # (remplir le cadre au point focal, quitte à rogner les bords) reste disponible en
-        # mode MANUEL via card_mode. Un « mixte intelligent » (cover si la source est proche
-        # du ratio cible, sinon letterbox) pourra être réintroduit plus tard.
-        use = "letterbox"
+        # Mixte intelligent (Franck, 2026-07-29) : cover seulement si la source est déjà
+        # proche du ratio cible (perte de recadrage négligeable) — sinon letterbox, qui
+        # préserve l'affiche/le portrait EN ENTIER. 'cover' forcé reste possible en manuel
+        # via card_mode.
+        target_ratio = rw / rh
+        close_to_target = (src_ratio >= 1.0 and
+                            abs(src_ratio - target_ratio) / target_ratio <= COVER_TOLERANCE)
+        use = "cover" if close_to_target else "letterbox"
     out = _cover(img, tw, th, focal[0], focal[1]) if use == "cover" else _letterbox(img, tw, th)
     return CardResult(image=out, mode=use, source_ratio=src_ratio)
 
