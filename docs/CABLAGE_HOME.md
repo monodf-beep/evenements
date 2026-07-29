@@ -84,15 +84,6 @@ tri (1) as_home_override = 'featured' en tête, (2) as_home_order CROISSANT, (3)
 as_home_score DÉCROISSANT, limite 3–4. Branche sur « En évidence ».
 (Si trop peu de résultats, abaisse le seuil — dis-moi le nombre obtenu.)
 
-ÉTAPE 7 — Détail panel/relecture dans l'admin (confort d'édition, PAS de tri dessus)
-Dans une JetEngine → Meta Box attachée à tribe_events (celle déjà recommandée pour les
-8 clés du contrat, cf. CONTRAT_META_AS.md), ajoute en lecture les champs as_panel_mean,
-as_panel_vmean, as_panel_votes, as_panel_verdict, as_panel_revision, as_affiches,
-as_placement — pour que Franck voie, SANS ouvrir le back-office séparé, si une fiche a été
-relue par le panel de personas et corrigée grâce à leurs retours (as_panel_revision =
-'appliquée'), avant de décider un as_home_override. Pas d'affichage PUBLIC prévu pour ces
-champs (données de coulisses), juste l'admin.
-
 ÉTAPE 4 — « Nouveautés sur Agenda Sabauda » (aujourd'hui = faux articles codés en dur)
 Requête « evenements-nouveautes » : tribe_events, date ≥ aujourd'hui, tri par post_date
 DÉCROISSANT (récemment ajoutés), limite 3. REMPLACE les 3 blocs éditoriaux placeholder
@@ -115,6 +106,15 @@ de la home correspondante :
     limite 2.
 Le CPT « selection » reste disponible pour un override manuel plus tard, mais la règle par
 défaut est cette requête (la section n'est donc jamais vide).
+
+ÉTAPE 7 — Détail panel/relecture dans l'admin (confort d'édition, PAS de tri dessus)
+Dans une JetEngine → Meta Box attachée à tribe_events (celle déjà recommandée pour les
+8 clés du contrat, cf. CONTRAT_META_AS.md), ajoute en lecture les champs as_panel_mean,
+as_panel_vmean, as_panel_votes, as_panel_verdict, as_panel_revision, as_affiches,
+as_placement — pour que Franck voie, SANS ouvrir le back-office séparé, si une fiche a été
+relue par le panel de personas et corrigée grâce à leurs retours (as_panel_revision =
+'appliquée'), avant de décider un as_home_override. Pas d'affichage PUBLIC prévu pour ces
+champs (données de coulisses), juste l'admin.
 
 RÈGLES : par étapes, confirmation avant chaque modif, rollback documenté (garde l'ancienne
 query_id pour pouvoir revenir). Toutes les requêtes en langue courante (Polylang).
