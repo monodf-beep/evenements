@@ -4,6 +4,41 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-07-30
+
+### ✅ Audit AdSense (demande Franck : « fais un audit pour adsense »)
+- 🚨 **Bloqueur trouvé et corrigé — page `/confidentialite/` publique cassée** : le site
+  affichait en public le bandeau « ⚠️ Brouillon interne — page non publiée » suivi d'une
+  dizaine de placeholders `[...]` non remplis, très probablement la cause du statut AdSense
+  bloqué en « En préparation ». Root cause inattendue : cette page n'est pas du contenu
+  WordPress classique (`post_content` vide) mais entièrement rendue par un snippet Code
+  Snippets (`template_redirect` sur l'ID de page) qui contenait le markdown brut en dur,
+  crochets compris — quelqu'un avait copié-collé la trame de `docs/legal/confidentialite.md`
+  telle quelle. Corrigé aux deux endroits : `docs/legal/confidentialite.md` finalisé (FR+IT,
+  infos reprises de `/mentions-legales/` déjà correcte : Cultura Sabauda/Franck Monod,
+  Chambéry, OVH SAS, GA4 G-HWRKPM4F7J consent-gated Complianz, Brevo) **et** le snippet WP
+  live corrigé directement (accès Novamira MCP obtenu en cours de session — exécution PHP
+  directe sur le site, plus besoin de repasser par une session Novamira séparée pour ce
+  type d'action). Vérifié en direct : page propre, plus de bandeau ni de crochets.
+- ✅ **Lien « Mentions légales » manquant au footer** — corrigé côté Novamira (menus WP FR
+  « Mentions légales » et IT « Note legali », pas dans le code du snippet footer comme
+  supposé au départ). Vérifié en direct : lien présent, page 200.
+- ✅ **ads.txt / robots.txt** : déjà conformes (bon pub ID `ca-pub-4040905402577097`, sitemap
+  référencé, rien de bloqué au crawl).
+- ✅ **Script AdSense en `<head>`** : bon pub ID confirmé. **Pas de balise
+  `google-site-verification`** trouvée (ni snippet, ni Yoast, ni Site Kit) — à ajouter si
+  la vérification de propriété du site coince côté Search Console/AdSense.
+- ✅ **GA4** : un seul point de configuration (réglages natifs Complianz), pas de double-tag
+  (pas de GTM/gtag en doublon dans les snippets actifs).
+- 🐛 **Bug latent trouvé et corrigé en marge** : `cs-trash.php` (endpoint `cs/v1/trash`)
+  bloquait TOUTES les mises à la corbeille de posts publiés avec 409 « non touché
+  (sécurité) » malgré `force:true` envoyé par `scripts/trash_by_ids.py` — bug côté WP
+  (snippet #10 déployé en v1.0, sans le support `force` pourtant présent dans
+  `deploy/wordpress/cs-trash.php` du dépôt depuis le début). Corrigé et vérifié en direct
+  (WP#2309 trashé avec succès). **Reste à faire (Franck)** : relancer
+  `scripts.trash_by_ids <les 30 ids locaux> --apply` pour finir le nettoyage du chantier
+  contenu cassé (`docs/CHANTIER_CONTENU_CASSE_2026-07-29.md`) — devrait maintenant passer.
+
 ## Journal de session — 2026-07-29 (soir)
 
 ### ✅ Fait (branche `claude/quirky-davinci-jvqrnw`)
