@@ -7,7 +7,7 @@
 
 # 🇫🇷 Politique de confidentialité
 
-*Dernière mise à jour : [JJ/MM/AAAA]*
+*Dernière mise à jour : 30/07/2026*
 
 Agenda Sabauda (https://agendasabauda.eu), édité par **Cultura Sabauda**, accorde une importance
 particulière à la protection de vos données personnelles. La présente politique explique quelles
@@ -17,11 +17,11 @@ ne collectons que les données strictement nécessaires, sans dark pattern ni ca
 
 ## 1. Responsable de traitement
 
-- **Responsable :** [RAISON SOCIALE — Cultura Sabauda]
-- **Adresse :** [ADRESSE POSTALE COMPLÈTE]
-- **Contact :** [contact@culturasabauda.eu]
-- **Délégué à la protection des données (DPO), le cas échéant :** [NOM / dpo@culturasabauda.eu]
-  *(Si aucun DPO n'est désigné, indiquer le point de contact « protection des données ».)*
+- **Responsable :** Franck Monod, Cultura Sabauda (entrepreneur individuel)
+- **Adresse :** 267 rue de la République, 73000 Chambéry, France
+- **Contact :** contact@culturasabauda.eu
+- **Délégué à la protection des données (DPO) :** aucun DPO n'étant désigné à ce stade, le point
+  de contact « protection des données » est contact@culturasabauda.eu
 
 ## 2. Données traitées, finalités et bases légales
 
@@ -37,11 +37,11 @@ Nous **ne vendons jamais** vos données et ne les utilisons pas à des fins de p
 ## 3. Durées de conservation
 
 - **Newsletter :** jusqu'au retrait de votre consentement (désinscription), puis suppression ou
-  anonymisation sous [par ex. 3 mois].
+  anonymisation sous 3 mois.
 - **Proposer un événement / Contact :** le temps de traiter la demande, puis archivage limité,
-  au maximum [par ex. 12 mois] à compter du dernier échange.
-- **Mesure d'audience :** les données de suivi sont conservées [par ex. 13 mois maximum], les
-  statistiques agrégées et anonymes pouvant être conservées au-delà.
+  au maximum 12 mois à compter du dernier échange.
+- **Mesure d'audience :** les données de suivi sont conservées 14 mois maximum (durée par défaut
+  Google Analytics 4), les statistiques agrégées et anonymes pouvant être conservées au-delà.
 
 ## 4. Destinataires et sous-traitants
 
@@ -50,18 +50,19 @@ au service, agissant comme **sous-traitants** au sens de l'article 28 du RGPD :
 
 | Sous-traitant | Rôle | Localisation / garanties |
 |---|---|---|
-| **Brevo (ex-Sendinblue)** | Envoi et gestion de la newsletter | Union européenne (société française) — [préciser] |
-| **[NOM DE L'HÉBERGEUR]** | Hébergement du site et des formulaires | [Localisation des serveurs — préciser] |
-| **[OUTIL D'ANALYTICS — ex. Matomo / GA4]** | Mesure d'audience | [Localisation / configuration — préciser] |
+| **Brevo (ex-Sendinblue)** | Envoi et gestion de la newsletter | France / Union européenne |
+| **OVH SAS** | Hébergement du site et des formulaires | 2 rue Kellermann, 59100 Roubaix, France |
+| **Google Analytics 4 (Google Ireland Ltd)** | Mesure d'audience, activée uniquement après consentement (bandeau Complianz) | Union européenne (Google Ireland Ltd), avec transfert possible vers les États-Unis |
 
 Chaque sous-traitant est lié par un contrat garantissant un niveau de protection conforme au RGPD.
 
 ## 5. Transferts hors Union européenne
 
-Nous privilégions des prestataires hébergeant les données au sein de l'**Union européenne**. Si un
-outil implique un transfert hors UE (par exemple [outil concerné]), celui-ci est encadré par les
-**clauses contractuelles types** de la Commission européenne ou un mécanisme équivalent. Les
-détails sont précisés ici : [préciser le cas échéant, sinon indiquer « aucun transfert hors UE »].
+Nous privilégions des prestataires hébergeant les données au sein de l'**Union européenne**
+(Brevo, OVH). **Google Analytics 4** implique un transfert possible de données vers les
+États-Unis : ce transfert est encadré par les **clauses contractuelles types** de la Commission
+européenne et par le cadre **UE-États-Unis de protection des données** (EU-US Data Privacy
+Framework) auquel Google adhère.
 
 ## 6. Cookies et traceurs
 
@@ -91,8 +92,8 @@ Conformément au RGPD, vous disposez des droits suivants sur vos données :
 - **Droit de retirer votre consentement** à tout moment, sans que cela remette en cause la
   licéité du traitement effectué avant le retrait.
 
-**Comment les exercer :** écrivez à **[contact@culturasabauda.eu]** (ou au DPO le cas échéant :
-[dpo@culturasabauda.eu]), en précisant votre demande. Nous pourrons vous demander un justificatif
+**Comment les exercer :** écrivez à **contact@culturasabauda.eu**, en précisant votre demande.
+Nous pourrons vous demander un justificatif
 d'identité si un doute raisonnable existe. Nous répondons dans un délai d'**un mois**.
 
 Pour la newsletter, un lien de **désinscription** figure dans chaque envoi : un clic suffit.
@@ -116,7 +117,7 @@ En cas de changement substantiel, une information sera portée sur le site.
 
 # 🇮🇹 Informativa sulla privacy
 
-*Ultimo aggiornamento: [GG/MM/AAAA]*
+*Ultimo aggiornamento: 30/07/2026*
 
 Agenda Sabauda (https://agendasabauda.eu), edito da **Cultura Sabauda**, attribuisce particolare
 importanza alla protezione dei tuoi dati personali. La presente informativa spiega quali dati
@@ -126,11 +127,11 @@ dati strettamente necessari, senza dark pattern né caselle pre-selezionate.
 
 ## 1. Titolare del trattamento
 
-- **Titolare:** [RAGIONE SOCIALE — Cultura Sabauda]
-- **Indirizzo:** [INDIRIZZO POSTALE COMPLETO]
-- **Contatti:** [contact@culturasabauda.eu]
-- **Responsabile della protezione dei dati (DPO), se nominato:** [NOME / dpo@culturasabauda.eu]
-  *(Se non è nominato alcun DPO, indicare il punto di contatto «protezione dei dati».)*
+- **Titolare:** Franck Monod, Cultura Sabauda (imprenditore individuale)
+- **Indirizzo:** 267 rue de la République, 73000 Chambéry, Francia
+- **Contatti:** contact@culturasabauda.eu
+- **Responsabile della protezione dei dati (DPO):** non essendo stato nominato alcun DPO, il punto
+  di contatto «protezione dei dati» è contact@culturasabauda.eu
 
 ## 2. Dati trattati, finalità e basi giuridiche
 
@@ -146,11 +147,11 @@ dati strettamente necessari, senza dark pattern né caselle pre-selezionate.
 ## 3. Tempi di conservazione
 
 - **Newsletter:** fino alla revoca del consenso (cancellazione dell'iscrizione), poi soppressione o
-  anonimizzazione entro [ad es. 3 mesi].
+  anonimizzazione entro 3 mesi.
 - **Proponi un evento / Contatto:** per il tempo necessario a gestire la richiesta, poi archiviazione
-  limitata, al massimo [ad es. 12 mesi] dall'ultimo scambio.
-- **Misurazione del traffico:** i dati di monitoraggio sono conservati [ad es. massimo 13 mesi]; le
-  statistiche aggregate e anonime possono essere conservate oltre.
+  limitata, al massimo 12 mesi dall'ultimo scambio.
+- **Misurazione del traffico:** i dati di monitoraggio sono conservati al massimo 14 mesi (durata
+  predefinita di Google Analytics 4); le statistiche aggregate e anonime possono essere conservate oltre.
 
 ## 4. Destinatari e responsabili del trattamento
 
@@ -159,20 +160,19 @@ che agiscono come **responsabili del trattamento** ai sensi dell'articolo 28 del
 
 | Responsabile | Ruolo | Localizzazione / garanzie |
 |---|---|---|
-| **Brevo (ex Sendinblue)** | Invio e gestione della newsletter | Unione europea (società francese) — [precisare] |
-| **[NOME DEL PROVIDER DI HOSTING]** | Hosting del sito e dei moduli | [Localizzazione dei server — precisare] |
-| **[STRUMENTO DI ANALYTICS — es. Matomo / GA4]** | Misurazione del traffico | [Localizzazione / configurazione — precisare] |
+| **Brevo (ex Sendinblue)** | Invio e gestione della newsletter | Francia / Unione europea |
+| **OVH SAS** | Hosting del sito e dei moduli | 2 rue Kellermann, 59100 Roubaix, Francia |
+| **Google Analytics 4 (Google Ireland Ltd)** | Misurazione del traffico, attivata solo dopo il consenso (banner Complianz) | Unione europea (Google Ireland Ltd), con possibile trasferimento verso gli Stati Uniti |
 
 Ciascun responsabile è vincolato da un contratto che garantisce un livello di protezione conforme
 al GDPR.
 
 ## 5. Trasferimenti fuori dall'Unione europea
 
-Privilegiamo fornitori che conservano i dati all'interno dell'**Unione europea**. Se uno strumento
-comporta un trasferimento fuori dall'UE (ad esempio [strumento interessato]), esso è disciplinato
-dalle **clausole contrattuali tipo** della Commissione europea o da un meccanismo equivalente. I
-dettagli sono precisati qui: [precisare se del caso, altrimenti indicare «nessun trasferimento
-fuori dall'UE»].
+Privilegiamo fornitori che conservano i dati all'interno dell'**Unione europea** (Brevo, OVH).
+**Google Analytics 4** comporta un possibile trasferimento di dati verso gli Stati Uniti: questo
+trasferimento è disciplinato dalle **clausole contrattuali tipo** della Commissione europea e dal
+**quadro UE-USA per la protezione dei dati** (EU-US Data Privacy Framework) a cui Google aderisce.
 
 ## 6. Cookie e tracciatori
 
@@ -202,9 +202,8 @@ In conformità al GDPR, hai i seguenti diritti sui tuoi dati:
 - **Diritto di revocare il consenso** in qualsiasi momento, senza che ciò pregiudichi la liceità
   del trattamento effettuato prima della revoca.
 
-**Come esercitarli:** scrivi a **[contact@culturasabauda.eu]** (o al DPO se nominato:
-[dpo@culturasabauda.eu]), precisando la tua richiesta. Potremo chiederti un documento d'identità in
-caso di ragionevole dubbio. Rispondiamo entro **un mese**.
+**Come esercitarli:** scrivi a **contact@culturasabauda.eu**, precisando la tua richiesta. Potremo
+chiederti un documento d'identità in caso di ragionevole dubbio. Rispondiamo entro **un mese**.
 
 Per la newsletter, in ogni invio è presente un link di **cancellazione**: basta un clic.
 
