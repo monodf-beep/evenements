@@ -20,6 +20,11 @@ stocké en méta **`as_score`** (numérique) ; dates via **`_EventStartDate`** ;
 > peut squatter le haut de la home, et inversement un vrai coup de cœur mal cadré n'y monte
 > jamais.
 >
+> **Précision (2026-07-30)** : `excluded` doit retirer la fiche de **toutes** les sections
+> de la home (cf. `docs/CONTRAT_META_AS.md`), pas seulement « À la une »/« En évidence » —
+> le filtre `as_home_override != 'excluded'` s'applique donc aussi aux étapes 1, 4, 5 et 6
+> ci-dessous, pas uniquement aux étapes 2-3.
+>
 > **MISE À JOUR (2026-07-29, suite) — ordre manuel + détail panel.** Quand PLUSIEURS fiches
 > sont `as_home_override = 'featured'` en même temps, `as_home_order` (entier, flèches ▲▼ du
 > back-office) donne leur ordre RELATIF entre elles (plus petit = plus haut) — à utiliser en
@@ -65,8 +70,9 @@ mapping bloc → section avant de câbler.
 
 ÉTAPE 1 — CORRIGER « Événements d'aujourd'hui » → « à venir » (le plus visible)
 Requête « evenements-a-venir-7j » : tribe_events, Date Query _EventStartDate entre
-AUJOURD'HUI 00:00 et +7 jours 23:59, tri _EventStartDate ASC, limite 8. Branche-la sur
-le Listing Grid « aujourd'hui ». But : ne plus jamais afficher « No data was found ».
+AUJOURD'HUI 00:00 et +7 jours 23:59, Meta Query as_home_override != 'excluded', tri
+_EventStartDate ASC, limite 8. Branche-la sur le Listing Grid « aujourd'hui ». But : ne
+plus jamais afficher « No data was found ».
 
 ÉTAPE 2 — « À la une / En vedette »
 Requête « evenement-vedette » : tribe_events, date ≥ aujourd'hui, Meta Query as_home_override
@@ -85,20 +91,22 @@ as_home_score DÉCROISSANT, limite 3–4. Branche sur « En évidence ».
 (Si trop peu de résultats, abaisse le seuil — dis-moi le nombre obtenu.)
 
 ÉTAPE 4 — « Nouveautés sur Agenda Sabauda » (aujourd'hui = faux articles codés en dur)
-Requête « evenements-nouveautes » : tribe_events, date ≥ aujourd'hui, tri par post_date
-DÉCROISSANT (récemment ajoutés), limite 3. REMPLACE les 3 blocs éditoriaux placeholder
-par un Listing Grid sur cette requête.
+Requête « evenements-nouveautes » : tribe_events, date ≥ aujourd'hui, Meta Query
+as_home_override != 'excluded', tri par post_date DÉCROISSANT (récemment ajoutés), limite 3.
+REMPLACE les 3 blocs éditoriaux placeholder par un Listing Grid sur cette requête.
 
 ÉTAPE 5 — « Par catégorie » (En famille · Concerts · Expositions · Gastronomie)
-Pour chaque catégorie, une requête : tribe_events, date ≥ aujourd'hui, Tax Query
-tribe_events_cat = le terme voulu, tri as_score DÉCROISSANT puis _EventStartDate ASC,
-limite 4. Slugs : jeune-public-famille, concerts-musique, expositions-patrimoine,
-gastronomie-sagre. Branche chaque Listing Grid de section sur sa requête.
+Pour chaque catégorie, une requête : tribe_events, date ≥ aujourd'hui, Meta Query
+as_home_override != 'excluded', Tax Query tribe_events_cat = le terme voulu, tri as_score
+DÉCROISSANT puis _EventStartDate ASC, limite 4. Slugs : jeune-public-famille,
+concerts-musique, expositions-patrimoine, gastronomie-sagre. Branche chaque Listing Grid de
+section sur sa requête.
 
 ÉTAPE 6 — « Ça vaut le déplacement » (transfrontalier — RÈGLE « autre versant »)
 Décision Franck (2026-07-20) : requête AUTOMATIQUE « côté autre versant » (plus de
-placeholder manuel). Deux requêtes, une par langue, branchées sur le Listing Grid (2 cartes)
-de la home correspondante :
+placeholder manuel). Deux requêtes, une par langue, Meta Query as_home_override !=
+'excluded' dans les deux cas, branchées sur le Listing Grid (2 cartes) de la home
+correspondante :
   - Home FR (lang=fr) : tribe_events à venir, Tax Query territoire IN
     (piemont, vallee-d-aoste) [= côté italien], tri as_score DÉCROISSANT, limite 2.
   - Home IT (lang=it) : tribe_events à venir, Tax Query territoire IN
