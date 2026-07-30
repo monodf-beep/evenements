@@ -241,6 +241,11 @@ function cs_publish_event(WP_REST_Request $req) {
     $meta = isset($b['meta']) && is_array($b['meta']) ? $b['meta'] : array();
     $allowed = array('as_score', 'as_home_score', 'as_home_override', 'as_home_order', 'as_gratuit', 'as_tarif', 'as_horaire',
         'as_billetterie_url', 'as_source_officielle_url', 'as_verifie_le', 'as_image_credit',
+        // Statut RÉEL de rédaction (enrich_status local : 'enriched' ou vide/None) — sert de
+        // filtre d'ÉLIGIBILITÉ pour l'allocateur home (cs_home_build_allocation), en amont du
+        // tri par as_home_score : un événement jamais rédigé n'a pas à apparaître en « À la
+        // une »/« En évidence » même si la section est en manque de contenu ce jour-là.
+        'as_enrich_status',
         // Lieu + ville EN PLAT (en plus du Venue TEC) : binding JetEngine trivial
         // pour la carte-événement (pas de relation vers le CPT Venue à gérer).
         'as_lieu', 'as_ville',

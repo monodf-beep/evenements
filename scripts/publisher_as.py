@@ -227,6 +227,13 @@ def _build_payload(event: dict) -> dict:
         # Rang manuel PARMI les fiches 'featured' (flèches ▲▼ back-office, /set-home-order).
         # N'a de sens que comparé aux AUTRES as_home_order='featured' — plus petit = plus haut.
         "as_home_order":            event.get("home_order") if event.get("home_order") is not None else "",
+        # Statut RÉEL de rédaction ('enriched' ou vide) — sert de filtre d'ÉLIGIBILITÉ pour
+        # l'allocateur home, EN AMONT du tri par as_home_score : une fiche jamais rédigée
+        # (enrich_status vide) ne doit jamais apparaître en « À la une »/« En évidence », même
+        # si la section manque de contenu bien noté ce jour-là (cf. discussion Franck
+        # 2026-07-30 — le score seul ne suffisait pas à l'exclure, la home se remplissait
+        # avec du contenu non rédigé faute de mieux).
+        "as_enrich_status":         event.get("enrich_status") or "",
         # Détail du score home (panel lecteurs + statut affiche) — cf. _panel_meta.
         **_panel_meta(event),
         "as_gratuit":               _is_free(prix),
