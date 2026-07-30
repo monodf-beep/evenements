@@ -37,7 +37,12 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
   `deploy/wordpress/cs-trash.php` du dépôt depuis le début). Corrigé et vérifié en direct
   (WP#2309 trashé avec succès). **Reste à faire (Franck)** : relancer
   `scripts.trash_by_ids <les 30 ids locaux> --apply` pour finir le nettoyage du chantier
-  contenu cassé (`docs/CHANTIER_CONTENU_CASSE_2026-07-29.md`) — devrait maintenant passer.
+  contenu cassé (`docs/CHANTIER_CONTENU_CASSE_2026-07-29.md`) — **fait, confirmé par Franck** :
+  `trash_by_ids --apply` relancé le 30/07 09:52, 30 corbeillé(s), 0 échec (dont WP#2188 et
+  WP#3964, les deux doublons italiens du cluster « attentat de Nice » identifiés dans le
+  chantier). Restent hors de ce lot les 2 fiches françaises d'origine du même cluster
+  (id 2225/WP#1116, id 2927/WP#1125) — décision à prendre : les corbeiller aussi, ou rédiger
+  un article dédié à la commémoration plutôt que tout balayer.
 
 ## Journal de session — 2026-07-29 (soir)
 
