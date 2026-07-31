@@ -53,6 +53,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 from utils.logger import get_logger
 from utils import usage
+from utils.eventness import non_event_reason
 from utils.images import fetch_og_image
 from scripts.dates import extract_time
 from scripts.scraper_events import init_db
@@ -1272,7 +1273,7 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
     DB), avec sa PROPRE connexion SQLite (WAL : plusieurs écrivains coexistent, cf.
     scripts/scraper_events.init_db) — permet d'appeler cette fonction en parallèle sur
     plusieurs événements (cf. main(), ThreadPoolExecutor). Renvoie 'done' | 'error' |
-    'api_error' | 'skip'. `stop_flag` : threading.Event positionné par l'appelant dès
+    'api_error' | 'skip' | 'rejected'. `stop_flag` : threading.Event positionné par l'appelant dès
     qu'un premier worker rencontre une erreur API — les autres workers EN COURS finissent
     leur événement, mais un worker qui n'a pas encore commencé abandonne proprement (même
     esprit que le `break` de l'ancienne boucle séquentielle : ne pas s'acharner si l'API
@@ -1283,6 +1284,17 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     try:
+        # Bug 2026-07-31 : les ids explicites court-circuitent le pré-filtre de l'évaluateur
+        # (select_events ne filtre pas par statut quand des ids sont donnés) → même garde-fou ici.
+        reason = non_event_reason(ev.get("title", ""), ev.get("description", ""))
+        if reason:
+            conn.execute(
+                "UPDATE events_raw SET statut='rejected', llm_justification=? WHERE id=?",
+                ("Article de presse, pas un événement : %s." % reason, ev["id"]))
+            conn.commit()
+            log.warning("[%d] non-événement (%s) → rejeté sans appel API | %s",
+                        ev["id"], reason, ev.get("title", "")[:50])
+            return "rejected"
         # Vignette de secours : si le flux n'a pas d'image, prendre l'og:image de la
         # page source (déterministe) — SAUF si la source est un agrégateur (son og:image est
         # une carte sociale/logo générique, pas l'événement — M4).
@@ -1587,9 +1599,10 @@ def main(argv: list[str]) -> int:
                     results.append("error")
 
     done = results.count("done")
-    log.info("=== Enrichissement terminé : %d/%d (%d erreur(s), %d ignoré(s) après panne API) ===",
+    log.info("=== Enrichissement terminé : %d/%d (%d erreur(s), %d rejeté(s) [non-événement], "
+             "%d ignoré(s) après panne API) ===",
              done, len(events), results.count("error") + results.count("api_error"),
-             results.count("skip"))
+             results.count("rejected"), results.count("skip"))
     return 0
 
 

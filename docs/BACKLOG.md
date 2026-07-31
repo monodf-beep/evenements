@@ -4,6 +4,35 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-07-31
+
+### 🐛 `scripts.enrich` publiait des articles de presse comme événements (ids explicites)
+- **Bug** : appeler `scripts.enrich <ids locaux>` (bouton « 1 événement », ou tout appel
+  avec des ids en argument) enrichissait et publiait la fiche SANS repasser par
+  `utils.eventness.non_event_reason()`, le garde-fou déterministe qui détecte les articles
+  de presse pris à tort pour des événements (alertes sécurité publique, faits divers,
+  comptes-rendus institutionnels, résultats sportifs déjà joués, rétrospectives
+  d'anniversaire déjà célébré, panoramas de presse). Ce garde-fou est bien branché dans
+  `scripts/evaluator.py` (évaluation normale) et dans `scripts/audit_non_events.py` (audit
+  a posteriori sur toute la base), mais **jamais dans `scripts/enrich.py`** : or
+  `select_events()` ne filtre par `statut` QUE dans le mode file d'attente par défaut — avec
+  des ids explicites, elle fait `SELECT * FROM events_raw WHERE id IN (...)` sans aucun
+  filtre de statut. Résultat vécu : 6 fiches sur 10 forcées par id se sont avérées être des
+  articles de presse (« PLAN CANICULE », « Un incendie se propage à un chalet », « Enquête
+  publique… ») rédigées en « articles d'événement » puis publiées, avant d'être repérées et
+  corrigées à la main.
+- **Correctif** : appel à `non_event_reason(title, description)` ajouté tout au début de
+  `scripts/enrich.py:_process_one_event()`, avant tout appel réseau/LLM (avant même la
+  récupération de l'og:image de secours). Si une raison est détectée : aucun appel API,
+  fiche marquée `statut='rejected'` + `llm_justification` (même style que le pré-filtre de
+  `evaluator.py`), `enrich_status` laissé tel quel (jamais tentée), log `warning`. La
+  fonction renvoie un nouveau statut `'rejected'` (au lieu de `'skip'`, pour rester visible
+  dans les stats plutôt que noyé en silence) ; `main()` l'affiche dans le résumé final
+  (« N rejeté(s) [non-événement] »). Comme `_process_one_event()` est le SEUL chemin de
+  traitement par événement, aussi bien pour les ids explicites que pour le mode file
+  d'attente (`main()` ne fait qu'un seul `ex.submit(_process_one_event, …)` par événement),
+  le garde-fou s'applique désormais dans les deux cas sans court-circuit possible.
+
 ## Journal de session — 2026-07-30
 
 ### ✅ Audit AdSense (demande Franck : « fais un audit pour adsense »)
