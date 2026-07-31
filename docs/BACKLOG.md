@@ -6,6 +6,29 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 
 ## Journal de session — 2026-07-31
 
+### 🔍 Contamination croisée WP#3713/WP#1938 : incident isolé, confirmé par balayage large
+- **Découvert en investiguant une incohérence de titre** (cf. entrée diagnostic orphelins
+  ci-dessous) : le 2026-07-30 à 01:51:44, WP#3713 (tribe_events, « parc archéologique
+  d'Aoste ») a eu une révision dont le titre correspondait en réalité à WP#1938 (« fête
+  patronale de Saint-Martin-de-Corleans »), timestamp identique à la seconde près au
+  `post_modified` de WP#1938. Contenu erroné auto-corrigé le même jour à 18h54 (titre correct
+  restauré) — aucune conséquence visible côté site aujourd'hui.
+- **Cause non identifiée dans le code** : relecture de `translate_events.py`
+  (`_translate_one`/`_retranslate_one`, la partie parallélisée `ThreadPoolExecutor`) et
+  `publisher_as.py` sans trouver d'état partagé entre threads qui expliquerait un tel
+  mélange (chaque worker a sa propre connexion SQLite, son propre dict passé explicitement en
+  argument, aucun cache global mutable dans les deux fichiers).
+- **Balayage large fait (via Novamira, requête $wpdb directe sur wp_posts + révisions,
+  2026-07-27 → 2026-07-31, 697 lignes)** : 8 clusters de timestamps identiques trouvés, 7
+  explicables (lots de publication simultanés, ou paires de traduction FR/IT légitimes du
+  même sujet — comportement normal), **1 seul cas de vraie contamination croisée entre deux
+  sujets différents : WP#3713/WP#1938, celui déjà connu**. Aucune autre paire dormante trouvée.
+- **Conclusion** : incident isolé, pas un bug systémique récurrent (sinon on en aurait trouvé
+  d'autres sur 4 jours de pipeline parallélisé qui tourne en continu). Pas de correctif de code
+  à apporter faute de mécanisme identifié — classé « surveillé », pas « résolu ». Si un cas
+  similaire réapparaît, ce balayage (requête $wpdb sur les révisions à timestamp identique
+  entre parents différents) est la méthode à réutiliser pour le confirmer vite.
+
 ### 🤖 Automatisation complète enrich → publish (décision Franck : « oui, cent pour cent automatisé »)
 - **Câblé en cron** (`crontab.txt`) : `scripts/enrich.py --cap 20` à 9h30 (après l'évaluation
   de 9h), `scripts/publish_batch_as.py --cap 20` à 11h. Plafonds volontairement prudents pour
