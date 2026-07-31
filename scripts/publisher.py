@@ -106,31 +106,12 @@ def build_post(event: dict) -> tuple[str, str]:
         # PAS d'encadré « En pratique » ici : le bloc pratique (Quand/Où/Tarif/Catégorie)
         # est rendu NATIVEMENT par The Events Calendar (méta as_*). Le répéter en prose
         # ferait doublon. L'article reste ÉDITORIAL (chapô + corps + programme).
-        # Sources : uniquement des URLs http(s) propres (on ignore prose/markdown/URL
-        # bricolée que le LLM aurait glissée), dédupliquées, en excluant l'auto-lien.
-        seen = set()
-        clean_sources = []
-        for s in (data.get("sources") or []):
-            s = (s or "").strip()
-            if (s.startswith("http://") or s.startswith("https://")) \
-                    and " " not in s and s not in seen \
-                    and "agendasabauda.eu" not in s:   # jamais un lien vers nous-mêmes
-                seen.add(s)
-                clean_sources.append(s)
-        # GARDE-FOU DÉTERMINISTE (charte §8) — filet, en plus du filtrage déjà fait à
-        # l'enrichissement (scripts/enrich.py:filter_official_sources) : reconstruit à
-        # chaque publication/republication depuis enrich_data, il rattrape aussi les
-        # fiches enrichies AVANT ce garde-fou. Liste NOIRE (config/non_institutional_
-        # sources.txt), pas liste blanche : un domaine reste gardé sauf s'il est CONNU
-        # comme non institutionnel (guide touristique tiers, presse locale…).
-        if clean_sources:
-            from scripts.enrich import filter_official_sources
-            clean_sources, _dropped = filter_official_sources(clean_sources)
-        if clean_sources:
-            parts.append("<h3>Sources</h3><ul>")
-            parts += [f'<li><a href="{html.escape(s)}" target="_blank" '
-                      f'rel="noopener">{html.escape(s)}</a></li>' for s in clean_sources]
-            parts.append("</ul>")
+        # PAS de liste « Sources » dans le corps (Franck, 2026-07-31) : la fiche affiche
+        # déjà UN bouton « Source officielle » unique (as_source_officielle_url, dérivé
+        # de url_source) — lister en plus toutes les pages consultées par l'agent
+        # (souvent plusieurs pages du même site officiel : accueil, agenda, fiche
+        # artiste) fait doublon et dilue la source unique et vérifiable. `data["sources"]`
+        # reste calculé côté enrichissement (garde-fou de fiabilité) mais n'est plus rendu.
         return title, "\n".join(parts)
 
     # Repli : article non enrichi → description brute (nettoyée des balises).

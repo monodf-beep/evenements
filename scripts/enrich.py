@@ -1077,7 +1077,6 @@ def build_article_md(data: dict) -> tuple[str, str]:
     chapo = polish_prose((art.get("chapo") or "").strip())
     corps = polish_prose((art.get("corps") or "").strip())
     encadre = (art.get("encadre") or "").strip()
-    sources = [s for s in (data.get("sources") or []) if s]
     # Programme (CHARTE §5 bis) : faits structurés en LISTE, y compris en mode court.
     # Défensif : le champ peut être absent, None, vide, ou (erreur LLM) une chaîne.
     prog = art.get("programme")
@@ -1098,8 +1097,12 @@ def build_article_md(data: dict) -> tuple[str, str]:
         md.append("## Programme\n\n" + "\n".join(f"- {p}" for p in programme))
     if encadre:
         md.append("## En pratique\n\n" + encadre)
-    if sources:
-        md.append("## Sources\n\n" + "\n".join(f"- {s}" for s in sources))
+    # PAS de bloc « ## Sources » dans le corps (Franck, 2026-07-31) : la fiche affiche
+    # déjà un bouton « Source officielle » unique (as_source_officielle_url, dérivé de
+    # url_source) — lister en plus toutes les pages consultées par l'agent (souvent
+    # plusieurs pages du même site : accueil, agenda, fiche artiste) fait doublon et
+    # dilue la source unique et vérifiable. `data["sources"]` reste utilisé pour le
+    # garde-fou de fiabilité (filter_official_sources) mais n'est plus rendu ici.
     return titre, "\n\n".join(md).strip()
 
 
