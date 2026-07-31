@@ -136,7 +136,14 @@ def main(argv=None) -> int:
     ok = fail = 0
     for i, r in enumerate(rows, 1):
         event = dict(r)
-        wp_id, permalink, raw_url = publish_to_as(event, skip_media=args.skip_media)
+        # --skip-media ne doit JAMAIS priver une CRÉATION de sa photo (contrairement à un
+        # --update sur un post déjà en ligne, où l'image existante est de toute façon
+        # conservée) : une fiche encore jamais publiée n'a rien à "conserver". Bug
+        # 2026-07-31 : une passe --update --skip-media en masse (sans --ids) a élargi la
+        # sélection à des événements jamais publiés, créés sans photo (repli bannière
+        # générique côté WP, pas cassé — mais pas voulu).
+        skip = args.skip_media and (event.get("wp_post_id_as") or 0) > 0
+        wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip)
         if wp_id:
             conn.execute(
                 "UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
