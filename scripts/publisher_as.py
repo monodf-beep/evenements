@@ -246,8 +246,8 @@ def _build_payload(event: dict) -> dict:
         # Image ORIGINALE (non recadrée) : la vignette mise en avant est standardisée
         # en 4:3 pour la grille ; la FICHE, elle, affiche l'affiche entière via ce champ.
         # JAMAIS un logo/pictogramme (« voir l'affiche en grand » n'aurait aucun sens) :
-        # dans ce cas on laisse vide → la fiche montrera la bannière territoire seule.
-        "as_image_original":        "" if (_is_logo(event.get("url_image")) or event.get("image_source") == "banner") else (event.get("url_image", "") or ""),
+        # dans ce cas on laisse vide → la fiche montrera la bannière de repli seule.
+        "as_image_original":        "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
         # Lieu + ville en plat : la carte-événement JetEngine les lit directement
         # (le Venue TEC reste par ailleurs pour la carte/adresse).
         "as_lieu":                  (event.get("lieu") or "").strip(),
@@ -277,7 +277,7 @@ def _build_payload(event: dict) -> dict:
         "score":       event.get("llm_score"),
         # On ne transmet pas un logo comme image : l'endpoint pourrait la re-télécharger
         # en repli. La vraie vignette part en featured_media_id (téléversée ci-dessous).
-        "image_url":   "" if (_is_logo(event.get("url_image")) or event.get("image_source") == "banner") else (event.get("url_image", "") or ""),
+        "image_url":   "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
         "image_alt":   event.get("seo_keyphrase") or event.get("title", "") or "",
         # Site officiel de l'événement (champ natif TEC « EventURL ») = même valeur
         # que as_source_officielle_url. Jamais la source radar (charte §8).
@@ -370,23 +370,24 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
     # (url_image_portrait) quand elle existe ; le grand visuel 16:9 prend la version PAYSAGE
     # (url_image_wide). Vide → on retombe sur l'image principale. Cf. scripts/images_wide.
     card_source = (event.get("url_image_portrait") or "").strip() or url_image
-    if not skip_media and url_image and not _is_logo(url_image) \
-            and event.get("image_source") != "banner":
-        # Vraie affiche → vignette standardisée 4:3. Point focal ET mode (auto/cover/
-        # letterbox) réglables à la main au back-office (éditeur de cadrage).
-        # ANTI-BAKE (2026-07-26) : une bannière de repli (image_source='banner') n'est
-        # PLUS téléversée en featured media. On laisse le _thumbnail_id VIDE → le repli
-        # runtime WordPress (snippet 87 cs_fallback_visual) sert la bannière de catégorie
-        # à l'affichage, et Yoast en dérive l'og:image. Zéro copie bakée par événement,
-        # signal « pas de photo » honnête (thumbnail vide). Prouvé sur l'event 2222.
+    if not skip_media and url_image and not _is_logo(url_image):
+        # Vraie affiche OU bannière de repli territoire×catégorie (image_source='banner',
+        # posée par scripts/visuals.py à défaut de vraie photo — une de NOS images réelles,
+        # jamais générée à la volée) : dans les deux cas, une vraie image existe → on la
+        # TÉLÉVERSE en featured media. Point focal ET mode (auto/cover/letterbox) réglables
+        # à la main au back-office (éditeur de cadrage) pour les vraies affiches ; centré
+        # pour les bannières. RÉTABLI le 2026-07-31 (Franck : pas de repli généré côté
+        # WordPress/snippet — seulement nos propres images, réellement téléversées).
+        is_banner = event.get("image_source") == "banner"
         media_id, _ = _upload_featured_media(
             wp_url, auth, card_source, alt=alt,
             caption=event.get("image_credit", "") or "", title=event.get("title", ""),
             card=True,
-            # Focal centré si on sert l'affiche portrait DÉDIÉE (le focal réglé à la main
-            # vaut pour l'image principale, pas pour cette autre image).
-            focal=(0.5, 0.5) if card_source != url_image else _focal(event),
-            mode=(event.get("card_mode") or "auto"))
+            # Focal centré pour une bannière (générique, pas de sujet à cadrer) ou pour
+            # l'affiche portrait DÉDIÉE (le focal réglé à la main vaut pour l'image
+            # principale, pas pour cette autre image) ; sinon le focal manuel du back-office.
+            focal=(0.5, 0.5) if (is_banner or card_source != url_image) else _focal(event),
+            mode="cover" if is_banner else (event.get("card_mode") or "auto"))
         if media_id:
             hero_source = url_image
     # Repli 1 — PAGE SOURCE : l'affiche directe manque, a échoué (403/429), ou était un
@@ -403,16 +404,12 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
                 mode=(event.get("card_mode") or "auto"))
             if media_id:
                 hero_source = recovered
-    # Repli 2 (bannière territoire bakée en featured media) — RETIRÉ le 2026-07-26.
-    # On ne bake plus AUCUNE bannière : quand il n'y a pas de vraie photo (ni affiche, ni
-    # récupération page), on laisse le _thumbnail_id VIDE. Le repli runtime WordPress
-    # (snippet 87) sert la bannière fallback-{terr}-{cat} à l'affichage ET nourrit l'og:image
-    # (Yoast lit le thumbnail via get_post_meta, filtré par le snippet — prouvé sur 2222).
-    # Bénéfices : plus de vignette bakée par événement dans la média-thèque, plus de piège
-    # de détection (thumbnail vide = pas de photo), bannière modifiable sans re-bake. La
-    # bannière reste dans url_image (image_source='banner') pour la carte back-office et le
-    # compositeur réseaux ; l'audit la distingue déjà (image_source='banner').
-    # `_banner()` + imports territoire conservés (utilisables ailleurs) mais non appelés ici.
+    # Repli 2 (bannière territoire × catégorie) : plus besoin d'un appel séparé à
+    # _banner() ici — quand ni la vraie affiche ni la récupération page n'ont abouti,
+    # `url_image` contient DÉJÀ la bannière de repli (posée en amont par
+    # scripts/visuals.py, même fonction pick_banner_image), et le bloc ci-dessus l'a
+    # donc déjà téléversée comme featured media. `_banner()` reste dispo pour un appel
+    # direct ailleurs (ex. republication ciblée) mais n'est plus appelée dans ce flux.
     if media_id:
         payload["featured_media_id"] = media_id
 
@@ -428,21 +425,23 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
         # point focal centré et cover (le focal réglé à la main vaut pour l'affiche portrait).
         wide_source = (event.get("url_image_wide") or "").strip()
         hero_img = wide_source or hero_source
+        is_banner = event.get("image_source") == "banner"
         _, hero_url = _upload_featured_media(
             wp_url, auth, hero_img, alt=alt,
             caption=event.get("image_credit", "") or "",
             title=f"{event.get('title', '')} — fiche",
             card=True,
-            focal=(0.5, 0.5) if wide_source else _focal(event),
-            mode=("cover" if wide_source else (event.get("card_mode") or "auto")),
+            focal=(0.5, 0.5) if (wide_source or is_banner) else _focal(event),
+            mode="cover" if (wide_source or is_banner) else (event.get("card_mode") or "auto"),
             ratio=(16, 9))
         if hero_url:
             payload["meta"]["as_image_original"] = hero_url
 
     # Copie ORIGINALE (non recadrée, card=False) hébergée chez nous — réutilisée par
     # /reseaux/publish pour composer les visuels Instagram sans retélécharger depuis le
-    # site source (certains bloquent le téléchargement par un défi anti-robot). '' si
-    # hero_source est vide (repli bannière : rien d'original à conserver).
+    # site source (certains bloquent le téléchargement par un défi anti-robot). Couvre
+    # aussi le cas bannière (image_source='banner') : hero_source est posé dans ce cas
+    # aussi désormais, donc la bannière de repli est dispo pour les réseaux également.
     raw_image_url = ""
     if hero_source:
         # Copie réseaux : l'affiche PORTRAIT dédiée si elle existe (les visuels Instagram

@@ -170,21 +170,19 @@ flowchart TD
 
 ---
 
-## 10. Modèle de repli : bake vs runtime (tranché)
+## 10. Modèle de repli : bake vs runtime (RE-tranché 2026-07-31 — on bake)
 
-**Constat prouvé (event 2222, live) :** le repli WordPress `cs_fallback_visual` (snippet 87) filtre `_thumbnail_id` au **niveau données** (pas seulement l'affichage) → quand un événement n'a pas de vraie miniature, Yoast en dérive l'`og:image` = `fallback-{terr}-{cat}-og1200x630.png`, **sans aucun bake côté pipeline**. Les crawlers (front-end) voient donc le bon fallback de catégorie.
+**Historique :** le 2026-07-26, on avait arrêté de téléverser la bannière de repli territoire×catégorie comme featured media, au profit d'un filtre PHP live côté WordPress (`cs_fallback_visual`, snippet 87) qui substituait `_thumbnail_id` à l'affichage sans copie réelle dans la médiathèque — motivé par l'évitement de doublons.
 
-**Piège :** snippet 87 est **scope front-end** (inactif en REST/admin/CLI). Un consommateur lisant la featured image hors front-end ne verrait rien — **mais vérifié côté pipeline : aucun ne le fait** (`ig_scheduler` lit `url_image`/`wp_raw_image` en base, jamais la featured media via REST ; tous les `featured_media` du code sont des écritures au push).
+**Revirement (Franck, 2026-07-31) :** refus explicite qu'un mécanisme WordPress/snippet « fabrique » l'image affichée, même quand l'image source est une des nôtres. Exigence : la bannière de repli doit être une **vraie media WordPress téléversée pour l'événement**, comme une vraie affiche — pas un filtre runtime qui la substitue à la volée.
 
-**Décision : arrêter de baker une copie par événement.** Le runtime couvre le front-end (og/partage/SEO) ; le signal « pas de photo » reste honnête via `image_source='banner'` (l'audit le filtre déjà). Pas besoin de la piste « attachement partagé » (#3) tant qu'aucun consommateur REST n'apparaît.
+**FAIT côté pipeline (2026-07-31, `publisher_as`)** — retour à l'upload réel :
+1. La featured media est de nouveau **téléversée** même quand `image_source == 'banner'` — même chemin de code que pour une vraie affiche (le bloc d'upload ne distingue plus les deux, seul le point focal/mode diffère : centré + cover pour une bannière).
+2. `image_url` et `as_image_original` **ne sont plus vidés** pour une bannière — la bannière est une vraie image, elle peut circuler normalement (fiche, back-office, réseaux).
+3. Le grand visuel 16:9 de fiche et la copie « originale » (réseaux/Instagram) couvrent aussi le cas bannière (`hero_source` posé).
+Résultat : événement sans vraie photo → la bannière territoire×catégorie (`utils.sources.pick_banner_image`, déjà posée en `url_image` par `scripts/visuals.py`) est téléversée comme media WordPress **réel**, exactement comme une affiche — plus de dépendance au snippet 87 pour l'affichage (il reste utile en filet de sécurité pour les ~87 événements historiques déjà publiés avant ce correctif, tant qu'ils n'ont pas été republiés).
 
-**FAIT côté pipeline (2026-07-26, `publisher_as`)** — trois verrous :
-1. La featured media n'est **plus téléversée** quand `image_source == 'banner'` (l'affiche/récupération réelles, elles, montent toujours).
-2. Le **Repli 2 `_banner()` est retiré** du flux de push (fonction conservée mais non appelée).
-3. `image_url` et `as_image_original` sont **vidés** pour une bannière (sinon l'endpoint la re-télécharge → re-bake).
-Résultat : événement sans vraie photo → `_thumbnail_id` vide → repli runtime WordPress. La bannière **reste dans `url_image`** (carte back-office + compositeur réseaux couverts ; pas de trou social à combler — le point #3 initial devient sans objet).
-
-*Reste à faire, côté SITE (conversation dédiée) : nettoyer les ~42 vignettes déjà bakées dans la média-thèque WordPress pour qu'elles repassent au repli runtime. Rien de bloquant : les nouveaux push sont déjà propres.*
+*Contrepartie assumée : retour d'une copie par événement dans la médiathèque WordPress (le doublon qu'on cherchait à éviter le 07-26). Décision consciente du 07-31 : correct côté « vraie image, jamais de génération WordPress » prime sur l'économie de stockage médiathèque.*
 
 ---
 

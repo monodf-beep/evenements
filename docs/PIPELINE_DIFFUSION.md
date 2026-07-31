@@ -94,7 +94,7 @@ On **téléverse l'image côté Python** dans la médiathèque WordPress plutôt
 - **AS** (`publisher_as.py`) : chaîne à plusieurs étages —
   1. **vraie affiche** `url_image` → vignette 4:3 (point focal + mode réglés au back-office) ;
   2. **repli page source** (`_recover_image` → `fetch_content_image`) si l'affiche directe manque/échoue/est un logo ;
-  3. **ANTI-BAKE (2026-07-26)** : une **bannière** de repli (`image_source == 'banner'`) n'est **PLUS** téléversée. Le `_thumbnail_id` reste **vide** → le **repli runtime WordPress** (snippet 87 `cs_fallback_visual`) sert la bannière territoire×catégorie à l'affichage et Yoast en dérive l'og:image. `_banner()` est conservé mais **non appelé** (voir `IMAGES.md` §10).
+  3. **bannière territoire×catégorie** (`image_source == 'banner'`, posée en amont par `scripts/visuals.py` via `pick_banner_image`) : depuis le 2026-07-31, elle est téléversée **normalement** comme featured media (même chemin que la vraie affiche, focal centré + mode cover). Aucun repli WordPress/snippet ne « génère » l'image affichée — voir `IMAGES.md` §10.
 - En plus, AS pose deux copies d'image utiles au reste du pipeline :
   - **`as_image_original`** (méta) : grand visuel 16:9 de la fiche (affiche entière, jamais un logo) ;
   - **`wp_raw_image_url_as`** : copie **originale non recadrée** hébergée chez nous → réutilisée par Instagram pour **ne pas retélécharger** depuis un site source protégé (Cloudflare).
@@ -123,11 +123,12 @@ La langue part dans `payload["language"]`, l'endpoint la pose côté Polylang �
 flowchart TD
   start([publish_to_as]) --> skip{skip_media ?}
   skip -->|oui · texte seul| endp
-  skip -->|non| real{url_image = vraie affiche ?<br/>pas logo · pas 'banner'}
-  real -->|oui| up1[vignette 4:3 · point focal · upload] --> okm[featured_media_id]
-  real -->|non| rec{_recover_image<br/>og / photo de contenu de la page}
+  skip -->|non| real{url_image non vide ?<br/>pas logo}
+  real -->|oui, vraie affiche| up1[vignette 4:3 · point focal réglable · upload] --> okm[featured_media_id]
+  real -->|oui, bannière repli<br/>image_source='banner'| up1b[bannière territoire×catégorie<br/>focal centré · cover · upload] --> okm
+  real -->|non, logo ou vide| rec{_recover_image<br/>og / photo de contenu de la page}
   rec -->|trouvée| up2[vignette 4:3 · upload] --> okm
-  rec -->|rien| noimg[PAS de bake · _thumbnail_id VIDE<br/>repli runtime WP snippet 87]
+  rec -->|rien| noimg[_thumbnail_id vide<br/>aucune image trouvable]
   okm --> hero[+ grand visuel 16:9 as_image_original<br/>+ copie originale wp_raw_image_url_as]
   hero --> endp[/POST cs/v1/event · status=draft/]
   noimg --> endp
