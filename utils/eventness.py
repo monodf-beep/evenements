@@ -39,6 +39,24 @@ _NON_EVENT = [
     (re.compile(r"\bconseil\s+(?:municipal|d[ée]partemental|communautaire|m[ée]tropolitain)\b"
                 r".{0,40}\b(?:vote|voté|budget|d[ée]lib[ée]r|subvention|s[ée]ance)", re.I),
      "compte-rendu institutionnel (conseil)"),
+    # Ajouts 2026-07-31 (cas réels trouvés : alerte canicule, incendie, résultat sportif,
+    # rétrospective d'anniversaire déjà célébré, panorama de presse — publiés à tort en
+    # forçant l'enrichissement par id, sans repasser par l'évaluation).
+    (re.compile(r"\bplan\s+canicule\b|\balerte\s+(?:rouge|orange)\b"
+                r"|\bvigilance\s+(?:rouge|orange|m[ée]t[ée]o)\b", re.I),
+     "alerte sécurité publique"),
+    (re.compile(r"\bincendie\s+se\s+propage\b|\bun\s+incendie\s+(?:ravage|d[ée]truit)\b", re.I),
+     "fait divers (incendie)"),
+    (re.compile(r"\benqu[êe]te\s+publique\b", re.I),
+     "consultation publique / urbanisme"),
+    (re.compile(r"\bremporte\s+le\s+(?:premier|deuxi[èe]me|troisi[èe]me)?\s*"
+                r"(?:open|tournoi|championnat)\b", re.I),
+     "résultat sportif (déjà joué)"),
+    (re.compile(r"\ba\s+c[ée]l[ée]br[ée]\s+(?:ses|son)\s+\d+e?\s+anniversaire\b"
+                r"|\ba\s+f[êe]t[ée]\s+ses\s+\d+\s+ans\b", re.I),
+     "rétrospective (anniversaire déjà célébré)"),
+    (re.compile(r"\bil\s+calendario\b.{0,20}[-–—]\s*\w", re.I),
+     "panorama de presse (calendrier d'événements, pas un événement précis)"),
 ]
 
 
