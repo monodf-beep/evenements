@@ -6,6 +6,35 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 
 ## Journal de session — 2026-07-31
 
+### 📐 Protocole de LOT — fin du rattrapage au compte-gouttes
+- **Constat de Franck** : la journée a enchaîné des correctifs partiels (images, kill-switch,
+  méta `as_enrich_status`…) sans jamais vérifier qu'un événement donné avait TOUTE la chaîne
+  appliquée — score, article complet/court selon le score, panel lecteurs, `home_score` posé,
+  vraie image. Résultat : des fiches "réparées" sur un aspect (l'image) sans savoir si le
+  reste (rédaction, score, panel) avait seulement eu lieu. Refus explicite de continuer à
+  "réparer un peu partout" : préférence pour un LOT restreint (ex. dix événements) traité
+  **intégralement**, vérifié, puis clos — plutôt que tous les événements avancés d'un cran.
+- **Outil ajouté : `scripts/batch_report.py`** — ne modifie rien, prend une liste d'ids et
+  affiche pour chacun : score, longueur d'article (+ alerte si court alors que le score
+  visait un long), verdict du panel lecteurs, `home_score`/`home_override`, id WordPress AS
+  et si l'image posée est réelle. Verdict COMPLET/INCOMPLET par événement + total du lot.
+  Code de sortie non-nul si le lot n'est pas intégralement complet — utilisable comme
+  portillon avant de passer à l'étape suivante ou au lot suivant.
+- **Protocole de lot (à répéter, PAS de nouveau rattrapage large tant qu'un lot n'est pas
+  clos)** :
+  1. `enrich.py <id1> <id2> ... <idN>` — rédaction + score + panel + `home_score`, EXPLICITEMENT
+     sur les ids du lot (jamais la queue entière/`--cap`, pour rester dans un périmètre vérifiable).
+  2. `batch_report.py <id1> ... <idN>` — doit rendre COMPLET pour chaque id AVANT de publier.
+     Un id INCOMPLET (score absent, article vide, panel jamais passé) se corrige ou sort du
+     lot — on ne publie jamais un id resté incomplet en base.
+  3. `publish_batch_as.py --ids <id1> ... <idN>` (SANS `--skip-media`) — publication + vraie
+     image (cf. correctif du jour sur `image_source='banner'`).
+  4. `batch_report.py <id1> ... <idN>` — reconfirme COMPLET, cette fois avec l'id WordPress et
+     l'image réelle en place. Le lot n'est clos que si cette dernière vérification est propre.
+- **Reste à faire** : choisir le premier lot réel (candidats naturels : les 8 ids Groupe A
+  en attente du retour de quota API — 834, 840, 843, 1155, 1447, 2128, 3506, 3512) et dérouler
+  le protocole ci-dessus dessus, plutôt que relancer un `--cap` large sur toute la file.
+
 ### 🐛 Kill-switch quota increvable — corrigé le jour même de sa mise en place
 - **Bug trouvé en le testant en conditions réelles** (quelques heures après l'avoir câblé) :
   le kill-switch ajouté dans `enrich.py` (voir entrée "Automatisation complète" plus bas)
