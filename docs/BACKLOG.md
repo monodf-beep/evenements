@@ -348,7 +348,8 @@ Légende propriétaire : 🤖 Claude Code (repo) · 🧑 Franck (VPS/décision) 
       google_auth) en dépôt versionné réutilisé par les 3 projets. Miroir Obsidian possible
       pour l'éditorial. (Voir le plan dans `README.md`.)
 - [ ] **Sélecteur de modèle** dans le dashboard (Sonnet/Haiku/Opus) sans éditer le `.env`.
-- [ ] Vraie URL `agenda.culturasabauda.eu` (DNS + Traefik) au lieu de sslip.io.
+- [ ] Vraie URL `backoffice.agendasabauda.eu` (DNS + Traefik) au lieu de sslip.io (corrigé
+      2026-07-31 : la marque est Agenda Sabauda, pas culturasabauda.eu).
 
 ### UX / UI du backoffice (signalé par Franck)
 - [x] Messages de retour après action (publication, rejet…).

@@ -240,8 +240,9 @@ famiglia.*
 
 ## 6. Points ouverts (décisions Franck)
 
-1. **Domaine** : `agendasabauda.eu` à réserver — il n'existe pas encore (seul
-   `agenda.culturasabauda.eu` existe, pour le backoffice).
+1. ~~**Domaine** : `agendasabauda.eu` à réserver.~~ **Fait** (site live). Le backoffice
+   est sur `backoffice.agendasabauda.eu` (corrigé 2026-07-31, ce point datait d'avant le
+   lancement du site).
 2. **6 tuiles** : familles de catégories (ma reco) *ou* mix temporel + territoires ? (§2.1)
 3. **Auto-publication du site de volume** : les score 4-6 partent-ils en ligne
    automatiquement, ou passent-ils par une file de relecture ? (question déjà ouverte au

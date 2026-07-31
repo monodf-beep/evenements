@@ -123,7 +123,7 @@ l'édition non-dev et l'objectif « parties éditables en **Gutenberg natif** »
 ## 6. Déploiement / exploitation ⚙️
 - [ ] `bash deploy/update.sh` sur le VPS (tire Pilotage + renommage + seeding)
 - [ ] `crontab crontab.txt` (sauvegarde + collectes)
-- [ ] Vraie URL `agenda.culturasabauda.eu` (DNS + Traefik) au lieu de sslip.io
+- [ ] Vraie URL `backoffice.agendasabauda.eu` (DNS + Traefik) au lieu de sslip.io
 
 ## 7. Pipeline — dettes ouvertes 🤖 (extrait de `BACKLOG.md`)
 - [ ] **Dédup multi-sources** (`same_story` → fusion vers la source la plus riche/autoritaire)

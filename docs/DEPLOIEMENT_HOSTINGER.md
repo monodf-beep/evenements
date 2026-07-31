@@ -2,7 +2,7 @@
 
 Même topologie que l'Observatoire : l'app tourne en **loopback** via **systemd**,
 exposée en **HTTPS par Traefik** (Let's Encrypt). Le backoffice occupe un
-sous-domaine dédié **`agenda.culturasabauda.eu`**.
+sous-domaine dédié **`backoffice.agendasabauda.eu`**.
 
 > 🔒 L'auth HTTP Basic ne transite jamais en clair : Traefik impose HTTPS.
 > Les secrets (`.env`, `config/credentials.json`, `config/token.json`) ne sont
@@ -13,7 +13,7 @@ sous-domaine dédié **`agenda.culturasabauda.eu`**.
 - VPS Ubuntu avec **Traefik** déjà en place (entryPoint `websecure`, certResolver
   `letsencrypt`, provider fichier dynamique surveillé — c'est le cas pour
   l'Observatoire).
-- **DNS** : un enregistrement **A `agenda.culturasabauda.eu` → IP du VPS**.
+- **DNS** : un enregistrement **A `backoffice.agendasabauda.eu` → IP du VPS**.
 - Accès SSH `root`.
 
 ## 1. Récupérer le code
@@ -71,7 +71,7 @@ sudo cp deploy/traefik-agenda.yml /docker/traefik/dynamic/
 # Traefik charge le fichier à chaud (providers.file.watch=true)
 ```
 
-Ouvrir **https://agenda.culturasabauda.eu** → login `BACKOFFICE_USER` /
+Ouvrir **https://backoffice.agendasabauda.eu** → login `BACKOFFICE_USER` /
 `BACKOFFICE_PASSWORD`. Le certificat Let's Encrypt est émis au 1er accès.
 
 ---
@@ -141,7 +141,7 @@ le service. Les secrets et la base `data/events.db` sont préservés (non suivis
 | Symptôme | Vérifier |
 |---|---|
 | 502 / Bad Gateway | `systemctl status agenda-admin` (le service écoute-t-il sur 8098 ?) |
-| Certificat absent / HTTP | DNS `agenda.culturasabauda.eu` → VPS ? Fichier Traefik bien copié ? |
+| Certificat absent / HTTP | DNS `backoffice.agendasabauda.eu` → VPS ? Fichier Traefik bien copié ? |
 | 401 en boucle | `BACKOFFICE_USER` / `BACKOFFICE_PASSWORD` du `.env` |
 | Gmail vide | label `Agenda` posé sur les mails ? `token.json` généré (étape 3) ? |
 | Pas d'événements à valider | lancer `scraper_events.py` + `evaluator.py`, puis voir le dashboard |
