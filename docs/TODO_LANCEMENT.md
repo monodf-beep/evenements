@@ -132,10 +132,22 @@ l'édition non-dev et l'objectif « parties éditables en **Gutenberg natif** »
 - [ ] `cultura-core` : extraire charte + `utils` partagés
 
 ## 8. Décisions encore ouvertes 🧑 (elles conditionnent le reste)
-- [ ] **Ambition** : Agenda Sabauda = actif de marque de Cultura Sabauda **ou** business autonome ? (conditionne tout l'effort)
-- [ ] **Recalibrage du seuil de score ≥ 7** (routage CS/AS)
-- [ ] **Enrichissement en cron** (auto) ? seuil ? auto-publication du site de volume ? kill-switch coût
-- [ ] **Autoriser le connecteur Brevo** (newsletter)
+- [ ] **Ambition** : Agenda Sabauda = actif de marque de Cultura Sabauda **ou** business autonome ?
+      (conditionne tout l'effort). Discuté le 2026-07-31 : Franck penche vers 100 % automatisé,
+      ce qui va naturellement dans le sens « business autonome » (plus de volume/SEO propre à
+      Agenda Sabauda), mais pas formellement tranché.
+- [ ] **Recalibrage du seuil de score ≥ 7** — précisé 2026-07-31 : ce seuil (`ENRICH_MIN_SCORE`)
+      ne routait PAS CS/AS (architecture obsolète) mais contrôle aujourd'hui article LONG vs
+      COURT (`enrich.py`) et catalogue vs mise en avant (`evaluator.py`) — un curseur
+      qualité/coût, jamais un filtre de publication. Toujours pas de valeur cible choisie.
+- [x] **Enrichissement en cron (auto) ? kill-switch coût ?** — **fait 2026-07-31** :
+      `crontab.txt` câble `enrich.py --cap 20` (9h30) → `publish_batch_as.py --cap 20` (11h),
+      avec kill-switch quota (`usage.get_alert()` vérifié avant tout appel) + alerte Slack sur
+      nouvelle panne. **Auto-publication : oui, immédiate et publique** (pas de brouillon —
+      découvert en câblant, la docstring de `publish_batch_as.py` disait le contraire à tort,
+      corrigée). Reste à Franck : `crontab crontab.txt` sur le VPS pour activer (recommandé :
+      un essai manuel de plus après le reset du quota le 2026-08-01 avant d'installer).
+- [ ] **Autoriser le connecteur Brevo** (newsletter) — reporté (Franck : "on regarde après").
 
 ---
 
