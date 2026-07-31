@@ -92,6 +92,11 @@ def main(argv=None) -> int:
                              "qualité). Par défaut, seuls les événements COMPLETS partent.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Lister la sélection sans rien publier.")
+    parser.add_argument("--skip-media", action="store_true",
+                        help="Ne retéléverse AUCUNE image (texte + méta seuls). Utile pour "
+                             "une passe --update en masse qui ne fait que resynchroniser les "
+                             "méta as_* (ex. as_enrich_status, ajouté après coup) sur des "
+                             "événements déjà publiés, sans marteler la médiathèque.")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -131,7 +136,7 @@ def main(argv=None) -> int:
     ok = fail = 0
     for i, r in enumerate(rows, 1):
         event = dict(r)
-        wp_id, permalink, raw_url = publish_to_as(event)
+        wp_id, permalink, raw_url = publish_to_as(event, skip_media=args.skip_media)
         if wp_id:
             conn.execute(
                 "UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
