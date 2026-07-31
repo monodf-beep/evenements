@@ -6,6 +6,42 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 
 ## Journal de session — 2026-07-31
 
+### 🔍 Déduplication multi-sources : déjà implémentée (item backlog obsolète) — validée par tests synthétiques
+- **Constat** : la tâche demandée (fusionner via `same_story()` les doublons inter-flux,
+  institutionnel > radar, en récupérant les champs manquants) est **déjà en production**
+  depuis le 2026-07-26 (commit `55cbb7b` et affinages `1134a9b`/`798f219`/`4b4458b`) dans
+  `scripts/dedupe.py`, appelé par le cron de 8h30 (avant `dates.py` et `evaluator.py`,
+  comme demandé). L'entrée « Déduplication multi-sources » plus bas dans ce fichier était
+  restée à `[ ]` malgré l'implémentation — corrigée en `[x]`.
+- `utils/sources.py:same_story()`/`strip_tracking()` existent déjà (pas de divergence
+  Observatoire constatée à date, contrairement à la note historique du backlog).
+- Algorithme en place : union-find par territoire + `same_story(titre)` (+ garde
+  `_years_incompatible` pour ne pas fusionner deux éditions annuelles distinctes) ; gagnant
+  = `max(score)` avec `TIER_RANK` (`officielle`=3 > `institution`=2 > `tourisme`=1 >
+  `radar`=0, vocabulaire identique à `config/sources.txt`) puis richesse (image, longueur
+  description, champs structurés, url hors Google News) ; fusion réelle sur le gagnant
+  (image/lieu/ville/organisateur manquants complétés depuis les perdants, description la
+  plus longue du groupe conservée) ; perdants → `statut='merged'`, `duplicate_of=<id
+  gagnant>` — vocabulaire déjà utilisé ailleurs (`cleanup_as_audit.py`,
+  `triage_chantier_casse.py`). Dry-run par défaut avec `--apply` n'est PAS utilisé ici
+  (volontaire) : traitement 100 % déterministe qui ne touche que les `pending`, protège
+  déjà les fiches poussées sur l'agenda (`wp_post_id_as`), et tourne sans supervision
+  depuis des jours en cron — changer la convention casserait `crontab.txt`/
+  `deploy/cron_pipeline.sh` sans bénéfice.
+- Pas de comparaison de dates à quelques jours près : choix délibéré, pas un oubli — à
+  8h30 `date_start` est le texte brut du flux (formats hétérogènes), `date_event_start`
+  normalisé n'existe qu'après `scripts/dates.py` (8h45, après dedupe). La garde contre les
+  éditions différentes passe par les années détectées dans le TITRE
+  (`_years_incompatible`), plus robuste qu'un diff de dates non normalisées à ce stade.
+- **Validation** : 3 groupes synthétiques dans une DB SQLite temporaire (jamais la base
+  réelle) — institutionnel sans image + radar avec image (même sujet, dates à 1 jour
+  d'écart) ; office de tourisme vs source officielle avec description longue ; un événement
+  isolé. Résultat : le gagnant institutionnel récupère l'image du radar perdant, le gagnant
+  officielle hérite de la description la plus longue, les deux perdants passent
+  `statut='merged'` + `duplicate_of` correct, l'événement isolé reste intact
+  (`pending`/`duplicate_of IS NULL`). Aucun code modifié — uniquement cette entrée de
+  journal et la correction de la case à cocher.
+
 ### 🐛 `scripts.enrich` publiait des articles de presse comme événements (ids explicites)
 - **Bug** : appeler `scripts.enrich <ids locaux>` (bouton « 1 événement », ou tout appel
   avec des ids en argument) enrichissait et publiait la fiche SANS repasser par
@@ -350,14 +386,12 @@ Légende propriétaire : 🤖 Claude Code (repo) · 🧑 Franck (VPS/décision) 
       spectateurs vs participants (sport), VO/VF (cinéma), récurrence (marchés/fêtes).
 
 ### Qualité de la collecte
-- [ ] **Déduplication multi-sources** ⟵ signalé par Franck. Un même événement arrive
-      par plusieurs flux (institutionnel + radar + office de tourisme). Aujourd'hui la
-      dédup est seulement par `url_source` exacte → on garde des **doublons**, parfois la
-      **version la plus pauvre**. À faire : regrouper via `same_story()` (titre +
-      territoire + dates proches) et **fusionner vers la source la plus riche/autoritaire**
-      (institutionnel > radar ; avec photo ; contenu le plus complet). Voir CHARTE §8.
-      NB : `same_story()` / `strip_tracking()` existent dans l'Observatoire mais ont
-      **divergé** de notre copie synchronisée `utils/sources.py` → resynchroniser au passage.
+- [x] **Déduplication multi-sources** ⟵ signalé par Franck. Un même événement arrive
+      par plusieurs flux (institutionnel + radar + office de tourisme). **Fait** (voir
+      Journal 2026-07-31) : `scripts/dedupe.py` regroupe via `same_story()` (titre +
+      territoire, garde anti-éditions par année) et **fusionne vers la source la plus
+      riche/autoritaire** (officielle > institution > tourisme > radar ; avec photo ;
+      contenu le plus complet), en cron à 8h30 avant l'évaluation. Voir CHARTE §8.
 - [x] **Travailler par PÉRIODE (« ce week-end »)** ⟵ signalé par Franck. `scripts/dates.py`
       extrait la vraie date d'événement (FR/IT, plages, « jusqu'au X ») → `date_event_*`.
       Filtre de période dans `/events` (presets + mini-calendrier + bac « date à confirmer »),
