@@ -69,6 +69,25 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
   d'attente (`main()` ne fait qu'un seul `ex.submit(_process_one_event, …)` par événement),
   le garde-fou s'applique désormais dans les deux cas sans court-circuit possible.
 
+### 🔍 Nouvel outil `scripts/diag_wp_orphans.py` (lecture seule, à lancer sur le VPS)
+- **Anomalies non résolues à date** : 5 WP#id orphelins (`1674, 1677, 1680, 2232, 4113`,
+  aucune ligne locale avec ce `wp_post_id_as`) ; id local `4199` dont `wp_post_id_as`
+  est passé de `4121` à `NULL` entre 07:56 et 08:39 sans action volontaire connue ; id
+  local `4113` dont le titre stocké (« Ouverture du nouveau parc archéologique d'Aoste »)
+  ne correspond pas au titre vu en direct sur `WP#3713` (« Aoste : la fête patronale du
+  quartier de Saint-Martin-de-Corleans »).
+- **Outil écrit** (pas exécutable depuis cet environnement : ni `.env`, ni accès réseau au
+  site) : `scripts/diag_wp_orphans.py`, 100 % lecture seule. Source principale `cs/v1/list`
+  (un seul appel, réutilise `fetch_list` de `scripts/cleanup_as_dupes.py`) ; comme cette
+  route exclut la CORBEILLE par construction, repli automatique sur `wp/v2/tribe_events/
+  <id>?context=edit` (route standard WP core, déjà éprouvée dans
+  `scripts/relink_wp_ids_as.py`) pour les ids absents de la liste — seul moyen de
+  distinguer « en corbeille » de « supprimé définitivement ». Propose aussi, pour chaque
+  orphelin trouvé, des candidats locaux par titre proche (`difflib.SequenceMatcher`).
+  Vérifié par `python3 -m py_compile` + import du module + test de `fuzzy_candidates`/
+  `lookup` sur fixtures en mémoire (aucune base réelle touchée).
+- **À faire par Franck sur le VPS** : `.venv/bin/python -m scripts.diag_wp_orphans`.
+
 ## Journal de session — 2026-07-30
 
 ### ✅ Audit AdSense (demande Franck : « fais un audit pour adsense »)
