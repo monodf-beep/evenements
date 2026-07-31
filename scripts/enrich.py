@@ -38,7 +38,7 @@ import sys
 import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import requests
@@ -105,6 +105,24 @@ _UA = {
 
 # Sentinel : échec d'APPEL API. L'événement n'est pas marqué → réenrichi plus tard.
 API_ERROR = object()
+
+_REGAIN_ACCESS_RX = re.compile(
+    r"regain access on (\d{4}-\d{2}-\d{2}) at (\d{2}:\d{2}) UTC", re.I)
+
+
+def _alert_expired(message: str) -> bool:
+    """True si le message d'erreur donne une heure de reset ("regain access on ... UTC")
+    et qu'elle est déjà passée. False si pas d'heure trouvée (on garde le blocage par
+    prudence) ou si elle n'est pas encore atteinte."""
+    m = _REGAIN_ACCESS_RX.search(message)
+    if not m:
+        return False
+    try:
+        reset_at = datetime.strptime(f"{m.group(1)} {m.group(2)}", "%Y-%m-%d %H:%M")
+        reset_at = reset_at.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    return datetime.now(timezone.utc) >= reset_at
 
 WEB_SEARCH_TOOL = {
     "type": "web_search_20260209",
@@ -1552,11 +1570,18 @@ def main(argv: list[str]) -> int:
         return 1
     # Kill-switch cron : un run précédent a déjà signalé un souci API (quota/crédit/
     # facturation) il y a moins de 7 jours → inutile de retenter, on économise l'appel.
+    # Bug 2026-07-31 corrigé ici : bloquer purement et simplement rendait l'alerte
+    # increvable (elle ne se lève qu'au PROCHAIN appel réussi — or ce kill-switch empêche
+    # justement tout appel, donc plus aucune chance de la lever avant 7 jours). Le message
+    # Anthropic donne l'heure de reset exacte ("regain access on AAAA-MM-JJ at HH:MM UTC") :
+    # on la respecte si elle est passée, sinon on bloque comme avant.
     alert = usage.get_alert()
-    if alert:
+    if alert and not _alert_expired(alert.get("message") or ""):
         log.warning("Alerte API active depuis %s (%s) — rien lancé, réessaie plus tard.",
                     alert.get("ts", "?"), (alert.get("message") or "")[:150])
         return 0
+    if alert:
+        log.info("Alerte API dépassée (heure de reset annoncée passée) — nouvelle tentative.")
     # Réglages back-office : on/off + court/long, et profil de modèle.
     from utils import settings as pipeline_settings
     if not pipeline_settings.enrich_enabled():

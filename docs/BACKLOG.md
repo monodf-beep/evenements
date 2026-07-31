@@ -6,6 +6,26 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 
 ## Journal de session — 2026-07-31
 
+### 🐛 Kill-switch quota increvable — corrigé le jour même de sa mise en place
+- **Bug trouvé en le testant en conditions réelles** (quelques heures après l'avoir câblé) :
+  le kill-switch ajouté dans `enrich.py` (voir entrée "Automatisation complète" plus bas)
+  bloque tout nouvel appel API dès qu'une alerte quota est active — mais l'alerte ne se lève
+  QUE via `usage.record()` (appelé après un appel RÉUSSI). Résultat : une fois posée, l'alerte
+  ne pouvait plus jamais se lever d'elle-même avant l'expiration dure à 7 jours, puisque le
+  kill-switch empêchait justement toute tentative qui aurait pu prouver que le quota était
+  revenu. Un run relancé après le reset annoncé par Anthropic (2026-08-01 00:00 UTC) restait
+  donc bloqué à tort par une alerte posée la veille.
+- **Effet de bord observé** : pendant que `enrich.py` refusait sagement de tourner (bon signe,
+  le kill-switch lui-même fonctionnait), `publish_batch_as.py --update` (qui ne dépend pas du
+  quota LLM) a re-publié 3 fois de suite le même lot de 8 fiches non enrichies, ré-uploadant
+  à chaque fois les mêmes images en médiathèque WordPress pour rien.
+- **Correctif** : le message d'erreur Anthropic contient l'heure de reset exacte ("You will
+  regain access on AAAA-MM-JJ at HH:MM UTC"). `enrich.py` la lit maintenant
+  (`_alert_expired()`, regex + comparaison UTC) : si cette heure est passée, l'alerte est
+  ignorée et un nouvel essai a lieu (qui lèvera l'alerte pour de bon si l'appel réussit). Si
+  aucune heure n'est trouvée dans le message, comportement inchangé (on bloque par prudence).
+  Testé (dates passée/future/absente).
+
 ### 🔍 Contamination croisée WP#3713/WP#1938 : incident isolé, confirmé par balayage large
 - **Découvert en investiguant une incohérence de titre** (cf. entrée diagnostic orphelins
   ci-dessous) : le 2026-07-30 à 01:51:44, WP#3713 (tribe_events, « parc archéologique
