@@ -53,6 +53,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 from utils.logger import get_logger
 from utils import usage
+from utils import slack
 from utils.eventness import non_event_reason
 from utils.images import fetch_og_image
 from scripts.dates import extract_time
@@ -994,7 +995,10 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
                 continue
             break
     except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        was_flagged = usage.get_alert() is not None
         usage.note_api_error(exc)
+        if not was_flagged and usage.get_alert() is not None:
+            slack.notify(f"🚨 *Enrichissement stoppé — problème API* : {str(exc)[:200]}")
         log.error("[%d] Erreur API Anthropic : %s", ev["id"], exc)
         return API_ERROR
     except Exception as exc:  # tout autre échec (ne jamais rester silencieux)
@@ -1546,6 +1550,13 @@ def main(argv: list[str]) -> int:
     if not api_key:
         log.error("ANTHROPIC_API_KEY non définie")
         return 1
+    # Kill-switch cron : un run précédent a déjà signalé un souci API (quota/crédit/
+    # facturation) il y a moins de 7 jours → inutile de retenter, on économise l'appel.
+    alert = usage.get_alert()
+    if alert:
+        log.warning("Alerte API active depuis %s (%s) — rien lancé, réessaie plus tard.",
+                    alert.get("ts", "?"), (alert.get("message") or "")[:150])
+        return 0
     # Réglages back-office : on/off + court/long, et profil de modèle.
     from utils import settings as pipeline_settings
     if not pipeline_settings.enrich_enabled():
@@ -1558,6 +1569,12 @@ def main(argv: list[str]) -> int:
         dfrom = argv[argv.index("--from") + 1] if argv.index("--from") + 1 < len(argv) else ""
     if "--to" in argv:
         dto = argv[argv.index("--to") + 1] if argv.index("--to") + 1 < len(argv) else ""
+    cap = 0
+    if "--cap" in argv:
+        try:
+            cap = int(argv[argv.index("--cap") + 1])
+        except (IndexError, ValueError):
+            cap = 0
     # Timeout dur : une requête (même longue avec recherche web) ne doit jamais
     # pendre indéfiniment — au pire elle échoue proprement et c'est loggé.
     client = anthropic.Anthropic(api_key=api_key, timeout=180.0)
@@ -1568,6 +1585,10 @@ def main(argv: list[str]) -> int:
 
     events = select_events(conn, ids, dfrom, dto)
     conn.close()
+    if not ids and cap and len(events) > cap:
+        log.info("Plafond --cap=%d : %d événement(s) éligibles, %d traités ce run.",
+                  cap, len(events), cap)
+        events = events[:cap]
     log.info("ids à traiter : %s", [e["id"] for e in events])
     log.info("%d événement(s) à enrichir (mode=%s ; long→%s, court→%s ; plancher score ≥ %d)",
              len(events), mode, pipeline_settings.model_qualite(),

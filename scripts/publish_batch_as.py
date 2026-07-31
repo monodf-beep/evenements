@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Publication EN LOT vers Agenda Sabauda (mode « masse »).
 
-Boucle publish_to_as() sur les événements RETENUS, DATÉS et À VENIR. Tout part en
-BROUILLON (l'endpoint force draft — on ne publie jamais en ligne automatiquement) ;
-tu fais ensuite une publication groupée dans WordPress quand tu veux.
+Boucle publish_to_as() sur les événements RETENUS, DATÉS et À VENIR. ⚠️ CORRIGÉ
+2026-07-31 : contrairement à ce que disait cette docstring, le payload envoyé ne fixe
+PAS de "status" → cs-publish.php applique son défaut (`'publish'`, cf. deploy/wordpress/
+cs-publish.php) : les événements partent EN LIGNE PUBLIQUE immédiatement, PAS en
+brouillon. Aucune relecture humaine n'a lieu entre l'écriture (enrich.py) et la mise en
+ligne dans ce chemin — s'appuie entièrement sur les garde-fous en amont (eventness,
+complétude, panel de relecture dans enrich.py) pour la qualité.
 
 Principes :
   - RETENU      : statut IN ('evaluated','published_cs','published_sub'), non-doublon.

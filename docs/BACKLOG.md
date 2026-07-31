@@ -6,6 +6,35 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 
 ## Journal de session — 2026-07-31
 
+### 🤖 Automatisation complète enrich → publish (décision Franck : « oui, cent pour cent automatisé »)
+- **Câblé en cron** (`crontab.txt`) : `scripts/enrich.py --cap 20` à 9h30 (après l'évaluation
+  de 9h), `scripts/publish_batch_as.py --cap 20` à 11h. Plafonds volontairement prudents pour
+  un premier lancement autonome, à ajuster une fois la fiabilité confirmée sur plusieurs jours.
+- **Garde-fous ajoutés dans `enrich.py`** (nécessaires avant d'automatiser sans supervision) :
+  - Kill-switch quota : `usage.get_alert()` vérifié en tout début de `main()` — si un run
+    précédent a déjà signalé un souci API (quota/crédit, cf. `utils/usage.py`, mécanisme déjà
+    existant mais jamais consulté avant de lancer un run), le cron s'arrête immédiatement sans
+    tenter un seul appel. L'alerte se lève automatiquement au prochain appel réussi
+    (`usage.record()` appelle déjà `clear_alert()`).
+  - Notification Slack (`utils/slack.py`, déjà existant pour un autre usage, réutilisé ici) dès
+    qu'un run déclenche une NOUVELLE alerte quota/crédit — Franck n'a plus à consulter le
+    dashboard pour savoir qu'un cron nocturne a buté sur le quota (découvert aujourd'hui même :
+    on a tapé le plafond API en pleine session sans alerte proactive).
+  - `--cap` ajouté à `enrich.py` (n'existait pas — seul `publish_batch_as.py` l'avait déjà) pour
+    borner le coût par run, cohérent avec le style déjà utilisé ailleurs dans le dépôt.
+- **⚠️ Point de vigilance découvert en vérifiant avant de câbler** : la docstring de
+  `scripts/publish_batch_as.py` affirmait que tout partait "en brouillon" côté WordPress —
+  **faux** : le payload Python ne fixe jamais de `status`, donc `cs-publish.php` applique son
+  défaut (`'publish'`) → les événements partent **en ligne publique immédiatement**, sans
+  relecture humaine entre la rédaction et la mise en ligne. Docstring corrigée pour refléter
+  la réalité. Ce chemin automatisé s'appuie donc ENTIÈREMENT sur les garde-fous en amont
+  (`utils.eventness.non_event_reason` intégré ce même jour dans `enrich.py`, complétude
+  `utils.completeness`, panel de relecture) — aucun filet de sécurité humain après coup.
+- **Reste à faire (Franck)** : `crontab crontab.txt` sur le VPS pour activer (pas fait par cette
+  session, pas d'accès shell VPS). Recommandé : laisser tourner manuellement une fois de plus
+  demain (quota reset 2026-08-01) avant d'installer le cron, pour valider le comportement des
+  nouveaux garde-fous en conditions réelles avant de le laisser tourner sans supervision.
+
 ### 🔍 Déduplication multi-sources : déjà implémentée (item backlog obsolète) — validée par tests synthétiques
 - **Constat** : la tâche demandée (fusionner via `same_story()` les doublons inter-flux,
   institutionnel > radar, en récupérant les champs manquants) est **déjà en production**

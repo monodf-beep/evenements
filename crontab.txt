@@ -17,5 +17,13 @@
 # NB : le cron évalue TOUTE la file pending (rattrapage quotidien). Le pilotage par
 # période (« ce week-end ») se fait à la MAIN via le bouton du dashboard.
 0 9 * * * cd /root/evenements && .venv/bin/python scripts/evaluator.py >> logs/evaluator.log 2>&1
+# Rédaction LLM 9h30 (après évaluation) — --cap prudent pour un premier lancement en
+# autonome (voir docs/BACKLOG.md 2026-07-31 : garde-fou eventness + kill-switch quota
+# déjà en place dans enrich.py, ajuster le plafond une fois la fiabilité confirmée).
+30 9 * * * cd /root/evenements && .venv/bin/python scripts/enrich.py --cap 20 >> logs/enrich.log 2>&1
+# Publication Agenda Sabauda 11h (laisse une marge à la rédaction, qui peut prendre du
+# temps sur les articles longs) — ne publie que le complet (utils.completeness), saute
+# le reste sans erreur.
+0 11 * * * cd /root/evenements && .venv/bin/python scripts/publish_batch_as.py --cap 20 >> logs/publish_as.log 2>&1
 # Sauvegarde de la base 3h (copie cohérente horodatée, garde les 14 dernières) — anti perte de données
 0 3 * * * cd /root/evenements && .venv/bin/python scripts/backup_db.py >> logs/backup.log 2>&1
