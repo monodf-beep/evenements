@@ -4,6 +4,30 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-08-01 (suite 2)
+
+### 📋 `docs/site_issues.json` — journal versionné des bugs de site (pas que Slack)
+- **Demande de Franck** : les rapports d'automatisation sont bien sur Slack, mais il veut
+  aussi un stockage durable, lisible « par le système », avec historique — pour s'améliorer.
+- Distinction utile : `pipeline_runs` (SQLite, VPS) couvre déjà les RUNS d'automatisation
+  (daily_batch, seo_batch, translate_events, weekly_audits, homepage_health). Ce qui
+  manquait : les BUGS DE SITE repérés en conversation (captures d'écran → prompts pour
+  l'autre conversation Novamira) — jusqu'ici purement éphémères, aucune trace après le chat.
+- **`utils/site_issues.py`** (nouveau) : petit module + CLI (`add`/`list`/`resolve`) qui
+  journalise dans `docs/site_issues.json` (VERSIONNÉ, donc historique = `git log` sur ce
+  fichier, lisible par toute session future sans dépendre de la mémoire du chat ni d'un
+  accès VPS — cette session-ci n'a que l'accès dépôt, pas la base).
+- **`scripts/status_report.py`** affiche maintenant aussi les problèmes de site ouverts, en
+  plus des automatisations et du reste-à-faire — un seul rapport consolidé.
+- **6 problèmes trouvés le 2026-08-01, journalisés + prompts envoyés à l'autre
+  conversation (Novamira)** : filtre calendrier vide (pages hub), territoire choisi sur la
+  home non transmis aux tuiles catégorie, section « Les 7 prochains jours » vide ET
+  dupliquée, tuiles catégorie dupliquées (même cause probable que la précédente), formats
+  de carte incohérents sur mobile, **menu mobile complètement vide (prioritaire — bloque
+  la navigation mobile)**.
+- **Pour clore une entrée** une fois corrigée côté WordPress :
+  `.venv/bin/python -m utils.site_issues resolve <id> --notes "..."`.
+
 ## Journal de session — 2026-08-01 (suite)
 
 ### 🤖🤖 Traduction, SEO, nettoyage automatisés + reporting (humain + IA)

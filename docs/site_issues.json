@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "title": "Filtre calendrier vide sur les pages hub",
+    "description": "Le premier select de la barre de filtres (JetSmartFilters, probablement le filtre date/calendrier) s'affiche sans texte/placeholder, contrairement à Ville et Territoire. Capture fournie sur /musees/.",
+    "category": "filtre",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 2,
+    "title": "Territoire choisi sur la home non transmis aux tuiles catégorie",
+    "description": "En sélectionnant Savoie sur la home puis en cliquant une tuile catégorie (ex. Famille & Enfant), on atterrit sur le hub catégorie SANS le filtre territoire pré-appliqué (tous les territoires affichés).",
+    "category": "navigation",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 3,
+    "title": "Section « Les 7 prochains jours » vide (et dupliquée)",
+    "description": "Vide malgré des événements publiés dans la fenêtre (vérifié : WP#6355, #6352, #6322...). Le bloc (section + tuiles catégorie) apparaît EN DOUBLE sur la page territoire Savoie : 1re occurrence vide, 2e occurrence plus bas peuplée.",
+    "category": "home",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 4,
+    "title": "Tuiles catégorie dupliquées sur page territoire",
+    "description": "Les 4 tuiles (Concerts & Musique / Musées / Curiosités / En famille) apparaissent deux fois sur la page Savoie, associées chacune à une occurrence du bloc « Les 7 prochains jours » (cf. issue liée).",
+    "category": "home",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 5,
+    "title": "Formats de carte incohérents sur mobile",
+    "description": "Au moins 4 gabarits de carte différents selon la section (Nouveautés : vignette carrée+texte ; Ça vaut le déplacement : grande photo+badge+lien Y aller ; grille week-end : 2 colonnes ; 7 prochains jours : grille 3 colonnes vignettes carrées). Franck veut le format « Ça vaut le déplacement » généralisé.",
+    "category": "design",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 6,
+    "title": "Menu mobile vide — navigation bloquée",
+    "description": "Au clic sur le hamburger (☰), le panneau MENU s'ouvre (titre + croix) mais ne contient AUCUN lien — le contenu de la home transparaît derrière. Empêche toute navigation sur mobile hors de la page courante. PRIORITAIRE.",
+    "category": "navigation",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  }
+]

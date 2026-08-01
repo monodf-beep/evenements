@@ -83,6 +83,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {n:5d}  {label}")
 
     conn.close()
+
+    from utils import site_issues
+    open_issues = site_issues.list_issues("open")
+    print(f"\n--- Problèmes de site ouverts ({len(open_issues)}) — docs/site_issues.json ---")
+    for i in open_issues:
+        print(f"[{i['id']}] ({i['category']}) {i['title']} — ouvert {i['opened_at']}")
+
     print("\n" + "=" * 70)
     return 0
 
