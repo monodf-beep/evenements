@@ -6,6 +6,14 @@
 #   institution = collectivité / institution (ville, département, métropole)
 #   tourisme    = office de tourisme / portail touristique
 #   radar       = presse / Google News (DÉTECTION seule, jamais crédité/lié)
+#     ⚠️ « DÉTECTION seule » est APPLIQUÉ depuis le 2026-08-02 (utils/radar.py, verrou
+#     dans scripts/publish_batch_as.py) : une fiche née d'un flux radar n'est publiée
+#     QUE si le pipeline a résolu sa page OFFICIELLE (url_officiel / matière officielle
+#     lue par scripts/enrich.py). Sinon elle reste en base, non publiée, jamais
+#     supprimée — elle repart dès qu'une résolution aboutit. Auparavant le tier radar
+#     n'empêchait que le CRÉDIT et le LIEN : des articles de presse (faits divers,
+#     conseils municipaux, revues de presse) partaient en ligne comme des événements
+#     (cf. WP#1097, WP#1105). Audit : .venv/bin/python -m scripts.audit_radar_published
 # lieu;ville (OPTIONNELS) : pour une source « officielle » (un lieu précis), le lieu
 #   EST la source → renseignés ici, appliqués par défaut (scripts/venues.py, passe 0).
 #   Laisse vide (ou n'écris que la ville) quand le lieu varie (ville, office, festival

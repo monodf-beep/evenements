@@ -13,6 +13,10 @@ Principes :
   - RETENU      : statut IN ('evaluated','published_cs','published_sub'), non-doublon.
   - DATÉ        : date_event_start non vide (sinon TEC daterait « aujourd'hui »).
   - À VENIR     : fin (ou début) >= aujourd'hui — on n'inonde pas l'agenda de passé.
+  - RADAR       : une fiche d'origine radar (presse / Google News) n'est publiée QUE si
+                  une page officielle a été résolue pour elle (cf. utils/radar.py). Sinon
+                  elle est RETENUE — jamais supprimée, jamais rejetée — et repartira dès
+                  qu'un run d'enrichissement aura trouvé sa page. Levier : --allow-radar.
   - IDEMPOTENT  : on saute ceux déjà sur l'agenda (wp_post_id_as), sauf --update.
   - BORNÉ       : --cap limite le nombre par run ; --delay espace les envois (OVH mutualisé).
   - On enregistre wp_post_id_as + published_as_date, SANS toucher au statut éditorial
@@ -38,6 +42,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import completeness as comp
+from utils import radar
 from scripts.publisher_as import publish_to_as
 
 log = get_logger("publish_batch_as")
@@ -72,6 +77,57 @@ def _select(conn, args, today: str):
     return conn.execute(sql, params).fetchall()
 
 
+def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict], list[tuple]]:
+    """VERROU « radar = DÉTECTION seule » (config/sources.txt, en-tête du tier radar).
+
+    POURQUOI ICI, ET NULLE PART AILLEURS
+    ------------------------------------
+    Le contrat est déclaré depuis toujours et n'était appliqué QUE côté crédit/lien
+    (publisher_as l.148-150 : on ne cite pas le journal). Rien n'empêchait une fiche
+    née d'un article de presse de devenir un événement publié : « Chambéry. Cirque,
+    danse, théâtre, déambulations : ce qu'il faut savoir » → WP#1097, « Annecy.
+    Défilé, concert, feu d'artifice, animations » → WP#1105, plus des faits divers
+    du Dauphiné (collisions, incendies), des comptes-rendus de conseil municipal et
+    des revues de presse.
+
+    Le verrou porte sur la PUBLICATION, jamais sur la collecte : on continue de
+    scraper les radars, c'est toute leur utilité (détecter, puis dédoublonner vers
+    la fiche officielle — dedupe.py:TIER_RANK met radar à 0, il ne gagne jamais un
+    groupe contre une source officielle). Il ne peut pas non plus vivre dans
+    enrich.py : c'est justement enrich qui TENTE la résolution vers la page
+    officielle (fetch_official_material) — avant lui, on ne sait pas encore si elle
+    aboutira.
+
+    RIEN N'EST SUPPRIMÉ NI REJETÉ : la fiche reste en base, telle quelle, avec son
+    statut. Elle repassera d'elle-même dès qu'un run d'enrichissement aura résolu sa
+    page officielle. Réversible d'un flag : --allow-radar.
+
+    NE S'APPLIQUE QU'AUX CRÉATIONS (`wp_post_id_as` vide). Une fiche radar DÉJÀ en
+    ligne n'est pas retenue ici : bloquer sa republication ne la retirerait pas du
+    site, ça y figerait seulement une version plus ancienne — on la signale, et son
+    retrait éventuel reste une décision explicite (voir scripts/audit_radar_published.py).
+    """
+    if allow_radar:
+        return rows, []
+    kept, blocked = [], []
+    for ev in rows:
+        # Traduction : source_type/source_name sont hérités, mais pas url_officiel
+        # (translate_events l.476-486) → on juge sur l'ancre de l'ORIGINAL.
+        parent = None
+        tof = ev.get("translation_of") or 0
+        if tof and radar.is_radar(ev):
+            row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
+            parent = dict(row) if row else None
+        reason = radar.publication_block_reason(ev, parent)
+        if reason and (ev.get("wp_post_id_as") or 0) > 0:
+            log.warning("[%s] fiche RADAR non résolue DÉJÀ en ligne (WP#%s) — republiée "
+                        "quand même (bloquer figerait une version plus ancienne) : %s",
+                        ev.get("id"), ev.get("wp_post_id_as"), (ev.get("title") or "")[:60])
+            reason = None
+        (blocked if reason else kept).append((ev, reason) if reason else ev)
+    return kept, blocked
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Publication en lot vers Agenda Sabauda.")
     parser.add_argument("--cap", type=int, default=50, help="Nombre max d'événements par run.")
@@ -90,6 +146,11 @@ def main(argv=None) -> int:
     parser.add_argument("--allow-incomplete", action="store_true",
                         help="Publier MÊME les événements incomplets (contourne la porte "
                              "qualité). Par défaut, seuls les événements COMPLETS partent.")
+    parser.add_argument("--allow-radar", action="store_true",
+                        help="Publier MÊME les fiches d'origine radar (presse / Google News) "
+                             "dont aucune page officielle n'a été résolue. Par défaut elles "
+                             "sont RETENUES (jamais supprimées) : le radar sert à DÉTECTER, "
+                             "pas à publier (config/sources.txt, tier radar).")
     parser.add_argument("--dry-run", action="store_true",
                         help="Lister la sélection sans rien publier.")
     parser.add_argument("--skip-media", action="store_true",
@@ -116,10 +177,21 @@ def main(argv=None) -> int:
             (kept if comp.is_complete(ev) else skipped).append(ev)
         rows = kept
 
-    log.info("Sélection : %d complet(s) à publier, %d incomplet(s) écarté(s) "
-             "(cap %d, min-score %s, %s)",
-             len(rows), len(skipped), args.cap, args.min_score,
+    # VERROU RADAR — s'applique AUSSI aux --ids, contrairement à la porte qualité
+    # ci-dessus. Raison : --ids est passé sans aucun humain dans la boucle par
+    # scripts/daily_batch.py (seul chemin non supervisé qui met des fiches EN LIGNE,
+    # cf. sa docstring _porte_publication). L'exception « la décision est déjà prise
+    # par un humain » ne tient donc pas ici ; l'humain qui republie sciemment une
+    # fiche radar a --allow-radar pour le dire.
+    rows, radar_blocked = _porte_radar(conn, rows, args.allow_radar)
+
+    log.info("Sélection : %d complet(s) à publier, %d incomplet(s) écarté(s), "
+             "%d radar non résolu(s) retenu(s) (cap %d, min-score %s, %s)",
+             len(rows), len(skipped), len(radar_blocked), args.cap, args.min_score,
              "MAJ incluse" if args.update else "création seule")
+    for ev, reason in radar_blocked:
+        log.info("[%s] RETENU (non publié, rien supprimé) : %s | %s",
+                 ev.get("id"), reason, (ev.get("title") or "")[:60])
 
     if args.dry_run:
         for r in rows:
@@ -129,7 +201,10 @@ def main(argv=None) -> int:
         for ev in skipped:
             print(f"  ⤷ ÉCARTÉ [{ev['id']}] {(ev.get('title') or '')[:55]:55} "
                   f"· manque : {', '.join(comp.missing_labels(ev))}")
-        print(f"\n{len(rows)} publié(s) / {len(skipped)} écarté(s) (dry-run — rien envoyé).")
+        for ev, reason in radar_blocked:
+            print(f"  ⤷ RADAR   [{ev['id']}] {(ev.get('title') or '')[:55]:55} · {reason}")
+        print(f"\n{len(rows)} publié(s) / {len(skipped)} incomplet(s) / "
+              f"{len(radar_blocked)} radar retenu(s) (dry-run — rien envoyé).")
         conn.close()
         return 0
 

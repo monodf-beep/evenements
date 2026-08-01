@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import slack
 from utils import completeness as comp
+from utils import radar
 from scripts.enrich import select_events, main as enrich_main, BATCH_SIZE as ENRICH_BATCH
 from scripts.batch_report import _row_report
 from scripts.publish_batch_as import main as publish_main
@@ -72,6 +73,14 @@ def _porte_publication(ev: dict, today: str) -> list[str]:
     jour = fin[:10] if re.match(r"\d{4}-\d{2}-\d{2}", fin) else ""
     if jour and jour < today:
         raisons.append(f"  ✗ date         : DÉJÀ PASSÉ (fin {jour} < {today})")
+    # VERROU RADAR (utils/radar.py) : `publish_batch_as` l'applique aussi, mais il faut
+    # le SAVOIR ici — sinon la fiche est comptée « complète », publish_main la retient
+    # en silence, et Slack annonce « ✅ … — WP#None ». Le contrôle est donc refait avant
+    # l'appel, pour que la fiche soit annoncée comme RETENUE avec sa vraie raison.
+    # (Pas de `parent` à chercher : select_events exclut déjà les traductions.)
+    raison_radar = radar.publication_block_reason(ev)
+    if raison_radar:
+        raisons.append(f"  ✗ source       : {raison_radar}")
     return raisons
 
 
