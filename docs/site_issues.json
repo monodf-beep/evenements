@@ -70,5 +70,17 @@
     "opened_at": "2026-08-01T08:46:28",
     "resolved_at": null,
     "resolution_notes": ""
+  },
+  {
+    "id": 7,
+    "title": "Header sticky au scroll : deux lignes désynchronisées",
+    "description": "Le header a 2 lignes (Menu + Changer de territoire) à l'état initial. Au scroll, elles arrivent séparément/de façon saccadée au lieu de rester ensemble comme un seul bloc sticky. Souhaité : même gabarit qu'à l'état initial, figé en haut, sans transition séparée par ligne.",
+    "category": "design",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T09:42:21",
+    "resolved_at": null,
+    "resolution_notes": ""
   }
 ]
