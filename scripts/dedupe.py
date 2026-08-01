@@ -51,6 +51,21 @@ _STOP = {
     "dans", "sur", "pour", "par", "avec", "ce", "cette", "il", "lo", "gli", "dei",
     "degli", "delle", "del", "della", "dello", "di", "da", "al", "alla", "allo",
     "con", "per", "the", "of", "and",
+    # ADVERBES / PRONOMS / VERBES COURANTS — ajoutés le 2026-08-02 après une fusion à
+    # tort bien réelle : « Une semaine pas plus » (théâtre, Chambéry) apparié à « Fête du
+    # lac 2026 : les spectateurs qui n'habitent PAS Annecy paieront PLUS cher » (article
+    # Google News). Tokens communs = {pas, plus}, soit 2 mots strictement grammaticaux —
+    # assez pour passer le seuil de 2, et comme le recouvrement se mesure sur le PLUS
+    # COURT des deux titres (3 tokens ici), le ratio atteignait 0,67 > 0,5. Un titre bref
+    # composé de mots-outils s'appariait ainsi avec presque n'importe quoi. Conséquence en
+    # cascade : la description Google News passait dans l'événement gagnant, puis nourrissait
+    # la rédaction (enrich.py agrège la matière des doublons) et la traduction — d'où une
+    # fiche IT publiée sous le titre « Festa del Lago 2026 » sur un spectacle de théâtre.
+    "pas", "plus", "qui", "que", "quoi", "dont", "tout", "tous", "toute", "toutes",
+    "sans", "sous", "entre", "chez", "mais", "donc", "non", "ans", "son", "ses",
+    "est", "sont", "ete", "leur", "leurs", "cher", "chere", "moins", "tres", "bien",
+    "piu", "che", "chi", "cui", "tutto", "tutti", "tutta", "tutte", "senza", "sotto",
+    "tra", "fra", "sono", "suo", "sua", "suoi", "anni", "anno", "meno", "molto",
     # mots génériques d'événement (diffèrent selon la langue → non distinctifs)
     "fete", "festa", "feste", "sagra", "sagre", "fiera", "foire", "marche",
     "mercato", "concert", "concerto", "spectacle", "spettacolo", "expo",
@@ -66,6 +81,22 @@ def _sig_tokens(title: str) -> set[str]:
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
     toks = re.findall(r"[a-z0-9]+", s)
     return {t for t in toks if len(t) >= 3 and t not in _STOP}
+
+
+def _text_len(html: str | None) -> int:
+    """Longueur du TEXTE VISIBLE d'une description (balises et URLs retirées).
+
+    Sert à comparer la SUBSTANCE de deux descriptions, jamais leur volume brut : un item
+    Google News RSS se réduit à un `<a href="https://news.google.com/rss/articles/CBMi…">`
+    dont l'URL encodée pèse des centaines de caractères pour zéro mot de contenu. Comparé
+    en longueur brute, il écrase n'importe quelle vraie description (cf. merge_group).
+    """
+    import html as _html
+    s = re.sub(r"(?is)<(script|style).*?</\1>", " ", html or "")
+    s = re.sub(r"<[^>]+>", " ", s)                  # balises
+    s = _html.unescape(s)
+    s = re.sub(r"https?://\S+", " ", s)             # URLs nues restantes
+    return len(re.sub(r"\s+", " ", s).strip())
 
 
 def _title_years(title: str) -> set[str]:
@@ -192,10 +223,18 @@ def merge_group(conn: sqlite3.Connection, group: list[dict]) -> int:
                 if (e.get(f) or "").strip():
                     updates[f] = e[f]
                     break
-    # 2) MATIÈRE : garder le texte le plus long du groupe (même venu d'un radar gratuit)
-    longest = max(group, key=lambda e: len(e.get("description") or ""))
-    if len(longest.get("description") or "") > len(winner.get("description") or ""):
-        updates["description"] = longest["description"]
+    # 2) MATIÈRE : garder le texte le plus SUBSTANTIEL du groupe (même venu d'un radar
+    # gratuit). On mesure le TEXTE VISIBLE, pas la longueur brute — bug corrigé le
+    # 2026-08-02 : une description Google News RSS n'est qu'un `<a href="…">` dont l'URL
+    # encodée fait plusieurs centaines de caractères sans un mot de contenu. Elle gagnait
+    # donc systématiquement au « plus long » et écrasait la vraie description du gagnant,
+    # y compris lors de fusions PARFAITEMENT CORRECTES (« Charlie Winston ■ 7 juillet »
+    # fusionné dans « Charlie Winston » : bon appariement, description détruite). Cette
+    # matière polluée alimentait ensuite la rédaction (enrich.py agrège les doublons) et
+    # la traduction — d'où des articles écrits sur le mauvais sujet.
+    richest = max(group, key=lambda e: _text_len(e.get("description")))
+    if _text_len(richest.get("description")) > _text_len(winner.get("description")):
+        updates["description"] = richest["description"]
 
     if updates:
         cols = ", ".join(f"{k}=?" for k in updates)

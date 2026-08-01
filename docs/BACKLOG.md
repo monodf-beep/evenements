@@ -4,6 +4,50 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-08-01 (suite 6)
+
+### 🔬 Contamination de contenu : cause racine trouvée, dans `dedupe.py`
+- **Fil de départ** : une fiche IT en ligne titrée « Festa del Lago 2026 » sur un spectacle
+  de théâtre à Chambéry. J'ai émis trois hypothèses successives — appariement de traduction
+  défaillant, puis transitivité de l'union-find, puis `same_story` — **les trois fausses**,
+  écartées par le test avant d'être codées. La méthode qui a marché : suivre la donnée
+  (`duplicate_of`) plutôt que raisonner sur le code.
+- **Le déclencheur** : `[2762]` « Fête du lac 2026 : les spectateurs qui n'habitent pas Annecy
+  paieront plus cher » (article Google News) fusionné dans `[2153]` « Une semaine pas plus »
+  (théâtre, La Comédie des Alpes). Deux événements sans aucun rapport.
+- **Défaut n°1 — `cross_lang_same` apparie sur des mots-outils.** `_STOP` filtrait les
+  articles et les mots génériques d'événement, mais pas « pas », « plus », « qui », « tout ».
+  `_sig_tokens("Une semaine pas plus")` = `{semaine, pas, plus}` ; l'article partageait
+  « pas » et « plus » → 2 tokens communs (seuil : 2), et comme le recouvrement se mesure sur
+  le PLUS COURT des deux titres, le ratio atteignait 0,67 > 0,5. **Un titre bref composé de
+  mots-outils s'appariait avec presque n'importe quoi.** Corrigé en étendant `_STOP` (~50
+  adverbes/pronoms/verbes FR+IT), vérifié que les cas légitimes documentés passent toujours
+  (Jambon de Bosses, Toma di Lanzo, Marc Chagall). Atténuation : `--cross-lang` est opt-in et
+  le cron ne l'utilise pas — d'où une poignée de cas et non des centaines.
+- **Défaut n°2 — `merge_group` confondait volume et substance, et c'est le pire.** La fusion
+  remplaçait la description du gagnant par **la plus longue du groupe**. Or une description
+  Google News RSS n'est qu'un `<a href="https://news.google.com/rss/articles/CBMi…">` dont
+  l'URL encodée pèse des centaines de caractères pour zéro mot de contenu : elle gagnait
+  systématiquement. **Ce défaut frappe même les fusions PARFAITEMENT CORRECTES** — « Charlie
+  Winston ■ 7 juillet » fusionné dans « Charlie Winston » est un bon appariement, et la vraie
+  description a quand même été détruite. Corrigé : nouveau `_text_len()` qui mesure le texte
+  visible (balises et URLs retirées). Mesuré sur le cas réel : 286 vs 178 en brut (le blob
+  gagne), 28 vs 171 en texte (la vraie description gagne).
+- **Pourquoi ça allait bien au-delà de la traduction** : `enrich.py` agrège la description des
+  doublons dans la matière de rédaction (`WHERE duplicate_of = ?`). Une description polluée
+  produisait donc un article écrit sur le mauvais sujet, en FR comme en IT. La traduction n'a
+  fait que rendre le problème VISIBLE, en portant la pollution jusque dans le titre.
+- **Périmètre réel** : 1314 fiches ont une description Google News, mais 1294 sont des items
+  radar jamais publiés (comportement normal). **20 sont en ligne**, de deux familles : de
+  vrais événements à description polluée (Charlie Winston, Nice Jazz Fest, Vespa au MAUTO,
+  LEVITATION, Nice Classic Festival…) et des articles de presse qui n'auraient jamais dû être
+  des événements — dont `[2225]` et `[2927]` sur l'anniversaire de l'attentat du 14 juillet à
+  Nice, **toujours en ligne** malgré la mise à la corbeille prévue le matin même.
+- **Reste à faire** : (1) retirer les articles de presse encore en ligne ; (2) réparer les
+  descriptions polluées des vrais événements (elles ne se restaurent pas seules — la fusion a
+  écrasé la donnée) ; (3) décider si le cron de traduction, mis en pause ce soir, peut
+  reprendre une fois ces deux points traités.
+
 ## Journal de session — 2026-08-01 (suite 5)
 
 ### 🐛 `dates.py` détruisait les dates de TOUTES les traductions
