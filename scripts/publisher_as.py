@@ -76,6 +76,19 @@ def _map_territoire(value: str) -> str:
     Détection par MOT-CLÉ (robuste à toutes les variantes FR/IT : « Vallée d'Aoste »,
     « Valle d'Aosta », « Vallee-Aoste »… ; « Piémont »/« Piemonte »/« Piedmont » ; etc.).
     À défaut de reconnaissance, on renvoie la valeur brute.
+
+    ⚠️ CES SLUGS DOIVENT SUIVRE `docs/NOMMAGE_TERRITOIRES.md` §1. Bug corrigé le
+    2026-08-02 : les 4 termes ont été renommés côté WordPress le **2026-07-22**
+    (`savoie-haute-savoie` → `savoie`, `nice-alpes-maritimes` → `comte-de-nice`) sans que
+    cette fonction soit mise à jour. Conséquence pendant 10 jours : `cs_resolve_term()`
+    (cs-publish.php) ne trouvait plus le terme, renvoyait 0 et n'assignait RIEN — en
+    SILENCE, sans erreur ni log. Les fiches antérieures au renommage n'ont rien perdu
+    (WordPress assigne par `term_id`, insensible au changement de slug), mais toute fiche
+    créée depuis en Savoie ou dans le Comté de Nice s'est retrouvée sans taxonomie
+    territoire : pas de visuel de repli (`fallback-{territoire}-{catégorie}.png`), absente
+    des hubs territoire et des sections filtrées. Repéré via un export des fiches sans
+    visuel de repli — 24 fiches, exclusivement Savoie et Nice, aucune Piémont ni Vallée
+    d'Aoste (dont les slugs, eux, n'avaient pas changé).
     """
     v = _norm(value)
     if not v:
@@ -85,9 +98,9 @@ def _map_territoire(value: str) -> str:
     if "piemont" in v or "piedmont" in v:              # Piémont / Piemonte / Piedmont
         return "piemont"
     if "savoie" in v:                                  # Savoie / Haute-Savoie
-        return "savoie-haute-savoie"
+        return "savoie"
     if "nice" in v or "maritime" in v or "azur" in v:  # Nice / Alpes-Maritimes / Côte d'Azur
-        return "nice-alpes-maritimes"
+        return "comte-de-nice"
     return (value or "").strip()
 
 

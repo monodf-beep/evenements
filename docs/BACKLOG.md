@@ -4,6 +4,77 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-08-01 (suite 4)
+
+### 🐛 Taxonomie territoire perdue depuis 10 jours sur toutes les fiches Savoie & Nice
+- **Symptôme signalé** : export « événements sans visuel de repli » (27 fiches). Le repli est
+  `fallback-{territoire}-{catégorie}.png` — sans terme `territoire`, aucun visuel possible.
+- **Diagnostic** : les 25 fiches sans territoire sont **toutes des ID WordPress récents (6xxx)**
+  et exclusivement **Savoie (10) + Comté de Nice (14)** — **zéro Piémont, zéro Vallée d'Aoste**.
+  Cette répartition désignait la cause : `scripts/publisher_as.py::_map_territoire()` envoyait
+  encore `savoie-haute-savoie` et `nice-alpes-maritimes`, alors que `docs/NOMMAGE_TERRITOIRES.md`
+  acte leur renommage en `savoie` et `comte-de-nice` le **2026-07-22**. Les deux territoires dont
+  le slug n'a PAS changé (`piemont`, `vallee-d-aoste`) n'étaient pas touchés — corrélation parfaite.
+- **Pourquoi c'est passé inaperçu 10 jours** : `cs_resolve_term()` (cs-publish.php) cherche par
+  slug puis par nom et **renvoie 0 en silence** si rien ne correspond — aucune erreur, aucun log,
+  la publication se déclare « ok ». Et les fiches ANTÉRIEURES au renommage n'ont rien perdu :
+  WordPress assigne par `term_id`, insensible au changement de slug. Seules les nouvelles fiches
+  échouaient, ce qui rendait le bug invisible sur le site existant.
+- **Impact au-delà du visuel** : une fiche sans terme `territoire` est aussi absente des hubs
+  territoire, des sections filtrées par territoire, et du badge territoire des cartes.
+- **Correctif** : `_map_territoire()` aligné sur les slugs courants, avec un commentaire qui
+  pointe `docs/NOMMAGE_TERRITOIRES.md` comme source de vérité pour éviter la récidive.
+- **Question laissée ouverte volontairement (à vérifier avec Novamira avant d'y toucher)** :
+  les termes ont des slugs DISTINCTS par langue (`savoie`/`savoia`, `comte-de-nice`/
+  `contea-di-nizza`). `_map_territoire()` renvoie le slug FR quelle que soit la langue de la
+  fiche, donc une fiche IT reçoit vraisemblablement le terme FR. Ne PAS « corriger » à l'aveugle :
+  si le slug IT envoyé n'existe pas, `cs_resolve_term` renverra 0 et on passerait de « mauvais
+  terme » à « aucun terme » — strictement pire. Vérifier d'abord la structure réelle des termes
+  Polylang.
+- **Autres lignes de l'export, non traitées ici** : 2 fiches sans `categorie` (Piémont, IT) et
+  1 anomalie de contenu (WP#6798, titre « Festa del Lago 2026 (Annecy) » mais lieu « La Comédie
+  des Alpes à Chambéry » — vraisemblablement une traduction mal appariée, à examiner).
+
+## Journal de session — 2026-08-01 (suite 3)
+
+### 🎯 « Ça vaut le déplacement » : deux fausses pistes, puis le signal qui existait déjà
+- **Point de départ** : la section home triait par simple ordre chronologique (les 8 prochains
+  événements, `orderby => start_clause ASC`, `sel_limite=8`), sans aucun critère de qualité.
+- **Fausse piste n°1 — trier sur `as_panel_vmean`.** Semblait évident : c'est la note du panel
+  de personas VISITEURS, dont le prompt dit mot pour mot « la valeur de DÉPLACEMENT ». Les
+  données réelles ont tranché contre : **Musilac (110 000 festivaliers) note `1.0`, une petite
+  exposition à Cran-Gevrier note `3.0`**. Raison : le persona note `interet: 0=creux, 5=riche`
+  — c'est-à-dire la RICHESSE DE L'ARTICLE, pas l'ampleur de l'événement. La fiche Musilac
+  s'intitule littéralement « Musilac », article maigre, note basse. **`vmean` reste utilisable
+  comme filtre de qualité, jamais comme classement** (noté dans `CONTRAT_META_AS.md`).
+- **Fausse piste n°2 — demander au persona de juger l'événement « au-delà de l'article ».**
+  Écartée par Franck, à raison : *« il ne sait rien c'est juste un persona fictif »*. Exact —
+  le persona est un texte de quelques lignes ; c'est le MODÈLE qui mobiliserait ses
+  connaissances d'entraînement. Note invérifiable, exposée aux confusions de nom.
+- **La bonne source existait depuis toujours** : `scripts/evaluator.py` note l'IMPORTANCE sur
+  5 critères observables, stockés en base dans `llm_score_detail`, **chacun avec sa phrase de
+  justification**. Deux d'entre eux SONT la définition de la section : `rayonnement`
+  (transfrontalier FR-IT = 2) et `specificite_territoriale` (identitaire = 1).
+- **`utils/deplacement.py`** en dérive un score 0-8 = `notoriete_lieu` + `edition_tradition` +
+  `rayonnement` + `specificite_territoriale`. `organisateur_moyens` exclu (le budget de
+  l'organisateur n'entre pas dans la décision d'un visiteur). Exposé en `as_deplacement`.
+  Vérifié : Musilac 7/8, Arte Povera Turin 7/8, « L'été au centre socioculturel » 1/8.
+  **Rétroactif, auditable, zéro appel LLM, zéro hallucination.**
+- **Écart de déploiement trouvé au passage (important)** : le `cs-publish.php` EN LIGNE
+  (snippet #6) ne whitelistait **aucun** `as_panel_*` / `as_affiches` / `as_placement` — le
+  pipeline les envoyait depuis des semaines, l'endpoint les jetait en silence (0 fiche sur 262
+  avec un `vmean`). Whitelist live corrigée via Novamira ; route `/cs/v1/event` vérifiée
+  toujours enregistrée après édition. **Leçon récurrente : ce fichier est déployé À LA MAIN,
+  le vérifier en ligne à chaque ajout de méta** (même classe d'incident que `cs-trash.php` le
+  matin même).
+- **Reste à faire** : (1) confirmer côté WP que `as_deplacement` est bien posé sur ~200 fiches ;
+  (2) recâbler le snippet #58 pour trier dessus — prompt Novamira rédigé, inclut aussi la
+  correction d'un **bug d'inversion territoriale** (la section scope au territoire ACTIF alors
+  que son chapô dit « passer le col, de l'autre côté des Alpes » : il faut EXCLURE, pas
+  restreindre) ; (3) trancher côté éditorial entre les DEUX produits — vitrine des 4 rendez-vous
+  emblématiques choisis à la main (`as_home_override='featured'`, horizon 3-6 mois) vs section
+  automatique triée sur `as_deplacement` (horizon 2-6 semaines).
+
 ## Journal de session — 2026-08-01 (suite 2)
 
 ### 📋 `docs/site_issues.json` — journal versionné des bugs de site (pas que Slack)
