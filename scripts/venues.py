@@ -179,6 +179,10 @@ def main(argv=None) -> int:
                         help="Ne pas utiliser l'extraction LLM de dernier recours.")
     parser.add_argument("--llm-cap", type=int, default=VENUES_LLM_CAP,
                         help="Nombre max d'événements traités par LLM sur ce run.")
+    parser.add_argument("--retry", action="store_true",
+                        help="Ré-armer les événements déjà marqués « lieu introuvable » "
+                             "(venue_source='llm_none') pour les re-tenter. Ne touche "
+                             "JAMAIS un événement qui a déjà un lieu.")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -186,6 +190,26 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)
     ensure_columns(conn)
+
+    # --- Ré-armement (--retry) : sortir les fiches du cul-de-sac 'llm_none' ---
+    # ⚠️ IMPASSE STRUCTURELLE, mesurée le 2026-08-02. Les deux passes ci-dessous
+    # sélectionnent sur `venue_source` : la passe page sur NULL/'', la passe LLM sur
+    # ('novenue','none'). `llm_none` — posé quand le LLM a cherché et n'a rien trouvé —
+    # n'est dans AUCUNE des deux. Une fiche qui a échoué une seule fois est donc exclue
+    # DÉFINITIVEMENT, alors que le lieu peut très bien devenir trouvable ensuite (page
+    # source mise à jour, programme publié plus tard, meilleur modèle).
+    # Effet observé : le premier run après branchement au cron a posé 22 lieux… et les
+    # 20 fiches qui bloquaient TOUTE la file de publication sont restées bloquées,
+    # parce qu'elles étaient déjà en 'llm_none'. Le pipeline tournait à vide.
+    # `dates.py` porte exactement le même garde-fou (--retry sur 'nodate'/'llm_none')
+    # depuis toujours ; cette asymétrie entre deux scripts jumeaux était le défaut.
+    if args.retry:
+        n = conn.execute(
+            "UPDATE events_raw SET venue_source='none' "
+            "WHERE venue_source IN ('llm_none','novenue') "
+            "  AND COALESCE(lieu,'') = '' AND statut != 'merged'").rowcount
+        conn.commit()
+        log.info("Retry : %d événement(s) sans lieu ré-armé(s) pour une nouvelle tentative", n)
 
     # --- Passe 0 : LIEU DE LA SOURCE (le lieu = la source pour les « officielle ») ---
     from_source = apply_source_venues(conn)
