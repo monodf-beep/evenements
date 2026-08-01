@@ -520,9 +520,32 @@ def main(argv=None) -> int:
         "                   COALESCE(o.date_event_end,'')))")
     # Ids relevés AVANT la correction : après l'UPDATE, ces fiches ne sont plus
     # désalignées, donc plus repérables. Celles DÉJÀ EN LIGNE devront être repoussées.
+    #
+    # ⚠️ CES CINQ CONDITIONS SUPPLÉMENTAIRES NE SONT PAS DÉCORATIVES. La republication
+    # se fait par `publish_main(["--ids", …])`, et `--ids` DÉSACTIVE toute la sélection
+    # de publish_batch_as (cf. son _select : ni « à venir », ni `duplicate_of IS NULL`,
+    # ni porte qualité). Tout ce que ce SQL laisse passer part EN LIGNE, depuis un cron
+    # de 8h45, sans humain. Relecture du 2026-08-02, cinq cas prouvés sur fixture :
+    #   • une traduction CORBEILLÉE exprès repartait (rien n'excluait wp_deleted_at) ;
+    #   • un événement DÉJÀ PASSÉ repartait ;
+    #   • une fiche marquée `duplicate_of` repartait ;
+    #   • un original devenu `merged` par le dedupe de 8h30 — quinze minutes plus tôt —
+    #     servait quand même de référence : la garde `statut != 'merged'` ne portait que
+    #     sur la traduction, jamais sur `o.` ;
+    #   • un CYCLE (A.translation_of=B et B.translation_of=A) faisait repartir LES DEUX
+    #     côtés, le gagnant étant décidé par l'ordre des rowid. `repair_translation_cycles`
+    #     atteste que des cycles subsistent en base, et aucun cron ne le lance.
+    # `COALESCE(o.translation_of,0)=0` ferme le cas du cycle en exigeant que l'original
+    # soit une VRAIE fiche source, pas elle-même une traduction.
     a_repousser = [r["id"] for r in conn.execute(
         f"SELECT id FROM events_raw {_WHERE_DESALIGNEES} "
-        f"  AND COALESCE(wp_post_id_as,0) > 0").fetchall()]
+        f"  AND COALESCE(wp_post_id_as,0) > 0 "
+        f"  AND COALESCE(wp_deleted_at,'') = '' "
+        f"  AND duplicate_of IS NULL "
+        f"  AND COALESCE(date_event_end, date_event_start, '') >= date('now') "
+        f"  AND EXISTS (SELECT 1 FROM events_raw o2 WHERE o2.id = events_raw.translation_of "
+        f"              AND o2.statut != 'merged' AND COALESCE(o2.translation_of,0) = 0)"
+    ).fetchall()]
 
     copied = conn.execute(
         "UPDATE events_raw SET date_event_start = (SELECT o.date_event_start FROM events_raw o "
@@ -550,6 +573,14 @@ def main(argv=None) -> int:
     # (les dates, elles, sont déjà corrigées en base).
     if a_repousser and not args.no_republish:
         lot = a_repousser[:args.republish_cap]
+        if not lot:
+            # --republish-cap 0 : `publish_main(["--ids"])` sans valeur fait sortir
+            # argparse en SystemExit(2), que le except Exception ci-dessous NE RATTRAPE
+            # PAS (SystemExit dérive de BaseException) — la datation entière mourait sur
+            # un réglage anodin. On traite 0 comme « ne republie rien », ce qu'il veut dire.
+            log.info("Passe traductions : --republish-cap 0, %d fiche(s) non repoussée(s) : %s",
+                     len(a_repousser), a_repousser)
+            a_repousser = []
         log.info("Passe traductions : %d fiche(s) EN LIGNE à repousser (dates fausses "
                  "affichées) — republication sans média", len(lot))
         try:

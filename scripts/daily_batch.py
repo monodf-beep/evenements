@@ -148,8 +148,20 @@ def _run(argv: list[str]) -> int:
             ev2 = events2.get(i) or {}
             ok2, lines2 = _row_report(ev2)
             wp_id = ev2.get("wp_post_id_as")
-            if ok2:
+            # ⚠️ `and wp_id` EST INDISPENSABLE. `_row_report` ne met JAMAIS ok=False
+            # quand wp_post_id_as est vide : il se contente d'écrire « publication AS :
+            # PAS ENCORE publié » (batch_report l.333-335). Sans ce test, une fiche que
+            # publish_to_as n'a PAS réussi à mettre en ligne — échec réseau, erreur WP,
+            # ou rétention par le verrou radar — était annoncée sur Slack en
+            # « ✅ … — WP#None ». Le rapport quotidien mentait dans le sens le plus
+            # coûteux : croire publié ce qui ne l'est pas. Et depuis le verrou radar,
+            # cette branche est empruntée tous les jours.
+            if ok2 and wp_id:
                 published_lines.append(f"✅ [{i}] {title[:60]} — WP#{wp_id}")
+            elif not wp_id:
+                published_lines.append(
+                    f"🔴 [{i}] {title[:60]} — NON PUBLIÉE (aucun id WordPress en retour) "
+                    f"— voir logs/daily_batch.log")
             else:
                 # Publié mais un contrôle post-publication a quand même échoué
                 # (ex. échec réseau au push) : signalé, pas silencieux.

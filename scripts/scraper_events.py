@@ -227,7 +227,14 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # par une dépendance implicite entre deux scripts qui s'ignorent.
                       ("translation_of", "INTEGER"),
                       ("translated_at", "TEXT"),
-                      ("translated_lang", "TEXT")):
+                      ("translated_lang", "TEXT"),
+                      # Constat « post WordPress plus public » (corbeille/brouillon),
+                      # posé par scripts/reconcile_wp_deleted.py. Déclarée ICI parce que
+                      # scripts/dates.py et scripts/site_audit.py filtrent dessus : une
+                      # colonne créée par un seul script devient une dépendance implicite
+                      # qui casse les autres sur une base reconstruite (même piège que
+                      # translation_of, corrigé le 2026-08-02).
+                      ("wp_deleted_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

@@ -154,9 +154,19 @@ def _dates_incompatible(a: dict, b: dict) -> bool:
     `_years_incompatible` ne couvre pas ce cas : ces titres portent la même année, ou
     aucune.
 
-    CONSERVATEUR : ne tranche QUE si les deux fiches sont datées (au 2026-08-02, dedupe
-    tourne AVANT dates.py dans le cron, donc les fiches du jour ne le sont pas encore —
-    la garde protège les rattrapages et tout ce qui a déjà été daté un jour précédent).
+    ⚠️ PORTÉE RÉELLE, MESURÉE — à ne pas confondre avec l'intention. La garde ne tranche
+    QUE si les DEUX fiches sont datées. Or les rubriques récurrentes sont, par
+    définition, celles qui disent « ce week-end » ou « nel fine settimana » SANS date :
+    `parse_dates` rend ('', '', 'none') dessus. Rejoué le 2026-08-02 sur la vraie chaîne
+    (parse_dates puis _groups), deux des trois exemples cités ci-dessus passent ENCORE :
+    « COSA FARE DAL 15 AL 21 GIUGNO » ↔ « COSA FARE NEL FINE SETTIMANA » fusionne (la
+    seconde n'a pas de date), et « Les idées de sorties … pour ce week-end » aussi. Seul
+    le cas « du 12 juin » ↔ « du 24 juillet » est bien coupé.
+    La garde est donc utile mais PARTIELLE : elle ne ferme pas « la famille la plus
+    massive », elle en coupe la moitié datée. Le cas fréquent « une datée / une non
+    datée » reste ouvert et demandera un autre signal (reconnaissance du gabarit de
+    rubrique, ou refus de fusionner deux fiches d'un MÊME flux radar). Écrit ici pour
+    que le prochain lecteur ne croie pas le problème résolu.
     Compare des INTERVALLES, pas des jours : une source qui n'a que l'ouverture et une
     autre qui a la période complète se chevauchent, donc ne sont jamais séparées."""
     sa, sb = _jour(a.get("date_event_start")), _jour(b.get("date_event_start"))

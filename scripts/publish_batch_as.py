@@ -241,8 +241,15 @@ def main(argv=None) -> int:
         wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip)
         if wp_id:
             conn.execute(
+                # `wp_deleted_at=NULL` : la fiche vient d'être (re)mise en ligne, le
+                # constat « post plus public » posé par reconcile_wp_deleted ne vaut
+                # plus. Sans cet effacement, une fiche republiée restait marquée hors
+                # ligne et scripts/site_audit.py cessait DÉFINITIVEMENT de la relire
+                # (il exclut wp_deleted_at) — en ligne, mais plus jamais surveillée.
+                # Seul reconcile savait déshorodater, et aucun cron ne le lance.
                 "UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
-                "wp_raw_image_url_as=?, published_as_date=datetime('now') WHERE id=?",
+                "wp_raw_image_url_as=?, published_as_date=datetime('now'), "
+                "wp_deleted_at=NULL WHERE id=?",
                 (wp_id, permalink, raw_url, event["id"]))
             conn.commit()
             ok += 1
