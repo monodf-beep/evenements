@@ -162,14 +162,28 @@ def auditer(row: dict, session: requests.Session) -> list[tuple[str, str]]:
         return [("grave", f"page INJOIGNABLE : {exc}")]
 
     if resp.status_code != 200:
-        return [("grave", f"HTTP {resp.status_code} sur {url}")]
+        # 404 sur une fiche que la base croit publiée : le post a été supprimé ou mis à
+        # la corbeille côté WordPress sans que `wp_post_id_as` soit remis à zéro. La
+        # fiche est donc invisible pour le visiteur ET considérée comme déjà publiée par
+        # le pipeline, qui ne la republiera jamais. C'est un mort silencieux.
+        suite = (" — le post n'existe plus côté WordPress alors que la base le croit "
+                 "publié : vider wp_post_id_as pour qu'il reparte au prochain lot"
+                 if resp.status_code == 404 else "")
+        return [("grave", f"HTTP {resp.status_code} sur {url}{suite}")]
     # Une redirection n'est pas une erreur pour le visiteur, mais elle signale un
     # permalien périmé en base : les liens qu'on publie ailleurs (newsletter, réseaux,
     # sitemap) pointent alors vers une URL morte qui ne fait que rebondir.
     anomalies: list[tuple[str, str]] = []
     if resp.history:
+        # Cause quasi systématique, relevée le 2026-08-02 : le permalien stocké est resté
+        # sous sa forme BRUTE de short-link WordPress (« /?p=601 »,
+        # « /it/?post_type=tribe_events&p=601 ») au lieu de l'adresse résolue. On nomme le
+        # correctif dans le message — une alerte qui ne dit pas quoi faire finit ignorée.
+        brut = "?p=" in url or "post_type=tribe_events" in url
+        remede = (" — permalien resté en forme brute : "
+                  "scripts/backfill_permalinks_as.py le ré-résout" if brut else "")
         anomalies.append(("avert", f"le permalien redirige ({resp.status_code} après "
-                                   f"{len(resp.history)} saut(s)) → {resp.url}"))
+                                   f"{len(resp.history)} saut(s)) → {resp.url}{remede}"))
 
     html = resp.text
     blocks = _jsonld_blocks(html)

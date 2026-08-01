@@ -64,11 +64,25 @@ def main() -> int:
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    # Deux populations, un seul traitement : le permalien ABSENT (motif d'origine de ce
+    # script) et le permalien resté sous sa forme BRUTE de short-link
+    # (« /?p=601 », « /it/?post_type=tribe_events&p=601 »). Le second cas a été révélé
+    # par scripts/site_audit.py le 2026-08-02 : ces URL fonctionnent, mais elles
+    # REDIRIGENT vers la vraie adresse. Tout ce qu'on diffuse avec (newsletter, réseaux,
+    # sitemap) pointe donc sur un rebond, et un sitemap qui ne liste que des redirections
+    # est précisément le défaut relevé par l'audit SEO du 2026-07-29. Les ré-résoudre est
+    # sans risque : on suit le short-link natif de WordPress, en lecture seule.
     rows = conn.execute(
-        "SELECT id, wp_post_id_as, title FROM events_raw "
-        "WHERE COALESCE(wp_post_id_as,'') <> '' AND COALESCE(wp_permalink_as,'') = ''"
+        "SELECT id, wp_post_id_as, title, wp_permalink_as FROM events_raw "
+        "WHERE COALESCE(wp_post_id_as,'') <> '' "
+        "  AND (COALESCE(wp_permalink_as,'') = '' "
+        "       OR wp_permalink_as LIKE '%?p=%' "
+        "       OR wp_permalink_as LIKE '%post_type=tribe_events%')"
     ).fetchall()
-    log.info("%d événement(s) sans permalien à rattraper.", len(rows))
+    a_vide = sum(1 for r in rows if not (r["wp_permalink_as"] or "").strip())
+    log.info("%d événement(s) à traiter : %d sans permalien, %d avec un permalien resté "
+             "en forme brute (redirige au lieu de pointer).",
+             len(rows), a_vide, len(rows) - a_vide)
     if not rows:
         conn.close()
         return 0
