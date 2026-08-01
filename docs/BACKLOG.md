@@ -4,6 +4,34 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-08-01
+
+### 🤖 Le protocole de lot devient automatique (`scripts/daily_batch.py`)
+- **Demande de Franck** : après avoir dû dérouler le protocole de lot à la main sur le VPS
+  (enrich → batch_report → publish → batch_report) pour le Lot 1, il ne veut plus « passer sa
+  vie sur le VPS » — le protocole doit tourner seul, pas juste être documenté.
+- **`scripts/daily_batch.py`** (nouveau) enchaîne les 4 étapes en UN script, en cron :
+  1. sélectionne le lot du jour (`DAILY_BATCH_SIZE`, défaut 10, même critère que la file
+     `enrich.py` — score ≥ seuil, pas encore enrichi, pas doublon, pas traduction) ;
+  2. l'enrichit (`enrich.py`, kill-switch/garde-fou eventness déjà dedans, inchangés) ;
+  3. vérifie CHAQUE id avec `batch_report._row_report` (même logique que la vérif manuelle :
+     score, article, panel si palier long, date exploitable) — **jamais de --cap large qui
+     shunte la vérification** ;
+  4. publie UNIQUEMENT les COMPLETS (`publish_batch_as --ids <complets>`), re-vérifie après
+     coup (image réelle + wp id posés) ;
+  5. notifie Slack : ce qui est publié (avec lien WP) + ce qui reste incomplet, AVEC LA RAISON
+     précise (score/article/panel/date) — Franck n'a rien à ouvrir sauf s'il veut intervenir.
+- **Rien de publié à moitié fait, jamais silencieusement** : un id incomplet reste en base tel
+  quel, retente au prochain run (même sélection déterministe), sans jamais forcer une
+  publication ni disparaître sans trace.
+- **`crontab.txt`** : les deux crons séparés `enrich.py --cap 20` (9h30) et
+  `publish_batch_as.py --cap 20` (11h) du 2026-07-31 sont **remplacés** par UN cron
+  `daily_batch.py` à 9h30 — même heure, mais rédaction+vérif+publication+Slack enchaînées.
+- **Reste à faire côté Franck** : `git pull`, `crontab crontab.txt`, vérifier que
+  `SLACK_WEBHOOK_URL` est bien dans `.env` (sinon `slack.notify()` loggue et continue, mais
+  aucun message n'arrive) ; ajuster `DAILY_BATCH_SIZE` dans `.env` si 10/jour est trop lent
+  ou trop rapide pour rattraper le stock (≈77 FR + 44 IT restants).
+
 ## Journal de session — 2026-07-31
 
 ### 📐 Protocole de LOT — fin du rattrapage au compte-gouttes
