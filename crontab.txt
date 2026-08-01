@@ -21,6 +21,16 @@
 30 8 * * * cd /root/evenements && .venv/bin/python scripts/dedupe.py >> logs/dedupe.log 2>&1
 # Datation 8h45 : extrait la vraie date d'événement (déterministe, gratuit) → filtres par période
 45 8 * * * cd /root/evenements && .venv/bin/python scripts/dates.py >> logs/dates.log 2>&1
+# Extraction du LIEU 8h50 (après la datation, avant l'évaluation) — sa propre docstring
+# dit « Cron : après la datation » depuis toujours, mais il n'y avait JAMAIS été mis.
+# Conséquence mesurée le 2026-08-02 : la file de publication comptait 20 fiches et ZÉRO
+# complète — 19 bloquées sur « manque : Lieu » ou « Lieu, Ville », dont des événements
+# parfaitement valides (Aosta Pride, Risò, La Giettaz, Venaria Reale). Le scraper ne
+# remplit pas ces colonnes (l'adresse ne vit que dans la prose), la porte qualité les
+# exige, et rien n'allait les chercher : les fiches mouraient au dernier portillon.
+# Même forme que dates.py : JSON-LD d'abord (déterministe, gratuit), LLM en second
+# recours, borné et désactivable (VENUES_LLM=0).
+50 8 * * * cd /root/evenements && .venv/bin/python scripts/venues.py >> logs/venues.log 2>&1
 # Évaluation LLM 9h (après scraping)
 # NB : le cron évalue TOUTE la file pending (rattrapage quotidien). Le pilotage par
 # période (« ce week-end ») se fait à la MAIN via le bouton du dashboard.
