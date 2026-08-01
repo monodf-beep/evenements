@@ -53,9 +53,15 @@ def _row_report(r: dict) -> tuple[bool, list[str]]:
                      f"({'long' if int(score) >= LONG_MIN_SCORE else 'court'} attendu)")
 
     words = len((r.get("article_md") or "").split())
-    if words == 0:
+    # Plancher ABSOLU (20 mots) : attrape aussi un article « techniquement non vide »
+    # mais réduit à peu près au titre (matière trouvée insuffisante malgré la matière
+    # dite « officielle » — cas vécu id 843 : page officielle non pertinente détectée
+    # trop tard, article réduit à 6 mots). Le seuil RELATIF (< 250 mots) ne s'applique
+    # qu'aux événements qui visaient un article long (score élevé) — un article court
+    # (catalogue) n'a pas vocation à être long.
+    if words < 20:
         ok = False
-        lines.append("  ✗ article      : VIDE")
+        lines.append(f"  ✗ article      : {'VIDE' if words == 0 else f'{words} mots — quasi-vide'}")
     else:
         expect_long = (score or 0) >= LONG_MIN_SCORE
         thin = expect_long and words < 250
@@ -63,13 +69,19 @@ def _row_report(r: dict) -> tuple[bool, list[str]]:
         lines.append(f"  {marker} article      : {words} mots"
                      + (" (COURT alors que le score visait un long)" if thin else ""))
 
+    # Panel lecteurs : seulement attendu pour un palier LONG (score ≥ LONG_MIN_SCORE) —
+    # un événement court/catalogue ne passe JAMAIS par le panel (cf. enrich.py, appelé
+    # seulement `if not court`). L'exiger pour un événement court serait un faux négatif.
     panel = _panel(r.get("enrich_data") or "")
-    if not panel:
+    expect_panel = (score or 0) >= LONG_MIN_SCORE
+    if expect_panel and not panel:
         ok = False
-        lines.append("  ✗ panel lecteurs : jamais passé")
-    else:
+        lines.append("  ✗ panel lecteurs : jamais passé (attendu, score ≥ seuil long)")
+    elif panel:
         lines.append(f"  · panel lecteurs : verdict={panel.get('verdict', '?')} "
                      f"mean={panel.get('mean', '?')} votes={panel.get('votes', '?')}")
+    else:
+        lines.append("  · panel lecteurs : — (non attendu, palier court)")
 
     home_score = r.get("home_score")
     lines.append(f"  · home_score   : {home_score if home_score is not None else '— (non calculé)'}"
