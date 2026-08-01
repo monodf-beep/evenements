@@ -334,7 +334,11 @@ def _row_report(r: dict, original: dict | None = None) -> tuple[bool, list[str]]
         lines.append("  · publication AS : PAS ENCORE publié")
     else:
         img_src = r.get("image_source") or "?"
-        real_img = bool((r.get("url_image") or "").strip()) and img_src != ""
+        # `and img_src != ""` figurait ici : condition MORTE (le `or "?"` ci-dessus rend
+        # la chaîne vide impossible). La seule question qui vaille est « y a-t-il une
+        # image ? » — `image_source` dit d'OÙ elle vient, pas si elle existe, et 'banner'
+        # (notre visuel de repli territorial) est une image parfaitement légitime.
+        real_img = bool((r.get("url_image") or "").strip())
         lines.append(f"  · publication AS : WP#{wp_id} · image_source={img_src}"
                      f" ({'ok, vraie image' if real_img else 'AUCUNE image'})")
         if not real_img:

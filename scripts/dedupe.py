@@ -61,11 +61,21 @@ _STOP = {
     # cascade : la description Google News passait dans l'événement gagnant, puis nourrissait
     # la rédaction (enrich.py agrège la matière des doublons) et la traduction — d'où une
     # fiche IT publiée sous le titre « Festa del Lago 2026 » sur un spectacle de théâtre.
+    # ⚠️ RÉVISÉ le 2026-08-02 : la première version de cette liste retirait aussi
+    # « est », « fra », « ete », « son », « cher »/« chere ». Ces six-là sont des
+    # HOMOGRAPHES d'un mot de contenu, et les neutraliser cassait de vrais
+    # rapprochements : « Le Grand Est en fête » ↔ « Il Grand Est in festa » tombait à
+    # {grand} (un seul token, sous le seuil de 2 → plus aucun appariement), « Fra
+    # Angelico » à {angelico}, et « été » (la saison, présente dans quantité de titres
+    # d'été) disparaissait purement et simplement. Un mot-outil ne mérite sa place ici
+    # que s'il n'est JAMAIS porteur de sens dans un titre d'événement. Rappel : ces
+    # tokens servent aussi au contrôle titre↔fiche de scripts/batch_report.py — trop
+    # élaguer y fabrique aussi de fausses alertes.
     "pas", "plus", "qui", "que", "quoi", "dont", "tout", "tous", "toute", "toutes",
-    "sans", "sous", "entre", "chez", "mais", "donc", "non", "ans", "son", "ses",
-    "est", "sont", "ete", "leur", "leurs", "cher", "chere", "moins", "tres", "bien",
+    "sans", "sous", "entre", "chez", "mais", "donc", "non", "ans", "ses",
+    "sont", "leur", "leurs", "moins", "tres", "bien",
     "piu", "che", "chi", "cui", "tutto", "tutti", "tutta", "tutte", "senza", "sotto",
-    "tra", "fra", "sono", "suo", "sua", "suoi", "anni", "anno", "meno", "molto",
+    "sono", "suo", "sua", "suoi", "anni", "anno", "meno", "molto",
     # mots génériques d'événement (diffèrent selon la langue → non distinctifs)
     "fete", "festa", "feste", "sagra", "sagre", "fiera", "foire", "marche",
     "mercato", "concert", "concerto", "spectacle", "spettacolo", "expo",

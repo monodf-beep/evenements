@@ -33,12 +33,19 @@ from utils import pipeline_status
 log = get_logger("homepage_health")
 
 # (titre affiché, seuil minimum de cartes en dessous duquel on alerte)
-_SECTIONS = [("À la une", 1), ("En évidence", 1), ("LES 7 PROCHAINS JOURS", 1)]
+# ⚠️ La CASSE des titres affichés à l'écran vient du CSS (`text-transform: uppercase`),
+# PAS du HTML : la home sert « Les 7 prochains jours » et « Nouveautés sur Agenda
+# Sabauda ». Écrits ici en capitales (relevés sur la capture d'écran), ils ne
+# matchaient RIEN — la section était comptée 0 et une alerte rouge serait partie sur
+# Slack tous les jours à 13h pour une home parfaitement saine. Tout le matching est
+# donc insensible à la casse (cf. re.IGNORECASE dans _section_counts) : on ne peut pas
+# déduire le HTML de ce qu'on voit à l'écran.
+_SECTIONS = [("À la une", 1), ("En évidence", 1), ("Les 7 prochains jours", 1)]
 # Titres supplémentaires, PAS surveillés pour eux-mêmes, mais nécessaires pour borner la
 # fenêtre d'une section surveillée qui les précède directement (sinon on compte les cartes
 # de la section SUIVANTE par débordement — vécu : "LES 7 PROCHAINS JOURS" est directement
 # suivie de "NOUVEAUTÉS SUR AGENDA SABAUDA", jamais vide, qui aurait masqué le trou).
-_BOUNDARY_ONLY = ["NOUVEAUTÉS SUR AGENDA SABAUDA"]
+_BOUNDARY_ONLY = ["Nouveautés sur Agenda Sabauda"]
 _WINDOW = 12000  # caractères scrutés après le titre, avant le titre de section suivant
 
 
@@ -50,7 +57,7 @@ def _section_counts(html: str) -> dict[str, int]:
     # section par débordement).
     positions = sorted(
         (m.start(), title) for title in all_titles
-        for m in re.finditer(re.escape(title), html))
+        for m in re.finditer(re.escape(title), html, re.IGNORECASE))
     watched = {t for t, _ in _SECTIONS}
     for i, (pos, title) in enumerate(positions):
         if title not in watched:

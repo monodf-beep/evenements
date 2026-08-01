@@ -490,8 +490,38 @@ def main(argv=None) -> int:
     elif DATES_LLM and not args.no_llm and not api_key:
         log.info("Passe LLM ignorée : ANTHROPIC_API_KEY absente.")
 
+    # --- Passe 4 : traductions — COPIE des dates de l'original (jamais de parsing) ---
+    # Les trois passes ci-dessus excluent les traductions, sans quoi elles re-parsent un
+    # texte italien avec un parseur français. Mais l'exclusion seule les laisserait
+    # DÉFINITIVEMENT sans date dans un cas bien réel : `scripts/link_translations_as.py`
+    # pose `translation_of` sur la fiche secondaire d'une paire Polylang dont LES DEUX
+    # côtés ont été scrapés indépendamment — cette fiche-là n'a jamais reçu de copie de
+    # dates, et plus aucune passe n'avait le droit de la dater. Sans agenda, elle
+    # disparaissait des filtres par période.
+    # Une traduction n'a AUCUNE donnée factuelle propre : la seule opération légitime est
+    # la copie depuis l'original. On copie donc quand la traduction n'a pas de date, ET on
+    # RÉALIGNE quand les deux divergent (une divergence ne peut venir que d'une corruption
+    # — c'est exactement le dommage constaté en ligne le 2026-08-01).
+    copied = conn.execute(
+        "UPDATE events_raw SET date_event_start = (SELECT o.date_event_start FROM events_raw o "
+        "                                          WHERE o.id = events_raw.translation_of), "
+        "                     date_event_end   = (SELECT o.date_event_end   FROM events_raw o "
+        "                                          WHERE o.id = events_raw.translation_of), "
+        "                     date_source = 'copie-traduction' "
+        "WHERE COALESCE(translation_of,0) <> 0 AND statut != 'merged' "
+        "  AND EXISTS (SELECT 1 FROM events_raw o WHERE o.id = events_raw.translation_of "
+        "              AND COALESCE(o.date_event_start,'') <> '' "
+        "              AND (COALESCE(events_raw.date_event_start,'') <> "
+        "                   COALESCE(o.date_event_start,'') "
+        "                OR COALESCE(events_raw.date_event_end,'') <> "
+        "                   COALESCE(o.date_event_end,'')))").rowcount
+    conn.commit()
+    if copied:
+        log.info("Passe traductions : %d fiche(s) réalignée(s) sur les dates de leur original", copied)
+
     total_dated = conn.execute(
-        "SELECT COUNT(*) n FROM events_raw WHERE date_source IN ('parsed','page','llm') "
+        "SELECT COUNT(*) n FROM events_raw "
+        "WHERE date_source IN ('parsed','page','llm','copie-traduction') "
         "AND statut != 'merged'").fetchone()["n"]
     undated = conn.execute(
         "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "

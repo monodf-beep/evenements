@@ -79,6 +79,10 @@ LONG_MIN_SCORE = int(os.getenv("ENRICH_LONG_MIN_SCORE", "7"))
 BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
 # Plafond de recherches web par événement (outil serveur).
 MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "3"))
+# Texte VISIBLE minimum (hors balises et URLs) pour qu'une description de DOUBLON entre
+# dans la matière de rédaction — cf. gather_material. Volontairement bas : on écarte les
+# coquilles vides (lien Google News nu), pas les descriptions simplement laconiques.
+MATERIAL_MIN_VISIBLE = int(os.getenv("ENRICH_MATERIAL_MIN_VISIBLE", "60"))
 # Budget de sortie de l'article JSON. 12000 s'est révélé trop juste sur un événement à
 # matière riche (panel + programme détaillé) : stop_reason=max_tokens → JSON tronqué →
 # article perdu (aucun repli partiel). 16000 laisse de la marge sans coût significatif
@@ -825,13 +829,28 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     own = (ev.get("description") or "").strip()
     if own:
         parts.append(own)
+    # Matière des DOUBLONS fusionnés — filtrée sur la SUBSTANCE, pas sur le volume brut.
+    # Un item Google News RSS se réduit à un `<a href="…">` dont l'URL encodée pèse des
+    # centaines de caractères pour un texte visible quasi nul : versé tel quel dans la
+    # matière de rédaction, il n'apporte rien et son ancre (le titre d'un ARTICLE, souvent
+    # un autre sujet) oriente le LLM sur le mauvais événement. C'est le maillon final de
+    # la cascade du 2026-08-01 : dedupe apparie à tort → la description parasite entre
+    # ici → l'article, puis sa traduction, parlent d'autre chose (« Festa del Lago 2026 »
+    # sur un spectacle de théâtre à Chambéry). dedupe ne choisit plus la description la
+    # plus LONGUE, mais un doublon légitime peut parfaitement rester un lien creux.
+    from scripts.dedupe import _text_len
     for row in conn.execute(
         "SELECT description, source_name FROM events_raw WHERE duplicate_of = ?",
         (ev["id"],)
     ):
         d = (row["description"] or "").strip()
-        if d and d not in parts:
-            parts.append(d)
+        if not d or d in parts:
+            continue
+        if _text_len(d) < MATERIAL_MIN_VISIBLE:
+            log.debug("[%s] matière du doublon ignorée : %d car. visibles seulement",
+                      ev["id"], _text_len(d))
+            continue
+        parts.append(d)
     from utils.clean_text import strip_boilerplate
     rss = re.sub(r"(?s)<[^>]+>", " ", "\n\n---\n\n".join(parts))
     rss = strip_boilerplate(rss)[:6000]   # retire spacers Elementor, pied RSS, boutons

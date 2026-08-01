@@ -216,7 +216,18 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # (comportement historique, cs-publish.php). Corrige le Schema.org
                       # Event qui affichait 00:00-23:59 même quand l'heure réelle (ex.
                       # « 21h30 ») était visible dans le texte mais jamais transmise à TEC.
-                      ("time_start", "TEXT")):
+                      ("time_start", "TEXT"),
+                      # Traductions FR↔IT (scripts/translate_events.py) : id de la fiche
+                      # D'ORIGINE, langue produite, horodatage. Déclarées ICI et plus
+                      # seulement dans translate_events._ensure_cols : depuis le
+                      # 2026-08-01, scripts/dates.py filtre sur `COALESCE(translation_of,0)`
+                      # pour ne plus écraser les dates copiées d'un original. Sur une base
+                      # reconstruite où la traduction n'a jamais tourné, la colonne
+                      # n'existait pas et la datation quotidienne plantait — un cron cassé
+                      # par une dépendance implicite entre deux scripts qui s'ignorent.
+                      ("translation_of", "INTEGER"),
+                      ("translated_at", "TEXT"),
+                      ("translated_lang", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
