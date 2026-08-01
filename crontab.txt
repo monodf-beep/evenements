@@ -29,10 +29,16 @@
 # automatiquement ce qui était déjà en ligne (sinon le SEO reste invisible en base). Petit
 # cap volontaire (coût LLM par événement) — ajuste --cap dans le script si besoin.
 30 10 * * * cd /root/evenements && .venv/bin/python scripts/seo_batch.py --cap 10 >> logs/seo_batch.log 2>&1
-# Traduction FR/IT quotidienne 10h45 (2026-08-01 : automatisée — le bug qui justifiait la
-# prudence, enrich.py écrasant une traduction déjà publiée, est corrigé depuis, cf.
-# docs/BACKLOG.md). Cap PRUDENT (crée de nouveaux posts WordPress) : ajuste au besoin.
-45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1
+# Traduction FR/IT quotidienne 10h45 — ⏸️ EN PAUSE depuis le 2026-08-01 (soir).
+# Motif : une fiche traduite publiée en ligne (WP#6798) porte le TITRE d'un événement et
+# le lieu/les dates d'un autre. La cause n'est pas élucidée ; l'hypothèse en cours est une
+# contamination ANTÉRIEURE à la traduction (fusion de doublons ou scraping), le traducteur
+# ne faisant que révéler une matière déjà polluée. Tant que ce n'est pas tranché, ce cron
+# fabriquerait chaque jour des fiches potentiellement fausses, publiées en ligne.
+# ⚠️ Les correctifs de dates (dates.py excluant les traductions) et de cycles sont, eux,
+# déjà en place — cette pause ne concerne QUE la création de nouvelles traductions.
+# RÉACTIVER en décommentant, une fois la contamination expliquée (cf. docs/BACKLOG.md).
+#45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1
 # Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.
 # incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
 # resserre facilement si besoin de plus de fréquence.
