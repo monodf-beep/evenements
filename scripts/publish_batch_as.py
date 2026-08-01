@@ -99,8 +99,22 @@ def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict],
     aboutira.
 
     RIEN N'EST SUPPRIMÉ NI REJETÉ : la fiche reste en base, telle quelle, avec son
-    statut. Elle repassera d'elle-même dès qu'un run d'enrichissement aura résolu sa
-    page officielle. Réversible d'un flag : --allow-radar.
+    statut. Réversible d'un flag : --allow-radar.
+
+    ⚠️ MAIS LA RÉTENTION EST DÉFINITIVE SANS GESTE — et il faut le dire, parce que
+    l'inverse serait rassurant et faux. Une fiche retenue ici est DÉJÀ enrichie, or
+    `scripts/enrich.py::select_events` (l.1155) n'auto-sélectionne que les fiches dont
+    `enrich_status` est vide. Aucun run automatique ne la reprendra donc JAMAIS : elle
+    ne « repartira » pas toute seule le jour où sa page officielle deviendrait
+    trouvable. Le seul chemin de sortie est un ré-enrichissement PAR ID EXPLICITE :
+
+        .venv/bin/python -m scripts.enrich <id> [<id> …]
+
+    C'est ce que doit faire Franck pour les fiches retenues qui sont de VRAIS
+    événements — l'audit du 2026-08-02 en a compté 9 en file, dont plusieurs
+    manifestement légitimes (Aosta Pride, Raggamuffin Festival, Risò, un spectacle à
+    La Giettaz). Le verrou dit « pas de page officielle », pas « pas un événement » :
+    il ne remplace pas le jugement éditorial, il empêche de publier sans matière.
 
     NE S'APPLIQUE QU'AUX CRÉATIONS (`wp_post_id_as` vide). Une fiche radar DÉJÀ en
     ligne n'est pas retenue ici : bloquer sa republication ne la retirerait pas du
@@ -192,6 +206,12 @@ def main(argv=None) -> int:
     for ev, reason in radar_blocked:
         log.info("[%s] RETENU (non publié, rien supprimé) : %s | %s",
                  ev.get("id"), reason, (ev.get("title") or "")[:60])
+    if radar_blocked:
+        # La sortie de rétention n'est PAS automatique (cf. _porte_radar) : on donne la
+        # commande, sinon ces fiches restent bloquées en silence pour toujours.
+        log.info("Pour en débloquer une qui est un VRAI événement, ré-enrichir par id "
+                 "(résout la page officielle) : .venv/bin/python -m scripts.enrich %s",
+                 " ".join(str(ev.get("id")) for ev, _ in radar_blocked))
 
     if args.dry_run:
         for r in rows:
