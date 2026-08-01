@@ -64,12 +64,12 @@
     "title": "Menu mobile vide — navigation bloquée",
     "description": "Au clic sur le hamburger (☰), le panneau MENU s'ouvre (titre + croix) mais ne contient AUCUN lien — le contenu de la home transparaît derrière. Empêche toute navigation sur mobile hors de la page courante. PRIORITAIRE.",
     "category": "navigation",
-    "status": "open",
+    "status": "fixed",
     "source": "conversation",
     "prompt_file": "",
     "opened_at": "2026-08-01T08:46:28",
-    "resolved_at": null,
-    "resolution_notes": ""
+    "resolved_at": "2026-08-01T18:04:02",
+    "resolution_notes": "Menu réassigné dans Apparence > Menus, confirmé sur mobile."
   },
   {
     "id": 7,
