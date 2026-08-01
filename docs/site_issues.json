@@ -94,5 +94,17 @@
     "opened_at": "2026-08-01T21:47:40",
     "resolved_at": null,
     "resolution_notes": ""
+  },
+  {
+    "id": 9,
+    "title": "PIÈGE DE DÉPLOIEMENT : apply-components.mjs détruirait 40 Ko de CSS de production",
+    "description": "wordpress/design-system/components.css fait 31 Ko dans le dépôt, alors que le snippet équivalent en PRODUCTION fait 70 875 caractères. Le fichier versionné est donc en retard d'environ 40 Ko sur ce qui tourne réellement. Lancer apply-components.mjs écraserait le snippet de production par la version courte du dépôt et détruirait ce CSS — sans retour arrière simple. Avant tout déploiement du design-system : récupérer le snippet de production, le comparer au fichier versionné, et réconcilier dans ce sens-là (prod -> dépôt), jamais l'inverse. Relevé le 2026-08-02 lors du diagnostic des bugs visibles (docs/DIAGNOSTIC_BUGS_SITE.md).",
+    "category": "deploiement",
+    "status": "open",
+    "source": "diagnostic_bugs_site",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T23:16:15",
+    "resolved_at": null,
+    "resolution_notes": ""
   }
 ]

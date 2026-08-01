@@ -574,6 +574,10 @@ elle augmentera de ~600 px), et le fait que les 3 colonnes desktop ne sont pas t
 
 ### Ce qui a été observé — **CERTAIN**
 
+> ⚠️ **Correction en cours d'enquête.** Ma première conclusion était « le territoire n'est mémorisé
+> nulle part ». **C'est faux, et je l'ai vérifié avant de l'écrire** : il existe un cookie
+> `as_territoire`. Le vrai défaut est plus précis, et le correctif n'est pas le même.
+
 1. **Choisir « Savoie » sur la home = changer de page.** Le sélecteur de territoire n'est pas un
    filtre, ce sont quatre liens en dur :
 
@@ -588,22 +592,40 @@ elle augmentera de ~600 px), et le fait que les 3 colonnes desktop ne sont pas t
 
 2. **`/explore/savoie/` est bien la home filtrée**, côté serveur : `<body class="home … page-id-928 …">`,
    canonique `https://agendasabauda.eu/`, et la barre affiche
-   `Vous regardez <strong>Savoie</strong>` / « Changer de territoire » (contre
-   `les 4 territoires` / « Choisir un territoire » sur `/`).
+   `Vous regardez <strong>Savoie</strong>` / « Changer de territoire ».
 
-3. **Les tuiles catégorie de cette page ne portent aucune trace du territoire.** Toutes les
-   occurrences relevées sur `/explore/savoie/` sont de la forme :
+3. **Le choix EST mémorisé, dans un cookie posé par le serveur.** En-têtes de réponse de
+   `/explore/savoie/` :
 
-   ```html
-   <a href="https://agendasabauda.eu/evenements/categorie/jeune-public-famille/">…</a>
+   ```
+   set-cookie: as_territoire=savoie; expires=Mon, 31-Aug-2026 …; Max-Age=2592000; path=/
    ```
 
-   — pas de paramètre, pas de fragment, aucun cookie ni `localStorage` posé (aucun script de la page
-   n'écrit le territoire courant : les seuls scripts inline touchant au sujet sont le header
-   compact et le révélateur de logo).
+   (30 jours, tout le site.) Le mécanisme de remise à zéro existe aussi : `/?as_territoire=tous`
+   répond `set-cookie: as_territoire=deleted; Max-Age=0`. Rien n'est écrit en `localStorage`
+   (vérifié : `localStorage` vide, `sessionStorage` ne contient que `wpEmojiSettingsSupports`).
 
-4. **Le hub catégorie sait pourtant filtrer par territoire, par un simple paramètre GET.** Sa barre
-   de filtres n'est **pas** JetSmartFilters mais un formulaire `method="get"` classique :
+4. **Les tuiles catégorie ne portent aucun paramètre** — toutes de la forme
+   `<a href="https://agendasabauda.eu/evenements/categorie/jeune-public-famille/">`.
+
+5. **Le hub catégorie LIT le cookie, mais il ne s'en sert que pour trier, pas pour filtrer.**
+   C'est le cœur du bug. Trois requêtes sur la même URL, événements uniques comptés et territoire
+   de chaque carte relevé :
+
+   | Requête | Nb d'événements | Territoires listés |
+   |---|---|---|
+   | sans cookie | **17** | Nice ×8, Savoie ×1, V. d'Aoste ×1, non étiquetés ×7 |
+   | **avec `Cookie: as_territoire=savoie`** | **8** | **Savoie ×1 puis Nice ×3, V. d'Aoste ×1, autres** |
+   | avec `?filtre2=savoie` | **2** | **Savoie uniquement** |
+
+   Avec le cookie, les deux événements savoyards (`lete-au-centre-socioculturel`,
+   `dinosaures-le-voyage-de-bumpy…`) **remontent en tête** et la liste est raccourcie à 8 — mais
+   **les autres territoires sont toujours là**. Et le `<select name="filtre2">` reste sur
+   « Territoire » : aucun `selected='selected'`. Du point de vue du visiteur : « j'ai choisi la
+   Savoie et j'obtiens tous les territoires ». **La plainte de Franck est exacte.**
+
+6. **Le vrai filtre existe et fonctionne**, par un paramètre GET. La barre de filtres du hub n'est
+   **pas** JetSmartFilters mais un formulaire `method="get"` classique :
 
    ```html
    <form method="get">
@@ -620,47 +642,73 @@ elle augmentera de ~600 px), et le fait que les 3 colonnes desktop ne sont pas t
    </form>
    ```
 
-   Vérification par téléchargement direct (comptage des liens `/evenement/` uniques) :
-
    | URL | Événements | `<option value="savoie">` |
    |---|---|---|
-   | `/evenements/categorie/jeune-public-famille/` | **17** | non sélectionné |
+   | `/evenements/categorie/jeune-public-famille/` | 17 | non sélectionné |
    | `/evenements/categorie/jeune-public-famille/?filtre2=savoie` | **2** | `selected='selected'` |
    | `/evenements/categorie/jeune-public-famille/?filtre2=comte-de-nice` | 11 | non sélectionné |
    | `/type-de-lieu/musee/` | 9 | — |
    | `/type-de-lieu/musee/?filtre2=savoie` | **1** | `selected='selected'` |
 
-   **`?filtre2=<slug>` fonctionne**, et le slug est exactement le segment déjà présent dans l'URL
-   de territoire (`savoie`, `piemont`, `vallee-d-aoste`, `comte-de-nice`).
+   Le slug attendu par `filtre2` est **exactement** celui déjà présent dans l'URL de territoire et
+   dans le cookie (`savoie`, `piemont`, `vallee-d-aoste`, `comte-de-nice`).
 
-   ⚠️ En revanche `/tout-l-agenda/?filtre2=savoie` **ne filtre pas** (50 événements avant comme
-   après) : cette page n'a que les filtres `ville` et `categorie`. Le correctif ne doit donc pas
-   toucher ce lien.
+   ⚠️ `/tout-l-agenda/?filtre2=savoie` **ne filtre pas** (50 événements avant comme après) : cette
+   page n'a que les filtres `ville` et `categorie`. Le correctif ne doit pas toucher ce lien.
 
-### Cause
+### Cause — **certain**
 
-**Il n'existe aucun mécanisme de propagation du territoire.** Le territoire n'est porté que par
-l'URL de la home (`/explore/…`, `/choisir/…`) ; il est perdu au premier clic sortant. Ce n'est pas
-un filtre qui se réinitialise, c'est une information qui n'a jamais été transmise.
-**Certitude : certain.**
+Le hub connaît le territoire du visiteur (cookie) et **choisit de ne pas l'appliquer comme filtre** :
+il ne s'en sert que pour un tri de priorité. Le seul mécanisme filtrant, `filtre2`, n'est alimenté
+que par le formulaire, jamais par le cookie ni par les liens entrants.
 
-### Correctif proposé (prêt à coller)
+### Correctif proposé — deux voies, la première recommandée
 
-Un snippet JS de 15 lignes, sans intervention serveur, sans risque pour les autres pages :
+**Voie A (la plus propre, côté serveur) : faire que `filtre2` prenne par défaut la valeur du cookie.**
+Le code qui rend le hub lit déjà `$_COOKIE['as_territoire']` (c'est lui qui trie) et lit déjà
+`$_GET['filtre2']`. Il suffit que la valeur par défaut de `filtre2` soit le cookie :
+
+```php
+// Dans le snippet Code Snippets qui rend les hubs (le retrouver en cherchant
+// « filtre2 » dans Code Snippets — c'est lui qui définit le nom du paramètre).
+// AVANT : $terr = isset($_GET['filtre2']) ? sanitize_title($_GET['filtre2']) : '';
+// APRÈS :
+$terr = isset($_GET['filtre2'])
+    ? sanitize_title($_GET['filtre2'])                       // le formulaire gagne toujours
+    : ( isset($_COOKIE['as_territoire']) && $_COOKIE['as_territoire'] !== 'tous'
+        ? sanitize_title($_COOKIE['as_territoire'])          // sinon, le territoire choisi
+        : '' );
+```
+
+Avantages : marche depuis **n'importe quel lien** (menu, footer, recherche, lien partagé), et pas
+seulement depuis les tuiles de la home ; le `<select>` se met tout seul sur la bonne valeur (il est
+déjà construit à partir de `$terr`) ; le visiteur garde l'échappatoire existante
+(« Tous les territoires » → `/?as_territoire=tous`, qui supprime le cookie).
+Réserve : **c'est du PHP, donc du contenu servi** — à tester sur une catégorie avant de généraliser,
+et à surveiller côté cache (une page mise en cache pour un territoire ne doit pas être resservie à
+un visiteur d'un autre territoire ; vérifier la configuration de cache de l'hébergeur, ou exclure
+les hubs du cache page).
+
+**Voie B (sans PHP, sans risque de cache) : réécrire les liens en JS depuis la home de territoire.**
 
 ```js
 /* TERRITOIRE PERSISTANT VERS LES HUBS (2026-08).
-   Le territoire choisi sur la home n'existe que dans l'URL (/explore/savoie/,
-   /choisir/piemont/…) et se perdait au premier clic sur une tuile catégorie.
-   Les hubs de catégorie et de type de lieu acceptent ?filtre2=<slug> (vérifié :
-   17 -> 2 événements sur /evenements/categorie/jeune-public-famille/?filtre2=savoie).
-   On réinjecte donc le slug dans les seuls liens qui savent l'exploiter.
-   Volontairement PAS /tout-l-agenda/ ni /ce-week-end/ : ces pages ignorent filtre2. */
+   Le hub catégorie lit bien le cookie as_territoire, mais il ne s'en sert que pour
+   TRIER (17 -> 8 événements, tous territoires confondus) ; le seul filtre réel est
+   ?filtre2=<slug> (17 -> 2, Savoie uniquement). On l'ajoute donc aux liens sortants
+   des home de territoire. Volontairement PAS /tout-l-agenda/ ni /ce-week-end/ :
+   ces pages ignorent filtre2. */
 (function () {
   var TERR = ['savoie', 'piemont', 'vallee-d-aoste', 'comte-de-nice'];
   var m = location.pathname.match(/\/(?:explore|choisir|territoire)\/([a-z0-9-]+)\/?$/);
-  if (!m || TERR.indexOf(m[1]) === -1) { return; }
-  var slug = m[1];
+  var slug = m && TERR.indexOf(m[1]) !== -1 ? m[1] : null;
+
+  // repli : si on n'est pas sur une home de territoire, on utilise le cookie
+  if (!slug) {
+    var c = document.cookie.match(/(?:^|;\s*)as_territoire=([a-z0-9-]+)/);
+    if (c && TERR.indexOf(c[1]) !== -1) { slug = c[1]; }
+  }
+  if (!slug) { return; }
 
   document.querySelectorAll('a[href*="/evenements/categorie/"], a[href*="/type-de-lieu/"]')
     .forEach(function (a) {
@@ -674,24 +722,32 @@ Un snippet JS de 15 lignes, sans intervention serveur, sans risque pour les autr
 })();
 ```
 
-**Où le poser :** **nouveau snippet Code Snippets**, scope « front-end », intitulé par exemple
-« CS · Territoire persistant → hubs », émis en pied de page (`wp_footer`) pour que les tuiles soient
-déjà dans le DOM. Un nouveau snippet plutôt qu'un ajout au #62 : ce n'est pas du header, ça n'a pas
-le même cycle de vie, et on veut pouvoir le désactiver seul pour tester.
+**Où le poser :**
+- Voie A : dans le snippet PHP **existant** qui rend les hubs. Ne pas créer un second endroit qui
+  décide du territoire — c'est ce qui a produit la situation actuelle (un cookie qui trie d'un côté,
+  un paramètre qui filtre de l'autre, sans lien entre les deux).
+- Voie B : **nouveau snippet** Code Snippets, scope « front-end », émis en pied de page
+  (`wp_footer`) pour que les tuiles soient dans le DOM. Un snippet séparé pour pouvoir le
+  désactiver seul pendant un test.
 
-**Limite assumée à signaler à Franck :** ce correctif transmet le territoire **depuis les pages home
-de territoire**. Il ne fait rien depuis la home générale `/` (il n'y a alors pas de territoire à
-transmettre — c'est le comportement voulu), ni depuis une fiche événement.
+**Recommandation :** commencer par la **voie B** (zéro risque, réversible en un clic, couvre le
+scénario exact décrit par Franck), et garder la **voie A** pour la version définitive une fois la
+question du cache tranchée.
 
-**Ce qui manque pour aller plus loin** (si Franck veut que le territoire suive **partout**, y compris
-sur `/tout-l-agenda/` et `/ce-week-end/`) : il faut connaître le nom du paramètre que ces pages
-attendent. Elles n'exposent aujourd'hui que `ville` et `categorie`. C'est une modification du code
-qui génère ces pages — probablement le snippet PHP qui rend les hubs (chercher `filtre2` dans
-Code Snippets : c'est lui qui définit le nom du paramètre). À trancher **après** avoir posé le
-correctif ci-dessus, qui couvre déjà le scénario décrit par Franck (Savoie → tuile Famille).
+**Risque :** voie B **très faible** (ne modifie que des `href` internes, n'écrase jamais un
+`filtre2` existant, sans effet SEO : les robots voient les URL canoniques sans paramètre).
+Voie A **faible à modéré**, entièrement porté par la question du cache page.
 
-**Risque : très faible.** Le script ne s'exécute que sur 4 URL de territoire, ne modifie que des
-`href` internes vers deux familles d'archives, et n'écrase jamais un `filtre2` déjà présent.
+> 🐛 **Trouvaille annexe, à ne pas ignorer si vous implémentez ce correctif.**
+> `/evenements/categorie/<n'importe quelle catégorie>/?territoire=savoie` répond
+> **HTTP 200 avec 0 octet** — une page totalement blanche. Reproduit 2 fois sur
+> `jeune-public-famille` et sur `concerts-musique` ; `?zzz=1` et `?utm_source=test` sur la même URL
+> renvoient les 368 087 octets normaux, et `?territoire=nimportequoi` renvoie un 404 propre.
+> `territoire` est le nom de la **taxonomie** : WordPress l'enregistre comme query var, et la
+> combinaison « archive de catégorie + terme de territoire » casse silencieusement le rendu.
+> Deux conséquences : (1) **n'utilisez jamais `?territoire=` comme nom de paramètre** pour le
+> correctif ci-dessus — c'est pourtant le premier réflexe ; (2) c'est une URL publique qui renvoie
+> une réponse vide en 200, donc une erreur douce indexable. À ouvrir comme une issue à part.
 
 ---
 
@@ -714,8 +770,12 @@ correctif ci-dessus, qui couvre déjà le scénario décrit par Franck (Savoie �
 - **3 (doublons desktop)** — le nouveau sélecteur est **plus étroit** que celui qu'il remplace
   (enfants directs de `.as-home-root > .as-home-desktop`). Risque : qu'un `<div>` desktop reçoive
   un jour une classe et réapparaisse sur mobile. Parade durable proposée dans la section.
-- **5 (territoire)** — actif sur 4 URL, n'écrit que des `href`. Aucun effet sur le SEO
-  (liens réécrits côté client, après rendu ; les robots voient les URL canoniques sans paramètre).
+- **5 (territoire), voie B (JS)** — n'écrit que des `href` internes vers deux familles d'archives,
+  n'écrase jamais un `filtre2` déjà présent. Aucun effet SEO (réécriture côté client, après rendu ;
+  les robots voient les URL canoniques sans paramètre).
+- **5 (territoire), voie A (PHP)** — le seul point à surveiller est le **cache page** : le contenu
+  du hub dépendrait alors d'un cookie. Si l'hébergeur sert du cache anonyme, une page « Savoie »
+  pourrait être resservie à un visiteur « Piémont ». À vérifier avant de basculer sur cette voie.
 - **1 (menu)** — une exception à une règle de masquage, dans le même bloc que la règle, plus une
   valeur de `z-index`. Le passage de l'overlay à 60 le place au-dessus de tout le chrome de page ;
   vérifier seulement qu'il reste **sous** le bandeau cookies Complianz si celui-ci doit rester
@@ -743,6 +803,21 @@ correctif ci-dessus, qui couvre déjà le scénario décrit par Franck (Savoie �
 3. **Bug 5 :** veut-il que le territoire suive aussi sur `/tout-l-agenda/` et `/ce-week-end/` ?
    Si oui, il faut d'abord ajouter un filtre territoire à ces deux pages (snippet PHP qui génère
    les hubs — chercher `filtre2` dans Code Snippets).
-4. **Dette de dépôt :** `wordpress/design-system/components.css` (31 Ko) est en retard de ~40 Ko sur
+4. **Bug 5 (suite) :** le hub doit-il **filtrer** sur le territoire mémorisé (voie A), ou seulement
+   quand on y arrive par une tuile de la home (voie B) ? La question de fond : un visiteur qui a
+   choisi la Savoie il y a trois semaines (le cookie dure 30 jours) et qui arrive par Google sur
+   une page « Concerts » doit-il voir uniquement la Savoie ? Mon avis : **non** — d'où la
+   recommandation de commencer par la voie B.
+5. **Dette de dépôt :** `wordpress/design-system/components.css` (31 Ko) est en retard de ~40 Ko sur
    le snippet en production (70 875 caractères). Tant que ce n'est pas resynchronisé,
    `apply-components.mjs` est une arme chargée. À traiter hors de ce lot de bugs.
+6. **Page blanche `?territoire=` :** ouvrir une issue à part (cf. encadré du bug 5) — une URL
+   publique qui répond 200 avec 0 octet.
+
+---
+
+## Note de traçabilité
+
+Aucun fichier du dépôt n'a été modifié en dehors de ce document, et je n'ai lancé ni `git commit`
+ni `git push`. Si l'historique montre un commit portant ce fichier, il ne vient pas de cette
+investigation.
