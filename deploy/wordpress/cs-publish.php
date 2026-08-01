@@ -255,7 +255,12 @@ function cs_publish_event(WP_REST_Request $req) {
         // Détail du panel de personas lecteurs (scripts.enrich.reader_panel) + statut
         // affiche/placement — cf. docs/CONTRAT_META_AS.md, section Extensions post-gel.
         'as_panel_mean', 'as_panel_vmean', 'as_panel_votes', 'as_panel_verdict',
-        'as_panel_revision', 'as_affiches', 'as_placement');
+        'as_panel_revision', 'as_affiches', 'as_placement',
+        // Score « ça vaut le déplacement » (0-8, vide si non mesuré) : TRI de la section
+        // home du même nom. Dérivé des critères d'importance de l'évaluateur
+        // (utils/deplacement.py). ⚠️ Ne PAS trier cette section sur as_panel_vmean, qui
+        // mesure la richesse de l'ARTICLE et non l'ampleur de l'événement.
+        'as_deplacement');
     foreach ($allowed as $k) {
         if (array_key_exists($k, $meta)) {
             update_post_meta($post_id, $k, sanitize_text_field((string) $meta[$k]));

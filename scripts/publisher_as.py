@@ -39,6 +39,8 @@ from scripts.publisher import build_post, _map_category, _upload_featured_media
 # Détection des logos/pictogrammes + bannières de repli par territoire × catégorie + filtres image.
 from utils.sources import (is_logo_image, load_territory_images, load_territory_category_images,
                            pick_banner_image, is_blocked_image, load_blocked_image_domains)
+# Score « ça vaut le déplacement » dérivé des critères d'importance de l'évaluateur.
+from utils.deplacement import deplacement_score
 
 log = get_logger("publisher_as")
 
@@ -214,6 +216,9 @@ def _build_payload(event: dict) -> dict:
     is_radar = (event.get("source_type") == "radar"
                 or "(radar)" in (event.get("source_name") or ""))
     prix = event.get("prix", "") or ""
+    # None (non mesuré) → chaîne vide côté WP : « pas mesuré » ne doit pas se confondre
+    # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
+    depl = deplacement_score(event.get("llm_score_detail"))
 
     meta = {
         "as_score":                 event.get("llm_score", ""),
@@ -234,6 +239,14 @@ def _build_payload(event: dict) -> dict:
         # 2026-07-30 — le score seul ne suffisait pas à l'exclure, la home se remplissait
         # avec du contenu non rédigé faute de mieux).
         "as_enrich_status":         event.get("enrich_status") or "",
+        # Score « ÇA VAUT LE DÉPLACEMENT » (0-8, vide si non mesuré) — dérivé des critères
+        # d'importance de scripts/evaluator.py (rayonnement transfrontalier + spécificité
+        # territoriale + notoriété du lieu + tradition), cf. utils/deplacement.py pour le
+        # détail du choix. Sert à TRIER la section home du même nom, qui triait jusqu'ici
+        # par simple ordre chronologique, sans aucun critère de qualité (Franck 2026-08-01).
+        # ⚠️ NE PAS trier cette section sur as_panel_vmean : cette note-là mesure la
+        # richesse de l'ARTICLE, pas l'ampleur de l'événement (Musilac notait 1.0).
+        "as_deplacement":           depl if depl is not None else "",
         # Détail du score home (panel lecteurs + statut affiche) — cf. _panel_meta.
         **_panel_meta(event),
         "as_gratuit":               _is_free(prix),
