@@ -33,18 +33,28 @@ from utils import pipeline_status
 log = get_logger("homepage_health")
 
 # (titre affiché, seuil minimum de cartes en dessous duquel on alerte)
-_SECTIONS = [("À la une", 1), ("En évidence", 1)]
+_SECTIONS = [("À la une", 1), ("En évidence", 1), ("LES 7 PROCHAINS JOURS", 1)]
+# Titres supplémentaires, PAS surveillés pour eux-mêmes, mais nécessaires pour borner la
+# fenêtre d'une section surveillée qui les précède directement (sinon on compte les cartes
+# de la section SUIVANTE par débordement — vécu : "LES 7 PROCHAINS JOURS" est directement
+# suivie de "NOUVEAUTÉS SUR AGENDA SABAUDA", jamais vide, qui aurait masqué le trou).
+_BOUNDARY_ONLY = ["NOUVEAUTÉS SUR AGENDA SABAUDA"]
 _WINDOW = 12000  # caractères scrutés après le titre, avant le titre de section suivant
 
 
 def _section_counts(html: str) -> dict[str, int]:
     counts = {}
-    # positions de TOUS les titres de section connus, pour borner chaque fenêtre au
-    # prochain titre (évite de compter les cartes d'une AUTRE section par débordement).
+    all_titles = [t for t, _ in _SECTIONS] + _BOUNDARY_ONLY
+    # positions de TOUS les titres connus (surveillés + bornes), pour borner chaque
+    # fenêtre au prochain titre quel qu'il soit (évite de compter les cartes d'une AUTRE
+    # section par débordement).
     positions = sorted(
-        (m.start(), title) for title, _ in _SECTIONS
+        (m.start(), title) for title in all_titles
         for m in re.finditer(re.escape(title), html))
+    watched = {t for t, _ in _SECTIONS}
     for i, (pos, title) in enumerate(positions):
+        if title not in watched:
+            continue
         end = positions[i + 1][0] if i + 1 < len(positions) else pos + _WINDOW
         end = min(end, pos + _WINDOW)
         window = html[pos:end]
