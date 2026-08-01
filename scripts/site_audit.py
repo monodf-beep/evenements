@@ -178,11 +178,17 @@ def auditer(row: dict, session: requests.Session) -> list[tuple[str, str]]:
         anomalies.append(("grave", f"aucune date affichée alors que la base dit {db_debut}"))
     if db_fin and site_fin and db_fin != site_fin:
         anomalies.append(("grave", f"DATE DE FIN affichée {site_fin} ≠ {db_fin} en base"))
-    elif db_fin and not site_fin and db_fin != db_debut:
-        # Un événement sur plusieurs jours affiché comme une date unique : le visiteur
-        # croit avoir manqué la suite. Avertissement (TEC omet parfois endDate=startDate).
-        anomalies.append(("avert", f"événement du {db_debut} au {db_fin} en base, mais "
-                                   f"aucune date de fin affichée"))
+    # ⚠️ PAS d'alerte quand le JSON-LD ne porte AUCUNE date de fin. La première version
+    # en levait une, et le premier run l'a immédiatement démentie : sur « Festival des
+    # jardins alpestres », le JSON-LD ne donne que `startDate`, alors que WordPress
+    # connaît parfaitement la fin (le lien « ajouter à mon agenda » de la même page
+    # porte enddt=2026-10-03, et la meta description dit « jusqu'au 3 octobre »). Ce
+    # n'est donc pas une donnée fausse sur le site : c'est le générateur de JSON-LD (le
+    # plugin SEO, pas TEC) qui n'émet jamais endDate. L'alerte se serait déclenchée sur
+    # TOUS les événements de plusieurs jours — exactement la faute de homepage_health ce
+    # matin, une alerte qui crie tous les jours et qu'on finit par ne plus lire.
+    # Le manque d'endDate dans les données structurées est un vrai sujet SEO, mais c'est
+    # un défaut de GABARIT, pas de fiche : consigné une fois dans docs/site_issues.json.
 
     # 2. TITRE ↔ ANCRAGE FACTUEL — le bug WP#6798 (titre d'un événement, lieu d'un
     # autre). Même règle qu'avant publication : le titre EN LIGNE doit partager un mot

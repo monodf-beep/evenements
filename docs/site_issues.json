@@ -82,5 +82,17 @@
     "opened_at": "2026-08-01T09:42:21",
     "resolved_at": null,
     "resolution_notes": ""
+  },
+  {
+    "id": 8,
+    "title": "JSON-LD Event sans endDate sur toutes les fiches multi-jours",
+    "description": "Le JSON-LD Event servi sur une fiche ne porte que startDate, jamais endDate — vérifié sur /evenement/festival-des-jardins-alpestres/ (base : 2026-05-30 au 2026-10-03) et sur /evenement/la-saint-ours-2026-rendez-vous-en-vallee-d-aoste/. WordPress connaît pourtant la fin : le lien « ajouter à mon agenda » de la MÊME page porte enddt=2026-10-03T21:59:59Z, et la meta description dit « jusqu'au 3 octobre ». Le JSON-LD n'est donc pas généré par The Events Calendar mais par le plugin SEO, qui émet un noeud Event minimal. Conséquence : Google affiche une date unique au lieu d'une période pour tous les festivals et expositions de plusieurs jours, soit l'essentiel du catalogue. À corriger côté gabarit WordPress (émettre endDate depuis _EventEndDate) — la base et TEC ont la bonne valeur, le pipeline n'est pas en cause.",
+    "category": "wordpress-template",
+    "status": "open",
+    "source": "site_audit",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T21:47:40",
+    "resolved_at": null,
+    "resolution_notes": ""
   }
 ]
