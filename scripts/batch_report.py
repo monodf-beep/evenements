@@ -87,6 +87,17 @@ def _row_report(r: dict) -> tuple[bool, list[str]]:
     lines.append(f"  · home_score   : {home_score if home_score is not None else '— (non calculé)'}"
                  f"  override={r.get('home_override') or '—'}")
 
+    # Date ISO exploitable : sans elle, cs-publish.php (TEC) date l'événement du JOUR DE
+    # LA PUBLICATION au lieu de sa vraie date (constaté sur l'id 3512, 2026-08-01 — la
+    # fiche est partie "COMPLET" sur tout le reste mais sans date exploitable).
+    if not (r.get("date_event_start") or "").strip():
+        ok = False
+        lines.append("  ✗ date         : AUCUNE date ISO exploitable "
+                     "(TEC affichera la date du jour de publication)")
+    else:
+        lines.append(f"  · date         : {r.get('date_event_start')} → "
+                     f"{r.get('date_event_end') or r.get('date_event_start')}")
+
     wp_id = r.get("wp_post_id_as")
     if not wp_id:
         lines.append("  · publication AS : PAS ENCORE publié")
