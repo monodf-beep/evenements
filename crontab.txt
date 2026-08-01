@@ -25,5 +25,26 @@
 # listés dans le message Slack avec la raison précise (rien de silencieux). DAILY_BATCH_SIZE
 # (.env, défaut 10) règle la taille du lot — --cap l'outrepasse ponctuellement.
 30 9 * * * cd /root/evenements && .venv/bin/python scripts/daily_batch.py >> logs/daily_batch.log 2>&1
+# SEO quotidien 10h30 (après le lot du jour, sur le haut du panier score ≥ 7) — republie
+# automatiquement ce qui était déjà en ligne (sinon le SEO reste invisible en base). Petit
+# cap volontaire (coût LLM par événement) — ajuste --cap dans le script si besoin.
+30 10 * * * cd /root/evenements && .venv/bin/python scripts/seo_batch.py --cap 10 >> logs/seo_batch.log 2>&1
+# Traduction FR/IT quotidienne 10h45 (2026-08-01 : automatisée — le bug qui justifiait la
+# prudence, enrich.py écrasant une traduction déjà publiée, est corrigé depuis, cf.
+# docs/BACKLOG.md). Cap PRUDENT (crée de nouveaux posts WordPress) : ajuste au besoin.
+45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1
+# Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.
+# incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
+# resserre facilement si besoin de plus de fréquence.
+0 13 * * * cd /root/evenements && .venv/bin/python scripts/homepage_health.py >> logs/homepage_health.log 2>&1
+# Nettoyage hebdomadaire dimanche 5h — chaîne RÉVERSIBLE et DÉTERMINISTE uniquement
+# (purge hors-zone/passés/incomplétables, articles de presse publiés à tort, doublons
+# WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py
+# pour le détail et pourquoi CES scripts-là précisément sont sans risque à automatiser.
+0 5 * * 0 cd /root/evenements && .venv/bin/python scripts/weekly_audits.py >> logs/weekly_audits.log 2>&1
+# Digest hebdomadaire lundi 8h — état des automatisations + reste à faire, posté sur
+# Slack (équivalent de scripts/status_report.py, à lancer à la main pour un état à jour
+# à tout moment, y compris pour coller le résultat à une IA qui reprend le projet).
+0 8 * * 1 cd /root/evenements && .venv/bin/python scripts/weekly_digest.py >> logs/weekly_digest.log 2>&1
 # Sauvegarde de la base 3h (copie cohérente horodatée, garde les 14 dernières) — anti perte de données
 0 3 * * * cd /root/evenements && .venv/bin/python scripts/backup_db.py >> logs/backup.log 2>&1

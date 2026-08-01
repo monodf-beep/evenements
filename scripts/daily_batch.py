@@ -115,6 +115,9 @@ def main(argv: list[str]) -> int:
     if incomplet_lines:
         msg += "\n" + "\n".join(incomplet_lines)
     slack.notify(msg)
+    from utils import pipeline_status
+    pipeline_status.record_run("daily_batch", ok=len(complet), warn=len(incomplet),
+                               summary=msg[:1500])
     log.info("=== Lot quotidien terminé : %d publié(s), %d laissé(s) incomplet(s) ===",
              len(complet), len(incomplet))
     return 0

@@ -4,6 +4,59 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-08-01 (suite)
+
+### 🤖🤖 Traduction, SEO, nettoyage automatisés + reporting (humain + IA)
+- **Demande de Franck** : automatiser traduction/SEO/audits (j'avais présenté ça comme
+  "risqué, reste manuel" — retour cash : "c'est pas mon problème, tu dois trouver une
+  solution"). En reregardant CHAQUE script visé, le risque était largement surévalué :
+  `purge_past`, `purge_uncompletable`, `discard_uncompletable`, `purge_out_of_zone`
+  (sans `--hard`), `audit_non_events`, `cleanup_as_dupes` sont TOUS déterministes (zéro
+  jugement LLM) ET réversibles par construction (statut→'rejected' ou corbeille WP, jamais
+  de suppression définitive) — documenté dans leurs propres docstrings, pas une découverte.
+  Le vrai risque de la session (force-enrich sur les mauvais ids, `--skip-media` sur des
+  créations) venait d'un OPÉRATEUR pressé lançant une commande ad hoc, pas de ces scripts
+  eux-mêmes qui font exactement ce qu'ils annoncent.
+- **`scripts/translate_events.py`** : câblé sur cron (`--apply --cap 5`/jour, 10h45). Le
+  bug qui justifiait la prudence (enrich.py écrasant une traduction déjà publiée, id 4312)
+  est corrigé depuis (`translation_of` exclu de sa sélection). Digest Slack + `pipeline_
+  status` ajoutés (uniquement quand `--apply`, pour ne pas bruiter Slack en simulation).
+- **`scripts/seo_batch.py`** : câblé sur cron (`--cap 10`/jour, 10h30). Correctif au
+  passage : le SEO stocké en base ne remonte sur Yoast qu'au (re)publish — le script
+  republie maintenant lui-même (`--skip-media`, texte/méta seuls) les fiches déjà en ligne
+  concernées, sinon le SEO généré restait invisible jusqu'à un republish qui n'arrive pas
+  forcément. Digest Slack + `pipeline_status` ajoutés.
+- **`scripts/weekly_audits.py`** (NEW, dimanche 5h) : orchestre EN UN SEUL CRON toute la
+  chaîne réversible/déterministe — `purge_out_of_zone --apply`, `purge_past --execute`,
+  `purge_uncompletable --execute`, `discard_uncompletable --apply`, `audit_non_events
+  --apply`, `cleanup_as_dupes --execute`, `audit_bad_sources` (lecture seule + republication
+  auto des fiches concernées, zéro coût LLM), `image_audit` (borné `--limit 100`, coût LLM
+  vision réel — son propre digest Slack existant, pas dupliqué). Un seul digest Slack
+  consolidé à la fin. Petit refactor pour permettre ça : `audit_bad_sources.py` expose
+  maintenant `_scan(rows)` (fonction pure) au lieu de tout faire inline dans `main()`.
+- **`scripts/homepage_health.py`** (NEW, quotidien 13h) — comble le trou repéré hier : rien
+  ne surveillait que « À la une »/« En évidence » ne se vident pas (l'incident du 07-31
+  n'a été vu que par hasard, via une capture d'écran de Franck). Fetch la home, compte les
+  liens `/evenement/` dans la fenêtre qui suit chaque titre de section, alerte Slack si une
+  section tombe sous le plancher. Fragile aux changements de thème (pas d'API dédiée côté
+  WP) mais attrape exactement le cas vécu.
+- **Reporting, pour Franck ET pour une IA** (la demande initiale de ce sous-thread) :
+  - `utils/pipeline_status.py` (NEW) — table `pipeline_runs` (script, date, ok/warn/error,
+    résumé). Chaque automatisation ci-dessus y écrit une ligne à la fin de son run. Distinct
+    de la table `checks` (déjà existante, au niveau ÉVÉNEMENT) : `pipeline_runs` est au
+    niveau RUN.
+  - `scripts/status_report.py` (NEW) — rapport texte, lecture seule, zéro coût : dernier run
+    de chaque automatisation + ce qu'il reste à faire (à enrichir/traduire/SEO/points à
+    vérifier). Pensé pour être collé tel quel dans une conversation Claude qui reprend le
+    projet à froid, plutôt que de lui faire reconstituer l'état à coups de `grep`/SQL comme
+    cette session l'a fait plusieurs fois.
+  - `scripts/weekly_digest.py` (NEW, lundi 8h) — même contenu que `status_report.py`, pour
+    Slack automatiquement plutôt qu'à la demande.
+- **Reste à faire côté Franck** : `git pull`, réinstaller le crontab (`crontab crontab.txt`),
+  vérifier `SLACK_WEBHOOK_URL` dans `.env`. Les nouveaux caps (traduction 5/j, SEO 10/j)
+  sont volontairement prudents pour un premier tour en autonome complet — à desserrer une
+  fois la fiabilité confirmée sur quelques jours (même logique que `daily_batch.py` le 07-31).
+
 ## Journal de session — 2026-08-01
 
 ### 🤖 Le protocole de lot devient automatique (`scripts/daily_batch.py`)

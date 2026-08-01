@@ -38,6 +38,32 @@ log = get_logger("audit-bad-sources")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
+def _scan(rows: list[dict]) -> list[dict]:
+    """Fiches dont une source citée n'est pas d'un domaine officiel vérifié — pure,
+    sans I/O, pour être appelée directement par un orchestrateur (scripts/weekly_audits.py)
+    sans avoir à reparser les logs."""
+    flagged = []
+    for r in rows:
+        try:
+            data = json.loads(r["enrich_data"])
+        except (ValueError, TypeError):
+            continue
+        raw_sources = data.get("sources") or []
+        seen, http_sources = set(), []
+        for s in raw_sources:
+            s = (s or "").strip()
+            if (s.startswith("http://") or s.startswith("https://")) \
+                    and " " not in s and s not in seen and "agendasabauda.eu" not in s:
+                seen.add(s)
+                http_sources.append(s)
+        if not http_sources:
+            continue
+        kept, dropped = filter_official_sources(http_sources)
+        if dropped:
+            flagged.append({**r, "dropped": dropped, "kept": kept})
+    return flagged
+
+
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(
@@ -58,28 +84,10 @@ def main(argv=None) -> int:
         f"FROM events_raw WHERE {where}").fetchall()]
     conn.close()
 
-    flagged = []
-    for r in rows:
-        try:
-            data = json.loads(r["enrich_data"])
-        except (ValueError, TypeError):
-            continue
-        # Même pré-nettoyage QUE build_post (scripts/publisher.py) avant le filtre : sinon
-        # on compte comme « écartée » de la prose que le LLM aurait glissée dans « sources »
-        # (pas une URL) — jamais publiée de toute façon, donc pas un cas réel à republier.
-        raw_sources = data.get("sources") or []
-        seen, http_sources = set(), []
-        for s in raw_sources:
-            s = (s or "").strip()
-            if (s.startswith("http://") or s.startswith("https://")) \
-                    and " " not in s and s not in seen and "agendasabauda.eu" not in s:
-                seen.add(s)
-                http_sources.append(s)
-        if not http_sources:
-            continue
-        kept, dropped = filter_official_sources(http_sources)
-        if dropped:
-            flagged.append({**r, "dropped": dropped, "kept": kept})
+    # Même pré-nettoyage QUE build_post (scripts/publisher.py) avant le filtre : sinon on
+    # compte comme « écartée » de la prose que le LLM aurait glissée dans « sources » (pas
+    # une URL) — jamais publiée de toute façon, donc pas un cas réel à republier.
+    flagged = _scan(rows)
 
     if not flagged:
         log.info("Aucune fiche avec une source non institutionnelle — rien à republier (%d fiche(s) scannée(s)).",

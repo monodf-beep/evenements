@@ -593,9 +593,21 @@ def main(argv=None) -> int:
                     log.warning("worker en échec (exception non gérée) : %s", exc)
                     results.append("error")
 
-    done, skipped = results.count("done"), results.count("skip")
+    done, skipped, errors = results.count("done"), results.count("skip"), results.count("error")
     log.info("=== Traduction terminée : %d traduit(s), %d ignoré(s)%s ===",
              done, skipped, "" if args.apply else "  (simulation : rien écrit)")
+    if args.apply:
+        # Rapport uniquement quand on a vraiment agi (une simulation quotidienne en cron
+        # inonderait Slack pour rien) — cf. utils.pipeline_status pour le lot quotidien.
+        from utils import slack
+        from utils import pipeline_status
+        msg = (f"🌍 *Traduction quotidienne* — {done} traduit(s) sur {len(rows)} "
+               f"candidat(s), {skipped} ignoré(s)")
+        if errors:
+            msg += f", {errors} erreur(s)"
+        slack.notify(msg)
+        pipeline_status.record_run("translate_events", ok=done, warn=skipped, error=errors,
+                                   summary=msg[:1500])
     return 0
 
 

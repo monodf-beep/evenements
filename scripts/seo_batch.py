@@ -91,6 +91,7 @@ def main(argv=None) -> int:
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
     ok = fail = 0
+    republish_ids = []  # déjà EN LIGNE : le nouveau SEO doit être repoussé pour être visible
     for i, r in enumerate(rows, 1):
         try:
             result = seo_mod.optimize_seo(dict(r), client, model)
@@ -108,6 +109,8 @@ def main(argv=None) -> int:
                  json.dumps(result["seo_tags"], ensure_ascii=False), model, r["id"]))
             conn.commit()
             ok += 1
+            if r["wp_post_id_as"]:
+                republish_ids.append(r["id"])
         else:
             fail += 1
         if i % 10 == 0 or i == len(rows):
@@ -116,7 +119,22 @@ def main(argv=None) -> int:
             time.sleep(args.delay)
 
     conn.close()
-    log.info("=== Lot SEO : %d optimisé(s), %d échec(s) ===", ok, fail)
+
+    # Le SEO stocké en base ne sert à rien tant qu'il n'est pas repoussé (cs-publish.php
+    # ne lit `seo_*` qu'au (re)publish) : sans ça, "optimisé" en base mais invisible sur
+    # Yoast jusqu'au prochain republish, potentiellement jamais si l'événement est déjà en
+    # ligne et ne bouge plus. --skip-media : texte/méta seuls, on ne retouche pas la photo.
+    if republish_ids:
+        from scripts.publish_batch_as import main as publish_main
+        publish_main(["--ids", *[str(i) for i in republish_ids], "--skip-media"])
+
+    from utils import slack
+    from utils import pipeline_status
+    msg = f"🔍 *SEO quotidien* — {ok} optimisé(s) ({len(republish_ids)} republié(s)), {fail} échec(s)"
+    slack.notify(msg)
+    pipeline_status.record_run("seo_batch", ok=ok, error=fail, summary=msg)
+    log.info("=== Lot SEO : %d optimisé(s), %d échec(s), %d republié(s) ===",
+             ok, fail, len(republish_ids))
     return 0 if fail == 0 else 1
 
 
