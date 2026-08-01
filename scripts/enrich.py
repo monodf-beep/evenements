@@ -840,11 +840,25 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     # plus LONGUE, mais un doublon légitime peut parfaitement rester un lien creux.
     from scripts.dedupe import _text_len
     for row in conn.execute(
-        "SELECT description, source_name FROM events_raw WHERE duplicate_of = ?",
+        "SELECT description, source_name, url_source FROM events_raw WHERE duplicate_of = ?",
         (ev["id"],)
     ):
         d = (row["description"] or "").strip()
         if not d or d in parts:
+            continue
+        # ⚠️ EXCLUSION PAR SOURCE, PAS SEULEMENT PAR LONGUEUR. Le seuil de texte visible
+        # ci-dessous ne suffit PAS sur le cas d'origine, mesuré : le blob Google News de
+        # « Fête du lac 2026 : les spectateurs qui n'habitent pas Annecy paieront plus
+        # cher » compte 91 caractères visibles — au-dessus du seuil de 60 — parce que ce
+        # texte visible EST le titre de l'article, c'est-à-dire précisément l'élément
+        # trompeur. Le filtre de longueur attrapait les liens vraiment creux et laissait
+        # passer le dangereux. Relever le seuil ne marcherait pas non plus : une vraie
+        # description laconique tomberait avec. Un item Google News n'apporte JAMAIS de
+        # matière rédactionnelle — il n'a que le titre d'un article, souvent sur un autre
+        # sujet. On l'écarte donc sur sa provenance, qui est un fait, pas une mesure.
+        if "news.google.com" in d or "news.google.com" in (row["url_source"] or ""):
+            log.debug("[%s] matière du doublon ignorée : item Google News (titre "
+                      "d'article, aucune matière)", ev["id"])
             continue
         if _text_len(d) < MATERIAL_MIN_VISIBLE:
             log.debug("[%s] matière du doublon ignorée : %d car. visibles seulement",

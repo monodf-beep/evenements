@@ -41,6 +41,20 @@ def _select(conn, args, today: str):
         "duplicate_of IS NULL",
         "COALESCE(date_event_start,'') <> ''",              # daté
         "COALESCE(llm_score,0) >= ?",
+        # ⚠️ TRADUCTIONS EXCLUES (ajouté le 2026-08-02, dégât ACTIF découvert en audit).
+        # Le prompt de utils/seo.py impose « Produis, EN FRANÇAIS » (l.118). Rien ici ne
+        # filtrait `translation_of` : ce cron de 10h30 sélectionnait donc les fiches
+        # ITALIENNES (elles héritent du statut, de la date et du score de leur original),
+        # leur fabriquait un titre SEO, une méta description, une expression clé et un
+        # slug EN FRANÇAIS — puis les REPUBLIAIT (l.127-129), poussant le tout dans Yoast
+        # sur une fiche italienne en ligne. Tous les jours, en silence.
+        # Ce n'est PAS le correctif définitif : la bonne réponse est un SEO rédigé dans la
+        # LANGUE de la fiche (translated_lang), pas une exclusion. Mais toucher au prompt
+        # d'un cron qui pousse vers Yoast sans pouvoir vérifier la sortie du LLM, c'est
+        # exactement le genre de pari qui a coûté cher. Une fiche IT sans méta SEO est
+        # neutre ; une fiche IT avec une méta française est fausse pour le visiteur ET
+        # pour Google. On exclut d'abord, on rédigera en italien ensuite.
+        "COALESCE(translation_of,0) = 0",
     ]
     params: list = [args.min_score]
     if not args.redo:
