@@ -56,7 +56,7 @@ from utils import slack
 from utils import pipeline_status
 # Mêmes primitives lexicales que le portillon d'avant-publication : une seule définition
 # dans le dépôt de « ces deux libellés parlent-ils de la même chose ».
-from scripts.batch_report import _partagent_un_mot, _jour_iso
+from scripts.batch_report import _partagent_un_mot, _jour_iso, _titre_publie
 from scripts.dedupe import _sig_tokens
 
 log = get_logger("site_audit")
@@ -77,9 +77,22 @@ def _jsonld_blocks(html: str) -> list[dict]:
     out: list[dict] = []
     for raw in re.findall(r'<script type="application/ld\+json"[^>]*>(.*?)</script>',
                           html, re.S):
-        try:
-            data = json.loads(_html.unescape(raw.strip()))
-        except (ValueError, TypeError):
+        # ⚠️ SURTOUT PAS de html.unescape() d'emblée. Le premier run a signalé « AUCUN
+        # JSON-LD Event » sur cinq fiches — c'était faux, et c'était ce script le
+        # coupable : WordPress échappe les guillemets DANS les chaînes JSON sous forme
+        # d'entités (`"description":"La comédie &quot;Les Monologues du Machin&quot;…"`),
+        # parfaitement valide. Les désentiter AVANT de parser réinjecte des guillemets
+        # nus au milieu d'une chaîne et casse le JSON. On parse donc le bloc TEL QUEL, et
+        # on ne tente le désentitage qu'en second recours, pour les thèmes qui, eux,
+        # échappent réellement tout le bloc.
+        data = None
+        for tentative in (raw.strip(), _html.unescape(raw.strip())):
+            try:
+                data = json.loads(tentative)
+                break
+            except (ValueError, TypeError):
+                continue
+        if data is None:
             continue
         items = data if isinstance(data, list) else [data]
         for it in items:
@@ -190,19 +203,32 @@ def auditer(row: dict, session: requests.Session) -> list[tuple[str, str]]:
     # Le manque d'endDate dans les données structurées est un vrai sujet SEO, mais c'est
     # un défaut de GABARIT, pas de fiche : consigné une fois dans docs/site_issues.json.
 
-    # 2. TITRE ↔ ANCRAGE FACTUEL — le bug WP#6798 (titre d'un événement, lieu d'un
-    # autre). Même règle qu'avant publication : le titre EN LIGNE doit partager un mot
-    # significatif avec le titre/lieu/ville de la fiche. On s'abstient si l'un des deux
-    # côtés est trop pauvre pour juger — une alerte sur deux mots serait du bruit.
+    # 2. TITRE — le bug WP#6798 (titre d'un événement, lieu d'un autre).
+    # La bonne question n'est PAS « le titre en ligne ressemble-t-il au titre source ? »
+    # mais « le site affiche-t-il le titre qu'on lui a demandé d'afficher ? ». Le premier
+    # run l'a montré : « NOTE D'ARTE » (titre italien de la source) est publié sous
+    # « À Turin, la musique entre en dialogue avec les arts décoratifs » — aucun mot
+    # commun, et c'est parfaitement NORMAL, c'est la réécriture éditoriale qui fait son
+    # travail. Comparer au titre source alertait donc sur toutes les fiches d'origine
+    # italienne. On compare d'abord au titre VOULU (article_title / enrich_data), qui est
+    # la seule référence légitime ; le rapprochement lexical avec le lieu ne sert plus que
+    # de filet quand la base n'a aucun titre rédigé.
     nom_site = str(ev.get("name") or "")
+    titre_voulu = _titre_publie(row)
     toks_site = _sig_tokens(nom_site)
-    toks_fiche = (_sig_tokens(row.get("title") or "") | _sig_tokens(row.get("lieu") or "")
-                  | _sig_tokens(row.get("ville") or ""))
-    if len(toks_site) >= 2 and len(toks_fiche) >= 2 \
-            and not _partagent_un_mot(toks_site, toks_fiche):
-        anomalies.append(("avert", f"titre en ligne « {nom_site[:60]} » sans aucun mot "
-                                   f"commun avec la fiche (« {(row.get('title') or '')[:40]} » · "
-                                   f"{(row.get('lieu') or '—')[:25]})"))
+    if titre_voulu:
+        if not _partagent_un_mot(toks_site, _sig_tokens(titre_voulu)):
+            anomalies.append(("grave", f"le site affiche « {nom_site[:55]} » alors que la "
+                                       f"base a rédigé « {titre_voulu[:55]} » — republication "
+                                       f"perdue ou fiche contaminée"))
+    else:
+        toks_fiche = (_sig_tokens(row.get("title") or "") | _sig_tokens(row.get("lieu") or "")
+                      | _sig_tokens(row.get("ville") or ""))
+        if len(toks_site) >= 2 and len(toks_fiche) >= 2 \
+                and not _partagent_un_mot(toks_site, toks_fiche):
+            anomalies.append(("avert", f"titre en ligne « {nom_site[:60]} » sans aucun mot "
+                                       f"commun avec la fiche (« {(row.get('title') or '')[:40]} » · "
+                                       f"{(row.get('lieu') or '—')[:25]})"))
 
     # 3. LIEU / VILLE affichés — avertissement seulement : un toponyme peut légitimement
     # être servi sous sa forme locale (Aoste/Aosta, Turin/Torino).
@@ -258,7 +284,7 @@ def _ecrit_etat(etat: dict) -> None:
 def _publiees(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in conn.execute(
         "SELECT id, title, lieu, ville, territoire, date_event_start, date_event_end, "
-        "       wp_post_id_as, wp_permalink_as "
+        "       article_title, enrich_data, wp_post_id_as, wp_permalink_as "
         "FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 "
         "  AND statut NOT IN ('merged','rejected') ORDER BY id").fetchall()]
 
