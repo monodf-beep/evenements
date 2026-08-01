@@ -51,6 +51,14 @@
 # incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
 # resserre facilement si besoin de plus de fréquence.
 0 13 * * * cd /root/evenements && .venv/bin/python scripts/homepage_health.py >> logs/homepage_health.log 2>&1
+# Relecture du SITE PUBLIÉ 14h — la seule surveillance qui va LIRE une fiche en ligne et
+# comparer ce qui s'affiche à ce que dit la base (dates, titre, lieu, image de partage),
+# via le JSON-LD Event servi par TEC. Tout le reste du dépôt vérifie la base AVANT
+# publication ; les quatre incidents du 2026-08-01 avaient tous une base plausible et un
+# SITE faux, et c'est Franck qui les a vus. Rotation par curseur : le catalogue entier
+# est relu en quelques jours, en boucle — une régression silencieuse a donc une durée de
+# vie bornée (la taxonomie avait tenu dix jours). Slack seulement s'il y a à dire.
+0 14 * * * cd /root/evenements && .venv/bin/python scripts/site_audit.py >> logs/site_audit.log 2>&1
 # Nettoyage hebdomadaire dimanche 5h — chaîne RÉVERSIBLE et DÉTERMINISTE uniquement
 # (purge hors-zone/passés/incomplétables, articles de presse publiés à tort, doublons
 # WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py

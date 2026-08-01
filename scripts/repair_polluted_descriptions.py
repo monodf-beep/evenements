@@ -75,7 +75,8 @@ from scripts.scraper_events import init_db
 # _text_len est la MESURE DE RÉFÉRENCE du correctif dedupe : on l'importe au lieu de la
 # redéfinir, pour que « avoir de la substance » veuille dire ici exactement ce qu'il
 # veut dire là-bas (si le seuil de dedupe évolue, ce script suit sans divergence).
-from scripts.dedupe import _text_len
+from scripts.dedupe import _text_len, _sig_tokens
+from scripts.batch_report import _partagent_un_mot
 # Téléchargement + réduction HTML→texte : helpers déjà éprouvés d'enrich.py (User-Agent
 # de vrai navigateur — beaucoup de sites refusent un UA « …Bot » —, timeout, refus des
 # url_source synthétiques gmail:/news.google.com). Privés, mais on les prend tels quels
@@ -238,6 +239,45 @@ def recuperer_description(url: str, timeout: int = 8) -> tuple[str, str]:
     return "", "aucune description exploitable sur la page"
 
 
+def _debris_navigation(texte: str) -> bool:
+    """La « description » récupérée n'est-elle qu'un fil de navigation / d'étiquettes ?
+
+    Signature relevée sur le dry-run du 2026-08-02 (gpff.it, rubrique « rassegna
+    stampa ») : « … 1 Luglio 2026 Rassegna , Rassegna , Stampa , Stampa ». Ce sont les
+    catégories WordPress de l'article, rendues deux fois par le thème et aspirées comme
+    du texte. Une vraie description ne répète jamais à l'identique plusieurs de ses
+    fragments séparés par des virgules — c'est ce qui rend le test sûr sans jugement
+    sémantique."""
+    tous = [f.strip().lower() for f in _html_to_text(texte or "").split(",")]
+    if len(tous) < 3:
+        return False
+    # On ne compare que les fragments COURTS : une étiquette est brève, et le premier
+    # fragment d'un texte réel (souvent long, il porte le titre et la date collés)
+    # ne se répétera jamais à l'identique. UNE répétition suffit : dans le sens
+    # conservateur, se tromper ici ne fait que renoncer à réparer une description
+    # déjà cassée — jamais écraser une bonne.
+    courts = [f for f in tous if 2 <= len(f) <= 40]
+    return len(courts) - len(set(courts)) >= 1
+
+
+def _titre_incoherent(titre: str, texte: str) -> bool:
+    """La nouvelle description ne partage AUCUN mot significatif avec le titre.
+
+    Cas réel du dry-run : la fiche « Charlie Winston » (mal-thonon.org) se voyait
+    proposer « Une nouvelle création de Raphaël, avec ce concert-spectacle… » — la page
+    servait la description d'un AUTRE spectacle. Appliqué en silence, c'était réécrire
+    une fiche sur le mauvais artiste, exactement le dommage qu'on cherche à réparer.
+
+    ⚠️ Ce contrôle SEUL produit des faux positifs légitimes : « Festival de musique
+    sacrée » vs « Les artistes du Chœur et de l'Orchestre Philharmonique de Nice… » ne
+    partagent aucun mot alors que la description est la bonne. Il ne rejette donc pas —
+    il ROUTE vers un bac « à valider » que --apply ne touche pas."""
+    ta, tb = _sig_tokens(titre or ""), _sig_tokens(_html_to_text(texte or "")[:400])
+    if len(ta) < 2 or len(tb) < 2:
+        return False                      # trop pauvre pour juger : on s'abstient
+    return not _partagent_un_mot(ta, tb)
+
+
 def _apercu(texte: str, n: int = 110) -> str:
     """Aperçu en TEXTE VISIBLE (c'est la seule vue honnête d'un blob : en brut il
     remplirait l'écran d'URL encodée)."""
@@ -250,6 +290,10 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Répare les descriptions écrasées par un blob Google News (bug merge_group).")
     parser.add_argument("--apply", action="store_true", help="Écrit (sinon dry-run).")
+    parser.add_argument("--force-douteux", action="store_true",
+                        help="Applique AUSSI les fiches du bac « à valider à la main » "
+                             "(texte récupéré sans aucun mot commun avec le titre). "
+                             "À n'utiliser qu'avec --ids, après avoir regardé la page.")
     parser.add_argument("--ids", type=int, nargs="+", default=None,
                         help="N'examine que ces ids (sinon toute la base).")
     parser.add_argument("--cap", type=int, default=100,
@@ -313,6 +357,39 @@ def main(argv=None) -> int:
         if args.delay and i < len(candidats):
             time.sleep(args.delay)
 
+    # ------------------------------------------------------------------ #
+    # TRIAGE DES REMPLACEMENTS — « plus long » ne veut pas dire « meilleur ».
+    # Le premier dry-run (2026-08-02) proposait 50 réparations dont une bonne moitié
+    # aurait DÉGRADÉ la base. Trois défauts, trois filtres, chacun purement mécanique.
+    # ------------------------------------------------------------------ #
+    # 1. BOILERPLATE DE SITE — huit fiches de malrauxchambery.fr recevaient TOUTES le
+    # même texte (« Malraux scène nationale Chambéry Savoie est un établissement de
+    # création… ») : la description meta générique du site, servie à l'identique sur
+    # chaque page. Remplacer un non-texte par un autre non-texte n'est pas un gain, et
+    # donner la MÊME description à huit événements différents nourrit la rédaction et le
+    # SEO de contenu dupliqué. Détection sans jugement : un texte proposé pour PLUSIEURS
+    # fiches n'est, par construction, pas la description de l'une d'elles.
+    from collections import Counter
+    freq = Counter(_html_to_text(r["_nouvelle"]).strip().lower()[:300] for r in remplacements)
+    partages = {t for t, n in freq.items() if n >= 2}
+
+    retenus, douteux, rejetes = [], [], []
+    for r in remplacements:
+        cle = _html_to_text(r["_nouvelle"]).strip().lower()[:300]
+        if cle in partages:
+            r["_rejet"] = (f"description GÉNÉRIQUE du site — proposée à l'identique pour "
+                           f"{freq[cle]} fiches")
+            rejetes.append(r)
+        elif _debris_navigation(r["_nouvelle"]):
+            r["_rejet"] = "fil d'étiquettes / navigation, pas une description"
+            rejetes.append(r)
+        elif _titre_incoherent(r["title"] or "", r["_nouvelle"]) and not args.force_douteux:
+            r["_rejet"] = "aucun mot commun avec le titre — la page décrit peut-être autre chose"
+            douteux.append(r)
+        else:
+            retenus.append(r)
+    remplacements = retenus
+
     if remplacements:
         print(f"--- {len(remplacements)} à RÉPARER ---")
         for r in remplacements:
@@ -323,6 +400,27 @@ def main(argv=None) -> int:
                   f"{_apercu(r['description'])}")
             print(f"        APRÈS ({_text_len(r['_nouvelle']):>4} car.) : "
                   f"{_apercu(r['_nouvelle'])}")
+
+    if rejetes:
+        print(f"\n--- {len(rejetes)} ÉCARTÉE(S) — la page ne donne pas une description ---")
+        for r in rejetes:
+            print(f"  [{r['id']}] {(r['title'] or '')[:52]} — {r['_rejet']}")
+            print(f"        proposé : {_apercu(r['_nouvelle'], 90)}")
+
+    if douteux:
+        print(f"\n--- {len(douteux)} À VALIDER À LA MAIN — non appliquée(s) par --apply ---")
+        print("    (le texte récupéré ne partage aucun mot avec le titre : soit la page "
+              "décrit\n     un AUTRE événement, soit la description est simplement "
+              "reformulée. À trancher à l'œil.)")
+        for r in douteux:
+            print(f"  [{r['id']}] WP#{r['wp_post_id_as']} {(r['title'] or '')[:52]}")
+            print(f"        source  : {r['_provenance']} · {r['_url'][:70]}")
+            print(f"        AVANT ({_text_len(r['description'] or ''):>4} car.) : "
+                  f"{_apercu(r['description'])}")
+            print(f"        APRÈS ({_text_len(r['_nouvelle']):>4} car.) : "
+                  f"{_apercu(r['_nouvelle'])}")
+        print(f"    → pour en appliquer une après vérification : "
+              f"--apply --ids {' '.join(str(r['id']) for r in douteux[:5])} --force-douteux")
 
     if sans_gain:
         print(f"\n--- {len(sans_gain)} SANS GAIN — non touchée(s) (la page ne donne pas "
