@@ -99,12 +99,28 @@ def main(argv=None) -> int:
             "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
             (r["ostart"], r["oend"], r["osrc"], r["tid"]))
     conn.commit()
-    ids = " ".join(str(r["tid"]) for r in a_reparer)
     conn.close()
 
     log.info("%d traduction(s) ré-alignée(s) sur leur original.", len(a_reparer))
-    if ids:
-        print(f"\n✅ {len(a_reparer)} réparée(s) en base. Republie-les pour propager sur WordPress :")
+
+    # La commande de republication ne doit contenir QUE des fiches DÉJÀ en ligne.
+    # `publish_batch_as --ids` ignore les filtres habituels et publie même ce qui ne l'a
+    # jamais été : y glisser une fiche sans wp_post_id_as la CRÉERAIT sur le site. Piège
+    # vérifié en conditions réelles (une fiche datée de 2024 et un jeu-concours radio
+    # étaient dans le lot) — même mécanisme que l'incident --skip-media du 2026-08-01.
+    en_ligne = [r for r in a_reparer if r["twp"]]
+    jamais_publiees = [r for r in a_reparer if not r["twp"]]
+
+    print(f"\n✅ {len(a_reparer)} réparée(s) en base.")
+    if jamais_publiees:
+        print(f"\n⚠️  {len(jamais_publiees)} JAMAIS publiée(s) — volontairement EXCLUE(S) de la "
+              f"commande ci-dessous (les republier les CRÉERAIT sur le site) :")
+        for r in jamais_publiees:
+            print(f"     [{r['tid']}] {(r['ttitle'] or '')[:52]}  (date {r['ostart']})")
+        print("     À publier seulement après vérification manuelle qu'elles le méritent.")
+    if en_ligne:
+        ids = " ".join(str(r["tid"]) for r in en_ligne)
+        print(f"\nRepublie les {len(en_ligne)} déjà en ligne pour propager la correction :")
         print(f"   .venv/bin/python -m scripts.publish_batch_as --ids {ids} --skip-media")
     return 0
 
