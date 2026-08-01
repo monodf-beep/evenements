@@ -147,17 +147,26 @@ def _run(argv: list[str]) -> int:
                 bad = "; ".join(l.strip() for l in lines2 if l.strip().startswith("✗"))
                 published_lines.append(f"⚠️ [{i}] {title[:60]} — WP#{wp_id} mais {bad}")
 
+    # TON DU MESSAGE — une fiche « incomplète » n'est PAS un échec du lot : c'est une
+    # publication ratée qui a été ÉVITÉE. Le pipeline a fait exactement son travail, et
+    # la fiche repart au lot du lendemain avec ce qui lui manque, nommé. Formulé comme
+    # une perte (« laissé(s) pour un prochain run »), le même chiffre se lit comme un
+    # retard tous les matins — alors que sa hausse signifie que le portillon filtre
+    # davantage, donc que moins de fiches fausses partent en ligne.
     incomplet_lines = []
     for i, title, lines in incomplet:
-        reasons = "; ".join(l.strip() for l in lines if l.strip().startswith("✗"))
-        incomplet_lines.append(f"⏳ [{i}] {title[:60]} — {reasons or 'incomplet'}")
+        reasons = "; ".join(l.strip().lstrip("✗ ") for l in lines if l.strip().startswith("✗"))
+        incomplet_lines.append(f"🛠️ [{i}] {title[:60]} — à compléter : {reasons or 'incomplet'}")
 
-    msg = (f"📰 *Lot quotidien Agenda Sabauda* — {len(complet)} publié(s), "
-           f"{len(incomplet)} laissé(s) pour un prochain run\n")
+    msg = (f"📰 *Lot quotidien Agenda Sabauda* — {len(complet)} fiche(s) en ligne, "
+           f"{len(incomplet)} retenue(s) avant publication\n")
     if published_lines:
         msg += "\n".join(published_lines) + "\n"
     if incomplet_lines:
-        msg += "\n" + "\n".join(incomplet_lines)
+        msg += (f"\n_Ces {len(incomplet)} fiche(s) auraient été publiées incomplètes : "
+                f"le portillon les a arrêtées. Elles repassent automatiquement au "
+                f"prochain lot, rien à faire de ton côté._\n")
+        msg += "\n".join(incomplet_lines)
     slack.notify(msg)
     from utils import pipeline_status
     pipeline_status.record_run("daily_batch", ok=len(complet), warn=len(incomplet),

@@ -125,6 +125,59 @@ def _years_incompatible(a: str, b: str) -> bool:
     return bool(ya and yb and ya.isdisjoint(yb))
 
 
+# Écart maximal toléré entre deux fiches supposées décrire le MÊME événement, quand les
+# deux sont datées. Deux sources qui couvrent un même festival citent au pire son
+# ouverture d'un côté et une soirée précise de l'autre : elles se chevauchent, ou passent
+# à quelques jours près. Un mois d'écart, non.
+MERGE_MAX_GAP_DAYS = int(os.getenv("DEDUPE_MAX_GAP_DAYS", "14"))
+
+
+def _jour(valeur) -> str:
+    s = str(valeur or "").strip()
+    return s[:10] if re.match(r"\d{4}-\d{2}-\d{2}", s) else ""
+
+
+def _dates_incompatible(a: dict, b: dict) -> bool:
+    """True si les périodes CONNUES des deux fiches sont trop éloignées pour être le
+    même événement.
+
+    Attrape la famille de fusions à tort la plus massive de l'audit du 2026-08-02 : les
+    RUBRIQUES RÉCURRENTES d'un même flux — « COSA FARE DAL 15 AL 21 GIUGNO IN VALLE
+    D'AOSTA » ↔ « COSA FARE NEL FINE SETTIMANA IN VALLE D'AOSTA », « Que faire à Nice ce
+    week-end du 12 juin » ↔ « … du 24 juillet », « Les idées de sorties d'ICI Pays de
+    Savoie pour ce week-end du … ». Leur titre est composé à 80 % du gabarit fixe de la
+    rubrique : les tokens significatifs partagés (cosa/fare/valle/aosta) suffisent à faire
+    dire OUI à same_story ET à cross_lang_same, alors que ce sont deux semaines
+    différentes. Aucune liste de mots-outils ne corrigera ça — le gabarit est fait de
+    vrais mots de contenu. La DATE, elle, les sépare sans ambiguïté et sans dépendre de
+    la langue.
+    `_years_incompatible` ne couvre pas ce cas : ces titres portent la même année, ou
+    aucune.
+
+    CONSERVATEUR : ne tranche QUE si les deux fiches sont datées (au 2026-08-02, dedupe
+    tourne AVANT dates.py dans le cron, donc les fiches du jour ne le sont pas encore —
+    la garde protège les rattrapages et tout ce qui a déjà été daté un jour précédent).
+    Compare des INTERVALLES, pas des jours : une source qui n'a que l'ouverture et une
+    autre qui a la période complète se chevauchent, donc ne sont jamais séparées."""
+    sa, sb = _jour(a.get("date_event_start")), _jour(b.get("date_event_start"))
+    if not sa or not sb:
+        return False
+    ea = _jour(a.get("date_event_end")) or sa
+    eb = _jour(b.get("date_event_end")) or sb
+    if sa <= eb and sb <= ea:
+        return False                                   # périodes qui se chevauchent
+    from datetime import date as _date
+
+    def _d(s: str) -> _date:
+        return _date(int(s[:4]), int(s[5:7]), int(s[8:10]))
+
+    try:
+        gap = (_d(sb) - _d(ea)).days if sb > ea else (_d(sa) - _d(eb)).days
+    except ValueError:
+        return False                                   # date aberrante : on ne tranche pas
+    return gap > MERGE_MAX_GAP_DAYS
+
+
 def cross_lang_same(a: str, b: str) -> bool:
     """True si deux titres décrivent le MÊME événement malgré des langues différentes.
 
@@ -204,6 +257,12 @@ def _groups(events: list[dict], cross_lang: bool = False) -> list[list[dict]]:
                 # se ressemblent. On applique la MÊME règle que cross_lang_same :
                 # années présentes des deux côtés et disjointes ⇒ pas de fusion.
                 # (cross_lang_same porte déjà cette garde en interne.)
+                # Garde DATES : s'applique aux DEUX chemins d'appariement (cf.
+                # _dates_incompatible). Placée avant, elle coupe court sans dépendre de
+                # la langue ni du vocabulaire — deux périodes séparées d'un mois ne sont
+                # pas le même événement, quel que soit le degré de ressemblance des titres.
+                if _dates_incompatible(events[i], events[j]):
+                    continue
                 if (same_story(ti, tj) and not _years_incompatible(ti, tj)) \
                         or (cross_lang and cross_lang_same(ti, tj)):
                     union(i, j)

@@ -9,6 +9,14 @@
 0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py >> logs/scraper.log 2>&1
 # Collecte des newsletters (label Gmail « Agenda ») 8h15
 15 8 * * * cd /root/evenements && .venv/bin/python scripts/gmail_collect.py >> logs/gmail.log 2>&1
+# Pré-datation GRATUITE 8h25 — parsing texte seul (ni téléchargement de page, ni LLM :
+# aucun coût, aucun quota consommé). Sert UNIQUEMENT à armer la garde de dates de
+# dedupe (_dates_incompatible) sur les fiches scrapées le matin même : sans elle, la
+# garde ne protège que ce qui a déjà été daté un jour précédent, or c'est justement le
+# flux du jour qui fabrique les fusions à tort (rubriques récurrentes « COSA FARE… »,
+# « Que faire à Nice ce week-end du… », voir l'audit du 2026-08-02). --no-republish :
+# la passe 4 (traductions) reste au run complet de 8h45, on ne la double pas.
+25 8 * * * cd /root/evenements && .venv/bin/python scripts/dates.py --no-fetch --no-llm --no-republish >> logs/dates.log 2>&1
 # Déduplication multi-sources 8h30 (avant l'évaluation → évite d'évaluer des doublons)
 30 8 * * * cd /root/evenements && .venv/bin/python scripts/dedupe.py >> logs/dedupe.log 2>&1
 # Datation 8h45 : extrait la vraie date d'événement (déterministe, gratuit) → filtres par période

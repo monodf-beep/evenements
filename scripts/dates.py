@@ -389,6 +389,14 @@ def main(argv=None) -> int:
                         help="Ne pas utiliser la datation LLM de dernier recours.")
     parser.add_argument("--llm-cap", type=int, default=DATES_LLM_CAP,
                         help="Nombre max d'événements datés par LLM sur ce run.")
+    parser.add_argument("--no-republish", action="store_true",
+                        help="Ne PAS repousser vers WordPress les traductions déjà en "
+                             "ligne dont les dates viennent d'être réalignées (passe 4). "
+                             "Par défaut on les repousse : une date corrigée en base mais "
+                             "pas sur le site reste fausse pour le visiteur.")
+    parser.add_argument("--republish-cap", type=int,
+                        default=int(os.getenv("DATES_REPUBLISH_CAP", "30")),
+                        help="Nombre max de fiches repoussées par run (passe 4).")
     parser.add_argument("--retry", action="store_true",
                         help="Ré-armer les événements déjà marqués « non-datables » "
                              "(nodate/llm_none) pour les re-tenter — utile après une "
@@ -502,6 +510,20 @@ def main(argv=None) -> int:
     # la copie depuis l'original. On copie donc quand la traduction n'a pas de date, ET on
     # RÉALIGNE quand les deux divergent (une divergence ne peut venir que d'une corruption
     # — c'est exactement le dommage constaté en ligne le 2026-08-01).
+    _WHERE_DESALIGNEES = (
+        "WHERE COALESCE(translation_of,0) <> 0 AND statut != 'merged' "
+        "  AND EXISTS (SELECT 1 FROM events_raw o WHERE o.id = events_raw.translation_of "
+        "              AND COALESCE(o.date_event_start,'') <> '' "
+        "              AND (COALESCE(events_raw.date_event_start,'') <> "
+        "                   COALESCE(o.date_event_start,'') "
+        "                OR COALESCE(events_raw.date_event_end,'') <> "
+        "                   COALESCE(o.date_event_end,'')))")
+    # Ids relevés AVANT la correction : après l'UPDATE, ces fiches ne sont plus
+    # désalignées, donc plus repérables. Celles DÉJÀ EN LIGNE devront être repoussées.
+    a_repousser = [r["id"] for r in conn.execute(
+        f"SELECT id FROM events_raw {_WHERE_DESALIGNEES} "
+        f"  AND COALESCE(wp_post_id_as,0) > 0").fetchall()]
+
     copied = conn.execute(
         "UPDATE events_raw SET date_event_start = (SELECT o.date_event_start FROM events_raw o "
         "                                          WHERE o.id = events_raw.translation_of), "
@@ -518,6 +540,32 @@ def main(argv=None) -> int:
     conn.commit()
     if copied:
         log.info("Passe traductions : %d fiche(s) réalignée(s) sur les dates de leur original", copied)
+
+    # REPUBLICATION AUTOMATIQUE — corriger la date en base ne change RIEN sur le site :
+    # WordPress/TEC garde la date fausse tant que la fiche n'est pas repoussée. Laisser
+    # ce dernier pas à faire à la main, c'est garantir qu'il ne sera pas fait et que la
+    # date fausse restera en ligne — exactement ce qu'on cherche à supprimer. `--skip-media`
+    # : seules les méta changent, la photo en ligne est déjà la bonne, inutile de
+    # remartéler la médiathèque. Le lot est plafonné et l'échec ne casse pas la datation
+    # (les dates, elles, sont déjà corrigées en base).
+    if a_repousser and not args.no_republish:
+        lot = a_repousser[:args.republish_cap]
+        log.info("Passe traductions : %d fiche(s) EN LIGNE à repousser (dates fausses "
+                 "affichées) — republication sans média", len(lot))
+        try:
+            from scripts.publish_batch_as import main as publish_main
+            publish_main(["--ids", *[str(i) for i in lot], "--skip-media"])
+            reste = len(a_repousser) - len(lot)
+            if reste:
+                log.warning("Passe traductions : %d fiche(s) au-delà du plafond "
+                            "(--republish-cap %d), repoussées au prochain run",
+                            reste, args.republish_cap)
+        except Exception as exc:  # noqa: BLE001 — la datation reste acquise
+            log.error("Passe traductions : republication échouée (%s) — les dates sont "
+                      "corrigées en base, le site les verra au prochain run", exc)
+    elif a_repousser:
+        log.info("Passe traductions : %d fiche(s) en ligne à repousser (--no-republish, "
+                 "rien envoyé) : %s", len(a_repousser), a_repousser)
 
     total_dated = conn.execute(
         "SELECT COUNT(*) n FROM events_raw "
