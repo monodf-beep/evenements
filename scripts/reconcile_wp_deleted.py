@@ -13,17 +13,26 @@ Trois conséquences, toutes silencieuses :
     fiche corbeillée par erreur ne repartira JAMAIS toute seule ;
   • tous les comptages de « publiées » sont faux.
 
-CE QUE ÇA NE FAIT PAS. On ne ressuscite rien de force. On efface `wp_post_id_as` et
-`wp_permalink_as`, et on horodate la constatation dans `wp_deleted_at`. Ce qui se passe
-ensuite est décidé par les filtres NORMAUX de publish_batch_as, pas par ce script : un
-événement passé ne repart pas (filtre « à venir »), un événement rejeté non plus (filtre
-sur le statut). Ne repartirait qu'un événement À VENIR et toujours RETENU — c'est-à-dire
-une fiche que le catalogue considère valide et que quelqu'un a corbeillée : cette
-contradiction-là mérite d'être vue, pas enterrée. Le dry-run la liste séparément.
+DEUX TRAITEMENTS, PAS UN. Le premier passage du 2026-08-02 a tranché : sur 61 fiches,
+61 sont à la CORBEILLE et zéro réellement supprimée. Les deux cas n'appellent pas la
+même réponse.
+  • CORBEILLE / BROUILLON — le post existe et se restaure en un clic. On GARDE
+    `wp_post_id_as` (l'effacer couperait le seul lien vers le post à restaurer) et on
+    pose `wp_deleted_at`, le constat : « à cette date, ce post n'était plus public ».
+    site_audit exclut ces fiches, donc plus d'alerte quotidienne sur une situation
+    voulue — et c'est réversible : un post redevenu public est déshorodaté au run suivant.
+  • RÉELLEMENT INEXISTANT — plus rien à quoi se raccrocher. On coupe le lien
+    (`wp_post_id_as`, `wp_permalink_as`) pour que la fiche redevienne publiable si le
+    catalogue la juge encore valide. Ce qui se passe alors est décidé par les filtres
+    NORMAUX de publish_batch_as, pas par ce script : un événement passé ne repart pas
+    (filtre « à venir »), un événement rejeté non plus. Ne repartirait qu'un événement
+    À VENIR et toujours RETENU — une fiche que le catalogue juge valide et que
+    quelqu'un a supprimée : cette contradiction mérite d'être vue, pas enterrée. Le
+    dry-run la liste séparément.
 
-VÉRIFICATION AVANT ÉCRITURE : chaque id est re-testé en direct (short-link natif
-`?p=<id>`, lecture seule). Un 404 franc seul autorise l'effacement — jamais un timeout
-ni un 5xx, qui ne prouvent rien.
+VÉRIFICATION AVANT ÉCRITURE : chaque id est re-testé en direct via l'API REST (lecture
+seule). Elle seule distingue corbeille et suppression, là où le front-end répond 404
+pour les deux — cf. _etat(). Un aléa réseau reste indéterminé et n'autorise rien.
 
 Usage :
     .venv/bin/python -m scripts.reconcile_wp_deleted           # dry-run (défaut)
@@ -105,8 +114,8 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     _ensure_col(conn)
 
-    sql = ("SELECT id, title, statut, date_event_start, date_event_end, wp_post_id_as "
-           "FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0")
+    sql = ("SELECT id, title, statut, date_event_start, date_event_end, wp_post_id_as, "
+           "       wp_deleted_at FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0")
     params: list = []
     if args.ids:
         sql += f" AND id IN ({','.join('?' * len(args.ids))})"
@@ -115,11 +124,14 @@ def main(argv=None) -> int:
     log.info("%d fiche(s) que la base croit publiées — vérification une par une.", len(rows))
 
     today = date.today().isoformat()
-    disparus, corbeille, indetermines = [], [], []
+    disparus, corbeille, indetermines, revenus = [], [], [], []
     for i, r in enumerate(rows, 1):
         etat = _etat(wp_url, int(r["wp_post_id_as"]))
         if etat == "public":
-            pass
+            # Post redevenu public (restauré à la main) : on efface le constat, sinon
+            # site_audit continuerait de l'ignorer alors qu'il est de nouveau en ligne.
+            if (r.get("wp_deleted_at") or "").strip():
+                revenus.append(r)
         elif etat in ("inexistant", "non_public"):
             fin = (r.get("date_event_end") or r.get("date_event_start") or "")[:10]
             r["_repartirait"] = bool(r["statut"] in RETENUS and fin and fin >= today)
@@ -136,13 +148,17 @@ def main(argv=None) -> int:
           f"{len(corbeille)} en corbeille/brouillon, {len(indetermines)} indéterminée(s).")
 
     if corbeille:
-        # NON TOUCHÉES : un post à la corbeille est RESTAURABLE en un clic dans l'admin.
-        # Effacer wp_post_id_as ici couperait le seul lien entre la fiche en base et le
-        # post à restaurer — on détruirait l'information au lieu de la réconcilier.
-        print(f"\n--- {len(corbeille)} EN CORBEILLE / BROUILLON — non touchées ---")
-        print("    (le post existe encore côté WordPress et se restaure en un clic.")
-        print("     Décision éditoriale : restaurer, ou supprimer définitivement puis")
-        print("     relancer ce script — qui les verra alors comme réellement supprimées.)")
+        # ON GARDE wp_post_id_as. Un post à la corbeille se restaure en un clic dans
+        # l'admin : effacer son id couperait le seul lien entre la fiche en base et le
+        # post à restaurer — ce serait détruire de l'information, pas la réconcilier.
+        # On pose seulement `wp_deleted_at`, c'est-à-dire le CONSTAT : « à cette date, ce
+        # post n'était plus public ». Ça suffit à faire taire site_audit (qui exclut ces
+        # fiches) sans rien perdre, et c'est réversible : si le post redevient public, le
+        # prochain run efface l'horodatage tout seul.
+        print(f"\n--- {len(corbeille)} EN CORBEILLE / BROUILLON ---")
+        print("    (--apply pose wp_deleted_at et GARDE wp_post_id_as : la fiche cesse")
+        print("     d'être relue comme si elle était en ligne, et le post reste")
+        print("     restaurable. Réversible : un post redevenu public est déshorodaté.)")
         for r in corbeille[:40]:
             print(f"  [{r['id']}] WP#{r['wp_post_id_as']} {(r['title'] or '')[:50]:52} "
                   f"statut={r['statut']} · {(r.get('date_event_start') or '—')[:10]}")
@@ -168,27 +184,46 @@ def main(argv=None) -> int:
             print(f"  [{r['id']}] WP#{r['wp_post_id_as']} {(r['title'] or '')[:50]:52} "
                   f"statut={r['statut']} · {(r.get('date_event_start') or '—')[:10]}")
 
+    if revenus:
+        print(f"\n--- {len(revenus)} REVENUE(S) EN LIGNE — constat périmé, sera effacé ---")
+        for r in revenus:
+            print(f"  [{r['id']}] WP#{r['wp_post_id_as']} {(r['title'] or '')[:50]}")
+
     if indetermines:
         print(f"\n--- {len(indetermines)} INDÉTERMINÉE(S) — non touchées, à revérifier ---")
         for r in indetermines[:15]:
             print(f"  [{r['id']}] WP#{r['wp_post_id_as']} {(r['title'] or '')[:50]}")
 
     if not args.apply:
-        print(f"\n(dry-run : rien écrit — --apply efface wp_post_id_as sur les "
-              f"{len(disparus)} disparue(s).)")
+        print(f"\n(dry-run : rien écrit — --apply couperait {len(disparus)} lien(s), "
+              f"horodaterait {len(corbeille)} fiche(s) hors ligne et déshorodaterait "
+              f"{len(revenus)} revenue(s).)")
         conn.close()
         return 0
 
     stamp = datetime.now().isoformat(timespec="seconds")
+    # RÉELLEMENT INEXISTANT : plus rien à quoi se raccrocher côté WordPress, on coupe le
+    # lien pour que la fiche redevienne publiable si le catalogue la juge encore valide.
     for r in disparus:
         conn.execute("UPDATE events_raw SET wp_post_id_as=NULL, wp_permalink_as=NULL, "
                      "wp_deleted_at=? WHERE id=?", (stamp, r["id"]))
-        log.info("[%s] WP#%s effacé de la base (post disparu) — %s",
+        log.info("[%s] WP#%s : post inexistant, lien coupé — %s",
+                 r["id"], r["wp_post_id_as"], (r["title"] or "")[:55])
+    # CORBEILLE / BROUILLON : on garde l'id (le post est restaurable), on note le constat.
+    for r in corbeille:
+        conn.execute("UPDATE events_raw SET wp_deleted_at=? WHERE id=?", (stamp, r["id"]))
+        log.info("[%s] WP#%s : plus public, constat horodaté (id conservé) — %s",
+                 r["id"], r["wp_post_id_as"], (r["title"] or "")[:55])
+    # REVENU EN LIGNE : le constat ne vaut plus, on l'efface.
+    for r in revenus:
+        conn.execute("UPDATE events_raw SET wp_deleted_at=NULL WHERE id=?", (r["id"],))
+        log.info("[%s] WP#%s : de nouveau en ligne — %s",
                  r["id"], r["wp_post_id_as"], (r["title"] or "")[:55])
     conn.commit()
     conn.close()
-    log.info("=== %d fiche(s) réconciliée(s) · %d repartiraient au prochain lot ===",
-             len(disparus), len(repartiraient))
+    log.info("=== %d lien(s) coupé(s) · %d horodatée(s) hors ligne · %d revenue(s) · "
+             "%d repartiraient au prochain lot ===",
+             len(disparus), len(corbeille), len(revenus), len(repartiraient))
     return 0
 
 

@@ -296,11 +296,28 @@ def _ecrit_etat(etat: dict) -> None:
 
 
 def _publiees(conn: sqlite3.Connection) -> list[dict]:
-    return [dict(r) for r in conn.execute(
-        "SELECT id, title, lieu, ville, territoire, date_event_start, date_event_end, "
-        "       article_title, enrich_data, wp_post_id_as, wp_permalink_as "
-        "FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 "
-        "  AND statut NOT IN ('merged','rejected') ORDER BY id").fetchall()]
+    # `wp_deleted_at` renseigné = post constaté hors ligne (corbeille/brouillon) par
+    # scripts/reconcile_wp_deleted. Sans cette exclusion, les 61 fiches corbeillées
+    # volontairement le 2026-08-02 (Musilac, le 14 juillet, les récapitulatifs du
+    # Dauphiné — du passé et des non-événements) reviendraient en 🔴 à chaque tour de
+    # rotation, pour toujours. Une alerte permanente sur une situation voulue, c'est le
+    # meilleur moyen de faire ignorer les vraies. La marque est réversible : si le post
+    # redevient public, reconcile efface l'horodatage et la fiche revient dans l'audit.
+    try:
+        return [dict(r) for r in conn.execute(
+            "SELECT id, title, lieu, ville, territoire, date_event_start, date_event_end, "
+            "       article_title, enrich_data, wp_post_id_as, wp_permalink_as "
+            "FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 "
+            "  AND statut NOT IN ('merged','rejected') "
+            "  AND COALESCE(wp_deleted_at,'') = '' ORDER BY id").fetchall()]
+    except sqlite3.OperationalError:
+        # Colonne absente : base jamais passée par reconcile_wp_deleted. On dégrade
+        # proprement au lieu de planter le cron.
+        return [dict(r) for r in conn.execute(
+            "SELECT id, title, lieu, ville, territoire, date_event_start, date_event_end, "
+            "       article_title, enrich_data, wp_post_id_as, wp_permalink_as "
+            "FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 "
+            "  AND statut NOT IN ('merged','rejected') ORDER BY id").fetchall()]
 
 
 def main(argv: list[str] | None = None) -> int:
