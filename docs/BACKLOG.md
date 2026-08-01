@@ -31,9 +31,25 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
      image (cf. correctif du jour sur `image_source='banner'`).
   4. `batch_report.py <id1> ... <idN>` — reconfirme COMPLET, cette fois avec l'id WordPress et
      l'image réelle en place. Le lot n'est clos que si cette dernière vérification est propre.
-- **Reste à faire** : choisir le premier lot réel (candidats naturels : les 8 ids Groupe A
-  en attente du retour de quota API — 834, 840, 843, 1155, 1447, 2128, 3506, 3512) et dérouler
-  le protocole ci-dessus dessus, plutôt que relancer un `--cap` large sur toute la file.
+- **LOT 1 — CLOS (2026-08-01)** : 834, 840, 843, 1155, 1447, 2128, 3506, 3512 — 8/8 COMPLET,
+  publiés, image réelle, date exploitable. Deux trous trouvés EN COURS DE ROUTE (pas avant, le
+  protocole sert précisément à ça) :
+  - `batch_report.py` exigeait le panel lecteurs pour TOUT le monde → faux négatif sur les
+    événements légitimement en palier court (score bas, jamais censés passer par le panel).
+    Corrigé : panel requis seulement si score ≥ `ENRICH_LONG_MIN_SCORE`. Plancher ABSOLU
+    ajouté (< 20 mots) pour attraper un article réduit au titre malgré un score élevé (id 843,
+    6 mots au premier passage — une page dite « officielle » s'est révélée non pertinente
+    après coup). Une seconde passe `enrich.py` sur les 4 ids encore incomplets a suffi.
+  - `batch_report.py` NE VÉRIFIAIT PAS la date ISO exploitable — id 3512 est parti "COMPLET"
+    sur tout le reste mais sans date (le scraper n'avait récupéré qu'un timestamp de flux RSS
+    dans `date_start`, pas la vraie date). Sans ça, TEC affiche la date du jour de publication.
+    Ajouté au rapport. Date réelle retrouvée via le site officiel (Fondazione Merz, programme
+    du 16 mai au 27 sept. 2026) et corrigée à la main en base avant republication.
+  - Le protocole a fait exactement ce pour quoi il a été conçu : rien n'est parti « à moitié
+    fait » sans qu'on le sache. `batch_report.py` continuera de gagner des vérifications à
+    chaque trou trouvé en conditions réelles plutôt que d'être pensé exhaustif d'avance.
+- **Prochain lot** : à choisir (10 ids). Piste : le reste du stock non enrichi (≈77 FR + 44 IT),
+  en priorisant par `llm_score` DESC puis proximité de date.
 
 ### 🐛 Kill-switch quota increvable — corrigé le jour même de sa mise en place
 - **Bug trouvé en le testant en conditions réelles** (quelques heures après l'avoir câblé) :
