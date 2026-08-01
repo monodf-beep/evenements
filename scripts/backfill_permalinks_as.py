@@ -36,23 +36,47 @@ log = get_logger("backfill-permalinks-as")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
-def _resolve(shortlink: str, retries: int = 2):
-    """Suit la redirection. Renvoie (url, status_code) — url='' si rien d'exploitable
-    après les tentatives. Ne retente PAS un 404 (définitif), seulement réseau/5xx."""
-    status = None
+def _resolve(wp_url: str, post_id: int, retries: int = 2) -> tuple[str, str]:
+    """(permalien, état) pour un post. État : 'public' | 'non_public' | 'inexistant' |
+    'indetermine'.
+
+    ⚠️ RÉÉCRIT LE 2026-08-02 APRÈS UNE FAUSSE ALERTE MASSIVE. La version précédente
+    suivait le short-link `/?p=<id>` en affirmant en docstring qu'il « fonctionne pour
+    n'importe quel post type ». C'EST FAUX sur cette installation : `/?p=601` renvoie
+    404 alors que le post 601 est parfaitement en ligne ; seule la forme
+    `/?post_type=tribe_events&p=601` répond 200. Résultat : le script a déclaré
+    « 61 posts probablement supprimés » sur 61 testés — dont Musilac, Katy Perry,
+    Orelsan, le Nice Jazz Fest. Aucun ne l'était.
+
+    On interroge donc l'API REST de WordPress, qui distingue les trois cas là où le
+    front-end répond 404 pour deux d'entre eux (vérifié sur le site) :
+      • 200                     → post PUBLIC, et `link` donne le VRAI permalien, préfixe
+                                  de langue compris (/it/evenement/… pour l'italien) ;
+      • rest_forbidden (401/403) → le post EXISTE mais n'est pas public : corbeille,
+                                  brouillon ou privé. Ce n'est PAS une suppression, et
+                                  il est restaurable ;
+      • rest_post_invalid_id (404) → le post n'existe réellement plus.
+    Un aléa réseau reste 'indetermine' et n'autorise jamais aucune conclusion."""
+    api = f"{wp_url}/wp-json/wp/v2/tribe_events/{post_id}"
     for attempt in range(retries + 1):
         try:
-            resp = requests.head(shortlink, allow_redirects=True, timeout=15)
-            status = resp.status_code
-            if status == 200 and resp.url and resp.url != shortlink:
-                return resp.url, status
-            if status == 404:
-                return "", status  # définitif : le post n'existe plus
+            resp = requests.get(api, timeout=20)
+            if resp.status_code == 200:
+                return str((resp.json() or {}).get("link") or ""), "public"
+            code = ""
+            try:
+                code = str((resp.json() or {}).get("code") or "")
+            except ValueError:
+                pass
+            if code == "rest_post_invalid_id" or resp.status_code == 404:
+                return "", "inexistant"
+            if code == "rest_forbidden" or resp.status_code in (401, 403):
+                return "", "non_public"
         except requests.RequestException:
-            status = None
+            pass
         if attempt < retries:
             time.sleep(3 * (attempt + 1))
-    return "", status
+    return "", "indetermine"
 
 
 def main() -> int:
@@ -88,30 +112,40 @@ def main() -> int:
         return 0
 
     done = 0
-    gone: list[tuple[int, str]] = []       # 404 franc : post probablement supprimé côté WP
-    unresolved: list[tuple[int, str]] = []  # échec réseau/5xx persistant malgré le retry
+    non_public: list[tuple[int, str]] = []   # existe mais corbeille / brouillon / privé
+    gone: list[tuple[int, str]] = []         # n'existe réellement plus
+    unresolved: list[tuple[int, str]] = []   # réseau : aucune conclusion
     for r in rows:
-        shortlink = f"{wp_url}/?p={r['wp_post_id_as']}"
         title = (r["title"] or "")[:55]
-        url, status = _resolve(shortlink)
-        if url:
+        url, etat = _resolve(wp_url, int(r["wp_post_id_as"]))
+        if etat == "public" and url:
             conn.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=?", (url, r["id"]))
             conn.commit()
             done += 1
             log.info("[%s] wp#%s -> %s — %s", r["id"], r["wp_post_id_as"], url[:70], title)
-        elif status == 404:
+        elif etat == "non_public":
+            non_public.append((r["id"], title))
+            log.warning("[%s] wp#%s : EXISTE mais pas public (corbeille/brouillon) — %s",
+                        r["id"], r["wp_post_id_as"], title)
+        elif etat == "inexistant":
             gone.append((r["id"], title))
-            log.warning("[%s] wp#%s : 404 — post probablement supprimé côté WordPress — %s",
-                       r["id"], r["wp_post_id_as"], title)
+            log.warning("[%s] wp#%s : le post n'existe plus côté WordPress — %s",
+                        r["id"], r["wp_post_id_as"], title)
         else:
             unresolved.append((r["id"], title))
-            log.warning("[%s] wp#%s : pas de redirection exploitable après retry (status=%s) — %s",
-                       r["id"], r["wp_post_id_as"], status, title)
+            log.warning("[%s] wp#%s : état indéterminé après retry (réseau) — %s",
+                        r["id"], r["wp_post_id_as"], title)
 
-    log.info("Terminé : %d/%d permaliens récupérés · %d probablement supprimés (404) · "
-             "%d à réessayer plus tard.", done, len(rows), len(gone), len(unresolved))
+    log.info("Terminé : %d/%d permaliens récupérés · %d en corbeille/brouillon "
+             "(RESTAURABLES, rien n'est perdu) · %d réellement supprimés · %d indéterminés.",
+             done, len(rows), len(non_public), len(gone), len(unresolved))
+    if non_public:
+        log.info("Pas publics — à restaurer OU à réconcilier en base "
+                 "(scripts.reconcile_wp_deleted) : %s",
+                 ", ".join(str(i) for i, _ in non_public))
     if gone:
-        log.info("Supprimés côté WP (id backoffice) : %s", ", ".join(str(i) for i, _ in gone))
+        log.info("Réellement supprimés (id backoffice) : %s",
+                 ", ".join(str(i) for i, _ in gone))
     conn.close()
     return 0
 
