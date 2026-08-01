@@ -26,10 +26,12 @@ représentation mentale du site. Concrètement :
 - Les titres de section sont en **minuscules dans le HTML** (`<div class="as-desktop-section-title__label">Les 7 prochains jours</div>`) ;
   les capitales viennent de `text-transform: uppercase` dans `.as-desktop-section-title__label`.
   Chercher `LES 7 PROCHAINS JOURS` dans le HTML ne donne rien — ce n'est pas une absence.
-- La chaîne `« 7 prochains jours »` apparaît **3 fois** dans la home : 2 fois **dans des commentaires
-  CSS** (offsets 81004 et 186189… non : 81004 est un commentaire, 186189 est du vrai HTML) et une
-  fois dans le HTML desktop (offset 289006). J'ai vérifié le contexte de chacune avant de conclure ;
-  il y a bien **deux occurrences réelles dans le corps de page** (une mobile, une desktop).
+- La chaîne `7 prochains jours` apparaît **3 fois** dans la home. J'ai lu le contexte de chacune
+  avant de conclure, et la répartition n'est pas celle qu'on suppose : offset **81004 = un
+  commentaire CSS** (le bloc « Doublons desktop sur mobile »), offset **186189 = du vrai HTML**
+  (le rail mobile `.as-day-rail`), offset **289006 = du vrai HTML** (le titre desktop). Conclure
+  « une seule section » à partir d'un comptage brut aurait été faux : il y a bien **deux
+  occurrences réelles dans le corps de page**, une mobile et une desktop.
 - Sur mes premières captures d'écran, les vignettes apparaissaient vides. **Ce n'était pas un bug du
   site** mais du lazy-loading non déclenché en capture pleine page. Après un défilement complet,
   toutes les images se chargent. Aucune alerte n'a été écrite sur cette base.
@@ -98,10 +100,39 @@ Le bug avait **deux causes cumulées**, toutes deux aujourd'hui neutralisées :
    .as-menu-overlay .as-site-header__menu{ display:block !important; }
    ```
 
-### Correctif proposé
+### ⚠️ Mais un autre défaut du menu mobile, lui, est bien présent aujourd'hui
 
-**Aucun correctif à appliquer** — mais une consolidation à 1 ligne, pour que le bug ne puisse pas
-revenir si le snippet #62 est désactivé, réordonné ou réécrit :
+En ouvrant le menu **après avoir scrollé** (home mobile, scroll 600 px), le panneau de menu s'ouvre
+**sous le header fixe**. Mesures :
+
+```
+.as-menu-overlay      → position: fixed, z-index: 40
+.as-home-sticky-panel → position: fixed, z-index: 41, y = 0, hauteur = 101 px
+document.elementFromPoint(195, 30) → un DIV du header, PAS un descendant de l'overlay
+```
+
+Conséquence, capture d'écran à l'appui : les **101 premiers pixels du menu sont recouverts** — la
+barre « MENU » et **sa croix de fermeture sont inaccessibles**, et la première entrée
+« Aujourd'hui » est cachée. Le menu s'ouvre visuellement sur « Ce week-end ». C'est un défaut réel,
+reproductible, et il ressemble beaucoup à un « problème de menu en mobile ».
+
+Correctif, une ligne :
+
+```css
+/* Le panneau de header fixe (z-index:41) recouvrait les 101 premiers pixels du menu
+   ouvert (z-index:40) : croix de fermeture et 1re entrée inaccessibles après scroll.
+   Un panneau ouvert passe devant le header, jamais dessous. */
+.as-menu-overlay{ z-index: 60 !important; }
+```
+
+**Où le poser :** snippet **#62 (`cs-hdr-compact`)**, juste à côté de la règle qui pose
+`z-index: 41` sur `.as-home-sticky-panel` — les deux valeurs doivent se lire ensemble.
+**Risque : nul** (aucun autre élément du site ne dépasse z-index 41, hors bandeau cookies).
+
+### Correctif proposé pour le bug initial
+
+**Aucun correctif à appliquer** sur le menu vide lui-même — mais une consolidation à 1 ligne, pour
+que le bug ne puisse pas revenir si le snippet #62 est désactivé, réordonné ou réécrit :
 
 ```css
 /* À coller dans le snippet « CS · Composants (styles) », juste après la règle
@@ -671,7 +702,7 @@ correctif ci-dessus, qui couvre déjà le scénario décrit par Franck (Savoie �
 | **1** | **2a — carrousel (+20 px)** | 3 lignes de CSS, cause certaine et chiffrée, effet visible **dès la 1ʳᵉ seconde sur toutes les pages à carrousel**. Meilleur rapport gain/risque du lot. | 5 min | très faible |
 | **2** | **3 — section blanche sans `:has()`** | Remplace une rustine posée aujourd'hui par une règle qui marche aussi sur les navigateurs anciens. Ferme un bug que Franck voit peut-être **encore**, sans avoir à attendre la réponse sur sa version de navigateur. | 10 min | faible |
 | **3** | **5 — territoire transmis aux hubs** | Le seul bug **fonctionnel** de la liste (les autres sont visuels) : aujourd'hui le visiteur qui choisit la Savoie reçoit du Piémont. Snippet isolé, désactivable seul. | 15 min | très faible |
-| **4** | **1 — verrou anti-régression du menu** | Rien de cassé aujourd'hui ; on immunise contre un retour du bug le plus grave (navigation mobile bloquée). | 5 min | nul |
+| **4** | **1 — menu recouvert par le header (`z-index`) + verrou anti-régression** | Le recouvrement est un **défaut réel constaté aujourd'hui** (croix de fermeture inaccessible après scroll) ; le verrou immunise contre le retour du menu vide. Deux lignes de CSS. | 5 min | nul |
 | **5** | **4 — uniformisation des tuiles** | Purement esthétique, et c'est un **choix** : à faire quand Franck peut regarder le résultat et arbitrer. | 20 min + validation | faible/modéré |
 | **6** | **2b — header unifié initial/scrollé** | Le plus structurant : déplacement d'un nœud du DOM, panneau fixe permanent, premier écran de toutes les home. À faire en dernier, avec Franck devant l'écran, et sur un seul snippet pour pouvoir revenir en arrière d'un clic. | 45 min + validation | **moyen** |
 
@@ -685,16 +716,20 @@ correctif ci-dessus, qui couvre déjà le scénario décrit par Franck (Savoie �
   un jour une classe et réapparaisse sur mobile. Parade durable proposée dans la section.
 - **5 (territoire)** — actif sur 4 URL, n'écrit que des `href`. Aucun effet sur le SEO
   (liens réécrits côté client, après rendu ; les robots voient les URL canoniques sans paramètre).
-- **1 (menu)** — une exception à une règle de masquage, dans le même bloc que la règle.
+- **1 (menu)** — une exception à une règle de masquage, dans le même bloc que la règle, plus une
+  valeur de `z-index`. Le passage de l'overlay à 60 le place au-dessus de tout le chrome de page ;
+  vérifier seulement qu'il reste **sous** le bandeau cookies Complianz si celui-ci doit rester
+  prioritaire (sinon, 60 convient : rien d'autre ne dépasse 41).
 - **4 (tuiles)** — bornée par `@media (max-width: 899px)` et par trois `id` de listing ; les 3
   colonnes desktop et les pages hub ne sont pas touchées. Effet de bord attendu : home mobile plus
   longue d'environ 600 px.
 - **2b (header)** — le seul qui touche la structure. Il concerne **toutes les home** (`/`, `/it/`,
   `/explore/*`, `/choisir/*` : elles servent toutes la page 928), pas les pages internes qui
   utilisent `.as-site-header`. Points à revérifier après pose : le panneau ne recouvre pas le H1,
-  la cale de compensation garde le contenu immobile, l'overlay de menu (`z-index: 40`) reste
-  au-dessus du panneau fixe (`z-index: 41` aujourd'hui — **à corriger dans le même geste**, sinon
-  le menu mobile ouvert passera sous le header).
+  la cale de compensation garde le contenu immobile. **Attention :** le panneau devenant fixe
+  **en permanence**, le recouvrement du menu décrit au bug 1 ne se produira plus seulement après
+  scroll mais **dès le chargement**. Le correctif `z-index` du bug 1 est donc un **prérequis** de
+  celui-ci, pas une option.
 
 ---
 
