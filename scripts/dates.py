@@ -410,9 +410,19 @@ def main(argv=None) -> int:
         log.info("Retry : %d événement(s) non-datables ré-armés pour re-tentative", n)
 
     # --- Passe 1 : texte (titre + description), gratuit et instantané ---
+    # ⚠️ TRADUCTIONS EXCLUES (translation_of) — bug corrigé le 2026-08-02. Une fiche
+    # traduite reçoit ses dates PAR COPIE de son original (scripts/translate_events.py),
+    # et c'est la seule source valable. Mais son INSERT ne renseigne pas `date_source`,
+    # donc elle retombait dans cette passe, qui re-parsait ses dates depuis son titre et
+    # sa description… TRADUITS EN ITALIEN, avec un parseur écrit pour le français :
+    # l'échec ÉCRASAIT la date correcte (18 traductions sans date), et les rares succès
+    # produisaient une date FAUSSE (Jazz Art : 2 mois d'écart avec l'original ; Matisse :
+    # 1 mois). Même défense que scripts/enrich.py, qui exclut déjà les traductions pour
+    # une raison analogue (il écrivait un article français par-dessus).
     rows = conn.execute(
         "SELECT id, title, description FROM events_raw "
-        "WHERE (date_source IS NULL OR date_source = '') AND statut != 'merged'"
+        "WHERE (date_source IS NULL OR date_source = '') AND statut != 'merged' "
+        "  AND COALESCE(translation_of,0) = 0"
     ).fetchall()
     log.info("Passe texte : %d événement(s) à dater", len(rows))
     parsed = 0
@@ -432,6 +442,7 @@ def main(argv=None) -> int:
         todo = conn.execute(
             "SELECT id, url_source FROM events_raw "
             "WHERE date_source = 'none' AND statut != 'merged' "
+            "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
             "LIMIT ?", (args.fetch_cap,)).fetchall()
         log.info("Passe page : %d page(s) à lire (cap %d)", len(todo), args.fetch_cap)
@@ -453,6 +464,7 @@ def main(argv=None) -> int:
         todo = conn.execute(
             "SELECT id, title, description, url_source, lieu, ville FROM events_raw "
             "WHERE date_source IN ('none', 'nodate') AND statut != 'merged' "
+            "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
             "LIMIT ?", (args.llm_cap,)).fetchall()
         log.info("Passe LLM : %d événement(s) à dater (modèle %s, cap %d)",

@@ -4,6 +4,39 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
 `docs/CHARTE_EDITORIALE.md` (commun aux projets, à migrer dans `cultura-core`) et
 `docs/SOURCE_OFFICIELLE.md` (chaîne source officielle + affiches + scores, session 07-28).
 
+## Journal de session — 2026-08-01 (suite 5)
+
+### 🐛 `dates.py` détruisait les dates de TOUTES les traductions
+- **Point de départ** : une fiche IT partie en publication avec `start=''`. J'avais avancé
+  l'hypothèse d'un « mécanisme d'appariement défaillant » dans la traduction. **Les données
+  m'ont contredit** : sur 25 traductions incohérentes, 18 avaient EXACTEMENT le même lieu que
+  leur original — l'appariement était bon, c'est la DATE qui manquait. Hypothèse à jeter.
+- **Cause réelle** : `scripts/translate_events.py` copie bien `date_event_start/end` de
+  l'original à l'insertion (depuis le tout premier commit, vérifié en `git log -S`), mais son
+  INSERT **ne renseigne pas `date_source`**. Or `dates.py` sélectionne sur
+  `date_source IS NULL OR date_source = ''` : chaque traduction retombait donc dans la passe de
+  datation, qui re-parse les dates **depuis le titre et la description traduits en italien**,
+  avec un parseur écrit pour le français — puis écrase `date_event_start` avec le résultat.
+- **Une seule cause, deux symptômes** : parse en échec → date vidée (18 cas) ; parse « réussi »
+  mais sur un texte italien → **date fausse** (Jazz Art : 2 mois d'écart avec l'original ;
+  Matisse : 1 mois ; Bue grasso : 7 jours). Ces dates fausses étaient publiées en ligne.
+- **Correctif** : les 3 passes de `dates.py` excluent désormais `COALESCE(translation_of,0)=0`.
+  Même défense que `enrich.py`, qui excluait déjà les traductions pour une raison analogue
+  (il écrivait un article français par-dessus une traduction). **Règle générale à retenir :
+  tout script qui DÉRIVE une donnée d'un texte doit exclure les traductions — leur contenu est
+  dans une autre langue et leurs données factuelles viennent par copie, pas par dérivation.**
+- **`scripts/repair_translation_dates.py`** (nouveau) ré-aligne rétroactivement chaque
+  traduction sur son original (dates + `date_source`), en dry-run par défaut. Il met de côté,
+  sans y toucher, deux familles qui demandent un arbitrage humain : les traductions
+  **circulaires** (A se déclare traduction de B et B de A — constaté sur la paire Marc Chagall
+  3021 ↔ 4194) et celles dont l'original n'a lui-même pas de date.
+- **Ce que ma requête de diagnostic NE voyait pas** : elle comparait dates et lieux, jamais les
+  titres — donc elle était aveugle au vrai cas de contamination (WP#6798 « Festa del Lago »
+  portant le lieu et les dates de « Une semaine pas plus », et son slug). Contamination et perte
+  de date sont deux problèmes distincts ; seul le second est corrigé ici. **Le premier reste
+  ouvert**, et la conclusion « incident isolé » du balayage WP#3713/WP#1938 de ce matin est à
+  reconsidérer : elle cherchait des collisions d'horodatage, pas des titres mal appariés.
+
 ## Journal de session — 2026-08-01 (suite 4)
 
 ### 🐛 Taxonomie territoire perdue depuis 10 jours sur toutes les fiches Savoie & Nice
