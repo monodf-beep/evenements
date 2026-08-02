@@ -636,3 +636,43 @@ def est_comte_de_nice(ville: str) -> bool | None:
     if not (ville or "").strip():
         return None
     return _cle_commune(ville) in communes_comte_de_nice()
+
+
+_grasse_cache: "set | None" = None
+
+
+def communes_arrondissement_grasse() -> set[str]:
+    global _grasse_cache
+    if _grasse_cache is None:
+        try:
+            import json as _json
+            data = _json.loads(_COMTE_NICE_FILE.read_text(encoding="utf-8"))
+            _grasse_cache = {_cle_commune(c)
+                             for c in data.get("arrondissement_de_grasse", [])}
+        except (OSError, ValueError):
+            _grasse_cache = set()
+    return _grasse_cache
+
+
+def est_arrondissement_grasse(ville: str) -> bool:
+    """La commune est-elle dans l'arrondissement de GRASSE — donc HORS PÉRIMÈTRE ?
+
+    ARBITRAGE FRANCK, 2026-08-02 : « aucune étiquette, on ne devrait pas avoir
+    d'événements sur ces territoires pour le moment ». Cannes, Antibes, Grasse,
+    Cagnes-sur-Mer, Vence, Saint-Paul-de-Vence, Mandelieu-la-Napoule, Mouans-Sartoux,
+    Saint-Laurent-du-Var… sortent donc du catalogue, alors que la charte les incluait
+    jusqu'ici sous « Nice/Alpes-Maritimes » (§2, corrigé depuis).
+
+    Pourquoi une liste de communes plutôt que des mots-clés dans config/out_of_zone.txt :
+    ce fichier prévient lui-même de n'y mettre que des noms NON AMBIGUS, et ceux-ci le
+    sont tous — « Vence » est contenu dans « Provence », « Grasse » dans « grasse
+    matinée », « Biot » et « Opio » sont trop courts pour être cherchés dans du texte
+    libre. Comparée au champ `ville`, la liste est exacte ; cherchée dans une
+    description, elle produirait des faux positifs.
+
+    Les deux listes se recoupent : 101 communes (Nice) + 62 (Grasse) = 163, le compte
+    exact des Alpes-Maritimes. Elles sont donc complètes et disjointes.
+    """
+    if not (ville or "").strip():
+        return False           # ville inconnue : on n'exclut jamais sur une absence
+    return _cle_commune(ville) in communes_arrondissement_grasse()

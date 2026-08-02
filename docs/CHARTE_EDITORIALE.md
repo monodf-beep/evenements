@@ -18,9 +18,25 @@ identité alpine, art, langue). Un bon article relie le particulier à l'univers
 
 ## 2. Périmètre géographique (strict)
 
-Savoie/Haute-Savoie · Piémont · Vallée d'Aoste · Nice/Alpes-Maritimes. **Tout le
+Savoie/Haute-Savoie · Piémont · Vallée d'Aoste · **Comté de Nice**. **Tout le
 reste = hors périmètre** (un événement en Lombardie, à Paris… → score 0 / rejet).
 Le territoire doit toujours être nommé : **ville → province/département → territoire**.
+
+**Comté de Nice ≠ Alpes-Maritimes** (arbitrage Franck, 2026-08-02). Le quatrième
+territoire n'est pas le département mais l'**arrondissement de Nice** : Nice, Menton,
+Villefranche, la Roya, la Vésubie, la Tinée… Les communes de l'**arrondissement de
+Grasse** — Cannes, Antibes, Grasse, Cagnes-sur-Mer, Vence, Saint-Paul-de-Vence,
+Mandelieu-la-Napoule, Mouans-Sartoux, Saint-Laurent-du-Var — sont **hors périmètre**,
+pas seulement sans étiquette : *« on ne devrait pas avoir d'événements sur ces
+territoires pour le moment »*. La frontière est le Var, et elle correspond exactement
+au découpage administratif.
+
+Référence vérifiable : `config/communes_comte_de_nice.json` (101 communes pour Nice,
+62 pour Grasse — total 163, le compte exact du département, donc listes complètes et
+disjointes), lue par `utils/sources.est_comte_de_nice()` et
+`est_arrondissement_grasse()`. On ne filtre PAS sur des mots-clés : « Vence » est
+contenu dans « Provence », « Grasse » dans « grasse matinée ». La comparaison se fait
+sur le champ `ville`, où elle est exacte.
 
 ## 3. Critères de sélection (rappel du scoring)
 
