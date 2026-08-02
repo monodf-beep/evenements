@@ -1153,7 +1153,24 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
     # Niccolò Fabi effacé et remplacé par un article français fraîchement généré).
     where = ["statut IN ('evaluated', 'published_sub')", "llm_score >= ?",
              "(enrich_status IS NULL OR enrich_status = '')", "(duplicate_of IS NULL)",
-             "COALESCE(translation_of,0)=0"]
+             "COALESCE(translation_of,0)=0",
+             # ⚠️ DATE EXIGÉE EN AMONT — mesuré sur le lot du 2026-08-02 à 9h41 : DIX
+             # enrichissements (Sonnet, panel lecteurs, recherches web) pour UNE seule
+             # publication. Les neuf autres ont été retenues par le portillon, toutes
+             # sur la MÊME raison : « AUCUNE date ISO exploitable ». On payait donc la
+             # rédaction complète de neuf fiches qu'on savait d'avance impubliables.
+             #
+             # Le portillon de daily_batch et la porte qualité de publish_batch_as
+             # exigent tous deux `date_event_start`. Or l'enrichissement NE DATE PAS :
+             # c'est scripts/dates.py qui s'en charge, et il tourne AVANT (8h45).
+             # Une fiche encore sans date à 9h30 n'en aura pas davantage après. La
+             # sélection est triée par score décroissant : exclure les non datées ne
+             # réduit pas le lot, elle le remplit avec des fiches réellement publiables.
+             #
+             # Rien n'est perdu : une fiche non datée reste candidate et repartira dès
+             # que dates.py lui aura trouvé une date (passe texte, page ou LLM, plus le
+             # --retry pour les impasses).
+             "COALESCE(date_event_start,'') <> ''"]
     params: list = [MIN_SCORE]
     if dfrom and dto:  # circonscrit à la période de travail (chevauchement)
         where.append("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?")
