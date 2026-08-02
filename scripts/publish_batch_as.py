@@ -229,8 +229,34 @@ def main(argv=None) -> int:
         return 0
 
     ok = fail = 0
+    refuses = 0
     for i, r in enumerate(rows, 1):
         event = dict(r)
+        # ══ GARDE-FOU ULTIME : jamais de CRÉATION sans date ══════════════════════
+        # Incident du 2026-08-02, 22h24. Une republication ciblée par --ids a CRÉÉ le
+        # post WP#6959 « Peluches, textes, photos… » avec start='' end='' venue=None
+        # img=False. publisher_as a bien écrit « Événement sans date ISO exploitable »
+        # dans le log… puis l'a publié quand même. Sans date, The Events Calendar date
+        # l'événement du JOUR DE PUBLICATION : la fiche annonçait une exposition à la
+        # mauvaise date, nue, sur le site public.
+        #
+        # `--ids` désactive délibérément la porte de complétude — c'est légitime pour
+        # REPUBLIER une fiche déjà en ligne après un correctif de contenu, où la
+        # décision est prise par un humain. Ça ne l'est JAMAIS pour créer un post
+        # public neuf : personne ne décide sciemment de publier un événement sans date.
+        # Le contournement est donc restreint à ce qu'il devait couvrir.
+        #
+        # Exception maintenue : un événement RÉCURRENT n'a légitimement pas de date
+        # unique (utils/completeness.is_recurring) — sa date est une note renvoyant à
+        # la source. Il continue de passer.
+        cree = not (event.get("wp_post_id_as") or 0) > 0
+        sans_date = not (event.get("date_event_start") or "").strip()
+        if cree and sans_date and not comp.is_recurring(event):
+            refuses += 1
+            log.warning("[%s] CRÉATION REFUSÉE — aucune date : TEC la daterait du jour "
+                        "de publication. Datez-la (scripts/dates.py) puis relancez. « %s »",
+                        event.get("id"), (event.get("title") or "")[:60])
+            continue
         # --skip-media ne doit JAMAIS priver une CRÉATION de sa photo (contrairement à un
         # --update sur un post déjà en ligne, où l'image existante est de toute façon
         # conservée) : une fiche encore jamais publiée n'a rien à "conserver". Bug
@@ -262,7 +288,8 @@ def main(argv=None) -> int:
             time.sleep(args.delay)
 
     conn.close()
-    log.info("=== Lot Agenda Sabauda : %d publié(s) en brouillon, %d échec(s) ===", ok, fail)
+    log.info("=== Lot Agenda Sabauda : %d publié(s), %d échec(s), %d création(s) refusée(s) "
+             "faute de date ===", ok, fail, refuses)
     return 0 if fail == 0 else 1
 
 
