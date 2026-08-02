@@ -584,3 +584,55 @@ def source_label(record: dict) -> str:
     if match:
         return match.group(1).strip()
     return domain_of(record) or "Source"
+
+
+# --------------------------------------------------------------------------- #
+# Territoire « Comté de Nice » — appartenance d'une commune
+# --------------------------------------------------------------------------- #
+# ARBITRAGE FRANCK, 2026-08-02 : le Comté de Nice = toutes les communes de
+# l'ARRONDISSEMENT DE NICE ; celles de l'arrondissement de GRASSE en sont exclues.
+# Attention à la nuance, elle n'est pas intuitive : les communes de Grasse restent
+# DANS le périmètre géographique de la charte (§2 « Nice/Alpes-Maritimes »), elles
+# ne reçoivent simplement pas l'étiquette de territoire `comte-de-nice`.
+#
+# Pourquoi une liste et pas une règle géographique : sans elle, l'attribution se
+# faisait au jugé, et le jugé se trompe. Le CSV « événements sans visuel de repli »
+# du 2026-08-02 proposait `comte-de-nice` pour Mandelieu-la-Napoule, Mouans-Sartoux,
+# Saint-Paul-de-Vence et Saint-Laurent-du-Var — quatre communes provençales, à
+# l'ouest du Var. Le critère administratif, lui, se vérifie.
+_COMTE_NICE_FILE = Path(__file__).resolve().parent.parent / "config" / "communes_comte_de_nice.json"
+_comte_nice_cache: "set | None" = None
+
+
+def _cle_commune(nom: str) -> str:
+    """Nom de commune comparable : sans accents, sans casse, sans ponctuation."""
+    import unicodedata as _ud
+    s = _ud.normalize("NFD", nom or "")
+    s = "".join(c for c in s if _ud.category(c) != "Mn").lower()
+    return re.sub(r"[^a-z]", "", s)
+
+
+def communes_comte_de_nice() -> set[str]:
+    global _comte_nice_cache
+    if _comte_nice_cache is None:
+        try:
+            import json as _json
+            data = _json.loads(_COMTE_NICE_FILE.read_text(encoding="utf-8"))
+            _comte_nice_cache = {_cle_commune(c)
+                                 for c in data.get("arrondissement_de_nice", [])}
+        except (OSError, ValueError):
+            _comte_nice_cache = set()
+    return _comte_nice_cache
+
+
+def est_comte_de_nice(ville: str) -> bool | None:
+    """La commune appartient-elle au Comté de Nice (arrondissement de Nice) ?
+
+    True  = oui (étiquette `comte-de-nice`)
+    False = non, c'est l'arrondissement de Grasse ou une commune inconnue des
+            Alpes-Maritimes — dans les deux cas, PAS d'étiquette comte-de-nice
+    None  = ville vide : on ne sait pas, on ne décide pas.
+    """
+    if not (ville or "").strip():
+        return None
+    return _cle_commune(ville) in communes_comte_de_nice()
