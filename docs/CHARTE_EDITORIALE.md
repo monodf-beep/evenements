@@ -32,6 +32,20 @@ GuidaTorino) : expos, concerts, spectacles, festivals, **sagre & gastronomie**, 
 nomination, communiqué), inauguration/remise de prix **déjà passée**, infrastructure/voirie,
 consultation publique — tout ce à quoi on ne peut pas **assister à une date**.
 
+**Public VISÉ, pas seulement public ADMIS** (arbitrage Franck, 2026-08-02). Le critère
+« le public peut assister » ne suffit pas : un congrès scientifique ou un salon B2B a
+souvent une inscription ouverte, et n'intéresse pourtant pas nos lecteurs. Agenda
+Sabauda s'adresse à des **habitants et des visiteurs**, pas à des **congressistes**.
+→ **Hors périmètre** : congrès et colloques professionnels ou scientifiques, salons
+B2B, conventions d'entreprise, séminaires sectoriels, journées d'étude d'une filière —
+*même ouverts sur inscription*. Cas réels écartés le 2026-08-02 : *IASP World
+Conference*, *Colloque International Villes et Santé Mentale*, *EVO 2026*.
+→ **Dans le périmètre**, en revanche : les manifestations à destination du grand public
+même quand elles portent un nom de « salon » ou de « rencontre » — Salon du livre,
+foire artisanale, salon des vins, rencontre avec un auteur, conférence grand public
+d'un musée. La catégorie « Conférences & Rencontres » reste donc pleinement active.
+Le partage se fait sur **à qui ça s'adresse**, pas sur le format ni sur le titre.
+
 **Le score = IMPORTANCE, pas profondeur culturelle.** On mesure si l'événement va *réunir du
 monde* / *compte dans le territoire*. Somme de 5 critères (0-10) :
 - **Notoriété du lieu** (0-3) — lieu emblématique très cité vs local modeste (pondéré par la
