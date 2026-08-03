@@ -83,6 +83,13 @@ MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "3"))
 # dans la matière de rédaction — cf. gather_material. Volontairement bas : on écarte les
 # coquilles vides (lien Google News nu), pas les descriptions simplement laconiques.
 MATERIAL_MIN_VISIBLE = int(os.getenv("ENRICH_MATERIAL_MIN_VISIBLE", "60"))
+# Délai avant de re-tenter une fiche dont la RÉDACTION a échoué (enrich_status='error' :
+# le modèle a rendu de l'inexploitable). Même convention et même valeur par défaut que
+# WEB_COOLDOWN_DAYS (scraper_events) et VENUE_COOLDOWN_DAYS (venues) — trois délais
+# différents pour la même idée seraient un piège de réglage.
+# 'api_error' n'est PAS concerné : c'est une panne extérieure, pas un échec de la fiche,
+# et le rythme quotidien du cron suffit à l'espacer.
+ENRICH_RETRY_DAYS = int(os.getenv("ENRICH_RETRY_DAYS", os.getenv("WEB_COOLDOWN_DAYS", "7")))
 # Budget de sortie de l'article JSON. 12000 s'est révélé trop juste sur un événement à
 # matière riche (panel + programme détaillé) : stop_reason=max_tokens → JSON tronqué →
 # article perdu (aucun repli partiel). 16000 laisse de la marge sans coût significatif
@@ -1187,7 +1194,29 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
     # produite par translate_events.py (constaté en vrai : id 4312, l'italien de
     # Niccolò Fabi effacé et remplacé par un article français fraîchement généré).
     where = ["statut IN ('evaluated', 'published_sub')", "llm_score >= ?",
-             "(enrich_status IS NULL OR enrich_status = '')", "(duplicate_of IS NULL)",
+             # ⚠️ 'error' ET 'api_error' ÉTAIENT DÉFINITIFS (corrigé le 2026-08-03).
+             # Vérifié par balayage : AUCUN script du dépôt n'efface jamais
+             # `enrich_status`. Cette condition était donc un cul-de-sac, et le plus
+             # injuste des cinq trouvés ce jour-là — `api_error` n'est PAS un défaut de
+             # la fiche. Il est posé sur une panne EXTÉRIEURE (limite de débit, réseau,
+             # crédit épuisé), et le code lève `stop_flag` dans la foulée : une seule
+             # coupure d'API condamnait donc DÉFINITIVEMENT tout le lot en vol, sans que
+             # rien ne le signale. La fiche était parfaite, l'API était en panne, la fiche
+             # ne serait jamais rédigée.
+             #
+             # DEUX DÉLAIS, parce que les deux causes n'ont rien à voir :
+             #   • 'api_error' — panne extérieure, déjà terminée quand le cron repasse le
+             #     lendemain. Aucun délai : le rythme quotidien du cron EST l'espacement.
+             #   • 'error' — le modèle a rendu quelque chose d'inexploitable sur CETTE
+             #     matière. Re-tenter demain re-paierait probablement le même échec ;
+             #     re-tenter après ENRICH_RETRY_DAYS laisse le temps à la matière de
+             #     changer (page mise à jour, doublon fusionné, description réparée).
+             # `enriched_at` porte déjà la date de la tentative — posée au moment même où
+             # l'échec est enregistré. Pas de colonne à ajouter.
+             "(enrich_status IS NULL OR enrich_status = '' OR enrich_status = 'api_error' "
+             " OR (enrich_status = 'error' AND (enriched_at IS NULL "
+             f"     OR enriched_at < datetime('now', '-{ENRICH_RETRY_DAYS} days'))))",
+             "(duplicate_of IS NULL)",
              "COALESCE(translation_of,0)=0",
              # ⚠️ DATE EXIGÉE EN AMONT — mesuré sur le lot du 2026-08-02 à 9h41 : DIX
              # enrichissements (Sonnet, panel lecteurs, recherches web) pour UNE seule
