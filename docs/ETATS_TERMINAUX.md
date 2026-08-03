@@ -37,7 +37,7 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | `translation_of` | `translate_events` | `unlink_bad_translations` | ✅ déjà fermé |
 | `statut='rejected'` | `evaluator`, `purge_*`, back-office | `unreject_wp_online`, `reconcile_catalogue`, back-office | 🟡 partiel, **volontaire** |
 | `wp_post_id_as=NULL` après corbeille | `trash_by_ids`, `trash_wp_ids` | `relink_wp_ids_as` (par titre) | 🟡 partiel, **assumé** |
-| `statut='merged'` + `duplicate_of` | `dedupe` | **RIEN** | ⛔ **OUVERT** |
+| `statut='merged'` + `duplicate_of` | `dedupe` | `unmerge` (à la main, jamais en cron) | ✅ fermé le 2026-08-03 |
 
 ## Les trois délais, et pourquoi ils sont identiques
 
@@ -70,14 +70,16 @@ coupent (on retire volontairement, on ne compte pas revenir). `relink_wp_ids_as`
 recoller par titre, avec le garde-fou anti-collision du 2026-08-03. Divergence connue, à
 unifier si elle gêne un jour.
 
-## Le seul cul-de-sac encore ouvert
+## Le dernier fermé, et le plus long à l'être
 
-### `statut='merged'` + `duplicate_of` — aucun chemin de retour
+### `statut='merged'` + `duplicate_of`
 
 `dedupe.merge_group` absorbe une fiche dans une autre : la perdante passe `merged`, son
-`duplicate_of` pointe la gagnante, et sa matière est agrégée vers elle. **Aucun script du
-dépôt ne remet jamais `duplicate_of` à NULL.** Le seul démêlage existant,
-`unlink_bad_translations`, ne traite que l'appariement FR/IT, pas la fusion.
+`duplicate_of` pointe la gagnante, et sa matière est agrégée vers elle. Jusqu'au
+2026-08-03, **aucun script du dépôt ne remettait jamais `duplicate_of` à NULL** — le seul
+démêlage existant, `unlink_bad_translations`, ne traite que l'appariement FR/IT.
+`scripts/unmerge.py` comble ce manque, avec la réserve importante décrite plus bas : il
+RESTAURE les fusions récentes et se contente de RECONSTITUER les anciennes.
 
 Ce n'est pas théorique, mais c'est plus petit qu'annoncé. **Chiffre corrigé le
 2026-08-03** : `audit_dedupe_damage --published-only` compte **94 fusions suspectes sur
@@ -103,13 +105,32 @@ décider si la gagnante garde la matière héritée, et trancher si les deux fic
 exister séparément. C'est un arbitrage éditorial, pas une réouverture automatique. Le
 mettre en cron serait exactement l'erreur inverse de celles corrigées ci-dessus.
 
-**Ce qu'il faudrait, dans l'ordre :**
+**La marche à suivre :**
 
-1. passer `audit_dedupe_damage --published-only` sur la base réelle (lecture seule) ;
-2. sur les cas classés « certain », vérifier à la main quelques exemples pour juger de la
-   fiabilité du classement ;
-3. seulement ensuite, écrire un `unmerge` — en conservant, à la fusion suivante, le statut
-   d'origine de la perdante dans une colonne, faute de quoi aucun retour ne sera propre.
+1. `audit_dedupe_damage --published-only` sur la base réelle — il écarte désormais les
+   événements passés, donc il ne liste que ce qui compte encore ;
+2. sur les cas retenus, en vérifier quelques-uns à la main pour juger de la fiabilité du
+   classement avant de faire confiance au reste ;
+3. `scripts/unmerge.py <ids des perdantes>` en dry-run, puis `--apply`.
+
+**Ce que `unmerge` fait, et ce qu'il refuse de faire.** Il ne décide JAMAIS quelles
+fusions défaire : départager deux fiches homonymes demande de regarder les dates, le lieu
+et le contenu. `audit_dedupe_damage` liste, un humain choisit, `unmerge` exécute. Le
+mettre en cron serait l'erreur inverse de toutes celles corrigées ce jour-là.
+
+Il refuse aussi une fusion dont la perdante est **encore en ligne** : la défusionner
+laisserait deux fiches revendiquer la même page — on ne répare pas un désordre en en
+créant un autre.
+
+**Et il distingue deux cas qui ne se valent pas**, en le disant fiche par fiche :
+
+- **fusion récente** — l'instantané existe, on RESTAURE le statut d'avant à l'identique ;
+- **fusion antérieure au 2026-08-03** — rien n'a été enregistré, le statut d'avant
+  n'existe nulle part. On ne peut que RECONSTITUER : couper le lien et rendre la fiche à
+  la file d'évaluation. Elle sera re-jugée, ce qui coûte un appel LLM et peut donner un
+  verdict différent de celui qu'un humain avait validé à l'époque.
+
+C'est là que se paie, concrètement, le fait de n'avoir rien enregistré pendant des mois.
 
 Le point 3 est la vraie leçon : **une fusion qui n'enregistre pas ce qu'elle écrase ne
 peut pas être défaite.** C'est le même défaut que ceux corrigés aujourd'hui, un cran plus
