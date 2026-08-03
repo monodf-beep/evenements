@@ -100,5 +100,14 @@
 # Slack (équivalent de scripts/status_report.py, à lancer à la main pour un état à jour
 # à tout moment, y compris pour coller le résultat à une IA qui reprend le projet).
 0 8 * * 1 cd /root/evenements && .venv/bin/python scripts/weekly_digest.py >> logs/weekly_digest.log 2>&1
+# Calibrage de l'évaluateur, lundi 8h05 — juste après le récapitulatif, pour arriver
+# ensemble. Ajouté le 2026-08-03 : utils/score_memory enregistrait les corrections de
+# Franck depuis des mois et l'évaluateur les réinjectait dans son prompt, mais RIEN ne
+# vérifiait que cette boucle d'apprentissage apprenait. On mesure enfin l'écart entre sa
+# note et celle de Franck, et surtout s'il RÉTRÉCIT.
+# Hebdomadaire et pas quotidien : les corrections s'accumulent lentement, et un indicateur
+# qui bouge à peine d'un jour sur l'autre n'a rien à dire tous les matins. Coût nul (lecture
+# d'un fichier), et silencieux tant que l'écart reste sous le seuil.
+5 8 * * 1 cd /root/evenements && .venv/bin/python scripts/audit_calibrage.py --slack >> logs/calibrage.log 2>&1
 # Sauvegarde de la base 3h (copie cohérente horodatée, garde les 14 dernières) — anti perte de données
 0 3 * * * cd /root/evenements && .venv/bin/python scripts/backup_db.py >> logs/backup.log 2>&1
