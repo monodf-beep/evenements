@@ -112,6 +112,206 @@ def _partagent_un_mot(a: set[str], b: set[str]) -> bool:
     return any(_meme_racine(x, y) for x in a for y in b)
 
 
+# --------------------------------------------------------------------------- #
+# COHÉRENCE DU TITRE D'UNE TRADUCTION AVEC L'IDENTITÉ DE SON ORIGINAL
+#
+# Le contrôle n°3 ci-dessous (titre publié ↔ ancrage de la fiche) est INOPÉRANT sur une
+# traduction : son ancrage inclut `r["title"]`, or pour une fiche traduite ce champ EST le
+# titre produit par le traducteur. Le contrôle se confirme lui-même (PROUVÉ dans
+# docs/GO_NOGO_TRADUCTION.md §3 : verdict COMPLET=True sur une reproduction de WP#6798).
+# Il faut donc comparer le titre traduit à l'identité de l'ORIGINAL — jamais à la sienne.
+#
+# LA DIFFICULTÉ, et pourquoi un contrôle lexical naïf est PIRE que pas de contrôle : une
+# traduction légitime ne partage souvent AUCUN mot avec son original, parce que la charte
+# (_charte_prompt) autorise explicitement la réécriture du titre. « NOTE D'ARTE » est
+# publié en français sous « À Turin, la musique entre en dialogue avec les arts
+# décoratifs » : zéro mot commun, et c'est le travail bien fait. Exiger un mot commun
+# alerterait sur presque toutes les fiches bilingues — et une alerte qui crie tous les
+# jours finit ignorée (même arbitrage que site_audit.py:208-218).
+#
+# LE SIGNAL RETENU se lit en trois temps, et sa pièce maîtresse est l'ABSTENTION :
+#   a) le titre traduit cite-t-il un élément d'IDENTITÉ de l'original (son titre, son lieu,
+#      sa ville, son organisateur, son territoire), modulo exonymes et racines romanes ?
+#      → OUI : rien à dire. C'est ce qui sauve « Turin » ← « Torino ».
+#   b) sinon, le titre NOMME-t-il quelque chose de précis — un nom propre en milieu de
+#      phrase, un millésime ? → NON : on S'ABSTIENT. Un titre entièrement générique
+#      (« Una settimana, non di più », « Le huis clos qui fait rire la Savoie ») n'est pas
+#      recoupable ; prétendre le juger, c'est fabriquer du bruit.
+#   c) il nomme quelque chose de précis, et RIEN de ce qu'il nomme n'appartient à
+#      l'événement d'origine → SUSPECT. C'est la signature exacte de WP#6798 : « Festa del
+#      Lago 2026 » sur une fiche dont le lieu est La Comédie des Alpes à Chambéry — le
+#      titre désigne un lac et un millésime que la fiche ne connaît pas.
+#
+# Ce qui fait la différence, c'est le NOM PROPRE : il ne se traduit pas (Chagall, Sodoma,
+# Accorsi), sauf les toponymes — dont la liste est courte, fermée, et DÉJÀ déclarée par la
+# charte de traduction du dépôt (_charte_prompt dans translate_events).
+# --------------------------------------------------------------------------- #
+
+# Exonymes FR↔IT du périmètre alpin. N'y figurent QUE les couples que les règles
+# génériques ci-dessous (racine, distance 1, squelette consonantique) ne rapprochent pas
+# d'eux-mêmes : « savoie »/« savoia » et « piemont »/« piemonte » partagent leur préfixe,
+# « chambery »/« ciamberi » et « milan »/« milano » leur squelette, « aoste »/« aosta »
+# et « suse »/« susa » sont à une lettre. Ceux-ci, non — il faut les nommer.
+_EXONYMES = (
+    ("turin", "torino"),          # aussi couvert par le squelette (trn) ; explicite car le
+                                  # plus fréquent de tout le corpus
+    ("nice", "nizza"), ("genes", "genova"), ("venise", "venezia"),
+    ("ivree", "ivrea"), ("pignerol", "pinerolo"), ("coni", "cuneo"),
+)
+_EXO = {tok: i for i, couple in enumerate(_EXONYMES) for tok in couple}
+
+# 'h' est rangé avec les voyelles : il est muet en français comme en italien et ne
+# survit pas d'une langue à l'autre (« Chambéry » / « Ciamberì »).
+_NON_CONSONNES = set("aeiouyh")
+
+
+def _squelette(tok: str) -> str:
+    """Squelette consonantique d'un token, doubles réduites et graphies unifiées.
+
+    Deux langues romanes gardent le même squelette pour un même nom (Torino/Turin →
+    « trn », Milano/Milan → « mln », musica/musique → « msc ») là où les voyelles, elles,
+    bougent. C'est un signal grossier : on ne s'en sert que pour ÉVITER une alerte, jamais
+    pour en lever une — un rapprochement en trop coûte une détection manquée, un
+    rapprochement manquant coûte une fausse alerte, et c'est la faute la plus chère ici."""
+    t = (tok.replace("qu", "c").replace("q", "c").replace("k", "c")
+            .replace("ph", "f").replace("th", "t"))
+    out: list[str] = []
+    for c in t:
+        if c in _NON_CONSONNES:
+            continue
+        if not out or out[-1] != c:      # doubles (spettatori → sptr)
+            out.append(c)
+    return "".join(out)
+
+
+def _distance_1(a: str, b: str) -> bool:
+    """Vrai si une seule insertion, suppression ou substitution sépare a de b.
+    Couvre l'essentiel des couples FR/IT à finale variable : arts/arte, poesia/poesie,
+    aoste/aosta, suse/susa, mont/monte, grand/gran."""
+    if abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) > len(b):
+        a, b = b, a
+    i = j = 0
+    ecarts = 0
+    while i < len(a) and j < len(b):
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+            continue
+        ecarts += 1
+        if ecarts > 1:
+            return False
+        if len(a) == len(b):
+            i += 1
+        j += 1
+    return ecarts + (len(b) - j) + (len(a) - i) <= 1
+
+
+def _meme_racine_bilingue(a: str, b: str) -> bool:
+    """`_meme_racine`, élargi aux rapprochements FR↔IT (exonyme, finale variable,
+    squelette consonantique). VOLONTAIREMENT PERMISSIF : chaque rapprochement admis en
+    plus est une alerte de moins. On ne l'emploie que là où les deux côtés sont dans des
+    LANGUES DIFFÉRENTES — le contrôle monolingue garde `_meme_racine`, plus strict."""
+    if _meme_racine(a, b):
+        return True
+    if a.isdigit() or b.isdigit():
+        return False                      # un millésime ne se rapproche jamais
+    if a in _EXO and _EXO[a] == _EXO.get(b):
+        return True
+    if len(a) < 4 or len(b) < 4:
+        return False                      # trop court : tout ressemble à tout
+    if _distance_1(a, b):
+        return True
+    sa, sb = _squelette(a), _squelette(b)
+    return len(sa) >= 3 and sa == sb
+
+
+def _partagent_un_mot_bilingue(a: set[str], b: set[str]) -> bool:
+    return any(_meme_racine_bilingue(x, y) for x in a for y in b)
+
+
+def _ancrage_original(orig: dict) -> set[str]:
+    """Identité FACTUELLE d'un événement : ce qui ne change pas d'une langue à l'autre.
+
+    Titre SCRAPÉ, lieu, ville, organisateur, territoire — et RIEN d'autre. Surtout pas la
+    description ni l'article : dans WP#6798 c'est précisément la description de l'original
+    qui était contaminée (fusion à tort avec un article Google News), elle aurait donc
+    CONFIRMÉ le faux titre. Pas `article_title` non plus : il est rédigé à partir de cette
+    même description."""
+    return (_sig_tokens(orig.get("title") or "") | _sig_tokens(orig.get("lieu") or "")
+            | _sig_tokens(orig.get("ville") or "") | _sig_tokens(orig.get("organisateur") or "")
+            | _sig_tokens(orig.get("territoire") or ""))
+
+
+def _tokens_distinctifs(titre: str) -> set[str]:
+    """Tokens par lesquels un titre DÉSIGNE quelque chose de précis : noms propres (mot
+    capitalisé AILLEURS qu'en début de phrase) et millésimes (nombres à 4 chiffres).
+
+    C'est la clé de l'abstention. Un titre sans aucun token distinctif ne prétend rien de
+    vérifiable — il décrit, il ne nomme pas — et aucune comparaison n'a de sens dessus.
+    Le premier mot d'une phrase est EXCLU : sa majuscule est grammaticale, pas
+    onomastique (« Una settimana… » ne nomme pas quelqu'un qui s'appellerait Una).
+    Un titre TOUT EN CAPITALES neutralise le signal de casse (il n'en porte aucun) — seuls
+    ses millésimes comptent alors ; la charte interdit d'ailleurs de produire de tels
+    titres, on ne les rencontre qu'à la source."""
+    brut = (titre or "").strip()
+    if not brut:
+        return set()
+    lettres = [c for c in brut if c.isalpha()]
+    tout_caps = bool(lettres) and sum(c.isupper() for c in lettres) / len(lettres) > 0.8
+    out: set[str] = set()
+    debut_de_phrase = True
+    for mot in brut.split():
+        toks = _sig_tokens(mot)
+        out |= {t for t in toks if t.isdigit() and len(t) == 4}
+        # On retire les ouvrants (guillemets, parenthèses) avant de lire la casse :
+        # « ... au Forte di Bard » et « ...(Sodoma) » nomment tout autant.
+        initiale = mot.lstrip("«\"'([—-")[:1]
+        if not debut_de_phrase and not tout_caps and initiale.isupper():
+            out |= {t for t in toks if not t.isdigit()}
+        debut_de_phrase = mot.endswith((".", "!", "?", ":", ";", "…"))
+    return out
+
+
+# Un ancrage ou un titre de moins de 2 tokens significatifs ne permet aucun recoupement :
+# on s'abstient plutôt que de deviner (cf. contrôle n°3, même seuil).
+_MIN_TOKENS = 2
+
+
+def verdict_titre_traduit(titres, original: dict) -> tuple[str, str]:
+    """Le titre d'une TRADUCTION est-il cohérent avec l'identité de son ORIGINAL ?
+
+    titres   : le ou les titres produits par le traducteur (titre de fiche ET titre
+               d'article — l'un peut ancrer là où l'autre ne le fait pas ; on prend leur
+               UNION, c'est-à-dire le parti le plus indulgent).
+    original : la ligne events_raw de l'événement d'origine.
+
+    Renvoie (verdict, motif) avec verdict dans {'ok', 'abstention', 'suspect'}.
+    'suspect' n'est JAMAIS rendu sur une simple absence de mot commun : il exige que le
+    titre nomme quelque chose de précis que l'original ne connaît pas."""
+    liste = [titres] if isinstance(titres, str) else [t for t in (titres or []) if t]
+    toks: set[str] = set()
+    distinctifs: set[str] = set()
+    for t in liste:
+        toks |= _sig_tokens(t)
+        distinctifs |= _tokens_distinctifs(t)
+    ancre = _ancrage_original(original or {})
+
+    if len(ancre) < _MIN_TOKENS:
+        return "abstention", ("identité de l'original trop pauvre pour recouper "
+                              "(titre/lieu/ville/organisateur/territoire)")
+    if len(toks) < _MIN_TOKENS:
+        return "abstention", "titre traduit trop court pour être recoupé"
+    if _partagent_un_mot_bilingue(toks, ancre):
+        return "ok", "cite bien l'événement d'origine (titre, lieu, ville ou territoire)"
+    if not distinctifs:
+        return "abstention", ("titre entièrement générique — aucun nom propre ni millésime "
+                              "à recouper (réécriture éditoriale : non jugeable)")
+    return "suspect", ("le titre nomme « %s » — rien de tout cela n'appartient à "
+                       "l'événement d'origine" % " · ".join(sorted(distinctifs)))
+
+
 def _jour_iso(valeur) -> str:
     """Jour (AAAA-MM-JJ) d'une date stockée, ou '' si illisible. On compare des JOURS et
     pas des chaînes : « 2026-08-12 » et « 2026-08-12T21:00 » désignent la même date, un
@@ -269,11 +469,36 @@ def _row_report(r: dict, original: dict | None = None) -> tuple[bool, list[str]]
     # là-dessus empêcherait de publier des fiches saines et, à force de fausses alertes,
     # l'alerte finirait ignorée. On reste conservateur : partage d'un mot par racine
     # (préfixe 5) et abstention dès que l'un des deux côtés est trop pauvre pour juger.
+    # Sur une TRADUCTION, ce contrôle-ci est remplacé par le 3 bis : voir plus bas.
+
+    # L'original d'une traduction est chargé ICI et servira DEUX fois : au contrôle n°3 bis
+    # (titre) juste en dessous, puis au contrôle n°4 (dates, lieu). Une seule lecture.
+    tof = int(r.get("translation_of") or 0)
+    orig = (original if original is not None else _charge_original(tof)) if tof else None
+
     titre_pub = _titre_publie(r)
     toks_titre = _sig_tokens(titre_pub)
     toks_ancrage = (_sig_tokens(r.get("title") or "") | _sig_tokens(r.get("lieu") or "")
                     | _sig_tokens(r.get("ville") or "") | _sig_tokens(r.get("organisateur") or ""))
-    if len(toks_titre) >= 2 and len(toks_ancrage) >= 2:
+    if tof and orig:
+        # 3 bis. TRADUCTION — le contrôle ci-dessus serait AUTO-CONFIRMANT ici : son ancrage
+        # inclut r["title"], qui pour une traduction EST le titre produit par le traducteur.
+        # On recoupe donc avec l'identité de l'ORIGINAL (cf. verdict_titre_traduit).
+        # AVERTISSEMENT SEULEMENT, comme le contrôle n°3 dont il prend la place : un nom
+        # propre légitime peut n'exister que dans la description de l'original (l'artiste,
+        # l'œuvre) et manquer à son ancrage factuel. Le diagnostic n'est donc pas CERTAIN,
+        # et la règle de l'en-tête de ce fichier l'interdit alors de bloquer. Là où le
+        # même verdict BLOQUE, c'est en amont dans translate_events : y refuser une
+        # création est réversible (l'original reste candidat au run suivant), alors qu'ici
+        # un ✗ retiendrait une fiche déjà produite, sans recours.
+        verdict, motif = verdict_titre_traduit([titre_pub, r.get("title") or ""], orig)
+        marque = "⚠" if verdict == "suspect" else "·"
+        lines.append(f"  {marque} titre traduit: « {(titre_pub or r.get('title') or '')[:60]} » — "
+                     f"{motif}"
+                     + (f" (original : « {(orig.get('title') or '')[:35]} » · "
+                        f"{(orig.get('lieu') or '—')[:25]}, {(orig.get('ville') or '—')[:18]})"
+                        if verdict == "suspect" else ""))
+    elif len(toks_titre) >= 2 and len(toks_ancrage) >= 2:
         if _partagent_un_mot(toks_titre, toks_ancrage):
             lines.append(f"  · titre publié : « {titre_pub[:70]} » (cohérent avec la fiche)")
         else:
@@ -292,9 +517,7 @@ def _row_report(r: dict, original: dict | None = None) -> tuple[bool, list[str]]
     # et le lieu de l'original, mais dates.py repassait derrière et re-parsait le texte
     # ITALIEN avec un parseur français, écrasant la copie. Une traduction n'a donc aucune
     # donnée factuelle propre : toute divergence avec l'original est une corruption.
-    tof = r.get("translation_of") or 0
     if tof:
-        orig = original if original is not None else _charge_original(tof)
         if not orig:
             lines.append(f"  ⚠ traduction   : original id={tof} INTROUVABLE — "
                          f"cohérence dates/lieu non vérifiable")
@@ -322,10 +545,14 @@ def _row_report(r: dict, original: dict | None = None) -> tuple[bool, list[str]]
             # Aoste/Aosta) ou reformulé, et aucune comparaison lexicale ne distingue de
             # façon fiable un exonyme d'une contamination. Bloquer produirait des faux
             # positifs sur des traductions correctes.
+            # On compare ici DEUX LANGUES : `_partagent_un_mot_bilingue` (exonymes déclarés
+            # par la charte + finale variable + squelette consonantique) au lieu de la
+            # version monolingue, qui alertait sur Turin/Torino — le bruit exact que la
+            # remarque ci-dessus décrit.
             for champ, libelle in (("lieu", "lieu"), ("ville", "ville")):
                 a, b = (r.get(champ) or "").strip(), (orig.get(champ) or "").strip()
                 ta, tb = _sig_tokens(a), _sig_tokens(b)
-                if ta and tb and not _partagent_un_mot(ta, tb):
+                if ta and tb and not _partagent_un_mot_bilingue(ta, tb):
                     lines.append(f"  ⚠ {libelle:<13}: « {a[:35]} » vs « {b[:35]} » chez "
                                  f"l'original — aucun mot commun (exonyme ou contamination ?)")
 
@@ -390,7 +617,8 @@ def main(argv: list[str]) -> int:
           f"nature, dates de traduction) ===")
     if n_avert:
         print(f"=== {n_avert} fiche(s) avec au moins un ⚠ à VÉRIFIER À LA MAIN "
-              f"(non bloquant : titre publié, lieu traduit, description maigre) ===")
+              f"(non bloquant : titre publié, titre traduit, lieu traduit, "
+              f"description maigre) ===")
     return 0 if n_complete == len(ids) else 1
 
 

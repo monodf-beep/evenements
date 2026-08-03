@@ -47,6 +47,10 @@ from utils.lang import detect_lang, effective_lang
 from scripts.scraper_events import init_db
 from scripts.publisher_as import publish_to_as
 from scripts.link_translations_as import _post_link
+# Portillon de justesse du titre traduit (C2 de docs/GO_NOGO_TRADUCTION.md). Défini dans
+# batch_report parce que c'est là que vit la doctrine des contrôles de justesse et la
+# seule définition du dépôt de « racine commune » — deux copies divergeraient.
+from scripts.batch_report import verdict_titre_traduit
 from utils.voix import voix_block
 
 log = get_logger("translate-events")
@@ -347,6 +351,15 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
                     tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
                 except (ValueError, TypeError):
                     tr_art_title = ""
+        # Même portillon que dans `_translate_one` : une re-traduction repart de la même
+        # matière et peut dériver de la même façon. Refuser ici ne perd rien — le jumeau
+        # existant reste EN L'ÉTAT (ni base ni WP touchés) et la commande est rejouable.
+        verdict, motif = verdict_titre_traduit([tr["title"], tr_art_title], orig)
+        if verdict == "suspect":
+            log.error("[jumeau %s] REFUS — titre re-traduit incohérent avec l'original %s : "
+                      "« %s » — %s. Fiche laissée intacte.",
+                      tw["id"], orig["id"], (tr_art_title or tr["title"])[:70], motif)
+            return "refus"
         conn.execute(
             "UPDATE events_raw SET title=?, description=?, article_title=?, enrich_data=?, "
             "translated_at=datetime('now') WHERE id=?",
@@ -450,6 +463,44 @@ def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
                 tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
             except (ValueError, TypeError):
                 tr_art_title = ""
+
+    # PORTILLON DE JUSTESSE (C2 de docs/GO_NOGO_TRADUCTION.md) — le SEUL filet sur ce
+    # chemin : ce script publie DIRECTEMENT (publish_to_as ci-dessous), sans la porte de
+    # complétude de publish_batch_as, et la relecture de site_audit est structurellement
+    # aveugle à une contamination cohérente (elle compare le site à la base, or c'est la
+    # base qui est fausse). Sans ce contrôle, rien entre le LLM et la mise en ligne.
+    #
+    # Le verdict compare le titre PRODUIT à l'identité FACTUELLE de l'original (titre
+    # scrapé, lieu, ville, organisateur, territoire) — jamais à la description, qui est
+    # précisément le canal par lequel WP#6798 a été contaminé, ni au titre de la fiche
+    # traduite elle-même, qui se confirmerait tout seul. Il s'ABSTIENT dès que le titre
+    # ne nomme rien de vérifiable : la réécriture éditoriale du titre est autorisée par
+    # la charte (_charte_prompt), une traduction légitime ne partage souvent aucun mot
+    # avec sa source, et une alerte qui crie tous les jours finit ignorée.
+    #
+    # POURQUOI BLOQUANT ICI, alors que le même verdict n'est qu'un ⚠ dans batch_report :
+    # refuser ici, ce n'est pas retenir une fiche, c'est ne pas en CRÉER une. L'original
+    # n'est pas marqué (translated_at reste vide), il se represente au run suivant, et le
+    # LLM étant stochastique un titre correctement ancré passera. Le coût d'un faux refus
+    # est un appel API et un jour de retard ; le coût d'un faux passage est une fiche
+    # italienne en ligne portant le titre d'un autre événement — l'incident qui a mis ce
+    # cron en pause. À l'inverse, un ✗ dans batch_report retiendrait une fiche déjà
+    # produite, sans recours : d'où l'asymétrie, assumée.
+    # ⚠ CONSÉQUENCE À CONNAÎTRE : un original systématiquement refusé reste en tête de la
+    # file (tri par score) et consomme un créneau de --cap à chaque run. C'est VOULU — un
+    # refus répété signale une fiche dont la matière est polluée en base, à réparer
+    # (repair_polluted_descriptions / audit_dedupe_damage), pas à traduire — mais avec
+    # --cap 2, deux refus persistants arrêtent la traduction. Le message Slack les nomme.
+    verdict, motif = verdict_titre_traduit([tr["title"], tr_art_title], ev)
+    if verdict == "suspect":
+        log.error("[%s] REFUS — titre traduit incohérent avec l'original : « %s » — %s "
+                  "(original : « %s » · %s, %s). Rien n'a été publié.",
+                  ev["id"], (tr_art_title or tr["title"])[:70], motif,
+                  (ev.get("title") or "")[:40], (ev.get("lieu") or "—")[:30],
+                  (ev.get("ville") or "—")[:20])
+        return "refus"
+    log.debug("[%s] titre traduit : %s (%s)", ev["id"], verdict, motif)
+
     new_ev = dict(ev)
     new_ev.update({
         "title": tr["title"], "description": tr["description"],
@@ -552,6 +603,15 @@ def main(argv=None) -> int:
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
         "AND COALESCE(translation_of,0)=0 AND COALESCE(translated_at,'')='' "
+        # JAMAIS traduire une fiche que la MACHINE a elle-même produite (C3 de
+        # docs/GO_NOGO_TRADUCTION.md). `translation_of` ne suffit pas : c'est justement le
+        # rôle de scripts/unlink_bad_translations.py de l'effacer sur une paire mal appariée,
+        # et la fiche machine redevient alors candidate — elle serait re-traduite vers sa
+        # langue d'origine, produisant une 3e fiche, doublon de l'original, avec la dérive
+        # de titre appliquée deux fois. `url_source` est le SEUL marqueur qui survit au
+        # déliage : il est posé à l'insertion sous la forme « translated:<id>:<lang> »
+        # (voir _translate_one) et la colonne est UNIQUE, donc jamais réécrite.
+        "AND COALESCE(url_source,'') NOT LIKE 'translated:%' "
         # Déjà une jumelle NATIVE liée (link_translations_as, mécanisme B — source déjà
         # bilingue) : ne pas retraduire, ce serait une 3e fiche redondante.
         "AND id NOT IN (SELECT translation_of FROM events_raw "

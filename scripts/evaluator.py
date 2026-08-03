@@ -23,6 +23,7 @@ from utils.logger import get_logger
 from utils import usage
 from utils.eventness import non_event_reason
 from utils.sources import is_excluded_event, load_excluded_events_filter
+from scripts.perimetre import ville_hors_perimetre
 from scripts.scraper_events import init_db
 
 log = get_logger("evaluator")
@@ -66,7 +67,18 @@ marchés (fleurs, antiquaires, brocante, artisanat), sport, cinéma, fêtes popu
     Thonon, Chamonix, Tarentaise, Maurienne, Chablais, autour des lacs du Bourget et d'Annecy…
   • Piémont (Piemonte) : Turin, Cuneo, Alba, Asti, Alessandria, Biella, Novara, Langhe, Monferrato…
   • Vallée d'Aoste (Vallee-Aoste) : Aoste, Courmayeur, Cervinia, Cogne, Saint-Vincent…
-  • Nice / Alpes-Maritimes (06) : Nice, Cannes, Antibes, Grasse, Menton, Côte d'Azur…
+  • Comté de Nice = ARRONDISSEMENT DE NICE uniquement (territoire "Nice") : Nice, Menton,
+    Villefranche-sur-Mer, Beaulieu-sur-Mer, Saint-Jean-Cap-Ferrat, Roquebrune-Cap-Martin,
+    Cap-d'Ail, Sospel, la Roya (Breil, Saorge, Tende), la Vésubie (Saint-Martin-Vésubie,
+    Roquebillière), la Tinée (Saint-Étienne-de-Tinée, Isola), Levens, Contes, Puget-Théniers…
+    ⚠️ Comté de Nice ≠ Alpes-Maritimes. L'ARRONDISSEMENT DE GRASSE est HORS PÉRIMÈTRE :
+    Cannes, Antibes (et Juan-les-Pins), Grasse, Cagnes-sur-Mer, Vence, Saint-Paul-de-Vence,
+    Mougins, Valbonne (et Sophia Antipolis), Le Cannet, Vallauris, Mandelieu-la-Napoule,
+    Mouans-Sartoux, Villeneuve-Loubet, Saint-Laurent-du-Var, Carros, Biot, Théoule-sur-Mer…
+    → "hors_perimetre": true, score 0, MÊME si la source est étiquetée « Nice », « 06 »,
+    « Alpes-Maritimes » ou « Côte d'Azur ». La frontière est le fleuve Var : à l'ouest et
+    au sud-ouest du Var (Cannes, Antibes, Grasse) = hors ; Nice et l'arrière-pays niçois,
+    la vallée du Var côté est, Menton et les vallées = dans le périmètre.
 Une source régionale/presse déborde souvent (Lyon, Grenoble, Valence, Avignon, Marseille, Gap,
 Milan hors Piémont, Gênes, Turin OK mais Bologne non…). Si le lieu réel est HORS de ces 4
 territoires → "hors_perimetre": true, "est_evenement": false, score 0. Un simple lieu cité en
@@ -94,6 +106,45 @@ publique) → "est_evenement": false et score 0. Sinon → true, continue.
   rencontres avec un cinéaste. Le critère : est-ce un simple passage à l'affiche (exclu)
   ou un rendez-vous cinéma à part entière (gardé) ?
 
+ÉTAPE 1 bis — PUBLIC VISÉ (pas seulement public ADMIS). Agenda Sabauda s'adresse à des
+HABITANTS et à des VISITEURS, pas à des CONGRESSISTES. Le fait qu'une inscription soit
+ouverte à tous ne suffit pas : beaucoup de congrès acceptent le public et n'intéressent
+personne hors du métier concerné.
+LA QUESTION À TE POSER, et la seule : « à supposer que je n'exerce PAS ce métier et que
+je ne sois PAS chercheur dans ce domaine, est-ce que j'ai une raison d'y aller ? »
+  → Si la réponse est NON, c'est une manifestation PROFESSIONNELLE :
+    "public_vise": "professionnel", "est_evenement": false, score 0.
+    Relèvent de ce cas : congrès et colloques scientifiques ou universitaires, salons
+    B2B et rencontres d'affaires, conventions et séminaires d'entreprise, journées
+    d'étude ou assises d'une filière, symposiums, workshops de spécialistes, remises de
+    prix internes à une profession — MÊME ouverts sur inscription, même gratuits, même
+    dans un lieu prestigieux. Cas réels écartés par Franck le 2026-08-02 : « IASP World
+    Conference », « Colloque International Villes et Santé Mentale », « EVO 2026 ».
+    Indices convergents : public désigné comme « professionnels », « experts »,
+    « chercheurs », « acteurs de la filière », « décideurs » ; programme en sessions
+    parallèles avec appel à communications ; tarif « exposant » / « délégué » ; langue
+    de travail anglaise pour un public de spécialistes ; organisateur = société savante,
+    fédération professionnelle, laboratoire, chambre consulaire.
+  → Sinon "public_vise": "grand_public", et tu CONTINUES l'évaluation normalement.
+
+  ⚠️ PIÈGE CENTRAL, à ne pas rater : NE JUGE PAS SUR LE MOT DU TITRE. « Congrès »,
+  « colloque », « salon », « summit », « forum », « rencontre », « conférence » ne
+  décident RIEN par eux-mêmes — un filtre sur ces mots viderait une catégorie entière
+  du site. Restent PLEINEMENT dans le périmètre, et se scorent normalement :
+    • Salon du livre, salon des vins, salon des antiquaires, salon du mariage grand public ;
+    • foire artisanale, foire commerciale ouverte au public, marché de créateurs ;
+    • rencontre / dédicace avec un auteur, un illustrateur, un cinéaste ;
+    • conférence grand public d'un musée, d'une bibliothèque, d'une société d'histoire
+      locale, d'une université populaire ; cycle de conférences tout public ;
+    • café philo, café géo, veillée, conférence-débat citoyenne, café des sciences ;
+    • congrès d'une association de passionnés qui ouvre des animations au public
+      (philatélie, minéraux, généalogie, modélisme) — la partie publique compte.
+  La catégorie « Conférences & Rencontres » est l'une de nos onze catégories et doit
+  rester active : un événement de savoir destiné à tous est exactement ce qu'on cherche.
+  Le partage se fait sur À QUI ÇA S'ADRESSE, jamais sur le format ni sur le titre.
+  En cas de doute réel sur le public, considère que c'est du grand public (on préfère
+  un catalogue un peu large à une catégorie vidée).
+
 ÉTAPE 2 — SCORE D'IMPORTANCE (0-10). PAS de profondeur culturelle exigée : on mesure si
 l'événement est IMPORTANT (va réunir du monde, compte dans le territoire). Note chaque critère :
 
@@ -109,14 +160,18 @@ l'événement est IMPORTANT (va réunir du monde, compte dans le territoire). No
   qu'on trouve partout = 0.
 
 score = somme des points (0-10). N'EXCLUS PAS le grand public, le sport, la gastronomie ni les
-marchés. Écarte seulement (score bas) le TRÈS confidentiel et le PUREMENT commercial (salon/foire
-commerciale de vente). Le méga-concert de tournée est admis mais sans bonus « territoire ».
+marchés. Écarte seulement (score bas) le TRÈS confidentiel et le PUREMENT commercial (déstockage,
+vente privée, showroom de marque). ⚠️ « Purement commercial » ne vise PAS les salons et foires
+grand public à dimension culturelle ou de terroir (salon du livre, salon des vins, foire
+artisanale, marché de créateurs) : ceux-là se scorent normalement, comme n'importe quel autre
+événement. Le méga-concert de tournée est admis mais sans bonus « territoire ».
 
 CATÉGORIE : choisis-en UNE parmi : {categories}.
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant/après :
 {{"hors_perimetre": <true|false>,
   "territoire": "<Savoie|Piemonte|Vallee-Aoste|Nice ou "" si hors périmètre>",
+  "public_vise": "<grand_public|professionnel>",
   "est_evenement": <true|false>,
   "categorie": "<une catégorie de la liste>",
   "criteres": {{
@@ -229,6 +284,32 @@ def main(argv=None) -> int:
                          "WHERE id=?", (ev["id"],))
             log.info("[%d] exclu (règle éditoriale) → rejeté | %s", ev["id"], ev.get("title", "")[:50])
             continue
+        # Pré-filtre GRATUIT quater : PÉRIMÈTRE GÉOGRAPHIQUE sur le champ `ville`
+        # (charte §2). Le « Comté de Nice » est l'arrondissement de NICE : une fiche
+        # de l'arrondissement de GRASSE (Cannes, Antibes, Grasse, Cagnes-sur-Mer,
+        # Vence…) n'a pas sa place au catalogue. Décision déterministe et exacte,
+        # avant tout appel LLM. Si `ville` est vide (venues.py n'a rien trouvé),
+        # on ne tranche pas ici : l'ÉTAPE 0 du prompt reprend la main.
+        #
+        # POURQUOI ICI et pas à la collecte : `ville` est vide au scraping (cron 8h00,
+        # scripts/scraper_events.py n'insère pas cette colonne) et n'est renseignée
+        # qu'à 8h50 par scripts/venues.py. Un filtre posé dans le scraper ne verrait
+        # que des chaînes vides et ne rejetterait jamais rien. L'évaluateur (9h00) est
+        # le premier point du pipeline où la donnée existe, et c'est l'entonnoir
+        # unique : toute fiche y passe en 'pending' avant catalogue ou home.
+        # Le rattrapage des fiches dont la `ville` arrive APRÈS 9h (venues.py plafonné,
+        # page injoignable, autocomplete.py lancé du back-office) est dans
+        # scripts/purge_out_of_zone.py, qui repasse sur une file plus large.
+        if ville_hors_perimetre(ev.get("ville", "")):
+            conn.execute(
+                "UPDATE events_raw SET statut='rejected', llm_score=0, "
+                "llm_justification=? WHERE id=?",
+                ("Hors périmètre — %s est dans l'arrondissement de Grasse ; le Comté "
+                 "de Nice couvre l'arrondissement de Nice (charte §2)."
+                 % (ev.get("ville") or "").strip(), ev["id"]))
+            log.info("[%d] arrondissement de Grasse (%s) → rejeté | %s", ev["id"],
+                     (ev.get("ville") or "").strip(), ev.get("title", "")[:50])
+            continue
         # Pré-filtre GRATUIT : un événement déjà passé est rejeté sans appeler le
         # LLM (on ne paie pas, et on ne publie que du à-venir / en cours).
         if is_past_event(ev, today):
@@ -263,13 +344,18 @@ def main(argv=None) -> int:
             continue
         est = result.get("est_evenement", True)
         hors = bool(result.get("hors_perimetre", False))
+        # PUBLIC VISÉ (charte §3) : un congrès/colloque/salon B2B s'adresse à des
+        # congressistes, pas à nos lecteurs — rejet même si l'inscription est ouverte.
+        # Défaut PERMISSIF : champ absent ou valeur inattendue → grand public. Un
+        # modèle qui oublierait la clé ne doit pas vider « Conférences & Rencontres ».
+        pro = (result.get("public_vise") or "").strip().lower() == "professionnel"
         score = int(result.get("score", 0) or 0)
         # ÉTAPE 0 : hors des 4 territoires → rejet (2e garde après le filtre
         # déterministe du scraper : rattrape le lieu cité en passant que le
         # match de mots-clés laisse passer). Sinon, gate est_evenement + importance.
         # Un vrai événement n'est JAMAIS rejeté d'office : score >= RETAIN_MIN_SCORE
         # → à valider (mise en avant home) ; sinon → catalogue (site dédié).
-        if hors or not est:
+        if hors or not est or pro:
             new_statut, score = "rejected", 0
         elif score >= RETAIN_MIN_SCORE:
             new_statut = "evaluated"
@@ -282,6 +368,10 @@ def main(argv=None) -> int:
         justif = result.get("justification", "")
         if hors:
             justif = "Hors périmètre — " + justif if justif else "Hors périmètre."
+        elif pro:
+            prefixe = ("Public professionnel (congrès/colloque/salon B2B), pas le grand "
+                       "public — charte §3")
+            justif = f"{prefixe} — {justif}" if justif else prefixe + "."
         detail = json.dumps(result.get("criteres") or {}, ensure_ascii=False)
         conn.execute("""
         UPDATE events_raw SET
@@ -301,8 +391,8 @@ def main(argv=None) -> int:
         if new_terr != ev.get("territoire"):
             log.info("[%d] territoire corrigé : %s → %s", ev["id"],
                      ev.get("territoire"), new_terr)
-        log.info("[%d] event=%s hors=%s score=%d statut=%s cat=%s | %s", ev["id"], est,
-                 hors, score, new_statut, result.get("categorie", "")[:20],
+        log.info("[%d] event=%s hors=%s pro=%s score=%d statut=%s cat=%s | %s", ev["id"],
+                 est, hors, pro, score, new_statut, result.get("categorie", "")[:20],
                  ev.get("title", "")[:50])
 
     conn.commit()

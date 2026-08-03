@@ -111,29 +111,57 @@ Mont Rose
 valdotain
 valdotaine
 
-# ── Nice / Alpes-Maritimes (06) ──
+# ── Comté de Nice = ARRONDISSEMENT DE NICE (charte §2, arbitrage Franck 2026-08-02) ──
+# ⚠️ Comté de Nice ≠ Alpes-Maritimes. Les communes de l'ARRONDISSEMENT DE GRASSE
+# (Cannes, Antibes, Grasse, Cagnes-sur-Mer, Vence, Mougins, Valbonne/Sophia Antipolis,
+# Le Cannet, Mandelieu-la-Napoule, Mouans-Sartoux, Saint-Paul-de-Vence, Vallauris,
+# Villeneuve-Loubet, Saint-Laurent-du-Var, Carros…) ont été RETIRÉES de cette liste le
+# 2026-08-03 : elles sont hors périmètre, pas « sans étiquette ».
+#
+# Ce fichier n'est PAS l'endroit où se décide l'appartenance d'une commune : c'est un
+# filtre POSITIF grossier, cherché dans du TEXTE LIBRE (titre + description), donc
+# incapable de trancher un nom ambigu (« Vence » ⊂ « Provence », « Grasse » ⊂ « grasse
+# matinée », « Cannes » ⊂ « cannes à pêche »). La décision exacte se prend sur le champ
+# `ville`, via utils.sources.est_arrondissement_grasse() (liste officielle des 62
+# communes, config/communes_comte_de_nice.json), appliquée dans scripts/evaluator.py
+# (pré-filtre gratuit) et scripts/purge_out_of_zone.py (rattrapage rétroactif).
+#
+# « Alpes-Maritimes », « Cote d'Azur » et « Riviera » sont VOLONTAIREMENT conservés :
+# ce sont des marqueurs de département/région qui couvrent les deux arrondissements.
+# Les retirer ferait perdre de vrais événements de l'arrondissement de Nice annoncés
+# sous ces libellés par une source large ; les garder ne fait qu'ADMETTRE le candidat,
+# qui sera trié plus loin sur sa `ville`.
 Nice
 Alpes-Maritimes
-Cannes
-Antibes
-Grasse
-Menton
-Cagnes
-Vence
-Mougins
-Valbonne
-Villefranche
-Saint-Paul-de-Vence
-Beaulieu
-Juan-les-Pins
-Cap-Ferrat
-Cap d'Antibes
-Sophia Antipolis
-Roquebrune
-Le Cannet
-Mandelieu
-Carros
-Saint-Laurent-du-Var
-Villeneuve-Loubet
 Cote d'Azur
 Riviera
+Menton
+Villefranche-sur-Mer
+Beaulieu-sur-Mer
+Saint-Jean-Cap-Ferrat
+Cap-d'Ail
+Roquebrune-Cap-Martin
+Levens
+Contes
+L'Escarene
+Peille
+Peillon
+Sospel
+Breil-sur-Roya
+Saorge
+Tende
+La Brigue
+Saint-Martin-Vesubie
+Roquebilliere
+Lantosque
+Saint-Etienne-de-Tinee
+Isola
+Beuil
+Valberg
+Auron
+Puget-Theniers
+Roquesteron
+Vallee de la Roya
+Vallee de la Vesubie
+Vallee de la Tinee
+Paillon
