@@ -95,7 +95,11 @@
 # sur un état stabilisé, et avant le chien de garde de 12h qui, lui, ne regarde que
 # l'ABSENCE de passages. L'agent n'écrit rien et ne poste rien lui-même : il produit un
 # texte, le script l'envoie (cf. sa docstring).
-0 11 * * * /root/evenements/scripts/bilan_matin.sh >> logs/bilan_matin.log 2>&1
+# ⚠️ Le `cd` n'est PAS décoratif : cron exécute avec cwd=$HOME (/root), donc sans lui la
+# redirection relative viserait /root/logs/, qui n'existe pas — le shell échoue à ouvrir le
+# fichier et la commande ne tourne JAMAIS. Panne quotidienne et parfaitement silencieuse.
+# Vérifié le 2026-08-03 avant installation : `cd /root && sh -c ': >> logs/x'` échoue.
+0 11 * * * cd /root/evenements && scripts/bilan_matin.sh >> logs/bilan_matin.log 2>&1
 # Chien de garde 12h — LES CRONS TOURNENT-ILS ENCORE ? Ajouté le 2026-08-03, c'était le
 # manque le plus sérieux du dispositif : quatorze automatisations font vivre ce site, et
 # si le scraper échouait demain matin, RIEN ne sonnait. La santé de la home (13h) et la
