@@ -112,7 +112,22 @@ def main(argv=None) -> int:
     print("ARRONDISSEMENT DE GRASSE — hors périmètre depuis le 2026-08-02 (charte §2)")
     print("=" * 72)
     print(f"  TOTAL en base .................. {len(grasse)}")
-    print(f"    dont EN LIGNE (wp_post_id) ... {len(online)}   ← à dépublier à la main")
+    # ⚠️ FORMULATION CORRIGÉE LE 2026-08-03. Cette ligne annonçait « EN LIGNE … ← à
+    # dépublier à la main ». C'était FAUX, et le contrôle du jour l'a prouvé : les 21
+    # fiches ainsi comptées avaient toutes un wp_post_id_as, mais AUCUNE n'était en ligne
+    # — leurs posts avaient été corbeillés lors d'un ménage antérieur et la base avait
+    # gardé l'identifiant. Au même instant, scripts/audit_wp_ghosts.py — qui INTERROGE
+    # WordPress — rapportait « ① rejetés en ligne : 0 ».
+    # Le test ci-dessus (`en_ligne`) ne demande rien au site : il regarde si un identifiant
+    # traîne en base. Un identifiant n'est pas une preuve de publication. C'est exactement
+    # l'erreur qui a produit la fausse alerte « 61 posts supprimés » du 2026-08-02.
+    # On dit donc ce qu'on MESURE, et on renvoie à qui sait vraiment.
+    print(f"    dont porteuses d'un ID WP .... {len(online)}   ← NON vérifié auprès du site")
+    if online:
+        print("        (un identifiant en base ne prouve PAS que le post est publié : il")
+        print("         survit à une mise à la corbeille. Pour savoir ce qui est vraiment")
+        print("         en ligne : python -m scripts.audit_wp_ghosts ;")
+        print("         pour remettre la base d'accord : python scripts/reconcile_wp_deleted.py)")
     print(f"    dont purgeables .............. {len(purgeables)}   ← ce que "
           f"purge_out_of_zone.py --apply rejettera")
     print(f"    dont déjà écartées ........... {len(inertes)}   ← statut hors "
@@ -165,8 +180,13 @@ def main(argv=None) -> int:
     print("  3) purge des non publiées, si l'aperçu te convient :")
     print("       python scripts/purge_out_of_zone.py --apply")
     print("     → statut='rejected', réversible en base ; --hard supprimerait les lignes.")
-    print("  4) les fiches EN LIGNE se dépublient à la main (corbeille WordPress),")
-    print("     jumeaux FR/IT ensemble — aucun script de ce lot ne le fait.")
+    print("  4) les fiches PORTEUSES D'UN ID WP : vérifier d'abord lesquelles sont")
+    print("     réellement en ligne — python -m scripts.audit_wp_ghosts — car un")
+    print("     identifiant survit à une corbeille. Celles qui le sont vraiment se")
+    print("     retirent avec python -m scripts.trash_by_ids <ids> --statut rejected")
+    print("     --motif \"…\" --apply (jumeaux FR/IT ENSEMBLE, sinon l'italien reste")
+    print("     seul en ligne). Pour les autres, c'est le LIEN qui est périmé :")
+    print("     python scripts/reconcile_wp_deleted.py les horodate sans rien casser.")
     print("=" * 72 + "\n")
     return 0
 
