@@ -43,7 +43,11 @@ from utils.deplacement import (DEPLACEMENT_MIN, HORIZON_JOURS, MAX_SCORE,
                                deplacement_raisons, deplacement_score)
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-SEUILS = (3, 4, 5, 6)
+# TOUS les seuils possibles, pas une sélection. La première version s'arrêtait à 6 — soit
+# exactement AVANT la valeur sur laquelle Franck hésitait (« 6 ou 7 »). Un tableau qui
+# s'arrête juste avant la question oblige à refaire le calcul à côté, donc à sortir de
+# l'outil pour décider, donc à décider sans lui. Les huit lignes ne coûtent rien.
+SEUILS = tuple(range(3, 9))
 
 
 def _jour(v):
@@ -127,6 +131,27 @@ def main(argv=None) -> int:
     print("\n> Un zéro dans une colonne = cette carte de la home reste VIDE. C'est le seul\n"
           "> chiffre qui compte ici : le total global peut rester confortable pendant qu'un\n"
           "> territoire disparaît de la section.\n")
+
+    # LE VIVIER ITALIEN, plus étroit que tous les autres — et c'est lui qui casse en
+    # premier. La home italienne ne puise que dans les fiches TRADUITES, or seules
+    # Savoie et Comté de Nice le sont. Un plancher qui laisse 30 fiches au total peut
+    # n'en laisser que deux de ce côté-là : le tableau ci-dessus, lu par colonne, ne le
+    # montre pas, parce qu'il compte les fiches françaises. Constat du 2026-08-03, en
+    # arbitrant entre 6 et 7.
+    IT = ("Savoie", "Nice")
+    print("## Le versant ITALIEN, qui casse en premier\n")
+    print("La home italienne ne puise que dans les fiches traduites — Savoie et Comté de "
+          "Nice.\nDeux places à remplir, et ce vivier-là seul pour les remplir.\n")
+    print("| Plancher | Candidates traduisibles (Savoie + Nice) |")
+    print("|---:|---:|")
+    for s in SEUILS:
+        n = sum(1 for note, lot in notes.items() if note >= s
+                for e in lot if any(t in (e.get("territoire") or "") for t in IT))
+        alerte = "  ⚠️ moins de 2 par place" if n < 4 else ""
+        print(f"| **{s}** | {n} |{alerte}")
+    print("\n> Sous quatre candidates, il n'y a plus de marge : deux arrivent à terme et la\n"
+          "> section italienne se vide. Plus d'exigence se gagne alors en TRADUISANT et en\n"
+          "> ÉVALUANT davantage, pas en relevant le plancher.\n")
 
     # Ce qu'on perdrait en montant d'un cran — nommément, pas en volume.
     perdus = [e for n, lot in notes.items()
