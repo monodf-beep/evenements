@@ -127,7 +127,16 @@ def main(argv=None) -> int:
         "SELECT id, title, wp_post_id_as FROM events_raw "
         "WHERE COALESCE(wp_post_id_as,'') <> '' AND duplicate_of IS NULL").fetchall()]
 
-    ok = fixed = ambigu = introuvable = 0
+    # Qui revendique déjà quel post ? Indispensable pour ne pas créer de collision (voir
+    # le garde-fou plus bas). Construit AVANT la boucle, sur l'état initial.
+    proprietaire: dict[int, list[int]] = {}
+    for ev in rows:
+        try:
+            proprietaire.setdefault(int(ev["wp_post_id_as"]), []).append(ev["id"])
+        except (TypeError, ValueError):
+            pass
+
+    ok = fixed = ambigu = introuvable = conflit = 0
     for ev in rows:
         cur = str(ev.get("wp_post_id_as") or "").strip()
         matches = index.get(_norm(ev.get("title", "")), [])
@@ -146,16 +155,59 @@ def main(argv=None) -> int:
         if str(wp_id) == cur:
             ok += 1
             continue
+        # ⚠️ GARDE-FOU AJOUTÉ LE 2026-08-03 — le script se protégeait d'UN cas (une ligne
+        # locale avec PLUSIEURS candidats WP → « ambigu ») et jamais du cas SYMÉTRIQUE :
+        # plusieurs lignes locales convergeant vers le MÊME post. Il écrivait sans jamais
+        # demander si quelqu'un d'autre revendiquait déjà cet id.
+        #
+        # Ce n'est pas théorique. Le dry-run du 2026-08-03 proposait six corrections dont
+        # au moins trois auraient créé un doublon, parce que la correspondance se fait par
+        # TITRE et que le catalogue est BILINGUE : une paire FR/IT porte souvent le même
+        # titre, et deux versions d'un même événement aussi.
+        #   • bo 528 « Orlando » → 2340, alors que la ligne 3547 pointe déjà 2340 ;
+        #   • bo 3517 « Voci riapparse » → 729, déjà revendiqué par la ligne 1148 ;
+        #   • bo 3495 « Marisa Merz » → 763, déjà revendiqué par la ligne 959.
+        # Deux lignes locales sur un même post, c'est exactement l'anomalie que
+        # scripts/audit_wp_ghosts.py signale — on la fabriquerait en croyant réparer.
+        #
+        # En cas de conflit on NE TRANCHE PAS : départager deux fiches homonymes demande
+        # de regarder les dates et le lieu, pas seulement le titre. On signale, on laisse
+        # le lien en place, et la décision reste humaine.
+        deja = [i for i in proprietaire.get(wp_id, []) if i != ev["id"]]
+        if deja:
+            conflit += 1
+            log.warning("[bo %s] « %s » : WP#%s est DÉJÀ revendiqué par la/les ligne(s) %s "
+                        "— non modifié (départager demande de comparer dates et lieu).",
+                        ev["id"], title, wp_id, deja)
+            continue
+
         fixed += 1
         log.info("[bo %s] « %s » : wp_post_id_as %s → %s %s",
                  ev["id"], title, cur, wp_id, "" if args.apply else "(dry-run)")
         if args.apply:
             conn.execute("UPDATE events_raw SET wp_post_id_as=? WHERE id=?", (wp_id, ev["id"]))
             conn.commit()
+            # L'état de propriété évolue au fil de la boucle : la ligne cède son ancien
+            # post et prend le nouveau, sinon deux corrections successives pourraient
+            # converger vers le même id sans que la seconde le voie.
+            try:
+                proprietaire.get(int(cur), []).remove(ev["id"])
+            except (TypeError, ValueError):
+                pass
+            proprietaire.setdefault(wp_id, []).append(ev["id"])
 
     conn.close()
-    log.info("Bilan — déjà bons=%d · corrigés=%d · ambigus=%d · introuvables=%d%s",
-             ok, fixed, ambigu, introuvable, "" if args.apply else "  (dry-run : rien écrit)")
+    # « introuvable » ne veut PAS dire « lien cassé » : l'inventaire WP ne contient pas
+    # les posts en CORBEILLE (status=any les exclut). Une ligne dont le post a été
+    # corbeillé — il y en a plusieurs dizaines, cf. scripts/reconcile_wp_deleted.py —
+    # tombe donc ici sans qu'il y ait rien à réparer. Le dit pour qu'on ne lise pas 283
+    # comme 283 avaries.
+    log.info("Bilan — déjà bons=%d · corrigés=%d · ambigus=%d · conflits=%d · "
+             "sans correspondance=%d%s",
+             ok, fixed, ambigu, conflit, introuvable,
+             "" if args.apply else "  (dry-run : rien écrit)")
+    log.info("Rappel : « sans correspondance » inclut tous les posts en CORBEILLE "
+             "(absents de l'inventaire) — ce ne sont pas des liens à réparer.")
     if fixed and not args.apply:
         log.info("→ Relance avec --apply pour écrire, puis scripts/refill_images_as.py.")
     return 0

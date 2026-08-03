@@ -612,6 +612,39 @@ def _cle_commune(nom: str) -> str:
     return re.sub(r"[^a-z]", "", s)
 
 
+def _cherche_commune(ville: str, ensemble: set[str]) -> bool:
+    """La ville appartient-elle à cet ensemble de communes, y compris sous une forme
+    ENRICHIE d'un quartier, d'une mention postale ou d'un nom d'usage ?
+
+    Le nom exact ne suffit pas : la donnée réelle contient « Cannes-la-Bocca » (la Bocca
+    est un quartier de Cannes), « Antibes Juan-les-Pins » (nom d'usage de la commune
+    d'Antibes) et « Nice Cedex 1 ». Mesuré le 2026-08-03 : ces trois formes passaient au
+    travers du filtre, donc trois façons d'écrire Cannes ou Antibes échappaient à
+    l'exclusion de l'arrondissement de Grasse.
+
+    On essaie donc le nom complet, puis des PRÉFIXES DE MOTS de plus en plus courts, en
+    gardant le plus long qui corresponde. On travaille sur des MOTS et jamais sur des
+    sous-chaînes : « Saint-Paul-de-Vence » ne doit pas être confondu avec « Vence », qui
+    est une commune distincte — or l'une contient l'autre en sous-chaîne. Le préfixe d'un
+    seul mot n'est retenu qu'à partir de 4 lettres, pour ne pas apparier sur « la »,
+    « le » ou « les ».
+
+    Limite assumée : un homonyme hors zone dont le nom commence comme une commune d'ici
+    (« Le Mas-d'Agenais » face au « Mas » niçois) serait rattaché à tort. La conséquence
+    est d'écarter un événement qui était de toute façon hors périmètre — l'erreur va donc
+    dans le sens prudent."""
+    if not (ville or "").strip():
+        return False
+    if _cle_commune(ville) in ensemble:
+        return True
+    mots = [m for m in re.split(r"[^0-9A-Za-zÀ-ÖØ-öø-ÿ]+", ville) if m]
+    for n in range(len(mots) - 1, 0, -1):
+        prefixe = _cle_commune("".join(mots[:n]))
+        if (n >= 2 or len(prefixe) >= 4) and prefixe in ensemble:
+            return True
+    return False
+
+
 def communes_comte_de_nice() -> set[str]:
     global _comte_nice_cache
     if _comte_nice_cache is None:
@@ -635,7 +668,7 @@ def est_comte_de_nice(ville: str) -> bool | None:
     """
     if not (ville or "").strip():
         return None
-    return _cle_commune(ville) in communes_comte_de_nice()
+    return _cherche_commune(ville, communes_comte_de_nice())
 
 
 _grasse_cache: "set | None" = None
@@ -675,4 +708,4 @@ def est_arrondissement_grasse(ville: str) -> bool:
     """
     if not (ville or "").strip():
         return False           # ville inconnue : on n'exclut jamais sur une absence
-    return _cle_commune(ville) in communes_arrondissement_grasse()
+    return _cherche_commune(ville, communes_arrondissement_grasse())
