@@ -108,16 +108,46 @@ titre. Détail : `docs/CHARTE_EDITORIALE.md`.
 
 ---
 
-## Ce qui demande l'accord de Franck
+## Autonomie : réversible = seul, irréversible = jamais
 
-- Toute **suppression ou dépublication** d'une page visible du public ;
-- toute **modification du site WordPress** (snippets, pages, CSS) ;
-- l'**activation ou la modification d'un cron** ;
-- les **arbitrages éditoriaux** : défusionner, re-classer une fiche rejetée, trancher un
-  orphelin.
+**Arbitrage de Franck du 2026-08-03 : le site doit se tenir à jour tout seul.** Les
+permissions de `.claude/settings.json` ne demandent donc plus confirmation avant d'agir.
+La frontière n'est plus « écrire ou lire », elle est **« réversible ou non »**.
 
-Le reste — lecture, audits, dry-runs, correctifs de code, documentation — se fait sans
-demander.
+**Se fait seul, sans demander** — parce que ça se défait :
+
+- corbeille WordPress (`trash_by_ids`, `trash_wp_ids`, `reconcile_catalogue`) — un post
+  corbeillé se restaure en un clic ;
+- changements de `statut` (`purge_*`, `unreject_wp_online`) — une re-classification, pas
+  une perte de donnée ;
+- publication, enrichissement, dates, lieux, traduction — le pipeline normal ;
+- `git commit`, `git push` sur la branche de travail, `crontab`.
+
+**Interdit, et ça ne se négocie pas** — parce que ça ne se défait pas :
+
+- `rm -rf`, `git reset --hard`, `git clean`, `git push --force` ;
+- `--hard` sur les purges (il SUPPRIME les lignes au lieu de les rejeter) ;
+- `DELETE FROM`, `DROP TABLE`, `TRUNCATE` en SQL direct ;
+- `force=true` / `--force-delete` — la suppression DÉFINITIVE d'un post WordPress, qui
+  court-circuite la corbeille ;
+- lecture du `.env`.
+
+**Demande encore** : `apt`, `pip install`, `systemctl`, `reboot` — hors du projet ; et la
+modification de `.claude/settings.json` lui-même, pour qu'aucune session ne puisse élargir
+ses propres droits en silence.
+
+### Le filet, puisqu'il n'y a plus de confirmation
+
+`scripts/backup_db.py` tourne à 3h (`crontab.txt`). **Avant toute opération de masse,
+le relancer à la main** — la règle 4 reste valable, elle porte simplement sur soi-même
+plutôt que sur Franck. Et la corbeille WordPress n'est jamais vidée automatiquement.
+
+### Ce qui reste un arbitrage humain, même sans blocage technique
+
+Défusionner, re-classer une fiche que Franck a rejetée lui-même, trancher un orphelin,
+déployer du CSS sur le site : le harnais ne les empêche plus, **le jugement doit le
+faire**. Dans le doute sur une décision ÉDITORIALE — pas technique — proposer plutôt
+qu'agir.
 
 ---
 
