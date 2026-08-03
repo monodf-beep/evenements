@@ -160,6 +160,42 @@ description **d'origine**, pas seulement à l'avant-dernière.
 n'ont pas d'instantané et resteront à trancher à la main. Le correctif ne répare pas le
 passé, il garantit que le passif ne grossit plus.
 
+## Le diagnostic sans issue — vu, décrit, et irréparable
+
+Troisième forme du même motif, trouvée le 2026-08-03 : ni un état qu'on ne rouvre pas, ni
+une valeur qu'on ne recalcule pas, mais **un problème que l'outil censé le réparer ne peut
+pas voir**.
+
+`audit_wp_ghosts` signalait depuis toujours qu'un post WordPress était revendiqué par
+plusieurs lignes locales, en renvoyant vers `relink_wp_ids_as`. Or ce script **valide
+chaque ligne par le titre du post qu'elle vise** : il regarde `ligne → post`, jamais
+`post → lignes`. Les deux prétendantes portant le même titre que le post, chacune est
+« déjà bonne » prise isolément. Un doublon de lien lui est invisible **par construction** —
+vérifié sur WP#6365, dont son dry-run ne mentionne ni le post ni aucune des deux fiches.
+
+Le renvoi était donc une impasse polie : le rapport indiquait quoi faire, et l'outil
+indiqué ne faisait rien. On relisait la ligne chaque semaine sans jamais pouvoir la
+refermer.
+
+**Le dommage est mesurable.** Sur WP#6365 « Percorso in Rosso 2026 », les deux fiches ont
+été poussées vers le même post à trois secondes d'intervalle. La dernière a gagné, et
+c'était la MOINS complète : la page porte son score de 4 et n'a pas d'`article_title`,
+tandis que la fiche mieux notée et pourvue de son article a été écrasée. **La dernière
+arrivée gagne, pas la meilleure.** Sept autres conflits identiques attendaient le même
+arbitrage.
+
+`scripts/resolve_wp_collision.py` construit l'**index inverse** qui manquait (post →
+lignes), garde la plus complète sur des critères observables, détache les autres, et
+enregistre leur statut d'avant dans `unmerge_data` — poser un `merged` sans instantané
+recréerait, en une ligne d'inattention, le cul-de-sac fermé le matin même. Il refuse deux
+cas : dates incompatibles (deux événements différents sur une même page, pas deux copies)
+et complétude strictement égale (trancher à pile ou face une fiche publiée serait pire
+que ne rien faire). `--forcer` sert quand un humain a regardé.
+
+**La leçon** : quand un rapport renvoie vers un outil, vérifier que l'outil voit le cas.
+Un renvoi qui n'aboutit pas coûte plus cher qu'une absence de renvoi — il donne
+l'impression que la question est traitée.
+
 ## La même question, posée aux VALEURS
 
 Le 2026-08-03, le motif est réapparu sous une forme qui n'entrait dans aucune ligne du

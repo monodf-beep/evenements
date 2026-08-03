@@ -163,7 +163,12 @@ def main(argv=None) -> int:
           + (f", {rendues} description(s) rendue(s) à la gagnante." if rendues else ".")
           + (f"\n⚠️  {len(plan) - faites} n'ont PAS été modifiées — vérifier les logs."
              if faites < len(plan) else ""))
-    print(f"   Les fiches en '{STATUT_RECONSTITUE}' repasseront par l'évaluation de 9h.\n")
+    # Ne l'annoncer que si c'est vrai : une fusion RESTAURÉE reprend son statut d'avant et
+    # ne repasse par rien. Écrire la phrase dans tous les cas ferait attendre une
+    # ré-évaluation qui n'aura pas lieu (règle 6 — dire ce qui s'est produit).
+    if anciennes:
+        print(f"   Les {len(anciennes)} fiche(s) remises en '{STATUT_RECONSTITUE}' "
+              f"repasseront par l'évaluation de 9h.\n")
     log.info("Défusion : %d/%d appliquée(s) le %s", faites, len(plan), quand)
     return 0
 
