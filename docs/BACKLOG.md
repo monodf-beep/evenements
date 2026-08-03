@@ -647,8 +647,21 @@ Légende propriétaire : 🤖 Claude Code (repo) · 🧑 Franck (VPS/décision) 
 
 ### ⏳ Reste à faire
 - 🧑 **Déployer `cs-trash.php` sur OVH** : `push-wordpress.sh` échoue (`WP_DEPLOY_SSH` absent du `.env`).
-  Sinon **trasher à la main** les 8 doublons publiés (WP# 2319, 2356, 2329, 2340, 2323, 2205, 2271, 2228)
+  Sinon **trasher à la main** les doublons publiés (WP# 2319, 2356, 2329, 2323, 2205, 2271, 2228)
   dans wp-admin. Puis re-lancer le ménage pour les futurs.
+  > ⚠️ **WP#2340 RETIRÉ DE CETTE LISTE le 2026-08-03 — ce n'était PAS un doublon.**
+  > Vérifié sur la page servie : `/it/evenement/orlando-2/` déclare
+  > `<link rel="alternate" href="https://agendasabauda.eu/evenement/orlando/" hreflang="fr" />`.
+  > C'est la version ITALIENNE de la fiche française « Orlando » (Haendel, Opéra Nice Côte
+  > d'Azur, 29/09→06/10/2026), pas une copie. Le `-2` de l'adresse n'est pas une marque de
+  > doublon : c'est une collision de slug avec la version française, qui occupe déjà
+  > `orlando`. Les autres identifiants de cette liste que j'ai testés ne portent AUCUN
+  > `hreflang` — eux sont bien des doublons de même langue.
+  > La corbeiller aurait cassé la paire et laissé la fiche française orpheline. C'est
+  > exactement l'erreur que le rapprochement **par titre** fabrique sur un catalogue
+  > bilingue, et c'est pourquoi `scripts/relink_wp_ids_as.py` a reçu un garde-fou anti-
+  > collision le même jour. Une liste d'identifiants à supprimer, écrite une fois et jamais
+  > revérifiée, est une arme chargée laissée sur la table.
 - 🤖 **Durcir la résolution d'image** (bug Yerai) : (a) ne PAS re-résoudre quand une og:image valide
   existe ; (b) recherche Commons par **sujet** (artiste/événement), pas par **lieu** (« Fondation Maeght »
   → l'architecte Sert au lieu de Yerai Cortés) ; (c) agent vision qui rejette le hors-sujet.
