@@ -1,0 +1,108 @@
+# Agenda Sabauda — règles de travail
+
+Agenda culturel bilingue FR/IT. Chaîne : scraping → dédoublonnage → dates → lieux →
+évaluation → enrichissement → publication WordPress. Base SQLite `data/events.db` (WAL),
+site `agendasabauda.eu`, 14 crons quotidiens/hebdomadaires (`crontab.txt`).
+
+**Ce dépôt tourne EN PRODUCTION.** La base contient plusieurs milliers de fiches dont
+plusieurs centaines sont publiées et visibles du public. Il n'y a pas d'environnement de
+test.
+
+---
+
+## Les cinq règles, tirées d'incidents réels
+
+### 1. Un identifiant en base ne prouve RIEN sur le site
+
+`wp_post_id_as` renseigné ne veut pas dire « en ligne ». Il survit à une mise à la
+corbeille. Deux fausses alertes en sont nées :
+
+- « 61 posts supprimés » (2026-08-02) — aucun ne l'était, tous étaient à la corbeille ;
+- « 21 fiches à dépublier » (2026-08-03) — 10 sur 21 étaient déjà retirées.
+
+**Ne jamais conclure sur l'état du site sans avoir interrogé WordPress.** Et pas le
+front-end : `/?p=<id>` répond 404 pour tout `tribe_events`, vivant ou mort. Seule l'API
+REST sépare les trois états (public / corbeille / supprimé) — voir
+`reconcile_wp_deleted._etat`.
+
+### 2. Un inventaire WordPress est INCOMPLET
+
+The Events Calendar exclut les événements **passés** de ses collections REST. Une fiche
+terminée reste publiée et accessible par son adresse, mais n'apparaît dans aucune liste.
+`audit_wp_ghosts` a annoncé « 0 anomalie » alors que onze fiches rejetées étaient en
+ligne, pour cette seule raison.
+
+**Pour savoir si un post précis est en ligne, l'interroger par son numéro.** Les listes
+servent à explorer, jamais à prouver une absence.
+
+### 3. Tout état terminal doit avoir quelqu'un qui le rouvre
+
+C'est le défaut structurel de ce dépôt : un script pose un état qui écarte une fiche
+d'une file, et aucun autre ne sait l'en sortir. Six culs-de-sac trouvés le 2026-08-03,
+dont un créé le jour même en corrigeant les autres.
+
+Avant d'ajouter un tel état, répondre à `docs/ETATS_TERMINAUX.md` : **qui le rouvre, à
+quelle condition, et où se voit le nombre de fiches garées ?** « Un humain qui tape une
+commande » n'est pas une réponse — 823 fiches ont dormi dans `venue_source='llm_none'`
+alors que l'option `--retry` existait depuis le premier jour.
+
+### 4. Dry-run d'abord, toujours
+
+Tous les scripts destructifs sont en dry-run par défaut et demandent `--apply` ou
+`--execute`. **Lire la sortie du dry-run avant d'appliquer**, même quand on croit savoir.
+Le dry-run de `relink_wp_ids_as` du 2026-08-03 proposait six corrections dont trois
+fabriquaient un doublon.
+
+Avant tout `--apply` de masse : `.venv/bin/python scripts/backup_db.py`.
+
+### 5. Rapporter le RÉSULTAT, jamais l'intention
+
+Un bilan qui annonce ce qui a été demandé plutôt que ce qui s'est produit ferme la
+question au lieu de l'ouvrir. Recompter en base après une écriture ; ne jamais écrire
+« N fiches traitées » sur la foi de la longueur d'une liste.
+
+Et un état qui sort une fiche d'une file la sort aussi de tous les bilans : le compter
+explicitement, sinon on le découvre des semaines plus tard.
+
+---
+
+## Périmètre éditorial
+
+Quatre territoires : **Savoie / Haute-Savoie**, **Piémont**, **Vallée d'Aoste**, et le
+**Comté de Nice** — qui est l'**arrondissement de Nice**, PAS le département. Les 62
+communes de l'arrondissement de Grasse (Cannes, Antibes, Grasse, Vence, Cagnes,
+Valbonne…) sont **hors périmètre**. Liste faisant foi :
+`config/communes_comte_de_nice.json`.
+
+Public **visé**, pas seulement public **admis** : un congrès, un colloque scientifique ou
+un salon B2B n'a pas sa place, même ouvert à tous. Mais « Conférences & Rencontres » est
+une des onze catégories : salon du livre, conférence de musée, café philo, dédicace y
+restent pleinement. Le partage se fait sur **à qui ça s'adresse**, jamais sur le mot du
+titre. Détail : `docs/CHARTE_EDITORIALE.md`.
+
+---
+
+## Ce qui demande l'accord de Franck
+
+- Toute **suppression ou dépublication** d'une page visible du public ;
+- toute **modification du site WordPress** (snippets, pages, CSS) ;
+- l'**activation ou la modification d'un cron** ;
+- les **arbitrages éditoriaux** : défusionner, re-classer une fiche rejetée, trancher un
+  orphelin.
+
+Le reste — lecture, audits, dry-runs, correctifs de code, documentation — se fait sans
+demander.
+
+---
+
+## Développement
+
+Branche de travail : `claude/quirky-davinci-jvqrnw`. **Ne jamais pousser sur la branche
+par défaut.**
+
+Commits en français, au présent, expliquant **pourquoi** et pas seulement quoi — avec la
+mesure ou l'incident qui a motivé le changement quand il y en a un. Les commentaires de
+ce dépôt sont sa vraie documentation : les garder.
+
+Vérifier sur fixture avant de committer un correctif — construire une base jetable avec
+`scripts.scraper_events.init_db`, jamais sur `data/events.db`.
