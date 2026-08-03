@@ -18,11 +18,13 @@ payer l'évaluation LLM sur des doublons.
 """
 from __future__ import annotations
 import argparse
+import json
 import os
 import re
 import sqlite3
 import sys
 import unicodedata
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -283,6 +285,45 @@ def _groups(events: list[dict], cross_lang: bool = False) -> list[list[dict]]:
     return list(buckets.values())
 
 
+def ensure_unmerge_column(conn: sqlite3.Connection) -> None:
+    """`unmerge_data` — ce que la fusion ÉCRASE, pour qu'elle puisse être défaite.
+
+    AJOUTÉE LE 2026-08-03, au terme du recensement de docs/ETATS_TERMINAUX.md. La fusion
+    était le SEUL cul-de-sac sans issue du dépôt : `statut='merged'` + `duplicate_of`, et
+    aucun script ne les remet jamais à zéro. Mais le vrai problème est un cran plus
+    profond que « personne ne rouvre » — c'est qu'il n'y avait **plus rien à rouvrir** :
+    le statut d'avant de la perdante n'était conservé nulle part, et la description du
+    gagnant, quand elle était remplacée, était perdue.
+
+    On ne défait rien ici, et on ne défait rien rétroactivement : les 94 fusions suspectes
+    déjà en base demandent un arbitrage éditorial (cf. ETATS_TERMINAUX.md). Ce correctif
+    arrête l'hémorragie — à partir d'aujourd'hui, toute fusion est réversible.
+    """
+    try:
+        conn.execute("ALTER TABLE events_raw ADD COLUMN unmerge_data TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+
+def _empile(conn: sqlite3.Connection, event_id: int, entree: dict) -> None:
+    """Ajoute une entrée à `unmerge_data`, qui est une LISTE.
+
+    Une liste et pas un objet : une fiche peut absorber plusieurs groupes au fil des
+    semaines. Écraser l'instantané précédent perdrait la première fusion — exactement le
+    défaut qu'on répare. On empile, on n'écrase pas."""
+    row = conn.execute("SELECT unmerge_data FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    try:
+        pile = json.loads((row[0] if row else None) or "[]")
+        if not isinstance(pile, list):
+            pile = [pile]
+    except (ValueError, TypeError):
+        pile = []
+    pile.append(entree)
+    conn.execute("UPDATE events_raw SET unmerge_data=? WHERE id=?",
+                 (json.dumps(pile, ensure_ascii=False), event_id))
+
+
 def merge_group(conn: sqlite3.Connection, group: list[dict]) -> int:
     """Fusionne un groupe de doublons. Retourne le nb d'événements marqués 'merged'."""
     winner = max(group, key=score)
@@ -316,6 +357,18 @@ def merge_group(conn: sqlite3.Connection, group: list[dict]) -> int:
         updates["description"] = richest["description"]
 
     if updates:
+        # AVANT d'écrire : on note ce qu'on remplace. `updates` ne contient que des champs
+        # VIDES chez le gagnant — sauf `description`, qui est le seul cas où une valeur
+        # existante est écrasée. C'est précisément celui qui a détruit des descriptions
+        # légitimes (« Charlie Winston ■ 7 juillet » a écrasé « Charlie Winston ») et qui a
+        # obligé à écrire scripts/repair_polluted_descriptions.py pour re-télécharger ce
+        # qu'on avait soi-même effacé. Le noter coûte une ligne ; le reconstituer a coûté
+        # un script entier.
+        ecrases = {k: winner.get(k) for k in updates if (winner.get(k) or "").strip()}
+        if ecrases:
+            _empile(conn, winner["id"], {
+                "role": "gagnant", "at": datetime.now().isoformat(timespec="seconds"),
+                "perdants": [e["id"] for e in losers], "champs_ecrases": ecrases})
         cols = ", ".join(f"{k}=?" for k in updates)
         conn.execute(f"UPDATE events_raw SET {cols} WHERE id=?",
                      (*updates.values(), winner["id"]))
@@ -328,6 +381,14 @@ def merge_group(conn: sqlite3.Connection, group: list[dict]) -> int:
                         "(nettoie côté WP avec scripts.cleanup_as_dupes)",
                         e["id"], e["wp_post_id_as"])
             continue
+        # Le statut d'AVANT est la seule chose qu'aucune autre source ne peut rendre :
+        # 'pending', 'evaluated' ou 'published_sub' ne se devinent pas après coup. Sans
+        # lui, défusionner obligerait à re-évaluer la fiche — donc à re-payer un appel LLM
+        # et à risquer un verdict différent de celui qu'un humain avait déjà validé.
+        _empile(conn, e["id"], {
+            "role": "perdant", "at": datetime.now().isoformat(timespec="seconds"),
+            "gagnant": winner["id"], "statut_avant": e.get("statut"),
+            "duplicate_of_avant": e.get("duplicate_of")})
         conn.execute(
             "UPDATE events_raw SET statut='merged', duplicate_of=? WHERE id=?",
             (winner["id"], e["id"]))
@@ -354,6 +415,7 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
+    ensure_unmerge_column(conn)   # ce que la fusion écrase, pour pouvoir la défaire
     where = ("statut='pending' OR (statut IN ('evaluated','published_cs','published_sub') "
              "AND duplicate_of IS NULL)") if args.rescan else "statut='pending'"
     rows = [dict(r) for r in conn.execute(

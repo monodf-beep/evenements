@@ -115,6 +115,30 @@ Le point 3 est la vraie leçon : **une fusion qui n'enregistre pas ce qu'elle é
 peut pas être défaite.** C'est le même défaut que ceux corrigés aujourd'hui, un cran plus
 profond — non pas « personne ne rouvre », mais « il n'y a plus rien à rouvrir ».
 
+### ✅ L'hémorragie est arrêtée (2026-08-03), le passif reste
+
+`dedupe.merge_group` enregistre désormais, dans une colonne `unmerge_data`, ce que chaque
+fusion écrase :
+
+- **côté perdant** : son `statut` d'avant. C'est la seule chose qu'aucune autre source ne
+  peut rendre — `pending`, `evaluated` ou `published_sub` ne se devinent pas après coup, et
+  sans lui défusionner obligerait à re-évaluer la fiche, donc à re-payer un appel LLM et à
+  risquer un verdict différent de celui qu'un humain avait déjà validé ;
+- **côté gagnant** : les champs remplacés, et en pratique surtout `description` — le seul
+  cas où une valeur existante est écrasée. C'est celui qui a détruit des descriptions
+  légitimes (« Charlie Winston ■ 7 juillet » a écrasé « Charlie Winston ») et qui a obligé
+  à écrire `repair_polluted_descriptions.py` pour re-télécharger ce qu'on avait soi-même
+  effacé. Le noter coûte une ligne ; le reconstituer a coûté un script entier.
+
+`unmerge_data` est une **liste**, pas un objet : une fiche peut absorber plusieurs groupes
+au fil des semaines, et écraser l'instantané précédent reproduirait exactement le défaut
+qu'on répare. Vérifié sur fixture — après deux fusions successives, on remonte jusqu'à la
+description **d'origine**, pas seulement à l'avant-dernière.
+
+**Ce que ça ne fait pas** : rien de rétroactif. Les 94 fusions suspectes déjà en base
+n'ont pas d'instantané et resteront à trancher à la main. Le correctif ne répare pas le
+passé, il garantit que le passif ne grossit plus.
+
 ## La règle à suivre
 
 Avant d'ajouter un état qui écarte une fiche d'une file, répondre par écrit à :
