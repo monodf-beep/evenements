@@ -344,13 +344,18 @@ def main(argv=None) -> int:
     parser.add_argument("--published-only", action="store_true",
                         help="Ne garder que les fusions dont le GAGNANT est publié sur "
                              "l'agenda (wp_post_id_as) — les dégâts déjà visibles en ligne.")
+    parser.add_argument("--tout", action="store_true",
+                        help="Inclure les fusions dont l'événement est DÉJÀ PASSÉ. Par "
+                             "défaut elles sont comptées à part et non détaillées : les "
+                             "réparer ne sert personne (voir plus bas).")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = [dict(r) for r in conn.execute(
-        "SELECT id, title, description, date_start, date_event_start, lieu, ville, "
-        "territoire, url_source, source_type, statut, duplicate_of, wp_post_id_as "
+        "SELECT id, title, description, date_start, date_event_start, date_event_end, "
+        "lieu, ville, territoire, url_source, source_type, statut, duplicate_of, "
+        "wp_post_id_as "
         "FROM events_raw").fetchall()]
     conn.close()
 
@@ -360,8 +365,39 @@ def main(argv=None) -> int:
     if args.published_only:
         suspects = [c for c in suspects if (c["gagnant"].get("wp_post_id_as") or 0) > 0]
 
+    # ⚠️ PARTAGE À VENIR / PASSÉ, ajouté le 2026-08-03 sur une remarque de Franck :
+    # « on peut peut-être arrêter de travailler sur les choses qui sont déjà passées ».
+    # Elle est juste, et le rapport la contredisait : il présentait 94 cas comme s'ils
+    # comptaient tous, alors que la fiche qui en concentre le tiers — [1789] « Torino
+    # crocevia di sonorità », qui a absorbé Vermeer, Hokusai et un communiqué sur le
+    # PNRR — était datée du 10 juillet, soit passée depuis trois semaines. Réparer une
+    # fiche dont l'événement a eu lieu ne sert personne : elle ne sera pas republiée et
+    # plus aucun visiteur ne la cherche. Un audit qui mélange les deux fabrique du
+    # travail au lieu d'en désigner.
+    #
+    # LIMITE ASSUMÉE, et elle compte : la date lue est celle de la BASE, or c'est
+    # précisément ce qu'une mauvaise fusion peut avoir corrompu (WP#6798 portait la date
+    # d'un autre événement). Une fiche classée « passée » ici peut donc être à venir en
+    # réalité. C'est pourquoi les passées sont COMPTÉES et non supprimées du rapport :
+    # --tout les redétaille quand on veut aller les regarder.
+    aujourdhui = date.today().isoformat()
+
+    def _a_venir(cas) -> bool:
+        g = cas["gagnant"]
+        d = (g.get("date_event_end") or g.get("date_event_start") or "").strip()[:10]
+        return (not d) or d >= aujourdhui      # sans date : on ne classe pas en « passé »
+
+    passees = [c for c in suspects if not _a_venir(c)]
+    if not args.tout:
+        suspects = [c for c in suspects if _a_venir(c)]
+
     print(f"\n{fusions} fusion(s) enregistrée(s) en base · {len(suspects)} suspecte(s)"
-          f"{' (gagnant publié)' if args.published_only else ''}\n")
+          f"{' (gagnant publié)' if args.published_only else ''}"
+          f"{' — À VENIR uniquement' if (passees and not args.tout) else ''}\n")
+    if passees and not args.tout:
+        print(f"  ({len(passees)} autre(s) cas écarté(s) : l'événement du gagnant est DÉJÀ")
+        print(f"   PASSÉ, les réparer ne sert personne. --tout pour les voir.")
+        print(f"   ⚠ la date vient de la BASE — une fusion fautive a pu la corrompre.)\n")
 
     comptes: dict[str, int] = {}
     for gravite in GRAVITES:
@@ -385,6 +421,8 @@ def main(argv=None) -> int:
     publies = sum(1 for c in suspects if (c["gagnant"].get("wp_post_id_as") or 0) > 0)
     print(f"  {'TOTAL':<12} : {len(suspects)} sur {fusions} fusion(s) "
           f"— dont {publies} avec un gagnant DÉJÀ publié sur l'agenda")
+    if passees and not args.tout:
+        print(f"  {'passées':<12} : {len(passees)} écartée(s) — événement déjà eu lieu")
     print("\n(lecture seule : rien n'a été modifié. Chaque cas se répare à la main — "
           "défusionner, ou republier la fiche après avoir rendu sa description.)\n")
 

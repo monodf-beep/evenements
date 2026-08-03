@@ -10,7 +10,7 @@ test.
 
 ---
 
-## Les cinq règles, tirées d'incidents réels
+## Les six règles, tirées d'incidents réels
 
 ### 1. Un identifiant en base ne prouve RIEN sur le site
 
@@ -55,7 +55,33 @@ fabriquaient un doublon.
 
 Avant tout `--apply` de masse : `.venv/bin/python scripts/backup_db.py`.
 
-### 5. Rapporter le RÉSULTAT, jamais l'intention
+### 5. On ne travaille que sur ce qui est encore devant nous
+
+Trois familles méritent qu'on s'en occupe, et elles seules :
+
+- les événements **à venir** ;
+- les événements **en cours** — une exposition de mai à septembre compte tout l'été,
+  donc c'est `date_event_end` qui décide, jamais `date_event_start` seule ;
+- les événements **récurrents** (`utils.completeness.is_recurring`), qui n'ont pas de
+  date unique et ne sont donc jamais « passés ».
+
+**Tout le reste est mort.** Réparer une fiche dont l'événement a eu lieu ne sert
+personne : elle ne sera pas republiée, plus aucun visiteur ne la cherche. Un audit, un
+rapport ou une liste de correctifs qui mélange passé et à-venir **fabrique du travail au
+lieu d'en désigner** — c'est le reproche que Franck a fait le 2026-08-03 à
+`audit_dedupe_damage`, qui présentait 94 cas comme s'ils comptaient tous alors que la
+fiche concentrant le tiers d'entre eux était datée du 10 juillet, passée depuis trois
+semaines.
+
+Deux précautions quand on applique cette règle :
+
+- **une fiche sans date ne se classe PAS en « passé »** — c'est une donnée manquante, pas
+  un événement terminé, et `dates.py` la remplira peut-être demain ;
+- **la date lue vient de la base, et une mauvaise fusion peut l'avoir corrompue** —
+  WP#6798 portait la date d'un autre événement. Donc écarter le passé d'un rapport, oui ;
+  le supprimer de la base sur ce seul motif, non.
+
+### 6. Rapporter le RÉSULTAT, jamais l'intention
 
 Un bilan qui annonce ce qui a été demandé plutôt que ce qui s'est produit ferme la
 question au lieu de l'ouvrir. Recompter en base après une écriture ; ne jamais écrire
