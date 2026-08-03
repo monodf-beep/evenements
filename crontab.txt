@@ -68,6 +68,17 @@
 # Le cap se remontera quand C4 (gather_material) et C5 (état du stock pollué en base)
 # seront traités, pas avant.
 #45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 2 >> logs/translate.log 2>&1
+# Chien de garde 12h — LES CRONS TOURNENT-ILS ENCORE ? Ajouté le 2026-08-03, c'était le
+# manque le plus sérieux du dispositif : quatorze automatisations font vivre ce site, et
+# si le scraper échouait demain matin, RIEN ne sonnait. La santé de la home (13h) et la
+# relecture du site (14h) voient la CONSÉQUENCE plusieurs jours plus tard, jamais la cause.
+# `utils/pipeline_status` enregistrait fidèlement chaque passage depuis des mois — mais
+# rien ne lisait ce journal pour s'inquiéter d'une ABSENCE.
+# Placé à 12h : après toute la chaîne du matin (8h→10h30), avant les contrôles de l'après-
+# midi. Coût NUL — aucun appel LLM, il ne lit que des fichiers et la base. Et il se tait
+# quand tout va bien : une notification quotidienne « rien à signaler » finit par ne plus
+# être lue, et le jour où elle manque personne ne le remarque.
+0 12 * * * cd /root/evenements && .venv/bin/python scripts/watchdog_crons.py --slack >> logs/watchdog.log 2>&1
 # Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.
 # incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
 # resserre facilement si besoin de plus de fréquence.
