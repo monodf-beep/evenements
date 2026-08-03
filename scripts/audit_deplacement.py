@@ -74,10 +74,106 @@ def _vivant(ev: dict, auj: date) -> bool:
     return not (debut and (debut - auj).days > HORIZON_JOURS)
 
 
+# PONDÉRATION PROPOSÉE — pas appliquée, seulement simulée (--simuler).
+#
+# CE QU'ELLE CORRIGE. La mesure du 2026-08-03 sur le stock réel : `notoriete_lieu` pèse
+# 44 % des points distribués, contre 24 % au rayonnement et 13 % à la spécificité. Le
+# critère qui note LA SALLE pèse donc plus lourd que les deux qui disent pourquoi on se
+# déplacerait — et l'exemple le montre crûment : « Visite guidée du Stade Allianz Riviera »
+# obtient 6/8, dont 3 points pour le stade emblématique. Une visite de stade au même rang
+# qu'un festival international.
+#
+# LE PRINCIPE : ce qui fait qu'on FAIT LA ROUTE, c'est de ne pas pouvoir le voir ailleurs
+# (spécificité) et que ça dépasse le voisinage (rayonnement). La salle compte — le Castello
+# di Rivoli est une destination — mais elle ne doit plus pouvoir porter une fiche à elle
+# seule. D'où un plafond à 1 point : « lieu remarquable, oui ou non », plutôt qu'une échelle
+# qui lui donne trois fois le poids de l'ancrage identitaire.
+#
+# Échelle 0-10 et non 0-8 : elle se lit plus vite, et surtout le plancher se re-décide
+# forcément — le garder à 6 par inertie appliquerait une exigence différente sans qu'on
+# s'en aperçoive.
+PONDERATION_PROPOSEE = {
+    "rayonnement":              (2, None),   # 0-2 ×2 → 0-4  (40 %)
+    "specificite_territoriale": (3, None),   # 0-1 ×3 → 0-3  (30 %)
+    "edition_tradition":        (1, None),   # 0-2 ×1 → 0-2  (20 %)
+    "notoriete_lieu":           (1, 1),      # plafonné à 1  (10 %)
+}
+MAX_PROPOSE = 10
+
+
+def _note_proposee(llm_score_detail) -> int | None:
+    try:
+        d = json.loads(llm_score_detail or "{}")
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(d, dict) or not d:
+        return None
+    total, trouve = 0, False
+    for cle, (poids, plafond) in PONDERATION_PROPOSEE.items():
+        bloc = d.get(cle)
+        pts = bloc.get("points") if isinstance(bloc, dict) else bloc
+        if isinstance(pts, (int, float)):
+            p = int(pts)
+            total += min(p, plafond) * poids if plafond is not None else p * poids
+            trouve = True
+    return total if trouve else None
+
+
+def _simuler(vivants: list[dict], notes: dict, args) -> None:
+    """Le classement ACTUEL contre le classement PROPOSÉ, territoire par territoire.
+
+    Par territoire et pas globalement, parce que c'est ainsi que la section choisit : une
+    repondération qui améliore la moyenne mais laisse le même événement en tête de chaque
+    colonne n'aurait rien changé pour le visiteur. C'est le HAUT de chaque colonne qu'il
+    faut regarder — c'est tout ce qui s'affiche."""
+    print("\n## Simulation : ce que la pondération proposée changerait\n")
+    print("| Critère | Poids | Plafond | Part du maximum |")
+    print("|---|---:|---:|---:|")
+    for cle, (poids, plafond) in PONDERATION_PROPOSEE.items():
+        maxi = (plafond if plafond is not None else {"rayonnement": 2, "edition_tradition": 2,
+                "specificite_territoriale": 1, "notoriete_lieu": 3}[cle]) * poids
+        print(f"| `{cle}` | ×{poids} | {plafond if plafond is not None else '—'} | "
+              f"{maxi}/{MAX_PROPOSE} |")
+
+    par_t: dict[str, list[dict]] = {}
+    for lot in notes.values():
+        for e in lot:
+            par_t.setdefault(e.get("territoire") or "—", []).append(e)
+
+    print("\n### Le haut de chaque territoire — avant / après\n")
+    for t, lot in sorted(par_t.items()):
+        av = sorted(lot, key=lambda e: deplacement_score(e["llm_score_detail"]) or 0,
+                    reverse=True)[:args.exemples]
+        ap = sorted(lot, key=lambda e: _note_proposee(e["llm_score_detail"]) or 0,
+                    reverse=True)[:args.exemples]
+        bouge = "" if [e["id"] for e in av] == [e["id"] for e in ap] else "  ← l'ordre CHANGE"
+        print(f"\n**{t}**{bouge}\n")
+        print("| rang | actuel (/8) | proposé (/10) |")
+        print("|---:|---|---|")
+        for i in range(max(len(av), len(ap))):
+            g = (f"{deplacement_score(av[i]['llm_score_detail'])} · "
+                 f"{(av[i].get('title') or '')[:38]}") if i < len(av) else ""
+            d = (f"{_note_proposee(ap[i]['llm_score_detail'])} · "
+                 f"{(ap[i].get('title') or '')[:38]}") if i < len(ap) else ""
+            print(f"| {i + 1} | {g} | {d} |")
+
+    print("\n### Où se placerait le plancher\n")
+    print("| Plancher /10 | Fiches retenues |")
+    print("|---:|---:|")
+    for s in range(4, MAX_PROPOSE + 1):
+        n = sum(1 for e in vivants if (_note_proposee(e.get("llm_score_detail")) or -1) >= s)
+        print(f"| **{s}** | {n} |")
+    print("\n> Le plancher ne se transpose PAS : 6/8 et 6/10 n'expriment pas la même\n"
+          "> exigence, et la distribution change aussi. À re-décider sur ce tableau.\n")
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Distribution des notes de déplacement, par territoire.")
     p.add_argument("--exemples", type=int, default=3,
                    help="Nombre d'exemples à montrer par note (défaut 3).")
+    p.add_argument("--simuler", action="store_true",
+                   help="Compare le classement actuel à celui de la pondération proposée. "
+                        "N'écrit RIEN et ne change pas la formule en service.")
     args = p.parse_args(argv)
 
     conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
@@ -150,6 +246,9 @@ def main(argv=None) -> int:
           "> la note récompense la réputation du lieu plutôt que la raison de s'y rendre —\n"
           "> et un plancher plus haut ne corrigerait pas ça, il ne ferait que retenir les\n"
           "> événements des grandes salles. C'est la PONDÉRATION qu'il faudrait revoir.\n")
+
+    if args.simuler:
+        _simuler(vivants, notes, args)
 
     # LE TABLEAU QUI DÉCIDE. La section affichant UN événement par territoire, un seuil ne
     # se juge pas au total mais à sa colonne la plus pauvre : c'est elle qui se videra.
