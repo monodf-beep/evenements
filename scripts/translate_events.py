@@ -529,8 +529,8 @@ def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
             "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
             "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
             "translation_of, translated_lang, article_title, enrich_data, image_credit, "
-            "enrich_status, date_source) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "enrich_status, date_source, llm_score_detail) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
              ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
              f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
@@ -544,7 +544,17 @@ def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
              # son texte ITALIEN avec un parseur français (Jazz Art décalé de 2 mois,
              # Matisse d'1 mois, EN LIGNE). Marquer la provenance rend la copie visible et
              # traçable ; l'exclusion des traductions dans dates.py reste la ceinture.
-             "copie-traduction"))
+             "copie-traduction",
+             # MÊME OUBLI, MÊME FORME, découvert le 2026-08-03 : le détail du score par
+             # critère n'était pas copié. Or c'est LUI, et non `llm_score`, dont dérive
+             # `as_deplacement_now` (utils/deplacement.py). Les 14 fiches Savoie + Comté de
+             # Nice traduites en italien avaient donc un score de déplacement VIDE, et la
+             # section « Ça vaut le déplacement » italienne retombait sur `as_score` —
+             # exactement le tri chronologique-par-défaut qu'on venait de quitter.
+             # Copie et non recalcul : c'est le même événement, le re-noter coûterait un
+             # appel LLM pour aboutir aux mêmes points. La justification reste en français,
+             # ce qui ne gêne pas — seul `points` sert au tri.
+             ev.get("llm_score_detail")))
         # Lie les deux fiches (Polylang) via l'endpoint.
         if all([wp_url, auth[0], auth[1]]):
             _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})

@@ -160,6 +160,45 @@ description **d'origine**, pas seulement à l'avant-dernière.
 n'ont pas d'instantané et resteront à trancher à la main. Le correctif ne répare pas le
 passé, il garantit que le passif ne grossit plus.
 
+## La même question, posée aux VALEURS
+
+Le 2026-08-03, le motif est réapparu sous une forme qui n'entrait dans aucune ligne du
+tableau : non pas « un état que personne ne rouvre », mais **une valeur que personne ne
+recalcule**.
+
+`as_deplacement_now` trie la section « Ça vaut le déplacement ». Il relève le score
+intrinsèque (0-8) par le **temps qui reste pour y aller** — il dépend donc du calendrier,
+pas de la fiche. Or `publisher_as` le calcule au moment de la publication et WordPress le
+GÈLE. Une fiche publiée avec le bonus « dans 4 jours » garde 11 en octobre ; un événement
+terminé, que `deplacement_now` sort du classement (règle 5), continue d'y trôner. Le
+classement dérive dans les deux sens, sans que rien ne le signale — la section affiche
+toujours quelque chose, seulement ce quelque chose vieillit.
+
+Le défaut a été introduit le jour même de la mise en service du tri. Il n'a pas été trouvé
+en cherchant un bug, mais en se posant la question de la règle 3 sur autre chose qu'un
+statut.
+
+`scripts/refresh_deplacement.py` (cron 10h50) recalcule et republie **les seules fiches
+dont la valeur a changé** — la colonne `deplacement_now_publie` retient ce qui a réellement
+été envoyé. Il vérifie chaque post par son numéro avant de le pousser : sur les 123 fiches
+republiées à la main ce jour-là, **16 étaient à la corbeille** alors que la base les croyait
+publiées (règle 1). Et il est inscrit dans `watchdog_crons` — sinon son arrêt serait
+invisible, ce qui est exactement le défaut qu'il corrige.
+
+**Le même script répare aussi un oubli de copie.** Le score dérive de `llm_score_detail`,
+que l'évaluateur écrit sur la fiche d'origine et jamais sur sa traduction — et
+`translate_events` ne copiait pas cette colonne. Les 14 fiches Savoie + Comté de Nice
+traduites en italien avaient donc un score VIDE, et la section italienne retombait sur
+`as_score`, c'est-à-dire le tri qu'on venait précisément de quitter. La copie est faite à
+la création depuis le 2026-08-03 ; la propagation quotidienne rattrape les traductions
+déjà en base et reste en place comme filet — une réponse à « qui rouvre ? » plutôt qu'une
+commande que personne ne lancera. C'est le même oubli, dans la même requête, que celui qui
+avait laissé `date_source` à NULL et fait re-dater les traductions italiennes avec un
+parseur français.
+
+**À retenir pour la suite** : une valeur qui dépend de la date d'aujourd'hui et qu'on écrit
+ailleurs qu'en base doit avoir, dès sa première ligne, quelqu'un qui la recalcule.
+
 ## La règle à suivre
 
 Avant d'ajouter un état qui écarte une fiche d'une file, répondre par écrit à :

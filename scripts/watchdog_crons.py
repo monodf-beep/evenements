@@ -70,6 +70,11 @@ ATTENDUS = [
     ("Évaluation",                "evaluator",       "evaluator.log",        30),
     ("Lot quotidien",             "daily_batch",     "daily_batch.log",      30),
     ("Référencement",             "seo_batch",       "seo_batch.log",        30),
+    # Ajouté le 2026-08-03 avec le cron lui-même : un rafraîchissement de classement qui
+    # s'arrête ne casse rien de visible — la section continue d'afficher un tri, seulement
+    # il vieillit. C'est précisément le genre de panne qu'on découvre trois semaines plus
+    # tard en se demandant pourquoi un événement passé est encore en tête.
+    ("Tri « Ça vaut le déplacement »", "refresh_deplacement", "refresh_deplacement.log", 30),
     ("Santé de la home",          "homepage_health", "homepage_health.log",  30),
     ("Relecture du site",         "site_audit",      "site_audit.log",       30),
     ("Sauvegarde de la base",     "backup_db",       "backup.log",           30),

@@ -68,6 +68,22 @@
 # Le cap se remontera quand C4 (gather_material) et C5 (état du stock pollué en base)
 # seront traités, pas avant.
 #45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 2 >> logs/translate.log 2>&1
+# Rafraîchissement du tri « Ça vaut le déplacement » 10h50 — `as_deplacement_now` n'est pas
+# une valeur, c'est une valeur DATÉE : elle relève le score intrinsèque par le TEMPS QUI
+# RESTE pour y aller. publisher_as la calcule à la publication et WordPress la GÈLE. Sans
+# ce passage, une fiche publiée aujourd'hui avec le bonus « dans 4 jours » garderait 11 en
+# octobre, et un événement terminé continuerait de trôner en tête de la section alors que
+# deplacement_now le sort du classement (règle 5). Défaut de conception constaté le
+# 2026-08-03, le jour même où le tri a été mis en service.
+# Placé après le SEO (10h30, qui republie déjà une partie du haut du panier) et avant le
+# bilan de 11h, pour que celui-ci lise un classement à jour plutôt que celui de la veille.
+# Ne republie QUE les fiches dont la valeur a changé — en régime normal une poignée, celles
+# qui franchissent une marche (45, 21, 7 jours restants) ou qui viennent de passer. Le
+# premier passage rattrape tout le stock, une seule fois.
+# Vérifie chaque post par son NUMÉRO avant de le pousser (règles 1 et 2) : sur les 123
+# fiches republiées à la main le 2026-08-03, 16 étaient à la corbeille alors que la base
+# les croyait publiées — les republier les aurait ressuscitées.
+50 10 * * * cd /root/evenements && .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1
 # Chien de garde 12h — LES CRONS TOURNENT-ILS ENCORE ? Ajouté le 2026-08-03, c'était le
 # manque le plus sérieux du dispositif : quatorze automatisations font vivre ce site, et
 # si le scraper échouait demain matin, RIEN ne sonnait. La santé de la home (13h) et la
