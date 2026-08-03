@@ -30,6 +30,7 @@ Usage :
 """
 from __future__ import annotations
 import argparse
+import json
 import os
 import sqlite3
 import sys
@@ -39,7 +40,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.completeness import is_recurring
-from utils.deplacement import (DEPLACEMENT_MIN, HORIZON_JOURS, MAX_SCORE,
+from utils.deplacement import (_CRITERES, DEPLACEMENT_MIN, HORIZON_JOURS, MAX_SCORE,
                                deplacement_raisons, deplacement_score)
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -112,6 +113,43 @@ def main(argv=None) -> int:
         lot = notes.get(n, [])
         ex = " · ".join((e.get("title") or "")[:34] for e in lot[:args.exemples])
         print(f"| {n} | {len(lot)} | {ex} |")
+
+    # D'OÙ VIENNENT LES POINTS — la question posée par le cas « au diapason » (id 931,
+    # Thonon, 3/8) le 2026-08-03. Deux de ses trois points venaient de `notoriete_lieu`,
+    # qui note LA SALLE et non l'événement : un concert générique dans une salle connue
+    # empoche 2 points, pendant que les deux critères qui disent vraiment « ça vaut le
+    # déplacement » — le rayonnement et l'ancrage identitaire — donnaient 1 et 0.
+    #
+    # Les quatre critères pèsent 1 dans la formule, mais leurs MAXIMA diffèrent (3, 2, 2,
+    # 1) : `notoriete_lieu` peut donc à lui seul apporter 3 des 8 points. Le poids réel
+    # n'est pas le poids déclaré, et personne ne l'avait mesuré.
+    #
+    # Ce tableau dit si le cas est isolé ou systémique. On mesure AVANT de repondérer :
+    # changer les poids sur un seul exemple, c'est calibrer sur le bruit.
+    print("\n## D'où viennent les points (part de chaque critère)\n")
+    total_pts = {c: 0 for c in _CRITERES}
+    plafonds = {c: 0 for c in _CRITERES}
+    for lot in notes.values():
+        for e in lot:
+            try:
+                d = json.loads(e.get("llm_score_detail") or "{}")
+            except (ValueError, TypeError):
+                continue
+            for c in _CRITERES:
+                bloc = d.get(c)
+                pts = bloc.get("points") if isinstance(bloc, dict) else bloc
+                if isinstance(pts, (int, float)):
+                    total_pts[c] += int(pts)
+                    plafonds[c] = max(plafonds[c], int(pts))
+    somme = sum(total_pts.values()) or 1
+    print("| Critère | Points donnés | Part du total | Max observé |")
+    print("|---|---:|---:|---:|")
+    for c in _CRITERES:
+        print(f"| `{c}` | {total_pts[c]} | {100 * total_pts[c] / somme:.0f} % | {plafonds[c]} |")
+    print("\n> `notoriete_lieu` note LA SALLE, pas l'événement. S'il pèse le plus lourd,\n"
+          "> la note récompense la réputation du lieu plutôt que la raison de s'y rendre —\n"
+          "> et un plancher plus haut ne corrigerait pas ça, il ne ferait que retenir les\n"
+          "> événements des grandes salles. C'est la PONDÉRATION qu'il faudrait revoir.\n")
 
     # LE TABLEAU QUI DÉCIDE. La section affichant UN événement par territoire, un seuil ne
     # se juge pas au total mais à sa colonne la plus pauvre : c'est elle qui se videra.
