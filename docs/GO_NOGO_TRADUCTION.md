@@ -355,11 +355,21 @@ protection est l'absence de pollution en amont. C'est le point qui décide de l'
 
 ### Fortement recommandées
 
-- **C4** — dans `gather_material`, **exclure** les descriptions contenant
-  `news.google.com` plutôt que de les seuiller (`scripts/enrich.py:849`). Un seuil de
-  volume ne distingue pas un titre d'article d'une vraie description : **PROUVÉ** ci-dessus
-  qu'il laisse passer le cas d'origine. `batch_report.py:223,229-233` sait déjà repérer ce
-  motif, `repair_polluted_descriptions.py:38-40` aussi — la primitive existe.
+- **C4** — ✅ **FAIT le 2026-08-03**, et le diagnostic d'origine était incomplet.
+  L'exclusion par provenance existait déjà, mais **elle ne portait que sur la matière des
+  DOUBLONS** : la description PROPRE de la fiche était versée sans aucun filtre. On
+  surveillait la porte de service en laissant l'entrée principale ouverte — alors que
+  l'enquête conclut précisément que « la pollution est dans la description de l'ORIGINAL,
+  la traduction la recopie fidèlement ». Une seule définition, `_materiau_pollue()`, est
+  désormais appelée aux **deux** endroits où de la matière entre.
+  S'y ajoute un portillon que le cahier des charges ne prévoyait pas : quand écarter la
+  description polluée ne laisse **plus rien** (ni dossier de presse, ni page officielle
+  lisible), l'enrichissement est **refusé** — statut `matiere_polluee`, compté dans le
+  bilan et nommé dans les logs. Rédiger depuis un titre seul, ce serait demander au modèle
+  d'inventer un article : le mécanisme exact de WP#6798, mais sciemment.
+  Volontairement étroit : une fiche simplement sans matière n'est PAS bloquée (la page
+  officielle la rattrape au run suivant), seulement celle dont la matière propre a été
+  écartée pour pollution.
 - **C5** — passer `scripts/audit_dedupe_damage.py --published-only` sur la base **réelle**
   et vider les cas classés « certain » parmi les fiches en ligne à score ≥ 6. Ce sont
   exactement les candidates de `translate_events` : traduire une fiche encore polluée

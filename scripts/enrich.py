@@ -819,6 +819,28 @@ def extract_press_visuals(pages: list, title: str = "") -> dict:
             "poster": kit or portrait or wide, "from_kit": bool(kit)}
 
 
+AUCUNE_MATIERE = "(aucune — titre seul)"
+
+
+def _materiau_pollue(description: str, url_source: str | None = None) -> bool:
+    """Cette description est-elle un item Google News, c'est-à-dire un TITRE D'ARTICLE
+    déguisé en matière ?
+
+    EXCLUSION PAR PROVENANCE, PAS PAR VOLUME — et c'est mesuré, pas supposé. Le blob
+    d'origine (« Fête du lac 2026 : les spectateurs qui n'habitent pas Annecy paieront plus
+    cher ») compte 91 caractères visibles, au-dessus du seuil de 60, parce que ce texte
+    visible EST le titre de l'article : le filtre de longueur attrapait les liens vraiment
+    creux et laissait passer le dangereux. Relever le seuil ne marcherait pas davantage —
+    une vraie description laconique tomberait avec. Un item Google News n'apporte JAMAIS de
+    matière rédactionnelle ; on l'écarte sur sa provenance, qui est un fait.
+
+    Une seule définition, appelée aux DEUX endroits où de la matière entre (la description
+    propre de la fiche et celle de ses doublons fusionnés) : c'est d'avoir filtré l'un sans
+    l'autre qui a laissé passer WP#6798."""
+    d = description or ""
+    return "news.google.com" in d or "news.google.com" in (url_source or "")
+
+
 def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     """Agrège (déterministe) la matière, par ordre de priorité :
     1) dossiers de presse rattachés ; 2) SITE OFFICIEL récupéré en direct (résolu par
@@ -827,6 +849,19 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     secours « résoudre le site officiel »."""
     parts = []
     own = (ev.get("description") or "").strip()
+    # ⚠️ LA DESCRIPTION PROPRE ÉTAIT VERSÉE SANS AUCUN FILTRE (corrigé le 2026-08-03, C4).
+    # Tout le soin ci-dessous ne portait que sur la matière des DOUBLONS ; la matière de la
+    # fiche elle-même entrait telle quelle. Or l'enquête sur WP#6798 conclut noir sur blanc
+    # que « la pollution est dans la description de l'ORIGINAL, la traduction la recopie
+    # fidèlement » : on filtrait la porte de service en laissant l'entrée principale
+    # ouverte. Un blob Google News arrivé là par une fusion à tort (dedupe choisissait la
+    # description la plus LONGUE) devenait la matière de rédaction, et l'article — puis sa
+    # traduction — parlait d'un autre événement.
+    if own and _materiau_pollue(own, ev.get("url_source")):
+        log.warning("[%s] description PROPRE écartée de la matière : item Google News "
+                    "(titre d'article, aucune matière rédactionnelle). Voir "
+                    "scripts/repair_polluted_descriptions.py.", ev["id"])
+        own = ""
     if own:
         parts.append(own)
     # Matière des DOUBLONS fusionnés — filtrée sur la SUBSTANCE, pas sur le volume brut.
@@ -856,7 +891,7 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
         # description laconique tomberait avec. Un item Google News n'apporte JAMAIS de
         # matière rédactionnelle — il n'a que le titre d'un article, souvent sur un autre
         # sujet. On l'écarte donc sur sa provenance, qui est un fait, pas une mesure.
-        if "news.google.com" in d or "news.google.com" in (row["url_source"] or ""):
+        if _materiau_pollue(d, row["url_source"]):
             log.debug("[%s] matière du doublon ignorée : item Google News (titre "
                       "d'article, aucune matière)", ev["id"])
             continue
@@ -905,7 +940,7 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
         sections.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — accueil + programmation, lu en direct, source primaire]\n{page}")
     if rss:
         sections.append(f"[SIGNAUX FLUX / RADAR]\n{rss}")
-    return "\n\n".join(sections) or "(aucune — titre seul)", official_pages
+    return "\n\n".join(sections) or AUCUNE_MATIERE, official_pages
 
 
 def _parse_day(s: str) -> "date | None":
@@ -1435,6 +1470,28 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                 conn.commit()
                 ev["url_officiel"] = base
                 log.info("[%d] URL officielle mémorisée : %s", ev["id"], base)
+        # PORTILLON C4 — on ne rédige PAS depuis le titre seul quand la seule matière
+        # disponible était fausse. Écarter la description polluée (voir _materiau_pollue)
+        # peut ne rien laisser du tout : ni dossier de presse, ni page officielle lisible,
+        # ni signal de flux. Rédiger là-dessus, c'est demander au modèle d'INVENTER un
+        # article à partir d'un titre — exactement le mécanisme qui a produit WP#6798, à
+        # ceci près qu'on le ferait sciemment.
+        # Volontairement ÉTROIT : on ne bloque pas toute fiche sans matière (il en existe de
+        # légitimes, que la page officielle rattrape au run suivant), seulement celles dont
+        # la matière propre a été ÉCARTÉE pour pollution. Le cas est nommé, pas deviné.
+        # Le statut posé est 'matiere_polluee' et NON 'error' : ce n'est pas une panne, et
+        # scripts/repair_polluted_descriptions.py sait quoi en faire.
+        if material == AUCUNE_MATIERE and _materiau_pollue(ev.get("description"),
+                                                           ev.get("url_source")):
+            conn.execute(
+                "UPDATE events_raw SET enrich_status='matiere_polluee', "
+                "enriched_at=datetime('now') WHERE id=?", (ev["id"],))
+            conn.commit()
+            log.warning("[%d] RÉDACTION REFUSÉE — la description propre est un item Google "
+                        "News et aucune autre matière n'a pu être lue. Rédiger reviendrait "
+                        "à inventer. → scripts/repair_polluted_descriptions.py | %s",
+                        ev["id"], (ev.get("title") or "")[:50])
+            return "matiere_polluee"
         court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
         # SCORE AVANT : si on a la matière officielle (dossier de presse), on POUSSE l'article
         # COMPLET (complétion maximale) même si le llm_score l'aurait mis en court — on a tout
@@ -1698,10 +1755,20 @@ def main(argv: list[str]) -> int:
                     results.append("error")
 
     done = results.count("done")
+    # `matiere_polluee` est COMPTÉ ICI, et pas seulement posé en base. Un refus qui
+    # n'apparaît nulle part est un refus qu'on découvre trois semaines plus tard en
+    # cherchant pourquoi une fiche n'est jamais rédigée — c'est le défaut que ce dépôt
+    # collectionne. Il a sa propre ligne : ce n'est ni une erreur (rien n'a cassé) ni un
+    # rejet éditorial (la fiche est peut-être excellente), c'est une matière à réparer.
+    pollues = results.count("matiere_polluee")
     log.info("=== Enrichissement terminé : %d/%d (%d erreur(s), %d rejeté(s) [non-événement], "
              "%d ignoré(s) après panne API) ===",
              done, len(events), results.count("error") + results.count("api_error"),
              results.count("rejected"), results.count("skip"))
+    if pollues:
+        log.warning("⚠️  %d fiche(s) NON rédigée(s) : matière polluée (item Google News) et "
+                    "aucune autre source lisible. Rédiger reviendrait à inventer. "
+                    "→ .venv/bin/python scripts/repair_polluted_descriptions.py", pollues)
     return 0
 
 
