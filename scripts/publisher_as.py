@@ -40,7 +40,7 @@ from scripts.publisher import build_post, _map_category, _upload_featured_media
 from utils.sources import (is_logo_image, load_territory_images, load_territory_category_images,
                            pick_banner_image, is_blocked_image, load_blocked_image_domains)
 # Score « ça vaut le déplacement » dérivé des critères d'importance de l'évaluateur.
-from utils.deplacement import deplacement_score
+from utils.deplacement import deplacement_score, deplacement_now
 
 log = get_logger("publisher_as")
 
@@ -232,6 +232,7 @@ def _build_payload(event: dict) -> dict:
     # None (non mesuré) → chaîne vide côté WP : « pas mesuré » ne doit pas se confondre
     # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
     depl = deplacement_score(event.get("llm_score_detail"))
+    depl_now = deplacement_now(event)
 
     meta = {
         "as_score":                 event.get("llm_score", ""),
@@ -260,6 +261,21 @@ def _build_payload(event: dict) -> dict:
         # ⚠️ NE PAS trier cette section sur as_panel_vmean : cette note-là mesure la
         # richesse de l'ARTICLE, pas l'ampleur de l'événement (Musilac notait 1.0).
         "as_deplacement":           depl if depl is not None else "",
+        # ⚠️ C'EST SUR CELUI-CI QUE LA SECTION DOIT TRIER (ajouté le 2026-08-03), pas sur
+        # `as_deplacement` seul ni sur `as_score`. Constat de Franck en regardant la home :
+        # elle affichait deux expositions de 365 et 199 jours, l'une ouverte depuis sept
+        # mois, pendant que la Foire de la Saint-Ours n'apparaissait jamais.
+        # Le score intrinsèque n'était pas en cause — le Castello di Rivoli mérite ses
+        # points (grand musée, rayonnement international). Ce qu'AUCUN critère ne disait,
+        # c'est qu'une exposition ouverte encore six mois est une raison de se déplacer UN
+        # JOUR, quand une foire de trois jours est une raison de se déplacer MAINTENANT.
+        # `as_deplacement_now` relève donc l'intrinsèque par le TEMPS QUI RESTE pour y
+        # aller — ce qui fait aussi remonter une grande exposition dans sa dernière
+        # semaine, et c'est voulu. Vide = la fiche n'a pas sa place dans la section
+        # (non mesurée, sous le plancher de qualité, ou déjà passée).
+        # `as_deplacement` reste publié à côté : c'est lui qui est auditable critère par
+        # critère au back-office, et il ne bouge pas avec le calendrier.
+        "as_deplacement_now":       depl_now if depl_now is not None else "",
         # Détail du score home (panel lecteurs + statut affiche) — cf. _panel_meta.
         **_panel_meta(event),
         "as_gratuit":               _is_free(prix),
