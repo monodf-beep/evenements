@@ -32,8 +32,8 @@
       "Bash(npx:*)",
       "Bash(curl -X:*)",
       "Bash(curl --request:*)",
-      "Write(./crontab.txt)",
-      "Write(./.claude/settings.json)"
+      "Edit(./crontab.txt)",
+      "Edit(./.claude/settings.json)"
     ],
     "allow": [
       "Bash(.venv/bin/python:*)",
