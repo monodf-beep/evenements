@@ -79,9 +79,23 @@ unifier si elle gêne un jour.
 dépôt ne remet jamais `duplicate_of` à NULL.** Le seul démêlage existant,
 `unlink_bad_translations`, ne traite que l'appariement FR/IT, pas la fusion.
 
-Ce n'est pas théorique : `audit_dedupe_damage` a compté **1105 fusions douteuses sur
-1835**. Elles ne se réparent pas en re-téléchargeant une page — quand c'est l'APPARIEMENT
-qui était faux, une fiche légitime a été absorbée par une autre qui n'a rien à voir.
+Ce n'est pas théorique, mais c'est plus petit qu'annoncé. **Chiffre corrigé le
+2026-08-03** : `audit_dedupe_damage --published-only` compte **94 fusions suspectes sur
+1857**, dont **zéro « certain »**, 13 « probable » et 81 « à vérifier ». Le « 1105 sur
+1835 » cité toute la journée provenait d'un passage sans `--published-only` — il comptait
+des fiches jamais publiées, donc sans conséquence pour le visiteur.
+
+**Un tiers des 94 tient à UNE fiche.** `[1789]` « Torino crocevia di sonorità | Incanto »
+a absorbé une trentaine de perdantes sans rapport : Vermeer, Hokusai, le Torino Jazz
+Festival, la Festa di San Giovanni, un article sur un restaurant, un communiqué sur le
+PNRR. Défusionner celle-là seule règle l'essentiel du problème.
+
+**Et `[2153]` « Une semaine pas plus » ← `[2762]` « Fête du lac 2026 » est toujours en
+base** : c'est la fusion à l'origine de WP#6798, celle qui a mis la traduction en pause.
+C'est aussi, à elle seule, la condition C5 de `docs/GO_NOGO_TRADUCTION.md`.
+
+Ces cas ne se réparent pas en re-téléchargeant une page — quand c'est l'APPARIEMENT qui
+était faux, une fiche légitime a été absorbée par une autre qui n'a rien à voir.
 
 **Pourquoi ce n'est pas corrigé ici** : défaire une fusion n'est pas un geste mécanique.
 Il faut rendre à la fiche absorbée son statut d'avant — qu'aucune colonne ne conserve —,

@@ -66,6 +66,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 import unicodedata
 from pathlib import Path
 
@@ -350,6 +351,62 @@ def main(argv=None) -> int:
         else:
             fusionnes.append((post, row, motif, sim))
 
+    # --- SECONDE PASSE : L'ANGLE MORT DE L'INVENTAIRE ---------------------- #
+    # ⚠️ AJOUTÉE LE 2026-08-03, APRÈS QUE CET AUDIT A ANNONCÉ « 0 » À TORT.
+    # Le matin même il affichait « ① REJETÉS : 0 — rien à retirer 🎉 ». Onze fiches
+    # étaient pourtant `rejected` en base ET `publish` sur le site. Mesuré :
+    #   WP#617 « Beach Sport Festival 2026 » → HTTP 200, status=publish, titre identique
+    #   au titre local ; et absent de TOUS les inventaires (cs/v1/list comme wp/v2).
+    # CAUSE : The Events Calendar exclut les événements PASSÉS de ses collections. WP#617
+    # s'est terminé le 2026-07-26 ; sa page reste publiée et accessible, mais elle
+    # n'apparaît plus dans aucune liste. Tout audit qui part d'un INVENTAIRE est donc
+    # structurellement aveugle aux fiches passées restées en ligne — et ce sont
+    # justement celles qui traînent le plus longtemps, puisque personne ne les croise.
+    #
+    # On complète donc par l'autre bout : partir des lignes LOCALES anormales qui
+    # revendiquent un post, et interroger chacune PAR SON NUMÉRO — la seule requête que
+    # le filtre de date n'atteint pas. Périmètre étroit (rejetées/fusionnées non déjà
+    # appariées), donc quelques dizaines d'appels, pas des centaines.
+    deja_vus = {p["id"] for p in en_ligne}
+    a_sonder = [r for r in rows
+                if (r.get("wp_post_id_as") or 0)
+                and int(r["wp_post_id_as"]) not in deja_vus
+                and classe(r) is not None]
+    if a_sonder:
+        log.info("Angle mort de l'inventaire : %d ligne(s) rejetée(s)/fusionnée(s) "
+                 "revendiquent un post absent des listes — vérification une par une.",
+                 len(a_sonder))
+    for i, row in enumerate(a_sonder, 1):
+        wp_id = int(row["wp_post_id_as"])
+        try:
+            rep = requests.get(f"{wp_url}/wp-json/wp/v2/tribe_events/{wp_id}",
+                               params={"_fields": "id,title,status,link"},
+                               auth=auth, headers=_headers(auth), timeout=20)
+        except requests.RequestException:
+            continue                       # panne réseau : on n'affirme rien
+        if rep.status_code != 200:
+            continue                       # corbeille ou supprimé : pas notre sujet
+        try:
+            post = rep.json() or {}
+        except ValueError:
+            continue
+        if (post.get("status") or "") not in STATUTS_EN_LIGNE:
+            continue
+        post = {"id": wp_id, "title": (post.get("title") or {}).get("rendered", ""),
+                "link": post.get("link", ""), "status": post.get("status", ""),
+                "date": "", "_hors_inventaire": True}
+        cat, motif = classe(row)
+        sim = similarite(post["title"], row)
+        motif += " · PASSÉ, absent des listes"
+        if sim < args.seuil_titre:
+            suspects.append((post, row, f"{motif} — mais titre divergent", sim))
+        elif cat == "REJETE":
+            rejetes.append((post, row, motif, sim))
+        else:
+            fusionnes.append((post, row, motif, sim))
+        if i < len(a_sonder):
+            time.sleep(0.3)     # courtoisie envers l'hébergement mutualisé
+
     # --- Rapport ---------------------------------------------------------- #
     print("=" * 92)
     print("FICHES FANTÔMES — en ligne sur le site, retirées du catalogue (LECTURE SEULE)")
@@ -447,7 +504,11 @@ def main(argv=None) -> int:
             print("      (liste longue : la découper en plusieurs appels si le shell rechigne)")
         print()
     else:
-        print("① + ② — rien à retirer : aucune fiche écartée n'est restée en ligne. 🎉")
+        print("① + ② — aucune fiche écartée n'a été trouvée en ligne.")
+        print("    (dit sobrement : le 2026-08-03 ce même message s'affichait alors que")
+        print("     ONZE fiches rejetées étaient publiées — l'inventaire de WordPress")
+        print("     omet les événements PASSÉS. La seconde passe par numéro corrige cet")
+        print("     angle mort, mais un audit ne prouve jamais une absence.)")
         print()
     if orphelins:
         print(f"③ — {len(orphelins)} orphelin(s). NE PAS corbeiller en bloc : un orphelin peut")
