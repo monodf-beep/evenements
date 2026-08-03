@@ -923,6 +923,31 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
         lieu=ev.get("lieu") or ev.get("ville") or "", client=client,
         is_official=bool(locked),
         trusted_source=_source_trusted(ev.get("url_source", "")))
+    # ⚠️ LE VERROU `url_officiel` ÉTAIT DÉFINITIF (corrigé le 2026-08-03). Balayage :
+    # aucun script du dépôt ne l'efface jamais. Or il commande une lecture DIRECTE — « plus
+    # de recherche web, plus de variante de domaine aléatoire » — donc une URL mémorisée à
+    # tort empoisonnait tous les enrichissements suivants de cette fiche, définitivement,
+    # et d'autant plus silencieusement qu'elle est censée être la source qui fait foi.
+    #
+    # Le test de pertinence existait déjà… mais seulement au moment de POSER le verrou
+    # (« pages sans mention du titre → on ne fige rien »). On ne l'appliquait jamais à
+    # l'usage. On vérifiait la serrure en la fabriquant, jamais en s'en servant.
+    #
+    # ON N'EFFACE QUE SUR UNE LECTURE RÉUSSIE ET NON PERTINENTE. `official_pages` vide
+    # signifie que le réseau a échoué — pas que le verrou est faux : effacer là-dessus
+    # perdrait une bonne URL sur une panne passagère. Et le coût d'un effacement à tort
+    # reste borné : une résolution de plus au run suivant, qui re-posera très probablement
+    # la même URL. L'erreur va dans le sens réparable.
+    if locked and official_pages:
+        _joint = _fold(" ".join((p.get("html") or "")[:20000] for p in official_pages))
+        _toks = _event_tokens(ev.get("title", ""))
+        if _toks and not any(t in _joint for t in _toks):
+            conn.execute("UPDATE events_raw SET url_officiel=NULL WHERE id=?", (ev["id"],))
+            conn.commit()
+            ev["url_officiel"] = ""
+            log.warning("[%s] verrou url_officiel LEVÉ : %s ne mentionne pas l'événement "
+                        "— la résolution repartira de zéro au prochain run.",
+                        ev["id"], locked[:60])
     # La PAGE SOURCE reste lue MÊME quand url_officiel est verrouillée : pour un flux de
     # lieu (tier « officielle »), c'est LA page de l'événement (line-up, dates) — le site
     # verrouillé sert au dossier de presse/programme général. Sans ça, verrouiller ferait
