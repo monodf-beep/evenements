@@ -311,6 +311,38 @@ ils sont mesurables. C'est ce qui empêche l'outil de dériver.
   `orderby => post__in`. Ne pas chercher à corriger un ordre : corriger la
   **sélection**.
 
+### Motif récurrent : le tri qui enterre le ponctuel
+
+**À chercher partout où une liste d'événements est rendue.** Trouvé deux fois le
+2026-08-03, à deux endroits sans rapport, et il produit le même effet à chaque
+fois : ce qui dure depuis longtemps écrase ce qui arrive.
+
+Un tri par `_EventStartDate ASC` remonte en tête les événements **déjà
+commencés** — une exposition ouverte depuis mars passe devant un festival qui
+commence demain. C'est l'inverse du besoin : on rate un événement d'un jour,
+jamais une expo ouverte jusqu'au 15 octobre.
+
+| Endroit | État | Correctif |
+|---|---|---|
+| Accueil, section « 7 prochains jours » (snippet 44) | corrigé | borne basse sur `_EventStartDate` : la section n'admet plus que ce qui **démarre** dans la fenêtre |
+| Recherche, 3 requêtes (snippet 23) | corrigé | réordonnancement après construction : à venir d'abord par date de début, déjà commencés ensuite par date de **fin** croissante |
+| Hubs territoire (snippet 61) | **non atteint**, vérifié en direct | aucun |
+
+Les deux correctifs diffèrent volontairement. Sur l'accueil, la section **promet**
+une fenêtre de sept jours : ce qui n'y démarre pas n'y a pas sa place, on
+filtre. Sur la recherche, l'utilisateur veut voir **tout** ce qui correspond à sa
+requête : on ne retire rien, on réordonne.
+
+Entre deux événements déjà commencés, trier par date de **fin** croissante : ce
+qui ferme le plus tôt est la seule urgence qui leur reste.
+
+**Sur les hubs, ne rien corriger sans mesurer d'abord.** L'hypothèse de départ
+était qu'ils souffraient du même défaut — c'était faux. Le hub Savoie affiche 30
+fiches d'affilée toutes à venir, et ses longues durées (« Les monologues du
+machin », jusqu'en juin 2027) démarrent dans le futur, donc leur rang est
+légitime. Le mécanisme exact qui produit cet ordre n'a pas été élucidé et diffère
+de l'accueil : à documenter par qui aura l'accès au code.
+
 ### Protocole de déploiement d'un snippet
 
 Éprouvé toute la journée, ne pas s'en écarter :
@@ -335,6 +367,11 @@ ne bornait que la fin de fenêtre, donc tout événement en cours la traversait.
 Corrigé par l'ajout d'une borne basse sur `_EventStartDate`. FR affiche
 désormais 8 fiches du 3 au 10 août, IT en affiche 4 — pénurie réelle, assumée.
 Sauvegardes `cs_bk_snippet44_20260803` et `...b`.
+
+**Classe 1 — traité ce jour également.** Résultats de recherche : les 20 fiches
+de `?s=festival` sortaient longue durée en tête. Réordonnées — 11 à venir
+d'abord, puis 9 en cours par date de fin croissante. Aucune n'a été retirée.
+Sauvegarde `cs_bk_snippet23_20260803_tri`. Voir le motif récurrent au §8.
 
 **Classe 2 — partiellement traité.** 90 adresses écrites sur 247 lieux, tous
 niveaux `sure`, `haute` et `moyenne`. Sauvegarde `cs_bk_adresses_lieux_20260803`.
