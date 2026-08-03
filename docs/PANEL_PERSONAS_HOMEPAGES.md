@@ -387,6 +387,40 @@ fiches FR sans aucune version italienne**. Conséquence mesurable : le hub Savoi
 affiche 48 cartes en FR et 7 en IT ; le Comté de Nice, 29 contre 7. C'est le
 constat le plus lourd du lot.
 
+**Classe 1 + 4 — EN ATTENTE D'ARBITRAGE, ne pas corriger sans Franck.**
+Section « Ça vaut le déplacement » de l'accueil. Trois défauts empilés :
+
+1. `cs_home_deplacement_pick()` trie sur `as_score` (qualité éditoriale
+   générale) et **ne lit jamais `as_deplacement`**, le score qui porte pourtant
+   le nom de la section. La matière existe : 6 fiches à 8 et 10 fiches à 7.
+2. **Le plan n'est pas appliqué à cette grille.** La fonction renvoie 2 fiches
+   des territoires d'en face (FR → Piémont + Vallée d'Aoste ; IT → Savoie +
+   Comté de Nice). La page en affiche 4, dont deux de territoires que la
+   fonction **exclut explicitement**. La grille tourne donc sur sa requête par
+   défaut. Conséquence visible : la fiche 330, titrée « au diapason » en
+   minuscules et jamais rédigée, avec les scores les plus bas du lot (3 et 4),
+   occupe la première place d'une vitrine.
+3. La fiche 578 (Castello di Rivoli) porte des dates par défaut, 01/01 →
+   31/12/2026. La carte affiche « 1 Jan », information sans valeur.
+
+L'idée éditoriale de la section est juste — « ça vaut le déplacement » signifie
+franchir la frontière, et c'est cohérent avec la ligne du site. Mais Franck a
+déjà écarté ce même concept comme **filtre de recherche**, faute d'être
+convaincu. Le sort de la section relève donc de lui, pas d'un agent.
+
+**Contexte AdSense, pertinent pour la classe 3.** Le site est « En préparation »
+chez AdSense. Le fichier `ads.txt` a été vérifié le 2026-08-03 et est
+**correct** — servi en `text/plain` sur les quatre variantes d'URL, sans BOM,
+identifiant conforme, `robots.txt` n'interdisant rien. L'état « Introuvable »
+affiché par AdSense est figé depuis le 20 juillet et ne reflète plus la réalité.
+**Ne pas perdre de temps dessus.**
+
+Ce qui bloque réellement l'examen est ailleurs et recoupe le travail du panel :
+143 fiches de moins de 150 mots et 169 pages de lieu sans événement à venir,
+indexables. C'est exactement le contenu mince qu'un examen AdSense sanctionne,
+et c'est aussi ce que Karine et Jean-Pierre signalent sous « longueur » et
+« page qui ne m'apprend rien ».
+
 **Classe 4 — arbitré.** Voir §7.
 
 ### Garde-fous déjà en place
