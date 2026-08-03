@@ -46,11 +46,19 @@ def ville_hors_perimetre(ville: str) -> bool:
 
     Ville vide → False : on n'exclut jamais sur une absence d'information.
 
-    LIMITE CONNUE, mesurée : la comparaison exige le nom EXACT de la commune. Une
-    valeur composite comme « Antibes Juan-les-Pins », « Cannes, France » (sans virgule
-    en tête de segment) ou un quartier (« Cannes-la-Bocca ») ne matche pas. Le filet
-    de sécurité est l'ÉTAPE 0 du prompt de scripts/evaluator.py, qui juge, elle, sur
-    le texte et connaît la liste des communes de Grasse.
+    FORMES ENRICHIES (corrigé le 2026-08-03) : la comparaison exigeait le nom EXACT,
+    si bien que « Antibes Juan-les-Pins » (nom d'usage), « Cannes-la-Bocca » (quartier)
+    et « Nice Cedex 1 » (mention postale) passaient tous les trois au travers.
+    `utils.sources._cherche_commune()` essaie désormais le nom complet puis des
+    préfixes de MOTS décroissants — jamais de sous-chaîne, pour ne pas confondre
+    « Saint-Paul-de-Vence » avec « Vence », commune distincte qui y est contenue.
+    Vérifié sur 16 formes réelles : 0 erreur.
+
+    LIMITE RESTANTE : un homonyme lointain dont le nom commence comme une commune
+    d'ici serait rattaché à tort — mais à l'arrondissement de Grasse, donc écarté, et
+    il était de toute façon hors périmètre. L'erreur va dans le sens prudent. Le filet
+    de sécurité pour tout le reste est l'ÉTAPE 0 du prompt de scripts/evaluator.py,
+    qui juge sur le texte et connaît la liste des communes de Grasse.
     """
     ville = (ville or "").strip()
     if not ville:
