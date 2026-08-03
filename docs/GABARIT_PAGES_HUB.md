@@ -90,7 +90,13 @@ interne]`. C'est CE gabarit qu'on duplique.
    ville → `meta as_ville IN (…)` ; page zone → `meta as_ville IN (liste de communes)`.
 2. **Créer la page** : titre + **slug perpétuel** + coller **H1 + intro** + insérer le **Listing
    Grid** filtré + le **maillage interne**.
-3. **RankMath** : *Meta title* + *Meta description* (du fichier / annexe), bonne langue.
+3. **Yoast** : *Meta title* + *Meta description* (du fichier / annexe), bonne langue.
+   > ⚠️ Corrigé le 2026-08-03 : ce runbook disait « RankMath ». **RankMath n'est pas
+   > installé.** Mesuré sur la page servie de agendasabauda.eu — trois occurrences de
+   > `yoast`, zéro de `rank-math`. Chercher un panneau RankMath dans l'éditeur, c'est
+   > chercher un plugin qui n'existe pas sur ce site. Les autres mentions de RankMath du
+   > dépôt (`AGENT_SEO_DASHBOARD_SPEC.md`, `DECISIONS_ECARTEES.md`, plus bas dans ce
+   > fichier) datent d'avant l'installation réelle et n'ont pas été revérifiées.
 4. **Polylang** : définir la langue, puis **lier** les versions FR ↔ IT.
 5. **Indexation** : pages du socle (B0) et vague 1 (B1) = **index, follow**. Toute page sous le
    seuil = `noindex` jusqu'à graduation.
