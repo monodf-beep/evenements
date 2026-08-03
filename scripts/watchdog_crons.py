@@ -75,6 +75,10 @@ ATTENDUS = [
     # il vieillit. C'est précisément le genre de panne qu'on découvre trois semaines plus
     # tard en se demandant pourquoi un événement passé est encore en tête.
     ("Tri « Ça vaut le déplacement »", "refresh_deplacement", "refresh_deplacement.log", 30),
+    # Le bilan de 11h se surveille lui aussi. On pourrait croire son absence évidente — pas
+    # de message Slack le matin — mais c'est exactement le raisonnement qui a laissé passer
+    # l'incident du 2026-07-31 : personne ne remarque un message qui NE vient PAS.
+    ("Bilan du matin",             "bilan_matin",     "bilan_matin.log",      30),
     ("Santé de la home",          "homepage_health", "homepage_health.log",  30),
     ("Relecture du site",         "site_audit",      "site_audit.log",       30),
     ("Sauvegarde de la base",     "backup_db",       "backup.log",           30),

@@ -267,6 +267,37 @@ def _ligne(post: dict, row: dict | None, motif: str, sim: float | None) -> str:
     return base
 
 
+def _cas_collision(liees: list[dict]) -> str:
+    """Nomme le cas quand plusieurs lignes locales revendiquent le MÊME post, et dit quel
+    script le répare.
+
+    Pourquoi ça ne pouvait pas rester « information » : deux fiches sur une même page,
+    c'est la dernière publiée qui écrase l'autre — donc un contenu qui change tout seul —,
+    et l'événement compté deux fois dans les classements. Le rapport le signalait depuis
+    toujours en renvoyant vers `relink_wp_ids_as`, qui ne traite qu'UN des trois cas :
+    devant les deux autres, on ne trouvait rien à faire et on passait. C'est la forme
+    « diagnostic sans issue » du défaut recensé dans docs/ETATS_TERMINAUX.md.
+
+    Les trois cas se distinguent par les colonnes, sans avoir à juger le contenu."""
+    ids = {r["id"] for r in liees}
+    trad = [r for r in liees if r.get("translation_of") in ids]
+    if trad:
+        # La traduction n'a pas créé de nouveau post, elle a écrasé celui de l'original :
+        # la liaison Polylang pointe l'événement vers lui-même. Bug titre/nom propre du
+        # 2026-07-20, corrigé depuis par force_create côté endpoint.
+        return (f"traduction {trad[0]['id']} et son original partagent le post → "
+                f"scripts.repair_translation")
+    fus = [r for r in liees if (r.get("duplicate_of") in ids) or (r.get("statut") == "merged")]
+    if fus and len(fus) < len(liees):
+        # Séquelle NORMALE d'une fusion : la perdante garde son ancien lien. Sans gravité
+        # tant qu'une seule ligne saine pilote le post — mais si la perdante est un jour
+        # republiée, elle écrasera la gagnante. Couper le lien mort suffit.
+        return (f"séquelle de fusion : la perdante {fus[0]['id']} garde son ancien lien → "
+                f"le couper (wp_post_id_as=NULL), la gagnante pilote le post")
+    return ("deux fiches sans lien de parenté revendiquent le post → scripts.relink_wp_ids_as "
+            "(recollage par titre), APRÈS avoir tranché laquelle est la bonne")
+
+
 def _cmd(ids: list[int]) -> str:
     return ".venv/bin/python -m scripts.trash_wp_ids " + " ".join(str(i) for i in ids)
 
@@ -327,6 +358,7 @@ def main(argv=None) -> int:
             par_wp.setdefault(int(wp), []).append(r)
 
     rejetes, fusionnes, orphelins, suspects, sains, multiples = [], [], [], [], [], []
+    # (la classification des collisions est en haut du fichier — voir _cas_collision)
     for post in en_ligne:
         liees = par_wp.get(post["id"], [])
         if not liees:
@@ -481,11 +513,16 @@ def main(argv=None) -> int:
         print()
 
     if multiples:
-        print(f"--- ℹ PLUSIEURS lignes locales pointent le même post ({len(multiples)}) ---")
-        print("    Information, pas alerte : à vérifier avec scripts/relink_wp_ids_as.py.")
+        print(f"--- ⚠ PLUSIEURS lignes locales pointent le même post ({len(multiples)}) ---")
+        print("    Deux fiches ne peuvent pas piloter la même page : la dernière publiée")
+        print("    écrase l'autre, et le classement compte l'événement deux fois. Le motif")
+        print("    n'était pas nommé jusqu'au 2026-08-03 (« information, pas alerte », et")
+        print("    renvoi vers relink_wp_ids_as qui ne traite qu'UN des trois cas) — donc")
+        print("    personne ne savait lequel appliquer. Chaque ligne dit maintenant lequel.")
         for post, liees in multiples[:args.limit]:
             ids = ", ".join(f"{r['id']}({r.get('statut')})" for r in liees)
             print(_ligne(post, None, "", None) + f"  ↔ ids locaux : {ids}")
+            print(f"      → {_cas_collision(liees)}")
         print()
 
     # --- Suite à donner ---------------------------------------------------- #

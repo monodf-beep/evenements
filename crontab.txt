@@ -84,6 +84,18 @@
 # fiches republiées à la main le 2026-08-03, 16 étaient à la corbeille alors que la base
 # les croyait publiées — les republier les aurait ressuscitées.
 50 10 * * * cd /root/evenements && .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1
+# Bilan du matin 11h — accord de Franck le 2026-08-03. Lance Claude Code en NON-INTERACTIF
+# sur config/consigne_bilan_matin.txt et poste le résultat sur Slack. Toute la mécanique
+# (outils autorisés, verrous d'écriture, raisons de passer par un script plutôt qu'une ligne
+# de cron) est expliquée en tête de scripts/bilan_matin.sh — la relire avant d'y toucher.
+# Différence de nature avec les autres lignes de ce fichier : les autres exécutent une règle
+# écrite d'avance, celle-ci fait LIRE l'état du jour et RÉDIGER ce qui mérite l'attention.
+# C'est la seule surveillance capable de signaler ce qu'aucun seuil n'a prévu.
+# Placé à 11h : après la chaîne du matin (8h→10h50, rafraîchissement du tri compris), donc
+# sur un état stabilisé, et avant le chien de garde de 12h qui, lui, ne regarde que
+# l'ABSENCE de passages. L'agent n'écrit rien et ne poste rien lui-même : il produit un
+# texte, le script l'envoie (cf. sa docstring).
+0 11 * * * /root/evenements/scripts/bilan_matin.sh >> logs/bilan_matin.log 2>&1
 # Chien de garde 12h — LES CRONS TOURNENT-ILS ENCORE ? Ajouté le 2026-08-03, c'était le
 # manque le plus sérieux du dispositif : quatorze automatisations font vivre ce site, et
 # si le scraper échouait demain matin, RIEN ne sonnait. La santé de la home (13h) et la
