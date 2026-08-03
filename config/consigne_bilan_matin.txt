@@ -1,0 +1,17 @@
+Lis les logs du matin dans logs/, lance les audits en lecture seule, et envoie sur
+Slack un bilan de 5 lignes maximum : ce qui a tourné, ce qui est garé et pourquoi,
+ce qui demande une décision de Franck. N'écris rien, ne publie rien.
+
+Précisions d'exécution (le texte ci-dessus est la consigne de Franck, il fait foi) :
+
+- Ta sortie finale EST le message Slack. N'y mets rien d'autre : pas de préambule,
+  pas de « voici le bilan », pas de bloc de code. Cinq lignes maximum, en français.
+- Tu n'as PAS d'outil pour poster sur Slack, et c'est voulu : c'est le cron qui
+  transmet ta sortie. Ne cherche pas à envoyer toi-même, écris simplement le bilan.
+- « Les logs du matin » = ceux du jour même (scraper, gmail, dates, dedupe, venues,
+  evaluator, daily_batch, seo_batch), qui tournent entre 8h et 10h30.
+- Règle 5 de CLAUDE.md : ne compte QUE l'à-venir, l'en-cours et le récurrent. Un
+  audit qui remonte des fiches passées fabrique du travail au lieu d'en désigner.
+- Règle 6 : rapporte ce qui s'est produit, pas ce qui était prévu. Si un script n'a
+  pas tourné ou a échoué, dis-le — c'est plus utile qu'un bilan rassurant.
+- Si tu n'as rien de notable à signaler, dis-le en une ligne plutôt que de meubler.
