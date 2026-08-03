@@ -11,7 +11,15 @@ dernier recours :
      Économique, borné, idempotent ; désactivable par VENUES_LLM=0.
 
 Sortie stockée : lieu / ville + venue_source
-('page' | 'llm' | 'novenue' | 'none' | 'llm_none'). Cron : après la datation.
+('page' | 'llm' | 'novenue' | 'none' | 'llm_none') + venue_checked_at (DATE de la
+dernière tentative). Cron : après la datation.
+
+AUCUN ÉCHEC N'EST DÉFINITIF (depuis le 2026-08-03). Une fiche dont le lieu n'a pas été
+trouvé est automatiquement re-tentée après VENUE_COOLDOWN_DAYS (défaut 7, aligné sur
+WEB_COOLDOWN_DAYS de scraper_events). Avant, la sortie de l'impasse existait mais exigeait
+qu'un humain tape `--retry` en ayant deviné qu'il fallait le faire : 823 fiches y ont
+dormi jusqu'au 2026-08-02, où on les a trouvées en cherchant autre chose. Un garde-fou
+qui dépend d'un geste manuel n'est pas un garde-fou, c'est une note.
 """
 from __future__ import annotations
 import argparse
@@ -162,8 +170,20 @@ def apply_source_venues(conn: sqlite3.Connection) -> int:
     return filled
 
 
+# Délai avant de re-tenter une fiche dont le lieu n'a PAS été trouvé. Même convention et
+# même variable d'environnement que scripts/scraper_events.py (WEB_COOLDOWN_DAYS, défaut 7)
+# — deux délais différents pour la même idée seraient un piège de réglage.
+VENUE_COOLDOWN_DAYS = int(os.getenv("VENUE_COOLDOWN_DAYS",
+                                    os.getenv("WEB_COOLDOWN_DAYS", "7")))
+
+
 def ensure_columns(conn: sqlite3.Connection) -> None:
-    for col, decl in (("lieu", "TEXT"), ("ville", "TEXT"), ("venue_source", "TEXT")):
+    # `venue_checked_at` (ajoutée le 2026-08-03) : DATE de la dernière tentative, pas son
+    # résultat — `venue_source` dit ce qu'on a trouvé, cette colonne dit quand on a cherché.
+    # Sans elle, un ré-armement automatique ne peut pas exister : il re-tenterait les 800+
+    # fiches sans lieu à CHAQUE run, donc paierait tous les jours pour les mêmes échecs.
+    for col, decl in (("lieu", "TEXT"), ("ville", "TEXT"), ("venue_source", "TEXT"),
+                      ("venue_checked_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
@@ -180,9 +200,12 @@ def main(argv=None) -> int:
     parser.add_argument("--llm-cap", type=int, default=VENUES_LLM_CAP,
                         help="Nombre max d'événements traités par LLM sur ce run.")
     parser.add_argument("--retry", action="store_true",
-                        help="Ré-armer les événements déjà marqués « lieu introuvable » "
-                             "(venue_source='llm_none') pour les re-tenter. Ne touche "
-                             "JAMAIS un événement qui a déjà un lieu.")
+                        help=f"Ré-armer TOUT DE SUITE les événements marqués « lieu "
+                             f"introuvable », sans attendre le délai. Depuis le "
+                             f"2026-08-03 ce ré-armement est AUTOMATIQUE à chaque run "
+                             f"après {VENUE_COOLDOWN_DAYS} jours (VENUE_COOLDOWN_DAYS) : "
+                             f"cette option ne sert plus qu'à forcer la reprise "
+                             f"immédiatement. Ne touche JAMAIS un événement qui a un lieu.")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -203,13 +226,46 @@ def main(argv=None) -> int:
     # parce qu'elles étaient déjà en 'llm_none'. Le pipeline tournait à vide.
     # `dates.py` porte exactement le même garde-fou (--retry sur 'nodate'/'llm_none')
     # depuis toujours ; cette asymétrie entre deux scripts jumeaux était le défaut.
+    #
+    # ⚠️ CE RÉ-ARMEMENT EST DEVENU AUTOMATIQUE LE 2026-08-03. Il ne l'était pas, et c'est
+    # le même défaut que celui qu'il corrige, d'un cran plus haut : la sortie de l'impasse
+    # existait, mais elle exigeait qu'un humain tape `--retry` en ayant deviné qu'il fallait
+    # le faire. Personne ne tape une commande dont il ignore l'existence — les 823 fiches
+    # bloquées du 2026-08-02 n'ont été libérées que parce qu'on cherchait autre chose.
+    # Un garde-fou qui dépend d'un geste manuel n'est pas un garde-fou, c'est une note.
+    #
+    # POURQUOI UN DÉLAI et pas un ré-armement à chaque run : re-tenter tous les jours les
+    # 800+ fiches sans lieu paierait tous les jours pour les mêmes échecs (la passe LLM est
+    # facturée). Une page qui n'avait pas de lieu hier n'en a pas davantage aujourd'hui ;
+    # elle peut en avoir dans une semaine (programme publié, page mise à jour). D'où
+    # VENUE_COOLDOWN_DAYS, aligné sur la convention déjà en place dans scraper_events.
+    #
+    # POURQUOI 'none' ET PAS '' : les fiches ré-armées repartent vers la passe LLM, pas vers
+    # la passe page — celle-ci a son propre plafond de téléchargements (--fetch-cap) qu'on
+    # réserve aux fiches JAMAIS examinées. Une reprise ne doit pas prendre la place d'une
+    # nouveauté. `--retry` conserve exactement ce comportement, il ignore seulement le délai.
     if args.retry:
         n = conn.execute(
             "UPDATE events_raw SET venue_source='none' "
             "WHERE venue_source IN ('llm_none','novenue') "
             "  AND COALESCE(lieu,'') = '' AND statut != 'merged'").rowcount
         conn.commit()
-        log.info("Retry : %d événement(s) sans lieu ré-armé(s) pour une nouvelle tentative", n)
+        log.info("Retry : %d événement(s) sans lieu ré-armé(s) pour une nouvelle tentative "
+                 "(délai ignoré, --retry)", n)
+    else:
+        n = conn.execute(
+            "UPDATE events_raw SET venue_source='none' "
+            "WHERE venue_source IN ('llm_none','novenue') "
+            "  AND COALESCE(lieu,'') = '' AND statut != 'merged' "
+            # NULL = tentative antérieure à cette colonne : on la traite comme ancienne,
+            # sinon les fiches déjà bloquées AVANT ce correctif ne sortiraient jamais —
+            # c'est-à-dire précisément celles pour lesquelles il est écrit.
+            "  AND (venue_checked_at IS NULL OR venue_checked_at < datetime('now', ?))",
+            (f"-{VENUE_COOLDOWN_DAYS} days",)).rowcount
+        conn.commit()
+        if n:
+            log.info("Ré-armement automatique : %d fiche(s) sans lieu re-tentée(s) "
+                     "(dernier essai il y a plus de %d jours)", n, VENUE_COOLDOWN_DAYS)
 
     # --- Passe 0 : LIEU DE LA SOURCE (le lieu = la source pour les « officielle ») ---
     from_source = apply_source_venues(conn)
@@ -227,7 +283,8 @@ def main(argv=None) -> int:
     for r in todo:
         lieu, ville, src = fetch_event_venue(r["url_source"])
         conn.execute(
-            "UPDATE events_raw SET lieu=?, ville=?, venue_source=? WHERE id=?",
+            "UPDATE events_raw SET lieu=?, ville=?, venue_source=?, "
+            "venue_checked_at=datetime('now') WHERE id=?",
             (lieu, ville, src, r["id"]))
         conn.commit()
         if src == "page":
@@ -253,7 +310,8 @@ def main(argv=None) -> int:
                 material = fetch_page_text(r["url_source"], title=r["title"] or "") or f"{r['title']}\n{r['description'] or ''}"
                 lieu, ville, src = llm_venue(material, client, VENUES_LLM_MODEL)
                 conn.execute(
-                    "UPDATE events_raw SET lieu=?, ville=?, venue_source=? WHERE id=?",
+                    "UPDATE events_raw SET lieu=?, ville=?, venue_source=?, "
+                    "venue_checked_at=datetime('now') WHERE id=?",
                     (lieu, ville, src, r["id"]))
                 conn.commit()
                 if src == "llm":
