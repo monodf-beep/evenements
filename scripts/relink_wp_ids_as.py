@@ -53,18 +53,39 @@ def _norm(title: str) -> str:
 def fetch_wp_events(wp_url: str, auth) -> dict[str, list[int]]:
     """Inventaire WP : titre normalisé → [ids] (liste car titres parfois dupliqués)."""
     index: dict[str, list[int]] = {}
-    # 1) API WordPress standard (inclut brouillons avec auth)
+    # 1) API WordPress standard (inclut brouillons avec auth), PAGINÉE.
+    # ⚠️ Corrigé le 2026-08-03 : un seul appel `per_page=100` sans boucle. WordPress
+    # plafonne à 100 par page, or l'agenda compte près de 400 événements publiés (plus
+    # les brouillons, inclus ici par `status=any`). L'inventaire était donc TRONQUÉ aux
+    # 100 premiers, en silence — et toute fiche au-delà était comptée « introuvable ».
+    # Sur un script dont le métier est justement de RÉPARER les `wp_post_id_as` cassés,
+    # un inventaire tronqué ne produit pas une erreur visible : il produit de faux
+    # diagnostics « pas de correspondance », c'est-à-dire exactement le contraire du
+    # service rendu.
     try:
-        r = requests.get(f"{wp_url}/wp-json/wp/v2/tribe_events",
-                         params={"per_page": 100, "status": "any", "_fields": "id,title"},
-                         auth=auth, timeout=30)
-        if r.status_code == 200 and isinstance(r.json(), list):
-            for it in r.json():
+        page = 1
+        while page <= 50:                       # borne de sécurité (5 000 événements)
+            r = requests.get(f"{wp_url}/wp-json/wp/v2/tribe_events",
+                             params={"per_page": 100, "page": page, "status": "any",
+                                     "_fields": "id,title"},
+                             auth=auth, timeout=30)
+            # WordPress renvoie 400 (rest_post_invalid_page_number) quand on dépasse la
+            # dernière page : c'est la fin normale de la pagination, pas une panne.
+            if r.status_code != 200:
+                break
+            lot = r.json()
+            if not isinstance(lot, list) or not lot:
+                break
+            for it in lot:
                 key = _norm((it.get("title") or {}).get("rendered", ""))
                 if key:
                     index.setdefault(key, []).append(int(it["id"]))
-            if index:
-                return index
+            if len(lot) < 100:
+                break                            # dernière page
+            page += 1
+        if index:
+            log.info("Inventaire WP : %d titre(s) sur %d page(s).", len(index), page)
+            return index
     except (requests.RequestException, ValueError) as exc:
         log.warning("REST /wp/v2/tribe_events indisponible (%s) — repli API TEC.", exc)
     # 2) Repli : API REST de The Events Calendar
