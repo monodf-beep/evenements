@@ -408,8 +408,8 @@ def _retranslate(args, client, voix) -> int:
                     log.warning("worker en échec (exception non gérée) : %s", exc)
                     results.append("error")
     done = results.count("done")
-    log.info("Re-traduction terminée — %d jumeau(x) mis à jour%s.", done,
-             "" if args.apply else "  (simulation : rien écrit)")
+    log.info("Re-traduction terminée — %d jumeau(x) mis à jour, %d refusé(s)%s.", done,
+             results.count("refus"), "" if args.apply else "  (simulation : rien écrit)")
     return 0
 
 
@@ -661,8 +661,11 @@ def main(argv=None) -> int:
                     results.append("error")
 
     done, skipped, errors = results.count("done"), results.count("skip"), results.count("error")
-    log.info("=== Traduction terminée : %d traduit(s), %d ignoré(s)%s ===",
-             done, skipped, "" if args.apply else "  (simulation : rien écrit)")
+    # `results` est rempli dans l'ORDRE de soumission des futures, donc dans l'ordre de
+    # `rows` : on peut renommer les refus sans plomberie supplémentaire.
+    refus = [rows[i] for i, v in enumerate(results) if v == "refus"]
+    log.info("=== Traduction terminée : %d traduit(s), %d ignoré(s), %d refusé(s)%s ===",
+             done, skipped, len(refus), "" if args.apply else "  (simulation : rien écrit)")
     if args.apply:
         # Rapport uniquement quand on a vraiment agi (une simulation quotidienne en cron
         # inonderait Slack pour rien) — cf. utils.pipeline_status pour le lot quotidien.
@@ -672,9 +675,20 @@ def main(argv=None) -> int:
                f"candidat(s), {skipped} ignoré(s)")
         if errors:
             msg += f", {errors} erreur(s)"
+        if refus:
+            # NOMMER les refus, sinon le portillon bloque en silence : c'est exactement le
+            # reproche fait aux contrôles qui « se déclarent ok ». Un refus demande une
+            # décision humaine (réparer la description de l'original, ou constater un faux
+            # positif) — et tant qu'il dure, cet original occupe un créneau de --cap.
+            msg += (f"\n⛔ {len(refus)} refusée(s) — titre traduit incohérent avec "
+                    f"l'original, RIEN publié : "
+                    + " · ".join(f"id {e['id']} « {(e.get('title') or '')[:40]} »"
+                                 for e in refus[:5]))
         slack.notify(msg)
-        pipeline_status.record_run("translate_events", ok=done, warn=skipped, error=errors,
-                                   summary=msg[:1500])
+        # Les refus comptent en `warn` et non en `error` : rien n'a cassé, un garde-fou a
+        # tenu — mais ils demandent une décision humaine, ils ne doivent pas disparaître.
+        pipeline_status.record_run("translate_events", ok=done, warn=skipped + len(refus),
+                                   error=errors, summary=msg[:1500])
     return 0
 
 
