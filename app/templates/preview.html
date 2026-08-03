@@ -184,6 +184,26 @@
     </tbody>
   </table>
   {% endif %}
+  {# « Ça vaut le déplacement » — la note qui décide de la vitrine de la home. Elle est
+     montrée MÊME quand la fiche est hors section, avec le motif : c'est justement le cas
+     où on veut comprendre, et c'est ce qui manquait avant le 2026-08-03. #}
+  <div style="margin:.6rem 0;padding:.5rem .6rem;border:1px solid var(--line);border-radius:6px">
+    <span class="s">Ça vaut le déplacement —
+      {% if depl_now is not none %}<strong>{{ depl_now }}</strong>/12 au tri{% else %}<strong>hors section</strong>{% endif %}
+      {% if depl_base is not none %} · {{ depl_base }}/{{ depl_max }} intrinsèque{% endif %}
+    </span><br>
+    <em style="color:var(--muted)">{{ depl_motif }}</em>
+    {% if depl_raisons %}
+    <ul style="margin:.35rem 0 0;padding-left:1.1rem;font-size:.85rem;color:var(--muted)">
+      {% for r in depl_raisons %}<li>{{ r }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <div style="margin-top:.35rem;font-size:.8rem;color:var(--muted)">
+      Plancher actuel : {{ depl_min }}/{{ depl_max }}. La section affiche UN événement par
+      territoire — au-dessus du plancher, c'est la meilleure note du territoire qui prend
+      la carte.
+    </div>
+  </div>
   Statut actuel : <span class="st st-{{ e.statut }}">{{ status_labels.get(e.statut, e.statut) if status_labels else e.statut }}</span>
 </div>
 

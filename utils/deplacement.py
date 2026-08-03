@@ -93,13 +93,43 @@ def deplacement_score(llm_score_detail) -> int | None:
 
 # En dessous de ce score intrinsèque, aucune urgence ne rattrape : la section s'appelle
 # « ça vaut le déplacement », pas « ça ferme bientôt ».
-DEPLACEMENT_MIN = 3
+#
+# RELEVÉ DE 3 À 6 LE 2026-08-03, sur constat de Franck en regardant la home. Le 3 avait été
+# posé au jugé, faute de connaître le stock, et il ne servait à rien : il suffisait de ne
+# pas être NUL pour entrer. « Au diapason » occupait ainsi la carte Savoie — pas parce
+# qu'il vaut le déplacement, mais parce qu'il était le moins mauvais de sa colonne.
+#
+# CE QUE CE SEUIL COÛTE, ET POURQUOI C'EST ACCEPTÉ. La section affiche UN événement par
+# territoire : un plancher haut peut donc laisser une carte VIDE plutôt que médiocre.
+# Arbitrage de Franck, et il est cohérent avec le nom de la section — une carte vide ne
+# ment pas, une carte faible si. `scripts/audit_deplacement.py` mesure, territoire par
+# territoire, ce que chaque plancher laisse : c'est lui qui dira si 7 tient.
+DEPLACEMENT_MIN = 6
 # Fenêtres (jours restants → points). Volontairement peu de paliers : trois marches
 # lisibles valent mieux qu'une formule continue que personne ne saura expliquer.
 _FENETRES = ((7, 3), (21, 2), (45, 1))
 # Durée totale au-delà de laquelle on ne parle plus d'un « événement » mais d'une
 # programmation continue. Sert au bonus de rareté, pas à exclure.
 PONCTUEL_MAX_JOURS = 4
+
+# HORIZON — décision de Franck le 2026-08-03, en regardant la home : la section affichait
+# la Foire de Saint-Ours du 30 janvier 2027, à six mois de là. « Ça vaut le déplacement »
+# est une invitation à y aller, pas un pense-bête pour l'an prochain : un événement qu'on
+# ne peut pas décider d'aller voir n'a rien à faire dans une section qui pousse à décider.
+#
+# Six mois et non trois : Franck a tranché sur les données réelles (« 6 mois c'est bien, ça
+# capture les meilleurs »). Les grandes manifestations s'annoncent longtemps à l'avance, et
+# un horizon court les ferait disparaître précisément parce qu'elles sont importantes.
+#
+# CE N'EST PAS LA MÊME CHOSE QUE LE BONUS D'URGENCE, et c'est pour ça qu'il en fallait un
+# deuxième : le bonus DÉPARTAGE (il donne des points à ce qui approche), il n'EXCLUT rien.
+# À six mois, il vaut zéro — donc il laissait passer, sans rien dire, tout ce qui est
+# lointain. La Saint-Ours 2027 entrait sur sa seule qualité intrinsèque.
+#
+# Compté depuis le DÉBUT, jamais depuis la fin : une exposition déjà ouverte se visite
+# aujourd'hui, quelle que soit sa date de clôture. C'est la date à partir de laquelle on
+# PEUT y aller qui compte.
+HORIZON_JOURS = 183
 
 
 def _jour(valeur) -> "date | None":
@@ -114,11 +144,13 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
     """Score de tri de la section « Ça vaut le déplacement » : la qualité intrinsèque,
     relevée par l'urgence. 0-12, ou None si la fiche n'a pas sa place dans la section.
 
-    None dans quatre cas, tous volontaires :
+    None dans cinq cas, tous volontaires :
       • le détail d'évaluation manque (rien à mesurer) ;
       • le score intrinsèque est sous DEPLACEMENT_MIN (voir plus haut) ;
       • l'événement est TERMINÉ — règle 5 de CLAUDE.md, on ne travaille que sur ce qui
         est encore devant nous ;
+      • l'événement commence au-delà de HORIZON_JOURS — trop loin pour qu'on décide d'y
+        aller (cf. le commentaire de la constante) ;
       • …mais PAS quand la date manque : une fiche sans date n'est pas un événement
         terminé, c'est une donnée manquante, et un événement récurrent n'a par nature
         pas de date unique. Elle garde son score intrinsèque, sans bonus.
@@ -135,6 +167,11 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
         return base                      # sans date : intrinsèque seul, jamais exclu
     if derniere < auj:
         return None                      # passé : hors sujet (règle 5)
+    # HORIZON. Sur `debut` et non sur `derniere` : une exposition ouverte depuis mai et
+    # fermant en septembre a un début DANS LE PASSÉ — elle se visite aujourd'hui, elle
+    # reste. Seul ce qui n'a pas encore commencé peut être trop loin.
+    if debut and (debut - auj).days > HORIZON_JOURS:
+        return None
 
     restant = (derniere - auj).days
     bonus = next((pts for seuil, pts in _FENETRES if restant <= seuil), 0)
@@ -148,6 +185,39 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
         bonus += 1                       # date unique = ponctuel par définition
 
     return base + bonus
+
+
+def deplacement_etat(event: dict, aujourdhui=None) -> tuple[int | None, int | None, str]:
+    """(note intrinsèque, note de tri, MOTIF) — pour l'afficher au back-office.
+
+    Demande de Franck le 2026-08-03 : « c'est dommage de pas la voir dans le back-office ».
+    Il avait raison sur le fond, et pas seulement pour le confort — cette note décide seule
+    de la vitrine de la home, et jusqu'ici elle ne se lisait NULLE PART. Une note invisible
+    ne se conteste pas : on ne peut que constater le résultat sur le site et deviner, ce
+    qu'il a dû faire pour s'apercevoir que « au diapason » occupait la carte Savoie.
+
+    Le motif est renvoyé plutôt que recalculé côté gabarit : la règle d'exclusion doit
+    rester à un seul endroit, sinon l'affichage et le tri finiront par diverger, et c'est
+    l'affichage qu'on croira."""
+    from datetime import date as _d
+    base = deplacement_score(event.get("llm_score_detail"))
+    if base is None:
+        return None, None, "pas évalué — la section écarte les non-mesurés, elle ne les classe pas derniers"
+    if base < DEPLACEMENT_MIN:
+        return base, None, f"sous le plancher ({base} < {DEPLACEMENT_MIN})"
+
+    auj = aujourdhui or _d.today()
+    debut, fin = _jour(event.get("date_event_start")), _jour(event.get("date_event_end"))
+    derniere = fin or debut
+    if derniere is None:
+        return base, base, "sans date — score intrinsèque seul, jamais exclu"
+    if derniere < auj:
+        return base, None, "événement terminé"
+    if debut and (debut - auj).days > HORIZON_JOURS:
+        return base, None, (f"commence dans {(debut - auj).days} jours — au-delà de "
+                            f"l'horizon de {HORIZON_JOURS}")
+    now = deplacement_now(event, aujourdhui=auj)
+    return base, now, f"dans la section · {base} intrinsèque + {(now or base) - base} d'urgence"
 
 
 def deplacement_raisons(llm_score_detail) -> list[str]:
