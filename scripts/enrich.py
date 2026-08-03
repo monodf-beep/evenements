@@ -1719,7 +1719,23 @@ def main(argv: list[str]) -> int:
     _ensure_checks_table(conn)
 
     events = select_events(conn, ids, dfrom, dto)
+    # GARÉES, PAS OUBLIÉES. Une fiche refusée pour matière polluée sort de `select_events`
+    # (qui n'accepte que `enrich_status` vide) et ne réapparaît donc dans AUCUN bilan de
+    # run — le silence exact qui a laissé 823 fiches dormir dans `venues.py`.
+    # scripts/repair_polluted_descriptions.py rouvre celles qu'il sait réparer ; les autres
+    # (page source disparue) resteraient invisibles. On les compte à chaque run, pour que
+    # leur nombre soit sous les yeux plutôt que dans la base.
+    try:
+        garees = conn.execute(
+            "SELECT COUNT(*) FROM events_raw WHERE enrich_status='matiere_polluee'"
+        ).fetchone()[0]
+    except sqlite3.Error:
+        garees = 0
     conn.close()
+    if garees:
+        log.warning("⚠️  %d fiche(s) en attente, matière polluée — NON rédigées et hors "
+                    "de cette file tant que leur description n'est pas réparée. "
+                    "→ .venv/bin/python scripts/repair_polluted_descriptions.py", garees)
     if not ids and cap and len(events) > cap:
         log.info("Plafond --cap=%d : %d événement(s) éligibles, %d traités ce run.",
                   cap, len(events), cap)

@@ -443,8 +443,21 @@ def main(argv=None) -> int:
         return 0
 
     for r in remplacements:
-        conn.execute("UPDATE events_raw SET description=? WHERE id=?",
-                     (r["_nouvelle"], r["id"]))
+        # ⚠️ ON EFFACE AUSSI enrich_status='matiere_polluee' (ajouté le 2026-08-03, le jour
+        # même où ce statut a été créé). `scripts/enrich.py` refuse désormais de rédiger une
+        # fiche dont la description est un item Google News et dont aucune autre matière
+        # n'est lisible — refus juste, mais sa sélection ne retient que les fiches à
+        # `enrich_status` VIDE. Sans cette ligne, réparer la description ne servirait à
+        # rien : la fiche resterait exclue de la file de rédaction pour toujours, avec
+        # désormais une bonne description et aucune raison de ne pas l'utiliser.
+        # C'est LE motif récurrent de ce dépôt — un état terminal qu'un script pose et
+        # qu'aucun autre ne sait rouvrir. Il se referme ici, au seul endroit qui sait que
+        # la CAUSE a disparu : celui qui vient de la faire disparaître.
+        # On ne touche à aucun autre `enrich_status` : 'error', 'api_error' ou un
+        # enrichissement réussi relèvent d'autre chose et ne nous regardent pas.
+        conn.execute("UPDATE events_raw SET description=?, enrich_status="
+                     "CASE WHEN enrich_status='matiere_polluee' THEN NULL ELSE enrich_status END "
+                     "WHERE id=?", (r["_nouvelle"], r["id"]))
         log.info("[%s] description réparée (%s) : %d → %d car. visibles | AVANT « %s » | "
                  "APRÈS « %s »", r["id"], r["_provenance"],
                  _text_len(r["description"] or ""), _text_len(r["_nouvelle"]),
