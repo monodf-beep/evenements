@@ -128,8 +128,13 @@ La frontière n'est plus « écrire ou lire », elle est **« réversible ou non
 - `rm -rf`, `git reset --hard`, `git clean`, `git push --force` ;
 - `--hard` sur les purges (il SUPPRIME les lignes au lieu de les rejeter) ;
 - `DELETE FROM`, `DROP TABLE`, `TRUNCATE` en SQL direct ;
-- `force=true` / `--force-delete` — la suppression DÉFINITIVE d'un post WordPress, qui
-  court-circuite la corbeille ;
+- `force=true` sur une route **`wp/v2/…`** — c'est le drapeau de suppression DÉFINITIVE
+  de WordPress, qui court-circuite la corbeille. Idem `--force-delete`.
+  ⚠️ **À ne pas confondre** (précisé le 2026-08-03, après que la question s'est posée en
+  vrai) : `scripts/cleanup_as_trash.trash_one(..., force=True)` passe par la route MAISON
+  `cs/v1/trash`, où `force` signifie « autoriser la corbeille sur un post déjà publié ».
+  Rien à voir : ce chemin-là est **réversible** et c'est celui qu'utilisent `trash_by_ids`
+  et `trash_wp_ids`. Vérifier la ROUTE avant de conclure, jamais le seul mot `force` ;
 - lecture du `.env`.
 
 **Demande encore** : `apt`, `pip install`, `systemctl`, `reboot` — hors du projet ; et la
