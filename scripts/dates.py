@@ -21,6 +21,13 @@ Trois passes, du plus sûr/gratuit au dernier recours :
      Économique, borné, idempotent ; désactivable par DATES_LLM=0.
 
 Sortie stockée : date_event_start / date_event_end (ISO AAAA-MM-JJ) + date_source
++ date_checked_at (DATE de la dernière tentative).
+
+AUCUN ÉCHEC N'EST DÉFINITIF (depuis le 2026-08-03). Une fiche restée non datable est
+automatiquement re-tentée après DATE_COOLDOWN_DAYS (défaut 7). Avant, la sortie de
+l'impasse exigeait qu'un humain tape `--retry` en ayant deviné qu'il fallait le faire.
+L'enjeu est lourd : sans date, publish_batch_as REFUSE la création — une fiche non
+datable bloquée à vie est une fiche perdue, pas une fiche imparfaite.
 ('parsed' | 'page' | 'llm' | 'none' | 'nodate' | 'llm_none'). Les non-datés vont
 dans le bac « date à confirmer ». Cron : après dedupe, avant l'évaluation.
 """
@@ -368,10 +375,23 @@ def llm_dates(material: str, ref: date, client, model: str,
     return ("", "", "llm_none")
 
 
+# Délai avant de re-tenter une fiche restée NON DATABLE. Même convention et même valeur
+# par défaut que WEB_COOLDOWN_DAYS (scraper_events), VENUE_COOLDOWN_DAYS (venues) et
+# ENRICH_RETRY_DAYS (enrich) — quatre délais différents pour la même idée seraient un
+# piège de réglage.
+DATE_COOLDOWN_DAYS = int(os.getenv("DATE_COOLDOWN_DAYS",
+                                   os.getenv("WEB_COOLDOWN_DAYS", "7")))
+
+
 def ensure_columns(conn: sqlite3.Connection) -> None:
+    # `date_checked_at` (ajoutée le 2026-08-03) : DATE de la dernière tentative, là où
+    # `date_source` dit son RÉSULTAT. Sans elle, un ré-armement automatique re-tenterait
+    # toutes les fiches non datables à CHAQUE run — donc re-paierait tous les jours la
+    # passe LLM pour les mêmes échecs.
     for col, decl in (("date_event_start", "TEXT"),
                       ("date_event_end", "TEXT"),
-                      ("date_source", "TEXT")):
+                      ("date_source", "TEXT"),
+                      ("date_checked_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
@@ -409,13 +429,38 @@ def main(argv=None) -> int:
     init_db(conn)
     ensure_columns(conn)
 
+    # ⚠️ CE RÉ-ARMEMENT EST DEVENU AUTOMATIQUE LE 2026-08-03, comme celui de venues.py le
+    # même jour. La sortie de l'impasse existait, mais elle exigeait qu'un humain tape
+    # `--retry` en ayant deviné qu'il fallait le faire — et personne ne tape une commande
+    # dont il ignore l'existence. Un garde-fou qui dépend d'un geste manuel n'est pas un
+    # garde-fou, c'est une note.
+    # ENJEU PLUS LOURD QUE POUR LE LIEU : sans `date_event_start`, une fiche ne peut pas
+    # être publiée du tout — la porte de publish_batch_as refuse la création (garde-fou du
+    # 2026-08-02, après la création de WP#6959 sans date ni image). Une fiche non datable
+    # bloquée à vie est une fiche perdue, pas une fiche imparfaite.
     if args.retry:
         n = conn.execute(
             "UPDATE events_raw SET date_source='none' "
             "WHERE date_source IN ('nodate','llm_none') "
             "  AND COALESCE(date_event_start,'')='' AND statut != 'merged'").rowcount
         conn.commit()
-        log.info("Retry : %d événement(s) non-datables ré-armés pour re-tentative", n)
+        log.info("Retry : %d événement(s) non-datables ré-armés pour re-tentative "
+                 "(délai ignoré, --retry)", n)
+    else:
+        n = conn.execute(
+            "UPDATE events_raw SET date_source='none' "
+            "WHERE date_source IN ('nodate','llm_none') "
+            "  AND COALESCE(date_event_start,'')='' AND statut != 'merged' "
+            # NULL = tentative antérieure à cette colonne : traitée comme ancienne, sinon
+            # les fiches bloquées AVANT ce correctif ne sortiraient jamais — c'est-à-dire
+            # précisément celles pour lesquelles il est écrit.
+            "  AND (date_checked_at IS NULL "
+            "       OR date_checked_at < datetime('now', ?))",
+            (f"-{DATE_COOLDOWN_DAYS} days",)).rowcount
+        conn.commit()
+        if n:
+            log.info("Ré-armement automatique : %d fiche(s) non datées re-tentée(s) "
+                     "(dernier essai il y a plus de %d jours)", n, DATE_COOLDOWN_DAYS)
 
     # --- Passe 1 : texte (titre + description), gratuit et instantané ---
     # ⚠️ TRADUCTIONS EXCLUES (translation_of) — bug corrigé le 2026-08-02. Une fiche
@@ -437,7 +482,7 @@ def main(argv=None) -> int:
     for r in rows:
         s, e, src = parse_dates(f"{r['title']}\n{r['description'] or ''}")
         conn.execute(
-            "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
+            "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
             (s, e, src, r["id"]))
         if src == "parsed":
             parsed += 1
@@ -458,7 +503,7 @@ def main(argv=None) -> int:
             s, e, src = fetch_event_dates(r["url_source"])
             # 'page' = trouvé ; 'nodate' = lu mais rien (ne sera plus re-fetché).
             conn.execute(
-                "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
+                "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
                 (s, e, src, r["id"]))
             if src == "page":
                 from_page += 1
@@ -489,7 +534,7 @@ def main(argv=None) -> int:
                 s, e, src = llm_dates(material, ref, client, DATES_LLM_MODEL,
                                       title=r["title"] or "", context=ctx)
                 conn.execute(
-                    "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=? WHERE id=?",
+                    "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
                     (s, e, src, r["id"]))
                 conn.commit()
                 if src == "llm":
