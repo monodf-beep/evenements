@@ -70,6 +70,144 @@ complément si connue, jamais à la place.**
 Ces valeurs sont la copie exacte de `cs_terr_canon_data()` (mu-plugin
 `cs-territoire-persistant.php`). Si l'une change, mettre à jour **les deux** au même moment.
 
+### 2bis. Provinces (niveau intermédiaire, Piémont UNIQUEMENT)
+
+**Décidé le 2026-07-30, en réouverture ciblée de la clause « figée » ci-dessus.** Raison : les 4
+territoires ne sont pas de taille comparable — Savoie ≈ un département français, Comté de Nice ≈
+le département des Alpes-Maritimes, Vallée d'Aoste ≈ une petite région autonome, mais **Piémont
+représente une région italienne entière** (8 provinces, 4,3M d'habitants) compressée dans un seul
+terme. La ville de Turin y écrase tout le reste (32 événements à venir vs 16 pour les 7 autres
+provinces réunies au 2026-07-30) sans qu'aucune autre ville individuelle n'ait assez de volume
+pour mériter sa propre page.
+
+**Portée : Piémont seulement.** Les 3 autres territoires gardent leur structure `territoire >
+ville` à 2 niveaux, inchangée. On insère `territoire > province > ville` uniquement sous Piémont.
+
+| Province | Sigle | FR (term_id · slug) | IT (term_id · slug) |
+|---|---|---|---|
+| Turin | TO | 7 · `turin` *(réutilisé, renommé « Province de Turin »)* | 568 · `provincia-torino` |
+| Cuneo | CN | 570 · `province-cuneo` | 572 · `provincia-cuneo` |
+| Asti | AT | 574 · `province-asti` | 576 · `provincia-asti` |
+| Alexandrie | AL | 578 · `province-alexandrie` | 580 · `provincia-alessandria` |
+| Biella | BI | 582 · `province-biella` | 584 · `provincia-biella` |
+| Novare | NO | 586 · `province-novare` | 588 · `provincia-novara` |
+| Vercelli | VC | 590 · `province-vercelli` | 592 · `provincia-vercelli` |
+| VCO (Verbano-Cusio-Ossola) | VB | 594 · `province-vco` | 596 · `provincia-vco` |
+
+Créés le 2026-07-30 (session Novamira). Backup de la taxonomie complète avant modification :
+option WordPress `cs_bk_taxonomie_territoire_avant_provinces`.
+
+**Rattachement ville → province** (liste complète maintenue dans `_PROVINCE_PAR_VILLE`,
+`scripts/publisher_as.py` — volontairement large, villes sans événement aujourd'hui incluses) :
+- Turin (TO) : Torino, Rivoli, Ivrea, Venaria Reale, Collegno, Moncalieri, Chieri, Pinerolo,
+  Nichelino, Settimo Torinese, Chivasso, Bosconero, Pragelato, Usseglio
+- Cuneo (CN) : Cuneo, Mondovì, Alba, Bra, Fossano, Saluzzo, Savigliano, Carrù, **Vicoforte**,
+  Villanova Mondovì, Roccaforte e Frabosa Sottana
+- Asti (AT) : Asti, Nizza Monferrato, Canelli
+- Alexandrie (AL) : Alessandria, Novi Ligure, Tortona, Acqui Terme, Casale Monferrato
+- Biella (BI) : Biella, Cossato
+- Novare (NO) : Novara, Borgomanero, Arona
+- Vercelli (VC) : Vercelli
+- VCO (VB) : Verbania, Stresa, Domodossola, Omegna
+
+*(Correction du 2026-07-30 : Vicoforte avait été classé par erreur sous Vercelli dans une
+version précédente de ce document — c'est une commune de la province de Cuneo, corrigé ici et
+dans le code.)*
+
+**Piège connu à éviter** (cf. bug Annecy/Aoste de la même session) : ne pas dupliquer un terme
+ville sous plusieurs orthographes différentes — normaliser AVANT de tagger, sinon le filtrage par
+province rate une partie du contenu.
+
+**État au 2026-07-30 : phases 1, 2 et 4 terminées.**
+- ✅ Les 16 termes sont créés en base et liés Polylang (vérifié).
+- ✅ Rétro-tagging fait : les 96 événements Piémont déjà publiés (FR+IT) ont reçu leur province
+  en plus du territoire région (vérifié en base : Turin 79, Cuneo 14, Vercelli 3 — Asti,
+  Alexandrie, Biella, Novare, VCO à 0 pour l'instant, faute de contenu, pas de tag manquant).
+- ✅ Pipeline branché : `_map_province()` dans `scripts/publisher_as.py` (nouveau champ
+  `province` dans le payload envoyé à `cs/v1/event`) + `cs-publish.php` (snippet WordPress #6 ET
+  copie locale `deploy/wordpress/cs-publish.php`, les deux mis à jour et resynchronisés — le
+  déploiement automatique du dépôt vers le serveur étant cassé, cf. `push-wordpress.sh`) ajoute
+  le terme province EN PLUS du territoire région, sans rien changer si le champ est vide ou la
+  ville non reconnue. Testé en direct (requête réelle sur `cs/v1/event`, terme "Province de
+  Cuneo" bien assigné, post de test supprimé après vérification).
+
+**Phase 4 (pages hub province + filtre) — faite le 2026-07-30, session Novamira.**
+
+Mécanique réutilisée telle quelle : le gabarit générique `cs_hub_ville_render` (snippet Code
+Snippets #61, `[cs_hub_ville]`) a été étendu avec un attribut optionnel `province="<term_id>"` qui
+ANDe un second terme de la même taxonomie `territoire` en plus du terme région — même moteur que
+les pages ville existantes (Turin, Chambéry…), pas de nouveau gabarit. Backup du code avant
+modification : option WordPress `cs_bk_snippet61_avant_provinces_2026-07-30`. Syntaxe vérifiée
+(`token_get_all(..., TOKEN_PARSE)`) avant écriture en base.
+
+8 pages créées (FR uniquement, `cs_hub_ville=1`, réutilisent takeover + carte standard) :
+
+| Province | URL | ID page |
+|---|---|---|
+| Turin | https://agendasabauda.eu/province-de-turin/ | 6109 |
+| Cuneo | https://agendasabauda.eu/province-de-cuneo/ | 6110 |
+| Asti | https://agendasabauda.eu/province-d-asti/ | 6111 |
+| Alexandrie | https://agendasabauda.eu/province-d-alexandrie/ | 6112 |
+| Biella | https://agendasabauda.eu/province-de-biella/ | 6113 |
+| Novare | https://agendasabauda.eu/province-de-novare/ | 6114 |
+| Vercelli | https://agendasabauda.eu/province-de-vercelli/ | 6115 |
+| VCO | https://agendasabauda.eu/province-du-vco/ | 6116 |
+
+Indexation SEO conditionnelle et **automatique** (nouveau snippet #114, « CS · Provinces Piémont
+(indexation + chips filtre) ») : à chaque chargement d'une page province, un filtre `wp_robots`
+(hooké en `PHP_INT_MAX`, après l'intégration Yoast 28.0 qui se branche elle-même très haut sur ce
+même hook core) relit le nombre réel d'événements à venir de la province (région + province ANDés,
+requête identique à celle du shortcode) et force `noindex, follow` si < 15, sinon laisse Yoast
+afficher `index, follow` par défaut. Rien n'est codé en dur — le terme province est extrait par
+regex du shortcode présent dans le contenu de la page courante, donc valable pour n'importe quelle
+page utilisant ce motif, pas seulement les 8 créées ici. Vérifié en direct le 2026-07-30 :
+
+| Province | Événements à venir | Balise robots observée |
+|---|---|---|
+| Turin | 29 | `index, follow, …` |
+| Cuneo | 6 | `noindex, follow, …` |
+| Asti | 0 | `noindex, follow, …` |
+| Alexandrie | 0 | `noindex, follow, …` |
+| Biella | 0 | `noindex, follow, …` |
+| Novare | 0 | `noindex, follow, …` |
+| Vercelli | 1 | `noindex, follow, …` |
+| VCO | 0 | `noindex, follow, …` |
+
+Module de filtre sur la page Piémont existante (id 2859, https://agendasabauda.eu/que-faire-dans-le-piemont/) :
+shortcode `[cs_province_chips]` (même snippet #114) inséré dans son contenu (backup avant
+modification : option `cs_bk_page2859_avant_chips_provinces_2026-07-30`), 8 chips texte (pas
+d'icônes/drapeaux) menant à chaque page province, état actif en rouge Piémont `#b3261e` (le
+shortcode est générique et pourra aussi surligner l'état actif si réutilisé plus tard sur une
+page province elle-même). Vérifié en direct : les 8 liens s'affichent avec les bonnes URLs.
+
+Non fait (hors scope au moment de la phase 4) : carrousel home.
+
+**Versions IT des 8 pages province, créées le 2026-07-30 (session Novamira, suite immédiate).**
+
+Même mécanisme `[cs_hub_ville]`, avec `province="<term_id IT>"` (568/572/576/580/584/588/592/596,
+cf. tableau § 2bis) et `territoire="piemont"` inchangé (résolu automatiquement vers le term_id IT
+321 par `cs_terr_canon_data()` selon `pll_current_language()`). Chaque page liée à sa page FR via
+`PLL()->model->post->save_translations()` (vérifié : `pll_get_post_translations()` retourne bien
+les deux ID pour chacune des 8 paires). Intro éditoriale traduite en italien (pas de traduction
+automatique). `ville_label` sans article + `prep_it="nella"` pour obtenir la contraction correcte
+(« nella provincia di Torino »).
+
+| Province | URL IT | ID page IT | ID page FR liée |
+|---|---|---|---|
+| Turin | https://agendasabauda.eu/it/provincia-di-torino/ | 6118 | 6109 |
+| Cuneo | https://agendasabauda.eu/it/provincia-di-cuneo/ | 6119 | 6110 |
+| Asti | https://agendasabauda.eu/it/provincia-di-asti/ | 6120 | 6111 |
+| Alexandrie | https://agendasabauda.eu/it/provincia-di-alessandria/ | 6121 | 6112 |
+| Biella | https://agendasabauda.eu/it/provincia-di-biella/ | 6122 | 6113 |
+| Novare | https://agendasabauda.eu/it/provincia-di-novara/ | 6123 | 6114 |
+| Vercelli | https://agendasabauda.eu/it/provincia-di-vercelli/ | 6124 | 6115 |
+| VCO | https://agendasabauda.eu/it/provincia-del-vco/ | 6125 | 6116 |
+
+Vérifié en direct le 2026-07-30 : les 8 pages renvoient HTTP 200, H1 et intro corrects, et
+affichent les événements italiens de la province quand il y en a (Turin 33, Cuneo 8, Vercelli 2 ;
+Asti, Alexandrie, Biella, Novare, VCO à 0 événement propre pour l'instant, page fonctionnelle avec
+repli « Nei dintorni », pas un bug).
+
 ---
 
 ## 3. Règles de mapping (comment choisir la catégorie)
