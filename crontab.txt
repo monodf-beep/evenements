@@ -56,7 +56,18 @@
 # ⚠️ Les correctifs de dates (dates.py excluant les traductions) et de cycles sont, eux,
 # déjà en place — cette pause ne concerne QUE la création de nouvelles traductions.
 # RÉACTIVER en décommentant, une fois la contamination expliquée (cf. docs/BACKLOG.md).
-#45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1
+#
+# ⚠️ CAP RAMENÉ DE 5 À 2 LE 2026-08-03, alors que la ligne est encore commentée — pour que
+# la réactivation ne soit qu'un geste, sans piège caché dedans. Les trois conditions
+# bloquantes de docs/GO_NOGO_TRADUCTION.md sont remplies (C1 SEO, C2 portillon de justesse
+# du titre, C3 anti-retraduction), MAIS le portillon ne regarde que le TITRE : une fiche
+# dont la description d'origine est encore polluée passe. La seule protection contre ce
+# cas-là est l'ŒIL HUMAIN sur les permaliens produits chaque jour — et cette relecture
+# n'existe que si elle reste tenable. Deux fiches par jour se relisent ; cinq ne se
+# relisent pas, on décroche en une semaine et le filet n'est plus qu'un décor.
+# Le cap se remontera quand C4 (gather_material) et C5 (état du stock pollué en base)
+# seront traités, pas avant.
+#45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 2 >> logs/translate.log 2>&1
 # Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.
 # incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
 # resserre facilement si besoin de plus de fréquence.
