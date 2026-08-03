@@ -104,7 +104,7 @@ qu'il y a à faire en Vallée d'Aoste — d'Aoste à Courmayeur, de Cogne à Sai
 
 ### 🇮🇹 IT
 Regione più piccola d'Italia, la Valle d'Aosta è un crocevia alpino dove si parla italiano,
-francese e francoprovenzale. Ad Aosta, l'Arco d'Augusto e il teatro romano ricordano la città
+francese e lingua savoiarda. Ad Aosta, l'Arco d'Augusto e il teatro romano ricordano la città
 antica; tutt'intorno, le grandi vette — Monte Bianco, Cervino, Monte Rosa, Gran Paradiso — e le
 località di Courmayeur, Cervinia e Cogne. La valle è costellata di castelli medievali, da Fénis
 al Forte di Bard.

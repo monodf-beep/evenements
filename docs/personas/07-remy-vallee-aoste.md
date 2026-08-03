@@ -15,8 +15,8 @@ soir hors de la vallée est un vrai engagement (route, neige, fatigue). Rayon r�
 vallée et le bas de vallée ; Aoste = sortie exceptionnelle, planifiée.
 
 **Rapport à la culture ET à la langue.** Ancré dans la culture vivante locale : fêtes de
-village, batailles de reines, foires, musique traditionnelle, patrimoine walser et
-francoprovençal. Il parle le patois (et le walser de la vallée) au quotidien, lit en
+village, batailles de reines, foires, musique traditionnelle, patrimoine walser et de
+langue savoyarde. Il parle la langue savoyarde (et le walser de la vallée) au quotidien, lit en
 italien ; le français, il le comprend et y tient comme héritage, mais lit moins couramment
 de longs textes en français. Sensible à tout ce qui reconnaît et respecte le local.
 
@@ -28,7 +28,7 @@ région.
 
 **Drapeaux rouges.**
 - L'événement annoncé sans distance ni accès depuis sa vallée (« à Aoste » sans plus).
-- Le regard folklorisant ou condescendant sur les traditions, le patois mal écrit, les
+- Le regard folklorisant ou condescendant sur les traditions, la langue savoyarde mal écrite, les
   noms de lieux estropiés.
 - L'agenda hyper-centré sur Aoste qui ignore les vallées : il se sent hors-jeu.
 - Le prix caché ou flou.

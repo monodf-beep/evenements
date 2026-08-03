@@ -20,7 +20,7 @@
 
 | Territoire | Gentilé correct | Variantes / autonyme | Piège |
 |---|---|---|---|
-| Savoie **et Haute-Savoie** (73 & 74) | **savoyard·e** | *savoyârd* (arpitan) | jamais « français de Savoie ». **Jamais « haut-savoyard » non plus** : on dit « savoyard de [la ville] » (savoyard d'Annecy, de Thonon…) |
+| Savoie **et Haute-Savoie** (73 & 74) | **savoyard·e** | *savoyârd* (autonyme) | jamais « français de Savoie ». **Jamais « haut-savoyard » non plus** : on dit « savoyard de [la ville] » (savoyard d'Annecy, de Thonon…) |
 | Chablais | **chablaisien·ne** | — | correct mais peu codifié |
 | Maurienne | **mauriennais·e** | — | **deux n** |
 | Tarentaise | **tarin·e** | — | **piège : pas « tarentais »** |
@@ -50,7 +50,7 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 
 ## 3. Les langues — marqueurs d'appartenance
 
-- **Francoprovençal / arpitan** — Savoie, Haute-Savoie, Vallée d'Aoste, 8 vallées du Piémont, Suisse romande. Troisième langue gallo-romane (ni oc, ni oïl). **Marqueur transversal n°1** : à lui seul, il unit Savoie–Aoste–vallées piémontaises. Preuve vivante que les cols relient.
+- **Langue savoyarde** — Savoie, Haute-Savoie, Vallée d'Aoste, 8 vallées du Piémont, Suisse romande. Troisième langue gallo-romane (ni oc, ni oïl). **Marqueur transversal n°1** : à lui seul, il unit Savoie–Aoste–vallées piémontaises. Preuve vivante que les cols relient.
 - **Occitan vivaro-alpin** — vallées occitanes du Piémont et arrière-pays niçois (Tinée, Vésubie, haut-Var). Relie **versant piémontais et comté de Nice**.
 - **Walser** — haute vallée du Lys (Gressoney, Issime) et Piémont (Alagna, Rimella). Communauté germanophone médiévale (*titsch*, *töitschu*). Troisième pôle d'une Vallée d'Aoste plurilingue — ne jamais fondre dans « l'italien ».
 - **Piémontais (piemontèis)** — langue gallo-italique de la plaine turinoise (~2 M locuteurs), distincte de l'italien.
@@ -64,7 +64,7 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 - **Villes de Savoie, en version IT** : « città savoiarda », « capoluogo della Savoia ». Préciser la province : dept 73 → **« prov. Ciambèri »** (Chambéry) ; dept 74 → **« prov. Annecy »**. Ex. : *Chambéry, città savoiarda, capoluogo della Savoia (prov. Ciambèri)*.
 - **Atmosphère** : « **atmosfera sabauda** » pour dire l'ambiance d'une ville (registre sensible, enraciné, non touristique).
 - **Le concret enraciné plutôt que l'adjectif** : produits, lieux, gens, saisons, métiers précis (bicerin, aperitivo turinois, Slow Food/Bra, *socca*, *ganses*, une remue, un *rüsch* walser). **Précision = respect.**
-- **Les gens par leur gentilé + leur langue** : « les Valdôtains, minorité francophone et arpitanophone » ; « i Nizzardi » ; « i Savoiardi » ; « la popolazione sabauda ».
+- **Les gens par leur gentilé + leur langue** : « les Valdôtains, minorité francophone et de langue savoyarde » ; « i Nizzardi » ; « i Savoiardi » ; « la popolazione sabauda ».
 - **L'identité comme continuité interne** : « Turin, capitale du duché de Savoie transférée de Chambéry » ; « Nizza sabauda » ; « Nice savoyarde jusqu'en 1860 » — l'axe Nice–Turin–Chambéry est **une continuité, pas un franchissement**.
 - **Le cadre alpin comme appartenance première** : « la dimension alpine, dominante, en contraste avec les États-nations de plaine » ; « patrimonio comune / condiviso » ; « au cœur de l'arc alpin ».
 - **L'autonomie et l'agentivité propres** : « statut spécial d'autonomie » (VdA), « résistance culturelle » (Chanoux), « Dedizione di Nizza alla Savoia » (1388, choix des Niçois) — les territoires comme sujets, pas comme objets.
@@ -173,5 +173,5 @@ Quand l'origine réelle est introuvable après recherche : décrire le fait vér
 ## Sources : modèles et repoussoirs
 
 - **Modèle à imiter** : *Nos Alpes* (média alpin italophone) — déjà aligné : « Stati di Savoia », « patrimonio condiviso », « transfrontaliero », « dimensione alpina dominante ».
-- **Gisements enracinés** : Fondation Émile Chanoux, Acadèmia/Ciamada Nissarda, Arpitania, axl.cefan (U. Laval), Patrimoni Linguistici, article *Marges* (OpenEdition).
+- **Gisements enracinés** : Fondation Émile Chanoux, Acadèmia/Ciamada Nissarda, espace linguistique du savoyard, axl.cefan (U. Laval), Patrimoni Linguistici, article *Marges* (OpenEdition).
 - **Repoussoirs documentés** (à citer comme objets, jamais comme sources de vocabulaire) : Il Primato Nazionale, carlosilvano.blogspot, la veine « terre irredente » de Sanremonews — utiles pour *reconnaître* le piège irrédentiste et s'en garder.

@@ -20,7 +20,7 @@ SSH au VPS : tout passe par ce tool.
 - **Préfixe DB** = `wor4956_`, jamais `wp_` en dur : toujours `$wpdb->prefix`.
 - **Vocabulaire interdit** : "espace alpin" → dire "espace sabaudo" (FR) / "spazio sabaudo" (IT) ;
   "frontière"/"frontiera", "transfrontalier"/"transfrontaliero" → à éviter complètement, surtout
-  dans les titres ; "francoprovençal"/"arpitan"/"patois" → dire "savoyard" (FR) / "savoiardo" (IT).
+  dans les titres ; "francoprovençal"/"arpitan"/"patois" → dire "langue savoyarde" (FR) / "lingua savoiarda" (IT).
 - **Anti-hallucination stricte** : vérifier chaque fait (prix, dates, lieux, artistes) par
   recherche web sur des sources fiables (site officiel de l'organisateur/du lieu) avant de
   publier. Ne jamais inventer un chiffre.

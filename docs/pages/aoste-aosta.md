@@ -68,7 +68,7 @@ Cosa fare ad Aosta? Eventi e appuntamenti — Agenda Sabauda
 Cosa fare ad Aosta: mostre, concerti, mercati, feste e appuntamenti valdostani. Ai piedi dell'Arco d'Augusto, l'agenda della città aggiornato di continuo.
 
 ## Intro editoriale (sotto l'H1, sopra il flusso)
-Capoluogo della Valle d'Aosta, Aosta conserva ancora l'impianto della città romana: l'Arco d'Augusto, la Porta Pretoria e il teatro antico ne segnano il centro, a due passi dalle vie dove si parlano italiano, francese e francoprovenzale. Questa identità di crocevia alpino — tra il Monte Bianco, il Gran San Bernardo e le vallate laterali — dà il tono alla sua vita culturale.
+Capoluogo della Valle d'Aosta, Aosta conserva ancora l'impianto della città romana: l'Arco d'Augusto, la Porta Pretoria e il teatro antico ne segnano il centro, a due passi dalle vie dove si parlano italiano, francese e lingua savoiarda. Questa identità di crocevia alpino (tra il Monte Bianco, il Gran San Bernardo e le vallate laterali) dà il tono alla sua vita culturale.
 
 L'agenda segue il ritmo della montagna e delle tradizioni valdostane: mostre e patrimonio, concerti, spettacoli, mercati e grandi appuntamenti identitari, primo fra tutti la Fiera di Sant'Orso, la festa dell'artigianato che riempie le vie della città. Agenda Sabauda raccoglie qui, settimana dopo settimana, tutto ciò che c'è da fare ad Aosta — l'unico agenda che copre in un solo luogo i quattro territori dell'antico spazio sabaudo, da una parte e dall'altra delle Alpi.
 

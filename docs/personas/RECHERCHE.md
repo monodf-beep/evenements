@@ -25,7 +25,7 @@ autant que le contenu artistique. Deux fractures reviennent :
   (décolletage). Bonlieu (Annecy), Léman Express qui ne dessert pas Annecy.
 - **Vallée d'Aoste** — micro-région bilingue qui vieillit ; richesse concentrée dans les
   stations. **Langue** : on lit spontanément en italien, le français est identitaire et de
-  prestige (le lecteur juge la qualité de la traduction). Patois francoprovençal =
+  prestige (le lecteur juge la qualité de la traduction). Langue savoyarde =
   authenticité. Ligne Aoste-Ivrée fermée jusqu'à fin 2026.
 - **Piémont** — trois vitesses : métropole turinoise (ex-FIAT, populaire au nord, étudiante,
   musées hyper-concentrés) ; province viticole aisée (Langhe/Roero UNESCO) ; vallées
