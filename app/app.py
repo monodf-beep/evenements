@@ -2568,6 +2568,14 @@ def preview(event_id: int):
             score_detail = json.loads(ev["llm_score_detail"])
         except (ValueError, TypeError):
             score_detail = None
+    # « Ça vaut le déplacement » : la note qui décide seule de la vitrine de la home, et
+    # qui ne se lisait NULLE PART jusqu'au 2026-08-03 (« c'est dommage de pas la voir dans
+    # le back-office », Franck). Une note invisible ne se conteste pas — on ne pouvait que
+    # constater le résultat sur le site et deviner pourquoi.
+    from utils.deplacement import (DEPLACEMENT_MIN as depl_min, MAX_SCORE as depl_max,
+                                   deplacement_etat, deplacement_raisons)
+    depl_base, depl_now, depl_motif = deplacement_etat(ev)
+    depl_raisons = deplacement_raisons(ev.get("llm_score_detail"))
     # Dossier(s) de presse rattaché(s) à cet événement (matière primaire).
     press_kits = []
     try:
@@ -2590,6 +2598,8 @@ def preview(event_id: int):
                            image_host=image_host, is_radar=is_radar,
                            enriched=enriched, enrich_running=enrich_running,
                            press_kits=press_kits, score_detail=score_detail,
+                           depl_base=depl_base, depl_now=depl_now, depl_motif=depl_motif,
+                           depl_raisons=depl_raisons, depl_min=depl_min, depl_max=depl_max,
                            jsonld=jsonld, seo_faq=seo_faq, seo_tags=seo_tags,
                            faq_jsonld=faq_jsonld, ig_post=ig_post)
 
