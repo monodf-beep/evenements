@@ -17,6 +17,21 @@ plus fins qui suivent) :
   4. discard_uncompletable --apply         (même famille, critère complémentaire)
   5. audit_non_events    --apply           (articles de presse publiés à tort → corbeille)
   6. cleanup_as_dupes    --execute         (doublons NÉS dans WordPress → corbeille)
+  6b. reconcile_catalogue --apply          (AJOUTÉ 2026-08-03 — les deux réparations que
+                                            Franck a dû faire à la main ce jour-là :
+                                            fiches hors périmètre restées EN LIGNE →
+                                            corbeille + statut d'un seul geste ; et
+                                            archivages « passé » posés sur des dates
+                                            devenues à venir → statut rouvert)
+  6c. reconcile_wp_deleted --apply         (AJOUTÉ 2026-08-03 — liens vers des posts
+                                            disparus : horodate le constat SANS couper le
+                                            lien d'un post seulement corbeillé, donc
+                                            réversible ; ferme la boucle des identifiants
+                                            périmés qu'aucun cron ne nettoyait)
+  6d. audit_wp_ghosts                      (AJOUTÉ 2026-08-03 — LECTURE SEULE, après les
+                                            réparations : ce qu'il signale encore est ce
+                                            qu'aucune règle déterministe ne sait traiter,
+                                            donc ce qui mérite l'œil de Franck)
   7. audit_bad_sources                     (lecture seule + republication UNE FOIS des
                                              fiches concernées, sans média et plafonnée —
                                              cf. _etape_bad_sources : le scan ne se vide
@@ -176,6 +191,9 @@ def main(argv: list[str] | None = None) -> int:
     from scripts.discard_uncompletable import main as discard_unc_main
     from scripts.audit_non_events import main as audit_ne_main
     from scripts.cleanup_as_dupes import main as cleanup_dupes_main
+    from scripts.reconcile_catalogue import main as reconcile_cat_main
+    from scripts.reconcile_wp_deleted import main as reconcile_del_main
+    from scripts.audit_wp_ghosts import main as audit_ghosts_main
 
     # (libellé, fonction, argv, nom du logger à capturer — None = le script utilise print())
     etapes = [
@@ -188,6 +206,26 @@ def main(argv: list[str] | None = None) -> int:
          ["--apply"], "audit-non-events"),
         ("Doublons nés dans WordPress (cleanup_as_dupes)", cleanup_dupes_main,
          ["--execute"], "cleanup_as_dupes"),
+        # ── AJOUTÉES LE 2026-08-03 ────────────────────────────────────────────────────
+        # La journée du 2026-08-03 a été faite ENTIÈREMENT À LA MAIN : 28 fiches hors
+        # périmètre retirées une par une, deux archivages faux rouverts, des liens périmés
+        # inventoriés. Quatre de ces cinq opérations remplissaient déjà les deux critères
+        # d'automatisation posés en tête de ce fichier — réversibles et déterministes.
+        # Elles n'y étaient pas pour une raison sans rapport avec la technique : chaque
+        # script avait été écrit le jour d'un incident, comme réparation ponctuelle, et
+        # personne ne l'avait promu ici. Le rangement existait, on n'y avait rien rangé.
+        #
+        # ORDRE VOULU : reconcile_catalogue AGIT (il retire des pages, il rouvre des
+        # statuts), reconcile_wp_deleted CONSTATE derrière lui ce qui reste — un post
+        # corbeillé par l'étape précédente a déjà perdu son wp_post_id_as, il ne sera donc
+        # pas recompté. L'inverse ferait horodater des liens qu'on s'apprête à couper.
+        ("Périmètre en ligne + archivages faux (reconcile_catalogue)", reconcile_cat_main,
+         ["--apply"], "reconcile-catalogue"),
+        # Réversible par construction : pose un HORODATAGE (« à cette date ce post n'était
+        # plus public ») et GARDE wp_post_id_as, pour qu'un post restauré à la main soit
+        # déshorodaté au run suivant. Ne coupe le lien que sur un post RÉELLEMENT supprimé.
+        ("Liens vers des posts disparus (reconcile_wp_deleted)", reconcile_del_main,
+         ["--apply"], "reconcile_wp_deleted"),
     ]
     for libelle, fn, etape_argv, logger_name in etapes:
         # `rc` était calculé puis JETÉ : une étape qui plantait (rc=1 posé par
@@ -200,6 +238,22 @@ def main(argv: list[str] | None = None) -> int:
         sections.append(f"• {libelle} : {marque}{_tail(out)}")
         if rc:
             echecs.append(libelle.split(" (")[0])
+
+    # LECTURE SEULE, et volontairement APRÈS les réparations : ce qu'il signale encore est
+    # ce qu'aucune règle déterministe ne sait traiter — donc exactement ce qui mérite le
+    # coup d'œil de Franck. Placé avant les corrections, il crierait sur des écarts que la
+    # chaîne s'apprête à refermer, et on apprendrait à ne plus le lire.
+    rc, out = _run_captured(audit_ghosts_main, [], None)
+    # PAS `_tail` ici : il prend les DERNIÈRES lignes, et celles de cet audit sont son
+    # épilogue explicatif (« Réparer la BASE plutôt que le site est parfois… »). Slack
+    # aurait reçu de la prose au lieu des compteurs. On va chercher les lignes de bilan,
+    # qui sont au milieu et commencent toutes par un symbole de rubrique.
+    compteurs = [l.strip() for l in out.splitlines()
+                 if l.strip()[:1] in ("①", "②", "③", "④", "⚠")]
+    sections.append("• Fiches fantômes (audit_wp_ghosts) : "
+                    + (" / ".join(compteurs) if compteurs else _tail(out, 2)))
+    if rc:
+        echecs.append("audit_wp_ghosts")
 
     rc, out = _run_captured(_etape_bad_sources, [], "publish_batch_as")
     sections.append(f"• Sources non institutionnelles (audit_bad_sources) : {_tail(out, 1)}")
