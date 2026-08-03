@@ -347,11 +347,11 @@ protection est l'absence de pollution en amont. C'est le point qui décide de l'
 
 ### Bloquantes (à faire avant de décommenter)
 
-| # | Correctif | Fichier | Effort |
-|---|-----------|---------|--------|
-| **C1** | Exclure les traductions du SEO : ajouter `"COALESCE(translation_of,0)=0"` à la liste `where` de `_select` | `scripts/seo_batch.py:39-44` | 1 ligne |
-| **C2** | Contrôle de justesse **non auto-confirmant** avant `publish_to_as` : comparer les tokens du titre traduit à ceux du titre de **l'ORIGINAL** + lieu + ville (jamais à sa propre description ni à son propre titre) ; refuser la publication si aucun mot commun. C'est le seul contrôle qui attrape « Festa del Lago » sur « Une semaine pas plus » | `scripts/translate_events.py` avant `:465`, en réutilisant `batch_report._partagent_un_mot` / `dedupe._sig_tokens` | ~15 lignes |
-| **C3** | Garde-fou anti-retraduction : ajouter `AND COALESCE(url_source,'') NOT LIKE 'translated:%'` à la sélection | `scripts/translate_events.py:552-561` | 1 ligne |
+| # | Correctif | Fichier | Effort | État |
+|---|-----------|---------|--------|------|
+| **C1** | Exclure les traductions du SEO : ajouter `"COALESCE(translation_of,0)=0"` à la liste `where` de `_select` | `scripts/seo_batch.py:39-44` | 1 ligne | ✅ **FAIT** |
+| **C2** | Contrôle de justesse **non auto-confirmant** avant `publish_to_as` : comparer les tokens du titre traduit à ceux du titre de **l'ORIGINAL** + lieu + ville (jamais à sa propre description ni à son propre titre) ; refuser la publication si aucun mot commun. C'est le seul contrôle qui attrape « Festa del Lago » sur « Une semaine pas plus » | `scripts/translate_events.py` avant `:465`, en réutilisant `batch_report._partagent_un_mot` / `dedupe._sig_tokens` | ~15 lignes | ✅ **FAIT**, avec un signal plus fin que « aucun mot commun » — voir §7 |
+| **C3** | Garde-fou anti-retraduction : ajouter `AND COALESCE(url_source,'') NOT LIKE 'translated:%'` à la sélection | `scripts/translate_events.py:552-561` | 1 ligne | ✅ **FAIT** — voir §7 |
 
 ### Fortement recommandées
 
@@ -451,3 +451,201 @@ relecture humaine. C1 n'est pas négociable.
 contamination cohérente n'y est de toute façon pas détectable** (§3). Tant que C2 n'est
 pas fait, la seule fenêtre de détection est l'œil humain sur deux pages par jour. C'est
 pour ça que `--cap 2`.
+
+---
+
+## 7. Addendum 2026-08-03 — C2 et C3 réalisés
+
+**Méthode** : mêmes conventions que ci-dessus (**PROUVÉ** = test exécuté sur fixture,
+sortie reproduite verbatim). La fixture reconstruit une base au VRAI schéma du dépôt
+(`scraper_events.init_db` + `translate_events._ensure_cols`) avec le cas WP#6798 et quatre
+paires bilingues réelles du catalogue. `data/events.db` étant absent du dépôt, rien n'a été
+exécuté sur la production.
+
+### C3 — une traduction machine n'est plus jamais re-traduite
+
+Ajouté à la sélection de `translate_events.main` :
+`AND COALESCE(url_source,'') NOT LIKE 'translated:%'`. `url_source` est le **seul**
+marqueur qui survit à `unlink_bad_translations` (la colonne est `UNIQUE`, jamais réécrite).
+
+**PROUVÉ**, avec la requête d'avant correctif extraite de git et rejouée sur la même base :
+
+```
+=== ÉTAT NORMAL (liens de traduction intacts) ===
+  candidats du main() CORRIGÉ : []
+  candidats de la requête AVANT correctif : []
+
+=== APRÈS unlink_bad_translations (translation_of effacé sur la fiche machine) ===
+  candidats de la requête AVANT correctif : [(1, 'https://comediedesalpes.com/…'), (2, 'translated:1:it')]
+  candidats du main() CORRIGÉ : [1]
+
+  fiche machine (url_source='translated:1:it') = id 2
+  -> RÉSULTAT : OK, exclue
+```
+
+La dernière ligne du bloc « avant » est le test qui compte : sans le correctif, la fiche
+machine **était** candidate. La correction est causale, pas coïncidentielle.
+
+### C2 — le signal retenu, et pourquoi celui-là
+
+Un contrôle « le titre traduit partage-t-il un mot avec son original ? » est **inutilisable** :
+la charte (`_charte_prompt`) autorise la réécriture du titre, et « NOTE D'ARTE » est publié
+en français sous « À Turin, la musique entre en dialogue avec les arts décoratifs » — zéro
+mot commun, et c'est le travail bien fait. Le signal retenu se lit en **trois temps**, et sa
+pièce maîtresse est l'**abstention** :
+
+1. le titre traduit **cite-t-il un élément d'identité de l'ORIGINAL** — son titre scrapé,
+   son lieu, sa ville, son organisateur, son territoire — modulo exonymes déclarés par la
+   charte et racines romanes (`_meme_racine_bilingue`) ? → oui : rien à dire ;
+2. sinon, le titre **nomme-t-il quelque chose de précis** : un nom propre **ailleurs qu'en
+   tête de phrase**, ou un millésime ? → non : **ABSTENTION**. Un titre entièrement
+   générique (« Una settimana, non di più ») n'est pas recoupable ; prétendre le juger,
+   c'est fabriquer du bruit ;
+3. il nomme quelque chose de précis et **rien** de ce qu'il nomme n'appartient à
+   l'événement d'origine → **suspect**.
+
+Ce qui fait la différence, c'est le **nom propre** : il ne se traduit pas (Chagall, Sodoma,
+Accorsi, Bard), sauf les toponymes — dont la liste est courte, fermée, et **déjà déclarée
+par la charte de traduction du dépôt**. C'est ce qui sauve « Turin » ← « Torino ».
+
+Deux pistes ont été évaluées **et écartées** :
+- **les millésimes seuls** : ils ne discriminent pas le cas réel. « Festa del Lago 2026 »
+  porte l'année de l'événement (2026-08-12) ; une règle « année du titre absente des dates
+  de l'original » ne se déclenche pas. L'année n'est retenue que comme *token distinctif*
+  à l'étape 2, jamais comme preuve à elle seule ;
+- **la comparaison au lieu/ville par égalité lexicale** : « Turin »/« Torino » ne partagent
+  ni préfixe de 5 ni le mot « tori » (Turin ne contient pas cette chaîne). C'est le
+  **squelette consonantique** (`trn` = `trn`) et la table d'exonymes qui les rapprochent.
+
+#### PROUVÉ — les deux sens, sur des cas réels
+
+```
+[OK ] FR→IT  WP#6798 — LE CAS À ATTRAPER                    -> suspect    (attendu suspect)
+          original  : « Une semaine pas plus » · La Comédie des Alpes, Chambéry
+          traduit   : « Festa del Lago 2026 »
+          motif     : le titre nomme « 2026 · lago » — rien de tout cela n'appartient à l'événement d'origine
+
+[OK ] FR→IT  la MÊME fiche, correctement traduite (piège du faux positif) -> abstention
+          traduit   : « Una settimana, non di più »
+          motif     : titre entièrement générique — aucun nom propre ni millésime à recouper
+
+[OK ] IT→FR  NOTE D'ARTE (Museo Accorsi-Ometto, Torino)      -> ok
+          traduit   : « À Turin, la musique entre en dialogue avec les arts décoratifs »
+[OK ] IT→FR  TORINO RINASCIMENTALE (Musei Reali, Torino)     -> ok
+          traduit   : « Turin renaissance : une visite guidée sur les pas de Sodoma »
+[OK ] IT→FR  Marc Chagall (Centro Saint-Bénin, Aosta)        -> ok
+[OK ] FR→IT  Marc Chagall, sens inverse                      -> ok
+[OK ] FR→IT  Château de Montrottier (ids 795/2311)           -> ok  « Visita al Castello di Montrottier »
+[OK ] FR→IT  Fête du Jambon de Bosses                        -> ok
+[OK ] IT→FR  Sagra della Toma di Lanzo                       -> ok
+[OK ] IT→FR  Forte di Bard — ne nomme que le saint           -> ok  (« françois » ↔ « francesco »)
+[OK ] IT→FR  FAUX POSITIF assumé — artiste hors ancrage      -> suspect
+[OK ] IT→FR  …le même, nom propre en tête de phrase          -> abstention
+[OK ] FR→IT  contamination SANS nom propre ni millésime      -> abstention  (NON détectable)
+[OK ] FR→IT  titre d'un AUTRE événement nommé (Annecy)       -> suspect
+=== 15/15 cas conformes ===
+```
+
+#### PROUVÉ — le portillon est bien AVANT la publication
+
+`_translate_one` joué avec un traducteur simulé et `publish_to_as` espionné :
+
+```
+--- FR→IT, la sortie LLM qui a produit WP#6798 ---
+  ERROR | [1] REFUS — titre traduit incohérent avec l'original : « Festa del Lago 2026 »
+        | le titre nomme « 2026 · lago » … Rien n'a été publié.
+    -> _translate_one = 'refus' · publish_to_as appelé : NON
+--- FR→IT, la traduction CORRECTE de la même fiche ---
+    -> _translate_one = 'done'  · publish_to_as appelé : OUI
+--- IT→FR, vraie paire du catalogue (NOTE D'ARTE) ---
+    -> _translate_one = 'done'  · publish_to_as appelé : OUI
+```
+
+#### PROUVÉ — le contrôle de `batch_report` n'est plus auto-confirmant
+
+```
+=== l'ANCIEN contrôle n°3, sur la fiche WP#6798 ===
+  titre publié : « Festa del Lago 2026, gli spettatori pagheranno di più »
+  ancrage de la fiche ELLE-MÊME : ['2026', 'alpes', 'chambery', 'comedie', 'lago']
+  -> partagent un mot ? True   <- le titre du traducteur est DANS son propre ancrage
+
+=== AVEC le contrôle 3 bis (ancrage sur l'ORIGINAL) ===
+  ⚠ titre traduit: « Festa del Lago 2026, gli spettatori pagheranno di più » — le titre
+    nomme « 2026 · lago » — rien de tout cela n'appartient à l'événement d'origine
+    (original : « Une semaine pas plus » · La Comédie des Alpes, Chambéry)
+  => verdict COMPLET=True
+```
+
+Et le filet des dates, lui, est intact :
+
+```
+  ✗ date début   : 2026-10-12 ≠ 2026-08-12 chez l'original
+  => verdict COMPLET=False
+```
+
+Enfin, une vraie paire bilingue ne produit **aucun** avertissement (`0 avertissement(s)`,
+`COMPLET=True`).
+
+### Bloquant ou avertissement ? Une asymétrie assumée
+
+Le verdict est **bloquant dans `translate_events`** et **simple ⚠ dans `batch_report`** :
+
+- refuser dans `translate_events`, ce n'est pas retenir une fiche, c'est ne pas en **créer**
+  une. L'original n'est pas marqué (`translated_at` reste vide), il se represente au run
+  suivant, et le LLM étant stochastique un titre correctement ancré passera. Coût d'un faux
+  refus : un appel API et un jour de retard. Coût d'un faux passage : WP#6798 ;
+- un ✗ dans `batch_report` retiendrait au contraire une fiche **déjà produite**, sans
+  recours — et le diagnostic n'est pas *certain* (un nom propre légitime peut ne vivre que
+  dans la description de l'original). La règle de l'en-tête de `batch_report` s'applique :
+  ⚠, pas ✗.
+
+### Ce que ce contrôle NE couvre PAS
+
+1. **Le CORPS de la fiche traduite n'est pas contrôlé.** Seul le titre l'est. Une fiche
+   dont le titre est juste mais dont la description traduite parle d'un autre événement
+   passe. C'est exactement le résidu du **maillon 3** (C4 non fait) : la pollution est dans
+   la description de l'ORIGINAL, la traduction la recopie fidèlement.
+2. **Une contamination sans nom propre ni millésime n'est pas détectable** — prouvé
+   ci-dessus (« I biglietti costeranno più cari quest'estate » → abstention).
+3. **Un nom propre en tête de phrase est ignoré** (sa majuscule est grammaticale). Un faux
+   titre commençant par le nom parasite passe donc en abstention.
+4. **Faux positif résiduel** : un titre traduit qui nomme un artiste ou une œuvre présents
+   seulement dans la *description* de l'original — l'ancrage factuel ne peut pas les
+   expliquer. Prouvé ci-dessus. Conséquence opérationnelle ci-dessous.
+5. **Un refus répété consomme un créneau de `--cap`.** L'original refusé reste en tête de
+   file. C'est voulu (un refus répété signale une fiche à réparer, pas à traduire), mais
+   avec `--cap 2`, **deux** refus persistants arrêtent la traduction. Le message Slack les
+   nomme (`⛔ N refusée(s) … id X « … »`) : c'est bruyant, pas silencieux.
+6. **Rien de tout cela ne remplace C5.** Traduire une fiche dont la description est encore
+   polluée en base reste le scénario le plus probable de récidive, et ce contrôle n'en
+   attrape que la moitié (celle qui remonte jusqu'au titre).
+7. **Un titre de moins de 2 tokens significatifs n'est JAMAIS jugé** (`_MIN_TOKENS = 2`) —
+   limite ajoutée à la relecture du 2026-08-03, non signalée par l'agent. Elle est plus
+   large qu'elle n'en a l'air, parce que `_sig_tokens` retire les mots vides des deux
+   langues : « Festa del Lago » ne pèse qu'**un** token (`lago`). **PROUVÉ** :
+
+   ```
+   Festa del Lago         tokens=['lago']           -> abstention
+   Rothko in mostra       tokens=['rothko']         -> abstention
+   Lago di Como           tokens=['como', 'lago']   -> suspect
+   ```
+
+   Autrement dit : **le cas WP#6798 lui-même n'aurait PAS été attrapé si son titre avait
+   été « Festa del Lago » sans le millésime.** Ce qui l'a fait tomber, c'est le `2026`, qui
+   apporte le deuxième token. Le portillon a donc bien attrapé l'incident réel, mais par
+   une marge d'un seul token — il ne faut pas en conclure qu'il attrape sa famille.
+   La faute va dans le sens sûr (abstention = on publie, pas de blocage à tort), ce qui est
+   le bon biais pour un portillon qui interdit ; mais c'est une raison de plus de ne pas
+   lâcher la relecture humaine des deux permaliens quotidiens.
+
+### Avis sur la réactivation
+
+Les **trois conditions bloquantes C1, C2, C3 sont remplies**. La ligne 49 du `crontab.txt`
+peut être décommentée **à `--cap 2`**, avec la relecture humaine des deux permaliens
+quotidiens que le §6 prescrit — elle reste nécessaire, pour la raison n°1 ci-dessus : le
+contrôle regarde le titre, l'œil regarde la fiche.
+
+Deux réserves à garder en tête, **inchangées depuis le 2026-08-02** :
+- **C5 reste le vrai trou** (état du stock en base, jamais vérifié sur la production) ;
+- **C4 reste ouvert** : `gather_material` laisse toujours passer le texte parasite exact du
+  cas d'origine. Le portillon C2 est un filet en aval, pas une réparation de la source.
