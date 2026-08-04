@@ -231,7 +231,7 @@ def _build_payload(event: dict) -> dict:
     prix = event.get("prix", "") or ""
     # None (non mesuré) → chaîne vide côté WP : « pas mesuré » ne doit pas se confondre
     # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
-    depl = deplacement_score(event.get("llm_score_detail"))
+    depl = deplacement_score(event)
     depl_now = deplacement_now(event)
 
     meta = {

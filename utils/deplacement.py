@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score « ÇA VAUT LE DÉPLACEMENT » (0-8) — DÉTERMINISTE, zéro appel LLM.
+"""Score « ÇA VAUT LE DÉPLACEMENT » (0-12) — DÉTERMINISTE, zéro appel LLM.
 
 Contexte (décision Franck, 2026-08-01) : la section home « Ça vaut le déplacement »
 triait chronologiquement (les 8 prochains événements, sans critère de qualité). On a
@@ -30,21 +30,45 @@ dans la décision d'un visiteur de faire trois heures de route.
 from __future__ import annotations
 import json
 
-# Critères retenus et leur poids. Somme des maxima = 8.
-# Poids 1 partout : simple, explicable, et suffisant pour discriminer sur les données
-# réelles (Musilac 7/8, Arte Povera Turin 7/8, « L'été au centre socioculturel » 1/8).
-# À pondérer seulement si un cas concret le réclame — pas d'avance.
-_CRITERES = ("notoriete_lieu", "edition_tradition", "rayonnement", "specificite_territoriale")
-MAX_SCORE = 8
+# PONDÉRATION — adoptée le 2026-08-04 après simulation sur le stock réel.
+#
+# CE QU'ELLE REMPLACE, ET POURQUOI. La première version disait « poids 1 partout : simple,
+# explicable, et suffisant ». C'était faux sur le fond, et la phrase rassurante a empêché
+# de vérifier pendant deux jours : les poids étaient bien égaux, mais les MAXIMA ne
+# l'étaient pas (3, 2, 2, 1). Mesure sur la base réelle : `notoriete_lieu` pesait **44 %**
+# de tous les points distribués, contre 24 % au rayonnement et 13 % à la spécificité. Le
+# critère qui note LA SALLE pesait donc plus lourd que les deux qui disent pourquoi on se
+# déplacerait — « Visite guidée du Stade Allianz Riviera » obtenait 6/8 dont 3 pour le
+# stade, au même rang qu'un festival international.
+#
+# LE PRINCIPE RETENU : ce qui fait qu'on FAIT LA ROUTE, c'est de ne pas pouvoir le voir
+# ailleurs (spécificité), que ça dépasse le voisinage (rayonnement), et — sur un agenda
+# transfrontalier — de pouvoir en profiter sans parler la langue. La salle compte encore
+# (le Castello di Rivoli est une destination) mais ne peut plus porter une fiche à elle
+# seule : plafonnée à 1 point, « lieu remarquable, oui ou non ».
+#
+# Échelle 0-12 et non 0-8 : le plancher a dû être re-décidé plutôt que reconduit par
+# inertie — 6/8 vaut 75 %, 6/12 en vaut 50, et recopier le chiffre aurait doublé la
+# permissivité sans que personne ne s'en aperçoive.
+_PONDERATION = {
+    "rayonnement":              (2, None),   # 0-2 ×2 → 0-4  (33 %)
+    "specificite_territoriale": (3, None),   # 0-1 ×3 → 0-3  (25 %)
+    "edition_tradition":        (1, None),   # 0-2 ×1 → 0-2  (17 %)
+    "notoriete_lieu":           (1, 1),      # plafonné à 1  ( 8 %)
+}
+# `organisateur_moyens` reste VOLONTAIREMENT absent : le budget de l'organisateur n'entre
+# pas dans la décision d'un visiteur de faire trois heures de route.
+_CRITERES = tuple(_PONDERATION)
+POIDS_LANGUE = 1                             # 0-2 ×1 → 0-2  (17 %)
+MAX_SCORE = 12
 
 
-def deplacement_score(llm_score_detail) -> int | None:
-    """Score 0-8 depuis `llm_score_detail` (JSON de scripts/evaluator.py), ou None si le
-    détail est absent/illisible — None ≠ 0 : « pas mesuré » n'est pas « nul », la section
-    doit écarter les non-mesurés, pas les classer derniers.
+def _score_criteres(llm_score_detail) -> int | None:
+    """Part du score qui vient de `llm_score_detail` (JSON de scripts/evaluator.py), déjà
+    pondérée. None si le détail est absent ou illisible — None ≠ 0 : « pas mesuré » n'est
+    pas « nul », la section doit écarter les non-mesurés, pas les classer derniers.
 
-    Accepte une chaîne JSON ou un dict déjà décodé.
-    """
+    Accepte une chaîne JSON ou un dict déjà décodé."""
     data = llm_score_detail
     if isinstance(data, str):
         try:
@@ -56,13 +80,26 @@ def deplacement_score(llm_score_detail) -> int | None:
 
     total = 0
     trouve = False
-    for cle in _CRITERES:
+    for cle, (poids, plafond) in _PONDERATION.items():
         bloc = data.get(cle)
         pts = bloc.get("points") if isinstance(bloc, dict) else bloc
         if isinstance(pts, (int, float)):
-            total += int(pts)
+            p = int(pts)
+            total += (min(p, plafond) if plafond is not None else p) * poids
             trouve = True
     return total if trouve else None
+
+
+def deplacement_score(event: dict) -> int | None:
+    """Note intrinsèque 0-12 de l'ÉVÉNEMENT, ou None s'il n'a pas été évalué.
+
+    Prend l'événement entier et non le seul `llm_score_detail` : la barrière de la langue
+    se lit sur la catégorie et le titre, pas dans le détail du score. Signature changée le
+    2026-08-04 — les appelants passent désormais la ligne complète."""
+    base = _score_criteres(event.get("llm_score_detail"))
+    if base is None:
+        return None
+    return base + accessibilite_langue(event) * POIDS_LANGUE
 
 
 # --------------------------------------------------------------------------- #
@@ -87,7 +124,7 @@ def deplacement_score(llm_score_detail) -> int | None:
 #
 # UN BONUS, PAS UNE REFONTE. L'urgence départage, elle ne remplace pas la qualité : le
 # maximum du bonus (3) reste inférieur à l'écart entre un bon et un mauvais score
-# intrinsèque (0-8). Une fiche médiocre qui ferme demain ne doit pas chasser une fiche
+# intrinsèque (0-12). Une fiche médiocre qui ferme demain ne doit pas chasser une fiche
 # remarquable ouverte encore un mois — d'où aussi le plancher ci-dessous.
 # --------------------------------------------------------------------------- #
 
@@ -96,15 +133,25 @@ def deplacement_score(llm_score_detail) -> int | None:
 #
 # RELEVÉ DE 3 À 6 LE 2026-08-03, sur constat de Franck en regardant la home. Le 3 avait été
 # posé au jugé, faute de connaître le stock, et il ne servait à rien : il suffisait de ne
-# pas être NUL pour entrer. « Au diapason » occupait ainsi la carte Savoie — pas parce
-# qu'il vaut le déplacement, mais parce qu'il était le moins mauvais de sa colonne.
+# pas être NUL pour entrer. « Au diapason » entrait ainsi dans le vivier de la Savoie — pas
+# parce qu'il vaut le déplacement, mais parce qu'il était le moins mauvais de sa colonne.
+#
+# PUIS PORTÉ À 10/12 LE 2026-08-04, avec la nouvelle pondération. Ce n'est PAS le même
+# seuil transposé : 6/8 valait 75 %, 10/12 en vaut 83, et recopier « 6 » aurait doublé la
+# permissivité (6/12 retenait 73 fiches contre 32 auparavant). Mesuré avant de trancher :
+#   • 8/12  → 81 fiches, soit un tiers du catalogue vivant — confortable, mais peu sélectif
+#             pour une section qui promet « ça vaut le déplacement » ;
+#   • 10/12 → 31 fiches, et chaque territoire en garde au moins 4 ;
+#   • 11/12 → 18 fiches, mais le vivier ITALIEN tombe à 4 pour 2 places : deux fins
+#             d'événement et la section se vide. C'est le seuil de rupture.
+# 10 est donc le point le plus exigeant qui tienne encore.
 #
 # CE QUE CE SEUIL COÛTE, ET POURQUOI C'EST ACCEPTÉ. La section affiche UN événement par
 # territoire : un plancher haut peut donc laisser une carte VIDE plutôt que médiocre.
 # Arbitrage de Franck, et il est cohérent avec le nom de la section — une carte vide ne
 # ment pas, une carte faible si. `scripts/audit_deplacement.py` mesure, territoire par
 # territoire, ce que chaque plancher laisse : c'est lui qui dira si 7 tient.
-DEPLACEMENT_MIN = 6
+DEPLACEMENT_MIN = 10
 # Fenêtres (jours restants → points). Volontairement peu de paliers : trois marches
 # lisibles valent mieux qu'une formule continue que personne ne saura expliquer.
 _FENETRES = ((7, 3), (21, 2), (45, 1))
@@ -156,7 +203,7 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
         pas de date unique. Elle garde son score intrinsèque, sans bonus.
     """
     from datetime import date as _d
-    base = deplacement_score(event.get("llm_score_detail"))
+    base = deplacement_score(event)
     if base is None or base < DEPLACEMENT_MIN:
         return None
 
@@ -297,7 +344,7 @@ def deplacement_etat(event: dict, aujourdhui=None) -> tuple[int | None, int | No
     rester à un seul endroit, sinon l'affichage et le tri finiront par diverger, et c'est
     l'affichage qu'on croira."""
     from datetime import date as _d
-    base = deplacement_score(event.get("llm_score_detail"))
+    base = deplacement_score(event)
     if base is None:
         return None, None, "pas évalué — la section écarte les non-mesurés, elle ne les classe pas derniers"
     if base < DEPLACEMENT_MIN:
