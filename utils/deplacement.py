@@ -27,28 +27,32 @@ et sans risque d'hallucination.
 `organisateur_moyens` est VOLONTAIREMENT exclu : le budget de l'organisateur n'entre pas
 dans la décision d'un visiteur de faire trois heures de route.
 
-⚠️ À LIRE AVANT DE RETOUCHER À CE BARÈME — constat du 2026-08-04, en fin de journée.
+⚠️ CE QUI CONSOMME CE SCORE, CÔTÉ SITE — et l'affirmation ci-dessous a été FAUSSE pendant
+une heure le 2026-08-04, corrigée le jour même. On avait conclu « la section est du HTML
+statique » en lisant `post_content` des pages 928/1717, qui contient bien deux blocs figés.
+C'était lire le réceptacle et non ce qui en sort : `CVLD_DESKTOP_START` / `CVLD_MOBILE` sont
+des ANCRES DE REMPLACEMENT, et le mu-plugin `wp-content/mu-plugins/cs-cvld-dynamique.php`
+substitue son propre HTML entre elles (`<div class="cs-cvld-grid">`). La section est donc
+bien dynamique, une carte par territoire.
 
-**Côté WordPress, la section « Ça vaut le déplacement » de la home est du HTML STATIQUE.**
-Pas de grille, pas de listing : un `<div>` en dur qui nomme deux événements figés, avec ce
-commentaire dans le contenu des pages 928 et 1717 :
+Franck l'avait d'ailleurs écrit lui-même le 2026-08-03, en corrigeant EN PARALLÈLE et sans
+le savoir les trois mêmes défauts qu'ici : le tri annulé par TEC (d'où un tri en PHP), le
+tri porté sur `as_score` au lieu du champ dédié, et l'absence de garde-fou sur le contenu
+(« la fiche 6400, zéro mot, porte un `as_deplacement` de 8 et serait passée en vitrine »).
+Il y a même ajouté deux filtres absents ici : exclusion des `noindex` Yoast, et minimum
+150 mots dans l'article.
 
-    <!-- CA VAUT LE DEPLACEMENT (transfrontalier) — PLACEHOLDER v1, statique.
-         Mécanisme de données pas encore tranché avec Franck (sélection manuelle de
-         2 événements "vedettes" vs champ auto). -->
+**LE POINT QUI COMPTE** : ce mu-plugin trie sur `as_deplacement` — la note intrinsèque 0-8,
+FIGÉE — et non sur `as_deplacement_now` (0-12, relevée par le temps qui reste et remise à
+jour chaque matin à 10h50). Tant que la clé de tri n'a pas changé, le plancher, la barrière
+de la langue et l'horizon n'ont aucun effet visible. Trier sur `as_deplacement_now != ''`
+les applique tous les trois d'un coup, gratuitement : c'est la valeur vide qui porte
+« hors section ».
 
-Conséquence à regarder en face : **deux jours de travail sur ce score — pondération,
-barrière de la langue, plancher à 10, rafraîchissement quotidien, 264 republications —
-n'ont AUCUN effet sur ce que voit le visiteur dans cette section.** Le calcul est juste,
-`cs_home_deplacement_pick()` sélectionne correctement, mais son résultat n'est branché sur
-rien. Les « cartes rendues » qu'on croyait mesurer étaient des correspondances de slug
-ailleurs dans la page.
-
-Rien de ce qui précède n'est à jeter : la méta `as_deplacement_now` est publiée, juste, et
-tenue à jour. Ce qui manque est une décision éditoriale que Franck n'a jamais eu à prendre
-— sélection manuelle de deux vedettes, ou grille automatique sur le score. Tant qu'elle
-n'est pas prise, **affiner ce barème n'améliore rien de visible**. Le mesurer d'abord,
-c'est ce qu'on n'a pas fait.
+LA LEÇON DE MÉTHODE, elle, tient en une ligne : on a vérifié que le calcul était correct,
+jamais qu'il servait à quelque chose — puis on a conclu qu'il ne servait à rien en lisant
+le mauvais fichier. Deux erreurs symétriques dans la même journée, et la seule chose qui a
+tranché à chaque fois est d'aller regarder ce qui est RÉELLEMENT servi.
 """
 from __future__ import annotations
 import json
