@@ -289,26 +289,77 @@ def load_radar_cultural_filter(path: Path | None = None):
 _EXCLUDED_EVENTS_FILE = Path(__file__).resolve().parent.parent / "config" / "excluded_event_keywords.txt"
 
 
-def load_excluded_events_filter(path: Path | None = None):
-    """Regex des événements à NE JAMAIS valoriser (config/excluded_event_keywords.txt).
+class ExclusionsEvenements:
+    """Les deux portées d'une règle d'exclusion : PARTOUT, ou dans le TITRE seul.
+
+    La distinction vient d'un faux positif réel (2026-08-04) : « btob » cherché dans les
+    descriptions a attrapé le Salone Auto Torino — salon automobile GRAND PUBLIC, dans
+    le périmètre — parce que l'article mentionnait au passage son volet BtoB. Le mot
+    n'était pas mauvais, le CHAMP l'était : un événement public peut avoir une journée
+    pro, et sa description en parle. Dans un TITRE en revanche, « Afterwork » ou « B2B »
+    ne trompe personne — c'est l'événement lui-même qui se nomme ainsi.
+
+    D'où deux portées, déclarées dans le fichier par les marqueurs `[partout]` (défaut)
+    et `[titre]`. Règle du pouce pour choisir : une expression qui décrit le PUBLIC
+    (« réservé aux professionnels ») ou un domaine va partout ; un mot qui peut n'être
+    qu'une mention au fil du texte va dans `[titre]`."""
+
+    def __init__(self, partout=None, titre=None):
+        self.partout = partout
+        self.titre = titre
+
+    def __bool__(self) -> bool:
+        return bool(self.partout or self.titre)
+
+
+def _load_keywords_par_portee(path: Path) -> tuple[list[str], list[str]]:
+    """Lit le fichier d'exclusions en séparant les portées `[partout]` / `[titre]`."""
+    partout: list[str] = []
+    titre: list[str] = []
+    if not path.exists():
+        return partout, titre
+    courant = partout
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        marqueur = line.lower()
+        if marqueur == "[titre]":
+            courant = titre
+            continue
+        if marqueur == "[partout]":
+            courant = partout
+            continue
+        courant.append(_strip_accents(line).lower())
+    return partout, titre
+
+
+def load_excluded_events_filter(path: Path | None = None) -> ExclusionsEvenements:
+    """Règles des événements à NE JAMAIS valoriser (config/excluded_event_keywords.txt).
 
     Règle éditoriale explicite (ex. « jamais le 27e/23e BCA »), pas un jugement de
     pertinence — rejet déterministe et gratuit, avant tout appel LLM. Extensible sans
-    code : une ligne = une expression."""
-    return _compile_keywords(_load_keywords(path or _EXCLUDED_EVENTS_FILE))
+    code : une ligne = une expression, sous `[partout]` (défaut) ou `[titre]`."""
+    partout, titre = _load_keywords_par_portee(path or _EXCLUDED_EVENTS_FILE)
+    return ExclusionsEvenements(_compile_keywords(partout), _compile_keywords(titre))
 
 
-def is_excluded_event(title: str, description: str, excluded_re, url: str = "") -> bool:
-    """Vrai si le titre, la description OU l'URL matche une règle d'exclusion éditoriale.
+def is_excluded_event(title: str, description: str, exclusions, url: str = "") -> bool:
+    """Vrai si la fiche matche une règle d'exclusion éditoriale, selon sa portée.
 
-    L'URL participe depuis le 2026-08-04 : « French Riviera Beauty » (B2B pur, repéré
-    publié ce jour-là) n'avait AUCUN marqueur pro dans son titre — mais son domaine
-    `event.businessfrance.fr` le signait sans ambiguïté. Les points d'un domaine sont
-    des frontières de mot pour la regex, donc une ligne `businessfrance` suffit."""
-    if excluded_re is None:
+    L'URL SOURCE est cherchée avec les règles `[partout]` depuis le 2026-08-04 : un
+    domaine signe parfois seul ce qu'aucun mot du titre ne dit (`businessfrance.fr`).
+    Les points d'un domaine étant des frontières de mot, une ligne `businessfrance`
+    suffit — inutile d'écrire l'URL entière."""
+    if not exclusions:
+        return False
+    titre_seul = _strip_accents(title or "").lower()
+    if exclusions.titre is not None and exclusions.titre.search(titre_seul):
+        return True
+    if exclusions.partout is None:
         return False
     text = _strip_accents(f"{title or ''} {description or ''} {url or ''}").lower()
-    return bool(excluded_re.search(text))
+    return bool(exclusions.partout.search(text))
 
 
 _PERIMETER_FILE = Path(__file__).resolve().parent.parent / "config" / "perimeter_keywords.txt"

@@ -63,11 +63,13 @@ Trois gardes déterministes rejettent **sans payer** — dans cet ordre :
 
 | Garde | Fonction | Rejet posé |
 |---|---|---|
-| Règle éditoriale explicite | `is_excluded_event` (`config/excluded_event_keywords.txt`, ex. « jamais le 27e BCA ») | `Exclu par règle éditoriale.` |
+| Règle éditoriale explicite | `is_excluded_event` (`config/excluded_event_keywords.txt` : 27e/23e BCA, vocabulaire B2B) | `Exclu par règle éditoriale.` |
 | Événement déjà passé | `is_past_event` (date de fin, ou début à défaut, < aujourd'hui) | `Événement passé (déjà terminé).` |
 | Article de presse | `non_event_reason` (`utils.eventness` : « où se garer », « le conseil s'est réuni », « caravane publicitaire »…) | `Article de presse, pas un événement : …` |
 
 Ces filtres visent le **PIÈGE PRESSE** : le LLM s'accroche à un gros mot-clé (« Tour de France ») et note haut un article *au sujet d'*un événement. On coupe avant l'appel, en haute précision.
+
+**Le filtre éditorial cherche dans le titre, la description ET l'URL source**, avec deux portées déclarées dans le fichier (`[partout]` par défaut, `[titre]` pour le titre seul). La distinction n'est pas une coquetterie : le 2026-08-04, `btob` cherché dans les descriptions a rejeté le **Salone Auto Torino**, salon automobile grand public du périmètre, parce que l'article mentionnait au passage son volet BtoB. Un mot peut nommer l'événement (dans un titre) ou n'en décrire qu'un détail (dans une description) — d'où la portée. La règle de composition est écrite en tête du fichier : ce filtre rejette **sans juge**, donc les mots que la charte protège (« conférence », « salon », « rencontre », « congrès »…) n'y entrent jamais seuls, ils restent au jugement du LLM. Fixture : `tests/test_exclusion_pro.py`.
 
 ### 2.3 La grille de jugement (le prompt `EVAL_PROMPT`)
 

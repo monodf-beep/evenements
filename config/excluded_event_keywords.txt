@@ -1,44 +1,51 @@
 # Événements à NE JAMAIS valoriser (rejet déterministe, gratuit, avant tout appel LLM).
 #
-# Une ligne = une expression (mot ou phrase). Si le TITRE ou la DESCRIPTION d'un
-# événement la contient (accents ignorés, insensible à la casse), l'événement est
-# rejeté automatiquement — jamais noté par le LLM, jamais publié.
+# Une ligne = une expression (mot ou phrase), accents ignorés, insensible à la casse.
+# Si une fiche la contient, elle est rejetée automatiquement — jamais notée par le LLM,
+# jamais publiée. Ligne vide et lignes # ignorées.
 #
-# Pour en ajouter une : une ligne suffit, aucun code à toucher (utils.sources
-# .load_excluded_events_filter relit ce fichier). Ligne vide et lignes # ignorées.
+# DEUX PORTÉES, déclarées par un marqueur de section :
+#   [partout]  (défaut) — cherché dans le TITRE, la DESCRIPTION et l'URL SOURCE ;
+#   [titre]              — cherché dans le TITRE SEUL.
+# Pourquoi (incident du 2026-08-04) : « btob » cherché partout a attrapé le Salone Auto
+# Torino, salon automobile GRAND PUBLIC du périmètre, parce que l'article mentionnait au
+# passage son volet BtoB. Le mot n'était pas mauvais, le CHAMP l'était. Règle du pouce :
+# une expression qui décrit le PUBLIC (« réservé aux professionnels ») ou un nom de
+# domaine va dans [partout] ; un mot qui peut n'être qu'une mention au fil du texte va
+# dans [titre] — un titre, lui, nomme l'événement.
+#
+# L'URL SOURCE compte comme du texte : les points d'un domaine sont des frontières de
+# mots, donc la ligne « businessfrance » matche event.businessfrance.fr. Inutile
+# d'écrire l'URL entière.
 #
 # Pour retirer un événement DÉJÀ publié qui correspond à une règle ajoutée après coup :
 #   .venv/bin/python -m scripts.audit_excluded_events            # liste (dry-run)
 #   .venv/bin/python -m scripts.audit_excluded_events --apply    # corbeille + rejette
+# TOUJOURS lire le dry-run : c'est lui qui a démasqué le faux positif ci-dessus.
 
-# Depuis le 2026-08-04, l'URL SOURCE de la fiche est aussi cherchée (utils.sources
-# .is_excluded_event) : un nom de domaine est une expression comme une autre, les
-# points comptant comme frontières de mots (« businessfrance » matche
-# event.businessfrance.fr).
+# ══════════════════════════════════════════════════════════════════════════════════
+# RÈGLE DE COMPOSITION — ce filtre rejette SANS JUGE, donc seuls les marqueurs sans
+# ambiguïté entrent ici. Ne JAMAIS mettre seuls : « conférence », « salon »,
+# « rencontre », « atelier », « forum », « masterclass », « workshop », « networking »,
+# « colloque », « convegno », « séminaire », « congrès » (le Palais des Congrès est un
+# LIEU de concerts !), « recrutement » (les associations recrutent des bénévoles),
+# « team building » (boniment de lieu : « idéal pour vos team buildings » sur la page
+# d'un château). Ces mots-là, c'est le LLM qui les juge en contexte — « Conférences &
+# Rencontres » est une de nos onze catégories (docs/CHARTE_EDITORIALE.md).
+#
+# CONTRE-EXEMPLE de domaine à ne JAMAIS ajouter : us.list-manage.com — c'est le domaine
+# de suivi de Mailchimp, présent dans TOUTE newsletter, y compris culturelle. Ce n'est
+# pas un marqueur pro, c'est un facteur du courrier.
+# ══════════════════════════════════════════════════════════════════════════════════
+
+[partout]
 
 # ── Événements PROFESSIONNELS (B2B) — jamais valorisés (2026-08-04) ──
 # Incident : « Côte d'Azur Life Sciences Afterwork » et « French Riviera Beauty »
 # (event.businessfrance.fr) trouvés publiés. La charte est claire : public VISÉ, pas
-# public admis — un rendez-vous d'affaires n'a pas sa place même « ouvert à tous ».
-#
-# RÈGLE DE COMPOSITION de cette section : seuls les marqueurs SANS AMBIGUÏTÉ entrent
-# ici, parce que ce filtre rejette AUTOMATIQUEMENT, sans juge. Ne JAMAIS y mettre
-# seuls : « conférence », « salon », « rencontre », « atelier », « forum »,
-# « masterclass », « workshop », « networking », « colloque », « convegno »,
-# « séminaire », « congrès » (le Palais des Congrès est un LIEU de concerts !),
-# « recrutement » (les associations recrutent des bénévoles), « team building »
-# (boniment de lieu : « idéal pour vos team buildings » sur la page d'un château).
-# Ces mots-là, c'est le LLM qui les juge en contexte — « Conférences & Rencontres »
-# est une de nos onze catégories (docs/CHARTE_EDITORIALE.md).
-#
-# CONTRE-EXEMPLE de domaine à ne JAMAIS ajouter : us.list-manage.com — c'est le
-# domaine de suivi de Mailchimp, présent dans TOUTE newsletter (y compris culturelles
-# légitimes). Ce n'est pas un marqueur pro, c'est un facteur du courrier.
-afterwork
-after-work
-b2b
-btob
-b-to-b
+# public admis — un rendez-vous d'affaires n'a pas sa place, même « ouvert à tous ».
+# Ici, les expressions qui NOMMENT LE PUBLIC : elles ne peuvent pas être une mention
+# anodine, elles disent à qui l'événement s'adresse.
 salon professionnel
 salons professionnels
 réservé aux professionnels
@@ -49,24 +56,26 @@ riservato agli operatori
 riservata agli operatori
 riservato ai professionisti
 riservata ai professionisti
-job dating
-job-dating
+rencontres d'affaires
+rencontres d’affaires
+rendez-vous d'affaires
+rendez-vous d’affaires
 salon de l'emploi
 salon de l’emploi
 forum de l'emploi
 forum de l’emploi
 salon du recrutement
-rencontres d'affaires
-rencontres d’affaires
-rendez-vous d'affaires
-rendez-vous d’affaires
-soirée networking
-serata networking
+
+# Domaines d'organisateurs exclusivement B2B (cherchés dans l'URL source).
 business france
 businessfrance
-trade show
-job fair
-career fair
+
+# Événements pro NOMMÉS — quand le vocabulaire générique ne les attrape pas (même
+# précédent que les BCA plus bas). « French Riviera Beauty » : convention B2B de la
+# filière cosmétique, mais la fiche en base porte une redirection Mailchimp comme
+# url_source et une description sans marqueur. Annuel : la règle vaut aussi pour les
+# éditions futures.
+french riviera beauty
 
 # ── 27e et 23e BCA (Bataillons de Chasseurs Alpins) — jamais valorisés ──
 27e BCA
@@ -77,3 +86,22 @@ career fair
 23 BCA
 23eme BCA
 23e bataillon de chasseurs alpins
+
+[titre]
+
+# ── Marqueurs pro qui ne valent QUE dans un titre ──
+# Dans un titre, ces mots nomment l'événement : « Afterwork LifeSciences » EST un
+# afterwork. Dans une description, ils peuvent n'être qu'un détail d'un événement
+# public (le volet BtoB d'un salon grand public, un concert « after work hours »).
+afterwork
+after-work
+b2b
+btob
+b-to-b
+job dating
+job-dating
+soirée networking
+serata networking
+trade show
+job fair
+career fair
