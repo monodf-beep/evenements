@@ -1938,19 +1938,33 @@ def cowork_log():
 # Régie publicitaire — démarche + gestion des campagnes manuelles
 # --------------------------------------------------------------------------- #
 # Blocs publicitaires du site (cf. docs/REGIE_ANNONCEURS.md).
-#   source 'adsense' : rempli automatiquement par Google (rien à gérer ici)
-#   source 'manuel'  : régie directe → gérable depuis cette page
-#   flux 'in'  : vit dans le contenu → câblé une fois en Ad Inserter via [cs_slot bloc="N"]
+#   source 'adsense' : rempli par Google PAR DÉFAUT — mais un annonceur direct peut
+#                      prendre sa place le temps d'une campagne (modèle « override »
+#                      validé le 2026-07-20). 'source' dit donc qui remplit le bloc
+#                      quand AUCUNE campagne n'est active, pas qui a le droit d'y aller.
+#   source 'manuel'  : aucun AdSense derrière, seule la régie directe le remplit.
+#   flux 'in'  : vit dans le contenu → il faut entourer une fois son code AdSense de
+#                [cs_slot bloc="N"] en Ad Inserter pour que l'override fonctionne.
 #   flux 'out' : position:fixed hors contenu → cs-regie.php lit le backoffice tout seul,
 #                RIEN à coller dans Ad Inserter (le coller en plus double l'affichage)
+#   cablage    : 'a_faire'  → [cs_slot] PAS encore posé : une campagne enregistrée ici
+#                             ne s'affichera PAS sur le site. Ne pas vendre le bloc
+#                             sans avoir câblé — sinon l'annonceur paie du vide.
+#                'direct'   → rendu par cs-regie.php, rien à câbler.
+#   Mettre 'cablage' à 'direct' pour un bloc 'in' UNIQUEMENT après avoir vérifié la
+#   présence de [cs_slot] sur le site (docs/REGIE_CABLAGE_CS_SLOT.md, § 7).
 AD_BLOCKS = {
     "1": {"nom": "Leaderboard (haut)",           "format": "970×90 · 350×90 mobile",   "source": "adsense", "flux": "in",
+          "cablage": "a_faire",
           "w": 970,  "h": 90,   "prix_base": 250, "prix_lancement": 150},
     "2": {"nom": "Pavé in-article",              "format": "300×250 / 336×280",        "source": "adsense", "flux": "in",
+          "cablage": "a_faire",
           "w": 300,  "h": 250,  "prix_base": 200, "prix_lancement": 120},
     "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel", "flux": "in",
+          "cablage": "a_faire",
           "w": 970,  "h": 90,   "prix_base": 220, "prix_lancement": 140},
     "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel", "flux": "out",
+          "cablage": "direct",
           "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390},
     # Gouttières (skyscrapers latéraux, desktop only, hors flux — cs-regie.php, pas
     # [cs_slot]). Tarifs 2026-08-04 : PLACEHOLDERS jamais négociés, à ajuster.
@@ -1958,8 +1972,10 @@ AD_BLOCKS = {
     # dissymétrique face à la 160 de gauche. Franck a tranché pour du 160×600 des deux
     # côtés — c'est aussi ce que prévoit le design system (.as-desktop-gutter-ad).
     "5": {"nom": "Gouttière gauche (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel", "flux": "out",
+          "cablage": "direct",
           "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
     "6": {"nom": "Gouttière droite (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel", "flux": "out",
+          "cablage": "direct",
           "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
 }
 

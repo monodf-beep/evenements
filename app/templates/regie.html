@@ -27,8 +27,11 @@
             <b>{{ b.prix_lancement }} €</b> <span class="muted" style="text-decoration:line-through;">{{ b.prix_base }} €</span>
           </td>
           <td>
-            {% if b.source == 'adsense' %}<span class="muted text-sm">rempli par Google</span>
+            {% if b.cablage == 'a_faire' %}<span style="color:#dc2626;font-weight:700;">⚠ Non câblé</span>
+              <div class="muted text-sm">une campagne ne s'afficherait pas</div>
+              {% if occupied.get(id) %}<div style="color:#b45309;font-weight:600;">Vendu à {{ occupied[id].annonceur }} !</div>{% endif %}
             {% elif occupied.get(id) %}<span style="color:#b45309;font-weight:600;">Occupé — {{ occupied[id].annonceur }}</span>
+            {% elif b.source == 'adsense' %}<span class="muted text-sm">rempli par Google</span>
             {% else %}<span style="color:#1a7f4b;">Libre</span>{% endif %}
           </td>
         </tr>
@@ -36,7 +39,14 @@
       </tbody>
     </table>
   </div>
-  <p class="muted text-sm" style="margin-top:-.9rem;">Les blocs <b>1</b> et <b>2</b> sont réservés à AdSense (Google les remplit tout seul). Tu gères ici les blocs <b>manuels</b> (3 · bandeau bas d'écran, 4 · skin, 5 · gouttière gauche, 6 · gouttière droite) : un vrai annonceur, une image, un lien, des dates.</p>
+  <p class="muted text-sm" style="margin-top:-.9rem;">La colonne <b>Gestion</b> dit qui remplit le bloc <em>quand aucune campagne n'est active</em> — pas qui a le droit d'y aller. <b>N'importe quel bloc peut être vendu à un annonceur direct</b> : sa créative prend alors la place de l'AdSense le temps de la campagne (modèle « override »).</p>
+  <p class="text-sm" style="background:#fef2f2;border-left:3px solid #dc2626;padding:.55rem .75rem;border-radius:4px;margin:.5rem 0 0;">
+    ⚠️ <b>« Non câblé » veut dire invendable pour l'instant.</b> Les blocs 1, 2 et 3 vivent dans le contenu :
+    tant que leur code n'est pas entouré de <code>[cs_slot bloc="N"]…[/cs_slot]</code> dans Ad Inserter,
+    une campagne enregistrée ici restera <b>invisible sur le site</b> — l'annonceur paierait du vide.
+    Marche à suivre : <code>docs/REGIE_CABLAGE_CS_SLOT.md</code>.
+    Les blocs 4, 5 et 6 n'ont besoin de rien : <code>cs-regie.php</code> les affiche directement.
+  </p>
 
   <!-- Démarche -->
   <h2 style="margin:1.4rem 0 .4rem;">La démarche, pas à pas</h2>
@@ -71,8 +81,15 @@
     </label>
     <label style="display:flex;flex-direction:column;gap:.25rem;">Bloc / format *
       <select name="bloc" class="rg-bloc" required style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
-        {% for id, b in blocks.items() if b.source == 'manuel' %}
-        <option value="{{ id }}">{{ id }} — {{ b.nom }} ({{ b.format }})</option>
+        {# Tous les blocs, pas seulement les 'manuel' : le modele « override » validé le
+           2026-07-20 autorise un annonceur direct sur N'IMPORTE quel emplacement, y
+           compris ceux remplis par AdSense le reste du temps. Le filtre precedent
+           (source == 'manuel') rendait les blocs 1 et 2 INVENDABLES — et comme le compte
+           AdSense est en « Examen requis », ces deux emplacements ne pouvaient afficher
+           strictement rien. Les blocs non cables sont marques, pas caches : on prefere
+           un avertissement lisible a un choix absent et inexplicable. #}
+        {% for id, b in blocks.items() %}
+        <option value="{{ id }}">{{ id }} — {{ b.nom }} ({{ b.format }}){% if b.cablage == 'a_faire' %} — ⚠ NON CÂBLÉ{% endif %}</option>
         {% endfor %}
       </select>
     </label>
@@ -165,8 +182,15 @@
           </label>
           <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Bloc / format *
             <select name="bloc" class="rg-bloc" required style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
-              {% for id, b in blocks.items() if b.source == 'manuel' %}
-              <option value="{{ id }}" {{ 'selected' if id == c.bloc }}>{{ id }} — {{ b.nom }}</option>
+              {# Tous les blocs, pas seulement les 'manuel' : le modele « override » validé le
+           2026-07-20 autorise un annonceur direct sur N'IMPORTE quel emplacement, y
+           compris ceux remplis par AdSense le reste du temps. Le filtre precedent
+           (source == 'manuel') rendait les blocs 1 et 2 INVENDABLES — et comme le compte
+           AdSense est en « Examen requis », ces deux emplacements ne pouvaient afficher
+           strictement rien. Les blocs non cables sont marques, pas caches : on prefere
+           un avertissement lisible a un choix absent et inexplicable. #}
+        {% for id, b in blocks.items() %}
+              <option value="{{ id }}" {{ 'selected' if id == c.bloc }}>{{ id }} — {{ b.nom }}{% if b.cablage == 'a_faire' %} — ⚠ NON CÂBLÉ{% endif %}</option>
               {% endfor %}
             </select>
           </label>
