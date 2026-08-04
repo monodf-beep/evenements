@@ -205,6 +205,13 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
         t, d = (data.get("title") or "").strip(), (data.get("description") or "").strip()
         return {"title": t, "description": d} if t else None
     except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
+        # PLAFOND API ≠ échec de fiche (2026-08-04) : avaler ce cas-là faisait marteler la
+        # boucle — 13 occurrences le 30/07, 15 le 31/07, une par fiche jusqu'au bout du
+        # cap. Aucune corruption (rien n'était publié), mais du bruit qui noie le vrai
+        # signal et des créneaux de --cap brûlés pour rien. On remonte, le lot s'arrête.
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         log.warning("Traduction échouée : %s", exc)
         return None
 
@@ -291,6 +298,10 @@ def translate_article(client, model, enrich_json: str, target: str,
         if not isinstance(out, dict):
             return None
     except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
+        # Même garde de plafond que translate_title_desc — cf. utils/api_limite.
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         log.warning("Traduction de l'article échouée : %s", exc)
         return None
 
@@ -422,6 +433,19 @@ def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
     'error'. La réservation de `img_lang` (dédup affiche) se fait ICI, sous verrou, AVANT
     tout travail — jamais après coup : sinon deux threads pourraient tous deux voir
     l'affiche « libre » avant que l'un des deux ne l'ait marquée prise."""
+    from utils.api_limite import PlafondAPI
+    try:
+        return _translate_one_interne(ev, args, client, api_key, voix, wp_url,
+                                      auth, img_lang, img_lang_lock)
+    except PlafondAPI as exc:
+        # Verdict DÉDIÉ : le lot doit distinguer « cette fiche a échoué » de « l'API
+        # refuse tout le monde ». Le premier se compte, le second s'ARRÊTE — cf. main().
+        log.error("[%s] PLAFOND API — rien publié, rien écrit : %s", ev["id"], exc)
+        return "plafond"
+
+
+def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
+                           auth, img_lang, img_lang_lock) -> str:
     # Langue RÉELLE = celle de l'article déjà rédigé s'il existe (jamais le seul
     # titre brut) : scripts.enrich écrit TOUJOURS en français par défaut, un titre
     # italien à la source peut donc déjà porter un article français. Sans ce
@@ -723,15 +747,32 @@ def main(argv=None) -> int:
         workers = 3
     results: list[str] = []
     if rows:
+        # SOUMISSION PAR PETITS TRAINS (taille = workers) et non tout d'un coup : c'est ce
+        # qui permet d'ARRÊTER au premier plafond. Avec une soumission en bloc, les 10
+        # workers seraient déjà lancés quand le premier verdict « plafond » revient — on
+        # aurait 10 refus au lieu d'un, exactement le martèlement qu'on corrige (13 puis
+        # 15 occurrences dans les journaux des 30 et 31/07).
+        plafonne = False
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="translate") as ex:
-            futures = [ex.submit(_translate_one, ev, args, client, api_key, voix, wp_url,
-                                 auth, img_lang, img_lang_lock) for ev in rows]
-            for fut in futures:
-                try:
-                    results.append(fut.result())
-                except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
-                    log.warning("worker en échec (exception non gérée) : %s", exc)
-                    results.append("error")
+            for i in range(0, len(rows), workers):
+                if plafonne:
+                    break
+                train = rows[i:i + workers]
+                futures = [ex.submit(_translate_one, ev, args, client, api_key, voix,
+                                     wp_url, auth, img_lang, img_lang_lock) for ev in train]
+                for fut in futures:
+                    try:
+                        results.append(fut.result())
+                    except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
+                        log.warning("worker en échec (exception non gérée) : %s", exc)
+                        results.append("error")
+                if "plafond" in results:
+                    plafonne = True
+        if plafonne:
+            restantes = len(rows) - len(results)
+            log.error("=== PLAFOND API : lot interrompu, %d fiche(s) non tentée(s) — se "
+                      "lève dans la console Anthropic, les fiches se representeront "
+                      "d'elles-mêmes ===", restantes)
 
     done, skipped, errors = results.count("done"), results.count("skip"), results.count("error")
     # `results` est rempli dans l'ORDRE de soumission des futures, donc dans l'ordre de

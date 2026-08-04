@@ -119,7 +119,13 @@ def llm_venue(material: str, client, model: str) -> tuple[str, str, str]:
         msg = client.messages.create(
             model=model, max_tokens=150,
             messages=[{"role": "user", "content": prompt}])
-    except Exception as exc:  # jamais bloquant
+    except Exception as exc:
+        # PLAFOND API ≠ échec de fiche — même garde que scripts/dates.py, même jour, même
+        # motif : 152 occurrences le 08/07, chaque fiche tentée parquée VENUE_COOLDOWN_DAYS
+        # parce que la facturation avait dit stop. On remonte, la boucle décide.
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         log.warning("Extraction lieu LLM échouée : %s", exc)
         return ("", "", "llm_none")
     raw = "".join(getattr(b, "text", "") for b in msg.content
@@ -306,9 +312,16 @@ def main(argv=None) -> int:
         if todo:
             import anthropic
             client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+            from utils.api_limite import PlafondAPI
             for r in todo:
                 material = fetch_page_text(r["url_source"], title=r["title"] or "") or f"{r['title']}\n{r['description'] or ''}"
-                lieu, ville, src = llm_venue(material, client, VENUES_LLM_MODEL)
+                try:
+                    lieu, ville, src = llm_venue(material, client, VENUES_LLM_MODEL)
+                except PlafondAPI as exc:
+                    log.error("PLAFOND API atteint — passe LLM interrompue, %d fiche(s) "
+                              "non tentée(s), aucun verdict écrit pour elles : %s",
+                              len(todo) - todo.index(r), exc)
+                    break
                 conn.execute(
                     "UPDATE events_raw SET lieu=?, ville=?, venue_source=?, "
                     "venue_checked_at=datetime('now') WHERE id=?",

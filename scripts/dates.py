@@ -352,7 +352,16 @@ def llm_dates(material: str, ref: date, client, model: str,
         msg = client.messages.create(
             model=model, max_tokens=150,
             messages=[{"role": "user", "content": prompt}])
-    except Exception as exc:  # jamais bloquant
+    except Exception as exc:
+        # PLAFOND API ≠ échec de fiche (2026-08-04). « Jamais bloquant » est la bonne
+        # promesse pour une page illisible, la mauvaise pour un plafond de dépense : tous
+        # les appels suivants échoueront pareil, et surtout rendre 'llm_none' ferait
+        # écrire un verdict horodaté en base — la fiche serait parquée DATE_COOLDOWN_DAYS
+        # pour un problème de facturation. 313 occurrences dans le journal du 08/07, une
+        # par fiche, chacune consommant son cooldown à tort. On REMONTE, la boucle décide.
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         log.warning("Datation LLM échouée : %s", exc)
         return ("", "", "llm_none")
     raw = "".join(getattr(b, "text", "") for b in msg.content
@@ -526,13 +535,22 @@ def main(argv=None) -> int:
             import anthropic
             client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
             ref = date.today()
+            from utils.api_limite import PlafondAPI
             for r in todo:
                 # La page porte la vraie date ; à défaut, le titre + la description.
                 material = (fetch_page_text(r["url_source"], title=r["title"] or "")
                             or f"{r['title']}\n{r['description'] or ''}")
                 ctx = ", ".join(x for x in (r["lieu"], r["ville"]) if x)
-                s, e, src = llm_dates(material, ref, client, DATES_LLM_MODEL,
-                                      title=r["title"] or "", context=ctx)
+                try:
+                    s, e, src = llm_dates(material, ref, client, DATES_LLM_MODEL,
+                                          title=r["title"] or "", context=ctx)
+                except PlafondAPI as exc:
+                    # UNE ligne, un ARRÊT, RIEN d'écrit pour les fiches restantes : elles
+                    # n'ont pas été jugées, leur tour revient quand le plafond est levé.
+                    log.error("PLAFOND API atteint — passe LLM interrompue, %d fiche(s) "
+                              "non tentée(s), aucun verdict écrit pour elles : %s",
+                              len(todo) - todo.index(r), exc)
+                    break
                 conn.execute(
                     "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
                     (s, e, src, r["id"]))
