@@ -37,6 +37,7 @@ from utils.logger import get_logger
 from utils import usage
 from utils import completeness as comp
 from utils import slack
+from utils import ads
 from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
@@ -49,6 +50,7 @@ NEWSLETTERS_FILE = ROOT / "config" / "newsletters.txt"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 _conn = sqlite3.connect(DB_PATH)
 init_db(_conn)
+ads.init_ads_db(_conn)
 _conn.close()
 
 TERRITORIES = ["Savoie", "Piemonte", "Vallee-Aoste", "Nice"]
@@ -656,6 +658,56 @@ def api_status():
     """État minimal du pipeline pour le polling JS (fin de tâche → un seul reload)."""
     running = any(t["running"] for t in tasks_status().values())
     return {"running": running}
+
+
+# --------------------------------------------------------------------------- #
+# Régie pub hors flux (skin + gouttières + bandeau bas) — voir utils/ads.py.
+# /api/active-ads et /go/<id> sont PUBLICS (appelés côté serveur par les
+# mu-plugins WordPress, pas depuis un navigateur connecté) ; /ads est protégée.
+# --------------------------------------------------------------------------- #
+@app.route("/api/active-ads")
+def api_active_ads():
+    conn = get_db()
+    payload = ads.get_active_ads_payload(conn)
+    conn.close()
+    return payload
+
+
+@app.route("/go/<int:ad_id>")
+def go_ad(ad_id: int):
+    conn = get_db()
+    dest = ads.resolve_click(conn, ad_id)
+    conn.close()
+    return redirect(dest or url_for("dashboard"))
+
+
+@app.route("/ads")
+@require_auth
+def ads_page():
+    conn = get_db()
+    slots = ads.get_all_slots(conn)
+    conn.close()
+    return render_template("ads.html", slots=slots, backoffice_base=ads.backoffice_base())
+
+
+@app.route("/ads/<slot>", methods=["POST"])
+@require_auth
+def ads_save(slot: str):
+    if slot not in ads.SLOTS:
+        return "Slot inconnu", 404
+    active = request.form.get("active") == "on"
+    image = request.form.get("image", "")
+    dest_url = request.form.get("dest_url", "")
+    if active and (not image.strip() or not dest_url.strip()):
+        flash(f"⚠️ « {ads.SLOTS[slot]['label']} » : image et lien annonceur sont "
+              "requis pour activer le slot.", "err")
+        return redirect(url_for("ads_page"))
+    conn = get_db()
+    ads.set_slot(conn, slot, active, image, dest_url)
+    conn.close()
+    log.info("Régie pub : slot=%s active=%s", slot, active)
+    flash(f"📣 « {ads.SLOTS[slot]['label']} » enregistré.", "ok")
+    return redirect(url_for("ads_page"))
 
 
 @app.route("/run/<task>", methods=["POST"])

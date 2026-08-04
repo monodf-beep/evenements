@@ -84,12 +84,20 @@ La skin est **désactivable** et livrée **OFF par défaut**. Elle est pilotée 
 
 ---
 
-## Ce que couvre `deploy/wordpress/cs-regie.php` (scaffold)
+## Ce que couvre `deploy/wordpress/cs-regie.php`
 Les 3 emplacements **hors flux** qu'Ad Inserter gère mal en version gratuite :
 - **Skin** desktop (fond fixe cliquable, ON/OFF, consent-gated) ;
 - **Gouttières** gauche/droite (rails fixes sticky, desktop only, consent-gated) ;
 - (option) **bandeau sticky bas** si tu préfères le gérer côté thème plutôt qu'Ad Inserter.
 
 Tout le reste (leaderboard, pavés in-list / in-article, sticky bas) = **blocs Ad Inserter**
-configurés en wp-admin selon le tableau ci-dessus. Les créatives du scaffold se règlent
-par option `cs_regie` (filtre `cs_regie_options` pour alimentation future par le back-office).
+configurés en wp-admin selon le tableau ci-dessus.
+
+Depuis la version 0.2, les créatives skin/gouttières ne sont **plus** une option WP
+statique : elles viennent du back-office (`utils/ads.py`, page `/ads`), via le même
+`{backoffice}/api/active-ads` que `cs-regie-serve.php` (slots `"skin"`, `"left"`,
+`"right"`, en plus du `"3"` déjà servi pour le bandeau bas). `cs_regie[enabled]` reste
+un kill-switch WP local, toujours OFF par défaut, qui coupe tout indépendamment de ce
+que le back-office propose. Voir `docs/REGIE_MISE_EN_PLACE_SOCLE.md` pour le statut de
+déploiement réel (ce fichier n'était, à la connaissance de ce dépôt, jamais allé en
+production avant cette version).

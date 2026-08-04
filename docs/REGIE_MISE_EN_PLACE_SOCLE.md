@@ -114,7 +114,39 @@ sur le serveur (plusieurs fichiers, non repris ici — restaurables en cas de be
 
 1. Renumberoter les blocs 1-4 vers 13-16 pour lever le conflit avec le plan homepage déjà câblé.
 2. Vérifier si `cs-regie-serve.php` (sticky bas piloté par backoffice) doit remplacer notre
-   Bloc 3, et pourquoi son API `/api/active-ads` time-out actuellement.
-3. Vérifier si `cs-regie.php` (skin + gouttières, jamais déployé) doit remplacer notre Bloc 4.
+   Bloc 3. Son API `/api/active-ads` time-outait le 2026-07-18 ; retestée le 2026-08-04, elle
+   répond (HTTP 200, slot `"3"` présent) — le time-out semble résolu, mais l'origine exacte
+   (redémarrage du service backoffice ? autre chose ?) n'a pas été investiguée.
+3. `cs-regie.php` (skin + gouttières) est passé en v0.2 le 2026-08-04 : il lit désormais ses
+   créatives depuis le back-office (`utils/ads.py`, page `/ads`), au lieu d'une option WP
+   statique jamais remplie. **Toujours pas déployé sur le VPS WordPress** (le fichier vit dans
+   ce dépôt, pas encore copié en `wp-content/mu-plugins/`) — reste à trancher s'il doit
+   remplacer notre Bloc 4, comme prévu au point 1.
 4. Décider si `single-event-meta.php` doit passer par `the_content()` pour que l'insertion
    automatique Ad Inserter fonctionne réellement sur les fiches événement.
+
+## Mise à jour 2026-08-04 — régie skin/gouttières câblée au back-office
+
+En creusant la demande « aller jusqu'au test avec le back-office » pour skin/gouttières, on a
+découvert que **le back-office qui sert `/api/active-ads` et `/go/<id>` est le Flask de ce
+dépôt** (`app/app.py`, gunicorn sur `127.0.0.1:8098`, exposé par `deploy/traefik-backoffice.yml`)
+— mais que ces deux routes n'existaient dans **aucun fichier de ce dépôt**, alors que le
+serveur les sert bel et bien en prod (vérifié en direct : le slot `"3"` répond avec une vraie
+créative). Même dérive non versionnée que pour WordPress (conflit #2 ci-dessus), côté backoffice
+cette fois — et plus risqué ici, parce que `deploy.sh` fait un `git reset --hard` à chaque
+déploiement : le prochain déploiement aurait silencieusement effacé ce code jamais commité.
+
+Ajouté dans ce dépôt pour combler le vide, **sans avoir vu le code réellement en prod** (pas
+d'accès SSH dans cette session) :
+- `utils/ads.py` : table `ad_slots` (slots `3`/`skin`/`left`/`right`), `/api/active-ads`,
+  `/go/<id>` (clic compté). Le slot `"3"` est **reconstruit à l'identique du contrat observé**
+  (même `id=2`, pour ne pas casser le lien `/go/2` déjà diffusé) — si le code non versionné
+  faisait autre chose (rotation, quota…), ce n'est PAS reproduit.
+- Page back-office `/ads` (protégée, nav « Régie pub ») : active/désactive chaque slot, règle
+  image + lien annonceur, affiche le compteur de clics.
+- `cs-regie.php` v0.2 (détail au point 3 ci-dessus).
+
+**Pas encore fait** : déployer `cs-regie.php` sur le VPS WordPress, pousser `app/app.py` /
+`utils/ads.py` sur le VPS backoffice (`deploy.sh`) et vérifier en conditions réelles que le
+slot `"3"` reconstruit se comporte bien comme l'ancien code invisible (notamment le lien
+`/go/2` déjà en circulation).

@@ -28,6 +28,9 @@
       <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
         {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
 
+      <div class="nav-section">Régie pub</div>
+      <a href="/ads" class="{{ 'on' if active=='ads' }}" {% if active=='ads' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Skin &amp; gouttières</a>
+
       <div class="nav-section">Aide</div>
       <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
       <a href="/cowork" class="{{ 'on' if active=='cowork' }}" {% if active=='cowork' %}aria-current="page"{% endif %}><span aria-hidden="true">🤖</span> Cowork</a>

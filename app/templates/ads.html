@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% set active = 'ads' %}
+{% block title %}Régie pub — Agenda CS{% endblock %}
+{% block h1 %}Régie pub{% endblock %}
+{% block subtitle %}<div class="sub">Créatives hors flux (skin, gouttières, bandeau bas) servies à agendasabauda.eu via <code>/api/active-ads</code>. Leaderboard et pavés restent des unités AdSense pures — rien à régler ici pour eux.</div>{% endblock %}
+
+{% block head %}
+<style>
+  .ads-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:1rem; }
+  .ads-slot h2 { display:flex; align-items:center; gap:.5rem; justify-content:space-between; }
+  .ads-slot .fmt { font-size:.8rem; color:var(--muted); margin:-.35rem 0 .8rem; }
+  .ads-row { display:flex; flex-direction:column; gap:.3rem; margin-bottom:.7rem; }
+  .ads-row label { font-size:.78rem; font-weight:700; color:var(--ink-2); }
+  .ads-row .field { width:100%; }
+  .ads-switch { display:flex; align-items:center; gap:.5rem; font-size:.85rem; font-weight:700; }
+  .ads-stats { font-size:.76rem; color:var(--muted); margin:.6rem 0; }
+  .ads-preview { display:block; max-width:100%; max-height:110px; border:1px solid var(--line);
+    border-radius:var(--radius-sm); margin:.4rem 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ads-grid">
+  {% for s in slots %}
+  <div class="card ads-slot">
+    <h2>{{ s.label }}
+      {% if s.active %}<span class="badge" style="background:var(--ok-soft);color:var(--ok-ink);">Actif</span>
+      {% else %}<span class="badge" style="background:var(--surface-2);color:var(--muted);">Inactif</span>{% endif %}
+    </h2>
+    <div class="fmt">{{ s.format }}</div>
+    <form method="post" action="{{ url_for('ads_save', slot=s.slot) }}">
+      <div class="ads-switch" style="margin-bottom:.8rem;">
+        <input type="checkbox" name="active" id="active-{{ s.slot }}" {% if s.active %}checked{% endif %}>
+        <label for="active-{{ s.slot }}">Activer ce slot</label>
+      </div>
+      <div class="ads-row">
+        <label for="image-{{ s.slot }}">URL de la créative (image)</label>
+        <input class="field" type="url" name="image" id="image-{{ s.slot }}" value="{{ s.image }}"
+               placeholder="https://…">
+      </div>
+      {% if s.image %}<img class="ads-preview" src="{{ s.image }}" alt="Aperçu créative {{ s.label }}">{% endif %}
+      <div class="ads-row">
+        <label for="dest-{{ s.slot }}">Lien annonceur (destination réelle du clic)</label>
+        <input class="field" type="url" name="dest_url" id="dest-{{ s.slot }}" value="{{ s.dest_url }}"
+               placeholder="https://…">
+      </div>
+      <div class="ads-stats">
+        {{ s.clicks }} clic{{ 's' if s.clicks != 1 }} enregistré{{ 's' if s.clicks != 1 }}
+        {% if s.updated_at %}· maj {{ s.updated_at }}{% endif %}
+        {% if s.active %}· lien diffusé : <code>{{ backoffice_base }}/go/…</code>{% endif %}
+      </div>
+      <button class="btn btn-primary" type="submit">Enregistrer</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
