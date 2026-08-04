@@ -187,6 +187,69 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
     return base + bonus
 
 
+# --------------------------------------------------------------------------- #
+# LA BARRIÈRE DE LA LANGUE — le critère qui manquait à un agenda TRANSFRONTALIER
+#
+# Constat de Franck, 2026-08-03 : « ça vaut le détour si c'est un spectacle où on doit
+# comprendre ce qui est dit, c'est quand même compliqué de faire le déplacement. Par
+# contre un salon, Terra Madre sur la gastronomie, la Fête du lac… »
+#
+# CE QUE LES QUATRE CRITÈRES NE DISENT PAS. `rayonnement` mesure que l'événement PORTE
+# au-delà de la frontière ; il ne dit rien de ce qui décide vraiment pour un visiteur
+# d'en face : pourra-t-il en profiter ? Une pièce de théâtre en italien rayonne autant
+# qu'une foire gastronomique et vaut infiniment moins le déplacement à un francophone.
+# Sur un agenda qui couvre deux pays et deux langues, c'est le point aveugle central.
+#
+# POURQUOI PAR CATÉGORIE, ET NON PAR UN NOUVEAU CRITÈRE DE L'ÉVALUATEUR. Ajouter une
+# cinquième question au prompt LLM créerait un stock à deux vitesses : les fiches déjà
+# évaluées ne l'auraient pas, seraient notées sur moins de points, et se retrouveraient
+# systématiquement derrière les nouvelles. Il faudrait tout ré-évaluer — des centaines
+# d'appels — pour un renseignement que la catégorie contient DÉJÀ. C'est le même
+# raisonnement qui avait fait choisir `llm_score_detail` plutôt qu'une note de persona :
+# rétroactif, gratuit, et auditable.
+#
+# LA NUANCE ASSUMÉE : la barrière est traitée comme SYMÉTRIQUE, alors qu'elle ne l'est
+# pas — une conférence en français est accessible à un Savoyard et pas à un Turinois. La
+# traiter par langue supposerait de connaître la langue PARLÉE sur place (que rien ne
+# stocke) et de produire deux notes par fiche, une par version du site. C'est la
+# simplification, elle est ici pour être vue, pas pour être oubliée.
+#
+# ⚠️ CECI NE CHASSE RIEN DU SITE. « Conférences & Rencontres » reste l'une des onze
+# catégories, et une conférence de musée ou un café philo y gardent toute leur place
+# (docs/CHARTE_EDITORIALE.md). Ce critère ne joue QUE sur le classement d'une section qui
+# invite à faire de la route — pas sur ce qui est publié.
+_LANGUE_PAR_CATEGORIE = {
+    # 2 — rien à comprendre pour en profiter : ça se regarde, ça se goûte, ça se marche.
+    "Gastronomie & Sagre":          2,
+    "Marchés & Foires":             2,
+    "Sport":                        2,
+    "Expositions & Patrimoine":     2,
+    "Fêtes & Traditions populaires": 2,
+    # 1 — la langue aide sans commander. Un concert chanté se vit, un festival mélange
+    # les formes, le jeune public passe par le jeu et l'image.
+    "Concerts & Musique":           1,
+    "Festivals":                    1,
+    "Jeune public & Famille":       1,
+    "Cinéma":                       1,   # VO sous-titrée, salles bilingues
+    # 0 — il faut comprendre ce qui est dit, sinon on a fait la route pour rien.
+    "Spectacle vivant":             0,
+    "Conférences & Rencontres":     0,
+}
+LANGUE_MAX = 2
+# Ce que vaut une catégorie inconnue ou absente. 1 et non 0 : une catégorie manquante est
+# une donnée qui manque, pas une barrière constatée — la pénaliser au maximum reviendrait
+# à punir la fiche pour un défaut de classement dont son événement n'est pas responsable.
+LANGUE_DEFAUT = 1
+
+
+def accessibilite_langue(event: dict) -> int:
+    """0-2 : dans quelle mesure on peut profiter de l'événement sans parler la langue.
+
+    Dérivé de `llm_categorie` — donc rétroactif sur tout le stock déjà publié, sans un
+    seul appel LLM. Voir le commentaire ci-dessus pour le pourquoi et la limite connue."""
+    return _LANGUE_PAR_CATEGORIE.get((event.get("llm_categorie") or "").strip(), LANGUE_DEFAUT)
+
+
 def deplacement_etat(event: dict, aujourdhui=None) -> tuple[int | None, int | None, str]:
     """(note intrinsèque, note de tri, MOTIF) — pour l'afficher au back-office.
 

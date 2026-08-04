@@ -40,8 +40,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.completeness import is_recurring
-from utils.deplacement import (_CRITERES, DEPLACEMENT_MIN, HORIZON_JOURS, MAX_SCORE,
-                               deplacement_raisons, deplacement_score)
+from utils.deplacement import (_CRITERES, DEPLACEMENT_MIN, HORIZON_JOURS, LANGUE_MAX,
+                               MAX_SCORE, accessibilite_langue, deplacement_raisons,
+                               deplacement_score)
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 # TOUS les seuils possibles, pas une sélection. La première version s'arrêtait à 6 — soit
@@ -89,21 +90,32 @@ def _vivant(ev: dict, auj: date) -> bool:
 # seule. D'où un plafond à 1 point : « lieu remarquable, oui ou non », plutôt qu'une échelle
 # qui lui donne trois fois le poids de l'ancrage identitaire.
 #
-# Échelle 0-10 et non 0-8 : elle se lit plus vite, et surtout le plancher se re-décide
-# forcément — le garder à 6 par inertie appliquerait une exigence différente sans qu'on
-# s'en aperçoive.
+# Échelle 0-12 et non 0-8 : le plancher se re-décide alors forcément — le garder à 6 par
+# inertie appliquerait une exigence différente sans qu'on s'en aperçoive (6/8 vaut 75 %,
+# 6/12 en vaut 50).
+#
+# ET UN CINQUIÈME CRITÈRE, LA BARRIÈRE DE LA LANGUE (Franck, 2026-08-03) : sur un agenda
+# transfrontalier, `rayonnement` dit que l'événement porte au-delà de la frontière, jamais
+# qu'un visiteur d'en face pourra en profiter. Une pièce de théâtre en italien rayonne
+# autant qu'une foire gastronomique et vaut infiniment moins le déplacement à un
+# francophone. Dérivé de la catégorie (utils/deplacement.accessibilite_langue) : gratuit,
+# rétroactif sur tout le stock, auditable — et il ne chasse RIEN du site, il ne joue que
+# sur le classement de cette section.
 PONDERATION_PROPOSEE = {
-    "rayonnement":              (2, None),   # 0-2 ×2 → 0-4  (40 %)
-    "specificite_territoriale": (3, None),   # 0-1 ×3 → 0-3  (30 %)
-    "edition_tradition":        (1, None),   # 0-2 ×1 → 0-2  (20 %)
-    "notoriete_lieu":           (1, 1),      # plafonné à 1  (10 %)
+    "rayonnement":              (2, None),   # 0-2 ×2 → 0-4  (33 %)
+    "specificite_territoriale": (3, None),   # 0-1 ×3 → 0-3  (25 %)
+    "edition_tradition":        (1, None),   # 0-2 ×1 → 0-2  (17 %)
+    "notoriete_lieu":           (1, 1),      # plafonné à 1  ( 8 %)
 }
-MAX_PROPOSE = 10
+POIDS_LANGUE = 1                             # 0-2 ×1 → 0-2  (17 %)
+MAX_PROPOSE = 12
 
 
-def _note_proposee(llm_score_detail) -> int | None:
+def _note_proposee(ev: dict) -> int | None:
+    """Note sur 12 avec la pondération proposée. Prend l'ÉVÉNEMENT et non le seul JSON :
+    la barrière de la langue se lit sur `llm_categorie`, pas dans le détail du score."""
     try:
-        d = json.loads(llm_score_detail or "{}")
+        d = json.loads(ev.get("llm_score_detail") or "{}")
     except (ValueError, TypeError):
         return None
     if not isinstance(d, dict) or not d:
@@ -116,7 +128,9 @@ def _note_proposee(llm_score_detail) -> int | None:
             p = int(pts)
             total += min(p, plafond) * poids if plafond is not None else p * poids
             trouve = True
-    return total if trouve else None
+    if not trouve:
+        return None
+    return total + accessibilite_langue(ev) * POIDS_LANGUE
 
 
 def _simuler(vivants: list[dict], notes: dict, args) -> None:
@@ -134,6 +148,8 @@ def _simuler(vivants: list[dict], notes: dict, args) -> None:
                 "specificite_territoriale": 1, "notoriete_lieu": 3}[cle]) * poids
         print(f"| `{cle}` | ×{poids} | {plafond if plafond is not None else '—'} | "
               f"{maxi}/{MAX_PROPOSE} |")
+    print(f"| `accessibilite_langue` (NOUVEAU, déduit de la catégorie) | ×{POIDS_LANGUE} | — "
+          f"| {LANGUE_MAX * POIDS_LANGUE}/{MAX_PROPOSE} |")
 
     par_t: dict[str, list[dict]] = {}
     for lot in notes.values():
@@ -144,7 +160,7 @@ def _simuler(vivants: list[dict], notes: dict, args) -> None:
     for t, lot in sorted(par_t.items()):
         av = sorted(lot, key=lambda e: deplacement_score(e["llm_score_detail"]) or 0,
                     reverse=True)[:args.exemples]
-        ap = sorted(lot, key=lambda e: _note_proposee(e["llm_score_detail"]) or 0,
+        ap = sorted(lot, key=lambda e: _note_proposee(e) or 0,
                     reverse=True)[:args.exemples]
         bouge = "" if [e["id"] for e in av] == [e["id"] for e in ap] else "  ← l'ordre CHANGE"
         print(f"\n**{t}**{bouge}\n")
@@ -153,15 +169,15 @@ def _simuler(vivants: list[dict], notes: dict, args) -> None:
         for i in range(max(len(av), len(ap))):
             g = (f"{deplacement_score(av[i]['llm_score_detail'])} · "
                  f"{(av[i].get('title') or '')[:38]}") if i < len(av) else ""
-            d = (f"{_note_proposee(ap[i]['llm_score_detail'])} · "
+            d = (f"{_note_proposee(ap[i])} · "
                  f"{(ap[i].get('title') or '')[:38]}") if i < len(ap) else ""
             print(f"| {i + 1} | {g} | {d} |")
 
     print("\n### Où se placerait le plancher\n")
     print("| Plancher /10 | Fiches retenues |")
     print("|---:|---:|")
-    for s in range(4, MAX_PROPOSE + 1):
-        n = sum(1 for e in vivants if (_note_proposee(e.get("llm_score_detail")) or -1) >= s)
+    for s in range(4, MAX_PROPOSE + 1):  # tous les seuils, cf. SEUILS
+        n = sum(1 for e in vivants if (_note_proposee(e) or -1) >= s)
         print(f"| **{s}** | {n} |")
     print("\n> Le plancher ne se transpose PAS : 6/8 et 6/10 n'expriment pas la même\n"
           "> exigence, et la distribution change aussi. À re-décider sur ce tableau.\n")
