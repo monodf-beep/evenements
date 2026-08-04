@@ -237,12 +237,21 @@ add_action('wp_footer', function () {
         function place(){
           var vh = window.innerHeight;
 
-          // Bas de la zone sticky : le plus bas des en-tetes, en ignorant ceux qui ont
-          // defile loin (> moitie d'ecran) pour ne pas coller les pubs en bas de page.
+          /* Bas de la zone d'en-tete. On teste le bord SUPERIEUR pour decider si un
+             element est ancre en haut, puis on retient son bord INFERIEUR.
+             Erreur du premier jet : la condition « bottom < vh/2 » ecartait un en-tete
+             des que sa BASE depassait la moitie de l'ecran. Or en haut de page la pile
+             masthead + menu + barre territoire descend a ~470px sur ~800px de haut :
+             les trois etaient donc ignores, headBottom restait a 0, et les gouttieres
+             remontaient jusqu'en haut de l'ecran. Invisible en etat defile (l'en-tete
+             collant est court), visible des qu'on revenait en haut — exactement ce que
+             Franck a constate le 2026-08-04. */
           var headBottom = 0;
           for (var h = 0; h < heads.length; h++) {
-            var hb = heads[h].getBoundingClientRect().bottom;
-            if (hb > headBottom && hb < vh / 2) { headBottom = hb; }
+            var hr = heads[h].getBoundingClientRect();
+            if (hr.height <= 0) { continue; }             // pas rendu
+            if (hr.top > vh * 0.6) { continue; }          // pas ancre en haut de l'ecran
+            if (hr.bottom > headBottom) { headBottom = hr.bottom; }
           }
           var minTop  = headBottom + GAP;
           var footTop = footerTop();
