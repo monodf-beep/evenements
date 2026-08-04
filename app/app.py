@@ -1940,20 +1940,23 @@ def cowork_log():
 # Blocs publicitaires du site (cf. docs/REGIE_ANNONCEURS.md).
 #   source 'adsense' : rempli automatiquement par Google (rien à gérer ici)
 #   source 'manuel'  : régie directe → gérable depuis cette page
+#   flux 'in'  : vit dans le contenu → câblé une fois en Ad Inserter via [cs_slot bloc="N"]
+#   flux 'out' : position:fixed hors contenu → cs-regie.php lit le backoffice tout seul,
+#                RIEN à coller dans Ad Inserter (le coller en plus double l'affichage)
 AD_BLOCKS = {
-    "1": {"nom": "Leaderboard (haut)",           "format": "970×90 · 350×90 mobile",   "source": "adsense",
+    "1": {"nom": "Leaderboard (haut)",           "format": "970×90 · 350×90 mobile",   "source": "adsense", "flux": "in",
           "w": 970,  "h": 90,   "prix_base": 250, "prix_lancement": 150},
-    "2": {"nom": "Pavé in-article",              "format": "300×250 / 336×280",        "source": "adsense",
+    "2": {"nom": "Pavé in-article",              "format": "300×250 / 336×280",        "source": "adsense", "flux": "in",
           "w": 300,  "h": 250,  "prix_base": 200, "prix_lancement": 120},
-    "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel",
+    "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel", "flux": "in",
           "w": 970,  "h": 90,   "prix_base": 220, "prix_lancement": 140},
-    "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel",
+    "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel", "flux": "out",
           "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390},
     # Gouttières (skyscrapers latéraux, desktop only, hors flux — cs-regie.php, pas
     # [cs_slot]). Tarifs 2026-08-04 : PLACEHOLDERS jamais négociés, à ajuster.
-    "5": {"nom": "Gouttière gauche (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel",
+    "5": {"nom": "Gouttière gauche (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel", "flux": "out",
           "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
-    "6": {"nom": "Gouttière droite (half-page)",  "format": "300×600 (desktop only)",   "source": "manuel",
+    "6": {"nom": "Gouttière droite (half-page)",  "format": "300×600 (desktop only)",   "source": "manuel", "flux": "out",
           "w": 300,  "h": 600,  "prix_base": 350, "prix_lancement": 220},
 }
 

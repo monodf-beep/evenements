@@ -123,7 +123,12 @@
           {% else %}
           <div class="text-sm muted" style="margin-top:.35rem;">⚠️ Renseigne l'URL de destination pour obtenir un lien de suivi.</div>
           {% endif %}
-          {% if c.url and c.image_url %}
+          {% if blocks.get(c.bloc, {}).get('flux') == 'out' %}
+          <div class="text-sm" style="margin-top:.35rem;background:#eef4ff;border-left:3px solid #2563eb;padding:.4rem .6rem;border-radius:4px;">
+            🔌 Bloc hors flux — <code>cs-regie.php</code> lit le backoffice tout seul et affiche
+            cette créative. <b>Rien à coller dans Ad Inserter</b> pour ce bloc (ça doublerait l'affichage).
+          </div>
+          {% elif c.url and c.image_url %}
           <details class="text-sm" style="margin-top:.35rem;">
             <summary style="cursor:pointer;color:#2563eb;">📋 Code prêt à coller dans Ad Inserter (Bloc {{ c.bloc }})</summary>
             <pre class="rg-snippet" style="white-space:pre-wrap;background:var(--code-bg,#f6f7f9);border:1px solid var(--border,#e2e4e8);border-radius:6px;padding:.5rem;margin:.4rem 0 .3rem;font-size:.74rem;overflow-x:auto;">&lt;a href="{{ go_base }}/go/{{ c.id }}" target="_blank" rel="noopener sponsored"&gt;&lt;img src="{{ c.image_url }}" alt="Publicité" style="max-width:100%;height:auto;"&gt;&lt;/a&gt;</pre>
