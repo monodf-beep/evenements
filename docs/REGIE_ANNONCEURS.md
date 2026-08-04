@@ -84,27 +84,34 @@ La skin est **désactivable** et livrée **OFF par défaut**. Elle est pilotée 
 
 ---
 
-## Ce que couvre `deploy/wordpress/cs-regie.php` (scaffold)
-Les 3 emplacements **hors flux** qu'Ad Inserter gère mal en version gratuite :
-- **Skin** desktop (fond fixe cliquable, ON/OFF, consent-gated) ;
-- **Gouttières** gauche/droite (rails fixes sticky, desktop only, consent-gated) ;
-- (option) **bandeau sticky bas** si tu préfères le gérer côté thème plutôt qu'Ad Inserter.
+## Ce que couvre `deploy/wordpress/cs-regie.php` (v0.3, 2026-08-04)
+Les emplacements **hors flux** que le shortcode `[cs_slot]` de `cs-regie-serve.php` ne
+peut pas couvrir (pas de contenu à envelopper — ce sont des rails `position:fixed`) :
+- **Bloc 4 — Skin** desktop (fond fixe cliquable, desktop ≥1840px, consent-gated) ;
+- **Bloc 5 — Gouttière gauche** (160×600, skyscraper, desktop ≥1440px, consent-gated) ;
+- **Bloc 6 — Gouttière droite** (300×600, half-page, desktop ≥1440px, consent-gated).
 
-Tout le reste (leaderboard, pavés in-list / in-article, sticky bas) = **blocs Ad Inserter**
-configurés en wp-admin selon le tableau ci-dessus. Les créatives du scaffold se règlent
-par option `cs_regie` (filtre `cs_regie_options` pour alimentation future par le back-office).
+Ajoutés le 2026-08-04 à `AD_BLOCKS` (app.py) — gérables depuis `/regie` exactement comme
+les blocs 3/4 existants (campagne, dates, tarif, clics). **Tarifs placeholders**, jamais
+négociés avec un vrai annonceur — à ajuster avant toute vente réelle.
+
+`cs-regie.php` réutilise directement `cs_regie_serve_fetch()` et `cs_regie_host_ok()`
+déjà définies par `cs-regie-serve.php` (même dossier mu-plugins, chargé avant par ordre
+alphabétique) — pas de logique de fetch/allowlist dupliquée entre les deux fichiers.
 
 ## Diffusion AUTOMATIQUE depuis le back-office (zéro copier-coller)
-Pour supprimer le collage manuel dans Ad Inserter, deux pièces travaillent ensemble :
+Deux pièces travaillent ensemble :
 - **Back-office** : l'API publique `GET /api/active-ads` expose, par bloc, la créative
   **active du jour** (statut actif, dans la fenêtre de dates, image + destination
-  renseignées ; lien = `/go/<id>` donc clics comptés).
-- **WordPress** : le mu-plugin **`deploy/wordpress/cs-regie-serve.php`** interroge cette
-  API (cache 5 min) et **affiche la pub tout seul**. V1 : **Bloc 3 = bandeau bas d'écran
-  (sticky, fermable)**, consent-gated, libellé « Publicité ».
+  renseignées ; lien = `/go/<id>` donc clics comptés). Page `/regie` pour gérer les
+  campagnes (ajouter/éditer/terminer/réactiver, alerte d'échéance par date).
+- **WordPress, blocs 1-3 (dans le flux)** : `cs-regie-serve.php`, shortcode
+  `[cs_slot bloc="N"]<créative AdSense>[/cs_slot]` — si une campagne backoffice est
+  active pour ce bloc, elle remplace l'AdSense enveloppé ; sinon l'AdSense s'affiche.
+- **WordPress, blocs 4-6 (hors flux)** : `cs-regie.php`, rendu direct en
+  `position:fixed` via `wp_footer` — rien à envelopper, s'affiche tout seul dès qu'une
+  campagne est active pour ces blocs.
 
 Résultat : **créer / modifier / terminer** une campagne dans le back-office suffit — la pub
 apparaît / change / disparaît sur agendasabauda.eu dans les **~5 min** (purge immédiate
-possible via `/?cs_regie_refresh=1`). ⚠️ Ne pas configurer **aussi** le Bloc 3 dans Ad
-Inserter (double pub). Ad Inserter reste pour l'**AdSense** (blocs 1 & 2). Les blocs 4
-(skin) et autres formats peuvent suivre le même modèle ensuite.
+possible via `/?cs_regie_refresh=1`).

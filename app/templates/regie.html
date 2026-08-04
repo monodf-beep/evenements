@@ -8,7 +8,7 @@
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:960px;">
 
   <!-- État des blocs -->
-  <h2 style="margin:.2rem 0 .6rem;">Les 4 blocs publicitaires</h2>
+  <h2 style="margin:.2rem 0 .6rem;">Les 6 blocs publicitaires</h2>
   <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.4rem;">
     <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
       <thead><tr style="text-align:left;background:var(--code-bg,#f6f7f9);">
@@ -36,7 +36,7 @@
       </tbody>
     </table>
   </div>
-  <p class="muted text-sm" style="margin-top:-.9rem;">Les blocs <b>1</b> et <b>2</b> sont réservés à AdSense (Google les remplit tout seul). Tu gères ici les blocs <b>manuels</b> (3 · bandeau bas d'écran, 4 · skin) : un vrai annonceur, une image, un lien, des dates.</p>
+  <p class="muted text-sm" style="margin-top:-.9rem;">Les blocs <b>1</b> et <b>2</b> sont réservés à AdSense (Google les remplit tout seul). Tu gères ici les blocs <b>manuels</b> (3 · bandeau bas d'écran, 4 · skin, 5 · gouttière gauche, 6 · gouttière droite) : un vrai annonceur, une image, un lien, des dates.</p>
 
   <!-- Démarche -->
   <h2 style="margin:1.4rem 0 .4rem;">La démarche, pas à pas</h2>
@@ -46,7 +46,10 @@
       <li><b>Récupérer la créative</b> : une image aux bonnes dimensions du bloc.</li>
       <li><b>Uploader l'image</b> dans WordPress (Médias → Ajouter) et <b>copier son URL</b>.</li>
       <li><b>Enregistrer la campagne ici</b> (formulaire ci-dessous) → ça garde la trace et pose l'<b>alerte de fin</b>.</li>
-      <li><b>Poser le bloc côté site</b> : dans l'appli / claude.ai + Novamira, remplacer le placeholder par <code>&lt;img&gt;</code> + lien et réactiver le bloc — <i>ou</i> à la main dans Ad Inserter. Le libellé « Publicité » et le consentement Complianz sont déjà en place, rien à retoucher.</li>
+      <li><b>Poser le bloc côté site</b> :
+        <b>blocs 1, 2, 3</b> — enveloppe l'AdSense du bloc dans Ad Inserter avec <code>[cs_slot bloc="N"]…[/cs_slot]</code> (une fois, pas à refaire à chaque campagne) : la créative backoffice prend le dessus automatiquement tant que la campagne est active.
+        <b>Blocs 4, 5, 6</b> (skin, gouttières) — rien à faire : <code>cs-regie.php</code> lit directement le backoffice et affiche la créative dès qu'elle est active, aucune action Ad Inserter.
+      </li>
       <li><b>Vérifier</b> en navigation privée (accepter/refuser le consentement, tester le lien).</li>
       <li><b>À l'échéance</b> : revenir ici, cliquer <b>« Terminer »</b>, puis désactiver/remplacer le bloc côté site.</li>
     </ol>
