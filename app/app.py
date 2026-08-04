@@ -3789,6 +3789,111 @@ def slack_complete():
     return {"response_type": "ephemeral", "text": txt}
 
 
+PUBLIER_LOT_MAX = 60
+
+
+@app.route("/publier-lot", methods=["POST"])
+@require_auth
+def publier_lot():
+    """PUBLIER EN LOT vers agendasabauda.eu — pendant collectif de « Publier Agenda ».
+
+    AJOUTÉ LE 2026-08-04. Après un passage d'enrich.py et de visuals.py, dix-huit
+    fiches étaient prêtes. Les pousser demandait de retrouver chacune à l'œil dans
+    la liste, puis deux clics. Franck : « Tu ne peux pas mettre un seul clic qui
+    permettrait de tout publier. »
+
+    DEUX MODES, dans cet ordre :
+      1. champ `ids` rempli → EXACTEMENT ces identifiants. C'est le mode sûr : on
+         publie ce qu'on a déjà vérifié ailleurs (sortie de enrich, de visuals).
+      2. champ vide → toutes les fiches « prêtes à publier » au sens du gabarit
+         events.html : enrich_status='enriched' ET une image ET une date.
+
+    GARDE-FOUS, repris tels quels de _autopush_if_ready pour ne pas diverger :
+      - jamais un événement PASSÉ (date de fin, à défaut de début, < aujourd'hui) ;
+      - jamais un événement REJETÉ ;
+      - plafond dur PUBLIER_LOT_MAX, pour qu'un clic ne déclenche pas des centaines
+        d'appels WordPress ; le surplus est annoncé, pas exécuté en silence.
+
+    Une fiche DÉJÀ publiée est mise à jour, pas dupliquée : publish_to_as gère les
+    deux cas, exactement comme l'action unitaire.
+
+    Le compte rendu distingue publiées / échecs / écartées AVEC LEUR MOTIF. Un lot
+    qui dit seulement « 12 publiées » cache ce qu'il n'a pas fait.
+    """
+    conn = get_db()
+
+    demandes = [int(m) for m in (request.form.get("ids") or "").replace(",", " ").split()
+                if m.isdigit()]
+    if demandes:
+        marques = ",".join("?" * len(demandes))
+        rows = conn.execute(
+            f"SELECT * FROM events_raw WHERE id IN ({marques})", demandes).fetchall()
+        introuvables = set(demandes) - {r["id"] for r in rows}
+    else:
+        rows = conn.execute(
+            "SELECT * FROM events_raw WHERE enrich_status = 'enriched' "
+            "AND COALESCE(url_image, '') <> '' "
+            "AND (COALESCE(date_event_start, '') <> '' "
+            "     OR COALESCE(date_event_end, '') <> '')"
+        ).fetchall()
+        introuvables = set()
+
+    aujourdhui = date.today().isoformat()
+    a_publier, ecartes = [], []
+    for r in rows:
+        ev = dict(r)
+        if (ev.get("statut") or "") == "rejected":
+            ecartes.append((ev["id"], "rejetée"))
+            continue
+        fin = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
+        if not fin:
+            ecartes.append((ev["id"], "sans date"))
+            continue
+        if fin < aujourdhui:
+            ecartes.append((ev["id"], "passée"))
+            continue
+        a_publier.append(ev)
+
+    surplus = a_publier[PUBLIER_LOT_MAX:]
+    a_publier = a_publier[:PUBLIER_LOT_MAX]
+
+    ok, echecs = 0, []
+    for ev in a_publier:
+        try:
+            wp_id, permalink, raw_url = publish_to_as(ev)
+        except Exception:
+            log.exception("publier-lot : exception sur id=%s", ev["id"])
+            wp_id = None
+        if wp_id:
+            conn.execute(
+                "UPDATE events_raw SET statut='published_sub', "
+                "published_as_date=datetime('now'), wp_post_id_as=?, "
+                "wp_permalink_as=?, wp_raw_image_url_as=? WHERE id=?",
+                (wp_id, permalink, raw_url, ev["id"]))
+            conn.commit()
+            ok += 1
+            log.info("publier-lot : id=%s → WP #%s", ev["id"], wp_id)
+        else:
+            echecs.append(ev["id"])
+    conn.close()
+
+    flash(f"✅ Lot publié : {ok} fiche(s) vers Agenda Sabauda.", "ok" if ok else "err")
+    if echecs:
+        flash(f"❌ Échec sur {len(echecs)} : {', '.join(str(i) for i in echecs[:20])} "
+              f"— vérifie WP_AS_URL / identifiants (voir logs).", "err")
+    if ecartes:
+        detail = ", ".join(f"{i} ({motif})" for i, motif in ecartes[:20])
+        flash(f"⏭ {len(ecartes)} écartée(s) : {detail}", "warn")
+    if introuvables:
+        flash(f"❓ {len(introuvables)} identifiant(s) inconnu(s) : "
+              f"{', '.join(str(i) for i in sorted(introuvables))}", "warn")
+    if surplus:
+        flash(f"🛑 Plafond {PUBLIER_LOT_MAX} atteint : {len(surplus)} fiche(s) NON "
+              f"traitée(s). Relance pour la suite.", "warn")
+
+    return redirect(request.form.get("next") or "/events")
+
+
 @app.route("/action/<int:event_id>/<action>", methods=["POST"])
 @require_auth
 def action(event_id: int, action: str):

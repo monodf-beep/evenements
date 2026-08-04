@@ -15,6 +15,15 @@
   {% endfor %}
 </div>
 
+<!-- Publication en lot vers Agenda Sabauda -->
+<form class="btn-row" method="POST" action="/publier-lot" style="margin-bottom:.9rem"
+      onsubmit="return confirm('Publier ce lot vers Agenda Sabauda ?\n\nLes fiches passées, sans date ou rejetées sont ignorées. Une fiche déjà en ligne est mise à jour, pas dupliquée.')">
+  <input type="hidden" name="next" value="{{ request.full_path }}">
+  <input type="text" name="ids" style="min-width:24rem"
+         placeholder="ids précis, ex. 13 924 931 — vide = tout ce qui est prêt à publier">
+  <button class="pbtn">🗓 Publier le lot</button>
+</form>
+
 <!-- Barre de période -->
 <form class="period" method="GET" action="/events" style="margin-bottom:.7rem">
   <input type="hidden" name="statut" value="{{ statut }}">
