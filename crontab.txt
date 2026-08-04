@@ -3,7 +3,15 @@
 #
 # Chemins = déploiement VPS réel : projet sous /root/evenements, interpréteur du
 # venv (.venv/bin/python). Adapter si le projet est ailleurs.
-# Heures en heure locale du serveur (timezone Europe/Paris — voir timedatectl).
+# Heures en heure locale du serveur. Europe/Paris ATTENDU — Paris et Rome partagent le même
+# fuseau, la journée du site est donc unique malgré son bilinguisme.
+# ⚠️ Ce n'était qu'une AFFIRMATION jusqu'au 2026-08-04 : le commentaire le disait, aucun
+# script ne le vérifiait. Question de Franck ce jour-là. `scripts/watchdog_crons.py` (12h)
+# contrôle désormais le fuseau RÉEL à chaque passage et alerte s'il a bougé — en tête du
+# message, avant les retards, parce qu'un décalage d'heure invalide les retards eux-mêmes.
+# L'enjeu dépasse l'horaire : c'est l'heure du serveur qui décide de ce qui est « passé »
+# (règle 5), et deux heures d'écart font basculer les événements du jour du mauvais côté à
+# la frontière de minuit.
 
 # Scraping RSS quotidien 8h
 0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py >> logs/scraper.log 2>&1

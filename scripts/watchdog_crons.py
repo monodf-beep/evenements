@@ -148,6 +148,45 @@ def etat(maintenant: datetime | None = None) -> list[dict]:
     return out
 
 
+FUSEAU_ATTENDU = "Europe/Paris"
+
+
+def fuseau() -> tuple[str, bool]:
+    """(fuseau du serveur, est-il celui attendu) — et pourquoi c'est ici.
+
+    QUESTION DE FRANCK, 2026-08-04 : « es-tu sûr que les agents travaillent aux heures que
+    tu donnes, dans le fuseau Paris-Rome ? » La réponse honnête était : je le crois, mais
+    personne ne l'a jamais vérifié. Le commentaire en tête de crontab.txt l'AFFIRME depuis
+    toujours (« heure locale du serveur, timezone Europe/Paris ») sans qu'aucun script ne
+    le contrôle — une affirmation qui se répète et que rien ne teste finit par devenir
+    vraie dans les têtes seulement.
+
+    CE QUE COÛTERAIT UN DÉCALAGE, et ce n'est pas cosmétique. C'est l'heure du serveur qui
+    décide de ce qui est « passé » : la règle 5 tout entière repose dessus, et à la
+    frontière de minuit deux heures d'écart font basculer les événements du jour du mauvais
+    côté. Un serveur réinstallé en UTC décalerait toute la chaîne du matin sans que rien ne
+    sonne — le chien de garde mesure des retards avec 30 h de tolérance, il ne verrait
+    jamais deux heures.
+
+    Paris et Rome partagent le même fuseau : le site est bilingue, sa journée ne l'est pas.
+    """
+    from datetime import timezone
+    tz = (os.getenv("TZ") or "").strip()
+    if not tz:
+        try:  # /etc/timezone (Debian) puis le lien /etc/localtime
+            tz = (Path("/etc/timezone").read_text().strip()
+                  or str(Path("/etc/localtime").resolve()).split("zoneinfo/")[-1])
+        except OSError:
+            tz = str(Path("/etc/localtime").resolve()).split("zoneinfo/")[-1] \
+                if Path("/etc/localtime").exists() else "?"
+    # Le NOM peut mentir (variable posée sans effet) : l'OFFSET, lui, est ce que voit
+    # réellement datetime.now(), donc ce qui gouverne les comparaisons de dates.
+    offset = datetime.now(timezone.utc).astimezone().utcoffset()
+    heures = int(offset.total_seconds() // 3600) if offset else 0
+    attendu = heures in (1, 2)          # CET = +1, CEST = +2
+    return f"{tz or '?'} (UTC{heures:+d})", attendu
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Vérifie que les crons tournent encore.")
     p.add_argument("--slack", action="store_true",
@@ -158,8 +197,18 @@ def main(argv=None) -> int:
     retards = [l for l in lignes if l["en_retard"]]
     en_erreur = [l for l in lignes if not l["en_retard"] and l["erreurs"]]
 
+    tz, tz_ok = fuseau()
     print(f"\n{len(lignes)} automatisation(s) surveillée(s) — {len(retards)} en retard, "
-          f"{len(en_erreur)} en erreur au dernier passage.\n")
+          f"{len(en_erreur)} en erreur au dernier passage.")
+    print(f"Fuseau du serveur : {tz}"
+          + ("" if tz_ok else f"  ⛔ ATTENDU {FUSEAU_ATTENDU} (UTC+1 ou +2)") + "\n")
+    if not tz_ok:
+        # Une seule ligne, mais elle vaut toutes les autres : si l'heure du serveur a
+        # bougé, tous les horaires de ce fichier sont faux ET le calcul du « passé »
+        # (règle 5) l'est aussi, à la frontière de minuit.
+        print("  ⛔ TOUS LES HORAIRES DU CRONTAB SONT DÉCALÉS, et le calcul de ce qui est\n"
+              "     « passé » avec eux. Corriger avec : timedatectl set-timezone "
+              f"{FUSEAU_ATTENDU}\n")
     for l in sorted(lignes, key=lambda x: (not x["en_retard"], x["libelle"])):
         if l["vu"] is None:
             quand, marque = "JAMAIS VUE", "⛔"
@@ -178,12 +227,20 @@ def main(argv=None) -> int:
     # SILENCE QUAND TOUT VA BIEN. Une notification quotidienne « rien à signaler » finit
     # par ne plus être lue, et le jour où elle manque, personne ne le remarque — ce serait
     # reproduire le défaut qu'on répare. On ne parle que s'il y a quelque chose à dire.
-    if not retards and not en_erreur:
+    if not retards and not en_erreur and tz_ok:
         log.info("Toutes les automatisations sont à l'heure — pas d'alerte envoyée.")
         return 0
 
     from utils import slack
     msg = ["🐕 *Chien de garde des automatisations*"]
+    if not tz_ok:
+        # EN TÊTE, avant les retards : si l'heure du serveur a bougé, les retards affichés
+        # en dessous sont eux-mêmes faux. Un décalage de fuseau n'est pas une anomalie de
+        # plus dans la liste, c'est ce qui invalide la liste.
+        msg.append(f"⛔ *FUSEAU HORAIRE* — le serveur est en `{tz}`, attendu "
+                   f"`{FUSEAU_ATTENDU}`. Tous les horaires du crontab sont décalés, et le "
+                   f"calcul de ce qui est « passé » avec eux.\n"
+                   f"_Corriger : `timedatectl set-timezone {FUSEAU_ATTENDU}`_")
     for l in retards:
         quand = "JAMAIS VUE" if l["vu"] is None else f"dernier passage il y a {l['retard_h']:.0f} h"
         msg.append(f"⛔ *{l['libelle']}* — {quand} (tolérance {l['tolerance']} h)")
