@@ -264,12 +264,18 @@ add_action('wp_footer', function () {
             var top = Math.round((vh - adH) / 2);              // centre par defaut
             if (top < minTop) { top = minTop; }
             var maxTop = footTop - adH - GAP;
-            if (top > maxTop) { top = maxTop; }
-            // FAIL-OPEN : si le calcul ne laisse aucune place (viewport tres court,
-            // footer mal mesure…), on colle sous l'en-tete et on AFFICHE quand meme.
-            // Faire disparaitre une pub vendue sur un doute de mesure coute plus cher
-            // qu'un chevauchement passager — c'est exactement ce qui vient d'arriver.
-            if (!isFinite(top) || top < minTop) { top = minTop; }
+            /* Le pied de page a la PRIORITE sur l'en-tete : quand les deux contraintes
+               s'opposent, on laisse « top » passer sous minTop, voire devenir negatif.
+               La pub sort alors de l'ecran par le haut en meme temps que le footer
+               monte — comportement attendu d'un skyscraper.
+               Erreur precedente : une ligne « si top < minTop alors top = minTop »
+               suivait ce clamp au nom du fail-open, et le defaisait donc integralement.
+               Elle se declenchait pile dans le cas qu'elle etait censee traiter, d'ou
+               une pub qui continuait de recouvrir le pied de page (Franck, 2026-08-04).
+               Le fail-open ne porte plus que sur une mesure IMPOSSIBLE (footTop non
+               fini), jamais sur un resultat simplement serre. */
+            if (isFinite(maxTop) && top > maxTop) { top = maxTop; }
+            if (!isFinite(top)) { top = minTop; }
             el.style.top = top + 'px';
             el.style.visibility = '';
           }
