@@ -46,11 +46,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Longueur minimale du texte VISIBLE en dessous de laquelle on ne conclut rien. Une
+# Longueur minimale du texte VISIBLE pour que le SIGNAL ① seul puisse conclure. Une
 # description de deux lignes peut légitimement ne reprendre aucun mot du titre ; c'est sur
 # un texte fourni que l'absence totale de recoupement devient anormale. Le signal ① est
 # une absence — et une absence ne prouve quelque chose que s'il y avait la place d'être
 # présent.
+#
+# ⚠️ CORRECTIF DU 2026-08-04, ET LA LEÇON VAUT PLUS QUE LE CORRECTIF. Ce seuil gardait
+# d'abord l'entrée des DEUX signaux. Conséquence, mesurée sur une sauvegarde d'avant
+# réparation : le contrôle ne signalait NI 2153 NI 4495 — les deux fiches de l'incident
+# pour lequel il a été écrit. Leurs descriptions faisaient 126 et 138 caractères visibles,
+# donc elles étaient écartées avant qu'aucune règle ne s'applique.
+#
+# La cause est une erreur de raisonnement, pas une faute de frappe : un fil Google News
+# est COURT PAR NATURE (son volume est dans l'URL encodée, pas dans le texte). La classe de
+# pollution visée passait donc systématiquement sous le seuil censé la protéger des faux
+# positifs. Et mon test sur fixture ne l'a pas vu parce que j'y avais écrit une longue
+# description polluée — j'avais vérifié le code contre ma propre hypothèse, jamais contre
+# la donnée réelle.
+#
+# Le signal ② n'a, lui, aucun besoin de longueur : nommer Annecy quand la fiche dit
+# Chambéry est décisif en dix mots comme en mille. Le seuil ne garde donc plus que ①.
 MIN_TEXTE_VISIBLE = 200
 
 
@@ -114,7 +130,7 @@ def incoherence_description(event: dict) -> str | None:
     None ≠ « description correcte » : ça veut dire « rien de contradictoire détecté ». La
     nuance compte, c'est elle qui empêche de prendre ce contrôle pour une garantie."""
     texte = _texte_visible(event.get("description"))
-    if len(texte) < MIN_TEXTE_VISIBLE:
+    if not texte:
         return None
 
     ville = (event.get("ville") or "").strip()
@@ -132,7 +148,12 @@ def incoherence_description(event: dict) -> str | None:
         return (f"la description nomme {', '.join(sorted(autres)[:3])} et jamais "
                 f"« {ville} », qui est la ville de la fiche")
 
-    # ① ENSUITE : universel, mais plus grossier.
+    # ① ENSUITE : universel, mais plus grossier — et c'est LUI SEUL qui exige un texte
+    # fourni. Voir MIN_TEXTE_VISIBLE : une absence ne prouve quelque chose que s'il y avait
+    # la place d'être présent. Le seuil ne doit surtout pas garder l'entrée des deux
+    # signaux, cf. le correctif du 2026-08-04.
+    if len(texte) < MIN_TEXTE_VISIBLE:
+        return None
     if mots_ancrage and not (mots_ancrage & mots_texte):
         return ("aucun mot commun entre la description et l'identité de la fiche "
                 "(titre, lieu, ville)")
