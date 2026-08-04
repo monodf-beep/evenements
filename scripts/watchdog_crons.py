@@ -100,6 +100,11 @@ ATTENDUS = [
     # — il est SILENCIEUX tant que l'écart reste sous le seuil, donc son absence ressemble
     # trait pour trait à son fonctionnement normal. C'est la panne la plus invisible du lot.
     ("Calibrage de l'évaluateur", "audit_calibrage", "calibrage.log",       200),
+    # La revue du dimanche se surveille comme le bilan du matin, et pour la même raison :
+    # elle peut légitimement ne RIEN trouver, donc son silence ressemble à son
+    # fonctionnement normal. Sans cette ligne, une revue en panne serait indiscernable
+    # d'une semaine sans défaut — et c'est précisément la semaine où l'on aimerait savoir.
+    ("Revue du code",             "revue_hebdo",     "revue_hebdo.log",     200),
 ]
 
 

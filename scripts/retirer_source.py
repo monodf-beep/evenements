@@ -145,6 +145,110 @@ def _annuler(conn: sqlite3.Connection, cible: str, concernees: list[dict],
     return 0
 
 
+def _reconstituer(conn: sqlite3.Connection, cible: str, concernees: list[dict],
+                  sauvegarde: str, apply: bool) -> int:
+    """RETROUVER LE STATUT D'AVANT DANS UNE SAUVEGARDE, pour les retraits appliqués AVANT
+    que l'instantané n'existe.
+
+    POURQUOI IL FAUT ÇA. `--annuler` lit `unmerge_data`, empilé depuis la revue du
+    2026-08-04 au soir. Or le retrait d'`agendaculturel.fr` a été appliqué le même jour à
+    14h — **338 fiches passées en 'rejected' sans que rien ne note d'où elles venaient**.
+    Elles étaient donc, en pratique, irrécupérables : très exactement le passif que
+    `docs/ETATS_TERMINAUX.md` décrit pour les fusions d'avant le 2026-08-03, et qu'on
+    venait de refabriquer le jour même en écrivant « réversiblement » dans un titre.
+
+    SAUF QUE CETTE FOIS L'INFORMATION EXISTE ENCORE. `scripts/backup_db.py` copie la base
+    chaque nuit à 3h et garde les quatorze dernières ; une sauvegarde manuelle a de plus
+    été prise à 10h53. Toutes deux précèdent le retrait : elles portent le statut EXACT des
+    338 fiches. On ne devine rien, on relit.
+
+    LE GARDE-FOU QUI COMPTE : on refuse d'enregistrer `statut_avant='rejected'`. C'est le
+    signe que la sauvegarde est POSTÉRIEURE au retrait — elle rendrait alors « rejeté » le
+    statut qu'on cherche justement à retrouver, et `--annuler` croirait avoir restauré
+    quelque chose. Une réversibilité qui repose l'état actuel n'est pas une réversibilité,
+    c'est un mensonge poli.
+
+    La sauvegarde est ouverte en LECTURE SEULE et n'est jamais modifiée."""
+    src = Path(sauvegarde)
+    if not src.exists():
+        print("\n⛔ Sauvegarde introuvable : %s" % src)
+        print("   Les sauvegardes vivent dans data/backups/events-*.db "
+              "(backup_db.py, 3h, 14 gardées).\n")
+        return 2
+    try:
+        vieille = sqlite3.connect("file:%s?mode=ro" % src, uri=True)
+        vieille.row_factory = sqlite3.Row
+        avant = {int(r["id"]): (r["statut"] or "") for r in
+                 vieille.execute("SELECT id, statut FROM events_raw")}
+        vieille.close()
+    except sqlite3.Error as exc:
+        print("\n⛔ Sauvegarde illisible (%s).\n" % exc)
+        return 2
+
+    # Seulement les fiches ACTUELLEMENT rejetées et SANS instantané pour ce domaine : on ne
+    # recouvre jamais un instantané existant, forcément plus fiable qu'une relecture.
+    cand = [r for r in concernees
+            if (r.get("statut") or "") == "rejected" and not _statut_avant(r, cible)]
+    trouvees, absentes, deja_rejetees = [], 0, 0
+    for r in cand:
+        st = avant.get(int(r["id"]))
+        if st is None:
+            absentes += 1                 # créée APRÈS la sauvegarde : rien à retrouver
+        elif st == "rejected":
+            deja_rejetees += 1            # sauvegarde postérieure, ou rejet antérieur
+        else:
+            trouvees.append((r, st))
+
+    print("\nReconstitution depuis %s — source « %s »." % (src.name, cible))
+    print("  %d fiche(s) rejetée(s) sans instantané." % len(cand))
+    print("  %d retrouvée(s) avec un statut d'avant exploitable." % len(trouvees))
+    if deja_rejetees:
+        print("  %d déjà 'rejected' DANS la sauvegarde — soit elle est postérieure au"
+              % deja_rejetees)
+        print("    retrait, soit ces fiches étaient rejetées avant. Écartées : les rendre")
+        print("    à 'rejected' ne restaurerait rien.")
+    if absentes:
+        print("  %d absente(s) de la sauvegarde (créées depuis) — rien à retrouver."
+              % absentes)
+    par_statut: dict[str, int] = {}
+    for _r, st in trouvees:
+        par_statut[st] = par_statut.get(st, 0) + 1
+    if par_statut:
+        print("  détail : " + ", ".join("%d×'%s'" % (n, s)
+                                        for s, n in sorted(par_statut.items())))
+
+    if not apply:
+        print("\nDry-run — rien n'a été écrit. Ajouter --apply pour poser les instantanés,")
+        print("puis --annuler pour restaurer.\n")
+        conn.close()
+        return 0
+    if not trouvees:
+        conn.close()
+        return 0
+
+    quand = datetime.now().isoformat(timespec="seconds")
+    for r, st in trouvees:
+        _empile(conn, r["id"], {"role": ROLE, "at": quand, "domaine": cible,
+                                "statut_avant": st,
+                                # PROVENANCE DITE : cet instantané n'a pas été pris au
+                                # moment du retrait, il a été relu dans une sauvegarde. La
+                                # nuance comptera le jour où quelqu'un se demandera
+                                # pourquoi sa date ne colle pas avec celle du retrait.
+                                "origine": "sauvegarde %s" % src.name})
+    conn.commit()
+    # RECOMPTER EN BASE (règle 6) : on relit les instantanés réellement posés.
+    ids = [r["id"] for r, _s in trouvees]
+    marks = ",".join("?" * len(ids))
+    poses = sum(1 for r in conn.execute(
+        "SELECT * FROM events_raw WHERE id IN (%s)" % marks, ids)
+        if _statut_avant(dict(r), cible))
+    conn.close()
+    print("\n✅ %d/%d instantané(s) posé(s). `--annuler` peut désormais restaurer "
+          "ces fiches.\n" % (poses, len(trouvees)))
+    log.info("Reconstitution %s depuis %s : %d/%d", cible, src.name, poses, len(trouvees))
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Retire une source et rejette ses fiches.")
     p.add_argument("domaine", help="Domaine racine, ex. agendaculturel.fr")
@@ -152,6 +256,10 @@ def main(argv=None) -> int:
     p.add_argument("--annuler", action="store_true",
                    help="REMET les fiches de ce domaine dans le statut qu'elles avaient "
                         "avant le retrait (lu dans l'instantané).")
+    p.add_argument("--reconstituer", metavar="SAUVEGARDE.db",
+                   help="Retrouve le statut d'avant dans une sauvegarde de la base et pose "
+                        "l'instantané manquant — pour les retraits appliqués AVANT que "
+                        "l'instantané n'existe (agendaculturel.fr, 2026-08-04 14h).")
     args = p.parse_args(argv)
     cible = _racine(args.domaine)
 
@@ -163,6 +271,8 @@ def main(argv=None) -> int:
     concernees = [r for r in rows
                   if _racine(urlparse(r["url_source"]).hostname or "") == cible]
 
+    if args.reconstituer:
+        return _reconstituer(conn, cible, concernees, args.reconstituer, args.apply)
     if args.annuler:
         return _annuler(conn, cible, concernees, args.apply)
     deja = [r for r in concernees if (r.get("statut") or "") == "rejected"]

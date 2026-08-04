@@ -180,6 +180,16 @@
 # WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py
 # pour le détail et pourquoi CES scripts-là précisément sont sans risque à automatiser.
 0 5 * * 0 cd /root/evenements && .venv/bin/python scripts/weekly_audits.py >> logs/weekly_audits.log 2>&1
+# Revue adversariale du code, dimanche 6h — après le grand ménage de 5h. Ajoutée le
+# 2026-08-04 : ce jour-là, quatre agents relisant huit fichiers écrits le jour même y ont
+# trouvé QUINZE défauts, dont plusieurs dans les correctifs censés fermer ceux de la veille,
+# et trois fois la même faute de méthode — une fixture incapable de contredire son auteur.
+# Aucun n'avait été vu par celui qui les avait écrits ; tous l'ont été en quelques minutes
+# par quelqu'un d'autre. La leçon n'est pas « il faut mieux se relire », c'est que se relire
+# soi-même ne marche pas.
+# Elle N'ÉCRIT RIEN (--disallowedTools Write/Edit) : elle constate, le geste reste humain.
+# Toute la mécanique est en tête de scripts/revue_hebdo.sh — la relire avant d'y toucher.
+0 6 * * 0 cd /root/evenements && scripts/revue_hebdo.sh >> logs/revue_hebdo.log 2>&1
 # Digest hebdomadaire lundi 8h — état des automatisations + reste à faire, posté sur
 # Slack (équivalent de scripts/status_report.py, à lancer à la main pour un état à jour
 # à tout moment, y compris pour coller le résultat à une IA qui reprend le projet).
