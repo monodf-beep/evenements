@@ -108,7 +108,15 @@ def _annuler(conn: sqlite3.Connection, cible: str, concernees: list[dict],
 
     Ce qu'il ne fait pas : ressortir les posts de la corbeille WordPress. C'est un clic
     dans l'admin, et surtout un geste dont un script ne peut pas décider à la place d'un
-    humain. Les numéros sont donc imprimés."""
+    humain. Les numéros sont donc imprimés.
+
+    ⚠️ ET LA RESTAURATION WORDPRESS NE REND PAS UN POST « EN LIGNE » — constaté en
+    production le 2026-08-04 sur WP#2211 : sortir un post de la corbeille le rend en
+    `draft`, jamais en `publish`. Un `--annuler` qui annoncerait « tout est remis en ligne »
+    mentirait donc deux fois : le statut en base serait restauré, le post resterait
+    invisible du public, et la base croirait le contraire — exactement l'incohérence que ce
+    dépôt passe ses journées à réparer. D'où l'énumération des numéros plutôt qu'une
+    promesse : ce qui reste à faire est nommé, et il reste à faire."""
     restaurables = [(r, s) for r in concernees
                     if (r.get("statut") or "") == "rejected"
                     and (s := _statut_avant(r, cible))]
