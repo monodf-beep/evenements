@@ -55,6 +55,25 @@ def main(argv: list[str] | None = None) -> int:
     conn = sqlite3.connect(DB_PATH)
 
     lines = ["📊 *Digest hebdomadaire — Agenda Sabauda*", "", "*Automatisations :*"]
+
+    # QUI GARDE LE GARDIEN — trou trouvé au tour des automatisations du 2026-08-04. Le
+    # chien de garde de 12h surveille dix-huit automatisations, mais rien ne surveillait
+    # LE CHIEN DE GARDE : sa panne est un silence, et un silence est précisément ce qu'il
+    # existe pour dénoncer. Il ne peut pas se surveiller lui-même (s'il ne tourne pas, il
+    # ne peut rien signaler) — c'est donc le digest du lundi qui le fait, par la date de
+    # son journal, et le chien de garde surveille le digest en retour (tolérance 200 h) :
+    # la boucle est fermée, chacun couvre l'angle mort de l'autre.
+    try:
+        from datetime import datetime, timedelta
+        age = datetime.now() - datetime.fromtimestamp(
+            (ROOT / "logs" / "watchdog.log").stat().st_mtime)
+        if age > timedelta(hours=30):
+            lines.append(f"• 🔴 *LE CHIEN DE GARDE LUI-MÊME* n'a pas tourné depuis "
+                         f"{age.total_seconds() / 3600:.0f} h — les absences des autres "
+                         f"automatisations ne sont PLUS détectées. Vérifier le crontab.")
+    except OSError:
+        lines.append("• 🔴 *LE CHIEN DE GARDE LUI-MÊME* : aucun journal "
+                     "(logs/watchdog.log absent) — a-t-il jamais tourné sur ce serveur ?")
     runs = pipeline_status.last_runs(limit_per_script=1)
     for script in _KNOWN_SCRIPTS:
         entries = runs.get(script)

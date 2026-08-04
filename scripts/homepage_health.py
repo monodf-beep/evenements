@@ -40,12 +40,19 @@ log = get_logger("homepage_health")
 # Slack tous les jours à 13h pour une home parfaitement saine. Tout le matching est
 # donc insensible à la casse (cf. re.IGNORECASE dans _section_counts) : on ne peut pas
 # déduire le HTML de ce qu'on voit à l'écran.
-_SECTIONS = [("À la une", 1), ("En évidence", 1), ("Les 7 prochains jours", 1)]
+# « Ça vaut le déplacement » ajoutée le 2026-08-04, LE JOUR où sa clé de tri a changé
+# (mu-plugin cs-cvld-dynamique.php, hors dépôt — c'est bien pourquoi il faut la
+# surveiller d'ici : ce fichier n'a ni revue ni historique, et s'il casse, il retombe sur
+# un placeholder qui nomme un événement terminé le 24/07 et un post supprimé). Seuil à 2 :
+# la section vise une carte par territoire (4), mais le vivier italien peut légitimement
+# être plus maigre — sous 2, ce n'est plus une pénurie, c'est une panne.
+_SECTIONS = [("À la une", 1), ("En évidence", 1), ("Les 7 prochains jours", 1),
+             ("Ça vaut le déplacement", 2)]
 # Titres supplémentaires, PAS surveillés pour eux-mêmes, mais nécessaires pour borner la
 # fenêtre d'une section surveillée qui les précède directement (sinon on compte les cartes
 # de la section SUIVANTE par débordement — vécu : "LES 7 PROCHAINS JOURS" est directement
 # suivie de "NOUVEAUTÉS SUR AGENDA SABAUDA", jamais vide, qui aurait masqué le trou).
-_BOUNDARY_ONLY = ["Nouveautés sur Agenda Sabauda"]
+_BOUNDARY_ONLY = ["Nouveautés sur Agenda Sabauda", "L'agenda à venir", "Et ailleurs"]
 _WINDOW = 12000  # caractères scrutés après le titre, avant le titre de section suivant
 
 

@@ -191,7 +191,7 @@ def main(argv=None) -> int:
                 ev["llm_score_detail"] = détails[ev["id"]]
 
     auj = date.today()
-    changees = []
+    changees, fraiches = [], []
     for ev in lignes:
         avant = ev.get("deplacement_now_publie")
         apres = _valeur(ev, auj)
@@ -199,9 +199,24 @@ def main(argv=None) -> int:
         # le rattrapage du premier passage n'aurait pas lieu pour les fiches hors section.
         if avant is not None and avant == apres:
             continue
+        # PUBLIÉE AUJOURD'HUI → DÉJÀ À JOUR CÔTÉ WORDPRESS, on enregistre sans republier.
+        # Double écriture trouvée au tour des automatisations du 2026-08-04 : le lot de
+        # 9h30 publie une fiche neuve — `publisher_as` calcule et pousse `as_deplacement_now`
+        # à ce moment-là — mais personne n'écrivait `deplacement_now_publie`. Ce script la
+        # voyait donc à NULL et REPUBLIAIT la même fiche deux heures plus tard, avec la même
+        # valeur : ~10 republications par jour pour rien, une révision WordPress à chaque
+        # fois. La valeur est identique par construction (même formule, même date du jour) ;
+        # seule exception, une fiche dont les dates auraient été corrigées à la main entre
+        # 9h30 et ce passage — elle attendra demain, et c'est un moindre mal.
+        publiee_auj = str(ev.get("published_as_date") or "")[:10] == auj.isoformat()
+        if avant is None and publiee_auj:
+            fraiches.append({"ev": ev, "apres": apres})
+            continue
         changees.append({"ev": ev, "avant": avant, "apres": apres})
 
-    print(f"\n{len(lignes)} fiche(s) liées à un post, {len(changees)} dont la valeur a changé.\n")
+    print(f"\n{len(lignes)} fiche(s) liées à un post, {len(changees)} dont la valeur a changé"
+          + (f", {len(fraiches)} publiée(s) aujourd'hui (déjà à jour, enregistrées sans "
+             f"republier)" if fraiches else "") + ".\n")
     for c in changees[:args.cap]:
         av = "—" if c["avant"] is None else (c["avant"] or "(hors section)")
         ap = c["apres"] or "(hors section)"
@@ -219,6 +234,14 @@ def main(argv=None) -> int:
 
     from scripts.publisher_as import publish_to_as  # import tardif : le dry-run n'a pas
                                                     # besoin des identifiants WordPress.
+    # Les fiches publiées AUJOURD'HUI d'abord : aucune requête, aucun publish — WordPress a
+    # déjà la bonne valeur (posée par publisher_as à la publication du matin), il ne manque
+    # que la trace en base. Cf. le commentaire du tri ci-dessus.
+    for c in fraiches:
+        conn.execute("UPDATE events_raw SET deplacement_now_publie=? WHERE id=?",
+                     (c["apres"], c["ev"]["id"]))
+    if fraiches:
+        conn.commit()
     pousse = 0
     par_etat: dict[str, list[int]] = {}
     for c in changees[:args.cap]:

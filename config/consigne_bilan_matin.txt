@@ -15,3 +15,10 @@ Précisions d'exécution (le texte ci-dessus est la consigne de Franck, il fait 
 - Règle 6 : rapporte ce qui s'est produit, pas ce qui était prévu. Si un script n'a
   pas tourné ou a échoué, dis-le — c'est plus utile qu'un bilan rassurant.
 - Si tu n'as rien de notable à signaler, dis-le en une ligne plutôt que de meubler.
+
+VÉRIFIE AUSSI LE CHIEN DE GARDE LUI-MÊME (ajouté le 2026-08-04) : lis la fin de
+logs/watchdog.log et regarde la date de son dernier passage. S'il n'a pas tourné depuis
+plus de 30 heures, dis-le EN PREMIER dans le bilan, avant tout le reste — car alors les
+absences des autres automatisations ne sont plus détectées par personne, et tout ce que
+tu rapportes d'autre repose sur des signaux qui peuvent manquer sans bruit. Il tourne à
+12h, après toi : hier est la bonne référence, pas ce matin.

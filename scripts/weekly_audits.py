@@ -260,6 +260,36 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_bad_sources")
 
+    # Réparation des descriptions polluées — LE ROUVREUR QUI N'ÉTAIT BRANCHÉ NULLE PART.
+    # Trouvé par le recensement du 2026-08-04 : `enrich` gare une fiche en
+    # `matiere_polluee`, le tableau d'ETATS_TERMINAUX.md répond « rouvert par
+    # repair_polluted_descriptions »… et ce script n'était ni dans crontab.txt ni ici.
+    # « Un humain qui tape une commande n'est pas une réponse » — c'était pourtant, en
+    # pratique, la seule voie. Quatrième question du recensement : un rouvreur existant
+    # mais jamais lancé ne rouvre rien.
+    # --apply est défendable ici parce que le script trie lui-même : il ne remplace que
+    # les descriptions PROUVÉES polluées (coquille Google News), re-téléchargées depuis la
+    # page source, et route les cas douteux vers un bac « à valider » que --apply ne
+    # touche pas (sa ligne 274). Déterministe, borné (--cap), zéro LLM.
+    from scripts.repair_polluted_descriptions import main as repair_polluted_main
+    rc, out = _run_captured(repair_polluted_main, ["--apply", "--cap", "25"],
+                            "repair_polluted_descriptions")
+    sections.append(f"• Descriptions polluées réparées (repair_polluted) : {_tail(out, 2)}")
+    if rc:
+        echecs.append("repair_polluted_descriptions")
+
+    # Fiches liées à un post NON PUBLIC — état des lieux hebdomadaire, LECTURE SEULE.
+    # L'outil sait aussi réparer (--apply + options par famille), mais l'ambiguïté de la
+    # corbeille est un arbitrage : ici on ne fait que COMPTER et NOMMER, pour que le
+    # digest du dimanche porte enfin ce chiffre — 85 fiches le 2026-08-04, dont 28 devant
+    # nous, qu'aucun bilan ne comptait. Le geste reste humain, la visibilité devient
+    # automatique.
+    from scripts.reconcile_hors_ligne import main as hors_ligne_main
+    rc, out = _run_captured(hors_ligne_main, [], "reconcile-hors-ligne")
+    sections.append(f"• Fiches liées à un post non public (reconcile_hors_ligne) : {_tail(out, 3)}")
+    if rc:
+        echecs.append("reconcile_hors_ligne")
+
     # Cohérence des descriptions. Ne bloque rien : il COMPTE. Le portillon de
     # utils/coherence n'est en refus que dans translate_events, où un faux refus ne coûte
     # rien (la fiche se represente au run suivant). Savoir combien de fiches il attrape sur

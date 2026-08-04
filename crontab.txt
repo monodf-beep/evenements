@@ -119,23 +119,20 @@
 # jour reçoivent ainsi leur `as_deplacement_now` dans la foulée, au lieu d'attendre le
 # lendemain pour entrer dans la section italienne — celle-là même qu'elles servent à
 # remplir.
-45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1
-# Rafraîchissement du tri « Ça vaut le déplacement » 10h50 — `as_deplacement_now` n'est pas
-# une valeur, c'est une valeur DATÉE : elle relève le score intrinsèque par le TEMPS QUI
-# RESTE pour y aller. publisher_as la calcule à la publication et WordPress la GÈLE. Sans
-# ce passage, une fiche publiée aujourd'hui avec le bonus « dans 4 jours » garderait 11 en
-# octobre, et un événement terminé continuerait de trôner en tête de la section alors que
-# deplacement_now le sort du classement (règle 5). Défaut de conception constaté le
-# 2026-08-03, le jour même où le tri a été mis en service.
-# Placé après le SEO (10h30, qui republie déjà une partie du haut du panier) et avant le
-# bilan de 11h, pour que celui-ci lise un classement à jour plutôt que celui de la veille.
-# Ne republie QUE les fiches dont la valeur a changé — en régime normal une poignée, celles
-# qui franchissent une marche (45, 21, 7 jours restants) ou qui viennent de passer. Le
-# premier passage rattrape tout le stock, une seule fois.
-# Vérifie chaque post par son NUMÉRO avant de le pousser (règles 1 et 2) : sur les 123
-# fiches republiées à la main le 2026-08-03, 16 étaient à la corbeille alors que la base
-# les croyait publiées — les republier les aurait ressuscitées.
-50 10 * * * cd /root/evenements && .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1
+# ⚠️ CHAÎNÉ AVEC LE RAFRAÎCHISSEMENT DU TRI (ci-dessous), et non plus séparé de 5 minutes.
+# Le tour des automatisations du 2026-08-04 a démenti l'ordre par horloge : la ligne
+# promettait que les traductions du jour recevraient leur `as_deplacement_now` « dans la
+# foulée » à 10h50, or la traduction a MESURABLEMENT duré 35 minutes pour 2 candidates
+# (Slack : lancée 10h45, bilan posté 11h20). À --cap 5, elle déborde largement 10h50 : le
+# rafraîchissement passait AVANT la fin, et les traductions du jour attendaient le
+# lendemain — le contraire exact de ce que le commentaire affirmait. Un `;` règle ce qu'un
+# horaire ne peut pas : le second s'exécute quand le premier a fini, quelle que soit la
+# durée. (Et un `;` sans accolades exécuterait le second même si le `cd` échoue, dans le
+# mauvais répertoire — leçon de la ligne bilan_matin du 2026-08-03, d'où le groupement.)
+45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
+# (Le rafraîchissement du tri « Ça vaut le déplacement » tourne DANS la ligne de 10h45
+# ci-dessus, enchaîné après la traduction — voir le commentaire de cette ligne. Son
+# journal reste logs/refresh_deplacement.log, le chien de garde ne change pas.)
 # Bilan du matin 11h — accord de Franck le 2026-08-03. Lance Claude Code en NON-INTERACTIF
 # sur config/consigne_bilan_matin.txt et poste le résultat sur Slack. Toute la mécanique
 # (outils autorisés, verrous d'écriture, raisons de passer par un script plutôt qu'une ligne
@@ -143,9 +140,11 @@
 # Différence de nature avec les autres lignes de ce fichier : les autres exécutent une règle
 # écrite d'avance, celle-ci fait LIRE l'état du jour et RÉDIGER ce qui mérite l'attention.
 # C'est la seule surveillance capable de signaler ce qu'aucun seuil n'a prévu.
-# Placé à 11h : après la chaîne du matin (8h→10h50, rafraîchissement du tri compris), donc
-# sur un état stabilisé, et avant le chien de garde de 12h qui, lui, ne regarde que
-# l'ABSENCE de passages. L'agent n'écrit rien et ne poste rien lui-même : il produit un
+# Placé à 11h : après le gros de la chaîne du matin. ⚠️ PAS « sur un état stabilisé » —
+# la formule a été retirée le 2026-08-04 : la traduction lancée à 10h45 peut durer au-delà
+# de 11h (35 min mesurées pour 2 candidates), le bilan lit donc parfois une traduction en
+# cours. C'est accepté : il rend compte de la matinée, la traduction est sa queue, et le
+# chien de garde de 12h ne regarde que l'ABSENCE de passages. L'agent n'écrit rien et ne poste rien lui-même : il produit un
 # texte, le script l'envoie (cf. sa docstring).
 # ⚠️ Le `cd` n'est PAS décoratif : cron exécute avec cwd=$HOME (/root), donc sans lui la
 # redirection relative viserait /root/logs/, qui n'existe pas — le shell échoue à ouvrir le
