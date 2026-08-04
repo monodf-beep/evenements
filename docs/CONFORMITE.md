@@ -144,7 +144,43 @@ déclaration de police CSS. Un détecteur qui renvoie 80 correspondances doit ê
 
 ---
 
-## 5. Divergences connues à surveiller
+## 5. Sources officielles — ce qu'une URL de source n'a pas le droit d'être
+
+Trouvé le 2026-08-04, après la première publication en lot. Neuf fiches portaient comme
+`as_source_officielle_url` un **lien de redirection de newsletter** au lieu de la page
+de l'organisateur : `us.list-manage.com` (Mailchimp), `turismovda.musvc2.net` et
+`customer86768.musvc3.net` (MailUp). Le collecteur ingère une lettre d'information et
+conserve le lien cliqué, qui est une redirection de traçage, pas une source.
+
+Cinq d'entre elles contenaient un paramètre `e=`, c'est-à-dire **notre propre
+identifiant d'abonné**, republié sur des pages publiques. `e=06a93eea46` revenait sur
+quatre fiches. Un tiers pouvait en déduire à quelles lettres la rédaction est abonnée.
+
+> **Règle : une source officielle est une page, pas une redirection.** Sont interdits
+> comme `as_source_officielle_url` : `*.list-manage.com`, `mailchi.mp`, `*.musvc*.net`,
+> `*.sendinblue.com`, `*.mailerlite.com`, et plus généralement toute URL contenant
+> `/e/tr?`, ou un paramètre `e=`, `eid=`, `subscriber=`. Ces liens **expirent**, ils
+> **tracent**, et certains **exposent un identifiant d'abonné**.
+
+> **Règle : ce qui vient d'une newsletter doit être résolu avant d'être publié.** La
+> lettre d'information est un canal de détection, comme la presse (§4 des mentions
+> légales). La source à publier est la page de l'organisateur, du lieu, de l'office de
+> tourisme ou de la billetterie officielle, trouvée et vérifiée séparément.
+
+**Corollaire découvert en réparant.** En allant chercher les vraies pages, deux fiches
+se sont révélées annoncer un événement **déjà passé** : une séance unique avait reçu
+comme date de fin celle de la saison de la salle (concert du 10 juillet étiré au
+16 octobre, afterwork du 16 juillet étiré au 11 août). La fiche restait donc dans les
+actifs des mois après sa tenue.
+
+> **Règle : la date de fin est celle de l'événement, jamais celle de la saison.** Pour
+> une séance unique, fin = début. Contrôle : une fiche dont le titre nomme une séance
+> unique (« concert de », « soirée », « afterwork », « séance », « vernissage ») et
+> dont la durée dépasse trente jours est suspecte.
+
+---
+
+## 6. Divergences connues à surveiller
 
 - `config/blocked_image_domains.txt` porte l'en-tête « SYNCED FROM
   observatoire-business-sabaudo, ne pas diverger ». L'ajout du 2026-08-04 **doit être

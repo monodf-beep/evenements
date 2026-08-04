@@ -137,6 +137,40 @@ def _is_logo(url) -> bool:
     return bool(url) and is_logo_image(url)
 
 
+# Redirections de traçage des routeurs de newsletter. Une lettre d'information est un
+# canal de DÉTECTION, comme la presse : le lien cliqué n'est pas une source, il expire,
+# il trace, et le paramètre `e=` porte NOTRE identifiant d'abonné. Neuf fiches en ont
+# porté un jusqu'au 2026-08-04, dont quatre avec le même `e=` en clair sur des pages
+# publiques. Cf. docs/CONFORMITE.md §5.
+_TRACKING_HOSTS = re.compile(
+    r"(^|\.)(list-manage\.com|mailchi\.mp|musvc\d*\.net|sendinblue\.com|brevo\.com"
+    r"|mailerlite\.com|sendgrid\.net|hubspotlinks\.com|mailjet\.com)$", re.I)
+_TRACKING_PATH = re.compile(r"/e/tr\b|[?&](e|eid|subscriber)=", re.I)
+
+
+def _is_tracking_url(url) -> bool:
+    """True si l'URL est une redirection de routeur de newsletter, jamais publiable
+    comme source officielle (docs/CONFORMITE.md §5)."""
+    url = (url or "").strip()
+    if not url:
+        return False
+    host = re.sub(r"^https?://", "", url).split("/")[0].split(":")[0].lower()
+    return bool(_TRACKING_HOSTS.search(host) or _TRACKING_PATH.search(url))
+
+
+def _source_publiable(event: dict, is_radar: bool) -> str:
+    """URL de source officielle, ou chaîne vide. Le radar n'est jamais lié (charte §8),
+    et une redirection de traçage n'est pas une source (CONFORMITE §5)."""
+    if is_radar:
+        return ""
+    url = (event.get("url_source", "") or "").strip()
+    if _is_tracking_url(url):
+        log.warning("source de traçage écartée (id=%s) : %s",
+                    event.get("id"), url[:80])
+        return ""
+    return url
+
+
 def _banner(event: dict, banners: dict, cat_banners: dict | None = None) -> str:
     """Bannière de repli territoire × catégorie (vignette pertinente propre), ou
     la bannière générique du territoire si la catégorie est absente/inconnue."""
@@ -285,7 +319,7 @@ def _build_payload(event: dict) -> dict:
         "as_tarif":                 "" if _is_free(prix) else prix,
         "as_horaire":               event.get("horaire", "") or "",
         "as_billetterie_url":       event.get("billetterie_url", "") or "",
-        "as_source_officielle_url": "" if is_radar else (event.get("url_source", "") or ""),
+        "as_source_officielle_url": _source_publiable(event, is_radar),
         "as_verifie_le":            date.today().isoformat(),
         "as_image_credit":          event.get("image_credit", "") or "",
         # Image ORIGINALE (non recadrée) : la vignette mise en avant est standardisée
@@ -325,8 +359,9 @@ def _build_payload(event: dict) -> dict:
         "image_url":   "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
         "image_alt":   event.get("seo_keyphrase") or event.get("title", "") or "",
         # Site officiel de l'événement (champ natif TEC « EventURL ») = même valeur
-        # que as_source_officielle_url. Jamais la source radar (charte §8).
-        "website":     "" if is_radar else (event.get("url_source", "") or ""),
+        # que as_source_officielle_url. Jamais la source radar (charte §8), jamais une
+        # redirection de traçage (CONFORMITE §5) : même filtre, même valeur.
+        "website":     _source_publiable(event, is_radar),
         # Champs natifs TEC : organisateur + prix (si on a la donnée).
         "organizer":   (event.get("organisateur") or "").strip(),
         "cost":        (event.get("prix") or "").strip(),
