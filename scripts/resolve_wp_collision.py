@@ -42,7 +42,18 @@ CE QU'IL REFUSE DE TRANCHER, et c'est le plus important :
     préférer l'une. Départager à pile ou face une fiche publiée serait pire que ne rien
     faire.
 Dans les deux cas il le dit et passe. `--forcer <id>` permet de désigner la gagnante à la
-main, une fois qu'un humain a regardé.
+main, une fois qu'un humain a regardé — et il agit VRAIMENT sur les deux (vérifié sur
+fixture le 2026-08-04 : il ne pouvait rien sur le refus « dates incompatibles », qui était
+testé avant lui, et il était silencieusement ignoré quand l'id ne revendiquait aucun des
+posts sélectionnés ; le script tranchait alors tout seul en affichant « la plus complète »,
+et l'humain lisait comme sienne une décision qui ne l'était pas). Deux garde-fous depuis :
+
+  • un `--forcer` qui ne désigne aucune prétendante ARRÊTE le script (rien n'est écrit) ;
+  • quand il tranche un cas de DATES INCOMPATIBLES, les autres fiches sont simplement
+    DÉTACHÉES — lien coupé, statut conservé — et jamais marquées 'merged'. Deux
+    événements différents ne sont pas des doublons ; les déclarer tels écrirait une
+    parenté fausse en base. Détachées, elles repartent d'elles-mêmes sur un post neuf au
+    prochain `publish_batch_as`.
 
 Usage :
     .venv/bin/python -m scripts.resolve_wp_collision                    # dry-run, tous
@@ -127,16 +138,49 @@ def main(argv=None) -> int:
     if args.posts:
         collisions = {w: l for w, l in collisions.items() if w in set(args.posts)}
 
+    # --forcer DOIT ÊTRE HONORÉ OU REFUSÉ, jamais avalé. Vérifié sur fixture le 2026-08-04
+    # (revue) : `--posts 6365 --forcer 3` où 3 ne revendique pas ce post produisait
+    # exactement la même sortie que sans l'option — le script tranchait tout seul et
+    # écrivait « la plus complète ». Un humain qui croit avoir arbitré lit une décision
+    # qui n'est pas la sienne, et sur --apply c'est l'autre fiche qui part en 'merged'.
+    if args.forcer is not None and not any(
+            e["id"] == args.forcer for lignes in collisions.values() for e in lignes):
+        print(f"\n⛔ --forcer {args.forcer} : cet id ne revendique aucun des posts "
+              f"sélectionnés.\n"
+              f"   Rien n'a été fait — relire le dry-run et reprendre l'id de la fiche "
+              f"à garder.\n")
+        conn.close()
+        return 1
+
     plan, refus = [], []
     for wp, lignes in sorted(collisions.items()):
-        if _dates_incompatibles(lignes):
+        force_ici = args.forcer is not None and any(e["id"] == args.forcer for e in lignes)
+        if _dates_incompatibles(lignes) and not force_ici:
+            # ⚠️ « and not force_ici » AJOUTÉ LE 2026-08-04 (revue). Le docstring annonce
+            # --forcer comme l'issue des DEUX refus ; or ce test passait avant lui, donc
+            # sur le cas le plus grave — deux événements différents sur une même page —
+            # l'option ne pouvait rien. Un refus dont l'issue documentée ne fonctionne pas
+            # est un cul-de-sac (règle 3), et il était ici invisible : la sortie affichait
+            # le refus habituel, sans un mot sur le --forcer ignoré.
             refus.append((wp, lignes, "dates INCOMPATIBLES — deux événements différents sur "
                                       "une même page, pas deux copies"))
             continue
         classees = sorted(lignes, key=_completude, reverse=True)
-        if args.forcer and any(e["id"] == args.forcer for e in lignes):
+        # DEUX ÉVÉNEMENTS DIFFÉRENTS NE SONT PAS DES DOUBLONS, même quand un humain a
+        # tranché à qui revient la page. Les marquer 'merged' + duplicate_of écrirait en
+        # base une parenté qui n'existe pas — c'est la fusion abusive qui a donné à
+        # WP#6798 la date d'un autre événement (règle 5, seconde précaution). On se
+        # contente donc de DÉTACHER la perdante : lien coupé, statut intact. Elle
+        # redevient éligible pour publish_batch_as (`statut IN (evaluated, published_cs,
+        # published_sub) AND wp_post_id_as = 0`) et se republie d'elle-même sur un post
+        # NEUF au lot suivant — c'est littéralement le « republier l'un ailleurs » que le
+        # docstring réclame, fait par le pipeline normal plutôt qu'à la main.
+        detacher_seulement = force_ici and _dates_incompatibles(lignes)
+        if force_ici:
             gagnante = next(e for e in lignes if e["id"] == args.forcer)
-            motif = "désignée à la main (--forcer)"
+            motif = ("désignée à la main (--forcer) — dates incompatibles, les autres sont "
+                     "DÉTACHÉES et non fusionnées" if detacher_seulement
+                     else "désignée à la main (--forcer)")
         else:
             if _completude(classees[0]) == _completude(classees[1]):
                 refus.append((wp, lignes, "complétude ÉGALE — aucune raison observable de "
@@ -144,9 +188,10 @@ def main(argv=None) -> int:
                 continue
             gagnante = classees[0]
             motif = "la plus complète"
+            detacher_seulement = False
         plan.append({"wp": wp, "gagnante": gagnante,
                      "perdantes": [e for e in lignes if e["id"] != gagnante["id"]],
-                     "motif": motif})
+                     "motif": motif, "detacher": detacher_seulement})
 
     print(f"\n{len(collisions)} post(s) revendiqué(s) par plusieurs fiches · "
           f"{len(plan)} tranché(s), {len(refus)} laissé(s) à un humain.\n")
@@ -155,8 +200,12 @@ def main(argv=None) -> int:
         print(f"  WP#{c['wp']:<6} → garde [{g['id']}] « {(g.get('title') or '')[:44]} » "
               f"({c['motif']})")
         for e in c["perdantes"]:
-            print(f"                détache [{e['id']}] statut '{e.get('statut')}' → "
-                  f"'merged', duplicate_of={g['id']}")
+            if c["detacher"]:
+                print(f"                détache [{e['id']}] — lien coupé, statut "
+                      f"'{e.get('statut')}' CONSERVÉ : se republiera sur un post neuf")
+            else:
+                print(f"                détache [{e['id']}] statut '{e.get('statut')}' → "
+                      f"'merged', duplicate_of={g['id']}")
     for wp, lignes, motif in refus:
         ids = ", ".join(f"{e['id']}({e.get('date_event_start') or '—'})" for e in lignes)
         print(f"  ⛔ WP#{wp:<6} {motif}\n                ids : {ids}")
@@ -175,10 +224,17 @@ def main(argv=None) -> int:
             _empile(conn, e["id"], {
                 "role": "perdant", "at": quand, "statut_avant": e.get("statut"),
                 "origine": "resolve_wp_collision",
-                "wp_post_id_as_avant": e.get("wp_post_id_as"), "gagnant": c["gagnante"]["id"]})
-            conn.execute("UPDATE events_raw SET wp_post_id_as=NULL, wp_permalink_as=NULL, "
-                         "statut='merged', duplicate_of=? WHERE id=?",
-                         (c["gagnante"]["id"], e["id"]))
+                "wp_post_id_as_avant": e.get("wp_post_id_as"), "gagnant": c["gagnante"]["id"],
+                "detachee_seulement": bool(c["detacher"])})
+            if c["detacher"]:
+                # Dates incompatibles tranchées à la main : on coupe le lien et on ne
+                # touche à RIEN d'autre. Le statut conservé est ce qui la fait repartir.
+                conn.execute("UPDATE events_raw SET wp_post_id_as=NULL, "
+                             "wp_permalink_as=NULL WHERE id=?", (e["id"],))
+            else:
+                conn.execute("UPDATE events_raw SET wp_post_id_as=NULL, wp_permalink_as=NULL, "
+                             "statut='merged', duplicate_of=? WHERE id=?",
+                             (c["gagnante"]["id"], e["id"]))
     conn.commit()
 
     republiees = 0

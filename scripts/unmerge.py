@@ -53,17 +53,45 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 # une décision que personne n'a prise.
 STATUT_RECONSTITUE = "pending"
 
+# Les seuls statuts que la chaîne sait relire. Un statut inconnu ne fait pas d'erreur en
+# SQLite : il RANGE la fiche là où plus aucune file ne la voit — ni publish_batch_as
+# (evaluated/published_*), ni l'évaluateur (pending), ni les rapports de rejet. C'est un
+# état terminal fabriqué par une faute de frappe, et personne ne le découvrirait avant des
+# semaines (règle 3). Vérifié le 2026-08-04 (revue) : `--statut rejeted` était accepté,
+# écrit, et le bilan répondait « ✅ 1/1 fusion(s) défaite(s) ».
+STATUTS_CONNUS = ("pending", "evaluated", "published_cs", "published_sub", "rejected")
 
-def _snapshot(row: dict, role: str) -> dict | None:
-    """Dernière entrée de `unmerge_data` pour ce rôle ('perdant' ou 'gagnant')."""
+
+def _pile(row: dict) -> list:
     try:
         pile = json.loads(row.get("unmerge_data") or "[]")
     except (ValueError, TypeError):
-        return None
-    if not isinstance(pile, list):
-        return None
-    for e in reversed(pile):
+        return []
+    return pile if isinstance(pile, list) else []
+
+
+def _snapshot(row: dict, role: str) -> dict | None:
+    """Dernière entrée de `unmerge_data` pour ce rôle ('perdant' ou 'gagnant')."""
+    for e in reversed(_pile(row)):
         if isinstance(e, dict) and e.get("role") == role:
+            return e
+    return None
+
+
+def _snapshot_gagnant_de(row: dict, perdant_id: int) -> dict | None:
+    """L'instantané de la gagnante correspondant À CETTE perdante-là.
+
+    ⚠️ CORRECTIF DU 2026-08-04 (revue). On prenait la DERNIÈRE entrée 'gagnant' de la pile,
+    puis on vérifiait que la perdante y figurait — sinon on ne rendait rien, EN SILENCE.
+    Or `_empile` empile justement parce qu'une fiche absorbe plusieurs groupes au fil des
+    jours (dedupe tourne chaque matin) : dès qu'une seconde fusion s'ajoute, la description
+    écrasée par la PREMIÈRE devient irrécupérable, et `--rendre-description` répond
+    « ✅ 1/1 fusion(s) défaite(s) » sans un mot. Reproduit sur fixture : deux entrées
+    'gagnant', la perdante dans la première — la description n'était pas rendue.
+    On cherche donc dans TOUTE la pile, la plus récente d'abord."""
+    for e in reversed(_pile(row)):
+        if (isinstance(e, dict) and e.get("role") == "gagnant"
+                and perdant_id in (e.get("perdants") or [])):
             return e
     return None
 
@@ -83,6 +111,14 @@ def main(argv=None) -> int:
                         f"publiable — la rendre à l'évaluation, c'est payer un appel LLM "
                         f"pour se faire dire ce qu'on savait déjà.")
     args = p.parse_args(argv)
+
+    if args.statut and args.statut not in STATUTS_CONNUS:
+        # Refus AVANT toute lecture : un statut inconnu ne lève aucune erreur SQL, il gare
+        # simplement la fiche hors de toutes les files et de tous les comptages.
+        print(f"\n⛔ statut inconnu : '{args.statut}'. Aucune file ne relit cette valeur — "
+              f"la fiche\n   y serait garée sans que rien ne la signale. Attendus : "
+              f"{', '.join(STATUTS_CONNUS)}.\n")
+        return 2
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -165,22 +201,27 @@ def main(argv=None) -> int:
 
     quand = datetime.now().isoformat(timespec="seconds")
     rendues = 0
+    sans_description: list[tuple[int, int]] = []
     for c in plan:
         conn.execute("UPDATE events_raw SET statut=?, duplicate_of=NULL WHERE id=?",
                      (c["statut_cible"], c["id"]))
         if args.rendre_description and c["gagnant"]:
             g = dict(conn.execute("SELECT * FROM events_raw WHERE id=?",
                                   (c["gagnant"],)).fetchone() or {})
-            snap = _snapshot(g, "gagnant")
-            ancienne = ((snap or {}).get("champs_ecrases") or {}).get("description")
             # On ne rend la description que si CETTE fusion-là est bien celle qui l'a
             # écrasée : rendre l'instantané d'une AUTRE fusion remplacerait un texte juste
-            # par un texte périmé.
-            if ancienne and c["id"] in (snap.get("perdants") or []):
+            # par un texte périmé. D'où la recherche par perdante et non « la dernière ».
+            snap = _snapshot_gagnant_de(g, c["id"])
+            ancienne = ((snap or {}).get("champs_ecrases") or {}).get("description")
+            if ancienne:
                 conn.execute("UPDATE events_raw SET description=? WHERE id=?",
                              (ancienne, c["gagnant"]))
                 rendues += 1
                 log.info("[%s] description d'avant-fusion rendue à la gagnante", c["gagnant"])
+            else:
+                # DIRE CE QUI NE S'EST PAS PRODUIT (règle 6) : l'option a été demandée,
+                # elle n'a rien rendu. Le silence laissait croire à une réparation.
+                sans_description.append((c["id"], c["gagnant"]))
     conn.commit()
 
     # RECOMPTER PLUTÔT QUE CROIRE (règle 6) : on relit l'état réel au lieu d'annoncer le
@@ -194,6 +235,16 @@ def main(argv=None) -> int:
           + (f", {rendues} description(s) rendue(s) à la gagnante." if rendues else ".")
           + (f"\n⚠️  {len(plan) - faites} n'ont PAS été modifiées — vérifier les logs."
              if faites < len(plan) else ""))
+    if sans_description:
+        print(f"⚠️  --rendre-description n'a RIEN rendu pour {len(sans_description)} "
+              f"fusion(s) : {sans_description[:8]}\n"
+              f"    (aucun instantané de la gagnante ne mentionne cette perdante — soit la "
+              f"fusion n'a\n"
+              f"    écrasé aucune description, soit elle est antérieure au 2026-08-03.) "
+              f"Pour rendre à la\n"
+              f"    gagnante sa vraie description : scripts/repair_polluted_descriptions, "
+              f"qui re-télécharge\n"
+              f"    la page source.")
     # Ne l'annoncer que si c'est vrai : une fusion RESTAURÉE reprend son statut d'avant et
     # ne repasse par rien. Écrire la phrase dans tous les cas ferait attendre une
     # ré-évaluation qui n'aura pas lieu (règle 6 — dire ce qui s'est produit).

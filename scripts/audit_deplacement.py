@@ -111,8 +111,13 @@ def main(argv=None) -> int:
         notes.setdefault(n, []).append(ev)
 
     print(f"# Plancher de « Ça vaut le déplacement » — {auj.isoformat()}\n")
-    print(f"{len(rows)} fiche(s) en ligne, dont **{len(vivants)} encore devant nous** "
-          f"(à venir, en cours, récurrentes — règle 5).")
+    # « liées à un post » et non « en ligne » : ce script lit la BASE, et un
+    # `wp_post_id_as` renseigné survit à une mise à la corbeille (règle 1 — 16 des 123
+    # fiches republiées le 2026-08-03 étaient corbeillées alors que la base les croyait
+    # publiées). Le décompte reste bon pour arbitrer un plancher ; le mot, lui, ne doit
+    # pas affirmer un état du site que personne n'a vérifié ici.
+    print(f"{len(rows)} fiche(s) liées à un post WordPress, dont **{len(vivants)} encore "
+          f"devant nous** (à venir, en cours, récurrentes — règle 5).")
     print(f"{sans_note} sans note mesurable : hors section quoi qu'on décide, elles ne "
           f"sont pas « nulles » mais « pas mesurées ».\n")
     print(f"Seuil actuel : **{DEPLACEMENT_MIN}** sur {MAX_SCORE}. "
@@ -176,14 +181,26 @@ def main(argv=None) -> int:
     #
     # Reste que ça doit se voir plutôt que se découvrir. Un plafond atteint par la moitié
     # d'un territoire dit que le barème a cessé d'y trier.
-    print("\n### Combien de fiches touchent le plafond\n")
-    print(f"| Territoire | À {MAX_SCORE}/{MAX_SCORE} | Candidates | Lecture |")
-    print("|---|---:|---:|---|")
+    # ⚠️ CORRIGÉ LE 2026-08-04 (revue) : la colonne « À 12/12 » ne répondait pas à la
+    # question posée. Ce qui décide la carte d'un territoire, ce n'est pas le plafond
+    # ABSOLU du barème, c'est le SOMMET DE SA COLONNE — la section n'affiche qu'un
+    # événement par territoire, et elle le prend en haut de ce qu'elle a sous la main.
+    # Cas mesuré sur fixture : deux fiches de Savoie à 11/12, aucune à 12 ; la table
+    # annonçait « le barème trie encore » alors qu'il ne tranchait plus du tout entre
+    # les deux prétendantes. Le plafond absolu reste affiché (il dit si le barème sature
+    # globalement), mais la LECTURE se fait désormais sur les ex æquo de tête.
+    print("\n### Combien de fiches se disputent la carte du territoire\n")
+    print(f"| Territoire | Au sommet de sa colonne | dont à {MAX_SCORE}/{MAX_SCORE} "
+          f"| Candidates | Lecture |")
+    print("|---|---:|---:|---:|---|")
     for t, lot in sorted(_par_territoire(notes).items()):
         au_max = sum(1 for e in lot if deplacement_score(e) == MAX_SCORE)
-        lecture = ("le barème trie encore" if au_max <= 1
-                   else f"{au_max} ex æquo — c'est l'IMMINENCE qui choisit la carte")
-        print(f"| {t} | {au_max} | {len(lot)} | {lecture} |")
+        sommet = max((deplacement_score(e) or 0) for e in lot) if lot else 0
+        ex_aequo = sum(1 for e in lot if (deplacement_score(e) or 0) == sommet)
+        lecture = ("le barème trie encore" if ex_aequo <= 1
+                   else f"{ex_aequo} ex æquo à {sommet}/{MAX_SCORE} — c'est l'IMMINENCE "
+                        f"qui choisit la carte")
+        print(f"| {t} | {ex_aequo} (à {sommet}/{MAX_SCORE}) | {au_max} | {len(lot)} | {lecture} |")
 
 
     # LE TABLEAU QUI DÉCIDE. La section affichant UN événement par territoire, un seuil ne
@@ -236,7 +253,11 @@ def main(argv=None) -> int:
         for e in sorted(perdus, key=lambda x: deplacement_score(x) or 0,
                         reverse=True)[:20]:
             n = deplacement_score(e)
-            print(f"- **{n}/8** · {(e.get('territoire') or '—')} · {(e.get('title') or '')[:60]}")
+            # /{MAX_SCORE} et non « /8 » écrit en dur : le barème est passé de 0-8 à 0-12
+            # le 2026-08-04 et cette ligne affichait « 11/8 » — une note au-dessus de son
+            # propre dénominateur, dans le tableau même qui sert à décider du plancher.
+            print(f"- **{n}/{MAX_SCORE}** · {(e.get('territoire') or '—')} · "
+                  f"{(e.get('title') or '')[:60]}")
             for r in deplacement_raisons(e.get("llm_score_detail"))[:2]:
                 print(f"    - {r[:118]}")
     return 0

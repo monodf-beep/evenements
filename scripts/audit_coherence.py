@@ -94,11 +94,19 @@ def main(argv=None) -> int:
     if len(trouves) > args.exemples:
         print(f"\n  … {len(trouves) - args.exemples} autres (--exemples pour en voir plus).")
 
+    # ⚠️ PHRASE CORRIGÉE LE 2026-08-04 (revue). Elle disait « rien n'est examiné en dessous
+    # de {MIN} caractères visibles » — ce qui était vrai de la PREMIÈRE version du contrôle
+    # et faux depuis le correctif du matin même. Le seuil ne garde plus que le signal ①, et
+    # c'est tout l'objet du correctif : un fil Google News fait 110 caractères visibles, il
+    # est signalé par le signal ②. Laisser la phrase, c'était inviter le lecteur à écarter
+    # comme « non examinées » exactement les fiches pour lesquelles le contrôle existe.
     print(f"\nÀ LIRE AVANT DE CONCLURE. Un taux élevé ne dit pas à lui seul que la base est\n"
           f"polluée : il peut aussi dire que le contrôle est trop sévère. Les exemples\n"
-          f"ci-dessus servent à trancher entre les deux à la main. Rappel : rien n'est\n"
-          f"examiné en dessous de {MIN_TEXTE_VISIBLE} caractères visibles — sur un texte\n"
-          f"court, l'absence de mot commun ne prouve rien.\n")
+          f"ci-dessus servent à trancher entre les deux à la main. Rappel sur la portée des\n"
+          f"deux signaux : « autre commune nommée » s'applique à TOUTE longueur de texte\n"
+          f"(c'est lui qui attrape les fils Google News, courts par nature) ; « aucun mot\n"
+          f"commun » n'est évalué qu'au-dessus de {MIN_TEXTE_VISIBLE} caractères visibles,\n"
+          f"car sur un texte court l'absence de recoupement ne prouve rien.\n")
     return 0
 
 

@@ -86,6 +86,32 @@ def _texte_visible(html: str | None) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _forme_commune(s: str) -> str:
+    """Forme de comparaison des noms de lieux : minuscules, sans accents, traits d'union
+    dépliés en espaces, apostrophes typographiques ramenées à l'apostrophe droite.
+
+    ⚠️ CORRECTIF DU 2026-08-04 (revue), MÊME FAMILLE QUE CELUI DE MIN_TEXTE_VISIBLE. Cette
+    normalisation n'était appliquée QU'À L'INDEX des communes (`"aix-les-bains"` rangé
+    « aix les bains ») et jamais au TEXTE de la description, qui écrit « Aix-les-Bains »
+    avec ses traits d'union. Les deux côtés de la comparaison n'avaient donc pas la même
+    forme, et le signal ② se trompait DANS LES DEUX SENS :
+
+      • FAUX POSITIF — une fiche d'Aix-les-Bains dont la description nomme Aix-les-Bains
+        était accusée de « ne jamais nommer sa ville », parce que « aix les bains » ne se
+        trouve pas dans un texte qui écrit « Aix-les-Bains » ;
+      • ANGLE MORT — une description qui nomme Saint-Jorioz ou Saint-Martin-Vésubie ne
+        déclenchait rien, ces communes étant introuvables sous leur forme dépliée.
+
+    Ça ne portait pas sur un cas rare : **319 des 711 communes indexées (45 %) s'écrivent
+    en plusieurs mots**. Le contrôle était donc muet sur près de la moitié du périmètre, et
+    hostile à l'autre. Les fixtures de l'auteur ne l'ont pas vu parce qu'elles n'employaient
+    que des communes en UN SEUL mot — Chambéry, Annecy, Ugine, Aoste, Rivoli : une fixture
+    qui ne pouvait pas contredire le code."""
+    s = _sans_accents(s).replace("’", "'").replace("‘", "'")
+    s = re.sub(r"[-_/‐-―]+", " ", s)   # tirets ASCII, typographiques, tirets bas
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def _mots(s: str, mini: int = 4) -> set[str]:
     """Mots significatifs. Seuil à 4 lettres et non 3 : « lac », « art », « ville »
     reviennent partout et créeraient de faux recoupements rassurants."""
@@ -101,14 +127,14 @@ def _charger_communes() -> dict[str, str]:
         d = json.loads((ROOT / "config" / "communes_savoie_dept.json").read_text())
         for c in d:
             if not str(c).startswith("_"):
-                out[_sans_accents(str(c).replace("-", " "))] = "Savoie"
+                out[_forme_commune(str(c))] = "Savoie"
     except (OSError, ValueError):
         pass
     try:
         d = json.loads((ROOT / "config" / "communes_comte_de_nice.json").read_text())
         for cle in ("arrondissement_de_nice", "arrondissement_de_grasse"):
             for c in d.get(cle) or []:
-                out.setdefault(_sans_accents(str(c).replace("-", " ")), "Nice")
+                out.setdefault(_forme_commune(str(c)), "Nice")
     except (OSError, ValueError):
         pass
     return out
@@ -138,13 +164,25 @@ def incoherence_description(event: dict) -> str | None:
     mots_ancrage, mots_texte = _mots(ancrage), _mots(texte)
 
     # ② D'ABORD : il est plus précis, donc son motif est plus utile quand les deux tombent.
-    mienne = _sans_accents(ville.replace("-", " "))
-    autres = {c for c in _communes() if c in _sans_accents(texte) and c != mienne}
+    # Le texte et l'index passent par LA MÊME normalisation (cf. _forme_commune) : sans
+    # ça, « Aix-les-Bains » écrit dans la description ne rencontrait jamais « aix les
+    # bains » rangé dans l'index, et le signal se trompait sur 45 % des communes.
+    texte_n = _forme_commune(texte)
+    mienne = _forme_commune(ville)
+    autres = {c for c in _communes() if c in texte_n and c != mienne}
     # Une commune n'est nommée que si elle apparaît comme un MOT entier : « Nice » ne doit
     # pas se déclencher sur « Nicermes », ni « Bex » sur « annexe ».
-    autres = {c for c in autres
-              if re.search(rf"\b{re.escape(c)}\b", _sans_accents(texte))}
-    if autres and ville and mienne not in _sans_accents(texte):
+    autres = {c for c in autres if re.search(rf"\b{re.escape(c)}\b", texte_n)}
+    # COMMUNES EMBOÎTÉES : une fiche d'Annecy-le-Vieux dont la description dit « Annecy »
+    # parle bien de chez elle. Nommer la commune voisine dont son nom dérive n'est pas
+    # « nommer une AUTRE ville » — et le contraire fabriquerait un faux positif sur toute
+    # la famille des « -le-Vieux », « -les-Bains », « -sur-Isère ».
+    autres = {c for c in autres if c not in mienne and mienne not in c} if mienne else set()
+    # Sa propre ville est-elle nommée ? En mot entier et sur le texte normalisé, exactement
+    # comme les autres : deux mesures différentes sur les deux côtés d'une comparaison,
+    # c'est précisément ce qui produisait le faux positif.
+    sienne_nommee = bool(mienne and re.search(rf"\b{re.escape(mienne)}\b", texte_n))
+    if autres and ville and not sienne_nommee:
         return (f"la description nomme {', '.join(sorted(autres)[:3])} et jamais "
                 f"« {ville} », qui est la ville de la fiche")
 

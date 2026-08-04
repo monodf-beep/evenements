@@ -3,7 +3,9 @@
 n'est pas une valeur, c'est une valeur DATÉE.
 
 LE DÉFAUT QU'IL CORRIGE, et c'en était un de conception. `utils.deplacement.deplacement_now`
-relève le score intrinsèque (0-8) par le TEMPS QUI RESTE pour y aller. Ce bonus dépend donc
+relève le score intrinsèque (0-12 depuis la repondération du 2026-08-04 — la valeur de tri
+peut donc monter à 16 avec les bonus d'urgence et de rareté ; « 0-8 » écrit ici était
+l'ancienne échelle) par le TEMPS QUI RESTE pour y aller. Ce bonus dépend donc
 du calendrier, pas de la fiche. Or `publisher_as` le calcule **au moment de la publication**
 et l'écrit dans une méta WordPress, où il reste GELÉ. Conséquences, toutes silencieuses :
 
@@ -245,32 +247,52 @@ def main(argv=None) -> int:
             restant += 1
     conn.close()
 
-    print(f"\n✅ {pousse} fiche(s) republiée(s), {restant} encore à jour à faire.")
+    print(f"\n✅ {pousse} fiche(s) republiée(s), {restant} dont la valeur reste à mettre "
+          f"à jour (report au prochain passage).")
     for etat, ids in sorted(par_etat.items()):
         print(f"   ⚠️  {len(ids)} en état '{etat}' — non poussées : {ids[:12]}"
               + (" …" if len(ids) > 12 else ""))
+    if par_etat.get("inexistant"):
+        # Même exit que 'non_public', et il faut le dire ici aussi : sans ça, ces fiches
+        # reviennent tous les matins dans la liste sans qu'aucune ligne n'indique par où
+        # elles en sortent — la définition même de l'impasse polie (règle 3).
+        print(f"   → post SUPPRIMÉ côté WordPress : reconcile_wp_deleted --apply coupe le "
+              f"lien (wp_post_id_as)\n"
+              f"     et la fiche redevient publiable si le catalogue la juge encore "
+              f"valide. Rien à faire à la main.")
     if par_etat.get("non_public"):
-        # RENVOI CORRIGÉ LE 2026-08-04. La version précédente disait « voir
-        # reconcile_wp_deleted » — or ce script GARDE délibérément le lien d'un post
-        # corbeillé et ne fait rien d'autre. Le renvoi était donc une impasse polie :
-        # exactement le défaut relevé la veille sur audit_wp_ghosts, reproduit ici le
-        # lendemain. Le bilan du matin l'a rendu visible : 22 fiches refusées, 21 encore
-        # devant nous, et la section qui vieillit pour de bon.
+        # RENVOI RÉTABLI LE 2026-08-04 (revue), APRÈS AVOIR LU CE QUE FAIT VRAIMENT
+        # reconcile_wp_deleted. La version du matin disait « AUCUN script ne referme ce
+        # cas tout seul » et prescrivait deux gestes à la main. C'était faux, et faux de
+        # la même façon que les deux erreurs de la journée : on avait vérifié que
+        # reconcile_wp_deleted ne RESTAURE pas le post (exact) sans vérifier s'il ferme
+        # la BOUCLE (il la ferme). Il pose `wp_deleted_at` sur tout post non public, et
+        # la requête de ce script filtre `wp_deleted_at IS NULL` : la fiche sort donc
+        # d'elle-même de la liste, au plus tard le dimanche suivant (weekly_audits 5h,
+        # cf. crontab.txt). Il déshorodate aussi les posts revenus en ligne — le retour
+        # est prévu dans les deux sens. Vérifié sur fixture : une fiche horodatée
+        # n'apparaît plus ici.
+        #
+        # « non public » et non « à la corbeille » : `_etat` ne distingue pas corbeille,
+        # brouillon et privé — ils répondent tous 401/403. Nommer la corbeille, c'était
+        # affirmer un état du site qu'on n'a pas mesuré (règles 1 et 6).
         n = len(par_etat["non_public"])
-        print(f"   → ces {n} post(s) sont à la CORBEILLE alors que la base les croit "
-              f"publiés (règle 1).\n"
-              f"     AUCUN script ne referme ce cas tout seul, et c'est voulu : on ne "
-              f"peut pas deviner\n"
-              f"     si le post a été retiré exprès ou par accident. Deux issues, à "
-              f"choisir à la main :\n"
-              f"       • le retrait était VOULU  → passer la fiche en 'rejected' "
-              f"(scripts/trash_by_ids --statut)\n"
-              f"       • le retrait était SUBI   → vider wp_post_id_as : la fiche repart "
-              f"au lot du lendemain\n"
-              f"                                    et se republie d'elle-même sur un "
-              f"post neuf.\n"
-              f"     Tant qu'aucune des deux n'est faite, leur note de section reste "
-              f"celle d'hier.")
+        print(f"   → ces {n} post(s) NE SONT PLUS PUBLICS (corbeille, brouillon ou privé "
+              f"— l'API ne\n"
+              f"     les distingue pas) alors que la base les croit publiés (règle 1). "
+              f"Leur note de\n"
+              f"     section reste celle d'hier, mais le post n'étant pas visible, "
+              f"personne ne la voit.\n"
+              f"     CE QUI LES SORT DE CETTE LISTE TOUT SEUL : reconcile_wp_deleted "
+              f"--apply pose\n"
+              f"     wp_deleted_at (weekly_audits, dimanche 5h) — et l'efface si le post "
+              f"redevient\n"
+              f"     public. Rien n'est donc garé ici.\n"
+              f"     RESTE UN ARBITRAGE, lui : si le retrait était VOULU, passer la fiche "
+              f"en 'rejected'\n"
+              f"     (scripts/trash_by_ids --statut) ; s'il était SUBI, vider "
+              f"wp_post_id_as pour qu'elle\n"
+              f"     reparte au lot du lendemain sur un post neuf.")
     log.info("Rafraîchissement : %d republiée(s), %d restantes, %s le %s",
              pousse, restant, {k: len(v) for k, v in par_etat.items()},
              datetime.now().isoformat(timespec="seconds"))
