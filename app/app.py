@@ -1949,6 +1949,12 @@ AD_BLOCKS = {
           "w": 970,  "h": 90,   "prix_base": 220, "prix_lancement": 140},
     "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel",
           "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390},
+    # Gouttières (skyscrapers latéraux, desktop only, hors flux — cs-regie.php, pas
+    # [cs_slot]). Tarifs 2026-08-04 : PLACEHOLDERS jamais négociés, à ajuster.
+    "5": {"nom": "Gouttière gauche (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel",
+          "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
+    "6": {"nom": "Gouttière droite (half-page)",  "format": "300×600 (desktop only)",   "source": "manuel",
+          "w": 300,  "h": 600,  "prix_base": 350, "prix_lancement": 220},
 }
 
 

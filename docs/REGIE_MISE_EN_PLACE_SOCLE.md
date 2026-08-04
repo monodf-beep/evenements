@@ -133,8 +133,35 @@ sur le serveur (plusieurs fichiers, non repris ici — restaurables en cas de be
 ## Prochaines étapes proposées (à trancher avec Franck)
 
 1. Renumberoter les blocs 1-4 vers 13-16 pour lever le conflit avec le plan homepage déjà câblé.
-2. Vérifier si `cs-regie-serve.php` (sticky bas piloté par backoffice) doit remplacer notre
-   Bloc 3, et pourquoi son API `/api/active-ads` time-out actuellement.
-3. Vérifier si `cs-regie.php` (skin + gouttières, jamais déployé) doit remplacer notre Bloc 4.
+2. ~~Vérifier si `cs-regie-serve.php` (sticky bas piloté par backoffice) doit remplacer notre
+   Bloc 3~~ — **fait, résolu le 2026-07-20** (modèle override, voir plus haut).
+3. ~~Vérifier si `cs-regie.php` (skin + gouttières, jamais déployé) doit remplacer notre
+   Bloc 4~~ — **`cs-regie.php` passé en v0.3 le 2026-08-04** (voir section ci-dessous) ;
+   **toujours pas déployé sur le VPS WordPress** (fichier dans ce dépôt, pas encore copié
+   en `wp-content/mu-plugins/`).
 4. Décider si `single-event-meta.php` doit passer par `the_content()` pour que l'insertion
    automatique Ad Inserter fonctionne réellement sur les fiches événement.
+
+---
+
+## Mise à jour 2026-08-04 — gouttières gauche/droite ajoutées (blocs 5/6)
+
+En creusant une demande de test bout-en-bout du back-office pour skin/gouttières, on a
+découvert que le vrai back-office (celui qui sert `/api/active-ads` et `/go/<id>` en
+prod) n'était **pas** la branche de session en cours (`claude/agenda-sabauda-ad-setup-ngs56a`,
+une reconstruction parallèle abandonnée le même jour) mais bien `claude/quirky-davinci-jvqrnw`
+— avec un système `/regie` déjà complet (campagnes, dates, clics), inconnu de la session
+précédente. Pas de dérive non versionnée : juste une branche jamais consultée.
+
+Ajouté ici, sur la bonne branche :
+- `AD_BLOCKS["5"]` (Gouttière gauche, 160×600) et `AD_BLOCKS["6"]` (Gouttière droite,
+  300×600) dans `app/app.py` — gérables depuis `/regie` comme les blocs existants.
+  **Tarifs placeholders**, à ajuster avant toute vente réelle.
+- `deploy/wordpress/cs-regie.php` passé en v0.3 : lit désormais le backoffice pour les
+  blocs 4/5/6 (skin + gouttières), en réutilisant `cs_regie_serve_fetch()` /
+  `cs_regie_host_ok()` déjà définies par `cs-regie-serve.php` — plus d'option WP statique.
+
+**Pas encore fait** : déployer `cs-regie.php` v0.3 sur le VPS WordPress
+(`wp-content/mu-plugins/`), puis tester en conditions réelles (créer une campagne test
+bloc 5 ou 6 depuis `/regie`, vérifier l'affichage en navigation privée avec consentement
+marketing accepté, largeur desktop ≥1440px).

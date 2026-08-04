@@ -31,3 +31,45 @@ googleusercontent.com
 # répétées sur plusieurs événements sans rapport).
 facebook.com
 fbcdn.net
+
+# --- Presse RÉGIONALE, ajout 2026-08-04. À PORTER dans observatoire-business-sabaudo.
+# Motif : la liste du haut est une liste de presse NATIONALE. Elle bloquait Le Monde
+# et Le Figaro, jamais Le Dauphiné, Nice-Matin, La Stampa ou Aosta Oggi, c'est-à-dire
+# exactement la presse qui couvre nos quatre territoires. Constat sur le site live le
+# 2026-08-04 : 43 fiches illustrées par une photo de presse ou reprise chez un agenda
+# concurrent, dont 13 du Dauphiné Libéré. 1329 lignes de events_raw portaient une
+# url_image de presse (32 seulement publiées). La règle « on évite les photos d'agence
+# et de presse » (docs/IMAGES.md §1) existait depuis juillet ; il lui manquait les bons
+# domaines. Une règle adossée à une liste doit être auditée sur les données réelles.
+#
+# NB : agendaculturel.fr est déjà retiré comme SOURCE (commit ed2048e, motif 403).
+# Il figure aussi ici parce que les deux problèmes sont distincts : une source
+# injoignable, et un visuel de tiers republié sans droits cédés.
+
+# Savoie / Haute-Savoie
+ledauphine.com
+lemessager.fr
+essor-savoyard.fr
+lehebdodesavoie.fr
+
+# Comté de Nice
+nicematin.com
+var-matin.com
+monacomatin.mc
+
+# Piémont / Vallée d'Aoste
+lastampa.it
+repubblica.it
+corriere.it
+torinotoday.it
+quotidianopiemontese.it
+aostasera.it
+aostaoggi.it
+gazzettamatin.com
+
+# Agendas concurrents
+agendaculturel.fr
+sortiraparis.com
+spectable.com
+infoconcert.com
+offi.fr
