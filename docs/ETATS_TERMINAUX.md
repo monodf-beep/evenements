@@ -38,6 +38,28 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | `statut='rejected'` | `evaluator`, `purge_*`, back-office | `unreject_wp_online`, `reconcile_catalogue`, back-office | 🟡 partiel, **volontaire** |
 | `wp_post_id_as=NULL` après corbeille | `trash_by_ids`, `trash_wp_ids` | `relink_wp_ids_as` (par titre) | 🟡 partiel, **assumé** |
 | `statut='merged'` + `duplicate_of` | `dedupe` | `unmerge` (à la main, jamais en cron) | ✅ fermé le 2026-08-03 |
+| `home_override='excluded'` | back-office | back-office, **rappelé par `weekly_digest`** | ✅ fermé le 2026-08-04 |
+
+### `home_override='excluded'` — réversible, mais invisible
+
+Ajouté au recensement le 2026-08-04, après en avoir posé un soi-même. Cet état écarte une
+fiche de la vitrine et se lève d'un bouton : la première question de la règle (« qui le
+rouvre ? ») avait donc une réponse. Mais **la troisième n'en avait aucune** — rien ne
+disait combien de fiches y dormaient, ni depuis quand.
+
+Le cas : `[2153]` « Une semaine pas plus » a été exclue parce que sa description était
+celle d'un autre événement (la Fête du lac d'Annecy, héritée d'une fusion) et qu'aucune
+source ne permettait de récupérer la vraie — domaine source en 403 sur tout le domaine,
+dix sauvegardes déjà polluées, aucune fiche sœur. Décision juste.
+
+Mais **le motif peut cesser** : `autocomplete` peut la re-remplir un jour depuis une autre
+source, et personne ne se souviendrait alors de lever l'exclusion. La fiche resterait
+invisible pour une raison disparue — la forme la plus discrète du cul-de-sac, puisque rien
+n'est cassé.
+
+`weekly_digest` liste désormais ces fiches, **nommées et datées**, en écartant celles dont
+l'événement est passé (règle 5). Nommées et datées et non seulement comptées : « 3 fiches
+exclues » se lit et s'oublie, « exclue depuis le 4 août » se rouvre.
 
 ## Les trois délais, et pourquoi ils sont identiques
 
