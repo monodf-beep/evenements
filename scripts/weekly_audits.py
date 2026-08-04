@@ -260,6 +260,17 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_bad_sources")
 
+    # Cohérence des descriptions. Ne bloque rien : il COMPTE. Le portillon de
+    # utils/coherence n'est en refus que dans translate_events, où un faux refus ne coûte
+    # rien (la fiche se represente au run suivant). Savoir combien de fiches il attrape sur
+    # tout le stock est la condition pour décider s'il a sa place ailleurs — poser un
+    # blocage sans ce chiffre fabriquerait un état terminal de plus.
+    from scripts.audit_coherence import main as coherence_main
+    rc, out = _run_captured(coherence_main, [], "audit_coherence")
+    sections.append(f"• Descriptions qui ne parlent pas de leur fiche : {_tail(out, 3)}")
+    if rc:
+        echecs.append("audit_coherence")
+
     # Domaines sources qui REFUSENT le serveur. Ajouté le 2026-08-04 : agendaculturel.fr
     # répondait 403 sur ses quatre sous-domaines, et 242 fiches encore devant nous en
     # dépendent. Chaque tentative de réparation (dates web, venues, autocomplete,

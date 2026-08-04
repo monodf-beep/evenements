@@ -44,6 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils.lang import detect_lang, effective_lang
+from utils.coherence import incoherence_description
 from scripts.scraper_events import init_db
 from scripts.publisher_as import publish_to_as
 from scripts.link_translations_as import _post_link
@@ -426,6 +427,35 @@ def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
     # italien à la source peut donc déjà porter un article français. Sans ce
     # contrôle, on traduirait un article déjà français « vers » le français —
     # produisant un quasi-doublon au lieu d'une vraie traduction (constaté : id 4122).
+    # PORTILLON DE COHÉRENCE DE LA DESCRIPTION — arbitrage de Franck, 2026-08-04 :
+    # « je veux qu'il puisse juger la description, et ce, partout ».
+    #
+    # POURQUOI ICI ET AVANT TOUT. Le portillon C2, plus bas, compare le TITRE produit à
+    # l'identité de l'original ; il ne regarde jamais la description, qui est précisément
+    # le canal par lequel WP#6798 a été contaminé. On avait donc un filet posé APRÈS la
+    # dépense, sur le seul symptôme, et une relecture humaine quotidienne pour compenser
+    # le reste — un humain qui rattrape ce qu'un `if` sait voir.
+    #
+    # Or la contradiction de WP#6798 était détectable SANS IA : la fiche disait « Une
+    # semaine pas plus · La Comédie des Alpes · Chambéry » et sa description parlait
+    # d'Annecy et du lac. Aucun mot commun, une autre commune nommée. Rien à comprendre,
+    # seulement à comparer (cf. utils/coherence).
+    #
+    # AVANT l'appel au LLM, et pas après : refuser une fois la traduction payée coûterait
+    # l'appel pour rien, alors que la description source est connue dès le départ.
+    #
+    # Ce refus n'est PAS un état terminal : `translated_at` reste vide, la fiche se
+    # represente au run suivant, et elle repartira d'elle-même le jour où sa description
+    # est réparée (repair_polluted_descriptions, autocomplete, ou une nouvelle passe de
+    # scraping). C'est la condition pour qu'un blocage soit acceptable ici.
+    motif = incoherence_description(ev)
+    if motif:
+        log.error("[%s] REFUS AVANT TRADUCTION — la description ne parle pas de cette "
+                  "fiche : %s. Titre « %s » · %s, %s. Rien n'a été appelé ni publié.",
+                  ev["id"], motif, (ev.get("title") or "")[:45],
+                  (ev.get("lieu") or "—")[:28], (ev.get("ville") or "—")[:20])
+        return "refus"
+
     src = effective_lang(ev)
     tgt = _target(src)
     img = ev.get("url_image") or ""
