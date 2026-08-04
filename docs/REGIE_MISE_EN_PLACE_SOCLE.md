@@ -161,7 +161,16 @@ Ajouté ici, sur la bonne branche :
   blocs 4/5/6 (skin + gouttières), en réutilisant `cs_regie_serve_fetch()` /
   `cs_regie_host_ok()` déjà définies par `cs-regie-serve.php` — plus d'option WP statique.
 
-**Pas encore fait** : déployer `cs-regie.php` v0.3 sur le VPS WordPress
-(`wp-content/mu-plugins/`), puis tester en conditions réelles (créer une campagne test
-bloc 5 ou 6 depuis `/regie`, vérifier l'affichage en navigation privée avec consentement
-marketing accepté, largeur desktop ≥1440px).
+**Déployé le 2026-08-04** : `cs-regie.php` v0.3 est en place dans `wp-content/mu-plugins/`
+(posé via Novamira, md5 vérifié identique au dépôt : `7d81d6f8c20b…`). Contrôle après pose,
+sur une requête neuve : HTTP 200, page +2,8 Ko, `cs-gutter--l` et `cs-gutter--r` présents
+dans le HTML avec leurs liens de suivi `/go/3` et `/go/4`. Les deux campagnes test
+(gouttière gauche 160×600, droite 300×600) passent l'allowlist d'images.
+
+⚠️ Le lint PHP n'a pas pu tourner côté serveur (`php` CLI absent de l'hébergement OVH) :
+la pose s'est faite avec **rollback automatique** (si la home ne répondait plus 200 avec
+une taille cohérente, le fichier était retiré dans la même exécution). Réutiliser ce
+schéma pour tout futur mu-plugin — un mu-plugin cassé rend le site ET wp-admin blancs.
+
+**Reste à vérifier à l'œil** : navigation privée, consentement marketing accepté, largeur
+desktop ≥1440px (la gouttière gauche est masquée en dessous, cf. media query).
