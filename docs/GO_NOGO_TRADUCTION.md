@@ -186,6 +186,33 @@ la lecture la plus économique de WP#6798.
 **Conclusion maillon 4 : exact ; s'y ajoute une permission de réécriture du titre qui
 transforme une pollution de description en pollution de titre.**
 
+### ✅ CONFIRMÉ SUR LA BASE RÉELLE, le 2026-08-04
+
+Ce qui précède était marqué **SUPPOSÉ**. Ça ne l'est plus : la chaîne a été suivie fiche
+par fiche, de la fusion jusqu'au post en ligne.
+
+| Maillon | Constat en base |
+|---|---|
+| 1 · fusion | `[2762]` « Fête du lac 2026 … - ici.fr », fiche **radar** Google News : sa description n'est qu'un `<a href="news.google.com/…">` dont l'URL encodée fait plusieurs centaines de caractères |
+| 2 · écrasement | `dedupe.merge_group`, **avant** le correctif du 2026-08-02, comparait les longueurs **brutes** — le lien gagnait toujours, et a écrasé la description de `[2153]` « Une semaine pas plus », spectacle à La Comédie des Alpes, Chambéry |
+| 3 · évaluation | `llm_score=10` sur ce texte, avec **cinq justifications parlant d'Annecy** : « Lac d'Annecy, site emblématique », « Ville d'Annecy, grand événement organisé », « Fête du lac, rendez-vous historique et annuel majeur »… |
+| 4 · traduction | WP#6798 « Festa del Lago 2026: tariffa maggiorata per chi non abita ad Annecy », avec le **lieu et les dates de la Comédie des Alpes** |
+
+**Le traducteur n'a rien inventé** : il a fidèlement traduit une fiche déjà fausse. Le
+défaut était en amont, exactement là où on le soupçonnait sans pouvoir le montrer.
+
+Le mécanisme est **corrigé depuis le 2026-08-02** : `dedupe._text_len` compare le texte
+VISIBLE, balises et URLs retirées, donc une description Google News ne peut plus gagner un
+arbitrage de longueur.
+
+**Ce que ça change pour le GO/NOGO, et ce que ça ne change pas.** Le motif « cause
+inconnue » — celui qui a mis le cron en pause le 2026-08-01 — tombe. **C4** (gather_material)
+et **C5** (état du stock déjà pollué en base) restent ouverts : le mécanisme ne fabrique
+plus de fiches polluées, celles fabriquées AVANT sont toujours là. C'est d'ailleurs C5 qui
+a été mesuré au passage — **2 fiches vivantes seulement** portent encore une description
+polluée par un lien Google News (`[2153]`, et `[2864]` « Sous la peau de Joséphine Baker »,
+non publiée).
+
 ---
 
 ## 2. Maillons oubliés par la reconstitution

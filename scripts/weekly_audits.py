@@ -260,6 +260,18 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_bad_sources")
 
+    # Domaines sources qui REFUSENT le serveur. Ajouté le 2026-08-04 : agendaculturel.fr
+    # répondait 403 sur ses quatre sous-domaines, et 242 fiches encore devant nous en
+    # dépendent. Chaque tentative de réparation (dates web, venues, autocomplete,
+    # repair_polluted_descriptions) échouait fiche par fiche, dans les journaux, sans que
+    # la panne commune soit jamais nommée une seule fois. Une requête par domaine, ici,
+    # remplace des centaines d'échecs muets ailleurs.
+    from scripts.audit_sources_bloquees import main as sources_bloquees_main
+    rc, out = _run_captured(sources_bloquees_main, [], "audit_sources_bloquees")
+    sections.append(f"• Sources qui refusent le serveur : {_tail(out, 1)}")
+    if rc:
+        echecs.append("audit_sources_bloquees")
+
     # image_audit : coût LLM (vision) réel — borné, et il envoie DÉJÀ son propre digest
     # Slack détaillé (liens vers le back-office) : pas la peine de le dupliquer ici.
     from scripts.image_audit import main as image_audit_main
