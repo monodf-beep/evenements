@@ -288,11 +288,12 @@ def main(argv=None) -> int:
               f"     wp_deleted_at (weekly_audits, dimanche 5h) — et l'efface si le post "
               f"redevient\n"
               f"     public. Rien n'est donc garé ici.\n"
-              f"     RESTE UN ARBITRAGE, lui : si le retrait était VOULU, passer la fiche "
-              f"en 'rejected'\n"
-              f"     (scripts/trash_by_ids --statut) ; s'il était SUBI, vider "
-              f"wp_post_id_as pour qu'elle\n"
-              f"     reparte au lot du lendemain sur un post neuf.")
+              f"     RESTE UN ARBITRAGE, lui : retrait VOULU (→ 'rejected') ou SUBI (→ "
+              f"vider wp_post_id_as,\n"
+              f"     la fiche repart au lot du lendemain sur un post neuf). "
+              f"scripts/reconcile_hors_ligne\n"
+              f"     classe les deux et applique le geste choisi ; il ne tranche pas "
+              f"l'ambiguïté tout seul.")
     log.info("Rafraîchissement : %d republiée(s), %d restantes, %s le %s",
              pousse, restant, {k: len(v) for k, v in par_etat.items()},
              datetime.now().isoformat(timespec="seconds"))

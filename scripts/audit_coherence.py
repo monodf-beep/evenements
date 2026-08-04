@@ -66,11 +66,15 @@ def main(argv=None) -> int:
     trouves = [(r, m) for r in vivants if (m := incoherence_description(r))]
     publies = [(r, m) for r, m in trouves if (r.get("wp_post_id_as") or 0) > 0]
 
+    # « liées à un post » : ce script lit la base, où un `wp_post_id_as` renseigné survit à
+    # une mise à la corbeille (règle 1). Le tri par priorité reste juste — ces fiches sont
+    # les plus susceptibles d'être lues —, mais l'affirmation « en ligne » demanderait
+    # d'interroger WordPress numéro par numéro, ce qu'un audit hors-ligne ne fait pas.
     print(f"\n{len(rows)} fiche(s) actives, dont {len(vivants)} encore devant nous "
-          f"(règle 5) et {len(en_ligne)} en ligne.\n")
+          f"(règle 5) et {len(en_ligne)} liées à un post WordPress.\n")
     pct = 100 * len(trouves) / max(len(vivants), 1)
     print(f"⚠️  {len(trouves)} fiche(s) signalée(s) ({pct:.1f} %), dont "
-          f"**{len(publies)} EN LIGNE**.\n")
+          f"**{len(publies)} LIÉES À UN POST**.\n")
     if not trouves:
         print("Rien à signaler.\n")
         return 0
@@ -84,10 +88,14 @@ def main(argv=None) -> int:
     for cle, n in sorted(par_motif.items(), key=lambda kv: -kv[1]):
         print(f"  {n:>4} · {cle}")
 
-    print(f"\nLes fiches EN LIGNE d'abord — ce sont les seules dont le visiteur pâtit :\n")
-    ordre = publies + [c for c in trouves if c not in publies]
+    print(f"\nLes fiches PUBLIÉES d'abord — ce sont elles dont le visiteur pâtit :\n")
+    # Dédoublonnage par id de fiche, et non par égalité de tuples : `publies` est
+    # reconstruit à partir de `trouves`, donc ses tuples ne sont pas les mêmes objets et
+    # la comparaison portait sur des dictionnaires entiers, ligne par ligne.
+    deja = {r["id"] for r, _m in publies}
+    ordre = publies + [(r, m) for r, m in trouves if r["id"] not in deja]
     for r, m in ordre[:args.exemples]:
-        marque = f"WP#{r['wp_post_id_as']}" if (r.get("wp_post_id_as") or 0) > 0 else "hors ligne"
+        marque = f"WP#{r['wp_post_id_as']}" if (r.get("wp_post_id_as") or 0) > 0 else "sans post"
         print(f"  [{r['id']:>5}] {marque:<12} « {(r.get('title') or '')[:44]} » · "
               f"{(r.get('ville') or '—')[:18]}")
         print(f"          → {m}")
