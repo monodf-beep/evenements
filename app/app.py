@@ -1954,10 +1954,13 @@ AD_BLOCKS = {
           "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390},
     # Gouttières (skyscrapers latéraux, desktop only, hors flux — cs-regie.php, pas
     # [cs_slot]). Tarifs 2026-08-04 : PLACEHOLDERS jamais négociés, à ajuster.
+    # La droite était en 300×600 (half-page) : vu en vrai le 2026-08-04, trop large et
+    # dissymétrique face à la 160 de gauche. Franck a tranché pour du 160×600 des deux
+    # côtés — c'est aussi ce que prévoit le design system (.as-desktop-gutter-ad).
     "5": {"nom": "Gouttière gauche (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel", "flux": "out",
           "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
-    "6": {"nom": "Gouttière droite (half-page)",  "format": "300×600 (desktop only)",   "source": "manuel", "flux": "out",
-          "w": 300,  "h": 600,  "prix_base": 350, "prix_lancement": 220},
+    "6": {"nom": "Gouttière droite (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel", "flux": "out",
+          "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
 }
 
 

@@ -102,15 +102,24 @@ add_action('wp_footer', function () {
                background-repeat:no-repeat;background-size:cover;cursor:pointer}
       /* le contenu du site doit passer AU-DESSUS du skin : GeneratePress .site est opaque */
       .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:1}
-      .cs-gutter{position:fixed;top:120px;z-index:2;width:var(--w)}
-      .cs-gutter--l{left:max(12px,calc((100vw - 1160px)/2 - var(--w) - 18px))}
-      .cs-gutter--r{right:max(12px,calc((100vw - 1160px)/2 - var(--w) - 18px))}
+      /* 160×600 DES DEUX COTES, ancrees a 24px des bords — valeurs du design system
+         maison (.as-desktop-gutter-ad, components.css), pas une invention locale.
+         L'ancienne formule calait la gouttiere sur une colonne fantome de 1160px et
+         soustrayait sa propre largeur : avec une 160 a gauche et une 300 a droite, les
+         marges exterieures etaient forcement inegales (constat Franck 2026-08-04). */
+      .cs-gutter{position:fixed;top:120px;z-index:2;width:160px}
+      .cs-gutter--l{left:24px}
+      .cs-gutter--r{right:24px}
       .cs-gutter a,.cs-skin a{display:block}
       .cs-lbl{font:800 8px/1 'Nunito Sans',system-ui,sans-serif;letter-spacing:.1em;
               text-transform:uppercase;color:#6F6B62;margin-bottom:3px}
       .cs-gutter img,.cs-skin img{display:block;max-width:100%;height:auto}
-      /* si l'écran n'est pas assez large pour loger la gouttière sans chevaucher, on cache */
-      @media (max-width:1439px){ .cs-gutter--l{display:none} } /* la 160 large seulement ≥1440 */
+      /* Pas assez large pour loger la gouttiere sans chevaucher le contenu : on cache.
+         ⚠️ Selecteur .cs-consent-mkt .cs-gutter et pas .cs-gutter seul : il doit BATTRE
+         « .cs-consent-mkt .cs-regie{display:block} » (0,2,0). L'ancienne regle
+         « .cs-gutter--l{display:none} » (0,1,0) perdait la cascade et ne masquait donc
+         rien du tout sous 1440px — bug latent jamais vu, corrige ici. */
+      @media (max-width:1439px){ .cs-consent-mkt .cs-gutter{display:none !important} }
     </style>
 
     <?php if ($skin) : ?>
@@ -120,7 +129,7 @@ add_action('wp_footer', function () {
     <?php endif; ?>
 
     <?php if ($left) : ?>
-    <div class="cs-regie cs-gutter cs-gutter--l" style="--w:160px">
+    <div class="cs-regie cs-gutter cs-gutter--l">
       <div class="cs-lbl">Publicité</div>
       <a href="<?php echo $left['link']; ?>" target="_blank" rel="noopener sponsored">
         <img src="<?php echo $left['img']; ?>" width="160" height="600" alt="Publicité">
@@ -129,10 +138,10 @@ add_action('wp_footer', function () {
     <?php endif; ?>
 
     <?php if ($right) : ?>
-    <div class="cs-regie cs-gutter cs-gutter--r" style="--w:300px">
+    <div class="cs-regie cs-gutter cs-gutter--r">
       <div class="cs-lbl">Publicité</div>
       <a href="<?php echo $right['link']; ?>" target="_blank" rel="noopener sponsored">
-        <img src="<?php echo $right['img']; ?>" width="300" height="600" alt="Publicité">
+        <img src="<?php echo $right['img']; ?>" width="160" height="600" alt="Publicité">
       </a>
     </div>
     <?php endif; ?>
@@ -156,6 +165,65 @@ add_action('wp_footer', function () {
         // Complianz émet cet évènement au changement de consentement
         document.addEventListener('cmplz_status_change', apply);
         window.addEventListener('cmplz_cookie_warning', apply);
+      })();
+    </script>
+
+    <script id="cs-regie-clamp-js">
+      /* Cale verticalement les gouttieres entre le BAS des barres sticky et le HAUT du
+         footer (demandes Franck 2026-08-04 : « elles passent en dessous du menu et
+         depassent vers le haut », puis « quand on arrive au footer, le bas de la
+         publicite doit s'arreter en haut du footer »).
+
+         Pourquoi du JS et pas du CSS : en position:fixed l'element ignore le flux, donc
+         aucune regle CSS ne peut lui faire connaitre la position du footer. position:
+         sticky le ferait, mais exigerait d'injecter les gouttieres DANS la colonne de
+         contenu — or elles vivent volontairement hors flux (wp_footer), justement parce
+         que le gabarit ne leur offre aucun point d'ancrage lateral.
+
+         Sélecteurs multiples et tolerants : .as-site-footer a ete retire le 2026-07-14
+         au profit du footer natif GeneratePress, et TROIS elements sont sticky en haut
+         (.as-site-header, .as-terr-bar, .as-home-desktop__nav) — on prend le plus bas
+         des trois plutot que d'en coder un seul en dur. */
+      (function(){
+        var ads = document.querySelectorAll('.cs-gutter');
+        if (!ads.length) { return; }
+        var GAP = 16;
+        var footer = document.querySelector('.site-footer, #colophon, .as-site-footer, .as-desktop-footer, footer');
+        var heads  = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+
+        function place(){
+          var vh = window.innerHeight;
+
+          // Bas de la zone sticky : le plus bas des en-tetes, en ignorant ceux qui ont
+          // defile loin (> moitie d'ecran) pour ne pas coller les pubs en bas de page.
+          var headBottom = 0;
+          for (var h = 0; h < heads.length; h++) {
+            var hb = heads[h].getBoundingClientRect().bottom;
+            if (hb > headBottom && hb < vh / 2) { headBottom = hb; }
+          }
+          var minTop = headBottom + GAP;
+
+          // Haut du footer en coordonnees viewport (vh si pas de footer trouve).
+          var footTop = footer ? footer.getBoundingClientRect().top : vh;
+
+          for (var i = 0; i < ads.length; i++) {
+            var el = ads[i];
+            var adH = el.offsetHeight;
+            var maxTop = footTop - adH - GAP;
+            // Plus de place entre l'en-tete et le footer : on masque au lieu d'ecraser.
+            if (maxTop < minTop) { el.style.visibility = 'hidden'; continue; }
+            el.style.visibility = '';
+            var top = Math.round((vh - adH) / 2);   // centre par defaut
+            if (top < minTop) { top = minTop; }
+            if (top > maxTop) { top = maxTop; }
+            el.style.top = top + 'px';
+          }
+        }
+
+        place();
+        addEventListener('scroll', place, { passive: true });
+        addEventListener('resize', place, { passive: true });
+        addEventListener('load',   place);
       })();
     </script>
     <?php
