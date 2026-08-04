@@ -50,6 +50,59 @@ def _garees(conn: sqlite3.Connection) -> list[sqlite3.Row]:
         return []
 
 
+def _qualite(conn: sqlite3.Connection) -> list[str]:
+    """Les manques de QUALITÉ des fiches en ligne encore devant nous — crédits d'images
+    et notes du panel lecteurs.
+
+    DEMANDE DE FRANCK, 2026-08-04 : « je n'ai rien par rapport aux crédits images, rien
+    par rapport au panel des personas. » Il avait raison sur les deux : tout le dispositif
+    surveillait des FILES (à enrichir, à traduire, à vérifier) et des ABSENCES (crons
+    arrêtés), jamais la COMPLÉTUDE de ce qui est déjà publié. Une fiche en ligne sans
+    crédit photo est un problème de droit d'auteur, pas un confort ; une fiche sans note
+    de panel est passée au travers du portillon de publication, ou a été publiée avant que
+    le panel existe — dans les deux cas, personne ne le comptait nulle part.
+
+    Règle 5 : uniquement ce qui est encore devant nous. Compléter le crédit d'une photo
+    dont l'événement est passé ne protège rien ni personne.
+
+    Règle 1 assumée : « en ligne » signifie ici `wp_post_id_as` renseigné et non vérifié
+    côté WordPress — c'est un compteur hebdomadaire, pas un audit ; les posts corbeillés
+    gonflent le compte d'une poignée, et l'audit REST de reconcile_hors_ligne (même
+    digest) donne le chiffre exact de ce biais."""
+    lignes = []
+    try:
+        rows = conn.execute(
+            "SELECT url_image, image_source, image_credit, home_score, recurring, "
+            "       date_event_start, date_event_end FROM events_raw "
+            "WHERE COALESCE(wp_post_id_as, 0) > 0 AND wp_deleted_at IS NULL "
+            "  AND COALESCE(statut,'') NOT IN ('merged','rejected')").fetchall()
+    except sqlite3.OperationalError:
+        return []
+    from datetime import date
+    auj = date.today().isoformat()
+    sans_credit = sans_panel = vraies_images = vivantes = 0
+    for r in rows:
+        d = r["date_event_end"] or r["date_event_start"]
+        if not (r["recurring"] or not d or str(d)[:10] >= auj):
+            continue
+        vivantes += 1
+        # Une BANNIÈRE de repli est à nous : elle n'exige pas de crédit. Seule une vraie
+        # image (affiche, photo récupérée) engage un droit d'auteur.
+        if (r["url_image"] or "").strip() and (r["image_source"] or "") != "banner":
+            vraies_images += 1
+            if not (r["image_credit"] or "").strip():
+                sans_credit += 1
+        if r["home_score"] is None:
+            sans_panel += 1
+    if sans_credit:
+        lignes.append(f"• {sans_credit}/{vraies_images} — vraie image SANS CRÉDIT "
+                      f"(droit d'auteur : compléter, ou passer en bannière)")
+    if sans_panel:
+        lignes.append(f"• {sans_panel}/{vivantes} — en ligne SANS note du panel lecteurs "
+                      f"(publiées avant le panel, ou passées au travers du portillon)")
+    return lignes
+
+
 def main(argv: list[str] | None = None) -> int:
     load_dotenv(ROOT / ".env")
     conn = sqlite3.connect(DB_PATH)
@@ -89,6 +142,12 @@ def main(argv: list[str] | None = None) -> int:
     lines.append("*Reste à faire :*")
     for label, n in _backlog_counts(conn).items():
         lines.append(f"• {n} — {label}")
+
+    qualite = _qualite(conn)
+    if qualite:
+        lines.append("")
+        lines.append("*Qualité des fiches en ligne (encore devant nous) :*")
+        lines.extend(qualite)
 
     garees = _garees(conn)
     if garees:

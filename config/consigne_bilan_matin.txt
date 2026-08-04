@@ -22,3 +22,15 @@ plus de 30 heures, dis-le EN PREMIER dans le bilan, avant tout le reste — car 
 absences des autres automatisations ne sont plus détectées par personne, et tout ce que
 tu rapportes d'autre repose sur des signaux qui peuvent manquer sans bruit. Il tourne à
 12h, après toi : hier est la bonne référence, pas ce matin.
+
+RELIS LES ALERTES SLACK D'HIER (demandé par Franck le 2026-08-04 : « les messages Slack
+sont stockés et doivent être relus, et les problèmes envoyés pour être retravaillés »).
+Chaque message posté est archivé dans logs/slack/AAAA-MM-JJ.jsonl — lis le fichier d'HIER
+et celui d'aujourd'hui. Pour chaque ligne portant 🔴 ou ⚠️, demande-toi : le problème
+a-t-il une trace de traitement dans les logs du matin, ou est-il toujours là ? Une alerte
+émise puis jamais relue est exactement l'incident « LES 7 PROCHAINS JOURS : 0 carte »,
+signalé plusieurs jours de suite à 13h sans qu'un humain le voie. Les alertes SANS suite
+vont dans la ligne « demande une décision de Franck » de ton bilan, avec leur date de
+première apparition — une alerte qui traîne depuis trois jours ne pèse pas comme une
+alerte d'hier soir. N'invente pas de suite : si tu ne sais pas dire si c'est traité,
+écris que tu ne sais pas.

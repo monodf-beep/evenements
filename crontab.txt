@@ -129,7 +129,18 @@
 # horaire ne peut pas : le second s'exécute quand le premier a fini, quelle que soit la
 # durée. (Et un `;` sans accolades exécuterait le second même si le `cd` échoue, dans le
 # mauvais répertoire — leçon de la ligne bilan_matin du 2026-08-03, d'où le groupement.)
-45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
+#
+# CAP 5 → 10 LE 2026-08-04 AU SOIR, question de Franck (« est-ce que cinq par jour c'est
+# suffisant ? ») tranchée par l'arithmétique plutôt qu'au sentiment : le stock est de ~56
+# fiches à traduire, le lot quotidien en ajoute 3 à 5 éligibles par jour, et un cap de 5
+# ne produit que 3-4 traductions EFFECTIVES (mesuré : 3/5 puis 1/2, entre refus du
+# portillon et erreurs de troncature). Sortie ≈ entrée : le stock ne se vidait JAMAIS, il
+# oscillait — le digest du lundi l'affichait à ~56 semaine après semaine. À 10, il draine
+# en deux semaines environ, puis suit le flux.
+# ⚠️ REDESCENDRE À 5 quand le digest du lundi affiche « à traduire » proche de zéro : le
+# cap à 10 coûte le double d'appels API par jour, et une fois le stock vidé il tournerait
+# à moitié à vide. La ligne « à traduire » du digest est l'indicateur, pas une impression.
+45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 10 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
 # (Le rafraîchissement du tri « Ça vaut le déplacement » tourne DANS la ligne de 10h45
 # ci-dessus, enchaîné après la traduction — voir le commentaire de cette ligne. Son
 # journal reste logs/refresh_deplacement.log, le chien de garde ne change pas.)
