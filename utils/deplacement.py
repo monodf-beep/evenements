@@ -242,11 +242,45 @@ LANGUE_MAX = 2
 LANGUE_DEFAUT = 1
 
 
+# LA CATÉGORIE DIT LE SUJET, PAS LE FORMAT — et le critère faisait donc l'INVERSE de son
+# intention sur toute une famille de fiches. Constaté à la première simulation, le
+# 2026-08-04 : « Visite guidée du Stade Allianz Riviera » remontait 3e à Nice et « Visite
+# au Château de Montrottier » 3e en Savoie, promues par un critère censé mesurer l'ABSENCE
+# de barrière de langue. Toutes deux sont rangées en « Expositions & Patrimoine », notée 2.
+#
+# Or une exposition se REGARDE et une visite guidée s'ÉCOUTE : une heure de commentaire,
+# en français ou en italien. Même étiquette, formats opposés. Une conférence tenue dans un
+# musée aurait le même sort.
+#
+# Le titre, lui, dit le format — et ça se lit sans LLM. Ces marqueurs RAMÈNENT à 0, quelle
+# que soit la catégorie. Volontairement peu nombreux et précis (« rencontre » seul serait
+# trop large : « rencontres sportives ») : un faux 0 déclasserait injustement un bon
+# événement, et une famille oubliée se rattrape en ajoutant une chaîne ici.
+_FORMATS_PAROLE = (
+    "visite guidée", "visite commentée", "visita guidata", "visita commentata",
+    "conférence", "conferenza", "table ronde", "tavola rotonda",
+    "débat", "dibattito", "café philo", "dédicace", "lecture publique",
+    "présentation du livre", "presentazione del libro", "rencontre avec", "incontro con",
+)
+# CE QUI RESTE DEHORS, ET C'EST VOULU : « Visite au Château de Montrottier » ne dit pas si
+# la visite est guidée ou libre. Un château se parcourt aussi seul, sans un mot — mettre
+# tout ce qui commence par « visite » à 0 déclasserait des sorties parfaitement
+# accessibles. On préfère donc un faux 2 à un faux 0, et cette famille-là restera mal
+# classée tant que le titre ne dit rien. À rouvrir si Franck constate qu'elle remonte trop.
+
+
 def accessibilite_langue(event: dict) -> int:
     """0-2 : dans quelle mesure on peut profiter de l'événement sans parler la langue.
 
-    Dérivé de `llm_categorie` — donc rétroactif sur tout le stock déjà publié, sans un
-    seul appel LLM. Voir le commentaire ci-dessus pour le pourquoi et la limite connue."""
+    Deux sources, dans cet ordre : le TITRE quand il trahit un format de parole (une visite
+    guidée reste de la parole, même rangée en « Expositions »), la CATÉGORIE sinon. Aucun
+    appel LLM, donc rétroactif sur tout le stock déjà publié.
+
+    Voir les deux commentaires ci-dessus : pourquoi la catégorie plutôt qu'un cinquième
+    critère de l'évaluateur, et pourquoi elle ne suffit pas seule."""
+    titre = f"{event.get('title') or ''} {event.get('article_title') or ''}".lower()
+    if any(m in titre for m in _FORMATS_PAROLE):
+        return 0
     return _LANGUE_PAR_CATEGORIE.get((event.get("llm_categorie") or "").strip(), LANGUE_DEFAUT)
 
 

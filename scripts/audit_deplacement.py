@@ -164,7 +164,7 @@ def _simuler(vivants: list[dict], notes: dict, args) -> None:
                     reverse=True)[:args.exemples]
         bouge = "" if [e["id"] for e in av] == [e["id"] for e in ap] else "  ← l'ordre CHANGE"
         print(f"\n**{t}**{bouge}\n")
-        print("| rang | actuel (/8) | proposé (/10) |")
+        print(f"| rang | actuel (/{MAX_SCORE}) | proposé (/{MAX_PROPOSE}) |")
         print("|---:|---|---|")
         for i in range(max(len(av), len(ap))):
             g = (f"{deplacement_score(av[i]['llm_score_detail'])} · "
@@ -173,13 +173,35 @@ def _simuler(vivants: list[dict], notes: dict, args) -> None:
                  f"{(ap[i].get('title') or '')[:38]}") if i < len(ap) else ""
             print(f"| {i + 1} | {g} | {d} |")
 
+    # SATURATION EN HAUT — objection soulevée à la première simulation (2026-08-04) : les
+    # trois premières du Piémont étaient toutes à 12/12. Un barème qui met plusieurs fiches
+    # au maximum ne départage plus rien là où c'est le plus visible, puisque la section
+    # n'affiche qu'UNE carte par territoire.
+    #
+    # Ce n'est pas réparable en ajoutant un critère : un événement vraiment majeur est
+    # majeur sur TOUS les critères, c'est même la définition. Ce qui départage alors, c'est
+    # le bonus d'urgence de deplacement_now (0-4) — donc l'imminence. Et pour CETTE
+    # section-là, c'est défendable : entre deux événements également remarquables, celui
+    # pour lequel il faut partir bientôt est celui qui vaut le déplacement MAINTENANT.
+    #
+    # Reste que ça doit se voir plutôt que se découvrir. Un plafond atteint par la moitié
+    # d'un territoire dit que le barème a cessé d'y trier.
+    print("\n### Combien de fiches touchent le plafond\n")
+    print(f"| Territoire | À {MAX_PROPOSE}/{MAX_PROPOSE} | Candidates | Lecture |")
+    print("|---|---:|---:|---|")
+    for t, lot in sorted(par_t.items()):
+        au_max = sum(1 for e in lot if _note_proposee(e) == MAX_PROPOSE)
+        lecture = ("le barème trie encore" if au_max <= 1
+                   else f"{au_max} ex æquo — c'est l'IMMINENCE qui choisit la carte")
+        print(f"| {t} | {au_max} | {len(lot)} | {lecture} |")
+
     print("\n### Où se placerait le plancher\n")
-    print("| Plancher /10 | Fiches retenues |")
+    print(f"| Plancher /{MAX_PROPOSE} | Fiches retenues |")
     print("|---:|---:|")
     for s in range(4, MAX_PROPOSE + 1):  # tous les seuils, cf. SEUILS
         n = sum(1 for e in vivants if (_note_proposee(e) or -1) >= s)
         print(f"| **{s}** | {n} |")
-    print("\n> Le plancher ne se transpose PAS : 6/8 et 6/10 n'expriment pas la même\n"
+    print(f"\n> Le plancher ne se transpose PAS : 6/{MAX_SCORE} et 6/{MAX_PROPOSE} n'expriment pas la même\n"
           "> exigence, et la distribution change aussi. À re-décider sur ce tableau.\n")
 
 
