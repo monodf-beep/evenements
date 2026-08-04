@@ -342,6 +342,17 @@
 .tribe-events-single .tribe-events-single-event-title { font-family: var(--font-editorial); font-weight: 600; }
 .tribe-events-single .tribe-events-content { font-family: var(--font-body); font-size: 15px; line-height: 1.6; color: var(--fg-1); }
 .tribe-events-single .tribe-events-content p { margin-bottom: 1.1em; }
+/* Bandeau bas sticky MOBILE (bloc 3 de la régie, comme son homologue desktop
+   .as-desktop-sticky-ad plus bas). Volontairement LAISSÉ TEL QUEL lors du
+   passage du bandeau bas en plein écran (décision Franck du 2026-08-04) :
+   - sous 481px il est déjà bord à bord (left:0/right:0, aucun plafond) — sur
+     mobile, « plein écran » et « largeur de contenu » sont la même chose ;
+   - au-delà, le max-width:480px n'est pas une colonne éditoriale arbitraire,
+     c'est exactement la largeur de .as-home (max-width:480px; margin:0 auto,
+     plus haut dans ce fichier), la maquette mobile centrée dans la fenêtre.
+     L'élargir donnerait une publicité PLUS LARGE QUE LA PAGE elle-même, qui
+     déborderait de la maquette au lieu de s'y coller.
+   Bref : ici il n'y a rien à corriger, l'anchor est déjà pleine largeur. */
 .as-sticky-ad { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; }
 @media (min-width: 481px) { .as-sticky-ad { max-width: 480px; margin: 0 auto; } }
 
@@ -437,8 +448,57 @@
 .as-desktop-footer__cols { display: grid; grid-template-columns: repeat(5, 1fr); gap: 28px; margin-bottom: 32px; }
 .as-desktop-footer__cols a { display: block; text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 13px; color: #1D1D1B; margin-bottom: 9px; }
 .as-desktop-footer__cols h3 { font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #1D1D1B; text-transform: uppercase; margin: 0 0 14px; }
+/* ---- Bandeau bas sticky desktop (bloc 3 de la régie) — PLEIN ÉCRAN, FOND ET
+   CRÉATIVE COMPRIS. Décision Franck du 2026-08-04 : Google recommande
+   explicitement le plein écran pour les « Anchor ads », c'est-à-dire le bandeau
+   collant en bas d'écran. C'est le SEUL format concerné — les formats display
+   standards gardent leurs tailles IAB fixes et ne doivent surtout PAS être
+   étirés : leaderboard 970×90 (bloc 1), pavé in-article 300×250 (bloc 2),
+   gouttières 160×600 (blocs 5/6, .as-desktop-gutter-ad plus bas, dont la
+   largeur reste écrite en dur à 160px). D'où le fait que TOUTES les règles
+   ci-dessous soient portées par .as-desktop-sticky-ad__inner et jamais par une
+   classe partagée.
+
+   Ce qui change exactement : le FOND traversait déjà l'écran (position:fixed +
+   left:0/right:0), mais `__inner` recalait la CRÉATIVE sur la colonne de
+   contenu de la home (max-width:950px, cf. .as-home-desktop). Ce plafond saute.
+   Le slot occupe désormais toute la largeur, ce qui permet à l'unité responsive
+   AdSense de servir une anchor pleine largeur au lieu d'un 728×90 centré.
+
+   z-index laissé à 40, délibérément : au-dessus du contenu, mais SOUS la
+   bannière de consentement Complianz (99 999) et son bouton « gérer le
+   consentement » (9 998) — inventaire relevé dans le navigateur, cf.
+   docs/CORRECTIFS_CSS_PRETS.md § « Risque de régression ». Ne pas le monter :
+   une publicité qui recouvre le bandeau de consentement est un défaut RGPD.
+
+   Le padding latéral de 20px est CONSERVÉ : il sépare du bord de l'écran le
+   libellé « Publicité » et la croix de fermeture, qui encadrent la créative
+   dans le markup et y sont tous deux en flex-shrink:0 — ils restent donc
+   lisibles et cliquables quelle que soit la largeur prise par la créative, qui
+   ne fait que consommer l'espace libre du flex (flex:1 sur le conteneur du
+   milieu). 40px perdus sur ~1900, le plein écran reste tenu. ---- */
 .as-desktop-sticky-ad { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; background: #F7F1E8; border-top: 1px solid #1D1D1B; box-shadow: 0 -2px 10px rgba(0,0,0,.07); }
-.as-desktop-sticky-ad__inner { max-width: 950px; margin: 0 auto; padding: 8px 20px; display: flex; align-items: center; gap: 16px; }
+.as-desktop-sticky-ad__inner { margin: 0; padding: 8px 20px; display: flex; align-items: center; gap: 16px; }
+/* Créative servie par le backoffice (mu-plugin cs-regie-serve.php, markup
+   .cs-ad > a > img) : son style est injecté en wp_footer avec
+   `.cs-ad{max-width:100%;margin:0 auto}` et `.cs-ad img{max-width:100%;height:auto}`.
+   Ce sont des MAX-width : une créative plus étroite que la barre resterait
+   centrée au lieu de la remplir, et le plein écran s'arrêterait au fond. On
+   force donc width:100% ici — et UNIQUEMENT sous .as-desktop-sticky-ad__inner,
+   puisque les mêmes .cs-ad servent les blocs 1/2/4/5/6 qui doivent, eux,
+   garder leur taille IAB.
+   Cascade : le <style> du mu-plugin sort en wp_footer, donc APRÈS le CSS du
+   site — l'ordre ne peut pas nous sauver, c'est la spécificité qui tranche.
+   0,2,0 et 0,3,0 ici contre 0,1,0 et 0,1,1 côté mu-plugin : ces règles
+   l'emportent. (Trois bugs de spécificité relevés dans le projet le
+   2026-08-04 : on écrit le calcul plutôt que d'espérer.)
+   max-height + object-fit:contain = garde-fou d'aspect, pas un retour au
+   format fixe : sur un écran de 2560px, un visuel 728×90 étiré à 100% ferait
+   316px de haut et mangerait un tiers de la fenêtre. On plafonne la hauteur et
+   on laisse la créative se centrer dans le fond beige — qui, lui, reste
+   toujours plein écran — plutôt que de la déformer. */
+.as-desktop-sticky-ad__inner .cs-ad { width: 100%; max-width: none; }
+.as-desktop-sticky-ad__inner .cs-ad img { width: 100%; max-height: 120px; object-fit: contain; }
 .as-desktop-col { min-width: 0; }
 @media (min-width: 1024px) {
   .as-desktop-newsletter-band { display: flex; }
