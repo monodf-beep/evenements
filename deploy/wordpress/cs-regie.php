@@ -91,6 +91,17 @@ add_action('wp_footer', function () {
     $right = cs_regie_hf_slot('6');
     if (!$skin && !$left && !$right) { return; }
 
+    /* Seuil d'affichage calcule SELON LA PAGE : la colonne de contenu ne fait pas la
+       meme largeur partout, donc un seuil unique est forcement faux quelque part.
+         - accueil        : .as-home-desktop = 950px  -> 950  + 2*(160+24) = 1318
+         - reste du site  : container GeneratePress = 1200px (verifie en direct via
+                            generate_get_option) -> 1200 + 2*(160+24) = 1568
+       L'ancien seuil unique de 1440px faisait les deux erreurs a la fois : il privait
+       l'accueil de 120px d'ecran utile (gouttieres invisibles a 100% de zoom sur un
+       portable ~1366px, constat Franck 2026-08-04) ET laissait les gouttieres mordre
+       sur le contenu des fiches entre 1440 et 1568px. */
+    $cs_bp = is_front_page() ? 1320 : 1570;
+
     // Rendu masqué par défaut ; révélé en JS si consentement marketing + viewport desktop.
     ?>
     <style id="cs-regie-css">
@@ -119,7 +130,7 @@ add_action('wp_footer', function () {
          « .cs-consent-mkt .cs-regie{display:block} » (0,2,0). L'ancienne regle
          « .cs-gutter--l{display:none} » (0,1,0) perdait la cascade et ne masquait donc
          rien du tout sous 1440px — bug latent jamais vu, corrige ici. */
-      @media (max-width:1439px){ .cs-consent-mkt .cs-gutter{display:none !important} }
+      @media (max-width:<?php echo (int) $cs_bp - 1; ?>px){ .cs-consent-mkt .cs-gutter{display:none !important} }
     </style>
 
     <?php if ($skin) : ?>
@@ -199,19 +210,28 @@ add_action('wp_footer', function () {
            (components.css). Un element display:none renvoie un rectangle a ZERO, d'ou
            footTop=0, maxTop negatif, et la branche « pas la place » masquait les deux
            gouttieres sur toutes les pages. */
-        function footerTop(vh){
-          var cands = document.querySelectorAll('.as-desktop-footer, .as-site-footer, .site-footer, #colophon, footer');
-          var best = null;
+        /* On veut le HAUT de la zone de pied de page, donc le repere le plus HAUT
+           parmi les candidats — pas le plus bas. Erreur du premier jet : je gardais le
+           plus bas, qui est #colophon (la barre de copyright, position 547062 dans le
+           DOM), alors que .site-footer ouvre bien plus tot (415868) et ENGLOBE les
+           colonnes. La pub s'arretait donc sur le copyright et recouvrait tout le bloc
+           de liens — « elle ne s'arrete pas au debut du footer » (Franck, 2026-08-04).
+           Le filtre « moitie basse du document » evite de confondre le pied de page
+           avec un <footer> d'article place plus haut. */
+        function footerTop(){
+          var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
+          var docH  = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
+          var scrollY = window.pageYOffset || 0;
+          var best = Infinity;
           for (var i = 0; i < cands.length; i++) {
             var el = cands[i];
             if (el.offsetParent === null) { continue; }        // display:none
             var r = el.getBoundingClientRect();
             if (r.height <= 0) { continue; }                   // pas rendu
-            // On garde le footer le plus BAS du document (le vrai pied de page).
-            var docTop = r.top + (window.pageYOffset || 0);
-            if (best === null || docTop > best.docTop) { best = { docTop: docTop, top: r.top }; }
+            if ((r.top + scrollY) < docH * 0.4) { continue; }  // trop haut pour un pied de page
+            if (r.top < best) { best = r.top; }
           }
-          return best ? best.top : Infinity;   // aucun footer fiable → pas de borne basse
+          return best;   // Infinity si rien de fiable → pas de borne basse (fail-open)
         }
 
         function place(){
@@ -225,7 +245,7 @@ add_action('wp_footer', function () {
             if (hb > headBottom && hb < vh / 2) { headBottom = hb; }
           }
           var minTop  = headBottom + GAP;
-          var footTop = footerTop(vh);
+          var footTop = footerTop();
 
           for (var i = 0; i < ads.length; i++) {
             var el = ads[i];
