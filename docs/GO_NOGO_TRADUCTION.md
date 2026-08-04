@@ -206,12 +206,43 @@ VISIBLE, balises et URLs retirées, donc une description Google News ne peut plu
 arbitrage de longueur.
 
 **Ce que ça change pour le GO/NOGO, et ce que ça ne change pas.** Le motif « cause
-inconnue » — celui qui a mis le cron en pause le 2026-08-01 — tombe. **C4** (gather_material)
-et **C5** (état du stock déjà pollué en base) restent ouverts : le mécanisme ne fabrique
-plus de fiches polluées, celles fabriquées AVANT sont toujours là. C'est d'ailleurs C5 qui
-a été mesuré au passage — **2 fiches vivantes seulement** portent encore une description
-polluée par un lien Google News (`[2153]`, et `[2864]` « Sous la peau de Joséphine Baker »,
-non publiée).
+inconnue » — celui qui a mis le cron en pause le 2026-08-01 — tombe.
+
+⚠️ **Correction du 2026-08-04, même jour** : j'ai d'abord écrit ici que C4 et C5 restaient
+ouverts. **C4 était fait depuis le 2026-08-03** (voir sa ligne plus bas) — l'affirmation
+était fausse, dans le document qui sert précisément à décider. Corrigé plutôt que laissé.
+
+### C5 est mesuré, et le trou était petit
+
+C5 demandait l'« état du stock déjà pollué en base », jamais vérifié sur la production —
+c'était, de l'aveu du document, *le vrai trou*. Mesuré le 2026-08-04 : **2 fiches vivantes
+seulement** portent encore une description polluée par un lien Google News.
+
+- `[2153]` « Une semaine pas plus » — **réparée le jour même**. Description vidée (la
+  vraie est irrécupérable : 403 sur tout `agendaculturel.fr`, dix sauvegardes déjà
+  polluées, aucune fiche sœur), puis ré-évaluée sur titre + lieu + ville seuls. Le score
+  passe de **10 à 1**, et chaque justification décrit enfin le bon événement : « salle de
+  théâtre locale peu connue », « spectacle ponctuel », « portée locale uniquement »,
+  « spectacle générique, non identitaire ». La catégorie devient « Spectacle vivant ».
+  Plus aucune mention d'Annecy. Elle sort de la section.
+- `[2864]` « Sous la peau de Joséphine Baker » — **non publiée**, donc hors du vivier de
+  `translate_events`.
+
+Et sa traduction WP#6798, celle par qui l'incident est arrivé, est **à la corbeille**
+(réversible) : le titre « Festa del Lago 2026 » posé sur un spectacle de Chambéry n'est
+plus visible du public.
+
+**Les six conditions sont donc remplies.** Ce qui reste n'est plus une inconnue technique
+mais un arbitrage : réactiver la ligne de `crontab.txt`, à `--cap 2`, avec la relecture
+humaine quotidienne des permaliens produits. Ce cap n'est pas une prudence de façade — deux
+fiches par jour se relisent vraiment, cinq ne se relisent pas.
+
+**Et il y a maintenant une raison de le faire, pas seulement l'absence d'obstacle** : le
+vivier italien de « Ça vaut le déplacement » est tombé à **4 candidates pour 2 places**,
+c'est-à-dire au seuil de rupture annoncé par le tableau du plancher. Deux fins d'événement
+et la section se vide. Or ce vivier ne contient que des fiches TRADUITES : plus de
+traduction est le seul levier qui l'élargisse — un plancher plus bas ne ferait qu'y
+remettre des événements médiocres.
 
 ---
 
@@ -397,10 +428,11 @@ protection est l'absence de pollution en amont. C'est le point qui décide de l'
   Volontairement étroit : une fiche simplement sans matière n'est PAS bloquée (la page
   officielle la rattrape au run suivant), seulement celle dont la matière propre a été
   écartée pour pollution.
-- **C5** — passer `scripts/audit_dedupe_damage.py --published-only` sur la base **réelle**
-  et vider les cas classés « certain » parmi les fiches en ligne à score ≥ 6. Ce sont
-  exactement les candidates de `translate_events` : traduire une fiche encore polluée
-  reproduirait l'incident **sans** qu'aucun maillon corrigé n'y puisse quoi que ce soit.
+- **C5** — ✅ **FAIT le 2026-08-04.** Mesuré sur la base réelle : **2 fiches vivantes**
+  seulement portent une description polluée par un lien Google News. `[2153]` a été vidée
+  et ré-évaluée le jour même (score 10 → 1, plus aucune mention d'Annecy) ; `[2864]` n'est
+  pas publiée, donc hors du vivier de `translate_events`. Le stock pollué n'était pas la
+  masse redoutée — mais il ne pouvait pas se deviner, il fallait le compter.
 - **C6** — brancher `batch_report._row_report` sur la fiche traduite juste après
   l'insertion (le contrôle n°4 des dates est déjà bloquant et **PROUVÉ** efficace) ;
   dépublier ou signaler si `complet=False`.
@@ -683,6 +715,7 @@ quotidiens que le §6 prescrit — elle reste nécessaire, pour la raison n°1 c
 contrôle regarde le titre, l'œil regarde la fiche.
 
 Deux réserves à garder en tête, **inchangées depuis le 2026-08-02** :
-- **C5 reste le vrai trou** (état du stock en base, jamais vérifié sur la production) ;
-- **C4 reste ouvert** : `gather_material` laisse toujours passer le texte parasite exact du
+- ~~**C5 reste le vrai trou**~~ — mesuré et refermé le 2026-08-04, voir sa ligne ;
+- ~~**C4 reste ouvert**~~ — fait le 2026-08-03. Ce qui suit décrit l'état d'AVANT :
+  `gather_material` laissait alors passer le texte parasite exact du
   cas d'origine. Le portillon C2 est un filet en aval, pas une réparation de la source.
