@@ -2,7 +2,7 @@
 """LE CHIEN DE GARDE — est-ce que les crons tournent encore ?
 
 LE TROU QUE ÇA FERME, et c'était le plus sérieux de tous. Quatorze automatisations font
-vivre ce site, et le 2026-08-03 le constat était : **si le scraper échoue demain matin,
+vivre ce site (seize depuis le 2026-08-04), et le 2026-08-03 le constat était : **si le scraper échoue demain matin,
 rien ne sonne**. `scripts/homepage_health.py` (13h) verrait la home se vider et
 `scripts/site_audit.py` (14h) verrait le site diverger de la base — mais plusieurs jours
 plus tard, et sur la CONSÉQUENCE, jamais sur la cause. Entre-temps le catalogue
@@ -57,10 +57,11 @@ LOGS = ROOT / "logs"
 # pendant la nuit. Trop serré, l'alerte crie pour rien et on cesse de la lire ; trop large,
 # on découvre la panne trois jours après. 30 h laisse passer UN oubli, jamais deux.
 #
-# La traduction est ABSENTE de cette table : son cron est volontairement commenté depuis
-# le 2026-08-01 (cf. docs/GO_NOGO_TRADUCTION.md). Surveiller un cron qu'on a éteint
-# exprès produirait une alerte quotidienne parfaitement inutile — le genre qui apprend à
-# ignorer les alertes. À rajouter ici LE JOUR où la ligne 49 du crontab est décommentée.
+# La traduction a été absente de cette table tant que son cron restait commenté :
+# surveiller un cron qu'on a éteint exprès produirait une alerte quotidienne parfaitement
+# inutile, le genre qui apprend à ignorer les alertes. Elle y est entrée le 2026-08-04,
+# LE JOUR de sa réactivation — la consigne écrite ici disait de le faire, elle a été suivie
+# le jour même plutôt que remise à plus tard.
 ATTENDUS = [
     ("Collecte des sources",      "scraper_events",  "scraper.log",          30),
     ("Relève Gmail",              "gmail_collect",   "gmail.log",            30),
@@ -79,6 +80,13 @@ ATTENDUS = [
     # de message Slack le matin — mais c'est exactement le raisonnement qui a laissé passer
     # l'incident du 2026-07-31 : personne ne remarque un message qui NE vient PAS.
     ("Bilan du matin",             "bilan_matin",     "bilan_matin.log",      30),
+    # Ajoutée le 2026-08-04 avec la réactivation du cron. Elle était volontairement absente
+    # tant que la ligne était commentée — surveiller l'absence d'un cron qui n'existe pas
+    # aurait sonné tous les jours pour rien, et une alerte qui crie à tort finit par ne plus
+    # être lue. Elle entre ici le jour même où la ligne repart, pas un jour plus tard : une
+    # traduction qui s'arrête ne casse rien de visible, elle assèche seulement le vivier
+    # italien — exactement la panne silencieuse que ce chien de garde existe pour attraper.
+    ("Traduction FR/IT",           "translate_events", "translate.log",       30),
     ("Santé de la home",          "homepage_health", "homepage_health.log",  30),
     ("Relecture du site",         "site_audit",      "site_audit.log",       30),
     ("Sauvegarde de la base",     "backup_db",       "backup.log",           30),

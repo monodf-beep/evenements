@@ -47,9 +47,12 @@
 # automatiquement ce qui était déjà en ligne (sinon le SEO reste invisible en base). Petit
 # cap volontaire (coût LLM par événement) — ajuste --cap dans le script si besoin.
 30 10 * * * cd /root/evenements && .venv/bin/python scripts/seo_batch.py --cap 10 >> logs/seo_batch.log 2>&1
-# Traduction FR/IT quotidienne 10h45 — ⏸️ EN PAUSE depuis le 2026-08-01 (soir).
-# Motif : une fiche traduite publiée en ligne (WP#6798) porte le TITRE d'un événement et
-# le lieu/les dates d'un autre.
+# Traduction FR/IT quotidienne 10h45 — ▶️ ACTIVE. Mise en pause le 2026-08-01 au soir,
+# rallumée le 2026-08-04. L'historique ci-dessous est conservé : c'est le seul endroit où
+# la chaîne complète de l'incident est écrite, et la relire avant de toucher au cap évite
+# de refaire le raisonnement à partir de rien.
+# Motif de la pause : une fiche traduite publiée en ligne (WP#6798) portait le TITRE d'un
+# événement et le lieu/les dates d'un autre.
 #
 # ✅ CAUSE ÉLUCIDÉE LE 2026-08-04 — l'hypothèse était la bonne, et la chaîne est complète :
 #   1. `dedupe.merge_group`, AVANT le correctif du 2026-08-02, gardait la description la
@@ -67,25 +70,33 @@
 # Le mécanisme est corrigé depuis le 2026-08-02 (`dedupe._text_len` compare le TEXTE
 # VISIBLE, balises et URLs retirées) — donc il ne se reproduit plus.
 #
-# ⚠️ CE N'EST PAS UN FEU VERT POUR AUTANT. C4 (gather_material) et C5 (état du stock déjà
-# pollué en base) restent ouverts dans docs/GO_NOGO_TRADUCTION.md : le mécanisme ne fabrique
-# plus de fiches polluées, mais celles fabriquées AVANT sont toujours là. Ce qui tombe,
-# c'est le motif « cause inconnue » — la décision de réactiver revient à Franck.
-# ⚠️ Les correctifs de dates (dates.py excluant les traductions) et de cycles sont, eux,
-# déjà en place — cette pause ne concerne QUE la création de nouvelles traductions.
-# RÉACTIVER en décommentant, une fois la contamination expliquée (cf. docs/BACKLOG.md).
+# ▶️ RÉACTIVÉE LE 2026-08-04, décision de Franck. Les six conditions de
+# docs/GO_NOGO_TRADUCTION.md sont remplies : C1 (SEO), C2 (portillon de justesse du titre),
+# C3 (anti-retraduction), C4 (gather_material, fait le 03/08) et C6 — et surtout C5, « le
+# vrai trou » du dossier, enfin MESURÉ sur la production : 2 fiches vivantes seulement
+# portaient une description polluée. [2153] a été vidée et ré-évaluée le jour même (score
+# 10 → 1, plus aucune mention d'Annecy), [2864] n'est pas publiée donc hors du vivier. Et
+# WP#6798, la traduction fautive, est à la corbeille.
 #
-# ⚠️ CAP RAMENÉ DE 5 À 2 LE 2026-08-03, alors que la ligne est encore commentée — pour que
-# la réactivation ne soit qu'un geste, sans piège caché dedans. Les trois conditions
-# bloquantes de docs/GO_NOGO_TRADUCTION.md sont remplies (C1 SEO, C2 portillon de justesse
-# du titre, C3 anti-retraduction), MAIS le portillon ne regarde que le TITRE : une fiche
-# dont la description d'origine est encore polluée passe. La seule protection contre ce
-# cas-là est l'ŒIL HUMAIN sur les permaliens produits chaque jour — et cette relecture
-# n'existe que si elle reste tenable. Deux fiches par jour se relisent ; cinq ne se
-# relisent pas, on décroche en une semaine et le filet n'est plus qu'un décor.
-# Le cap se remontera quand C4 (gather_material) et C5 (état du stock pollué en base)
-# seront traités, pas avant.
-#45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 2 >> logs/translate.log 2>&1
+# UNE RAISON DE LE FAIRE, pas seulement l'absence d'obstacle : le vivier ITALIEN de « Ça
+# vaut le déplacement » est tombé à 4 candidates pour 2 places — le seuil de rupture annoncé
+# par le tableau du plancher. Deux fins d'événement et la section se vide. Ce vivier ne
+# contient QUE des fiches traduites : traduire davantage est le seul levier qui l'élargit.
+# Baisser le plancher n'y remettrait que les événements médiocres qu'on vient d'en retirer.
+#
+# ⚠️ LE CAP DE 2 N'EST PAS UNE PRUDENCE DE FAÇADE, ne pas le remonter sans y penser. Le
+# portillon C2 ne regarde que le TITRE : une fiche dont la description d'origine serait
+# encore polluée passerait. La seule protection contre ce cas-là est l'ŒIL HUMAIN sur les
+# permaliens produits chaque jour — et cette relecture n'existe que si elle reste tenable.
+# Deux fiches par jour se relisent ; cinq ne se relisent pas, on décroche en une semaine et
+# le filet n'est plus qu'un décor. Le cap se remontera quand la relecture aura tenu
+# plusieurs semaines, pas avant.
+#
+# Se dépose à 10h45, donc AVANT le rafraîchissement du tri de 10h50 : les traductions du
+# jour reçoivent ainsi leur `as_deplacement_now` dans la foulée, au lieu d'attendre le
+# lendemain pour entrer dans la section italienne — celle-là même qu'elles servent à
+# remplir.
+45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 2 >> logs/translate.log 2>&1
 # Rafraîchissement du tri « Ça vaut le déplacement » 10h50 — `as_deplacement_now` n'est pas
 # une valeur, c'est une valeur DATÉE : elle relève le score intrinsèque par le TEMPS QUI
 # RESTE pour y aller. publisher_as la calcule à la publication et WordPress la GÈLE. Sans
