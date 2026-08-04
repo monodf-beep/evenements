@@ -60,6 +60,45 @@ Le site utilise **Complianz GDPR**, région UE, bandeau et blocage de scripts ac
 
 ---
 
+## 2 bis. Fiches de démonstration : ne jamais en laisser en ligne
+
+Le 2026-08-04, dix fiches publiées se sont révélées fabriquées. Créées le 17 juillet
+à 17:58, **en deux secondes**, par `agenda-bot`. Signature :
+
+- `as_verifie_le = 2026-07-17`, la date de création elle-même : la fiche **affirmait**
+  avoir été vérifiée ;
+- `as_source_officielle_url` vide : il n'y avait rien à vérifier ;
+- aucune correspondance dans `events_raw` : jamais collectées ;
+- dates de début en **escalier régulier** (19, 21, 23, 25, 30 juillet, puis 1, 3, 5, 7,
+  10 août), en alternant les quatre territoires.
+
+Deux portaient des noms d'événements réels (Bataille des Reines, Sagra della Toma) avec
+des dates inventées, ce qui est plus trompeur qu'un titre entièrement fictif. Cinq
+avaient une date encore à venir au moment de la découverte. Mises à la corbeille, pas
+supprimées (sauvegarde `cs_bk_fiches_demo_20260804`), plus la traduction FR liée.
+
+> **Règle : une fiche qui affirme `as_verifie_le` sans porter de source est un mensonge
+> publié.** Nos mentions légales promettent que les données pratiques sont « vérifiées à
+> la source officielle indiquée sur chaque fiche ». Une fiche sans source ne peut pas
+> porter de date de vérification.
+
+> **Règle : ne jamais publier de contenu de démonstration sur le site live.** Pour
+> éprouver un gabarit, utiliser un brouillon ou un statut non public. Un jeu de test qui
+> passe en production devient indiscernable du vrai au bout de quelques semaines.
+
+**Détection.** Chercher les fiches publiées qui ont `as_verifie_le` non vide et
+`as_source_officielle_url` vide. **Attention au faux positif** : au 2026-08-04, 43 fiches
+répondent à ce critère sans être fabriquées. Ce sont de vrais événements collectés dont
+le pipeline n'a pas recopié la source vers WordPress. Le signe distinctif de la
+fabrication n'est pas la source manquante seule, c'est **la création en lot en quelques
+secondes, l'absence de ligne dans `events_raw`, et l'escalier des dates**.
+
+> **Question ouverte (2026-08-04)** : pourquoi 43 fiches publiées n'ont-elles pas de
+> source dans WordPress alors qu'elles en ont une côté pipeline ? Tant que ce n'est pas
+> résolu, la phrase des mentions légales est partiellement fausse.
+
+---
+
 ## 3. Droits d'image
 
 La doctrine est dans `docs/IMAGES.md` §1. Elle était juste, mais elle s'appuyait sur
