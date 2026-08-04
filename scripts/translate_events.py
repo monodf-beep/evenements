@@ -661,6 +661,39 @@ def main(argv=None) -> int:
         (args.min_score,)).fetchall()]
     if terr_keys:                                       # filtre territoire AVANT le plafond
         rows = [r for r in rows if any(k in _norm(r.get("territoire", "")) for k in terr_keys)]
+
+    # ÉCARTER LES DESCRIPTIONS INCOHÉRENTES **AVANT** LE PLAFOND — et c'est tout l'objet de
+    # ce bloc, ajouté le 2026-08-04 quelques heures après le portillon lui-même.
+    #
+    # LE CUL-DE-SAC QU'IL FERME, démontré sur base jetable par la revue du jour : le refus
+    # posé dans `_translate_one` arrive APRÈS la sélection, donc la fiche refusée a déjà
+    # consommé un créneau de `--cap`. Elle n'est marquée nulle part (`translated_at` reste
+    # vide — c'est voulu, pour qu'elle reparte quand elle sera réparée), donc elle revient
+    # le lendemain. Et elle revient EN TÊTE, parce que la file est triée par score et que
+    # la pollution FAIT MONTER le score : c'est précisément le mécanisme de WP#6798, où une
+    # description d'Annecy a valu 10 à un spectacle de Chambéry.
+    #
+    # Résultat mesuré : trois fiches polluées suffisent à saturer `--cap 3` indéfiniment,
+    # et aucune fiche saine n'est jamais atteinte. La traduction paraît tourner — le cron
+    # passe, le journal se remplit de refus — pendant que le vivier italien reste vide.
+    # C'est la troisième forme du motif du dépôt : non pas « personne ne rouvre », ni
+    # « personne ne recalcule », mais **un refus qui ne marque rien revient occuper la
+    # place**.
+    #
+    # Filtrer ici plutôt que refuser plus bas ne relâche AUCUNE garde : le portillon de
+    # `_translate_one` reste en place comme seconde ceinture. Il change seulement qui paie
+    # le refus — la fiche polluée au lieu de la file entière.
+    ecartees = [r for r in rows if incoherence_description(r)]
+    if ecartees:
+        rows = [r for r in rows if r not in ecartees]
+        log.warning("%d fiche(s) écartée(s) AVANT le plafond — description incohérente "
+                    "avec la fiche : %s", len(ecartees),
+                    ", ".join(f"[{r['id']}] {(r.get('title') or '')[:34]}"
+                              for r in ecartees[:8]))
+        # Les NOMMER, sinon on répare une file bloquée en fabriquant un silence : ces
+        # fiches ne seront jamais traduites tant que leur description n'est pas réparée
+        # (repair_polluted_descriptions, autocomplete, ou un nouveau passage de scraping),
+        # et rien d'autre ne les compte. `scripts/audit_coherence` en tient le registre.
     rows = rows[:args.cap]
     log.info("%d événement(s) candidat(s) (score ≥ %d, en ligne, non traduits%s)",
              len(rows), args.min_score,

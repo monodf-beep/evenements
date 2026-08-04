@@ -189,7 +189,7 @@
      où on veut comprendre, et c'est ce qui manquait avant le 2026-08-03. #}
   <div style="margin:.6rem 0;padding:.5rem .6rem;border:1px solid var(--line);border-radius:6px">
     <span class="s">Ça vaut le déplacement —
-      {% if depl_now is not none %}<strong>{{ depl_now }}</strong>/12 au tri{% else %}<strong>hors section</strong>{% endif %}
+      {% if depl_now is not none %}<strong>{{ depl_now }}</strong>/{{ depl_max_tri }} au tri{% else %}<strong>hors section</strong>{% endif %}
       {% if depl_base is not none %} · {{ depl_base }}/{{ depl_max }} intrinsèque{% endif %}
     </span><br>
     <em style="color:var(--muted)">{{ depl_motif }}</em>

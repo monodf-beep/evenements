@@ -38,7 +38,7 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | `statut='rejected'` | `evaluator`, `purge_*`, back-office | `unreject_wp_online`, `reconcile_catalogue`, back-office | 🟡 partiel, **volontaire** |
 | `wp_post_id_as=NULL` après corbeille | `trash_by_ids`, `trash_wp_ids` | `relink_wp_ids_as` (par titre) | 🟡 partiel, **assumé** |
 | `statut='merged'` + `duplicate_of` | `dedupe` | `unmerge` (à la main, jamais en cron) | ✅ fermé le 2026-08-03 |
-| `home_override='excluded'` | back-office | back-office, **rappelé par `weekly_digest`** | ✅ fermé le 2026-08-04 |
+| `home_override='excluded'` | back-office | back-office + republication, **rappelé par `weekly_digest`** | ✅ fermé le 2026-08-04, **corrigé le soir même** |
 
 ### `home_override='excluded'` — réversible, mais invisible
 
@@ -60,6 +60,19 @@ n'est cassé.
 `weekly_digest` liste désormais ces fiches, **nommées et datées**, en écartant celles dont
 l'événement est passé (règle 5). Nommées et datées et non seulement comptées : « 3 fiches
 exclues » se lit et s'oublie, « exclue depuis le 4 août » se rouvre.
+
+**⚠️ Et cette ligne a été cochée « fermée » à tort, le jour même.** Le recensement du soir
+l'a montré : `set_home_override` n'écrivait qu'en BASE. La méta `as_home_override` n'est
+posée que par `publish_to_as`, donc à la publication — sur une fiche déjà en ligne, seul
+cas où l'on songe à cliquer « exclure », le bouton confirmait et **la home ne bougeait
+pas**. C'est mot pour mot le défaut d'`as_deplacement_now` réparé la veille : une valeur
+calculée en base, publiée une seule fois, jamais remise à jour. Deux jours de suite, deux
+endroits différents. Le clic republie désormais la fiche (texte seul), et dit franchement
+si la republication a échoué.
+
+**La leçon dépasse le cas.** Les trois questions de ce document — qui rouvre, à quelle
+condition, où se voit le compte — ne suffisent pas : elles supposent que le rouvreur est
+ATTEIGNABLE. Il en faut une quatrième.
 
 ## Les trois délais, et pourquoi ils sont identiques
 
@@ -270,3 +283,13 @@ Avant d'ajouter un état qui écarte une fiche d'une file, répondre par écrit 
 3. **Où se voit le nombre de fiches garées ?** Un état qui sort une fiche de sa file la
    sort aussi de tous les bilans. S'il n'est compté nulle part, on le découvre des
    semaines plus tard en cherchant autre chose.
+4. **Le rouvreur est-il BRANCHÉ, et qu'est-ce qui prouve qu'il tourne ?** Question ajoutée
+   le 2026-08-04, après un balayage qui a trouvé six trous dont **cinq ont la même
+   origine** : on avait vérifié qu'un chemin de retour EXISTE, jamais qu'il est
+   ATTEIGNABLE. Un rouvreur absent du `crontab.txt` et de `weekly_audits` ne rouvre rien —
+   c'est le cas de `repair_polluted_descriptions`, parfaitement écrit et lancé par
+   personne. Un rouvreur dont la docstring promet qu'un autre script reprendra la fiche
+   sans que ce script la sélectionne (`unlink_bad_translations` → `translate_events`, qui
+   filtre sur `translated_at=''`) est un renvoi mort, exactement comme celui
+   d'`audit_wp_ghosts` vers `relink_wp_ids_as`. Et un état posé en base qui n'atteint pas
+   le site (`home_override`) ne rouvre rien de ce que voit le visiteur.

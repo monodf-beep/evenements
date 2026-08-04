@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """LE CHIEN DE GARDE — est-ce que les crons tournent encore ?
 
-LE TROU QUE ÇA FERME, et c'était le plus sérieux de tous. Quatorze automatisations font
-vivre ce site (seize depuis le 2026-08-04), et le 2026-08-03 le constat était : **si le scraper échoue demain matin,
-rien ne sonne**. `scripts/homepage_health.py` (13h) verrait la home se vider et
+LE TROU QUE ÇA FERME, et c'était le plus sérieux de tous. Une vingtaine d'automatisations
+font vivre ce site — le nombre exact est `len(ATTENDUS)`, et il n'est écrit nulle part
+ailleurs exprès : la revue du 2026-08-04 a trouvé « quatorze » recopié dans trois fichiers
+alors qu'il y en avait dix-neuf au crontab. Un chiffre dupliqué cesse d'être vrai le jour
+où on en ajoute un, et personne ne le remarque. Le 2026-08-03, le constat était : **si le
+scraper échoue demain matin, rien ne sonne**. `scripts/homepage_health.py` (13h) verrait la home se vider et
 `scripts/site_audit.py` (14h) verrait le site diverger de la base — mais plusieurs jours
 plus tard, et sur la CONSÉQUENCE, jamais sur la cause. Entre-temps le catalogue
 vieillirait en silence.
@@ -14,9 +17,9 @@ depuis longtemps et enregistrait fidèlement chaque passage — mais RIEN ne lis
 journal pour s'inquiéter d'une absence. On savait ce qui avait tourné ; on ne savait pas
 ce qui aurait DÛ tourner.
 
-DEUX SIGNAUX, ET C'EST VOULU. Seuls 7 crons sur 14 appellent `record_run()` : instrumenter
-les sept autres aurait demandé de toucher sept fichiers du chemin de production pour un
-bénéfice de surveillance. Or ils écrivent tous un JOURNAL (`>> logs/x.log` dans le
+DEUX SIGNAUX, ET C'EST VOULU. Moins de la moitié des crons appellent `record_run()` :
+instrumenter les autres aurait demandé de toucher autant de fichiers du chemin de
+production pour un bénéfice de surveillance. Or ils écrivent tous un JOURNAL (`>> logs/x.log` dans le
 crontab), et la date de dernière écriture d'un fichier est un signal universel, gratuit,
 qui ne demande de modifier aucun script.
   1. `pipeline_runs` quand il existe — plus riche : on sait aussi si le run a ÉCHOUÉ ;
@@ -92,6 +95,11 @@ ATTENDUS = [
     ("Sauvegarde de la base",     "backup_db",       "backup.log",           30),
     ("Grand ménage hebdomadaire", "weekly_audits",   "weekly_audits.log",   200),
     ("Récapitulatif hebdomadaire", "weekly_digest",  "weekly_digest.log",   200),
+    # ⚠️ OUBLIÉE JUSQU'AU 2026-08-04, trouvée par la revue : le calibrage tourne le lundi à
+    # 8h05 depuis la veille et n'était surveillé par rien. Personne ne l'aurait vu s'arrêter
+    # — il est SILENCIEUX tant que l'écart reste sous le seuil, donc son absence ressemble
+    # trait pour trait à son fonctionnement normal. C'est la panne la plus invisible du lot.
+    ("Calibrage de l'évaluateur", "audit_calibrage", "calibrage.log",       200),
 ]
 
 
@@ -183,7 +191,27 @@ def fuseau() -> tuple[str, bool]:
     # réellement datetime.now(), donc ce qui gouverne les comparaisons de dates.
     offset = datetime.now(timezone.utc).astimezone().utcoffset()
     heures = int(offset.total_seconds() // 3600) if offset else 0
-    attendu = heures in (1, 2)          # CET = +1, CEST = +2
+
+    # ⚠️ CORRIGÉ LE 2026-08-04, quelques heures après avoir été écrit — la revue a montré
+    # que la première version testait `heures in (1, 2)`, c'est-à-dire une PLAGE d'offsets
+    # et non le fuseau. Elle laissait donc passer, à une heure près, des fuseaux qui n'ont
+    # rien à voir : `Africa/Lagos` (UTC+1 toute l'année) validait en août, `Etc/GMT-2` en
+    # janvier. Le cas UTC, lui, était bien attrapé — d'où l'illusion que le contrôle
+    # marchait.
+    #
+    # C'est exactement le défaut que ce contrôle existe pour dénoncer : une vérification
+    # approximative vaut une affirmation, et une affirmation est ce qu'on cherchait à
+    # remplacer. On compare donc à l'offset RÉEL d'Europe/Paris à cet instant — ce qui
+    # suit automatiquement le passage heure d'hiver / heure d'été, sans table à maintenir.
+    try:
+        from zoneinfo import ZoneInfo
+        ref = datetime.now(ZoneInfo(FUSEAU_ATTENDU)).utcoffset()
+        attendu = ref is not None and offset == ref
+    except Exception:               # zoneinfo absent ou base de fuseaux non installée
+        # Repli explicite : on ne sait pas conclure, on ne prétend donc pas que tout va
+        # bien. Mieux vaut une alerte à vérifier qu'un silence trompeur.
+        attendu = False
+        tz = f"{tz or '?'} (comparaison impossible : base de fuseaux absente)"
     return f"{tz or '?'} (UTC{heures:+d})", attendu
 
 

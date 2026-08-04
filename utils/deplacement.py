@@ -150,8 +150,8 @@ def deplacement_score(event: dict) -> int | None:
 #     c'est juste : la dernière chance de la voir est une vraie raison de se déplacer.
 #
 # UN BONUS, PAS UNE REFONTE. L'urgence départage, elle ne remplace pas la qualité : le
-# maximum du bonus (3) reste inférieur à l'écart entre un bon et un mauvais score
-# intrinsèque (0-12). Une fiche médiocre qui ferme demain ne doit pas chasser une fiche
+# maximum du bonus (MAX_BONUS = 4, dont 1 de rareté) reste inférieur à l'écart entre un
+# bon et un mauvais score intrinsèque (0-12). Une fiche médiocre qui ferme demain ne doit pas chasser une fiche
 # remarquable ouverte encore un mois — d'où aussi le plancher ci-dessous.
 # --------------------------------------------------------------------------- #
 
@@ -186,6 +186,17 @@ _FENETRES = ((7, 3), (21, 2), (45, 1))
 # programmation continue. Sert au bonus de rareté, pas à exclure.
 PONCTUEL_MAX_JOURS = 4
 
+# BORNE HAUTE RÉELLE DE `deplacement_now`, et elle n'est pas MAX_SCORE.
+# ⚠️ Défaut trouvé le 2026-08-04 par la revue : la docstring annonçait « 0-12 » et
+# app/templates/preview.html codait « /12 » en dur, alors qu'une fiche parfaite et
+# imminente atteint 16 — le back-office affichait donc « 16/12 ». La cause est une addition
+# qu'on oublie en lisant : le bonus de fenêtre plafonne bien à 3, mais le point de RARETÉ
+# s'ajoute juste après (`bonus += 1`), et 12 + 3 + 1 = 16.
+# Nommer la borne plutôt que la recopier : c'est exactement la classe d'erreur de ce
+# module — une valeur écrite à deux endroits qui cessent de s'accorder.
+MAX_BONUS = max(pts for _seuil, pts in _FENETRES) + 1
+MAX_TRI = MAX_SCORE + MAX_BONUS          # 16
+
 # HORIZON — décision de Franck le 2026-08-03, en regardant la home : la section affichait
 # la Foire de Saint-Ours du 30 janvier 2027, à six mois de là. « Ça vaut le déplacement »
 # est une invitation à y aller, pas un pense-bête pour l'an prochain : un événement qu'on
@@ -216,7 +227,8 @@ def _jour(valeur) -> "date | None":
 
 def deplacement_now(event: dict, aujourdhui=None) -> int | None:
     """Score de tri de la section « Ça vaut le déplacement » : la qualité intrinsèque,
-    relevée par l'urgence. 0-12, ou None si la fiche n'a pas sa place dans la section.
+    relevée par l'urgence. 0-MAX_TRI (16), ou None si la fiche n'a pas sa place dans la
+    section. L'intrinsèque plafonne à MAX_SCORE (12) ; le reste vient du bonus.
 
     None dans cinq cas, tous volontaires :
       • le détail d'évaluation manque (rien à mesurer) ;

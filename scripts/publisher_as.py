@@ -253,7 +253,10 @@ def _build_payload(event: dict) -> dict:
         # 2026-07-30 — le score seul ne suffisait pas à l'exclure, la home se remplissait
         # avec du contenu non rédigé faute de mieux).
         "as_enrich_status":         event.get("enrich_status") or "",
-        # Score « ÇA VAUT LE DÉPLACEMENT » (0-8, vide si non mesuré) — dérivé des critères
+        # Score « ÇA VAUT LE DÉPLACEMENT » (0-12 depuis le 2026-08-04, vide si non mesuré) —
+        # l'échelle a changé avec la pondération ; ce commentaire disait encore 0-8 et c'est
+        # la revue qui l'a vu. Une échelle recopiée à la main dérive à la première refonte.
+        # dérivé des critères
         # d'importance de scripts/evaluator.py (rayonnement transfrontalier + spécificité
         # territoriale + notoriété du lieu + tradition), cf. utils/deplacement.py pour le
         # détail du choix. Sert à TRIER la section home du même nom, qui triait jusqu'ici

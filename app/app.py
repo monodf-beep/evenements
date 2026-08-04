@@ -2573,7 +2573,8 @@ def preview(event_id: int):
     # le back-office », Franck). Une note invisible ne se conteste pas — on ne pouvait que
     # constater le résultat sur le site et deviner pourquoi.
     from utils.deplacement import (DEPLACEMENT_MIN as depl_min, MAX_SCORE as depl_max,
-                                   deplacement_etat, deplacement_raisons)
+                                   MAX_TRI as depl_max_tri, deplacement_etat,
+                                   deplacement_raisons)
     depl_base, depl_now, depl_motif = deplacement_etat(ev)
     depl_raisons = deplacement_raisons(ev.get("llm_score_detail"))
     # Dossier(s) de presse rattaché(s) à cet événement (matière primaire).
@@ -2600,6 +2601,7 @@ def preview(event_id: int):
                            press_kits=press_kits, score_detail=score_detail,
                            depl_base=depl_base, depl_now=depl_now, depl_motif=depl_motif,
                            depl_raisons=depl_raisons, depl_min=depl_min, depl_max=depl_max,
+                           depl_max_tri=depl_max_tri,
                            jsonld=jsonld, seo_faq=seo_faq, seo_tags=seo_tags,
                            faq_jsonld=faq_jsonld, ig_post=ig_post)
 
@@ -3999,10 +4001,37 @@ def set_home_override(event_id: int):
     conn.execute("UPDATE events_raw SET home_override=?, home_override_at=datetime('now') "
                  "WHERE id=?", ("" if ov == "auto" else ov, event_id))
     conn.commit()
+    # LE CLIC N'ATTEIGNAIT PAS LE SITE — défaut trouvé le 2026-08-04 par le recensement des
+    # états terminaux. La méta `as_home_override` n'est écrite que par `publish_to_as`,
+    # c'est-à-dire à la PUBLICATION. Sur une fiche déjà en ligne — le seul cas où l'on
+    # songe à cliquer « exclure » —, la base changeait et la home ne bougeait pas. Franck
+    # voyait le bouton confirmer, et la fiche rester en vitrine.
+    #
+    # C'est mot pour mot le défaut d'`as_deplacement_now` réparé la veille : une valeur
+    # calculée en base, publiée une seule fois, et jamais remise à jour ensuite. Deux jours
+    # de suite, deux endroits différents.
+    #
+    # On republie donc TEXTE SEUL (skip_media) : le correctif ne concerne qu'une méta, il
+    # n'y a aucune raison de reverser une image dans la médiathèque. Et jamais bloquant —
+    # une panne WordPress ne doit pas faire échouer un clic de back-office ; on le DIT dans
+    # le message plutôt que de laisser croire que c'est passé.
+    ev = dict(get_db().execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone())
+    pousse = None
+    if (ev.get("wp_post_id_as") or 0) > 0:
+        try:
+            from scripts.publisher_as import publish_to_as
+            pousse = bool(publish_to_as(ev, skip_media=True)[0])
+        except Exception as exc:                       # noqa: BLE001 — jamais bloquant
+            app.logger.warning("as_home_override non poussé pour %s : %s", event_id, exc)
+            pousse = False
     conn.close()
     labels = {"auto": "auto (score)", "featured": "🏠 forcé en avant",
               "excluded": "🚫 exclu de la home"}
-    flash(f"« {(row['title'] or '')[:50]} » : mise en avant home → {labels[ov]}.", "ok")
+    suite = ("" if pousse is None else
+             " — republiée sur le site." if pousse else
+             " ⚠️ mais la republication a ÉCHOUÉ : le site affiche encore l'ancien état.")
+    flash(f"« {(row['title'] or '')[:50]} » : mise en avant home → {labels[ov]}{suite}", 
+          "ok" if pousse is not False else "err")
     nxt = request.form.get("next", "")
     if not nxt.startswith("/") or nxt.startswith("//"):
         nxt = url_for("events")
