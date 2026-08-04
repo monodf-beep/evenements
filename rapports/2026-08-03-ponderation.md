@@ -49,15 +49,15 @@ Seuil actuel : **6** sur 8. Horizon : 183 jours.
 
 **Nice**  ← l'ordre CHANGE
 
-| rang | actuel (/8) | proposé (/10) |
+| rang | actuel (/8) | proposé (/12) |
 |---:|---|---|
 | 1 | 8 · Festival de Musique de Menton | 11 · Festival de Musique de Menton |
 | 2 | 6 · Brahms / Chostakovitch | 10 · Matisse – Yves Saint Laurent, le Beau, |
-| 3 | 6 · Matisse – Yves Saint Laurent, le Beau, | 9 · Visite guidée du Stade Allianz Riviera |
+| 3 | 6 · Matisse – Yves Saint Laurent, le Beau, | 9 · La Farandole, festival international d |
 
 **Piemonte**  ← l'ordre CHANGE
 
-| rang | actuel (/8) | proposé (/10) |
+| rang | actuel (/8) | proposé (/12) |
 |---:|---|---|
 | 1 | 8 · Marisa Merz – La danza delle ore | 12 · Tour de l'Avenir 2026 - Strambino Lago |
 | 2 | 8 · Il 44TFF sarà dedicato a Marilyn Monro | 12 · Marisa Merz – La danza delle ore |
@@ -65,7 +65,7 @@ Seuil actuel : **6** sur 8. Horizon : 183 jours.
 
 **Savoie**  ← l'ordre CHANGE
 
-| rang | actuel (/8) | proposé (/10) |
+| rang | actuel (/8) | proposé (/12) |
 |---:|---|---|
 | 1 | 8 · Une semaine pas plus | 11 · Une semaine pas plus |
 | 2 | 6 · orchestre de la suisse romande | 10 · Chambéry. Les trésors des empires de l |
@@ -73,27 +73,36 @@ Seuil actuel : **6** sur 8. Horizon : 183 jours.
 
 **Vallee-Aoste**  ← l'ordre CHANGE
 
-| rang | actuel (/8) | proposé (/10) |
+| rang | actuel (/8) | proposé (/12) |
 |---:|---|---|
 | 1 | 8 · La Saint-Ours 2026 - Rendez Vous en Va | 12 · La Saint-Ours 2026 - Rendez Vous en Va |
 | 2 | 7 · Le avventure di Pinocchio, dal Monte B | 11 · Collontrek 2026 |
 | 3 | 7 · Al Marché au Fort l’enogastronomia del | 10 · Al Marché au Fort l’enogastronomia del |
 
+### Combien de fiches touchent le plafond
+
+| Territoire | À 12/12 | Candidates | Lecture |
+|---|---:|---:|---|
+| Nice | 0 | 31 | le barème trie encore |
+| Piemonte | 3 | 59 | 3 ex æquo — c'est l'IMMINENCE qui choisit la carte |
+| Savoie | 0 | 47 | le barème trie encore |
+| Vallee-Aoste | 1 | 24 | le barème trie encore |
+
 ### Où se placerait le plancher
 
-| Plancher /10 | Fiches retenues |
+| Plancher /12 | Fiches retenues |
 |---:|---:|
 | **4** | 119 |
-| **5** | 110 |
-| **6** | 99 |
-| **7** | 85 |
-| **8** | 57 |
-| **9** | 35 |
+| **5** | 109 |
+| **6** | 98 |
+| **7** | 84 |
+| **8** | 55 |
+| **9** | 34 |
 | **10** | 17 |
 | **11** | 10 |
 | **12** | 4 |
 
-> Le plancher ne se transpose PAS : 6/8 et 6/10 n'expriment pas la même
+> Le plancher ne se transpose PAS : 6/8 et 6/12 n'expriment pas la même
 > exigence, et la distribution change aussi. À re-décider sur ce tableau.
 
 
