@@ -84,19 +84,34 @@
 # contient QUE des fiches traduites : traduire davantage est le seul levier qui l'élargit.
 # Baisser le plancher n'y remettrait que les événements médiocres qu'on vient d'en retirer.
 #
-# ⚠️ LE CAP DE 2 N'EST PAS UNE PRUDENCE DE FAÇADE, ne pas le remonter sans y penser. Le
-# portillon C2 ne regarde que le TITRE : une fiche dont la description d'origine serait
-# encore polluée passerait. La seule protection contre ce cas-là est l'ŒIL HUMAIN sur les
-# permaliens produits chaque jour — et cette relecture n'existe que si elle reste tenable.
-# Deux fiches par jour se relisent ; cinq ne se relisent pas, on décroche en une semaine et
-# le filet n'est plus qu'un décor. Le cap se remontera quand la relecture aura tenu
-# plusieurs semaines, pas avant.
+# CAP REMONTÉ DE 2 À 5 LE 2026-08-04, quelques heures après la réactivation — et le motif
+# du 2 a été RETIRÉ, pas contourné.
+#
+# Le 2 reposait sur un constat exact : le portillon C2 ne regarde que le TITRE, donc une
+# fiche dont la description d'origine serait encore polluée passait, et la seule protection
+# contre ce cas-là était l'œil humain sur les permaliens du jour. Deux se relisent, cinq ne
+# se relisent pas.
+#
+# Franck a refusé ce raisonnement le jour même : « je veux qu'il puisse juger la
+# description, et ce, partout. On ne doit pas faire des choses automatiques pour faire des
+# choses automatiques sans réfléchir. » Il avait raison — c'était faire compenser par un
+# humain un contrôle qu'on pouvait écrire, et la contradiction de WP#6798 était détectable
+# sans la moindre IA. `utils/coherence` est depuis branché EN REFUS ici, avant même l'appel
+# au modèle : une description qui ne parle pas de sa fiche n'est plus traduite du tout.
+#
+# Le plafond ne protège donc plus de la même chose. Ce qui le fixe maintenant, c'est le
+# BESOIN : la home italienne manque de matière — « Les 7 prochains jours » y est vide, et le
+# vivier de « Ça vaut le déplacement » est tombé à 4 candidates pour 2 places. Il reste
+# ~56 fiches à traduire ; à 5 par jour, une dizaine de jours.
+#
+# La relecture humaine reste utile et n'est pas abandonnée : elle passe de seule protection
+# à second regard. C'est la place qu'elle aurait toujours dû avoir.
 #
 # Se dépose à 10h45, donc AVANT le rafraîchissement du tri de 10h50 : les traductions du
 # jour reçoivent ainsi leur `as_deplacement_now` dans la foulée, au lieu d'attendre le
 # lendemain pour entrer dans la section italienne — celle-là même qu'elles servent à
 # remplir.
-45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 2 >> logs/translate.log 2>&1
+45 10 * * * cd /root/evenements && .venv/bin/python scripts/translate_events.py --apply --cap 5 >> logs/translate.log 2>&1
 # Rafraîchissement du tri « Ça vaut le déplacement » 10h50 — `as_deplacement_now` n'est pas
 # une valeur, c'est une valeur DATÉE : elle relève le score intrinsèque par le TEMPS QUI
 # RESTE pour y aller. publisher_as la calcule à la publication et WordPress la GÈLE. Sans

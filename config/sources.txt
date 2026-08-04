@@ -74,8 +74,19 @@ https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR
 # ═════════════════════════════════════════════════════════════════════════════
 
 # ------------------------------ SAVOIE / HAUTE-SAVOIE ------------------------
-https://73.agendaculturel.fr/rss;Savoie;Agenda Culturel Savoie (73);tourisme
-https://74.agendaculturel.fr/rss;Savoie;Agenda Culturel Haute-Savoie (74);tourisme
+# ─── RETIRÉE LE 2026-08-04, décision de Franck : « agendaculturel.fr, on supprime
+# cette source et les fiches en lien ». Le domaine répond 403 à ce serveur sur TOUS
+# ses sous-domaines (06., 73., 74., www.), racine comprise, avec ou sans user-agent
+# de navigateur. 338 fiches en venaient, dont 242 encore devant nous et 207 sans date.
+# Or dates, lieux, descriptions et complétion se réparent en RELISANT la page source :
+# ces fiches étaient donc définitivement incomplétables, et chaque cron réessayait
+# indéfiniment, une fiche à la fois, sans que la panne commune soit jamais nommée.
+# Une source qu'on ne peut plus lire n'est plus une source.
+# Les fiches produites ont été rejetées et corbeillées (réversible) par
+# scripts/retirer_source.py. Rétablir les lignes ci-dessous si le domaine rouvre —
+# scripts/audit_sources_bloquees le dira au premier dimanche.
+#https://73.agendaculturel.fr/rss;Savoie;Agenda Culturel Savoie (73);tourisme
+#https://74.agendaculturel.fr/rss;Savoie;Agenda Culturel Haute-Savoie (74);tourisme
 https://www.mjc-chambery.com/feed/;Savoie;MJC de Chambéry;institution;MJC de Chambéry;Chambéry
 https://montmelian.com/category/culture/feed/;Savoie;Ville de Montmélian - Culture;officielle;;Montmélian
 https://www.laravoire.fr/agenda/feed/;Savoie;Ville de La Ravoire - Agenda;officielle;;La Ravoire
@@ -110,7 +121,8 @@ https://valledaostaheritage.com/feed/;Vallee-Aoste;Valle d'Aosta Heritage;instit
 https://www.courmayeurmontblanc.it/feed/;Vallee-Aoste;OT Courmayeur Mont-Blanc;tourisme
 
 # --------------------------- NICE / ALPES-MARITIMES -------------------------
-https://06.agendaculturel.fr/rss;Nice;Agenda Culturel Alpes-Maritimes (06);tourisme
+# ─── RETIRÉE LE 2026-08-04 — voir le bloc en section Savoie.
+#https://06.agendaculturel.fr/rss;Nice;Agenda Culturel Alpes-Maritimes (06);tourisme
 https://www.fondation-maeght.com/feed/;Nice;Fondation Maeght (Saint-Paul-de-Vence);institution;Fondation Maeght;Saint-Paul-de-Vence
 https://www.theatredegrasse.com/feed/;Nice;Théâtre de Grasse;officielle;Théâtre de Grasse;Grasse
 https://scene55.fr/feed/;Nice;Scène 55 (Mougins);officielle;Scène 55;Mougins
