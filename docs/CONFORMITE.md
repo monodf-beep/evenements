@@ -178,6 +178,25 @@ actifs des mois après sa tenue.
 > unique (« concert de », « soirée », « afterwork », « séance », « vernissage ») et
 > dont la durée dépasse trente jours est suspecte.
 
+**Le piège inverse : un filtre juste appliqué au mauvais objet.** Le même jour, on a
+trouvé 43 fiches publiées affichant « vérifié le … » sans aucune source. Explication :
+le publisher renvoyait `""` pour **tout** le radar. Or la charte §8 interdit de lier
+l'**article de presse** qui a servi à détecter l'événement, pas la **page de
+l'organisateur** que le pipeline remonte ensuite depuis cet article — laquelle est
+exactement ce que `docs/SOURCE_OFFICIELLE.md` appelle la source officielle, mémorisée
+dans `url_officiel` seulement après avoir été lue et jugée pertinente. Dix-sept fiches
+avaient donc une page officielle vérifiée que le publisher jetait.
+
+> **Règle : le radar publie `url_officiel`, jamais `url_source`.** Détecter par la
+> presse puis remonter à l'officiel est le trajet normal, pas une exception. Un filtre
+> qui protège d'un risque réel doit être vérifié sur ce qu'il écarte, pas seulement sur
+> ce qu'il laisse passer.
+
+> **Règle : pas de source publiée, pas de date de vérification.** `as_verifie_le` était
+> estampillé sans condition. Une fiche affirmait donc une vérification que le lecteur
+> ne peut pas contrôler, alors que les mentions légales §4 promettent une vérification
+> « à la source officielle **indiquée sur chaque fiche** ».
+
 ---
 
 ## 6. Divergences connues à surveiller

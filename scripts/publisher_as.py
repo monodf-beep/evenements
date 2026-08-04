@@ -159,11 +159,31 @@ def _is_tracking_url(url) -> bool:
 
 
 def _source_publiable(event: dict, is_radar: bool) -> str:
-    """URL de source officielle, ou chaîne vide. Le radar n'est jamais lié (charte §8),
-    et une redirection de traçage n'est pas une source (CONFORMITE §5)."""
-    if is_radar:
-        return ""
-    url = (event.get("url_source", "") or "").strip()
+    """URL de source officielle publiable, ou chaîne vide.
+
+    Trois filtres, dans cet ordre.
+
+    **Radar → `url_officiel`, jamais `url_source`.** La charte §8 interdit de lier
+    l'ARTICLE DE PRESSE qui a servi à détecter l'événement. Elle n'a jamais visé la
+    page de l'organisateur que le pipeline remonte depuis cet article : c'est au
+    contraire le trajet normal décrit par docs/SOURCE_OFFICIELLE.md, et `url_officiel`
+    n'est mémorisée qu'après avoir été LUE et jugée pertinente (enrich.py §1507-1525).
+    Renvoyer "" pour tout le radar jetait ce travail : au 2026-08-04, 17 fiches radar
+    publiées avaient une page officielle résolue et affichaient malgré tout « vérifié
+    le … » sans source, ce qui rendait nos mentions légales inexactes.
+
+    **Hors radar**, `url_source` fait foi (source tier « officielle » de sources.txt),
+    mais `url_officiel` la précède quand elle existe : elle a été vérifiée, pas héritée.
+
+    **Dans tous les cas**, une redirection de routeur de newsletter n'est pas une
+    source (CONFORMITE §5).
+
+    ⚠️ Une fiche TRADUITE n'hérite pas de `url_officiel` (translate_events l.476-486) :
+    elle ressortira donc sans source même si l'original en a une. C'est à la traduction
+    de propager la colonne, pas au publisher de remonter au parent.
+    """
+    officiel = (event.get("url_officiel") or "").strip()
+    url = officiel if officiel else ("" if is_radar else (event.get("url_source") or "").strip())
     if _is_tracking_url(url):
         log.warning("source de traçage écartée (id=%s) : %s",
                     event.get("id"), url[:80])
@@ -267,6 +287,9 @@ def _build_payload(event: dict) -> dict:
     # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
     depl = deplacement_score(event)
     depl_now = deplacement_now(event)
+    # Une seule évaluation, réutilisée deux fois plus bas (meta + champ natif TEC) et
+    # ici pour la date de vérification : les trois ne peuvent pas diverger.
+    source_url = _source_publiable(event, is_radar)
 
     meta = {
         "as_score":                 event.get("llm_score", ""),
@@ -319,8 +342,12 @@ def _build_payload(event: dict) -> dict:
         "as_tarif":                 "" if _is_free(prix) else prix,
         "as_horaire":               event.get("horaire", "") or "",
         "as_billetterie_url":       event.get("billetterie_url", "") or "",
-        "as_source_officielle_url": _source_publiable(event, is_radar),
-        "as_verifie_le":            date.today().isoformat(),
+        "as_source_officielle_url": source_url,
+        # « Vérifié le » n'a de sens QUE si on affiche contre quoi. Sans source publiée,
+        # la fiche affirmait une vérification que le lecteur ne peut pas contrôler, et
+        # que nos mentions légales §4 promettent pourtant « à la source officielle
+        # indiquée sur chaque fiche ». Pas de source, pas de date.
+        "as_verifie_le":            date.today().isoformat() if source_url else "",
         "as_image_credit":          event.get("image_credit", "") or "",
         # Image ORIGINALE (non recadrée) : la vignette mise en avant est standardisée
         # en 4:3 pour la grille ; la FICHE, elle, affiche l'affiche entière via ce champ.
@@ -361,7 +388,7 @@ def _build_payload(event: dict) -> dict:
         # Site officiel de l'événement (champ natif TEC « EventURL ») = même valeur
         # que as_source_officielle_url. Jamais la source radar (charte §8), jamais une
         # redirection de traçage (CONFORMITE §5) : même filtre, même valeur.
-        "website":     _source_publiable(event, is_radar),
+        "website":     source_url,
         # Champs natifs TEC : organisateur + prix (si on a la donnée).
         "organizer":   (event.get("organisateur") or "").strip(),
         "cost":        (event.get("prix") or "").strip(),
