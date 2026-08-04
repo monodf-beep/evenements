@@ -72,6 +72,17 @@ En cas de panne technique (image injoignable), on **ne bloque pas** — les règ
 - **Saison cohérente** : pas de prairie verte pour un événement de janvier, pas de neige en juillet — sauf intérieur/monument où la saison ne se voit pas.
 - **Pas de paysage alpin par défaut** : si l'événement n'a rien à voir avec la nature, on évite lac/sommet/vallée génériques juste parce que le territoire est montagneux.
 - **Radar = presse** : jamais d'og:image pour une source radar (droits).
+- **La liste des domaines proscrits doit couvrir la presse RÉGIONALE, pas seulement
+  la nationale** *(incident du 4 août 2026)*. `config/blocked_image_domains.txt` était
+  hérité d'un autre projet et bloquait Le Monde, Le Figaro, BFMTV. Or la presse qui
+  couvre nos événements, c'est Le Dauphiné Libéré, Nice-Matin, La Stampa, Aosta Oggi.
+  Résultat sur le site live : **41 fiches** illustrées par une photo de presse ou
+  reprise chez un agenda concurrent (agendaculturel.fr). La règle §1 était juste, la
+  liste était fausse. Leçon générale : une règle de droit qui s'appuie sur une liste
+  doit être auditée sur les données réelles, pas seulement énoncée dans un document.
+- **Un crédit ne régularise pas une image de presse.** Quand une photo n'est pas
+  licenciable, la seule issue est le remplacement ou le repli, jamais l'ajout d'une
+  ligne d'attribution. On ne crédite que ce qu'on a le droit d'afficher.
 - **Lire les pages en UA navigateur** : certains sites servent une page vide/403 à un bot mais tout à un navigateur (`_PAGE_UA`).
 - **Retries Wikimedia** : `upload.wikimedia.org` renvoie par intermittence un 400 en rafale — sans retry, une bonne photo serait faussement mesurée à 0 et remplacée à tort.
 

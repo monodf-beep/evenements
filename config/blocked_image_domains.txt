@@ -24,3 +24,39 @@ actu.fr
 msn.com
 yahoo.com
 googleusercontent.com
+
+# --- Ajout 2026-08-04 (Agenda Sabauda). À PORTER dans observatoire-business-sabaudo.
+# Motif : la liste ci-dessus est une liste de presse NATIONALE. Elle laissait
+# donc passer la presse RÉGIONALE de nos quatre territoires, qui est justement
+# celle qui couvre nos événements. Constat sur le site live : 13 fiches
+# illustrées par une photo du Dauphiné Libéré, 25 par une photo reprise sur
+# agendaculturel.fr. La règle « on évite les photos d'agence / de presse »
+# (docs/IMAGES.md §1) existait ; il lui manquait les bons domaines.
+
+# Presse régionale — Savoie / Haute-Savoie
+ledauphine.com
+lemessager.fr
+essor-savoyard.fr
+lehebdodesavoie.fr
+
+# Presse régionale — Comté de Nice
+nicematin.com
+var-matin.com
+monacomatin.mc
+
+# Presse régionale — Piémont / Vallée d'Aoste
+lastampa.it
+repubblica.it
+corriere.it
+torinotoday.it
+quotidianopiemontese.it
+aostasera.it
+aostaoggi.it
+gazzettamatin.com
+
+# Agendas concurrents (republient des visuels de tiers, sans droits cédés)
+agendaculturel.fr
+sortiraparis.com
+spectable.com
+infoconcert.com
+offi.fr
