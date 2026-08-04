@@ -50,8 +50,8 @@ officielle. L'attribution et les liens renvoient toujours vers ces **acteurs pri
 d'événement s'appuient sur des outils d'intelligence artificielle. Les données pratiques diffusées
 restent vérifiées à la source officielle indiquée sur chaque fiche, et l'ensemble des contenus
 publiés relève de la responsabilité éditoriale du directeur de la publication. Les illustrations,
-elles, ne sont pas générées par intelligence artificielle : elles proviennent de sources libres
-créditées, listées sur la page Crédits photos.
+elles, ne sont pas générées par intelligence artificielle : elles proviennent de sources libres,
+créditées sous chaque image, selon la politique exposée sur la page Crédits photos.
 
 **Faits et expression.** Les informations factuelles relatives à un événement (une date, un lieu,
 un programme) ne sont pas, en elles-mêmes, protégées par le droit d'auteur : Agenda Sabauda les
@@ -161,8 +161,9 @@ ufficiale. L'attribuzione e i collegamenti rimandano sempre a questi **soggetti 
 schede evento si avvalgono di strumenti di intelligenza artificiale. I dati pratici pubblicati
 restano verificati alla fonte ufficiale indicata su ogni scheda e l'insieme dei contenuti pubblicati
 è posto sotto la responsabilità editoriale del direttore responsabile della pubblicazione. Le
-illustrazioni, invece, non sono generate con intelligenza artificiale: provengono da fonti libere
-con credito, elencate nella pagina Crediti fotografici.
+illustrazioni, invece, non sono generate con intelligenza artificiale: provengono da fonti libere,
+con il credito indicato sotto ogni immagine, secondo la politica esposta nella pagina
+Crediti fotografici.
 
 **Fatti ed espressione.** Le informazioni fattuali su un evento (una data, un luogo, un programma)
 non sono di per sé protette dal diritto d'autore: Agenda Sabauda le raccoglie e le ripubblica
