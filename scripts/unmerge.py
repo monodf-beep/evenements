@@ -75,6 +75,13 @@ def main(argv=None) -> int:
     p.add_argument("--rendre-description", action="store_true",
                    help="Rend aussi à la GAGNANTE la description que cette fusion lui "
                         "avait écrasée (seulement si l'instantané existe).")
+    p.add_argument("--statut", default=None,
+                   help=f"Statut à donner aux fiches SANS instantané, au lieu de "
+                        f"'{STATUT_RECONSTITUE}'. Sert quand on SAIT que la fiche n'a rien "
+                        f"à faire dans la file : une fiche radar (source_type='radar') est "
+                        f"un signal de détection Google News, jamais un événement "
+                        f"publiable — la rendre à l'évaluation, c'est payer un appel LLM "
+                        f"pour se faire dire ce qu'on savait déjà.")
     args = p.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -101,17 +108,29 @@ def main(argv=None) -> int:
                              f"audit_wp_ghosts avant de défusionner"))
             continue
         snap = _snapshot(ev, "perdant")
+        radar = (ev.get("source_type") == "radar"
+                 or "(radar)" in (ev.get("source_name") or ""))
         plan.append({
             "id": i, "titre": (ev.get("title") or "")[:55], "gagnant": gagnant,
-            "statut_cible": (snap or {}).get("statut_avant") or STATUT_RECONSTITUE,
+            "statut_cible": ((snap or {}).get("statut_avant")
+                             or args.statut or STATUT_RECONSTITUE),
             "restaure": bool(snap and snap.get("statut_avant")),
-            "quand": (snap or {}).get("at", ""),
+            "quand": (snap or {}).get("at", ""), "radar": radar,
         })
 
     print(f"\n{len(plan)} fusion(s) à défaire, {len(refus)} refusée(s).\n")
     for c in plan:
         mode = "RESTAURE" if c["restaure"] else "reconstitue"
-        note = "" if c["restaure"] else "  ⚠️ aucun instantané — sera RE-ÉVALUÉE (coût LLM)"
+        note = ""
+        if not c["restaure"]:
+            note = ("  ⚠️ aucun instantané — sera RE-ÉVALUÉE (coût LLM)" if not args.statut
+                    else "  aucun instantané — statut imposé, pas de ré-évaluation")
+        if c["radar"] and not c["restaure"] and not args.statut:
+            # Une fiche RADAR est un signal de détection Google News, pas un événement :
+            # la rendre à la file d'évaluation fait payer un appel LLM pour un verdict
+            # connu d'avance. Le dire ici plutôt que de le laisser découvrir sur la facture.
+            note = ("  ⚠️ fiche RADAR (signal Google News, jamais publiable) — "
+                    "envisager --statut rejected")
         print(f"  [{c['id']:>5}] {mode:<11} statut → '{c['statut_cible']}' "
               f"(absorbée par {c['gagnant']}) · {c['titre']}{note}")
     for i, motif in refus:
@@ -121,8 +140,20 @@ def main(argv=None) -> int:
     if anciennes:
         print(f"\n  {len(anciennes)} fiche(s) sans instantané : la fusion est antérieure au "
               f"2026-08-03,\n  date à laquelle dedupe a commencé à enregistrer ce qu'il "
-              f"écrase. Leur statut\n  d'avant n'existe nulle part — on ne peut que les "
-              f"rendre à la file d'évaluation.")
+              f"écrase. Leur statut\n  d'avant n'existe nulle part — "
+              + (f"on ne peut que les rendre à la file d'évaluation."
+                 if not args.statut else
+                 f"elles reçoivent le statut imposé '{args.statut}'."))
+        if args.rendre_description:
+            # LE PIÈGE À DIRE AVANT, PAS APRÈS. --rendre-description ne peut rendre que ce
+            # que l'instantané contient ; sur une fusion ancienne il n'y a rien, donc
+            # l'option ne fait RIEN — sans un mot, on croirait la description réparée.
+            # C'est repair_polluted_descriptions qu'il faut alors (il re-télécharge la
+            # page source), et c'est un geste séparé.
+            print("\n  ⚠️ --rendre-description est SANS EFFET sur ces fiches-là : aucun "
+                  "instantané\n     n'existe. Pour rendre à la gagnante sa vraie "
+                  "description, passer par\n     scripts/repair_polluted_descriptions "
+                  "(il re-télécharge la page source).")
 
     if not args.apply:
         print("\nDry-run — rien n'a été écrit. Ajouter --apply pour appliquer.\n")
@@ -167,8 +198,13 @@ def main(argv=None) -> int:
     # ne repasse par rien. Écrire la phrase dans tous les cas ferait attendre une
     # ré-évaluation qui n'aura pas lieu (règle 6 — dire ce qui s'est produit).
     if anciennes:
-        print(f"   Les {len(anciennes)} fiche(s) remises en '{STATUT_RECONSTITUE}' "
-              f"repasseront par l'évaluation de 9h.\n")
+        cible = args.statut or STATUT_RECONSTITUE
+        if cible == STATUT_RECONSTITUE:
+            print(f"   Les {len(anciennes)} fiche(s) remises en '{cible}' repasseront par "
+                  f"l'évaluation de 9h.\n")
+        else:
+            print(f"   Les {len(anciennes)} fiche(s) sans instantané ont été mises en "
+                  f"'{cible}' — elles ne\n   repasseront donc PAS par l'évaluation.\n")
     log.info("Défusion : %d/%d appliquée(s) le %s", faites, len(plan), quand)
     return 0
 
