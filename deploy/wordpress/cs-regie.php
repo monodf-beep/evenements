@@ -188,8 +188,31 @@ add_action('wp_footer', function () {
         var ads = document.querySelectorAll('.cs-gutter');
         if (!ads.length) { return; }
         var GAP = 16;
-        var footer = document.querySelector('.site-footer, #colophon, .as-site-footer, .as-desktop-footer, footer');
-        var heads  = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+        var heads = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+
+        /* Le footer doit etre cherche a CHAQUE passage et VALIDE, pas resolu une fois
+           pour toutes. Bug du 2026-08-04 (gouttieres invisibles partout, y compris en
+           navigation normale) : querySelector('.site-footer, #colophon, …') renvoie le
+           premier element dans l'ORDRE DU DOM correspondant a n'importe lequel des
+           selecteurs — pas le premier selecteur de la liste. Il tombait donc sur le
+           footer natif GeneratePress, masque par « display:none !important »
+           (components.css). Un element display:none renvoie un rectangle a ZERO, d'ou
+           footTop=0, maxTop negatif, et la branche « pas la place » masquait les deux
+           gouttieres sur toutes les pages. */
+        function footerTop(vh){
+          var cands = document.querySelectorAll('.as-desktop-footer, .as-site-footer, .site-footer, #colophon, footer');
+          var best = null;
+          for (var i = 0; i < cands.length; i++) {
+            var el = cands[i];
+            if (el.offsetParent === null) { continue; }        // display:none
+            var r = el.getBoundingClientRect();
+            if (r.height <= 0) { continue; }                   // pas rendu
+            // On garde le footer le plus BAS du document (le vrai pied de page).
+            var docTop = r.top + (window.pageYOffset || 0);
+            if (best === null || docTop > best.docTop) { best = { docTop: docTop, top: r.top }; }
+          }
+          return best ? best.top : Infinity;   // aucun footer fiable → pas de borne basse
+        }
 
         function place(){
           var vh = window.innerHeight;
@@ -201,22 +224,25 @@ add_action('wp_footer', function () {
             var hb = heads[h].getBoundingClientRect().bottom;
             if (hb > headBottom && hb < vh / 2) { headBottom = hb; }
           }
-          var minTop = headBottom + GAP;
-
-          // Haut du footer en coordonnees viewport (vh si pas de footer trouve).
-          var footTop = footer ? footer.getBoundingClientRect().top : vh;
+          var minTop  = headBottom + GAP;
+          var footTop = footerTop(vh);
 
           for (var i = 0; i < ads.length; i++) {
             var el = ads[i];
-            var adH = el.offsetHeight;
-            var maxTop = footTop - adH - GAP;
-            // Plus de place entre l'en-tete et le footer : on masque au lieu d'ecraser.
-            if (maxTop < minTop) { el.style.visibility = 'hidden'; continue; }
-            el.style.visibility = '';
-            var top = Math.round((vh - adH) / 2);   // centre par defaut
+            // offsetHeight vaut 0 tant que le consentement n'a pas revele l'encart
+            // (.cs-regie est display:none) : on retombe sur la hauteur nominale.
+            var adH = el.offsetHeight || 614;
+            var top = Math.round((vh - adH) / 2);              // centre par defaut
             if (top < minTop) { top = minTop; }
+            var maxTop = footTop - adH - GAP;
             if (top > maxTop) { top = maxTop; }
+            // FAIL-OPEN : si le calcul ne laisse aucune place (viewport tres court,
+            // footer mal mesure…), on colle sous l'en-tete et on AFFICHE quand meme.
+            // Faire disparaitre une pub vendue sur un doute de mesure coute plus cher
+            // qu'un chevauchement passager — c'est exactement ce qui vient d'arriver.
+            if (!isFinite(top) || top < minTop) { top = minTop; }
             el.style.top = top + 'px';
+            el.style.visibility = '';
           }
         }
 
@@ -224,6 +250,9 @@ add_action('wp_footer', function () {
         addEventListener('scroll', place, { passive: true });
         addEventListener('resize', place, { passive: true });
         addEventListener('load',   place);
+        // Le consentement revele l'encart APRES coup : sa hauteur n'est mesurable
+        // qu'a ce moment-la, il faut donc recalculer.
+        document.addEventListener('cmplz_status_change', function(){ setTimeout(place, 0); });
       })();
     </script>
     <?php
