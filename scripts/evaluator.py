@@ -278,7 +278,8 @@ def main(argv=None) -> int:
         # Pré-filtre GRATUIT ter : règle éditoriale explicite (config/
         # excluded_event_keywords.txt) — ex. « jamais le 27e/23e BCA ». Rejet avant
         # tout appel LLM, quel que soit le score qu'il aurait donné.
-        if is_excluded_event(ev.get("title", ""), ev.get("description", ""), excluded_re):
+        if is_excluded_event(ev.get("title", ""), ev.get("description", ""), excluded_re,
+                             url=ev.get("url_source", "")):
             conn.execute("UPDATE events_raw SET statut='rejected', llm_score=0, "
                          "llm_justification='Exclu par règle éditoriale (config/excluded_event_keywords.txt).' "
                          "WHERE id=?", (ev["id"],))

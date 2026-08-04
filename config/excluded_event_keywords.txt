@@ -11,6 +11,63 @@
 #   .venv/bin/python -m scripts.audit_excluded_events            # liste (dry-run)
 #   .venv/bin/python -m scripts.audit_excluded_events --apply    # corbeille + rejette
 
+# Depuis le 2026-08-04, l'URL SOURCE de la fiche est aussi cherchée (utils.sources
+# .is_excluded_event) : un nom de domaine est une expression comme une autre, les
+# points comptant comme frontières de mots (« businessfrance » matche
+# event.businessfrance.fr).
+
+# ── Événements PROFESSIONNELS (B2B) — jamais valorisés (2026-08-04) ──
+# Incident : « Côte d'Azur Life Sciences Afterwork » et « French Riviera Beauty »
+# (event.businessfrance.fr) trouvés publiés. La charte est claire : public VISÉ, pas
+# public admis — un rendez-vous d'affaires n'a pas sa place même « ouvert à tous ».
+#
+# RÈGLE DE COMPOSITION de cette section : seuls les marqueurs SANS AMBIGUÏTÉ entrent
+# ici, parce que ce filtre rejette AUTOMATIQUEMENT, sans juge. Ne JAMAIS y mettre
+# seuls : « conférence », « salon », « rencontre », « atelier », « forum »,
+# « masterclass », « workshop », « networking », « colloque », « convegno »,
+# « séminaire », « congrès » (le Palais des Congrès est un LIEU de concerts !),
+# « recrutement » (les associations recrutent des bénévoles), « team building »
+# (boniment de lieu : « idéal pour vos team buildings » sur la page d'un château).
+# Ces mots-là, c'est le LLM qui les juge en contexte — « Conférences & Rencontres »
+# est une de nos onze catégories (docs/CHARTE_EDITORIALE.md).
+#
+# CONTRE-EXEMPLE de domaine à ne JAMAIS ajouter : us.list-manage.com — c'est le
+# domaine de suivi de Mailchimp, présent dans TOUTE newsletter (y compris culturelles
+# légitimes). Ce n'est pas un marqueur pro, c'est un facteur du courrier.
+afterwork
+after-work
+b2b
+btob
+b-to-b
+salon professionnel
+salons professionnels
+réservé aux professionnels
+réservée aux professionnels
+réservés aux professionnels
+réservées aux professionnels
+riservato agli operatori
+riservata agli operatori
+riservato ai professionisti
+riservata ai professionisti
+job dating
+job-dating
+salon de l'emploi
+salon de l’emploi
+forum de l'emploi
+forum de l’emploi
+salon du recrutement
+rencontres d'affaires
+rencontres d’affaires
+rendez-vous d'affaires
+rendez-vous d’affaires
+soirée networking
+serata networking
+business france
+businessfrance
+trade show
+job fair
+career fair
+
 # ── 27e et 23e BCA (Bataillons de Chasseurs Alpins) — jamais valorisés ──
 27e BCA
 27 BCA

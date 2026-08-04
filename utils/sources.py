@@ -298,11 +298,16 @@ def load_excluded_events_filter(path: Path | None = None):
     return _compile_keywords(_load_keywords(path or _EXCLUDED_EVENTS_FILE))
 
 
-def is_excluded_event(title: str, description: str, excluded_re) -> bool:
-    """Vrai si le titre OU la description matche une règle d'exclusion éditoriale."""
+def is_excluded_event(title: str, description: str, excluded_re, url: str = "") -> bool:
+    """Vrai si le titre, la description OU l'URL matche une règle d'exclusion éditoriale.
+
+    L'URL participe depuis le 2026-08-04 : « French Riviera Beauty » (B2B pur, repéré
+    publié ce jour-là) n'avait AUCUN marqueur pro dans son titre — mais son domaine
+    `event.businessfrance.fr` le signait sans ambiguïté. Les points d'un domaine sont
+    des frontières de mot pour la regex, donc une ligne `businessfrance` suffit."""
     if excluded_re is None:
         return False
-    text = _strip_accents(f"{title or ''} {description or ''}").lower()
+    text = _strip_accents(f"{title or ''} {description or ''} {url or ''}").lower()
     return bool(excluded_re.search(text))
 
 

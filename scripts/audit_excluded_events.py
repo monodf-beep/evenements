@@ -51,9 +51,10 @@ def main(argv=None) -> int:
 
     excluded_re = load_excluded_events_filter()
     all_rows = [dict(r) for r in conn.execute(
-        "SELECT id, title, description, wp_post_id_as FROM events_raw").fetchall()]
+        "SELECT id, title, description, url_source, wp_post_id_as FROM events_raw").fetchall()]
     flagged = [r for r in all_rows
-              if is_excluded_event(r.get("title", ""), r.get("description", ""), excluded_re)]
+              if is_excluded_event(r.get("title", ""), r.get("description", ""), excluded_re,
+                                   url=r.get("url_source", ""))]
     published = sum(1 for r in all_rows if (r.get("wp_post_id_as") or 0) > 0)
     targets = [r for r in flagged if (r.get("wp_post_id_as") or 0) > 0]
     if args.cap:
