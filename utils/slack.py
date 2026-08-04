@@ -39,23 +39,63 @@ def enabled() -> bool:
     return bool(_webhook())
 
 
+# ARCHIVE LOCALE DES MESSAGES — demandée deux fois par Franck (« les rapports sont bien
+# sur Slack, mais j'aimerais qu'ils soient aussi stockés quelque part »), et la seconde
+# fois le 2026-08-04 : « est-ce que tu stockes ces retours que j'ai de Slack ? »
+#
+# CE QUE ÇA CORRIGE, ET C'EST PLUS QUE DU CONFORT. Slack est le SEUL endroit où passent
+# les constats quotidiens du pipeline — sections vides, fiches bloquées, anomalies du
+# site. Personne ne peut les relire ensuite : ni un audit, ni une session qui reprend le
+# projet, ni Franck lui-même trois semaines plus tard. Résultat observé le 2026-08-04 :
+# des messages annonçaient depuis des jours « LES 7 PROCHAINS JOURS : 0 carte », et il a
+# fallu qu'il recolle son fil à la main pour qu'on le voie.
+#
+# Un fichier par JOUR, en JSONL : on retrouve un message par sa date sans lire le reste, et
+# ça s'ouvre avec n'importe quoi. Sous `logs/` (déjà gitignoré) parce que c'est un journal
+# du serveur, pas du code — `rapports/` reste réservé à ce qu'on veut transmettre exprès.
+#
+# JAMAIS BLOQUANT, exactement comme l'envoi lui-même : si l'écriture échoue, on loggue et
+# on continue. Une archive qui ferait tomber une publication serait pire que pas d'archive.
+_ARCHIVE = ROOT / "logs" / "slack"
+
+
+def _archive(text: str, envoye: bool) -> None:
+    """Écrit le message dans logs/slack/AAAA-MM-JJ.jsonl. `envoye` est conservé : un
+    message qui n'est PAS parti est justement celui qu'on cherchera plus tard."""
+    import json
+    from datetime import datetime
+    try:
+        _ARCHIVE.mkdir(parents=True, exist_ok=True)
+        now = datetime.now()
+        ligne = json.dumps({"at": now.isoformat(timespec="seconds"),
+                            "envoye": envoye, "texte": text}, ensure_ascii=False)
+        with (_ARCHIVE / f"{now:%Y-%m-%d}.jsonl").open("a", encoding="utf-8") as f:
+            f.write(ligne + "\n")
+    except (OSError, ValueError) as exc:
+        log.warning("Archive Slack non écrite (%s) — le message est parti quand même", exc)
+
+
 def notify(text: str, blocks: list | None = None) -> bool:
-    """Poste un message sur Slack. Renvoie True si envoyé. Jamais d'exception levée."""
+    """Poste un message sur Slack ET l'archive localement. Renvoie True si envoyé.
+    Jamais d'exception levée."""
     url = _webhook()
     if not url:
         log.info("SLACK_WEBHOOK_URL absente — notification ignorée : %s", text[:80])
+        _archive(text, envoye=False)
         return False
     payload: dict = {"text": text}
     if blocks:
         payload["blocks"] = blocks
     try:
         r = requests.post(url, json=payload, timeout=15)
-        if r.status_code >= 300:
+        ok = r.status_code < 300
+        if not ok:
             log.warning("Slack a répondu %s : %s", r.status_code, r.text[:200])
-            return False
-        return True
+        _archive(text, envoye=ok)
+        return ok
     except requests.RequestException as exc:
         log.warning("Envoi Slack impossible : %s", exc)
+        _archive(text, envoye=False)
         return False
 
 

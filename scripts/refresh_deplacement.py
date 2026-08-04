@@ -250,8 +250,27 @@ def main(argv=None) -> int:
         print(f"   ⚠️  {len(ids)} en état '{etat}' — non poussées : {ids[:12]}"
               + (" …" if len(ids) > 12 else ""))
     if par_etat.get("non_public"):
-        print("   → ces posts sont à la CORBEILLE alors que la base les croit publiés "
-              "(règle 1).\n     Voir scripts/reconcile_wp_deleted.")
+        # RENVOI CORRIGÉ LE 2026-08-04. La version précédente disait « voir
+        # reconcile_wp_deleted » — or ce script GARDE délibérément le lien d'un post
+        # corbeillé et ne fait rien d'autre. Le renvoi était donc une impasse polie :
+        # exactement le défaut relevé la veille sur audit_wp_ghosts, reproduit ici le
+        # lendemain. Le bilan du matin l'a rendu visible : 22 fiches refusées, 21 encore
+        # devant nous, et la section qui vieillit pour de bon.
+        n = len(par_etat["non_public"])
+        print(f"   → ces {n} post(s) sont à la CORBEILLE alors que la base les croit "
+              f"publiés (règle 1).\n"
+              f"     AUCUN script ne referme ce cas tout seul, et c'est voulu : on ne "
+              f"peut pas deviner\n"
+              f"     si le post a été retiré exprès ou par accident. Deux issues, à "
+              f"choisir à la main :\n"
+              f"       • le retrait était VOULU  → passer la fiche en 'rejected' "
+              f"(scripts/trash_by_ids --statut)\n"
+              f"       • le retrait était SUBI   → vider wp_post_id_as : la fiche repart "
+              f"au lot du lendemain\n"
+              f"                                    et se republie d'elle-même sur un "
+              f"post neuf.\n"
+              f"     Tant qu'aucune des deux n'est faite, leur note de section reste "
+              f"celle d'hier.")
     log.info("Rafraîchissement : %d republiée(s), %d restantes, %s le %s",
              pousse, restant, {k: len(v) for k, v in par_etat.items()},
              datetime.now().isoformat(timespec="seconds"))
