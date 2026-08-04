@@ -41,6 +41,9 @@ from utils.sources import (is_logo_image, load_territory_images, load_territory_
                            pick_banner_image, is_blocked_image, load_blocked_image_domains)
 # Score « ça vaut le déplacement » dérivé des critères d'importance de l'évaluateur.
 from utils.deplacement import deplacement_score, deplacement_now
+# Ancre officielle : la MÊME fonction que celle du verrou de publication, pour que
+# « on a le droit de publier » et « voici la source » ne puissent pas diverger.
+from utils import radar
 
 log = get_logger("publisher_as")
 
@@ -178,11 +181,20 @@ def _source_publiable(event: dict, is_radar: bool) -> str:
     **Dans tous les cas**, une redirection de routeur de newsletter n'est pas une
     source (CONFORMITE §5).
 
-    ⚠️ Une fiche TRADUITE n'hérite pas de `url_officiel` (translate_events l.476-486) :
-    elle ressortira donc sans source même si l'original en a une. C'est à la traduction
-    de propager la colonne, pas au publisher de remonter au parent.
+    L'ancre officielle est celle de `utils.radar.official_anchor()` — la MÊME que
+    celle qui autorise la publication. Ne pas la réécrire ici : elle lit trois signaux
+    (colonne `url_officiel`, pages officielles réellement téléchargées dans
+    `enrich_data.source.pages`, booléen « matière officielle lue ») et refuse les
+    agrégateurs. Une première version de cette fonction ne lisait que le premier :
+    sur 17 fiches à réparer, 8 sont ressorties vides. Le troisième signal n'est pas
+    une URL mais une phrase, d'où le test de schéma avant publication.
+
+    ⚠️ Une fiche TRADUITE n'hérite pas de `url_officiel` (translate_events l.476-486).
+    `official_anchor` peut la rattraper par `enrich_data`, sinon elle ressortira sans
+    source même si l'original en a une : c'est à la traduction de propager la colonne.
     """
-    officiel = (event.get("url_officiel") or "").strip()
+    ancre = radar.official_anchor(event) or ""
+    officiel = ancre.strip() if ancre.startswith(("https://", "http://")) else ""
     url = officiel if officiel else ("" if is_radar else (event.get("url_source") or "").strip())
     if _is_tracking_url(url):
         log.warning("source de traçage écartée (id=%s) : %s",
