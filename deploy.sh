@@ -31,7 +31,12 @@ else
 fi
 
 # 3) Redémarrage du service (si systemd présent) ------------------------------
-if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^agenda-admin'; then
+# `systemctl cat` teste juste l'existence de l'unité (exit code, pas de pipe) —
+# évite le faux négatif intermittent de `systemctl list-unit-files | grep -q ...`
+# sous `set -o pipefail` : grep -q peut fermer le pipe dès son premier match
+# pendant que systemctl écrit encore, qui reçoit alors SIGPIPE (exit 141) ;
+# pipefail remonte ça comme un échec de la commande alors que le match existait.
+if command -v systemctl >/dev/null 2>&1 && systemctl cat agenda-admin.service >/dev/null 2>&1; then
   echo "==> Redémarrage du service agenda-admin"
   sudo systemctl restart agenda-admin
   sudo systemctl --no-pager status agenda-admin | head -5
