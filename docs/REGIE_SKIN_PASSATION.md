@@ -23,7 +23,8 @@ reprendre ce travail sans pouvoir observer la page en vrai.**
   faudra réactiver ou recréer une campagne dans le backoffice pour tester.
 
 **Le défaut ouvert : la skin saute pendant le défilement.** Non résolu après quatre
-tentatives distinctes (v1.4, v1.5, v1.6, v1.9).
+tentatives distinctes (v1.4, v1.5, v1.6, v1.9). **Cause mesurée depuis** — cf. §2 et §4
+piège n°6 : elle ne se corrige pas par un réglage, elle impose de sortir la skin du flux.
 
 ### Comment c'est construit aujourd'hui
 
@@ -41,20 +42,17 @@ page pour que la skin se décolle à son arrivée.
 
 ---
 
-## 2. Ce qu'il faut vérifier EN PREMIER avec un navigateur
+## 2. Diagnostic — FAIT, la cause est mesurée
 
-Dans l'ordre, parce que la réponse à la première question rend peut-être les suivantes
-inutiles :
+Ces vérifications ont été menées au navigateur le 2026-08-05 depuis une session locale.
+**Résultat en §4, piège n°6** : la page raccourcit de 89 px en cours de défilement quand
+l'en-tête compact sort du flux, et la skin est ancrée à la page. Cause close.
 
-1. **Mesurer si `#cs-skin-spacer` change de position pendant le défilement.**
-   `getBoundingClientRect().top + scrollY` doit être **constant**. S'il ne l'est pas, c'est
-   la cause du saut, et c'est la piste principale (cf. §4, piège n°6).
-2. **Vérifier si `.as-site-header` (l'en-tête compact de l'accueil) est en `position:fixed`
-   ou dans le flux.** S'il est dans le flux et qu'il apparaît au défilement, il pousse tout
-   le contenu vers le bas en cours de route — auquel cas **aucune** approche ancrée sur la
-   page ne peut être stable, et il faut soit le sortir du flux, soit passer au fond fixe.
-3. **Filmer le saut au ralenti** (DevTools → Performance, ou capture vidéo) pour savoir s'il
-   se produit à un seuil précis (bascule d'état) ou en continu (retard de peinture).
+Deux détails de méthode, s'il faut remesurer :
+
+- `scroll-behavior:smooth` fausse toute mesure synchrone — le désactiver avant de mesurer ;
+- `body` est lui-même un conteneur de défilement (`overflow-x:hidden` du thème force
+  `overflow-y:auto`). Ce n'est pas une règle de la skin, ne pas partir sur cette piste.
 
 ---
 
@@ -82,7 +80,21 @@ C'est la source de toute la difficulté.
 page), le bandeau est un bloc normal dans le flux (il défile tout seul). Ni sticky, ni rail,
 ni cale, ni JavaScript. Zéro calcul, donc zéro saut possible.
 
-C'est l'option à privilégier si Franck accepte de faire produire une seconde créative.
+**Le fond fixe ne demande AUCUNE nouvelle créative** : il fonctionne avec le fichier
+actuel, c'est ce que faisait la v0.3. La seconde créative sert uniquement à récupérer le
+bandeau défilant — c'est un gain de confort, pas une condition.
+
+À savoir avant d'arbitrer : en fond fixe, la bande titre de la créative actuelle
+(« L'atmosfera sabauda ») sera **largement masquée par l'en-tête**. Sur l'accueil au
+chargement la pile d'en-têtes fait ~450 px et cette bande ~150 px : elle sera entièrement
+derrière ; une fois défilé, l'en-tête compact ne fait plus que ~130 px et elle réapparaîtra
+en partie. C'est exactement ce que la spec anticipe en déconseillant le texte dans le fond.
+Autrement dit : le fond fixe supprime le bug tout de suite, mais transforme le message de
+l'annonceur en ambiance. Pour qu'il reste lisible, il faut le bandeau séparé.
+
+**Ordre recommandé** : passer en fond fixe maintenant (le site cesse de sauter, sans rien
+attendre de personne), et demander le bandeau 970×250 pour la campagne suivante — ajout
+indépendant qui ne remet rien en cause.
 
 ---
 
@@ -155,21 +167,53 @@ D'où la cale insérée en JS après la pile d'en-têtes : elle tombe au bon end
 types de page sans les distinguer. **L'accueil et les pages intérieures n'ont pas la même
 structure d'en-tête — toujours tester les deux.**
 
-### 6. Le bas du menu n'est pas un repère stable (v1.4 → v1.5, et probablement le défaut restant)
+### 6. La page RACCOURCIT de 89 px en cours de défilement — cause mesurée du saut
 
-Sur l'accueil, la barre territoire s'en va en défilant pendant que l'en-tête compact
-apparaît : `headBottom()` **change en cours de défilement**. Tout ce qui s'y ancre se déplace
-donc en cours de route.
+**Mesuré au navigateur le 2026-08-05** (session locale), après avoir été supposé ici. Ce
+n'est plus une piste, c'est la cause.
 
-- v1.4 accrochait la skin à « bas du menu − hauteur du bandeau » → elle sautait.
-- v1.5 a remplacé ça par une constante → mieux, mais le rail restait calé une fois pour
-  toutes, donc en remontant le bandeau revenait tronqué (il fallait recharger).
-- v1.9 revérifie le rail au défilement en n'écrivant que si la valeur a changé → **et le saut
-  est revenu**, ce qui suggère que la position de la cale change bel et bien en cours de
-  défilement (à confirmer, cf. §2 point 1).
+Sur l'accueil, entre `y=250` et `y=300`, trois choses basculent ensemble :
 
-**C'est la piste la plus probable pour le défaut restant.** Un fond `position:fixed` y serait
-insensible par construction : il ne dépend d'aucun repère de la page.
+| | avant le seuil | après |
+|---|---|---|
+| `body.cs-hdr-min` | absent | présent |
+| `.as-home-sticky-panel` | `position:static` | `position:fixed` |
+| haut du rail `#cs-skin-track` | 339,3 px | **250,3 px** |
+
+L'en-tête compact fait passer le panneau en `position:fixed` : il **sort du flux**, et tout
+ce qui est ancré en dessous remonte de **89 px instantanément**. Pas progressivement — d'un
+coup, au franchissement du seuil. Le mouvement est réversible et se rejoue à l'identique en
+remontant. Les pages intérieures sautent aussi, plus discrètement : ~11 px en deux paliers.
+
+**Conséquence, et c'est la conclusion importante : aucun ancrage dans le flux ne peut être
+stable.** Ce n'est pas un réglage à trouver, c'est une propriété du thème. Une fois la skin
+ancrée dans la page, il n'y a que deux comportements possibles, et les deux ont été essayés :
+
+- **elle suit le mouvement** (v1.4, v1.9) → le contenu remonte de 89 px, elle aussi : c'est
+  le saut, inévitable puisque le déplacement lui-même est instantané ;
+- **elle ne suit pas** (v1.5, ancrage sur une constante) → plus de saut, mais le contenu a
+  bougé et pas elle : la fenêtre crème ne tombe plus en face de la colonne de contenu, ce
+  qui est le décalage constaté à l'époque.
+
+Il n'y a pas de troisième comportement. C'est un choix entre deux défauts.
+
+Supprimer le mouvement de la page se mord la queue : ces 89 px, l'en-tête compact existe
+précisément pour les récupérer. Lui demander de réserver la place qu'il libère annulerait sa
+fonction. **À écarter.**
+
+**Seul un fond `position:fixed` y est insensible**, parce qu'il ne dépend d'aucun repère de
+la page. Le problème ne se pose plus, il disparaît.
+
+### 6 bis. Sur l'accueil, la cale ne cale rien (jamais élucidé pendant la session aveugle)
+
+Toujours mesuré : sur l'accueil, `#cs-skin-spacer` est inséré dans `.as-home-sticky-panel`,
+**dont la hauteur rendue est 0**. Sa propre hauteur calculée est bien de ~205 px, mais elle
+est absorbée par un ancêtre à hauteur nulle : elle ne dégage donc **aucun espace**. Sur les
+pages intérieures, en revanche, elle est enfant direct de `body` et fait ses ~189 px réels.
+
+C'est la vraie raison pour laquelle le bandeau n'avait jamais « la place » sur l'accueil
+alors que la même mécanique fonctionnait ailleurs — mis à tort, pendant la session aveugle,
+sur le compte du placement de la cale (piège n°5).
 
 ### 7. Une créative 16/9 est moins haute qu'une fenêtre courante (v1.8)
 
