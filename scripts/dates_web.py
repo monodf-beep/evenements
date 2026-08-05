@@ -62,7 +62,16 @@ def web_date(ev: dict, client, today: str) -> tuple[str, str, str]:
             model=MODEL, max_tokens=400,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 4}],
             messages=[{"role": "user", "content": prompt}])
-    except Exception as exc:  # jamais bloquant
+    except Exception as exc:
+        # PLAFOND API ≠ échec de fiche (utils/api_limite.py) : ce dernier recours est
+        # appelé en boucle par scripts/dates_web.py ET par scripts.autocomplete._fill_date
+        # — sans cette garde, un plafond y était avalé comme une simple page muette et
+        # martelé sur chaque fiche suivante, exactement le trou déjà trouvé et bouché le
+        # 2026-08-04 dans dates.py/venues.py/visuals.py mais oublié ici (dernier recours,
+        # jamais mesuré dans l'incident d'origine).
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         log.warning("Recherche date échouée : %s", exc)
         return ("", "", "web_none")
     try:
@@ -142,9 +151,17 @@ def main(argv=None) -> int:
 
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
+    from utils.api_limite import PlafondAPI
     ok = 0
+    plafonne = False
     for i, r in enumerate(rows, 1):
-        start, end, src = web_date(dict(r), client, today)
+        try:
+            start, end, src = web_date(dict(r), client, today)
+        except PlafondAPI as exc:
+            log.error("PLAFOND API atteint sur la fiche %s — lot arrêté, %d fiche(s) "
+                      "non tentée(s) : %s", r["id"], len(rows) - i + 1, exc)
+            plafonne = True
+            break
         mark_web_attempt(conn, "date_web_at", r["id"])   # tentative armée (réussie ou non)
         if src == "web" and start:
             conn.execute(
@@ -159,6 +176,8 @@ def main(argv=None) -> int:
 
     conn.close()
     log.info("=== Dates (web) : %d trouvée(s) sur %d ===", ok, len(rows))
+    if plafonne:
+        return 3
     return 0
 
 

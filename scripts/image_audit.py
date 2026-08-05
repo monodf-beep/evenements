@@ -191,6 +191,16 @@ def judge_grid(batch: list[dict], grid_bytes: bytes, client, failed: "set[int]" 
                                              "data": base64.standard_b64encode(grid_bytes).decode("ascii")}},
                 {"type": "text", "text": prompt}]}])
     except Exception as exc:
+        # PLAFOND API ≠ échec de planche (utils/api_limite.py) : un `return []` ici est pire
+        # qu'ailleurs, car `main()` traite une liste vide comme « rien à signaler » et
+        # `_persist_flags` en déduit que CHAQUE fiche de la planche a été rejugée OK — un
+        # plafond effacerait donc silencieusement les signalements déjà actifs de la
+        # planche entière. Trouvé le 2026-08-05 en balayant les points d'appel après
+        # l'incident du 04, jamais mesuré dans l'incident d'origine (audit hebdomadaire,
+        # borné, faible volume — mais le dégât par appel est pire ici, pas moindre).
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         log.warning("Audit lot échoué : %s", exc)
         return []
     try:
@@ -297,44 +307,64 @@ def main(argv=None) -> int:
     import anthropic
     client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
 
+    from utils.api_limite import PlafondAPI
     flagged_all = []
     total_failed = 0
     failed_ids: set[int] = set()
+    audited_ids: list[int] = []          # SEULEMENT les planches réellement jugées (cf. plafond)
+    plafonne = False
     for i, batch in enumerate(batches, 1):
         log.info("Planche %d/%d (%d événements)…", i, len(batches), len(batch))
         grid, failed = build_grid(batch)
         total_failed += len(failed)
         for n in failed:  # n : numéro 1-based dans le lot → id événement
             failed_ids.add(batch[n - 1]["id"])
-        flagged = judge_grid(batch, grid, client, failed)
+        try:
+            flagged = judge_grid(batch, grid, client, failed)
+        except PlafondAPI as exc:
+            # On s'ARRÊTE ici, planches suivantes NON tentées. Les planches déjà jugées
+            # gardent leurs verdicts (audited_ids) ; celle-ci et les suivantes ne sont PAS
+            # dans audited_ids — _persist_flags ne doit surtout pas les traiter comme
+            # « rejugées OK », ce qui effacerait leurs signalements actifs pour rien.
+            log.error("PLAFOND API atteint sur la planche %d/%d — %d planche(s) non "
+                      "tentée(s), aucun verdict effacé pour elles : %s",
+                      i, len(batches), len(batches) - i + 1, exc)
+            plafonne = True
+            break
+        audited_ids.extend(r["id"] for r in batch)
         flagged_all.extend(flagged)
         for f in flagged:
             log.warning("[%s] SUSPECT : %s — %s", f["id"], (f["title"] or "")[:60], f["raison"])
 
     log.info("=== Audit visuel : %d suspect(s) sur %d audité(s) (%d planches, %d échec(s) "
              "de téléchargement — pas un signal, retente au prochain passage) ===",
-             len(flagged_all), len(rows), len(batches), total_failed)
+             len(flagged_all), len(audited_ids), len(batches), total_failed)
 
     # Persiste les verdicts (le back-office /audit-visuel les affiche sans clic, avec badge).
     # Best-effort : le cron ne doit JAMAIS tomber là-dessus. (--dry-run est déjà sorti plus haut,
-    # donc aucune écriture en dry-run.)
+    # donc aucune écriture en dry-run.) SEULEMENT sur `audited_ids` — jamais `rows` en entier,
+    # cf. la garde plafond ci-dessus.
     try:
-        _persist_flags(conn, [r["id"] for r in rows], flagged_all, failed_ids)
+        _persist_flags(conn, audited_ids, flagged_all, failed_ids)
     except Exception as exc:  # noqa: BLE001
         log.warning("Persistance des flags d'audit échouée : %s", exc)
 
     if flagged_all and not args.no_slack:
         base = (os.getenv("BACKOFFICE_BASE_URL") or "").rstrip("/")
-        lines = [f"🖼️ *Audit visuel* — {len(flagged_all)} photo(s) suspecte(s) sur {len(rows)} auditées :"]
+        lines = [f"🖼️ *Audit visuel* — {len(flagged_all)} photo(s) suspecte(s) sur {len(audited_ids)} auditées :"]
         for f in flagged_all[:15]:
             title = (f["title"] or "?")[:70]
             lien = f"{base}/preview/{f['id']}" if base else ""
             lines.append(f"• <{lien}|{title}> — {f['raison']}" if lien else f"• {title} — {f['raison']}")
         if len(flagged_all) > 15:
             lines.append(f"… et {len(flagged_all) - 15} de plus (voir les logs).")
+        if plafonne:
+            lines.append("🔴 Plafond API atteint — planches restantes non tentées.")
         slack.notify("\n".join(lines))
 
     conn.close()
+    if plafonne:
+        return 3
     return 0
 
 
