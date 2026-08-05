@@ -34,14 +34,23 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   gouttières des blocs 5/6, dupliqué plutôt que factorisé pour ne pas risquer de casser
   leur logique déjà éprouvée (cf. les nombreux correctifs commentés plus bas).
 
-  Garde-fous : desktop uniquement (skin masquée sous le seuil calculé — cf. $cs_skin_bp ;
-  gouttières sous $cs_bp) ; consent-gated Complianz (cmplz_marketing=allow) ; coupé sur
-  pages sensibles (légales, « annoncer », 404) ; libellé « Publicité » sur chaque
-  emplacement.
+  v0.5 (2026-08-05) : $cs_skin_bp masquait le BANDEAU en même temps que les colonnes
+  latérales, alors que lui seul (position fixed) a besoin de cette largeur pour ne pas
+  chevaucher le contenu — le bandeau est en flux normal pleine largeur, sans ce risque.
+  Constat Franck en test réel : sur un écran 1920×1080 à 175% d'échelle Windows + 80%
+  de zoom navigateur (~1370px effectifs), le bandeau — visible dès 1280px avec l'ancien
+  fond plein écran — avait disparu avec les colonnes alors qu'il tenait très bien à
+  cette largeur. Le bandeau retombe désormais sur le seuil générique de .cs-regie
+  (1280px) ; seules les colonnes restent réservées aux écrans ≥$cs_skin_bp.
+
+  Garde-fous : desktop uniquement (colonnes masquées sous le seuil calculé — cf.
+  $cs_skin_bp ; bandeau sous 1280px comme tout .cs-regie ; gouttières sous $cs_bp) ;
+  consent-gated Complianz (cmplz_marketing=allow) ; coupé sur pages sensibles (légales,
+  « annoncer », 404) ; libellé « Publicité » sur chaque emplacement.
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 0.4
+Version: 0.5
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -150,8 +159,18 @@ add_action('wp_footer', function () {
       .cs-skin-col--l a{background-position:left -240px}
       .cs-skin-col--r{right:0}
       .cs-skin-col--r a{background-position:right -240px}
+      /* Seul le seuil des COLONNES est ici, pas celui du bandeau : le bandeau est en
+         flux normal pleine largeur (aucun risque de chevaucher le contenu, contrairement
+         aux colonnes fixed) donc il n'a aucune raison d'exiger la meme largeur qu'elles.
+         Bug corrige le 2026-08-05 (Franck, test reel) : les deux etaient masques
+         ensemble sous $cs_skin_bp (1590/1840px) alors que l'ancienne skin (fond plein
+         ecran) s'affichait des 1280px comme tout le reste de .cs-regie -- un ecran
+         1920x1080 a 175% + zoom navigateur a 80% (~1370px effectifs) faisait disparaitre
+         le bandeau alors qu'il tenait tres bien a cette largeur. Le bandeau retombe donc
+         sur le seuil generique de .cs-regie (1280px, regle plus haut) ; seules les
+         colonnes restent reservees aux tres grands ecrans. */
       @media (max-width:<?php echo (int) $cs_skin_bp - 1; ?>px){
-        .cs-consent-mkt .cs-skin-banner,.cs-consent-mkt .cs-skin-col{display:none !important}
+        .cs-consent-mkt .cs-skin-col{display:none !important}
       }
       /* 160×600 DES DEUX COTES, ancrees a 24px des bords — valeurs du design system
          maison (.as-desktop-gutter-ad, components.css), pas une invention locale.
