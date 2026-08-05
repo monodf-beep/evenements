@@ -1963,9 +1963,21 @@ AD_BLOCKS = {
     "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel", "flux": "in",
           "cablage": "a_faire",
           "w": 970,  "h": 90,   "prix_base": 220, "prix_lancement": 140},
-    "4": {"nom": "Habillage / Skin",             "format": "1920×1080 (desktop only)", "source": "manuel", "flux": "out",
+    # DEUX créatives depuis le 2026-08-05, et c'est structurel, pas cosmétique : le format
+    # Page Skin (IQD/IAB) sépare le FOND, qui reste fixe dans la fenêtre, et le BANDEAU,
+    # qui défile avec la page. Les fondre dans un seul fichier — ce qu'on a fait pendant
+    # dix versions de cs-regie.php — ne peut pas marcher : une même image ne peut pas à la
+    # fois rester et défiler. Détail de l'impasse dans docs/REGIE_SKIN_PASSATION.md.
+    # Le bandeau reste FACULTATIF : sans lui la skin affiche le fond seul, ce qui est un
+    # habillage valable. C'est ce qui permet de ne pas invalider les campagnes déjà saisies.
+    "4": {"nom": "Habillage / Skin",             "format": "1920×1080 + bandeau 1920×300 (desktop only)",
+          "source": "manuel", "flux": "out",
           "cablage": "direct",
-          "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390},
+          "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390,
+          "creative2": {"nom": "Bandeau (défile avec la page)", "w": 1920, "h": 300,
+                        "aide": "Facultatif. Tout le message — logo, accroche, bouton — "
+                                "doit tenir dans les 970×250 centraux : c'est la seule "
+                                "zone visible à toutes les largeurs d'écran."}},
     # Gouttières (skyscrapers latéraux, desktop only, hors flux — cs-regie.php, pas
     # [cs_slot]). Tarifs 2026-08-04 : PLACEHOLDERS jamais négociés, à ajuster.
     # La droite était en 300×600 (half-page) : vu en vrai le 2026-08-04, trop large et
@@ -1993,6 +2005,11 @@ def _ensure_regie_table(conn):
         conn.execute("ALTER TABLE ad_campaigns ADD COLUMN clicks INTEGER NOT NULL DEFAULT 0")
     if "last_click" not in cols:
         conn.execute("ALTER TABLE ad_campaigns ADD COLUMN last_click TEXT")
+    # Seconde créative (bandeau de l'habillage, cf. AD_BLOCKS["4"]["creative2"]).
+    # Même migration douce : la colonne est nullable et vide par défaut, donc les
+    # campagnes déjà saisies restent valides et continuent d'afficher leur fond seul.
+    if "image_url_2" not in cols:
+        conn.execute("ALTER TABLE ad_campaigns ADD COLUMN image_url_2 TEXT")
 
 
 @app.route("/regie")
@@ -2040,11 +2057,12 @@ def regie_add():
     _ensure_regie_table(conn)
     conn.execute(
         "INSERT INTO ad_campaigns (created_at, annonceur, bloc, format, url, "
-        "image_url, date_debut, date_fin, tarif, note, statut) VALUES "
-        "(datetime('now','localtime'),?,?,?,?,?,?,?,?,?,'active')",
+        "image_url, image_url_2, date_debut, date_fin, tarif, note, statut) VALUES "
+        "(datetime('now','localtime'),?,?,?,?,?,?,?,?,?,?,'active')",
         (annonceur[:200], bloc, AD_BLOCKS[bloc]["format"],
          (f.get("url", "") or "").strip()[:500],
          (f.get("image_url", "") or "").strip()[:500],
+         (f.get("image_url_2", "") or "").strip()[:500],
          (f.get("date_debut", "") or "").strip()[:10],
          (f.get("date_fin", "") or "").strip()[:10],
          (f.get("tarif", "") or "").strip()[:50],
@@ -2096,10 +2114,11 @@ def regie_edit(cid):
     _ensure_regie_table(conn)
     conn.execute(
         "UPDATE ad_campaigns SET annonceur=?, bloc=?, format=?, url=?, image_url=?, "
-        "date_debut=?, date_fin=?, tarif=?, note=? WHERE id=?",
+        "image_url_2=?, date_debut=?, date_fin=?, tarif=?, note=? WHERE id=?",
         (annonceur[:200], bloc, AD_BLOCKS[bloc]["format"],
          (f.get("url", "") or "").strip()[:500],
          (f.get("image_url", "") or "").strip()[:500],
+         (f.get("image_url_2", "") or "").strip()[:500],
          (f.get("date_debut", "") or "").strip()[:10],
          (f.get("date_fin", "") or "").strip()[:10],
          (f.get("tarif", "") or "").strip()[:50],
@@ -2161,7 +2180,7 @@ def regie_active_ads():
     _ensure_regie_table(conn)
     today = date.today().isoformat()
     rows = conn.execute(
-        "SELECT id, bloc, image_url, url FROM ad_campaigns "
+        "SELECT id, bloc, image_url, image_url_2, url FROM ad_campaigns "
         "WHERE statut='active' AND image_url<>'' AND url<>'' "
         "AND (date_debut IS NULL OR date_debut='' OR date_debut<=?) "
         "AND (date_fin   IS NULL OR date_fin=''   OR date_fin>=?) "
@@ -2170,12 +2189,20 @@ def regie_active_ads():
     base = PUBLIC_BASE_URL  # https + host public, sinon rejet par l'allowlist WP
     ads = {}
     for r in rows:
-        ads[r["bloc"]] = {
+        ad = {
             "id": r["id"],
             "image": r["image_url"],
             "link": base + "/go/" + str(r["id"]),
             "format": AD_BLOCKS.get(r["bloc"], {}).get("format", ""),
         }
+        # Seconde créative (bandeau de l'habillage). Clé ABSENTE quand elle n'est pas
+        # renseignée, plutôt que présente et vide : côté WordPress, un simple test
+        # d'existence suffit alors à savoir s'il faut poser le bandeau, sans avoir à
+        # distinguer « pas de bandeau » de « bandeau vide ».
+        img2 = (r["image_url_2"] or "").strip()
+        if img2:
+            ad["image2"] = img2
+        ads[r["bloc"]] = ad
     resp = jsonify({"ads": ads})
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Cache-Control"] = "public, max-age=120"

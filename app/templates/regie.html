@@ -101,6 +101,16 @@
       <input name="image_url" class="rg-image" maxlength="500" placeholder="https://agendasabauda.eu/wp-content/uploads/…" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
     </label>
     <div class="rg-dim" style="grid-column:1/3;font-size:.82rem;"></div>
+    {# Seconde créative : n'existe que pour les blocs qui en déclarent une (aujourd'hui le
+       seul habillage). Masquée par défaut, révélée en JS selon le bloc choisi — plutôt
+       qu'un champ toujours visible qui laisserait croire qu'on attend deux fichiers
+       partout. #}
+    <label class="rg-img2-wrap" style="display:none;flex-direction:column;gap:.25rem;grid-column:1/3;">
+      <span class="rg-img2-label">URL de la 2ᵉ image</span>
+      <input name="image_url_2" class="rg-image2" maxlength="500" placeholder="https://agendasabauda.eu/wp-content/uploads/…" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+      <span class="rg-img2-aide muted text-sm"></span>
+    </label>
+    <div class="rg-dim2" style="grid-column:1/3;font-size:.82rem;"></div>
     <label style="display:flex;flex-direction:column;gap:.25rem;">Date de début
       <input type="date" name="date_debut" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
     </label>
@@ -202,6 +212,12 @@
             <input name="image_url" class="rg-image" maxlength="500" value="{{ c.image_url or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
           </label>
           <div class="rg-dim" style="grid-column:1/3;font-size:.8rem;"></div>
+          <label class="rg-img2-wrap" style="display:none;flex-direction:column;gap:.2rem;font-size:.82rem;grid-column:1/3;">
+            <span class="rg-img2-label">URL de la 2ᵉ image</span>
+            <input name="image_url_2" class="rg-image2" maxlength="500" value="{{ c.image_url_2 or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+            <span class="rg-img2-aide muted text-sm"></span>
+          </label>
+          <div class="rg-dim2" style="grid-column:1/3;font-size:.8rem;"></div>
           <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Date de début
             <input type="date" name="date_debut" value="{{ c.date_debut or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
           </label>
@@ -240,6 +256,24 @@ function rgCopyPrev(btn) {
     setTimeout(function(){ btn.textContent = old; }, 1500);
   });
 }
+// Contrôle des dimensions d'une image saisie. Factorisé depuis l'ajout de la seconde
+// créative (bandeau de l'habillage) : les deux champs ont exactement le même besoin,
+// avec des dimensions attendues différentes.
+function rgCheckDim(dim, img, w, h) {
+  if (!dim) return;
+  var url = img ? img.value.trim() : '';
+  if (!url) { dim.textContent = ''; return; }
+  var test = new Image();
+  test.onload = function(){
+    var ok = (test.naturalWidth === w && test.naturalHeight === h);
+    dim.innerHTML = ok
+      ? '✓ Dimensions OK (' + test.naturalWidth + '×' + test.naturalHeight + ')'
+      : '⚠️ Attendu ' + w + '×' + h + ', reçu ' + test.naturalWidth + '×' + test.naturalHeight + ' — l\'image risque d\'être déformée';
+    dim.style.color = ok ? '#1a7f4b' : '#b45309';
+  };
+  test.onerror = function(){ dim.textContent = '(image non chargée — vérifie l\'URL)'; dim.style.color = '#6F6B62'; };
+  test.src = url;
+}
 function rgUpdate(form) {
   var sel = form.querySelector('.rg-bloc'); if (!sel) return;
   var b = AD_BLOCKS[sel.value]; if (!b) return;
@@ -248,20 +282,27 @@ function rgUpdate(form) {
     + 'Tarif catalogue : <b>' + b.prix_lancement + ' €</b> (lancement · base ' + b.prix_base + ' €)'; }
   var tarif = form.querySelector('.rg-tarif');
   if (tarif && !tarif.value) { tarif.value = b.prix_lancement; }
-  var dim = form.querySelector('.rg-dim'); var img = form.querySelector('.rg-image');
-  if (!dim) return;
-  var url = img ? img.value.trim() : '';
-  if (!url) { dim.textContent = ''; return; }
-  var test = new Image();
-  test.onload = function(){
-    var ok = (test.naturalWidth === b.w && test.naturalHeight === b.h);
-    dim.innerHTML = ok
-      ? '✓ Dimensions OK (' + test.naturalWidth + '×' + test.naturalHeight + ')'
-      : '⚠️ Attendu ' + b.w + '×' + b.h + ', reçu ' + test.naturalWidth + '×' + test.naturalHeight + ' — l\'image risque d\'être déformée';
-    dim.style.color = ok ? '#1a7f4b' : '#b45309';
-  };
-  test.onerror = function(){ dim.textContent = '(image non chargée — vérifie l\'URL)'; dim.style.color = '#6F6B62'; };
-  test.src = url;
+  rgCheckDim(form.querySelector('.rg-dim'), form.querySelector('.rg-image'), b.w, b.h);
+
+  // Seconde créative : le champ n'apparaît que si le bloc en déclare une. Le libellé et
+  // les dimensions attendues viennent du bloc lui-même, pour qu'ajouter plus tard une
+  // 2e créative à un autre bloc ne demande rien d'autre que de la décrire dans AD_BLOCKS.
+  var wrap = form.querySelector('.rg-img2-wrap');
+  var dim2 = form.querySelector('.rg-dim2');
+  var img2 = form.querySelector('.rg-image2');
+  if (!wrap) return;
+  var c2 = b.creative2;
+  if (!c2) {
+    wrap.style.display = 'none';
+    if (dim2) dim2.textContent = '';
+    return;
+  }
+  wrap.style.display = 'flex';
+  var lab = wrap.querySelector('.rg-img2-label');
+  if (lab) { lab.textContent = 'URL du bandeau — ' + c2.nom + ' (' + c2.w + '×' + c2.h + ')'; }
+  var aide = wrap.querySelector('.rg-img2-aide');
+  if (aide) { aide.textContent = c2.aide || ''; }
+  rgCheckDim(dim2, img2, c2.w, c2.h);
 }
 document.addEventListener('input',  function(e){ var f = e.target.closest('.regie-form'); if (f) rgUpdate(f); });
 document.addEventListener('change', function(e){ var f = e.target.closest('.regie-form'); if (f) rgUpdate(f); });
