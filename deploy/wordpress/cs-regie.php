@@ -259,6 +259,13 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   FOOTER, elle ne remontait rien), et ajout de .cs-skin-mid : la colonne de lecture crème
   en CSS, à la largeur exacte du conteneur (950/1200) — le rôle que la fenêtre crème de
   l'ancienne créative jouait en dur dans l'image, raccord au pixel non garanti en moins.
+
+  v2.2 (2026-08-05) : le bandeau restait invisible — mesuré au navigateur (headless via
+  relais proxy) : présent dans le DOM, image chargée, mais rect 0×0. Cause : poser()
+  l'ancrait sur `.as-home-sticky-panel` sans tester s'il est rendu ; c'est l'en-tête de la
+  version MOBILE de l'accueil, masquée sur desktop — le bandeau était donc inséré dans un
+  sous-arbre invisible. L'ancre devient le dernier en-tête VISIBLE, toutes constructions
+  confondues (mêmes sélecteurs que le clamp des gouttières, même filtre getClientRects).
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -266,7 +273,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 2.1
+Version: 2.2
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -630,10 +637,16 @@ add_action('wp_footer', function () {
         var b = document.getElementById('cs-skin-banner');
         if (!b) { return; }
 
+        /* ⚠️ NE PAS ancrer sur .as-home-sticky-panel sans tester s'il est RENDU (v2.1,
+           repris aussitot, mesure au navigateur : bandeau en rect 0x0). Ce panneau est
+           l'en-tete de la version MOBILE de l'accueil — la page porte deux constructions
+           (.as-home mobile / .as-home-desktop), et sur desktop la mobile est masquee :
+           tout ce qu'on insere dedans devient invisible avec elle. L'ancre est donc le
+           DERNIER en-tete visible, toutes constructions confondues — memes selecteurs que
+           le clamp des gouttieres, meme filtre getClientRects (cf. piege offsetParent). */
         function ancre(){
-          var panel = document.querySelector('.as-home-sticky-panel');
-          if (panel) { return panel; }
-          var heads = document.querySelectorAll('.as-site-header, .as-terr-bar');
+          var heads = document.querySelectorAll(
+            '.as-home-sticky-panel, .as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline');
           var last = null;
           for (var i = 0; i < heads.length; i++) {
             if (heads[i].getClientRects().length === 0) { continue; }   // non rendu
