@@ -66,7 +66,7 @@ partielle, sans autorisation écrite préalable, est interdite.
 Les **données factuelles** relatives aux événements peuvent être librement consultées et partagées.
 
 Les **images** obéissent à une politique dédiée : voir la page **Crédits photos**
-(https://agendasabauda.eu/fr/credits-photos/). Les logos et visuels des lieux et organisateurs
+(https://agendasabauda.eu/credits-photos/). Les logos et visuels des lieux et organisateurs
 demeurent la propriété de leurs titulaires respectifs.
 
 ## 6. Signaler ou demander le retrait d'un événement
@@ -98,7 +98,7 @@ l'éditeur ne saurait être engagée en cas d'erreur, d'omission ou d'indisponib
 ## 9. Données personnelles et cookies
 
 Le traitement des données personnelles et l'usage des cookies sont décrits dans la
-**Politique de confidentialité** (https://agendasabauda.eu/fr/confidentialite/).
+**Politique de confidentialité** (https://agendasabauda.eu/confidentialite/).
 
 ## 10. Droit applicable
 
@@ -171,7 +171,7 @@ senza previa autorizzazione scritta, è vietato.
 I **dati fattuali** relativi agli eventi possono essere liberamente consultati e condivisi.
 
 Le **immagini** seguono una politica dedicata: si veda la pagina **Crediti fotografici**
-(https://agendasabauda.eu/it/crediti-foto/). I loghi e i materiali visivi dei luoghi e degli
+(https://agendasabauda.eu/it/crediti-fotografici/). I loghi e i materiali visivi dei luoghi e degli
 organizzatori restano di proprietà dei rispettivi titolari.
 
 ## 6. Segnalare o chiedere la rimozione di un evento
@@ -202,7 +202,7 @@ essere ritenuto responsabile in caso di errore, omissione o indisponibilità del
 ## 9. Dati personali e cookie
 
 Il trattamento dei dati personali e l'uso dei cookie sono descritti nell'**Informativa sulla
-privacy** (https://agendasabauda.eu/it/privacy/).
+privacy** (https://agendasabauda.eu/it/informativa-privacy/).
 
 ## 10. Legge applicabile
 
