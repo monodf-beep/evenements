@@ -246,14 +246,20 @@ add_action('wp_footer', function () {
          que le gabarit ne leur offre aucun point d'ancrage lateral.
 
          Sélecteurs multiples et tolerants : .as-site-footer a ete retire le 2026-07-14
-         au profit du footer natif GeneratePress, et TROIS elements sont sticky en haut
-         (.as-site-header, .as-terr-bar, .as-home-desktop__nav) — on prend le plus bas
-         des trois plutot que d'en coder un seul en dur. */
+         au profit du footer natif GeneratePress, et plusieurs elements sont sticky en
+         haut (.as-site-header, .as-terr-bar, .as-home-desktop__nav) — on prend le plus
+         bas de tous plutot que d'en coder un seul en dur.
+         .as-terr-bar-inline (ajoute 2026-08-05, constate en lisant le HTML servi) :
+         sur la home DESKTOP, la barre territoire n'est PAS .as-terr-bar (masquee la,
+         display:none !important, cf. components.css) mais un second element distinct
+         .as-terr-bar-inline, place APRES .as-home-desktop__nav dans le DOM. Sans lui
+         dans la liste, headBottom s'arretait au nav et ignorait la barre "Vous regardez
+         X" qui le suit — gouttieres et skin auraient mordu dessus sur la home. */
       (function(){
         var ads = document.querySelectorAll('.cs-gutter');
         if (!ads.length) { return; }
         var GAP = 16;
-        var heads = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+        var heads = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline');
 
         /* Le footer doit etre cherche a CHAQUE passage et VALIDE, pas resolu une fois
            pour toutes. Bug du 2026-08-04 (gouttieres invisibles partout, y compris en
@@ -356,18 +362,20 @@ add_action('wp_footer', function () {
          du menu, et le corps du site doit se decaler vers le bas » — pas l'inverse. Le
          bandeau ne peut donc pas etre le premier element de la page (ce que ferait un
          hook wp_body_open) : il doit s'inserer dans le DOM juste APRES la pile
-         d'en-tetes sticky du theme (.as-site-header, .as-terr-bar, .as-home-desktop__nav
-         — les memes trois elements que le clamp des gouttieres). Une fois la, un simple
-         bloc de flux normal (ni fixed ni sticky) suffit a tout faire : il pousse le
-         contenu qui le suit vers le bas (etat 1) ET defile hors ecran avec la page des
-         qu'on descend (etat 2), sans une ligne de calcul supplementaire. */
+         d'en-tetes sticky du theme — les memes elements que le clamp des gouttieres,
+         cf. leur note pour .as-terr-bar-inline. Une fois la, un simple bloc de flux
+         normal (ni fixed ni sticky) suffit a tout faire : il pousse le contenu qui le
+         suit vers le bas (etat 1) ET defile hors ecran avec la page des qu'on descend
+         (etat 2), sans une ligne de calcul supplementaire. */
       (function(){
         var banner = document.getElementById('cs-skin-banner');
         var cols   = document.querySelectorAll('.cs-skin-col');
         if (!banner && !cols.length) { return; }
 
+        var HEAD_SEL = '.as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline';
+
         if (banner) {
-          var heads = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+          var heads = document.querySelectorAll(HEAD_SEL);
           var last = null;
           for (var i = 0; i < heads.length; i++) {
             if (!last || (last.compareDocumentPosition(heads[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) {
@@ -398,7 +406,7 @@ add_action('wp_footer', function () {
         }
 
         function headBottom(){
-          var heads = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+          var heads = document.querySelectorAll(HEAD_SEL);
           var vh = window.innerHeight;
           var b = 0;
           for (var h = 0; h < heads.length; h++) {
