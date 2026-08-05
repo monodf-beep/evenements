@@ -203,6 +203,18 @@ pour un message ingéré, et une redirection Salesforce Marketing Cloud sur WP#7
 > à l'énumération des pseudo-préfixes et des routeurs. Quand une garde par liste et une
 > garde par invariant sont possibles, poser l'invariant d'abord et la liste ensuite.
 
+**Et la même valeur vit à deux endroits.** Le 2026-08-04 j'ai réparé neuf sources de
+traçage en écrivant `as_source_officielle_url`, sans toucher `_EventURL`, le champ natif
+de The Events Calendar que le publisher alimente avec *la même* valeur. Vérification
+faite, correction annoncée — et la fiche 653, en ligne, exposait encore `e=3811b839fe`
+dans son champ « site de l'événement ». Corrigé le 2026-08-05, 44 fiches nettoyées,
+sauvegarde `cs_bk_sources_non_publiables_20260805`.
+
+> **Règle : réparer une donnée, c'est réparer toutes ses copies.** Avant d'annoncer une
+> correction, chercher la valeur elle-même en base, pas la clé qu'on a en tête. C'est le
+> troisième cas dans ce document, après les pages légales (source Markdown + snippet 50)
+> et la liste de domaines bloqués (deux dépôts).
+
 > **Règle : pas de source publiée, pas de date de vérification.** `as_verifie_le` était
 > estampillé sans condition. Une fiche affirmait donc une vérification que le lecteur
 > ne peut pas contrôler, alors que les mentions légales §4 promettent une vérification
