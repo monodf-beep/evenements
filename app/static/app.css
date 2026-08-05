@@ -195,6 +195,12 @@ button.st { border:0; font-family:inherit; line-height:1.5; cursor:pointer; }
 .st-published_sub{ background:#1f3a63; }   /* marine de marque */
 .st-rejected     { background:#b0182c; }
 .st-merged       { background:#6b7688; }
+/* Annulation (docs/EVENEMENTS_ANNULES.md) : PAS un statut (`statut` ne change pas), donc
+   pas de `.st-annule` — c'est un bandeau à part, posé À CÔTÉ de la pastille de statut
+   habituelle, pour ne jamais laisser croire que la fiche a quitté son statut retenu. */
+.annule-banner { display:inline-flex; align-items:center; gap:.35rem; font-size:.72rem;
+  font-weight:700; padding:.14rem .55rem; border-radius:var(--radius-pill);
+  background:#b0182c; color:#fff; white-space:nowrap; }
 .pill { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
 /* lien discret vers le brouillon WordPress créé */
 .wplink { font-size:.75rem; color:var(--ok-ink); white-space:nowrap; }

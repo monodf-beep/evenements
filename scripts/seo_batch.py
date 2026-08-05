@@ -56,6 +56,10 @@ def _select(conn, args, today: str):
         # neutre ; une fiche IT avec une méta française est fausse pour le visiteur ET
         # pour Google. On exclut d'abord, on rédigera en italien ensuite.
         "COALESCE(translation_of,0) = 0",
+        # ANNULÉ EXCLU (docs/EVENEMENTS_ANNULES.md, « effets de bord » du canal 1) :
+        # « ne pas optimiser une annulation ». Générer un title/méta SEO pour une fiche
+        # qui ne se déplacera plus n'a aucun public — et ça coûte un appel LLM pour rien.
+        "annule_le IS NULL",
     ]
     params: list = [args.min_score]
     if not args.redo:

@@ -240,7 +240,15 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
       • …mais PAS quand la date manque : une fiche sans date n'est pas un événement
         terminé, c'est une donnée manquante, et un événement récurrent n'a par nature
         pas de date unique. Elle garde son score intrinsèque, sans bonus.
+
+    Sixième cas, ajouté le 2026-08-05 (docs/EVENEMENTS_ANNULES.md, canal 1) :
+    l'événement est ANNULÉ (`annule_le` posé). Une fiche annulée reste PUBLIÉE et
+    visible à son adresse (la doctrine interdit de la cacher) mais n'a plus sa
+    place dans une vitrine qui la RECOMMANDE — proposer un déplacement pour un
+    événement qui n'aura pas lieu serait le contraire du service rendu.
     """
+    if event.get("annule_le"):
+        return None
     from datetime import date as _d
     base = deplacement_score(event)
     if base is None or base < DEPLACEMENT_MIN:
@@ -383,6 +391,8 @@ def deplacement_etat(event: dict, aujourdhui=None) -> tuple[int | None, int | No
     rester à un seul endroit, sinon l'affichage et le tri finiront par diverger, et c'est
     l'affichage qu'on croira."""
     from datetime import date as _d
+    if event.get("annule_le"):
+        return None, None, "annulé — retiré des vitrines (docs/EVENEMENTS_ANNULES.md)"
     base = deplacement_score(event)
     if base is None:
         return None, None, "pas évalué — la section écarte les non-mesurés, elle ne les classe pas derniers"

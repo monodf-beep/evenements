@@ -28,10 +28,37 @@
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <button class="btn btn-ghost btn-sm">❌ Rejeter</button>
   </form>
+  {# Annulation (docs/EVENEMENTS_ANNULES.md, canal 1) — PAS un rejet : la fiche reste en
+     ligne, seul le titre change. Bouton toujours visible (Franck peut apprendre une
+     annulation avant même que la fiche soit publiée) ; la republication automatique ne
+     joue que si `wp_post_id_as` est renseigné (gérée côté route). #}
+  {% if e.annule_le %}
+  <form method="post" action="/action/{{ e.id }}/annuler_off" style="margin:0">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <button class="btn btn-ghost btn-sm" title="Retire le préfixe « ANNULÉ — »/« ANNULLATO — » et republie.">↩️ Annuler l'annulation</button>
+  </form>
+  {% else %}
+  <form method="post" action="/action/{{ e.id }}/annuler" style="margin:0"
+        onsubmit="return confirm('Marquer cet événement ANNULÉ ? La fiche reste en ligne (préfixe de titre + retrait des vitrines), elle n\'est ni dépubliée ni corbeillée.')">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <button class="btn btn-danger btn-sm">🚫 Annuler l'événement</button>
+  </form>
+  {% endif %}
   {% if e.statut %}<span class="st st-{{ e.statut }}" style="margin-left:auto">{{ status_labels.get(e.statut, e.statut) if status_labels else e.statut }}</span>{% endif %}
+  {% if e.annule_le %}<span class="annule-banner" title="Depuis le {{ e.annule_le }}">🚫 ANNULÉ</span>{% endif %}
   {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ CS WP #{{ e.wp_post_id_cs }}</a>{% endif %}
   {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ Agenda WP #{{ e.wp_post_id_as }}</a>{% endif %}
 </div>
+
+{% if e.annule_le %}
+<div class="card" style="background:#fdecee;border:1px solid #b0182c;color:#7a1120;
+            font-family:-apple-system,sans-serif;font-size:.85rem;padding:.55rem .8rem;
+            margin:.5rem 0;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;">
+  🚫 <b>Événement annulé</b> le {{ e.annule_le }} — la fiche reste visible (doctrine
+  docs/EVENEMENTS_ANNULES.md : « une annulation ne se cache pas, elle s'affiche »),
+  retirée seulement des vitrines de recommandation (« ça vaut le déplacement »).
+</div>
+{% endif %}
 
 {% if e.llm_categorie %}<div class="eyebrow">{{ e.llm_categorie }}</div>{% endif %}
 <h1>{{ e.title }}</h1>

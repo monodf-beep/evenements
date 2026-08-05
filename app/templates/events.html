@@ -133,6 +133,9 @@
       {% endif %}
       {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ CS WP #{{ e.wp_post_id_cs }}</a>{% endif %}
       {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ Agenda WP #{{ e.wp_post_id_as }}</a>{% endif %}
+      {# Annulation (docs/EVENEMENTS_ANNULES.md, canal 1) : pas un statut — badge à part,
+         posé ici en lecture seule ; le bouton qui la pose/la retire vit sur /preview. #}
+      {% if e.annule_le %}<br><span class="annule-banner" title="Depuis le {{ e.annule_le }}">🚫 ANNULÉ</span>{% endif %}
     </td>
     <td data-label="Score">
       {{ e.llm_score if e.llm_score is not none else '—' }}

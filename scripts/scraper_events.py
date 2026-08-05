@@ -234,7 +234,19 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # colonne créée par un seul script devient une dépendance implicite
                       # qui casse les autres sur une base reconstruite (même piège que
                       # translation_of, corrigé le 2026-08-02).
-                      ("wp_deleted_at", "TEXT")):
+                      ("wp_deleted_at", "TEXT"),
+                      # ANNULATION (docs/EVENEMENTS_ANNULES.md, canal 1) : timestamp posé
+                      # par le bouton du back-office (/action/<id>/annuler, app/app.py).
+                      # SEULE source de vérité de l'état « annulé » — le préfixe de titre
+                      # ("ANNULÉ — "/"ANNULLATO — ") qui en découle n'est qu'un affichage.
+                      # Déclarée ICI et pas seulement dans app.py (même leçon que
+                      # wp_deleted_at juste au-dessus, MÊME INCIDENT reproduit en écrivant
+                      # ce correctif : scripts/seo_batch.py filtre dessus, et sa fixture
+                      # (tests/test_seo_batch_plafond.py) plantait avec « no such column »
+                      # sur une base construite par le seul init_db, sans jamais importer
+                      # app.py) — une colonne créée par un seul module devient une
+                      # dépendance implicite qui casse tous les autres sur une base neuve.
+                      ("annule_le", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

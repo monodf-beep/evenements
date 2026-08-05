@@ -88,6 +88,21 @@ for _col in ("translation_of", "translated_at", "translated_lang"):
         _conn.execute(f"ALTER TABLE events_raw ADD COLUMN {_col} TEXT")
     except sqlite3.OperationalError:
         pass
+# Marque d'ANNULATION (docs/EVENEMENTS_ANNULES.md, canal 1 — le bouton du back-office).
+# `annule_le` (timestamp) est la SEULE source de vérité de l'état « annulé » : le titre
+# préfixé qui en découle ("ANNULÉ — "/"ANNULLATO — ") n'est qu'une conséquence affichée,
+# jamais relue pour savoir si une fiche est annulée (un titre édité à la main pourrait
+# contenir le mot par coïncidence). Repli délibéré sur un préfixe de titre plutôt que sur
+# la fonctionnalité native « Event Status » de The Events Calendar : ce dépôt n'a AUCUNE
+# trace de son usage (`cs-publish.php` ne pose ni ne lit `_EventCancelled`), et sa
+# disponibilité dépend de la version/édition du plugin en production — invérifiable
+# depuis ici. Le préfixe, lui, ne dépend d'aucune fonctionnalité de plugin : il se lit
+# dans les listes, les partages et Google, sans un bandeau CSS qui pourrait ne jamais
+# se déclencher si la fonctionnalité s'avère absente.
+try:
+    _conn.execute("ALTER TABLE events_raw ADD COLUMN annule_le TEXT")
+except sqlite3.OperationalError:
+    pass
 # Drapeau « lieux multiples » (festival itinérant / programme diffus) : relâche
 # l'exigence lieu/ville de la porte qualité.
 try:
@@ -3937,6 +3952,101 @@ def publier_lot():
     return redirect(request.form.get("next") or "/events")
 
 
+# --------------------------------------------------------------------------- #
+# ANNULATION — canal 1 (docs/EVENEMENTS_ANNULES.md) : le bouton du back-office.
+#
+# Doctrine : une annulation NE SE CACHE PAS, elle S'AFFICHE. On ne dépublie pas, on ne
+# corbeille pas, on ne touche pas `statut` — la fiche reste en ligne jusqu'à sa date
+# (règle 5 de CLAUDE.md : on continue de s'en occuper tant qu'elle est devant nous),
+# mais son titre porte désormais la mention en toutes lettres, sur le site comme en
+# base. Repli sur un préfixe de titre plutôt que sur la fonctionnalité native « Event
+# Status » de The Events Calendar : cf. le commentaire à la création de la colonne
+# `annule_le`, plus haut dans ce fichier.
+_ANNUL_PREFIX = {"fr": "ANNULÉ — ", "it": "ANNULLATO — "}
+# Reconnaît un préfixe déjà posé (dans les DEUX langues : une fiche traduite après coup
+# peut changer de langue détectée) pour le retirer proprement, quel que soit celui posé
+# à l'origine.
+_ANNUL_PREFIX_RE = re.compile(r"^(?:ANNUL[ÉE]|ANNULLATO)\s*[—-]\s*", re.UNICODE)
+
+
+def _lang_fiche(ev: dict) -> str:
+    """Langue de CETTE fiche, pour choisir 'ANNULÉ' ou 'ANNULLATO'.
+
+    Même logique que /preview (cf. la construction de `pair`) : une traduction porte sa
+    langue dans `translated_lang` (posée par scripts/translate_events.py) — jamais à
+    redétecter, elle est CONNUE. Un original n'a pas ce champ : on retombe sur
+    `utils.lang.effective_lang`, qui préfère l'article déjà rédigé (plus fiable qu'un
+    titre scrapé bruité) et ne lit le titre brut qu'à défaut."""
+    if ev.get("translation_of"):
+        return ev.get("translated_lang") or "it"
+    from utils.lang import effective_lang
+    return effective_lang(ev)
+
+
+def _titre_sans_prefixe_annulation(titre: str) -> str:
+    return _ANNUL_PREFIX_RE.sub("", titre or "").strip()
+
+
+def _appliquer_annulation(conn: sqlite3.Connection, event_id: int, activer: bool):
+    """Pose ou retire l'annulation sur UNE fiche : `annule_le` + préfixe de titre +
+    republication si elle est déjà en ligne (`wp_post_id_as`). Réversible dans les DEUX
+    sens (CLAUDE.md : « réversible = seul ») — c'est la même fonction qui sert au clic
+    « Annuler » et au clic « Annuler l'annulation ».
+
+    Renvoie (changé: bool, titre_court: str, wp_publie: bool, erreur: str|None).
+    `changé=False` si l'état demandé est déjà l'état courant (idempotent : re-cliquer
+    ne double pas le préfixe ni ne republie pour rien)."""
+    row = conn.execute("SELECT * FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        return False, "", False, "introuvable"
+    ev = dict(row)
+    deja_annulee = bool(ev.get("annule_le"))
+    if activer == deja_annulee:
+        return False, (ev.get("title") or "")[:70], False, None
+
+    titre_nu = _titre_sans_prefixe_annulation(ev.get("title") or "")
+    if activer:
+        prefixe = _ANNUL_PREFIX.get(_lang_fiche(ev), _ANNUL_PREFIX["fr"])
+        nouveau_titre = f"{prefixe}{titre_nu}"
+        conn.execute("UPDATE events_raw SET title=?, annule_le=datetime('now') WHERE id=?",
+                     (nouveau_titre, event_id))
+    else:
+        nouveau_titre = titre_nu
+        conn.execute("UPDATE events_raw SET title=?, annule_le=NULL WHERE id=?",
+                     (nouveau_titre, event_id))
+    conn.commit()
+
+    wp_publie, erreur = False, None
+    if ev.get("wp_post_id_as"):
+        ev["title"] = nouveau_titre
+        try:
+            # skip_media : seul le titre change, on ne retouche pas la photo — même
+            # motif que scripts/seo_batch.py pour une republication ciblée par id.
+            wp_id, _permalink, _raw = publish_to_as(ev, skip_media=True)
+            wp_publie = bool(wp_id)
+            if not wp_publie:
+                erreur = "échec WordPress (voir logs)"
+        except Exception as exc:  # noqa: BLE001 — la base a déjà changé, on ne perd pas ça
+            log.exception("annulation : republication échouée id=%s", event_id)
+            erreur = str(exc)[:200]
+
+    return True, nouveau_titre[:70], wp_publie, erreur
+
+
+def _id_jumelle(conn: sqlite3.Connection, ev: dict) -> int | None:
+    """Id de la fiche jumelle FR/IT de `ev`, s'il y en a une ENCORE liée (pas fusionnée).
+
+    Même détection que /preview (cf. la construction de `pair`) : une fiche traduite
+    pointe vers son original via `translation_of` ; un original retrouve sa traduction en
+    cherchant dans l'autre sens."""
+    if ev.get("translation_of"):
+        return int(ev["translation_of"])
+    t = conn.execute(
+        "SELECT id FROM events_raw WHERE translation_of=? AND duplicate_of IS NULL",
+        (ev["id"],)).fetchone()
+    return t["id"] if t else None
+
+
 @app.route("/action/<int:event_id>/<action>", methods=["POST"])
 @require_auth
 def action(event_id: int, action: str):
@@ -4028,6 +4138,34 @@ def action(event_id: int, action: str):
         conn.execute("UPDATE events_raw SET worth_trip=0 WHERE id=?", (event_id,))
         conn.commit()
         flash(f"↩️ « {title} » n'est plus « vaut le détour ».", "ok")
+    elif action in ("annuler", "annuler_off"):
+        # Canal 1, docs/EVENEMENTS_ANNULES.md — cf. les fonctions _appliquer_annulation /
+        # _id_jumelle juste au-dessus. « les deux langues annulent ensemble » (doc,
+        # « Effets de bord ») : la jumelle FR/IT, si elle existe encore (pas fusionnée),
+        # suit la même bascule — sinon une seule des deux versions afficherait l'annulation
+        # et l'autre continuerait comme si de rien n'était.
+        activer = action == "annuler"
+        changed, nouveau_titre, wp_publie, err = _appliquer_annulation(conn, event_id, activer)
+        verbe = "annulé" if activer else "réactivé"
+        emoji = "🚫" if activer else "↩️"
+        if not changed:
+            flash(f"ℹ️ « {title} » était déjà {'annulé' if activer else 'non annulé'} — rien à faire.", "warn")
+        else:
+            msg = f"{emoji} « {nouveau_titre} » {verbe}"
+            if event["wp_post_id_as"]:
+                msg += " — republié sur Agenda Sabauda." if wp_publie else f" — MAIS republication échouée ({err}), à relancer."
+            flash(msg, "ok" if (not event["wp_post_id_as"] or wp_publie) else "err")
+
+        jumelle_id = _id_jumelle(conn, dict(event))
+        if jumelle_id:
+            j_changed, j_titre, j_publie, j_err = _appliquer_annulation(conn, jumelle_id, activer)
+            if j_changed:
+                j_row = conn.execute("SELECT wp_post_id_as FROM events_raw WHERE id=?",
+                                      (jumelle_id,)).fetchone()
+                j_msg = f"{emoji} Jumelle #{jumelle_id} « {j_titre} » {verbe} aussi"
+                if j_row and j_row["wp_post_id_as"]:
+                    j_msg += " — republiée." if j_publie else f" — MAIS republication échouée ({j_err})."
+                flash(j_msg, "ok" if (not j_row or not j_row["wp_post_id_as"] or j_publie) else "err")
 
     conn.close()
     nxt = request.form.get("next", "")

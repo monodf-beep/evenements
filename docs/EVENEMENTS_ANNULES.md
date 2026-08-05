@@ -11,8 +11,17 @@ si de rien n'était jusqu'à ce que sa date passe.
 
 **Mise à jour du 2026-08-05 (suite) — le canal 3 est implémenté** aussi, même doctrine,
 mêmes colonnes. Voir `scripts.dates.signale_annulation_page` (partagée avec
-`scripts/venues.py`) ci-dessous. Le canal 1 (bouton back-office) et l'affichage lui-même
-(bandeau côté WordPress) restent à faire — ⚖️ ci-dessous.
+`scripts/venues.py`) ci-dessous.
+
+**Mise à jour du 2026-08-05 (suite) — le canal 1 est implémenté**, LE PREMIER DES TROIS
+posé (comme prévu : « sans lui, les canaux automatiques n'auraient nulle part où déposer
+leur trouvaille »). C'est le geste MANUEL de Franck : un bouton sur `/preview/<id>`
+(`app/app.py`, routes `/action/<id>/annuler` et `/action/<id>/annuler_off`), pour une
+annulation apprise par un autre moyen que ce dépôt (email, coup de fil, site officiel) —
+il ne détecte rien, il PROPAGE ce que Franck sait déjà. Voir « Côté WordPress » ci-dessous
+pour le choix fait sur l'affichage (préfixe de titre, pas de bandeau natif TEC) et
+« Effets de bord » pour ce qui a été traité en même temps. Fixture :
+`tests/test_action_annuler.py`.
 
 ## La doctrine proposée, avant la mécanique
 
@@ -30,9 +39,39 @@ datée au hasard.
 
 ## Les trois canaux de détection, du plus sûr au plus fin
 
-1. **Le bouton du back-office** — le canal sûr : Franck apprend l'annulation, un clic la
-   propage (base + republication + retrait des vitrines). À construire en premier : sans
-   lui, les canaux automatiques n'auraient nulle part où déposer leur trouvaille.
+1. **✅ Le bouton du back-office** — le canal sûr : Franck apprend l'annulation, un clic la
+   propage (base + republication + retrait des vitrines). Construit en premier, comme
+   prévu : sans lui, les canaux automatiques n'auraient nulle part où déposer leur
+   trouvaille.
+   Implémenté le 2026-08-05 : `/action/<id>/annuler` (et son symétrique
+   `/action/<id>/annuler_off`, pour défaire une erreur de clic — CLAUDE.md, « réversible =
+   seul ») dans `app/app.py`, câblées sur le bouton 🚫 de `/preview/<id>`
+   (`app/templates/preview.html`). Ce que fait un clic :
+     - pose `annule_le` (timestamp, colonne `events_raw` — SEULE source de vérité de
+       l'état « annulé », déclarée dans `scripts.scraper_events.init_db` pour que tout
+       script qui ne charge que `init_db` la trouve, même sans jamais importer `app.py` —
+       la leçon de `wp_deleted_at`, reproduite en écrivant CE correctif :
+       `scripts/seo_batch.py` filtrait déjà dessus et sa fixture plantait sur une base
+       construite hors `app.py`) ;
+     - préfixe le TITRE, en base ET republié — cf. « Côté WordPress » plus bas ;
+     - republie IMMÉDIATEMENT si `wp_post_id_as` est renseigné, via `publish_to_as(...,
+       skip_media=True)` (même fonction que `/action/<id>/publish_as`, même motif
+       `skip_media` que `scripts/seo_batch.py` : seul le titre change, la photo ne bouge
+       pas) ; si la fiche n'est pas encore publiée, la base change quand même — Franck
+       peut savoir avant même que le pipeline ait publié ;
+     - **ne touche PAS `statut`** : pas de dépublication, pas de corbeille — la doctrine
+       exactement ;
+     - **jumelle FR/IT incluse** : `translation_of` relié (dans les deux sens, comme le
+       fait déjà `/preview` pour afficher la paire) → les deux langues annulent ensemble,
+       chacune avec SON préfixe (`_lang_fiche` : `translated_lang` si la fiche est une
+       traduction, sinon `utils.lang.effective_lang`, qui préfère l'article déjà rédigé au
+       titre scrapé brut) ;
+     - idempotent (recliquer ne double pas le préfixe, ne republie pas pour rien) et
+       n'efface jamais l'état posé en base si la republication WordPress échoue — un échec
+       réseau reste visible en base (`annule_le` posé, à republier), jamais perdu en
+       silence (CLAUDE.md règle 6).
+   Fixture : `tests/test_action_annuler.py` — pose, idempotence, réversibilité, jumelle,
+   fiche non publiée, échec de republication, retrait des vitrines (§ Effets de bord).
 
 2. **✅ Le flux entrant, via la déduplication — et c'est le hameçon élégant.** Quand un
    festival est annulé, la presse écrit « Festival X annulé » : cet article partage ses
@@ -91,18 +130,35 @@ titre de presse serait pire que le retard.
 
 ## Côté WordPress
 
-The Events Calendar gère nativement un statut d'événement « annulé / reporté » avec
-bandeau (fonction *Event Status*) — **à vérifier sur l'installation** avant d'écrire quoi
-que ce soit : si `cs-publish.php` peut poser ce statut, l'affichage est réglé sans une
-ligne de gabarit. Sinon, un préfixe de titre « ANNULÉ — » est le repli rustique mais
-lisible partout (listes, partages, Google).
+**✅ Tranché le 2026-08-05, en implémentant le canal 1 : préfixe de titre, pas la
+fonctionnalité native.** The Events Calendar gère nativement un statut d'événement
+« annulé / reporté » avec bandeau (fonction *Event Status*) — vérifié dans le CODE de ce
+dépôt (`deploy/wordpress/cs-publish.php` et l'ensemble des mu-plugins PHP) : AUCUNE trace
+d'utilisation, ni meta `_EventCancelled` posée, ni lue. Mais ce n'est pas une preuve
+d'ABSENCE côté plugin — sa disponibilité dépend de la version/édition de The Events
+Calendar installée en PRODUCTION, invérifiable depuis ce dépôt. Écrire du code qui pose ce
+statut sans savoir si l'admin WordPress sait l'afficher aurait été un pari : soit un
+bandeau invisible (le statut posé, rien à l'écran), soit une erreur REST silencieuse selon
+que le champ existe ou non pour ce type de post.
+
+Repli retenu : un préfixe de titre — « ANNULÉ — » (FR) / « ANNULLATO — » (IT) — posé en
+base ET republié. Il ne dépend d'AUCUNE fonctionnalité de plugin, se lit partout (listes,
+archives, fil RSS, partages sociaux, résultats Google) sans une ligne de CSS, et reste
+100 % réversible (`/action/<id>/annuler_off` retire le préfixe et republie — cf. canal 1
+ci-dessus). Le jour où la disponibilité d'*Event Status* sur l'installation PROD est
+confirmée, le bandeau natif peut s'AJOUTER par-dessus (meilleur rendu visuel) sans rien
+retirer : les deux ne s'excluent pas, et le préfixe reste le filet qui marche partout.
 
 ## Les quatre questions, répondues d'avance
 
 - **Qui rouvre ?** Une annulation confirmée est un fait, pas un état à rouvrir — mais un
   report l'est : la fiche reportée sans date reste dans une file visible (« reportés sans
   nouvelle date : N » au digest), et `dates.py` la re-date normalement quand la nouvelle
-  date paraît.
+  date paraît. Le canal 1 échappe quand même à la question « qui rouvre » posée par
+  CLAUDE.md pour tout état terminal : ce n'est PAS un état terminal, puisque
+  `/action/<id>/annuler_off` défait exactement ce que pose `/action/<id>/annuler` — un
+  clic pour corriger une erreur (fausse annulation, mauvaise fiche cliquée), sans attendre
+  qu'un script y repasse.
 - **À quelle condition ?** L'arrivée d'une nouvelle date, ou la date prévue passée
   (archivage normal).
 - **Où se voit le compte ?** Pour les canaux 2 et 3 (✅ faits, mêmes colonnes) :
@@ -112,10 +168,23 @@ lisible partout (listes, partages, Google).
 - **Le rouvreur est-il branché ?** `dates.py` tourne déjà chaque matin — rien de neuf à
   brancher, c'est le critère qui a fait préférer cette conception.
 
-## Effets de bord à traiter le jour de l'implémentation
+## Effets de bord — traités le 2026-08-05 en implémentant le canal 1
 
-- `deplacement_now` → None pour un annulé (il ne vaut plus aucun déplacement) ;
-- exclusion des sections vitrines et du SEO (ne pas « optimiser » une annulation) ;
-- la traduction jumelle hérite du statut (les deux langues annulent ensemble) ;
-- `site_audit` doit savoir qu'un bandeau « annulé » est CONFORME, pas une anomalie de
-  titre.
+- **✅ `deplacement_now` → None pour un annulé** (il ne vaut plus aucun déplacement) —
+  et `deplacement_etat` avec lui (même garde, en tête des deux fonctions,
+  `utils/deplacement.py`), pour que l'affichage back-office et le tri qui alimente
+  `as_deplacement_now` (poussé au republish par `publisher_as.py`) ne divergent jamais ;
+  le motif « annulé — retiré des vitrines » se lit directement dans `/preview`.
+- **✅ exclusion du SEO** (ne pas « optimiser » une annulation) — `scripts/seo_batch.py`
+  filtre désormais `annule_le IS NULL` dans sa sélection quotidienne. Pas d'exclusion
+  symétrique côté « sections vitrines » du site : c'est `as_deplacement_now` vide
+  (ci-dessus) qui en tient déjà lieu, la home ne lit que cette clé de tri.
+- **✅ la traduction jumelle hérite du statut** (les deux langues annulent ensemble) —
+  `/action/<id>/annuler` retrouve la jumelle via `translation_of` (dans les deux sens) et
+  lui applique le même geste, avec SON préfixe de langue.
+- **✅ vérifié, aucun changement nécessaire : `site_audit` et le bandeau « annulé ».**
+  `scripts/batch_report._partagent_un_mot` (utilisé par `scripts/site_audit.py`) compare
+  le titre EN LIGNE au titre VOULU par recoupement de MOTS, pas par égalité stricte : un
+  titre « ANNULÉ — Festival X » partage tous les mots significatifs de « Festival X » sauf
+  le préfixe lui-même, donc le contrôle passe déjà sans faux positif. Vérifié en lisant le
+  code, pas supposé — aucune ligne touchée dans `site_audit.py`/`batch_report.py`.
