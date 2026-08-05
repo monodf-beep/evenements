@@ -1210,8 +1210,28 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
                   dfrom: str = "", dto: str = "") -> list[sqlite3.Row]:
     if ids:
         qmarks = ",".join("?" * len(ids))
-        return conn.execute(
+        rows = conn.execute(
             f"SELECT * FROM events_raw WHERE id IN ({qmarks})", ids).fetchall()
+        # LA MÊME PROTECTION QUE CI-DESSOUS, ET POUR LA MÊME RAISON. La sélection
+        # automatique exclut les traductions parce qu'enrich écrit TOUJOURS en français :
+        # « enrichir » une fiche italienne remplace son article par un texte français
+        # fraîchement généré (constaté en vrai, id 4312, Niccolò Fabi). Passer des ids à
+        # la main court-circuitait cette exclusion — c'est-à-dire exactement le mode
+        # d'emploi qu'on suit pour réparer une fiche précise. La garde était donc absente
+        # du seul chemin où l'opérateur choisit lui-même, et où une liste recopiée depuis
+        # un audit peut contenir une jumelle sans qu'on l'ait voulu.
+        # On REFUSE au lieu d'avertir : la perte est silencieuse et irréversible, et
+        # l'original reste enrichissable par son propre id.
+        trad = [r for r in rows if (r["translation_of"] or 0)]
+        if trad:
+            for r in trad:
+                log.error("[%s] REFUS — fiche TRADUITE (%s, original id=%s). Enrich écrit "
+                          "en français et écraserait sa traduction. Enrichir l'original, "
+                          "puis relancer translate_events : %s",
+                          r["id"], r["translated_lang"] or "?", r["translation_of"],
+                          (r["title"] or "")[:55])
+            rows = [r for r in rows if not (r["translation_of"] or 0)]
+        return rows
     # Événements retenus (≥ seuil), pas encore enrichis. Les doublons 'merged' sont
     # exclus : leur matière est déjà agrégée vers le gagnant. Les fiches TRADUITES
     # (translation_of renseigné) sont exclues aussi : enrich écrit TOUJOURS en français
