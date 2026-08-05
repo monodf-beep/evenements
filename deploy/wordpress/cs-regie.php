@@ -8,7 +8,8 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   thème — impossible de les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php
   — donc ce fichier lit directement le backoffice et les pose lui-même via wp_footer, le
   contenu du site passant par-dessus. La skin défile avec la page puis se fige, bandeau
-  rangé sous le menu (cf. v1.4) ; les gouttières des blocs 5/6 restent collées.
+  rangé au-dessus du bord de la fenêtre (cf. v1.5) ; les gouttières des blocs 5/6 restent
+  collées.
 
   RÉUTILISE les fonctions déjà définies par cs-regie-serve.php (même mu-plugin folder,
   chargé avant celui-ci par ordre alphabétique : "cs-regie-serve.php" < "cs-regie.php") :
@@ -161,6 +162,17 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   dépendant de la résolution et de la mise en page ; la créative de test fait les deux (le
   titre « L'atmosfera sabauda » et la fenêtre crème centrale). À signaler aux annonceurs
   plutôt qu'à compenser en code.
+
+  v1.5 (2026-08-05) : le point d'accrochage de la v1.4 valait « bas du menu − hauteur du
+  bandeau ». Or le bas du menu n'est pas un repère stable : sur l'accueil la barre
+  territoire s'en va en défilant pendant que l'en-tête compact apparaît, donc la valeur
+  change en cours de route — le point d'accrochage bougeait sous une skin qui y était déjà
+  accrochée, et elle sautait d'un cran de défilement à l'autre (« d'un cran de scroll à
+  l'autre ça saute », Franck, captures à l'appui). Remplacé par une CONSTANTE : la skin
+  s'accroche au haut de la fenêtre, bandeau juste au-dessus du bord. Le menu, opaque et
+  au-dessus, recouvre le haut des gouttières : le rendu est celui demandé sans dépendre
+  d'un repère mouvant. Supprimé au passage les fonctions footerTop()/headBottom() du script
+  de la skin, devenues sans emploi (celles du clamp des gouttières sont intactes).
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -168,7 +180,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.4
+Version: 1.5
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -552,37 +564,6 @@ add_action('wp_footer', function () {
           return spacer;
         }
 
-        // Copies volontaires des fonctions du clamp des gouttieres : voir la note en tete
-        // de ce fichier (duplique plutot que factorise pour ne pas risquer leur logique).
-        function footerTop(){
-          var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
-          var docH  = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
-          var scrollY = window.pageYOffset || 0;
-          var best = Infinity;
-          for (var i = 0; i < cands.length; i++) {
-            var el = cands[i];
-            if (el.offsetParent === null) { continue; }
-            var r = el.getBoundingClientRect();
-            if (r.height <= 0) { continue; }
-            if ((r.top + scrollY) < docH * 0.4) { continue; }
-            if (r.top < best) { best = r.top; }
-          }
-          return best;
-        }
-
-        function headBottom(){
-          var heads = document.querySelectorAll(HEAD_SEL);
-          var vh = window.innerHeight;
-          var b = 0;
-          for (var h = 0; h < heads.length; h++) {
-            var hr = heads[h].getBoundingClientRect();
-            if (hr.height <= 0) { continue; }
-            if (hr.top > vh * 0.6) { continue; }
-            if (hr.bottom > b) { b = hr.bottom; }
-          }
-          return b;
-        }
-
         /* DEUX ETATS, UN SEUL ELEMENT — c'est tout le mecanisme.
 
            Etat 1, "il defile" : position:absolute, ancre dans la PAGE a l'emplacement de sa
@@ -602,13 +583,23 @@ add_action('wp_footer', function () {
 
            NB : la hauteur du bandeau se mesure sur la largeur de l'ELEMENT RACINE et non sur
            window.innerWidth, parce que c'est ce que vaut une unite vw en CSS — innerWidth
-           inclut la barre de defilement, ce qui decalerait le raccord de ~15px. */
+           inclut la barre de defilement, ce qui decalerait le raccord de ~15px.
+
+           ⚠️ Le point d'accrochage vaut -bandH, une CONSTANTE, et surtout PAS
+           "headBottom() - bandH" (essaye en v1.4, repris aussitot). Le bas du menu n'est pas
+           un repere stable : sur l'accueil la barre territoire s'en va en defilant pendant
+           que l'en-tete compact apparait, donc headBottom() change en cours de route — le
+           point d'accrochage bougeait sous une skin qui y etait deja accrochee, et elle
+           sautait d'un cran de defilement a l'autre (constat Franck, captures a l'appui).
+           Avec -bandH la skin s'accroche au HAUT DE LA FENETRE, bandeau juste au-dessus du
+           bord : le menu, opaque et par-dessus, recouvre le haut des gouttieres, donc le
+           rendu est celui demande ("en haut des gouttieres, en bas du bandeau") sans
+           dependre d'un repere qui bouge. Plus rien ne peut sauter. */
         var BAND = 240 / 1920;   // part de la creative occupee par le bandeau, cf. CSS
 
         function place(){
           var docTop  = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
-          var bandH   = BAND * document.documentElement.clientWidth;
-          var stuckAt = headBottom() - bandH;
+          var stuckAt = -BAND * document.documentElement.clientWidth;
           var y       = window.pageYOffset || 0;
 
           if (docTop - y > stuckAt) {
