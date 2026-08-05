@@ -43,6 +43,15 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   cette largeur. Le bandeau retombe désormais sur le seuil générique de .cs-regie
   (1280px) ; seules les colonnes restent réservées aux écrans ≥$cs_skin_bp.
 
+  v0.6 (2026-08-05) : les colonnes latérales étaient ancrées aux BORDS DE L'ÉCRAN
+  (left:0/right:0) alors que le bandeau est centré dans un conteneur de largeur FIXE
+  ($cs_skin_container). Ça ne coïncide qu'à la largeur exacte $cs_skin_bp — sur tout
+  écran plus large (le cas normal), un vide grandissant s'ouvrait entre bandeau et
+  colonnes au lieu de se refermer. Capture Franck à l'appui (grand écran, vide béant de
+  chaque côté du bandeau). Corrigé en calant les colonnes sur le bord du CONTENU
+  (calc(50% + $cs_skin_container/2)) plutôt que sur le bord de la fenêtre : elles
+  suivent désormais le conteneur quelle que soit la largeur d'écran, zéro vide.
+
   Garde-fous : desktop uniquement (colonnes masquées sous le seuil calculé — cf.
   $cs_skin_bp ; bandeau sous 1280px comme tout .cs-regie ; gouttières sous $cs_bp) ;
   consent-gated Complianz (cmplz_marketing=allow) ; coupé sur pages sensibles (légales,
@@ -50,7 +59,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 0.5
+Version: 0.6
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -155,9 +164,20 @@ add_action('wp_footer', function () {
          du bandeau/en-tete et le haut du pied de page — meme principe que .cs-gutter. */
       .cs-skin-col{position:fixed;z-index:2;width:<?php echo (int) $cs_skin_col_w; ?>px;
         overflow:hidden;background:#F7F1E8}
-      .cs-skin-col--l{left:0}
+      /* Calees sur le bord de la colonne de CONTENU (calc(50% + container/2)), pas sur le
+         bord de l'ECRAN (left:0/right:0). Bug signale par Franck le 2026-08-05, capture a
+         l'appui (vide beant entre le bandeau et les colonnes) : le bandeau est centre dans
+         un conteneur de largeur FIXE ($cs_skin_container, 950/1200px) alors que les
+         colonnes etaient ancrees aux bords bruts de la fenetre -- au seuil $cs_skin_bp
+         pile les deux se touchaient, mais sur tout ecran PLUS LARGE que ce seuil (le cas
+         normal, un desktop fait rarement une largeur pile egale au seuil) le conteneur
+         central restait centre pendant que les colonnes restaient collees aux bords : le
+         vide grandissait avec la largeur d'ecran au lieu de disparaitre. En calant sur le
+         bord du conteneur, les colonnes suivent son bord quelle que soit la largeur —
+         zero vide, a n'importe quelle taille d'ecran au-dessus de $cs_skin_bp. */
+      .cs-skin-col--l{left:auto;right:calc(50% + <?php echo (int) $cs_skin_container / 2; ?>px)}
       .cs-skin-col--l a{background-position:left -240px}
-      .cs-skin-col--r{right:0}
+      .cs-skin-col--r{right:auto;left:calc(50% + <?php echo (int) $cs_skin_container / 2; ?>px)}
       .cs-skin-col--r a{background-position:right -240px}
       /* Seul le seuil des COLONNES est ici, pas celui du bandeau : le bandeau est en
          flux normal pleine largeur (aucun risque de chevaucher le contenu, contrairement
