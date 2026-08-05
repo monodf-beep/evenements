@@ -7,9 +7,8 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   Contrairement aux blocs 1-3, ces emplacements ne vivent pas dans le flux normal du
   thème — impossible de les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php
   — donc ce fichier lit directement le backoffice et les pose lui-même via wp_footer, le
-  contenu du site passant par-dessus. Le bandeau de la skin défile avec la page
-  (position:absolute) ; ses deux bandes latérales et les gouttières des blocs 5/6 restent
-  collées sous le menu (position:fixed).
+  contenu du site passant par-dessus. La skin défile avec la page puis se fige, bandeau
+  rangé sous le menu (cf. v1.4) ; les gouttières des blocs 5/6 restent collées.
 
   RÉUTILISE les fonctions déjà définies par cs-regie-serve.php (même mu-plugin folder,
   chargé avant celui-ci par ordre alphabétique : "cs-regie-serve.php" < "cs-regie.php") :
@@ -139,6 +138,29 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   Le bandeau garde le placement sans JS au défilement de la v1.1 (pas de parallaxe) ; les
   bandes sont suivies en JS comme les gouttières, mais leur position ne change qu'aux rares
   moments où l'en-tête compact apparaît, jamais à chaque pixel.
+
+  v1.4 (2026-08-05) — RETOUR A UN SEUL ELEMENT, et fin du découpage de la v1.3. Celui-ci
+  faisait démarrer les bandes latérales à la ligne 0 de la créative pour que le raccord
+  tombe juste en haut de page ; mais dès qu'on défilait, le bandeau glissait par-dessus des
+  bandes qui affichaient toujours ce même haut d'image, si bien que le titre de l'annonceur
+  apparaissait DEUX FOIS : « c'est comme si tu avais superposé deux gifs, ce n'est pas ça
+  que je veux » (Franck, captures à l'appui).
+  Version simplifiée demandée, et bien meilleure : un seul élément portant toute la
+  créative, qui défile puis se FIGE quand le bas du bandeau atteint le menu — « tu mets le
+  gif, tu as le bandeau, les gouttières, quand on scrolle il faut que ce soit sticky en haut
+  des gouttières, en bas du bandeau ». Deux états (position:absolute puis position:fixed
+  à `bas du menu − hauteur du bandeau`) qui coïncident au point de bascule, donc sans saut ;
+  dans chacun la position est constante, donc le JS ne fait que choisir l'état et ne suit
+  jamais le défilement pixel par pixel — pas de retour de la parallaxe de la v1.0.
+  Une seule image affichée une seule fois : ni trou (v0.8) ni doublon (v1.3) possible.
+
+  Conforme, au passage, à la spécification du format Page Skin (IQD/IAB, techspecs
+  iqd-ao.de) : créative de fond 1920×1080 qui « reste visible en permanence dans la zone
+  visible de l'utilisateur ». À noter — cette même spécification déconseille de placer du
+  TEXTE dans le motif de fond et d'y ménager des zones creuses ou blanches, la visibilité
+  dépendant de la résolution et de la mise en page ; la créative de test fait les deux (le
+  titre « L'atmosfera sabauda » et la fenêtre crème centrale). À signaler aux annonceurs
+  plutôt qu'à compenser en code.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -146,7 +168,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.3
+Version: 1.4
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -263,21 +285,11 @@ add_action('wp_footer', function () {
          le bandeau s'en va en defilant et les bandes prennent le relais avec la suite du
          decor, sans saut. */
 
-      /* Le bandeau : ancre dans la PAGE (position:absolute), donc il defile avec le contenu
-         et s'efface sous le menu. Aucun JS ne le suit pendant le defilement — c'est ce qui
-         avait produit la parallaxe de la v1.0, cf. note v1.1 en tete de fichier. */
-      .cs-skin-banner{position:absolute;left:0;right:0;height:12.5vw;z-index:1;overflow:hidden;
-        cursor:pointer;background-repeat:no-repeat;background-size:100vw auto;
-        background-position:center top}
-      /* Les bandes : collees (position:fixed), calees en JS entre le bas du menu et le haut
-         du pied de page — meme principe que les gouttieres des blocs 5/6. Contrairement au
-         bandeau, leur position ne varie PAS a chaque pixel de defilement (elle ne change que
-         quand l'en-tete compact apparait), donc le calcul en JS n'y produit aucun retard
-         visible. */
-      .cs-skin-col{position:fixed;width:18.75vw;z-index:0;overflow:hidden;cursor:pointer;
-        background-repeat:no-repeat;background-size:100vw auto}
-      .cs-skin-col--l{left:0;background-position:left top}
-      .cs-skin-col--r{right:0;background-position:right top}
+      /* UN SEUL element portant TOUTE la creative. La position (absolute ou fixed) est
+         posee en JS : voir cs-regie-skin-js, qui bascule de l'une a l'autre au moment ou le
+         bas du bandeau atteint le menu. */
+      .cs-skin{left:0;right:0;height:56.25vw;z-index:0;overflow:hidden;cursor:pointer;
+        background-repeat:no-repeat;background-size:100vw auto;background-position:center top}
       /* Le contenu du site passe AU-DESSUS des trois. .site n'a aucun fond propre (verifie
          en direct : c'est body qui porte --beige), donc la skin reste visible partout ou le
          contenu ne peint pas — les marges laterales, essentiellement. z-index 2 pour passer
@@ -322,17 +334,11 @@ add_action('wp_footer', function () {
     </style>
 
     <?php if ($skin) : ?>
-    <div class="cs-regie cs-skin-banner" id="cs-skin-banner" role="complementary" aria-label="Publicité"
+    <div class="cs-regie cs-skin" id="cs-skin" role="complementary" aria-label="Publicité"
          style="background-image:url('<?php echo $skin['img']; ?>')"
          onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')">
       <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
     </div>
-    <div class="cs-regie cs-skin-col cs-skin-col--l" id="cs-skin-col-l" aria-hidden="true"
-         style="background-image:url('<?php echo $skin['img']; ?>')"
-         onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')"></div>
-    <div class="cs-regie cs-skin-col cs-skin-col--r" id="cs-skin-col-r" aria-hidden="true"
-         style="background-image:url('<?php echo $skin['img']; ?>')"
-         onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')"></div>
     <?php endif; ?>
 
     <?php if ($left) : ?>
@@ -502,9 +508,8 @@ add_action('wp_footer', function () {
          gouttieres qui sont sticky, le haut des gouttieres correspond au bas du menu"
          (Franck, 2026-08-05). */
       (function(){
-        var banner = document.getElementById('cs-skin-banner');
-        var cols   = document.querySelectorAll('.cs-skin-col');
-        if (!banner) { return; }
+        var skin = document.getElementById('cs-skin');
+        if (!skin) { return; }
 
         var HEAD_SEL = '.as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline';
 
@@ -578,48 +583,47 @@ add_action('wp_footer', function () {
           return b;
         }
 
-        /* Le BANDEAU : pose une fois pour toutes a l'emplacement de sa cale, en coordonnees
-           de PAGE. Il defile ensuite tout seul, sans JS — cf. la note sur la parallaxe
-           ci-dessous. */
-        function placeBanner(){
-          var top = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
-          banner.style.top = top + 'px';
-        }
+        /* DEUX ETATS, UN SEUL ELEMENT — c'est tout le mecanisme.
 
-        /* Les BANDES : calees entre le bas du menu et le haut du pied de page, comme les
-           gouttieres des blocs 5/6. Elles, il faut bien les suivre au defilement — mais
-           leur position ne CHANGE qu'aux rares moments ou l'en-tete compact apparait ou
-           disparait, pas a chaque pixel : aucun retard visible, contrairement au bandeau. */
-        function placeCols(){
-          if (!cols.length) { return; }
-          var top  = headBottom();
-          var foot = footerTop();
-          var h    = (isFinite(foot) ? foot : window.innerHeight) - top;
-          if (h < 0) { h = 0; }
-          for (var i = 0; i < cols.length; i++) {
-            cols[i].style.top    = top + 'px';
-            cols[i].style.height = h + 'px';
+           Etat 1, "il defile" : position:absolute, ancre dans la PAGE a l'emplacement de sa
+           cale. Il monte avec le contenu, exactement a sa vitesse, SANS que le JS ne touche
+           a quoi que ce soit — c'est le navigateur qui s'en charge.
+           Etat 2, "il est colle" : position:fixed, top = bas du menu MOINS la hauteur du
+           bandeau. Le bandeau se retrouve donc entierement cache sous le menu, et les
+           gouttieres commencent pile au bas du menu. "Sticky en haut des gouttieres, en bas
+           du bandeau" (Franck, 2026-08-05).
+
+           La bascule se fait au point ou les deux positions COINCIDENT, donc sans le moindre
+           saut. Et dans chacun des deux etats la valeur ne bouge plus : le JS ne fait que
+           choisir l'etat, jamais suivre le defilement pixel par pixel. C'est ce qui evite de
+           refabriquer la parallaxe de la v1.0 (cf. note v1.1 en tete de fichier) : ce qui
+           trainait, la-bas, c'etait de RECALCULER une position a chaque evenement de
+           defilement, le navigateur peignant en continu et l'evenement JS arrivant apres.
+
+           NB : la hauteur du bandeau se mesure sur la largeur de l'ELEMENT RACINE et non sur
+           window.innerWidth, parce que c'est ce que vaut une unite vw en CSS — innerWidth
+           inclut la barre de defilement, ce qui decalerait le raccord de ~15px. */
+        var BAND = 240 / 1920;   // part de la creative occupee par le bandeau, cf. CSS
+
+        function place(){
+          var docTop  = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
+          var bandH   = BAND * document.documentElement.clientWidth;
+          var stuckAt = headBottom() - bandH;
+          var y       = window.pageYOffset || 0;
+
+          if (docTop - y > stuckAt) {
+            skin.style.position = 'absolute';
+            skin.style.top      = docTop + 'px';
+          } else {
+            skin.style.position = 'fixed';
+            skin.style.top      = stuckAt + 'px';
           }
         }
 
-        /* PAS d'ecouteur 'scroll' pour le BANDEAU — c'est le coeur du correctif de la v1.1.
-           Un element en position:absolute est ancre dans la PAGE : il defile tout seul,
-           exactement a la vitesse du contenu, sans une ligne de JavaScript. Le repositionner
-           a chaque evenement de defilement, comme le faisait la v1.0, ne pouvait qu'ajouter
-           du retard : le navigateur peint le defilement en continu, l'evenement JS arrive
-           apres coup, donc le bandeau rattrapait sa position avec un temps de retard.
-           C'est precisement ce que Franck a decrit le 2026-08-05 : "un effet de parallaxe
-           entre le corps du site et le bandeau", "trop saccade". Il ne bougeait pas moins
-           vite parce qu'il etait mal cale — il bougeait moins vite parce qu'on le
-           recalculait.
-           Sa position ne depend donc plus que de la MISE EN PAGE, et ne se recalcule que
-           quand celle-ci change : chargement, redimensionnement, consentement. Les deux
-           passes differees couvrent les gabarits JetEngine et les images qui arrivent apres
-           coup et decalent ce qui se trouve au-dessus de la cale. */
-        function placeAll(){ placeBanner(); placeCols(); }
+        function placeAll(){ place(); }
 
         placeAll();
-        addEventListener('scroll', placeCols, { passive: true });   // les BANDES seulement
+        addEventListener('scroll', place, { passive: true });  // choisit l'etat, ne suit pas
         addEventListener('resize', placeAll,  { passive: true });
         addEventListener('load',   placeAll);
         document.addEventListener('cmplz_status_change', function(){ setTimeout(placeAll, 0); });
