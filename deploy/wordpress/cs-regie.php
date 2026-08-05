@@ -210,6 +210,20 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   peut dépasser les bords visibles du navigateur lors de la mise à l'échelle »).
   La hauteur du bandeau devient une variable CSS partagée avec la cale, qui doit dégager
   exactement cette hauteur-là : les deux ne peuvent plus diverger.
+
+  v1.9 (2026-08-05) : « quand on scrolle de nouveau vers le haut, on n'arrive pas à avoir
+  l'entièreté du bandeau, il faut recharger » (Franck). Le rail était calé une fois pour
+  toutes, or sur l'accueil la mise en page CHANGE en cours de défilement (l'en-tête compact
+  apparaît), ce qui déplace la cale et donc l'ancrage du rail. Celui-ci gardait son ancienne
+  valeur : en remontant, la skin se retrouvait trop haute et son bandeau arrivait tronqué
+  sous la barre territoire.
+  Le rail est donc revérifié au défilement — mais l'écriture n'a lieu QUE si la valeur a
+  changé, et le calcul passe par requestAnimationFrame. C'est toute la différence avec la
+  parallaxe des v1.0/v1.4-v1.5 : on ne repositionne pas la skin à chaque pixel (c'est
+  position:sticky qui la place, dans le moteur de rendu), on constate un changement de mise
+  en page et on recale le rail quand il y en a un — donc quasi jamais. Un ResizeObserver sur
+  le corps de page couvre en plus les changements de hauteur qui ne déclenchent aucun
+  événement (gabarits JetEngine, images tardives).
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -217,7 +231,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.8
+Version: 1.9
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -673,27 +687,59 @@ add_action('wp_footer', function () {
           return best;
         }
 
-        function place(){
+        /* Le rail s'arrete au HAUT DU PIED DE PAGE, et non au bas du document : un element
+           sticky ne pouvant pas sortir de son parent, la skin se decolle et remonte d'elle-
+           meme a l'arrivee du footer, sans une ligne de JS au defilement. Sans cette borne
+           (v1.6) elle restait collee derriere le pied de page — "les gouttieres ne
+           s'arretent pas au footer" (Franck, 2026-08-05, capture a l'appui). */
+
+        /* Le rail doit etre recalcule quand la MISE EN PAGE bouge — pas quand on defile.
+           Les deux se confondent facilement ici : sur l'accueil, la pile d'en-tetes change
+           en cours de defilement (l'en-tete compact apparait), ce qui deplace la cale et
+           donc le point d'ancrage du rail. Cale une fois pour toutes, le rail gardait son
+           ancienne valeur : en remontant, la skin se retrouvait trop haute et son bandeau
+           arrivait tronque sous la barre territoire — il fallait recharger pour le revoir
+           entier (constat Franck, 2026-08-05).
+
+           D'ou une verification au defilement, mais qui N'ECRIT QUE SI LA VALEUR A CHANGE.
+           C'est la difference avec la parallaxe des v1.0/v1.4-v1.5 : on ne repositionne pas
+           la skin a chaque pixel (elle, c'est position:sticky qui la place, dans le moteur
+           de rendu), on se contente de constater un changement de mise en page et de
+           recaler le rail quand il y en a un — donc quasi jamais. */
+        var lastTop = null, lastH = null, ticking = false;
+
+        function apply(){
           var docTop = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
           var docH   = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 0);
-          /* Le rail s'arrete au HAUT DU PIED DE PAGE, et non au bas du document : un element
-             sticky ne pouvant pas sortir de son parent, la skin se decolle et remonte d'elle-
-             meme a l'arrivee du footer, sans une ligne de JS au defilement. Sans cette borne
-             (v1.6) elle restait collee derriere le pied de page — "les gouttieres ne
-             s'arretent pas au footer" (Franck, 2026-08-05, capture a l'appui). */
           var foot   = footerTopDoc();
           var end    = isFinite(foot) ? foot : docH;
-          track.style.top    = docTop + 'px';
-          track.style.height = Math.max(0, end - docTop) + 'px';
+          var h      = Math.max(0, end - docTop);
+          if (lastTop === null || Math.abs(docTop - lastTop) > 0.5) {
+            track.style.top = docTop + 'px'; lastTop = docTop;
+          }
+          if (lastH === null || Math.abs(h - lastH) > 0.5) {
+            track.style.height = h + 'px'; lastH = h;
+          }
         }
 
-        /* PAS d'ecouteur 'scroll' : il n'y a plus rien a recalculer quand on defile. */
+        function place(){ lastTop = lastH = null; apply(); }          // force la reecriture
+
+        function onScroll(){
+          if (ticking) { return; }
+          ticking = true;
+          requestAnimationFrame(function(){ ticking = false; apply(); });
+        }
+
         place();
+        addEventListener('scroll', onScroll, { passive: true });
         addEventListener('resize', place, { passive: true });
         addEventListener('load',   place);
         document.addEventListener('cmplz_status_change', function(){ setTimeout(place, 0); });
         setTimeout(place, 300);
         setTimeout(place, 1200);
+        // Le corps de page change de hauteur (gabarits JetEngine, images tardives) sans
+        // qu'aucun evenement ci-dessus ne se declenche : on l'observe directement.
+        if (window.ResizeObserver) { new ResizeObserver(apply).observe(document.body); }
       })();
     </script>
     <?php endif; ?>
