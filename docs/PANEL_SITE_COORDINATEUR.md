@@ -1,10 +1,30 @@
-# Panel des personas sur le SITE, et le coordinateur qui les filtre — proposition
+# Panel des personas sur le SITE, et le coordinateur qui les filtre
 
-**Proposition du 2026-08-05, RIEN N'EST IMPLÉMENTÉ.** Demande de Franck (en balade,
-répondant à ma question « pourquoi tu ne fais pas en sorte que ça corrige tout seul ? ») :
-faire lire le SITE par le panel de personas, pas seulement chaque article — avec un
-coordinateur qui filtre leurs retours avant de les transmettre, pour qu'une critique qui
-contredit un choix DÉLIBÉRÉ ne remonte pas comme un bug.
+**Proposition du 2026-08-05.** Demande de Franck (en balade, répondant à ma question
+« pourquoi tu ne fais pas en sorte que ça corrige tout seul ? ») : faire lire le SITE par
+le panel de personas, pas seulement chaque article — avec un coordinateur qui filtre
+leurs retours avant de les transmettre, pour qu'une critique qui contredit un choix
+DÉLIBÉRÉ ne remonte pas comme un bug.
+
+**Construit le même jour, une fois « home + 4 pages territoire » validé.** Voir
+`config/doctrine_affichage.md`, `utils/doctrine.py`, `scripts/panel_site.py`. Tout ce qui
+NE dépend PAS d'un appel LLM est testé (`tests/test_panel_site.py`, 13/13) : le
+chargement/matching de la doctrine, la récupération des VRAIES pages du site (aucune clé
+API nécessaire — juste HTTP), la construction du prompt, et le coordinateur au complet
+sur des trouvailles reconstruites à la main. **Ce qui manque encore : un vrai passage,
+crédit API rétabli** — la lecture par les personas eux-mêmes est un appel LLM, rien ne
+prouve encore que le panel juge bien un VRAI persona sur une VRAIE page tant que la
+chaîne n'a pas tourné une fois pour de vrai.
+
+⚠️ **Précision honnête** : seul le périmètre des pages (« home + 4 territoires ») a été
+explicitement validé par Franck le 2026-08-05. Le SEUIL d'accord codé dans
+`coordonner()` (2 personas indépendants minimum, même page × même type) est ma
+proposition initiale appliquée par défaut, PAS une décision confirmée — l'exception
+« un persona LOCAL compte seul sur sa propre aire » n'est pas codée. ⚖️ Toujours ouvert :
+valider ou ajuster ce seuil, l'exception locale, le contenu de la doctrine au-delà du
+prix, et la destination du rapport (Slack séparé ou section de `weekly_audits` —
+actuellement le script n'est branché NULLE PART en cron, volontairement : il coûte du
+LLM, à activer seulement une fois le crédit revenu et le seuil validé).
 
 ## Ce qui existe déjà, et ce qui manque
 
@@ -118,19 +138,20 @@ Le fil conducteur : l'endroit où « corriger tout seul » a un sens, c'est déj
 (retenter, ressurfacer, republier). Ce qui reste à désigner, c'est précisément ce
 qu'aucune commande ne sait faire sans un choix humain d'abord.
 
-## ⚖️ Décisions avant d'écrire une ligne de code
+## ⚖️ Décisions
 
-- **Quelles pages le panel lit-il ?** Proposition : la page d'accueil + les 4 pages
-  territoire, pas les fiches individuelles (déjà couvertes par le panel existant).
-- **Le premier contenu de `config/doctrine_affichage.md`** : le prix (cité par Franck).
-  Y a-t-il d'autres choix délibérés à y consigner tout de suite plutôt que de les
-  découvrir un par un via de fausses alertes ?
-- **Le seuil d'accord** entre personas pour qu'une trouvaille compte comme un motif
-  (proposition : 2 personas indépendants minimum, sauf pour un persona LOCAL du
-  territoire concerné, dont l'avis seul suffit à faire remonter — c'est lui l'autorité
-  sur sa propre aire, comme pour la note de déplacement).
+- **✅ Quelles pages le panel lit-il ?** Tranché le 2026-08-05 : la page d'accueil + les
+  4 pages territoire (`scripts/panel_site.py:PAGES`, URLs vérifiées sur le site réel).
+- **Le premier contenu de `config/doctrine_affichage.md`** : le prix (cité par Franck),
+  seule entrée pour l'instant. Y a-t-il d'autres choix délibérés à y consigner tout de
+  suite plutôt que de les découvrir un par un via de fausses alertes ? Toujours ouvert.
+- **Le seuil d'accord** — codé par défaut à 2 personas indépendants minimum (même page ×
+  même type), PAS confirmé par Franck. L'exception « un persona LOCAL du territoire
+  concerné compte seul » (proposée à l'origine, comme pour la note de déplacement)
+  N'EST PAS codée — à trancher, puis à implémenter si retenue.
 - **Où atterrit le rapport** — un digest Slack séparé, ou une section de plus dans
-  `weekly_audits` ?
+  `weekly_audits` ? Toujours ouvert : `scripts/panel_site.py` n'est branché dans AUCUN
+  cron pour l'instant (coût LLM, à activer une fois le crédit revenu et ce point tranché).
 
 ## Sources (recherche du 2026-08-05, bonnes pratiques multi-agents)
 
