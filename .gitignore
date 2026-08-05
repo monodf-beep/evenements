@@ -1,7 +1,19 @@
 # Secrets — ne jamais committer
+#
+# `.env` seul ne suffisait pas. Au 2026-08-05, le VPS portait à la racine du dépôt
+# .env.save, .env.save.1, .env.bak.1783421280 et .env.bak.1783422954 — quatre copies
+# non suivies des mêmes secrets (clé Anthropic, mot de passe applicatif WordPress, clé
+# Brevo, identifiants Google), qu'un seul `git add -A` aurait poussées sur un dépôt
+# public. Ces copies naissent toutes seules : un éditeur, un `cp` de précaution avant
+# une modification, un script d'installation. On ignore donc la FAMILLE, pas le fichier.
 .env
+.env.*
+!.env.example
 config/credentials.json
 config/token.json
+# Même raisonnement : un identifiant sauvegardé reste un identifiant.
+config/credentials.json.*
+config/token.json.*
 
 # Base de données et logs générés
 data/
