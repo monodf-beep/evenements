@@ -266,6 +266,10 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   version MOBILE de l'accueil, masquée sur desktop — le bandeau était donc inséré dans un
   sous-arbre invisible. L'ancre devient le dernier en-tête VISIBLE, toutes constructions
   confondues (mêmes sélecteurs que le clamp des gouttières, même filtre getClientRects).
+  Même passe de mesure, deuxième correctif : le bandeau en hauteur fixe (15.625vw) + cover,
+  inséré dans la colonne de contenu (~910px), perdait son logo et son bouton, rognés par le
+  recadrage. La boîte est désormais au ratio exact de la créative (aspect-ratio:1920/300) :
+  l'image s'y loge entière à toutes les largeurs.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -273,7 +277,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 2.2
+Version: 2.3
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -421,11 +425,13 @@ add_action('wp_footer', function () {
       .cs-skin-mid{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
         width:<?php echo (int) $cs_skin_container; ?>px;z-index:-1;
         background:var(--beige,#F7F1E8)}
-      /* 15.625vw = 300/1920 : la hauteur du bandeau une fois mis a la largeur de l'ecran,
-         donc jamais deforme. position:relative + z-index pour passer devant le fond, le
-         bandeau pouvant selon la page etre un enfant de body place avant .site. */
+      /* aspect-ratio 1920/300 : la boite a EXACTEMENT le ratio de la creative, donc
+         l'image s'y loge entiere — ni recadree ni deformee — quelle que soit la largeur
+         du conteneur ou le bandeau est insere. Mesure au navigateur le 2026-08-05 : en
+         height fixe + cover, insere dans la colonne de 910px, le bandeau perdait son logo
+         et son bouton "DECOUVRIR", rognes par le recadrage — il ne restait que le titre. */
       .cs-skin-banner{position:relative;z-index:1;display:block;width:100%;
-        height:15.625vw;cursor:pointer;
+        aspect-ratio:1920/300;cursor:pointer;
         background-repeat:no-repeat;background-position:center center;background-size:cover}
       /* 160×600 DES DEUX COTES, ancrees a 24px des bords — valeurs du design system
          maison (.as-desktop-gutter-ad, components.css), pas une invention locale.
