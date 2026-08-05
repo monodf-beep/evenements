@@ -75,6 +75,16 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   haute. Plus aucun raccord à calculer, donc plus aucun trou possible — c'était d'ailleurs
   le principe de la v0.3, abandonné à tort en v0.4.
 
+  v0.9 (2026-08-05) : le décalage du contenu de la v0.8 était un padding-top sur `.site`,
+  qui plaçait la bande haute AU-DESSUS du menu sur l'accueil au lieu de dessous. Motif :
+  sur l'accueil le menu n'est pas dans l'en-tête injecté (`.as-site-header` y est masqué,
+  cf. snippet 62) mais bakè dans le CONTENU de la page, donc à l'intérieur de `.site` —
+  un padding sur `.site` poussait donc le menu vers le bas lui aussi. Remplacé par une
+  cale insérée en JS juste après la pile menu + barre territoire : elle tombe au bon
+  endroit sur l'accueil comme sur les pages intérieures, sans distinguer les deux cas.
+  « Le bandeau doit être en dessous du menu. Le corps du site doit se décaler
+  suffisamment vers le bas pour que le bandeau ait la place » (Franck).
+
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -82,7 +92,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 0.8
+Version: 0.9
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -196,13 +206,23 @@ add_action('wp_footer', function () {
          (verifie en direct : c'est body qui porte --beige), donc la skin reste visible
          partout ou le contenu ne peint pas — les marges laterales, essentiellement. */
       .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:1}
-      /* Decale le contenu vers le bas pour degager la bande haute de la creative (celle
-         qui porte le titre de l'annonceur), demande de Franck le 2026-08-05 : "le bandeau
-         doit etre EN DESSOUS du menu, et le corps du site doit se decaler vers le bas".
+      /* Cale vide inseree en JS JUSTE APRES la pile menu + barre territoire, pour degager
+         la bande haute de la creative (celle qui porte le titre de l'annonceur) SOUS le
+         menu : "le bandeau doit etre en dessous du menu, le corps du site doit se decaler
+         suffisamment vers le bas pour que le bandeau ait la place" (Franck, 2026-08-05).
+         Pourquoi une cale et pas un padding-top sur .site (ce que faisait la v0.8) : sur
+         l'ACCUEIL le menu n'est pas dans l'en-tete injecte (.as-site-header y est masque,
+         cf. snippet 62) mais bake dans le CONTENU de la page, donc a l'interieur de .site.
+         Un padding sur .site poussait donc le menu vers le bas lui aussi, et la bande
+         s'affichait AU-DESSUS de lui — l'inverse de la demande. Une cale placee apres la
+         pile d'en-tetes marche sur les deux types de page sans distinction de cas.
          12.5vw = 240/1920 : exactement la hauteur de cette bande une fois l'image mise a
-         la largeur de l'ecran. Proportionnel, donc juste a toutes les largeurs — une
-         valeur en px fixes ne collerait qu'a une seule taille d'ecran. */
-      .cs-consent-mkt.cs-skin-on .site{padding-top:12.5vw}
+         la largeur de l'ecran (background-size:100% auto ci-dessus). Proportionnel, donc
+         juste a toutes les largeurs — une valeur en px fixes ne collerait qu'a une seule.
+         Hauteur nulle hors skin : pas de trou blanc quand la campagne s'arrete. */
+      #cs-skin-spacer{height:0}
+      .cs-consent-mkt.cs-skin-on #cs-skin-spacer{height:12.5vw}
+      @media (max-width:1279px){ .cs-consent-mkt.cs-skin-on #cs-skin-spacer{height:0} }
       /* 160×600 DES DEUX COTES, ancrees a 24px des bords — valeurs du design system
          maison (.as-desktop-gutter-ad, components.css), pas une invention locale.
          L'ancienne formule calait la gouttiere sur une colonne fantome de 1160px et
@@ -405,6 +425,33 @@ add_action('wp_footer', function () {
 
         var HEAD_SEL = '.as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline';
 
+        /* La cale qui degage la bande haute, posee APRES le dernier element de la pile
+           d'en-tetes dans l'ordre du DOM (donc sous la barre territoire quand elle existe).
+           Recalculee a chaque passage : les gabarits JetEngine reconstruisent des morceaux
+           de page en cours de route, et la cale doit rester au bon endroit si ca arrive. */
+        var spacer = document.createElement('div');
+        spacer.id = 'cs-skin-spacer';
+        spacer.setAttribute('aria-hidden', 'true');
+
+        function placeSpacer(){
+          var heads = document.querySelectorAll(HEAD_SEL);
+          var last = null;
+          for (var i = 0; i < heads.length; i++) {
+            if (heads[i].getBoundingClientRect().height <= 0) { continue; }   // masque
+            if (!last || (last.compareDocumentPosition(heads[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+              last = heads[i];
+            }
+          }
+          if (last) {
+            if (spacer.previousElementSibling !== last) { last.insertAdjacentElement('afterend', spacer); }
+          } else if (!spacer.parentNode) {
+            // Aucun en-tete trouve : la cale va en tete de .site plutot que nulle part.
+            var site = document.querySelector('.site') || document.body;
+            site.insertBefore(spacer, site.firstChild);
+          }
+          return spacer;
+        }
+
         // Copies volontaires des fonctions du clamp des gouttieres : voir la note en tete
         // de ce fichier (duplique plutot que factorise pour ne pas risquer leur logique).
         function footerTop(){
@@ -437,7 +484,14 @@ add_action('wp_footer', function () {
         }
 
         function place(){
-          var top = headBottom();
+          /* La skin commence a l'emplacement de la cale — c'est-a-dire juste sous le menu,
+             puisque c'est la qu'elle est posee. On lit sa position plutot que de refaire
+             le calcul : les deux ne peuvent pas diverger.
+             Le plancher headBottom() sert au defilement : une fois la cale remontee hors
+             de l'ecran, la skin s'arrete sous la barre collante au lieu de passer dessous. */
+          var top = placeSpacer().getBoundingClientRect().top;
+          var hb  = headBottom();
+          if (top < hb) { top = hb; }
           skin.style.top = top + 'px';
 
           // bottom se compte depuis le BAS de la fenetre (position:fixed) : ce qui separe
