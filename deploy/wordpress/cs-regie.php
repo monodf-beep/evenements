@@ -198,6 +198,18 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   footer reprend la liste de candidats et le garde-fou « 40 % hauts du document » du clamp
   des gouttières, qui évite qu'un <footer> de carte d'événement en milieu de page ne fasse
   passer le rail pour fini dès le premier tiers.
+
+  v1.8 (2026-08-05) : « il reste un petit défaut en dessous des gouttières, on a une marge »
+  (Franck). La créative est en 16/9 : mise à la largeur de l'écran elle fait 56.25vw de
+  haut, et une fois collée son bandeau rangé au-dessus du bord il n'en restait que 43.75vw
+  de visible — un peu moins que la hauteur d'une fenêtre courante, d'où une bande vide en
+  bas. La hauteur est désormais calculée pour couvrir : au moins 9/7 de la fenêtre, puisque
+  ce qui reste visible vaut 7/9 de la hauteur totale. `background-size:cover` remplace
+  `100vw auto` pour remplir cette boîte plus haute que le ratio de l'image, quitte à rogner
+  un peu les bords latéraux — ce que la spec du format prévoit explicitement (« le contenu
+  peut dépasser les bords visibles du navigateur lors de la mise à l'échelle »).
+  La hauteur du bandeau devient une variable CSS partagée avec la cale, qui doit dégager
+  exactement cette hauteur-là : les deux ne peuvent plus diverger.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -205,7 +217,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.7
+Version: 1.8
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -335,14 +347,35 @@ add_action('wp_footer', function () {
          de calculer. position:sticky fait le meme travail dans le moteur de rendu, donc au
          bon moment, par construction.
 
-         top:-12.5vw = la hauteur du bandeau. La skin defile avec la page, puis se fige
+         top = -(hauteur du bandeau), cf. les variables ci-dessous. La skin defile avec la
+         page, puis se fige
          quand le bas du bandeau atteint le haut de la fenetre : le bandeau se range
          au-dessus du bord, les gouttieres restent affichees dessous, et le menu (opaque, au
          dessus en z-index) recouvre leur haut. "Sticky en haut des gouttieres, en bas du
          bandeau" (Franck). */
-      .cs-skin{position:sticky;top:-12.5vw;width:100%;height:56.25vw;overflow:hidden;
-        cursor:pointer;pointer-events:auto;
-        background-repeat:no-repeat;background-size:100vw auto;background-position:center top}
+      /* Hauteur de la skin et hauteur de son bandeau, liees par la geometrie de la creative
+         (240/1080 = 2/9 de l'image) et posees en variables parce que la CALE, plus bas, doit
+         degager exactement la meme hauteur de bandeau.
+
+         Pourquoi "au moins 9/7 de la fenetre" : quand la skin est collee, son bandeau est
+         range au-dessus du bord (top = -bandeau), donc ce qui reste visible vaut
+         hauteur - bandeau = 7/9 de la hauteur. Pour que ca couvre la fenetre entiere il faut
+         7/9 x hauteur >= 100vh, soit hauteur >= 9/7 x 100vh. Sans ca il manquait une bande
+         en bas de l'ecran — "il reste un petit defaut en dessous des gouttieres, on a une
+         marge" (Franck, 2026-08-05) : la creative est en 16/9, donc mise a la largeur de
+         l'ecran elle est un peu moins haute que la fenetre sur un ecran courant.
+         Le max() avec 56.25vw (= 9/16, la hauteur naturelle a pleine largeur) garde le cas
+         des fenetres larges et basses, ou c'est la largeur qui commande. */
+      :root{--cs-skin-h:max(calc(100vh * 9 / 7), 56.25vw);
+            --cs-skin-band:calc(var(--cs-skin-h) * 2 / 9)}
+      /* background-size:cover et non "100vw auto" : avec la hauteur ci-dessus l'image doit
+         remplir une boite plus haute que son ratio, cover s'en charge en rognant un peu les
+         bords lateraux plutot que de laisser du vide. La spec du format Page Skin (IQD/IAB)
+         prevoit explicitement ce cas : "le contenu peut depasser les bords visibles du
+         navigateur lors de la mise a l'echelle". */
+      .cs-skin{position:sticky;top:calc(-1 * var(--cs-skin-band));width:100%;
+        height:var(--cs-skin-h);overflow:hidden;cursor:pointer;pointer-events:auto;
+        background-repeat:no-repeat;background-size:cover;background-position:center top}
       /* Le rail dans lequel la skin colle. Un element sticky ne peut pas sortir de son
          parent : ce rail va donc de la cale jusqu'au bas de la page, ce qui donne a la skin
          toute la hauteur du document pour rester collee. Il est en position:absolute pour ne
@@ -364,12 +397,12 @@ add_action('wp_footer', function () {
          Un padding sur .site poussait donc le menu vers le bas lui aussi, et la bande
          s'affichait AU-DESSUS de lui — l'inverse de la demande. Une cale placee apres la
          pile d'en-tetes marche sur les deux types de page sans distinction de cas.
-         12.5vw = 240/1920 : exactement la hauteur de cette bande une fois l'image mise a
-         la largeur de l'ecran (background-size:100% auto ci-dessus). Proportionnel, donc
-         juste a toutes les largeurs — une valeur en px fixes ne collerait qu'a une seule.
+         Sa hauteur est --cs-skin-band, la MEME variable que celle dont la skin se decale
+         pour ranger son bandeau : les deux ne peuvent donc pas diverger. Proportionnelle,
+         donc juste a toutes les tailles — une valeur en px fixes ne collerait qu'a une.
          Hauteur nulle hors skin : pas de trou blanc quand la campagne s'arrete. */
       #cs-skin-spacer{height:0}
-      .cs-consent-mkt.cs-skin-on #cs-skin-spacer{height:12.5vw}
+      .cs-consent-mkt.cs-skin-on #cs-skin-spacer{height:var(--cs-skin-band)}
       @media (max-width:1279px){ .cs-consent-mkt.cs-skin-on #cs-skin-spacer{height:0} }
       /* 160×600 DES DEUX COTES, ancrees a 24px des bords — valeurs du design system
          maison (.as-desktop-gutter-ad, components.css), pas une invention locale.
