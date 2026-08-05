@@ -50,13 +50,19 @@ publier en avance.
 
 ✅ **Pas de fenêtre par défaut** — un événement ordinaire (concert, expo, marché
 hebdomadaire…) se publie dès qu'il est prêt, quelle que soit la distance dans le temps,
-comme avant le 2026-08-04. Seuls Noël (65 jours) et Halloween (30 jours) ont une fenêtre
-propre dans `config/temps_forts.json` (détection par mot-clé FR/IT dans le titre ou la
-description) — les deux seuls temps forts que Franck a cités.
+comme avant le 2026-08-04. Seuls Noël (65 jours) et Halloween (30 jours) sont **confirmés
+par Franck** dans `config/temps_forts.json` (détection par mot-clé FR/IT dans le titre ou
+la description).
 
-⚖️ **Reste ouvert** : étendre `config/temps_forts.json` au reste du tableau ci-dessous
-(Épiphanie, Carnavals, Pâques, Ferragosto…) — aucun n'est implémenté, le fichier est
-éditable sans code le jour où Franck en confirme un.
+⚖️ **Proposé le 2026-08-05, PAS ENCORE CONFIRMÉ** : le reste du tableau ci-dessous a été
+ajouté à `config/temps_forts.json` avec les fenêtres qu'il propose déjà — Luci d'Artista,
+Immaculée, Épiphanie, Pâques/Pasquetta, Nuit des musées, Fête de la musique, Ferragosto,
+Désalpes, Journées du patrimoine, Vendanges & sagre, Fête de la science/Nuit des étoiles.
+Chaque entrée porte `"notes": "PROPOSÉ, pas confirmé…"` dans le fichier — à valider ou
+corriger un par un, ou à retirer en bloc si Franck préfère s'en tenir aux deux confirmés.
+**Volontairement absents** (même logique que Musilac/Nice Jazz — Franck, 2026-08-05) :
+Carnavals (Nice/Ivrea, billetterie), Foire de Saint-Ours, Foire de la truffe d'Alba — ce
+sont des rendez-vous à réserver tôt, pas des moments à décalage saisonnier.
 
 ## Les temps forts du territoire — le calendrier à valider
 
