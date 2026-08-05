@@ -192,6 +192,17 @@ avaient donc une page officielle vérifiée que le publisher jetait.
 > qui protège d'un risque réel doit être vérifié sur ce qu'il écarte, pas seulement sur
 > ce qu'il laisse passer.
 
+**Le piège suivant, trouvé en réparant le précédent.** 98 fiches publiées affichaient
+`translated:959:fr` sous le libellé « Source officielle ↗ » : le pseudo-lien interne
+que `translate_events` pose dans `url_source` pour marquer une traduction. Le lecteur
+se voyait offrir un lien mort comme preuve de vérification. Même famille : `gmail:<id>`
+pour un message ingéré, et une redirection Salesforce Marketing Cloud sur WP#7113.
+
+> **Règle : une source publiée est une adresse `http(s)` ouvrable, ou rien.** Le test
+> de schéma coûte une ligne et ne dépend d'aucune liste à tenir à jour, contrairement
+> à l'énumération des pseudo-préfixes et des routeurs. Quand une garde par liste et une
+> garde par invariant sont possibles, poser l'invariant d'abord et la liste ensuite.
+
 > **Règle : pas de source publiée, pas de date de vérification.** `as_verifie_le` était
 > estampillé sans condition. Une fiche affirmait donc une vérification que le lecteur
 > ne peut pas contrôler, alors que les mentions légales §4 promettent une vérification

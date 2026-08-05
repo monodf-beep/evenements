@@ -147,8 +147,23 @@ def _is_logo(url) -> bool:
 # publiques. Cf. docs/CONFORMITE.md §5.
 _TRACKING_HOSTS = re.compile(
     r"(^|\.)(list-manage\.com|mailchi\.mp|musvc\d*\.net|sendinblue\.com|brevo\.com"
-    r"|mailerlite\.com|sendgrid\.net|hubspotlinks\.com|mailjet\.com)$", re.I)
-_TRACKING_PATH = re.compile(r"/e/tr\b|[?&](e|eid|subscriber)=", re.I)
+    r"|mailerlite\.com|sendgrid\.net|hubspotlinks\.com|mailjet\.com"
+    # Salesforce Marketing Cloud / ExactTarget : trouvé le 2026-08-05 sur WP#7113
+    # (click.marketingcloud.turismotorino.org). Le domaine est celui du CLIENT, seul
+    # le sous-domaine trahit le routeur — d'où le motif sur le libellé, pas sur le TLD.
+    r"|marketingcloud\.\w[\w.-]*|exct\.net|mktdns\.com|cmail\d*\.com"
+    r"|\w*click\w*\.\w[\w.-]*\.(?:org|com|it|fr)"
+    r")$", re.I)
+_TRACKING_PATH = re.compile(r"/e/tr\b|[?&](e|eid|subscriber|qs)=", re.I)
+
+# Une source publiée est une adresse que le lecteur peut ouvrir. Tout le reste est un
+# identifiant interne : `translated:959:fr` (pseudo-lien posé par translate_events sur
+# `url_source`) et `gmail:<id>` (message ingéré). Au 2026-08-05, 98 fiches publiées
+# affichaient un `translated:` sous le libellé « Source officielle ↗ » — un lien mort
+# offert au lecteur comme preuve de vérification. Vérifier le schéma coûte une ligne et
+# ne dépend d'aucune liste à tenir à jour, contrairement à l'énumération des pseudo-
+# préfixes : c'est la garde à privilégier.
+_SCHEMAS_PUBLIABLES = ("https://", "http://")
 
 
 def _is_tracking_url(url) -> bool:
@@ -178,8 +193,9 @@ def _source_publiable(event: dict, is_radar: bool) -> str:
     **Hors radar**, `url_source` fait foi (source tier « officielle » de sources.txt),
     mais `url_officiel` la précède quand elle existe : elle a été vérifiée, pas héritée.
 
-    **Dans tous les cas**, une redirection de routeur de newsletter n'est pas une
-    source (CONFORMITE §5).
+    **Dans tous les cas**, la valeur retenue doit être une adresse `http(s)` que le
+    lecteur peut ouvrir — ni `translated:959:fr`, ni `gmail:<id>` — et ne doit pas être
+    une redirection de routeur (CONFORMITE §5).
 
     L'ancre officielle est celle de `utils.radar.official_anchor()` — la MÊME que
     celle qui autorise la publication. Ne pas la réécrire ici : elle lit trois signaux
@@ -193,9 +209,12 @@ def _source_publiable(event: dict, is_radar: bool) -> str:
     `official_anchor` peut la rattraper par `enrich_data`, sinon elle ressortira sans
     source même si l'original en a une : c'est à la traduction de propager la colonne.
     """
-    ancre = radar.official_anchor(event) or ""
-    officiel = ancre.strip() if ancre.startswith(("https://", "http://")) else ""
+    ancre = (radar.official_anchor(event) or "").strip()
+    officiel = ancre if ancre.startswith(_SCHEMAS_PUBLIABLES) else ""
     url = officiel if officiel else ("" if is_radar else (event.get("url_source") or "").strip())
+    if url and not url.startswith(_SCHEMAS_PUBLIABLES):
+        log.warning("source non publiable écartée (id=%s) : %s", event.get("id"), url[:80])
+        return ""
     if _is_tracking_url(url):
         log.warning("source de traçage écartée (id=%s) : %s",
                     event.get("id"), url[:80])
