@@ -324,6 +324,15 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("slack_learning")
 
+    # Suspicions d'annulation, LECTURE SEULE (2026-08-05 : scripts.dedupe bloque la
+    # fusion et alerte sur Slack une fois — sans ce passage, une suspicion non traitée
+    # deviendrait invisible dès qu'elle sort du fil Slack de la semaine).
+    from scripts.audit_annulations import main as annulations_main
+    rc, out = _run_captured(annulations_main, [], "audit-annulations")
+    sections.append(f"• Suspicions d'annulation en attente : {_tail(out, 1)}")
+    if rc:
+        echecs.append("audit_annulations")
+
     # Domaines sources qui REFUSENT le serveur. Ajouté le 2026-08-04 : agendaculturel.fr
     # répondait 403 sur ses quatre sous-domaines, et 242 fiches encore devant nous en
     # dépendent. Chaque tentative de réparation (dates web, venues, autocomplete,

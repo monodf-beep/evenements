@@ -31,6 +31,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils.sources import same_story, is_logo_image
+from utils.annulation import load_annulation_filter, marqueur_annulation
+from utils import slack
 from scripts.scraper_events import init_db
 from dotenv import load_dotenv
 
@@ -324,6 +326,82 @@ def _empile(conn: sqlite3.Connection, event_id: int, entree: dict) -> None:
                  (json.dumps(pile, ensure_ascii=False), event_id))
 
 
+def ensure_annulation_columns(conn: sqlite3.Connection) -> None:
+    """Trace la suspicion d'annulation (docs/EVENEMENTS_ANNULES.md, canal 2)."""
+    for col, decl in (("annulation_detectee_at", "TEXT"),
+                      ("annulation_source_url", "TEXT"),
+                      ("annulation_fiche_visee_id", "INTEGER"),
+                      ("annulation_visee_etait_publiee", "INTEGER")):
+        try:
+            conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass
+    conn.commit()
+
+
+def _porte_annulation(conn: sqlite3.Connection, group: list[dict], annulation_re) -> dict | None:
+    """Si ce groupe cache une suspicion d'annulation, la traite et dit de NE PAS
+    fusionner. Sinon renvoie None (fusion normale).
+
+    S'applique QUEL QUE SOIT le statut du gagnant — pending, evaluated ou déjà
+    publié. Vérifié dans crontab.txt : le dedupe quotidien tourne SANS --rescan,
+    donc il ne compare QUE des fiches encore 'pending' entre elles. Le scénario du
+    WP#6798 (fusion polluante) se produit déjà à CE stade, avant toute publication
+    — restreindre la porte au seul cas « gagnant publié » l'aurait laissée inerte
+    dans l'usage quotidien réel, une garde qui ne protège que le cas rare.
+    Le marqueur est cherché dans les AUTRES membres du groupe (le scénario du doc :
+    la presse annonce l'annulation d'un événement qui a déjà sa fiche).
+
+    Réversible et non spammant : une fois signalée, la même suspicion n'alerte
+    plus tant qu'elle n'est pas résolue — mais elle continue de BLOQUER la fusion.
+    Deux rouvreurs, cf. `scripts.audit_annulations` : AUTOMATIQUE si la fiche visée
+    était publiée et ne l'est plus (Franck l'a dépubliée) ; MANUEL sinon, via
+    `--resolu <id>` — parce que rien ne peut deviner tout seul qu'un humain a
+    vérifié une fiche encore pending."""
+    winner = max(group, key=score)
+    for e in group:
+        if e["id"] == winner["id"]:
+            continue
+        marqueur = marqueur_annulation(e.get("title", ""), annulation_re)
+        if not marqueur:
+            continue
+        deja_signale = bool(e.get("annulation_detectee_at"))
+        if not deja_signale:
+            # `annulation_fiche_visee_id` est la clé de résolution : scripts.
+            # audit_annulations vérifie CETTE fiche (son wp_post_id_as), jamais le
+            # statut de la fiche suspecte elle-même — celle-ci sera de toute façon
+            # rejetée par l'évaluateur demain matin (c'est un article de presse, pas
+            # un événement), que l'annulation soit confirmée ou non. Confondre les
+            # deux aurait fabriqué une résolution FAUSSE dès le lendemain.
+            conn.execute(
+                "UPDATE events_raw SET annulation_detectee_at=datetime('now'), "
+                "annulation_source_url=?, annulation_fiche_visee_id=?, "
+                "annulation_visee_etait_publiee=? WHERE id=?",
+                (e.get("url_source", ""), winner["id"],
+                 1 if winner.get("wp_post_id_as") else 0, e["id"]))
+            conn.commit()
+            if winner.get("wp_post_id_as"):
+                etat_fiche = f"déjà publiée (id {winner['id']}, WP#{winner['wp_post_id_as']})"
+            else:
+                etat_fiche = f"pas encore publiée (id {winner['id']}, statut {winner.get('statut')})"
+            slack.notify(
+                f"🔴 *Annulation suspectée* — « {(winner.get('title') or '')[:80]} »\n"
+                f"Marqueur « {marqueur} » repéré dans un article apparié à cette fiche, "
+                f"{etat_fiche}.\n"
+                f"Source : {e.get('url_source', '?')}\n"
+                f"Aucune fusion faite, aucun bandeau posé — à confirmer toi-même. Une "
+                f"fois vérifié : `.venv/bin/python -m scripts.audit_annulations "
+                f"--resolu {e['id']}` (docs/EVENEMENTS_ANNULES.md).")
+            log.warning("[%s] annulation suspectée (marqueur « %s », source id=%s) — "
+                        "fusion bloquée, alerte envoyée", winner["id"], marqueur, e["id"])
+        else:
+            log.info("[%s] annulation déjà signalée le %s — toujours en attente, "
+                     "fusion toujours bloquée", winner["id"], e.get("annulation_detectee_at"))
+        return {"winner": winner["id"], "suspect": e["id"], "marqueur": marqueur,
+               "nouveau": not deja_signale}
+    return None
+
+
 def merge_group(conn: sqlite3.Connection, group: list[dict]) -> int:
     """Fusionne un groupe de doublons. Retourne le nb d'événements marqués 'merged'."""
     winner = max(group, key=score)
@@ -415,7 +493,8 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
-    ensure_unmerge_column(conn)   # ce que la fusion écrase, pour pouvoir la défaire
+    ensure_unmerge_column(conn)      # ce que la fusion écrase, pour pouvoir la défaire
+    ensure_annulation_columns(conn)  # suspicion d'annulation, docs/EVENEMENTS_ANNULES.md
     where = ("statut='pending' OR (statut IN ('evaluated','published_cs','published_sub') "
              "AND duplicate_of IS NULL)") if args.rescan else "statut='pending'"
     rows = [dict(r) for r in conn.execute(
@@ -423,15 +502,21 @@ def main(argv=None) -> int:
     log.info("%d événement(s) à dédupliquer%s", len(rows),
              " (rescan du stock retenu)" if args.rescan else "")
 
-    merged = 0
+    annulation_re = load_annulation_filter()
+    merged = suspectees = 0
     groups = _groups(rows, cross_lang=args.cross_lang)
     dups = [g for g in groups if len(g) > 1]
     for g in dups:
+        signal = _porte_annulation(conn, g, annulation_re)
+        if signal:
+            suspectees += 1
+            continue  # groupe entier retenu tant que la suspicion n'est pas résolue
         merged += merge_group(conn, g)
     conn.commit()
     conn.close()
-    log.info("=== Dédup terminée : %d groupe(s) de doublons, %d événement(s) fusionné(s) ===",
-             len(dups), merged)
+    log.info("=== Dédup terminée : %d groupe(s) de doublons, %d événement(s) fusionné(s), "
+             "%d suspicion(s) d'annulation (fusion retenue) ===",
+             len(dups), merged, suspectees)
     return 0
 
 

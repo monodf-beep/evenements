@@ -1,9 +1,14 @@
 # Événements annulés et reportés — proposition
 
-**Proposition du 2026-08-04, RIEN N'EST IMPLÉMENTÉ.** Question de Franck : « comment
-gérer les événements annulés ? » Vérifié dans le code le jour même : le mot « annulé »
-n'apparaît NULLE PART — ni détection, ni statut, ni affichage. Aujourd'hui, un événement
-annulé reste en ligne comme si de rien n'était jusqu'à ce que sa date passe.
+**Proposition du 2026-08-04.** Question de Franck : « comment gérer les événements
+annulés ? » Vérifié dans le code le jour même : le mot « annulé » n'apparaissait NULLE
+PART — ni détection, ni statut, ni affichage. Un événement annulé restait en ligne comme
+si de rien n'était jusqu'à ce que sa date passe.
+
+**Mise à jour du 2026-08-05 — le canal 2 est implémenté**, décision validée par Franck :
+« alerte Slack seulement, je confirme moi-même ». Voir `utils/annulation.py`,
+`scripts.dedupe._porte_annulation` et `scripts/audit_annulations.py`. Les canaux 1 et 3,
+et l'affichage lui-même (bandeau côté WordPress), restent à faire — ⚖️ ci-dessous.
 
 ## La doctrine proposée, avant la mécanique
 
@@ -25,21 +30,26 @@ datée au hasard.
    propage (base + republication + retrait des vitrines). À construire en premier : sans
    lui, les canaux automatiques n'auraient nulle part où déposer leur trouvaille.
 
-2. **Le flux entrant, via la déduplication — et c'est le hameçon élégant.** Quand un
+2. **✅ Le flux entrant, via la déduplication — et c'est le hameçon élégant.** Quand un
    festival est annulé, la presse écrit « Festival X annulé » : cet article partage ses
-   mots avec la fiche du festival, donc `dedupe` va les apparier — et aujourd'hui il les
-   FUSIONNERAIT, la dépêche d'annulation devenant matière de la fiche (le mécanisme
-   WP#6798, en pire). La proposition retourne le piège : quand le titre entrant porte un
-   marqueur d'annulation (`annulé`, `annulation`, `annullato`, `cancellato`, `rinviato`,
-   `reporté`, `postponed`), dedupe NE fusionne PAS — il pose un SIGNAL sur la fiche
-   appariée (« annulation suspectée, source : <url> ») et alerte. Un humain confirme d'un
-   clic. La détection est gratuite : elle réutilise l'appariement qui existe déjà.
+   mots avec la fiche du festival, donc `dedupe` les apparie — et aurait FUSIONNÉ, la
+   dépêche d'annulation devenant matière de la fiche (le mécanisme WP#6798, en pire).
+   Implémenté le 2026-08-05 : quand le TITRE entrant porte un marqueur d'annulation
+   (`config/annulation_keywords.txt` — annulé, annulation, report(é), annullato,
+   rinviato, cancelled, postponed…), `dedupe._porte_annulation` bloque la fusion et
+   alerte sur Slack une fois. Zéro bandeau posé automatiquement. `scripts.
+   audit_annulations` recompte ce qui reste EN ATTENTE à chaque passage hebdomadaire, et
+   `--resolu <id>` clôt une suspicion vérifiée à la main. Vérifié dans crontab.txt : le
+   dedupe quotidien tourne SANS `--rescan`, donc la plupart des suspicions naissent
+   AVANT publication (deux fiches encore `pending`) — la porte s'applique quel que soit
+   le statut du gagnant, pas seulement le cas d'une fiche déjà en ligne. Fixture :
+   `tests/test_annulation.py`, les deux scénarios (avant/après publication).
 
 3. **La page source** — quand `dates.py`/`venues.py` relisent une page en mode web, un
-   marqueur d'annulation dans le texte pose le même signal. Second filet, même bac.
+   marqueur d'annulation dans le texte pose le même signal. Second filet, même bac. Pas
+   encore implémenté.
 
-⚖️ Le signal déclenche-t-il une alerte simple, ou une mise en « suspicion » visible sur
-la fiche publiée ? Proposition : alerte seulement — afficher « annulé ? » sur la foi d'un
+**✅ Tranché le 2026-08-05 :** alerte seulement — afficher « annulé ? » sur la foi d'un
 titre de presse serait pire que le retard.
 
 ## Côté WordPress
@@ -58,8 +68,9 @@ lisible partout (listes, partages, Google).
   date paraît.
 - **À quelle condition ?** L'arrivée d'une nouvelle date, ou la date prévue passée
   (archivage normal).
-- **Où se voit le compte ?** Digest du lundi : annulés encore affichés, reportés sans
-  date.
+- **Où se voit le compte ?** Pour le canal 2 (✅ fait) : `scripts.audit_annulations`,
+  branché en lecture seule dans `weekly_audits`. Pour l'affichage lui-même (à faire) :
+  digest du lundi, annulés encore affichés + reportés sans date.
 - **Le rouvreur est-il branché ?** `dates.py` tourne déjà chaque matin — rien de neuf à
   brancher, c'est le critère qui a fait préférer cette conception.
 

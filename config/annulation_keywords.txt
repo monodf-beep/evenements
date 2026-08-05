@@ -1,0 +1,41 @@
+# Marqueurs d'ANNULATION/REPORT détectés dans le TITRE d'une fiche entrante
+# (scripts/dedupe.py, canal 2 de docs/EVENEMENTS_ANNULES.md).
+#
+# Une ligne = une expression, accents/casse ignorés. Si le titre d'une fiche qui
+# s'apparie avec une fiche DÉJÀ PUBLIÉE en porte une, la fusion est BLOQUÉE et une
+# alerte Slack part vers Franck — jamais de fusion silencieuse, jamais de bandeau
+# posé automatiquement (arbitrage du 2026-08-05 : alerte seulement, un humain
+# confirme). Voir docs/EVENEMENTS_ANNULES.md.
+#
+# Décision du 2026-08-05 (Franck) : une annulation ne se DEVINE pas sur un seul
+# titre de presse — elle s'ALERTE, et se confirme à la main.
+
+# ── Français ──
+annulé
+annulée
+annulés
+annulées
+annulation
+report
+reporté
+reportée
+reportés
+reportées
+
+# ── Italien ──
+annullato
+annullata
+annullati
+annullate
+annullamento
+rinviato
+rinviata
+rinviati
+rinviate
+rinvio
+
+# ── Anglais (sources radar internationales) ──
+cancelled
+canceled
+cancellation
+postponed
