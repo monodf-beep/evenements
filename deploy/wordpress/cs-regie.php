@@ -52,6 +52,14 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   (calc(50% + $cs_skin_container/2)) plutôt que sur le bord de la fenêtre : elles
   suivent désormais le conteneur quelle que soit la largeur d'écran, zéro vide.
 
+  v0.7 (2026-08-05) : colonnes 320px -> 160px. Constat Franck sur son propre poste : meme
+  a 130% de mise a l'echelle Windows (confort d'usage courant, pas un cas extreme —
+  100% jugé « trop petit » par lui), les colonnes restaient masquées sous $cs_skin_bp
+  (1590/1840px avec 320px de large) : « je ne vois pas assez ». Repris a l'identique la
+  largeur des gouttieres des blocs 5/6 (deja en prod, deja eprouvee) plutot qu'une valeur
+  choisie a vue : abaisse $cs_skin_bp a 1270/1520px, visible sur une part beaucoup plus
+  large des ecrans reels sans changer le principe de calage (v0.6 ci-dessus inchangé).
+
   Garde-fous : desktop uniquement (colonnes masquées sous le seuil calculé — cf.
   $cs_skin_bp ; bandeau sous 1280px comme tout .cs-regie ; gouttières sous $cs_bp) ;
   consent-gated Complianz (cmplz_marketing=allow) ; coupé sur pages sensibles (légales,
@@ -59,7 +67,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 0.6
+Version: 0.7
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -137,11 +145,17 @@ add_action('wp_footer', function () {
     /* Seuil ET largeur de la SKIN (bloc 4), distincts de ceux des gouttieres ci-dessus :
        une bande laterale de skin n'a de sens que si elle colle au bord du contenu sans le
        chevaucher, donc sa largeur depend du meme conteneur que ci-dessus (950 accueil /
-       1200 ailleurs). 320px de bande de chaque cote reconstitue tel quel le seuil de
-       1840px deja documente pour les pages interieures (docs/REGIE_MISE_EN_PLACE_SOCLE.md :
-       "container + 640px", 1200+640=1840) — pas invente ici, retrouve a l'envers. */
+       1200 ailleurs).
+       160px (2026-08-05, apres retours Franck sur ecran a mise a l'echelle Windows 130-175%
+       -- meme a 130%, confort d'usage courant et pas un cas extreme, le seuil precedent de
+       320px (1590/1840px requis) masquait encore les colonnes : "je ne vois pas assez").
+       Repris a l'identique de la largeur DEJA utilisee par les gouttieres des blocs 5/6
+       (.cs-gutter, $cs_bp ci-dessus) plutot qu'invente : ce format existe, fonctionne, et
+       abaisse le seuil a container+320 (1270 accueil / 1520 ailleurs) au lieu de
+       container+640 -- visible sur une bien plus grande part des ecrans reels, y compris
+       les configurations a mise a l'echelle moderee. */
     $cs_skin_container = is_front_page() ? 950 : 1200;
-    $cs_skin_col_w      = 320;
+    $cs_skin_col_w      = 160;
     $cs_skin_bp          = $cs_skin_container + 2 * $cs_skin_col_w;
 
     // Rendu masqué par défaut ; révélé en JS si consentement marketing + viewport desktop.
