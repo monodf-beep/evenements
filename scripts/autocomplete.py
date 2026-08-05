@@ -43,6 +43,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import completeness as comp
 from utils import slack
+from utils.api_limite import PlafondAPI
 from scripts.scraper_events import init_db, web_cooldown_ok, mark_web_attempt
 
 log = get_logger("autocomplete")
@@ -315,10 +316,25 @@ def main(argv=None) -> int:
         publish_to_as = _pub
     wp_as_base = (os.getenv("WP_AS_URL", "") or "").rstrip("/")
 
+    plafonne = False
     for i, ev in enumerate(incomplete, 1):
-        ev = complete_event(ev, conn, client, blocked, banners, cat_banners,
-                            allow_web=allow_web, want_banner=want_banner,
-                            model_extract=model_extract)
+        try:
+            ev = complete_event(ev, conn, client, blocked, banners, cat_banners,
+                                allow_web=allow_web, want_banner=want_banner,
+                                model_extract=model_extract)
+        except PlafondAPI as exc:
+            # TROUVÉ le 2026-08-05 en corrigeant visuals.py : _fill_date/_fill_venue/
+            # _fill_image appellent chacun un helper qui RE-LÈVE PlafondAPI (dates.py,
+            # venues.py, et depuis aujourd'hui resolve_image), mais aucun des trois
+            # n'était attrapé ICI. Un plafond aurait donc fait planter tout le run
+            # d'autocomplete — pas juste s'arrêter proprement comme dates.py/venues.py/
+            # translate_events.py/visuals.py savent déjà le faire — perdant au passage
+            # le suivi (autocomplete_at non mis à jour, aucun code retour exploitable
+            # par le chien de garde, juste une trace Python dans les logs).
+            log.error("PLAFOND API atteint sur la fiche %s — lot arrêté, %d fiche(s) "
+                      "non tentée(s) : %s", ev.get("id"), len(incomplete) - i + 1, exc)
+            plafonne = True
+            break
         now_complete = comp.is_complete(ev)
         upcoming = _is_upcoming(ev, today)
         # On ne pousse QUE si complet ET à venir (jamais un passé, cf. _is_upcoming).
@@ -406,6 +422,10 @@ def main(argv=None) -> int:
     conn.close()
     log.info("=== Auto-complétion : %d complété(s)→brouillon, %d encore à compléter ===",
              ready, still)
+    if plafonne:
+        log.error("Le lot s'est arrêté sur un plafond API. Relever le plafond ou "
+                  "recharger le crédit (console Anthropic), puis relancer.")
+        return 3
     return 0
 
 
