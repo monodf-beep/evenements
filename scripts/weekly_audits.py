@@ -301,6 +301,18 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_coherence")
 
+    # Règles éditoriales d'exclusion (BCA, vocabulaire B2B), LECTURE SEULE. Ajouté le
+    # 2026-08-05 : sans ce passage, une règle ne protégeait que le jour où on pensait à
+    # relancer l'audit à la main — or c'est le motif exact des 823 fiches endormies dans
+    # `venue_source='llm_none'` alors que --retry existait depuis le premier jour
+    # (CLAUDE.md règle 3). Le retrait reste un geste humain (--apply) ; c'est la
+    # DÉTECTION qui devient automatique, y compris pour les fiches pas encore en ligne.
+    from scripts.audit_excluded_events import main as excluded_main
+    rc, out = _run_captured(excluded_main, [], "audit_excluded_events")
+    sections.append(f"• Événements exclus par règle éditoriale : {_tail(out, 2)}")
+    if rc:
+        echecs.append("audit_excluded_events")
+
     # Domaines sources qui REFUSENT le serveur. Ajouté le 2026-08-04 : agendaculturel.fr
     # répondait 403 sur ses quatre sous-domaines, et 242 fiches encore devant nous en
     # dépendent. Chaque tentative de réparation (dates web, venues, autocomplete,
