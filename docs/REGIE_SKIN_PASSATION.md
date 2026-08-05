@@ -12,33 +12,35 @@ reprendre ce travail sans pouvoir observer la page en vrai.**
 
 ---
 
-## 1. État actuel
+## 1. État actuel — RÉSOLU en v2.x (2026-08-05 au soir)
 
-- Fichier : `deploy/wordpress/cs-regie.php`, **v1.9**, commit `1e69289`.
-- **Déployé en production** dans `wp-content/mu-plugins/cs-regie.php` (md5 vérifié identique
-  au fichier git : `d4cb3c190fb21cb019c038e88990bb75`).
-- Campagne de test active : bloc 4, « Spazio Sabaudo », GIF animé 1920×1080 (4 images),
-  `https://agendasabauda.eu/wp-content/uploads/2026/08/spaziosabaudofrv3.gif`.
-  Elle se termine le 2026-08-06 — après cette date la skin ne s'affiche plus du tout et il
-  faudra réactiver ou recréer une campagne dans le backoffice pour tester.
+La recommandation du §3 a été appliquée le soir même : l'habillage tient en **deux
+créatives** (backoffice `image_url_2` → API `image2`) et le montage a été réécrit puis
+**vérifié au navigateur** (headless, requêtes relayées via urllib pour contourner le proxy
+— méthode dans `scratchpad/verif_finale.py` de la session, reproductible).
 
-**Le défaut ouvert : la skin saute pendant le défilement.** Non résolu après quatre
-tentatives distinctes (v1.4, v1.5, v1.6, v1.9). **Cause mesurée depuis** — cf. §2 et §4
-piège n°6 : elle ne se corrige pas par un réglage, elle impose de sortir la skin du flux.
+- Fichier : `deploy/wordpress/cs-regie.php`, **v2.3**, commit `9b6c733`, déployé (md5 vérifié).
+- **Fond** : `position:fixed; inset:0; z-index:-1` — épinglé à la fenêtre, mesuré immobile
+  sur 8 crans de molette. Insensible aux 89 px par construction.
+- **Colonne de lecture** `.cs-skin-mid` : bande crème fixe à la largeur du conteneur
+  (950/1200) — le rôle que la fenêtre crème de l'ancienne créative jouait en dur dans
+  l'image. Nécessaire parce que la colonne du site n'a AUCUN fond propre (tout repose sur
+  le beige de `body`).
+- **Bandeau** : bloc de flux normal, `aspect-ratio:1920/300`, inséré une fois en JS après
+  le dernier en-tête VISIBLE. Défile avec la page, solidaire du contenu, sans écouteur.
 
-### Comment c'est construit aujourd'hui
+Trois pièges supplémentaires découverts et mesurés pendant cette phase :
 
-| Élément | Rôle |
-|---|---|
-| `#cs-skin` | Un seul élément portant toute la créative en `background`, `position:sticky` |
-| `#cs-skin-track` | Le rail dans lequel la skin colle — un élément sticky ne peut pas sortir de son parent |
-| `#cs-skin-spacer` | Une cale insérée en JS après la pile menu + barre territoire, pour dégager le bandeau |
-| `--cs-skin-h` / `--cs-skin-band` | Hauteur de l'image et hauteur de son bandeau, liées par la géométrie (bandeau = 2/9 de l'image) |
-
-Comportement visé : la skin défile avec la page, puis se fige quand le bas du bandeau
-atteint le haut de la fenêtre — le bandeau se range au-dessus du bord, les gouttières
-restent affichées, le menu opaque recouvre leur haut. Le rail s'arrête au haut du pied de
-page pour que la skin se décolle à son arrivée.
+1. **Un `position:fixed` à `z-index:0` peint au-dessus de tout le contenu non positionné**
+   (fonds du masthead/footer compris). C'était le symptôme v0.3 (« le fond chevauchait le
+   menu »), reproduit en v2.0. Le fond doit être à `z-index:-1`.
+2. **`.site` n'enveloppe pas le contenu sur ce site** : c'est la classe du bloc de widgets
+   du footer (`<div id="footer-widgets" class="site footer-widgets">`). Toute règle qui
+   « remonte » `.site` ne remonte que le footer.
+3. **L'accueil porte DEUX constructions** (`.as-home` mobile / `.as-home-desktop` desktop),
+   une seule rendue à la fois. `.as-home-sticky-panel` est l'en-tête MOBILE : tout élément
+   inséré dedans devient invisible sur desktop (bandeau en rect 0×0, mesuré). Toujours
+   filtrer les ancres par `getClientRects().length`.
 
 ---
 
