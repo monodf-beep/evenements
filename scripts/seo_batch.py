@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import seo as seo_mod
+from utils.api_limite import PlafondAPI, est_plafond
 
 log = get_logger("seo_batch")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -105,12 +106,26 @@ def main(argv=None) -> int:
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
     ok = fail = 0
+    plafonne = False
     republish_ids = []  # déjà EN LIGNE : le nouveau SEO doit être repoussé pour être visible
     for i, r in enumerate(rows, 1):
         try:
             result = seo_mod.optimize_seo(dict(r), client, model)
-        except Exception as exc:                             # jamais bloquant
-            log.warning("SEO échoué id=%s : %s", r["id"], exc)
+        except Exception as exc:
+            # UN PLAFOND N'EST PAS UNE ERREUR DE FICHE (2026-08-05, trouvé en prod : 16
+            # erreurs identiques « credit balance is too low », martelées une par fiche
+            # en 13 secondes — le même trou que translate_events.py avait avant sa
+            # garde du matin même, jamais bouché ici). utils.seo.optimize_seo laisse
+            # VOLONTAIREMENT remonter les exceptions API (sa docstring : sa seconde
+            # appelante, la route Flask, les gère elle-même) — mais ce lot-ci doit
+            # s'ARRÊTER sur un plafond, pas continuer à essayer les 9 fiches suivantes
+            # pour rien.
+            if est_plafond(exc):
+                log.error("PLAFOND API atteint sur la fiche %s — lot arrêté, %d "
+                         "fiche(s) non tentée(s) : %s", r["id"], len(rows) - i + 1, exc)
+                plafonne = True
+                break
+            log.warning("SEO échoué id=%s : %s", r["id"], exc)  # jamais bloquant pour une fiche
             result = None
         if result:
             conn.execute(
@@ -145,10 +160,16 @@ def main(argv=None) -> int:
     from utils import slack
     from utils import pipeline_status
     msg = f"🔍 *SEO quotidien* — {ok} optimisé(s) ({len(republish_ids)} republié(s)), {fail} échec(s)"
+    if plafonne:
+        msg += "\n🔴 Plafond API atteint — lot arrêté, fiches restantes non tentées."
     slack.notify(msg)
     pipeline_status.record_run("seo_batch", ok=ok, error=fail, summary=msg)
     log.info("=== Lot SEO : %d optimisé(s), %d échec(s), %d republié(s) ===",
              ok, fail, len(republish_ids))
+    if plafonne:
+        log.error("Le lot s'est arrêté sur un plafond API. Relever le plafond ou "
+                  "recharger le crédit (console Anthropic), puis relancer.")
+        return 3
     return 0 if fail == 0 else 1
 
 
