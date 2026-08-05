@@ -44,6 +44,7 @@ from utils.logger import get_logger
 from utils import completeness as comp
 from utils import radar
 from utils.sources import is_excluded_event, load_excluded_events_filter
+from scripts.perimetre import ville_hors_perimetre
 from scripts.publisher_as import publish_to_as
 
 log = get_logger("publish_batch_as")
@@ -226,11 +227,29 @@ def main(argv=None) -> int:
                     "file (statut rejected) : .venv/bin/python -m "
                     "scripts.audit_excluded_events --apply", len(exclus))
 
+    # PORTILLON PÉRIMÈTRE — même famille de trou, même jour. L'arrondissement de Grasse
+    # est hors catalogue (charte §2), et purge_out_of_zone le fait respecter… le
+    # dimanche. Or sa propre docstring nomme le cas qui lui échappe : la `ville` est
+    # souvent renseignée APRÈS l'évaluation, par venues.py ou l'auto-complétion du
+    # back-office. Une fiche de Cannes datée mardi part donc en ligne mercredi et attend
+    # la purge suivante. Le contrôle coûte une comparaison de chaînes sur le seul champ
+    # `ville` (jamais le texte libre : « Vence » ⊂ « Provence », cf. perimetre.py).
+    hors = [ev for ev in rows if ville_hors_perimetre(ev.get("ville", ""))]
+    if hors:
+        ids_hors = {ev.get("id") for ev in hors}
+        rows = [ev for ev in rows if ev.get("id") not in ids_hors]
+        for ev in hors:
+            log.warning("[%s] RETENU : %s est dans l'arrondissement de Grasse, hors "
+                        "périmètre (charte §2) — « %s »",
+                        ev.get("id"), ev.get("ville"), (ev.get("title") or "")[:60])
+        log.warning("%d fiche(s) retenue(s) hors périmètre. Pour les SORTIR de la file : "
+                    ".venv/bin/python scripts/purge_out_of_zone.py --apply", len(hors))
+
     log.info("Sélection : %d complet(s) à publier, %d incomplet(s) écarté(s), "
-             "%d radar non résolu(s) retenu(s), %d exclu(s) par règle éditoriale "
-             "(cap %d, min-score %s, %s)",
-             len(rows), len(skipped), len(radar_blocked), len(exclus), args.cap,
-             args.min_score, "MAJ incluse" if args.update else "création seule")
+             "%d radar non résolu(s) retenu(s), %d exclu(s) par règle éditoriale, "
+             "%d hors périmètre (cap %d, min-score %s, %s)",
+             len(rows), len(skipped), len(radar_blocked), len(exclus), len(hors),
+             args.cap, args.min_score, "MAJ incluse" if args.update else "création seule")
     for ev, reason in radar_blocked:
         log.info("[%s] RETENU (non publié, rien supprimé) : %s | %s",
                  ev.get("id"), reason, (ev.get("title") or "")[:60])

@@ -270,6 +270,27 @@ parseur français.
 **À retenir pour la suite** : une valeur qui dépend de la date d'aujourd'hui et qu'on écrit
 ailleurs qu'en base doit avoir, dès sa première ligne, quelqu'un qui la recalcule.
 
+## Le cas qui n'EST PAS un état terminal — et pourquoi il fallait le dire
+
+Ajouté le 2026-08-05, en construisant le **portillon éditorial** de `publish_batch_as`
+(règle d'exclusion `config/excluded_event_keywords.txt`, puis arrondissement de Grasse).
+Une fiche retenue à ce portillon n'est **pas garée** : rien n'est écrit, son `statut` ne
+bouge pas, elle se represente au lot suivant. Il n'y a donc pas d'état à rouvrir — et
+c'est délibéré : la rétention ne fait que retarder, la SORTIE de file reste un geste
+explicite (`audit_excluded_events --apply`, `purge_out_of_zone --apply`), tous deux
+branchés dans `weekly_audits`.
+
+La tentation était l'inverse : poser `statut='rejected'` au moment de la rétention, pour
+« ne pas y revenir ». C'eût été un septième cul-de-sac, posé par un script de
+publication qui n'a aucun titre à trancher l'éditorial — et sur la foi d'une règle
+déterministe qui, le jour même, avait déjà produit un faux positif (le Salone Auto
+Torino, salon grand public attrapé par « btob » dans sa description).
+
+**La leçon générale : quand un garde-fou doit empêcher quelque chose, retenir sans
+écrire coûte un log répété, tandis qu'écrire coûte un état à rouvrir.** Le premier prix
+est presque toujours le bon, à une condition — que le message nomme la commande de
+sortie, ce que font les deux messages du portillon.
+
 ## La règle à suivre
 
 Avant d'ajouter un état qui écarte une fiche d'une file, répondre par écrit à :

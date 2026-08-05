@@ -45,6 +45,13 @@ FICHES = [
      "https://a.fr/noel", "Annecy", "Savoie"),
     ("Salon du livre de Chambéry", "Dédicaces, lectures et rencontres avec les auteurs.",
      "https://a.fr/livre", "Chambéry", "Savoie"),
+    # Portillon PÉRIMÈTRE : arrondissement de Grasse, hors catalogue (charte §2). La
+    # ville est souvent renseignée APRÈS l'évaluation (venues.py, autocomplete) — c'est
+    # le cas que purge_out_of_zone, hebdomadaire, laisse passer en semaine.
+    ("Festival de Cannes hors les murs", "Projections en plein air sur la Croisette.",
+     "https://a.fr/cannes", "Cannes", "Comte-de-Nice"),
+    ("Nuits musicales de Vieux-Nice", "Concerts dans les églises baroques.",
+     "https://a.fr/nice", "Nice", "Comte-de-Nice"),
 ]
 for titre, desc, url, ville, territoire in FICHES:
     conn.execute(
@@ -77,16 +84,22 @@ selection = [dict(r) for r in pub._select(
     conn, type("A", (), {"ids": None, "include_past": False, "update": False,
                          "min_score": None, "cap": 50})(), "2026-08-05")]
 exclusions = pub.load_excluded_events_filter()
-retenus = [e["title"] for e in selection
-           if pub.is_excluded_event(e.get("title", ""), e.get("description", ""),
-                                    exclusions, url=e.get("url_source", ""))]
-attendu = ["Afterwork LifeSciences Team Nice"]
+retenus = sorted(e["title"] for e in selection
+                 if pub.is_excluded_event(e.get("title", ""), e.get("description", ""),
+                                          exclusions, url=e.get("url_source", ""))
+                 or pub.ville_hors_perimetre(e.get("ville", "")))
+attendu = sorted(["Afterwork LifeSciences Team Nice", "Festival de Cannes hors les murs"])
 print("\n──── qui passe le portillon ────")
 print(f"retenus  : {retenus}")
 print(f"attendus : {attendu}")
 if retenus != attendu:
     echecs += 1
-    print("ÉCHEC : le portillon ne retient pas exactement l'exclu.")
+    print("ÉCHEC : le portillon ne retient pas exactement les fiches attendues.")
+# Nice est dans l'arrondissement de NICE, donc DANS le catalogue — la confusion
+# « Comté de Nice = département 06 » est justement l'erreur que la charte corrige.
+if pub.ville_hors_perimetre("Nice"):
+    echecs += 1
+    print("ÉCHEC : Nice traitée comme hors périmètre.")
 
 print(f"\n{'ÉCHEC' if echecs else 'OK'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)
