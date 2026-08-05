@@ -583,8 +583,8 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
             "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
             "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
             "translation_of, translated_lang, article_title, enrich_data, image_credit, "
-            "enrich_status, date_source, llm_score_detail) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "enrich_status, date_source, llm_score_detail, url_officiel) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
              ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
              f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
@@ -608,7 +608,18 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
              # Copie et non recalcul : c'est le même événement, le re-noter coûterait un
              # appel LLM pour aboutir aux mêmes points. La justification reste en français,
              # ce qui ne gêne pas — seul `points` sert au tri.
-             ev.get("llm_score_detail")))
+             ev.get("llm_score_detail"),
+             # TROISIÈME OUBLI DE LA MÊME FAMILLE, découvert le 2026-08-05. Sans cette
+             # copie, `utils.radar.official_anchor()` ne trouve aucune ancre sur la
+             # traduction : le verrou de publication la croit non résolue, et surtout
+             # `publisher_as._source_publiable()` la publie SANS source officielle. La
+             # jumelle italienne d'une fiche parfaitement sourcée affichait donc une page
+             # muette — WP#2174 (Saint-Ours) montrait lasaintours.it en français et rien
+             # en italien. Le contournement existait déjà côté verrou (l'argument `parent`
+             # de publication_block_reason, qui remonte à l'original), preuve que l'oubli
+             # était connu et compensé au lieu d'être corrigé à la source.
+             # Copie et non re-résolution : c'est le même événement, la même page.
+             ev.get("url_officiel")))
         # Lie les deux fiches (Polylang) via l'endpoint.
         if all([wp_url, auth[0], auth[1]]):
             _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
