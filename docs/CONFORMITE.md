@@ -224,6 +224,19 @@ sauvegarde `cs_bk_sources_non_publiables_20260805`.
 
 ## 6. Divergences connues à surveiller
 
+- **Cette liste n'est plus tenue à la main.** `scripts/audit_sync_amont.py` relève tout
+  fichier portant l'en-tête « SYNCED FROM » en première ligne et le compare au manifeste
+  `config/sync_amont.json`. Il sort en erreur tant qu'un report est en attente :
+
+  ```
+  .venv/bin/python -m scripts.audit_sync_amont            # que reste-t-il à porter ?
+  .venv/bin/python -m scripts.audit_sync_amont --record   # APRÈS avoir porté
+  ```
+
+  Un commentaire en tête de fichier ne se lit qu'une fois ; c'est précisément ce qui a
+  échoué avec `blocked_image_domains.txt` et coûté 41 fiches (§3). Au 2026-08-05,
+  l'audit trouvait **trois** reports en attente, dont un (`utils/sources.py`, modifié
+  par une autre session) que personne n'avait remarqué.
 - `config/blocked_image_domains.txt` porte l'en-tête « SYNCED FROM
   observatoire-business-sabaudo, ne pas diverger ». L'ajout du 2026-08-04 **doit être
   porté** dans l'autre dépôt.
