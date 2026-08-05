@@ -24,6 +24,8 @@ import json
 import re
 from pathlib import Path
 
+from utils.api_limite import PlafondAPI, est_plafond
+
 ROOT = Path(__file__).resolve().parent.parent
 _PATTERNS_FILE = ROOT / "config" / "blocked_image_patterns.txt"
 _OK_MIME = ("image/jpeg", "image/png", "image/webp", "image/gif")
@@ -185,7 +187,17 @@ def verify_relevance(img_bytes: bytes, mime: str, event: dict, client, model: st
             messages=[{"role": "user", "content": [
                 {"type": "image", "source": {"type": "base64", "media_type": mime, "data": b64}},
                 {"type": "text", "text": prompt}]}])
-    except Exception:
+    except Exception as exc:
+        # UN PLAFOND N'EST PAS UNE PANNE TECHNIQUE (2026-08-05). La tolérance ci-dessous
+        # dit « on ne bloque pas sur un réseau capricieux » — bonne règle pour un
+        # incident bref, désastreuse pour un plafond : renvoyer True fait ACCEPTER une
+        # image que personne n'a regardée, et l'appelant l'écrit en base. Or
+        # visuals.select_events ne reprend JAMAIS une fiche qui a déjà une image
+        # (`COALESCE(url_image,'') = ''`) : contrairement aux dates et aux lieux, où le
+        # faux verdict expire au bout de 7 jours, ici il est DÉFINITIF. Le plafond doit
+        # donc remonter et arrêter le lot.
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         return True, 0.5, 0.5  # panne technique : ne bloque pas (les règles déterministes ont déjà filtré)
     try:
         from utils import usage

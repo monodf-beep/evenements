@@ -38,6 +38,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils.api_limite import PlafondAPI, est_plafond
 from utils import images
 from utils.images import fetch_og_image
 from utils.sources import (is_blocked_image, is_logo_image,
@@ -93,7 +94,9 @@ def search_image(ev: dict, client) -> dict:
             model=SEARCH_MODEL, max_tokens=500,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 4}],
             messages=[{"role": "user", "content": prompt}])
-    except Exception as exc:  # jamais bloquant
+    except Exception as exc:  # jamais bloquant — SAUF plafond, voir utils/api_limite.py
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
         log.warning("Recherche image échouée : %s", exc)
         return {}
     try:

@@ -42,6 +42,7 @@ from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_d
                            load_territory_images, load_territory_category_images,
                            pick_banner_image)
 from utils import image_verify
+from utils.api_limite import PlafondAPI, est_plafond
 from scripts.scraper_events import init_db
 
 log = get_logger("visuals")
@@ -120,6 +121,8 @@ def visual_query(ev: dict, client, model: str) -> str:
             model=model, max_tokens=200,
             messages=[{"role": "user", "content": prompt}])
     except Exception as exc:  # jamais bloquant : on retombera sur la bannière
+        if est_plafond(exc):  # …sauf plafond : la bannière serait DÉFINITIVE, cf. main()
+            raise PlafondAPI(str(exc)) from exc
         log.warning("[%s] requête visuelle LLM échouée : %s", ev.get("id"), exc)
         return ""
     raw = _final_text(msg)
@@ -245,7 +248,11 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
         try:
             from scripts.images_web import find_verified_image
             w_url, w_credit, wfx, wfy = find_verified_image(ev, client, blocked)
+        except PlafondAPI:
+            raise
         except Exception as exc:  # jamais bloquant : on continue vers Commons
+            if est_plafond(exc):
+                raise PlafondAPI(str(exc)) from exc
             log.warning("[%s] agent image web indisponible : %s", ev.get("id"), exc)
             w_url = ""
         if w_url:
@@ -339,10 +346,24 @@ def main(argv=None) -> int:
     verify_client = client if args.verify else None
     verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
     counts = {"og": 0, "page": 0, "commons": 0, "europeana": 0, "banner": 0, "none": 0}
+    plafonne = False
     for ev in rows:
-        url, credit, source, fx, fy = resolve_image(ev, client, blocked, banners,
-                                                     verify_client=verify_client, verify_model=verify_model,
-                                                     cat_banners=cat_banners)
+        try:
+            url, credit, source, fx, fy = resolve_image(
+                ev, client, blocked, banners, verify_client=verify_client,
+                verify_model=verify_model, cat_banners=cat_banners)
+        except PlafondAPI as exc:
+            # ON N'ÉCRIT RIEN — ni pour cette fiche, ni pour les suivantes. Un plafond
+            # ferait retomber toute la chaîne sur la bannière territoire, et
+            # select_events ne reprend jamais une fiche qui a déjà une image : la
+            # bannière posée un jour de plafond ne serait JAMAIS remplacée. Les fiches
+            # non tentées n'ont rien fait, leur tour reviendra (utils/api_limite.py).
+            log.error("PLAFOND API atteint — lot arrêté à la fiche %s. %d fiche(s) "
+                      "restent SANS VISUEL (dont celle-ci) et RIEN n'a été écrit pour "
+                      "elles : elles se représenteront au prochain run. %s",
+                      ev.get("id"), len(rows) - sum(counts.values()), exc)
+            plafonne = True
+            break
         if not url:
             counts["none"] += 1
             log.warning("[%s] aucun visuel (pas de bannière pour %s)", ev["id"], ev.get("territoire"))
@@ -360,6 +381,12 @@ def main(argv=None) -> int:
              counts["og"], counts["page"], counts["commons"], counts["europeana"],
              counts["banner"], counts["none"])
     conn.close()
+    if plafonne:
+        # Code retour NON NUL : c'est ce que lit le chien de garde. Un plafond qui
+        # ressort « 0 » se confond avec une nuit sans travail à faire.
+        log.error("Le lot s'est arrêté sur un plafond API. Relever le plafond ou "
+                  "recharger le crédit (console Anthropic), puis relancer.")
+        return 3
     return 0
 
 
