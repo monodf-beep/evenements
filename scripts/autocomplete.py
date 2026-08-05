@@ -33,7 +33,7 @@ import os
 import sqlite3
 import sys
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -49,10 +49,19 @@ log = get_logger("autocomplete")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
+RESURFACE_DAYS = int(os.getenv("AUTOCOMPLETE_RESURFACE_DAYS", "3"))
+
+
 def ensure_columns(conn: sqlite3.Connection) -> None:
-    """Traçe le dernier passage de l'agent (horodatage + état signalé)."""
+    """Traçe le dernier passage de l'agent (horodatage + état signalé).
+
+    `autocomplete_state_since` / `autocomplete_notified_at` ajoutées le 2026-08-05,
+    pour le RESSURFAÇAGE (voir la boucle principale) — sans elles, l'anti-spam ne
+    peut pas distinguer « signalé hier » de « signalé il y a trois semaines »."""
     for col, decl in (("autocomplete_at", "TEXT"),
-                      ("autocomplete_state", "TEXT")):
+                      ("autocomplete_state", "TEXT"),
+                      ("autocomplete_state_since", "TEXT"),
+                      ("autocomplete_notified_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
@@ -324,6 +333,7 @@ def main(argv=None) -> int:
         else:
             state = "missing:" + ",".join(comp.missing_labels(ev))
         prev = ev.get("autocomplete_state") or ""
+        changed = state != prev
 
         wp_id = None
         if publishable and publish_to_as and not ev.get("wp_post_id_as"):
@@ -335,19 +345,49 @@ def main(argv=None) -> int:
                     (wp_id, permalink, raw_url, ev["id"]))
                 conn.commit()
 
-        # Signal Slack UNIQUEMENT si l'état a changé (anti-spam).
-        if not args.no_slack and state != prev:
+        # RESSURFAÇAGE (2026-08-05) — l'anti-spam d'origine ne notifiait QUE sur
+        # changement d'état : une fiche bloquée sur le MÊME manque jour après jour
+        # (venue introuvable, image refusée) était signalée une fois puis disparaissait
+        # de Slack pour toujours, alors qu'autocomplete continuait de la retenter en
+        # silence — exactement le défaut « état posé, personne pour le rouvrir »
+        # (docs/ETATS_TERMINAUX.md). On retallume le signal tous les RESURFACE_DAYS
+        # jours tant que le problème persiste, avec la date de PREMIÈRE apparition
+        # pour que Franck voie l'ancienneté, pas juste « encore un manque ».
+        stuck = state.startswith("missing:") or state.startswith("past:")
+        since = ev.get("autocomplete_state_since") or ""
+        notified_at = ev.get("autocomplete_notified_at") or ""
+        resurface = False
+        if not changed and stuck:
+            if not notified_at:
+                resurface = True  # jamais notifié malgré un état problème : rattrapage
+            else:
+                try:
+                    jours = (datetime.now() - datetime.fromisoformat(notified_at)).days
+                    resurface = jours >= RESURFACE_DAYS
+                except ValueError:
+                    resurface = True  # format inattendu : mieux vaut re-signaler
+
+        note = ""
+        if resurface and since:
+            note = f"Bloqué depuis le {since[:10]} — retenté chaque jour sans succès."
+
+        if not args.no_slack and (changed or resurface):
             if publishable:
                 slack.notify_ready(ev, wp_id or ev.get("wp_post_id_as"), wp_as_base)
             elif now_complete and not upcoming:
                 slack.notify_incomplete(
-                    ev, [f"Date à vérifier — semble PASSÉE ({end_date})"])
+                    ev, [f"Date à vérifier — semble PASSÉE ({end_date})"], note=note)
             else:
-                slack.notify_incomplete(ev, comp.missing_labels(ev))
+                slack.notify_incomplete(ev, comp.missing_labels(ev), note=note)
+            conn.execute("UPDATE events_raw SET autocomplete_notified_at=datetime('now') "
+                         "WHERE id=?", (ev["id"],))
 
         conn.execute(
-            "UPDATE events_raw SET autocomplete_at=datetime('now'), autocomplete_state=? "
-            "WHERE id=?", (state, ev["id"]))
+            "UPDATE events_raw SET autocomplete_at=datetime('now'), autocomplete_state=?, "
+            "autocomplete_state_since=COALESCE(?, autocomplete_state_since, datetime('now')) "
+            "WHERE id=?",
+            (state, datetime.now().isoformat(timespec="seconds") if changed else None,
+             ev["id"]))
         conn.commit()
 
         if publishable:

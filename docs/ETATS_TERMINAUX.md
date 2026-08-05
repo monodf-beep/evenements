@@ -270,6 +270,26 @@ parseur français.
 **À retenir pour la suite** : une valeur qui dépend de la date d'aujourd'hui et qu'on écrit
 ailleurs qu'en base doit avoir, dès sa première ligne, quelqu'un qui la recalcule.
 
+## L'anti-spam qui ÉTAIT un état terminal sans le savoir
+
+Trouvé le 2026-08-05 en construisant l'apprentissage Slack (ci-dessous).
+`scripts/autocomplete.py` mémorisait le dernier état signalé (`autocomplete_state`) et
+ne notifiait QUE si l'état changeait — anti-spam raisonnable en apparence. Mais une
+fiche bloquée sur le MÊME manque (venue introuvable, image refusée) produit le MÊME
+état à chaque passage : `state == prev` pour toujours. Elle était donc signalée UNE
+FOIS puis disparaissait de Slack **définitivement**, alors que le script continuait de
+la retenter chaque jour en silence — l'incident « LES 7 PROCHAINS JOURS : 0 carte »
+sous une autre forme, sauf que celui-ci ne réapparaissait même pas dans les logs de la
+veille que lit `consigne_bilan_matin.txt` (il ne postait plus rien du tout).
+
+**Le signal Slack lui-même était donc un état terminal** : une fois posé, rien ne le
+rouvrait. Corrigé par un RESSURFAÇAGE périodique (`AUTOCOMPLETE_RESURFACE_DAYS`, défaut
+3 jours) : au-delà du délai, le même état re-notifie, avec la date de première
+apparition pour que Franck voie l'ancienneté sans avoir à la retrouver. La leçon
+générale rejoint la règle : un mécanisme anti-spam qui compare à l'état PRÉCÉDENT sans
+jamais comparer au TEMPS ÉCOULÉ fabrique un cul-de-sac dès que le problème persiste
+plutôt que de changer.
+
 ## Le cas qui n'EST PAS un état terminal — et pourquoi il fallait le dire
 
 Ajouté le 2026-08-05, en construisant le **portillon éditorial** de `publish_batch_as`

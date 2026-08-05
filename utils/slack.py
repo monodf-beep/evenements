@@ -117,8 +117,14 @@ def notify_ready(event: dict, wp_id: int | None, wp_base: str = "") -> bool:
         f"{('  (id ' + str(wp_id) + ')') if wp_id else ''}{link}")
 
 
-def notify_incomplete(event: dict, missing_labels: list[str]) -> bool:
-    """Signal « pas bon » : il manque des champs après passage de l'agent."""
+def notify_incomplete(event: dict, missing_labels: list[str], note: str = "") -> bool:
+    """Signal « pas bon » : il manque des champs après passage de l'agent.
+
+    `note` (ajouté le 2026-08-05) : contexte optionnel affiché avant le lien, ex.
+    « bloqué depuis le 2026-08-01, retenté chaque jour sans succès » — c'est le
+    RESURFAÇAGE de scripts/autocomplete.py qui le fournit, pour qu'une fiche coincée
+    ne disparaisse pas de Slack après son premier signalement (anti-spam trop strict,
+    corrigé le même jour : voir la docstring de la boucle principale)."""
     title = (event.get("article_title") or event.get("title") or "?")[:90]
     manque = ", ".join(missing_labels) or "?"
     fiche = _fiche_url(event)
@@ -127,6 +133,7 @@ def notify_incomplete(event: dict, missing_labels: list[str]) -> bool:
     if event.get("id"):
         slash = (f"\n_Ou réponds :_ `/agenda complete {event['id']} "
                  f"lieu=… ville=… url_image=…`")
+    prefixe = f"\n_{note}_" if note else ""
     return notify(
         f"⚠️ *À compléter* — {title}\n"
-        f"Il manque : *{manque}*{lien}{slash}")
+        f"Il manque : *{manque}*{prefixe}{lien}{slash}")

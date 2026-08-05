@@ -313,6 +313,17 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_excluded_events")
 
+    # Apprentissage Slack — LECTURE SEULE, zéro LLM (2026-08-05, demande de Franck :
+    # « l'autonomie c'est l'apprentissage par soi-même »). Regroupe les messages
+    # « À compléter » de la semaine par source × champ manquant : un motif qui dépasse
+    # le seuil signe une cause SYSTÉMIQUE (une source sans image exploitable), pas une
+    # série de fiches malchanceuses — voir scripts/slack_learning.py pour le détail.
+    from scripts.slack_learning import main as slack_learning_main
+    rc, out = _run_captured(slack_learning_main, [], "slack-learning")
+    sections.append(f"• Apprentissage Slack (motifs récurrents) : {_tail(out, 2)}")
+    if rc:
+        echecs.append("slack_learning")
+
     # Domaines sources qui REFUSENT le serveur. Ajouté le 2026-08-04 : agendaculturel.fr
     # répondait 403 sur ses quatre sous-domaines, et 242 fiches encore devant nous en
     # dépendent. Chaque tentative de réparation (dates web, venues, autocomplete,
