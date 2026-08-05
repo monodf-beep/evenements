@@ -6,8 +6,9 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   desktop) et les GOUTTIÈRES (blocs 5/6, skyscrapers latéraux sticky, desktop).
   Contrairement aux blocs 1-3, ces emplacements ne vivent pas dans le flux normal du
   thème — impossible de les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php
-  — donc ce fichier lit directement le backoffice et les pose en position:fixed via
-  wp_footer, le contenu du site passant par-dessus.
+  — donc ce fichier lit directement le backoffice et les pose lui-même via wp_footer, le
+  contenu du site passant par-dessus. La skin défile avec la page (position:absolute) ;
+  seules les gouttières restent collées sous le menu (position:fixed).
 
   RÉUTILISE les fonctions déjà définies par cs-regie-serve.php (même mu-plugin folder,
   chargé avant celui-ci par ordre alphabétique : "cs-regie-serve.php" < "cs-regie.php") :
@@ -85,6 +86,18 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   « Le bandeau doit être en dessous du menu. Le corps du site doit se décaler
   suffisamment vers le bas pour que le bandeau ait la place » (Franck).
 
+  v1.0 (2026-08-05) : la skin passe de position:fixed à position:ABSOLUE — elle défile
+  donc avec la page et s'efface vers le haut sous le menu et la frise, au lieu de rester
+  figée dans la fenêtre. « Le bandeau doit aussi scroller quand on scrolle vers le bas
+  [...] on a uniquement les gouttières qui sont sticky, le haut des gouttières correspond
+  au bas du menu » (Franck). Corrige du même coup le défaut constaté juste avant — « le
+  fond de beige ne suit pas le corps du site » : figée pendant que le contenu défilait, la
+  zone crème de la créative se désolidarisait du corps du site et le recouvrait de
+  travers. Ancrée dans la page, elle ne peut plus se décaler : les deux bougent ensemble.
+  Le bornage au pied de page et le plancher sous la barre collante disparaissent avec le
+  position:fixed — la créative a désormais sa hauteur naturelle (56.25vw = 1080/1920).
+  Les gouttières des blocs 5/6, elles, restent collées (cs-regie-clamp-js, inchangé).
+
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -92,7 +105,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 0.9
+Version: 1.0
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -195,7 +208,17 @@ add_action('wp_footer', function () {
          Une skin, c'est l'image ENTIERE posee derriere la page, le contenu par-dessus.
          D'ou : un seul element, en position:fixed, image complete, et le contenu du site
          au-dessus (z-index). Aucun raccord a calculer, donc aucun trou possible. */
-      .cs-skin{position:fixed;left:0;right:0;z-index:0;cursor:pointer;
+      /* position:ABSOLUE, donc ancree dans la PAGE et pas dans la fenetre : la skin defile
+         avec le contenu et disparait vers le haut sous le menu/la frise quand on descend.
+         "Le bandeau doit aussi scroller quand on scrolle vers le bas [...] on a uniquement
+         les gouttieres qui sont sticky" (Franck, 2026-08-05).
+         C'est aussi ce qui reglait le defaut precedent : en position:fixed la skin restait
+         immobile pendant que le contenu defilait, donc la zone creme de la creative se
+         desolidarisait du corps du site — "le fond de beige ne suit pas le corps du site".
+         Ancree dans la page, elle ne peut plus se decaler : les deux bougent ensemble.
+         height:56.25vw = 1080/1920, la hauteur naturelle de la creative une fois mise a la
+         largeur de l'ecran — l'image entiere, ni etiree ni coupee. */
+      .cs-skin{position:absolute;left:0;right:0;height:56.25vw;z-index:0;cursor:pointer;
         background-repeat:no-repeat;background-position:center top;
         /* 100% auto : l'image occupe TOUJOURS exactement la largeur de l'ecran, donc ses
            decors lateraux restent visibles quelle que soit la taille — contrairement a un
@@ -411,14 +434,14 @@ add_action('wp_footer', function () {
 
     <?php if ($skin) : ?>
     <script id="cs-regie-skin-js">
-      /* Cale le calque unique de la skin entre le BAS de la pile d'en-tetes (pour que la
-         creative commence SOUS le menu, demande Franck du 2026-08-05) et le HAUT du pied
-         de page (pour ne pas courir derriere le footer, meme regle que les gouttieres).
+      /* Pose la skin a l'emplacement de sa cale, en coordonnees de PAGE (et non de
+         fenetre) : elle defile donc avec le contenu et s'efface sous le menu quand on
+         descend, comme demande le 2026-08-05. Seules les gouttieres des blocs 5/6 restent
+         collees sous le menu — c'est le script cs-regie-clamp-js ci-dessus, inchange.
 
-         Il n'y a plus qu'un seul element a placer depuis la v0.8 : le decoupage en
-         bandeau + deux bandes est mort avec les trous qu'il fabriquait. Donc plus aucun
-         raccord entre morceaux a maintenir ici — on borne un rectangle, l'image se charge
-         du reste. */
+         Il n'y a plus ni bornage au pied de page ni plancher sous la barre collante : la
+         skin a une hauteur fixe (56.25vw, cf. CSS) et suit la page. Un seul element a
+         placer depuis la v0.8, donc aucun raccord entre morceaux a maintenir ici. */
       (function(){
         var skin = document.getElementById('cs-skin');
         if (!skin) { return; }
@@ -452,53 +475,15 @@ add_action('wp_footer', function () {
           return spacer;
         }
 
-        // Copies volontaires des fonctions du clamp des gouttieres : voir la note en tete
-        // de ce fichier (duplique plutot que factorise pour ne pas risquer leur logique).
-        function footerTop(){
-          var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
-          var docH  = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
-          var scrollY = window.pageYOffset || 0;
-          var best = Infinity;
-          for (var i = 0; i < cands.length; i++) {
-            var el = cands[i];
-            if (el.offsetParent === null) { continue; }
-            var r = el.getBoundingClientRect();
-            if (r.height <= 0) { continue; }
-            if ((r.top + scrollY) < docH * 0.4) { continue; }
-            if (r.top < best) { best = r.top; }
-          }
-          return best;
-        }
-
-        function headBottom(){
-          var heads = document.querySelectorAll(HEAD_SEL);
-          var vh = window.innerHeight;
-          var b = 0;
-          for (var h = 0; h < heads.length; h++) {
-            var hr = heads[h].getBoundingClientRect();
-            if (hr.height <= 0) { continue; }
-            if (hr.top > vh * 0.6) { continue; }
-            if (hr.bottom > b) { b = hr.bottom; }
-          }
-          return b;
-        }
-
         function place(){
-          /* La skin commence a l'emplacement de la cale — c'est-a-dire juste sous le menu,
+          /* La skin commence a l'emplacement de sa cale — c'est-a-dire juste sous le menu,
              puisque c'est la qu'elle est posee. On lit sa position plutot que de refaire
-             le calcul : les deux ne peuvent pas diverger.
-             Le plancher headBottom() sert au defilement : une fois la cale remontee hors
-             de l'ecran, la skin s'arrete sous la barre collante au lieu de passer dessous. */
-          var top = placeSpacer().getBoundingClientRect().top;
-          var hb  = headBottom();
-          if (top < hb) { top = hb; }
+             le calcul de son cote : les deux ne peuvent donc pas diverger.
+             + pageYOffset : la position est convertie en coordonnees de PAGE, celles que
+             comprend un element en position:absolute. C'est ce qui fait defiler la skin
+             avec le contenu au lieu de la figer dans la fenetre. */
+          var top = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
           skin.style.top = top + 'px';
-
-          // bottom se compte depuis le BAS de la fenetre (position:fixed) : ce qui separe
-          // le bas de l'ecran du haut du footer quand celui-ci est a l'ecran, 0 sinon.
-          var foot = footerTop();
-          var bottom = isFinite(foot) ? Math.max(0, window.innerHeight - foot) : 0;
-          skin.style.bottom = bottom + 'px';
         }
 
         place();
