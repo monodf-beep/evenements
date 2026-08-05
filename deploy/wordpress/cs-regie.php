@@ -98,6 +98,19 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   position:fixed — la créative a désormais sa hauteur naturelle (56.25vw = 1080/1920).
   Les gouttières des blocs 5/6, elles, restent collées (cs-regie-clamp-js, inchangé).
 
+  v1.1 (2026-08-05) : la v1.0 repositionnait la skin à chaque événement de défilement.
+  Inutile — un élément en position:absolute est ancré dans la page et défile tout seul,
+  à la vitesse exacte du contenu — et nuisible : le navigateur peint le défilement en
+  continu tandis que l'événement JS arrive après coup, si bien que la skin rattrapait sa
+  position avec un temps de retard visible. « Un effet de parallaxe entre le corps du site
+  et le bandeau », « trop saccadé » (Franck). L'écouteur 'scroll' est donc supprimé : la
+  position ne dépend plus que de la mise en page et ne se recalcule que quand celle-ci
+  change. Corrigé au passage, même cause : la sélection de l'ancre de la cale testait la
+  HAUTEUR des en-têtes, or sur l'accueil `.as-site-header` est un en-tête compact qui
+  apparaît en cours de défilement — il entrait et sortait donc de la sélection au fil du
+  défilement, déplaçant la cale sous la skin. Remplacé par un test sur `offsetParent`,
+  qui ne bouge pas quand on défile.
+
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -105,7 +118,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.0
+Version: 1.1
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -460,7 +473,12 @@ add_action('wp_footer', function () {
           var heads = document.querySelectorAll(HEAD_SEL);
           var last = null;
           for (var i = 0; i < heads.length; i++) {
-            if (heads[i].getBoundingClientRect().height <= 0) { continue; }   // masque
+            /* offsetParent plutot que la hauteur mesuree : sur l'accueil, .as-site-header
+               est un en-tete COMPACT qui apparait en cours de defilement (position:fixed).
+               Le tester sur sa hauteur le faisait entrer et sortir de la selection au fil
+               du defilement, donc deplacer la cale, donc sauter la skin. offsetParent est
+               null pour un element display:none et ne bouge pas, lui, quand on defile. */
+            if (heads[i].offsetParent === null && heads[i] !== document.body) { continue; }
             if (!last || (last.compareDocumentPosition(heads[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) {
               last = heads[i];
             }
@@ -486,11 +504,26 @@ add_action('wp_footer', function () {
           skin.style.top = top + 'px';
         }
 
+        /* PAS d'ecouteur sur 'scroll' — et c'est le coeur du correctif de la v1.1.
+           Un element en position:absolute est ancre dans la PAGE : il defile tout seul,
+           exactement a la vitesse du contenu, sans une ligne de JavaScript. Le repositionner
+           a chaque evenement de defilement, comme le faisait la v1.0, ne pouvait qu'ajouter
+           du retard : le navigateur peint le defilement en continu, l'evenement JS arrive
+           apres coup, donc la skin rattrapait sa position avec un temps de retard visible.
+           C'est precisement ce que Franck a decrit le 2026-08-05 : "un effet de parallaxe
+           entre le corps du site et le bandeau", "trop saccade". La skin ne bougeait pas
+           moins vite parce qu'elle etait mal calee — elle bougeait moins vite parce qu'on
+           la recalculait.
+           La position ne depend donc plus que de la MISE EN PAGE, et se recalcule quand
+           celle-ci change : chargement, redimensionnement, consentement. Les recalculs
+           differes couvrent les gabarits JetEngine et les images qui arrivent apres coup et
+           decalent ce qui se trouve au-dessus de la cale. */
         place();
-        addEventListener('scroll', place, { passive: true });
         addEventListener('resize', place, { passive: true });
         addEventListener('load',   place);
         document.addEventListener('cmplz_status_change', function(){ setTimeout(place, 0); });
+        setTimeout(place, 300);
+        setTimeout(place, 1200);
       })();
     </script>
     <?php endif; ?>
