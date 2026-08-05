@@ -252,13 +252,14 @@ def main(argv=None) -> int:
         log.warning("%d fiche(s) retenue(s) hors périmètre. Pour les SORTIR de la file : "
                     ".venv/bin/python scripts/purge_out_of_zone.py --apply", len(hors))
 
-    # PORTILLON « LE JUSTE TEMPS » (2026-08-05, docs/TEMPS_FORTS.md, fenêtre validée
-    # par Franck : 90 jours par défaut, 150 pour les temps forts nommés de
-    # config/temps_forts.json). Aucun garde-fou d'horizon n'existait à la
-    # publication : le tri par date croissante n'a pas de borne haute, donc un
-    # marché de Noël complet et évalué partirait en ligne en août dès que la file
-    # des événements plus proches est vide — exactement l'objectif du pipeline. Ce
-    # n'est PAS un état : rien n'est écrit, la fiche reste dans son statut, le
+    # PORTILLON « LE JUSTE TEMPS » (2026-08-05, docs/TEMPS_FORTS.md). CORRIGÉ le
+    # jour même : la première version imposait une fenêtre de 90 jours à TOUT
+    # événement daté — faux. Franck : « je n'ai pas demandé les 90 jours pour Nice
+    # Jazz, Carnaval de Nice… ça peut être plus loin. » Le vrai problème n'est pas
+    # la distance dans le temps, c'est le DÉCALAGE THÉMATIQUE (Noël en plein été) —
+    # AUCUN plafond par défaut, seuls les temps forts NOMMÉS de config/
+    # temps_forts.json (Noël, Halloween pour l'instant) ont une fenêtre.
+    # Ce n'est PAS un état : rien n'est écrit, la fiche reste dans son statut, le
     # calendrier la rouvre tout seul en se rapprochant (docs/ETATS_TERMINAUX.md).
     # S'applique AUSSI aux --ids par défaut (même raison que les portillons
     # ci-dessus) — --allow-early dit explicitement qu'un humain a choisi de publier
@@ -272,11 +273,13 @@ def main(argv=None) -> int:
             debut = (ev.get("date_event_start") or "").strip()
             if not debut:
                 continue  # pas de date = pas concerné, cf. règle 5 de CLAUDE.md
+            fenetre = saison.fenetre_publication_jours(ev, temps_forts)
+            if fenetre is None:
+                continue  # pas un temps fort nommé : aucune fenêtre, jamais retenu ici
             try:
                 ecart = (date.fromisoformat(debut[:10]) - aujourdhui).days
             except ValueError:
                 continue
-            fenetre = saison.fenetre_publication_jours(ev, temps_forts)
             if ecart > fenetre:
                 trop_tot.append((ev, fenetre))
     if trop_tot:

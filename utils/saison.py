@@ -1,33 +1,34 @@
 #!/usr/bin/env python3
 """Le juste temps — quand une fiche COMPLÈTE peut partir en publication.
 
-Proposition de Franck (2026-08-04), validée le 2026-08-05 (fenêtre par défaut :
-90 jours) : « on connaît déjà des événements de Noël mais ce n'est pas le moment
-de les afficher. » Aucun garde-fou d'horizon n'existait à la publication —
-`publish_batch_as` triait par date croissante mais sans borne haute, donc un
-marché de Noël complet partait en ligne en août dès que la file des événements
-plus proches était vide. Voir docs/TEMPS_FORTS.md pour la doctrine complète.
+Franck (2026-08-04) : « on connaît déjà des événements de Noël mais ce n'est pas
+le moment de les afficher. » Voir docs/TEMPS_FORTS.md pour la doctrine complète.
 
-PRINCIPE : une fenêtre de PUBLICATION, jamais un état. Une fiche trop lointaine
-reste dans son statut RETENU (evaluated/published_sub…) — rien n'est écrit, rien
-n'est rejeté. Le calendrier la rouvre tout seul le lendemain en recomparant les
-dates : aucun état terminal, aucun script de réouverture à brancher
-(docs/ETATS_TERMINAUX.md — la réponse aux quatre questions est justement
-« le calendrier »).
+CORRIGÉ le 2026-08-05, même jour — première version fausse. J'avais transformé
+« Noël ne doit pas s'afficher en août » en une fenêtre GÉNÉRALE de 90 jours
+s'appliquant à TOUT événement daté. Faux : le problème n'est pas la distance dans
+le temps, c'est le DÉCALAGE THÉMATIQUE — un marché de Noël en pleine canicule
+jure, un concert de mars annoncé en septembre ne jure de rien. Franck : « je n'ai
+pas demandé les 90 jours pour Nice Jazz, Carnaval de Nice… ça peut être plus
+loin » — ces grands rendez-vous n'ont besoin d'AUCUNE fenêtre, pas d'une plus
+large, la réservation anticipée leur sert.
+
+PRINCIPE CORRIGÉ : AUCUN plafond par défaut. SEULS les temps forts thématiques
+NOMMÉS (config/temps_forts.json — Noël, Halloween pour l'instant, les deux seuls
+exemples confirmés par Franck) ont une fenêtre, propre à chacun. Tout le reste se
+publie dès que prêt, comme avant le 2026-08-04.
+
+MÊME DOCTRINE D'ÉTAT que la version précédente : une fenêtre de PUBLICATION,
+jamais un état. Une fiche hors fenêtre reste dans son statut RETENU — rien n'est
+écrit, rien n'est rejeté. Le calendrier la rouvre tout seul en approchant
+(docs/ETATS_TERMINAUX.md — qui rouvre : le calendrier).
 """
 from __future__ import annotations
 import json
-import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 _TEMPS_FORTS_FILE = ROOT / "config" / "temps_forts.json"
-
-# Fenêtre par défaut : validée par Franck le 2026-08-05 (proposition initiale de
-# docs/TEMPS_FORTS.md — « assez pour préparer un week-end ou des vacances, assez
-# court pour que l'agenda garde une saison »). Réglable par env var pour un test
-# ponctuel sans toucher au code.
-FENETRE_DEFAUT_JOURS = int(os.getenv("TEMPS_FORTS_FENETRE_DEFAUT", "90"))
 
 
 def _charger_temps_forts(path: Path | None = None) -> list[dict]:
@@ -63,9 +64,12 @@ def temps_fort_concerne(event: dict, temps_forts: list[dict] | None = None) -> d
     return None
 
 
-def fenetre_publication_jours(event: dict, temps_forts: list[dict] | None = None) -> int:
+def fenetre_publication_jours(event: dict, temps_forts: list[dict] | None = None) -> int | None:
     """Nombre de jours, avant le début de l'événement, où sa publication est
-    autorisée. 90 par défaut ; plus pour un temps fort nommé (config/temps_forts.json)
-    qui se réserve à l'avance (billetterie, hébergement)."""
+    autorisée — SEULEMENT si l'événement correspond à un temps fort thématique
+    NOMMÉ (config/temps_forts.json). None = AUCUNE fenêtre, publiable dès que
+    prêt (le cas de la grande majorité des événements, y compris les grands
+    festivals à billetterie : Musilac, Nice Jazz, Carnaval de Nice n'ont pas de
+    problème de décalage saisonnier, ils n'ont donc pas d'entrée ici)."""
     tf = temps_fort_concerne(event, temps_forts)
-    return int(tf["fenetre_jours"]) if tf else FENETRE_DEFAUT_JOURS
+    return int(tf["fenetre_jours"]) if tf else None

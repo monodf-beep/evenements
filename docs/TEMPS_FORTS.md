@@ -3,14 +3,18 @@
 **Proposition du 2026-08-04.** Question de Franck : « on connaît déjà des événements de
 Noël mais ce n'est pas le moment de les afficher. Quand les afficher ? »
 
-**Implémenté le 2026-08-05** — fenêtre par défaut validée par Franck : 90 jours. Voir
-`utils/saison.py`, le portillon dans `scripts/publish_batch_as.py`, et
-`config/temps_forts.json` pour les exceptions à 150 jours. La liste ⚖️ « valider/élaguer
-cette liste » du tableau plus bas N'A PAS ÉTÉ tranchée : `config/temps_forts.json` ne
-contient QUE les rendez-vous nommés explicitement pendant la discussion (Musilac, Nice
-Jazz, Carnaval de Nice, Carnaval d'Ivrea, Foire de Saint-Ours, truffe d'Alba) — le
-fichier est éditable sans code, Franck peut l'étendre au reste du tableau quand il aura
-tranché.
+**Implémenté le 2026-08-05, corrigé le jour même.** Première version : une fenêtre de 90
+jours s'appliquant à TOUT événement daté. Faux — Franck : « je n'ai pas demandé les 90
+jours pour ce genre de festival [Nice Jazz, Carnaval de Nice]… ça peut être plus loin. »
+Le problème n'est pas la distance dans le temps, c'est le DÉCALAGE THÉMATIQUE (un marché
+de Noël en plein été jure ; un concert de mars annoncé en septembre ne jure de rien).
+
+**Le principe corrigé : AUCUNE fenêtre par défaut.** Seuls les temps forts THÉMATIQUES
+nommés dans `config/temps_forts.json` en ont une — pour l'instant seulement Noël (65
+jours) et Halloween (30 jours), les deux seuls exemples confirmés par Franck. Les grands
+festivals à billetterie (Musilac, Nice Jazz, Carnaval de Nice…) n'ont DÉLIBÉRÉMENT aucune
+entrée : ils n'ont pas de problème de décalage saisonnier, la réservation anticipée leur
+sert. Voir `utils/saison.py` et le portillon dans `scripts/publish_batch_as.py`.
 
 ## Le constat, vérifié dans le code le jour même
 
@@ -44,17 +48,15 @@ posés le même jour : sans humain dans la boucle, aucune exception ne se justif
 `--allow-early` reste disponible pour le cas rare où un humain choisit sciemment de
 publier en avance.
 
-✅ **La fenêtre par défaut, tranchée par Franck le 2026-08-05 : 90 jours** avant le
-début de l'événement. Assez pour préparer un week-end ou des vacances, assez court pour
-que l'agenda garde une saison. (Le tri « plus proches d'abord » fait déjà le gros du
-travail ; cette borne n'attrape que le cas « file vide ».) Réglable sans code via
-`TEMPS_FORTS_FENETRE_DEFAUT` (utils/saison.py).
+✅ **Pas de fenêtre par défaut** — un événement ordinaire (concert, expo, marché
+hebdomadaire…) se publie dès qu'il est prêt, quelle que soit la distance dans le temps,
+comme avant le 2026-08-04. Seuls Noël (65 jours) et Halloween (30 jours) ont une fenêtre
+propre dans `config/temps_forts.json` (détection par mot-clé FR/IT dans le titre ou la
+description) — les deux seuls temps forts que Franck a cités.
 
-✅ **Les exceptions qui méritent PLUS de préavis, implémentées** — on réserve tôt :
-`config/temps_forts.json` donne 150 jours à Musilac, Nice Jazz, Carnaval de Nice,
-Carnaval d'Ivrea, Foire de Saint-Ours et la truffe d'Alba (détection par mot-clé
-FR/IT dans le titre ou la description). ⚖️ Reste ouvert : étendre cette liste au reste
-du tableau ci-dessous, catégorie par catégorie ou nom par nom — pas tranché.
+⚖️ **Reste ouvert** : étendre `config/temps_forts.json` au reste du tableau ci-dessous
+(Épiphanie, Carnavals, Pâques, Ferragosto…) — aucun n'est implémenté, le fichier est
+éditable sans code le jour où Franck en confirme un.
 
 ## Les temps forts du territoire — le calendrier à valider
 
