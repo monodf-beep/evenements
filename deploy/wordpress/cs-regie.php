@@ -7,8 +7,9 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   Contrairement aux blocs 1-3, ces emplacements ne vivent pas dans le flux normal du
   thème — impossible de les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php
   — donc ce fichier lit directement le backoffice et les pose lui-même via wp_footer, le
-  contenu du site passant par-dessus. La skin défile avec la page (position:absolute) ;
-  seules les gouttières restent collées sous le menu (position:fixed).
+  contenu du site passant par-dessus. Le bandeau de la skin défile avec la page
+  (position:absolute) ; ses deux bandes latérales et les gouttières des blocs 5/6 restent
+  collées sous le menu (position:fixed).
 
   RÉUTILISE les fonctions déjà définies par cs-regie-serve.php (même mu-plugin folder,
   chargé avant celui-ci par ordre alphabétique : "cs-regie-serve.php" < "cs-regie.php") :
@@ -111,6 +112,33 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   défilement, déplaçant la cale sous la skin. Remplacé par un test sur `offsetParent`,
   qui ne bouge pas quand on défile.
 
+  v1.2 (2026-08-05) : correctif de la v1.1 immédiatement repris — `offsetParent === null`
+  ne signale pas seulement un élément `display:none`, il vaut AUSSI null pour tout élément
+  en `position:fixed`. Les barres d'en-tête du site en font partie : toutes écartées, plus
+  aucun repère trouvé, la cale retombait sur son repli « en tête de `.site` » et la
+  créative repassait au-dessus du menu. Remplacé par `getClientRects().length === 0`, qui
+  ne répond vide que si l'élément n'est vraiment pas rendu.
+
+  v1.3 (2026-08-05) : les côtés disparaissaient dès qu'on descendait — « c'est pas sticky,
+  les gouttières ne sont plus présentes quand on scroll » (Franck). Normal : depuis la v1.0
+  la créative entière défilait, et elle ne fait que 56.25vw de haut. Or la demande porte
+  sur DEUX comportements distincts — bandeau qui défile, bandes latérales collées sous le
+  menu — et un seul élément ne peut pas faire les deux. La créative est donc à nouveau
+  portée par trois éléments.
+  ⚠️ Ce n'est PAS le découpage des v0.4-v0.7. Le défaut de celui-là n'était pas d'avoir
+  plusieurs éléments, mais que chacun affichait une zone NON JOINTIVE du fichier : le
+  bandeau en `background-size:1920px auto` centré montrait le MILIEU de l'image pendant que
+  les bandes en montraient les bords extrêmes, laissant ~220px de créative de chaque côté
+  affichés nulle part. Ici les trois partagent la même mise à l'échelle
+  (`background-size:100vw auto` partout, « l'image fait exactement la largeur de l'écran »)
+  et se partagent ses colonnes sans trou ni recouvrement : bandeau sur toute la largeur pour
+  les lignes 0-240 (12.5vw de haut), bandes de 18.75vw (= 360/1920, la largeur exacte du
+  décor latéral) alignées sur les bords de l'image. Les bandes partent de la ligne 0 et non
+  de la ligne 240 : leur haut est masqué par le bandeau tant qu'on est en haut de page, donc
+  le raccord tombe juste au pixel, puis le bandeau s'en va et elles prennent le relais.
+  Le bandeau garde le placement sans JS au défilement de la v1.1 (pas de parallaxe) ; les
+  bandes sont suivies en JS comme les gouttières, mais leur position ne change qu'aux rares
+  moments où l'en-tête compact apparaît, jamais à chaque pixel.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -118,7 +146,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.2
+Version: 1.3
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -209,39 +237,53 @@ add_action('wp_footer', function () {
       /* révélé uniquement quand <html> porte la classe de consentement + ≥1280px */
       .cs-consent-mkt .cs-regie{display:block}
       @media (max-width:1279px){ .cs-consent-mkt .cs-regie{display:none !important} }
-      /* UNE SEULE IMAGE, JAMAIS DECOUPEE (v0.8, 2026-08-05).
-         v0.4 a v0.7 decoupaient la creative en trois elements — un bandeau haut + deux
-         bandes laterales — chacun affichant une ZONE DIFFERENTE du meme fichier via
-         background-position (centre pour le bandeau, bords extremes pour les bandes).
-         Entre ce que montrait le bandeau et ce que montraient les bandes, des pans
-         entiers de l'image n'etaient affiches nulle part : "on a des trous de partout,
-         ca ne fait pas une skin, c'est n'importe quoi" (Franck, captures a l'appui, apres
-         trois tentatives de rafistolage des seuils qui ne pouvaient pas marcher — le
-         defaut n'etait pas dans les seuils mais dans le decoupage lui-meme).
-         Une skin, c'est l'image ENTIERE posee derriere la page, le contenu par-dessus.
-         D'ou : un seul element, en position:fixed, image complete, et le contenu du site
-         au-dessus (z-index). Aucun raccord a calculer, donc aucun trou possible. */
-      /* position:ABSOLUE, donc ancree dans la PAGE et pas dans la fenetre : la skin defile
-         avec le contenu et disparait vers le haut sous le menu/la frise quand on descend.
-         "Le bandeau doit aussi scroller quand on scrolle vers le bas [...] on a uniquement
-         les gouttieres qui sont sticky" (Franck, 2026-08-05).
-         C'est aussi ce qui reglait le defaut precedent : en position:fixed la skin restait
-         immobile pendant que le contenu defilait, donc la zone creme de la creative se
-         desolidarisait du corps du site — "le fond de beige ne suit pas le corps du site".
-         Ancree dans la page, elle ne peut plus se decaler : les deux bougent ensemble.
-         height:56.25vw = 1080/1920, la hauteur naturelle de la creative une fois mise a la
-         largeur de l'ecran — l'image entiere, ni etiree ni coupee. */
-      .cs-skin{position:absolute;left:0;right:0;height:56.25vw;z-index:0;cursor:pointer;
-        background-repeat:no-repeat;background-position:center top;
-        /* 100% auto : l'image occupe TOUJOURS exactement la largeur de l'ecran, donc ses
-           decors lateraux restent visibles quelle que soit la taille — contrairement a un
-           "1920px auto" qui rognerait les bords sous 1920px, ou a "cover" qui zoome et
-           finit par cacher le decor derriere le contenu. */
-        background-size:100% auto}
-      /* Le contenu du site passe AU-DESSUS de la skin. .site n'a aucun fond propre
-         (verifie en direct : c'est body qui porte --beige), donc la skin reste visible
-         partout ou le contenu ne peint pas — les marges laterales, essentiellement. */
-      .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:1}
+      /* DEUX COMPORTEMENTS, UNE SEULE IMAGE CONTINUE (v1.3, 2026-08-05).
+         Demande de Franck : "le bandeau doit scroller vers le haut pour disparaitre sous le
+         menu [...] on a uniquement les gouttieres qui sont sticky, le haut des gouttieres
+         correspond au bas du menu". Deux comportements differents, donc deux elements — il
+         n'y a pas moyen qu'un seul element defile ET reste colle.
+
+         ⚠️ CE N'EST PAS le decoupage des v0.4-v0.7, celui qui faisait "des trous de
+         partout". Ce qui clochait la-bas n'etait pas d'avoir plusieurs elements, c'etait
+         que chacun affichait une zone NON JOINTIVE du fichier : le bandeau etait en
+         "background-size:1920px auto" centre (il montrait donc les 1477px du MILIEU d'une
+         image de 1920 sur un ecran de 1477), pendant que les bandes montraient les bords
+         extremes de cette meme image. Entre les deux, ~220px de creative de chaque cote
+         n'etaient affiches nulle part.
+         Ici les trois elements partagent la MEME mise a l'echelle — background-size:100vw
+         auto partout, c'est-a-dire "l'image fait exactement la largeur de l'ecran" — et se
+         partagent ses colonnes sans trou ni recouvrement :
+           bandeau : toute la largeur,           lignes 0 a 240   (hauteur 12.5vw = 240/1920)
+           bande G : x 0 a 360    (18.75vw),     a partir de la ligne 0
+           bande D : x 1560 a 1920 (18.75vw),    a partir de la ligne 0
+         18.75vw = 360/1920 : la largeur exacte du decor lateral de la creative, celle ou
+         commence la zone creme centrale du gabarit annonceur. Les bandes partent de la
+         ligne 0 et non de la ligne 240 : leur haut est alors masque par le bandeau tant
+         qu'on est en haut de page (z-index), et le raccord tombe donc juste au pixel — puis
+         le bandeau s'en va en defilant et les bandes prennent le relais avec la suite du
+         decor, sans saut. */
+
+      /* Le bandeau : ancre dans la PAGE (position:absolute), donc il defile avec le contenu
+         et s'efface sous le menu. Aucun JS ne le suit pendant le defilement — c'est ce qui
+         avait produit la parallaxe de la v1.0, cf. note v1.1 en tete de fichier. */
+      .cs-skin-banner{position:absolute;left:0;right:0;height:12.5vw;z-index:1;overflow:hidden;
+        cursor:pointer;background-repeat:no-repeat;background-size:100vw auto;
+        background-position:center top}
+      /* Les bandes : collees (position:fixed), calees en JS entre le bas du menu et le haut
+         du pied de page — meme principe que les gouttieres des blocs 5/6. Contrairement au
+         bandeau, leur position ne varie PAS a chaque pixel de defilement (elle ne change que
+         quand l'en-tete compact apparait), donc le calcul en JS n'y produit aucun retard
+         visible. */
+      .cs-skin-col{position:fixed;width:18.75vw;z-index:0;overflow:hidden;cursor:pointer;
+        background-repeat:no-repeat;background-size:100vw auto}
+      .cs-skin-col--l{left:0;background-position:left top}
+      .cs-skin-col--r{right:0;background-position:right top}
+      /* Le contenu du site passe AU-DESSUS des trois. .site n'a aucun fond propre (verifie
+         en direct : c'est body qui porte --beige), donc la skin reste visible partout ou le
+         contenu ne peint pas — les marges laterales, essentiellement. z-index 2 pour passer
+         devant le bandeau (1) comme devant les bandes (0) : sans ca, place en fin de page
+         par wp_footer, le bandeau recouvrirait le contenu. */
+      .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:2}
       /* Cale vide inseree en JS JUSTE APRES la pile menu + barre territoire, pour degager
          la bande haute de la creative (celle qui porte le titre de l'annonceur) SOUS le
          menu : "le bandeau doit etre en dessous du menu, le corps du site doit se decaler
@@ -280,11 +322,17 @@ add_action('wp_footer', function () {
     </style>
 
     <?php if ($skin) : ?>
-    <div class="cs-regie cs-skin" id="cs-skin" role="complementary" aria-label="Publicité"
+    <div class="cs-regie cs-skin-banner" id="cs-skin-banner" role="complementary" aria-label="Publicité"
          style="background-image:url('<?php echo $skin['img']; ?>')"
          onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')">
       <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
     </div>
+    <div class="cs-regie cs-skin-col cs-skin-col--l" id="cs-skin-col-l" aria-hidden="true"
+         style="background-image:url('<?php echo $skin['img']; ?>')"
+         onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')"></div>
+    <div class="cs-regie cs-skin-col cs-skin-col--r" id="cs-skin-col-r" aria-hidden="true"
+         style="background-image:url('<?php echo $skin['img']; ?>')"
+         onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')"></div>
     <?php endif; ?>
 
     <?php if ($left) : ?>
@@ -447,17 +495,16 @@ add_action('wp_footer', function () {
 
     <?php if ($skin) : ?>
     <script id="cs-regie-skin-js">
-      /* Pose la skin a l'emplacement de sa cale, en coordonnees de PAGE (et non de
-         fenetre) : elle defile donc avec le contenu et s'efface sous le menu quand on
-         descend, comme demande le 2026-08-05. Seules les gouttieres des blocs 5/6 restent
-         collees sous le menu — c'est le script cs-regie-clamp-js ci-dessus, inchange.
-
-         Il n'y a plus ni bornage au pied de page ni plancher sous la barre collante : la
-         skin a une hauteur fixe (56.25vw, cf. CSS) et suit la page. Un seul element a
-         placer depuis la v0.8, donc aucun raccord entre morceaux a maintenir ici. */
+      /* Pose le BANDEAU a l'emplacement de sa cale, en coordonnees de PAGE (et non de
+         fenetre) : il defile donc avec le contenu et s'efface sous le menu quand on descend.
+         Et cale les deux BANDES laterales entre le bas du menu et le haut du pied de page,
+         pour qu'elles restent visibles pendant tout le defilement — "on a uniquement les
+         gouttieres qui sont sticky, le haut des gouttieres correspond au bas du menu"
+         (Franck, 2026-08-05). */
       (function(){
-        var skin = document.getElementById('cs-skin');
-        if (!skin) { return; }
+        var banner = document.getElementById('cs-skin-banner');
+        var cols   = document.querySelectorAll('.cs-skin-col');
+        if (!banner) { return; }
 
         var HEAD_SEL = '.as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline';
 
@@ -500,37 +547,84 @@ add_action('wp_footer', function () {
           return spacer;
         }
 
-        function place(){
-          /* La skin commence a l'emplacement de sa cale — c'est-a-dire juste sous le menu,
-             puisque c'est la qu'elle est posee. On lit sa position plutot que de refaire
-             le calcul de son cote : les deux ne peuvent donc pas diverger.
-             + pageYOffset : la position est convertie en coordonnees de PAGE, celles que
-             comprend un element en position:absolute. C'est ce qui fait defiler la skin
-             avec le contenu au lieu de la figer dans la fenetre. */
-          var top = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
-          skin.style.top = top + 'px';
+        // Copies volontaires des fonctions du clamp des gouttieres : voir la note en tete
+        // de ce fichier (duplique plutot que factorise pour ne pas risquer leur logique).
+        function footerTop(){
+          var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
+          var docH  = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
+          var scrollY = window.pageYOffset || 0;
+          var best = Infinity;
+          for (var i = 0; i < cands.length; i++) {
+            var el = cands[i];
+            if (el.offsetParent === null) { continue; }
+            var r = el.getBoundingClientRect();
+            if (r.height <= 0) { continue; }
+            if ((r.top + scrollY) < docH * 0.4) { continue; }
+            if (r.top < best) { best = r.top; }
+          }
+          return best;
         }
 
-        /* PAS d'ecouteur sur 'scroll' — et c'est le coeur du correctif de la v1.1.
+        function headBottom(){
+          var heads = document.querySelectorAll(HEAD_SEL);
+          var vh = window.innerHeight;
+          var b = 0;
+          for (var h = 0; h < heads.length; h++) {
+            var hr = heads[h].getBoundingClientRect();
+            if (hr.height <= 0) { continue; }
+            if (hr.top > vh * 0.6) { continue; }
+            if (hr.bottom > b) { b = hr.bottom; }
+          }
+          return b;
+        }
+
+        /* Le BANDEAU : pose une fois pour toutes a l'emplacement de sa cale, en coordonnees
+           de PAGE. Il defile ensuite tout seul, sans JS — cf. la note sur la parallaxe
+           ci-dessous. */
+        function placeBanner(){
+          var top = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
+          banner.style.top = top + 'px';
+        }
+
+        /* Les BANDES : calees entre le bas du menu et le haut du pied de page, comme les
+           gouttieres des blocs 5/6. Elles, il faut bien les suivre au defilement — mais
+           leur position ne CHANGE qu'aux rares moments ou l'en-tete compact apparait ou
+           disparait, pas a chaque pixel : aucun retard visible, contrairement au bandeau. */
+        function placeCols(){
+          if (!cols.length) { return; }
+          var top  = headBottom();
+          var foot = footerTop();
+          var h    = (isFinite(foot) ? foot : window.innerHeight) - top;
+          if (h < 0) { h = 0; }
+          for (var i = 0; i < cols.length; i++) {
+            cols[i].style.top    = top + 'px';
+            cols[i].style.height = h + 'px';
+          }
+        }
+
+        /* PAS d'ecouteur 'scroll' pour le BANDEAU — c'est le coeur du correctif de la v1.1.
            Un element en position:absolute est ancre dans la PAGE : il defile tout seul,
            exactement a la vitesse du contenu, sans une ligne de JavaScript. Le repositionner
            a chaque evenement de defilement, comme le faisait la v1.0, ne pouvait qu'ajouter
            du retard : le navigateur peint le defilement en continu, l'evenement JS arrive
-           apres coup, donc la skin rattrapait sa position avec un temps de retard visible.
+           apres coup, donc le bandeau rattrapait sa position avec un temps de retard.
            C'est precisement ce que Franck a decrit le 2026-08-05 : "un effet de parallaxe
-           entre le corps du site et le bandeau", "trop saccade". La skin ne bougeait pas
-           moins vite parce qu'elle etait mal calee — elle bougeait moins vite parce qu'on
-           la recalculait.
-           La position ne depend donc plus que de la MISE EN PAGE, et se recalcule quand
-           celle-ci change : chargement, redimensionnement, consentement. Les recalculs
-           differes couvrent les gabarits JetEngine et les images qui arrivent apres coup et
-           decalent ce qui se trouve au-dessus de la cale. */
-        place();
-        addEventListener('resize', place, { passive: true });
-        addEventListener('load',   place);
-        document.addEventListener('cmplz_status_change', function(){ setTimeout(place, 0); });
-        setTimeout(place, 300);
-        setTimeout(place, 1200);
+           entre le corps du site et le bandeau", "trop saccade". Il ne bougeait pas moins
+           vite parce qu'il etait mal cale — il bougeait moins vite parce qu'on le
+           recalculait.
+           Sa position ne depend donc plus que de la MISE EN PAGE, et ne se recalcule que
+           quand celle-ci change : chargement, redimensionnement, consentement. Les deux
+           passes differees couvrent les gabarits JetEngine et les images qui arrivent apres
+           coup et decalent ce qui se trouve au-dessus de la cale. */
+        function placeAll(){ placeBanner(); placeCols(); }
+
+        placeAll();
+        addEventListener('scroll', placeCols, { passive: true });   // les BANDES seulement
+        addEventListener('resize', placeAll,  { passive: true });
+        addEventListener('load',   placeAll);
+        document.addEventListener('cmplz_status_change', function(){ setTimeout(placeAll, 0); });
+        setTimeout(placeAll, 300);
+        setTimeout(placeAll, 1200);
       })();
     </script>
     <?php endif; ?>
