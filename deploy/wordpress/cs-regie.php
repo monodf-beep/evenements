@@ -2,12 +2,12 @@
 /*
 Plugin Name: Agenda Sabauda — Régie (skin + gouttières)
 Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_slot]
-  gèrent mal : l'HABILLAGE / SKIN (bloc 4, bandeau haut + bandes latérales desktop) et
-  les GOUTTIÈRES (blocs 5/6, skyscrapers latéraux sticky, desktop). Contrairement aux
-  blocs 1-3, ces emplacements ne vivent pas dans le flux normal du thème — impossible de
-  les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php — donc ce fichier lit
-  directement le backoffice et se réinjecte lui-même dans le DOM (bandeau) ou en
-  position:fixed (bandes/gouttières) via wp_footer.
+  gèrent mal : l'HABILLAGE / SKIN (bloc 4, la créative entière posée derrière la page,
+  desktop) et les GOUTTIÈRES (blocs 5/6, skyscrapers latéraux sticky, desktop).
+  Contrairement aux blocs 1-3, ces emplacements ne vivent pas dans le flux normal du
+  thème — impossible de les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php
+  — donc ce fichier lit directement le backoffice et les pose en position:fixed via
+  wp_footer, le contenu du site passant par-dessus.
 
   RÉUTILISE les fonctions déjà définies par cs-regie-serve.php (même mu-plugin folder,
   chargé avant celui-ci par ordre alphabétique : "cs-regie-serve.php" < "cs-regie.php") :
@@ -60,14 +60,29 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   choisie a vue : abaisse $cs_skin_bp a 1270/1520px, visible sur une part beaucoup plus
   large des ecrans reels sans changer le principe de calage (v0.6 ci-dessus inchangé).
 
-  Garde-fous : desktop uniquement (colonnes masquées sous le seuil calculé — cf.
-  $cs_skin_bp ; bandeau sous 1280px comme tout .cs-regie ; gouttières sous $cs_bp) ;
-  consent-gated Complianz (cmplz_marketing=allow) ; coupé sur pages sensibles (légales,
-  « annoncer », 404) ; libellé « Publicité » sur chaque emplacement.
+  v0.8 (2026-08-05) — RETOUR A UNE IMAGE UNIQUE, et fin des v0.4 a v0.7. Celles-ci
+  découpaient la créative en trois éléments (bandeau haut + deux bandes latérales) qui
+  affichaient chacun une ZONE DIFFÉRENTE du même fichier via background-position : le
+  bandeau son centre, les bandes ses bords extrêmes. Des pans entiers de l'image
+  n'étaient donc affichés nulle part, et le raccord ne pouvait pas tomber juste : « on a
+  des trous de partout, ça ne fait pas une skin, c'est n'importe quoi » (Franck, captures
+  à l'appui). Les v0.5/v0.6/v0.7 ont chacune corrigé un symptôme de ce découpage (seuil
+  du bandeau, ancrage des colonnes, largeur des colonnes) sans voir que le découpage
+  LUI-MÊME était le défaut — trois correctifs pour une cause jamais traitée.
+  Une skin, c'est l'image entière posée derrière la page, le contenu par-dessus. C'est
+  redevenu ça : UN élément position:fixed portant toute la créative, `.site` (sans fond
+  propre) au-dessus en z-index, et un décalage du contenu de 12.5vw pour dégager la bande
+  haute. Plus aucun raccord à calculer, donc plus aucun trou possible — c'était d'ailleurs
+  le principe de la v0.3, abandonné à tort en v0.4.
+
+  Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
+  1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
+  (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
+  libellé « Publicité » sur chaque emplacement.
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 0.7
+Version: 0.8
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -142,21 +157,14 @@ add_action('wp_footer', function () {
        sur le contenu des fiches entre 1440 et 1568px. */
     $cs_bp = is_front_page() ? 1320 : 1570;
 
-    /* Seuil ET largeur de la SKIN (bloc 4), distincts de ceux des gouttieres ci-dessus :
-       une bande laterale de skin n'a de sens que si elle colle au bord du contenu sans le
-       chevaucher, donc sa largeur depend du meme conteneur que ci-dessus (950 accueil /
-       1200 ailleurs).
-       160px (2026-08-05, apres retours Franck sur ecran a mise a l'echelle Windows 130-175%
-       -- meme a 130%, confort d'usage courant et pas un cas extreme, le seuil precedent de
-       320px (1590/1840px requis) masquait encore les colonnes : "je ne vois pas assez").
-       Repris a l'identique de la largeur DEJA utilisee par les gouttieres des blocs 5/6
-       (.cs-gutter, $cs_bp ci-dessus) plutot qu'invente : ce format existe, fonctionne, et
-       abaisse le seuil a container+320 (1270 accueil / 1520 ailleurs) au lieu de
-       container+640 -- visible sur une bien plus grande part des ecrans reels, y compris
-       les configurations a mise a l'echelle moderee. */
-    $cs_skin_container = is_front_page() ? 950 : 1200;
-    $cs_skin_col_w      = 160;
-    $cs_skin_bp          = $cs_skin_container + 2 * $cs_skin_col_w;
+    /* La SKIN (bloc 4) n'a plus ni largeur de bande ni seuil propre depuis la v0.8 :
+       l'image entiere est posee derriere la page et le contenu passe dessus, donc il n'y
+       a plus de bande a dimensionner ni de place a reserver a cote du contenu. Elle suit
+       le seuil generique de .cs-regie (1280px) comme les autres emplacements.
+       Les trois variables $cs_skin_container / $cs_skin_col_w / $cs_skin_bp qui vivaient
+       ici pilotaient le decoupage en bandeau + bandes laterales : elles sont mortes avec
+       lui. Leur histoire (320px puis 160px, seuils 1590/1840 puis 1270/1520) est dans les
+       notes de version en tete de fichier — inutile de la rejouer ici. */
 
     // Rendu masqué par défaut ; révélé en JS si consentement marketing + viewport desktop.
     ?>
@@ -165,47 +173,36 @@ add_action('wp_footer', function () {
       /* révélé uniquement quand <html> porte la classe de consentement + ≥1280px */
       .cs-consent-mkt .cs-regie{display:block}
       @media (max-width:1279px){ .cs-consent-mkt .cs-regie{display:none !important} }
-      /* Bandeau haut (bloc de flux normal — pas fixed : il doit defiler et sortir de
-         l'ecran avec la page, cf. cs-regie-skin-js qui le reinjecte juste apres la pile
-         d'en-tetes sticky du theme). Fond #F7F1E8 = couleur "zone masquee par le site"
-         du gabarit fourni aux annonceurs : tout debordement au-dela de l'image reste
-         invisible sur le fond du site. */
-      .cs-skin-banner{position:relative;width:100%;height:240px;overflow:hidden;background:#F7F1E8}
-      .cs-skin-banner a,.cs-skin-col a{position:absolute;inset:0;display:block;
-        background-repeat:no-repeat;background-size:1920px auto}
-      .cs-skin-banner a{background-position:center top}
-      /* Bandes laterales : position:fixed, calees en JS (cs-regie-skin-js) entre le bas
-         du bandeau/en-tete et le haut du pied de page — meme principe que .cs-gutter. */
-      .cs-skin-col{position:fixed;z-index:2;width:<?php echo (int) $cs_skin_col_w; ?>px;
-        overflow:hidden;background:#F7F1E8}
-      /* Calees sur le bord de la colonne de CONTENU (calc(50% + container/2)), pas sur le
-         bord de l'ECRAN (left:0/right:0). Bug signale par Franck le 2026-08-05, capture a
-         l'appui (vide beant entre le bandeau et les colonnes) : le bandeau est centre dans
-         un conteneur de largeur FIXE ($cs_skin_container, 950/1200px) alors que les
-         colonnes etaient ancrees aux bords bruts de la fenetre -- au seuil $cs_skin_bp
-         pile les deux se touchaient, mais sur tout ecran PLUS LARGE que ce seuil (le cas
-         normal, un desktop fait rarement une largeur pile egale au seuil) le conteneur
-         central restait centre pendant que les colonnes restaient collees aux bords : le
-         vide grandissait avec la largeur d'ecran au lieu de disparaitre. En calant sur le
-         bord du conteneur, les colonnes suivent son bord quelle que soit la largeur —
-         zero vide, a n'importe quelle taille d'ecran au-dessus de $cs_skin_bp. */
-      .cs-skin-col--l{left:auto;right:calc(50% + <?php echo (int) $cs_skin_container / 2; ?>px)}
-      .cs-skin-col--l a{background-position:left -240px}
-      .cs-skin-col--r{right:auto;left:calc(50% + <?php echo (int) $cs_skin_container / 2; ?>px)}
-      .cs-skin-col--r a{background-position:right -240px}
-      /* Seul le seuil des COLONNES est ici, pas celui du bandeau : le bandeau est en
-         flux normal pleine largeur (aucun risque de chevaucher le contenu, contrairement
-         aux colonnes fixed) donc il n'a aucune raison d'exiger la meme largeur qu'elles.
-         Bug corrige le 2026-08-05 (Franck, test reel) : les deux etaient masques
-         ensemble sous $cs_skin_bp (1590/1840px) alors que l'ancienne skin (fond plein
-         ecran) s'affichait des 1280px comme tout le reste de .cs-regie -- un ecran
-         1920x1080 a 175% + zoom navigateur a 80% (~1370px effectifs) faisait disparaitre
-         le bandeau alors qu'il tenait tres bien a cette largeur. Le bandeau retombe donc
-         sur le seuil generique de .cs-regie (1280px, regle plus haut) ; seules les
-         colonnes restent reservees aux tres grands ecrans. */
-      @media (max-width:<?php echo (int) $cs_skin_bp - 1; ?>px){
-        .cs-consent-mkt .cs-skin-col{display:none !important}
-      }
+      /* UNE SEULE IMAGE, JAMAIS DECOUPEE (v0.8, 2026-08-05).
+         v0.4 a v0.7 decoupaient la creative en trois elements — un bandeau haut + deux
+         bandes laterales — chacun affichant une ZONE DIFFERENTE du meme fichier via
+         background-position (centre pour le bandeau, bords extremes pour les bandes).
+         Entre ce que montrait le bandeau et ce que montraient les bandes, des pans
+         entiers de l'image n'etaient affiches nulle part : "on a des trous de partout,
+         ca ne fait pas une skin, c'est n'importe quoi" (Franck, captures a l'appui, apres
+         trois tentatives de rafistolage des seuils qui ne pouvaient pas marcher — le
+         defaut n'etait pas dans les seuils mais dans le decoupage lui-meme).
+         Une skin, c'est l'image ENTIERE posee derriere la page, le contenu par-dessus.
+         D'ou : un seul element, en position:fixed, image complete, et le contenu du site
+         au-dessus (z-index). Aucun raccord a calculer, donc aucun trou possible. */
+      .cs-skin{position:fixed;left:0;right:0;z-index:0;cursor:pointer;
+        background-repeat:no-repeat;background-position:center top;
+        /* 100% auto : l'image occupe TOUJOURS exactement la largeur de l'ecran, donc ses
+           decors lateraux restent visibles quelle que soit la taille — contrairement a un
+           "1920px auto" qui rognerait les bords sous 1920px, ou a "cover" qui zoome et
+           finit par cacher le decor derriere le contenu. */
+        background-size:100% auto}
+      /* Le contenu du site passe AU-DESSUS de la skin. .site n'a aucun fond propre
+         (verifie en direct : c'est body qui porte --beige), donc la skin reste visible
+         partout ou le contenu ne peint pas — les marges laterales, essentiellement. */
+      .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:1}
+      /* Decale le contenu vers le bas pour degager la bande haute de la creative (celle
+         qui porte le titre de l'annonceur), demande de Franck le 2026-08-05 : "le bandeau
+         doit etre EN DESSOUS du menu, et le corps du site doit se decaler vers le bas".
+         12.5vw = 240/1920 : exactement la hauteur de cette bande une fois l'image mise a
+         la largeur de l'ecran. Proportionnel, donc juste a toutes les largeurs — une
+         valeur en px fixes ne collerait qu'a une seule taille d'ecran. */
+      .cs-consent-mkt.cs-skin-on .site{padding-top:12.5vw}
       /* 160×600 DES DEUX COTES, ancrees a 24px des bords — valeurs du design system
          maison (.as-desktop-gutter-ad, components.css), pas une invention locale.
          L'ancienne formule calait la gouttiere sur une colonne fantome de 1160px et
@@ -227,23 +224,10 @@ add_action('wp_footer', function () {
     </style>
 
     <?php if ($skin) : ?>
-    <div class="cs-regie cs-skin-banner" id="cs-skin-banner" role="complementary" aria-label="Publicité">
-      <a href="<?php echo $skin['link']; ?>" target="_blank" rel="noopener sponsored"
-         style="background-image:url('<?php echo $skin['img']; ?>')">
-        <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
-      </a>
-    </div>
-    <div class="cs-regie cs-skin-col cs-skin-col--l" role="complementary" aria-label="Publicité">
-      <a href="<?php echo $skin['link']; ?>" target="_blank" rel="noopener sponsored"
-         style="background-image:url('<?php echo $skin['img']; ?>')">
-        <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
-      </a>
-    </div>
-    <div class="cs-regie cs-skin-col cs-skin-col--r" role="complementary" aria-label="Publicité">
-      <a href="<?php echo $skin['link']; ?>" target="_blank" rel="noopener sponsored"
-         style="background-image:url('<?php echo $skin['img']; ?>')">
-        <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
-      </a>
+    <div class="cs-regie cs-skin" id="cs-skin" role="complementary" aria-label="Publicité"
+         style="background-image:url('<?php echo $skin['img']; ?>')"
+         onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')">
+      <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
     </div>
     <?php endif; ?>
 
@@ -275,8 +259,9 @@ add_action('wp_footer', function () {
         function apply(){
           if (consented()){
             root.classList.add('cs-consent-mkt');
+            <?php if ($skin) : ?>root.classList.add('cs-skin-on');<?php endif; ?>
           } else {
-            root.classList.remove('cs-consent-mkt');
+            root.classList.remove('cs-consent-mkt','cs-skin-on');
           }
         }
         apply();
@@ -406,42 +391,22 @@ add_action('wp_footer', function () {
 
     <?php if ($skin) : ?>
     <script id="cs-regie-skin-js">
-      /* Place le bandeau de la SKIN et cale ses deux bandes laterales — logique separee
-         du clamp des gouttieres ci-dessus (dupliquee plutot que factorisee, cf. note en
-         tete de fichier) car le bandeau ajoute une contrainte que les gouttieres n'ont
-         pas : il doit defiler avec la page, pas rester fixe.
+      /* Cale le calque unique de la skin entre le BAS de la pile d'en-tetes (pour que la
+         creative commence SOUS le menu, demande Franck du 2026-08-05) et le HAUT du pied
+         de page (pour ne pas courir derriere le footer, meme regle que les gouttieres).
 
-         Demande Franck (2026-08-05, sur test reel) : « le bandeau doit etre EN DESSOUS
-         du menu, et le corps du site doit se decaler vers le bas » — pas l'inverse. Le
-         bandeau ne peut donc pas etre le premier element de la page (ce que ferait un
-         hook wp_body_open) : il doit s'inserer dans le DOM juste APRES la pile
-         d'en-tetes sticky du theme — les memes elements que le clamp des gouttieres,
-         cf. leur note pour .as-terr-bar-inline. Une fois la, un simple bloc de flux
-         normal (ni fixed ni sticky) suffit a tout faire : il pousse le contenu qui le
-         suit vers le bas (etat 1) ET defile hors ecran avec la page des qu'on descend
-         (etat 2), sans une ligne de calcul supplementaire. */
+         Il n'y a plus qu'un seul element a placer depuis la v0.8 : le decoupage en
+         bandeau + deux bandes est mort avec les trous qu'il fabriquait. Donc plus aucun
+         raccord entre morceaux a maintenir ici — on borne un rectangle, l'image se charge
+         du reste. */
       (function(){
-        var banner = document.getElementById('cs-skin-banner');
-        var cols   = document.querySelectorAll('.cs-skin-col');
-        if (!banner && !cols.length) { return; }
+        var skin = document.getElementById('cs-skin');
+        if (!skin) { return; }
 
         var HEAD_SEL = '.as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline';
 
-        if (banner) {
-          var heads = document.querySelectorAll(HEAD_SEL);
-          var last = null;
-          for (var i = 0; i < heads.length; i++) {
-            if (!last || (last.compareDocumentPosition(heads[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) {
-              last = heads[i];
-            }
-          }
-          if (last) { last.insertAdjacentElement('afterend', banner); }
-        }
-        if (!cols.length) { return; }
-
-        var GAP = 16;
-
-        // Copie volontaire de footerTop() ci-dessus : voir la note en tete de script.
+        // Copies volontaires des fonctions du clamp des gouttieres : voir la note en tete
+        // de ce fichier (duplique plutot que factorise pour ne pas risquer leur logique).
         function footerTop(){
           var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
           var docH  = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
@@ -472,25 +437,14 @@ add_action('wp_footer', function () {
         }
 
         function place(){
-          // Le plus bas des deux : la pile d'en-tetes seule (bandeau deja defile hors
-          // ecran) OU le bas du bandeau lui-meme (bandeau encore visible, en haut de
-          // page) — c'est ce qui fait « apparaitre sous le bandeau puis suivre l'en-tete
-          // seul une fois qu'il est parti » sans etat explicite a gerer.
           var top = headBottom();
-          if (banner) {
-            var br = banner.getBoundingClientRect().bottom;
-            if (br > top) { top = br; }
-          }
-          top += GAP;
+          skin.style.top = top + 'px';
 
+          // bottom se compte depuis le BAS de la fenetre (position:fixed) : ce qui separe
+          // le bas de l'ecran du haut du footer quand celui-ci est a l'ecran, 0 sinon.
           var foot = footerTop();
-          var h = isFinite(foot) ? (foot - top - GAP) : (window.innerHeight - top - GAP);
-          if (h < 0) { h = 0; }
-
-          for (var i = 0; i < cols.length; i++) {
-            cols[i].style.top    = top + 'px';
-            cols[i].style.height = h + 'px';
-          }
+          var bottom = isFinite(foot) ? Math.max(0, window.innerHeight - foot) : 0;
+          skin.style.bottom = bottom + 'px';
         }
 
         place();
