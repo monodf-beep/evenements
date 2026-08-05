@@ -1,8 +1,16 @@
 # Le juste temps — quand publier ce qu'on sait déjà
 
-**Proposition du 2026-08-04, RIEN N'EST IMPLÉMENTÉ.** Question de Franck : « on connaît
-déjà des événements de Noël mais ce n'est pas le moment de les afficher. Quand les
-afficher ? » Les décisions marquées ⚖️ sont à trancher par lui avant toute ligne de code.
+**Proposition du 2026-08-04.** Question de Franck : « on connaît déjà des événements de
+Noël mais ce n'est pas le moment de les afficher. Quand les afficher ? »
+
+**Implémenté le 2026-08-05** — fenêtre par défaut validée par Franck : 90 jours. Voir
+`utils/saison.py`, le portillon dans `scripts/publish_batch_as.py`, et
+`config/temps_forts.json` pour les exceptions à 150 jours. La liste ⚖️ « valider/élaguer
+cette liste » du tableau plus bas N'A PAS ÉTÉ tranchée : `config/temps_forts.json` ne
+contient QUE les rendez-vous nommés explicitement pendant la discussion (Musilac, Nice
+Jazz, Carnaval de Nice, Carnaval d'Ivrea, Foire de Saint-Ours, truffe d'Alba) — le
+fichier est éditable sans code, Franck peut l'étendre au reste du tableau quand il aura
+tranché.
 
 ## Le constat, vérifié dans le code le jour même
 
@@ -20,24 +28,33 @@ Le problème n'est pas theorique : publier un événement de décembre en août,
 - et au moment où l'événement devient d'actualité, une fiche déjà ancienne au lieu d'une
   nouveauté — le SEO et les sections « Nouveautés » travaillent à l'envers.
 
-## Le principe proposé : une fenêtre de PUBLICATION, jamais un état
+## ✅ Le principe implémenté : une fenêtre de PUBLICATION, jamais un état
 
-Une fiche complète dont l'événement est trop lointain reste en `evaluated` — le lot
-quotidien la saute avec le motif « pas encore sa saison », comme il saute déjà les
-incomplètes. **Le temps la rouvre tout seul** : la sélection recompare les dates chaque
-matin, aucun script de réouverture n'est nécessaire, aucun état terminal n'est créé
-(c'est la réponse aux quatre questions de `docs/ETATS_TERMINAUX.md` — qui rouvre : le
-calendrier ; où se voit le compte : la ligne « en attente de leur saison : N » à ajouter
-au message Slack du lot).
+Une fiche complète dont l'événement est trop lointain reste dans son statut retenu — le
+lot quotidien la saute avec le motif « pas encore sa saison » (log RETENU), comme il
+saute déjà les incomplètes. **Le temps la rouvre tout seul** : la sélection recompare les
+dates chaque matin, aucun script de réouverture n'est nécessaire, aucun état terminal
+n'est créé (réponse aux quatre questions de `docs/ETATS_TERMINAUX.md` — qui rouvre : le
+calendrier ; où se voit le compte : la ligne « N fiche(s) en attente de leur saison »
+dans le log de `publish_batch_as`, reprise dans le message Slack du lot quotidien).
 
-⚖️ **La fenêtre par défaut.** Proposition : ne pas publier plus de **90 jours** avant le
+S'applique même aux publications lancées avec `--ids` (`scripts/daily_batch.py`, seul
+chemin non supervisé du dépôt) — même raison que les portillons éditorial et périmètre
+posés le même jour : sans humain dans la boucle, aucune exception ne se justifie.
+`--allow-early` reste disponible pour le cas rare où un humain choisit sciemment de
+publier en avance.
+
+✅ **La fenêtre par défaut, tranchée par Franck le 2026-08-05 : 90 jours** avant le
 début de l'événement. Assez pour préparer un week-end ou des vacances, assez court pour
 que l'agenda garde une saison. (Le tri « plus proches d'abord » fait déjà le gros du
-travail ; cette borne n'attrape que le cas « file vide ».)
+travail ; cette borne n'attrape que le cas « file vide ».) Réglable sans code via
+`TEMPS_FORTS_FENETRE_DEFAUT` (utils/saison.py).
 
-⚖️ **Les exceptions qui méritent PLUS de préavis** — on réserve tôt : grands festivals
-avec billetterie (Musilac, Nice Jazz), Carnaval de Nice, Foire de Saint-Ours. Proposition :
-150 jours pour une liste nommée de temps forts (ci-dessous), pas pour une catégorie.
+✅ **Les exceptions qui méritent PLUS de préavis, implémentées** — on réserve tôt :
+`config/temps_forts.json` donne 150 jours à Musilac, Nice Jazz, Carnaval de Nice,
+Carnaval d'Ivrea, Foire de Saint-Ours et la truffe d'Alba (détection par mot-clé
+FR/IT dans le titre ou la description). ⚖️ Reste ouvert : étendre cette liste au reste
+du tableau ci-dessous, catégorie par catégorie ou nom par nom — pas tranché.
 
 ## Les temps forts du territoire — le calendrier à valider
 

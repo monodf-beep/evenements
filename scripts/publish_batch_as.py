@@ -44,6 +44,7 @@ from utils.logger import get_logger
 from utils import completeness as comp
 from utils import radar
 from utils.sources import is_excluded_event, load_excluded_events_filter
+from utils import saison
 from scripts.perimetre import ville_hors_perimetre
 from scripts.publisher_as import publish_to_as
 
@@ -167,6 +168,12 @@ def main(argv=None) -> int:
                              "dont aucune page officielle n'a été résolue. Par défaut elles "
                              "sont RETENUES (jamais supprimées) : le radar sert à DÉTECTER, "
                              "pas à publier (config/sources.txt, tier radar).")
+    parser.add_argument("--allow-early", action="store_true",
+                        help="Publier MÊME les événements hors de leur fenêtre de "
+                             "publication (docs/TEMPS_FORTS.md). Par défaut, un "
+                             "événement à plus de 90 jours (150 pour un temps fort "
+                             "nommé, config/temps_forts.json) est RETENU — le "
+                             "calendrier le reproposera de lui-même en approchant.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Lister la sélection sans rien publier.")
     parser.add_argument("--skip-media", action="store_true",
@@ -245,11 +252,49 @@ def main(argv=None) -> int:
         log.warning("%d fiche(s) retenue(s) hors périmètre. Pour les SORTIR de la file : "
                     ".venv/bin/python scripts/purge_out_of_zone.py --apply", len(hors))
 
+    # PORTILLON « LE JUSTE TEMPS » (2026-08-05, docs/TEMPS_FORTS.md, fenêtre validée
+    # par Franck : 90 jours par défaut, 150 pour les temps forts nommés de
+    # config/temps_forts.json). Aucun garde-fou d'horizon n'existait à la
+    # publication : le tri par date croissante n'a pas de borne haute, donc un
+    # marché de Noël complet et évalué partirait en ligne en août dès que la file
+    # des événements plus proches est vide — exactement l'objectif du pipeline. Ce
+    # n'est PAS un état : rien n'est écrit, la fiche reste dans son statut, le
+    # calendrier la rouvre tout seul en se rapprochant (docs/ETATS_TERMINAUX.md).
+    # S'applique AUSSI aux --ids par défaut (même raison que les portillons
+    # ci-dessus) — --allow-early dit explicitement qu'un humain a choisi de publier
+    # en avance (ex. republication après correctif d'une fiche déjà passée par ce
+    # portillon la veille).
+    trop_tot = []
+    if not args.allow_early:
+        aujourdhui = date.fromisoformat(today)
+        temps_forts = saison._charger_temps_forts()
+        for ev in rows:
+            debut = (ev.get("date_event_start") or "").strip()
+            if not debut:
+                continue  # pas de date = pas concerné, cf. règle 5 de CLAUDE.md
+            try:
+                ecart = (date.fromisoformat(debut[:10]) - aujourdhui).days
+            except ValueError:
+                continue
+            fenetre = saison.fenetre_publication_jours(ev, temps_forts)
+            if ecart > fenetre:
+                trop_tot.append((ev, fenetre))
+    if trop_tot:
+        ids_trop_tot = {ev.get("id") for ev, _ in trop_tot}
+        rows = [ev for ev in rows if ev.get("id") not in ids_trop_tot]
+        for ev, fenetre in trop_tot:
+            log.info("[%s] RETENU : pas encore sa saison (fenêtre %dj) — « %s » (%s)",
+                     ev.get("id"), fenetre, (ev.get("title") or "")[:60],
+                     ev.get("date_event_start"))
+        log.warning("%d fiche(s) en attente de leur saison (le calendrier les "
+                    "reproposera de lui-même — rien à faire).", len(trop_tot))
+
     log.info("Sélection : %d complet(s) à publier, %d incomplet(s) écarté(s), "
              "%d radar non résolu(s) retenu(s), %d exclu(s) par règle éditoriale, "
-             "%d hors périmètre (cap %d, min-score %s, %s)",
+             "%d hors périmètre, %d en attente de leur saison (cap %d, min-score %s, %s)",
              len(rows), len(skipped), len(radar_blocked), len(exclus), len(hors),
-             args.cap, args.min_score, "MAJ incluse" if args.update else "création seule")
+             len(trop_tot), args.cap, args.min_score,
+             "MAJ incluse" if args.update else "création seule")
     for ev, reason in radar_blocked:
         log.info("[%s] RETENU (non publié, rien supprimé) : %s | %s",
                  ev.get("id"), reason, (ev.get("title") or "")[:60])

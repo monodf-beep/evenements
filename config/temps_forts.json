@@ -1,0 +1,43 @@
+{
+  "_lisez_moi": "Liste NOMMÉE des temps forts qui méritent PLUS de préavis que la fenêtre par défaut (90 jours, utils/saison.py). Un événement dont le titre ou la description contient un des `mots_cles` (FR/IT, accents/casse ignorés) obtient `fenetre_jours` au lieu de 90 — pour les grands rendez-vous à réserver tôt (billetterie, hébergement). Éditable sans toucher au code : ajoute une entrée, elle s'applique au run suivant. Proposition initiale du 2026-08-05 (docs/TEMPS_FORTS.md) : seuls les rendez-vous cités nommément dans la discussion, pas la liste complète des 17 temps forts du tableau — celle-ci reste une question ouverte (⚖️ 'valider/élaguer cette liste'), pas encore tranchée par Franck.",
+  "temps_forts": [
+    {
+      "nom": "Musilac",
+      "mots_cles": ["musilac"],
+      "fenetre_jours": 150,
+      "notes": "Festival à billetterie, Aix-les-Bains — réservation anticipée."
+    },
+    {
+      "nom": "Nice Jazz Festival",
+      "mots_cles": ["nice jazz"],
+      "fenetre_jours": 150,
+      "notes": "Festival à billetterie, Comté de Nice."
+    },
+    {
+      "nom": "Carnaval de Nice",
+      "mots_cles": ["carnaval de nice", "carnevale di nizza"],
+      "fenetre_jours": 150,
+      "notes": "Grand carnaval à billetterie (corsi, batailles de fleurs)."
+    },
+    {
+      "nom": "Carnaval d'Ivrea",
+      "mots_cles": ["carnevale di ivrea", "carnaval d'ivrea", "bataille des oranges",
+                    "battaglia delle arance"],
+      "fenetre_jours": 150,
+      "notes": "Bataille des oranges, Piémont — forte affluence, s'organise à l'avance."
+    },
+    {
+      "nom": "Foire de Saint-Ours",
+      "mots_cles": ["saint-ours", "sant'orso", "foire de saint-ours", "fiera di sant'orso"],
+      "fenetre_jours": 150,
+      "notes": "LE rendez-vous valdôtain, millénaire — 30-31 janvier."
+    },
+    {
+      "nom": "Foire internationale de la truffe d'Alba",
+      "mots_cles": ["fiera del tartufo", "foire de la truffe", "tartufo di alba",
+                    "truffe d'alba"],
+      "fenetre_jours": 150,
+      "notes": "Rayonnement international, réservation restaurants/hébergement."
+    }
+  ]
+}
