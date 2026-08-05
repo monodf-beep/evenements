@@ -7,8 +7,12 @@ si de rien n'était jusqu'à ce que sa date passe.
 
 **Mise à jour du 2026-08-05 — le canal 2 est implémenté**, décision validée par Franck :
 « alerte Slack seulement, je confirme moi-même ». Voir `utils/annulation.py`,
-`scripts.dedupe._porte_annulation` et `scripts/audit_annulations.py`. Les canaux 1 et 3,
-et l'affichage lui-même (bandeau côté WordPress), restent à faire — ⚖️ ci-dessous.
+`scripts.dedupe._porte_annulation` et `scripts/audit_annulations.py`.
+
+**Mise à jour du 2026-08-05 (suite) — le canal 3 est implémenté** aussi, même doctrine,
+mêmes colonnes. Voir `scripts.dates.signale_annulation_page` (partagée avec
+`scripts/venues.py`) ci-dessous. Le canal 1 (bouton back-office) et l'affichage lui-même
+(bandeau côté WordPress) restent à faire — ⚖️ ci-dessous.
 
 ## La doctrine proposée, avant la mécanique
 
@@ -45,9 +49,42 @@ datée au hasard.
    le statut du gagnant, pas seulement le cas d'une fiche déjà en ligne. Fixture :
    `tests/test_annulation.py`, les deux scénarios (avant/après publication).
 
-3. **La page source** — quand `dates.py`/`venues.py` relisent une page en mode web, un
-   marqueur d'annulation dans le texte pose le même signal. Second filet, même bac. Pas
-   encore implémenté.
+3. **✅ La page source** — quand `dates.py`/`venues.py` relisent une page en mode web, un
+   marqueur d'annulation dans le texte pose le même signal. Second filet, même bac.
+   Implémenté le 2026-08-05, en s'appuyant fidèlement sur le canal 2 : `dates.py` capture
+   le texte réellement téléchargé au fil de ses deux relectures de page —
+   `fetch_event_dates` (passe JSON-LD/`<time>`) et `fetch_page_text` (passe LLM) —
+   `venues.py` fait de même via `fetch_event_venue` (passe JSON-LD `location`) et le
+   même `fetch_page_text`. Les deux modules appellent alors la fonction PARTAGÉE
+   `scripts.dates.signale_annulation_page(conn, fiche, texte, regex)` : si
+   `utils.annulation.marqueur_annulation` trouve un marqueur dans ce texte, elle pose la
+   suspicion sur les MÊMES colonnes que le canal 2
+   (`scripts.dedupe.ensure_annulation_columns`, appelée en tête de `main()` des deux
+   scripts — aucun schéma parallèle) et alerte sur Slack une fois.
+
+   Différence avec le canal 2 : là-bas, la fiche VISÉE (le festival) et la fiche qui
+   PORTE le marqueur (l'article d'annulation) sont deux fiches distinctes. Ici c'est LA
+   MÊME fiche — sa propre page dit qu'elle est annulée. `annulation_fiche_visee_id`
+   pointe donc vers SON PROPRE id, et `annulation_visee_etait_publiee` capture son
+   propre `wp_post_id_as` au moment du signal. Conséquence directe : `scripts.
+   audit_annulations` fonctionne SANS AUCUNE MODIFICATION pour ce canal — sa requête
+   relit la fiche visée par id, qu'elle soit une autre fiche (canal 2) ou elle-même
+   (canal 3), et ses deux rouvreurs (auto si elle était publiée et ne l'est plus, manuel
+   sinon via `--resolu`) s'appliquent identiquement. Vérifié par fixture, pas supposé.
+
+   NE BLOQUE RIEN D'AUTRE : la détection est un AJOUT après une relecture de page qui a
+   de toute façon eu lieu pour dater/situer l'événement — la date/le lieu continuent
+   d'être extraits et écrits normalement, marqueur trouvé ou non. Le texte cherché est
+   débarrassé de `<script>`/`<style>`/`<noscript>` (`scripts.dates._sans_script`) avant
+   la recherche du marqueur : un mot comme « report » traîne facilement dans un
+   identifiant d'analytics ou un bandeau cookies, et l'y chercher aurait fabriqué de
+   fausses alertes sans rapport avec l'événement. Pas de spam : une fois
+   `annulation_detectee_at` posé, silence — et en pratique une fiche déjà datée/située
+   n'est de toute façon plus jamais resélectionnée pour une nouvelle relecture de page
+   (elle ne redevient éligible qu'au réarmement automatique après cooldown — dates.py/
+   venues.py, `DATE_COOLDOWN_DAYS`/`VENUE_COOLDOWN_DAYS`), donc la page n'est pas
+   re-téléchargée avant longtemps. Fixture : `tests/test_annulation_canal3.py`, sections
+   A (dates.py) et B (venues.py).
 
 **✅ Tranché le 2026-08-05 :** alerte seulement — afficher « annulé ? » sur la foi d'un
 titre de presse serait pire que le retard.
@@ -68,8 +105,9 @@ lisible partout (listes, partages, Google).
   date paraît.
 - **À quelle condition ?** L'arrivée d'une nouvelle date, ou la date prévue passée
   (archivage normal).
-- **Où se voit le compte ?** Pour le canal 2 (✅ fait) : `scripts.audit_annulations`,
-  branché en lecture seule dans `weekly_audits`. Pour l'affichage lui-même (à faire) :
+- **Où se voit le compte ?** Pour les canaux 2 et 3 (✅ faits, mêmes colonnes) :
+  `scripts.audit_annulations`, branché en lecture seule dans `weekly_audits`, recompte
+  les deux sans distinction de canal. Pour l'affichage lui-même (à faire) :
   digest du lundi, annulés encore affichés + reportés sans date.
 - **Le rouvreur est-il branché ?** `dates.py` tourne déjà chaque matin — rien de neuf à
   brancher, c'est le critère qui a fait préférer cette conception.

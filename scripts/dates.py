@@ -48,10 +48,17 @@ import requests
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils import slack
+from utils.annulation import marqueur_annulation
 from scripts.scraper_events import init_db
 from dotenv import load_dotenv
 
 log = get_logger("dates")
+# Logger dédié au canal 3 (docs/EVENEMENTS_ANNULES.md), partagé avec venues.py : les deux
+# modules appellent `signale_annulation_page` ci-dessous, et un message « [id] annulation
+# suspectée » doit se retrouver sous une même étiquette qu'on relise depuis dates.py ou
+# depuis venues.py — pas étiqueté « dates » quand c'est venues.py qui a fait l'appel.
+_log_annulation = get_logger("annulation")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 # Récupération de la date sur la PAGE de l'événement (2ᵉ passe, déterministe).
 FETCH_CAP = int(os.getenv("DATES_FETCH_CAP", "200"))   # pages fetchées par run (max)
@@ -68,6 +75,76 @@ def _swap_www(url: str) -> str:
     p = urlsplit(url)
     host = p.netloc[4:] if p.netloc.startswith("www.") else "www." + p.netloc
     return urlunsplit((p.scheme, host, p.path, p.query, p.fragment))
+
+
+_SCRIPT_STYLE_RE = re.compile(r"(?is)<(script|style|noscript)\b[^>]*>.*?</\1>")
+
+
+def _sans_script(html: str) -> str:
+    """HTML débarrassé des balises <script>/<style>/<noscript> — sert au canal 3
+    (marqueur d'annulation, voir `signale_annulation_page` plus bas) : sans ce
+    nettoyage, le simple mot « report » planqué dans un identifiant d'analytics ou
+    de bandeau cookies (fréquent sur ces pages) suffirait à déclencher une fausse
+    alerte. Plus léger que `fetch_page_text` : pas de fenêtrage ni de troncature,
+    la détection doit voir TOUTE la page, pas seulement la zone utile à la date."""
+    return _SCRIPT_STYLE_RE.sub(" ", html or "")
+
+
+def signale_annulation_page(conn: sqlite3.Connection, event: dict, texte: str,
+                            regex=None, source: str = "") -> str | None:
+    """Canal 3 (docs/EVENEMENTS_ANNULES.md) : un marqueur d'annulation/report posé
+    directement sur la PROPRE page source d'un événement déjà en base — pas dans un
+    article tiers apparié par la dédup (canal 2, `scripts.dedupe._porte_annulation`).
+
+    Appelée par `main()` ici et dans `scripts/venues.py`, juste après une relecture
+    de page qui a effectivement récupéré du texte (`fetch_event_dates`/
+    `fetch_page_text` côté dates, `fetch_event_venue`/`fetch_page_text` côté venues)
+    — « second filet, même bac » (docs/EVENEMENTS_ANNULES.md).
+
+    DIFFÉRENCE avec le canal 2 : là-bas, la fiche VISÉE (le festival) et la fiche
+    qui PORTE le marqueur (l'article d'annulation) sont deux fiches distinctes. Ici
+    c'est LA MÊME fiche — sa propre page dit qu'elle est annulée/reportée. On
+    réutilise donc EXACTEMENT les mêmes colonnes que le canal 2
+    (`scripts.dedupe.ensure_annulation_columns`, jamais un schéma parallèle) en
+    posant `annulation_fiche_visee_id` = son propre id et
+    `annulation_visee_etait_publiee` = son propre `wp_post_id_as` au moment du
+    signal. Résultat : `scripts.audit_annulations` n'a besoin d'AUCUNE modification
+    — sa requête relit la fiche visée par id, qu'elle soit une autre fiche (canal 2)
+    ou elle-même (canal 3), et ses deux rouvreurs (automatique si elle était publiée
+    et ne l'est plus, manuel sinon via `--resolu`) s'appliquent identiquement.
+
+    PAS DE SPAM : si `annulation_detectee_at` est déjà posé, on se tait — la
+    suspicion reste active, `scripts.audit_annulations` continue de la recompter.
+    NE BLOQUE RIEN D'AUTRE : appelée en plus du traitement normal de date/lieu,
+    jamais à la place — le signal est un AJOUT (arbitrage du 2026-08-05 : alerte
+    Slack seulement, jamais de bandeau ni de dépublication automatique, un humain
+    confirme). Renvoie le marqueur trouvé (pour le log de l'appelant), ou None."""
+    if event.get("annulation_detectee_at"):
+        return None
+    marqueur = marqueur_annulation(texte, regex)
+    if not marqueur:
+        return None
+    conn.execute(
+        "UPDATE events_raw SET annulation_detectee_at=datetime('now'), "
+        "annulation_source_url=?, annulation_fiche_visee_id=?, "
+        "annulation_visee_etait_publiee=? WHERE id=?",
+        (event.get("url_source", ""), event["id"],
+         1 if event.get("wp_post_id_as") else 0, event["id"]))
+    conn.commit()
+    slack.notify(
+        f"🔴 *Annulation suspectée* — « {(event.get('title') or '')[:80]} »\n"
+        f"Marqueur « {marqueur} » repéré sur SA PROPRE page source"
+        + (f" ({source})" if source else "") + ".\n"
+        f"URL : {event.get('url_source', '?')}\n"
+        f"Rien n'est bloqué : la date/le lieu continuent d'être tenus à jour "
+        f"normalement — à confirmer toi-même. Une fois vérifié : "
+        f"`.venv/bin/python -m scripts.audit_annulations --resolu {event['id']}` "
+        f"(docs/EVENEMENTS_ANNULES.md).")
+    _log_annulation.warning(
+        "[%s] annulation suspectée sur sa PROPRE page (marqueur « %s », %s) — "
+        "alerte envoyée, traitement normal non bloqué", event["id"], marqueur,
+        source or "page")
+    return marqueur
 
 
 def _robust_get(url: str):
@@ -258,13 +335,21 @@ def dates_from_page(html: str) -> tuple[str, str, str]:
     return ("", "", "")
 
 
-def fetch_event_dates(url: str) -> tuple[str, str, str]:
-    """Télécharge la page et en extrait la date (JSON-LD/<time>). ('','','nodate') si rien."""
+def fetch_event_dates(url: str, _capture: dict | None = None) -> tuple[str, str, str]:
+    """Télécharge la page et en extrait la date (JSON-LD/<time>). ('','','nodate') si rien.
+
+    `_capture` (optionnel) : si fourni, reçoit sous la clé "text" le texte de la
+    page RÉELLEMENT téléchargée (script/style retirés, cf. `_sans_script`) — sert au
+    canal 3 (`signale_annulation_page`) sans forcer un second téléchargement de la
+    même page. Purement additif : les appelants existants qui ignorent ce paramètre
+    (ex. `scripts/autocomplete.py`) gardent exactement le même comportement."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ("", "", "nodate")
     r = _robust_get(url)
     if r is None:
         return ("", "", "nodate")
+    if _capture is not None:
+        _capture["text"] = _sans_script(r.text)
     s, e, src = dates_from_page(r.text)
     return (s, e, "page") if src == "page" else ("", "", "nodate")
 
@@ -437,6 +522,13 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)
     ensure_columns(conn)
+    # Canal 3 (docs/EVENEMENTS_ANNULES.md) : mêmes colonnes, même migration que le
+    # canal 2 — pas de schéma parallèle. `scripts.dedupe` ne dépend pas de dates.py,
+    # aucun cycle d'import.
+    from scripts.dedupe import ensure_annulation_columns
+    from utils.annulation import load_annulation_filter
+    ensure_annulation_columns(conn)
+    annulation_re = load_annulation_filter()
 
     # ⚠️ CE RÉ-ARMEMENT EST DEVENU AUTOMATIQUE LE 2026-08-03, comme celui de venues.py le
     # même jour. La sortie de l'impasse existait, mais elle exigeait qu'un humain tape
@@ -502,14 +594,22 @@ def main(argv=None) -> int:
     from_page = 0
     if not args.no_fetch:
         todo = conn.execute(
-            "SELECT id, url_source FROM events_raw "
+            "SELECT id, title, url_source, wp_post_id_as, annulation_detectee_at "
+            "FROM events_raw "
             "WHERE date_source = 'none' AND statut != 'merged' "
             "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
             "LIMIT ?", (args.fetch_cap,)).fetchall()
         log.info("Passe page : %d page(s) à lire (cap %d)", len(todo), args.fetch_cap)
         for r in todo:
-            s, e, src = fetch_event_dates(r["url_source"])
+            capture: dict = {}
+            s, e, src = fetch_event_dates(r["url_source"], _capture=capture)
+            # Canal 3 : la page vient d'être RÉELLEMENT téléchargée (capture non vide)
+            # — on cherche un marqueur d'annulation dessus, QUEL QUE SOIT le résultat
+            # de la datation (`s`/`e`/`src`) : le signal est un ajout, jamais un blocage.
+            if capture.get("text"):
+                signale_annulation_page(conn, dict(r), capture["text"], annulation_re,
+                                        source="page (dates.py, passe JSON-LD)")
             # 'page' = trouvé ; 'nodate' = lu mais rien (ne sera plus re-fetché).
             conn.execute(
                 "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
@@ -524,7 +624,8 @@ def main(argv=None) -> int:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if DATES_LLM and not args.no_llm and api_key:
         todo = conn.execute(
-            "SELECT id, title, description, url_source, lieu, ville FROM events_raw "
+            "SELECT id, title, description, url_source, lieu, ville, wp_post_id_as, "
+            "  annulation_detectee_at FROM events_raw "
             "WHERE date_source IN ('none', 'nodate') AND statut != 'merged' "
             "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
@@ -538,8 +639,13 @@ def main(argv=None) -> int:
             from utils.api_limite import PlafondAPI
             for r in todo:
                 # La page porte la vraie date ; à défaut, le titre + la description.
-                material = (fetch_page_text(r["url_source"], title=r["title"] or "")
-                            or f"{r['title']}\n{r['description'] or ''}")
+                page_text = fetch_page_text(r["url_source"], title=r["title"] or "")
+                material = page_text or f"{r['title']}\n{r['description'] or ''}"
+                # Canal 3 : uniquement sur du texte VENANT DE LA PAGE (page_text non
+                # vide) — jamais sur le repli titre+description, qui ne relit rien.
+                if page_text:
+                    signale_annulation_page(conn, dict(r), page_text, annulation_re,
+                                            source="page (dates.py, passe LLM)")
                 ctx = ", ".join(x for x in (r["lieu"], r["ville"]) if x)
                 try:
                     s, e, src = llm_dates(material, ref, client, DATES_LLM_MODEL,

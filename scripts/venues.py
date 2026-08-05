@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from scripts.scraper_events import init_db
-from scripts.dates import fetch_page_text, _UA, FETCH_TIMEOUT
+from scripts.dates import fetch_page_text, _UA, FETCH_TIMEOUT, _sans_script, signale_annulation_page
 from dotenv import load_dotenv
 
 log = get_logger("venues")
@@ -85,14 +85,22 @@ def venue_from_page(html: str) -> tuple[str, str, str]:
     return ("", "", "")
 
 
-def fetch_event_venue(url: str) -> tuple[str, str, str]:
-    """Télécharge la page et en extrait le lieu (JSON-LD). ('','','novenue') si rien."""
+def fetch_event_venue(url: str, _capture: dict | None = None) -> tuple[str, str, str]:
+    """Télécharge la page et en extrait le lieu (JSON-LD). ('','','novenue') si rien.
+
+    `_capture` (optionnel) : même mécanique que `scripts.dates.fetch_event_dates` —
+    reçoit sous la clé "text" le texte de la page réellement téléchargée (script/
+    style retirés), pour le canal 3 (`signale_annulation_page`) sans second
+    téléchargement. Additif : les appelants qui l'ignorent ne changent pas de
+    comportement."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ("", "", "none")
     from scripts.dates import _robust_get
     r = _robust_get(url)
     if r is None:
         return ("", "", "novenue")
+    if _capture is not None:
+        _capture["text"] = _sans_script(r.text)
     lieu, ville, src = venue_from_page(r.text)
     return (lieu, ville, "page") if src == "page" else ("", "", "novenue")
 
@@ -219,6 +227,13 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)
     ensure_columns(conn)
+    # Canal 3 (docs/EVENEMENTS_ANNULES.md) : mêmes colonnes, même migration que le
+    # canal 2 — pas de schéma parallèle. `scripts.dedupe` ne dépend pas de venues.py,
+    # aucun cycle d'import.
+    from scripts.dedupe import ensure_annulation_columns
+    from utils.annulation import load_annulation_filter
+    ensure_annulation_columns(conn)
+    annulation_re = load_annulation_filter()
 
     # --- Ré-armement (--retry) : sortir les fiches du cul-de-sac 'llm_none' ---
     # ⚠️ IMPASSE STRUCTURELLE, mesurée le 2026-08-02. Les deux passes ci-dessous
@@ -279,7 +294,8 @@ def main(argv=None) -> int:
 
     # --- Passe 1 : page structurée (JSON-LD location), déterministe ---
     todo = conn.execute(
-        "SELECT id, url_source FROM events_raw "
+        "SELECT id, title, url_source, wp_post_id_as, annulation_detectee_at "
+        "FROM events_raw "
         "WHERE COALESCE(lieu,'') = '' AND (venue_source IS NULL OR venue_source = '') "
         "  AND statut != 'merged' "
         "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
@@ -287,7 +303,14 @@ def main(argv=None) -> int:
     log.info("Passe page : %d page(s) à lire (cap %d)", len(todo), args.fetch_cap)
     from_page = 0
     for r in todo:
-        lieu, ville, src = fetch_event_venue(r["url_source"])
+        capture: dict = {}
+        lieu, ville, src = fetch_event_venue(r["url_source"], _capture=capture)
+        # Canal 3 : la page vient d'être RÉELLEMENT téléchargée (capture non vide) —
+        # on cherche un marqueur d'annulation dessus, quel que soit le lieu trouvé :
+        # le signal est un ajout, jamais un blocage du reste du traitement.
+        if capture.get("text"):
+            signale_annulation_page(conn, dict(r), capture["text"], annulation_re,
+                                    source="page (venues.py, passe JSON-LD)")
         conn.execute(
             "UPDATE events_raw SET lieu=?, ville=?, venue_source=?, "
             "venue_checked_at=datetime('now') WHERE id=?",
@@ -302,7 +325,8 @@ def main(argv=None) -> int:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if VENUES_LLM and not args.no_llm and api_key:
         todo = conn.execute(
-            "SELECT id, title, description, url_source FROM events_raw "
+            "SELECT id, title, description, url_source, wp_post_id_as, "
+            "  annulation_detectee_at FROM events_raw "
             "WHERE COALESCE(lieu,'') = '' AND venue_source IN ('novenue', 'none') "
             "  AND statut != 'merged' "
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
@@ -314,7 +338,13 @@ def main(argv=None) -> int:
             client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
             from utils.api_limite import PlafondAPI
             for r in todo:
-                material = fetch_page_text(r["url_source"], title=r["title"] or "") or f"{r['title']}\n{r['description'] or ''}"
+                page_text = fetch_page_text(r["url_source"], title=r["title"] or "")
+                material = page_text or f"{r['title']}\n{r['description'] or ''}"
+                # Canal 3 : uniquement sur du texte VENANT DE LA PAGE, jamais sur le
+                # repli titre+description qui ne relit rien.
+                if page_text:
+                    signale_annulation_page(conn, dict(r), page_text, annulation_re,
+                                            source="page (venues.py, passe LLM)")
                 try:
                     lieu, ville, src = llm_venue(material, client, VENUES_LLM_MODEL)
                 except PlafondAPI as exc:
