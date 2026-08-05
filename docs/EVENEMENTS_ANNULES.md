@@ -163,8 +163,17 @@ retirer : les deux ne s'excluent pas, et le préfixe reste le filet qui marche p
   (archivage normal).
 - **Où se voit le compte ?** Pour les canaux 2 et 3 (✅ faits, mêmes colonnes) :
   `scripts.audit_annulations`, branché en lecture seule dans `weekly_audits`, recompte
-  les deux sans distinction de canal. Pour l'affichage lui-même (à faire) :
-  digest du lundi, annulés encore affichés + reportés sans date.
+  les deux sans distinction de canal. **✅ Pour le canal 1, ajouté le 2026-08-05** :
+  `scripts.weekly_audits._annules_encore_affiches` compte les fiches `annule_le` posé
+  ET encore en ligne (`wp_post_id_as`), filtrées sur « devant nous » (règle 5 —
+  récurrent, sans date, ou pas encore passées) ; ligne « Annulés encore affichés »
+  dans le digest du lundi. **⚖️ Reste à faire, PAS ENCORE DE MÉCANISME** : « reportés
+  sans nouvelle date ». Un report (rinviato) n'est aujourd'hui pas distingué d'une
+  annulation confirmée — les canaux 2/3 les détectent avec le MÊME marqueur
+  (config/annulation_keywords.txt mélange « annulé » et « reporté ») et le canal 1 n'a
+  qu'un bouton « annuler », pas de geste « reporter » séparé qui viderait la date. Une
+  vraie distinction suppose une décision de conception (un second bouton ? vider
+  `date_event_start` au clic ?) qui n'a pas été prise — proposé, pas construit.
 - **Le rouvreur est-il branché ?** `dates.py` tourne déjà chaque matin — rien de neuf à
   brancher, c'est le critère qui a fait préférer cette conception.
 

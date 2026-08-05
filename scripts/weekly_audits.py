@@ -180,6 +180,38 @@ def _etape_bad_sources(_argv=None) -> int:
     return 0
 
 
+def _annules_encore_affiches(conn: sqlite3.Connection) -> list[dict]:
+    """Fiches ANNULÉES (canal 1, `annule_le` posé) et encore EN LIGNE (`wp_post_id_as`).
+
+    docs/EVENEMENTS_ANNULES.md, § « Où se voit le compte » : le digest comptait déjà les
+    SUSPICIONS en attente (canaux 2/3, via audit_annulations) mais rien pour les
+    annulations CONFIRMÉES par le bouton du back-office — laissé « à faire » le
+    2026-08-05. LECTURE SEULE : la doctrine veut qu'une annulation reste affichée
+    jusqu'à sa date, ce compte ne déclenche donc rien, il garde juste le nombre sous
+    les yeux (règle 3, CLAUDE.md : tout ce qui sort une fiche d'une file doit se
+    recompter quelque part).
+
+    Uniquement les fiches encore DEVANT NOUS (règle 5, CLAUDE.md) : une annulation dont
+    la date est passée relève de l'archivage normal, pas d'un compte à surveiller — même
+    filtre que `scripts.reconcile_hors_ligne._devant_nous` (récurrent, ou sans date, ou
+    date_event_end pas encore passée)."""
+    from datetime import date as _date
+    from utils.completeness import is_recurring
+    today = _date.today().isoformat()
+    rows = [dict(r) for r in conn.execute(
+        "SELECT id, title, date_event_start, date_event_end FROM events_raw "
+        "WHERE annule_le IS NOT NULL AND wp_post_id_as IS NOT NULL "
+        "AND duplicate_of IS NULL").fetchall()]
+
+    def _devant_nous(ev: dict) -> bool:
+        if is_recurring(ev):
+            return True
+        fin = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
+        return not fin or fin[:10] >= today
+
+    return [r for r in rows if _devant_nous(r)]
+
+
 def main(argv: list[str] | None = None) -> int:
     load_dotenv(ROOT / ".env")
     sections: list[str] = []
@@ -332,6 +364,20 @@ def main(argv: list[str] | None = None) -> int:
     sections.append(f"• Suspicions d'annulation en attente : {_tail(out, 1)}")
     if rc:
         echecs.append("audit_annulations")
+
+    # Annulations CONFIRMÉES (canal 1) encore en ligne — cf. _annules_encore_affiches.
+    # Séparé des « suspicions » ci-dessus : ici, l'annulation est un FAIT posé par
+    # Franck lui-même, pas une détection à vérifier.
+    try:
+        conn_annules = sqlite3.connect(DB_PATH)
+        conn_annules.row_factory = sqlite3.Row
+        annules = _annules_encore_affiches(conn_annules)
+        conn_annules.close()
+        sections.append(f"• Annulés encore affichés (jusqu'à leur date) : {len(annules)}")
+    except Exception as exc:  # noqa: BLE001 — un comptage qui échoue ne doit pas priver du reste du digest
+        sections.append("• Annulés encore affichés : ⚠️ ÉCHEC du comptage, voir les logs")
+        log.warning("Comptage des annulés encore en ligne échoué : %s", exc)
+        echecs.append("annules_encore_affiches")
 
     # Domaines sources qui REFUSENT le serveur. Ajouté le 2026-08-04 : agendaculturel.fr
     # répondait 403 sur ses quatre sous-domaines, et 242 fiches encore devant nous en
