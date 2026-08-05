@@ -43,6 +43,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import completeness as comp
 from utils import radar
+from utils.sources import is_excluded_event, load_excluded_events_filter
 from scripts.publisher_as import publish_to_as
 
 log = get_logger("publish_batch_as")
@@ -199,10 +200,37 @@ def main(argv=None) -> int:
     # fiche radar a --allow-radar pour le dire.
     rows, radar_blocked = _porte_radar(conn, rows, args.allow_radar)
 
+    # PORTILLON ÉDITORIAL — dernier filet avant la mise en ligne (2026-08-05).
+    # L'évaluateur applique déjà config/excluded_event_keywords.txt, mais SEULEMENT aux
+    # fiches encore `pending` : une règle ajoutée aujourd'hui ne dit rien des milliers de
+    # fiches DÉJÀ évaluées, dont certaines sont en file de publication. Le 2026-08-05,
+    # quatre salons/afterworks B2B étaient concernés, deux en ligne et deux en file —
+    # dont un que le premier audit n'avait pas vu. audit_excluded_events les rattrape,
+    # mais il ne tourne que le dimanche : entre deux passages, une fiche redevenue
+    # publiable partirait en ligne et attendrait cinq jours. Ici, elle ne part pas.
+    # S'applique AUSSI aux --ids, pour la même raison que le verrou radar : daily_batch
+    # les passe sans humain dans la boucle. Coût nul (aucun appel LLM), et RIEN n'est
+    # écrit : la fiche est seulement retenue, son statut ne bouge pas.
+    exclusions = load_excluded_events_filter()
+    exclus = [ev for ev in rows
+              if is_excluded_event(ev.get("title", ""), ev.get("description", ""), exclusions,
+                                   url=ev.get("url_source", ""))]
+    if exclus:
+        ids_exclus = {ev.get("id") for ev in exclus}
+        rows = [ev for ev in rows if ev.get("id") not in ids_exclus]
+        for ev in exclus:
+            log.warning("[%s] RETENU : exclu par règle éditoriale (config/"
+                        "excluded_event_keywords.txt) — « %s »",
+                        ev.get("id"), (ev.get("title") or "")[:60])
+        log.warning("%d fiche(s) retenue(s) par règle éditoriale. Pour les SORTIR de la "
+                    "file (statut rejected) : .venv/bin/python -m "
+                    "scripts.audit_excluded_events --apply", len(exclus))
+
     log.info("Sélection : %d complet(s) à publier, %d incomplet(s) écarté(s), "
-             "%d radar non résolu(s) retenu(s) (cap %d, min-score %s, %s)",
-             len(rows), len(skipped), len(radar_blocked), args.cap, args.min_score,
-             "MAJ incluse" if args.update else "création seule")
+             "%d radar non résolu(s) retenu(s), %d exclu(s) par règle éditoriale "
+             "(cap %d, min-score %s, %s)",
+             len(rows), len(skipped), len(radar_blocked), len(exclus), args.cap,
+             args.min_score, "MAJ incluse" if args.update else "création seule")
     for ev, reason in radar_blocked:
         log.info("[%s] RETENU (non publié, rien supprimé) : %s | %s",
                  ev.get("id"), reason, (ev.get("title") or "")[:60])
