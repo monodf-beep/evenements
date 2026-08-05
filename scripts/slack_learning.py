@@ -21,16 +21,20 @@ TROIS CHOSES QUE L'AGRÉGATION MONTRE, QU'UN FIL SLACK NE MONTRE PAS :
   • ENCORE OUVERT — le résurfaçage la retente, mais un passage isolé ne dit pas si
     c'est un cas isolé ou un motif ;
   • MOTIF QUI SE RÉPÈTE — le vrai signal d'apprentissage : le MÊME champ manquant sur
-    PLUSIEURS fiches d'une même source (`SLACK_LEARNING_SEUIL`, défaut 5) signe un
-    problème de SOURCE (page sans image exploitable, flux sans lieu structuré), pas
-    une série de fiches malchanceuses. Traiter la source une fois vaut mieux que
-    retenter chaque fiche indéfiniment — c'est la vraie réponse à « envoyer ça aux
-    agents » : désigner LA CAUSE, pas rejouer le symptôme fiche par fiche.
+    PLUSIEURS fiches d'un même AXE (`SLACK_LEARNING_SEUIL`, défaut 5) signe une cause
+    systémique, pas une série de fiches malchanceuses. L'axe dépend du champ, pas
+    « toujours la source » : Lieu/Ville/Date groupent par SOURCE (la page/le flux ne
+    structure pas l'info) ; Image groupe par TERRITOIRE (la bannière de repli
+    d'`autocomplete.py` tourne déjà chaque jour — si l'Image manque encore, ce n'est
+    pas une source fautive, c'est l'ABSENCE de bannière pour ce territoire dans
+    `config/territory_category_images.txt`, un fichier, pas une source). Traiter la
+    cause une fois vaut mieux que retenter chaque fiche indéfiniment — c'est la vraie
+    réponse à « envoyer ça aux agents » : désigner LA CAUSE, pas rejouer le symptôme.
 
 CE QUE CE SCRIPT NE FAIT PAS : il ne corrige rien, ne réévalue rien, n'appelle aucun
-LLM, ne décide pas quelle source est fautive. Cf. Franck, 2026-08-04 : « on ne doit pas
+LLM, ne décide pas quelle cause traiter. Cf. Franck, 2026-08-04 : « on ne doit pas
 faire des choses automatiques pour faire des choses automatiques sans réfléchir. » Il
-DÉSIGNE ; agir sur un motif (exclure une source, forcer une image manuelle) reste un
+DÉSIGNE ; agir sur un motif (exclure une source, ajouter une bannière) reste un
 jugement humain — exactement la distinction retenue pour les exclusions éditoriales
 (config/excluded_event_keywords.txt : détection automatique, retrait décidé).
 
@@ -129,22 +133,34 @@ def main(argv=None) -> int:
     init_db(conn)
 
     resolues = disparues = 0
-    par_source: dict[str, dict[str, int]] = {}
+    par_axe: dict[str, dict[str, int]] = {}
     plus_ancien: tuple[int, str, str] | None = None
 
     for eid, dernier in par_id.items():
-        row = conn.execute(
-            "SELECT source_name FROM events_raw WHERE id=?", (eid,)).fetchone()
-        if row is None:
+        full_row = conn.execute("SELECT * FROM events_raw WHERE id=?", (eid,)).fetchone()
+        if full_row is None:
             disparues += 1
             continue
-        full = dict(conn.execute("SELECT * FROM events_raw WHERE id=?", (eid,)).fetchone())
+        full = dict(full_row)
         if comp.is_complete(full):
             resolues += 1
             continue
-        source = row["source_name"] or "?"
         for champ in dernier["champs"]:
-            d = par_source.setdefault(source, {})
+            # L'AXE de regroupement dépend du champ, pas un seul « par source » pour
+            # tout : trouvé le 2026-08-05 en vérifiant utils.sources.pick_banner_image
+            # — une Image qui manque encore après un passage quotidien d'autocomplete
+            # (qui retente la bannière automatiquement) ne signe PAS un problème de
+            # SOURCE, mais l'ABSENCE de bannière configurée pour ce territoire dans
+            # config/territory_category_images.txt. Regrouper par source dirait
+            # « Radio Piémont manque des images », ce qui ne mène nulle part (Franck ne
+            # peut rien y faire) ; par territoire, ça dit « ajoute une bannière Piémont
+            # pour telle catégorie » — un geste concret, dans un fichier de config, pas
+            # une correction de code. Les autres champs (Lieu, Ville, Date) restent
+            # groupés par source : LÀ, c'est bien la page/le flux qui ne structure pas
+            # l'info, un vrai problème de source.
+            axe = f"territoire={full.get('territoire') or '?'}" if champ == "Image" \
+                else f"source={full.get('source_name') or '?'}"
+            d = par_axe.setdefault(axe, {})
             d[champ] = d.get(champ, 0) + 1
         depuis = premiere[eid][:10]
         if plus_ancien is None or depuis < plus_ancien[1]:
@@ -154,7 +170,7 @@ def main(argv=None) -> int:
 
     # MOTIFS : (source × champ) au-dessus du seuil — cause probablement SYSTÉMIQUE.
     motifs = sorted(
-        ((s, c, n) for s, champs in par_source.items() for c, n in champs.items()
+        ((a, c, n) for a, champs in par_axe.items() for c, n in champs.items()
          if n >= SEUIL_MOTIF),
         key=lambda t: -t[2])
 
@@ -178,19 +194,19 @@ def main(argv=None) -> int:
              "d'archive) — %d résolue(s) depuis, %d disparue(s) (fusion/rejet), "
              "%d encore ouverte(s) aujourd'hui.",
              len(messages), len(par_id), len(fichiers), resolues, disparues, ouvertes)
-    for source, champ, n in motifs:
-        neuf = " 🆕" if f"{source}::{champ}" in {f"{s}::{c}" for s, c, _ in nouveaux} else ""
-        log.info("  MOTIF : %s → « %s » manque sur %d fiche(s)%s", source, champ, n, neuf)
+    for axe, champ, n in motifs:
+        neuf = " 🆕" if f"{axe}::{champ}" in {f"{a}::{c}" for a, c, _ in nouveaux} else ""
+        log.info("  MOTIF : %s → « %s » manque sur %d fiche(s)%s", axe, champ, n, neuf)
     if plus_ancien:
         log.info("  Ouverte depuis le plus longtemps : [%s] depuis le %s (%s).", *plus_ancien)
 
     if motifs:
-        resume = "; ".join(f"{s} manque {c} ({n})" for s, c, n in motifs[:3])
+        resume = "; ".join(f"{a} manque {c} ({n})" for a, c, n in motifs[:3])
         log.info("%d motif(s) récurrent(s) (≥%d fiches) : %s%s", len(motifs), SEUIL_MOTIF,
                  resume, f" — dont {len(nouveaux)} nouveau(x)" if nouveaux else "")
     else:
         log.info("%d fiche(s) encore ouverte(s), aucun motif au-dessus du seuil "
-                 "(≥%d fiches même source × même champ) — manques dispersés.",
+                 "(≥%d fiches même axe × même champ) — manques dispersés.",
                  ouvertes, SEUIL_MOTIF)
     return 0
 
