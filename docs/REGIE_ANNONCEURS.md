@@ -23,7 +23,7 @@ Rappel décision : **Ad Inserter** = couche pub ; habillage/colonnes = thème + 
 
 | Format (kit) | Dim. | Appareil | Où / comment le poser | Consentement |
 |---|---|---|---|---|
-| **Habillage / Skin** | 1920×1080 | Desktop **seul** | `cs-regie.php` → fond fixe derrière le contenu, **ON/OFF** (voir §Skin) | oui (masqué sans consentement) |
+| **Habillage / Skin** | 1920×1080 | Desktop **seul** | `cs-regie.php` → bandeau haut (défile avec la page) + bandes latérales fixes (calées jusqu'au pied de page), **ON/OFF** (voir §Skin) | oui (masqué sans consentement) |
 | **Gouttière gauche** (skyscraper) | 160×600 | Desktop **seul** | `cs-regie.php` → rail fixe sticky, marge gauche | oui |
 | **Gouttière droite** (half-page) | 300×600 | Desktop **seul** | `cs-regie.php` → rail fixe sticky, marge droite | oui |
 | **Leaderboard** | 970×90 / 728×90 · 350×90 mobile | D + M | Ad Inserter · position **« After element » = header/nav** (ou hook `generate_after_header`) · 2 blocs (viewport desktop / mobile) | oui |
@@ -84,10 +84,12 @@ La skin est **désactivable** et livrée **OFF par défaut**. Elle est pilotée 
 
 ---
 
-## Ce que couvre `deploy/wordpress/cs-regie.php` (v0.3, 2026-08-04)
+## Ce que couvre `deploy/wordpress/cs-regie.php` (v0.4, 2026-08-05)
 Les emplacements **hors flux** que le shortcode `[cs_slot]` de `cs-regie-serve.php` ne
-peut pas couvrir (pas de contenu à envelopper — ce sont des rails `position:fixed`) :
-- **Bloc 4 — Skin** desktop (fond fixe cliquable, desktop ≥1840px, consent-gated) ;
+peut pas couvrir (pas de contenu à envelopper — ce sont des rails `position:fixed`, sauf
+le bandeau du skin qui est un bloc de flux normal réinjecté après l'en-tête) :
+- **Bloc 4 — Skin** desktop (bandeau haut sous l'en-tête + bandes latérales fixes
+  arrêtées au pied de page, desktop ≥1590/1840px selon page, consent-gated) ;
 - **Bloc 5 — Gouttière gauche** (160×600, skyscraper, desktop ≥1440px, consent-gated) ;
 - **Bloc 6 — Gouttière droite** (300×600, half-page, desktop ≥1440px, consent-gated).
 

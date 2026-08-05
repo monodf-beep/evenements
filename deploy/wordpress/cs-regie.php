@@ -2,11 +2,12 @@
 /*
 Plugin Name: Agenda Sabauda — Régie (skin + gouttières)
 Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_slot]
-  gèrent mal : l'HABILLAGE / SKIN (bloc 4, fond de page desktop) et les GOUTTIÈRES
-  (blocs 5/6, skyscrapers latéraux sticky, desktop). Contrairement aux blocs 1-3, ces
-  emplacements ne vivent pas dans le flux de contenu — impossible de les envelopper avec
-  le shortcode [cs_slot] de cs-regie-serve.php — donc ce fichier lit directement le
-  backoffice en position:fixed via wp_footer.
+  gèrent mal : l'HABILLAGE / SKIN (bloc 4, bandeau haut + bandes latérales desktop) et
+  les GOUTTIÈRES (blocs 5/6, skyscrapers latéraux sticky, desktop). Contrairement aux
+  blocs 1-3, ces emplacements ne vivent pas dans le flux normal du thème — impossible de
+  les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php — donc ce fichier lit
+  directement le backoffice et se réinjecte lui-même dans le DOM (bandeau) ou en
+  position:fixed (bandes/gouttières) via wp_footer.
 
   RÉUTILISE les fonctions déjà définies par cs-regie-serve.php (même mu-plugin folder,
   chargé avant celui-ci par ordre alphabétique : "cs-regie-serve.php" < "cs-regie.php") :
@@ -21,13 +22,26 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   campagne backoffice (active/ended, fenêtre de dates) fait déjà foi, comme pour les
   blocs 1-3.
 
-  Garde-fous : desktop uniquement (masqué < 1280px) ; consent-gated Complianz
-  (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
-  libellé « Publicité » sur chaque emplacement.
+  v0.4 (2026-08-05) : le bloc 4 n'était qu'un fond plein écran en position:fixed — ni
+  bandeau haut, ni décalage du contenu, ni arrêt au pied de page (constat Franck en
+  test réel : le bandeau chevauchait le menu du site au lieu de passer dessous, et les
+  bandes latérales continuaient sous le footer). Remplacé par le format « habillage »
+  validé sur maquette : un bandeau plein écran (bloc de flux normal, réinjecté en JS
+  juste APRÈS la pile d'en-têtes sticky du thème — jamais avant, jamais par-dessus le
+  menu — pour que le corps du site se décale sous lui) qui défile et disparaît avec la
+  page, plus deux bandes latérales (position:fixed) qui prennent le relais pendant le
+  défilement et s'arrêtent au-dessus du pied de page — même principe de calage que les
+  gouttières des blocs 5/6, dupliqué plutôt que factorisé pour ne pas risquer de casser
+  leur logique déjà éprouvée (cf. les nombreux correctifs commentés plus bas).
+
+  Garde-fous : desktop uniquement (skin masquée sous le seuil calculé — cf. $cs_skin_bp ;
+  gouttières sous $cs_bp) ; consent-gated Complianz (cmplz_marketing=allow) ; coupé sur
+  pages sensibles (légales, « annoncer », 404) ; libellé « Publicité » sur chaque
+  emplacement.
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 0.3
+Version: 0.4
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -102,6 +116,16 @@ add_action('wp_footer', function () {
        sur le contenu des fiches entre 1440 et 1568px. */
     $cs_bp = is_front_page() ? 1320 : 1570;
 
+    /* Seuil ET largeur de la SKIN (bloc 4), distincts de ceux des gouttieres ci-dessus :
+       une bande laterale de skin n'a de sens que si elle colle au bord du contenu sans le
+       chevaucher, donc sa largeur depend du meme conteneur que ci-dessus (950 accueil /
+       1200 ailleurs). 320px de bande de chaque cote reconstitue tel quel le seuil de
+       1840px deja documente pour les pages interieures (docs/REGIE_MISE_EN_PLACE_SOCLE.md :
+       "container + 640px", 1200+640=1840) — pas invente ici, retrouve a l'envers. */
+    $cs_skin_container = is_front_page() ? 950 : 1200;
+    $cs_skin_col_w      = 320;
+    $cs_skin_bp          = $cs_skin_container + 2 * $cs_skin_col_w;
+
     // Rendu masqué par défaut ; révélé en JS si consentement marketing + viewport desktop.
     ?>
     <style id="cs-regie-css">
@@ -109,10 +133,26 @@ add_action('wp_footer', function () {
       /* révélé uniquement quand <html> porte la classe de consentement + ≥1280px */
       .cs-consent-mkt .cs-regie{display:block}
       @media (max-width:1279px){ .cs-consent-mkt .cs-regie{display:none !important} }
-      .cs-skin{position:fixed;inset:0;z-index:0;background-position:center top;
-               background-repeat:no-repeat;background-size:cover;cursor:pointer}
-      /* le contenu du site doit passer AU-DESSUS du skin : GeneratePress .site est opaque */
-      .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:1}
+      /* Bandeau haut (bloc de flux normal — pas fixed : il doit defiler et sortir de
+         l'ecran avec la page, cf. cs-regie-skin-js qui le reinjecte juste apres la pile
+         d'en-tetes sticky du theme). Fond #F7F1E8 = couleur "zone masquee par le site"
+         du gabarit fourni aux annonceurs : tout debordement au-dela de l'image reste
+         invisible sur le fond du site. */
+      .cs-skin-banner{position:relative;width:100%;height:240px;overflow:hidden;background:#F7F1E8}
+      .cs-skin-banner a,.cs-skin-col a{position:absolute;inset:0;display:block;
+        background-repeat:no-repeat;background-size:1920px auto}
+      .cs-skin-banner a{background-position:center top}
+      /* Bandes laterales : position:fixed, calees en JS (cs-regie-skin-js) entre le bas
+         du bandeau/en-tete et le haut du pied de page — meme principe que .cs-gutter. */
+      .cs-skin-col{position:fixed;z-index:2;width:<?php echo (int) $cs_skin_col_w; ?>px;
+        overflow:hidden;background:#F7F1E8}
+      .cs-skin-col--l{left:0}
+      .cs-skin-col--l a{background-position:left -240px}
+      .cs-skin-col--r{right:0}
+      .cs-skin-col--r a{background-position:right -240px}
+      @media (max-width:<?php echo (int) $cs_skin_bp - 1; ?>px){
+        .cs-consent-mkt .cs-skin-banner,.cs-consent-mkt .cs-skin-col{display:none !important}
+      }
       /* 160×600 DES DEUX COTES, ancrees a 24px des bords — valeurs du design system
          maison (.as-desktop-gutter-ad, components.css), pas une invention locale.
          L'ancienne formule calait la gouttiere sur une colonne fantome de 1160px et
@@ -121,10 +161,10 @@ add_action('wp_footer', function () {
       .cs-gutter{position:fixed;top:120px;z-index:2;width:160px}
       .cs-gutter--l{left:24px}
       .cs-gutter--r{right:24px}
-      .cs-gutter a,.cs-skin a{display:block}
+      .cs-gutter a{display:block}
       .cs-lbl{font:800 8px/1 'Nunito Sans',system-ui,sans-serif;letter-spacing:.1em;
               text-transform:uppercase;color:#6F6B62;margin-bottom:3px}
-      .cs-gutter img,.cs-skin img{display:block;max-width:100%;height:auto}
+      .cs-gutter img{display:block;max-width:100%;height:auto}
       /* Pas assez large pour loger la gouttiere sans chevaucher le contenu : on cache.
          ⚠️ Selecteur .cs-consent-mkt .cs-gutter et pas .cs-gutter seul : il doit BATTRE
          « .cs-consent-mkt .cs-regie{display:block} » (0,2,0). L'ancienne regle
@@ -134,9 +174,24 @@ add_action('wp_footer', function () {
     </style>
 
     <?php if ($skin) : ?>
-    <div class="cs-regie cs-skin" role="complementary" aria-label="Publicité"
-         style="background-image:url('<?php echo $skin['img']; ?>')"
-         onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')"></div>
+    <div class="cs-regie cs-skin-banner" id="cs-skin-banner" role="complementary" aria-label="Publicité">
+      <a href="<?php echo $skin['link']; ?>" target="_blank" rel="noopener sponsored"
+         style="background-image:url('<?php echo $skin['img']; ?>')">
+        <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
+      </a>
+    </div>
+    <div class="cs-regie cs-skin-col cs-skin-col--l" role="complementary" aria-label="Publicité">
+      <a href="<?php echo $skin['link']; ?>" target="_blank" rel="noopener sponsored"
+         style="background-image:url('<?php echo $skin['img']; ?>')">
+        <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
+      </a>
+    </div>
+    <div class="cs-regie cs-skin-col cs-skin-col--r" role="complementary" aria-label="Publicité">
+      <a href="<?php echo $skin['link']; ?>" target="_blank" rel="noopener sponsored"
+         style="background-image:url('<?php echo $skin['img']; ?>')">
+        <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
+      </a>
+    </div>
     <?php endif; ?>
 
     <?php if ($left) : ?>
@@ -167,9 +222,8 @@ add_action('wp_footer', function () {
         function apply(){
           if (consented()){
             root.classList.add('cs-consent-mkt');
-            <?php if ($skin) : ?>root.classList.add('cs-skin-on');<?php endif; ?>
           } else {
-            root.classList.remove('cs-consent-mkt','cs-skin-on');
+            root.classList.remove('cs-consent-mkt');
           }
         }
         apply();
@@ -290,5 +344,101 @@ add_action('wp_footer', function () {
         document.addEventListener('cmplz_status_change', function(){ setTimeout(place, 0); });
       })();
     </script>
+
+    <?php if ($skin) : ?>
+    <script id="cs-regie-skin-js">
+      /* Place le bandeau de la SKIN et cale ses deux bandes laterales — logique separee
+         du clamp des gouttieres ci-dessus (dupliquee plutot que factorisee, cf. note en
+         tete de fichier) car le bandeau ajoute une contrainte que les gouttieres n'ont
+         pas : il doit defiler avec la page, pas rester fixe.
+
+         Demande Franck (2026-08-05, sur test reel) : « le bandeau doit etre EN DESSOUS
+         du menu, et le corps du site doit se decaler vers le bas » — pas l'inverse. Le
+         bandeau ne peut donc pas etre le premier element de la page (ce que ferait un
+         hook wp_body_open) : il doit s'inserer dans le DOM juste APRES la pile
+         d'en-tetes sticky du theme (.as-site-header, .as-terr-bar, .as-home-desktop__nav
+         — les memes trois elements que le clamp des gouttieres). Une fois la, un simple
+         bloc de flux normal (ni fixed ni sticky) suffit a tout faire : il pousse le
+         contenu qui le suit vers le bas (etat 1) ET defile hors ecran avec la page des
+         qu'on descend (etat 2), sans une ligne de calcul supplementaire. */
+      (function(){
+        var banner = document.getElementById('cs-skin-banner');
+        var cols   = document.querySelectorAll('.cs-skin-col');
+        if (!banner && !cols.length) { return; }
+
+        if (banner) {
+          var heads = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+          var last = null;
+          for (var i = 0; i < heads.length; i++) {
+            if (!last || (last.compareDocumentPosition(heads[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+              last = heads[i];
+            }
+          }
+          if (last) { last.insertAdjacentElement('afterend', banner); }
+        }
+        if (!cols.length) { return; }
+
+        var GAP = 16;
+
+        // Copie volontaire de footerTop() ci-dessus : voir la note en tete de script.
+        function footerTop(){
+          var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
+          var docH  = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
+          var scrollY = window.pageYOffset || 0;
+          var best = Infinity;
+          for (var i = 0; i < cands.length; i++) {
+            var el = cands[i];
+            if (el.offsetParent === null) { continue; }
+            var r = el.getBoundingClientRect();
+            if (r.height <= 0) { continue; }
+            if ((r.top + scrollY) < docH * 0.4) { continue; }
+            if (r.top < best) { best = r.top; }
+          }
+          return best;
+        }
+
+        function headBottom(){
+          var heads = document.querySelectorAll('.as-site-header, .as-terr-bar, .as-home-desktop__nav');
+          var vh = window.innerHeight;
+          var b = 0;
+          for (var h = 0; h < heads.length; h++) {
+            var hr = heads[h].getBoundingClientRect();
+            if (hr.height <= 0) { continue; }
+            if (hr.top > vh * 0.6) { continue; }
+            if (hr.bottom > b) { b = hr.bottom; }
+          }
+          return b;
+        }
+
+        function place(){
+          // Le plus bas des deux : la pile d'en-tetes seule (bandeau deja defile hors
+          // ecran) OU le bas du bandeau lui-meme (bandeau encore visible, en haut de
+          // page) — c'est ce qui fait « apparaitre sous le bandeau puis suivre l'en-tete
+          // seul une fois qu'il est parti » sans etat explicite a gerer.
+          var top = headBottom();
+          if (banner) {
+            var br = banner.getBoundingClientRect().bottom;
+            if (br > top) { top = br; }
+          }
+          top += GAP;
+
+          var foot = footerTop();
+          var h = isFinite(foot) ? (foot - top - GAP) : (window.innerHeight - top - GAP);
+          if (h < 0) { h = 0; }
+
+          for (var i = 0; i < cols.length; i++) {
+            cols[i].style.top    = top + 'px';
+            cols[i].style.height = h + 'px';
+          }
+        }
+
+        place();
+        addEventListener('scroll', place, { passive: true });
+        addEventListener('resize', place, { passive: true });
+        addEventListener('load',   place);
+        document.addEventListener('cmplz_status_change', function(){ setTimeout(place, 0); });
+      })();
+    </script>
+    <?php endif; ?>
     <?php
 }, 40);

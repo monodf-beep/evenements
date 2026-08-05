@@ -40,9 +40,9 @@ Rien ne remonte, rien ne loggue. D'où la section 7.
 | 1 | Leaderboard (haut) | dans le flux | **`[cs_slot]` à poser** |
 | 2 | Pavé in-article | dans le flux | **`[cs_slot]` à poser** |
 | 3 | Bandeau bas sticky | dans le flux | **`[cs_slot]` à poser** |
-| 4 | Habillage / Skin | hors flux | `cs-regie.php` v0.3 — **rien à faire** |
-| 5 | Gouttière gauche | hors flux | `cs-regie.php` v0.3 — **rien à faire** |
-| 6 | Gouttière droite | hors flux | `cs-regie.php` v0.3 — **rien à faire** |
+| 4 | Habillage / Skin | hors flux | `cs-regie.php` v0.4 — **rien à faire** |
+| 5 | Gouttière gauche | hors flux | `cs-regie.php` v0.4 — **rien à faire** |
+| 6 | Gouttière droite | hors flux | `cs-regie.php` v0.4 — **rien à faire** |
 
 `cs-regie.php` lit le back-office tout seul en `wp_footer` (`cs_regie_hf_slot('4'/'5'/'6')`,
 lignes 89-91) et il est **déployé depuis le 2026-08-04**. Envelopper un bloc 4/5/6 dans un
