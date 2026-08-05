@@ -45,7 +45,9 @@ from utils import completeness as comp
 from utils import radar
 from utils.sources import is_excluded_event, load_excluded_events_filter
 from utils import saison
+from utils import substance
 from scripts.perimetre import ville_hors_perimetre
+from scripts.publisher import build_post
 from scripts.publisher_as import publish_to_as
 
 log = get_logger("publish_batch_as")
@@ -233,6 +235,41 @@ def main(argv=None) -> int:
         log.warning("%d fiche(s) retenue(s) par règle éditoriale. Pour les SORTIR de la "
                     "file (statut rejected) : .venv/bin/python -m "
                     "scripts.audit_excluded_events --apply", len(exclus))
+
+    # PORTILLON DE SUBSTANCE (2026-08-05, le soir du refus AdSense « contenu à faible
+    # valeur informative »). 59 fiches publiées portaient moins de cent mots à elles.
+    # Une fiche de cent mots ne dit rien qu'un annuaire ne dise déjà : elle coûte une URL
+    # indexable et n'offre rien au lecteur.
+    #
+    # NE BLOQUE QUE LES CRÉATIONS, exactement comme le verrou radar et pour la même
+    # raison, écrite plus haut : retenir la republication d'une fiche DÉJÀ en ligne ne la
+    # retirerait pas du site, ça y figerait une version plus ancienne. Une fiche maigre
+    # déjà publiée qu'on vient d'enrichir DOIT pouvoir repartir — c'est même le seul
+    # moyen de la réparer.
+    #
+    # On mesure l'article rendu par build_post, pas la colonne `description` : c'est ce
+    # que le lecteur reçoit. Coût nul, aucun appel LLM, aucune écriture.
+    plancher = substance.plancher()
+    maigres, sous_surveillance = [], 0
+    for ev in rows:
+        n = substance.mots_publies(ev, build_post)
+        if n < plancher and not (ev.get("wp_post_id_as") or 0):
+            maigres.append((ev, n))
+        elif n < substance.BANDE_MAIGRE:
+            sous_surveillance += 1
+    if maigres:
+        ids_maigres = {ev.get("id") for ev, _ in maigres}
+        rows = [ev for ev in rows if ev.get("id") not in ids_maigres]
+        for ev, n in maigres:
+            log.warning("[%s] RETENU : %d mot(s) publiés, plancher %d — « %s »",
+                        ev.get("id"), n, plancher, (ev.get("title") or "")[:55])
+        log.warning("%d fiche(s) retenue(s) faute de substance. Les enrichir (scripts."
+                    "enrich <ids>) puis relancer ; ou remonter le plancher avec "
+                    "PUBLISH_MIN_MOTS.", len(maigres))
+    if sous_surveillance:
+        # Pas un blocage : une traîne qu'on veut voir plutôt que d'ignorer.
+        log.info("%d fiche(s) entre %d et %d mots — publiables, mais maigres.",
+                 sous_surveillance, plancher, substance.BANDE_MAIGRE)
 
     # PORTILLON PÉRIMÈTRE — même famille de trou, même jour. L'arrondissement de Grasse
     # est hors catalogue (charte §2), et purge_out_of_zone le fait respecter… le
