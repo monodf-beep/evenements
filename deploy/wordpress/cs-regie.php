@@ -270,6 +270,17 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   inséré dans la colonne de contenu (~910px), perdait son logo et son bouton, rognés par le
   recadrage. La boîte est désormais au ratio exact de la créative (aspect-ratio:1920/300) :
   l'image s'y loge entière à toutes les largeurs.
+
+  v2.4 (2026-08-05) : « les gouttières ne s'arrêtent pas au footer », « la gouttière doit
+  être sous le menu » (Franck) — soit le calage des gouttières des blocs 5/6, appliqué au
+  fond. Fait par `clip-path` et NON en déplaçant l'élément : le fond reste rigoureusement
+  immobile, seule sa fenêtre de visibilité suit l'en-tête et le pied de page. C'est ce qui
+  autorise un suivi du défilement en JS sans réintroduire le retard d'une frame qui a coûté
+  les v1.0/v1.4/v1.5 — un bord de masque en retard ne se voit pas, une image en retard si.
+  Même version : neutralisation des encarts publicitaires en dur du gabarit
+  (`.as-desktop-gutter-ad`, `.as-desktop-sticky-ad`, `.as-sticky-ad`) — des maquettes vides
+  héritées du design system, qui faisaient double emploi avec les emplacements servis par
+  le backoffice. Masquées, pas supprimées : le contenu des pages reste intact.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -277,7 +288,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 2.3
+Version: 2.4
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -413,6 +424,16 @@ add_action('wp_footer', function () {
          contenu. Supprimee. */
       .cs-skin-bg{position:fixed;inset:0;z-index:-1;cursor:pointer;
         background-repeat:no-repeat;background-position:center top;background-size:cover}
+      /* DECOUPE, et surtout PAS un deplacement (v2.4). Franck : "les gouttieres ne
+         s'arretent pas au footer" et "la gouttiere doit etre sous le menu" — soit
+         exactement le calage des gouttieres des blocs 5/6, applique au fond.
+         Le fond est epingle a la fenetre et NE DOIT PAS bouger : on ne touche donc jamais
+         a sa position, on masque ses bords avec clip-path. L'image reste rigoureusement
+         immobile, seule la fenetre de visibilite suit l'en-tete et le pied de page. C'est
+         ce qui permet de suivre le defilement en JS sans reintroduire le retard d'un pixel
+         qui a coute les v1.0/v1.4/v1.5 : un bord de masque en retard d'une frame ne se voit
+         pas, une IMAGE en retard d'une frame se voit. Valeurs posees en JS. */
+      .cs-skin-bg,.cs-skin-mid{clip-path:inset(var(--cs-skin-top,0px) 0 var(--cs-skin-bot,0px) 0)}
       /* La COLONNE DE LECTURE. Le site n'a pas de fond propre sur sa colonne centrale :
          tout repose sur le beige de body. Des que le fond photo couvre la fenetre, la
          colonne devient donc transparente sur la photo — illisible. L'ancienne creative
@@ -451,6 +472,20 @@ add_action('wp_footer', function () {
          « .cs-gutter--l{display:none} » (0,1,0) perdait la cascade et ne masquait donc
          rien du tout sous 1440px — bug latent jamais vu, corrige ici. */
       @media (max-width:<?php echo (int) $cs_bp - 1; ?>px){ .cs-consent-mkt .cs-gutter{display:none !important} }
+
+      /* ENCARTS EN DUR DU GABARIT — neutralises le 2026-08-05 a la demande de Franck
+         ("supprime les encarts publicitaires qu'on avait mis en dur").
+         Ce sont des MAQUETTES vides bakees dans le contenu des pages 928/1717 a l'epoque
+         du design system : une etiquette "Publicite" et une boite vide, rien d'autre. Elles
+         faisaient double emploi avec les vrais emplacements, qui viennent desormais du
+         backoffice (blocs 1-3 via [cs_slot], 4-6 via ce fichier), et se voyaient a l'ecran
+         comme des rectangles creme vides.
+         MASQUEES et non supprimees : le contenu des pages reste intact, un simple retrait
+         de ces trois lignes les fait revenir. Les effacer pour de bon releve de l'editeur
+         de page, pas d'un mu-plugin — et ce serait irreversible. */
+      .as-desktop-gutter-ad,
+      .as-desktop-sticky-ad,
+      .as-sticky-ad{display:none !important}
     </style>
 
     <?php if ($skin) : ?>
@@ -625,7 +660,7 @@ add_action('wp_footer', function () {
       })();
     </script>
 
-    <?php if ($skin && !empty($skin['img2'])) : ?>
+    <?php if ($skin) : ?>
     <script id="cs-regie-skin-js">
       /* Le SEUL travail du JS : poser le bandeau au bon endroit du DOM, une fois.
          Son comportement au defilement, lui, est celui d'un bloc normal — le navigateur
@@ -640,8 +675,7 @@ add_action('wp_footer', function () {
          - AUTRES PAGES : .as-site-header / .as-terr-bar sont en position:sticky, donc
            toujours dans le flux ; se poser apres la derniere d'entre elles suffit. */
       (function(){
-        var b = document.getElementById('cs-skin-banner');
-        if (!b) { return; }
+        var b = document.getElementById('cs-skin-banner');   // absent si pas de 2e creative
 
         /* ⚠️ NE PAS ancrer sur .as-home-sticky-panel sans tester s'il est RENDU (v2.1,
            repris aussitot, mesure au navigateur : bandeau en rect 0x0). Ce panneau est
@@ -664,6 +698,7 @@ add_action('wp_footer', function () {
         }
 
         function poser(){
+          if (!b) { return; }
           var a = ancre();
           /* Aucun ancrage trouve (gabarit inattendu) : on MASQUE plutot que de laisser le
              bandeau la ou wp_footer l'a depose, c'est-a-dire tout en bas de la page. Une
@@ -674,13 +709,60 @@ add_action('wp_footer', function () {
           if (b.previousElementSibling !== a) { a.insertAdjacentElement('afterend', b); }
         }
 
-        // Aucun ecouteur 'scroll' : rien ne depend du defilement. Les rappels differes ne
-        // couvrent que les gabarits JetEngine qui reconstruisent des morceaux de page apres
-        // coup, auquel cas le bandeau doit retrouver sa place.
-        poser();
-        addEventListener('load', poser);
-        setTimeout(poser, 600);
-        document.addEventListener('cmplz_status_change', function(){ setTimeout(poser, 0); });
+        /* Le CLAMP du fond : il commence sous la pile d'en-tetes et s'arrete au haut du
+           pied de page, comme les gouttieres des blocs 5/6. Copies volontaires de leurs
+           deux fonctions (cf. note en tete de fichier : duplique plutot que factorise pour
+           ne pas risquer leur logique deja eprouvee). */
+        var HEAD_SEL = '.as-home-sticky-panel, .as-site-header, .as-terr-bar, .as-home-desktop__nav, .as-terr-bar-inline';
+
+        function basEnTetes(){
+          var heads = document.querySelectorAll(HEAD_SEL);
+          var vh = window.innerHeight, b = 0;
+          for (var i = 0; i < heads.length; i++) {
+            var r = heads[i].getBoundingClientRect();
+            if (r.height <= 0) { continue; }
+            if (r.top > vh * 0.6) { continue; }      // deja defile hors du haut d'ecran
+            if (r.bottom > b) { b = r.bottom; }
+          }
+          return b;
+        }
+
+        function hautFooter(){
+          var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
+          var docH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
+          var y = window.pageYOffset || 0, best = Infinity;
+          for (var i = 0; i < cands.length; i++) {
+            if (cands[i].getClientRects().length === 0) { continue; }
+            var r = cands[i].getBoundingClientRect();
+            if ((r.top + y) < docH * 0.4) { continue; }   // <footer> de carte en milieu de page
+            if (r.top < best) { best = r.top; }
+          }
+          return best;
+        }
+
+        var root = document.documentElement, ticking = false;
+        function clamper(){
+          var vh   = window.innerHeight;
+          var haut = Math.max(0, basEnTetes());
+          var foot = hautFooter();
+          var bas  = isFinite(foot) ? Math.max(0, vh - foot) : 0;
+          if (haut + bas > vh) { bas = Math.max(0, vh - haut); }   // pas de masque negatif
+          root.style.setProperty('--cs-skin-top', haut + 'px');
+          root.style.setProperty('--cs-skin-bot', bas + 'px');
+        }
+        function surDefilement(){
+          if (ticking) { return; }
+          ticking = true;
+          requestAnimationFrame(function(){ ticking = false; clamper(); });
+        }
+
+        function tout(){ poser(); clamper(); }
+        tout();
+        addEventListener('scroll', surDefilement, { passive: true });
+        addEventListener('resize', tout, { passive: true });
+        addEventListener('load', tout);
+        setTimeout(tout, 600);
+        document.addEventListener('cmplz_status_change', function(){ setTimeout(tout, 0); });
       })();
     </script>
     <?php endif; ?>
