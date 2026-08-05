@@ -189,6 +189,15 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   colle à `top:-12.5vw`, soit la hauteur du bandeau. Il ne reste plus AUCUN écouteur de
   défilement dans le script de la skin : les seules bornes calculées sont celles du rail, et
   elles ne dépendent que de la mise en page.
+
+  v1.7 (2026-08-05) : le rail de la v1.6 descendait jusqu'au bas du document, si bien que la
+  skin restait collée derrière le pied de page — « les gouttières ne s'arrêtent pas au
+  footer » (Franck, capture à l'appui). Le rail s'arrête désormais au haut du footer : comme
+  un élément sticky ne peut pas sortir de son parent, la skin se décolle et remonte d'elle-
+  même à l'arrivée du pied de page, toujours sans aucun calcul au défilement. Le repérage du
+  footer reprend la liste de candidats et le garde-fou « 40 % hauts du document » du clamp
+  des gouttières, qui évite qu'un <footer> de carte d'événement en milieu de page ne fasse
+  passer le rail pour fini dès le premier tiers.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -196,7 +205,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.6
+Version: 1.7
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -613,11 +622,36 @@ add_action('wp_footer', function () {
         skin.parentNode.insertBefore(track, skin);
         track.appendChild(skin);
 
+        /* Haut du pied de page, en coordonnees de PAGE. Meme liste de candidats que le
+           clamp des gouttieres (blocs 5/6), meme garde-fou : on ecarte ce qui se trouve dans
+           les 40 % hauts du document, sinon un <footer> de carte d'evenement en plein milieu
+           de page ferait passer le rail pour fini des le premier tiers. */
+        function footerTopDoc(){
+          var cands = document.querySelectorAll('.site-footer, #footer-widgets, .as-desktop-footer, .as-site-footer, #colophon, footer');
+          var docH  = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1);
+          var y     = window.pageYOffset || 0;
+          var best  = Infinity;
+          for (var i = 0; i < cands.length; i++) {
+            if (cands[i].getClientRects().length === 0) { continue; }
+            var top = cands[i].getBoundingClientRect().top + y;
+            if (top < docH * 0.4) { continue; }
+            if (top < best) { best = top; }
+          }
+          return best;
+        }
+
         function place(){
           var docTop = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
           var docH   = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 0);
+          /* Le rail s'arrete au HAUT DU PIED DE PAGE, et non au bas du document : un element
+             sticky ne pouvant pas sortir de son parent, la skin se decolle et remonte d'elle-
+             meme a l'arrivee du footer, sans une ligne de JS au defilement. Sans cette borne
+             (v1.6) elle restait collee derriere le pied de page — "les gouttieres ne
+             s'arretent pas au footer" (Franck, 2026-08-05, capture a l'appui). */
+          var foot   = footerTopDoc();
+          var end    = isFinite(foot) ? foot : docH;
           track.style.top    = docTop + 'px';
-          track.style.height = Math.max(0, docH - docTop) + 'px';
+          track.style.height = Math.max(0, end - docTop) + 'px';
         }
 
         /* PAS d'ecouteur 'scroll' : il n'y a plus rien a recalculer quand on defile. */
