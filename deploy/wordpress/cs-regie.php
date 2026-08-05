@@ -118,7 +118,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.1
+Version: 1.2
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -473,12 +473,19 @@ add_action('wp_footer', function () {
           var heads = document.querySelectorAll(HEAD_SEL);
           var last = null;
           for (var i = 0; i < heads.length; i++) {
-            /* offsetParent plutot que la hauteur mesuree : sur l'accueil, .as-site-header
-               est un en-tete COMPACT qui apparait en cours de defilement (position:fixed).
-               Le tester sur sa hauteur le faisait entrer et sortir de la selection au fil
-               du defilement, donc deplacer la cale, donc sauter la skin. offsetParent est
-               null pour un element display:none et ne bouge pas, lui, quand on defile. */
-            if (heads[i].offsetParent === null && heads[i] !== document.body) { continue; }
+            /* Ecarte les en-tetes NON RENDUS (display:none — sur l'accueil .as-site-header
+               en fait partie tant qu'on est en haut de page).
+               ⚠️ NE PAS remplacer par offsetParent === null, essaye le 2026-08-05 et
+               immediatement repris : offsetParent vaut null pour un element display:none
+               MAIS AUSSI pour tout element en position:fixed. Les barres d'en-tete de ce
+               site en font partie, elles etaient donc toutes ecartees, plus aucun repere
+               n'etait trouve, et la cale retombait en haut de page — la creative repassait
+               au-dessus du menu (capture Franck). getClientRects() ne fait pas ce faux
+               positif : il ne repond vide que si l'element n'est vraiment pas rendu.
+               Et cette selection ne bouge de toute facon pas au defilement : .as-site-header
+               a beau apparaitre en cours de route, il est AVANT .site dans le DOM, donc il
+               ne peut jamais devenir le dernier element de la pile. */
+            if (heads[i].getClientRects().length === 0) { continue; }
             if (!last || (last.compareDocumentPosition(heads[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) {
               last = heads[i];
             }
