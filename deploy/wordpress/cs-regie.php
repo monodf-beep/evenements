@@ -7,9 +7,9 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   Contrairement aux blocs 1-3, ces emplacements ne vivent pas dans le flux normal du
   thème — impossible de les envelopper avec le shortcode [cs_slot] de cs-regie-serve.php
   — donc ce fichier lit directement le backoffice et les pose lui-même via wp_footer, le
-  contenu du site passant par-dessus. La skin défile avec la page puis se fige, bandeau
-  rangé au-dessus du bord de la fenêtre (cf. v1.5) ; les gouttières des blocs 5/6 restent
-  collées.
+  contenu du site passant par-dessus. La skin défile avec la page puis se fige en
+  position:sticky, bandeau rangé au-dessus du bord de la fenêtre (cf. v1.6) ; les
+  gouttières des blocs 5/6 restent collées.
 
   RÉUTILISE les fonctions déjà définies par cs-regie-serve.php (même mu-plugin folder,
   chargé avant celui-ci par ordre alphabétique : "cs-regie-serve.php" < "cs-regie.php") :
@@ -173,6 +173,22 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
   au-dessus, recouvre le haut des gouttières : le rendu est celui demandé sans dépendre
   d'un repère mouvant. Supprimé au passage les fonctions footerTop()/headBottom() du script
   de la skin, devenues sans emploi (celles du clamp des gouttières sont intactes).
+
+  v1.6 (2026-08-05) — LE SAUT N'ÉTAIT PAS DANS LES VALEURS, IL ÉTAIT DANS LE FAIT DE
+  CALCULER. Les v1.4 et v1.5 basculaient la skin de position:absolute à position:fixed en
+  JavaScript, sur l'événement de défilement. Or le navigateur PEINT le défilement avant
+  d'exécuter le moindre script : à chaque cran de molette — une centaine de pixels d'un
+  coup — la skin était donc d'abord peinte trop haut, puis remise en place au tour suivant.
+  D'où un saut d'exactement un cran, que Franck a constaté sur trois versions de suite
+  (« d'un cran de scroll à l'autre ça saute »). Aucun réglage de valeur ne pouvait le
+  corriger — j'ai cherché deux fois du côté du point d'accrochage (v1.5) au lieu de voir que
+  le défaut tenait à l'instant du calcul.
+  Remplacé par `position:sticky` : le moteur de rendu fait le même travail, mais au moment
+  où il peint. La skin est logée dans un rail (`#cs-skin-track`, position:absolute, de la
+  cale au bas du document) parce qu'un élément sticky ne peut pas sortir de son parent, et
+  colle à `top:-12.5vw`, soit la hauteur du bandeau. Il ne reste plus AUCUN écouteur de
+  défilement dans le script de la skin : les seules bornes calculées sont celles du rail, et
+  elles ne dépendent que de la mise en page.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -180,7 +196,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 1.5
+Version: 1.6
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -297,16 +313,37 @@ add_action('wp_footer', function () {
          le bandeau s'en va en defilant et les bandes prennent le relais avec la suite du
          decor, sans saut. */
 
-      /* UN SEUL element portant TOUTE la creative. La position (absolute ou fixed) est
-         posee en JS : voir cs-regie-skin-js, qui bascule de l'une a l'autre au moment ou le
-         bas du bandeau atteint le menu. */
-      .cs-skin{left:0;right:0;height:56.25vw;z-index:0;overflow:hidden;cursor:pointer;
+      /* UN SEUL element portant TOUTE la creative, et c'est le NAVIGATEUR qui gere son
+         accrochage — position:sticky, pas de JS pendant le defilement.
+
+         Pourquoi sticky et pas une bascule absolute/fixed en JS (ce que faisaient les v1.4
+         et v1.5) : le navigateur peint le defilement AVANT d'executer le moindre JS. A
+         chaque cran de molette — une centaine de pixels d'un coup — la skin etait donc
+         d'abord peinte trop haut, puis remise en place par le script au tour suivant. D'ou
+         un saut d'exactement un cran de molette, que Franck a vu sur trois versions de
+         suite ("d'un cran de scroll a l'autre ca saute"). Aucun reglage ne pouvait le
+         corriger : le defaut n'etait pas dans les valeurs calculees, il etait dans le fait
+         de calculer. position:sticky fait le meme travail dans le moteur de rendu, donc au
+         bon moment, par construction.
+
+         top:-12.5vw = la hauteur du bandeau. La skin defile avec la page, puis se fige
+         quand le bas du bandeau atteint le haut de la fenetre : le bandeau se range
+         au-dessus du bord, les gouttieres restent affichees dessous, et le menu (opaque, au
+         dessus en z-index) recouvre leur haut. "Sticky en haut des gouttieres, en bas du
+         bandeau" (Franck). */
+      .cs-skin{position:sticky;top:-12.5vw;width:100%;height:56.25vw;overflow:hidden;
+        cursor:pointer;pointer-events:auto;
         background-repeat:no-repeat;background-size:100vw auto;background-position:center top}
-      /* Le contenu du site passe AU-DESSUS des trois. .site n'a aucun fond propre (verifie
+      /* Le rail dans lequel la skin colle. Un element sticky ne peut pas sortir de son
+         parent : ce rail va donc de la cale jusqu'au bas de la page, ce qui donne a la skin
+         toute la hauteur du document pour rester collee. Il est en position:absolute pour ne
+         rien pousser dans la mise en page, et pointer-events:none pour ne pas intercepter
+         les clics sur le contenu qu'il recouvre (la skin, elle, reste cliquable). */
+      #cs-skin-track{position:absolute;left:0;right:0;z-index:0;pointer-events:none}
+      /* Le contenu du site passe AU-DESSUS de la skin. .site n'a aucun fond propre (verifie
          en direct : c'est body qui porte --beige), donc la skin reste visible partout ou le
-         contenu ne peint pas — les marges laterales, essentiellement. z-index 2 pour passer
-         devant le bandeau (1) comme devant les bandes (0) : sans ca, place en fin de page
-         par wp_footer, le bandeau recouvrirait le contenu. */
+         contenu ne peint pas — les marges laterales, essentiellement. z-index 2 : sans ca,
+         placee en fin de page par wp_footer, la skin recouvrirait le contenu. */
       .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:2}
       /* Cale vide inseree en JS JUSTE APRES la pile menu + barre territoire, pour degager
          la bande haute de la creative (celle qui porte le titre de l'annonceur) SOUS le
@@ -513,12 +550,10 @@ add_action('wp_footer', function () {
 
     <?php if ($skin) : ?>
     <script id="cs-regie-skin-js">
-      /* Pose le BANDEAU a l'emplacement de sa cale, en coordonnees de PAGE (et non de
-         fenetre) : il defile donc avec le contenu et s'efface sous le menu quand on descend.
-         Et cale les deux BANDES laterales entre le bas du menu et le haut du pied de page,
-         pour qu'elles restent visibles pendant tout le defilement — "on a uniquement les
-         gouttieres qui sont sticky, le haut des gouttieres correspond au bas du menu"
-         (Franck, 2026-08-05). */
+      /* Pose la cale qui degage le bandeau sous le menu, et le rail dans lequel la skin
+         vient se coller. Tout le comportement au defilement (defiler avec la page, puis se
+         figer quand le bas du bandeau atteint le haut de la fenetre) est assure par le CSS
+         position:sticky — ce script ne fait que donner au rail ses bornes. */
       (function(){
         var skin = document.getElementById('cs-skin');
         if (!skin) { return; }
@@ -564,62 +599,34 @@ add_action('wp_footer', function () {
           return spacer;
         }
 
-        /* DEUX ETATS, UN SEUL ELEMENT — c'est tout le mecanisme.
+        /* LE RAIL. Un element sticky ne peut pas sortir de son parent : on lui en donne
+           donc un qui va de la cale jusqu'au bas de la page. Le rail est en position:absolute
+           (il ne pousse rien) et positionne en coordonnees de PAGE.
 
-           Etat 1, "il defile" : position:absolute, ancre dans la PAGE a l'emplacement de sa
-           cale. Il monte avec le contenu, exactement a sa vitesse, SANS que le JS ne touche
-           a quoi que ce soit — c'est le navigateur qui s'en charge.
-           Etat 2, "il est colle" : position:fixed, top = bas du menu MOINS la hauteur du
-           bandeau. Le bandeau se retrouve donc entierement cache sous le menu, et les
-           gouttieres commencent pile au bas du menu. "Sticky en haut des gouttieres, en bas
-           du bandeau" (Franck, 2026-08-05).
-
-           La bascule se fait au point ou les deux positions COINCIDENT, donc sans le moindre
-           saut. Et dans chacun des deux etats la valeur ne bouge plus : le JS ne fait que
-           choisir l'etat, jamais suivre le defilement pixel par pixel. C'est ce qui evite de
-           refabriquer la parallaxe de la v1.0 (cf. note v1.1 en tete de fichier) : ce qui
-           trainait, la-bas, c'etait de RECALCULER une position a chaque evenement de
-           defilement, le navigateur peignant en continu et l'evenement JS arrivant apres.
-
-           NB : la hauteur du bandeau se mesure sur la largeur de l'ELEMENT RACINE et non sur
-           window.innerWidth, parce que c'est ce que vaut une unite vw en CSS — innerWidth
-           inclut la barre de defilement, ce qui decalerait le raccord de ~15px.
-
-           ⚠️ Le point d'accrochage vaut -bandH, une CONSTANTE, et surtout PAS
-           "headBottom() - bandH" (essaye en v1.4, repris aussitot). Le bas du menu n'est pas
-           un repere stable : sur l'accueil la barre territoire s'en va en defilant pendant
-           que l'en-tete compact apparait, donc headBottom() change en cours de route — le
-           point d'accrochage bougeait sous une skin qui y etait deja accrochee, et elle
-           sautait d'un cran de defilement a l'autre (constat Franck, captures a l'appui).
-           Avec -bandH la skin s'accroche au HAUT DE LA FENETRE, bandeau juste au-dessus du
-           bord : le menu, opaque et par-dessus, recouvre le haut des gouttieres, donc le
-           rendu est celui demande ("en haut des gouttieres, en bas du bandeau") sans
-           dependre d'un repere qui bouge. Plus rien ne peut sauter. */
-        var BAND = 240 / 1920;   // part de la creative occupee par le bandeau, cf. CSS
+           C'est le SEUL calcul qui reste, et il ne depend que de la mise en page — jamais du
+           defilement. Tout le reste (defiler, puis se figer au bon moment) est fait par le
+           navigateur via position:sticky, donc au moment ou il peint, et non un tour trop
+           tard comme le faisait la bascule en JS des v1.4/v1.5. */
+        var track = document.createElement('div');
+        track.id = 'cs-skin-track';
+        track.setAttribute('aria-hidden', 'true');
+        skin.parentNode.insertBefore(track, skin);
+        track.appendChild(skin);
 
         function place(){
-          var docTop  = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
-          var stuckAt = -BAND * document.documentElement.clientWidth;
-          var y       = window.pageYOffset || 0;
-
-          if (docTop - y > stuckAt) {
-            skin.style.position = 'absolute';
-            skin.style.top      = docTop + 'px';
-          } else {
-            skin.style.position = 'fixed';
-            skin.style.top      = stuckAt + 'px';
-          }
+          var docTop = placeSpacer().getBoundingClientRect().top + (window.pageYOffset || 0);
+          var docH   = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 0);
+          track.style.top    = docTop + 'px';
+          track.style.height = Math.max(0, docH - docTop) + 'px';
         }
 
-        function placeAll(){ place(); }
-
-        placeAll();
-        addEventListener('scroll', place, { passive: true });  // choisit l'etat, ne suit pas
-        addEventListener('resize', placeAll,  { passive: true });
-        addEventListener('load',   placeAll);
-        document.addEventListener('cmplz_status_change', function(){ setTimeout(placeAll, 0); });
-        setTimeout(placeAll, 300);
-        setTimeout(placeAll, 1200);
+        /* PAS d'ecouteur 'scroll' : il n'y a plus rien a recalculer quand on defile. */
+        place();
+        addEventListener('resize', place, { passive: true });
+        addEventListener('load',   place);
+        document.addEventListener('cmplz_status_change', function(){ setTimeout(place, 0); });
+        setTimeout(place, 300);
+        setTimeout(place, 1200);
       })();
     </script>
     <?php endif; ?>
