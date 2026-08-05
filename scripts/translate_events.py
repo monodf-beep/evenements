@@ -188,15 +188,28 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
         f'{{"title": "...", "description": "..."}}.\n\n'
         f"TITRE : {title}\n\nDESCRIPTION : {desc[:2000]}")
     try:
-        # 4000 (relevé de 3000 le 2026-07-29 : encore tronqué en vrai sur une description
-        # proche de la limite de 2000 caractères) : avec Sonnet une description longue peut
-        # dépasser et tronquer le JSON avant l'accolade finale (« Expecting value »).
-        resp = client.messages.create(
-            model=model, max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}])
-        if getattr(resp, "stop_reason", None) == "max_tokens":
-            log.warning("Traduction titre/description tronquée (max_tokens) — ignorée.")
-            return None
+        resp = None
+        # 4000 (relevé de 3000 le 2026-07-29), puis 7000 en second essai (2026-08-05,
+        # incident en production : fiche 4161, description de 1213 caractères SEULEMENT
+        # — bien sous la limite de 2000 — mais dont le titre source était déjà en
+        # italien, gonflant probablement la sortie attendue. Sans second essai, une
+        # fiche comme celle-ci redevient un CUL-DE-SAC SILENCIEUX : resélectionnée
+        # chaque jour (translated_at reste vide, c'est voulu), elle échoue pour la
+        # MÊME raison technique à chaque fois, sans jamais qu'un budget plus large soit
+        # tenté. À la différence du portillon C2 plus bas (refus répété = signal éditorial
+        # VOULU, cf. sa docstring), un dépassement de token est un problème de RESSOURCE,
+        # pas de matière — retenter avec plus de budget est le bon réflexe avant de
+        # renoncer pour la journée.
+        for tentative, budget in ((1, 4000), (2, 7000)):
+            resp = client.messages.create(
+                model=model, max_tokens=budget,
+                messages=[{"role": "user", "content": prompt}])
+            if getattr(resp, "stop_reason", None) != "max_tokens":
+                break
+            log.warning("Traduction titre/description tronquée (max_tokens=%d, essai %d/2).",
+                       budget, tentative)
+        else:
+            return None  # les deux essais ont tronqué : on renonce pour aujourd'hui
         txt = _extract_json(resp)
         # strict=False : le modèle laisse parfois un caractère de contrôle brut (saut de
         # ligne non échappé) dans une valeur JSON — le parseur strict rejette sinon un texte
