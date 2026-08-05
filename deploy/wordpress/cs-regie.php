@@ -249,6 +249,16 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   Le bandeau est FACULTATIF (`image2` absente de l'API tant qu'il n'est pas renseigné) :
   sans lui, le fond seul reste un habillage valable.
+
+  v2.1 (2026-08-05) : la v2.0 avait le fond en z-index:0 — un fixed à 0 peint AU-DESSUS de
+  tout le contenu non positionné, d'où masthead et footer transparents sur la photo et
+  bandeau invisible (captures Franck). C'était déjà, mot pour mot, le symptôme de la v0.3
+  (« le fond chevauchait le menu ») : trois montages ont buté sur la même règle de peinture
+  sans la nommer. Fond passé à z-index:-1 (sous tout le flux, par construction), béquille
+  « .site z-index:1 » supprimée (sur ce site .site est la classe du bloc de widgets du
+  FOOTER, elle ne remontait rien), et ajout de .cs-skin-mid : la colonne de lecture crème
+  en CSS, à la largeur exacte du conteneur (950/1200) — le rôle que la fenêtre crème de
+  l'ancienne créative jouait en dur dans l'image, raccord au pixel non garanti en moins.
   Garde-fous : desktop uniquement (skin et gouttières sous leurs seuils respectifs —
   1280px générique pour la skin, $cs_bp pour les gouttières) ; consent-gated Complianz
   (cmplz_marketing=allow) ; coupé sur pages sensibles (légales, « annoncer », 404) ;
@@ -256,7 +266,7 @@ Description: Pose les emplacements publicitaires HORS FLUX que Ad Inserter/[cs_s
 
   INSTALLATION : déposer dans wp-content/mu-plugins/cs-regie.php. Rollback : supprimer.
 Author: Cultura Sabauda
-Version: 2.0
+Version: 2.1
 */
 
 if (!defined('ABSPATH')) { exit; }
@@ -340,6 +350,11 @@ add_action('wp_footer', function () {
        sur le contenu des fiches entre 1440 et 1568px. */
     $cs_bp = is_front_page() ? 1320 : 1570;
 
+    /* Largeur de la colonne de lecture de la skin (bande creme .cs-skin-mid) : les memes
+       conteneurs que le calcul des gouttieres ci-dessus, verifies en direct le 2026-08-04
+       (.as-home-desktop = 950px ; container GeneratePress = 1200px). */
+    $cs_skin_container = is_front_page() ? 950 : 1200;
+
     /* La SKIN (bloc 4) n'a plus ni largeur de bande ni seuil propre depuis la v0.8 :
        l'image entiere est posee derriere la page et le contenu passe dessus, donc il n'y
        a plus de bande a dimensionner ni de place a reserver a cote du contenu. Elle suit
@@ -374,12 +389,31 @@ add_action('wp_footer', function () {
 
          Il n'y a plus ni sticky, ni rail, ni cale, ni ecouteur de defilement. Le seul JS
          restant sert a INSERER le bandeau au bon endroit, une fois. */
-      .cs-skin-bg{position:fixed;inset:0;z-index:0;cursor:pointer;
+      /* z-index NEGATIF, et c'est le point qui a coute trois montages (v0.3, v0.4, v2.0) :
+         un element position:fixed a z-index 0 peint AU-DESSUS de tout le contenu non
+         positionne — fonds du masthead et du footer compris. C'est tres exactement le
+         symptome de la v0.3 ("le fond chevauchait le menu") et celui du 2026-08-05 au soir
+         (masthead et footer transparents, laissant voir la photo). A -1, le fond passe sous
+         TOUT le flux, par construction ; le beige de body, propage au canvas (verifie en
+         direct : html n'a aucun background), reste dessous et n'est jamais visible.
+         ⚠️ L'ancienne beequille ".cs-consent-mkt.cs-skin-on .site{z-index:1}" ne remontait
+         RIEN : sur ce site, ".site" est... la classe du bloc de widgets du FOOTER
+         (<div id="footer-widgets" class="site footer-widgets">), pas une enveloppe du
+         contenu. Supprimee. */
+      .cs-skin-bg{position:fixed;inset:0;z-index:-1;cursor:pointer;
         background-repeat:no-repeat;background-position:center top;background-size:cover}
-      /* Le contenu passe au-dessus du fond. .site n'a aucun fond propre (verifie en
-         direct : c'est body qui porte --beige), donc le fond reste visible partout ou le
-         contenu ne peint pas — les marges laterales, essentiellement. */
-      .cs-consent-mkt.cs-skin-on .site{position:relative;z-index:1}
+      /* La COLONNE DE LECTURE. Le site n'a pas de fond propre sur sa colonne centrale :
+         tout repose sur le beige de body. Des que le fond photo couvre la fenetre, la
+         colonne devient donc transparente sur la photo — illisible. L'ancienne creative
+         "compensait" en peignant une fenetre creme EN DUR dans l'image, un raccord au
+         pixel que le format ne garantit pas (et que la spec deconseille). Ici la bande
+         creme est un element CSS : largeur exacte de la colonne (950 accueil / 1200
+         ailleurs, memes valeurs que les gouttieres), toujours alignee, a toutes les
+         largeurs d'ecran. Posee APRES le fond dans le DOM, au meme niveau -1 : elle peint
+         au-dessus de lui et sous tout le flux. */
+      .cs-skin-mid{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+        width:<?php echo (int) $cs_skin_container; ?>px;z-index:-1;
+        background:var(--beige,#F7F1E8)}
       /* 15.625vw = 300/1920 : la hauteur du bandeau une fois mis a la largeur de l'ecran,
          donc jamais deforme. position:relative + z-index pour passer devant le fond, le
          bandeau pouvant selon la page etre un enfant de body place avant .site. */
@@ -412,6 +446,7 @@ add_action('wp_footer', function () {
          onclick="window.open('<?php echo esc_js($skin['link']); ?>','_blank')">
       <span class="cs-lbl" style="position:absolute;left:12px;top:10px">Publicité</span>
     </div>
+    <div class="cs-regie cs-skin-mid" aria-hidden="true"></div>
     <?php if (!empty($skin['img2'])) : ?>
     <a class="cs-regie cs-skin-banner" id="cs-skin-banner" aria-label="Publicité"
        href="<?php echo $skin['link']; ?>" target="_blank" rel="noopener sponsored"
