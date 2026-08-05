@@ -231,3 +231,7 @@ sauvegarde `cs_bk_sources_non_publiables_20260805`.
   `docs/legal/mentions_legales.md` et le snippet WordPress 50 qui la rend. Toute
   modification faite directement dans le snippet est écrasée à la régénération.
   **Modifier la source d'abord.**
+- `utils/usage.py` porte le même en-tête « SYNCED FROM observatoire-business-sabaudo »
+  (avec la mention « extraction future cultura-core »). Le TTL différencié du drapeau
+  d'accès API, ajouté le 2026-08-05, **doit être porté** dans l'autre dépôt : sans lui,
+  un solde tombé à zéro y bloquera encore le pipeline sept jours après le rechargement.

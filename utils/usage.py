@@ -62,12 +62,52 @@ def clear_alert() -> None:
         pass
 
 
+# DEUX CAUSES, DEUX DURÉES DE BLOCAGE. Le drapeau servait indistinctement à tout, avec
+# sept jours pour tout le monde. Or les deux causes ne se lèvent pas de la même façon :
+#
+#   • LIMITE D'USAGE atteinte (quota, rate limit) — se résout par l'écoulement du temps,
+#     et le message d'Anthropic annonce souvent l'heure de reset. Bloquer longtemps est
+#     juste : retenter avant l'heure dite ne peut que réechouer.
+#   • SOLDE À RECHARGER — se résout par une action HUMAINE de trente secondes, à un
+#     moment que le code ne peut pas connaître. Mesuré le 2026-08-05 : le solde tombe à
+#     zéro pendant le cron de 07:00 UTC, Franck recharge dans la journée, et le pipeline
+#     reste bloqué quand même. Le drapeau ne se lève qu'au prochain appel RÉUSSI — or il
+#     empêche justement tout appel. Une demi-journée perdue, et une session entière
+#     passée à croire que le crédit manquait alors qu'il était là.
+#
+# Le correctif du 2026-07-31 traitait déjà ce cercle vicieux, mais seulement pour les
+# messages portant une heure de reset explicite (« regain access on … », cf.
+# scripts/enrich.py). Un message de solde n'en porte aucune : il retombait donc sur les
+# sept jours pleins. D'où un TTL court pour cette cause-là. Le coût d'une nouvelle
+# tentative est nul (l'API refuse en HTTP 400, aucun token consommé), alors qu'une
+# journée de pipeline à l'arrêt se paie en fiches non publiées.
+_TTL_LIMITE_JOURS = 7
+_TTL_SOLDE_MINUTES = 30
+
+# Ce qui distingue « recharge ton compte » de « attends ». Volontairement plus étroit que
+# _CREDIT_HINTS, qui sert à DÉTECTER un problème d'accès : ici on qualifie sa nature, et
+# un doute doit retomber sur le blocage long (prudent), pas sur le court.
+_SOLDE_HINTS = ("credit balance", "too low", "insufficient", "billing", "payment", "402")
+
+
+def _ttl_secondes(message: str) -> int:
+    """Durée pendant laquelle le drapeau bloque, selon la cause lue dans le message."""
+    blob = (message or "").lower()
+    if any(h in blob for h in _SOLDE_HINTS):
+        return _TTL_SOLDE_MINUTES * 60
+    return _TTL_LIMITE_JOURS * 86400
+
+
 def get_alert() -> dict | None:
-    """Renvoie l'alerte crédit en cours (si récente, < 7 jours), sinon None."""
+    """Renvoie l'alerte d'accès API en cours, ou None si elle a expiré.
+
+    La durée dépend de la cause (cf. _ttl_secondes) : une limite d'usage bloque sept
+    jours, un solde à recharger seulement trente minutes."""
     try:
         data = json.loads(ALERT_FILE.read_text(encoding="utf-8"))
         ts = datetime.fromisoformat(data.get("ts", ""))
-        if (datetime.now(timezone.utc) - ts).days < 7:
+        age = (datetime.now(timezone.utc) - ts).total_seconds()
+        if age < _ttl_secondes(data.get("message") or ""):
             return data
     except Exception:
         return None
