@@ -235,6 +235,12 @@ Principe : **le lecteur d'abord**. La confiance prime sur le clic.
 - Sources **institutionnelles/officielles** : créditées et liées (logo + lien).
 - Sources **presse** (radar) : servent à détecter, **jamais créditées/liées** dans le
   rendu (pas de publicité aux médias concurrents) ; l'info est attribuée à l'acteur primaire.
+  ⛔ **Tier radar désactivé le 2026-08-05** (Franck : « trop de bruit, on garde les
+  sources officielles ») — `config/sources.txt` n'en collecte plus aucun flux (les 14
+  lignes sont commentées) et `scripts/purge_radar.py` écoule le stock déjà en base
+  sans page officielle résolue. Cette section reste la doctrine si le tier est
+  réactivé un jour, et continue de s'appliquer au reliquat de fiches radar déjà
+  publiées ou en base.
 - Images : voir §9.
 
 ### Plusieurs sources pour un même événement — priorité & fusion

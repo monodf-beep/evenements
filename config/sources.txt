@@ -6,14 +6,25 @@
 #   institution = collectivité / institution (ville, département, métropole)
 #   tourisme    = office de tourisme / portail touristique
 #   radar       = presse / Google News (DÉTECTION seule, jamais crédité/lié)
-#     ⚠️ « DÉTECTION seule » est APPLIQUÉ depuis le 2026-08-02 (utils/radar.py, verrou
-#     dans scripts/publish_batch_as.py) : une fiche née d'un flux radar n'est publiée
-#     QUE si le pipeline a résolu sa page OFFICIELLE (url_officiel / matière officielle
-#     lue par scripts/enrich.py). Sinon elle reste en base, non publiée, jamais
-#     supprimée — elle repart dès qu'une résolution aboutit. Auparavant le tier radar
+#     ⚠️ « DÉTECTION seule » a été APPLIQUÉ le 2026-08-02 (utils/radar.py, verrou dans
+#     scripts/publish_batch_as.py) : une fiche née d'un flux radar n'était publiée QUE
+#     si le pipeline avait résolu sa page OFFICIELLE. Auparavant le tier radar
 #     n'empêchait que le CRÉDIT et le LIEN : des articles de presse (faits divers,
 #     conseils municipaux, revues de presse) partaient en ligne comme des événements
-#     (cf. WP#1097, WP#1105). Audit : .venv/bin/python -m scripts.audit_radar_published
+#     (cf. WP#1097, WP#1105).
+#     ⛔ TIER DÉSACTIVÉ le 2026-08-05 (Franck : « trop de bruit, on garde les sources
+#     officielles ») : les 14 flux radar (Google News ×5, presse/guides ×9) sont
+#     COMMENTÉS ci-dessous, plus aucune collecte. `utils/radar.py` et son verrou de
+#     publication restent en place SANS RIEN CASSER : ils continuent de protéger le
+#     stock déjà en base (fiches radar existantes non résolues) — voir
+#     scripts/purge_radar.py pour l'écoulement de ce stock. Les domaines de presse
+#     radar (ledauphine.com, nicerendezvous.com, gazzettamatin.com,
+#     quotidianopiemontese.it) sont désormais dans config/non_institutional_sources.txt
+#     pour que `utils.radar.official_anchor` continue de les refuser comme ancre
+#     officielle même une fois `radar_hosts()` vidé par cette désactivation — sans ce
+#     déplacement, une fiche déjà en base avec `url_officiel` pointant sur le journal
+#     lui-même aurait pu se remettre à paraître « résolue ». Réactiver : décommenter
+#     les lignes ci-dessous.
 # lieu;ville (OPTIONNELS) : pour une source « officielle » (un lieu précis), le lieu
 #   EST la source → renseignés ici, appliqués par défaut (scripts/venues.py, passe 0).
 #   Laisse vide (ou n'écris que la ville) quand le lieu varie (ville, office, festival
@@ -37,7 +48,7 @@ https://www.megeve.com/feed/;Savoie;Megève Tourisme;tourisme
 # réunions de conseil, conventions, inaugurations passées, voirie). La culture 74 vient
 # mieux des musées/scènes/newsletters. Réactiver en retirant le # si besoin.
 # https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie;institution
-https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar);radar
 # NB : 6 pistes Savoie (theatrecharlesdullin.fr, chambery-tourisme.com, citedesarts-chambery.fr,
 # grand-chambery.fr, chateau-annecy.fr, museedumontblanc.com) testées depuis le VPS le
 # 2026-06-30 → domaines morts (DNS/timeout). Écartées.
@@ -48,13 +59,13 @@ https://www.museireali.beniculturali.it/feed/;Piemonte;Musei Reali Torino;offici
 https://www.castellodirivoli.org/feed/;Piemonte;Castello di Rivoli - Arte Contemporanea;officielle;Castello di Rivoli;Rivoli
 https://www.teatrostabiletorino.it/feed/;Piemonte;Teatro Stabile di Torino;officielle;Teatro Stabile;Torino
 https://www.circololettori.it/feed/;Piemonte;Fondazione Circolo dei Lettori;officielle;Circolo dei Lettori;Torino
-https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+Torino+OR+Piemonte&hl=it&gl=IT&ceid=IT:it;Piemonte;Google News - Cultura Torino/Piemonte (radar);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+Torino+OR+Piemonte&hl=it&gl=IT&ceid=IT:it;Piemonte;Google News - Cultura Torino/Piemonte (radar);radar
 
 # ============================== VALLÉE D'AOSTE ================================
 https://www.fortedibard.it/eventi/feed/;Vallee-Aoste;Forte di Bard - Eventi;officielle;Forte di Bard;Bard
 https://www.fortedibard.it/feed/;Vallee-Aoste;Forte di Bard - Notizie;officielle;Forte di Bard;Bard
-https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+%22Valle+d%27Aosta%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura VdA (radar);radar
-https://news.google.com/rss/search?q=cultura+eventi+%22Valle+d%27Aosta%22+OR+%22Vall%C3%A9e+d%27Aoste%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura/Eventi VdA bilingue (radar);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+%22Valle+d%27Aosta%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura VdA (radar);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=cultura+eventi+%22Valle+d%27Aosta%22+OR+%22Vall%C3%A9e+d%27Aoste%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura/Eventi VdA bilingue (radar);radar
 
 # ========================= NICE / ALPES-MARITIMES ============================
 https://www.opera-nice.org/agenda/feed/;Nice;Opéra Nice Côte d'Azur - Agenda;officielle;Opéra de Nice;Nice
@@ -64,7 +75,7 @@ https://www.nicecotedazur.org/feed/;Nice;Métropole Nice Côte d'Azur;institutio
 https://www.nice.fr/feed/;Nice;Ville de Nice;institution
 https://www.grasse.fr/feed/;Nice;Ville de Grasse;institution
 https://www.explorenicecotedazur.com/feed/;Nice;Office de Tourisme Nice Côte d'Azur;tourisme
-https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR+%22Alpes-Maritimes%22&hl=fr&gl=FR&ceid=FR:fr;Nice;Google News - Culture 06 (radar);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR+%22Alpes-Maritimes%22&hl=fr&gl=FR&ceid=FR:fr;Nice;Google News - Culture 06 (radar);radar
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AJOUT 2026-07-01 — recherche multi-agents ville par ville. Flux vérifiés au
@@ -148,17 +159,17 @@ https://jazzajuan.com/feed/;Nice;Jazz à Juan (Antibes);officielle;;Antibes
 # Guides tiers concurrents → tier `radar` (on détecte, on ne crédite/lie jamais).
 # ═════════════════════════════════════════════════════════════════════════════
 https://www.torinoclick.it/feed/;Piemonte;TorinoClick (agence Ville de Turin);tourisme
-https://www.guidatorino.com/feed/;Piemonte;GuidaTorino (guide);radar
-https://www.nicerendezvous.com/actus-culture-2?format=feed&type=rss;Nice;NiceRendezVous - Culture (guide);radar
-https://www.nicerendezvous.com/actus-loisirs-2?format=feed&type=rss;Nice;NiceRendezVous - Loisirs (guide);radar
-https://www.nicerendezvous.com/actus-spectacles-2.feed?type=rss;Nice;NiceRendezVous - Spectacles (guide);radar
-https://www.gazzettamatin.com/category/oggi-domani/appuntamenti/feed/;Vallee-Aoste;Gazzetta Matin - Appuntamenti (agenda);radar
-https://www.aostaoggi.it/eventi?format=feed&type=rss;Vallee-Aoste;Aostaoggi - Eventi (agenda);radar
-https://www.quotidianopiemontese.it/category/eventi/feed/;Piemonte;Quotidiano Piemontese - Eventi (agenda);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.guidatorino.com/feed/;Piemonte;GuidaTorino (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.nicerendezvous.com/actus-culture-2?format=feed&type=rss;Nice;NiceRendezVous - Culture (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.nicerendezvous.com/actus-loisirs-2?format=feed&type=rss;Nice;NiceRendezVous - Loisirs (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.nicerendezvous.com/actus-spectacles-2.feed?type=rss;Nice;NiceRendezVous - Spectacles (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.gazzettamatin.com/category/oggi-domani/appuntamenti/feed/;Vallee-Aoste;Gazzetta Matin - Appuntamenti (agenda);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.aostaoggi.it/eventi?format=feed&type=rss;Vallee-Aoste;Aostaoggi - Eventi (agenda);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.quotidianopiemontese.it/category/eventi/feed/;Piemonte;Quotidiano Piemontese - Eventi (agenda);radar
 # Le Dauphiné : ÉDITIONS LOCALES géo-scopées (73/74) au lieu du flux national
 # « culture-loisirs » qui débordait (Avignon, Pyrénées…). Radar = détection seule.
-https://www.ledauphine.com/savoie/rss;Savoie;Le Dauphiné - Savoie (édition locale);radar
-https://www.ledauphine.com/haute-savoie/rss;Savoie;Le Dauphiné - Haute-Savoie (édition locale);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.ledauphine.com/savoie/rss;Savoie;Le Dauphiné - Savoie (édition locale);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.ledauphine.com/haute-savoie/rss;Savoie;Le Dauphiné - Haute-Savoie (édition locale);radar
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AJOUT 2026-07-01 (3) — TYPES de sources nouveaux (recherche multi-agents) :

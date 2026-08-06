@@ -12,3 +12,15 @@ guidatorino.com
 # 2e alinéa) — même règle que le radar presse pour les événements.
 ici.fr
 aostaoggi.it
+# AJOUTÉS 2026-08-05 (désactivation du tier radar, config/sources.txt) : ces quatre
+# domaines de presse/guides étaient jusque-là reconnus via `utils.radar.radar_hosts()`,
+# qui LIT config/sources.txt pour ses seules lignes `tier=radar`. Une fois ces lignes
+# commentées (plus de collecte), `radar_hosts()` devient vide et ne les protège plus —
+# sans ce déplacement, `utils.radar.official_anchor` aurait pu se remettre à accepter
+# un `url_officiel` pointant sur le journal lui-même comme preuve de résolution
+# officielle (le piège WP#1097/WP#1105, en pire : silencieux). guidatorino.com et
+# aostaoggi.it étaient déjà ici, donc déjà protégés des deux façons.
+ledauphine.com
+nicerendezvous.com
+gazzettamatin.com
+quotidianopiemontese.it
