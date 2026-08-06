@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Fixture : `scripts.audit_substance_published` classe les fiches PUBLIÉES en
+« sous le plancher » / « bande maigre » / publiable, et repère celles jamais
+enrichies — le cas Saint-Ours/WP#2174 trouvé le 2026-08-06 (article_title vide,
+publiée quand même avec la seule description auto-générée).
+
+⚠️ BASE JETABLE — jamais data/events.db. Aucun réseau : `build_post` est monkey-
+patchée (comme tests/test_portillon_substance.py) sur le contenu factice `_html`.
+
+Lancer : .venv/bin/python -m tests.test_audit_substance_published
+"""
+import os
+import sqlite3
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+tmp = Path(tempfile.mkdtemp()) / "fixture.db"
+os.environ["DB_PATH"] = str(tmp)
+
+from scripts.scraper_events import init_db  # noqa: E402
+import scripts.audit_substance_published as audit  # noqa: E402
+
+audit.DB_PATH = tmp
+
+
+def _article(mots: int) -> str:
+    corps = " ".join(f"mot{i}" for i in range(mots))
+    return f"<p>{corps}</p>"
+
+
+def _build_post_factice(ev):
+    return ev.get("title", ""), ev.get("_html", "")
+
+
+audit.build_post = _build_post_factice
+
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+init_db(conn)
+
+# id, title, url_source, wp_post_id_as, article_title, mots
+FICHES = [
+    (1, "Saint-Ours 2026, jamais enrichie", "https://a.fr/1", 999, None, 40),
+    (2, "Publiée avec article court", "https://a.fr/2", 998, "Article court", 60),
+    (3, "Bande maigre, publiable", "https://a.fr/3", 997, "Article moyen", 180),
+    (4, "Bien fournie", "https://a.fr/4", 996, "Bel article", 400),
+    (5, "Maigre mais PAS publiée (wp_post_id_as vide)", "https://a.fr/5", None, None, 20),
+]
+for eid, title, url_source, wp_id, article_title, mots in FICHES:
+    conn.execute(
+        "INSERT INTO events_raw (id, title, url_source, wp_post_id_as, article_title, "
+        "duplicate_of) VALUES (?,?,?,?,?, NULL)",
+        (eid, title, url_source, wp_id, article_title))
+conn.commit()
+conn.close()
+
+# `_html` n'est pas une colonne SQL — on l'ajoute après coup dans le dict que le script
+# lit, en patchant `build_post` pour lire un mapping id → mots au lieu de la colonne.
+_MOTS = {eid: mots for eid, *_r, mots in FICHES}
+
+
+def _build_post_par_id(ev):
+    return ev.get("title", ""), _article(_MOTS[ev["id"]])
+
+
+audit.build_post = _build_post_par_id
+
+echecs = 0
+
+
+def _check(label, cond, detail=""):
+    global echecs
+    if cond:
+        print(f"OK    {label}")
+    else:
+        echecs += 1
+        print(f"ÉCHEC {label} {detail}")
+
+
+rc = audit.main(["--ids"])
+_check("rc=0 (lecture seule, jamais d'échec)", rc == 0)
+
+# Ré-exécute la logique de comptage directement pour vérifier les paniers (le script
+# imprime, il ne renvoie rien — on rejoue son calcul avec les mêmes fonctions).
+import sqlite3 as _sq  # noqa: E402
+conn = _sq.connect(tmp)
+conn.row_factory = _sq.Row
+rows = [dict(r) for r in conn.execute(
+    "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 AND duplicate_of IS NULL")]
+conn.close()
+
+from utils import substance  # noqa: E402
+plancher = substance.plancher()
+sous_plancher = [ev for ev in rows if substance.mots_publies(ev, audit.build_post) < plancher]
+bande_maigre = [ev for ev in rows
+                if plancher <= substance.mots_publies(ev, audit.build_post) < substance.BANDE_MAIGRE]
+
+ids_sous = sorted(ev["id"] for ev in sous_plancher)
+ids_bande = sorted(ev["id"] for ev in bande_maigre)
+
+_check("sous le plancher : id 1 et 2 (40 et 60 mots < 120), pas 5 (pas publiée)",
+       ids_sous == [1, 2], str(ids_sous))
+_check("bande maigre : id 3 (180 mots)", ids_bande == [3], str(ids_bande))
+_check("id 4 (400 mots) n'est dans aucun des deux paniers",
+       4 not in ids_sous and 4 not in ids_bande)
+
+jamais_enrichies = [ev["id"] for ev in sous_plancher if not (ev.get("article_title") or "").strip()]
+_check("« jamais enrichie » repère bien id=1 (article_title vide), pas id=2",
+       jamais_enrichies == [1], str(jamais_enrichies))
+
+print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
+sys.exit(1 if echecs else 0)
