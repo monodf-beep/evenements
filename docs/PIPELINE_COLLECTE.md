@@ -13,7 +13,7 @@ Quatre **canaux** alimentent la même table, par ordre d'importance de matière 
 | Canal | Script | LLM ? | Ce qu'il apporte |
 |---|---|---|---|
 | **Flux RSS** | `scripts/scraper_events.py` | non | le gros du volume : institutions, lieux, offices de tourisme qui exposent un flux |
-| **Radar presse** | `scripts/scraper_events.py` (type `radar`) | non | **détection seule** de signaux via la presse / Google News — jamais crédité ni lié |
+| **Radar presse** ⛔ **DÉSACTIVÉ 2026-08-05** | `scripts/scraper_events.py` (type `radar`) | non | **détection seule** de signaux via la presse / Google News — jamais crédité ni lié |
 | **Newsletters Gmail** | `scripts/gmail_collect.py` | **oui** (extraction) | les programmations publiées **uniquement par email** (théâtres, musées, offices) |
 | **Dossiers de presse** | `scripts/press_kits.py` | non | la **meilleure matière** : PDF, photos avec droits, info avant le public |
 
@@ -93,6 +93,14 @@ L'agent d'enrichissement (`scripts/enrich.py`) puise ensuite dans `press_kits` c
 ---
 
 ## 5. Le radar presse (dimension transverse du RSS)
+
+⛔ **DÉSACTIVÉ le 2026-08-05** (Franck : « trop de bruit, on garde les sources
+officielles »). Les 14 flux radar de `config/sources.txt` sont commentés — plus
+aucune collecte. Le mécanisme décrit ci-dessous reste en place dans le code (il
+protège le stock déjà en base) mais ne s'alimente plus. `scripts/purge_radar.py`
+écoule le stock : 146 fiches non résolues rejetées le jour même, 12 déjà en ligne
+laissées à une décision explicite (voir `scripts/audit_radar_published.py`).
+Réactiver : décommenter les lignes dans `config/sources.txt`.
 
 Le **radar** n'est pas un canal séparé : c'est un `source_type = radar` dans `config/sources.txt` (presse généraliste, Google News). Sa règle est stricte : **détection seule, jamais crédité ni lié** dans les productions (pas de pub aux journaux concurrents ; `utils/sources.py` gère la liste `config/press_domains.txt` et `is_press()`). L'info est attribuée à l'acteur primaire.
 
