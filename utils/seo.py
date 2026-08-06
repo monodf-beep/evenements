@@ -27,6 +27,44 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").strip())
 
 
+# Suffixe de marque imposé par le prompt SEO_PROMPT ci-dessous et par la convention du
+# site (docs/REGLES_SEO_GEO_AEO_AGENDA_SABAUDO.md §1.1 : toute page — hub, catégorie,
+# fiche — se termine par « — Agenda Sabauda »). Budget visé : 50-60 caractères, suffixe
+# INCLUS. Le LLM le respecte la plupart du temps, mais rien ne le garantissait : un titre
+# qui dépasse partait tronqué à 70 caractères pile, sans égard pour un mot coupé en deux
+# ni pour le suffixe lui-même amputé (« — Agenda Sabau »). Corrigé le 2026-08-06 : sous
+# tension de place, on laisse tomber le suffixe de MARQUE en premier — un site encore
+# inconnu ne gagne rien à l'afficher, contrairement au nom de l'événement, qui est ce
+# que la recherche cible réellement (cf. discussion avec Franck sur la préconisation SEO).
+_SUFFIXE_MARQUE = " — Agenda Sabauda"
+_TITRE_SEO_CIBLE = 60
+
+
+def _ajuste_titre_seo(titre: str) -> str:
+    """Fait rentrer `titre` dans le budget visé, SANS jamais couper un mot en deux.
+
+    Ordre des replis, du moins au plus coûteux pour la clarté du titre :
+      1. déjà dans le budget → inchangé ;
+      2. porte le suffixe de marque ET dépasse → suffixe retiré d'abord (c'est lui qui
+         coûte le plus cher, ~18 caractères, pour l'apport le plus faible sur un site
+         sans notoriété) ;
+      3. toujours trop long (nom d'événement déjà long à lui seul) → coupé au dernier
+         mot ENTIER sous la limite, jamais en plein milieu d'un mot.
+    """
+    titre = _clean(titre)
+    if len(titre) <= _TITRE_SEO_CIBLE:
+        return titre
+    if titre.endswith(_SUFFIXE_MARQUE):
+        sans_suffixe = titre[: -len(_SUFFIXE_MARQUE)].rstrip()
+        if sans_suffixe and len(sans_suffixe) <= _TITRE_SEO_CIBLE:
+            return sans_suffixe
+        titre = sans_suffixe or titre
+    if len(titre) <= _TITRE_SEO_CIBLE:
+        return titre
+    coupe = titre[:_TITRE_SEO_CIBLE].rsplit(" ", 1)[0].rstrip(" ,.;:—-")
+    return coupe or titre[:_TITRE_SEO_CIBLE]
+
+
 def slugify(text: str) -> str:
     """Slug SEO : minuscules, accents retirés, mots séparés par des tirets."""
     import unicodedata
@@ -182,7 +220,7 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
     slug = slugify(data.get("seo_slug") or keyphrase or _clean(data.get("seo_title")))
     return {
         "seo_keyphrase": keyphrase[:60],
-        "seo_title": _clean(data.get("seo_title"))[:70],
+        "seo_title": _ajuste_titre_seo(data.get("seo_title"))[:70],
         "seo_slug": slug,
         "seo_meta": _clean(data.get("seo_meta"))[:180],
         "seo_answer": _clean(data.get("seo_answer")),
