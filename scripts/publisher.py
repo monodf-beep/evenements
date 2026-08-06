@@ -100,7 +100,15 @@ def build_post(event: dict) -> tuple[str, str]:
             prog = [prog]
         prog = [str(p).strip() for p in prog if str(p).strip()] if isinstance(prog, list) else []
         if prog:
-            parts.append("<h3>Programme</h3>\n<ul>")
+            # Intitulé de section dans la LANGUE de la fiche — jamais figé en français.
+            # Trouvé le 2026-08-06 : une re-traduction italienne (WP#2174, Fiera di
+            # Sant'Orso) publiait un article intégralement en italien SAUF ce titre de
+            # section, resté « Programme » — le seul texte de tout le rendu qui n'était
+            # PAS produit par translate_article (celui-ci traduit chapo/corps/programme,
+            # jamais ce titre, qui était codé en dur ici, hors de toute portée du LLM).
+            from utils.lang import effective_lang
+            titre_section = "Programma" if effective_lang(event) == "it" else "Programme"
+            parts.append(f"<h3>{titre_section}</h3>\n<ul>")
             parts += [f"<li>{_md_inline(p)}</li>" for p in prog]
             parts.append("</ul>")
         # PAS d'encadré « En pratique » ici : le bloc pratique (Quand/Où/Tarif/Catégorie)
