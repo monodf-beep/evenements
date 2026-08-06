@@ -400,10 +400,15 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
             (tr["title"], tr["description"], tr_art_title, tr_enrich, tw["id"]))
         conn.commit()
         # Met à jour la fiche WP traduite EXISTANTE (garde wp_post_id_as → update, pas de doublon).
+        # skip_media=True : incident réel du 2026-08-06 — cet appel repoussait `url_image`
+        # SANS le demander, écrasant une vraie photo posée à la main par Franck (côté
+        # WordPress, jamais remontée dans `events_raw.url_image`) par la bannière de repli
+        # restée en base. Une re-traduction ne change QUE le texte (titre/description/
+        # article) — même motif que app.py:4025/4321 pour toute republication texte-seule.
         upd = dict(tw)
         upd.update({"title": tr["title"], "description": tr["description"],
                     "article_title": tr_art_title, "enrich_data": tr_enrich, "force_lang": tgt})
-        publish_to_as(upd)
+        publish_to_as(upd, skip_media=True)
         log.info("[jumeau %s] re-traduit (%s) : %s", tw["id"], tgt, tr["title"][:50])
         return "done"
     finally:
