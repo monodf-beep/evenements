@@ -46,7 +46,7 @@ from utils.logger import get_logger
 from utils.lang import detect_lang, effective_lang, titre_semble_intraduit
 from utils.coherence import incoherence_description
 from scripts.scraper_events import init_db
-from scripts.publisher_as import publish_to_as
+from scripts.publisher_as import publish_to_as, wp_original_est_en_ligne
 from scripts.link_translations_as import _post_link
 # Portillon de justesse du titre traduit (C2 de docs/GO_NOGO_TRADUCTION.md). Défini dans
 # batch_report parce que c'est là que vit la doctrine des contrôles de justesse et la
@@ -594,6 +594,25 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
                   (ev.get("ville") or "—")[:20])
         return "refus"
     log.debug("[%s] titre traduit : %s (%s)", ev["id"], verdict, motif)
+
+    # PORTILLON — l'original doit être PUBLIC sur WordPress au moment où on crée sa
+    # traduction (incident WP#7286, 2026-08-06) : WP#6355 était à la corbeille depuis
+    # deux jours, en attente d'une décision, quand le run du matin a quand même publié
+    # son jumeau italien — un original absent avec une traduction bien visible.
+    # Même asymétrie que le portillon de justesse au-dessus : le coût d'un faux refus
+    # est un jour de retard (translated_at reste vide, nouvelle tentative au run
+    # suivant, y compris si Franck restaure l'original entre-temps) ; le coût d'un
+    # faux passage est une fiche orpheline en ligne, exactement l'incident ci-dessus.
+    # Ne s'applique QUE si l'original a déjà un wp_post_id_as : un original jamais
+    # publié est une autre situation, hors de ce qui a été cassé ici.
+    orig_wp_id = ev.get("wp_post_id_as")
+    if orig_wp_id and not wp_original_est_en_ligne(orig_wp_id):
+        log.warning("[%s] REFUS — l'original WP#%s n'est plus 'publish' sur WordPress "
+                   "(corbeille, dépublié, ou injoignable) : créer sa traduction "
+                   "produirait un jumeau public d'un original absent. Rien n'a été "
+                   "publié ; translated_at reste vide, nouvelle tentative au run "
+                   "suivant.", ev["id"], orig_wp_id)
+        return "refus"
 
     new_ev = dict(ev)
     new_ev.update({

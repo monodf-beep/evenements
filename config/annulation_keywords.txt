@@ -9,6 +9,15 @@
 #
 # Décision du 2026-08-05 (Franck) : une annulation ne se DEVINE pas sur un seul
 # titre de presse — elle s'ALERTE, et se confirme à la main.
+#
+# RETIRÉ le 2026-08-06 : « report »/« reporté »/« reportée »/« reportés »/
+# « reportées ». Malgré la limite de mot (\breport\b, docs/EVENEMENTS_ANNULES.md),
+# ce sont des mots français trop courants pour signaler une annulation à eux
+# seuls — la clause météo « report en cas de pluie », omniprésente dans les
+# titres de presse d'événements en plein air, la déclenche à chaque fois. Bilan
+# du 2026-08-06 8h45-8h55 : 92 alertes « annulation suspectée », audit_annulations
+# en confirme 0 réellement en attente. Canal noyé, aucune valeur ajoutée.
+# « annulé » reste : bien plus univoque, jamais vu comme faux positif.
 
 # ── Français ──
 annulé
@@ -16,11 +25,6 @@ annulée
 annulés
 annulées
 annulation
-report
-reporté
-reportée
-reportés
-reportées
 
 # ── Italien ──
 annullato

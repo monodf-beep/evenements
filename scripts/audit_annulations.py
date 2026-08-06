@@ -7,7 +7,7 @@ ETATS_TERMINAUX.md). scripts.dedupe bloque la fusion et alerte une fois sur Slac
 oubliée est exactement l'incident « LES 7 PROCHAINS JOURS : 0 carte » sous une
 autre forme. Ce script recompte, à chaque passage, tout ce qui reste en attente.
 
-DEUX ROUVREURS, parce que la fiche VISÉE n'est pas toujours publiée au moment du
+TROIS ROUVREURS, parce que la fiche VISÉE n'est pas toujours publiée au moment du
 signal (le dedupe quotidien tourne SANS --rescan — il compare des fiches encore
 'pending' entre elles, donc la plupart des suspicions naissent AVANT publication) :
 
@@ -16,6 +16,13 @@ signal (le dedupe quotidien tourne SANS --rescan — il compare des fiches encor
     plus aujourd'hui (`wp_post_id_as` vidé, par reconcile_wp_deleted ou une
     dépublication manuelle — les deux le vident SANS changer `statut`, vérifié
     dans reconcile_wp_deleted.py) OU son statut est devenu rejected/merged ;
+  • AUTOMATIQUE — le marqueur qui a déclenché le signal ne fait plus partie de
+    config/annulation_keywords.txt (2026-08-06 : retrait de « report », mot trop
+    courant — 92 alertes le 06/08, 0 confirmée). On recalcule sur le TITRE
+    ARCHIVÉ de la fiche suspecte avec la liste ACTUELLE : si le marqueur ne
+    matche plus, le signal n'aurait jamais dû partir, il se clôt tout seul.
+    Une vraie suspicion (« annulé », toujours dans la liste) n'est jamais
+    touchée par cette voie.
   • MANUEL — dans tous les autres cas (visée jamais publiée au moment du signal :
     sa perte de wp_post_id_as ne prouverait rien, elle n'en avait pas), rien ne
     peut deviner qu'un humain a vérifié : `--resolu <id de la fiche SUSPECTE>`
@@ -43,6 +50,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils.annulation import load_annulation_filter, marqueur_annulation
 from scripts.scraper_events import init_db
 
 log = get_logger("audit-annulations")
@@ -86,7 +94,9 @@ def main(argv=None) -> int:
         "WHERE COALESCE(annulation_detectee_at,'') <> ''"
     ).fetchall()]
 
-    en_attente, resolues_auto = [], 0
+    annulation_re = load_annulation_filter()
+
+    en_attente, resolues_auto, resolues_mot_cle_obsolete = [], 0, 0
     for suspect in rows:
         visee_id = suspect.get("annulation_fiche_visee_id")
         visee = conn.execute(
@@ -106,10 +116,23 @@ def main(argv=None) -> int:
         if resolu:
             resolues_auto += 1
             continue
+        # 4. le marqueur qui a produit le signal n'est plus dans la liste actuelle
+        #    (ex. « report », retiré le 2026-08-06). Recalcul sur le titre ARCHIVÉ
+        #    de la fiche suspecte elle-même, pas sur la fiche visée.
+        if marqueur_annulation(suspect.get("title", ""), annulation_re) is None:
+            resolues_mot_cle_obsolete += 1
+            conn.execute(
+                "UPDATE events_raw SET annulation_detectee_at=NULL, "
+                "annulation_source_url=NULL, annulation_fiche_visee_id=NULL "
+                "WHERE id=?", (suspect["id"],))
+            continue
         en_attente.append((suspect, dict(visee)))
+    if resolues_mot_cle_obsolete:
+        conn.commit()
 
-    log.info("%d suspicion(s) au total, %d résolue(s) automatiquement, %d encore EN "
-             "ATTENTE.", len(rows), resolues_auto, len(en_attente))
+    log.info("%d suspicion(s) au total, %d résolue(s) automatiquement, %d clôturée(s) "
+             "(marqueur retiré de la liste), %d encore EN ATTENTE.",
+             len(rows), resolues_auto, resolues_mot_cle_obsolete, len(en_attente))
     for suspect, visee in en_attente:
         log.info("  suspect [%s] → fiche visée [%s] « %s » — signal du %s, source : %s",
                  suspect["id"], suspect.get("annulation_fiche_visee_id"),

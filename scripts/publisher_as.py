@@ -62,6 +62,41 @@ def _headers(auth) -> dict:
     return {**_UA, "X-CS-Auth": token}
 
 
+def wp_original_est_en_ligne(wp_post_id) -> bool:
+    """True SEULEMENT si wp_post_id est confirmé `publish` sur WordPress maintenant.
+
+    Incident du 2026-08-06 : WP#7286 (traduction italienne) a été publié alors que
+    son original français WP#6355 était à la corbeille depuis deux jours (suspicion
+    d'annulation non tranchée) — un jumeau public d'un original absent, sans que
+    rien ne l'ait empêché. translate_events.py appelle ceci AVANT de créer la
+    traduction (cf. son commentaire d'appel pour l'asymétrie du refus).
+
+    Même requête REST que scripts/audit_wp_ghosts.py (wp/v2/tribe_events/{id},
+    _fields=id,status) : ne pas réinventer une deuxième façon d'interroger WP.
+
+    TOUTE INCERTITUDE RÉPOND FALSE — réseau, credentials absents, 404 — jamais
+    d'exception levée. Coût d'un faux refus : la traduction attend le run suivant.
+    Coût d'un faux passage : une fiche orpheline en ligne, l'incident lui-même.
+    Même asymétrie que le portillon de justesse du titre, juste au-dessus dans ce
+    module et dans translate_events.py — assumée pour la même raison."""
+    wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
+    auth = (os.getenv("WP_AS_USER", ""), os.getenv("WP_AS_APP_PASSWORD", ""))
+    if not wp_post_id or not wp_url:
+        return False
+    try:
+        r = requests.get(f"{wp_url}/wp-json/wp/v2/tribe_events/{int(wp_post_id)}",
+                         params={"_fields": "id,status"}, auth=auth,
+                         headers=_headers(auth), timeout=20)
+    except requests.RequestException:
+        return False
+    if r.status_code != 200:
+        return False
+    try:
+        return (r.json() or {}).get("status") == "publish"
+    except ValueError:
+        return False
+
+
 def _is_free(prix: str) -> int:
     return 1 if (prix or "").strip().lower() in _FREE else 0
 
