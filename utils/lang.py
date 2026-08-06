@@ -87,6 +87,30 @@ def _score(text: str) -> tuple[int, int]:
     return fr, it
 
 
+def titre_semble_intraduit(titre: str, cible: str) -> bool:
+    """True si le TITRE porte un marqueur décisif de l'AUTRE langue que `cible`
+    ('fr'/'it') — signe qu'il n'a pas été traduit (LLM qui a recopié le titre source
+    tel quel, ou traduit la description sans toucher au titre).
+
+    TROUVÉ le 2026-08-06 : WP#2174 « La Saint-Ours 2026 - Rendez Vous en Vallée
+    d'Aoste » publié comme fiche ITALIENNE avec un titre resté en français, alors que
+    sa description, elle, était de l'italien correct. `detect_lang(titre, description)`
+    n'aurait RIEN vu : la description, plus longue, noie le signal du titre — c'est
+    justement pourquoi cette fonction ne regarde QUE le titre, jamais combiné.
+
+    Volontairement peu bavarde sur un titre NEUTRE (nom propre sans marqueur d'aucune
+    langue — « Katy Perry », « Orelsan ») : il vaut mieux laisser passer un titre que
+    cette heuristique ne sait pas juger que refuser un nom propre légitime qui n'a
+    justement RIEN à traduire. Un seul marqueur net et dominant suffit à signaler
+    (contrairement à `detect_lang`, qui exige une marge de 2 avant de trancher) : le
+    coût d'un faux refus est un jour de retard (translated_at reste vide, la fiche se
+    représente au run suivant) ; le coût d'un faux passage est une fiche bilingue
+    cassée en ligne, ce que ce contrôle existe pour éviter."""
+    fr, it = _score(titre)
+    autre, decompte_cible = (fr, it) if cible == "it" else (it, fr)
+    return autre >= 1 and autre > decompte_cible
+
+
 def detect_lang(title: str = "", description: str = "", territoire: str = "") -> str:
     """Renvoie 'fr' ou 'it'. Le TITRE (pesé ×3) prime : un titre nettement dans une
     langue l'emporte, même si la description bruite. À égalité, on regarde titre+desc,

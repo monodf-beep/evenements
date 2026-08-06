@@ -43,7 +43,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.lang import detect_lang, effective_lang
+from utils.lang import detect_lang, effective_lang, titre_semble_intraduit
 from utils.coherence import incoherence_description
 from scripts.scraper_events import init_db
 from scripts.publisher_as import publish_to_as
@@ -366,6 +366,15 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
                                   orig.get("description", "") or "", tgt, voix)
         if not tr:
             return "error"
+        # PORTILLON DE LANGUE — même garde que _translate_one_interne, même raison
+        # (WP#2174, 2026-08-06) : un titre recopié tel quel passerait le portillon de
+        # justesse ci-dessous sans broncher (il partage trivialement tous ses mots
+        # avec l'original), donc il faut le vérifier ICI, séparément.
+        if titre_semble_intraduit(tr["title"], tgt):
+            log.error("[jumeau %s] REFUS — le titre re-\"traduit\" est resté dans "
+                      "l'autre langue (cible %s) : « %s ». Fiche laissée intacte.",
+                      tw["id"], tgt, tr["title"][:70])
+            return "refus"
         tr_enrich = tr_art_title = ""
         src_enrich = (orig.get("enrich_data") or "").strip()
         if src_enrich:
@@ -515,6 +524,19 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
                               ev.get("description", "") or "", tgt, voix)
     if not tr:
         return "error"
+    # PORTILLON DE LANGUE — trouvé le 2026-08-06 (WP#2174, « La Saint-Ours 2026 -
+    # Rendez Vous en Vallée d'Aoste » publié comme fiche ITALIENNE avec un titre resté
+    # en français, sa description ayant elle bien été traduite). AVANT l'article
+    # (économise le second appel LLM quand le titre a déjà manifestement échoué) et
+    # AVANT le portillon de justesse plus bas, qui compare l'IDENTITÉ du titre à
+    # l'original mais ne vérifie jamais sa LANGUE — un titre recopié tel quel « partage »
+    # trivialement tous ses mots avec l'original, donc passait ce contrôle-là sans
+    # broncher. Même non-terminalité que les autres refus de cette fonction :
+    # translated_at reste vide, la fiche se représente au run suivant.
+    if titre_semble_intraduit(tr["title"], tgt):
+        log.error("[%s] REFUS — le titre \"traduit\" est resté en %s (cible %s) : "
+                  "« %s ». Rien n'a été publié.", ev["id"], src, tgt, tr["title"][:70])
+        return "refus"
     # Parité éditoriale : si la source porte un article enrichi (enrich_data), on le
     # TRADUIT pour que la fiche cible reçoive le même « escalier » que la version FR
     # (build_post le rend depuis enrich_data). Repli : sans enrich_data, on retombe
