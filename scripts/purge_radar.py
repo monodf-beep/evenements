@@ -90,7 +90,13 @@ def main(argv=None) -> int:
         log.error("Base introuvable : %s (data/ est hors dépôt Git — lancer sur le VPS).", DB_PATH)
         return 1
 
-    conn = sqlite3.connect(DB_PATH)
+    # timeout=30 : incident réel du 2026-08-06 (VPS, --apply) — "database is locked" au
+    # tout premier UPDATE, un cron concurrent (le délai par défaut de sqlite3, 5s, était
+    # trop court un jeudi matin chargé). SQLite retente tout seul jusqu'à `timeout`
+    # avant de lever l'erreur ; les autres scripts d'écriture du dépôt (purge_out_of_
+    # zone.py, dedupe.py…) n'en fixent aucun et héritent donc du défaut — celui-ci est
+    # plus exposé (146 UPDATE dans le même executemany, donc une fenêtre plus longue).
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     a_purger, en_ligne = fiches_radar(conn)
 
