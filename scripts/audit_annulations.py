@@ -56,6 +56,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils.annulation import load_annulation_filter, marqueur_annulation
 from scripts.scraper_events import init_db
+from scripts.dedupe import ensure_annulation_columns
 
 log = get_logger("audit-annulations")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -71,6 +72,13 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     init_db(conn)
+    # Ne PAS supposer que dedupe.py (canal 2) a déjà tourné aujourd'hui et créé les
+    # colonnes annulation_* — même leçon que wp_deleted_at/annule_le, déjà reproduite
+    # deux fois dans ce dépôt : une colonne créée par un seul script devient une
+    # dépendance implicite qui casse tout autre script qui la lit en premier. Trouvé le
+    # 2026-08-08 : `git pull` puis lancement direct d'audit_annulations, sans qu'aucun
+    # cron n'ait encore tourné → "no such column: annulation_marqueur".
+    ensure_annulation_columns(conn)
 
     if args.resolu is not None:
         row = conn.execute(
