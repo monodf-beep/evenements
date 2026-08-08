@@ -166,8 +166,22 @@ def auditer(row: dict, session: requests.Session) -> list[tuple[str, str]]:
         # la corbeille côté WordPress sans que `wp_post_id_as` soit remis à zéro. La
         # fiche est donc invisible pour le visiteur ET considérée comme déjà publiée par
         # le pipeline, qui ne la republiera jamais. C'est un mort silencieux.
-        suite = (" — le post n'existe plus côté WordPress alors que la base le croit "
-                 "publié : vider wp_post_id_as pour qu'il reparte au prochain lot"
+        # ⚠️ CE MESSAGE DISAIT « vider wp_post_id_as pour qu'il reparte au prochain
+        # lot » — CORRIGÉ le 2026-08-08 : c'est le mauvais geste dans le cas
+        # MAJORITAIRE, et il fabrique un doublon. Un 404 sur le front-end ne
+        # distingue PAS la corbeille de la suppression (règle 1 de CLAUDE.md) ; or le
+        # seul relevé complet jamais fait, celui du 2026-08-02, a trouvé 61 fiches
+        # dans ce cas et 61 à la CORBEILLE, zéro réellement supprimée. Vider
+        # `wp_post_id_as` sur un post corbeillé coupe le seul lien vers le post à
+        # restaurer ET fait recréer une fiche neuve au lot suivant : le post
+        # corbeillé reste, plus un nouveau à côté.
+        # On nomme donc l'outil qui SAIT trancher — il interroge l'API REST, seule à
+        # séparer les trois états, et applique le traitement propre à chacun.
+        suite = (" — le post ne répond plus alors que la base le croit publié. "
+                 "NE PAS vider wp_post_id_as à la main (si le post est seulement à la "
+                 "corbeille, ça fabrique un doublon) : lancer "
+                 "`.venv/bin/python -m scripts.reconcile_wp_deleted` (dry-run), qui "
+                 "distingue corbeille et suppression via l'API REST"
                  if resp.status_code == 404 else "")
         return [("grave", f"HTTP {resp.status_code} sur {url}{suite}")]
     # Une redirection n'est pas une erreur pour le visiteur, mais elle signale un
