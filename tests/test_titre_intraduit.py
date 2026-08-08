@@ -49,20 +49,32 @@ def _check(label, cond, detail=""):
 # ── 1. titre_semble_intraduit, cas réels ────────────────────────────────────────
 print("──── titre_semble_intraduit sur des cas réels (base de production) ────")
 CAS = [
-    # (titre, cible, doit_signaler)
-    ("La Saint-Ours 2026 - Rendez Vous en Vallée d'Aoste", "it", True),   # le vrai cas
-    ("Katy Perry", "it", False),                        # nom propre, rien à traduire
-    ("Orelsan", "it", False),
-    ("60 minuti di violoncello", "fr", False),           # italien correct, cible fr...
-    # ...mais le titre lui-même n'a aucun marqueur net → pas signalé (abstention, pas
-    # une preuve que la traduction a marché : `verdict_titre_traduit` reste le filet
-    # de cohérence, celui-ci ne juge QUE le cas où un marqueur nie la cible).
-    ("Visita al Castello di Montrottier", "it", False),  # bien traduit vers l'IT
-    ("Le 44TFF sera dédié à Marilyn Monroe", "fr", False),  # bien traduit vers le FR
+    # (titre produit, titre SOURCE, cible, doit_signaler)
+    # LE VRAI BUG (WP#2174) : titre recopié mot pour mot depuis l'original français.
+    ("La Saint-Ours 2026 - Rendez Vous en Vallée d'Aoste",
+     "La Saint-Ours 2026 - Rendez Vous en Vallée d'Aoste", "it", True),
+    # LE FAUX POSITIF DU 2026-08-08 (fiche 3588, refusée à tort en production) :
+    # « compie 50 anni » est de l'italien correct, la traduction a fonctionné — seul
+    # « Rencontre », NOM PROPRE de l'événement, portait un marqueur français. Un nom
+    # propre français reste français en version italienne, c'est la règle en Vallée
+    # d'Aoste bilingue. Le titre a bien été RÉÉCRIT (< 80 % de mots repris) → pas de refus.
+    ("La Rencontre Valdôtaine compie 50 anni",
+     "La Rencontre Valdôtaine fête ses 50 ans", "it", False),
+    # Nom propre pur, identique des deux côtés : recopié, mais il n'y a RIEN à traduire
+    # — score neutre (0,0), donc jamais signalé malgré la reprise à 100 %.
+    ("Katy Perry", "Katy Perry", "it", False),
+    ("Orelsan", "Orelsan", "it", False),
+    # Traductions normales, dans les deux sens.
+    ("Visita al Castello di Montrottier", "Visite au Château de Montrottier", "it", False),
+    ("60 minutes de violoncelle", "60 minuti di violoncello", "fr", False),
+    ("Le 44TFF sera dédié à Marilyn Monroe",
+     "Il 44TFF sarà dedicato a Marilyn Monroe", "fr", False),
+    # Sans titre source, on ne peut rien conclure : silence plutôt que devinette.
+    ("La Saint-Ours 2026 - Rendez Vous en Vallée d'Aoste", "", "it", False),
 ]
-for titre, cible, attendu in CAS:
-    obtenu = titre_semble_intraduit(titre, cible)
-    _check(f"cible={cible} « {titre[:45]} » → signalé={obtenu}", obtenu == attendu,
+for titre, source, cible, attendu in CAS:
+    obtenu = titre_semble_intraduit(titre, cible, source)
+    _check(f"cible={cible} « {titre[:42]} » → signalé={obtenu}", obtenu == attendu,
           f"attendu {attendu}")
 
 # ── 2. Câblage dans _translate_one_interne : REFUS, rien publié, rien écrit ─────

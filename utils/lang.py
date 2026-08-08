@@ -87,25 +87,57 @@ def _score(text: str) -> tuple[int, int]:
     return fr, it
 
 
-def titre_semble_intraduit(titre: str, cible: str) -> bool:
-    """True si le TITRE porte un marqueur décisif de l'AUTRE langue que `cible`
-    ('fr'/'it') — signe qu'il n'a pas été traduit (LLM qui a recopié le titre source
-    tel quel, ou traduit la description sans toucher au titre).
+# Part des mots du titre traduit déjà présents dans le titre SOURCE au-delà de laquelle
+# on considère que le traducteur n'a pas réécrit le titre, il l'a RECOPIÉ. 0.8 laisse
+# passer un mot changé sur cinq — au-dessus, ce n'est plus une traduction.
+_SEUIL_COPIE = 0.8
+
+
+def _tokens_titre(s: str) -> set[str]:
+    return set(re.findall(r"\w+", _strip_accents(s or "").lower(), re.UNICODE))
+
+
+def titre_semble_intraduit(titre: str, cible: str, titre_source: str = "") -> bool:
+    """True si le titre traduit est en réalité une RECOPIE du titre source resté dans
+    la mauvaise langue — pas simplement un titre qui contient un mot de l'autre langue.
 
     TROUVÉ le 2026-08-06 : WP#2174 « La Saint-Ours 2026 - Rendez Vous en Vallée
-    d'Aoste » publié comme fiche ITALIENNE avec un titre resté en français, alors que
-    sa description, elle, était de l'italien correct. `detect_lang(titre, description)`
-    n'aurait RIEN vu : la description, plus longue, noie le signal du titre — c'est
-    justement pourquoi cette fonction ne regarde QUE le titre, jamais combiné.
+    d'Aoste » publié comme fiche ITALIENNE avec un titre resté MOT POUR MOT celui de
+    l'original français, alors que sa description, elle, était de l'italien correct.
+    `detect_lang(titre, description)` n'aurait RIEN vu : la description, plus longue,
+    noie le signal du titre — d'où une fonction qui ne regarde que le titre.
 
-    Volontairement peu bavarde sur un titre NEUTRE (nom propre sans marqueur d'aucune
-    langue — « Katy Perry », « Orelsan ») : il vaut mieux laisser passer un titre que
-    cette heuristique ne sait pas juger que refuser un nom propre légitime qui n'a
-    justement RIEN à traduire. Un seul marqueur net et dominant suffit à signaler
-    (contrairement à `detect_lang`, qui exige une marge de 2 avant de trancher) : le
-    coût d'un faux refus est un jour de retard (translated_at reste vide, la fiche se
-    représente au run suivant) ; le coût d'un faux passage est une fiche bilingue
-    cassée en ligne, ce que ce contrôle existe pour éviter."""
+    ⚠️ CORRIGÉ le 2026-08-08, sur un faux positif en production. La première version ne
+    regardait QUE le titre produit et refusait dès qu'il portait un marqueur de la
+    langue source. Elle a bloqué « La Rencontre Valdôtaine compie 50 anni » (fiche
+    3588) : « compie 50 anni » est de l'italien correct, la traduction avait
+    parfaitement fonctionné — c'est « Rencontre », NOM PROPRE de l'événement, qui
+    déclenchait le marqueur. Or un nom propre français reste français dans la version
+    italienne, c'est la règle, pas l'exception, en Vallée d'Aoste bilingue.
+
+    Et le coût d'un faux refus n'est PAS « un jour de retard » comme le disait la
+    version d'origine : le LLM reproduit un titre équivalent au run suivant, donc la
+    fiche est refusée de nouveau, tous les jours, indéfiniment — un cul-de-sac sans
+    rouvreur (règle 3 de CLAUDE.md), qui brûle en plus deux appels API par passage.
+    C'est ce qui impose la PRÉCISION ici, pas la sensibilité.
+
+    D'où le critère corrigé : on ne compare plus le titre à un dictionnaire, on le
+    compare à SA SOURCE. Refus seulement si les DEUX conditions tiennent :
+      1. le titre produit reprend ≥ 80 % des mots du titre source (il l'a recopié,
+         pas réécrit) ;
+      2. ET ce qui en résulte porte un marqueur de la langue SOURCE, dominant.
+    La condition 2 seule laissait passer le cas Rencontre ; la condition 1 seule
+    refuserait « Katy Perry » (identique des deux côtés, mais un nom propre n'a rien
+    à traduire — d'où le score neutre (0,0) qui le sauve).
+
+    `titre_source` absent : on ne peut rien conclure, on se tait (False)."""
+    if not titre_source:
+        return False
+    toks = _tokens_titre(titre)
+    if not toks:
+        return False
+    if len(toks & _tokens_titre(titre_source)) / len(toks) < _SEUIL_COPIE:
+        return False                      # titre réellement réécrit : rien à signaler
     fr, it = _score(titre)
     autre, decompte_cible = (fr, it) if cible == "it" else (it, fr)
     return autre >= 1 and autre > decompte_cible

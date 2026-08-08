@@ -370,7 +370,7 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
         # (WP#2174, 2026-08-06) : un titre recopié tel quel passerait le portillon de
         # justesse ci-dessous sans broncher (il partage trivialement tous ses mots
         # avec l'original), donc il faut le vérifier ICI, séparément.
-        if titre_semble_intraduit(tr["title"], tgt):
+        if titre_semble_intraduit(tr["title"], tgt, orig.get("title", "")):
             log.error("[jumeau %s] REFUS — le titre re-\"traduit\" est resté dans "
                       "l'autre langue (cible %s) : « %s ». Fiche laissée intacte.",
                       tw["id"], tgt, tr["title"][:70])
@@ -538,7 +538,7 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
     # trivialement tous ses mots avec l'original, donc passait ce contrôle-là sans
     # broncher. Même non-terminalité que les autres refus de cette fonction :
     # translated_at reste vide, la fiche se représente au run suivant.
-    if titre_semble_intraduit(tr["title"], tgt):
+    if titre_semble_intraduit(tr["title"], tgt, ev.get("title", "")):
         log.error("[%s] REFUS — le titre \"traduit\" est resté en %s (cible %s) : "
                   "« %s ». Rien n'a été publié.", ev["id"], src, tgt, tr["title"][:70])
         return "refus"
