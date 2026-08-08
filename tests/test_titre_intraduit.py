@@ -105,6 +105,12 @@ class _Args:
 
 appels_publish = []
 te.publish_to_as = lambda ev: (appels_publish.append(ev) or (0, "", ""))
+# Portillon SÉPARÉ (WP#7286, 2026-08-06) : l'original doit être 'publish' sur
+# WordPress au moment de la traduction — sans réseau ni WP_AS_URL en test, il
+# répond toujours False. Neutralisé ici pour isoler CE test sur son propre
+# portillon (la langue), pas sur celui-là — cf. tests/test_wp_original_en_ligne.py
+# pour sa propre fixture dédiée.
+te.wp_original_est_en_ligne = lambda wp_id: True
 # Le titre "traduit" reste identique au français — exactement le bug réel.
 te.translate_title_desc = lambda *a, **k: {
     "title": "La Saint-Ours 2026 - Rendez Vous en Vallée d'Aoste",
