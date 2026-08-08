@@ -331,7 +331,22 @@ def ensure_annulation_columns(conn: sqlite3.Connection) -> None:
     for col, decl in (("annulation_detectee_at", "TEXT"),
                       ("annulation_source_url", "TEXT"),
                       ("annulation_fiche_visee_id", "INTEGER"),
-                      ("annulation_visee_etait_publiee", "INTEGER")):
+                      ("annulation_visee_etait_publiee", "INTEGER"),
+                      # AJOUTÉE le 2026-08-08 : le texte EXACT matché par marqueur_
+                      # annulation() au moment du signal — jusqu'ici calculé puis
+                      # jeté (seulement utilisé pour le message Slack). Sans lui,
+                      # scripts.audit_annulations ne pouvait vérifier la fraîcheur
+                      # d'un marqueur qu'en re-scannant le TITRE de la fiche
+                      # suspecte — correct pour ce canal 2 (le marqueur y est PAR
+                      # CONSTRUCTION dans le titre de l'article), mais faux pour le
+                      # canal 3 (scripts/dates.py, venues.py) : là, le marqueur
+                      # vient du TEXTE DE LA PAGE, jamais copié dans la colonne
+                      # `title` — le re-scan y échouait toujours, et CHAQUE
+                      # suspicion du canal 3 se refermait donc automatiquement au
+                      # premier passage d'audit_annulations, quel que soit l'état
+                      # réel du marqueur dans la liste. Trouvé en relançant
+                      # tests/test_annulation_canal3.py après un rebase.
+                      ("annulation_marqueur", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
@@ -376,9 +391,9 @@ def _porte_annulation(conn: sqlite3.Connection, group: list[dict], annulation_re
             conn.execute(
                 "UPDATE events_raw SET annulation_detectee_at=datetime('now'), "
                 "annulation_source_url=?, annulation_fiche_visee_id=?, "
-                "annulation_visee_etait_publiee=? WHERE id=?",
+                "annulation_visee_etait_publiee=?, annulation_marqueur=? WHERE id=?",
                 (e.get("url_source", ""), winner["id"],
-                 1 if winner.get("wp_post_id_as") else 0, e["id"]))
+                 1 if winner.get("wp_post_id_as") else 0, marqueur, e["id"]))
             conn.commit()
             if winner.get("wp_post_id_as"):
                 etat_fiche = f"déjà publiée (id {winner['id']}, WP#{winner['wp_post_id_as']})"

@@ -127,9 +127,9 @@ def signale_annulation_page(conn: sqlite3.Connection, event: dict, texte: str,
     conn.execute(
         "UPDATE events_raw SET annulation_detectee_at=datetime('now'), "
         "annulation_source_url=?, annulation_fiche_visee_id=?, "
-        "annulation_visee_etait_publiee=? WHERE id=?",
+        "annulation_visee_etait_publiee=?, annulation_marqueur=? WHERE id=?",
         (event.get("url_source", ""), event["id"],
-         1 if event.get("wp_post_id_as") else 0, event["id"]))
+         1 if event.get("wp_post_id_as") else 0, marqueur, event["id"]))
     conn.commit()
     slack.notify(
         f"🔴 *Annulation suspectée* — « {(event.get('title') or '')[:80]} »\n"

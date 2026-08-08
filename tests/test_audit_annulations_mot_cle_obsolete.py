@@ -11,8 +11,17 @@ confirmée par audit_annulations, toutes déclenchées par la clause météo « 
 cas de pluie », omniprésente dans les titres de presse d'événements en plein air. Le
 canal Slack était noyé. Mais retirer le mot de la LISTE ne clôt pas les 92 suspicions
 DÉJÀ posées en base — elles resteraient à bloquer des fusions pour un marqueur qui
-n'existe plus. Ce test prouve la reconciliation : audit_annulations recalcule le
-marqueur sur le TITRE ARCHIVÉ avec la liste ACTUELLE, et clôt ce qui ne matche plus.
+n'existe plus. Ce test prouve la reconciliation : audit_annulations revérifie le texte
+EXACT matché à l'époque (`annulation_marqueur`, posé par dedupe.py/dates.py au moment
+du signal) contre la liste ACTUELLE, et clôt ce qui ne matche plus.
+
+⚠️ CORRIGÉ le 2026-08-08 : la première version de ce test (et du code qu'il vérifiait)
+recalculait le marqueur en re-scannant le TITRE ARCHIVÉ de la fiche suspecte — correct
+ici par construction (canal 2 : le marqueur est TOUJOURS dans le titre de l'article),
+mais faux pour le canal 3 (scripts/dates.py, venues.py), où le marqueur vient du TEXTE
+DE LA PAGE et n'est jamais copié dans `title` — CHAQUE suspicion du canal 3 se fermait
+donc automatiquement au premier passage, quel que soit l'état réel du marqueur. Trouvé
+en relançant tests/test_annulation_canal3.py après le rebase qui a introduit ce test.
 
 Ce test lit le VRAI config/annulation_keywords.txt du dépôt (pas une liste de test) :
 c'est la garantie que « report » y est bien absent et « annulé » toujours présent
@@ -71,17 +80,32 @@ FICHES = [
     (2, "Musical'été : un report en cas de pluie", "pending", None),
     # 3: suspect TOUJOURS VALIDE — même situation, mot différent, ne doit PAS bouger.
     (3, "Festival des Nuits Alpines annulé", "pending", None),
+    # 4: suspect ANCIEN — posé AVANT l'ajout de la colonne annulation_marqueur
+    #    (2026-08-08), donc SANS elle : rien ne prouve que son marqueur est
+    #    obsolète, il doit rester EN ATTENTE plutôt qu'être fermé à l'aveugle.
+    (4, "Musical'été : un autre report en cas de pluie", "pending", None),
 ]
 for eid, titre, statut, wp in FICHES:
     conn.execute(
         "INSERT INTO events_raw (id, title, description, url_source, territoire, "
         "statut, wp_post_id_as) VALUES (?,?,?,?,?,?,?)",
         (eid, titre, "matière quelconque", f"https://x.fr/{eid}", "Savoie", statut, wp))
-for suspect_id in (2, 3):
+# annulation_marqueur : le texte EXACT que dedupe.py/dates.py auraient persisté au
+# moment du signal (posé le 2026-08-08 — absent, le suspect ne serait plus jamais
+# vérifiable, cf. le repli « ne pas deviner » d'audit_annulations pour ce cas-là).
+for suspect_id, marqueur in ((2, "report"), (3, "annulé")):
     conn.execute(
         "UPDATE events_raw SET annulation_detectee_at=?, annulation_source_url=?, "
-        "annulation_fiche_visee_id=1, annulation_visee_etait_publiee=0 WHERE id=?",
-        ("2026-08-04 14:01:00", f"https://x.fr/{suspect_id}", suspect_id))
+        "annulation_fiche_visee_id=1, annulation_visee_etait_publiee=0, "
+        "annulation_marqueur=? WHERE id=?",
+        ("2026-08-04 14:01:00", f"https://x.fr/{suspect_id}", marqueur, suspect_id))
+# Le suspect 4 n'a délibérément PAS d'annulation_marqueur (ligne posée avant l'ajout
+# de la colonne) — seuls detectee_at/visee/source sont posés, comme le faisaient
+# dedupe.py/dates.py avant le correctif du 2026-08-08.
+conn.execute(
+    "UPDATE events_raw SET annulation_detectee_at=?, annulation_source_url=?, "
+    "annulation_fiche_visee_id=1, annulation_visee_etait_publiee=0 WHERE id=4",
+    ("2026-08-04 14:01:00", "https://x.fr/4"))
 conn.commit()
 conn.close()
 
@@ -93,9 +117,10 @@ def _row(eid):
     return r
 
 
-print("\n──── avant l'audit : les deux suspicions sont actives ────")
+print("\n──── avant l'audit : les trois suspicions sont actives ────")
 verifier("suspect 2 (report) actif avant", bool(_row(2)["annulation_detectee_at"]))
 verifier("suspect 3 (annulé) actif avant", bool(_row(3)["annulation_detectee_at"]))
+verifier("suspect 4 (sans annulation_marqueur) actif avant", bool(_row(4)["annulation_detectee_at"]))
 
 print("\n──── l'audit tourne ────")
 import io, logging
@@ -111,10 +136,14 @@ verifier("le suspect « report » est clôturé automatiquement",
          not _row(2)["annulation_detectee_at"])
 verifier("le suspect « annulé » reste actif, jamais touché par cette voie",
          bool(_row(3)["annulation_detectee_at"]))
+verifier("le suspect SANS annulation_marqueur reste actif (invérifiable ≠ obsolète)",
+         bool(_row(4)["annulation_detectee_at"]))
 verifier("le journal compte une clôture pour marqueur obsolète",
          "1 clôturée(s) (marqueur retiré de la liste)" in sortie, sortie)
 verifier("le suspect encore valide apparaît en attente",
          "suspect [3]" in sortie, sortie)
+verifier("le suspect invérifiable apparaît aussi en attente (pas de fausse fermeture)",
+         "suspect [4]" in sortie, sortie)
 verifier("le suspect clôturé n'apparaît plus en attente",
          "suspect [2]" not in sortie, sortie)
 

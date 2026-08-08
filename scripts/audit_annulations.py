@@ -18,11 +18,15 @@ signal (le dedupe quotidien tourne SANS --rescan — il compare des fiches encor
     dans reconcile_wp_deleted.py) OU son statut est devenu rejected/merged ;
   • AUTOMATIQUE — le marqueur qui a déclenché le signal ne fait plus partie de
     config/annulation_keywords.txt (2026-08-06 : retrait de « report », mot trop
-    courant — 92 alertes le 06/08, 0 confirmée). On recalcule sur le TITRE
-    ARCHIVÉ de la fiche suspecte avec la liste ACTUELLE : si le marqueur ne
-    matche plus, le signal n'aurait jamais dû partir, il se clôt tout seul.
-    Une vraie suspicion (« annulé », toujours dans la liste) n'est jamais
-    touchée par cette voie.
+    courant — 92 alertes le 06/08, 0 confirmée). On revérifie le texte EXACT
+    matché à l'époque (`annulation_marqueur`, posé par dedupe.py/dates.py au
+    moment du signal — jamais le TITRE de la fiche suspecte : ça ne marche que
+    pour le canal 2, le canal 3 signale depuis le texte de la PAGE, jamais copié
+    dans `title`, trouvé et corrigé le 2026-08-08). Sans `annulation_marqueur`
+    (fiche signalée avant l'ajout de cette colonne), on ne peut pas vérifier :
+    la suspicion reste EN ATTENTE plutôt que fermée à l'aveugle. Une vraie
+    suspicion (« annulé », toujours dans la liste) n'est jamais touchée par
+    cette voie.
   • MANUEL — dans tous les autres cas (visée jamais publiée au moment du signal :
     sa perte de wp_post_id_as ne prouverait rien, elle n'en avait pas), rien ne
     peut deviner qu'un humain a vérifié : `--resolu <id de la fiche SUSPECTE>`
@@ -90,7 +94,8 @@ def main(argv=None) -> int:
 
     rows = [dict(r) for r in conn.execute(
         "SELECT id, title, annulation_source_url, annulation_detectee_at, "
-        "annulation_fiche_visee_id, annulation_visee_etait_publiee FROM events_raw "
+        "annulation_fiche_visee_id, annulation_visee_etait_publiee, "
+        "annulation_marqueur FROM events_raw "
         "WHERE COALESCE(annulation_detectee_at,'') <> ''"
     ).fetchall()]
 
@@ -117,9 +122,22 @@ def main(argv=None) -> int:
             resolues_auto += 1
             continue
         # 4. le marqueur qui a produit le signal n'est plus dans la liste actuelle
-        #    (ex. « report », retiré le 2026-08-06). Recalcul sur le titre ARCHIVÉ
-        #    de la fiche suspecte elle-même, pas sur la fiche visée.
-        if marqueur_annulation(suspect.get("title", ""), annulation_re) is None:
+        #    (ex. « report », retiré le 2026-08-06). On revérifie le texte EXACT
+        #    matché à l'époque (`annulation_marqueur`, posé par dedupe.py/dates.py
+        #    au moment du signal) — PAS en re-scannant le TITRE de la fiche
+        #    suspecte : ça marche par construction pour le canal 2 (l'article de
+        #    presse porte le marqueur dans son titre) mais JAMAIS pour le canal 3
+        #    (scripts/dates.py, venues.py — le marqueur vient du TEXTE DE LA PAGE,
+        #    jamais copié dans `title`), qui fermait donc TOUTE suspicion dès le
+        #    premier passage, quel que soit l'état réel du marqueur dans la liste.
+        #    Trouvé le 2026-08-08 (tests/test_annulation_canal3.py, après rebase).
+        #
+        #    Une fiche SANS `annulation_marqueur` (posée avant cette colonne) ne
+        #    peut pas être vérifiée : on la laisse EN ATTENTE plutôt que de
+        #    deviner — le coût d'une suspicion ancienne qui traîne un peu plus
+        #    longtemps est nul, celui d'une fermeture à tort est silencieux.
+        marqueur_archive = suspect.get("annulation_marqueur")
+        if marqueur_archive and marqueur_annulation(marqueur_archive, annulation_re) is None:
             resolues_mot_cle_obsolete += 1
             conn.execute(
                 "UPDATE events_raw SET annulation_detectee_at=NULL, "
