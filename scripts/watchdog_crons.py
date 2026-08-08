@@ -151,14 +151,35 @@ def etat(maintenant: datetime | None = None) -> list[dict]:
                   else "registre" if vu_run else "journal")
         retard_h = None if vu is None else (now - vu).total_seconds() / 3600
         out.append({
-            "libelle": libelle, "script": script, "vu": vu, "source": source,
-            "retard_h": retard_h, "tolerance": tolerance,
+            "libelle": libelle, "script": script, "fichier": fichier, "vu": vu,
+            "source": source, "retard_h": retard_h, "tolerance": tolerance,
             "en_retard": vu is None or retard_h > tolerance,
             # Un run enregistré EN ERREUR est une anomalie distincte du retard : le cron a
             # bien tourné, il a échoué. Les deux méritent d'être dits, jamais confondus.
             "erreurs": (detail or {}).get("error_count") or 0,
         })
     return out
+
+
+def _action(l: dict) -> str:
+    """La commande concrète à essayer — pas juste le constat.
+
+    Ajouté le 2026-08-06 : Franck sur l'alerte « JAMAIS VUE » — « soit elle est
+    compréhensible et je fais quelque chose, soit on l'enlève. » Le message d'origine
+    disait CE qui n'allait pas (retard, tolérance) mais jamais QUOI FAIRE — un non-
+    développeur qui relaie l'alerte n'a aucun moyen d'agir sans deviner. Les deux causes
+    RÉELLEMENT rencontrées à ce jour : un cron ajouté à crontab.txt mais jamais réinstallé
+    sur le VPS (JAMAIS VUE dès le premier passage attendu), ou un script qui plante avant
+    même d'écrire son journal (EN RETARD après avoir déjà tourné). Le geste de diagnostic
+    ne change pas d'un script à l'autre — lire le journal, vérifier le crontab installé —
+    donc une seule formule couvre tous les cas plutôt qu'une commande par script qui
+    suppose des options CLI qu'on ne connaît pas toutes ici."""
+    fichier = l["fichier"]
+    if l["vu"] is None:
+        return (f"→ `crontab -l | grep {l['script']}` sur le VPS : ligne absente → "
+               f"`crontab crontab.txt` (réinstalle depuis le fichier du dépôt) ; ligne "
+               f"présente → `tail -50 logs/{fichier}` pour l'erreur.")
+    return f"→ `tail -50 logs/{fichier}` sur le VPS pour la dernière erreur."
 
 
 FUSEAU_ATTENDU = "Europe/Paris"
@@ -252,6 +273,8 @@ def main(argv=None) -> int:
         print(f"  {marque} {l['libelle']:<28} {quand:<16} "
               f"({l['source']}, tolérance {l['tolerance']} h)"
               + (f" · {l['erreurs']} erreur(s)" if l["erreurs"] else ""))
+        if l["en_retard"]:
+            print(f"      {_action(l)}")
 
     if not args.slack:
         print("\n(lecture seule. --slack pour alerter en cas de retard.)\n")
@@ -276,10 +299,14 @@ def main(argv=None) -> int:
                    f"_Corriger : `timedatectl set-timezone {FUSEAU_ATTENDU}`_")
     for l in retards:
         quand = "JAMAIS VUE" if l["vu"] is None else f"dernier passage il y a {l['retard_h']:.0f} h"
-        msg.append(f"⛔ *{l['libelle']}* — {quand} (tolérance {l['tolerance']} h)")
+        msg.append(f"⛔ *{l['libelle']}* — {quand} (tolérance {l['tolerance']} h)\n"
+                   f"{_action(l)}")
     for l in en_erreur:
-        msg.append(f"⚠️ *{l['libelle']}* — a tourné, mais {l['erreurs']} erreur(s)")
-    msg.append("\n_Rien n'a été relancé : ce contrôle ne répare pas, il prévient._")
+        msg.append(f"⚠️ *{l['libelle']}* — a tourné, mais {l['erreurs']} erreur(s)\n"
+                   f"→ `tail -50 logs/{l['fichier']}` pour le détail.")
+    msg.append("\n_Rien n'a été relancé : ce contrôle ne répare pas, il prévient. "
+               "Colle ce message et le résultat des commandes ci-dessus à Claude si tu "
+               "veux de l'aide pour la suite._")
     slack.notify("\n".join(msg))
     log.warning("Alerte envoyée : %d en retard, %d en erreur.", len(retards), len(en_erreur))
     return 1
