@@ -8,6 +8,48 @@ Rappel décision : **Ad Inserter** = couche pub ; habillage/colonnes = thème + 
 
 ---
 
+## §Tarifs — grille à trois paliers (2026-08-05)
+
+Les tarifs de `AD_BLOCKS` (`app/app.py`) étaient des **placeholders posés le 2026-08-04,
+jamais négociés**. Remplacés le 2026-08-05 après avoir constaté qu'ils n'avaient aucun
+rapport avec le trafic réel du site.
+
+**Méthode.** Reconvertis en CPM sur la projection de trafic déjà documentée par le projet
+(500-3000 visites/mois à 6 mois, `docs/MARKETING_ET_PILOTAGE_AGENDA_SABAUDO.md`), les
+anciens tarifs impliquaient un CPM de 100 à 260 €/1000 impressions selon le bloc — pour
+comparaison, le CPM display généraliste tourne autour de 3 €/1000, les deals premium autour
+de 8 €/1000, et le plafond observé pour un **habillage** sur un site de marque (le format le
+plus cher du marché) est d'environ **15 €/1000**
+([Mistral Media](https://blog.mistralmedia.fr/les-vrais-prix-de-la-publicite-en-ligne/)).
+Les anciens tarifs étaient donc 10 à 17 fois au-dessus de ce plafond, ramenés au trafic
+réel du site — un obstacle concret pour convaincre un premier annonceur local avec des
+centaines de vues/mois plutôt que des dizaines de milliers.
+
+**Limite assumée** : aucune grille publique ne sert de référence pour un site de niche à ce
+stade — les régies comparables trouvées (Sortir.info, régies municipales locales) affichent
+toutes « contactez-nous », sans tarif public. Cette grille est donc une **estimation
+raisonnée**, pas un prix de marché vérifié. À corriger si Franck a un comparable direct.
+
+**La grille**, trois paliers indexés sur le trafic plutôt qu'une date :
+
+| Bloc | Amorçage (<3000 visites/mois — actuel) | Croissance (3000-8000) | Consolidé (>8000) |
+|---|---|---|---|
+| 1 · Leaderboard 970×90 | 60 € | 120 € | 220 € |
+| 2 · Pavé in-article 300×250 | 45 € | 100 € | 180 € |
+| 3 · Bandeau bas sticky | 55 € | 110 € | 200 € |
+| 4 · Habillage / Skin | 150 € | 350 € | 550 € |
+| 5 · Gouttière gauche | 70 € | 150 € | 250 € |
+| 6 · Gouttière droite | 70 € | 150 € | 250 € |
+
+Le bloc 4 reste le plus cher, cohérent avec sa nature (format exclusif, un seul annonceur,
+à ne pas dépasser 1-2 campagnes/mois — voir §Skin plus bas).
+
+**Passage d'un palier à l'autre : décision manuelle**, pas automatique — changer le tarif
+affiché dans `AD_BLOCKS` seulement après avoir confirmé le trafic sur plusieurs semaines,
+pas sur un pic isolé (un article viral ne fait pas une audience publicitaire durable).
+
+---
+
 ## Principe : 2 familles d'emplacements
 
 | Famille | Vit… | Outil | Pourquoi |

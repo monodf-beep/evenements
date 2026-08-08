@@ -1968,16 +1968,31 @@ def cowork_log():
 #                'direct'   → rendu par cs-regie.php, rien à câbler.
 #   Mettre 'cablage' à 'direct' pour un bloc 'in' UNIQUEMENT après avoir vérifié la
 #   présence de [cs_slot] sur le site (docs/REGIE_CABLAGE_CS_SLOT.md, § 7).
+#
+# TARIFS À TROIS PALIERS (2026-08-05, remplace les placeholders jamais négociés du
+# 2026-08-04). Motif : reconvertis en CPM sur le trafic RÉEL du projet (500-3000
+# visites/mois à 6 mois, docs/MARKETING_ET_PILOTAGE_AGENDA_SABAUDO.md), les anciens
+# tarifs impliquaient un CPM de 100 à 260 €/1000 — 10 à 17x le plafond marché observé
+# pour un habillage premium sur un site de marque (~15 €/1000, sources dans
+# docs/REGIE_ANNONCEURS.md §Tarifs). Aucune grille publique ne sert de référence pour
+# un site de niche à ce stade (les régies comparables affichent "contactez-nous") :
+# ces chiffres sont une estimation raisonnée, pas un prix de marché vérifié.
+# 'prix_lancement' = palier "Amorçage" (trafic actuel, <3000 visites/mois) ;
+# 'prix_croissance' = palier à activer entre 3000 et 8000 visites/mois ;
+# 'prix_base'       = palier "Consolidé", au-delà de 8000 visites/mois.
+# Passage d'un palier à l'autre : décision manuelle (changer le tarif affiché dans le
+# formulaire), pas automatique — le trafic doit être confirmé sur plusieurs semaines,
+# pas sur un pic isolé.
 AD_BLOCKS = {
     "1": {"nom": "Leaderboard (haut)",           "format": "970×90 · 350×90 mobile",   "source": "adsense", "flux": "in",
           "cablage": "a_faire",
-          "w": 970,  "h": 90,   "prix_base": 250, "prix_lancement": 150},
+          "w": 970,  "h": 90,   "prix_lancement": 60,  "prix_croissance": 120, "prix_base": 220},
     "2": {"nom": "Pavé in-article",              "format": "300×250 / 336×280",        "source": "adsense", "flux": "in",
           "cablage": "a_faire",
-          "w": 300,  "h": 250,  "prix_base": 200, "prix_lancement": 120},
+          "w": 300,  "h": 250,  "prix_lancement": 45,  "prix_croissance": 100, "prix_base": 180},
     "3": {"nom": "Bandeau bas d'écran (sticky)", "format": "970×90 · vignette mobile", "source": "manuel", "flux": "in",
           "cablage": "a_faire",
-          "w": 970,  "h": 90,   "prix_base": 220, "prix_lancement": 140},
+          "w": 970,  "h": 90,   "prix_lancement": 55,  "prix_croissance": 110, "prix_base": 200},
     # DEUX créatives depuis le 2026-08-05, et c'est structurel, pas cosmétique : le format
     # Page Skin (IQD/IAB) sépare le FOND, qui reste fixe dans la fenêtre, et le BANDEAU,
     # qui défile avec la page. Les fondre dans un seul fichier — ce qu'on a fait pendant
@@ -1988,22 +2003,21 @@ AD_BLOCKS = {
     "4": {"nom": "Habillage / Skin",             "format": "1920×1080 + bandeau 1920×300 (desktop only)",
           "source": "manuel", "flux": "out",
           "cablage": "direct",
-          "w": 1920, "h": 1080, "prix_base": 600, "prix_lancement": 390,
+          "w": 1920, "h": 1080, "prix_lancement": 150, "prix_croissance": 350, "prix_base": 550,
           "creative2": {"nom": "Bandeau (défile avec la page)", "w": 1920, "h": 300,
                         "aide": "Facultatif. Tout le message — logo, accroche, bouton — "
                                 "doit tenir dans les 970×250 centraux : c'est la seule "
                                 "zone visible à toutes les largeurs d'écran."}},
     # Gouttières (skyscrapers latéraux, desktop only, hors flux — cs-regie.php, pas
-    # [cs_slot]). Tarifs 2026-08-04 : PLACEHOLDERS jamais négociés, à ajuster.
-    # La droite était en 300×600 (half-page) : vu en vrai le 2026-08-04, trop large et
-    # dissymétrique face à la 160 de gauche. Franck a tranché pour du 160×600 des deux
-    # côtés — c'est aussi ce que prévoit le design system (.as-desktop-gutter-ad).
+    # [cs_slot]). La droite était en 300×600 (half-page) : vu en vrai le 2026-08-04, trop
+    # large et dissymétrique face à la 160 de gauche. Franck a tranché pour du 160×600 des
+    # deux côtés — c'est aussi ce que prévoit le design system (.as-desktop-gutter-ad).
     "5": {"nom": "Gouttière gauche (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel", "flux": "out",
           "cablage": "direct",
-          "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
+          "w": 160,  "h": 600,  "prix_lancement": 70,  "prix_croissance": 150, "prix_base": 250},
     "6": {"nom": "Gouttière droite (skyscraper)", "format": "160×600 (desktop only)",   "source": "manuel", "flux": "out",
           "cablage": "direct",
-          "w": 160,  "h": 600,  "prix_base": 280, "prix_lancement": 180},
+          "w": 160,  "h": 600,  "prix_lancement": 70,  "prix_croissance": 150, "prix_base": 250},
 }
 
 

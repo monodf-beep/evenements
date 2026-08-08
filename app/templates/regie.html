@@ -24,7 +24,9 @@
             {% else %}<span style="color:#1a7f4b;font-weight:600;">Manuel ✓</span>{% endif %}
           </td>
           <td style="font-family:ui-monospace,monospace;font-size:.82rem;">
-            <b>{{ b.prix_lancement }} €</b> <span class="muted" style="text-decoration:line-through;">{{ b.prix_base }} €</span>
+            <b>{{ b.prix_lancement }} €</b>
+            <span class="muted"> → {{ b.prix_croissance }} € → {{ b.prix_base }} €</span>
+            <div class="muted text-sm">amorçage → croissance (3-8k visites/mois) → consolidé (&gt;8k)</div>
           </td>
           <td>
             {% if b.cablage == 'a_faire' %}<span style="color:#dc2626;font-weight:700;">⚠ Non câblé</span>
@@ -279,7 +281,8 @@ function rgUpdate(form) {
   var b = AD_BLOCKS[sel.value]; if (!b) return;
   var fmt = form.querySelector('.rg-fmt');
   if (fmt) { fmt.innerHTML = 'Format attendu : <b>' + b.w + '×' + b.h + ' px</b> &nbsp;·&nbsp; '
-    + 'Tarif catalogue : <b>' + b.prix_lancement + ' €</b> (lancement · base ' + b.prix_base + ' €)'; }
+    + 'Tarif amorçage : <b>' + b.prix_lancement + ' €</b> '
+    + '(croissance ' + b.prix_croissance + ' € · consolidé ' + b.prix_base + ' €)'; }
   var tarif = form.querySelector('.rg-tarif');
   if (tarif && !tarif.value) { tarif.value = b.prix_lancement; }
   rgCheckDim(form.querySelector('.rg-dim'), form.querySelector('.rg-image'), b.w, b.h);
