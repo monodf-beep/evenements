@@ -46,6 +46,24 @@ quelle condition, et où se voit le nombre de fiches garées ?** « Un humain qu
 commande » n'est pas une réponse — 823 fiches ont dormi dans `venue_source='llm_none'`
 alors que l'option `--retry` existait depuis le premier jour.
 
+**Un refus qui se rejoue sur la MÊME entrée n'est pas un rouvreur.** Ajouté le
+2026-08-08, après l'avoir refait une fois de plus. Un portillon posé le 06/08 refusait
+une traduction dont le titre semblait non traduit ; son commentaire affirmait « le coût
+d'un faux refus est un jour de retard, la fiche se représente au run suivant ». La
+première moitié est vraie, la seconde ne l'est pas : la fiche se represente avec la même
+matière, le LLM produit un titre équivalent, le portillon refuse à l'identique — tous les
+jours, en brûlant deux appels API à chaque passage. Constaté en production sur la fiche
+3588 (« La Rencontre Valdôtaine »), dont la traduction était en fait correcte : le
+marqueur « français » venait du NOM PROPRE de l'événement.
+
+Donc, pour tout portillon, deux exigences :
+
+- **écrire pourquoi le prochain passage donnerait un AUTRE résultat.** Si la réponse
+  repose sur « le LLM est stochastique », c'est une hypothèse — la tester ou renoncer ;
+- **la fixture doit contenir un cas qui doit PASSER, choisi près de la frontière.** Celle
+  du 06/08 n'avait que des cas qui confirmaient le design : elle est passée au vert sur un
+  portillon faux. Un test qui ne cherche qu'à se donner raison ne prouve rien.
+
 ### 4. Dry-run d'abord, toujours
 
 Tous les scripts destructifs sont en dry-run par défaut et demandent `--apply` ou
@@ -167,3 +185,10 @@ ce dépôt sont sa vraie documentation : les garder.
 
 Vérifier sur fixture avant de committer un correctif — construire une base jetable avec
 `scripts.scraper_events.init_db`, jamais sur `data/events.db`.
+
+**Déployer sur le VPS, c'est `bash deploy/update.sh`** — une commande, qui fait le fetch,
+le reset sur la branche, les dépendances et le redémarrage du service. Ne PAS dicter à
+Franck une suite de `git pull` / `pip install` / `systemctl` : il n'est pas développeur,
+c'est lui qui tape, et ce script existe précisément pour ça. Rappel écrit le 2026-08-08
+parce que je le lui ai fait retaper à la main pendant toute une session, alors qu'il
+avait lui-même utilisé `deploy/update.sh` la veille.
