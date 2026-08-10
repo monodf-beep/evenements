@@ -69,7 +69,10 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 CHAMPS = ("date_event_start", "date_event_end", "lieu", "ville", "url_image")
 # Écrit UNE fois : la sélection et le recompte final doivent porter sur le même
 # critère, sinon le bilan diverge de ce qui a été tenté.
-_MANQUE = " OR ".join(f"COALESCE({c},'')=''" for c in CHAMPS)
+_MANQUE = (" OR ".join(f"COALESCE({c},'')=''" for c in CHAMPS)
+           # Une bannière n'est pas une image : la fiche a beau avoir tous
+           # ses champs remplis, il lui manque une vraie affiche.
+           + " OR COALESCE(image_source,'')='banner'")
 
 
 # Marqueurs qu'on sait lire aujourd'hui, et ceux qu'on ne lit PAS encore. Le mode
@@ -146,9 +149,20 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
             trouve["lieu"] = lieu
         if ville and not (ev.get("ville") or "").strip():
             trouve["ville"] = ville
-    if not (ev.get("url_image") or "").strip():
+    # UNE BANNIÈRE COMPTE COMME UNE PLACE VIDE (2026-08-11, mesuré). Le premier
+    # --diagnostic a donné le chiffre qui décide : 36 des 53 pages « muettes » portent un
+    # og:image — mais aucune n'a été récoltée, parce que la condition testait seulement
+    # « url_image est vide ». Or la veille au soir, un run sans-API avait posé une
+    # bannière générique sur 40 fiches : leur champ n'était plus vide, donc la vraie
+    # affiche de leur page officielle restait inatteignable. Le pis-aller bloquait
+    # l'accès à la vraie chose.
+    # On ne remplace QUE la bannière — jamais une photo (og/page/commons), jamais une
+    # image posée à la main : celles-là valent mieux que ce qu'on retrouverait.
+    _img = (ev.get("url_image") or "").strip()
+    _banniere = (ev.get("image_source") or "") == "banner"
+    if not _img or _banniere:
         og = fetch_og_image(url)
-        if og:
+        if og and og != _img:
             trouve["url_image"] = og
     if not trouve and marqueurs is not None:
         for nom in _diagnostic(html) or ["AUCUN marqueur connu"]:
@@ -217,6 +231,11 @@ def main(argv=None) -> int:
                              "date_checked_at=datetime('now') WHERE id=?", (ev["id"],))
             if "lieu" in trouve or "ville" in trouve:
                 conn.execute("UPDATE events_raw SET venue_source='page' WHERE id=?",
+                             (ev["id"],))
+            if "url_image" in trouve:
+                # La provenance suit l'image : sans ça une affiche récoltée resterait
+                # marquée « banner » et serait reprise indéfiniment.
+                conn.execute("UPDATE events_raw SET image_source='og' WHERE id=?",
                              (ev["id"],))
             conn.commit()
 

@@ -143,5 +143,44 @@ _check("le lieu saisi à la main n'est PAS écrasé", f3["lieu"] == "Ma salle", 
 _check("la date saisie à la main n'est PAS écrasée",
        f3["date_event_start"] == "2026-11-11", str(f3["date_event_start"]))
 
+# ── La bannière est une place vide, la vraie photo ne l'est pas ─────────────────
+# Mesuré le 2026-08-11 avec --diagnostic : 36 des 53 pages « muettes » portaient un
+# og:image que la moisson n'a PAS pris, parce qu'elle ne regardait que « url_image est
+# vide ». La veille, un run sans-API avait posé une bannière générique sur 40 fiches :
+# le pis-aller bloquait l'accès à la vraie affiche.
+print("\n──── bannière : une place vide, pas une image ────")
+conn = sqlite3.connect(tmp)
+conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,lieu,"
+             "ville,url_image,image_source,date_event_end) VALUES "
+             "(6,'Sur bannière','https://officiel.fr/banniere','evaluated','2026-12-01',"
+             "'Salle','Ville','https://banniere-generique.png','banner','2026-12-01')")
+conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,lieu,"
+             "ville,url_image,image_source,date_event_end) VALUES "
+             "(7,'Vraie photo','https://officiel.fr/photo','evaluated','2026-12-01',"
+             "'Salle','Ville','https://sa-vraie-affiche.jpg','og','2026-12-01')")
+conn.commit()
+PAGES["https://officiel.fr/banniere"] = PAGE_RICHE
+PAGES["https://officiel.fr/photo"] = PAGE_RICHE
+
+conn.row_factory = sqlite3.Row
+cibles2 = {e["id"] for e in mo._a_moissonner(conn, AUJOURDHUI, 50)}
+_check("la fiche sur BANNIÈRE est reprise (il lui manque une vraie affiche)",
+       6 in cibles2, str(sorted(cibles2)))
+_check("la fiche à VRAIE photo n'est pas reprise", 7 not in cibles2, str(sorted(cibles2)))
+conn.close()
+
+mo.main(["--apply", "6", "7"])
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+f6 = dict(conn.execute("SELECT * FROM events_raw WHERE id=6").fetchone())
+f7 = dict(conn.execute("SELECT * FROM events_raw WHERE id=7").fetchone())
+conn.close()
+_check("la bannière est remplacée par l'og:image de la page officielle",
+       f6["url_image"] == "https://officiel.fr/affiche.jpg", str(f6["url_image"]))
+_check("… et sa provenance suit (plus jamais reprise pour ce motif)",
+       f6["image_source"] == "og", str(f6["image_source"]))
+_check("la vraie photo existante n'est PAS remplacée",
+       f7["url_image"] == "https://sa-vraie-affiche.jpg", str(f7["url_image"]))
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)
