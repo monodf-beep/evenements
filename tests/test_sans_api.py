@@ -120,5 +120,37 @@ _check("visuals et publish tournent malgré l'échec de venues",
        "scripts.visuals" in lancees and "scripts.publish_batch_as" in lancees,
        str(lancees))
 
+# ── Une bannière n'est PAS une photo, et elle n'est pas un état terminal ────────
+# Le run du 2026-08-11 a « complété » 57 fiches — dont 40 avec une bannière de
+# territoire, c'est-à-dire l'image générique déjà reprochée au pipeline le 09/08. Deux
+# défauts en un : le bilan les additionnait aux vraies photos, et select_events
+# n'exigeait que `url_image = ''`, donc ces 40 fiches n'auraient PLUS JAMAIS été reprises
+# — le champ n'était plus vide. Cul-de-sac de la règle 3, créé en une commande.
+print("\n──── bannière : comptée à part, et jamais définitive ────")
+conn = sqlite3.connect(tmp)
+conn.execute("UPDATE events_raw SET url_image='http://b.png', image_source='banner' "
+             "WHERE id=3")
+conn.execute("UPDATE events_raw SET url_image='http://vraie.jpg', image_source='og' "
+             "WHERE id=8")
+conn.commit()
+etat2 = sa._etat(conn, AUJOURDHUI)
+_check("la bannière est comptée comme bannière, pas comme photo",
+       etat2["banniere"] == 1 and etat2["vraie_photo"] == 1, str(etat2))
+_check("la fiche à bannière ne compte plus dans « sans image »",
+       etat2["sans_image"] == 0, str(etat2))
+
+import scripts.visuals as vz  # noqa: E402
+conn.row_factory = sqlite3.Row
+repris = {e["id"] for e in vz.select_events(conn, [], "", "")}
+_check("visuals reprend la fiche à BANNIÈRE (elle mérite une vraie photo)",
+       3 in repris, str(sorted(repris)))
+_check("visuals ne reprend PAS la fiche à vraie photo (rien à améliorer)",
+       8 not in repris, str(sorted(repris)))
+conn.close()
+
+lignes = "\n".join(sa._diff(etat, etat2))
+_check("le bilan sépare VRAIE photo et BANNIÈRE",
+       "VRAIE photo" in lignes and "BANNIÈRE" in lignes, lignes)
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

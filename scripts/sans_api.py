@@ -67,6 +67,16 @@ def _etat(conn, today: str) -> dict:
         "sans_date": q("COALESCE(date_event_start,'')='' AND COALESCE(recurring,0)=0"),
         "sans_lieu": q("COALESCE(lieu,'')='' AND COALESCE(multi_lieux,0)=0"),
         "sans_image": q("COALESCE(url_image,'')=''"),
+        # UNE BANNIÈRE N'EST PAS UNE PHOTO (corrigé le 2026-08-11, le soir même où le
+        # bilan m'a fait dire une demi-vérité). Le premier run annonçait « 57 ont gagné
+        # une image » — dont QUARANTE bannières de territoire, c'est-à-dire l'image
+        # générique que Franck avait déjà reprochée au pipeline le 2026-08-09 : « là
+        # j'ai de nouveau une image fallback ». Compter ensemble une affiche d'événement
+        # et un visuel générique, c'est exactement le « rapporter l'intention plutôt que
+        # le résultat » de la règle 6. Les deux sont désormais séparés.
+        "banniere": q("COALESCE(image_source,'')='banner'"),
+        "vraie_photo": q("COALESCE(url_image,'')<>'' AND "
+                         "COALESCE(image_source,'') NOT IN ('', 'banner')"),
         "en_ligne": q("wp_post_id_as IS NOT NULL"),
     }
 
@@ -74,13 +84,25 @@ def _etat(conn, today: str) -> dict:
 def _diff(avant: dict, apres: dict) -> list[str]:
     lignes = []
     for cle, libelle in (("sans_date", "ont gagné une date"),
-                         ("sans_lieu", "ont gagné un lieu"),
-                         ("sans_image", "ont gagné une image")):
+                         ("sans_lieu", "ont gagné un lieu")):
         gagne = avant[cle] - apres[cle]
-        lignes.append(f"  {gagne:4} {libelle:22} ({avant[cle]} → {apres[cle]} sans)")
+        lignes.append(f"  {gagne:4} {libelle:26} ({avant[cle]} → {apres[cle]} sans)")
+    # Deux lignes séparées, jamais une seule : une vraie photo et une bannière générique
+    # ne valent pas la même chose pour le lecteur, et les additionner flatte le bilan.
+    lignes.append(f"  {apres['vraie_photo'] - avant['vraie_photo']:4} "
+                  f"{'ont gagné une VRAIE photo':26} (og:image ou photo de page)")
+    lignes.append(f"  {apres['banniere'] - avant['banniere']:4} "
+                  f"{'ont reçu une BANNIÈRE':26} (générique, faute de mieux — "
+                  f"{apres['banniere']} au total)")
     mises = apres["en_ligne"] - avant["en_ligne"]
-    lignes.append(f"  {mises:4} {'mises en ligne':22} ({avant['en_ligne']} → "
+    lignes.append(f"  {mises:4} {'mises en ligne':26} ({avant['en_ligne']} → "
                   f"{apres['en_ligne']} publiées)")
+    if apres["banniere"] > avant["banniere"]:
+        lignes.append("")
+        lignes.append("  ⚠️ Une bannière n'est pas une illustration de l'événement, c'est")
+        lignes.append("     un pis-aller. Ces fiches restent candidates à une vraie photo :")
+        lignes.append("     visuals.py les reprendra quand la page officielle sera")
+        lignes.append("     joignable ou quand la recherche d'image redeviendra possible.")
     return lignes
 
 
@@ -102,6 +124,8 @@ def main(argv=None) -> int:
     print(f"  {avant['sans_date']:4} sans date       → passes texte et page (aucun modèle)")
     print(f"  {avant['sans_lieu']:4} sans lieu       → appariement sur les lieux connus")
     print(f"  {avant['sans_image']:4} sans image      → og:image, photo de page, bannière")
+    print(f"  {avant['banniere']:4} sur bannière    → générique : une vraie photo reste "
+          f"à trouver")
     print(f"  {avant['en_ligne']:4} déjà en ligne\n")
 
     if not args.apply:

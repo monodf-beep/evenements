@@ -300,8 +300,25 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
 
 
 def select_events(conn: sqlite3.Connection, ids, dfrom, dto) -> list[dict]:
+    # ⚠️ UNE BANNIÈRE N'EST PAS UNE IMAGE TROUVÉE (2026-08-11). La sélection exigeait
+    # `url_image = ''`, donc une fiche à qui la chaîne avait posé une BANNIÈRE de
+    # territoire — le dernier étage, générique, choisi faute de mieux — n'était plus
+    # jamais reprise : le champ n'était plus vide. C'est le cul-de-sac de la règle 3, et
+    # il s'est produit en grand le soir même : un run --sans-llm a « complété » 57 fiches
+    # dont QUARANTE avec une bannière. Sans ce correctif, ces quarante gardaient une
+    # image générique pour toujours, alors que leur page officielle porte peut-être une
+    # affiche — simplement inatteignable ce soir-là, plafond API oblige.
+    #
+    # Les vraies photos (image_source ∈ {og, page, commons, europeana}) ne sont PAS
+    # reprises : resolve_image les conserve de toute façon (keep_existing), et les
+    # reprendre gonflerait chaque run pour rien.
+    #
+    # L'ORDRE protège le cap : les fiches SANS aucune image passent d'abord, les
+    # bannières ensuite. Une fiche sans image n'a rien à montrer ; une fiche à bannière
+    # montre déjà quelque chose, même d'imparfait.
     base = (f"SELECT * FROM events_raw WHERE statut IN ({','.join('?' * len(STATUTS))}) "
-            "AND duplicate_of IS NULL AND COALESCE(url_image,'') = '' ")
+            "AND duplicate_of IS NULL "
+            "AND (COALESCE(url_image,'') = '' OR COALESCE(image_source,'') = 'banner') ")
     params = list(STATUTS)
     if ids:
         base += f"AND id IN ({','.join('?' * len(ids))}) "
@@ -309,7 +326,8 @@ def select_events(conn: sqlite3.Connection, ids, dfrom, dto) -> list[dict]:
     elif dfrom and dto:
         base += "AND COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ? "
         params += [dto, dfrom]
-    base += "ORDER BY llm_score DESC LIMIT ?"
+    base += ("ORDER BY CASE WHEN COALESCE(url_image,'') = '' THEN 0 ELSE 1 END, "
+             "llm_score DESC LIMIT ?")
     params.append(CAP)
     return [dict(r) for r in conn.execute(base, params).fetchall()]
 
