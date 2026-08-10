@@ -481,6 +481,50 @@ def llm_dates(material: str, ref: date, client, model: str,
 # piège de réglage.
 DATE_COOLDOWN_DAYS = int(os.getenv("DATE_COOLDOWN_DAYS",
                                    os.getenv("WEB_COOLDOWN_DAYS", "7")))
+# Nombre d'échecs après lequel on cesse de re-tenter TANT QUE LA MATIÈRE NE CHANGE PAS.
+# Trois, parce qu'un échec peut venir d'une page momentanément injoignable ou d'un
+# plafond API, deux peuvent être une coïncidence — trois sur trois semaines, non.
+DATE_MAX_TENTATIVES = int(os.getenv("DATE_MAX_TENTATIVES", "3"))
+
+
+def _empreinte_matiere(ev: dict) -> str:
+    """Résumé stable de ce sur quoi la datation a travaillé. Si ce résumé change, un
+    nouvel essai peut légitimement donner un AUTRE résultat — c'est ce qui autorise à
+    rouvrir. S'il ne change pas, re-tenter, c'est repayer le même échec (CLAUDE.md,
+    règle 3 : « écrire pourquoi le prochain passage donnerait un AUTRE résultat »)."""
+    import hashlib
+    brut = "|".join(str(ev.get(c) or "") for c in ("title", "description", "url_source"))
+    return hashlib.sha1(brut.encode("utf-8", "replace")).hexdigest()[:16]
+
+
+def _ensure_colonnes_tentatives(conn: sqlite3.Connection) -> None:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
+    for col, decl in (("date_tentatives", "INTEGER DEFAULT 0"), ("date_matiere", "TEXT")):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
+    conn.commit()
+
+
+def _rearme_matiere_changee(conn: sqlite3.Connection) -> int:
+    """Remet à zéro le compteur des fiches dont la matière a changé depuis le dernier
+    échec. C'EST LE ROUVREUR : il ne dépend d'aucune commande ni d'aucun humain. Une page
+    mise à jour, une description réparée, un doublon fusionné qui apporte du texte — et la
+    fiche redevient candidate d'elle-même, dès le lendemain."""
+    lignes = conn.execute(
+        "SELECT id, title, description, url_source, date_matiere FROM events_raw "
+        "WHERE COALESCE(date_tentatives,0) >= ? AND COALESCE(date_event_start,'')='' "
+        "  AND statut != 'merged'", (DATE_MAX_TENTATIVES,)).fetchall()
+    rouverts = [r["id"] for r in lignes
+                if r["date_matiere"] and _empreinte_matiere(dict(r)) != r["date_matiere"]]
+    if rouverts:
+        ph = ",".join("?" * len(rouverts))
+        conn.execute(f"UPDATE events_raw SET date_tentatives=0, date_source='none' "
+                     f"WHERE id IN ({ph})", rouverts)
+        conn.commit()
+        log.info("Ré-ouverture : %d fiche(s) dont la matière a changé depuis leur dernier "
+                 "échec de datation — elles repassent : %s", len(rouverts),
+                 " ".join(str(i) for i in rouverts[:12]))
+    return len(rouverts)
 
 
 def ensure_columns(conn: sqlite3.Connection) -> None:
@@ -554,20 +598,57 @@ def main(argv=None) -> int:
         log.info("Retry : %d événement(s) non-datables ré-armés pour re-tentative "
                  "(délai ignoré, --retry)", n)
     else:
+        # ⚠️ LE RÉ-ARMEMENT NE DOIT PAS ÊTRE PERPÉTUEL (2026-08-11). Le correctif
+        # ci-dessus a supprimé un cul-de-sac, il en a créé un autre à l'envers : une fiche
+        # dont la MATIÈRE ne contient pas la date est re-tentée tous les sept jours,
+        # indéfiniment, et échoue à chaque fois. Mesuré ce jour-là : 79 fiches sur 95
+        # incomplètes, toutes dans ce cycle.
+        #
+        # VÉRIFIÉ, pas supposé : la page de « Per Olivia » (Teatro Stabile di Torino,
+        # fiche 2374) a été récupérée à la main. Elle ne contient AUCUNE date — ni en
+        # texte, ni en JSON-LD, ni en méta. Le spectacle appartient à la « Stagione
+        # 2026-2027 » et ses dates vivent dans la billetterie (vivaticket), pas sur la
+        # page. Aucun modèle, aucun nombre de tentatives ne fera apparaître ce qui n'y
+        # est pas. D'autres fiches n'ont même pas d'URL : leur `url_source` est
+        # « gmail:<id>#<n> », un item extrait d'un courriel.
+        #
+        # On plafonne donc les re-tentatives — mais SANS refabriquer un cul-de-sac
+        # (règle 3), grâce à DEUX rouvreurs qui ne dépendent d'aucun geste humain :
+        #   • la MATIÈRE CHANGE — le résumé de titre+description+url est comparé à celui
+        #     de la dernière tentative. Une page mise à jour, une description réparée, une
+        #     fusion de doublon : le compteur repart à zéro et la fiche se retente. C'est
+        #     le seul événement qui rende un nouvel essai capable de donner autre chose ;
+        #   • `--retry` reste là pour forcer la main.
+        # Et le nombre de fiches ainsi garées est ANNONCÉ à chaque run (règle 6), pas
+        # laissé à découvrir dans six semaines.
+        _ensure_colonnes_tentatives(conn)
+        _rearme_matiere_changee(conn)
         n = conn.execute(
             "UPDATE events_raw SET date_source='none' "
             "WHERE date_source IN ('nodate','llm_none') "
             "  AND COALESCE(date_event_start,'')='' AND statut != 'merged' "
+            "  AND COALESCE(date_tentatives,0) < ? "
             # NULL = tentative antérieure à cette colonne : traitée comme ancienne, sinon
             # les fiches bloquées AVANT ce correctif ne sortiraient jamais — c'est-à-dire
             # précisément celles pour lesquelles il est écrit.
             "  AND (date_checked_at IS NULL "
             "       OR date_checked_at < datetime('now', ?))",
-            (f"-{DATE_COOLDOWN_DAYS} days",)).rowcount
+            (DATE_MAX_TENTATIVES, f"-{DATE_COOLDOWN_DAYS} days")).rowcount
         conn.commit()
         if n:
             log.info("Ré-armement automatique : %d fiche(s) non datées re-tentée(s) "
                      "(dernier essai il y a plus de %d jours)", n, DATE_COOLDOWN_DAYS)
+        garees = conn.execute(
+            "SELECT COUNT(*) FROM events_raw WHERE date_source IN ('nodate','llm_none') "
+            "AND COALESCE(date_event_start,'')='' AND statut != 'merged' "
+            "AND COALESCE(date_tentatives,0) >= ?", (DATE_MAX_TENTATIVES,)).fetchone()[0]
+        if garees:
+            log.warning("%d fiche(s) ne sont plus re-tentées : %d essais sans résultat, "
+                        "leur source ne publie pas la date. Elles repartiront TOUTES "
+                        "SEULES si leur matière change ; sinon elles relèvent d'une "
+                        "décision (récurrent ? hors catalogue ?) — les lister : "
+                        ".venv/bin/python -m scripts.audit_incomplets --detail date",
+                        garees, DATE_MAX_TENTATIVES)
 
     # --- Passe 1 : texte (titre + description), gratuit et instantané ---
     # ⚠️ TRADUCTIONS EXCLUES (translation_of) — bug corrigé le 2026-08-02. Une fiche
@@ -666,9 +747,20 @@ def main(argv=None) -> int:
                 conn.execute(
                     "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
                     (s, e, src, r["id"]))
-                conn.commit()
+                # Compteur d'échecs + empreinte de la matière jugée : c'est le couple qui
+                # permet de plafonner les re-tentatives SANS créer d'impasse — si la
+                # matière change, _rearme_matiere_changee remet le compteur à zéro.
+                # Un SUCCÈS remet tout à zéro : la fiche n'a plus rien à demander.
                 if src == "llm":
                     from_llm += 1
+                    conn.execute(
+                        "UPDATE events_raw SET date_tentatives=0, date_matiere=NULL "
+                        "WHERE id=?", (r["id"],))
+                else:
+                    conn.execute(
+                        "UPDATE events_raw SET date_tentatives=COALESCE(date_tentatives,0)+1, "
+                        "date_matiere=? WHERE id=?", (_empreinte_matiere(dict(r)), r["id"]))
+                conn.commit()
             log.info("Passe LLM : %d daté(s) par le LLM", from_llm)
     elif DATES_LLM and not args.no_llm and not api_key:
         log.info("Passe LLM ignorée : ANTHROPIC_API_KEY absente.")
