@@ -72,6 +72,29 @@ CHAMPS = ("date_event_start", "date_event_end", "lieu", "ville", "url_image")
 _MANQUE = " OR ".join(f"COALESCE({c},'')=''" for c in CHAMPS)
 
 
+# Marqueurs qu'on sait lire aujourd'hui, et ceux qu'on ne lit PAS encore. Le mode
+# --diagnostic les compte sur les pages qui n'ont rien donné : 53 pages muettes sur 58
+# au premier run, et il faut savoir si c'est parce que la donnée est ABSENTE ou parce
+# qu'elle est écrite dans une forme que l'extracteur ignore. Étendre l'extraction sans
+# cette mesure, ce serait coder à l'aveugle contre une hypothèse.
+_MARQUEURS = (
+    ("json-ld startDate", r'"startDate"\s*:\s*"'),
+    ("json-ld aux guillemets échappés", r'\\"startDate\\"'),
+    ("balise <time datetime>", r'<time[^>]+datetime='),
+    ("microdata itemprop=startDate", r'itemprop=["\']startDate'),
+    ("meta event:start_time", r'event:start_time'),
+    ("json-ld location", r'"location"\s*:'),
+    ("microdata itemprop=location", r'itemprop=["\']location'),
+    ("og:image", r'property=["\']og:image'),
+    ("un bloc JSON-LD est bien présent", r'application/ld\+json'),
+)
+
+
+def _diagnostic(html: str) -> list[str]:
+    import re as _re
+    return [nom for nom, motif in _MARQUEURS if _re.search(motif, html, _re.I)]
+
+
 def _url_telechargeable(ev: dict) -> str:
     """L'adresse à lire. `url_officiel` d'abord — c'est la page de l'événement chez
     l'organisateur, la plus riche en données structurées ; `url_source` sinon. Les
@@ -96,11 +119,14 @@ def _a_moissonner(conn, today: str, cap: int) -> list[dict]:
     return [ev for ev in rows if _url_telechargeable(ev)][:cap]
 
 
-def _recolte(ev: dict) -> dict:
-    """Champs VIDES que la page permet de remplir. {} si la page est illisible."""
+def _recolte(ev: dict, marqueurs=None) -> dict:
+    """Champs VIDES que la page permet de remplir. {} si la page est illisible.
+    `marqueurs` (Counter, optionnel) : reçoit ce que porte une page qui n'a rien donné."""
     url = _url_telechargeable(ev)
     r = _robust_get(url)
     if r is None:
+        if marqueurs is not None:
+            marqueurs["PAGE INJOIGNABLE"] += 1
         return {}
     html = r.text
     trouve: dict = {}
@@ -124,6 +150,9 @@ def _recolte(ev: dict) -> dict:
         og = fetch_og_image(url)
         if og:
             trouve["url_image"] = og
+    if not trouve and marqueurs is not None:
+        for nom in _diagnostic(html) or ["AUCUN marqueur connu"]:
+            marqueurs[nom] += 1
     return trouve
 
 
@@ -132,6 +161,10 @@ def main(argv=None) -> int:
         description="Récolte date, lieu, ville et image sur la page officielle (sans LLM).")
     p.add_argument("--apply", action="store_true", help="Exécute (sinon simulation).")
     p.add_argument("--cap", type=int, default=100, help="Nb max de pages lues (défaut 100).")
+    p.add_argument("--diagnostic", action="store_true",
+                   help="Sur les pages qui ne donnent RIEN, dire quels marqueurs elles "
+                        "portent — pour savoir si la donnée est absente ou seulement "
+                        "écrite dans une forme qu'on ne lit pas encore.")
     p.add_argument("ids", nargs="*", type=int, help="Se limiter à ces fiches.")
     args = p.parse_args(argv)
 
@@ -159,8 +192,10 @@ def main(argv=None) -> int:
 
     gagnes = {c: 0 for c in CHAMPS}
     lues = vides = 0
+    from collections import Counter
+    marqueurs_vides = Counter()
     for ev in cibles:
-        trouve = _recolte(ev)
+        trouve = _recolte(ev, marqueurs_vides if args.diagnostic else None)
         lues += 1
         if not trouve:
             vides += 1
@@ -186,6 +221,11 @@ def main(argv=None) -> int:
             conn.commit()
 
     print(f"\n{lues} page(s) lue(s), dont {vides} sans aucune donnée exploitable.\n")
+    if args.diagnostic and marqueurs_vides:
+        print("Ce que portent les pages MUETTES (une page peut compter plusieurs fois) :")
+        for nom, n in marqueurs_vides.most_common():
+            print(f"  {n:4} {nom}")
+        print()
     for c in CHAMPS:
         print(f"  {gagnes[c]:4} {c}")
 
