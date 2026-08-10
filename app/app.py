@@ -408,8 +408,11 @@ def inject_globals():
     try:
         conn = get_db()
         _ensure_checks_table(conn)
+        # MÊME PÉRIMÈTRE QUE LA PAGE (verifier_view) — sinon la pastille annonce 793 et
+        # l'écran en montre 40 : c'est la pastille qu'on croit, et c'est elle qui décourage.
         verifier = conn.execute(
-            "SELECT COUNT(*) n FROM checks WHERE status='pending'").fetchone()["n"]
+            f"SELECT COUNT(*) n FROM checks c JOIN events_raw e ON e.id=c.event_id "
+            f"WHERE {_CHECKS_VIVANTS}", (date.today().isoformat(),)).fetchone()["n"]
         conn.close()
     except Exception:
         pass
@@ -1122,6 +1125,33 @@ def personas_view():
                            st=personas_mod.personas_status())
 
 
+# Périmètre de la file « À vérifier », écrit UNE fois : la page et la pastille du menu
+# s'en servent toutes les deux. Deux formulations divergent tôt ou tard, et c'est la
+# pastille qu'on croit. Attend un paramètre : la date du jour.
+#
+# RÈGLE 5 — la file n'avait AUCUN filtre : tous les points 'pending' depuis le premier
+# jour, événements terminés, rejetés et fusionnés compris. Franck, 2026-08-10 : « on a
+# énorme de tâches, que je ne peux pas assumer ». 793 points sur 211 fiches — et les
+# trois premières à l'écran étaient un festival du 30 mai, des ateliers de juillet-août
+# et une saison finie le 20 septembre. Vérifier le tarif d'un festival de mai en août ne
+# sert personne : la fiche ne sera pas republiée, plus aucun visiteur ne la cherche. Une
+# file pareille ne DÉSIGNE pas du travail, elle en FABRIQUE — c'est ce qui la rend
+# inassumable.
+#
+# Rien n'est supprimé ni soldé d'office : les points écartés restent 'pending' en base et
+# reviendraient si la fiche redevenait pertinente. Ils sont comptés et annoncés sur la
+# page (règle 6 : un état qui sort une fiche d'une file la sort aussi de tous les bilans).
+#
+# Une fiche SANS date reste dans la file (donnée manquante, pas événement terminé), un
+# récurrent aussi (pas de date unique, jamais « passé »).
+_CHECKS_VIVANTS = (
+    "c.status='pending' "
+    "AND COALESCE(e.duplicate_of,0)=0 "
+    "AND COALESCE(e.statut,'') NOT IN ('merged','rejected') "
+    "AND (COALESCE(e.recurring,0)=1 OR COALESCE(NULLIF(e.date_event_end,''), "
+    "     NULLIF(e.date_event_start,''), '9999') >= ?)")
+
+
 def _ensure_checks_table(conn):
     """Table des points « à vérifier » (garde-fou humain sur les faits). Idempotent.
     Même DDL que scripts/enrich.py._ensure_checks_table."""
@@ -1262,11 +1292,18 @@ def verifier_view():
             flash("Point vérifié.", "ok")
         conn.close()
         return redirect(url_for("verifier_view"))
+    # Périmètre : voir _CHECKS_VIVANTS. La jointure est INTERNE (pas LEFT) : un point
+    # dont la fiche a disparu de la base n'a plus rien à vérifier.
+    today = date.today().isoformat()
     rows = conn.execute(
-        "SELECT c.id, c.event_id, c.label, e.article_title, e.title "
-        "FROM checks c LEFT JOIN events_raw e ON e.id=c.event_id "
-        "WHERE c.status='pending' ORDER BY c.event_id, c.id").fetchall()
+        f"SELECT c.id, c.event_id, c.label, e.article_title, e.title, e.wp_post_id_as "
+        f"FROM checks c JOIN events_raw e ON e.id=c.event_id "
+        f"WHERE {_CHECKS_VIVANTS} ORDER BY c.event_id, c.id", (today,)).fetchall()
+    total = conn.execute(
+        "SELECT COUNT(*) n FROM checks WHERE status='pending'").fetchone()["n"]
     conn.close()
+    ecartes = total - len(rows)
+
     groups, index = [], {}
     for r in rows:
         eid = r["event_id"]
@@ -1274,9 +1311,15 @@ def verifier_view():
             index[eid] = len(groups)
             groups.append({"event_id": eid,
                            "titre": (r["article_title"] or r["title"] or f"Fiche {eid}"),
+                           "en_ligne": bool(r["wp_post_id_as"]),
                            "checks": []})
         groups[index[eid]]["checks"].append({"id": r["id"], "label": r["label"]})
-    return render_template("verifier.html", active="verifier", groups=groups)
+    # EN LIGNE D'ABORD : un fait douteux sur une fiche publiée est faux DEVANT LE PUBLIC,
+    # celui d'une fiche non publiée attend sans rien casser. Trier, c'est déjà trier ce
+    # qui vaut le clic.
+    groups.sort(key=lambda g: (not g["en_ligne"], g["event_id"]))
+    return render_template("verifier.html", active="verifier", groups=groups,
+                           ecartes=ecartes)
 
 
 @app.route("/couverture")

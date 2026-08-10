@@ -12,10 +12,15 @@
   {% else %}
     <div class="muted text-sm" style="margin-bottom:.9rem;">
       {{ groups|length }} événement(s) avec des points à contrôler.
+      {%- if ecartes %}
+      <br>{{ ecartes }} point(s) ne sont plus affichés : événement terminé, rejeté ou
+      fusionné. Rien n'est supprimé — ils reviendraient si la fiche redevenait d'actualité.
+      {%- endif %}
     </div>
     {% for g in groups %}
     <div class="card" style="padding:.7rem 1rem;margin-bottom:.8rem;">
       <div style="font-weight:600;margin-bottom:.5rem;">
+        {% if g.en_ligne %}<span title="Publiée sur le site — une erreur y est visible du public">🌐</span> {% endif %}
         {{ g.titre }} <span class="muted text-sm">· fiche {{ g.event_id }}</span>
       </div>
       {% for c in g.checks %}
