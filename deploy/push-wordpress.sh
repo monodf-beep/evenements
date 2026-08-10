@@ -56,6 +56,31 @@ for f in "${FILES[@]}"; do
   [ -f "$f" ] || { echo "❌ Introuvable : $f" >&2; exit 2; }
 done
 
+# ── Contrôle de syntaxe AVANT d'envoyer ─────────────────────────────────────────
+# 2026-08-08 → 2026-08-10 : le site est resté injoignable DEUX JOURS (front, wp-admin
+# et API REST en 500 simultanément) pour une seule ligne fautive dans un mu-plugin :
+#   Parse error: syntax error, unexpected token "===" ... cs-source-garde.php on line 20
+# Un mu-plugin se charge avant tout le reste : une faute de syntaxe y tue aussi la porte
+# qui permettrait de la réparer. Il a fallu du FTP pour revenir en arrière.
+# D'où ce portillon, qui BLOQUE l'envoi — c'est le seul moment où l'erreur coûte encore
+# zéro. Un fichier refusé se corrige puis se repousse : ce n'est pas un cul-de-sac.
+if command -v php >/dev/null 2>&1; then
+  for f in "${FILES[@]}"; do
+    if ! out=$(php -d display_errors=1 -l "$f" 2>&1); then
+      echo "❌ Syntaxe PHP invalide, RIEN n'a été envoyé :" >&2
+      echo "   $out" >&2
+      exit 3
+    fi
+  done
+  echo "→ Syntaxe : ${#FILES[@]} fichier(s) validé(s) par php -l"
+else
+  # Le VPS n'héberge pas WordPress et n'a donc pas de PHP : on ne peut pas vérifier
+  # ici. On le DIT au lieu de laisser croire que le contrôle a eu lieu (règle 6).
+  echo "⚠️  Aucun binaire \`php\` : la syntaxe n'a PAS été vérifiée avant l'envoi." >&2
+  echo "    Pour l'obtenir :  sudo apt install -y php-cli" >&2
+  echo "    Sinon, depuis une machine qui a PHP :  python -m tests.test_php_syntax" >&2
+fi
+
 echo "→ Cible : $WP_DEPLOY_SSH:$WP_DEPLOY_MU_DIR (port $PORT)"
 echo "→ Fichiers : ${FILES[*]##*/}"
 

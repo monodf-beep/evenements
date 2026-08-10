@@ -192,3 +192,23 @@ Franck une suite de `git pull` / `pip install` / `systemctl` : il n'est pas dév
 c'est lui qui tape, et ce script existe précisément pour ça. Rappel écrit le 2026-08-08
 parce que je le lui ai fait retaper à la main pendant toute une session, alors qu'il
 avait lui-même utilisé `deploy/update.sh` la veille.
+
+**Aucun PHP ne part sur WordPress sans `php -l`, et sans passer par `deploy/wordpress/`.**
+Écrit le 2026-08-10, après deux jours de site injoignable — front, wp-admin et API REST
+en 500 en même temps — pour une seule ligne :
+
+```
+Parse error: syntax error, unexpected token "===" in
+  .../wp-content/mu-plugins/cs-source-garde.php on line 20
+```
+
+Un mu-plugin se charge AVANT tout le reste de WordPress : une faute de syntaxe y tue
+aussi la porte qui permettrait de la réparer. Le retour arrière a demandé du FTP, que
+Franck n'avait pas sous la main — c'est ça qui a coûté les deux jours, pas la faute
+elle-même. Et `cs-source-garde.php` n'était PAS dans le dépôt : écrit directement sur le
+serveur, sans relecture ni copie versionnée. Il reste **34 mu-plugins `cs-*` en ligne
+dans ces conditions**, dont 18 seulement ont leur double ici.
+
+Donc : le fichier vit dans `deploy/wordpress/`, `tests/test_php_syntax.py` le passe au
+`php -l` (avec une contre-épreuve : un fichier cassé DOIT être refusé), et
+`deploy/push-wordpress.sh` refuse d'envoyer ce qui ne compile pas.
