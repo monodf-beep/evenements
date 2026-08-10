@@ -112,5 +112,28 @@ jamais_enrichies = [ev["id"] for ev in sous_plancher if not (ev.get("article_tit
 _check("« jamais enrichie » repère bien id=1 (article_title vide), pas id=2",
        jamais_enrichies == [1], str(jamais_enrichies))
 
+# ── Frontière passé / à-venir (ajoutée le 2026-08-11) ───────────────────────────
+# Ce script annonçait « 108 fiches sous le plancher » sans distinguer le passé de
+# l'à-venir, et ce chiffre a servi trois jours à décrire l'état du site. Il y en avait
+# SEIZE encore devant nous. Réparer un article dont l'événement a eu lieu coûte 0,33 $
+# et ne sert personne (règle 5). Les cas ci-dessous prennent les DEUX côtés de la
+# frontière, y compris ceux qui doivent PASSER.
+print("\n──── frontière passé / à-venir ────")
+AUJ = "2026-08-11"
+FRONTIERE = [
+    ({"date_event_end": "2026-12-01"},                     True,  "à venir"),
+    ({"date_event_end": "2026-05-30"},                     False, "terminé"),
+    ({"date_event_end": AUJ},                              True,  "se termine aujourd'hui"),
+    ({"date_event_start": "2026-06-01", "date_event_end": "2026-09-20"}, True,
+     "en cours (mai→septembre) : c'est la FIN qui décide"),
+    ({},                                                   True,
+     "sans date : donnée manquante, pas événement fini"),
+    ({"date_event_end": "2026-05-30", "recurring": 1},     True,
+     "récurrent : pas de date unique, jamais passé"),
+]
+for ev, attendu, motif in FRONTIERE:
+    _check(f"{'gardé ' if attendu else 'écarté'} — {motif}",
+           audit.devant_nous(ev, AUJ) == attendu, str(ev))
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

@@ -14,10 +14,15 @@ CE SCRIPT N'ÉCRIT RIEN. La base est ouverte en lecture seule (`mode=ro`). Ne fa
 aucun appel réseau : `build_post` est pure (elle lit le dictionnaire, ne télécharge
 rien), donc mesurer 300+ fiches ne coûte ni LLM ni HTTP.
 
-Deux paniers, pour la même raison que le portillon lui-même :
-  1. SOUS LE PLANCHER (< 120 mots, PUBLISH_MIN_MOTS) — le cas indéfendable, à traiter
-     en priorité : enrichir (scripts.enrich <id>) ou dépublier (trash_by_ids).
+Trois paniers, pour la même raison que le portillon lui-même :
+  1. SOUS LE PLANCHER (< 120 mots, PUBLISH_MIN_MOTS) et ENCORE DEVANT NOUS — le cas
+     indéfendable, à traiter en priorité : scripts.repair_substance les répare en lot.
   2. BANDE MAIGRE (120-250 mots) — publiable, mais maigre : à surveiller, pas urgent.
+  3. MAIGRES MAIS PASSÉES — comptées à part depuis le 2026-08-11 (règle 5). Ce script
+     annonçait « 108 sous le plancher » sans faire le tri, et ce chiffre a servi trois
+     jours à décrire l'état du site : il y en a SEIZE encore devant nous. Les autres
+     concernent des événements terminés, qui ne seront pas republiés — les réparer
+     coûterait 0,33 $ pièce pour personne.
 
 Pour aider à choisir enrichir vs dépublier : `jamais enrichie` (article_title vide)
 signale une fiche qui n'a JAMAIS eu de vrai article — la réparation naturelle est de
@@ -35,6 +40,7 @@ import argparse
 import os
 import sqlite3
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +57,16 @@ def _connect_ro(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def devant_nous(ev: dict, today: str) -> bool:
+    """L'événement est-il encore devant nous ? Au niveau module pour être TESTABLE : la
+    frontière passé/à-venir décide de ce qu'on répare et de ce qu'on paie, elle mérite sa
+    fixture (tests/test_audit_substance_published.py)."""
+    if ev.get("recurring"):
+        return True                       # pas de date unique : jamais « passé »
+    fin = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
+    return not fin or fin[:10] >= today   # sans date = donnée manquante, pas un événement fini
 
 
 def main(argv=None) -> int:
@@ -73,13 +89,28 @@ def main(argv=None) -> int:
         "AND duplicate_of IS NULL").fetchall()]
     conn.close()
 
+    # RÈGLE 5, AJOUTÉE LE 2026-08-11 — ce script annonçait « 108 fiches sous le plancher »
+    # sans distinguer le passé de l'à-venir. Le chiffre a servi trois jours de suite à
+    # décrire l'état du site, et il était trompeur : scripts/repair_substance.py, écrit
+    # avec le filtre, en a trouvé SEIZE encore devant nous. Les 92 autres concernent des
+    # événements terminés — réparer leur article ne servirait personne, et coûterait
+    # 0,33 $ pièce. C'est exactement le reproche fait à audit_dedupe_damage le 2026-08-03 :
+    # « un rapport qui mélange passé et à-venir FABRIQUE du travail au lieu d'en désigner ».
+    # Le passé n'est pas supprimé du rapport, il est COMPTÉ À PART : une fiche maigre
+    # toujours en ligne reste une fiche maigre en ligne, mais elle ne se répare pas.
+    today = date.today().isoformat()
+
     plancher = substance.plancher()
-    sous_plancher, bande_maigre = [], []
+    sous_plancher, bande_maigre, passees = [], [], []
     for ev in rows:
         n = substance.mots_publies(ev, build_post)
-        if n < plancher:
+        if n >= substance.BANDE_MAIGRE:
+            continue
+        if not devant_nous(ev, today):
+            passees.append((ev, n))
+        elif n < plancher:
             sous_plancher.append((ev, n))
-        elif n < substance.BANDE_MAIGRE:
+        else:
             bande_maigre.append((ev, n))
     sous_plancher.sort(key=lambda t: t[1])  # les plus maigres d'abord
 
@@ -92,10 +123,14 @@ def main(argv=None) -> int:
     print(f"Fiches publiées (wp_post_id_as)          : {len(rows)}")
     print(f"Plancher (PUBLISH_MIN_MOTS)               : {plancher} mots")
     print()
-    print(f"1. SOUS LE PLANCHER (< {plancher} mots)          : {len(sous_plancher)}"
+    print(f"1. SOUS LE PLANCHER (< {plancher} mots), ENCORE DEVANT NOUS : {len(sous_plancher)}"
           + (f"  ({100 * len(sous_plancher) / len(rows):.1f} % du site)" if rows else ""))
     print(f"   · dont jamais enrichies (article_title vide) : {jamais_enrichies}")
+    print(f"   · réparation en lot : .venv/bin/python -m scripts.repair_substance")
     print(f"2. BANDE MAIGRE ({plancher}-{substance.BANDE_MAIGRE} mots), publiable mais maigre : {len(bande_maigre)}")
+    print(f"3. MAIGRES MAIS PASSÉES (comptées à part, NON réparables) : {len(passees)}")
+    print(f"   L'événement a eu lieu : la fiche ne sera pas republiée, plus aucun visiteur")
+    print(f"   ne la cherche. Les réparer coûterait ~{0.33 * len(passees):.0f} $ pour rien.")
     print()
 
     if args.ids:
