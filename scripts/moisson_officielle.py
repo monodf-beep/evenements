@@ -291,7 +291,15 @@ def main(argv=None) -> int:
         f"AND ({_MANQUE})",
         (today,)).fetchone()[0]
     conn.close()
-    print(f"\nIl reste {reste} fiche(s) incomplète(s) devant nous.")
+    # LIBELLÉ PRÉCIS, sinon deux compteurs se contredisent (2026-08-11, vu le soir même) :
+    # ce nombre inclut les fiches dont l'image n'est qu'une BANNIÈRE, ce que
+    # scripts/audit_incomplets.py ne compte pas — lui s'en tient aux champs vides de la
+    # porte qualité. Le premier run a donc affiché 109 là où l'audit disait 95, sans que
+    # rien n'ait empiré. Un compteur qui n'annonce pas ce qu'il compte fabrique une
+    # fausse alerte, ce qui est exactement ce qu'on reproche aux files du back-office.
+    print(f"\nIl reste {reste} fiche(s) à qui il manque un champ RÉCOLTABLE — bannière "
+          f"comprise (une bannière compte comme une image manquante ici, pas dans "
+          f"scripts/audit_incomplets.py, qui ne regarde que la porte qualité).")
     return 0
 
 
