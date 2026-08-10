@@ -5,6 +5,12 @@ Lance utils.seo.optimize_seo() sur les événements retenus, datés, à venir et
 score élevé qui n'ont pas encore de SEO (seo_at IS NULL). Stocke seo_* + seo_at.
 Ces champs sont ensuite poussés vers Yoast au (re)publish (publish_batch_as).
 
+Le run reprend aussi les fiches dont le SEO avait été calculé mais dont la republication
+a ÉCHOUÉ (site injoignable, verrou de publication) : `seo_pushed_at` marque le moment où
+le SEO a réellement atteint le site, et tout écart avec `seo_at` remet la fiche dans la
+file. Sans ça, `seo_at IS NULL` seul les écartait pour toujours — c'est arrivé pendant la
+panne du 8 au 10 août 2026.
+
 ⚠️ Coût LLM : chaque événement = un appel. À réserver aux événements qui comptent
 (le SEO de l'agenda se joue surtout sur les pages hubs, pas sur les fiches de masse).
 Borné (--cap), seuil (--min-score, défaut 7), --dry-run.
@@ -73,6 +79,67 @@ def _select(conn, args, today: str):
     return conn.execute(sql, params).fetchall()
 
 
+# ── Le SEO calculé mais jamais arrivé sur le site ───────────────────────────────
+# TROUVÉ le 2026-08-10, en conséquence directe de la panne du 8 au 10 août : pendant
+# ces deux jours, WordPress répondait 500 à TOUT. Le cron de 10h30 a quand même tourné :
+# l'appel LLM (Anthropic, indépendant du site) réussissait, `seo_at` était écrit, puis la
+# republication échouait. Or `_select` écarte tout ce qui a `seo_at IS NOT NULL`. Résultat :
+# ces fiches portent un SEO en base que Yoast n'a JAMAIS reçu, et rien ne les repêche —
+# le cul-de-sac de la règle 3, fabriqué par une panne plutôt que par un refus.
+#
+# `seo_pushed_at` enregistre la dernière fois où le SEO a effectivement ATTEINT le site.
+# La preuve retenue n'est pas la valeur de retour de publish_batch_as (qui ne rend qu'un
+# code global 0/1), mais le fait que `published_as_date` de la fiche ait BOUGÉ : c'est ce
+# que la publication écrit elle-même quand elle réussit, fiche par fiche.
+_SEO_PUSH_CAP = 20   # bornage d'un run ; le reste repasse au run suivant
+
+
+def _ensure_seo_pushed_col(conn) -> None:
+    """Crée `seo_pushed_at` et fait le rattrapage initial.
+
+    Au premier passage, toutes les lignes seraient « jamais poussées » — ce qui
+    republierait des centaines de fiches d'un coup pour rien. On considère donc comme
+    DÉJÀ poussé tout ce dont la dernière publication réussie est postérieure au calcul
+    du SEO ; seul le reste (dont les fiches de la panne) part en rattrapage.
+
+    ⚠️ Les deux dates ne sont pas écrites dans le même format : `datetime('now')` côté
+    SQL (« 2026-08-10 08:30:00 », UTC) et `datetime.now().isoformat()` côté
+    translate_events (« 2026-08-10T10:45:00 », heure locale). D'où le `replace('T',' ')`,
+    et l'acceptation d'un flou de quelques heures SUR CE SEUL RATTRAPAGE : se tromper y
+    coûte une republication de texte en trop, jamais une perte. Après quoi la colonne
+    est écrite par ce script seul, dans un format unique."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
+    if "seo_pushed_at" in cols:
+        return
+    conn.execute("ALTER TABLE events_raw ADD COLUMN seo_pushed_at TEXT")
+    conn.execute(
+        "UPDATE events_raw SET seo_pushed_at = seo_at "
+        "WHERE seo_at IS NOT NULL AND published_as_date IS NOT NULL "
+        "  AND replace(published_as_date,'T',' ') >= replace(seo_at,'T',' ')")
+    conn.commit()
+    log.info("Colonne seo_pushed_at créée (rattrapage initial appliqué).")
+
+
+def _a_repousser(conn, today: str, cap: int) -> list[int]:
+    """Fiches EN LIGNE dont le SEO n'a jamais atteint le site. Règle 5 : rien de passé —
+    une fiche sans date n'est pas « passée », c'est une donnée manquante, elle reste."""
+    return [r[0] for r in conn.execute(
+        "SELECT id FROM events_raw "
+        "WHERE seo_at IS NOT NULL AND wp_post_id_as IS NOT NULL "
+        "  AND (seo_pushed_at IS NULL OR seo_pushed_at < seo_at) "
+        "  AND annule_le IS NULL AND duplicate_of IS NULL "
+        "  AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '9999') >= ? "
+        "ORDER BY COALESCE(llm_score,0) DESC LIMIT ?", (today, cap)).fetchall()]
+
+
+def _dates_publication(conn, ids: list[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    ph = ",".join("?" * len(ids))
+    return {r[0]: (r[1] or "") for r in conn.execute(
+        f"SELECT id, published_as_date FROM events_raw WHERE id IN ({ph})", ids)}
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Génération SEO en lot (agent).")
     parser.add_argument("--cap", type=int, default=30, help="Nombre max d'événements par run.")
@@ -81,6 +148,8 @@ def main(argv=None) -> int:
     parser.add_argument("--redo", action="store_true", help="Régénérer même si déjà fait.")
     parser.add_argument("--include-past", action="store_true", help="Inclure les événements passés.")
     parser.add_argument("--dry-run", action="store_true", help="Lister la sélection sans appeler le LLM.")
+    parser.add_argument("--push-cap", type=int, default=_SEO_PUSH_CAP,
+                        help=f"Nb max de SEO en retard repoussés par run (défaut {_SEO_PUSH_CAP}).")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -89,8 +158,10 @@ def main(argv=None) -> int:
              or "claude-haiku-4-5")
     today = date.today().isoformat()
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    _ensure_seo_pushed_col(conn)
+    a_repousser = _a_repousser(conn, today, args.push_cap)
     rows = _select(conn, args, today)
     log.info("Sélection : %d événement(s) (cap %d, min-score %d, modèle %s)",
              len(rows), args.cap, args.min_score, model)
@@ -99,16 +170,25 @@ def main(argv=None) -> int:
         for r in rows:
             print(f"  [{r['id']}] score={r['llm_score']} · {(r['title'] or '')[:70]}")
         print(f"\n{len(rows)} événement(s) SERAIENT optimisés (dry-run — aucun appel LLM).")
+        for i in a_repousser:
+            print(f"  [{i}] SEO déjà calculé mais jamais arrivé sur le site → republication")
+        print(f"{len(a_repousser)} fiche(s) SERAIENT republiées (texte seul, aucun appel LLM).")
         conn.close()
         return 0
 
-    if not api_key:
-        log.error("ANTHROPIC_API_KEY absente — génération SEO impossible.")
-        conn.close()
-        return 1
+    # Clé absente : plus de génération, mais on NE SORT PAS. Les retardataires n'ont
+    # besoin d'aucun LLM — leur SEO est déjà en base, il ne lui manque que le trajet
+    # jusqu'au site. Sortir ici les garerait pour toute la durée de la panne de clé.
+    sans_cle = not api_key
+    if sans_cle:
+        log.error("ANTHROPIC_API_KEY absente — aucune génération SEO ce run. Les SEO "
+                  "déjà calculés et non poussés le seront quand même.")
+        rows = []
 
-    import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
+    client = None
+    if rows:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
     ok = fail = 0
     plafonne = False
     republish_ids = []  # déjà EN LIGNE : le nouveau SEO doit être repoussé pour être visible
@@ -151,30 +231,64 @@ def main(argv=None) -> int:
         if args.delay and i < len(rows):
             time.sleep(args.delay)
 
-    conn.close()
-
     # Le SEO stocké en base ne sert à rien tant qu'il n'est pas repoussé (cs-publish.php
     # ne lit `seo_*` qu'au (re)publish) : sans ça, "optimisé" en base mais invisible sur
     # Yoast jusqu'au prochain republish, potentiellement jamais si l'événement est déjà en
     # ligne et ne bouge plus. --skip-media : texte/méta seuls, on ne retouche pas la photo.
-    if republish_ids:
+    #
+    # On y joint les RETARDATAIRES (SEO calculé lors d'un run précédent dont la
+    # republication a échoué — cf. _ensure_seo_pushed_col). Aucun appel LLM : ces fiches
+    # ont déjà leur SEO en base, il ne leur manque que le trajet jusqu'au site.
+    a_pousser = list(dict.fromkeys(republish_ids + a_repousser))
+    avant = _dates_publication(conn, a_pousser)
+    conn.close()
+
+    if a_pousser:
         from scripts.publish_batch_as import main as publish_main
-        publish_main(["--ids", *[str(i) for i in republish_ids], "--skip-media"])
+        publish_main(["--ids", *[str(i) for i in a_pousser], "--skip-media"])
+
+    # RÈGLE 6 : ne pas compter ce qu'on a demandé, recompter ce qui s'est produit. Preuve
+    # fiche par fiche : `published_as_date` n'est réécrit que par une publication RÉUSSIE.
+    # Ce qui n'a pas bougé garde son `seo_pushed_at` en retard et se represente au run
+    # suivant — c'est le rouvreur, et il ne dépend de personne.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    apres = _dates_publication(conn, a_pousser)
+    arrives = [i for i in a_pousser if apres.get(i) and apres.get(i) != avant.get(i)]
+    if arrives:
+        ph = ",".join("?" * len(arrives))
+        conn.execute(f"UPDATE events_raw SET seo_pushed_at = seo_at WHERE id IN ({ph})",
+                     arrives)
+        conn.commit()
+    # Le retard qui subsiste, cap compris : une file qu'on ne compte pas est une file
+    # qu'on découvre des semaines plus tard.
+    reste = conn.execute(
+        "SELECT COUNT(*) FROM events_raw WHERE seo_at IS NOT NULL AND wp_post_id_as IS NOT NULL "
+        "AND (seo_pushed_at IS NULL OR seo_pushed_at < seo_at) AND annule_le IS NULL "
+        "AND duplicate_of IS NULL "
+        "AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '9999') >= ?",
+        (today,)).fetchone()[0]
+    conn.close()
 
     from utils import slack
     from utils import pipeline_status
-    msg = f"🔍 *SEO quotidien* — {ok} optimisé(s) ({len(republish_ids)} republié(s)), {fail} échec(s)"
+    msg = (f"🔍 *SEO quotidien* — {ok} optimisé(s) "
+           f"({len(arrives)} arrivé(s) sur le site), {fail} échec(s)")
+    if a_repousser:
+        msg += f"\n↩️ {len(a_repousser)} SEO en retard repoussé(s) (aucun appel LLM)."
+    if reste:
+        msg += (f"\n⏳ {reste} fiche(s) ont un SEO que le site n'a toujours pas reçu — "
+                "elles repassent au prochain run.")
     if plafonne:
         msg += "\n🔴 Plafond API atteint — lot arrêté, fiches restantes non tentées."
     slack.notify(msg)
     pipeline_status.record_run("seo_batch", ok=ok, error=fail, summary=msg)
-    log.info("=== Lot SEO : %d optimisé(s), %d échec(s), %d republié(s) ===",
-             ok, fail, len(republish_ids))
+    log.info("=== Lot SEO : %d optimisé(s), %d échec(s), %d arrivé(s) sur le site, "
+             "%d encore en retard ===", ok, fail, len(arrives), reste)
     if plafonne:
         log.error("Le lot s'est arrêté sur un plafond API. Relever le plafond ou "
                   "recharger le crédit (console Anthropic), puis relancer.")
         return 3
-    return 0 if fail == 0 else 1
+    return 0 if (fail == 0 and not sans_cle) else 1
 
 
 if __name__ == "__main__":
