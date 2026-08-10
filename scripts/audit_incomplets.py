@@ -16,9 +16,12 @@ Trois angles :
   1. PAR CHAMP MANQUANT — quelle chaîne de réparation est en panne ;
   2. PAR SOURCE — quelles sources livrent de la matière inexploitable (c'est la réponse
      directe à « on va pourtant chercher des sources officielles ») ;
-  3. LES BLOQUÉES — fiches déjà passées par un cron qui a échoué et posé son verdict
-     (venue_source='llm_none', date_source vide après tentative…). Ce sont elles qui
-     dorment : le cron ne les reprendra pas, il croit avoir fait son travail.
+  3. CELLES OÙ UN CRON A DÉJÀ CHERCHÉ, ET ÉCHOUÉ (venue_source='llm_none', verdict de
+     date posé…). Elles ne sont PAS bloquées — dates.py et venues.py les re-tentent
+     d'eux-mêmes après leur délai de carence, rouvreur ajouté après l'incident des 823
+     fiches endormies. Le problème est l'inverse : l'appel se repaie tous les sept jours
+     pour aboutir au même échec. Une matière qui ne contient pas la date ne la contiendra
+     pas davantage la semaine prochaine.
 
 RÈGLE 5 : uniquement les événements À VENIR, EN COURS, RÉCURRENTS ou SANS DATE. Une fiche
 incomplète dont l'événement a eu lieu ne sera jamais réparée ni republiée — la compter
@@ -130,29 +133,37 @@ def main(argv=None) -> int:
         print(f"{src:40} {n:12} {tot:8} {100*n/tot:5.0f}%")
     print()
 
-    # ── 3. Les bloquées : un cron a déjà tranché et ne repassera pas ─────────────
-    # C'est la vraie question de la règle 3 : qui les rouvre ? Un compteur global les
-    # noie avec les fiches simplement pas encore traitées, qui, elles, partiront demain.
-    bloquees = defaultdict(list)
+    # ── 3. Celles où un cron a déjà tranché — et ce que ça coûte ────────────────
+    #
+    # ⚠️ CORRIGÉ le 2026-08-11, le jour même de l'écriture : la première version titrait
+    # « fiches qu'AUCUN cron ne reprendra tout seul » et conseillait `--retry`. C'était
+    # FAUX. dates.py comme venues.py re-tentent d'eux-mêmes après leur délai de carence
+    # (DATE_COOLDOWN_DAYS / VENUE_COOLDOWN_DAYS, 7 jours par défaut) — ce rouvreur
+    # automatique a justement été ajouté après l'incident des 823 fiches endormies dans
+    # venue_source='llm_none'. Annoncer un cul-de-sac là où il n'y en a plus aurait fait
+    # taper une commande inutile, et surtout masqué le vrai problème, qui est l'inverse :
+    # ces fiches sont re-tentées indéfiniment et échouent à chaque fois. Ce n'est pas une
+    # file bloquée, c'est une dépense qui se répète sans jamais aboutir.
+    verdicts = defaultdict(list)
     for e, manq in incomplets:
-        if "lieu" in manq or "ville" in manq:
-            if (e.get("venue_source") or "") == "llm_none":
-                bloquees["lieu introuvable, venues.py a déjà renoncé "
-                         "(--retry pour le rouvrir)"].append(e["id"])
+        if ("lieu" in manq or "ville" in manq) and (e.get("venue_source") or "") == "llm_none":
+            verdicts["lieu — venues.py a cherché et n'a rien trouvé"].append(e["id"])
         if "date_event_start" in manq and (e.get("date_source") or ""):
-            bloquees["date introuvable, dates.py a déjà tranché "
-                     "(--retry pour le rouvrir)"].append(e["id"])
+            verdicts["date — dates.py a cherché et n'a rien trouvé"].append(e["id"])
         if (e.get("enrich_status") or "") in ("error", "api_error"):
-            bloquees[f"enrichissement en échec ({e.get('enrich_status')})"].append(e["id"])
-    if bloquees:
-        print("═══ Fiches qu'AUCUN cron ne reprendra tout seul ═══\n")
-        for motif, ids in sorted(bloquees.items(), key=lambda kv: -len(kv[1])):
+            verdicts[f"enrichissement en échec ({e.get('enrich_status')})"].append(e["id"])
+    if verdicts:
+        print("═══ Fiches où un cron a déjà cherché… et échoué ═══\n")
+        print("Elles sont re-tentées toutes seules après le délai de carence (7 jours par")
+        print("défaut). Ce n'est donc pas une file bloquée : c'est un appel LLM qui se")
+        print("repaie tous les sept jours pour aboutir au même résultat.\n")
+        for motif, ids in sorted(verdicts.items(), key=lambda kv: -len(kv[1])):
             apercu = " ".join(str(i) for i in ids[:12])
             suite = " …" if len(ids) > 12 else ""
             print(f"  {len(ids):4} — {motif}\n         {apercu}{suite}")
         print()
     else:
-        print("Aucune fiche garée par un verdict de cron : tout ce qui manque est "
+        print("Aucune fiche n'a encore reçu de verdict de cron : tout ce qui manque est "
               "simplement en attente du prochain passage.\n")
 
     # ── Détail à la demande ─────────────────────────────────────────────────────
@@ -162,9 +173,15 @@ def main(argv=None) -> int:
         }.get(args.detail, args.detail)
         sel = [e for e, m in incomplets if cible in m][:args.limite]
         print(f"═══ {len(sel)} fiche(s) à qui manque « {cible} » ═══\n")
+        # url_source affichée : c'est elle qui décide si la réparation est POSSIBLE. Une
+        # fiche née d'une newsletter dont le lien pointe sur la page de l'événement peut
+        # être datée en allant la lire ; une fiche dont le lien pointe sur la newsletter
+        # elle-même (ou sur rien) ne le sera jamais, et la re-tenter chaque semaine ne
+        # fera que repayer le même échec.
         for e in sel:
-            print(f"  [{e['id']:>5}] {(e.get('title') or '')[:58]:58} · "
-                  f"{(e.get('source_name') or '?')[:24]}")
+            print(f"  [{e['id']:>5}] {(e.get('title') or '')[:52]:52} · "
+                  f"{(e.get('source_name') or '?')[:20]:20} · "
+                  f"{(e.get('url_source') or '—')[:46]}")
     return 0
 
 
