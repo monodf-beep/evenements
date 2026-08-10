@@ -102,6 +102,12 @@ def classify(ev: dict, client, model: str) -> dict | None:
         return None
     raw = "".join(getattr(b, "text", "") for b in msg.content
                   if getattr(b, "type", None) == "text")
+    # MESURÉ (2026-08-11) : ce poste n'était pas compté du tout. Franck, 2026-08-10 :
+    # « je consomme beaucoup trop de token API pour le résultat médiocre » — on ne peut
+    # ni le lui confirmer ni le lui infirmer tant que la moitié des appels sont
+    # invisibles. Voir scripts/audit_couts.py pour la répartition par poste.
+    from utils import usage
+    usage.record_message(model, msg, label="classement_cinema")
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
         return None

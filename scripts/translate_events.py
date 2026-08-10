@@ -204,6 +204,11 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
             resp = client.messages.create(
                 model=model, max_tokens=budget,
                 messages=[{"role": "user", "content": prompt}])
+            # MESURÉ (2026-08-11) — et mesuré À CHAQUE TENTATIVE, y compris tronquée :
+            # un essai coupé par max_tokens est facturé comme les autres. C'est même le
+            # seul endroit où le gaspillage se voit (deux appels pour zéro traduction).
+            from utils import usage
+            usage.record_message(model, resp, label="traduction_titre")
             if getattr(resp, "stop_reason", None) != "max_tokens":
                 break
             log.warning("Traduction titre/description tronquée (max_tokens=%d, essai %d/2).",
@@ -303,6 +308,8 @@ def translate_article(client, model, enrich_json: str, target: str,
         resp = client.messages.create(
             model=model, max_tokens=8000,
             messages=[{"role": "user", "content": prompt}])
+        from utils import usage
+        usage.record_message(model, resp, label="traduction_article")
         if getattr(resp, "stop_reason", None) == "max_tokens":
             log.warning("Traduction de l'article tronquée (max_tokens) — article ignoré.")
             return None

@@ -126,6 +126,12 @@ def visual_query(ev: dict, client, model: str) -> str:
         log.warning("[%s] requête visuelle LLM échouée : %s", ev.get("id"), exc)
         return ""
     raw = _final_text(msg)
+    # MESURÉ (2026-08-11) : ce poste n'était pas compté du tout. Franck, 2026-08-10 :
+    # « je consomme beaucoup trop de token API pour le résultat médiocre » — on ne peut
+    # ni le lui confirmer ni le lui infirmer tant que la moitié des appels sont
+    # invisibles. Voir scripts/audit_couts.py pour la répartition par poste.
+    from utils import usage
+    usage.record_message(model, msg, label="requete_visuelle")
     m = raw[raw.find("{"):raw.rfind("}") + 1] if "{" in raw else ""
     try:
         data = json.loads(m or raw)

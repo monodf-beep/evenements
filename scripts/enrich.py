@@ -526,6 +526,11 @@ def resolve_official_site(title: str, lieu: str, client) -> str:
             with client.messages.stream(model=search_model, max_tokens=600,
                                         tools=[WEB_SEARCH_TOOL], messages=messages) as stream:
                 msg = stream.get_final_message()
+            # MESURÉ, comme les autres (2026-08-11) : cet appel-ci utilise le modèle
+            # QUALITÉ *et* la recherche web serveur (facturée à part), et il tourne
+            # jusqu'à MAX_WEB_SEARCHES+3 fois par fiche. Il n'était pas compté : la
+            # facture d'un poste invisible est celle qu'on ne peut pas discuter.
+            usage.record_message(search_model, msg, label="site_officiel_recherche")
             if msg.stop_reason == "pause_turn":
                 messages.append({"role": "assistant", "content": msg.content})
                 continue
@@ -1348,6 +1353,13 @@ def reader_review(article: dict, ev: dict, client, model: str,
                                      messages=[{"role": "user", "content": prompt}])
     except Exception:  # noqa: BLE001 — non bloquant
         return {}
+    # MESURÉ (2026-08-11). C'est l'appel le plus RÉPÉTÉ du pipeline : trois à quatre
+    # relectures par fiche (locaux + visiteurs), et le double quand le panel vote la
+    # révision — car le panel entier se rejoue sur l'article réécrit. Il envoie en outre
+    # le persona ENTIER à chaque fois (un fichier markdown complet). Il n'était pas
+    # compté du tout : impossible de dire ce que coûte le panel, donc impossible de
+    # décider s'il vaut son prix.
+    usage.record_message(model, msg, label="panel_lecteur")
     raw = "".join(getattr(b, "text", "") for b in msg.content
                   if getattr(b, "type", None) == "text")
     m = _re.search(r"\{.*\}", raw, _re.S)
