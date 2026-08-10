@@ -40,6 +40,14 @@ CE QU'IL NE FAIT JAMAIS
   • il ne touche pas aux fiches dont l'URL n'est pas une page (« gmail:… », Google News) :
     il n'y a rien à télécharger.
 
+CE QUE ÇA RAPPORTE VRAIMENT (mesuré le 2026-08-11, et rectifié le même jour)
+68 pages lues → 4 dates, 1 lieu, 5 images. C'est peu, et il faut le dire tel quel.
+J'avais d'abord annoncé « 36 vraies affiches attendent derrière une bannière », en lisant
+le compteur --diagnostic avant d'avoir posé le filtre des domaines : sur ces 36 og:image,
+la plupart venaient de pages de PRESSE, qu'on n'a pas le droit de récolter. Après filtre :
+cinq. Le gain de ce script n'est donc pas dans le volume, il est dans le fait qu'une page
+officielle n'est plus lue trois fois pour un champ chacune.
+
 RÈGLE 5 : uniquement ce qui est encore devant nous. RÈGLE 4 : dry-run par défaut.
 RÈGLE 6 : le bilan est recompté en base, champ par champ, après écriture.
 
