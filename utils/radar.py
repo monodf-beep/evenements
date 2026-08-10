@@ -136,6 +136,23 @@ def _is_official_host(host: str) -> bool:
     return not any(host == b or host.endswith("." + b) for b in _blocked_hosts())
 
 
+def source_officielle(url: str) -> bool:
+    """L'ADRESSE appartient-elle à un domaine qui peut servir de source officielle ?
+
+    Même test que celui qui décide d'une ancre officielle (`_is_official_host`), exposé
+    publiquement le 2026-08-11 : scripts/moisson_officielle.py récoltait l'og:image de
+    la page d'origine SANS vérifier à qui appartenait cette page, et Franck a vu passer
+    guidatorino.com, quotidianopiemontese.it et aostaoggi.it — de la presse. Prendre la
+    photo d'un article de journal, c'est exactement ce que le contrat radar interdit
+    (« DÉTECTER, jamais créditer ni lier »), et c'est en plus la photo de quelqu'un.
+
+    Le test couvre les trois familles : hébergeurs génériques, domaines du tier radar
+    (config/sources.txt) et domaines « jamais crédités » (config/non_institutional_
+    sources.txt). Il porte sur la PAGE, pas sur l'image : un site officiel a le droit
+    de servir ses visuels depuis un CDN."""
+    return _is_official_host(_host(url))
+
+
 def _enrich_data(event: dict) -> dict:
     raw = event.get("enrich_data")
     if isinstance(raw, dict):

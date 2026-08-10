@@ -182,5 +182,34 @@ _check("… et sa provenance suit (plus jamais reprise pour ce motif)",
 _check("la vraie photo existante n'est PAS remplacée",
        f7["url_image"] == "https://sa-vraie-affiche.jpg", str(f7["url_image"]))
 
+# ── Aucune récolte sur un domaine de presse ────────────────────────────────────
+# Franck, 2026-08-11, en lisant la sortie : « il semble encore y avoir du radar ! » —
+# la moisson proposait l'og:image de guidatorino.com, quotidianopiemontese.it et
+# aostaoggi.it. Le contrat radar dit « DÉTECTER, jamais créditer ni lier », et une photo
+# de presse appartient au journal. On ne prend RIEN de ces pages, pas même la date : un
+# article « que faire ce week-end » parle de dix événements, et la date qu'on y lirait
+# risque d'être celle d'un autre (c'est ainsi que WP#6798 a porté la date d'un voisin).
+print("\n──── presse : rien n'est récolté ────")
+PRESSE = [
+    (10, "https://www.guidatorino.com/evenement-x"),
+    (11, "https://www.quotidianopiemontese.it/evenement-y"),
+    (12, "https://www.aostaoggi.it/evenement-z"),
+]
+conn = sqlite3.connect(tmp)
+for eid, url in PRESSE:
+    PAGES[url] = PAGE_RICHE          # la page EST riche : seul le domaine la disqualifie
+    conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,"
+                 "lieu,ville,url_image,date_event_end) VALUES (?,?,?, 'evaluated', "
+                 "'','','','', '2026-12-31')", (eid, f"Presse {eid}", url))
+conn.commit()
+conn.row_factory = sqlite3.Row
+cibles3 = {e["id"] for e in mo._a_moissonner(conn, AUJOURDHUI, 50)}
+for eid, url in PRESSE:
+    _check(f"écarté — {url.split('/')[2]}", eid not in cibles3, str(sorted(cibles3)))
+_check("une page officielle riche reste, elle, récoltable",
+       any(mo._url_telechargeable(dict(r)) for r in
+           conn.execute("SELECT * FROM events_raw WHERE id=1")))
+conn.close()
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

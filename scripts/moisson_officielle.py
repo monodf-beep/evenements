@@ -60,6 +60,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger  # noqa: E402
 from utils.images import fetch_og_image  # noqa: E402
+from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
+from utils.radar import source_officielle  # noqa: E402
 from scripts.dates import dates_from_page, ensure_columns, _robust_get  # noqa: E402
 from scripts.venues import venue_from_page  # noqa: E402
 
@@ -104,8 +106,22 @@ def _url_telechargeable(ev: dict) -> str:
     pseudo-adresses (« gmail:… ») et Google News ne sont pas des pages."""
     for cle in ("url_officiel", "url_source"):
         u = (ev.get(cle) or "").strip()
-        if u.startswith(("http://", "https://")) and "news.google.com" not in u:
-            return u
+        if not u.startswith(("http://", "https://")) or "news.google.com" in u:
+            continue
+        # LE DOMAINE DOIT POUVOIR SERVIR DE SOURCE OFFICIELLE (2026-08-11). Sans ce
+        # test, la moisson récoltait l'og:image de la page d'origine quelle qu'elle
+        # soit — Franck a vu passer guidatorino.com, quotidianopiemontese.it et
+        # aostaoggi.it, c'est-à-dire de la presse. Le contrat radar est explicite :
+        # « DÉTECTER, jamais créditer ni lier ». Et une photo de presse appartient au
+        # journal, pas à nous.
+        # On ne récolte RIEN de ces pages, pas même la date : un article de presse est
+        # souvent un « que faire ce week-end » qui parle de dix événements, et une date
+        # prise là-dedans risque d'être celle d'un autre — c'est ainsi que WP#6798 a
+        # porté la date d'un voisin. Le chemin de sortie de ces fiches reste la
+        # résolution de leur page officielle, qui est le travail de l'enrichissement.
+        if not source_officielle(u):
+            continue
+        return u
     return ""
 
 
@@ -162,7 +178,11 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
     _banniere = (ev.get("image_source") or "") == "banner"
     if not _img or _banniere:
         og = fetch_og_image(url)
-        if og and og != _img:
+        # Mêmes défenses que scripts/visuals.py : un logo de site ou une image d'un
+        # domaine bloqué n'illustre pas un événement. Le domaine de la PAGE est déjà
+        # validé plus haut ; ceci vise l'image elle-même.
+        if og and og != _img and not is_logo_image(og) \
+                and not is_blocked_image(og, load_blocked_image_domains()):
             trouve["url_image"] = og
     if not trouve and marqueurs is not None:
         for nom in _diagnostic(html) or ["AUCUN marqueur connu"]:
