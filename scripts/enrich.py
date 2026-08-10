@@ -1081,7 +1081,22 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
                    "et la langue sont OBLIGATOIRES dès que la matière les contient.")
     if extra_task:
         prompt += "\n\n" + extra_task
-    messages = [{"role": "user", "content": prompt}]
+    # MISE EN CACHE DU PROMPT (2026-08-11) — le plus gros levier de coût du dépôt, mesuré.
+    #
+    # Sur 14 jours : 138 $ d'API dont 121 $ (87,7 %) pour ce seul appel, et 29,9 M de
+    # jetons d'ENTRÉE contre 3,2 M de sortie. L'entrée fait donc les deux tiers de la
+    # facture — et elle est massivement RÉPÉTÉE : la boucle de l'outil web ci-dessous
+    # renvoie `messages` EN ENTIER à chaque tour, jusqu'à sept fois. Or ce prompt pèse à
+    # lui seul ~7 000 jetons (le gabarit fait 10 800 caractères, la matière jusqu'à
+    # 12 000) et il ne change pas d'un tour à l'autre : on le repayait plein tarif sept
+    # fois par fiche.
+    #
+    # Le marqueur `cache_control` fait payer l'écriture 1,25× au premier tour, puis les
+    # lectures 0,1× aux suivants. Rien d'autre ne change : même modèle, même prompt, même
+    # sortie — c'est une remise sur la répétition, pas un compromis sur la qualité.
+    # (Un prompt trop court pour être mis en cache est simplement ignoré, sans erreur.)
+    messages = [{"role": "user", "content": [
+        {"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]}]
     try:
         # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
         # STREAMING : indispensable ici (recherche web + raisonnement = requêtes longues)
@@ -1106,10 +1121,25 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
             kwargs["messages"] = messages
             with client.messages.stream(**kwargs) as stream:
                 message = stream.get_final_message()
-            usage.record_message(model, message, label="enrichissement")
-            out_tok = getattr(getattr(message, "usage", None), "output_tokens", "?")
-            log.info("[%d] tour %d : stop_reason=%s, %s tokens sortie",
-                     ev["id"], turn, message.stop_reason, out_tok)
+            # On n'utilise PAS record_message ici : il ne lit que `input_tokens`, et
+            # depuis la mise en cache les jetons relus n'y figurent plus. Le rapport de
+            # coûts verrait la facture « baisser » de jetons pourtant payés. On enregistre
+            # donc l'ÉQUIVALENT PLEIN TARIF (écriture 1,25× / lecture 0,1×) : le coût reste
+            # juste, et c'est le coût qu'on discute. La contrepartie est assumée et écrite
+            # dans scripts/audit_couts.py : la colonne « entrée » n'est plus un décompte de
+            # jetons réels pour ce poste, c'est un équivalent facturé.
+            _u = getattr(message, "usage", None)
+            _cw = getattr(_u, "cache_creation_input_tokens", 0) or 0
+            _cr = getattr(_u, "cache_read_input_tokens", 0) or 0
+            _stu = getattr(_u, "server_tool_use", None)
+            usage.record(model,
+                         (getattr(_u, "input_tokens", 0) or 0) + int(_cw * 1.25) + int(_cr * 0.1),
+                         getattr(_u, "output_tokens", 0) or 0,
+                         getattr(_stu, "web_search_requests", 0) or 0,
+                         label="enrichissement")
+            out_tok = getattr(_u, "output_tokens", "?")
+            log.info("[%d] tour %d : stop_reason=%s, %s tokens sortie, cache %s écrit / "
+                     "%s relu", ev["id"], turn, message.stop_reason, out_tok, _cw, _cr)
             if message.stop_reason == "max_tokens":
                 log.warning("[%d] réponse coupée (max_tokens=%d) — augmente ENRICH_MAX_TOKENS",
                             ev["id"], MAX_TOKENS)

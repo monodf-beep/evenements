@@ -15,6 +15,12 @@ Deux angles, parce qu'un seul ment :
     pipeline qui dépense 40 € pour mettre 12 fiches en ligne coûte 3,30 € la fiche, et
     c'est ça qu'on discute, pas le total.
 
+⚠️ « ENTRÉE » POUR L'ENRICHISSEMENT EST UN ÉQUIVALENT FACTURÉ, pas un décompte de jetons.
+Depuis la mise en cache du prompt (2026-08-11), une partie de l'entrée est relue depuis le
+cache à 0,1× et écrite à 1,25×. scripts/enrich.py enregistre donc l'équivalent plein tarif
+plutôt que le brut : sans ça, la facture paraîtrait baisser de jetons pourtant payés. Le
+COÛT reste exact — c'est lui qu'on discute.
+
 ⚠️ CE QUE CE RAPPORT NE SAIT PAS. Les postes n'ont commencé à être mesurés qu'au fur et
 à mesure : `panel_lecteur`, `site_officiel_recherche`, `datation`, `lieu`,
 `traduction_*`, `requete_visuelle` ont été instrumentés le 2026-08-11. Tout ce qui
