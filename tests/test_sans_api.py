@@ -87,8 +87,8 @@ _check("en ligne = 1", etat["en_ligne"] == 1, str(etat))
 # ── Le dry-run ne lance rien : c'est toute sa raison d'être ─────────────────────
 print("\n──── simulation : aucune étape exécutée ────")
 lancees = []
-for mod in ("scripts.dates", "scripts.venues", "scripts.visuals",
-            "scripts.publish_batch_as"):
+for mod in ("scripts.moisson_officielle", "scripts.dates", "scripts.venues",
+            "scripts.visuals", "scripts.publish_batch_as"):
     m = __import__(mod, fromlist=["main"])
     m.main = (lambda nom: (lambda argv=None: lancees.append(nom) or 0))(mod)
 code = sa.main([])
@@ -96,19 +96,22 @@ _check("code retour 0", code == 0, str(code))
 _check("aucune étape lancée en simulation", lancees == [], str(lancees))
 
 # ── --apply les lance, dans l'ordre imposé par la porte qualité ─────────────────
-print("\n──── --apply : les quatre étapes, dans l'ordre ────")
+# L'ORDRE EST LE FOND DU SUJET, pas un détail : la moisson de la page officielle passe
+# EN PREMIER (elle donne date+lieu+ville+image d'une seule lecture), et la publication en
+# dernier — la porte qualité exige que tout soit rempli avant.
+print("\n──── --apply : les cinq étapes, dans l'ordre ────")
 lancees.clear()
 sa.main(["--apply"])
-_check("les quatre étapes sont lancées dans l'ordre dater → lieu → image → publier",
-       lancees == ["scripts.dates", "scripts.venues", "scripts.visuals",
-                   "scripts.publish_batch_as"], str(lancees))
+_check("moisson officielle d'abord, publication en dernier",
+       lancees == ["scripts.moisson_officielle", "scripts.dates", "scripts.venues",
+                   "scripts.visuals", "scripts.publish_batch_as"], str(lancees))
 
 print("\n──── --sans-publication s'arrête avant la mise en ligne ────")
 lancees.clear()
 sa.main(["--apply", "--sans-publication"])
 _check("la publication n'est pas lancée",
        "scripts.publish_batch_as" not in lancees, str(lancees))
-_check("les trois étapes de complétion le sont", len(lancees) == 3, str(lancees))
+_check("les quatre étapes de complétion le sont", len(lancees) == 4, str(lancees))
 
 # ── Une étape qui plante ne prive pas les suivantes de leur tour ────────────────
 print("\n──── une étape en échec n'annule pas les autres ────")

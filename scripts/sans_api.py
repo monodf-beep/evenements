@@ -130,17 +130,26 @@ def main(argv=None) -> int:
 
     if not args.apply:
         print("Simulation — rien n'a été lancé. Les étapes qui SERAIENT exécutées :")
-        print("  1. dates.py --no-llm        (texte + page)")
-        print("  2. venues.py --no-llm       (référentiel de lieux)")
-        print("  3. visuals.py --sans-llm    (og:image + bannière)")
+        print("  1. moisson_officielle       (date+lieu+ville+image, UNE lecture)")
+        print("  2. dates.py --no-llm        (texte + page)")
+        print("  3. venues.py --no-llm       (référentiel de lieux)")
+        print("  4. visuals.py --sans-llm    (og:image + bannière)")
         if not args.sans_publication:
-            print(f"  4. publish_batch_as --cap {args.cap}  (ce qui est devenu complet)")
+            print(f"  5. publish_batch_as --cap {args.cap}  (ce qui est devenu complet)")
         print("\nAjouter --apply pour exécuter. Aucun appel modèle dans aucune étape.")
         return 0
 
     # Chaque étape est isolée : un plantage à l'étape 2 ne doit pas priver l'étape 3 de
     # son tour. Le pipeline entier tombait autrefois sur une seule exception.
     etapes = [
+        # EN PREMIER, et c'est le point de Franck du 2026-08-11 : une page officielle lue
+        # UNE fois donne la date, le lieu, la ville et l'image d'un coup — alors que les
+        # trois passes ci-dessous la relisent chacune pour un seul champ, chacune derrière
+        # son propre délai de carence. Ce qui vient de la source officielle doit être
+        # récolté avant tout le reste ; les passes suivantes ne traitent alors plus que
+        # ce que la page n'a pas donné.
+        ("moisson de la page officielle", "scripts.moisson_officielle",
+         ["--apply", "--cap", "150"]),
         ("datation (texte + page)", "scripts.dates", ["--no-llm", "--no-republish"]),
         ("lieux (référentiel)", "scripts.venues", ["--no-llm"]),
         ("images (og + bannière)", "scripts.visuals", ["--sans-llm"]),
