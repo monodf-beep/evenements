@@ -120,16 +120,31 @@ def _ensure_seo_pushed_col(conn) -> None:
     log.info("Colonne seo_pushed_at créée (rattrapage initial appliqué).")
 
 
+# La seconde condition de date fait doublon avec `seo_pushed_at` — volontairement. Une
+# fiche publiée pour la PREMIÈRE fois après le calcul de son SEO a reçu ce SEO au passage
+# (cs-publish.php lit `seo_*` à chaque publication), mais son `seo_pushed_at` est resté
+# vide : sans ce garde-fou elle serait republiée une fois pour rien le lendemain. Vu en
+# production le 2026-08-10 sur 5 fiches (4621, 4702, 3089, 4734, 1445), toutes calculées
+# pendant la panne et pas encore publiées.
+# Les deux dates sont comparables SANS normalisation ici : le seul format « T » de la
+# base vient de translate_events, qui l'écrit sur la fiche TRADUITE — or `_select` exclut
+# les traductions (translation_of), donc elles n'entrent jamais dans cette file.
+_SQL_RETARD = (
+    "SELECT id FROM events_raw "
+    "WHERE seo_at IS NOT NULL AND wp_post_id_as IS NOT NULL "
+    "  AND (seo_pushed_at IS NULL OR seo_pushed_at < seo_at) "
+    "  AND (published_as_date IS NULL OR published_as_date < seo_at) "
+    "  AND COALESCE(translation_of,0) = 0 "
+    "  AND annule_le IS NULL AND duplicate_of IS NULL "
+    "  AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '9999') >= ?")
+
+
 def _a_repousser(conn, today: str, cap: int) -> list[int]:
     """Fiches EN LIGNE dont le SEO n'a jamais atteint le site. Règle 5 : rien de passé —
     une fiche sans date n'est pas « passée », c'est une donnée manquante, elle reste."""
     return [r[0] for r in conn.execute(
-        "SELECT id FROM events_raw "
-        "WHERE seo_at IS NOT NULL AND wp_post_id_as IS NOT NULL "
-        "  AND (seo_pushed_at IS NULL OR seo_pushed_at < seo_at) "
-        "  AND annule_le IS NULL AND duplicate_of IS NULL "
-        "  AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '9999') >= ? "
-        "ORDER BY COALESCE(llm_score,0) DESC LIMIT ?", (today, cap)).fetchall()]
+        _SQL_RETARD + " ORDER BY COALESCE(llm_score,0) DESC LIMIT ?",
+        (today, cap)).fetchall()]
 
 
 def _dates_publication(conn, ids: list[int]) -> dict[int, str]:
@@ -260,13 +275,9 @@ def main(argv=None) -> int:
                      arrives)
         conn.commit()
     # Le retard qui subsiste, cap compris : une file qu'on ne compte pas est une file
-    # qu'on découvre des semaines plus tard.
-    reste = conn.execute(
-        "SELECT COUNT(*) FROM events_raw WHERE seo_at IS NOT NULL AND wp_post_id_as IS NOT NULL "
-        "AND (seo_pushed_at IS NULL OR seo_pushed_at < seo_at) AND annule_le IS NULL "
-        "AND duplicate_of IS NULL "
-        "AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '9999') >= ?",
-        (today,)).fetchone()[0]
+    # qu'on découvre des semaines plus tard. On la recompte avec la MÊME requête que la
+    # sélection — deux formulations divergent tôt ou tard, et c'est le compteur qui ment.
+    reste = [r[0] for r in conn.execute(_SQL_RETARD, (today,)).fetchall()]
     conn.close()
 
     from utils import slack
@@ -276,14 +287,21 @@ def main(argv=None) -> int:
     if a_repousser:
         msg += f"\n↩️ {len(a_repousser)} SEO en retard repoussé(s) (aucun appel LLM)."
     if reste:
-        msg += (f"\n⏳ {reste} fiche(s) ont un SEO que le site n'a toujours pas reçu — "
-                "elles repassent au prochain run.")
+        # Une alerte qui ne dit pas QUOI FAIRE ne sert à rien (Franck, 2026-08-09 : « soit
+        # elle est compréhensible et je fais quelque chose, soit on l'enlève »). Une fiche
+        # qui reste ici a été refusée par un portillon de publication, pas par le réseau :
+        # la commande ci-dessous en donne la raison, fiche par fiche.
+        ids = " ".join(str(i) for i in reste[:10])
+        msg += (f"\n⏳ {len(reste)} fiche(s) ont un SEO que le site n'a pas reçu. Elles "
+                f"repassent demain, mais si ça dure c'est un portillon qui les retient. "
+                f"La raison :\n`.venv/bin/python -m scripts.publish_batch_as --ids {ids} "
+                f"--skip-media --dry-run`")
     if plafonne:
         msg += "\n🔴 Plafond API atteint — lot arrêté, fiches restantes non tentées."
     slack.notify(msg)
     pipeline_status.record_run("seo_batch", ok=ok, error=fail, summary=msg)
     log.info("=== Lot SEO : %d optimisé(s), %d échec(s), %d arrivé(s) sur le site, "
-             "%d encore en retard ===", ok, fail, len(arrives), reste)
+             "%d encore en retard ===", ok, fail, len(arrives), len(reste))
     if plafonne:
         log.error("Le lot s'est arrêté sur un plafond API. Relever le plafond ou "
                   "recharger le crédit (console Anthropic), puis relancer.")

@@ -118,7 +118,11 @@ conn = sqlite3.connect(tmp)
 _check("id 1 toujours en retard après l'échec",
        conn.execute("SELECT seo_pushed_at FROM events_raw WHERE id=1").fetchone()[0] is None)
 _check("le bilan Slack annonce le retard restant",
-       any("toujours pas reçu" in m for m in messages), str(messages))
+       any("le site n'a pas reçu" in m for m in messages), str(messages))
+# Une alerte qui ne dit pas quoi faire ne sert à rien : elle doit nommer la fiche ET
+# donner la commande qui en explique la rétention.
+_check("l'alerte nomme la fiche et la commande à taper",
+       any("--ids 1 " in m and "publish_batch_as" in m for m in messages), str(messages))
 conn.close()
 
 # ── 4. Le run suivant, republication RÉUSSIE : la fiche sort de la file ─────────
