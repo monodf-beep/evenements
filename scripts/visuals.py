@@ -324,6 +324,10 @@ def main(argv=None) -> int:
                         help="Active l'AGENT vision (vérifie que chaque image correspond à "
                              "l'événement). Par défaut : règles déterministes seulement (gratuit) "
                              "— la vérification vision se fait surtout au moment de publier.")
+    parser.add_argument("--sans-llm", action="store_true",
+                        help="N'appelle AUCUN modèle : og:image, photo de page et "
+                             "bannière seulement. À utiliser quand le plafond API est "
+                             "atteint — une bonne part des images se trouve sans LLM.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -339,10 +343,18 @@ def main(argv=None) -> int:
 
     # Le LLM (étage 3) est optionnel : sans clé, on fait og:image + bannière.
     client = None
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = "" if args.sans_llm else os.getenv("ANTHROPIC_API_KEY")
     if api_key:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+    elif args.sans_llm:
+        # --sans-llm EXISTE parce que « pas de clé » et « clé plafonnée » ne se
+        # ressemblent pas : avec une clé plafonnée, la chaîne tente l'étage 3, prend une
+        # erreur et le garde-fou PlafondAPI interrompt tout le lot — donc og:image et la
+        # bannière, qui ne coûtent RIEN, ne sont jamais atteints pour les fiches
+        # suivantes. Ce drapeau saute directement aux étages gratuits.
+        log.info("--sans-llm : og:image, photo de page et bannière seulement, "
+                 "aucun appel modèle.")
     else:
         log.warning("ANTHROPIC_API_KEY absente : pas de recherche Commons, og:image + bannière seulement.")
 
