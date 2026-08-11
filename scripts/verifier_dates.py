@@ -103,14 +103,35 @@ def dates_du_texte(texte: str, ref: date) -> set[str]:
     return trouvees
 
 
-def _materiau(row: sqlite3.Row) -> str:
-    """La matière SOURCE — jamais `article_md`.
+_BALISES = re.compile(r"<[^>]{1,200}>")
 
-    L'article est notre propre écriture : il a été rédigé À PARTIR de la date qu'on veut
-    vérifier. Le confronter à elle ne prouverait qu'une chose, que la rédaction a bien
-    recopié la base. C'est le piège du témoin qui se cite lui-même."""
+
+def _materiau(row: sqlite3.Row) -> str:
+    """Le TEXTE écrit pour des humains — et rien d'autre.
+
+    DEUX EXCLUSIONS, toutes deux apprises en production.
+
+    `article_md` d'abord : c'est notre propre écriture, rédigée À PARTIR de la date qu'on
+    veut vérifier. La confronter à elle ne prouverait qu'une chose, que la rédaction a bien
+    recopié la base — le témoin qui se cite lui-même.
+
+    `date_start` ensuite, et celle-là m'a coûté deux faux signalements le 2026-08-11 au
+    soir. Cette colonne reçoit `entry.get("published")`, c'est-à-dire l'horodatage de
+    PUBLICATION du flux RSS, jamais la date de l'événement. La fiche 923 (Charlie Winston)
+    a donc été annoncée « contredite » parce que son unique date était
+    « Wed, 24 Jun 2026 13:44:10 +0000 » — la date à laquelle la Maison des Arts du Léman a
+    poussé son billet.
+
+    Le dépôt le savait déjà : `dates.dates_from_page` écarte explicitement
+    `article:published_time` avec le commentaire « n'EST PAS la date d'événement ». Je l'ai
+    refait un étage plus haut, sur une autre colonne. **Une métadonnée n'est pas un texte
+    écrit pour des humains, et tout ce script repose sur le fait qu'elle en soit un.**
+
+    Les balises sont retirées : `description` contient parfois du HTML brut (la fiche 473
+    portait « <time>20/05/2026</time> </span> »), et un extrait truffé de balises ne se lit
+    pas — or c'est un humain qui doit trancher."""
     bouts = []
-    for col in ("title", "description", "date_start"):
+    for col in ("title", "description"):
         try:
             if row[col]:
                 bouts.append(str(row[col]))
@@ -121,7 +142,7 @@ def _materiau(row: sqlite3.Row) -> str:
             bouts.append(str(row["mail_corps"]))
     except (IndexError, KeyError):
         pass
-    return "\n".join(bouts)
+    return _BALISES.sub(" ", "\n".join(bouts))
 
 
 def verdict(stockees: set[str], du_texte: set[str]) -> tuple[str, str, str]:
@@ -213,7 +234,8 @@ def main(argv: list[str]) -> int:
             # l'erreur 14 du 2026-08-11, où j'ai déclaré fausses deux dates qui étaient
             # justes. Ici l'enjeu est plus grand encore : ces fiches sont PUBLIÉES, donc
             # une correction à tort réécrit une page que des gens lisent.
-            a_voir.append((r, v, motif, phrase_de_l_annee(_materiau(r), cible)))
+            phrase, exacte = phrase_de_l_annee(_materiau(r), cible)
+            a_voir.append((r, v, motif, phrase, exacte))
 
     total = sum(compte.values())
     print("═══ La source dit-elle la même date que nous ? ═══")
@@ -236,7 +258,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     print(f"═══ {len(a_voir)} fiche(s) à regarder, la plus coûteuse d'abord ═══\n")
-    for r, v, motif, phrase in a_voir:
+    for r, v, motif, phrase, exacte in a_voir:
         etat = f"EN LIGNE #{r['wp_post_id_as']}" if r["wp_post_id_as"] else "hors ligne"
         marque = "⚠ ANNÉE" if v == "annee" else ("✗ CONTREDIT" if v == "contredit"
                                                  else "· indécis")
@@ -244,7 +266,9 @@ def main(argv: list[str]) -> int:
               f"(date_source={r['date_source'] or '?'})")
         print(f"          {(r['title'] or '')[:72]}")
         print(f"          {motif}")
-        if phrase:
+        # ON N'AFFICHE QUE LES EXTRAITS PROBANTS. Un extrait trouvé sur la seule année
+        # n'est pas une citation, c'est une coïncidence — et il a l'autorité d'une preuve.
+        if phrase and exacte:
             print(f"          le texte dit : « {phrase} »")
         print(f"          source : {r['source_name'] or '?'}\n")
 

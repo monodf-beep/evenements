@@ -77,28 +77,39 @@ def _norm(s: str) -> str:
     return "".join(c for c in n if not unicodedata.combining(c)).lower()
 
 
-def phrase_de_l_annee(materiau: str, iso: str) -> str:
-    """La phrase du texte source où l'année suspecte est écrite, ou "".
+def phrase_de_l_annee(materiau: str, iso: str) -> tuple[str, bool]:
+    """(phrase, exacte). La phrase du texte source où la date est écrite, ou ("", False).
+
+    `exacte` dit si la phrase contient la DATE COMPLÈTE (jour + mois + année) ou seulement
+    son année. C'est toute la différence entre une preuve et un extrait au hasard.
 
     C'EST LE GARDE-FOU DE L'ERREUR 14 (2026-08-11) : j'avais déclaré deux dates fausses
-    parce que mon extrait montrait le mauvais bout du texte. Elles étaient justes. Une
-    date qu'on accuse doit être présentée AVEC la phrase qui l'a produite, sinon le
-    lecteur arbitre à l'aveugle — et il tranchera dans le sens de celui qui affiche.
+    parce que mon extrait montrait le mauvais bout du texte. Elles étaient justes. Une date
+    qu'on accuse doit être présentée AVEC la phrase qui la porte, sinon le lecteur arbitre
+    à l'aveugle — et il tranchera dans le sens de celui qui affiche.
 
-    On cherche l'année sous ses trois écritures possibles : ISO (2024-07-05), en toutes
-    lettres (5 juillet 2024) et numérique (05/07/2024)."""
+    LE DRAPEAU A ÉTÉ AJOUTÉ LE SOIR MÊME, après l'avoir raté une TROISIÈME fois. Le dernier
+    motif de la liste ne cherche que l'année, en désespoir de cause ; sur la fiche 923 il a
+    ramené « Wed, 24 Jun 2026 13:44:10 +0000 », qui n'avait aucun rapport avec la date
+    accusée — 2026 y figurait, c'est tout. Un extrait faux est PIRE que pas d'extrait : il
+    a l'autorité d'une citation.
+
+    On cherche donc la date sous ses écritures possibles, de la plus probante à la moins :
+    ISO (2024-07-05), en toutes lettres (5 juillet 2024), numérique (05/07/2024), puis —
+    et seulement en le disant — l'année seule."""
     if not materiau or not iso:
-        return ""
+        return ("", False)
     an, mois, jour = iso.split("-")
     t = _norm(materiau)
     motifs = (
-        rf"\b{an}-{mois}-{jour}\b",
-        rf"\b0?{int(jour)}\s+(?:{_MOIS})\.?\s*{an}\b",
-        rf"\b(?:{_MOIS})\s+{an}\b",
-        rf"\b0?{int(jour)}[/.]0?{int(mois)}[/.]{an}\b",
-        rf"\b{an}\b",                       # dernier recours : l'année seule
+        (rf"\b{an}-{mois}-{jour}\b", True),
+        (rf"\b0?{int(jour)}\s+(?:{_MOIS})\.?\s*{an}\b", True),
+        (rf"\b0?{int(jour)}[/.]0?{int(mois)}[/.]{an}\b", True),
+        (rf"\b0?{int(jour)}\s+(?:{_MOIS})\b", True),   # jour + mois, année sous-entendue
+        (rf"\b(?:{_MOIS})\s+{an}\b", False),
+        (rf"\b{an}\b", False),                          # dernier recours : l'année seule
     )
-    for motif in motifs:
+    for motif, exacte in motifs:
         m = re.search(motif, t)
         if not m:
             continue
@@ -106,8 +117,8 @@ def phrase_de_l_annee(materiau: str, iso: str) -> str:
         debut = max((t.rfind(c, 0, m.start()) for c in ".;!?\n"), default=-1)
         fin = min((p for p in (t.find(c, m.end()) for c in ".;!?\n") if p != -1),
                   default=len(t))
-        return " ".join(materiau[debut + 1:fin + 1].split())[:220].strip()
-    return ""
+        return (" ".join(materiau[debut + 1:fin + 1].split())[:220].strip(), exacte)
+    return ("", False)
 
 
 def _materiau(row: sqlite3.Row) -> str:
@@ -311,9 +322,13 @@ def main(argv: list[str]) -> int:
                   f"(hypothèse à VÉRIFIER sur la page, pas à appliquer)")
         except ValueError:
             pass                          # 29 février : pas de report automatique
-        phrase = phrase_de_l_annee(_materiau(r), r["date_event_end"]
-                                   or r["date_event_start"])
-        if phrase:
+        phrase, exacte = phrase_de_l_annee(_materiau(r), r["date_event_end"]
+                                           or r["date_event_start"])
+        if phrase and exacte:
+            print(f"          « {phrase} »")
+        elif phrase:
+            print(f"          (la date complète n'est PAS dans le texte ; seule l'année "
+                  f"apparaît, ici — l'extrait peut être sans rapport)")
             print(f"          « {phrase} »")
         else:
             print(f"          (l'année n'apparaît pas dans le texte collecté — elle vient "

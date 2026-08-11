@@ -161,6 +161,37 @@ _check("le verdict rend la date du texte qui a déclenché le signalement",
 _check("et rien quand il n'y a pas de signalement",
        verifier_dates.verdict({"2026-08-21"}, {"2026-08-21"})[2] == "")
 
+print("\n──── 4 bis. la métadonnée n'est PAS un texte écrit pour des humains ────")
+# LE FAUX SIGNALEMENT DU 2026-08-11 AU SOIR. `date_start` reçoit `entry.get("published")`,
+# l'horodatage de publication du flux — jamais la date de l'événement. La fiche 923
+# (Charlie Winston) a été annoncée « contredite » parce que son unique date était
+# « Wed, 24 Jun 2026 13:44:10 +0000 ».
+c = sqlite3.connect(db)
+c.execute("INSERT INTO events_raw (id, title, description, url_source, source_name, "
+          " date_start, date_event_start, date_event_end, date_source, statut, "
+          " scrape_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+          (8, "Charlie Winston", "Concert à la Maison des Arts du Léman. Tarifs sur place.",
+           "https://exemple.fr/8", "Maison des Arts du Léman",
+           "Wed, 24 Jun 2026 13:44:10 +0000", AVENIR, AVENIR, "parsed", "pending",
+           COLLECTE))
+# Et le HTML brut, qui rendait l'extrait illisible (fiche 473 : « <time>20/05/2026</time> »)
+c.execute("INSERT INTO events_raw (id, title, description, url_source, source_name, "
+          " date_event_start, date_event_end, date_source, statut, scrape_date) "
+          "VALUES (?,?,?,?,?,?,?,?,?,?)",
+          (9, "Fête balisée", "<p>Rendez-vous le <time>21 août 2026</time> au kiosque.</p>",
+           "https://exemple.fr/9", "Source officielle", "2026-08-22", "2026-08-22",
+           "parsed", "pending", COLLECTE))
+c.commit()
+c.close()
+vues_meta, sortie_meta = _sortie()
+_check("l'horodatage RSS ne contredit RIEN — ce n'est pas le texte de la source",
+       8 not in vues_meta, sorted(vues_meta))
+_check("mais une date en HTML est bien lue, balises retirées", 9 in vues_meta,
+       sorted(vues_meta))
+_check("et son extrait se lit sans balises",
+       "21 août 2026" in sortie_meta and "<time>" not in sortie_meta,
+       sortie_meta[-900:])
+
 print("\n──── 5. --en-ligne : d'abord ce que le public lit ────")
 vues_ligne, _ = _sortie(["--en-ligne"])
 _check("seule la contradiction PUBLIÉE remonte", vues_ligne == {2}, sorted(vues_ligne))

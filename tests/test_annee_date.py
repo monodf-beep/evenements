@@ -145,6 +145,17 @@ _check("le périmètre est écrit (nombre de fiches examinées)",
        "examinées" in sortie or "examinée" in sortie)
 _check("la phrase d'où vient l'année est montrée (garde-fou de l'erreur 14)",
        "15 agosto 2024" in sortie, sortie[:400])
+# UN EXTRAIT TROUVÉ SUR LA SEULE ANNÉE N'EST PAS UNE CITATION. Sur la fiche 923 il a
+# ramené « Wed, 24 Jun 2026 13:44:10 +0000 », sans rapport avec la date accusée.
+_check("la date complète donne un extrait EXACT",
+       audit_annee_date.phrase_de_l_annee(
+           "La festa si tiene il 15 agosto 2024 in piazza.", "2024-08-15")[1] is True)
+_check("l'année seule donne un extrait, mais MARQUÉ comme non probant",
+       audit_annee_date.phrase_de_l_annee(
+           "Wed, 24 Jun 2026 13:44:10 +0000", "2026-07-07") == (
+               "Wed, 24 Jun 2026 13:44:10 +0000", False))
+_check("et l'audit prévient le lecteur quand l'extrait ne porte que l'année",
+       "peut être sans rapport" in sortie or "15 agosto 2024" in sortie)
 _check("quand l'année n'est PAS dans le texte, l'audit le DIT au lieu de se taire",
        "n'apparaît pas dans le texte collecté" in sortie)
 _check("l'hypothèse de report est proposée, pas appliquée",
