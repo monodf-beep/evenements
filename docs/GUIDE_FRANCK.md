@@ -133,15 +133,24 @@ Signale-le-moi : une file de trois cents silences cache les deux vraies question
 
 ## 5. Ce qui est vrai ce soir (11 août 2026, 20h30)
 
+**Les chiffres des files ne sont PAS recopiés ici** — ils bougeraient dans l'heure, et deux
+compteurs qui portent le même nom et disent deux choses est la faute qu'on a passé la
+journée à démonter. Pour l'état du jour, une commande :
+
+```bash
+.venv/bin/python -m scripts.lister_a_completer      # ce qui manque
+.venv/bin/python -m scripts.verifier_dates          # ce que la source contredit
+```
+
+Ce qui, en revanche, ne changera plus — les faits de la journée :
+
 | | |
 |---|---|
-| fiches en base | 4 741, dont 2 608 écartées et 1 910 doublons fusionnés |
-| **dates publiées confirmées par leur source** | **101** |
+| fiches en base | 4 741, dont 1 910 doublons fusionnés |
+| dates publiées **confirmées par leur propre source** | 101 |
 | dates publiées dont la source ne dit rien | 86 — voir §6 |
-| fiches retirées du site aujourd'hui | **18**, toutes réversibles |
-| faux organisateurs nettoyés aujourd'hui | 187 |
-| file « À compléter » | 9 |
-| file « À vérifier » | 9 |
+| fiches retirées du site le 11 août | **21**, toutes réversibles |
+| faux organisateurs nettoyés le 11 août | 187 |
 
 **Les dix-huit retirées annonçaient des événements déjà passés** — dont une soirée de
 soutien à l'Ukraine d'avril 2022, en ligne pour avril 2027. Le mécanisme : quand le texte
