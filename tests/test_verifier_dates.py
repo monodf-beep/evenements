@@ -264,6 +264,52 @@ _check("et son extrait se lit sans balises",
        "21 août 2026" in sortie_meta and "<time>" not in sortie_meta,
        sortie_meta[-900:])
 
+print("\n──── 4 ter. classé sans suite : vérifié une fois, tu ne le redis plus ────")
+# Les cinq signalements du 2026-08-11 étaient tous JUSTES. Sans mémoire, ils reviennent à
+# l'identique tous les jours — et une liste qui affiche toujours les mêmes lignes apprend à
+# ne plus être lue. C'est le jour où une sixième arrive qu'on ne la voit pas.
+from scripts import classer_sans_suite as _cl                        # noqa: E402
+import tempfile as _tf                                              # noqa: E402
+_cl.MEMOIRE = tmp / "classes.json"
+_cl.DB_PATH = db
+verifier_dates.DB_PATH = db
+
+_avant, _ = _sortie()
+_check("la fiche 2 est signalée avant tout classement", 2 in _avant, sorted(_avant))
+
+_cl.main(["2", "--motif", "vérifié à la source : la date de la salle confirme la nôtre, "
+                          "le 21 août venait d'un autre spectacle de la même lettre"])
+_apres, sortie_cl = _sortie()
+_check("classée : elle disparaît de la liste", 2 not in _apres, sorted(_apres))
+_check("mais elle est COMPTÉE, pas tue — sinon on la découvre des semaines plus tard",
+       "classées sans suite" in sortie_cl, sortie_cl[:700])
+
+# LE POINT CENTRAL : le classement doit TOMBER quand la question change. Un classement
+# définitif serait un cul-de-sac de plus (règle 3).
+c = sqlite3.connect(db)
+c.execute("UPDATE events_raw SET date_event_start='2026-08-23', date_event_end='2026-08-23' "
+          "WHERE id=2")
+c.commit(); c.close()
+_rouvert, _ = _sortie()
+_check("notre date change → le classement TOMBE, le signalement revient",
+       2 in _rouvert, sorted(_rouvert))
+
+# Et l'inverse : si la matière source bouge, pareil.
+c = sqlite3.connect(db)
+c.execute("UPDATE events_raw SET date_event_start='2026-08-22', date_event_end='2026-08-22' "
+          "WHERE id=2")
+c.commit(); c.close()
+_cl.main(["2", "--motif", "re-vérifié après changement, la source confirme notre date "
+                          "telle qu'elle est aujourd'hui"])
+_check("re-classée après re-vérification", 2 not in _sortie()[0])
+c = sqlite3.connect(db)
+c.execute("UPDATE events_raw SET description='Rendez-vous le 30 septembre 2026.' WHERE id=2")
+c.commit(); c.close()
+_check("la SOURCE change → le classement tombe aussi", 2 in _sortie()[0], sorted(_sortie()[0]))
+
+_check("un motif trop court est refusé — c'est lui qu'on relira dans six mois",
+       _cl.main(["3", "--motif", "ok"]) == 1)
+
 print("\n──── 5. --en-ligne : d'abord ce que le public lit ────")
 vues_ligne, _ = _sortie(["--en-ligne"])
 _check("seule la contradiction PUBLIÉE remonte", vues_ligne == {2}, sorted(vues_ligne))

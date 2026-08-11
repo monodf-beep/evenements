@@ -342,8 +342,10 @@ def main(argv: list[str]) -> int:
         f"FROM events_raw WHERE {where} ORDER BY COALESCE(wp_post_id_as,0) DESC, id DESC",
         params).fetchall()
 
+    from scripts import classer_sans_suite as _classes
+    _memoire = _classes.charger()
     compte = {"confirme": 0, "contredit": 0, "annee": 0, "jour": 0,
-              "muet": 0, "indecis": 0}
+              "muet": 0, "indecis": 0, "classe": 0}
     a_voir: list[tuple] = []
     for r in lignes:
         try:
@@ -355,6 +357,15 @@ def main(argv: list[str]) -> int:
         if not stockees:
             continue
         materiau = _materiau(r)
+        # DÉJÀ VÉRIFIÉ, DÉJÀ TRANCHÉ. Un signalement qui revient à l'identique tous les
+        # jours apprend à ne plus être lu, et c'est le jour où une SIXIÈME ligne arrive
+        # qu'on ne la voit pas. Le classement tombe tout seul si le texte de la source ou
+        # notre date change — c'est une condition de fait, pas un délai (cf.
+        # scripts/classer_sans_suite.py).
+        if _classes.est_classe(r["id"], materiau, r["date_event_start"],
+                               r["date_event_end"], _memoire):
+            compte["classe"] += 1
+            continue
         v, motif, cible = verdict(stockees, dates_du_texte(materiau, ref))
         # LE JOUR DE SEMAINE PRIME SUR TOUT LE RESTE. Une date « confirmée » (le texte
         # porte bien notre quantième) peut être fausse d'un an sans que rien ne le montre :
@@ -400,6 +411,12 @@ def main(argv: list[str]) -> int:
           f"le nôtre ; l'année ne colle pas")
     print(f"  {compte['indecis']:>5}  indécises — plusieurs dates, aucune n'est la nôtre "
           f"(notre date vient peut-être de la page)")
+    if compte["classe"]:
+        # COMPTÉ, ET DIT. Un signalement qu'on tait sans le compter est un signalement
+        # qu'on découvre des semaines plus tard en cherchant autre chose (règle 6).
+        print(f"  {compte['classe']:>5}  classées sans suite — vérifiées, notre date est "
+              f"bonne ; elles reviendront si la source ou la date change "
+              f"(`classer_sans_suite --liste`)")
     print(f"  {compte['muet']:>5}  muettes — le texte source ne porte aucune date. "
           f"Ce n'est PAS un doute : on ne peut pas vérifier un silence\n")
 
