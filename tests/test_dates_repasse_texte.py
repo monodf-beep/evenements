@@ -217,5 +217,27 @@ _check("… la fin connue n'a pas bougé", _lire(8)[1] == "2026-09-20", str(_lir
 _check("… et la provenance le dit", _lire(8)[2] == "page_corroboree", str(_lire(8)))
 dates_mod.fetch_event_dates = _vrai_fetch
 
+print("\n──── le bilan de fin de run compte des DATES, pas des étiquettes ────")
+# Il comptait `date_source IN ('parsed','page','llm','copie-traduction')` : une liste en
+# dur, donc un compteur qui se périme dès qu'on ajoute une provenance. Le 11/08, l'arrivée
+# de 'parsed_article' et 'page_corroboree' a fait TOMBER le total de 1635 à 1611 dans le
+# run même où 31 fiches venaient d'être datées.
+c = sqlite3.connect(db)
+c.row_factory = sqlite3.Row
+bilan = dates_mod._bilan_dates(c)
+reel_debut = c.execute("SELECT COUNT(*) n FROM events_raw WHERE "
+                       "COALESCE(date_event_start,'') <> '' AND statut != 'merged'"
+                       ).fetchone()["n"]
+c.close()
+_check("le total 'début' correspond aux fiches qui ont vraiment une date de début",
+       bilan["debut"] == reel_debut, f"{bilan} vs {reel_debut}")
+_check("une provenance inédite n'échappe pas au compteur",
+       bilan["debut"] >= 1 and _lire(8)[2] == "page_corroboree", str(bilan))
+_check("les trois familles couvrent tout le stock",
+       bilan["debut"] + bilan["fin_seule"] + bilan["rien"] ==
+       (lambda: (lambda cc: cc.execute(
+           "SELECT COUNT(*) FROM events_raw WHERE statut != 'merged'").fetchone()[0])(
+               sqlite3.connect(db)))(), str(bilan))
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s). Base jetable : {tmp}")
 sys.exit(1 if echecs else 0)

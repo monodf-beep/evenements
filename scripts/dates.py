@@ -355,6 +355,33 @@ def dates_from_page(html: str) -> tuple[str, str, str]:
     return ("", "", "")
 
 
+def _bilan_dates(conn: sqlite3.Connection) -> dict:
+    """Combien de fiches ont une date — mesuré sur les DATES, pas sur leur étiquette.
+
+    Le bilan de fin de run comptait `date_source IN ('parsed','page','llm',
+    'copie-traduction')`. Une liste d'étiquettes en dur, donc un compteur qui se périme
+    dès qu'on en ajoute une : le 2026-08-11, l'arrivée de 'parsed_article' et de
+    'page_corroboree' a fait TOMBER le total de 1635 à 1611 dans le run même où 31 fiches
+    venaient d'être datées. Le nombre baissait pendant que la réalité montait.
+
+    Trois nombres plutôt qu'un, parce qu'ils ne disent pas la même chose et que les
+    confondre est précisément ce qui a produit « 64 datées » pour dix (règle 6) :
+      • `debut`     — a une date de début : la seule qui rende une fiche complète ;
+      • `fin_seule` — « jusqu'au 20 septembre » : classable, mais toujours incomplète ;
+      • `rien`      — aucune date du tout.
+    """
+    def _n(where: str) -> int:
+        return conn.execute(f"SELECT COUNT(*) n FROM events_raw WHERE statut != 'merged' "
+                            f"AND {where}").fetchone()["n"]
+    return {
+        "debut": _n("COALESCE(date_event_start,'') <> ''"),
+        "fin_seule": _n("COALESCE(date_event_start,'') = '' "
+                        "AND COALESCE(date_event_end,'') <> ''"),
+        "rien": _n("COALESCE(date_event_start,'') = '' "
+                   "AND COALESCE(date_event_end,'') = ''"),
+    }
+
+
 def debut_depuis_page(texte: str, fin_connue: str, ref: date | None = None) -> str:
     """Le DÉBUT lu dans le texte d'une page, mais seulement s'il est CORROBORÉ par la fin.
 
@@ -1020,16 +1047,12 @@ def main(argv=None) -> int:
         log.info("Passe traductions : %d fiche(s) en ligne à repousser (--no-republish, "
                  "rien envoyé) : %s", len(a_repousser), a_repousser)
 
-    total_dated = conn.execute(
-        "SELECT COUNT(*) n FROM events_raw "
-        "WHERE date_source IN ('parsed','page','llm','copie-traduction') "
-        "AND statut != 'merged'").fetchone()["n"]
-    undated = conn.execute(
-        "SELECT COUNT(*) n FROM events_raw WHERE COALESCE(date_event_start,'')='' "
-        "AND COALESCE(date_event_end,'')='' AND statut != 'merged'").fetchone()["n"]
+    bilan = _bilan_dates(conn)
+    total_dated, undated, fins_seules = bilan["debut"], bilan["rien"], bilan["fin_seule"]
     conn.close()
-    log.info("=== Datation : +%d texte +%d page +%d LLM ce run · %d datés au total, %d sans date ===",
-             parsed, from_page, from_llm, total_dated, undated)
+    log.info("=== Datation : +%d texte +%d page +%d LLM ce run · %d fiche(s) ont une date "
+             "de début, %d n'ont qu'une fin, %d n'ont rien ===",
+             parsed, from_page, from_llm, total_dated, fins_seules, undated)
     return 0
 
 
