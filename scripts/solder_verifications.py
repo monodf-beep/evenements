@@ -150,6 +150,42 @@ def _norm(s: str) -> str:
     return " ".join("".join(c for c in n if not unicodedata.combining(c)).split())
 
 
+# Les deux libellés que ce script ÉCRIT lui-même. Il ne doit jamais les relire comme des
+# doutes à résoudre.
+_PREFIXE_CORRECTION = "À CORRIGER dans l'article en ligne — "
+_PREFIXE_REPONSE = "✓ Vérifié le 11/08 : "
+
+
+def _libelle_correction(correction: str) -> str:
+    return f"{_PREFIXE_CORRECTION}{correction}"
+
+
+def _est_de_moi(label: str) -> bool:
+    """Ce point a-t-il été écrit par ce script ? Alors on n'y touche pas.
+
+    LE SERPENT QUI SE MORD LA QUEUE, vu en production le 2026-08-11 à 20h50 dans la sortie
+    d'un `--apply` que Franck venait de coller. Le script avait ROUVERT, puis refermé, puis
+    réécrit ses propres corrections :
+
+        [ 3995] À CORRIGER dans l'article en ligne — Organisateur : Pro Loco de Saint-…
+                ✓ Organisateur : la Pro Loco de Saint-Rhémy-en-Bosses…
+                ⚠ article EN LIGNE à corriger : Organisateur : Pro Loco…
+
+    La correction posée au premier run contient forcément le fragment recherché (« Stefania
+    Marchiano »), donc le second run la prend pour le doute d'origine, la ferme, réinscrit
+    la réponse et rouvre une correction NEUVE. Chaque exécution ajoutait deux lignes à la
+    table et remettait à zéro l'ancienneté de la tâche — celle qui dit depuis combien de
+    temps l'article en ligne est faux.
+
+    C'est la faute que ce dépôt combat depuis le matin, commise par le script écrit pour la
+    combattre : un état terminal qui se rejoue sur la même entrée. Et elle était invisible
+    dans le code, comme les autres — c'est la LISTE des onze points fermés qui l'a montrée,
+    trois d'entre eux portant un libellé que j'avais moi-même rédigé trois heures plus tôt.
+    """
+    n = _norm(label)
+    return n.startswith(_norm(_PREFIXE_CORRECTION)) or n.startswith(_norm(_PREFIXE_REPONSE))
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -168,10 +204,19 @@ def main(argv: list[str]) -> int:
                           (eid,)).fetchone()
         for c in conn.execute("SELECT id, label FROM checks WHERE event_id=? "
                               "AND status='pending'", (eid,)):
+            if _est_de_moi(c["label"]):
+                continue
             if _norm(fragment) not in _norm(c["label"]):
                 continue
             en_ligne = bool(ev and ev["wp_post_id_as"])
-            a_fermer.append((c["id"], eid, c["label"], reponse, correction, en_ligne))
+            # Ne pas rouvrir une correction qui existe DÉJÀ : elle serait posée deux fois,
+            # et la plus ancienne — celle qui porte la vraie date d'ouverture — serait
+            # fermée au passage.
+            deja = correction and conn.execute(
+                "SELECT 1 FROM checks WHERE event_id=? AND label=? AND status='pending'",
+                (eid, _libelle_correction(correction))).fetchone()
+            a_fermer.append((c["id"], eid, c["label"], reponse,
+                             None if deja else correction, en_ligne))
 
     if not a_fermer:
         print("Aucun point en attente ne correspond aux vérifications du 2026-08-11.")
@@ -199,12 +244,16 @@ def main(argv: list[str]) -> int:
         # La réponse est INSCRITE, déjà vérifiée : sans elle, la question disparaît sans
         # que personne sache ce qu'elle est devenue — et elle reviendra au prochain
         # enrichissement, puisque sync_checks ne connaît que les points « pending ».
-        conn.execute("INSERT INTO checks (event_id, label, status, resolved_at) "
-                     "VALUES (?, ?, 'done', datetime('now'))",
-                     (eid, f"✓ Vérifié le 11/08 : {reponse}"))
+        libelle = f"{_PREFIXE_REPONSE}{reponse}"
+        # Rejouable : la réponse ne s'inscrit qu'une fois. Sans ce test, dix exécutions
+        # laissent dix copies de la même phrase sur la fiche.
+        if not conn.execute("SELECT 1 FROM checks WHERE event_id=? AND label=?",
+                            (eid, libelle)).fetchone():
+            conn.execute("INSERT INTO checks (event_id, label, status, resolved_at) "
+                         "VALUES (?, ?, 'done', datetime('now'))", (eid, libelle))
         if correction and en_ligne:
             conn.execute("INSERT INTO checks (event_id, label) VALUES (?, ?)",
-                         (eid, f"À CORRIGER dans l'article en ligne — {correction}"))
+                         (eid, _libelle_correction(correction)))
     conn.commit()
 
     # Recompté en base, sur le périmètre de l'écran (règle 6).
