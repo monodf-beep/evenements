@@ -62,8 +62,12 @@ PAGE_MUETTE = "<html><head><title>Rien</title></head><body>Aucune donnée.</body
 
 
 class _Rep:
-    def __init__(self, text):
+    def __init__(self, text, url=""):
         self.text = text
+        # `url` = adresse d'ARRIVÉE après redirections, comme le fait requests. C'est
+        # elle qui décide si l'on a le droit de récolter (2026-08-11) : un lien de
+        # traçage de newsletter n'est pas un éditeur, il renvoie vers un.
+        self.url = url
 
 
 AUJOURDHUI = "2026-08-11"
@@ -73,7 +77,10 @@ PAGES = {
     "https://officiel.fr/deja": PAGE_RICHE,
     "https://officiel.fr/riche2": PAGE_RICHE,
 }
-mo._robust_get = lambda url: _Rep(PAGES[url]) if url in PAGES else None
+REDIRECTIONS = {}   # traqueur -> destination réelle
+mo._robust_get = lambda url: (
+    _Rep(PAGES[REDIRECTIONS.get(url, url)], REDIRECTIONS.get(url, url))
+    if REDIRECTIONS.get(url, url) in PAGES else None)
 mo.fetch_og_image = lambda url, timeout=8: (
     "https://officiel.fr/affiche.jpg" if PAGES.get(url) == PAGE_RICHE else "")
 
@@ -260,6 +267,47 @@ _check("une plage SANS rapport avec la fin connue ne donne rien — surtout pas 
        "première date", f21["date_event_start"] == "", str(f21["date_event_start"]))
 _check("… et la fiche garde sa date de fin intacte",
        f21["date_event_end"] == "2026-09-20", str(f21["date_event_end"]))
+
+print("\n──── un lien de TRAÇAGE se juge sur sa destination ────")
+# Franck, 2026-08-11 : « pourquoi ça tourne pas seul pour trouver les informations
+# manquantes ? » Six expositions de la Reggia di Venaria n'étaient JAMAIS lues : leur
+# adresse est un lien sendibm1.com, qui échoue au test du domaine officiel — alors qu'il
+# redirige vers lavenaria.it. Le portillon jugeait l'adresse écrite, pas celle où l'on
+# arrive.
+# Domaine de PRESSE réel du fichier de configuration : « presse-quelconque.fr » ne
+# marchait pas comme cas de test, et c'est instructif — source_officielle est une liste
+# de REFUS, donc un domaine inconnu passe. Le test doit donc employer un domaine que le
+# dépôt reconnaît vraiment comme presse, sinon il vérifie une frontière imaginaire.
+PAGES["https://www.guidatorino.com/article"] = PAGE_RICHE
+REDIRECTIONS["https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-officiel"] = \
+    "https://officiel.fr/riche"
+REDIRECTIONS["https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-presse"] = \
+    "https://www.guidatorino.com/article"
+conn = sqlite3.connect(tmp)
+for eid, url in ((30, "https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-officiel"),
+                 (31, "https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-presse")):
+    conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,"
+                 "lieu,ville,url_image,date_event_end) VALUES (?,?,?, 'evaluated', "
+                 "'','','','', '2026-12-31')", (eid, f"Traqueur {eid}", url))
+conn.commit()
+conn.row_factory = sqlite3.Row
+cibles4 = {e["id"] for e in mo._a_moissonner(conn, AUJOURDHUI, 50)}
+conn.close()
+_check("un lien de traçage n'est plus écarté d'emblée", 30 in cibles4, str(sorted(cibles4)))
+mo.main(["--apply"])
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+f30 = dict(conn.execute("SELECT * FROM events_raw WHERE id=30").fetchone())
+f31 = dict(conn.execute("SELECT * FROM events_raw WHERE id=31").fetchone())
+conn.close()
+_check("destination OFFICIELLE → la page est récoltée",
+       (f30.get("date_event_start") or "") != "", str(f30.get("date_event_start")))
+_check("… et la vraie adresse est enregistrée, pour ne plus repasser par le traqueur",
+       (f30.get("url_officiel") or "") == "https://officiel.fr/riche",
+       str(f30.get("url_officiel")))
+_check("destination PRESSE → RIEN n'est récolté, le contrat radar tient",
+       (f31.get("date_event_start") or "") == "" and not (f31.get("url_image") or ""),
+       str({k: f31.get(k) for k in ("date_event_start", "url_image")}))
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

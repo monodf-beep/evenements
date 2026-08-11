@@ -122,6 +122,20 @@ def _diagnostic(html: str) -> list[str]:
     return [nom for nom, motif in _MARQUEURS if _re.search(motif, html, _re.I)]
 
 
+# Services de traçage de lien employés par les newsletters. Ce ne sont pas des sources :
+# ils ne publient rien, ils comptent les clics et renvoient ailleurs. Les juger sur leur
+# domaine revient à juger une enveloppe au lieu de la lettre.
+_TRAQUEURS = ("sendibm1.com", "sendibm2.com", "sendibm3.com", "musvc1.net", "musvc2.net",
+              "musvc3.net", "musvc4.net", "musvc5.net", "musvc6.net", "marketingcloud",
+              "list-manage.com", "sendgrid.net", "mailchi.mp", "hubspotlinks.com",
+              "brevo.com", "sibautomation.com", "r.a.d.sendibm1.com", "click.")
+
+
+def _est_traqueur(url: str) -> bool:
+    u = (url or "").lower()
+    return any(t in u for t in _TRAQUEURS)
+
+
 def _url_telechargeable(ev: dict) -> str:
     """L'adresse à lire. `url_officiel` d'abord — c'est la page de l'événement chez
     l'organisateur, la plus riche en données structurées ; `url_source` sinon. Les
@@ -141,7 +155,18 @@ def _url_telechargeable(ev: dict) -> str:
         # prise là-dedans risque d'être celle d'un autre — c'est ainsi que WP#6798 a
         # porté la date d'un voisin. Le chemin de sortie de ces fiches reste la
         # résolution de leur page officielle, qui est le travail de l'enrichissement.
-        if not source_officielle(u):
+        # UN TRAQUEUR N'EST PAS UN ÉDITEUR (2026-08-11, Franck : « pourquoi ça tourne
+        # pas seul pour trouver les informations manquantes ? »). Six expositions de la
+        # Reggia di Venaria n'étaient JAMAIS lues : leur adresse est un lien de traçage
+        # de newsletter (sendibm1.com), qui échoue au test du domaine officiel — alors
+        # qu'il redirige vers lavenaria.it. Le portillon jugeait l'adresse ÉCRITE, pas
+        # celle où l'on arrive.
+        #
+        # On les laisse donc passer la sélection, et c'est `_recolte` qui vérifie le
+        # domaine d'ARRIVÉE, après redirection : juger le domaine sur lequel on a
+        # atterri, pas celui qu'on nous a donné. Le contrat radar est intact — rien
+        # n'est récolté si la destination n'est pas officielle.
+        if not source_officielle(u) and not _est_traqueur(u):
             continue
         return u
     return ""
@@ -180,8 +205,20 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
         if marqueurs is not None:
             marqueurs["PAGE INJOIGNABLE"] += 1
         return {}
+    # LE DOMAINE D'ARRIVÉE FAIT FOI. Pour un lien de traçage, c'est ici — et seulement
+    # ici — qu'on sait où il menait. Si la destination n'est pas une source officielle,
+    # on ne récolte RIEN : ni date, ni image, ni tarif. Le contrat radar tient.
+    finale = getattr(r, "url", url) or url
+    if not source_officielle(finale):
+        if marqueurs is not None:
+            marqueurs["DESTINATION NON OFFICIELLE"] += 1
+        return {}
     html = r.text
     trouve: dict = {}
+    # La vraie adresse, une fois connue, mérite d'être gardée : la prochaine passe n'aura
+    # plus à traverser le traqueur, et l'enrichissement disposera enfin d'une page.
+    if _est_traqueur(url) and not (ev.get("url_officiel") or "").strip():
+        trouve["url_officiel"] = finale
 
     # ── 1. LES DONNÉES STRUCTURÉES, LUES POUR DE BON ────────────────────────────
     # « Implacable au niveau de la collecte des informations officielles AVANT de passer
@@ -321,7 +358,11 @@ def main(argv=None) -> int:
         conn.close()
         return 0
 
-    gagnes = {c: 0 for c in (*CHAMPS, _COL_INFOS)}
+    from collections import Counter
+    # Compteur TOLÉRANT aux champs neufs : `url_officiel` s'y est ajouté le 2026-08-11
+    # (résolution des liens de traçage) et un dict figé sur CHAMPS levait un KeyError.
+    # Un bilan ne doit pas tomber parce qu'on a récolté une chose de plus.
+    gagnes = Counter({c: 0 for c in (*CHAMPS, _COL_INFOS)})
     lues = vides = 0
     # « 0 date_event_start » ne dit RIEN tant qu'on ignore si le cas s'est
     # présenté (règle 6 : un compteur doit dire ce qu'il compte). Le run du
@@ -331,7 +372,6 @@ def main(argv=None) -> int:
     # de date de fin sans début. Un zéro qui ne distingue pas « rien trouvé » de
     # « rien tenté » envoie chercher un bug là où il n'y a que du vide.
     candidats_debut = trouves_debut = 0
-    from collections import Counter
     marqueurs_vides = Counter()
     for ev in cibles:
         # Le cas s'est-il seulement présenté ? Compté AVANT la récolte, sur l'état de la
@@ -382,6 +422,9 @@ def main(argv=None) -> int:
         print()
     for c in (*CHAMPS, _COL_INFOS):
         print(f"  {gagnes[c]:4} {c}")
+    for c, n in sorted(gagnes.items()):
+        if c not in (*CHAMPS, _COL_INFOS) and n:
+            print(f"  {n:4} {c}")
 
     if not args.apply:
         print("\nSimulation — RIEN n'a été écrit. Ajouter --apply pour enregistrer.")
