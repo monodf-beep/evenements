@@ -38,6 +38,36 @@ disjointes), lue par `utils/sources.est_comte_de_nice()` et
 contenu dans « Provence », « Grasse » dans « grasse matinée ». La comparaison se fait
 sur le champ `ville`, où elle est exacte.
 
+## 2 bis. Le temps des verbes : on ANNONCE, on ne raconte pas
+
+**Arbitrage Franck, 2026-08-11.** Agenda Sabauda propose des événements **à venir** : les
+articles s'écrivent donc au **futur** (« Stefano Mancuso donnera une conférence ») ou au
+**présent d'annonce** (« la conférence a lieu jeudi », « l'exposition est visible jusqu'au
+20 septembre »). Jamais au passé.
+
+Sont interdits : *est intervenu*, *a défendu*, *a évoqué*, *devant le public*, *s'est
+tenu*, *les visiteurs ont pu découvrir* — toute forme qui raconte ce qui **a eu lieu**.
+
+Le cas qui a produit la règle : l'article de Stefano Mancuso au Fort de Bard, publié tel
+quel. « Le chercheur italien Stefano Mancuso **est intervenu** jeudi 23 juillet 2026 […]
+Devant le public du Fort, **il a défendu** l'idée que les végétaux… » Franck : *« c'est
+plutôt du journalisme qui pourrait se trouver dans Nos Alpes. Ce n'est pas du tout ce que
+je veux pour Agenda Sabauda. »*
+
+La distinction est celle des deux médias : **Nos Alpes raconte ce qui s'est passé, Agenda
+Sabauda donne envie d'y aller.** Un lecteur d'agenda cherche à savoir s'il doit se
+déplacer ; un compte rendu lui apprend qu'il est trop tard.
+
+**Le passé reste permis pour le CONTEXTE** — « Mancuso a publié plusieurs ouvrages », « le
+festival, créé en 1998, revient », « la compagnie avait présenté L'Île des esclaves la
+saison précédente ». Ce passé-là parle de ce qui entoure l'événement, pas de son
+déroulement. La frontière est là, et `utils/temps_recit.py` la tient.
+
+Deux verrous en amont, parce que la faute ne venait pas du modèle : `scripts/enrich.py`
+n'écrit plus d'article pour un événement **terminé** (règle 5 — sa sélection les excluait
+pas), et sa consigne ne dit plus « parle au passé ». `scripts/audit_temps_recit.py` liste
+ce qui a été écrit avant la correction.
+
 ## 3. Critères de sélection (rappel du scoring)
 
 **Définition d'un événement.** Une manifestation à laquelle le **public peut assister**,

@@ -193,6 +193,23 @@ concret, cherche l'ÉDITION PRÉCÉDENTE ; si tu n'as toujours rien, écris cour
 sur ce qui est certain, sans jamais commenter ce qui manque. Les doutes vont dans le champ
 « a_verifier » (back-office), JAMAIS dans le corps de l'article.
 
+LE TEMPS DES VERBES — RÈGLE ABSOLUE, ELLE PASSE AVANT TOUT LE RESTE.
+Agenda Sabauda ANNONCE des événements à venir. Tu écris donc au FUTUR (« Stefano Mancuso
+donnera une conférence », « le festival réunira ») ou au PRÉSENT d'annonce (« la
+conférence a lieu jeudi », « le festival se tient du 3 au 6 »). Pour un événement DÉJÀ
+COMMENCÉ mais pas terminé : présent (« l'exposition est visible jusqu'au 20 septembre »).
+
+Tu n'écris JAMAIS de compte rendu. Sont INTERDITS : « est intervenu », « a défendu »,
+« a évoqué », « devant le public », « s'est tenu », « les visiteurs ont pu découvrir » —
+et toute autre forme qui raconte ce qui A EU LIEU. Un lecteur d'agenda cherche à savoir
+s'il doit se déplacer ; un compte rendu lui dit qu'il est trop tard.
+
+Écrit le 2026-08-11, sur un cas réel : « Le chercheur italien Stefano Mancuso est
+intervenu jeudi 23 juillet 2026 au Fort de Bard […] Devant le public du Fort, il a défendu
+l'idée que les végétaux… ». Franck : « c'est plutôt du journalisme qui pourrait se trouver
+dans Nos Alpes. Ce n'est pas du tout ce que je veux pour Agenda Sabauda. » Raconter ce qui
+s'est passé est le métier d'un autre média ; ici on donne envie d'y aller.
+
 ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
 - Lieu (théâtre, musée, château, abbaye…) : histoire/identité, importance patrimoniale.
 - Artiste / groupe : origine (local ? de territoires proches ? renommée), genre.
@@ -1005,8 +1022,17 @@ def _dates_hint(ev: dict) -> str:
             return (f"{plage or s} — À VENIR (nous sommes le {now_str}). Écris au futur proche, "
                     "sans inventer d'infos non encore publiées.")
         if today > end_d:
-            return (f"{plage or e} — DÉJÀ TERMINÉ (nous sommes le {now_str}). NE l'annonce PAS "
-                    "comme à venir ; parle au passé, ou n'en fais pas la promotion.")
+            # « parle au passé » : c'est cette phrase, ici, qui a produit l'article de
+            # Stefano Mancuso — « est intervenu jeudi 23 juillet », « il a défendu ». Elle
+            # est supprimée. Un agenda ANNONCE ; il ne raconte pas ce qui a eu lieu, c'est
+            # le métier d'un autre média. La sélection ci-dessus ne devrait plus laisser
+            # passer une fiche terminée ; ce message est le filet pour l'événement qui se
+            # termine PENDANT le run.
+            return (f"{plage or e} — TERMINÉ depuis le {end_d.isoformat()} (nous sommes le "
+                    f"{now_str}). Cette fiche n'aurait pas dû arriver jusqu'à toi. N'écris "
+                    "SURTOUT PAS de compte rendu (« il est intervenu », « il a défendu ») : "
+                    "Agenda Sabauda annonce, il ne raconte pas. Mets \"confiance\": \"faible\" "
+                    "et signale-le dans \"a_verifier\".")
         return (f"{plage or e} — EN COURS aujourd'hui {now_str} (commencé le "
                 f"{start_d.isoformat()}, se termine le {end_d.isoformat()}). Écris au PRÉSENT "
                 "« en cours jusqu'au … » ; n'écris JAMAIS « à venir », « prochainement », ni "
@@ -1314,7 +1340,23 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
              # Rien n'est perdu : une fiche non datée reste candidate et repartira dès
              # que dates.py lui aura trouvé une date (passe texte, page ou LLM, plus le
              # --retry pour les impasses).
-             "COALESCE(date_event_start,'') <> ''"]
+             "COALESCE(date_event_start,'') <> ''",
+             # ⚠️ ET L'ÉVÉNEMENT DOIT ÊTRE DEVANT NOUS (2026-08-11). Franck, en lisant
+             # l'article de Stefano Mancuso au Fort de Bard : « on parle au passé.
+             # L'événement est déjà passé, on dit ce qui s'est fait. Ce n'est pas du tout
+             # ce que je veux pour Agenda Sabauda. » Il avait raison, et la cause n'était
+             # pas le modèle : la sélection n'excluait pas les événements terminés, et
+             # `_dates_hint` leur ordonnait alors « parle au passé ». Le modèle a obéi.
+             #
+             # Résultat : « Stefano Mancuso est intervenu jeudi 23 juillet », « il a
+             # défendu l'idée que… ». Du journalisme, publié sur un AGENDA. Or un agenda
+             # annonce ce qui va avoir lieu ; raconter ce qui a eu lieu est le métier d'un
+             # autre média (Nos Alpes). On payait en plus la rédaction complète d'un
+             # article que personne ne peut utiliser pour sortir de chez soi.
+             #
+             # Un récurrent n'a pas de date unique : il n'est jamais « passé » (règle 5).
+             "(COALESCE(recurring,0)=1 OR "
+             " COALESCE(NULLIF(date_event_end,''), date_event_start) >= date('now'))"]
     params: list = [MIN_SCORE]
     if dfrom and dto:  # circonscrit à la période de travail (chevauchement)
         where.append("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?")
