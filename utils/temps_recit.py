@@ -30,42 +30,76 @@ from __future__ import annotations
 import re
 import unicodedata
 
-# Verbes de DÉROULÉ au passé composé : l'auxiliaire, puis le participe. On borne l'écart
-# entre les deux (« il a notamment évoqué », « il s'est longuement exprimé ») sans laisser
-# la fenêtre traverser une phrase entière.
-_PARTICIPES = (
-    "intervenu", "intervenue", "intervenus", "presente", "presentee", "presentes",
+# ─────────────────────────────────────────────────────────────────────────────────────
+# LE FRANÇAIS FAIT ICI UNE DISTINCTION QUE MA PREMIÈRE VERSION IGNORAIT, et elle est
+# décisive. Vérifié sur les 25 fiches que le détecteur avait signalées en production le
+# 2026-08-11 : la plupart étaient de FAUSSES alertes.
+#
+#   « le sport inclusif EST PRÉSENTÉ comme la valeur centrale »   ← présent passif, correct
+#   « le musée EST OUVERT tous les jours de 10h à 12h »           ← présent passif, correct
+#   « le départ EST DONNÉ au barrage de Place Moulin »            ← présent passif, correct
+#   « une galerie photographique À CIEL OUVERT »                  ← même pas un verbe
+#
+# « est + participe » d'un verbe TRANSITIF est un présent passif — la forme la plus
+# naturelle qui soit pour annoncer. « est + participe » d'un verbe INTRANSITIF de
+# mouvement ou d'état (intervenu, venu, reparti…) est, lui, un passé composé. Les deux
+# s'écrivent pareil et ne disent pas du tout la même chose.
+#
+# D'où deux listes séparées, et la seconde est volontairement minuscule.
+#
+# Et « à ciel ouvert » : en retirant les accents pour comparer, « à » devient « a », donc
+# la préposition passait pour l'auxiliaire avoir. Le texte est désormais normalisé SANS
+# toucher au « à ». C'est le genre de faute qu'aucune relecture de code ne montre — il a
+# fallu voir la liste des faux positifs sur des articles réels.
+# ─────────────────────────────────────────────────────────────────────────────────────
+
+# Avec AVOIR : passé composé sans ambiguïté possible.
+_AVEC_AVOIR = (
     "defendu", "evoque", "evoquee", "evoques", "raconte", "explique", "expose",
-    "accueilli", "reuni", "rassemble", "attire", "propose", "anime", "ouvert",
-    "cloture", "inaugure", "donne", "joue", "interprete", "chante", "danse",
-    "decouvert", "assiste", "participe", "afflue", "rempli", "conquis", "seduit",
-    "devoile", "abordé", "aborde", "livre", "partage", "conclu", "termine",
+    "accueilli", "reuni", "rassemble", "attire", "anime", "cloture", "inaugure",
+    "joue", "interprete", "chante", "danse", "decouvert", "assiste", "participe",
+    "afflue", "rempli", "conquis", "seduit", "devoile", "aborde", "livre",
+    "partage", "conclu", "presente", "propose", "donne", "ouvert", "termine",
 )
-# PAS de plus-que-parfait ni d'imparfait dans les auxiliaires. « Elle AVAIT présenté
-# L'Île des esclaves la saison précédente » est du CONTEXTE parfaitement légitime dans une
-# annonce : ça parle de l'édition d'avant, pas de celle qu'on annonce. Le cas a été
-# attrapé par la fixture avant que le détecteur ne parte — c'est exactement ce que la
-# règle 3 attend d'un cas « qui doit PASSER, choisi près de la frontière ».
-_AUX = r"\b(?:a|ont|est|sont|s'est|se sont)\b"
+# Avec ÊTRE : uniquement les verbes intransitifs, pour lesquels « est + participe » EST un
+# passé composé et jamais un passif. Liste courte et fermée, c'est ce qui la rend sûre.
+_AVEC_ETRE = (
+    "intervenu", "intervenue", "intervenus", "intervenues",
+    "venu", "venue", "venus", "venues", "revenu", "revenue", "revenus",
+    "arrive", "arrivee", "arrives", "arrivees", "reparti", "repartie", "repartis",
+    "monte sur scene", "passe par",
+)
 
 _MOTIFS = (
-    # « il a défendu », « le public a découvert », « elle est intervenue »
-    (rf"{_AUX}(?:\s+\w+){{0,2}}\s+(?:{'|'.join(_PARTICIPES)})\b", "verbe de déroulé au passé"),
+    # « il a défendu », « le public a découvert », « ils ont accueilli »
+    (rf"\b(?:a|ont)\b(?:\s+\w+){{0,2}}\s+(?:{'|'.join(_AVEC_AVOIR)})\b",
+     "passé composé avec avoir"),
+    # « est intervenu », « sont venus » — verbes intransitifs seulement.
+    (rf"\b(?:est|sont)\b(?:\s+\w+){{0,2}}\s+(?:{'|'.join(_AVEC_ETRE)})\b",
+     "passé composé avec être"),
     # Formules de compte rendu, sans ambiguïté possible sur un agenda.
-    (r"\bdevant (?:le|un|son|le nombreux) public\b", "« devant le public »"),
-    (r"\bles (?:visiteurs|spectateurs|participants) ont\b", "« les visiteurs ont… »"),
+    (r"\bdevant (?:le|un|son) public,", "« devant le public, … »"),
+    (r"\bles (?:visiteurs|spectateurs|participants) ont (?:pu|decouvert|assiste)\b",
+     "« les visiteurs ont pu… »"),
     (r"\bs'est (?:tenu|tenue|deroule|deroulee|acheve|achevee|conclu|conclue)\b",
      "« s'est tenu / déroulé »"),
     (r"\bse sont (?:tenus|tenues|deroules|deroulees|succede)\b", "« se sont tenus »"),
-    (r"\bl'an dernier, (?:il|elle|le|la)\b", "retour sur l'édition précédente"),
-    (r"\b(?:cette annee|cette edition) (?:a|aura) (?:attire|reuni|rassemble)\b",
-     "bilan de fréquentation"),
 )
 
 
 def _norm(s: str) -> str:
-    n = unicodedata.normalize("NFKD", (s or "").lower())
-    return "".join(c for c in n if not unicodedata.combining(c))
+    """Minuscules sans accents — SAUF le « à », qu'on protège.
+
+    Sans cette protection, « à » devient « a » et la préposition passe pour l'auxiliaire
+    avoir : « une galerie photographique À CIEL OUVERT » et « le Grenier À IMAGES PROPOSE
+    des ateliers » étaient signalés comme des comptes rendus le 2026-08-11. Deux textes
+    parfaitement corrects, sur des fiches en ligne.
+
+    C'est une faute qu'aucune relecture de code ne montre : il a fallu voir la liste des
+    faux positifs sur de vrais articles."""
+    protege = (s or "").lower().replace("à", "\x01")
+    n = unicodedata.normalize("NFKD", protege)
+    return "".join(c for c in n if not unicodedata.combining(c)).replace("\x01", "à")
 
 
 def extraits_de_recit(texte: str, max_extraits: int = 3) -> list[str]:

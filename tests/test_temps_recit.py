@@ -76,6 +76,33 @@ for texte in CORRECTS:
     _check(f"annonce correcte : « {texte[:52]}… »", not raconte(texte),
            str(extraits_de_recit(texte)))
 
+print("\n──── LES HUIT FAUX POSITIFS DE LA PREMIÈRE MISE EN SERVICE ────")
+# Recopiés des 25 fiches que le détecteur avait signalées en production le 2026-08-11,
+# à 18h08. La plupart étaient de FAUSSES alertes, et j'allais rendre à Franck une file
+# de bruit — exactement le défaut des « 454 points à contrôler » du matin même, refait
+# trois heures après avoir écrit la règle qui l'interdit.
+#
+# Deux causes, deux leçons :
+#   • « est + participe » d'un verbe TRANSITIF est un présent PASSIF, la forme la plus
+#     naturelle pour annoncer. Seuls les verbes intransitifs (intervenu, venu) forment
+#     un passé composé avec être ;
+#   • en retirant les accents pour comparer, « à » devenait « a », donc la préposition
+#     passait pour l'auxiliaire avoir.
+FAUX_POSITIFS = [
+    "Le sport inclusif y est présenté comme la valeur centrale de la manifestation.",
+    "Le musée, Risorgimento 28 à Santa Maria Maggiore, est ouvert tous les jours de 10h "
+    "à 12h et de 15h à 18h.",
+    "Le départ est donné au barrage de Place Moulin, à 4h du matin.",
+    "Les façades se transforment en galerie photographique à ciel ouvert.",
+    "C'est la première fois que ce volume est présenté en Italie.",
+    "Pour les familles, le Grenier à images propose des ateliers en format court.",
+    "L'opéra est chanté en italien et surtitré en français.",
+    "Un récital pianistique intitulé Memorie e stagioni est proposé dans le Salone.",
+]
+for texte in FAUX_POSITIFS:
+    _check(f"pas une faute : « {texte[:54]}… »", not raconte(texte),
+           str(extraits_de_recit(texte)))
+
 print("\n──── d'autres formes de compte rendu, à refuser ────")
 FAUTIFS = [
     "Le concert s'est tenu samedi soir dans la cour du château.",

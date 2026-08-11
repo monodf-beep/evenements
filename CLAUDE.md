@@ -136,6 +136,28 @@ Deux exigences, donc, pour tout chiffre destiné à un humain :
 
 ---
 
+## Le journal des erreurs
+
+`docs/ERREURS_2026-08-11.md` liste les quinze fautes d'une seule journée, avec pour chacune
+le garde-fou qui l'empêche de revenir. **Neuf sur quinze étaient des récidives d'une règle
+déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le
+périmètre affiché à côté du nombre qui tiennent, parce qu'eux se déclenchent tout seuls.
+
+Deux enseignements de ce journal valent pour toute session future :
+
+**Un zéro ne dit pas s'il vient d'un échec ou d'une absence de cas.** Un pipeline qui ne
+trouve rien ressemble EXACTEMENT à un monde où il n'y a rien à trouver. Trois fois le
+2026-08-11 un « 0 » a semblé désigner une source pauvre ; les trois fois, c'était la
+requête. Tout compteur qui peut valoir zéro doit dire combien de cas se sont présentés.
+
+**Un défaut de forme ne se voit pas dans le code, il se voit dans les RÉSULTATS.** Le
+détecteur de comptes rendus prenait « est présenté » (présent passif) pour un passé, et
+lisait « à ciel ouvert » comme l'auxiliaire avoir. Aucune relecture ne l'aurait montré ;
+la liste des vingt-cinq fiches signalées l'a montré en dix secondes. Avant de livrer un
+portillon, le passer sur des données réelles et LIRE ce qu'il refuse.
+
+---
+
 ## Périmètre éditorial
 
 Quatre territoires : **Savoie / Haute-Savoie**, **Piémont**, **Vallée d'Aoste**, et le
