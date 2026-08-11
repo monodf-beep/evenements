@@ -61,6 +61,25 @@ moi. Cherche-les en priorité : ce sont les plus coûteuses, parce qu'elles ne c
    que 36 de leurs pages officielles portaient une vraie affiche. VÉRIFIE : après qu'un
    repli a été posé, quelle requête reprendra la fiche pour l'améliorer ?
 
+8. UN CHAMP RECOPIÉ SANS SE DEMANDER CE QU'IL CONTIENT. Le nom d'une colonne cible et le
+   nom d'un champ source peuvent coïncider sans que les deux parlent de la même chose.
+   Le 11/08 : `scripts/scraper_events.py` écrivait `entry.author` du flux RSS dans la
+   colonne `organisateur` — or `author` est l'auteur de l'ARTICLE (le journaliste, ou le
+   compte du CMS), jamais l'organisateur de l'événement. Cinq des vingt-huit tâches
+   « À vérifier » restantes en venaient, toutes irrésolubles : la réponse n'était pas
+   dans la matière, donc aucun clic humain ne pouvait les fermer. VÉRIFIE, pour chaque
+   affectation depuis un flux ou une API tierce : qui REMPLIT ce champ à la source, et
+   pour quoi faire ? Et quand la valeur est douteuse, laisser le champ VIDE vaut souvent
+   mieux — ici, vide, `enrich.py` retombait déjà sur `source_name`, c'est-à-dire
+   l'institution qui publie le flux, donc sur une réponse juste.
+
+9. UNE TÂCHE QUE PERSONNE NE PEUT FERMER. C'est le symptôme qui désigne le défaut 8, et
+   il vaut au-delà de lui. Prends trois points au hasard dans la file « À vérifier » et
+   demande-toi : où est écrite la réponse ? Si elle n'est ni dans la matière de la fiche,
+   ni sur la page officielle, ni à un clic de distance, la tâche ne sera JAMAIS fermée —
+   elle se reposera à chaque enrichissement et occupera l'écran indéfiniment. Ce n'est
+   alors pas un garde-fou, c'est un bug qui a pris la forme d'une question.
+
 PÉRIMÈTRE : ce qui a changé depuis huit jours. Trouve-le toi-même avec
 `git log --since="8 days ago" --name-only --pretty=format:` et concentre-toi sur les
 fichiers Python les plus touchés. Ne relis pas tout le dépôt : une revue diluée ne trouve

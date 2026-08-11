@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from urllib.parse import urlparse
 
+from utils.bylines import organisateur_depuis_flux
 from utils.logger import get_logger
 from utils.sources import (is_blocked_image, is_broad_source, is_out_of_scope,
                            is_radar_relevant, load_blocked_image_domains, load_broad_sources,
@@ -419,7 +420,16 @@ def scrape_source(source: dict, conn: sqlite3.Connection, blocked: set,
                 url,
                 image,
                 source["name"],
-                (entry.get("author", "") or "").strip()[:200],
+                # `author` d'un flux RSS est l'auteur de l'ARTICLE, jamais l'organisateur
+                # de l'événement : le journaliste sur un flux de presse, le compte du CMS
+                # sur un flux d'institution. Écrit tel quel jusqu'au 2026-08-11, il a
+                # produit cinq des vingt-huit tâches « À vérifier » restantes — « Arabella
+                # Pezza semble être une journaliste, pas l'organisatrice » — dont AUCUNE
+                # n'était résoluble : la réponse n'était pas dans la matière. On ne garde
+                # que ce qui ressemble à un organisme, ou ce que le texte désigne
+                # explicitement comme organisateur (utils/bylines.py). Vide, enrich.py
+                # retombe sur source_name, c'est-à-dire l'institution qui publie le flux.
+                organisateur_depuis_flux(entry.get("author", ""), material),
                 source.get("type", "institutionnel"),
             ))
             inserted += 1
