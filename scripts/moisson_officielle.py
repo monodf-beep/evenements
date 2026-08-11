@@ -128,7 +128,15 @@ def _diagnostic(html: str) -> list[str]:
 _TRAQUEURS = ("sendibm1.com", "sendibm2.com", "sendibm3.com", "musvc1.net", "musvc2.net",
               "musvc3.net", "musvc4.net", "musvc5.net", "musvc6.net", "marketingcloud",
               "list-manage.com", "sendgrid.net", "mailchi.mp", "hubspotlinks.com",
-              "brevo.com", "sibautomation.com", "r.a.d.sendibm1.com", "click.")
+              "brevo.com", "sibautomation.com", "r.a.d.sendibm1.com", "click.",
+              # emailsp.com (MailUp) trouvé au run suivant : un traqueur peut rediriger
+              # vers UN AUTRE TRAQUEUR — tobe.musvc6.net → a1d1i9.emailsp.com. Cette
+              # liste est un refus par nom, donc elle sera toujours en retard d'un
+              # service. C'est le même défaut que source_officielle, et il est ici
+              # ASSUMÉ : le coût d'un oubli se limite à une adresse inutile en base,
+              # que la passe suivante refusera d'exploiter.
+              "emailsp.com", "mailup.", "sendinblue.com", "acumbamail", "mailjet.com",
+              "sg-links.", "awstrack.me", "clicks.")
 
 
 def _est_traqueur(url: str) -> bool:
@@ -226,7 +234,13 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
     trouve: dict = {}
     # La vraie adresse, une fois connue, mérite d'être gardée : la prochaine passe n'aura
     # plus à traverser le traqueur, et l'enrichissement disposera enfin d'une page.
-    if (_est_traqueur(url) and not _est_traqueur(finale)
+    # ET L'HÔTE DOIT AVOIR CHANGÉ. Invariant qui ne dépend d'aucune liste : si l'on
+    # atterrit sur le même hôte qu'au départ, aucune résolution n'a eu lieu — la page est
+    # un rebond, pas la page de l'organisateur. Ça rattrape les traqueurs que la liste
+    # ci-dessus ne connaît pas encore, tant qu'ils ne renvoient pas vers un confrère.
+    from urllib.parse import urlparse as _up
+    change_d_hote = _up(url).netloc.lower() != _up(finale).netloc.lower()
+    if (_est_traqueur(url) and not _est_traqueur(finale) and change_d_hote
             and not (ev.get("url_officiel") or "").strip()):
         trouve["url_officiel"] = finale
 
