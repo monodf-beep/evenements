@@ -1,6 +1,6 @@
 {
  "_source": "Arrondissement de Nice (Alpes-Maritimes), état au 1er janvier 2024 — 101 communes.",
- "_regle": "Arbitrage Franck, 2026-08-02 : le territoire « Comté de Nice » = TOUTES les communes de l'arrondissement de NICE. Les communes de l'arrondissement de GRASSE (Cannes, Antibes, Grasse, Cagnes-sur-Mer, Vence, Saint-Paul-de-Vence, Saint-Laurent-du-Var, Mandelieu-la-Napoule, Mouans-Sartoux…) sont EXCLUES : elles sont dans le périmètre géographique de la charte (§2, « Nice/Alpes-Maritimes ») mais ne reçoivent PAS l'étiquette comte-de-nice.",
+ "_regle": "Arbitrage Franck, 2026-08-02, CONFIRMÉ SANS NUANCE le 2026-08-11 : le territoire « Comté de Nice » = TOUTES les communes de l'arrondissement de NICE. Les communes de l'arrondissement de GRASSE (Cannes, Antibes, Grasse, Cagnes-sur-Mer, Vence, Saint-Paul-de-Vence, Saint-Laurent-du-Var, Mandelieu-la-Napoule, Mouans-Sartoux, Valbonne/Sophia Antipolis…) sont HORS PÉRIMÈTRE — pas seulement privées de l'étiquette comte-de-nice : elles n'ont pas leur place dans l'agenda. Franck : « on ne devrait pas avoir d'événements sur ces territoires pour le moment ».",
  "_pourquoi": "Sans cette liste, l'attribution du territoire se faisait au jugé. Le CSV « événements sans visuel de repli » du 2026-08-02 proposait ainsi comte-de-nice pour Mandelieu-la-Napoule, Mouans-Sartoux, Saint-Paul-de-Vence et Saint-Laurent-du-Var — quatre communes provençales. Le critère administratif est vérifiable, contrairement à une intuition géographique.",
  "_comparaison": "Le nom est comparé sans accents, sans casse et sans ponctuation (« Saint-Étienne-de-Tinée » = « saint etienne de tinee »).",
  "arrondissement_de_nice": [
@@ -170,5 +170,6 @@
   "Vallauris",
   "Vence",
   "Villeneuve-Loubet"
- ]
+ ],
+ "_correction_2026_08_11": "Ce champ _regle affirmait jusqu'ici que les communes de Grasse étaient « dans le périmètre géographique de la charte (§2) mais ne reçoivent PAS l'étiquette comte-de-nice ». C'était FAUX, et en contradiction directe avec CLAUDE.md et avec docs/CHARTE_EDITORIALE.md §2, qui disent tous deux « hors périmètre ». La contradiction a été trouvée en triant la file « À compléter » du 2026-08-11 : elle décidait du sort des fiches de Vence et de Sophia Antipolis, et personne ne pouvait trancher en lisant le dépôt. Franck a tranché : « retenir hors périmètre, supprimer l'autre ». La frontière est le Var, elle suit le découpage administratif, et elle ne se négocie plus."
 }
