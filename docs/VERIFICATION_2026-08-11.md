@@ -221,3 +221,54 @@ basket), trois relevaient d'absences déjà écartées ailleurs, et un cachait u
 éditoriale bien plus grosse que lui (le Grand Continent Summit). **Onze points sur
 vingt-huit n'auraient jamais dû être posés.** Avant d'ajouter une ligne à une file, la
 question reste celle de la règle 6 : qu'est-ce que le lecteur en FERA ?
+
+---
+
+## Le soir : dix-sept fiches en ligne annonçaient des événements déjà passés
+
+Trouvées par `scripts/verifier_dates.py`, à son premier passage complet — et toutes par la
+même règle, celle du JOUR DE LA SEMAINE. Le texte source nomme un jour ; ce jour ne
+correspond qu'à une année ou deux sur la décennie ; si notre date n'en fait pas partie,
+elle est fausse.
+
+### Ce qui a été vérifié à la source, une par une
+
+| fiche | notre date | ce que dit le texte | vérifié |
+|---|---|---|---|
+| 1069 | 07/05/2027 | « sabato 7 maggio » | page Paratissima : « 4 anni fa » → **2022** |
+| 1079 | 11/12/2026 | « Sabato 11 dicembre » | la page annonce 2022 AU FUTUR → **11/12/2021** |
+| 1080 | 09/12/2026 | « Giovedì 9 dicembre » | page Paratissima : « 5 anni fa » → **2021** |
+| 1092 | 30/09/2026 | « giovedì 30 settembre », 2ᵉ édition | Esterno Notte 2 = **30/09/2021** (presse turinoise) |
+| 1081 | 02/12/2026 | « Giovedì 2 dicembre » | 2021 ou 2027 ; même lot que les précédentes |
+| 1036 | 17/12/2026 | « DOMENICA 17 DICEMBRE » | 2023 ou 2028 ; 2028 est absurde → **2023** |
+
+**Neuf fiches Paratissima sur neuf sont des archives.** Ce n'est plus un défaut de
+datation, c'est un problème de SOURCE : le flux republie ses vieux billets, et rien dans la
+chaîne ne distingue une annonce de 2021 d'une annonce de demain.
+
+### Les deux faux positifs, qui valent autant que les vrais
+
+**Terra Madre Salone del Gusto** (fiches 3491 et 2507, française et italienne). TorinoClick,
+l'agence de la Ville de Turin, écrit « du **vendredi** 24 au **lundi** 27 septembre ». Les
+vraies bornes de l'édition 2026 sont un **jeudi** et un **dimanche** (slowfood.it, site de
+l'édition, Région Piémont). **C'est la source officielle qui se trompe de jour, pas nous.**
+
+**Charlie Winston** (923) : notre 22/09/2026 est confirmé par la billetterie de la Maison
+des Arts du Léman. Le « 7 juillet » venait d'un autre spectacle de la même lettre.
+
+**Saint-Ours** (473) : la foire a lieu les 30 et 31 janvier chaque année, donc notre
+2027 est juste. Mais son TITRE en ligne annonce « 2026 » — autre défaut, autre geste.
+
+### Ce que ces trois-là enseignent
+
+Le jour de la semaine est le signal le plus contraignant qu'on ait — il réduit l'année à
+une sur sept, gratuitement, à partir d'un mot que l'auteur a écrit sans y penser. **Ce
+n'est pas pour autant un oracle.** Une source peut se tromper de jour ; une lettre
+d'information peut mélanger deux spectacles ; un titre de presse peut porter l'année de
+l'édition précédente.
+
+D'où la règle de conduite, qui vaut pour tous les portillons de ce dépôt : **le
+signalement doit porter la PHRASE, et c'est un humain qui tranche.** Les dix-neuf premiers
+signalements ont été rendus sans elle ; il a fallu la rajouter pour découvrir qu'il y avait
+un faux positif dedans — et pour rendre les dix-sept autres jugeables en dix minutes au
+lieu d'une soirée.
