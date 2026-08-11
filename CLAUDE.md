@@ -108,6 +108,32 @@ question au lieu de l'ouvrir. Recompter en base après une écriture ; ne jamais
 Et un état qui sort une fiche d'une file la sort aussi de tous les bilans : le compter
 explicitement, sinon on le découvre des semaines plus tard.
 
+**Un compteur doit dire ce qu'il compte, et une file ne doit contenir que ce qu'un humain
+peut faire.** Ajouté le 2026-08-11, après une matinée entière passée à démonter des
+chiffres que j'avais moi-même produits. Franck : « 548 tâches ! c'est ingérable. »
+
+Trois compteurs décrivaient l'état du site, les trois étaient gonflés, et aucun ne
+mentait sur ses données — ils mentaient sur leur PÉRIMÈTRE :
+
+- « 793 points à vérifier » — la file n'avait aucun filtre de date : elle affichait les
+  points d'événements terminés depuis des mois ;
+- « 108 fiches publiées trop maigres » — passé et à-venir mélangés ; il y en avait SEIZE
+  encore devant nous ;
+- « 454 points à contrôler » — dont 315 n'étaient pas des faits douteux mais des
+  informations que la source ne publie pas. Personne ne peut vérifier la capacité
+  d'accueil d'une sortie au lac : ni Franck, ni le modèle. Une file pareille n'est pas un
+  garde-fou, c'est l'inventaire des silences de la source.
+
+Deux exigences, donc, pour tout chiffre destiné à un humain :
+
+- **écrire son périmètre à côté de lui.** Deux compteurs qui portent le même nom et
+  comptent deux choses se contrediront un jour, et c'est le plus gros qu'on croira ;
+- **avant d'ajouter une ligne à une file, se demander ce que le lecteur en FERA.** S'il
+  n'y a pas de geste au bout, ce n'est pas une tâche : c'est du bruit qui décourage, et
+  qui cache les vraies. Sur ces 454 points, le seul qui comptait — « l'organisateur
+  annoncé semble être la journaliste, pas l'organisatrice » — était noyé sous trois cents
+  « tarifs non publiés ».
+
 ---
 
 ## Périmètre éditorial
