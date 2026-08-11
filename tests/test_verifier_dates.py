@@ -129,6 +129,42 @@ def _sortie(argv=None):
     return {int(m) for m in re.findall(r"^  \[\s*(\d+)\]", s, re.M)}, s
 
 
+print("\n──── 1 ter. la borne de plage — une plage à moitié juste est fausse ────")
+# TROUVÉ PAR L'AUTRE CONVERSATION le 2026-08-12, sur deux fiches EN LIGNE : Guitare en
+# scène (source « du 14 au 18 juillet », fiche du 14 au 17) et Festa di San Savino (source
+# « dal 4 all'8 luglio », fiche du 4 au 7). Un jour perdu à la fin, deux fois.
+#
+# Mon verdict les déclarait CONFIRMÉES : il suffisait qu'UNE borne figure dans le texte. Or
+# c'est la fin qui envoie quelqu'un devant une porte close le dernier jour.
+_check("Guitare en scène : fiche 14-17, source 14-18 → BORNE, plus « confirmé »",
+       verifier_dates.verdict({"2026-07-14", "2026-07-17"},
+                              {"2026-07-14", "2026-07-18"})[0] == "borne")
+_check("San Savino : fiche 4-7, source 4-8 → BORNE",
+       verifier_dates.verdict({"2026-07-04", "2026-07-07"},
+                              {"2026-07-04", "2026-07-08"})[0] == "borne")
+# LE SIGNALEMENT DOIT NOMMER LA BONNE DATE. La première version désignait le 14 juillet —
+# notre propre début, déjà confirmé — comme remplaçant du 17, en annonçant « 3 jours
+# d'écart » là où la correction est le 18, à un jour. Un signalement qui nomme la mauvaise
+# date envoie corriger de travers.
+_m = verifier_dates.verdict({"2026-07-14", "2026-07-17"},
+                            {"2026-07-14", "2026-07-18"})[1]
+_check("il nomme la voisine la PLUS PROCHE, jamais une de nos propres bornes",
+       "2026-07-18" in _m and "1 jour" in _m, _m)
+
+# LES CAS QUI DOIVENT PASSER, choisis près de la frontière — sans eux ce contrôle
+# transformerait toute page de saison en file de bruit.
+_check("plage exacte → confirmée",
+       verifier_dates.verdict({"2026-07-14", "2026-07-18"},
+                              {"2026-07-14", "2026-07-18"})[0] == "confirme")
+_check("dates lointaines dans le texte → confirmée, pas « borne »",
+       verifier_dates.verdict({"2026-06-03", "2026-09-13"},
+                              {"2026-06-03", "2026-07-15"})[0] == "confirme")
+_check("un autre MOIS ne fait pas une borne décalée",
+       verifier_dates.verdict({"2026-07-31", "2026-08-05"},
+                              {"2026-07-31", "2026-09-02"})[0] == "confirme")
+_check("date unique confirmée → confirmée",
+       verifier_dates.verdict({"2026-08-21"}, {"2026-08-21", "2026-09-30"})[0] == "confirme")
+
 print("\n──── 2 bis. le jour de la semaine ────")
 _check("« sabato 7 maggio » est lu",
        verifier_dates.jours_nommes("venire a trovarci sabato 7 maggio dalle 16") ==

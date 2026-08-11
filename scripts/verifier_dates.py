@@ -241,6 +241,37 @@ def verdict(stockees: set[str], du_texte: set[str]) -> tuple[str, str, str]:
     if not du_texte:
         return ("muet", "le texte source ne porte aucune date", "")
     if stockees & du_texte:
+        # ⚠️ UNE PLAGE À MOITIÉ JUSTE EST UNE PLAGE FAUSSE, et ma première version la
+        # déclarait « confirmée ». Trouvé le 2026-08-12 par l'autre conversation, sur deux
+        # fiches EN LIGNE : Guitare en scène, source « du 14 au 18 juillet », fiche du 14
+        # au 17 ; Festa di San Savino, source « dal 4 all'8 luglio », fiche du 4 au 7. Un
+        # jour perdu à la fin, deux fois.
+        #
+        # Mon verdict passait parce que le DÉBUT figurait bien dans le texte : il suffisait
+        # d'une borne pour crier confirmé. Or c'est la fin qui envoie quelqu'un devant une
+        # porte close le dernier jour.
+        #
+        # (Le parseur, lui, est innocent : `parse_dates` rend bien 14→18 et 4→8 sur les
+        # chaînes exactes de ces deux sources. Le jour se perd donc AILLEURS — page,
+        # modèle, ou saisie — et c'est justement pour ça qu'il faut un contrôle qui juge le
+        # RÉSULTAT sans rien supposer du chemin.)
+        for absente in sorted(stockees - du_texte):
+            d0 = date.fromisoformat(absente)
+            # LA PLUS PROCHE, ET PAS UNE DES NÔTRES. Deux précisions qui ont chacune une
+            # raison : prendre la première candidate rencontrée désignait le 14 juillet
+            # (notre début, déjà confirmé) comme remplaçant du 17, en annonçant « 3 jours
+            # d'écart » là où la vraie correction est le 18, à un jour. Un signalement qui
+            # nomme la mauvaise date envoie corriger de travers.
+            voisines = [c for c in du_texte if c not in stockees
+                        and date.fromisoformat(c).month == d0.month
+                        and 0 < abs((date.fromisoformat(c) - d0).days) <= 3]
+            if not voisines:
+                continue
+            cand = min(voisines, key=lambda c: abs((date.fromisoformat(c) - d0).days))
+            ecart = abs((date.fromisoformat(cand) - d0).days)
+            return ("borne", f"le texte dit {cand}, la base dit {absente} — {ecart} jour(s) "
+                             f"d'écart sur UNE borne de la plage ; l'autre est confirmée",
+                    cand)
         return ("confirme", "la date figure telle quelle dans le texte source", "")
 
     # ② L'année : même jour, même mois, autre millésime. Reconnaissable sans rien
@@ -308,7 +339,7 @@ def main(argv: list[str]) -> int:
     from scripts import classer_sans_suite as _classes
     _memoire = _classes.charger()
     compte = {"confirme": 0, "contredit": 0, "annee": 0, "jour": 0,
-              "muet": 0, "indecis": 0, "classe": 0}
+              "borne": 0, "muet": 0, "indecis": 0, "classe": 0}
     a_voir: list[tuple] = []
     for r in lignes:
         try:
@@ -350,7 +381,7 @@ def main(argv: list[str]) -> int:
                     d0 = dd
                     break
             phrase_jour = phrase_du_jour(materiau, d0.month, d0.day)
-        if v in ("contredit", "annee", "jour") or (args.tout and v == "indecis"):
+        if v in ("contredit", "annee", "jour", "borne") or (args.tout and v == "indecis"):
             # LA PHRASE, PAS SEULEMENT LA DATE. Sans elle, le lecteur arbitre à l'aveugle
             # entre deux nombres et tranchera dans le sens de celui qui affiche — c'est
             # l'erreur 14 du 2026-08-11, où j'ai déclaré fausses deux dates qui étaient
@@ -370,6 +401,8 @@ def main(argv: list[str]) -> int:
     print(f"  {compte['contredit']:>5}  CONTREDITES — le texte ne dit qu'une date, "
           f"et ce n'est pas la nôtre")
     print(f"  {compte['annee']:>5}  ANNÉE — même jour, autre millésime")
+    print(f"  {compte['borne']:>5}  BORNE DE PLAGE — une borne sur deux est décalée de "
+          f"un à trois jours ; le dernier jour est celui qui envoie devant une porte close")
     print(f"  {compte['jour']:>5}  JOUR DE SEMAINE — le texte annonce un autre jour que "
           f"le nôtre ; l'année ne colle pas")
     print(f"  {compte['indecis']:>5}  indécises — plusieurs dates, aucune n'est la nôtre "
@@ -396,7 +429,8 @@ def main(argv: list[str]) -> int:
     for r, v, motif, phrase, exacte in a_voir:
         etat = f"EN LIGNE #{r['wp_post_id_as']}" if r["wp_post_id_as"] else "hors ligne"
         marque = {"annee": "⚠ ANNÉE", "contredit": "✗ CONTREDIT",
-                  "jour": "✗ JOUR DE SEMAINE"}.get(v, "· indécis")
+                  "jour": "✗ JOUR DE SEMAINE",
+                  "borne": "✗ BORNE DE PLAGE"}.get(v, "· indécis")
         print(f"  [{r['id']:>5}] {marque}   {etat}   "
               f"(date_source={r['date_source'] or '?'})")
         print(f"          {(r['title'] or '')[:72]}")
