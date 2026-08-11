@@ -144,5 +144,78 @@ _check("deuxième passage identique au premier",
        [_lire(i) for i in range(1, 8)] == avant,
        str([_lire(i) for i in range(1, 8)]))
 
+print("\n──── le début lu sur la page, CORROBORÉ par la fin connue ────")
+# « date de début, date de fin ! » (Franck, 2026-08-11). Une page porte toujours plusieurs
+# dates : celle de l'article, celles des autres événements, les horaires. On ne cherche
+# donc pas « une date », on cherche une PLAGE qui se termine à la date qu'on connaît déjà.
+PAGE = ("Publié le 3 mars 2026 par la rédaction · "
+        "L'exposition est visible du 12 juin au 20 septembre 2026 au musée · "
+        "Ouvert de 10h à 18h · Prochainement : concert du 5 octobre 2026 · "
+        "© Ville de Nice 2026")
+_check("plage dont la fin correspond → le début est rendu",
+       dates_mod.debut_depuis_page(PAGE, "2026-09-20") == "2026-06-12",
+       dates_mod.debut_depuis_page(PAGE, "2026-09-20"))
+_check("aucune plage ne finit à cette date → rien, surtout pas la première date venue",
+       dates_mod.debut_depuis_page(PAGE, "2026-11-30") == "",
+       dates_mod.debut_depuis_page(PAGE, "2026-11-30"))
+_check("sans fin connue, on ne cherche même pas",
+       dates_mod.debut_depuis_page(PAGE, "") == "")
+_check("page vide → rien", dates_mod.debut_depuis_page("", "2026-09-20") == "")
+AMBIGU = ("Le parcours est ouvert du 12 juin au 20 septembre 2026 · "
+          "Les ateliers, eux, se tiennent du 1 juillet au 20 septembre 2026")
+_check("DEUX débuts possibles pour la même fin → on ne rend RIEN",
+       dates_mod.debut_depuis_page(AMBIGU, "2026-09-20") == "",
+       dates_mod.debut_depuis_page(AMBIGU, "2026-09-20"))
+_check("un début postérieur à la fin est refusé",
+       dates_mod.debut_depuis_page("du 25 septembre au 20 septembre 2026", "2026-09-20") == "")
+
+print("\n──── la passe page ne doit RIEN effacer ────")
+# Le piège : la sélection de la passe page vient d'être élargie aux fiches qui ont déjà
+# une date de fin. Son UPDATE réécrivait les deux colonnes avec ('','') quand la page ne
+# donnait rien — il aurait donc effacé la fin à chaque page muette.
+_vrai_fetch = dates_mod.fetch_event_dates
+
+
+def _fetch_muet(url, _capture=None):
+    if _capture is not None:
+        _capture["text"] = "Une page sans la moindre date exploitable."
+    return ("", "", "nodate")
+
+
+def _fetch_corroborant(url, _capture=None):
+    if _capture is not None:
+        _capture["text"] = ("Saison patrimoniale · L'édition se tient "
+                            "du 4 juillet au 20 septembre 2026 · Entrée libre")
+    return ("", "", "nodate")
+
+
+dates_mod.fetch_event_dates = _fetch_muet
+dates_mod.main(["--no-llm", "--no-republish"])
+_check("fiche 7 : page muette, sa date de fin est INTACTE", _lire(7)[1] == "2026-09-20",
+       str(_lire(7)))
+_check("fiche 3 : idem, la fin seule survit à la passe page", _lire(3)[1] == "2026-09-20",
+       str(_lire(3)))
+
+_check("fiche 7 : lue sans résultat, elle passe à 'nodate' (plafond de tentatives et "
+       "ré-armement s'en occupent) — elle n'est donc PAS relue au run suivant",
+       _lire(7)[2] == "nodate", str(_lire(7)))
+
+# Fiche neuve pour le cas corroboré : la 7 vient d'être marquée 'nodate', et c'est le bon
+# comportement — une page relue en boucle le même jour ne donnerait pas autre chose.
+c = sqlite3.connect(db)
+c.execute("INSERT INTO events_raw (id, title, description, url_source, date_source, "
+          "date_event_start, date_event_end) VALUES (8,'Saison patrimoniale','', "
+          "'https://exemple.fr/8','parsed','','2026-09-20')")
+c.commit()
+c.close()
+
+dates_mod.fetch_event_dates = _fetch_corroborant
+dates_mod.main(["--no-llm", "--no-republish"])
+_check("fiche 8 : le début est trouvé sur la page et corroboré par la fin",
+       _lire(8)[0] == "2026-07-04", str(_lire(8)))
+_check("… la fin connue n'a pas bougé", _lire(8)[1] == "2026-09-20", str(_lire(8)))
+_check("… et la provenance le dit", _lire(8)[2] == "page_corroboree", str(_lire(8)))
+dates_mod.fetch_event_dates = _vrai_fetch
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s). Base jetable : {tmp}")
 sys.exit(1 if echecs else 0)

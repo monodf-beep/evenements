@@ -355,6 +355,45 @@ def dates_from_page(html: str) -> tuple[str, str, str]:
     return ("", "", "")
 
 
+def debut_depuis_page(texte: str, fin_connue: str, ref: date | None = None) -> str:
+    """Le DÉBUT lu dans le texte d'une page, mais seulement s'il est CORROBORÉ par la fin.
+
+    Franck, le 2026-08-11 : « date de début, date de fin ! » — les deux, donc. Or 54 fiches
+    n'avaient qu'une fin, tirée d'un « jusqu'au 20 septembre » qui ne dit rien du début.
+
+    `dates_from_page` refuse par principe de lire le texte libre d'une page, et elle a
+    raison : une page porte la date de l'article, celle des autres événements de la
+    colonne de droite, les horaires d'ouverture, le copyright. Prendre « la première date
+    trouvée » fabriquerait des dates fausses en série.
+
+    Mais quand on connaît DÉJÀ la fin, on ne cherche plus une date : on cherche une PLAGE
+    dont la fin est celle qu'on connaît. « du 12 juin au 20 septembre » sur une page dont
+    la fiche annonce le 20 septembre n'est pas une devinette, c'est une confirmation — et
+    le début vient avec. C'est le même principe que `utils.bylines.corrobore` : la preuve
+    doit désigner CE fait-là, pas un fait voisin.
+
+    Trois garde-fous, parce que le coût d'une date fausse sur le site est élevé :
+      • le texte est découpé en segments courts, et chacun est passé au parseur SÉPARÉMENT
+        — sinon `parse_dates`, qui travaille au premier motif rencontré, mélangerait la
+        date d'un paragraphe avec celle d'un autre ;
+      • seuls les segments dont la fin parsée ÉGALE la fin connue sont retenus ;
+      • s'ils désignent DEUX débuts différents, on ne rend rien. L'ambiguïté n'est pas
+        départageable ici, et une fiche sans date reste réparable — une fiche mal datée
+        trompe le visiteur et personne ne le voit.
+    """
+    if not fin_connue or not texte:
+        return ""
+    debuts = set()
+    for segment in re.split(r"[.;!?·•|\n\r]+|\s{3,}", texte):
+        segment = segment.strip()
+        if not 6 <= len(segment) <= 300:
+            continue
+        s, e, src = parse_dates(segment, ref)
+        if src == "parsed" and s and e == fin_connue and s <= fin_connue:
+            debuts.add(s)
+    return debuts.pop() if len(debuts) == 1 else ""
+
+
 def fetch_event_dates(url: str, _capture: dict | None = None) -> tuple[str, str, str]:
     """Télécharge la page et en extrait la date (JSON-LD/<time>). ('','','nodate') si rien.
 
@@ -763,17 +802,35 @@ def main(argv=None) -> int:
     # --- Passe 2 : page de l'événement (JSON-LD/<time>), pour les restants ---
     from_page = 0
     if not args.no_fetch:
+        # SÉLECTION ÉLARGIE le 2026-08-11 (Franck : « date de début, date de fin ! »).
+        # Elle portait sur date_source='none', or une fiche qui n'a gagné qu'une fin par
+        # le texte porte 'parsed' : la passe page ne la regardait donc JAMAIS, alors que
+        # c'est précisément elle qui lui manque un début. On sélectionne désormais sur le
+        # fait qui compte — pas de date de début — en gardant hors du lot les fiches déjà
+        # lues sans résultat ('nodate'), qui relèvent du ré-armement et du plafond de
+        # tentatives.
         todo = conn.execute(
-            "SELECT id, title, url_source, wp_post_id_as, annulation_detectee_at "
-            "FROM events_raw "
-            "WHERE date_source = 'none' AND statut != 'merged' "
+            "SELECT id, title, url_source, wp_post_id_as, annulation_detectee_at, "
+            "  date_event_end FROM events_raw "
+            "WHERE COALESCE(date_event_start,'') = '' AND statut != 'merged' "
+            "  AND COALESCE(date_source,'') IN ('none', 'parsed', 'parsed_article') "
             "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
             "LIMIT ?", (args.fetch_cap,)).fetchall()
         log.info("Passe page : %d page(s) à lire (cap %d)", len(todo), args.fetch_cap)
+        corrobores = 0
         for r in todo:
             capture: dict = {}
             s, e, src = fetch_event_dates(r["url_source"], _capture=capture)
+            # Rien en JSON-LD, mais on connaît déjà la FIN : on cherche sur la page une
+            # plage qui se termine à cette date-là. Voir debut_depuis_page — c'est une
+            # corroboration, pas une devinette.
+            fin_connue = (r["date_event_end"] or "").strip()
+            if src != "page" and fin_connue and capture.get("text"):
+                debut = debut_depuis_page(capture["text"], fin_connue)
+                if debut:
+                    s, e, src = debut, fin_connue, "page_corroboree"
+                    corrobores += 1
             # Canal 3 : la page vient d'être RÉELLEMENT téléchargée (capture non vide)
             # — on cherche un marqueur d'annulation dessus, QUEL QUE SOIT le résultat
             # de la datation (`s`/`e`/`src`) : le signal est un ajout, jamais un blocage.
@@ -781,13 +838,28 @@ def main(argv=None) -> int:
                 signale_annulation_page(conn, dict(r), capture["text"], annulation_re,
                                         source="page (dates.py, passe JSON-LD)")
             # 'page' = trouvé ; 'nodate' = lu mais rien (ne sera plus re-fetché).
+            #
+            # ⚠️ CET UPDATE ÉCRASAIT TOUT. Il réécrivait les deux colonnes avec ('','')
+            # quand la page ne donnait rien : dès que la sélection ci-dessus s'est élargie
+            # aux fiches qui ont déjà une date de fin, il aurait EFFACÉ cette fin à chaque
+            # page muette. Le défaut ne se voyait pas tant que la passe ne prenait que des
+            # fiches vides — c'est le genre de bombe qu'un élargissement de requête, fait
+            # trois lignes plus haut et en apparence sans rapport, fait exploser.
+            champs, vals = ["date_source=?"], [src]
+            if s:
+                champs.append("date_event_start=?")
+                vals.append(s)
+            if e and not (r["date_event_end"] or "").strip():
+                champs.append("date_event_end=?")
+                vals.append(e)
             conn.execute(
-                "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
-                (s, e, src, r["id"]))
-            if src == "page":
+                f"UPDATE events_raw SET {', '.join(champs)}, "
+                "date_checked_at=datetime('now') WHERE id=?", (*vals, r["id"]))
+            if src.startswith("page"):
                 from_page += 1
             conn.commit()
-        log.info("Passe page : %d daté(s) via la page", from_page)
+        log.info("Passe page : %d daté(s) via la page, dont %d par une plage CORROBORÉE "
+                 "par la date de fin déjà connue", from_page, corrobores)
 
     # --- Passe 3 : datation LLM (dernier recours) pour les non-datés restants ---
     from_llm = 0
