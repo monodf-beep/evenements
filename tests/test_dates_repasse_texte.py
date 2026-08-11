@@ -75,6 +75,10 @@ CAS = [
     (5, "Nice Jazz Fest", "Trois soirées au Théâtre de Verdure.", "", "", "", ""),
     # 6 — TRADUCTION : ses dates sont copiées de l'original, jamais re-dérivées.
     (6, "Il Tour de France Femmes si conclude l'8 e 9 agosto", "", "", "", "", ""),
+    # 7 — « jusqu'au… » : le texte ne donne QUE la fin. La fiche gagne quelque chose, mais
+    # elle reste incomplète — et c'est exactement ce que le compteur annonçait à tort
+    # comme « datée » le 2026-08-11 (64 annoncées, 10 réelles).
+    (7, "Un été à Albé, saison patrimoniale jusqu'au 20 septembre", "", "", "", "", ""),
 ]
 for eid, titre, desc, art, src, s, e in CAS:
     conn.execute(
@@ -128,12 +132,17 @@ _check("fiche 6 (traduction) non datée par le TEXTE mais copiée de son origina
 _check("… et la copie porte bien les dates de l'original",
        _lire(6)[:2] == _lire(1)[:2], f"{_lire(6)} vs {_lire(1)}")
 
+print("\n──── « jusqu'au 20 septembre » : gagné une fin, TOUJOURS incomplète ────")
+_check("fiche 7 a bien reçu sa date de fin", _lire(7)[1] == "2026-09-20", str(_lire(7)))
+_check("… mais elle n'a PAS de date de début, et le compteur ne doit pas la dire datée",
+       _lire(7)[0] == "", str(_lire(7)))
+
 print("\n──── on rejoue : rien ne se dégrade ────")
-avant = [_lire(i) for i in range(1, 7)]
+avant = [_lire(i) for i in range(1, 8)]
 dates_mod.main(["--no-fetch", "--no-llm", "--no-republish"])
 _check("deuxième passage identique au premier",
-       [_lire(i) for i in range(1, 7)] == avant,
-       str([_lire(i) for i in range(1, 7)]))
+       [_lire(i) for i in range(1, 8)] == avant,
+       str([_lire(i) for i in range(1, 8)]))
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s). Base jetable : {tmp}")
 sys.exit(1 if echecs else 0)

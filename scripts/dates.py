@@ -702,12 +702,13 @@ def main(argv=None) -> int:
     # souvent bien plus explicite que le titre brut du flux. La provenance est distinguée
     # (`parsed_article`) pour qu'un doute futur puisse être levé sans tout re-tester.
     rows = conn.execute(
-        "SELECT id, title, description, article_title FROM events_raw "
+        "SELECT id, title, description, article_title, date_event_end, date_source "
+        "FROM events_raw "
         "WHERE COALESCE(date_event_start,'') = '' AND statut != 'merged' "
         "  AND COALESCE(translation_of,0) = 0"
     ).fetchall()
     log.info("Passe texte : %d événement(s) sans date de début à relire", len(rows))
-    parsed = parsed_article = 0
+    parsed = parsed_article = fin_seule = 0
     for r in rows:
         s, e, src = parse_dates(f"{r['title']}\n{r['description'] or ''}")
         titre_art = (r["article_title"] or "") if "article_title" in r.keys() else ""
@@ -715,25 +716,35 @@ def main(argv=None) -> int:
             s2, e2, src2 = parse_dates(titre_art)
             if src2 == "parsed":
                 s, e, src = s2, e2, "parsed_article"
-        # ON N'EFFACE JAMAIS. Une fiche peut n'avoir qu'une date de FIN (« jusqu'au 20
-        # septembre ») : l'ancienne version réécrivait les deux colonnes à chaque passage
-        # et aurait effacé cette fin dès que le parseur échouait au tour suivant. Chaque
-        # champ n'est donc écrit que s'il apporte une valeur.
+        # ON N'EFFACE JAMAIS, ET ON NE RÉÉCRIT PAS CE QU'ON SAIT DÉJÀ. Une fiche peut
+        # n'avoir qu'une date de FIN (« jusqu'au 20 septembre ») : la toute première
+        # version réécrivait les deux colonnes à chaque passage, ce qui aurait effacé
+        # cette fin dès l'échec suivant. Chaque champ n'est donc écrit que s'il APPORTE
+        # quelque chose que la fiche n'a pas.
+        neuf = {}
         if src.startswith("parsed"):
-            champs, vals = ["date_source=?"], [src]
             if s:
-                champs.append("date_event_start=?")
-                vals.append(s)
-            if e:
-                champs.append("date_event_end=?")
-                vals.append(e)
+                neuf["date_event_start"] = s
+            if e and not (r["date_event_end"] or "").strip():
+                neuf["date_event_end"] = e
+        if neuf:
+            champs = ", ".join(f"{c}=?" for c in neuf) + ", date_source=?"
             conn.execute(
-                f"UPDATE events_raw SET {', '.join(champs)}, "
-                "date_checked_at=datetime('now') WHERE id=?", (*vals, r["id"]))
-            parsed += 1
-            parsed_article += (src == "parsed_article")
-        elif not (conn.execute("SELECT COALESCE(date_source,'') FROM events_raw WHERE id=?",
-                               (r["id"],)).fetchone()[0]):
+                f"UPDATE events_raw SET {champs}, date_checked_at=datetime('now') "
+                "WHERE id=?", (*neuf.values(), src, r["id"]))
+            # DEUX COMPTEURS, PARCE QU'ILS NE COMPTENT PAS LA MÊME CHOSE (règle 6, et
+            # c'est ma troisième récidive de la journée). La version d'avant annonçait
+            # « 64 datés par le texte » alors que le nombre de fiches sans date de début
+            # ne bougeait que de dix : les 54 autres n'avaient gagné qu'une date de FIN
+            # (« jusqu'au 20 septembre » ne dit pas quand ça commence). Elles restent donc
+            # incomplètes, et le chiffre laissait croire l'inverse. Pire : elles étaient
+            # ré-écrites à l'identique à chaque run, et recomptées à chaque fois.
+            if "date_event_start" in neuf:
+                parsed += 1
+                parsed_article += (src == "parsed_article")
+            else:
+                fin_seule += 1
+        elif not (r["date_source"] or "").strip():
             # Première rencontre sans résultat : on pose 'none' pour que la passe 2
             # (lecture de la page) la prenne en charge. Les suivantes ne touchent à rien.
             conn.execute("UPDATE events_raw SET date_source='none', "
@@ -744,8 +755,10 @@ def main(argv=None) -> int:
     restant = conn.execute(
         "SELECT COUNT(*) FROM events_raw WHERE COALESCE(date_event_start,'')='' "
         "AND statut != 'merged' AND COALESCE(translation_of,0)=0").fetchone()[0]
-    log.info("Passe texte : %d daté(s) par le texte (dont %d par le titre d'article) — "
-             "%d fiche(s) restent sans date de début", parsed, parsed_article, restant)
+    log.info("Passe texte : %d fiche(s) ont GAGNÉ une date de début (dont %d par le titre "
+             "d'article), %d n'ont gagné qu'une date de fin (« jusqu'au… », elles restent "
+             "incomplètes) — %d fiche(s) restent sans date de début",
+             parsed, parsed_article, fin_seule, restant)
 
     # --- Passe 2 : page de l'événement (JSON-LD/<time>), pour les restants ---
     from_page = 0
