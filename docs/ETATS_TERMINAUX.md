@@ -394,6 +394,41 @@ Torino, salon grand public attrapé par « btob » dans sa description).
 est presque toujours le bon, à une condition — que le message nomme la commande de
 sortie, ce que font les deux messages du portillon.
 
+## Le cul-de-sac qui n'était pas en base — la fiche LIEU de WordPress
+
+Trouvé le 2026-08-11 par une autre session : la fiche lieu WordPress 208 porte
+`_VenueCity = Aosta` pour le **Forte di Bard**, qui est à Bard, cinquante kilomètres plus
+bas dans la vallée. Trois événements pointaient dessus et affichaient au public une ville
+fausse.
+
+Ce n'est pas une faute d'extraction, c'est un état terminal — et le premier du recensement
+qui ne vit pas dans `events_raw`. `cs-publish.php` cherchait la fiche lieu par son nom, la
+réutilisait telle quelle, et **ne regardait jamais sa ville**. Une fiche lieu créée fausse
+le restait donc pour toujours, et chaque nouvel événement au même endroit héritait de
+l'erreur. Aucune commande du dépôt ne pouvait la défaire : ni un re-push, ni une
+correction en base, ni une republication.
+
+Les quatre questions :
+
+1. **Qui le rouvre ?** `cs-publish.php`, à chaque publication, maintenant qu'il compare.
+   Deux cas seulement — la ville du lieu est vide, il la remplit ; elle diffère et
+   l'appelant déclare `CityAuthoritative`, il la corrige.
+2. **À quelle condition ?** Un ÉVÉNEMENT, pas un délai : la ville vient du registre
+   (`docs/savoir/` ou `config/lieux_villes.json`). Sans cette condition, deux événements
+   en désaccord sur un même lieu se réécriraient l'un l'autre à chaque publication et le
+   dernier poussé gagnerait — ce n'est pas une règle, c'est un tirage au sort.
+3. **Où se voit le nombre ?** `scripts/verifier_lieux` (cron 11h35, `--slack`) affiche les
+   trois familles à côté de leur périmètre, et la réponse de `cs/v1/event` porte
+   `venue_city_fixed` quand une ville a bougé — sinon la correction serait muette.
+4. **Le rouvreur est-il branché ?** Oui, et par le chemin le plus fréquenté du dépôt : la
+   publication elle-même. Rien à lancer à la main.
+
+**Le registre est-il à son tour un cul-de-sac ?** Une entrée de `config/lieux_villes.json`
+éteint définitivement un signalement, et rien ne la rouvre automatiquement. C'est assumé et
+c'est le seul cas du document où ça l'est : une commune ne déménage pas. Le garde-fou est
+ailleurs — le NOMBRE d'entrées est affiché à côté des compteurs de `verifier_lieux`, pour
+qu'on ne découvre pas dans six mois qu'un lieu avait été éteint à tort.
+
 ## La règle à suivre
 
 Avant d'ajouter un état qui écarte une fiche d'une file, répondre par écrit à :

@@ -134,12 +134,39 @@ function cs_publish_event(WP_REST_Request $req) {
 
     // --- Lieu (Venue) : réutilise s'il existe, sinon crée ----------------------
     $venue_id = 0;
+    $venue_city_fixed = '';
     $venue = $b['venue'] ?? null;
     if (is_string($venue) && trim($venue) !== '') { $venue = array('Venue' => trim($venue)); }
     if (is_array($venue) && !empty($venue['Venue'])) {
         $existing = get_page_by_title($venue['Venue'], OBJECT, 'tribe_venue');
         if ($existing) {
             $venue_id = (int) $existing->ID;
+            // UNE FICHE LIEU CRÉÉE FAUSSE LE RESTAIT POUR TOUJOURS. On réutilisait le
+            // post existant sans jamais regarder sa ville : chaque nouvel événement au
+            // même endroit héritait de l'erreur, et rien dans la chaîne ne pouvait la
+            // défaire. C'est un état terminal sans rouvreur (règle 3), et il a produit un
+            // cas réel — fiche lieu 208, `_VenueCity = Aosta` pour le Forte di Bard, qui
+            // est à Bard, cinquante kilomètres plus bas ; trois événements l'affichaient.
+            //
+            // DEUX CAS SEULEMENT, et la distinction est tout le sujet :
+            //   • la ville du lieu est VIDE → on la remplit, on n'écrase rien ;
+            //   • elle est renseignée et DIFFÈRE → on ne touche que si l'appelant nous
+            //     dit tenir un fait qui fait autorité (`CityAuthoritative`, posé par
+            //     publisher_as quand la ville vient du registre : note de savoir ou
+            //     arbitrage consigné). Sans cette condition, deux événements en désaccord
+            //     se réécriraient l'un l'autre à chaque publication — le dernier poussé
+            //     gagnerait, ce qui n'est pas une règle, c'est un tirage au sort.
+            $city = isset($venue['City']) ? trim((string) $venue['City']) : '';
+            if ($city !== '') {
+                $actuelle = trim((string) get_post_meta($venue_id, '_VenueCity', true));
+                $autorite = !empty($venue['CityAuthoritative']);
+                if ($actuelle === '' || ($autorite && strcasecmp($actuelle, $city) !== 0)) {
+                    update_post_meta($venue_id, '_VenueCity', sanitize_text_field($city));
+                    // Rendu dans la réponse : sans ça la correction serait muette, et on
+                    // la découvrirait des semaines plus tard (règle 6).
+                    $venue_city_fixed = ($actuelle === '' ? '(vide)' : $actuelle) . ' → ' . $city;
+                }
+            }
         } elseif (function_exists('tribe_create_venue')) {
             $venue_id = (int) tribe_create_venue(array(
                 'Venue'   => $venue['Venue'],
@@ -303,5 +330,6 @@ function cs_publish_event(WP_REST_Request $req) {
         'updated' => $updated,
         'start'   => isset($args['EventStartDate']) ? $args['EventStartDate'] : '(aucune date)',
         'venue'   => $venue_id ?: 0,
+        'venue_city_fixed' => $venue_city_fixed,
     ), 200);
 }

@@ -477,6 +477,27 @@ def _build_payload(event: dict) -> dict:
     if (event.get("lieu") or "").strip():
         payload["venue"] = {"Venue": event["lieu"].strip(),
                             "City": (event.get("ville") or "").strip()}
+        # LA VILLE FAIT-ELLE AUTORITÉ ? La fiche lieu de WordPress est PARTAGÉE par tous
+        # les événements du même endroit : la corriger sur la foi d'un événement, c'est
+        # laisser le dernier poussé décider pour tous. On n'autorise l'écrasement que
+        # lorsque la ville vient du REGISTRE — une note de docs/savoir/ ou un arbitrage
+        # consigné dans config/lieux_villes.json — c'est-à-dire d'un fait établi une fois
+        # pour ce lieu, et pas d'une extraction faite pour cette fiche-là.
+        # Trouvé en corrigeant la fiche lieu 208 (`_VenueCity = Aosta` pour le Forte di
+        # Bard) : sans ce drapeau, cs-publish.php ne touche jamais une ville déjà posée,
+        # et la faute était donc indéboulonnable.
+        # Et quand le registre connaît ce lieu, c'est SA ville qu'on envoie, pas celle de
+        # la fiche. Se contenter de lever le drapeau au-dessus d'une ville non vérifiée
+        # ferait exactement l'inverse du but : on écraserait le lieu partagé avec la
+        # valeur d'un événement, sous couvert d'autorité.
+        try:
+            from utils import lieux as _lieux
+            _reg = _lieux.registre().get(_lieux.plie(event["lieu"]))
+            if _reg:
+                payload["venue"]["City"] = _reg["ville"]
+                payload["venue"]["CityAuthoritative"] = True
+        except Exception:  # noqa: BLE001 — le registre est un CONFORT, jamais un prérequis
+            pass
 
     # Extrait : la réponse directe SEO si dispo, sinon le début de la description.
     excerpt = (event.get("seo_answer") or "").strip()

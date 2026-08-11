@@ -1,0 +1,13 @@
+{
+ "_a_quoi_ca_sert": "Le registre des arbitrages sur les LIEUX : « ce lieu-là est dans cette ville-là, c'est tranché ». Chaque entrée fait deux choses à la fois, et c'est pour ça qu'il existe — elle ÉTEINT le signalement correspondant de scripts/verifier_lieux.py, et elle CORRIGE les fiches suivantes qui porteraient la mauvaise ville. Un classement sans suite qui ne ferait que se taire laisserait la faute se reproduire.",
+
+ "_pourquoi": "Règle 3 de CLAUDE.md : tout état terminal doit avoir quelqu'un qui le rouvre, et un refus qui se rejoue sur la MÊME entrée n'est pas un rouvreur. Le signalement « le nom du lieu nomme une autre commune » reviendrait tous les jours sur le Café de Turin, à Nice depuis 1908 : son nom est un hommage, pas une adresse. Une ligne ici le dit une fois, et le contrôle passe à autre chose.",
+
+ "_ce_qui_le_rouvre": "Rien d'automatique, et c'est assumé : une commune ne déménage pas. Pour revenir sur un arbitrage, on retire ou on modifie la ligne — le signalement reparaît au passage suivant. Le nombre d'entrées est affiché par `verifier_lieux` à côté de ses compteurs, pour qu'on ne découvre pas dans six mois qu'un lieu était éteint à tort.",
+
+ "_forme": "\"Nom exact du lieu\": {\"ville\": \"Commune\", \"motif\": \"comment on le sait\"}. La comparaison ignore casse, accents et ponctuation : « Forte di Bard » et « forte-di-bard » sont le même lieu. Pour un lieu déjà décrit dans docs/savoir/, la note suffit — inutile de le répéter ici.",
+
+ "_exemple_non_actif": {
+   "ville": "— cette clé commence par « _ », elle est ignorée : elle ne montre que la forme"
+ }
+}

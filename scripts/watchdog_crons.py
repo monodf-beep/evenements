@@ -71,6 +71,7 @@ ATTENDUS = [
     # invisible — il ne parle que quand il trouve quelque chose, donc son silence est
     # AMBIGU par construction. C'est exactement le genre d'outil qu'il faut surveiller.
     ("Contradicteur de dates",    "verifier_dates",  "verifier_dates.log",   30),
+    ("Contradicteur de lieux",    "verifier_lieux",  "verifier_lieux.log",   30),
     ("Relève Gmail",              "gmail_collect",   "gmail.log",            30),
     ("Dates",                     "dates",           "dates.log",            30),
     ("Dédoublonnage",             "dedupe",          "dedupe.log",           30),

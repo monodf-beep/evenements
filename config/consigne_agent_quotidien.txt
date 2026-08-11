@@ -65,6 +65,26 @@ CE QUE TU FAIS, DANS CET ORDRE
    « points à contrôler » en comptait 315 qui n'étaient que des informations non publiées
    par la source — elle noyait le seul point qui comptait.
 
+2 quater. CE QUE LE LIEU CONTREDIT. `.venv/bin/python -m scripts.verifier_lieux --en-ligne`
+   compare la VILLE qu'on affiche à ce que nous savons déjà du lieu. Trois sections, et
+   elles ne se traitent pas de la même façon :
+
+   ① le registre nous contredit — une note de docs/savoir/ ou un arbitrage de
+     config/lieux_villes.json donne une autre ville. Le fait est établi : `--apply`
+     corrige, sans que tu aies à ouvrir quoi que ce soit ;
+   ② deux de nos fiches ne disent pas pareil sur le même lieu. Là il faut TRANCHER, donc
+     ouvrir la page officielle du lieu. Puis écrire la réponse dans
+     config/lieux_villes.json — sinon la question revient au prochain événement ;
+   ③ le nom du lieu nomme une autre commune. À CONFIRMER, jamais à corriger d'office :
+     « Café de Turin » est à Nice depuis 1908, son nom est un hommage. Si c'est un
+     hommage, une ligne dans config/lieux_villes.json l'éteint pour de bon.
+
+   Attention à un piège propre à WordPress : la fiche LIEU y est PARTAGÉE par tous les
+   événements du même endroit. Corriger la base ne suffit donc pas — il faut republier
+   (`publisher_as --update`) pour que la ville descende sur le site, et elle ne descend
+   que si le lieu figure au registre. C'est voulu : sans ça, le dernier événement poussé
+   déciderait pour tous les autres.
+
 3. DÉPOSE CE QUE TU AS LU dans un fichier JSON, puis applique-le :
 
      logs/valeurs_agent-AAAA-MM-JJ.json
