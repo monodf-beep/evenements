@@ -734,6 +734,11 @@ def dashboard():
         "total": summary["total"]["cost"],
         "calls_total": summary["total"]["calls"],
         "by_model": summary["total"]["by_model"],
+        # Le détail PAR ÉTAPE, du plus cher au moins cher. « 218 $ sur claude-sonnet-5 »
+        # ne dit pas s'il faut réduire la rédaction, la traduction ou la datation.
+        "by_label": dict(sorted((summary["total"].get("by_label") or {}).items(),
+                                key=lambda kv: kv[1]["cost"], reverse=True)),
+        "expl": usage.explique(summary["total"]),
     }
 
     src_counts = Counter(s["territoire"] for s in load_sources())

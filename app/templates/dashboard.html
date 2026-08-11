@@ -148,6 +148,45 @@
   <div class="cost-line">Semaine {{ cost.week_label }} : <strong>${{ '%.4f'|format(cost.week) }}</strong>
     &nbsp;·&nbsp; cumul : <strong>${{ '%.4f'|format(cost.total) }}</strong>
     <span class="muted">({{ cost.calls_total }} appels)</span></div>
+  <!-- CE QUI FAIT LA FACTURE. Franck, 2026-08-11 : « il faudrait que tu expliques le
+       détail des coûts ». Un total sans sa décomposition ne se pilote pas, il se subit. -->
+  {% if cost.expl and cost.expl.appels %}
+  <div class="muted text-sm" style="margin-top:.55rem;line-height:1.65">
+    <strong>{{ cost.expl.appels }}</strong> appels, soit <strong>${{ '%.4f'|format(cost.expl.cout_par_appel) }}</strong> l'appel en moyenne.
+    {% if cost.expl.part_entree is not none %}
+    <br><strong>{{ cost.expl.part_entree }}&nbsp;% de la facture vient de ce qu'on ENVOIE</strong>, pas de ce que le modèle écrit —
+    {{ '{:,}'.format(cost.expl.entree_par_appel).replace(',', ' ') }} jetons en entrée par appel contre
+    {{ '{:,}'.format(cost.expl.sortie_par_appel).replace(',', ' ') }} en sortie{% if cost.expl.ratio %}, un rapport de {{ cost.expl.ratio }} contre 1{% endif %}.
+    <br>C'est contre-intuitif : l'entrée coûte cinq fois moins cher au jeton que la sortie, et pèse pourtant plus lourd,
+    parce qu'on en envoie dix fois plus. À chaque appel repartent la voix éditoriale, le savoir local, les personas,
+    la consigne et la matière source — en entier, à chaque fois.
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if cost.by_label %}
+  <div class="section-title" style="font-size:.85rem;margin:.9rem 0 .3rem">À quoi sert l'argent</div>
+  <table>
+    <tr><th>Étape</th><th>Appels</th><th>Entrée / appel</th><th>Coût</th><th>Part</th></tr>
+    {% for lab, d in cost.by_label.items() %}
+    {% if loop.index <= 12 %}
+    <tr>
+      <td>{{ lab }}</td>
+      <td>{{ d.calls }}</td>
+      <td class="muted">{{ (d['in'] // d.calls) if d.calls else 0 }}</td>
+      <td>${{ '%.4f'|format(d.cost) }}</td>
+      <td class="muted">{{ ((d.cost / cost.total * 100)|round)|int if cost.total else 0 }}&nbsp;%</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </table>
+  <div class="muted text-sm" style="margin-top:.35rem">
+    L'étape la plus chère n'est pas forcément à réduire — la question est ce qu'elle produit.
+    Mais une étape chère qui produit peu se voit ici, et nulle part ailleurs.
+  </div>
+  {% endif %}
+
+  <div class="section-title" style="font-size:.85rem;margin:.9rem 0 .3rem">Par modèle</div>
   {% if cost.by_model %}
   <table style="margin-top:.6rem">
     <tr><th>Modèle</th><th>Appels</th><th>Tokens (in/out)</th><th>Coût</th></tr>

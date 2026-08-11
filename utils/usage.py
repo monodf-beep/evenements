@@ -159,9 +159,24 @@ def record_message(model: str, message, web: int = 0, label: str = "") -> None:
 
 
 def summarize() -> dict:
-    """Agrège l'usage : par semaine et par modèle. Renvoie un dict prêt à afficher."""
+    """Agrège l'usage : par semaine, par modèle, et PAR ÉTAPE.
+
+    L'agrégat par étape manquait alors que chaque appel porte son étiquette depuis le
+    début (`label` : « rédaction », « traduction », « évaluation », « datation »…). Le
+    tableau de bord montrait donc combien on dépense, jamais À QUOI — et « 218 dollars sur
+    claude-sonnet-5 » ne dit pas s'il faut réduire la rédaction, la traduction ou les
+    recherches de lieux. Franck, 2026-08-11 : « il faudrait que tu expliques le détail des
+    coûts ». Un chiffre sans sa décomposition ne se pilote pas, il se subit — c'est la même
+    règle que pour les files, appliquée à l'argent.
+
+    On garde aussi l'entrée et la sortie SÉPARÉES par étape. C'est la vraie information :
+    sur les 4 041 appels cumulés au 11 août, l'entrée pèse 45 millions de jetons pour
+    4 millions en sortie, soit environ 17 500 jetons envoyés par appel. Aux tarifs actuels
+    (3 $ / million en entrée, 15 $ en sortie), les deux tiers de la facture viennent de ce
+    qu'on ENVOIE, pas de ce que le modèle écrit."""
     weeks: dict[str, dict] = {}
-    total = {"cost": 0.0, "in": 0, "out": 0, "web": 0, "calls": 0, "by_model": {}}
+    total = {"cost": 0.0, "in": 0, "out": 0, "web": 0, "calls": 0,
+             "by_model": {}, "by_label": {}}
     if not USAGE_FILE.exists():
         return {"weeks": {}, "total": total, "current_week": _week(datetime.now(timezone.utc))}
     try:
@@ -176,7 +191,12 @@ def summarize() -> dict:
         wk = e.get("week", "?")
         model = e.get("model", "?")
         cost, i, o, w = e.get("cost", 0.0), e.get("in", 0), e.get("out", 0), e.get("web", 0)
-        for bucket in (weeks.setdefault(wk, {"cost": 0.0, "in": 0, "out": 0, "web": 0, "calls": 0, "by_model": {}}), total):
+        # Une étiquette vide vaut « non étiqueté » plutôt que de disparaître : un poste de
+        # dépense qu'on ne voit pas est un poste qu'on ne réduira jamais.
+        label = (e.get("label") or "").strip() or "(non étiqueté)"
+        for bucket in (weeks.setdefault(wk, {"cost": 0.0, "in": 0, "out": 0, "web": 0,
+                                             "calls": 0, "by_model": {}, "by_label": {}}),
+                       total):
             bucket["cost"] += cost
             bucket["in"] += i
             bucket["out"] += o
@@ -187,4 +207,49 @@ def summarize() -> dict:
             bm["in"] += i
             bm["out"] += o
             bm["calls"] += 1
-    return {"weeks": weeks, "total": total, "current_week": _week(datetime.now(timezone.utc))}
+            bl = bucket.setdefault("by_label", {}).setdefault(
+                label, {"cost": 0.0, "in": 0, "out": 0, "calls": 0})
+            bl["cost"] += cost
+            bl["in"] += i
+            bl["out"] += o
+            bl["calls"] += 1
+    return {"weeks": weeks, "total": total,
+            "current_week": _week(datetime.now(timezone.utc))}
+
+
+def explique(total: dict) -> dict:
+    """Traduit les totaux en phrases pilotables : où part l'argent, et sur quoi agir.
+
+    TROIS CHIFFRES, ET LE TROISIÈME EST LE SEUL LEVIER.
+
+    `part_entree` — la fraction de la facture due aux jetons ENVOYÉS. Contre-intuitif :
+    l'entrée est cinq fois moins chère que la sortie au jeton, et elle coûte pourtant plus,
+    parce qu'on en envoie dix fois plus. On ne paie pas ce que le modèle écrit, on paie ce
+    qu'on lui donne à lire.
+
+    `entree_par_appel` — combien de jetons partent à chaque requête. C'est la voix
+    éditoriale, le savoir local, les personas, la consigne et la matière source, réunis et
+    renvoyés en entier À CHAQUE FOIS. Au-delà de dix mille, il y a un stock à réduire ou à
+    mettre en cache.
+
+    `cout_par_appel` — l'unité qui permet d'arbitrer : est-ce que cette étape vaut son
+    prix ? La réponse dépend de ce qu'elle produit, et c'est un jugement humain — le
+    chiffre ne le remplace pas, il le rend possible."""
+    appels = max(1, total.get("calls", 0))
+    tin, tout = total.get("in", 0), total.get("out", 0)
+    # Le coût réel est déjà additionné appel par appel ; on ne le recalcule pas. On
+    # reconstitue seulement la RÉPARTITION, au tarif moyen constaté sur les modèles vus.
+    part_in = 0.0
+    for m, d in (total.get("by_model") or {}).items():
+        pin, pout = PRICES.get(m, _DEFAULT_PRICE)
+        part_in += d.get("in", 0) / 1e6 * pin
+    cout = total.get("cost", 0.0)
+    return {
+        "appels": total.get("calls", 0),
+        "cout": cout,
+        "cout_par_appel": cout / appels,
+        "entree_par_appel": round(tin / appels),
+        "sortie_par_appel": round(tout / appels),
+        "part_entree": round(part_in / cout * 100) if cout else None,
+        "ratio": round(tin / tout, 1) if tout else None,
+    }
