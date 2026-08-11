@@ -168,7 +168,33 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true", help="écrit (défaut : simulation)")
+    ap.add_argument("--depuis", help="fichier JSON de valeurs vérifiées à ajouter à celles "
+                                     "écrites en dur : {\"4621\": {\"champs\": "
+                                     "{\"lieu\": \"…\"}, \"source\": \"…\"}}")
     args = ap.parse_args(argv)
+
+    # PORTE D'ENTRÉE DE L'AGENT QUOTIDIEN (2026-08-11). Il ouvre les pages, lit, et dépose
+    # ses trouvailles dans un JSON — il n'écrit JAMAIS en base directement. Tout passe donc
+    # par les mêmes garde-fous que les valeurs écrites à la main : on n'écrase rien, une
+    # source est obligatoire, le bilan est recompté, et le dry-run reste le défaut.
+    #
+    # C'est délibérément plus étroit qu'un accès SQL : un agent qui écrit lui-même peut se
+    # tromper de colonne, de fiche, ou écraser un champ que Franck venait de corriger. Ici
+    # il ne peut que PROPOSER des valeurs, dans un format que ce script sait vérifier.
+    if args.depuis:
+        brut = json.loads(Path(args.depuis).read_text(encoding="utf-8"))
+        for cle, val in brut.items():
+            champs = (val or {}).get("champs") or {}
+            source = ((val or {}).get("source") or "").strip()
+            if not champs or not source:
+                print(f"  [{cle}] ignorée : il manque les champs ou la source")
+                continue
+            inconnus = set(champs) - {"lieu", "ville", "date_event_start",
+                                      "date_event_end", "url_officiel"}
+            if inconnus:
+                print(f"  [{cle}] ignorée : champ(s) non autorisé(s) {sorted(inconnus)}")
+                continue
+            _VALEURS[int(cle)] = (champs, source)
 
     if not DB_PATH.exists():
         print(f"Base introuvable : {DB_PATH}")

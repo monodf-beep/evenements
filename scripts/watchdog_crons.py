@@ -76,6 +76,9 @@ ATTENDUS = [
     # fréquent — donc leur panne ressemble trait pour trait à leur fonctionnement normal.
     ("Dates depuis les mails",    "dates_depuis_mail", "dates_mail.log",     30),
     ("Moisson officielle",        "moisson_officielle", "moisson.log",       30),
+    # L'agent quotidien se surveille comme la revue du dimanche : il peut légitimement
+    # ne RIEN trouver à compléter, donc son silence ressemble à son fonctionnement normal.
+    ("Agent quotidien",           "agent_quotidien", "agent_quotidien.log",  30),
     ("Évaluation",                "evaluator",       "evaluator.log",        30),
     ("Lot quotidien",             "daily_batch",     "daily_batch.log",      30),
     ("Référencement",             "seo_batch",       "seo_batch.log",        30),

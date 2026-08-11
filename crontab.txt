@@ -55,6 +55,13 @@
 # NB : le cron évalue TOUTE la file pending (rattrapage quotidien). Le pilotage par
 # période (« ce week-end ») se fait à la MAIN via le bouton du dashboard.
 0 9 * * * cd /root/evenements && .venv/bin/python scripts/evaluator.py >> logs/evaluator.log 2>&1
+# AGENT QUOTIDIEN (2026-08-11) — Franck : « je veux que tu sois le plus autonome
+# possible ». Il ouvre les pages des organisateurs une par une et complète ce qu'il y lit,
+# ce qu'aucun script ne sait faire : le 11/08, la file est passée de 68 à 30 par ce seul
+# geste. Il n'écrit qu'à travers completer_verifie.py (jamais en SQL), n'écarte rien
+# lui-même (arbitrage éditorial), ne touche pas au code, et poste son compte rendu.
+# À 9h15 : après la datation, la moisson et l'évaluation, donc sur ce qui RESTE.
+15 9 * * * cd /root/evenements && scripts/agent_quotidien.sh >> logs/agent_quotidien.log 2>&1
 # Lot quotidien 9h30 (après évaluation) — REMPLACE les crons séparés enrich/publish du
 # 2026-07-31 (voir docs/BACKLOG.md, "Protocole de LOT", 2026-08-01) : scripts/daily_batch.py
 # enchaîne rédaction → vérification (mêmes règles que batch_report.py : score, article,
