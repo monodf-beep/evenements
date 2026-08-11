@@ -113,6 +113,17 @@ servi**, pas déduit. Voir `docs/MCP_NOVAMIRA.md` pour l'outillage et
 `docs/POSTMORTEM_2026-08-11_MU_PLUGIN.md` pour l'incident de production.
 
 ### ✅ Fait et vérifié en prod
+- 🤖 **Sept fiches contredites par leur source : cause remontée pour chacune**, en comparant la
+  base au HTML réellement servi. Voir `docs/GARDE_FOUS_DATES_LIEUX_SOURCES.md`. En résumé :
+  l'édition précédente recopiée entière (2334), l'année supposée faute d'être lue et des bornes
+  de mois calculées (2319), la **borne de fin traitée comme exclusive** sur les deux cas
+  multi-jours vérifiés (2289 et 2265), la ville d'une **fiche lieu partagée** prise sur l'entité
+  administrative au lieu de la commune, ce qui contamine 3 événements (3729, lieu 208 « Aosta »
+  au lieu de Bard), un communiqué de **2023** servant de source à une édition 2026 avec l'année
+  visible dans l'URL (864), et une URL de source **construite par motif** et jamais rechargée,
+  aujourd'hui en 404 (909). Sept garde-fous mécaniques proposés, chiffrés par coût, avec pour
+  chacun le côté où il doit vivre. **Tous sont pour le pipeline** sauf deux qui peuvent doubler
+  côté WordPress dans l'audit quotidien.
 - 🤖 **Décidia 2026 retiré du site (WP 1934), décision Franck du 2026-08-11** : salon d'affaires,
   hors périmètre d'un agenda culturel. Mis à la corbeille, donc réversible, sauvegarde complète
   du post et de ses 58 métas dans `cs_bk_1934_avant_corbeille_20260811`. L'URL répond 404.
