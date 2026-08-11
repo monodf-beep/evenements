@@ -209,7 +209,16 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
     # ici — qu'on sait où il menait. Si la destination n'est pas une source officielle,
     # on ne récolte RIEN : ni date, ni image, ni tarif. Le contrat radar tient.
     finale = getattr(r, "url", url) or url
-    if not source_officielle(finale):
+    # UN TRAQUEUR RESTE UN TRAQUEUR, MÊME À L'ARRIVÉE. Vérifié en production quinze
+    # minutes après avoir posé ce contrôle : il laissait passer 8 fiches sur 12 et allait
+    # inscrire « https://lql1t.r.a.d.sendibm1.com/… » comme page officielle de la Reggia
+    # di Venaria. Ces liens ne redirigent pas toujours en HTTP — certains rendent une page
+    # de rebond, d'autres sont périmés — donc `r.url` peut valoir l'adresse de départ.
+    #
+    # Et `source_officielle` ne l'a pas arrêté parce que c'est une liste de REFUS : un
+    # domaine INCONNU est accepté. Je l'avais écrit une heure plus tôt dans la fixture,
+    # sans en tirer la conséquence ici. Le refus doit donc être EXPLICITE.
+    if _est_traqueur(finale) or not source_officielle(finale):
         if marqueurs is not None:
             marqueurs["DESTINATION NON OFFICIELLE"] += 1
         return {}
@@ -217,7 +226,8 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
     trouve: dict = {}
     # La vraie adresse, une fois connue, mérite d'être gardée : la prochaine passe n'aura
     # plus à traverser le traqueur, et l'enrichissement disposera enfin d'une page.
-    if _est_traqueur(url) and not (ev.get("url_officiel") or "").strip():
+    if (_est_traqueur(url) and not _est_traqueur(finale)
+            and not (ev.get("url_officiel") or "").strip()):
         trouve["url_officiel"] = finale
 
     # ── 1. LES DONNÉES STRUCTURÉES, LUES POUR DE BON ────────────────────────────

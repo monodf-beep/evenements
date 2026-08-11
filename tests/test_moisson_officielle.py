@@ -305,6 +305,29 @@ _check("destination OFFICIELLE → la page est récoltée",
 _check("… et la vraie adresse est enregistrée, pour ne plus repasser par le traqueur",
        (f30.get("url_officiel") or "") == "https://officiel.fr/riche",
        str(f30.get("url_officiel")))
+# LE CAS QUI A FAILLI PASSER EN PRODUCTION : le lien de traçage ne redirige pas (page de
+# rebond, ou lien périmé), donc l'adresse d'arrivée EST le traqueur. source_officielle ne
+# l'arrête pas — c'est une liste de refus, un domaine inconnu est accepté — et on allait
+# inscrire sendibm1.com comme page officielle de la Reggia di Venaria.
+REDIRECTIONS["https://lql1t.r.a.d.sendibm1.com/mk/cl/f/sans-redirection"] = \
+    "https://lql1t.r.a.d.sendibm1.com/mk/cl/f/sans-redirection"
+PAGES["https://lql1t.r.a.d.sendibm1.com/mk/cl/f/sans-redirection"] = PAGE_RICHE
+conn = sqlite3.connect(tmp)
+conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,"
+             "lieu,ville,url_image,date_event_end) VALUES (32,'Traqueur mort',"
+             "'https://lql1t.r.a.d.sendibm1.com/mk/cl/f/sans-redirection','evaluated',"
+             "'','','','', '2026-12-31')")
+conn.commit(); conn.close()
+mo.main(["--apply"])
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+f32 = dict(conn.execute("SELECT * FROM events_raw WHERE id=32").fetchone())
+conn.close()
+_check("un traqueur qui ne redirige pas n'est JAMAIS inscrit comme page officielle",
+       not (f32.get("url_officiel") or ""), str(f32.get("url_officiel")))
+_check("… et rien n'est récolté de sa page de rebond",
+       (f32.get("date_event_start") or "") == "", str(f32.get("date_event_start")))
+
 _check("destination PRESSE → RIEN n'est récolté, le contrat radar tient",
        (f31.get("date_event_start") or "") == "" and not (f31.get("url_image") or ""),
        str({k: f31.get(k) for k in ("date_event_start", "url_image")}))
