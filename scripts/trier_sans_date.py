@@ -90,7 +90,14 @@ _INDICES = (
         r"\bvisit[ae] serale?\b", r"\bvisite serali\b", r"\baperture serali\b",
         r"\bnocturnes?\b", r"\bateliers?\b", r"\blaboratori\b", r"\bbalade",
         r"\brandonnées?\b", r"\banimations? nature\b", r"\bdégustation",
-        r"\bosservazione del cielo\b", r"\bsieste musicale\b"),
+        r"\bosservazione del cielo\b", r"\bsieste musicale\b",
+        # Second élargissement, sur la liste du 2026-08-11 au matin : « visite
+        # commentée » manquait alors que « visite guidée » y était (même chose, autre
+        # mot), et les séances d'été qui reviennent chaque semaine — cinéma en plein
+        # air, dimanche au musée, cours de bien-être — sont des rendez-vous réguliers,
+        # pas des événements datés.
+        r"\bvisites? comment", r"\bbien-etre\b", r"\bdomenica al museo\b",
+        r"\bcinema sotto le stelle\b", r"\bcinema nel\b", r"\bcinéma en plein air\b"),
      "Une activité qui se répète (visites, ateliers, balades) : elle a des horaires, "
      "pas une date d'événement.", "récurrent"),
     ("professionnel", (

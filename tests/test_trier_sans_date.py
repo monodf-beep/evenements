@@ -91,6 +91,15 @@ CAS = [
     ("Championnats d'Europe de VTT Trial", "événement", "une compétition datée"),
     ("Concerto della Filarmonica della Scala", "événement", "un concert, un soir"),
     ("Gran Balon", "événement", "une brocante à date fixe"),
+    # ── Second élargissement, même matin, même méthode : lire la liste réelle ────
+    ("Visite commentée : L'heure du thé aux Charmettes", "activité",
+     "« commentée » manquait alors que « guidée » y était — même chose, autre mot"),
+    ("Bien-être aux Charmettes : Pilates", "activité", "un cours qui revient"),
+    ("Domenica al Museo", "activité", "un rendez-vous mensuel"),
+    ("Cinema sotto le stelle e musica elettronica", "activité", "des séances d'été"),
+    # Et la frontière, encore : un thé dansant et un festival ont une date.
+    ("Thé dansant", "événement", "un après-midi précis, pas une activité permanente"),
+    ("Torino Opera Festival", "événement", "un festival a des dates"),
 ]
 
 conn = sqlite3.connect(tmp)
