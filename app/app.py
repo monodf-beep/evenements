@@ -371,6 +371,62 @@ def friendly_alert():
     return {"kind": kind, "reset": reset, "raw": msg, "ts": a.get("ts", "")}
 
 
+def journal_lancements(limite: int = 12) -> dict:
+    """Les derniers lancements MANUELS, résumés pour la cloche de notification.
+
+    DEUX CHOSES, ET LA SECONDE EST TOUT L'INTÉRÊT.
+
+    D'abord la liste, sortie du tableau de bord où elle occupait un tiers de l'écran —
+    Franck, 2026-08-11 : « cette partie peut-être cachée quelque part (cloche
+    notification ?) ». Elle est utile quand on la cherche, envahissante le reste du temps.
+
+    Ensuite l'ÂGE, et c'est le vrai défaut qu'il a mis au jour sans le nommer. Le bloc
+    affichait « 11 lancements · 1 échec », ouvert d'office, en rouge — pour des exécutions
+    du 2 juillet, vieilles de cinq semaines. Il criait au feu sur un incendie éteint depuis
+    un mois, et un panneau qui alerte en permanence n'alerte plus du tout : on apprend à
+    ne plus le regarder, et c'est le jour où il dit vrai qu'on le rate.
+
+    La pastille rouge ne se lève donc que si un échec date de MOINS DE 48 HEURES. Les plus
+    vieux restent lisibles dans la cloche, avec leur âge écrit en toutes lettres — « il y a
+    5 semaines » ne se confond pas avec « ce matin ». C'est la règle du périmètre affiché à
+    côté du nombre, appliquée au TEMPS plutôt qu'au dénombrement."""
+    tasks = tasks_status()
+    runs = sorted([(k, t) for k, t in tasks.items() if t.get("tail")],
+                  key=lambda kt: kt[1].get("started", ""), reverse=True)[:limite]
+    maintenant = datetime.now()
+    items, recents = [], 0
+    for _k, t in runs:
+        rate = any(m in (t.get("tail") or "") for m in ("✗", "Traceback", "Error"))
+        quand, age = t.get("started", ""), ""
+        vieux = True
+        try:
+            d = datetime.fromisoformat(quand[:19].replace("/", "-"))
+            h = (maintenant - d).total_seconds() / 3600
+            vieux = h > 48
+            if h < 1:
+                age = "il y a moins d'une heure"
+            elif h < 24:
+                age = f"il y a {int(h)} h"
+            elif h < 24 * 14:
+                age = f"il y a {int(h // 24)} jour(s)"
+            else:
+                age = f"il y a {int(h // 24 // 7)} semaine(s)"
+        except ValueError:
+            age = "date inconnue"
+        if rate and not vieux:
+            recents += 1
+        items.append({"icon": t.get("icon", "•"), "label": t.get("label", "?"),
+                      "quand": quand, "age": age, "tail": t.get("tail", ""),
+                      "rate": rate, "vieux": vieux})
+    # ⚠️ LA CLÉ S'APPELLE `liste`, PAS `items`. Dans un gabarit Jinja, `x.items` résout
+    # d'abord l'ATTRIBUT de l'objet — donc la méthode `.items` du dictionnaire Python — et
+    # rend une méthode au lieu de la valeur. Le gabarit tombait sur
+    # « 'builtin_function_or_method' object is not iterable », attrapé au rendu d'essai.
+    return {"liste": items, "total": len(items),
+            "echecs_recents": recents,
+            "echecs_vieux": sum(1 for i in items if i["rate"] and i["vieux"])}
+
+
 @app.context_processor
 def inject_globals():
     """Compteurs de navigation + alerte, disponibles dans TOUTES les pages (base.html)."""
@@ -446,6 +502,10 @@ def inject_globals():
                     "tocomplete": tocomplete, "regie": regie, "verifier": verifier,
                     "audit": audit, "seo": seo},
             "nav_alert": friendly_alert(),
+            # La cloche : les derniers lancements manuels, repliés hors du tableau de bord.
+            # Calculée ici pour être disponible sur TOUTES les pages — un échec survenu
+            # pendant qu'on est ailleurs doit pouvoir se voir sans revenir à l'accueil.
+            "lancements": journal_lancements(),
             # Bases WordPress (liens directs vers les brouillons créés) :
             #   wp_base    → culturasabauda.eu (article, wp_post_id_cs)
             #   wp_as_base → agendasabauda.eu (événement, wp_post_id_as)

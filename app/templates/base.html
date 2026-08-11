@@ -94,6 +94,44 @@
         {% block subtitle %}{% endblock %}
       </div>
       {% block topbar_actions %}{% endblock %}
+
+      <!-- LA CLOCHE. Le bloc « Derniers lancements » occupait un tiers du tableau de bord
+           et s'ouvrait tout seul en rouge pour un échec du 2 juillet — cinq semaines. Un
+           panneau qui alerte en permanence n'alerte plus : on apprend à ne plus le
+           regarder, et c'est le jour où il dit vrai qu'on le rate. La pastille ne se lève
+           donc QUE si un échec date de moins de 48 h ; les plus vieux restent lisibles,
+           avec leur âge écrit en toutes lettres. -->
+      {% if lancements and lancements.total %}
+      <details class="cloche" style="position:relative;flex:none;margin-left:auto">
+        <summary style="list-style:none;cursor:pointer;padding:.35rem .5rem;border-radius:8px;border:1px solid var(--line-2);background:var(--card,#fff)"
+                 title="Derniers lancements manuels">
+          <span aria-hidden="true" style="font-size:1.05rem">🔔</span>
+          {% if lancements.echecs_recents %}<span class="nav-badge" style="background:#b3261e">{{ lancements.echecs_recents }}</span>{% endif %}
+        </summary>
+        <div class="card" style="position:absolute;right:0;top:2.4rem;z-index:40;width:min(30rem,88vw);max-height:26rem;overflow:auto;padding:.5rem .6rem;box-shadow:0 8px 28px #0002">
+          <div class="muted text-sm" style="margin-bottom:.4rem">
+            {{ lancements.total }} dernier(s) lancement(s) manuel(s).
+            {% if lancements.echecs_recents %}<strong style="color:#b3261e">{{ lancements.echecs_recents }} échec récent.</strong>
+            {% elif lancements.echecs_vieux %}<em>{{ lancements.echecs_vieux }} échec(s), mais tous anciens — rien d'actif.</em>
+            {% else %}Aucun échec.{% endif %}
+          </div>
+          {% for l in lancements.liste %}
+          <div style="padding:.4rem .3rem;{% if not loop.last %}border-bottom:1px solid var(--line-2){% endif %}">
+            <div style="display:flex;gap:.4rem;align-items:baseline">
+              <span aria-hidden="true">{{ l.icon }}</span><strong class="text-sm">{{ l.label }}</strong>
+              {% if l.rate %}<span class="badge" style="background:{{ '#fde8e8' if not l.vieux else '#eceff3' }};color:{{ '#b3261e' if not l.vieux else '#475569' }}">échec</span>{% endif %}
+              <span class="muted text-sm" style="margin-left:auto">{{ l.age }}</span>
+            </div>
+            <code class="muted" style="font-size:.72rem;display:block;margin-top:.15rem;word-break:break-word">{{ l.tail }}</code>
+          </div>
+          {% endfor %}
+          <div class="muted text-sm" style="margin-top:.4rem;padding-top:.35rem;border-top:1px solid var(--line-2)">
+            Ce sont les lancements <strong>à la main</strong>. Les crons quotidiens sont ailleurs :
+            <a href="/pipeline">Pipeline auto</a>, et le chien de garde de midi alerte sur Slack.
+          </div>
+        </div>
+      </details>
+      {% endif %}
     </div>
 
     {% if nav_alert %}
