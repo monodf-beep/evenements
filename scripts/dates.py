@@ -680,22 +680,72 @@ def main(argv=None) -> int:
     # produisaient une date FAUSSE (Jazz Art : 2 mois d'écart avec l'original ; Matisse :
     # 1 mois). Même défense que scripts/enrich.py, qui exclut déjà les traductions pour
     # une raison analogue (il écrivait un article français par-dessus).
+    #
+    # ELLE NE PASSAIT QU'UNE FOIS PAR FICHE, ET C'ÉTAIT LE DÉFAUT (2026-08-11, Franck :
+    # « on a toujours trop de tâches »). La sélection portait sur `date_source` vide :
+    # dès le premier échec, la colonne passait à 'none' et cette passe ne regardait plus
+    # JAMAIS la fiche. Or elle est gratuite et instantanée — il n'y avait aucune raison
+    # de ne pas la rejouer. Entre-temps la matière change : `dedupe` fusionne une fiche
+    # mieux titrée, `enrich` écrit un `article_title` qui, lui, porte la date, le parseur
+    # lui-même s'améliore. Mesuré sur les titres de la file « À compléter » du 11/08, le
+    # parseur d'aujourd'hui lit sans hésiter « les 8 et 9 août », « du 11 au 29 août »,
+    # « jusqu'au 20 septembre », « Du 3 au 6 décembre » — sur des fiches affichées
+    # « date ? » depuis des semaines.
+    #
+    # Et c'est un cercle vicieux, pas seulement une occasion manquée : sans date, une
+    # fiche ne peut pas être classée « passée » (règle 5 — une date manquante n'est PAS
+    # un événement terminé), donc elle ne quitte aucune file. Le Tour de France Femmes,
+    # fini le 9 août, occupait encore l'écran le 11 pour cette seule raison.
+    #
+    # On lit maintenant AUSSI `article_title` : il est écrit par le modèle, mais il est
+    # déjà publié sur le site, donc y lire une date n'ajoute aucun risque — et il est
+    # souvent bien plus explicite que le titre brut du flux. La provenance est distinguée
+    # (`parsed_article`) pour qu'un doute futur puisse être levé sans tout re-tester.
     rows = conn.execute(
-        "SELECT id, title, description FROM events_raw "
-        "WHERE (date_source IS NULL OR date_source = '') AND statut != 'merged' "
+        "SELECT id, title, description, article_title FROM events_raw "
+        "WHERE COALESCE(date_event_start,'') = '' AND statut != 'merged' "
         "  AND COALESCE(translation_of,0) = 0"
     ).fetchall()
-    log.info("Passe texte : %d événement(s) à dater", len(rows))
-    parsed = 0
+    log.info("Passe texte : %d événement(s) sans date de début à relire", len(rows))
+    parsed = parsed_article = 0
     for r in rows:
         s, e, src = parse_dates(f"{r['title']}\n{r['description'] or ''}")
-        conn.execute(
-            "UPDATE events_raw SET date_event_start=?, date_event_end=?, date_source=?, date_checked_at=datetime('now') WHERE id=?",
-            (s, e, src, r["id"]))
-        if src == "parsed":
+        titre_art = (r["article_title"] or "") if "article_title" in r.keys() else ""
+        if src != "parsed" and titre_art.strip():
+            s2, e2, src2 = parse_dates(titre_art)
+            if src2 == "parsed":
+                s, e, src = s2, e2, "parsed_article"
+        # ON N'EFFACE JAMAIS. Une fiche peut n'avoir qu'une date de FIN (« jusqu'au 20
+        # septembre ») : l'ancienne version réécrivait les deux colonnes à chaque passage
+        # et aurait effacé cette fin dès que le parseur échouait au tour suivant. Chaque
+        # champ n'est donc écrit que s'il apporte une valeur.
+        if src.startswith("parsed"):
+            champs, vals = ["date_source=?"], [src]
+            if s:
+                champs.append("date_event_start=?")
+                vals.append(s)
+            if e:
+                champs.append("date_event_end=?")
+                vals.append(e)
+            conn.execute(
+                f"UPDATE events_raw SET {', '.join(champs)}, "
+                "date_checked_at=datetime('now') WHERE id=?", (*vals, r["id"]))
             parsed += 1
+            parsed_article += (src == "parsed_article")
+        elif not (conn.execute("SELECT COALESCE(date_source,'') FROM events_raw WHERE id=?",
+                               (r["id"],)).fetchone()[0]):
+            # Première rencontre sans résultat : on pose 'none' pour que la passe 2
+            # (lecture de la page) la prenne en charge. Les suivantes ne touchent à rien.
+            conn.execute("UPDATE events_raw SET date_source='none', "
+                         "date_checked_at=datetime('now') WHERE id=?", (r["id"],))
     conn.commit()
-    log.info("Passe texte : %d daté(s) par le texte", parsed)
+    # Recompté en base (règle 6) : ce qui compte n'est pas le nombre de parsings réussis,
+    # c'est le nombre de fiches qui ont VRAIMENT une date de début maintenant.
+    restant = conn.execute(
+        "SELECT COUNT(*) FROM events_raw WHERE COALESCE(date_event_start,'')='' "
+        "AND statut != 'merged' AND COALESCE(translation_of,0)=0").fetchone()[0]
+    log.info("Passe texte : %d daté(s) par le texte (dont %d par le titre d'article) — "
+             "%d fiche(s) restent sans date de début", parsed, parsed_article, restant)
 
     # --- Passe 2 : page de l'événement (JSON-LD/<time>), pour les restants ---
     from_page = 0

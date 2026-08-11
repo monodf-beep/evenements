@@ -138,7 +138,22 @@ _check("le passé est corrigé quand on le demande explicitement", _lire(5) == "
 _check("et sa valeur est gardée aussi",
        _lire(5, "organisateur_byline") == "Paolo Rossi")
 
-print("\n──── 5. idempotence ────")
+print("\n──── 5. --restaurer : le rattrapage des faux positifs ────")
+# On simule la découverte d'un faux positif : la fiche 6 avait un organisateur légitime
+# que les règles d'alors ne savaient pas reconnaître. On enseigne le mot au module, et
+# --restaurer doit la rendre SANS qu'on ait eu à nommer la fiche.
+import utils.bylines as bl  # noqa: E402
+
+bl._MOTS_ORGANISME.add("durand")
+purge_bylines.main(["--restaurer"])
+_check("--restaurer sans --apply n'écrit rien", _lire(6) == "", repr(_lire(6)))
+purge_bylines.main(["--restaurer", "--apply"])
+_check("la fiche rendue a retrouvé son organisateur", _lire(6) == "Marie Durand",
+       repr(_lire(6)))
+_check("les vraies signatures, elles, restent vidées", _lire(1) == "", repr(_lire(1)))
+bl._MOTS_ORGANISME.discard("durand")
+
+print("\n──── 6. idempotence ────")
 avant = _lire(1, "organisateur_byline")
 purge_bylines.main(["--apply", "--tout"])
 _check("relancer n'écrase pas la mémoire avec du vide",

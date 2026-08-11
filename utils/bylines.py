@@ -81,6 +81,16 @@ _MOTS_ORGANISME = {
     "cinema", "cineclub", "librairie", "libreria", "bar", "cave", "cantina",
     "hotel", "auberge", "refuge", "rifugio", "camping",
     "ministere", "ministero", "prefettura", "onu", "unesco",
+    # PROGRAMMES ET DISPOSITIFS. Ajoutés le 2026-08-11 le soir même, après que la purge
+    # a vidé « Interreg ALCOTRA » sur trois fiches (2126, 4304, 4370) : c'est le programme
+    # de coopération transfrontalière France-Italie, et il organise bel et bien ses
+    # webinaires et son Sommet des Terres Monviso. Deux mots capitalisés, aucun mot
+    # d'organisme dans ma liste — il avait exactement la forme d'un prénom et d'un nom.
+    # Trois faux positifs sur 187 : le filet a tenu (la valeur était en mémoire), mais
+    # c'est bien le genre de nom qu'aucune règle de FORME ne saura jamais reconnaître.
+    "interreg", "alcotra", "leader", "erasmus", "europe", "european", "europeen",
+    "programme", "programma", "projet", "progetto", "dispositif", "reseau", "rete",
+    "agence", "agenzia", "atl", "adt", "epci", "gal", "gect",
 }
 
 # Signatures de flux : ni personne ni organisme, juste la mécanique du CMS.

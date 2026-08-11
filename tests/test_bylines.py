@@ -92,6 +92,13 @@ VRAIS = [
     "Théâtre National de Nice", "Chambre valdôtaine", "Collectif des Arts Traditionnels",
     "Conservatorio di Torino", "Association des Amis du Fort", "Fondazione Torino Musei",
     "Orchestre de la Suisse Romande", "Festival Guitare en Scène",
+    # LE FAUX POSITIF DU 2026-08-11, gardé ici pour de bon : la purge a vidé « Interreg
+    # ALCOTRA » sur trois fiches. Deux mots capitalisés, aucun mot d'organisme — la forme
+    # exacte d'un prénom et d'un nom. C'est le programme de coopération France-Italie, et
+    # il organise vraiment ses webinaires. Aucune règle de FORME ne distinguera jamais
+    # « Interreg ALCOTRA » de « Arabella Pezza » : seul le vocabulaire peut le faire, donc
+    # cette liste s'allongera encore, et c'est --restaurer qui répare l'existant.
+    "Interreg ALCOTRA", "Programme ALCOTRA", "ATL Terre dell'Alto Piemonte",
 ]
 for nom in VRAIS:
     v, raison = verdict(nom, "")

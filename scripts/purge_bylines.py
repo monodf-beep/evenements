@@ -105,6 +105,10 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--apply", action="store_true", help="écrit (défaut : simulation)")
     ap.add_argument("--tout", action="store_true",
                     help="inclut les événements passés (par défaut : ce qui est devant nous)")
+    ap.add_argument("--restaurer", action="store_true",
+                    help="rend son organisateur à toute fiche dont la valeur mise en "
+                         "mémoire serait GARDÉE par les règles actuelles — le rattrapage "
+                         "des faux positifs, sans avoir à les nommer un par un")
     ap.add_argument("--reenrichir", action="store_true",
                     help="remet les fiches PUBLIÉES concernées dans la file de rédaction "
                          "(consomme de l'API ; le plafond court jusqu'au 2026-09-01)")
@@ -117,6 +121,41 @@ def main(argv: list[str]) -> int:
     conn.row_factory = sqlite3.Row
     _ensure_colonne_memoire(conn)
     today = date.today().isoformat()
+
+    # RATTRAPAGE DES FAUX POSITIFS (règle 3 : ce script pose un état, il doit savoir le
+    # défaire). La mémoire `organisateur_byline` ne sert à rien si elle demande un UPDATE
+    # écrit à la main pour chaque fiche. Ici, on relit chaque valeur mise de côté à
+    # l'aune des règles ACTUELLES : celles qui seraient gardées aujourd'hui reviennent.
+    # Ainsi, améliorer utils/bylines.py suffit à réparer les erreurs passées — c'est le
+    # seul mécanisme qui tienne quand la règle est une heuristique de forme, et qu'on sait
+    # d'avance qu'elle se trompera encore (« Interreg ALCOTRA », le 2026-08-11).
+    if args.restaurer:
+        rendus = []
+        for ev in conn.execute("SELECT * FROM events_raw WHERE "
+                               "COALESCE(organisateur_byline,'') <> '' "
+                               "AND COALESCE(organisateur,'') = ''"):
+            ev = dict(ev)
+            matiere = f"{ev.get('title') or ''}\n{ev.get('description') or ''}"
+            if verdict(ev["organisateur_byline"], matiere)[0] == "garder":
+                rendus.append((ev["id"], ev["organisateur_byline"]))
+        for eid, nom in rendus:
+            print(f"  [{eid:5}] ← « {nom} »")
+        if not args.apply:
+            print(f"\n{len(rendus)} fiche(s) retrouveraient leur organisateur. "
+                  f"Simulation — RIEN n'a été écrit.")
+            conn.close()
+            return 0
+        for eid, nom in rendus:
+            conn.execute("UPDATE events_raw SET organisateur=? WHERE id=?", (nom, eid))
+        conn.commit()
+        # Recompté en base, pas depuis la liste (règle 6).
+        rendu_n = conn.execute(
+            "SELECT COUNT(*) FROM events_raw WHERE COALESCE(organisateur_byline,'') <> '' "
+            "AND COALESCE(organisateur,'') <> ''").fetchone()[0]
+        conn.close()
+        print(f"\n✅ {rendu_n} fiche(s) ont retrouvé un organisateur que les règles "
+              f"actuelles jugent légitime (recompté en base).")
+        return 0
 
     lignes, publiees, checks_fermables = [], [], 0
     for ev in _candidates(conn, today, args.tout):
@@ -183,15 +222,25 @@ def main(argv: list[str]) -> int:
     vides = conn.execute(
         "SELECT COUNT(*) FROM events_raw WHERE COALESCE(organisateur_byline,'') <> '' "
         "AND COALESCE(organisateur,'') = ''").fetchone()[0]
-    pendants = conn.execute(
-        "SELECT COUNT(*) FROM checks WHERE status='pending'").fetchone()[0]
+    # CE COMPTEUR NE DIT QUE CE QU'IL A FAIT (règle 6). La première version affichait
+    # « points en attente, toutes familles confondues : 792 » — un nombre exact et
+    # totalement trompeur : l'écran « À vérifier » en montrait 28, parce qu'il écarte les
+    # événements passés et les absences. Deux compteurs du même nom, deux périmètres, et
+    # c'est le plus gros qu'on croit — exactement le défaut que Franck avait signalé le
+    # matin même (« 548 tâches ! »), reproduit le soir dans le correctif censé le réduire.
+    fermes = conn.execute(
+        "SELECT COUNT(*) FROM checks WHERE status='done' "
+        "AND resolved_at >= datetime('now','-1 minute')").fetchone()[0]
     conn.close()
 
     print(f"\n✅ {vides} fiche(s) portent désormais une colonne `organisateur` vide et "
           f"leur ancienne valeur dans `organisateur_byline` (recompté en base).")
     print(f"   Il reste {restant} fiche(s) avec un `organisateur` non vide dans ce "
           f"périmètre ({perimetre}) — ce sont celles jugées légitimes.")
-    print(f"   Points « À vérifier » encore en attente, toutes familles confondues : {pendants}.")
+    print(f"   {fermes} point(s) « À vérifier » fermé(s) par cette exécution — uniquement "
+          f"sur des fiches hors ligne, et uniquement ceux qui nommaient la signature "
+          f"retirée. Le total de l'écran « À vérifier » n'est PAS comparable : il a son "
+          f"propre périmètre (ni passé, ni absences).")
     if publiees:
         print(f"\n⚠️  {len(publiees)} fiche(s) sont EN LIGNE : la colonne est corrigée, mais "
               f"le nom reste écrit dans le corps de l'article publié.")
