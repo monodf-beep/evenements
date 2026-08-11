@@ -860,6 +860,49 @@ def pilotage():
         territories=TERRITORIES, today=today, alert=friendly_alert())
 
 
+@app.route("/couts")
+@require_auth
+def couts_view():
+    """Les coûts API PAR DATE, pour pouvoir comparer.
+
+    Franck, 2026-08-11 : « mets la possibilité de voir par date, comme ça je pourrai
+    comparer les coûts ». Le tableau de bord montre le cumul depuis toujours — utile pour
+    savoir combien on a dépensé, inutile pour savoir si une correction a servi. Comparer
+    suppose de découper, et la journée est la seule granularité où l'effet d'un changement
+    se voit : une semaine mélange le jour où on a corrigé et les six autres.
+
+    Les bornes par défaut couvrent trente jours. Elles sont écrites en clair au-dessus du
+    total, parce qu'un montant sans sa fenêtre est exactement le genre de chiffre qui finit
+    par être comparé à un autre qui ne couvre pas la même période."""
+    from utils import usage as _u
+    auj = date.today()
+    du = (request.args.get("du") or "").strip()
+    au = (request.args.get("au") or "").strip()
+    preset = (request.args.get("p") or "").strip()
+    if preset == "7":
+        du, au = (auj - timedelta(days=6)).isoformat(), auj.isoformat()
+    elif preset == "30":
+        du, au = (auj - timedelta(days=29)).isoformat(), auj.isoformat()
+    elif preset == "tout":
+        du = au = ""
+    elif not du and not au:
+        du, au = (auj - timedelta(days=29)).isoformat(), auj.isoformat()
+
+    s = _u.summarize(du or None, au or None)
+    total = s["total"]
+    labels = dict(sorted((total.get("by_label") or {}).items(),
+                         key=lambda kv: kv[1]["cost"], reverse=True))
+    jours = s.get("jours") or {}
+    # L'échelle des barres se prend sur le jour le plus cher DE LA FENÊTRE, pas sur un
+    # maximum absolu : sinon un pic ancien écrase visuellement tout le reste et la
+    # comparaison — qui est justement l'objet de la page — devient impossible.
+    pic = max((d["cost"] for d in jours.values()), default=0.0)
+    return render_template("couts.html", active="couts", total=total, labels=labels,
+                           jours=jours, pic=pic, expl=_u.explique(total),
+                           du=du, au=au, preset=preset, today=auj.isoformat(),
+                           alert=friendly_alert())
+
+
 @app.route("/systeme")
 @require_auth
 def systeme_view():

@@ -96,6 +96,28 @@ _check("la part de l'entrée dans la facture est un pourcentage plausible",
 _check("le coût affiché reste CELUI QUI A ÉTÉ ADDITIONNÉ appel par appel",
        e["cout"] == tot["cost"], (e["cout"], tot["cost"]))
 
+print("\n──── 3 bis. la fenêtre de dates ────")
+# « mets la possibilité de voir par date, comme ça je pourrai comparer les coûts ».
+# Comparer suppose de découper — et un cumul depuis toujours ne dit pas si une correction
+# d'hier a servi.
+import json as _json
+brut = [_json.loads(l) for l in usage.USAGE_FILE.read_text(encoding="utf-8").splitlines()]
+jour = brut[0]["ts"][:10]
+_check("le journal est agrégé PAR JOUR", jour in usage.summarize()["jours"],
+       list(usage.summarize()["jours"]))
+_check("une fenêtre qui contient tout rend le total complet",
+       usage.summarize(jour, jour)["total"]["calls"] == 6,
+       usage.summarize(jour, jour)["total"]["calls"])
+_check("une fenêtre HORS période rend zéro appel, pas une erreur",
+       usage.summarize("2020-01-01", "2020-01-02")["total"]["calls"] == 0)
+_check("et son détail par étape est vide, pas absent",
+       usage.summarize("2020-01-01", "2020-01-02")["total"]["by_label"] == {})
+_check("chaque jour porte son poste dominant",
+       "rédaction" in usage.summarize()["jours"][jour]["by_label"],
+       usage.summarize()["jours"][jour]["by_label"])
+_check("les jours sont rendus du plus RÉCENT au plus ancien",
+       list(usage.summarize()["jours"]) == sorted(usage.summarize()["jours"], reverse=True))
+
 print("\n──── 4. le cas vide ne fabrique pas de faux zéro ────")
 usage.USAGE_FILE = tmp / "vide.jsonl"
 v = usage.summarize()["total"]

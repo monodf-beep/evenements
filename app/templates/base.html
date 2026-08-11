@@ -25,7 +25,7 @@
        en groupes repliables. Un groupe s'ouvre seul quand on est sur une de ses pages ;
        le résumé « À traiter » porte le TOTAL des pastilles même replié. #}
     {% set _traiter = ['semaine', 'validation', 'tocomplete', 'triage', 'verifier', 'audit_visuel', 'events'] %}
-    {% set _analyse = ['systeme', 'couverture', 'couverture_geo', 'wireframe', 'regie', 'partenariat', 'seo'] %}
+    {% set _analyse = ['systeme', 'couts', 'couverture', 'couverture_geo', 'wireframe', 'regie', 'partenariat', 'seo'] %}
     {% set _aide = ['process', 'pipeline', 'voix', 'personas', 'cowork', 'reglages'] %}
     {% set _todo_total = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
     <nav class="nav" aria-label="Navigation principale">
@@ -62,6 +62,7 @@
         <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Régie pub
           {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</a>
         <a href="/partenariat" class="{{ 'on' if active=='partenariat' }}" {% if active=='partenariat' %}aria-current="page"{% endif %}><span aria-hidden="true">🤝</span> Partenariat / widget</a>
+        <a href="/couts" class="{{ 'on' if active=='couts' }}" {% if active=='couts' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Coûts par date</a>
         <a href="/systeme" class="{{ 'on' if active=='systeme' }}" {% if active=='systeme' %}aria-current="page"{% endif %}><span aria-hidden="true">📈</span> État du système</a>
         <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
         <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>

@@ -13,9 +13,24 @@
     {% if nav.validate %}
       <div style="font-size:1.1rem"><strong>{{ nav.validate }}</strong> événement(s) prêt(s) à valider.</div>
       <div class="muted text-sm">Ouvre le plan du week-end pour choisir quoi mettre en avant.</div>
+    {% elif nav.pending and nav_alert %}
+      <!-- NE PAS PROPOSER CE QUI EST IMPOSSIBLE. Le 2026-08-11, cette carte annonçait
+           « 13 événements en attente d'évaluation — lance l'évaluation » juste SOUS le
+           bandeau rouge disant que l'évaluation est en pause jusqu'au 1er septembre. Deux
+           affirmations contradictoires sur le même écran, et c'est la carte d'action qu'on
+           croit. Une prochaine action qu'on ne peut pas faire n'est pas une action. -->
+      <div style="font-size:1.1rem">L'évaluation est <strong>en pause</strong>{% if nav_alert.reset %} jusqu'au {{ nav_alert.reset }}{% endif %}.</div>
+      <div class="muted text-sm">
+        {{ nav.pending }} événement(s) attendent d'être évalués — c'est une file <strong>automatique</strong>, elle repartira seule.
+        En attendant, ce qui avance <strong>sans API</strong> :
+        {% if nav.tocomplete %}<a href="/a-completer">{{ nav.tocomplete }} à compléter</a>{% endif %}
+        {%- if nav.tocomplete and nav.audit %} · {% endif %}
+        {%- if nav.audit %}<a href="/audit-visuel">{{ nav.audit }} visuel(s) à revoir</a>{% endif %}
+        {%- if not nav.tocomplete and not nav.audit %}rien — tout est à jour de ton côté.{% endif %}
+      </div>
     {% elif nav.pending %}
       <div style="font-size:1.1rem"><strong>{{ nav.pending }}</strong> événement(s) en attente d'évaluation.</div>
-      <div class="muted text-sm">Choisis une période plus bas et lance l'évaluation.</div>
+      <div class="muted text-sm">File automatique du pipeline — tu peux la lancer à la main en choisissant une période plus bas.</div>
     {% else %}
       <div style="font-size:1.1rem">Rien en attente. 👌</div>
       <div class="muted text-sm">Lance une collecte pour récupérer de nouveaux événements.</div>
@@ -38,6 +53,17 @@
 ] %}
 {% if _todo | selectattr(3) | list %}
 <div class="section-title">À traiter</div>
+<!-- CHAQUE NOMBRE DIT CE QU'IL COMPTE. Franck, 2026-08-11 : « 13 ou 7 ? ». Les deux
+     étaient justes et comptaient deux choses — la pastille du menu additionne les QUATRE
+     files humaines (à valider, à compléter, à vérifier, audit visuel), tandis que « en
+     attente d'évaluation » est une file du PIPELINE, que personne ne traite à la main.
+     Trois nombres sur le même écran, aucun ne disait son périmètre : c'est exactement ce
+     qui a fait dire « 548 tâches, c'est ingérable » le matin même. -->
+<div class="muted text-sm" style="margin:-.35rem 0 .5rem">
+  La pastille <span class="nav-badge">{{ (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) }}</span>
+  du menu additionne les quatre premières — celles qui demandent <strong>ta</strong> main.
+  « Sans date » et « sans photo » sont des files du <strong>pipeline</strong> : elles se remplissent et se vident toutes seules.
+</div>
 <div class="kpis">
   {% for href, ic, lbl, n in _todo if n %}
   <a class="kpi" href="{{ href }}"><div class="v">{{ n }}</div><div class="l">{{ ic }} {{ lbl }}</div></a>
@@ -185,6 +211,10 @@
     Mais une étape chère qui produit peu se voit ici, et nulle part ailleurs.
   </div>
   {% endif %}
+
+  <div class="btn-row" style="margin-top:.5rem">
+    <a class="btn btn-sm" href="/couts">💶 Comparer par date →</a>
+  </div>
 
   <div class="section-title" style="font-size:.85rem;margin:.9rem 0 .3rem">Par modèle</div>
   {% if cost.by_model %}

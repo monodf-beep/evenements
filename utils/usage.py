@@ -158,8 +158,12 @@ def record_message(model: str, message, web: int = 0, label: str = "") -> None:
         pass
 
 
-def summarize() -> dict:
-    """Agrège l'usage : par semaine, par modèle, et PAR ÉTAPE.
+def summarize(depuis: str | None = None, jusqu: str | None = None) -> dict:
+    """Agrège l'usage : par semaine, par JOUR, par modèle, et PAR ÉTAPE.
+
+    `depuis` / `jusqu` (AAAA-MM-JJ, inclus) restreignent la fenêtre. Sans bornes, tout le
+    journal — c'est le comportement historique, et les appelants existants n'ont pas
+    changé.
 
     L'agrégat par étape manquait alors que chaque appel porte son étiquette depuis le
     début (`label` : « rédaction », « traduction », « évaluation », « datation »…). Le
@@ -175,10 +179,12 @@ def summarize() -> dict:
     (3 $ / million en entrée, 15 $ en sortie), les deux tiers de la facture viennent de ce
     qu'on ENVOIE, pas de ce que le modèle écrit."""
     weeks: dict[str, dict] = {}
+    jours: dict[str, dict] = {}
     total = {"cost": 0.0, "in": 0, "out": 0, "web": 0, "calls": 0,
              "by_model": {}, "by_label": {}}
     if not USAGE_FILE.exists():
-        return {"weeks": {}, "total": total, "current_week": _week(datetime.now(timezone.utc))}
+        return {"weeks": {}, "jours": {}, "total": total,
+                "current_week": _week(datetime.now(timezone.utc))}
     try:
         lines = USAGE_FILE.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -189,6 +195,12 @@ def summarize() -> dict:
         except json.JSONDecodeError:
             continue
         wk = e.get("week", "?")
+        jour = (e.get("ts") or "")[:10]
+        # BORNES DE DATE — ajoutées le 2026-08-11 : « mets la possibilité de voir par
+        # date, comme ça je pourrai comparer les coûts ». Comparer suppose de découper ;
+        # un cumul depuis toujours ne dit pas si une correction d'hier a servi.
+        if (depuis and jour < depuis) or (jusqu and jour > jusqu):
+            continue
         model = e.get("model", "?")
         cost, i, o, w = e.get("cost", 0.0), e.get("in", 0), e.get("out", 0), e.get("web", 0)
         # Une étiquette vide vaut « non étiqueté » plutôt que de disparaître : un poste de
@@ -213,7 +225,19 @@ def summarize() -> dict:
             bl["in"] += i
             bl["out"] += o
             bl["calls"] += 1
-    return {"weeks": weeks, "total": total,
+        # PAR JOUR, à part : c'est la granularité qui permet de VOIR l'effet d'un
+        # changement. Une semaine mélange le jour où on a corrigé et les six autres.
+        j = jours.setdefault(jour, {"cost": 0.0, "in": 0, "out": 0, "calls": 0,
+                                    "by_label": {}})
+        j["cost"] += cost
+        j["in"] += i
+        j["out"] += o
+        j["calls"] += 1
+        jl = j["by_label"].setdefault(label, {"cost": 0.0, "calls": 0})
+        jl["cost"] += cost
+        jl["calls"] += 1
+    return {"weeks": weeks, "jours": dict(sorted(jours.items(), reverse=True)),
+            "total": total,
             "current_week": _week(datetime.now(timezone.utc))}
 
 

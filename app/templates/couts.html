@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% set active = 'couts' %}
+{% block title %}Coûts par date — Agenda CS{% endblock %}
+{% block h1 %}Coûts API, par date{% endblock %}
+{% block subtitle %}<div class="sub">Le tableau de bord montre le <strong>cumul depuis toujours</strong> : il dit combien on a dépensé, jamais si une correction a servi. Ici on découpe — et la <strong>journée</strong> est la seule granularité où l'effet d'un changement se voit.</div>{% endblock %}
+
+{% block content %}
+
+<form method="GET" class="card" style="padding:.6rem .75rem;margin-bottom:1rem;display:flex;gap:.5rem;align-items:end;flex-wrap:wrap">
+  <div>
+    <label class="muted text-sm" for="du" style="display:block">du</label>
+    <input id="du" type="date" name="du" value="{{ du }}" style="font-family:inherit;padding:.3rem .4rem;border:1px solid #e7e1d4;border-radius:.4rem">
+  </div>
+  <div>
+    <label class="muted text-sm" for="au" style="display:block">au</label>
+    <input id="au" type="date" name="au" value="{{ au }}" style="font-family:inherit;padding:.3rem .4rem;border:1px solid #e7e1d4;border-radius:.4rem">
+  </div>
+  <button class="btn btn-sm btn-primary">Voir</button>
+  <a class="btn btn-sm" href="?p=7">7 jours</a>
+  <a class="btn btn-sm" href="?p=30">30 jours</a>
+  <a class="btn btn-sm" href="?p=tout">Tout</a>
+</form>
+
+<!-- LE PÉRIMÈTRE À CÔTÉ DU MONTANT. Un coût sans sa fenêtre finit par être comparé à un
+     autre qui ne couvre pas la même période — et c'est le plus gros qu'on croit. -->
+<div class="card" style="padding:.75rem .9rem;margin-bottom:1rem">
+  <div style="font-size:1.5rem;font-weight:700">${{ '%.4f'|format(total.cost) }}</div>
+  <div class="muted text-sm">
+    {% if du or au %}du <strong>{{ du or '…' }}</strong> au <strong>{{ au or "aujourd'hui" }}</strong>{% else %}<strong>depuis le début</strong>, toutes dates confondues{% endif %}
+    · {{ total.calls }} appel(s)
+    {% if expl.appels %} · ${{ '%.4f'|format(expl.cout_par_appel) }} l'appel{% endif %}
+  </div>
+  {% if expl.part_entree is not none %}
+  <div class="muted text-sm" style="margin-top:.4rem">
+    <strong>{{ expl.part_entree }}&nbsp;%</strong> de ce montant vient de ce qu'on <strong>envoie</strong> —
+    {{ '{:,}'.format(expl.entree_par_appel).replace(',', ' ') }} jetons en entrée par appel contre
+    {{ '{:,}'.format(expl.sortie_par_appel).replace(',', ' ') }} en sortie.
+  </div>
+  {% endif %}
+</div>
+
+{% if not jours %}
+<div class="card card-cta"><div><strong>Aucun appel sur cette période.</strong>
+  <span class="muted">Ce n'est pas forcément une bonne nouvelle : vérifie que le pipeline tourne
+  (<a href="/pipeline">Pipeline auto</a>). Un zéro ne dit pas tout seul s'il vient d'une économie ou d'une panne.</span></div></div>
+{% else %}
+
+<div class="section-title">Jour par jour</div>
+<div class="card" style="padding:.4rem .6rem;margin-bottom:1.2rem">
+  <table>
+    <tr><th>Jour</th><th>Coût</th><th>Appels</th><th>Entrée / appel</th><th style="width:38%">Poste dominant</th></tr>
+    {% for j, d in jours.items() %}
+    {% set top = (d.by_label.items() | sort(attribute='1.cost', reverse=true) | first) %}
+    <tr>
+      <td>{{ j }}</td>
+      <td><strong>${{ '%.4f'|format(d.cost) }}</strong></td>
+      <td class="muted">{{ d.calls }}</td>
+      <td class="muted">{{ (d['in'] // d.calls) if d.calls else 0 }}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <div style="flex:1;height:6px;border-radius:3px;background:var(--line-2);overflow:hidden">
+            <div style="height:100%;width:{{ ((d.cost / pic * 100)|round)|int if pic else 0 }}%;background:#0f766e"></div>
+          </div>
+          <span class="muted text-sm" style="white-space:nowrap">{{ top[0] if top }}</span>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div class="muted text-sm" style="margin-top:.35rem;padding:0 .2rem .3rem">
+    La barre est proportionnelle au <strong>jour le plus cher de cette fenêtre</strong>, pas à un maximum absolu :
+    sinon un pic ancien écrase tout le reste et la comparaison devient impossible.
+  </div>
+</div>
+
+<div class="section-title">Sur la période, à quoi sert l'argent</div>
+<div class="card" style="padding:.4rem .6rem">
+  <table>
+    <tr><th>Étape</th><th>Appels</th><th>Entrée / appel</th><th>Coût</th><th>Part</th></tr>
+    {% for lab, d in labels.items() %}
+    <tr>
+      <td>{{ lab }}</td>
+      <td class="muted">{{ d.calls }}</td>
+      <td class="muted">{{ (d['in'] // d.calls) if d.calls else 0 }}</td>
+      <td>${{ '%.4f'|format(d.cost) }}</td>
+      <td class="muted">{{ ((d.cost / total.cost * 100)|round)|int if total.cost else 0 }}&nbsp;%</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="muted text-sm" style="margin-top:1rem;line-height:1.6">
+  <strong>Comment lire ces chiffres.</strong> La colonne <em>entrée / appel</em> est le vrai levier : c'est ce qu'on
+  ENVOIE à chaque requête — voix éditoriale, savoir local, personas, consigne, matière source, et pour les étapes
+  de recherche, les pages web ramenées dans le contexte. Une étape à cinquante mille jetons d'entrée coûte cher
+  même si elle n'écrit que trois cents mots.
+  <br>Et une étape chère n'est pas forcément à réduire : la question est ce qu'elle produit. Mais une étape chère
+  qui produit peu se voit ici, et nulle part ailleurs.
+</div>
+
+{% endblock %}
