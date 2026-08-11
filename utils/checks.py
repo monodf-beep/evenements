@@ -59,6 +59,20 @@ _ABSENCE = (
     r"\bnon detaille", r"\bnon publie", r"\bnon communique", r"\bnon renseigne",
     r"\babsente? de la matiere\b", r"\bmanque dans la matiere\b",
     r"\bpas (?:d[eu']|de la |des )?(?:tarif|horaire|programme|detail)",
+    # TROISIÈME PASSE, même jour. Le point d'interrogation laissait encore passer une
+    # famille entière : les questions qui RÉCLAMENT DU CONTENU. « Contenu précis de
+    # l'exposition Chine : artefacts, maquettes, films ? », « quelles œuvres exactement
+    # de Brahms ? », « Thèmes concrets des ateliers (nature, histoire, archéologie ?) ».
+    # Ce sont des absences déguisées en questions : la source ne détaille pas, et aucun
+    # humain ne peut « vérifier » un détail qui n'existe nulle part.
+    # Ce qui les distingue d'un vrai doute : elles demandent CE QU'IL Y A, jamais si ce
+    # qui est écrit est JUSTE.
+    r"\bcontenu precis", r"\bcomposition precise", r"\bthemes? concrets?",
+    r"\bdetails? (?:de|du|des|precis)", r"\bprogramme detaille",
+    r"\bquelles? (?:oeuvres?|pieces?|activites?|animations?)",
+    r"\by a-t-il d'autres\b", r"\bnombre et niveau\b",
+    r"\bnationalites precises", r"\bcapacites? d'accueil",
+    r"\bages? recommandes?", r"\bdurees? des\b",
 )
 
 # Marqueurs employés quand on doute d'un fait QU'ON ÉCRIT — c'est-à-dire quand l'article

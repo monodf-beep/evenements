@@ -81,6 +81,24 @@ CAS = [
     ("Line-up : 1 ou 2 artistes ?", True),
     ("Nom de l'artiste peut-être mal orthographié", True),
     ("Deux dates contradictoires entre le flux et la page", True),
+    # ── TROISIÈME PASSE : les questions qui RÉCLAMENT DU CONTENU ────────────────
+    # 66 doutes restaient sur 453 points, et une famille entière passait encore grâce au
+    # point d'interrogation. Toutes recopiées de la production. Ce qui les distingue d'un
+    # vrai doute : elles demandent CE QU'IL Y A, jamais si ce qui est écrit est JUSTE.
+    ("Contenu précis de l'exposition Chine : artefacts, maquettes, films ?", False),
+    ("composition précise du programme : quelles œuvres exactement de Brahms ?", False),
+    ("Thèmes concrets des ateliers (nature, histoire, archéologie ?)", False),
+    ("Nombre et niveau des stagiaires (amateurs, tous âges ?)", False),
+    ("y a-t-il d'autres musiciens à la distribution (piano) ?", False),
+    ("Nationalités précises des troupes (Mexique, Bénin — autres pays ?)", False),
+    # ── Et les questions d'IDENTITÉ, qui doivent survivre : elles demandent si ce
+    # qui est écrit est juste, et un humain peut trancher en ouvrant la page.
+    ("Stefania Marchiano : autrice de l'article ou organisatrice ?", True),
+    ("Rôle exact d'Amelio Ambrosi : organisateur ou contact presse ?", True),
+    ("Chef d'orchestre : Jonathan Nott est-il toujours en poste en 2026 ?", True),
+    ("Vence fait-elle bien partie du territoire métropolitain annoncé ?", True),
+    ("Date de fin de tournée : 28 août (Métropole) ou 29 août (site TNN) ?", True),
+    ("Nom exact de l'organisateur (Emilie DUPONT confirmé ?)", True),
 ]
 
 print("──── doute ou absence ────")
