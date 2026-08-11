@@ -318,7 +318,21 @@ def dates_from_page(html: str) -> tuple[str, str, str]:
     1) JSON-LD schema.org Event (startDate/endDate) — le standard des sites d'événements ;
     2) balises <time datetime="…"> ;
     3) meta (article:published_time n'est PAS la date d'événement → ignoré).
-    Ne devine JAMAIS depuis le texte libre de la page (trop de faux positifs)."""
+    Ne devine JAMAIS depuis le texte libre de la page (trop de faux positifs).
+
+    ⚠️ ÉLARGI le 2026-08-11 (« implacable au niveau de la collecte AVANT de passer par
+    les LLM », Franck). L'étage 1 ci-dessous cherchait la CHAÎNE `"startDate":"…"` dans
+    le HTML : il ratait donc le bloc `@graph` de Yoast et Rank Math — la forme de la
+    majorité des sites WordPress —, les tableaux de plusieurs objets, les guillemets
+    échappés, et les types dérivés comme ExhibitionEvent. utils/jsonld.py PARSE les blocs
+    au lieu d'y chercher un motif ; il passe en tête, et les deux étages historiques
+    restent derrière lui comme filets."""
+    # 0) JSON-LD réellement parsé (@graph, tableaux, sous-objets, microdata).
+    from utils import jsonld as _jsonld
+    _c = _jsonld.champs(html)
+    if _c.get("date_event_start"):
+        return (_c["date_event_start"],
+                _c.get("date_event_end") or _c["date_event_start"], "page")
     # 1) JSON-LD "startDate": "2026-07-05" (ou avec heure "2026-07-05T21:00")
     ms = re.search(r'"startDate"\s*:\s*"(\d{4}-\d{2}-\d{2})', html)
     if ms:
@@ -332,6 +346,12 @@ def dates_from_page(html: str) -> tuple[str, str, str]:
     times = [t for t in times if _iso(*map(int, t.split("-")))]
     if times:
         return (min(times), max(times), "page")
+    # 3) Microdata itemprop — l'autre forme que schema.org autorise, tout aussi valable
+    #    et jusqu'ici totalement ignorée.
+    _m = _jsonld.champs_microdata(html)
+    if _m.get("date_event_start"):
+        return (_m["date_event_start"],
+                _m.get("date_event_end") or _m["date_event_start"], "page")
     return ("", "", "")
 
 

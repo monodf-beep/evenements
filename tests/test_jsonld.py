@@ -115,5 +115,34 @@ _check("les @type de la page sont énumérés",
 _check("une page sans Event le dit", J.types_presents(ORGA) == ["organization"],
        str(J.types_presents(ORGA)))
 
+# ── Le gain profite à TOUTE la chaîne, pas au seul script de moisson ───────────
+# dates.dates_from_page et venues.venue_from_page sont appelées par le cron de datation,
+# par l'auto-complétion du back-office et par la moisson. Les brancher sur le parseur
+# fait bénéficier tous ces chemins du même élargissement, au lieu de le réserver au
+# dernier arrivé — et les formes historiques doivent continuer de passer.
+print("\n──── dates.py et venues.py utilisent le parseur ────")
+from scripts.dates import dates_from_page  # noqa: E402
+from scripts.venues import venue_from_page  # noqa: E402
+
+_check("dates_from_page lit le @graph Yoast",
+       dates_from_page(YOAST)[:2] == ("2026-09-12", "2026-09-12"), str(dates_from_page(YOAST)))
+_check("venue_from_page lit le @graph Yoast",
+       venue_from_page(YOAST)[:2] == ("Cour du Château", "Annecy"), str(venue_from_page(YOAST)))
+_check("dates_from_page lit les microdata",
+       dates_from_page(MICRO)[0] == "2026-11-05", str(dates_from_page(MICRO)))
+_check("venue_from_page lit les microdata",
+       venue_from_page(MICRO)[0] == "Théâtre Charles Dullin", str(venue_from_page(MICRO)))
+# CONTRE-ÉPREUVE : la forme historique (regex) doit continuer de passer — le parseur
+# s'ajoute devant, il ne remplace pas.
+ANCIEN = ('<html>"startDate": "2026-07-05" "location": {"name": "Salle X", '
+          '"address": {"addressLocality": "Chambéry"}}</html>')
+_check("la forme historique passe toujours (le parseur s'AJOUTE)",
+       dates_from_page(ANCIEN)[0] == "2026-07-05"
+       and venue_from_page(ANCIEN)[:2] == ("Salle X", "Chambéry"),
+       f"{dates_from_page(ANCIEN)} / {venue_from_page(ANCIEN)}")
+_check("une page sans rien ne rend rien",
+       dates_from_page("<html></html>") == ("", "", "")
+       and venue_from_page("<html></html>") == ("", "", ""))
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

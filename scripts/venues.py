@@ -66,8 +66,20 @@ def venue_from_page(html: str) -> tuple[str, str, str]:
     """(lieu, ville, source) depuis le JSON-LD schema.org « location ». ('','','') si rien.
 
     Gère « location » en OBJET (Place : name + address.addressLocality) et en CHAÎNE.
+
+    ⚠️ ÉLARGI le 2026-08-11, comme dates.dates_from_page et pour la même raison : on
+    cherchait la chaîne `"location"` dans le HTML, donc on ratait le `@graph` de Yoast,
+    les tableaux, les guillemets échappés et les microdata. utils/jsonld.py parse le
+    document ; la recherche de motif reste derrière, en filet.
     Ne devine JAMAIS depuis le texte libre (trop de faux positifs) — c'est le rôle du LLM.
     """
+    from utils import jsonld as _jsonld
+    _c = _jsonld.champs(html)
+    if _c.get("lieu"):
+        return (_c["lieu"], _c.get("ville", ""), "page")
+    _m = _jsonld.champs_microdata(html)
+    if _m.get("lieu"):
+        return (_m["lieu"], _m.get("ville", ""), "page")
     idx = html.find('"location"')
     if idx != -1:
         window = html[idx:idx + 900]
