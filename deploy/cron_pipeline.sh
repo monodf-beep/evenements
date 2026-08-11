@@ -96,6 +96,13 @@ case "$MODE" in
     # 2) Préparation
     step "déduplication"     "$PY" -m scripts.dedupe
     step "datation"          "$PY" -m scripts.dates
+    # Rattrapage gratuit des fiches venues d'un mail : quand l'extraction LLM a raté la
+    # date, elle est relue dans le corps du message, désormais conservé (2026-08-11).
+    # PLACÉ ICI, dans le cron, et pas laissé à une commande manuelle : un rouvreur que
+    # personne ne lance n'est pas un rouvreur (règle 3). C'est la faute qui a laissé 823
+    # fiches dormir dans venue_source='llm_none' alors que --retry existait depuis le
+    # premier jour.
+    step "dates (mail)"      "$PY" -m scripts.dates_depuis_mail --apply
     step "lieux"             "$PY" -m scripts.venues
     step "évaluation"        "$PY" -m scripts.evaluator --from "$FROM" --to "$TO"
     # Écarte les séances de cinéma commerciales (garde festivals/rétros/hommages
