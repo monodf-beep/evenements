@@ -310,6 +310,37 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("repair_polluted_descriptions")
 
+    # ── DEUX SCRIPTS ÉCRITS LE 2026-08-11 QUE PERSONNE NE LANÇAIT ──────────────────────
+    # Franck, le soir : « est-ce qu'il y a des choses qu'on n'a pas terminées ? ». Le
+    # recensement a trouvé quatre scripts nés dans la journée et branchés nulle part.
+    # C'est l'erreur 11 du journal, refaite le jour même où je l'y inscrivais : un
+    # correctif juste, testé, poussé — et jamais exécuté. Il MARCHE quand on le lance à la
+    # main, donc rien ne signale qu'il ne tourne pas.
+    #
+    # 1) LES TRADUCTIONS ORPHELINES. `translate_events` pose deux marques d'origine ; il
+    # arrive qu'une fiche n'ait plus que la seconde, et TOUS les garde-fous interrogent la
+    # première. Ces fiches n'héritent donc pas des dates de leur original et peuvent
+    # recevoir un article dans la mauvaise langue. Le script relit l'identifiant dans
+    # l'adresse « translated:<id>:<langue> » et repose la colonne : rien d'inventé, le
+    # numéro est écrit dans la fiche depuis sa création. --apply est défendable — il refuse
+    # un original introuvable et refuse de fabriquer un cycle.
+    from scripts.repair_lien_traduction import main as relien_main
+    rc, out = _run_captured(relien_main, ["--apply"], "repair_lien_traduction")
+    sections.append(f"• Traductions rebranchées sur leur original : {_tail(out, 2)}")
+    if rc:
+        echecs.append("repair_lien_traduction")
+
+    # 2) LES ARTICLES QUI PARLENT AU PASSÉ. Franck, 2026-08-11 : « il faut toujours parler
+    # au futur puisqu'on propose des événements qui se passent dans le futur ; là c'est
+    # plutôt du journalisme, on dit ce qui s'est fait ». LECTURE SEULE, volontairement :
+    # l'audit assume un faux positif sur vingt-cinq et le dit dans sa sortie. Réécrire
+    # demande un jugement, et un signalement hebdomadaire suffit à ce que ça se voie.
+    from scripts.audit_temps_recit import main as temps_main
+    rc, out = _run_captured(temps_main, [], "audit_temps_recit")
+    sections.append(f"• Articles au passé (signalement, pas verdict) : {_tail(out, 2)}")
+    if rc:
+        echecs.append("audit_temps_recit")
+
     # Fiches liées à un post NON PUBLIC — état des lieux hebdomadaire, LECTURE SEULE.
     # L'outil sait aussi réparer (--apply + options par famille), mais l'ambiguïté de la
     # corbeille est un arbitrage : ici on ne fait que COMPTER et NOMMER, pour que le
