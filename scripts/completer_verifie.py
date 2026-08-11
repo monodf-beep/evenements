@@ -210,6 +210,15 @@ _ECARTS: dict[int, str] = {
     2676: "page de blog du Circolo dei Lettori, sans même un titre",
     # CONGRÈS ET B2B — charte : « un congrès, un colloque scientifique ou un salon B2B
     # n'a pas sa place, même ouvert à tous ». C'est le PUBLIC VISÉ qui décide.
+    # PAS UN ÉVÉNEMENT PUBLIC — trouvé le 2026-08-11 en cherchant à répondre au point
+    # « format exact : masterclass, cours ouvert ou concert public ? ». Réponse : aucun
+    # des trois. Les rendez-vous « Chitarra Jazz (Prof. L. Tessarollo) » du calendrier du
+    # Conservatoire sont des sessions d'EXAMEN (« Appello Esami », 9h-14h, Aula 13, via
+    # Mazzini 11). La charte demande un public VISÉ ; un examen n'en a aucun. Le doute
+    # posé par l'enrichissement était donc mieux fondé qu'il n'en avait l'air — il ne
+    # portait pas sur un détail de format, mais sur la nature même de la fiche.
+    3734: "Conservatoire de Turin — session d'examen de guitare jazz, pas un rendez-vous "
+          "public (conservatoriotorino.eu, « Appello Esami »)",
     3089: "IASP World Conference — congrès professionnel (et Sophia Antipolis est dans "
           "l'arrondissement de Grasse)",
     3090: "Talent in Tech — rencontre professionnelle",

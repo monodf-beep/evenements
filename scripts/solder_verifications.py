@@ -101,6 +101,47 @@ _REPONSES: list[tuple[int, str, str, str | None]] = [
     (3094, "michael", "Les deux à la fois : le spectacle officiel « This Is Michael » "
      "(Lenny Jay) ET Jennifer Batten, guitariste de Michael Jackson pendant dix ans, "
      "pour leur seule date européenne (guitare-en-scene.com).", None),
+
+    # ── Deuxième fournée, 2026-08-11 au soir. Franck a remis la file à l'écran : « on en
+    # fait quoi de ce qui reste ? ». Sur huit points, QUATRE avaient une réponse et
+    # personne n'était allé la chercher ; les quatre autres n'en ont pas, et c'est ça
+    # qu'il fallait écrire.
+    (4705, "titre complet du film", "Rien n'est tronqué : « De la Comédie-Française » EST "
+     "le titre complet. Comédie de Martin Darondeau et Bertrand Usclat, sortie le "
+     "22/07/2026, avec Pauline Clément et Laurent Stocker, quatre prix à l'Alpe d'Huez "
+     "(allociné, villefranche-sur-mer.fr : « 24 août, De la Comédie-Française »). Le "
+     "doute venait de ce que le titre commence par une préposition.", None),
+    (3594, "nature exacte de liveplay", "Un DJ, pas un orchestre ni un groupe : Live Play "
+     "est un service d'animation professionnel (liveplay.fr) qui anime le bal de la "
+     "Citadelle Saint-Elme depuis quatorze ans.", None),
+    (3734, "format exact", "Ni masterclass ni concert : les rendez-vous « Chitarra Jazz "
+     "(Prof. L. Tessarollo) » du calendrier du Conservatoire sont des sessions d'EXAMEN "
+     "(« Appello Esami »), 9h-14h, Aula 13, via Mazzini 11 (conservatoriotorino.eu). "
+     "La fiche est donc écartée : un examen n'a pas de public visé.", None),
+    (3734, "tessarollo joue seul", "Ni l'un ni l'autre : ce sont les ÉLÈVES qui passent "
+     "leur examen devant lui. Voir le point ci-dessus.", None),
+
+    # ── LES QUATRE SANS RÉPONSE POSSIBLE, et c'est une réponse ────────────────────────
+    # Règle 6 : « avant d'ajouter une ligne à une file, se demander ce que le lecteur en
+    # FERA ». Ici il n'en fera rien — l'information n'existe nulle part. Les laisser
+    # ouverts, c'est reconstituer la file des 454 « points à contrôler » dont 315
+    # n'étaient que les silences de la source. On les ferme EN DISANT pourquoi, sinon
+    # l'enrichissement suivant les rouvrira à l'identique.
+    (3026, "langue de la mediation", "NON PUBLIÉ. Ni le musée ni le dossier de presse "
+     "n'indiquent les langues de l'audioguide. Ce n'est pas un doute sur un fait, c'est "
+     "une information qui n'existe pas : ni Franck ni le modèle ne peuvent y répondre. "
+     "À la réécriture, ne rien affirmer sur ce point.", None),
+    (3545, "accueil pmr", "NON PUBLIÉ. La page de la Ville ne dit ni le mode d'accès "
+     "(libre ou sur réservation) ni l'accueil PMR. Point fermé sans réponse — à la "
+     "réécriture, ne rien affirmer là-dessus.", None),
+    (924, "tarif de 28", "NON PUBLIÉ. La formule à 28 € est annoncée avec le transport ; "
+     "la source ne dit pas s'il existe un tarif sans bus. À demander à la salle si la "
+     "question revient — elle ne se tranche pas depuis le web.", None),
+    (13, "seconde seance", "NON PUBLIÉ à ce jour. La saison « Un été à Albé » court "
+     "jusqu'au 20 septembre mais son programme n'annonce qu'une séance de plein air ; "
+     "la seconde n'est pas datée publiquement. Rien à corriger : la fiche n'affirme "
+     "rien de faux, elle est simplement incomplète sur un point que la source tait.",
+     None),
 ]
 
 
