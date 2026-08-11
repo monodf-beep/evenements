@@ -60,7 +60,14 @@ def main(argv: list[str]) -> int:
             "date_event_end, recurring, wp_post_id_as FROM events_raw "
             "WHERE COALESCE(article_md,'') <> '' AND statut NOT IN ('merged') "
             "AND COALESCE(translation_of,0)=0"):
-        extraits = extraits_de_recit(r["article_md"])
+        # L'ANNÉE DE L'ÉVÉNEMENT SERT D'ANCRE : un passé daté d'une année ANTÉRIEURE
+        # parle du contexte (« le musée a ouvert en 1984 »), celui daté de l'année de
+        # l'événement raconte ce qui vient de se passer (« l'inauguration, le 13 juin
+        # 2026, a réuni… »). Sans cette ancre, l'audit signalait 25 fiches dont 24
+        # étaient correctes.
+        base = (r["date_event_start"] or r["date_event_end"] or "").strip()[:4]
+        annee = int(base) if base.isdigit() else None
+        extraits = extraits_de_recit(r["article_md"], annee_reference=annee)
         if not extraits:
             continue
         fin = (r["date_event_end"] or r["date_event_start"] or "").strip()
@@ -69,6 +76,9 @@ def main(argv: list[str]) -> int:
     conn.close()
 
     print(f"═══ {len(devant)} article(s) au passé sur un événement ENCORE DEVANT NOUS ═══")
+    print("⚠️  C'est un SIGNALEMENT, pas un verdict : lis l'extrait. Le français ne permet "
+          "pas de trancher à coup sûr — « la salle a accueilli le Senato Subalpino » est "
+          "de l'histoire, pas un compte rendu, et rien dans la phrase ne le dit.")
     print("C'est la seule famille qui soit du travail : la fiche raconte au passé quelque "
           "chose qui n'a pas encore eu lieu.\n")
     for r, extraits in sorted(devant, key=lambda x: x[0]["id"]):

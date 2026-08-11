@@ -97,12 +97,57 @@ def _norm(s: str) -> str:
 
     C'est une faute qu'aucune relecture de code ne montre : il a fallu voir la liste des
     faux positifs sur de vrais articles."""
-    protege = (s or "").lower().replace("à", "\x01")
+    # Le « à » n'est protégé que comme MOT ISOLÉ. Première version : un remplacement
+    # global, qui transformait « déjà » en « dejà » — et « déjà » est justement l'un des
+    # marqueurs de rétrospective les plus utiles. Un correctif qui casse le correctif
+    # suivant, trouvé par la fixture dix minutes après.
+    protege = re.sub(r"(?<![a-zà-ÿ])à(?![a-zà-ÿ])", "\x01", (s or "").lower())
     n = unicodedata.normalize("NFKD", protege)
     return "".join(c for c in n if not unicodedata.combining(c)).replace("\x01", "à")
 
 
-def extraits_de_recit(texte: str, max_extraits: int = 3) -> list[str]:
+# CE QUI RESTAIT APRÈS LA PREMIÈRE CORRECTION, et qui est la vraie difficulté du sujet.
+# Sur les 13 dernières fiches signalées, DOUZE étaient encore légitimes :
+#
+#   « le musée y A OUVERT EN 1984 »                              ← histoire du lieu
+#   « qui A TERMINÉ 5e de Nationale LA SAISON PRÉCÉDENTE »       ← édition d'avant
+#   « qui A DÉJÀ SÉDUIT 50 000 visiteurs L'ANNÉE PRÉCÉDENTE »    ← fréquentation passée
+#   « sa XXVIe édition, EN 2025, S'EST TENUE du 10 au 15 »       ← édition d'avant
+#   « des artistes qui ONT EXPOSÉ AU FIL DES ANS »               ← historique
+#
+# Toutes portent un MARQUEUR DE RÉTROSPECTIVE : une année révolue, « précédente »,
+# « déjà », « au fil des ans », « depuis ». Le passé y parle d'AVANT, pas de l'événement
+# annoncé — et c'est justement le passé que la charte autorise.
+#
+# La seule vraie faute du lot n'en portait aucun : « L'inauguration, LE 13 JUIN 2026,
+# A RÉUNI projection d'un film » — l'année est celle de l'événement, donc ça raconte
+# bien ce qui vient de se passer.
+#
+# D'où l'ancre : une année ANTÉRIEURE à celle de l'événement disculpe, la sienne non.
+# Même principe que partout ailleurs aujourd'hui — on ne juge pas une forme isolée, on la
+# confronte à un fait qu'on connaît déjà.
+_RETROSPECTIF = (
+    r"\bprecedent", r"\bl'an dernier\b", r"\bderniere edition\b", r"\bdeja\b",
+    r"\bau fil des ans\b", r"\bchaque edition\b", r"\bdepuis\b", r"\bjusqu'ici\b",
+    r"\bdans les annees \d{4}", r"\bavant\b", r"\bhistorique\b", r"\bautrefois\b",
+    r"\ba l'epoque\b", r"\bpar le passe\b", r"\bfonde en\b", r"\bcree en\b", r"\ba donne naissance\b",
+    r"\bne dans les annees\b", r"\bpremiere edition\b", r"\bediteurs? precedent",
+)
+
+
+def _est_du_contexte(zone: str, annee_reference: int | None) -> bool:
+    """La zone parle-t-elle d'AVANT ? Alors son passé est légitime dans une annonce."""
+    if any(re.search(m, zone) for m in _RETROSPECTIF):
+        return True
+    if annee_reference:
+        for m in re.finditer(r"\b(19|20)\d{2}\b", zone):
+            if int(m.group(0)) < annee_reference:
+                return True
+    return False
+
+
+def extraits_de_recit(texte: str, max_extraits: int = 3,
+                      annee_reference: int | None = None) -> list[str]:
     """Les passages qui racontent au lieu d'annoncer. [] si l'article annonce bien.
 
     L'extrait rendu vient du texte D'ORIGINE (accents compris) : c'est lui qu'on relit
@@ -115,6 +160,9 @@ def extraits_de_recit(texte: str, max_extraits: int = 3) -> list[str]:
         for m in re.finditer(motif, plat):
             debut = max(0, m.start() - 45)
             fin = min(len(texte), m.end() + 45)
+            # Un passé entouré d'un marqueur de rétrospective parle du CONTEXTE.
+            if _est_du_contexte(plat[max(0, m.start() - 90):m.end() + 90], annee_reference):
+                continue
             extrait = re.sub(r"\s+", " ", texte[debut:fin]).strip()
             extrait = re.sub(r"^\S*\s|\s\S*$", " ", extrait).strip()
             if extrait and not any(extrait in v or v in extrait for v in vus):
@@ -124,6 +172,7 @@ def extraits_de_recit(texte: str, max_extraits: int = 3) -> list[str]:
     return vus
 
 
-def raconte(texte: str) -> bool:
+def raconte(texte: str, annee_reference: int | None = None) -> bool:
     """Vrai si l'article a la forme d'un compte rendu."""
-    return bool(extraits_de_recit(texte, max_extraits=1))
+    return bool(extraits_de_recit(texte, max_extraits=1,
+                                  annee_reference=annee_reference))

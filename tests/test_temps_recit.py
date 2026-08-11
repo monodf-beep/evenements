@@ -103,6 +103,36 @@ for texte in FAUX_POSITIFS:
     _check(f"pas une faute : « {texte[:54]}… »", not raconte(texte),
            str(extraits_de_recit(texte)))
 
+print("\n──── LE PASSÉ QUI PARLE D'AVANT — douze cas réels du deuxième run ────")
+# Après la première correction, l'audit signalait encore 13 fiches. DOUZE étaient
+# légitimes, et toutes portaient un marqueur de rétrospective : une année révolue,
+# « précédente », « déjà », « au fil des ans », « avant ». Le passé y parle de ce qui
+# a précédé l'événement annoncé — exactement ce que la charte autorise.
+#
+# La SEULE vraie faute du lot n'en portait aucun, et son année était celle de
+# l'événement : « L'inauguration, le 13 juin 2026, a réuni… ». D'où l'ancre.
+RETROSPECTIFS = [
+    "Le musée y a ouvert en 1984, première ouverture italienne du genre.",
+    "Cet affrontement contre Massy, qui a terminé 5e de Nationale la saison précédente.",
+    "Un accès gratuit qui a déjà séduit 50 000 visiteurs l'année précédente.",
+    "Sa XXVIe édition, en 2025, s'est tenue du 10 au 15 décembre.",
+    "Des œuvres cédées au fil des ans par des artistes qui ont exposé à Paratissima.",
+    "Avant Clooney, l'initiative a accueilli Kerry Kennedy, avocate des droits humains.",
+    "Depuis au moins 2022, chaque édition a rassemblé projections, ateliers et rencontres.",
+    "L'élan du Collontrek a donné naissance à un projet plus vaste.",
+    "Le Palio est né dans les années 1960.",
+    "Un quatuor de saxophonistes de l'école a joué à Montevideo la saison précédente.",
+    "Le site a déjà accueilli, en mai, une course internationale de slalom.",
+    "La Cavallerizza a accueilli l'an dernier une édition de Graphic Days.",
+]
+for texte in RETROSPECTIFS:
+    _check(f"contexte, pas compte rendu : « {texte[:50]}… »",
+           not raconte(texte, annee_reference=2026), str(extraits_de_recit(texte, annee_reference=2026)))
+
+_check("MAIS l'inauguration de CETTE année reste une faute",
+       raconte("L'inauguration, le 13 juin 2026, a réuni projection et rencontres.",
+               annee_reference=2026))
+
 print("\n──── d'autres formes de compte rendu, à refuser ────")
 FAUTIFS = [
     "Le concert s'est tenu samedi soir dans la cour du château.",
