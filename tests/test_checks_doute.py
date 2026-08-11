@@ -79,7 +79,14 @@ CAS = [
     # c'est voulu — on ne peut pas confirmer ce que la source ne dit pas.
     ("Gratuité annoncée mais non confirmée par la source", False),
     ("Line-up : 1 ou 2 artistes ?", True),
-    ("Nom de l'artiste peut-être mal orthographié", True),
+    # ── ORTHOGRAPHES : arbitrage de Franck, « le pipeline doit recopier la source »
+    # Treize points sur soixante-six demandaient de confirmer la graphie d'un nom propre.
+    # Un doute de graphie ne se règle pas à la main : il se règle en RECOPIANT le nom
+    # depuis la matière au lieu de le retranscrire — c'est ce que le prompt exige
+    # désormais. Même formulé avec « peut-être », ce n'est plus une tâche.
+    ("Nom de l'artiste peut-être mal orthographié", False),
+    ("Orthographe exacte de Salvador Repilado", False),
+    ("Orthographe exacte des artistes (Carisma Band, La Cricca)", False),
     ("Deux dates contradictoires entre le flux et la page", True),
     # ── TROISIÈME PASSE : les questions qui RÉCLAMENT DU CONTENU ────────────────
     # 66 doutes restaient sur 453 points, et une famille entière passait encore grâce au

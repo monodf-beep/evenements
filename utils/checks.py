@@ -73,6 +73,15 @@ _ABSENCE = (
     r"\by a-t-il d'autres\b", r"\bnombre et niveau\b",
     r"\bnationalites precises", r"\bcapacites? d'accueil",
     r"\bages? recommandes?", r"\bdurees? des\b",
+    # ORTHOGRAPHES — arbitrage de Franck, 2026-08-11 : « le pipeline doit recopier la
+    # source ». Treize points sur soixante-six demandaient de confirmer l'écriture d'un
+    # nom propre (« Salvador Repilado », « Tsantí de Bouva », « Carisma Band »). Si le
+    # modèle doute d'une graphie, la réponse n'est pas de la faire vérifier à la main :
+    # c'est qu'il RECOPIE le nom tel qu'il figure dans la matière au lieu de le
+    # retranscrire de mémoire. Le prompt d'enrichissement le lui demande désormais
+    # explicitement ; ces points n'ont donc plus lieu d'exister, et en attendant qu'ils
+    # disparaissent d'eux-mêmes ils ne sont plus affichés.
+    r"\borthographe", r"\borthographi", r"\bgraphie\b", r"\becriture exacte\b",
 )
 
 # Marqueurs employés quand on doute d'un fait QU'ON ÉCRIT — c'est-à-dire quand l'article
@@ -84,7 +93,6 @@ _DOUTE = (
     r"\bincertain", r"\bdouteu", r"\bambigu",
     r"\bune seule date\b", r"\bseule date trouvee\b",
     r"\bcontradict", r"\bdivergen", r"\bincoheren",
-    r"\bmal orthographi", r"\borthographe\b",
     r"\b1 ou 2\b", r"\bou bien\b",
     r"\bsemble\b", r"\bsupposé", r"\bsuppose\b",
     r"\bconfusion\b", r"\bconfondu", r"\bne correspond pas\b",
