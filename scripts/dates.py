@@ -355,7 +355,7 @@ def dates_from_page(html: str) -> tuple[str, str, str]:
     return ("", "", "")
 
 
-def _bilan_dates(conn: sqlite3.Connection) -> dict:
+def _bilan_dates(conn: sqlite3.Connection, today: str | None = None) -> dict:
     """Combien de fiches ont une date — mesuré sur les DATES, pas sur leur étiquette.
 
     Le bilan de fin de run comptait `date_source IN ('parsed','page','llm',
@@ -370,13 +370,26 @@ def _bilan_dates(conn: sqlite3.Connection) -> dict:
       • `fin_seule` — « jusqu'au 20 septembre » : classable, mais toujours incomplète ;
       • `rien`      — aucune date du tout.
     """
-    def _n(where: str) -> int:
+    today = today or date.today().isoformat()
+
+    def _n(where: str, params: tuple = ()) -> int:
         return conn.execute(f"SELECT COUNT(*) n FROM events_raw WHERE statut != 'merged' "
-                            f"AND {where}").fetchone()["n"]
+                            f"AND {where}", params).fetchone()["n"]
+
+    fin_seule = "COALESCE(date_event_start,'') = '' AND COALESCE(date_event_end,'') <> ''"
     return {
         "debut": _n("COALESCE(date_event_start,'') <> ''"),
-        "fin_seule": _n("COALESCE(date_event_start,'') = '' "
-                        "AND COALESCE(date_event_end,'') <> ''"),
+        "fin_seule": _n(fin_seule),
+        # LE PÉRIMÈTRE À CÔTÉ DU NOMBRE (règles 5 et 6). « 54 n'ont qu'une fin » a été
+        # affiché quatre fois le 2026-08-11 sans jamais dire COMBIEN étaient encore
+        # devant nous — et c'est toute la question : une exposition terminée en juin n'a
+        # pas besoin qu'on lui trouve une date de début, elle n'a besoin de rien. J'ai
+        # cherché pendant deux heures à réparer un chemin qui ne rendait rien, alors que
+        # ce nombre-là aurait dit tout de suite s'il y avait quelque chose à réparer.
+        "fin_seule_a_venir": _n(f"{fin_seule} AND date_event_end >= ?", (today,)),
+        # Sans aucune date, on ne PEUT pas trancher : une fiche non datée n'est pas un
+        # événement passé, c'est une donnée manquante (règle 5). Elles comptent donc
+        # toutes comme étant devant nous, et c'est volontairement prudent.
         "rien": _n("COALESCE(date_event_start,'') = '' "
                    "AND COALESCE(date_event_end,'') = ''"),
     }
@@ -1061,12 +1074,14 @@ def main(argv=None) -> int:
         log.info("Passe traductions : %d fiche(s) en ligne à repousser (--no-republish, "
                  "rien envoyé) : %s", len(a_repousser), a_repousser)
 
-    bilan = _bilan_dates(conn)
+    bilan = _bilan_dates(conn, date.today().isoformat())
     total_dated, undated, fins_seules = bilan["debut"], bilan["rien"], bilan["fin_seule"]
     conn.close()
     log.info("=== Datation : +%d texte +%d page +%d LLM ce run · %d fiche(s) ont une date "
-             "de début, %d n'ont qu'une fin, %d n'ont rien ===",
-             parsed, from_page, from_llm, total_dated, fins_seules, undated)
+             "de début · %d n'ont qu'une fin, DONT %d encore devant nous · %d n'ont "
+             "aucune date (impossible à classer, donc toutes à traiter) ===",
+             parsed, from_page, from_llm, total_dated, fins_seules,
+             bilan["fin_seule_a_venir"], undated)
     return 0
 
 
