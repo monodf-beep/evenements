@@ -63,6 +63,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from scripts.audit_annee_date import phrase_de_l_annee  # noqa: E402
 from scripts.dates import _MONTHS, _MONTH_RE, _iso, _strip, _year  # noqa: E402
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -123,34 +124,36 @@ def _materiau(row: sqlite3.Row) -> str:
     return "\n".join(bouts)
 
 
-def verdict(stockees: set[str], du_texte: set[str]) -> tuple[str, str]:
-    """(verdict, motif). Verdicts : 'confirme' | 'contredit' | 'annee' | 'muet' | 'indecis'.
+def verdict(stockees: set[str], du_texte: set[str]) -> tuple[str, str, str]:
+    """(verdict, motif, date_du_texte). Verdicts : 'confirme' | 'contredit' | 'annee' |
+    'muet' | 'indecis'. La troisième valeur est la date du TEXTE qui a déclenché le
+    signalement — c'est elle qu'on ira montrer dans sa phrase.
 
     L'ordre des tests compte. « confirmé » passe en premier : un texte qui contient NOTRE
     date ne la contredit pas, même s'il en contient dix autres (une page de saison cite ses
     voisines, un mail cite la date d'envoi)."""
     if not du_texte:
-        return ("muet", "le texte source ne porte aucune date")
+        return ("muet", "le texte source ne porte aucune date", "")
     if stockees & du_texte:
-        return ("confirme", "la date figure telle quelle dans le texte source")
+        return ("confirme", "la date figure telle quelle dans le texte source", "")
 
-    # ② L'année : même jour, même mois, autre millésime. C'est la forme qu'a prise le
-    #    défaut trouvé par l'agent, et elle est reconnaissable sans rien comprendre.
-    for s in stockees:
-        for d in du_texte:
+    # ② L'année : même jour, même mois, autre millésime. Reconnaissable sans rien
+    #    comprendre — c'est tout l'intérêt.
+    for s in sorted(stockees):
+        for d in sorted(du_texte):
             if s[5:] == d[5:] and s[:4] != d[:4]:
                 return ("annee", f"le texte dit {d}, la base dit {s} — même jour, "
-                                 f"autre année")
+                                 f"autre année", d)
 
     # ① Une seule date dans le texte, et ce n'est pas la nôtre. Aucune ambiguïté sur ce
     #    dont le texte parle : il n'a qu'un candidat.
     if len(du_texte) == 1:
         seule = next(iter(du_texte))
         return ("contredit", f"le texte ne dit qu'UNE date, {seule} ; la base dit "
-                             f"{' / '.join(sorted(stockees))}")
+                             f"{' / '.join(sorted(stockees))}", seule)
 
     return ("indecis", f"{len(du_texte)} dates dans le texte, aucune n'est la nôtre — "
-                       f"notre date vient peut-être de la page officielle")
+                       f"notre date vient peut-être de la page officielle", "")
 
 
 def main(argv: list[str]) -> int:
@@ -202,10 +205,15 @@ def main(argv: list[str]) -> int:
                                 (r["date_event_end"] or "").strip()[:10]) if len(d) == 10}
         if not stockees:
             continue
-        v, motif = verdict(stockees, dates_du_texte(_materiau(r), ref))
+        v, motif, cible = verdict(stockees, dates_du_texte(_materiau(r), ref))
         compte[v] += 1
         if v in ("contredit", "annee") or (args.tout and v == "indecis"):
-            a_voir.append((r, v, motif))
+            # LA PHRASE, PAS SEULEMENT LA DATE. Sans elle, le lecteur arbitre à l'aveugle
+            # entre deux nombres et tranchera dans le sens de celui qui affiche — c'est
+            # l'erreur 14 du 2026-08-11, où j'ai déclaré fausses deux dates qui étaient
+            # justes. Ici l'enjeu est plus grand encore : ces fiches sont PUBLIÉES, donc
+            # une correction à tort réécrit une page que des gens lisent.
+            a_voir.append((r, v, motif, phrase_de_l_annee(_materiau(r), cible)))
 
     total = sum(compte.values())
     print("═══ La source dit-elle la même date que nous ? ═══")
@@ -228,7 +236,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     print(f"═══ {len(a_voir)} fiche(s) à regarder, la plus coûteuse d'abord ═══\n")
-    for r, v, motif in a_voir:
+    for r, v, motif, phrase in a_voir:
         etat = f"EN LIGNE #{r['wp_post_id_as']}" if r["wp_post_id_as"] else "hors ligne"
         marque = "⚠ ANNÉE" if v == "annee" else ("✗ CONTREDIT" if v == "contredit"
                                                  else "· indécis")
@@ -236,6 +244,8 @@ def main(argv: list[str]) -> int:
               f"(date_source={r['date_source'] or '?'})")
         print(f"          {(r['title'] or '')[:72]}")
         print(f"          {motif}")
+        if phrase:
+            print(f"          le texte dit : « {phrase} »")
         print(f"          source : {r['source_name'] or '?'}\n")
 
     print("SIGNALEMENT, PAS UN VERDICT : notre date peut être la bonne — elle vient "

@@ -272,8 +272,18 @@ ailleurs qu'en base doit avoir, dès sa première ligne, quelqu'un qui la recalc
 
 ## L'état terminal qui n'est PAS un état — une date fausse dans le passé
 
-Trouvé le 2026-08-11 par l'agent quotidien, à son premier run : « trois fiches portent le
-bon jour mais une année périmée — 4440 en 2025, 4691 et 4434 en 2024 ».
+Soupçonné le 2026-08-11 par l'agent quotidien, à son premier run : « trois fiches portent
+le bon jour mais une année périmée — 4440 en 2025, 4691 et 4434 en 2024 ».
+
+**Ces trois-là étaient justes**, vérification faite le soir même : 4440 est au 08/09/2026,
+4691 du 07 au 09/08/2026, 4434 court jusqu'au 31/01/2027. J'avais écrit l'audit, cette
+section et un message de commit sur la foi d'un rapport d'agent que je n'avais pas
+recoupé — c'est-à-dire en faisant exactement ce que tout ce dépôt reproche à sa propre
+chaîne. Le compte rendu d'un agent est une PISTE, pas un fait.
+
+La classe de défaut, elle, existe bel et bien : le contradicteur de dates en a trouvé deux
+cas en production le même soir (1069, 2663), tous deux publiés. **Mais dans l'autre sens,
+et c'est ce qui rend la suite intéressante.**
 
 C'est la forme la plus discrète du motif, parce qu'**aucune colonne ne dit « garée »**.
 Rien n'est écarté, aucun statut n'est posé, aucun portillon n'a refusé quoi que ce soit :
@@ -317,6 +327,31 @@ faite à la main la veille disparaît sans un mot).
 **À retenir : chercher les états terminaux dans les colonnes de statut ne suffit pas. Une
 DONNÉE ordinaire peut sortir une fiche de toutes les files, et le fera d'autant plus
 silencieusement qu'elle emprunte une règle légitime pour le faire.**
+
+### Et l'année fausse va dans l'AUTRE sens
+
+C'est la découverte du soir, et elle retourne le raisonnement de l'audit ci-dessus.
+
+Ma preuve de solidité était : « `_year()` ne peut pas produire une date antérieure de plus
+de soixante jours à la collecte, donc une telle date vient forcément d'ailleurs ». Elle est
+exacte. Elle est aussi à côté du sujet, parce que `_year()` produit l'erreur **par le
+haut** : quand le texte ne porte pas d'année et que le jour est déjà passé, il bascule à
+l'an prochain. Sur un texte qui annonce le 7 mai et une collecte de mai 2026, on obtient
+mai 2027.
+
+  • fiche 1069 (Paratissima, en ligne) : le texte dit 2026-05-07, la base dit 2027-05-07 ;
+  • fiche 2663 (Malraux Chambéry, en ligne) : le texte dit 2025-09-19, la base 2026-09-19.
+
+Une date poussée d'un an dans le FUTUR ne déclenche rien. Elle passe toutes les règles :
+l'événement est « à venir », la fiche reste dans les files, elle se publie, et le visiteur
+lit une date fausse d'un an sans que personne ne s'en aperçoive — jusqu'à ce que la vraie
+date arrive et passe sans nous.
+
+`audit_annee_date` ne les voit pas et ne les verra jamais : il regarde en arrière. C'est
+`verifier_dates` qui les attrape, parce qu'il ne raisonne pas sur le calendrier mais
+confronte notre date au texte. **Une invariante démontrée n'est utile que si elle porte sur
+le bon côté du problème** — la mienne était vraie, et elle m'a rassuré dans la mauvaise
+direction.
 
 ## L'anti-spam qui ÉTAIT un état terminal sans le savoir
 

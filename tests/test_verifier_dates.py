@@ -151,6 +151,15 @@ _check("les confirmées aussi — sinon un « 0 contradiction » ne dirait pas s
        re.search(r"1\s+confirmées", sortie) is not None)
 _check("le périmètre est écrit à côté du total", "règle 5" in sortie)
 _check("la portée est bornée", "SIGNALEMENT" in sortie)
+# Ces fiches-là sont PUBLIÉES : une correction à tort réécrit une page que des gens
+# lisent. Le lecteur doit voir la PHRASE, pas deux nombres qui s'opposent.
+_check("la phrase du texte source est montrée pour la contradiction",
+       "le texte dit : «" in sortie and "21 août 2026" in sortie, sortie[-1200:])
+_check("et pour l'année périmée aussi", "15 agosto 2024" in sortie, sortie[-1200:])
+_check("le verdict rend la date du texte qui a déclenché le signalement",
+       verifier_dates.verdict({"2026-08-22"}, {"2026-08-21"})[2] == "2026-08-21")
+_check("et rien quand il n'y a pas de signalement",
+       verifier_dates.verdict({"2026-08-21"}, {"2026-08-21"})[2] == "")
 
 print("\n──── 5. --en-ligne : d'abord ce que le public lit ────")
 vues_ligne, _ = _sortie(["--en-ligne"])
