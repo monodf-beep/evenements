@@ -74,13 +74,21 @@ def _positions(corps_norm: str, titre_norm: str) -> list[int]:
     return []
 
 
-def date_pres_du_titre(corps: str, titre: str,
-                       ref: date | None = None) -> tuple[str, str]:
+def date_pres_du_titre(corps: str, titre: str, ref: date | None = None,
+                       _extraits: list | None = None) -> tuple[str, str]:
     """(début, fin) lus AUTOUR du titre dans le corps du mail. ('','') si rien de sûr.
 
     Le parsing est délégué à `scripts.dates.parse_dates`, le même lecteur que celui qui
     lit « du 11 au 29 août » dans un titre d'article : rien de neuf, seulement appliqué à
-    la bonne portion de texte."""
+    la bonne portion de texte.
+
+    `_extraits` (optionnel) : reçoit le texte SUR LEQUEL la date a été lue. Ajouté le
+    2026-08-11 au premier run réel, qui a rendu trois dates toutes situées dans le passé
+    (25 juillet, 6 et 8 août) — ce qui est la signature exacte d'une erreur possible :
+    le lecteur aurait pu attraper la date d'ENVOI de la newsletter. Impossible de
+    trancher sans voir la phrase. Un script qui pose une date sans montrer d'où elle
+    vient demande qu'on le croie ; celui-ci montre, comme utils/infos_pratiques.py rend
+    la phrase autour du tarif plutôt que le montant seul."""
     from scripts.dates import parse_dates  # import tardif : évite un cycle au chargement
 
     corps_norm, titre_norm = _norm(corps), _norm(titre)
@@ -92,6 +100,8 @@ def date_pres_du_titre(corps: str, titre: str,
         s, e, src = parse_dates(corps_norm[apres:apres + _FENETRE], ref)
         if src == "parsed" and s:
             trouves.add((s, e or s))
+            if _extraits is not None:
+                _extraits.append(corps_norm[apres:apres + 140].strip())
     # Une seule réponse, ou rien. Deux dates différentes autour du même titre veulent dire
     # que la fenêtre a mordu sur l'annonce voisine — et on ne devine pas laquelle est
     # la bonne.

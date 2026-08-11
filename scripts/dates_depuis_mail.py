@@ -114,7 +114,9 @@ def main(argv: list[str]) -> int:
         if not corps:
             sans_corps += 1
             continue
-        debut, fin = date_pres_du_titre(corps, ev.get("title") or "")
+        extraits: list[str] = []
+        debut, fin = date_pres_du_titre(corps, ev.get("title") or "",
+                                        _extraits=extraits)
         if not debut:
             sans_date += 1
             print(f"  [{ev['id']:>5}] mail relu, aucune date SÛRE près du titre — "
@@ -122,6 +124,14 @@ def main(argv: list[str]) -> int:
             continue
         trouves.append((ev["id"], debut, fin, (ev.get("title") or "")[:52]))
         print(f"  [{ev['id']:>5}] {debut} → {fin}   {(ev.get('title') or '')[:52]}")
+        # LA PHRASE D'OÙ VIENT LA DATE, toujours affichée. Au premier run réel, les
+        # trois dates trouvées étaient toutes PASSÉES (25 juillet, 6 et 8 août) — ce
+        # qui est aussi la signature d'une erreur : le lecteur pourrait avoir pris la
+        # date d'ENVOI de la newsletter. Sans voir le texte, ni Franck ni moi ne
+        # pouvions trancher, et on allait écrire des dates fausses sur la foi d'un
+        # chiffre. Un script qui pose un fait doit montrer sur quoi il l'a lu.
+        if extraits:
+            print(f"          ↳ lu sur : « …{extraits[0][:110]}… »")
 
     print(f"\n{len(corps_par_mail)} mail(s) téléchargé(s) · {len(trouves)} date(s) "
           f"trouvée(s) · {sans_date} sans date sûre · {sans_corps} sans corps disponible.")
