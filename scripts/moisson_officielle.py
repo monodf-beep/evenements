@@ -71,6 +71,8 @@ from utils.images import fetch_og_image  # noqa: E402
 from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
 from utils.radar import source_officielle  # noqa: E402
 from utils import jsonld  # noqa: E402
+from utils import infos_pratiques  # noqa: E402
+import json  # noqa: E402
 from scripts.dates import dates_from_page, ensure_columns, _robust_get  # noqa: E402
 from scripts.venues import venue_from_page  # noqa: E402
 
@@ -78,12 +80,22 @@ log = get_logger("moisson")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 CHAMPS = ("date_event_start", "date_event_end", "lieu", "ville", "url_image")
+# INFOS PRATIQUES (2026-08-11) — Franck : « il faut que le script aille chercher les
+# informations dans les ressources officielles ». Sur 81 colonnes, aucune ne stockait un
+# tarif, un horaire ou une condition d'accès : ces faits ne vivaient que dans l'article,
+# donc quand ils manquaient la seule issue prévue était d'ouvrir une tâche. Ils sont
+# pourtant écrits sur la page de l'organisateur — il suffisait d'aller les lire.
+# Stockés en JSON : ce sont des EXTRAITS de la page, pas des valeurs interprétées.
+_COL_INFOS = "infos_pratiques"
 # Écrit UNE fois : la sélection et le recompte final doivent porter sur le même
 # critère, sinon le bilan diverge de ce qui a été tenté.
 _MANQUE = (" OR ".join(f"COALESCE({c},'')=''" for c in CHAMPS)
            # Une bannière n'est pas une image : la fiche a beau avoir tous
            # ses champs remplis, il lui manque une vraie affiche.
-           + " OR COALESCE(image_source,'')='banner'")
+           + " OR COALESCE(image_source,'')='banner'"
+           # Une fiche complète mais sans infos pratiques mérite la lecture : c'est
+           # justement ce qui remplissait la file « À vérifier » de tarifs et d'horaires.
+           + f" OR COALESCE({_COL_INFOS},'')=''")
 
 
 # Marqueurs qu'on sait lire aujourd'hui, et ceux qu'on ne lit PAS encore. Le mode
@@ -134,8 +146,19 @@ def _url_telechargeable(ev: dict) -> str:
     return ""
 
 
+def _ensure_colonne_infos(conn) -> None:
+    """Crée `infos_pratiques` si besoin. Appelée par TOUTE fonction qui l'interroge, et
+    pas seulement par main() : la leçon d'audit_annulations le 2026-08-09 (« no such
+    column »), c'est qu'un module ne doit pas supposer qu'un autre chemin a déjà migré."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
+    if _COL_INFOS not in cols:
+        conn.execute(f"ALTER TABLE events_raw ADD COLUMN {_COL_INFOS} TEXT")
+        conn.commit()
+
+
 def _a_moissonner(conn, today: str, cap: int) -> list[dict]:
     """Fiches encore devant nous à qui il manque au moins un champ récoltable."""
+    _ensure_colonne_infos(conn)
     rows = [dict(r) for r in conn.execute(
         f"SELECT * FROM events_raw WHERE "
         "statut IN ('evaluated','published_cs','published_sub') "
@@ -220,6 +243,14 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
         if og and og != _img and not is_logo_image(og) \
                 and not is_blocked_image(og, load_blocked_image_domains()):
             trouve["url_image"] = og
+    # Les infos pratiques ne sont pas dans CHAMPS : elles ne conditionnent pas la
+    # publication (la porte qualité n'en demande pas), elles la RENSEIGNENT. On les
+    # récolte donc même quand tout le reste est déjà rempli.
+    if not (ev.get(_COL_INFOS) or "").strip():
+        pratiques = infos_pratiques.extraire(html)
+        if pratiques:
+            trouve[_COL_INFOS] = json.dumps(pratiques, ensure_ascii=False)
+
     if not trouve and marqueurs is not None:
         for nom in _diagnostic(html) or ["AUCUN marqueur connu"]:
             marqueurs[nom] += 1
@@ -253,6 +284,7 @@ def main(argv=None) -> int:
     # ce script écrit date_source et date_checked_at, qui appartiennent à dates.py. Sur
     # une base neuve — ou si moisson tourne avant dates.py — la colonne n'existe pas.
     ensure_columns(conn)
+    _ensure_colonne_infos(conn)
     if args.ids:
         ph = ",".join("?" * len(args.ids))
         cibles = [dict(r) for r in conn.execute(
@@ -267,7 +299,7 @@ def main(argv=None) -> int:
         conn.close()
         return 0
 
-    gagnes = {c: 0 for c in CHAMPS}
+    gagnes = {c: 0 for c in (*CHAMPS, _COL_INFOS)}
     lues = vides = 0
     from collections import Counter
     marqueurs_vides = Counter()
@@ -279,8 +311,10 @@ def main(argv=None) -> int:
             continue
         for c in trouve:
             gagnes[c] += 1
-        detail = " · ".join(f"{c.replace('date_event_', '')}={v}"[:46]
-                            for c, v in trouve.items())
+        detail = " · ".join(
+            (f"{c}=" + ", ".join(json.loads(v))) [:70] if c == _COL_INFOS
+            else f"{c.replace('date_event_', '')}={v}"[:46]
+            for c, v in trouve.items())
         print(f"  [{ev['id']:>5}] {detail}")
         if args.apply:
             sets = ", ".join(f"{c}=?" for c in trouve)
@@ -308,7 +342,7 @@ def main(argv=None) -> int:
         for nom, n in marqueurs_vides.most_common():
             print(f"  {n:4} {nom}")
         print()
-    for c in CHAMPS:
+    for c in (*CHAMPS, _COL_INFOS):
         print(f"  {gagnes[c]:4} {c}")
 
     if not args.apply:

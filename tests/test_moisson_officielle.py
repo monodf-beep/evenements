@@ -102,7 +102,14 @@ _check("la fiche incomplète avec page est retenue", 1 in cibles, str(sorted(cib
 _check("la fiche « gmail: » est ignorée (rien à télécharger)", 4 not in cibles,
        str(sorted(cibles)))
 _check("la fiche PASSÉE est écartée (règle 5)", 5 not in cibles, str(sorted(cibles)))
-_check("la fiche complète n'est pas retenue", 3 not in cibles, str(sorted(cibles)))
+# CHANGEMENT DE CONTRAT (2026-08-11) : une fiche « complète » est désormais retenue si
+# elle n'a pas encore ses INFOS PRATIQUES. C'est la demande de Franck — « il faut que le
+# script aille chercher les informations dans les ressources officielles » — et c'est ce
+# qui tarit la file « À vérifier » remplie de tarifs et d'horaires : ces faits sont sur la
+# page de l'organisateur, il suffit de les lire. Ses champs obligatoires, eux, restent
+# intouchés (vérifié plus bas).
+_check("une fiche complète MAIS sans infos pratiques est retenue", 3 in cibles,
+       str(sorted(cibles)))
 conn.close()
 
 print("\n──── simulation : rien n'est écrit ────")
@@ -170,7 +177,10 @@ conn.row_factory = sqlite3.Row
 cibles2 = {e["id"] for e in mo._a_moissonner(conn, AUJOURDHUI, 50)}
 _check("la fiche sur BANNIÈRE est reprise (il lui manque une vraie affiche)",
        6 in cibles2, str(sorted(cibles2)))
-_check("la fiche à VRAIE photo n'est pas reprise", 7 not in cibles2, str(sorted(cibles2)))
+# Elle est reprise, mais pour ses INFOS PRATIQUES seulement — sa photo, elle, ne sera pas
+# touchée : c'est ce que vérifie l'assertion suivante sur url_image.
+_check("la fiche à VRAIE photo est reprise pour ses infos pratiques, pas pour son image",
+       7 in cibles2, str(sorted(cibles2)))
 conn.close()
 
 mo.main(["--apply", "6", "7"])
