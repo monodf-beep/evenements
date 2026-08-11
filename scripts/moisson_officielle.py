@@ -323,10 +323,24 @@ def main(argv=None) -> int:
 
     gagnes = {c: 0 for c in (*CHAMPS, _COL_INFOS)}
     lues = vides = 0
+    # « 0 date_event_start » ne dit RIEN tant qu'on ignore si le cas s'est
+    # présenté (règle 6 : un compteur doit dire ce qu'il compte). Le run du
+    # 2026-08-11 a affiché 0 date sur 70 pages, et il était impossible de
+    # savoir si le chemin « début corroboré par la fin » avait échoué ou n'avait
+    # simplement jamais eu de candidat : aucune des 70 fiches n'avait peut-être
+    # de date de fin sans début. Un zéro qui ne distingue pas « rien trouvé » de
+    # « rien tenté » envoie chercher un bug là où il n'y a que du vide.
+    candidats_debut = trouves_debut = 0
     from collections import Counter
     marqueurs_vides = Counter()
     for ev in cibles:
+        # Le cas s'est-il seulement présenté ? Compté AVANT la récolte, sur l'état de la
+        # fiche : une fin connue, pas de début. C'est la seule façon de lire le zéro.
+        candidat = (not (ev.get("date_event_start") or "").strip()
+                    and bool((ev.get("date_event_end") or "").strip()))
+        candidats_debut += candidat
         trouve = _recolte(ev, marqueurs_vides if args.diagnostic else None)
+        trouves_debut += candidat and "date_event_start" in trouve
         lues += 1
         if not trouve:
             vides += 1
@@ -358,7 +372,9 @@ def main(argv=None) -> int:
                              (ev["id"],))
             conn.commit()
 
-    print(f"\n{lues} page(s) lue(s), dont {vides} sans aucune donnée exploitable.\n")
+    print(f"\n{lues} page(s) lue(s), dont {vides} sans aucune donnée exploitable.")
+    print(f"Début corroboré par une fin déjà connue : {candidats_debut} fiche(s) "
+          f"étaient dans ce cas, {trouves_debut} y ont gagné une date de début.\n")
     if args.diagnostic and marqueurs_vides:
         print("Ce que portent les pages MUETTES (une page peut compter plusieurs fois) :")
         for nom, n in marqueurs_vides.most_common():
