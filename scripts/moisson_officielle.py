@@ -73,7 +73,8 @@ from utils.radar import source_officielle  # noqa: E402
 from utils import jsonld  # noqa: E402
 from utils import infos_pratiques  # noqa: E402
 import json  # noqa: E402
-from scripts.dates import dates_from_page, ensure_columns, _robust_get  # noqa: E402
+from scripts.dates import (dates_from_page, debut_depuis_page, ensure_columns,  # noqa: E402
+                           _robust_get)
 from scripts.venues import venue_from_page  # noqa: E402
 
 log = get_logger("moisson")
@@ -212,6 +213,27 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
             # de commencer.
             if fin:
                 trouve["date_event_end"] = fin
+    # ── 2 bis. Le DÉBUT corroboré par une FIN déjà connue ───────────────────────
+    # Franck, 2026-08-11 : « date de début, date de fin ! » Après trois passages de
+    # scripts/dates.py, 54 fiches n'avaient toujours qu'une fin — un « jusqu'au 20
+    # septembre » qui ne dit rien du début, et dont la page SOURCE (souvent un article de
+    # presse) n'a rien donné de plus. Mais la page lue ICI est la page OFFICIELLE, celle
+    # de l'organisateur : c'est elle qui écrit « du 12 juin au 20 septembre ».
+    #
+    # On ne cherche pas « une date » dans son texte — une page en porte toujours plusieurs
+    # (l'article, les autres événements, les horaires, le copyright). On cherche une PLAGE
+    # QUI SE TERMINE à la date déjà connue : c'est une confirmation, pas une devinette, et
+    # deux débuts possibles pour la même fin ne rendent rien du tout
+    # (scripts.dates.debut_depuis_page).
+    fin_connue = (ev.get("date_event_end") or "").strip()
+    if (not (ev.get("date_event_start") or "").strip()
+            and "date_event_start" not in trouve and fin_connue):
+        debut = debut_depuis_page(infos_pratiques._texte_visible(html), fin_connue)
+        if debut:
+            # La fin n'est PAS réécrite : c'est elle qui a servi de preuve, la toucher
+            # reviendrait à valider le début avec lui-même.
+            trouve["date_event_start"] = debut
+
     if not (ev.get("lieu") or "").strip() and "lieu" not in trouve:
         lieu, ville, _src = venue_from_page(html)
         if lieu:

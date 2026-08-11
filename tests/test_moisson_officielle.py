@@ -225,5 +225,41 @@ _check("une page officielle riche reste, elle, récoltable",
            conn.execute("SELECT * FROM events_raw WHERE id=1")))
 conn.close()
 
+print("\n──── le DÉBUT corroboré par une FIN déjà connue ────")
+# Franck, 2026-08-11 : « date de début, date de fin ! ». Après trois passages de dates.py,
+# 54 fiches n'avaient toujours qu'une fin, tirée d'un « jusqu'au 20 septembre » dont la
+# page SOURCE ne disait pas le début. La page lue ici est l'OFFICIELLE : c'est elle qui
+# écrit « du 12 juin au 20 septembre ». On n'y cherche pas une date — une page en porte
+# toujours plusieurs — mais une PLAGE QUI FINIT à la date connue.
+PAGE_PROSE = ("<html><body><p>Publié le 3 mars 2026 par la rédaction.</p>"
+              "<p>L'exposition est visible du 12 juin au 20 septembre 2026.</p>"
+              "<p>Prochainement : concert du 5 octobre 2026.</p></body></html>")
+PAGE_PROSE_AUTRE_FIN = ("<html><body><p>Rendez-vous du 1 juillet au 3 août 2026.</p>"
+                        "</body></html>")
+PAGES["https://officiel.fr/prose"] = PAGE_PROSE
+PAGES["https://officiel.fr/prose-sans-rapport"] = PAGE_PROSE_AUTRE_FIN
+conn = sqlite3.connect(tmp)
+for eid, url, fin in ((20, "https://officiel.fr/prose", "2026-09-20"),
+                      (21, "https://officiel.fr/prose-sans-rapport", "2026-09-20")):
+    conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,"
+                 "lieu,ville,url_image,date_event_end) VALUES (?,?,?, 'evaluated', "
+                 "'','','','', ?)", (eid, f"Fin seule {eid}", url, fin))
+conn.commit()
+conn.close()
+mo.main(["--apply"])
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+f20 = dict(conn.execute("SELECT * FROM events_raw WHERE id=20").fetchone())
+f21 = dict(conn.execute("SELECT * FROM events_raw WHERE id=21").fetchone())
+conn.close()
+_check("la plage qui finit à la date connue donne le début",
+       f20["date_event_start"] == "2026-06-12", str(f20["date_event_start"]))
+_check("… et la fin, qui a servi de preuve, n'est pas réécrite",
+       f20["date_event_end"] == "2026-09-20", str(f20["date_event_end"]))
+_check("une plage SANS rapport avec la fin connue ne donne rien — surtout pas sa "
+       "première date", f21["date_event_start"] == "", str(f21["date_event_start"]))
+_check("… et la fiche garde sa date de fin intacte",
+       f21["date_event_end"] == "2026-09-20", str(f21["date_event_end"]))
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)
