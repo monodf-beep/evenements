@@ -419,3 +419,24 @@ details.box > summary { cursor:pointer; font-weight:600; padding:.35rem 0; }
 .tabpane[hidden] { display:none; }
 .tabpane { animation:fadein .12s ease-in; }
 @keyframes fadein { from { opacity:.55; } to { opacity:1; } }
+
+/* ── SECTIONS REPLIABLES (mécanique dans app.js) ───────────────────────────────────
+   Franck, 2026-08-11 : « il faut refaire un peu ce back-office qui soit un peu pliable,
+   parce qu'il y a trop en hauteur d'écran. Il y a trois scrolls. »
+
+   Le problème n'est pas la quantité d'information — chaque bloc a sa raison d'être — c'est
+   qu'ils sont tous DÉPLIÉS en même temps. Un titre replié doit rester lisible comme un
+   titre, pas ressembler à un widget technique : d'où le chevron discret et le résumé
+   aligné à droite, qui dit ce qu'on rate en gardant fermé. */
+details.pli { border: 1px solid var(--line-2); border-radius: .5rem; margin-bottom: .8rem; }
+details.pli > summary { list-style: none; cursor: pointer; padding: .55rem .75rem;
+                        font-weight: 600; font-size: .86rem; letter-spacing: .02em;
+                        display: flex; align-items: center; gap: .45rem; }
+details.pli > summary::-webkit-details-marker { display: none; }
+details.pli > summary::before { content: "\203A"; display: inline-block; transition: transform .15s;
+                                color: #64748b; font-size: 1.05rem; line-height: 1; }
+details.pli[open] > summary::before { transform: rotate(90deg); }
+details.pli > summary:hover { background: var(--line-2); border-radius: .5rem; }
+details.pli > .pli-corps { padding: 0 .75rem .7rem; }
+details.pli > summary .pli-resume { margin-left: auto; font-weight: 400; font-size: .78rem;
+                                    color: #64748b; }

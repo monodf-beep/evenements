@@ -863,7 +863,22 @@ def pilotage():
 @app.route("/couts")
 @require_auth
 def couts_view():
-    """Les coûts API PAR DATE, pour pouvoir comparer.
+    """Redirection : les coûts sont devenus un ONGLET de « État du système ».
+
+    Franck, 2026-08-11 : « je ne pensais pas que tu allais créer une nouvelle page. Dans
+    le back-office il y a trop trop trop de pages. » Il a raison, et j'en avais ajouté deux
+    dans l'heure. « Où en est la machine » et « combien elle coûte » sont la même question
+    posée deux fois — elles tiennent sur une page à deux onglets.
+
+    L'ancienne adresse survit et redirige : un lien mis en favori ne doit pas casser parce
+    qu'on a réorganisé. Une réorganisation qui perd les adresses fait payer le ménage à
+    celui qui n'a rien demandé."""
+    q = request.query_string.decode() if request.query_string else ""
+    return redirect("/systeme?vue=couts" + ("&" + q if q else ""))
+
+
+def _couts_contexte():
+    """Les données de l'onglet « Coûts » — extraites pour être servies par /systeme.
 
     Franck, 2026-08-11 : « mets la possibilité de voir par date, comme ça je pourrai
     comparer les coûts ». Le tableau de bord montre le cumul depuis toujours — utile pour
@@ -897,10 +912,8 @@ def couts_view():
     # maximum absolu : sinon un pic ancien écrase visuellement tout le reste et la
     # comparaison — qui est justement l'objet de la page — devient impossible.
     pic = max((d["cost"] for d in jours.values()), default=0.0)
-    return render_template("couts.html", active="couts", total=total, labels=labels,
-                           jours=jours, pic=pic, expl=_u.explique(total),
-                           du=du, au=au, preset=preset, today=auj.isoformat(),
-                           alert=friendly_alert())
+    return {"total": total, "labels": labels, "jours": jours, "pic": pic,
+            "expl": _u.explique(total), "du": du, "au": au, "preset": preset}
 
 
 @app.route("/systeme")
@@ -919,13 +932,17 @@ def systeme_view():
     plafond d'API est atteint, ce qui est justement le moment où l'on veut savoir ce qui
     est bloqué."""
     from utils import etat_systeme as es
+    vue = "couts" if request.args.get("vue") == "couts" else "chaine"
     conn = get_db()
     try:
         auj = date.today().isoformat()
-        etgs = es.etages(conn, auj)
-        return render_template("systeme.html", active="systeme", etages=etgs,
-                               flux=es.flux(conn, auj), goulot=es.goulot(etgs),
-                               today=auj, alert=friendly_alert())
+        etgs = es.etages(conn, auj) if vue == "chaine" else []
+        return render_template(
+            "systeme.html", active="systeme", vue=vue, etages=etgs,
+            flux=es.flux(conn, auj) if vue == "chaine" else None,
+            goulot=es.goulot(etgs) if vue == "chaine" else None,
+            couts=_couts_contexte() if vue == "couts" else None,
+            today=auj, alert=friendly_alert())
     finally:
         conn.close()
 

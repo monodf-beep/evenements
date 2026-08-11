@@ -6,6 +6,18 @@
 
 {% block content %}
 
+<!-- LES ONGLETS. Franck, 2026-08-11 : « il y a trop trop trop de pages… il faut réussir à
+     prioriser l'information, qu'elle soit rangée là où il faut, dans des menus, des
+     onglets, des sous-onglets si besoin ». « Où en est la machine » et « combien elle
+     coûte » sont la même question posée deux fois : une page, deux onglets, une seule
+     entrée de menu. -->
+<div class="btn-row" style="margin-bottom:1rem;gap:.3rem">
+  <a class="btn btn-sm{{ ' btn-primary' if vue != 'couts' }}" href="/systeme">⚙️ La chaîne</a>
+  <a class="btn btn-sm{{ ' btn-primary' if vue == 'couts' }}" href="/systeme?vue=couts">💶 Les coûts</a>
+</div>
+
+{% if vue == 'couts' %}{% include "_couts.html" %}{% else %}
+
 <!-- LE GOULOT, ET LUI SEUL. Une liste de huit alertes ne se lit pas, elle se subit :
      c'est la faute des 454 « points à contrôler » du 2026-08-11, où le seul qui comptait
      était noyé sous trois cents silences de la source. -->
@@ -53,7 +65,10 @@
 
 <!-- LE RÉGIME. Les étages disent l'état, celui-ci dit le MOUVEMENT. Une chaîne à 100 %
      partout qui ne collecte plus rien est morte, et ça ne se voit sur aucun pourcentage. -->
-<div class="section-title">Le régime, sur {{ flux.jours }} jours</div>
+<details class="pli" data-pli="systeme-regime" open>
+  <summary>Le régime, sur {{ flux.jours }} jours
+    <span class="pli-resume">{{ flux.collectes }} collectés · {{ flux.publies }} publiés</span></summary>
+  <div class="pli-corps">
 <div class="kpis" style="margin-bottom:.6rem">
   <div class="kpi"><div class="v">{{ flux.collectes }}</div><div class="l">collectés</div></div>
   <div class="kpi"><div class="v">{{ flux.sources }}</div><div class="l">sources actives</div></div>
@@ -66,16 +81,23 @@
   le <a href="/pipeline">pipeline</a> et le chien de garde de midi tranchent.
 </div>
 
+  </div>
+</details>
+
 <!-- CE QUE CETTE PAGE NE DIT PAS. Une limite écrite est un garde-fou ; une limite tue
      devient un malentendu, puis une décision prise sur un chiffre qu'on croyait complet. -->
-<div class="section-title">Ce que cette page ne dit pas</div>
-<div class="card" style="padding:.7rem .85rem">
+<details class="pli" data-pli="systeme-limites">
+  <summary>Ce que cette page ne dit pas <span class="pli-resume">4 limites assumées</span></summary>
+  <div class="pli-corps">
   <ul class="muted text-sm" style="margin:0;padding-left:1.1rem;line-height:1.6">
     <li><strong>Le trafic.</strong> Impressions, clics, position : c'est Looker Studio, pas ici. Cette page ne parle que de ce que nous avons produit.</li>
     <li><strong>L'état réel du site.</strong> Un identifiant WordPress en base survit à une mise à la corbeille : « publié » veut dire « nous avons publié », pas « c'est en ligne aujourd'hui ». Seule une interrogation de WordPress le prouve.</li>
     <li><strong>La justesse des faits.</strong> Une fiche peut être complète, rédigée, traduite et référencée — et annoncer une date fausse. C'est le rôle du contradicteur de dates (cron de 11h30, alerte Slack seulement s'il trouve).</li>
     <li><strong>Le passé.</strong> Tous les chiffres ci-dessus ne comptent que les événements <strong>encore devant nous</strong>. Réparer une fiche dont l'événement a eu lieu ne sert personne.</li>
   </ul>
-</div>
+  </div>
+</details>
+
+{% endif %}
 
 {% endblock %}

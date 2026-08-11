@@ -78,3 +78,30 @@
     }, 5000);
   }
 })();
+
+/* ── SECTIONS REPLIABLES, AVEC MÉMOIRE ──────────────────────────────────────────────
+   Franck, 2026-08-11 : « il faut refaire un peu ce back-office qui soit un peu pliable,
+   parce qu'il y a trop aussi en hauteur d'écran. Il y a trois scrolls, il y a trop de
+   choses. »
+
+   Le problème n'est pas la quantité d'information — chaque bloc a sa raison d'être — c'est
+   qu'ils sont tous DÉPLIÉS en même temps. Et un repli sans mémoire est pire que pas de
+   repli : on referme, on change de page, tout se rouvre, et on renonce.
+
+   Donc : tout <details data-pli="…"> retient son état, par identifiant, dans le
+   navigateur. Ce qu'on a fermé reste fermé demain matin.
+
+   Ce qui NE se replie jamais, et c'est délibéré : les alertes et la prochaine action. Un
+   avertissement qu'on peut ranger d'un clic finit toujours rangé. */
+(function () {
+  var CLE = 'pli:';
+  document.querySelectorAll('details[data-pli]').forEach(function (d) {
+    var k = CLE + d.getAttribute('data-pli');
+    var v = null;
+    try { v = localStorage.getItem(k); } catch (e) { return; }
+    if (v === '1') { d.open = true; } else if (v === '0') { d.open = false; }
+    d.addEventListener('toggle', function () {
+      try { localStorage.setItem(k, d.open ? '1' : '0'); } catch (e) {}
+    });
+  });
+})();
