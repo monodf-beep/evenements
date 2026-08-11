@@ -48,8 +48,12 @@ def _check(label, cond, detail=""):
 # (titre, groupe attendu, pourquoi ce cas est là)
 CAS = [
     ("", "vide", "fiche 2676 : aucun titre, rien à publier"),
-    ("Serralunga: le passeggiate accompagnate del 2026", "saison",
-     "un cycle de balades sur l'année"),
+    # Passé de « saison » à « activité » lors de l'élargissement : des balades
+    # accompagnées sont une activité qui se répète. Les deux paniers suggèrent la MÊME
+    # sortie (« récurrent »), donc le classement exact importe moins que le fait qu'elle
+    # ne reste pas dans « événement ».
+    ("Serralunga: le passeggiate accompagnate del 2026", "activité",
+     "des balades accompagnées : une activité qui se répète"),
     ("Stagione 2026 – 2027", "saison", "une saison entière"),
     ("Programme des ateliers du centre socioculturel", "saison", "programme d'ateliers"),
     ("Nice Jazz Fest 2026 - Offre VIP", "professionnel", "une offre commerciale"),
@@ -66,6 +70,27 @@ CAS = [
     # conférence de musée n'est PAS un colloque professionnel.
     ("Conférence : l'art des jardins alpestres", "événement",
      "une conférence de musée n'est pas un colloque"),
+    # ── Élargissement du 2026-08-11, sur les titres RÉELS de la production ──────
+    # La première version rangeait 70 fiches sur 75 dans « événement » : elle ne triait
+    # rien. Ces cas viennent tous de la liste affichée ce matin-là.
+    ("Sere d'Estate alla Reggia di Venaria", "saison", "une série sur tout l'été"),
+    ("AGOSTO AI MUSEI REALI DI TORINO", "saison", "un mois de programmation"),
+    ("Armonie Reali. Musica nelle Residenze Sabaude", "saison", "un cycle de concerts"),
+    ("Fénis: un été à vivre", "saison", "un programme d'été"),
+    ("Mostra Internazionale della Ceramica", "exposition", "une exposition court des mois"),
+    ("Due esposizioni di Barbara Tutino a Cogne", "exposition", "deux expositions"),
+    ("Aperture serali della Basilica di Superga", "activité", "des ouvertures du soir"),
+    ("Percorsi enogastronomici Casa Martini", "activité", "des parcours, pas une date"),
+    ("Balade gourmande aux Charmettes", "activité", "une balade qui se répète"),
+    # ── Et surtout : ce qui doit RESTER « événement » après l'élargissement ──────
+    # C'est ici que se joue la valeur du tri. Ces cinq-là ONT une date dans le monde
+    # réel — on ne l'a simplement pas extraite. Les ranger en « récurrent » masquerait
+    # de vrais événements derrière un renvoi à la source.
+    ("Journées européennes du Patrimoine", "événement", "un week-end précis de septembre"),
+    ("Notte di San Lorenzo", "événement", "la nuit du 10 août, une date fixe"),
+    ("Championnats d'Europe de VTT Trial", "événement", "une compétition datée"),
+    ("Concerto della Filarmonica della Scala", "événement", "un concert, un soir"),
+    ("Gran Balon", "événement", "une brocante à date fixe"),
 ]
 
 conn = sqlite3.connect(tmp)

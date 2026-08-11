@@ -52,25 +52,55 @@ sys.path.insert(0, str(ROOT))
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 # Indices, pas preuves. Chaque famille dit ce qu'elle SUGGÈRE et ce qu'elle ne prouve pas.
+#
+# ⚠️ TOUS CES INDICES PORTENT SUR LA FORME, JAMAIS SUR LE PUBLIC — sauf le dernier, qui
+# est marqué comme tel. La distinction n'est pas cosmétique : la charte interdit de
+# trancher l'appartenance au catalogue sur un mot du titre (« le partage se fait sur à
+# qui ça s'adresse »), mais elle ne dit rien contre le fait de repérer qu'une chose n'a
+# PAS de date unique. « Exposition », « visites du soir », « été 2026 » ne disent rien du
+# public : ils disent que l'objet s'étale dans le temps. C'est une question de forme, et
+# c'est exactement celle que « récurrent » résout.
+#
+# ÉLARGI le 2026-08-11 après le premier passage : la version d'origine ne rangeait que
+# 2 fiches sur 75 en « saison » et en laissait 70 dans « événement » — inutilisable.
+# En lisant la liste, la moitié sautait aux yeux : « Sere d'Estate alla Reggia »,
+# « Aperture serali della Basilica di Superga », « AGOSTO AI MUSEI REALI », « Percorsi
+# enogastronomici », quatre expositions de la Venaria. Un tri qui range 93 % des fiches
+# dans « je ne sais pas » ne trie rien.
 _INDICES = (
     ("vide", None,
      "Titre absent ou dérisoire — il n'y a rien à publier, quelle que soit la date.",
      "rejeter"),
+    ("exposition", (
+        r"\bexposition\b", r"\bexpositions\b", r"\bmostra\b", r"\bmostre\b",
+        r"\besposizion", r"\bexpo\b", r"\bretrospective\b", r"\bcollezione\b"),
+     "Une exposition court sur des semaines ou des mois. Si ses dates ne sont pas "
+     "publiées, « récurrent » (renvoi à la source) vaut mieux qu'une fiche bloquée.",
+     "récurrent"),
     ("saison", (
         r"\bsaison\b", r"\bstagione\b", r"\bprogramm[ae]\b", r"\bcartellone\b",
         r"\brassegna\b", r"\bciclo\b", r"\babbonament", r"\babonnement",
-        r"\bpasseggiate\b", r"\bvisites? guidées?\b", r"\bateliers?\b",
         r"\b20\d{2}\s*[-/–]\s*20\d{2}\b", r"\bà l'année\b", r"\btoute l'année\b",
-        r"\bpermanent", r"\bcollezione permanente\b"),
-     "Une saison, un programme ou une activité à l'année : ça n'a pas de date unique, "
-     "c'est normal.", "récurrent"),
+        r"\bpermanent", r"\bser[ei] d'estate\b", r"\bagosto ai\b", r"\bun été\b",
+        r"\bestate\b", r"\bd'été\b", r"\bmusica nelle\b"),
+     "Une saison, un programme ou une série sur tout un été : ça n'a pas de date "
+     "unique, c'est normal.", "récurrent"),
+    ("activité", (
+        r"\bpasseggiate\b", r"\bpercorsi\b", r"\bvisites? guidées?\b",
+        r"\bvisit[ae] serale?\b", r"\bvisite serali\b", r"\baperture serali\b",
+        r"\bnocturnes?\b", r"\bateliers?\b", r"\blaboratori\b", r"\bbalade",
+        r"\brandonnées?\b", r"\banimations? nature\b", r"\bdégustation",
+        r"\bosservazione del cielo\b", r"\bsieste musicale\b"),
+     "Une activité qui se répète (visites, ateliers, balades) : elle a des horaires, "
+     "pas une date d'événement.", "récurrent"),
     ("professionnel", (
         r"\boffre vip\b", r"\bvip\b", r"\bb2b\b", r"\bcongrès\b", r"\bcongresso\b",
         r"\bcolloque\b", r"\bséminaire\b", r"\bseminario\b", r"\bnetworking\b",
-        r"\bsalon des\b", r"\bforum\b", r"\brecrutement\b", r"\bin tech\b",
+        r"\bsalon des\b", r"\brecrutement\b", r"\bin tech\b",
         r"\bworkshop pro", r"\bassemblée générale\b", r"\bconférence de presse\b"),
-     "Peut viser un public PROFESSIONNEL — hors charte si c'est le cas. À vérifier sur "
-     "le contenu, jamais sur ce seul mot.", "rejeter (si public pro)"),
+     "⚠️ SEUL INDICE QUI TOUCHE AU PUBLIC, donc le seul à ne jamais appliquer sans "
+     "ouvrir la fiche : peut viser un public PROFESSIONNEL, ce qui serait hors charte. "
+     "À vérifier sur le contenu, jamais sur ce mot.", "rejeter (si public pro)"),
 )
 
 
@@ -128,8 +158,9 @@ def main(argv=None) -> int:
     print("du livre » est dans le catalogue, un « salon des entrepreneurs » non, et aucun")
     print("mot ne les sépare.\n")
 
-    ordre = [("vide", "rejeter"), ("saison", "récurrent"),
-             ("professionnel", "rejeter (si public pro)"), ("événement", "laisser attendre")]
+    ordre = [("vide", "rejeter"), ("exposition", "récurrent"), ("saison", "récurrent"),
+             ("activité", "récurrent"), ("professionnel", "rejeter (si public pro)"),
+             ("événement", "laisser attendre")]
     quoi = {nom: (txt, act) for nom, _m, txt, act in _INDICES}
     quoi["événement"] = ("Un vrai événement dont la date n'est pas publiée. Elle "
                          "repassera toute seule si sa page change.", "laisser attendre")
