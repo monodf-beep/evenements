@@ -14,9 +14,15 @@ deux natures :
     PEUT le vérifier : Franck ne connaît pas plus que le modèle la capacité d'accueil
     d'une sortie au lac.
 
-La frontière est testée des deux côtés, avec des cas voisins qui se ressemblent
-beaucoup : « Tarifs/gratuité des activités » (absence) contre « gratuité annoncée mais
-non confirmée » (doute) — même sujet, deux natures.
+La frontière a été DÉPLACÉE le jour même, après un second retour de Franck (« on a
+encore trop de tâches !!! ») : j'avais rangé « non confirmé » parmi les doutes, alors que
+le modèle l'emploie pour dire que la source se tait. L'absence est donc testée en premier
+et l'emporte, même sur un point d'interrogation — un silence bien formulé reste un
+silence.
+
+Ce que la fixture protège désormais, c'est le doute qui doit SURVIVRE à ce durcissement :
+« l'organisateur annoncé semble être la journaliste, pas l'organisatrice ». Celui-là vaut
+à lui seul la file entière, et un tri trop sévère l'emporterait avec le reste.
 
 Lancer : .venv/bin/python -m tests.test_checks_doute
 """
@@ -53,9 +59,25 @@ CAS = [
     ("Durée des sorties en journée ou demi-journée", False),
     # ── DOUTES : l'article affirme, on n'est pas sûr ───────────────────────────
     ("Date de la seconde séance de ciné plein air (une seule date trouvée)", True),
-    ("Horaires d'ouverture quotidienne des jardins non confirmés", True),
+    # ── SECONDE PASSE, même jour : « non confirmé » est une ABSENCE ─────────────
+    # Après le premier tri il restait 138 points et Franck : « on a encore trop de
+    # tâches !!! ». J'avais rangé « non confirmé » parmi les DOUTES. Or le modèle
+    # l'emploie pour dire « la source ne le dit pas ». Ces quatre-là viennent de l'écran,
+    # et aucun n'est vérifiable par qui que ce soit.
+    ("Horaires d'ouverture quotidienne des jardins non confirmés", False),
+    ("Gratuité de l'accès non confirmée explicitement par la matière", False),
+    ("Date et horaire précis de la rencontre « Face à face » non confirmés", False),
+    # Celui-ci passait grâce à son point d'interrogation : un silence bien formulé
+    # reste un silence, donc l'absence l'emporte sur la question.
+    ("Lieu exact de la rencontre (salle, foyer ?) non précisé dans la matière", False),
+    # ── Et le doute qui doit SURVIVRE au durcissement : c'est le seul point de tout
+    # l'écran sur lequel un humain peut agir, et il vaut à lui seul la file entière.
+    ("Organisateur réel de la foire (Arabella Pezza semble être une journaliste, "
+     "pas l'organisatrice)", True),
     # Voisins fabriqués exprès : MÊME SUJET que des absences ci-dessus, autre nature.
-    ("Gratuité annoncée mais non confirmée par la source", True),
+    # « Annoncée mais non confirmée » : le mot « non confirmée » l'emporte, et
+    # c'est voulu — on ne peut pas confirmer ce que la source ne dit pas.
+    ("Gratuité annoncée mais non confirmée par la source", False),
     ("Line-up : 1 ou 2 artistes ?", True),
     ("Nom de l'artiste peut-être mal orthographié", True),
     ("Deux dates contradictoires entre le flux et la page", True),

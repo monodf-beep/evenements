@@ -42,21 +42,39 @@ from __future__ import annotations
 import re
 import unicodedata
 
-# Marqueurs employés quand on doute d'un fait QU'ON ÉCRIT. Choisis sur les points réels
-# de la production, pas imaginés.
+# ── L'ABSENCE L'EMPORTE SUR LE DOUTE ────────────────────────────────────────────
+# Deuxième passe, le 2026-08-11 : après le premier tri il restait 138 points, et Franck —
+# « on a encore trop de tâches !!! ». En lisant l'écran, la faute était la mienne : j'avais
+# rangé « non confirmé » parmi les marqueurs de DOUTE. Or le modèle l'emploie pour dire
+# « la source ne le dit pas », ce qui est exactement une ABSENCE :
+#     « Gratuité de l'accès non confirmée explicitement par la matière »
+#     « Lieu exact de la rencontre (salle, foyer ?) non précisé dans la matière »
+#     « Date et horaire précis de la rencontre non confirmés »
+# Aucun de ces trois-là n'est vérifiable, et le second passait même grâce à son point
+# d'interrogation. « Non confirmé » ne dit pas qu'on doute d'un fait écrit : il dit qu'on
+# n'a pas trouvé le fait. Ces formules sont donc testées EN PREMIER et l'emportent.
+_ABSENCE = (
+    r"\bnon confirme", r"\bpas confirme", r"\bnon precise", r"\bpas precise",
+    r"\bnon explicite", r"\bnon mentionne", r"\bpas mentionne", r"\bnon indique",
+    r"\bnon detaille", r"\bnon publie", r"\bnon communique", r"\bnon renseigne",
+    r"\babsente? de la matiere\b", r"\bmanque dans la matiere\b",
+    r"\bpas (?:d[eu']|de la |des )?(?:tarif|horaire|programme|detail)",
+)
+
+# Marqueurs employés quand on doute d'un fait QU'ON ÉCRIT — c'est-à-dire quand l'article
+# AFFIRME quelque chose qui pourrait être faux. Ce qui les distingue des formules
+# ci-dessus : ils signalent une CONTRADICTION, une CONFUSION ou une AMBIGUÏTÉ, jamais un
+# silence. Choisis sur les points réels de la production, pas imaginés.
 _DOUTE = (
-    r"\?",                          # une question posée au lecteur humain
     r"\bpeut-etre\b", r"\bpeut etre\b",
     r"\bincertain", r"\bdouteu", r"\bambigu",
-    r"\ba confirmer\b", r"\bnon confirme", r"\bpas confirme",
-    r"\ba verifier aupres\b", r"\bverifier l['e]",
     r"\bune seule date\b", r"\bseule date trouvee\b",
     r"\bcontradict", r"\bdivergen", r"\bincoheren",
     r"\bmal orthographi", r"\borthographe\b",
     r"\b1 ou 2\b", r"\bou bien\b",
     r"\bsemble\b", r"\bsupposé", r"\bsuppose\b",
-    r"\bannoncé.{0,20}non\b",
-    r"\bsource unique\b", r"\bnon sourcé", r"\bnon source\b",
+    r"\bconfusion\b", r"\bconfondu", r"\bne correspond pas\b",
+    r"\bdeux (?:dates|lieux|titres|noms)\b",
 )
 
 
@@ -68,8 +86,18 @@ def _norm(s: str) -> str:
 
 def est_doute(label: str) -> bool:
     """True si le point signale un fait AFFIRMÉ dont on doute (à garder sous les yeux),
-    False si c'est une information simplement absente de la source (rien à vérifier)."""
+    False si c'est une information simplement absente de la source (rien à vérifier).
+
+    L'ABSENCE est testée d'abord et l'emporte : « lieu exact (salle, foyer ?) non précisé
+    dans la matière » contient un point d'interrogation, mais dit surtout que la source
+    se tait. Un silence bien formulé reste un silence."""
     bas = _norm(label)
+    if any(re.search(m, bas) for m in _ABSENCE):
+        return False
+    if "?" in (label or ""):
+        # Une VRAIE question posée à l'humain (« 1 ou 2 artistes ? ») est un doute — mais
+        # seulement si aucune formule d'absence ne l'a déjà disqualifiée ci-dessus.
+        return True
     return any(re.search(m, bas) for m in _DOUTE)
 
 
