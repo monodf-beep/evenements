@@ -229,6 +229,27 @@ _ECARTS: dict[int, str] = {
 }
 
 
+def _est_vide(valeur) -> bool:
+    """La colonne est-elle à remplir ? Vraie pour NULL, chaîne vide, et 0.
+
+    ÉCRIT APRÈS UN PLANTAGE EN PRODUCTION (2026-08-11, 18h58) : le test était
+    `(row[c] or "").strip()`, ce qui suppose une chaîne. Il a tenu tant que le script ne
+    posait que du texte — puis `recurring` est arrivé, un ENTIER, et la deuxième exécution
+    est tombée sur « 'int' object has no attribute 'strip' ».
+
+    Le défaut n'apparaissait qu'au SECOND passage : au premier, la colonne valait NULL et
+    `None or ""` donnait une chaîne. C'est le pire moment pour tomber — après avoir écrit.
+    Un script destiné à être rejoué doit être testé rejoué.
+
+    `0` compte comme vide : un `recurring` à zéro n'est pas une décision qu'on protège,
+    c'est l'absence de décision."""
+    if valeur is None:
+        return True
+    if isinstance(valeur, (int, float)):
+        return not valeur
+    return not str(valeur).strip()
+
+
 def _norm(s: str) -> str:
     n = unicodedata.normalize("NFKD", (s or "").strip().lower())
     return " ".join("".join(c for c in n if not unicodedata.combining(c)).split())
@@ -293,8 +314,8 @@ def main(argv: list[str]) -> int:
             print(f"  [{eid:5}] introuvable en base — ignorée")
             continue
         # ON N'ÉCRASE JAMAIS : si Franck a rempli le champ entre-temps, sa valeur gagne.
-        neufs = {c: v for c, v in champs.items() if not (row[c] or "").strip()}
-        deja = {c: row[c] for c in champs if (row[c] or "").strip()}
+        neufs = {c: v for c, v in champs.items() if _est_vide(row[c])}
+        deja = {c: row[c] for c in champs if not _est_vide(row[c])}
         if deja:
             print(f"  [{eid:5}] déjà rempli, laissé tel quel : {deja}")
         if neufs:
