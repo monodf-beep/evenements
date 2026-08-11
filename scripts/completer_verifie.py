@@ -56,15 +56,10 @@ _VALEURS: dict[int, tuple[dict, str]] = {
     4621: ({"lieu": "Teatro Regio"},
            "torinofilmfest.org — la soirée d'ouverture du 44e TFF a lieu au Teatro Regio"),
     3280: ({"ville": "Torino"}, "teatroregio.torino.it — le Teatro Regio est à Turin"),
-    3279: ({"ville": "Torino"}, "basilicadisuperga.org — Superga est sur la commune de Turin"),
     4564: ({"lieu": "Polo Espositivo ARCA", "ville": "Vercelli"},
            "visitvalsesiavercelli.it — l'ARCA est l'ancienne église San Marco, à Verceil"),
     4705: ({"lieu": "Citadelle Saint-Elme", "ville": "Villefranche-sur-Mer"},
            "villefranche-sur-mer.fr — cinéma de plein air à la Citadelle"),
-    4720: ({"ville": "Villefranche-sur-Mer"}, "site de la commune de Villefranche-sur-Mer"),
-    4721: ({"ville": "Villefranche-sur-Mer"}, "site de la commune de Villefranche-sur-Mer"),
-    4722: ({"ville": "Villefranche-sur-Mer"}, "site de la commune de Villefranche-sur-Mer"),
-    4723: ({"ville": "Villefranche-sur-Mer"}, "site de la commune de Villefranche-sur-Mer"),
     3948: ({"date_event_start": "2026-06-03", "date_event_end": "2026-09-13"},
            "lavenaria.it — Milo Manara, Il nome della rosa, 3 juin au 13 septembre 2026"),
 
@@ -78,17 +73,17 @@ _VALEURS: dict[int, tuple[dict, str]] = {
     4345: ({"date_event_start": "2026-08-15", "date_event_end": "2026-08-15"},
            "villefranche-sur-mer.fr — samedi 15 août 2026, 21h, place Félix Poullan "
            "(programme Citadell'Arte)"),
-    4722: ({"date_event_start": "2026-09-19", "date_event_end": "2026-09-19",
+    4722: ({"ville": "Villefranche-sur-Mer", "date_event_start": "2026-09-19", "date_event_end": "2026-09-19",
             "lieu": "Cour de l'Hôtel de Ville de la Citadelle"},
            "villefranche-sur-mer.fr — samedi 19 septembre 2026, 21h"),
-    4723: ({"date_event_start": "2026-09-08", "date_event_end": "2026-09-21",
+    4723: ({"ville": "Villefranche-sur-Mer", "date_event_start": "2026-09-08", "date_event_end": "2026-09-21",
             "lieu": "Foyer de l'Auditorium de la Citadelle"},
            "villefranche-sur-mer.fr — 8 au 21 septembre 2026, vernissage le 8 à 17h"),
-    4721: ({"date_event_start": "2026-09-15", "date_event_end": "2026-09-20",
+    4721: ({"ville": "Villefranche-sur-Mer", "date_event_start": "2026-09-15", "date_event_end": "2026-09-20",
             "lieu": "Rade de Villefranche-sur-Mer, port de la Darse"},
            "villefranche-sur-mer.fr — « du 15 au 20 septembre 2026 », une soixantaine de "
            "bateaux traditionnels"),
-    4720: ({"date_event_start": "2026-09-19", "date_event_end": "2026-09-20",
+    4720: ({"ville": "Villefranche-sur-Mer", "date_event_start": "2026-09-19", "date_event_end": "2026-09-20",
             "lieu": "Citadelle et Darse"},
            "villefranche-sur-mer.fr — visites de la Citadelle le samedi 19, visites "
            "guidées de la Darse les 19 et 20 septembre 2026"),
@@ -111,10 +106,61 @@ _VALEURS: dict[int, tuple[dict, str]] = {
            "lavenaria.it/it/mostre — « Regine in scena. L'arte del costume italiano tra "
            "cinema e teatro », 17 avril au 6 septembre 2026"),
 
+    # ── RÉCURRENTS : ce ne sont pas des dates manquantes ────────────────────────────
+    # Franck, 2026-08-11 : « à toi de savoir et de mettre ». Ces fiches n'ont pas de date
+    # unique à trouver — elles se RÉPÈTENT. Leur poser une date serait faux ; le drapeau
+    # `recurring` remplace la date par une note (utils.completeness.recurring_note) et
+    # les sort de la file « À compléter », qui n'exige plus de date pour elles.
+    #
+    # La note est écrite ICI plutôt que laissée au texte par défaut (« vérifiez les dates
+    # sur la source ») : un visiteur qui lit « chaque vendredi et samedi soir, de juin à
+    # septembre » sait s'il peut y aller. « Vérifiez sur la source » lui demande de faire
+    # le travail à notre place.
+    3279: ({"ville": "Torino", "recurring": 1,
+            "recurring_note": "Ouvertures nocturnes chaque vendredi et samedi soir, "
+                              "l'été : église, chapelle du Vœu, montée à la coupole et "
+                              "musée ouverts jusqu'à minuit"},
+           "basilicadisuperga.org — « ogni venerdì e sabato sera », vérifié le 11/08/2026"),
+    1845: ({"recurring": 1,
+            "recurring_note": "Promenades accompagnées au château de Serralunga d'Alba, "
+                              "toute la saison 2026 — départs à 11h et 15h30"},
+           "langhe.net — la page n'annonce que des horaires de départ, pas de date unique"),
+    2492: ({"recurring": 1,
+            "recurring_note": "Sortie photo avec un guide professionnel, à la demande "
+                              "toute l'année — réservation auprès de l'office de tourisme"},
+           "explorenicecotedazur.com — prestation à la demande, sans date fixée"),
+    899: ({"recurring": 1,
+           "recurring_note": "Sentier artistique en accès libre toute la saison, "
+                             "aux Éphémères Alpines (Hautecour)"},
+          "coeurdetarentaise-tourisme.com — parcours permanent, pas un événement daté"),
+
     526: ({"date_event_start": "2026-09-26", "date_event_end": "2026-09-26"},
           "opera-nice.org — la date est dans l'adresse même de la page : "
           "/agenda/…/20260926-1500/, soit le 26 septembre 2026 à 15h"),
 }
+
+# ⚠️ UN NUMÉRO NE DOIT APPARAÎTRE QU'UNE FOIS DANS CE DICTIONNAIRE. Écrit le 2026-08-11
+# après m'être fait avoir : en ajoutant « 3279 : récurrent », j'ai ÉCRASÉ le « 3279 :
+# ville=Torino » posé trois heures plus tôt — Python garde la dernière clé, sans un mot.
+# Les fiches de Villefranche (4720-4723) étaient dans le même cas. Le contrôle ci-dessous
+# relit le fichier source et compte les clés écrites, pas celles qui ont survécu.
+def _verifie_pas_de_doublon() -> None:
+    import ast
+    arbre = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    for noeud in ast.walk(arbre):
+        if not isinstance(noeud, ast.Dict):
+            continue
+        cles = [k.value for k in noeud.keys
+                if isinstance(k, ast.Constant) and isinstance(k.value, int)]
+        doublons = {c for c in cles if cles.count(c) > 1}
+        if doublons:
+            raise SystemExit(
+                f"scripts/completer_verifie : fiche(s) {sorted(doublons)} écrite(s) deux "
+                f"fois — la seconde écrase la première en silence. Fusionner les entrées.")
+
+
+_verifie_pas_de_doublon()
+
 
 # ── Fiches à écarter, et POURQUOI (le motif est la moitié de la décision) ────────────
 _ECARTS: dict[int, str] = {
@@ -150,6 +196,13 @@ _ECARTS: dict[int, str] = {
     # d'aller lire la page.
     4563: "Museo del Risorgimento — exposition du 8 juin au 3 septembre 2023, terminée "
           "depuis trois ans (museorisorgimentotorino.it)",
+    # PROPOSÉS PAR L'AGENT QUOTIDIEN À SON PREMIER RUN, motifs vérifiés et repris ici.
+    2374: "Per Olivia (Teatro Stabile) — la page ne porte AUCUNE date, ni au 11/08 ni "
+          "auparavant : les dates de la Stagione 2026-2027 vivent sur vivaticket. Rien à "
+          "trouver, jamais — vérifié deux fois, le matin et par l'agent le soir",
+    4314: "Musei Reali — fiche incohérente : la page décrit le programme du mois d'AOÛT, "
+          "la fiche porte lieu='OGR' (un autre établissement) et une fin au 15 septembre. "
+          "Trois informations qui ne parlent pas du même événement",
     # VENCE : arrondissement de Grasse, donc hors périmètre (arbitrage confirmé le
     # 2026-08-11). La règle par commune ne l'attrape pas — son champ `ville` est vide,
     # justement parce qu'elle est dans cette file pour ça. D'où l'inscription nominative.
@@ -199,7 +252,8 @@ def main(argv: list[str]) -> int:
                 print(f"  [{cle}] ignorée : il manque les champs ou la source")
                 continue
             inconnus = set(champs) - {"lieu", "ville", "date_event_start",
-                                      "date_event_end", "url_officiel"}
+                                      "date_event_end", "url_officiel",
+                                      "recurring", "recurring_note"}
             if inconnus:
                 print(f"  [{cle}] ignorée : champ(s) non autorisé(s) {sorted(inconnus)}")
                 continue
