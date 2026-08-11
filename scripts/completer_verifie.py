@@ -67,6 +67,44 @@ _VALEURS: dict[int, tuple[dict, str]] = {
     4723: ({"ville": "Villefranche-sur-Mer"}, "site de la commune de Villefranche-sur-Mer"),
     3948: ({"date_event_start": "2026-06-03", "date_event_end": "2026-09-13"},
            "lavenaria.it — Milo Manara, Il nome della rosa, 3 juin au 13 septembre 2026"),
+
+    # ── Deuxième fournée : pages ouvertes et lues une par une le 2026-08-11 au soir ──
+    # Ce que quatre passes automatiques n'avaient pas su lire, une lecture le donne en
+    # trois minutes. C'est la conclusion du §1 de docs/CE_QUE_DISENT_LES_SOURCES_
+    # OFFICIELLES.md : ces pages écrivent tout, mais en prose, pour des lecteurs.
+    4344: ({"date_event_start": "2026-08-21", "date_event_end": "2026-08-21"},
+           "villefranche-sur-mer.fr — « Le vendredi 21 août 2026 à 21h, le Théâtre de "
+           "Verdure de la Citadelle accueille Tribute to Céline Dion »"),
+    4345: ({"date_event_start": "2026-08-15", "date_event_end": "2026-08-15"},
+           "villefranche-sur-mer.fr — samedi 15 août 2026, 21h, place Félix Poullan "
+           "(programme Citadell'Arte)"),
+    4722: ({"date_event_start": "2026-09-19", "date_event_end": "2026-09-19",
+            "lieu": "Cour de l'Hôtel de Ville de la Citadelle"},
+           "villefranche-sur-mer.fr — samedi 19 septembre 2026, 21h"),
+    4723: ({"date_event_start": "2026-09-08", "date_event_end": "2026-09-21",
+            "lieu": "Foyer de l'Auditorium de la Citadelle"},
+           "villefranche-sur-mer.fr — 8 au 21 septembre 2026, vernissage le 8 à 17h"),
+    4721: ({"date_event_start": "2026-09-15", "date_event_end": "2026-09-20",
+            "lieu": "Rade de Villefranche-sur-Mer, port de la Darse"},
+           "villefranche-sur-mer.fr — « du 15 au 20 septembre 2026 », une soixantaine de "
+           "bateaux traditionnels"),
+    4720: ({"date_event_start": "2026-09-19", "date_event_end": "2026-09-20",
+            "lieu": "Citadelle et Darse"},
+           "villefranche-sur-mer.fr — visites de la Citadelle le samedi 19, visites "
+           "guidées de la Darse les 19 et 20 septembre 2026"),
+    # Trois soirées de la Biblioteca civica : le lieu n'était nulle part dans le flux,
+    # il est dans le champ « Dove » de chaque page.
+    4688: ({"lieu": "Mausoleo della Bela Rosin"}, "bct.comune.torino.it — champ « Dove »"),
+    4727: ({"lieu": "Mausoleo della Bela Rosin"}, "bct.comune.torino.it — champ « Dove »"),
+    4728: ({"lieu": "Mausoleo della Bela Rosin"}, "bct.comune.torino.it — champ « Dove »"),
+    3017: ({"date_event_start": "2026-09-18", "date_event_end": "2026-09-18"},
+           "fondazionemerz.org — « 18 settembre 2026 ore 18 – ingresso gratuito »"),
+    4718: ({"lieu": "Tappa della Strada Romantica, près de l'église San Michele Arcangelo",
+            "ville": "Mombarcaro"},
+           "turismoinlanga.it — rendez-vous à 20h15 à Mombarcaro (CN)"),
+    526: ({"date_event_start": "2026-09-26", "date_event_end": "2026-09-26"},
+          "opera-nice.org — la date est dans l'adresse même de la page : "
+          "/agenda/…/20260926-1500/, soit le 26 septembre 2026 à 15h"),
 }
 
 # ── Fiches à écarter, et POURQUOI (le motif est la moitié de la décision) ────────────
@@ -96,6 +134,18 @@ _ECARTS: dict[int, str] = {
     4661: "La Ravoire — atelier « bien vivre à domicile », action sociale",
     4662: "La Ravoire — visite d'équipement municipal",
     4663: "La Ravoire — conférence santé « le sommeil », action de prévention",
+    # TROUVÉE EN OUVRANT LA PAGE : cette exposition s'est tenue du 8 juin au 3 septembre
+    # 2023. Elle attendait une date depuis TROIS ANS dans la file, et aucune passe ne
+    # pouvait la libérer — sans date, la règle 5 refuse (à raison) de la classer en
+    # passé. C'est exactement le cercle vicieux décrit ce matin, et la seule sortie était
+    # d'aller lire la page.
+    4563: "Museo del Risorgimento — exposition du 8 juin au 3 septembre 2023, terminée "
+          "depuis trois ans (museorisorgimentotorino.it)",
+    # VENCE : arrondissement de Grasse, donc hors périmètre (arbitrage confirmé le
+    # 2026-08-11). La règle par commune ne l'attrape pas — son champ `ville` est vide,
+    # justement parce qu'elle est dans cette file pour ça. D'où l'inscription nominative.
+    2611: "Vence — arrondissement de Grasse, hors périmètre (champ ville vide, donc "
+          "invisible pour la règle par commune)",
 }
 
 
