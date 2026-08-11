@@ -40,6 +40,7 @@ from utils.logger import get_logger
 from utils import usage
 from utils import completeness as comp
 from utils import triage as triage_mod
+from utils import checks as checks_mod
 from utils import slack
 from utils import organizers
 from utils import semaine as semaine_mod
@@ -410,9 +411,13 @@ def inject_globals():
         _ensure_checks_table(conn)
         # MÊME PÉRIMÈTRE QUE LA PAGE (verifier_view) — sinon la pastille annonce 793 et
         # l'écran en montre 40 : c'est la pastille qu'on croit, et c'est elle qui décourage.
-        verifier = conn.execute(
-            f"SELECT COUNT(*) n FROM checks c JOIN events_raw e ON e.id=c.event_id "
-            f"WHERE {_CHECKS_VIVANTS}", (date.today().isoformat(),)).fetchone()["n"]
+        # La pastille compte les DOUTES, comme la page — pas les informations absentes.
+        # Sinon elle annonce 454 quand l'écran en montre douze, et c'est la pastille
+        # qu'on croit : c'est elle qui a fait dire « 548 tâches, c'est ingérable ».
+        verifier = sum(1 for r in conn.execute(
+            f"SELECT c.label FROM checks c JOIN events_raw e ON e.id=c.event_id "
+            f"WHERE {_CHECKS_VIVANTS}", (date.today().isoformat(),))
+            if checks_mod.est_doute(r["label"]))
         conn.close()
     except Exception:
         pass
@@ -1304,8 +1309,26 @@ def verifier_view():
     conn.close()
     ecartes = total - len(rows)
 
+    # UN DOUTE N'EST PAS UNE INFORMATION ABSENTE (2026-08-11). Franck : « 548 tâches !
+    # c'est ingérable. » 454 points sur 118 fiches, quatre par fiche, et les quatre
+    # premiers de l'écran étaient « Tarifs de… », « Contenu précis (genre, horaires)
+    # de… », « Programme détaillé des ateliers », « Capacités d'accueil des sorties ».
+    # Aucun n'est vérifiable : ce ne sont pas des faits douteux, ce sont des choses que
+    # la source ne publie pas. Franck ne peut pas plus que le modèle connaître la
+    # capacité d'accueil d'une sortie au lac — il faudrait téléphoner à l'organisateur.
+    #
+    # Un article qui n'AFFIRME pas ne peut pas se tromper : une absence ne présente aucun
+    # risque éditorial, donc elle n'est pas une tâche. Seul le doute — un fait écrit dont
+    # on n'est pas sûr — mérite l'œil humain, et c'est LUI le garde-fou.
+    #
+    # Rien n'est supprimé : les absences restent en base, sont comptées à l'écran, et
+    # ?tout=1 les réaffiche si la distinction s'avère mauvaise.
+    tout = request.args.get("tout") == "1"
+    doutes = [r for r in rows if tout or checks_mod.est_doute(r["label"])]
+    absences = len(rows) - len(doutes)
+
     groups, index = [], {}
-    for r in rows:
+    for r in doutes:
         eid = r["event_id"]
         if eid not in index:
             index[eid] = len(groups)
@@ -1319,7 +1342,7 @@ def verifier_view():
     # qui vaut le clic.
     groups.sort(key=lambda g: (not g["en_ligne"], g["event_id"]))
     return render_template("verifier.html", active="verifier", groups=groups,
-                           ecartes=ecartes)
+                           ecartes=ecartes, absences=absences, tout=tout)
 
 
 @app.route("/couverture")

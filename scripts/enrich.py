@@ -260,7 +260,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "infos_pratiques": "<dates, lieu, accès, tarif/gratuité, lien officiel — factuel>",
   "sources": ["<url officielle/libre consultée>", "..."],
   "confiance": "<haute|moyenne|faible>",
-  "a_verifier": ["<fait factuel PRÉCIS à contrôler humainement : nom peut-être mal orthographié, line-up ambigu (1 ou 2 artistes ?), date/horaire incertain, prix/gratuité non confirmé, affirmation absente de la matière. Court (max ~12 mots). Liste vide [] si tu es SÛR. Ne signale QUE de vrais doutes, jamais de remplissage : c'est un garde-fou HUMAIN, pas une formalité>"],
+  "a_verifier": ["<UNIQUEMENT un fait que TON ARTICLE AFFIRME et dont tu n'es pas sûr : nom peut-être mal orthographié, line-up ambigu (1 ou 2 artistes ?), date/horaire incertain, tarif annoncé mais non confirmé. Formule le DOUTE, pas le sujet : « gratuité annoncée mais non confirmée », jamais « tarifs ». INTERDIT : lister ce que la matière ne dit pas (tarifs non publiés, programme détaillé, capacités, âges, durées) — un article qui n'affirme rien ne peut pas se tromper, et personne ne peut vérifier une information que la source ne publie pas. Maximum DEUX. Liste vide [] si tu es sûr, et c'est le cas le plus fréquent>"],
   "article": {{
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel (quoi/quand/lieu en bref) + l'angle. C'est la SEULE fois où ces faits de base sont énoncés en phrase complète — le corps ne les reformule PAS>",

@@ -16,6 +16,16 @@
       <br>{{ ecartes }} point(s) ne sont plus affichés : événement terminé, rejeté ou
       fusionné. Rien n'est supprimé — ils reviendraient si la fiche redevenait d'actualité.
       {%- endif %}
+      {%- if absences and not tout %}
+      <br>{{ absences }} point(s) sont des informations que la source ne publie pas
+      (tarifs, horaires détaillés, capacités…) : l'article ne les affirme pas, donc il ne
+      peut pas s'y tromper — il n'y a rien à vérifier.
+      <a href="/verifier?tout=1">les afficher quand même</a>.
+      {%- endif %}
+      {%- if tout %}
+      <br><b>Tout est affiché</b>, y compris les informations simplement absentes.
+      <a href="/verifier">revenir aux doutes seuls</a>.
+      {%- endif %}
     </div>
     {% for g in groups %}
     <div class="card" style="padding:.7rem 1rem;margin-bottom:.8rem;">

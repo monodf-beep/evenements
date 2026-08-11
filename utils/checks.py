@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Séparer un DOUTE d'une information ABSENTE — deux choses que la file « À vérifier »
+confondait, et c'est ce qui la rendait ingérable.
+
+Franck, 2026-08-11, capture d'écran à l'appui : « 548 tâches ! c'est ingérable. Soit
+c'est pas assez regroupé et du coup ça fait peur, soit la collecte n'est pas bonne, soit
+les 2. » 454 points sur 118 événements, soit quatre par fiche, mécaniquement.
+
+Les quatre premiers de l'écran disent tout :
+    « Tarifs de la Fête du Fort du Mont, de la visite gourmande et du festiv'arts »
+    « Contenu précis (genre, horaires) du festiv'arts de Conflans »
+    « Programme détaillé des ateliers (titres, horaires, jours précis) »
+    « Capacités d'accueil des sorties (lacs, grotte) »
+
+Aucun de ces points n'est vérifiable. Ce ne sont pas des faits douteux : ce sont des
+informations que la source ne publie pas. Franck ne peut pas davantage que le modèle
+connaître la capacité d'accueil d'une sortie au lac — il faudrait téléphoner à
+l'organisateur. Une file remplie de ça n'est pas un garde-fou, c'est un inventaire des
+silences de la source.
+
+LA DISTINCTION QUI COMPTE
+  • DOUTE — l'article AFFIRME quelque chose dont on n'est pas sûr : un nom peut-être mal
+    orthographié, « une seule date trouvée », un tarif annoncé mais non confirmé. Là, il
+    y a un risque de publier un fait FAUX, et un humain peut trancher. C'est le
+    garde-fou, et il doit rester visible.
+  • ABSENCE — l'article ne dit RIEN de ce point. Aucun risque : un article qui n'affirme
+    pas ne se trompe pas. Il n'y a rien à vérifier, seulement quelque chose qu'on
+    n'écrira pas.
+
+RIEN N'EST SUPPRIMÉ : les absences restent en base et sont comptées à l'écran. Si la
+distinction s'avère mauvaise, elle se défait d'un paramètre.
+
+⚠️ C'EST UNE HEURISTIQUE SUR LA FORMULATION, et il faut le dire. Elle repose sur les
+marqueurs de doute que le modèle emploie quand il doute vraiment. Un doute rédigé sans
+marqueur sera classé « absence » à tort — d'où le compteur visible et l'option de tout
+afficher. Le correctif de fond est en amont, dans le prompt d'enrichissement, qui
+demandait explicitement de signaler toute « affirmation absente de la matière » : cette
+phrase INVITAIT à produire l'inventaire qu'on constate.
+"""
+from __future__ import annotations
+
+import re
+import unicodedata
+
+# Marqueurs employés quand on doute d'un fait QU'ON ÉCRIT. Choisis sur les points réels
+# de la production, pas imaginés.
+_DOUTE = (
+    r"\?",                          # une question posée au lecteur humain
+    r"\bpeut-etre\b", r"\bpeut etre\b",
+    r"\bincertain", r"\bdouteu", r"\bambigu",
+    r"\ba confirmer\b", r"\bnon confirme", r"\bpas confirme",
+    r"\ba verifier aupres\b", r"\bverifier l['e]",
+    r"\bune seule date\b", r"\bseule date trouvee\b",
+    r"\bcontradict", r"\bdivergen", r"\bincoheren",
+    r"\bmal orthographi", r"\borthographe\b",
+    r"\b1 ou 2\b", r"\bou bien\b",
+    r"\bsemble\b", r"\bsupposé", r"\bsuppose\b",
+    r"\bannoncé.{0,20}non\b",
+    r"\bsource unique\b", r"\bnon sourcé", r"\bnon source\b",
+)
+
+
+def _norm(s: str) -> str:
+    s = "".join(c for c in unicodedata.normalize("NFKD", s or "")
+                if not unicodedata.combining(c))
+    return s.lower()
+
+
+def est_doute(label: str) -> bool:
+    """True si le point signale un fait AFFIRMÉ dont on doute (à garder sous les yeux),
+    False si c'est une information simplement absente de la source (rien à vérifier)."""
+    bas = _norm(label)
+    return any(re.search(m, bas) for m in _DOUTE)
+
+
+def repartition(labels) -> tuple[list, list]:
+    """(doutes, absences) — pour compter les deux sans en perdre aucun."""
+    doutes, absences = [], []
+    for lab in labels or []:
+        (doutes if est_doute(lab if isinstance(lab, str) else lab.get("label", ""))
+         else absences).append(lab)
+    return doutes, absences
