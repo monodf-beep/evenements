@@ -32,6 +32,16 @@ CE QUE TU FAIS, DANS CET ORDRE
    ne dit rien, laisse la date telle quelle et signale-le. L'audit propose « la même date
    à l'année de collecte » : c'est une HYPOTHÈSE d'affichage, jamais une réponse.
 
+2 ter. CE QUE LA SOURCE CONTREDIT. `.venv/bin/python -m scripts.verifier_dates --en-ligne`
+   compare la date qu'on a PUBLIÉE au texte de la source. Il ne signale que deux formes,
+   toutes deux sans ambiguïté : le texte ne dit qu'UNE date et ce n'est pas la nôtre, ou
+   il porte notre jour avec une autre année.
+
+   Il ne signale JAMAIS une absence, et tu ne dois pas en faire une non plus. Un texte
+   muet ne contredit rien : on ne vérifie pas un silence. Le 2026-08-11, une file de 454
+   « points à contrôler » en comptait 315 qui n'étaient que des informations non publiées
+   par la source — elle noyait le seul point qui comptait.
+
 3. DÉPOSE CE QUE TU AS LU dans un fichier JSON, puis applique-le :
 
      logs/valeurs_agent-AAAA-MM-JJ.json
