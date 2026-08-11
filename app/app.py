@@ -795,6 +795,33 @@ def pilotage():
         territories=TERRITORIES, today=today, alert=friendly_alert())
 
 
+@app.route("/systeme")
+@require_auth
+def systeme_view():
+    """« Où en est la MACHINE » — les huit étages de la chaîne, chacun avec son périmètre.
+
+    Demandé par Franck le 2026-08-11 : « une vision globale du SEO, du taux d'articles qui
+    ne sont pas traduits, le taux d'articles qui ne sont pas enrichis rédigés, et d'autres
+    éléments qui pourraient m'aider à la compréhension du système ».
+
+    Distinct de /pilotage, qui répond à la santé ÉDITORIALE (couverture, équilibre des
+    territoires). Ici c'est la mécanique : un événement entre par la collecte et ressort
+    publié, traduit, référencé ; entre les deux il franchit huit étages et chacun peut être
+    le goulot. Tout est calculé depuis la base — la page doit rester lisible quand le
+    plafond d'API est atteint, ce qui est justement le moment où l'on veut savoir ce qui
+    est bloqué."""
+    from utils import etat_systeme as es
+    conn = get_db()
+    try:
+        auj = date.today().isoformat()
+        etgs = es.etages(conn, auj)
+        return render_template("systeme.html", active="systeme", etages=etgs,
+                               flux=es.flux(conn, auj), goulot=es.goulot(etgs),
+                               today=auj, alert=friendly_alert())
+    finally:
+        conn.close()
+
+
 @app.route("/process")
 @require_auth
 def process_page():
