@@ -29,6 +29,38 @@ Les quatre familles qui reviennent, par ordre de fréquence observée :
    BRANCHÉ quelque part (crontab.txt, weekly_audits) et qu'il SÉLECTIONNE bien les fiches
    dont on parle. C'est la quatrième question de docs/ETATS_TERMINAUX.md.
 
+── AJOUTÉES LE 2026-08-11, après une journée où les trois se sont produites ────────────
+Cette liste datait du 04/08 et n'avait jamais été relue. Trois familles nouvelles sont
+apparues le 11/08, chacune dans du code écrit LE JOUR MÊME, et chacune alors que la règle
+qui l'interdit était déjà écrite dans CLAUDE.md. Franck les a toutes les trois vues avant
+moi. Cherche-les en priorité : ce sont les plus coûteuses, parce qu'elles ne cassent rien
+— elles font perdre du temps ou détruisent du bon travail en silence.
+
+5. UN COMPTEUR QUI NE DIT PAS CE QU'IL COMPTE. Deux compteurs portant le même nom et
+   comptant deux choses ; un total qui mélange le passé et l'à-venir ; une pastille de
+   menu qui n'applique pas le filtre de l'écran qu'elle annonce. Le 11/08 : « 793 points
+   à vérifier » sans filtre de date, « 108 fiches maigres » dont seize comptaient, un
+   compteur affichant 109 là où l'audit voisin disait 95. Aucun ne mentait sur ses
+   données, tous mentaient sur leur PÉRIMÈTRE — et c'est toujours le plus gros qu'on
+   croit. VÉRIFIE : pour chaque chiffre destiné à un humain, la requête qui le produit
+   est-elle la même que celle de l'écran qu'il résume ?
+
+6. UN GARDE-FOU QUI COUPE SA PROPRE MOISSON. Différent du n° 2 : celui-là n'exclut pas sa
+   cible, il emporte les cas LÉGITIMES avec elle. Le 11/08, une purge des sources non
+   officielles proposait de dépublier « La Saint-Ours », le « Festival Baroque de
+   Tarentaise » et « Monterosa Classica » — parce qu'elle jugeait sur le domaine
+   d'origine sans voir que ces fiches avaient été RÉSOLUES vers leur page officielle,
+   ce qui est tout le principe du tier radar. VÉRIFIE : le filtre regarde-t-il l'état
+   ACTUEL de la fiche, ou seulement sa provenance ? Et la fixture contient-elle un cas
+   légitime qui doit PASSER le filtre ?
+
+7. UNE VALEUR DE REPLI QUI DEVIENT UN CUL-DE-SAC. Une donnée par défaut écrite dans un
+   champ vide occupe la place et empêche la vraie donnée d'arriver plus tard, parce que
+   la sélection suivante teste « le champ est-il vide ? ». Le 11/08 : une bannière de
+   territoire posée sur 40 fiches les a rendues invisibles à la recherche d'image, alors
+   que 36 de leurs pages officielles portaient une vraie affiche. VÉRIFIE : après qu'un
+   repli a été posé, quelle requête reprendra la fiche pour l'améliorer ?
+
 PÉRIMÈTRE : ce qui a changé depuis huit jours. Trouve-le toi-même avec
 `git log --since="8 days ago" --name-only --pretty=format:` et concentre-toi sur les
 fichiers Python les plus touchés. Ne relis pas tout le dépôt : une revue diluée ne trouve
