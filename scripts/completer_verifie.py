@@ -102,6 +102,15 @@ _VALEURS: dict[int, tuple[dict, str]] = {
     4718: ({"lieu": "Tappa della Strada Romantica, près de l'église San Michele Arcangelo",
             "ville": "Mombarcaro"},
            "turismoinlanga.it — rendez-vous à 20h15 à Mombarcaro (CN)"),
+    # ── Troisième fournée : la Reggia di Venaria, dont six fiches attendaient une date
+    # derrière un lien de traçage de newsletter. Leur page existe et la donne.
+    3945: ({"date_event_start": "2026-07-31", "date_event_end": "2026-09-05"},
+           "lavenaria.it/evento/sere-destate-alla-reggia — « dal 31 luglio al 5 settembre "
+           "2026 », chaque vendredi et samedi de 18h30 à 23h"),
+    3946: ({"date_event_start": "2026-04-17", "date_event_end": "2026-09-06"},
+           "lavenaria.it/it/mostre — « Regine in scena. L'arte del costume italiano tra "
+           "cinema e teatro », 17 avril au 6 septembre 2026"),
+
     526: ({"date_event_start": "2026-09-26", "date_event_end": "2026-09-26"},
           "opera-nice.org — la date est dans l'adresse même de la page : "
           "/agenda/…/20260926-1500/, soit le 26 septembre 2026 à 15h"),

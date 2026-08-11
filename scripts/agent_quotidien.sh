@@ -55,7 +55,16 @@ INTERDITS=(Edit NotebookEdit)
 
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') — agent quotidien ===" >> "$JOURNAL"
 
-COMPTE_RENDU="$("$CLAUDE" -p "$(cat config/consigne_agent_quotidien.txt)" \
+# PLAFOND DE DURÉE — 20 minutes. Franck, en lançant le script à la main : « rien ne se
+# passe ». La sortie de `claude -p` est capturée et ne s'affiche qu'à la FIN, donc un run
+# normal (jusqu'à vingt pages lues) est silencieux plusieurs minutes : ça, c'est attendu.
+# Ce qui ne l'était pas, c'est que RIEN ne bornait sa durée. Un agent qui attend quelque
+# chose attend indéfiniment, et dans un cron il resterait planté sans que personne le
+# sache — le chien de garde ne s'inquiète qu'après 30 heures.
+#
+# 20 minutes : large pour vingt pages avec leurs latences, court devant le cron suivant.
+# Le code 124 de `timeout` est traité comme les autres échecs, donc l'alerte Slack part.
+COMPTE_RENDU="$(timeout 1200 "$CLAUDE" -p "$(cat config/consigne_agent_quotidien.txt)" \
   --allowedTools "${OUTILS[@]}" \
   --disallowedTools "${INTERDITS[@]}" \
   --strict-mcp-config \
@@ -67,7 +76,9 @@ if [ $CODE -ne 0 ]; then
   # et c'est justement ce chien de garde qui doit signaler ce qui passe inaperçu. Le
   # plafond d'API (jusqu'au 2026-09-01) fait partie des causes attendues.
   echo "claude -p a échoué (code $CODE)" >> "$JOURNAL"
-  printf '%s\n' "⚠️ L'agent quotidien n'a pas pu tourner (claude -p, code $CODE). Voir logs/agent_quotidien.log." \
+  RAISON="code $CODE"
+  [ $CODE -eq 124 ] && RAISON="il tournait encore après 20 minutes (arrêté)"
+  printf '%s\n' "⚠️ L'agent quotidien n'a pas pu tourner ($RAISON). Voir logs/agent_quotidien.log." \
     | .venv/bin/python scripts/slack_send.py
   exit $CODE
 fi
