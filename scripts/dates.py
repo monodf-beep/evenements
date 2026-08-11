@@ -207,7 +207,34 @@ def _year(day: int, month: int, ref: date) -> int:
 
 
 def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
-    """(date_start_iso, date_end_iso, source). source = 'parsed' | 'none'."""
+    """(date_start_iso, date_end_iso, source). source = 'parsed' | 'jour_incoherent' | 'none'.
+
+    ⚠️ LE PORTILLON DU JOUR DE SEMAINE, posé le 2026-08-11 au soir. Franck : « implacable
+    au niveau de la collecte AVANT de passer par les LLM », et le même soir : « je ne veux
+    plus que les informations ne soient pas prises via les sources officielles ».
+
+    Quand le texte nomme le jour (« sabato 7 maggio », « le vendredi 21 août ») et que ce
+    jour ne correspond PAS à la date qu'on vient de calculer, on ne date pas. La fiche part
+    sans date, atterrit dans « À compléter », et quelqu'un — l'agent quotidien à 9h15 —
+    ouvre la page et lit. C'est le seul dénouement possible, parce que le désaccord a deux
+    causes opposées et que le code ne peut pas les distinguer :
+
+      • l'annonce est ANCIENNE et `_year()` l'a projetée dans le futur. C'est le cas des
+        neuf fiches Paratissima trouvées ce jour-là, dont une soirée d'avril 2022 mise en
+        ligne pour avril 2027 ;
+      • la SOURCE s'est trompée de jour. TorinoClick, l'agence de la Ville de Turin, a
+        écrit « du vendredi 24 au lundi 27 septembre » pour Terra Madre 2026, dont les
+        vraies bornes sont un jeudi et un dimanche. Là, notre date était juste.
+
+    D'où le choix de REFUSER DE DATER plutôt que de corriger l'année. Se servir du jour
+    pour élire une année aurait daté Terra Madre en 2027 — le seul millésime proche où le
+    27 septembre tombe un lundi. **Un signal fort n'est pas un oracle : il sert à douter,
+    jamais à choisir.**
+
+    Et ce n'est pas un cul-de-sac (règle 3) : une fiche sans date reste dans la file
+    d'`app.incomplete_clause`, donc dans le plan de travail de l'agent, jusqu'à ce qu'une
+    lecture tranche. Le refus ne se rejoue pas sur la même matière — il attend un humain,
+    et il y en a un qui passe tous les matins."""
     ref = ref or date.today()
     t = _strip(text)
     M = _MONTHS
@@ -218,7 +245,7 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         starts = [f"{y}-{m}-{d}" for y, m, d in iso]
         starts = [s for s in starts if _iso(*map(int, s.split("-")))]
         if starts:
-            return (min(starts), max(starts), "parsed")
+            return _sous_reserve_du_jour(min(starts), max(starts), text)
 
     # 2) Plage même mois : « du 5 au 8 juillet », « dal 5 al 8 luglio », « 5 e 6 luglio »,
     #    « sabato 5 e domenica 6 luglio » (un mot — ex. jour de semaine — toléré après le lien)
@@ -229,7 +256,7 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         y = int(yr) if yr else _year(min(d1, d2), mon, ref)
         s, e = _iso(y, mon, d1), _iso(y, mon, d2)
         if s and e:
-            return (min(s, e), max(s, e), "parsed")
+            return _sous_reserve_du_jour(min(s, e), max(s, e), text)
 
     # 3) Plage inter-mois « du 30 juin au 3 juillet [2026] » / « dal 30 giugno al 3 luglio »
     m = re.search(rf"(?:du|dal|dall'|dall’|da)\s*(\d{{1,2}})\s+({_MONTH_RE})\.?\s*(\d{{4}})?\s*"
@@ -253,7 +280,7 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
             yy2 = yy1 if mon2 >= mon1 else yy1 + 1
         s, e = _iso(yy1, mon1, d1), _iso(yy2, mon2, d2)
         if s and e:
-            return (min(s, e), max(s, e), "parsed")
+            return _sous_reserve_du_jour(min(s, e), max(s, e), text)
 
     # 4) Fin seule « jusqu'au 30 août » / « fino al 30 agosto » → en cours jusqu'à…
     m = re.search(rf"(?:jusqu['’ ]?au|fino all?['’ ]?|sino al)\s*(\d{{1,2}})\s+"
@@ -263,7 +290,7 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         y = int(yr) if yr else _year(d2, mon, ref)
         e = _iso(y, mon, d2)
         if e:
-            return ("", e, "parsed")  # début inconnu = en cours
+            return _sous_reserve_du_jour("", e, text)  # début inconnu = en cours
 
     # 5) Date simple « [le] 5 juillet [2026] » / « 5 luglio »
     m = re.search(rf"\b(\d{{1,2}})\s+({_MONTH_RE})\.?\s*(\d{{4}})?", t)
@@ -272,7 +299,7 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         y = int(yr) if yr else _year(d1, mon, ref)
         s = _iso(y, mon, d1)
         if s:
-            return (s, s, "parsed")
+            return _sous_reserve_du_jour(s, s, text)
 
     # 6) Numérique jj/mm/aaaa ou jj.mm.aaaa (format européen)
     m = re.search(r"\b(\d{1,2})[/.](\d{1,2})[/.](\d{4})\b", t)
@@ -280,9 +307,21 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         d1, mon, y = int(m[1]), int(m[2]), int(m[3])
         s = _iso(y, mon, d1)
         if s:
-            return (s, s, "parsed")
+            return _sous_reserve_du_jour(s, s, text)
 
     return ("", "", "none")
+
+
+def _sous_reserve_du_jour(debut: str, fin: str, texte: str) -> tuple[str, str, str]:
+    """Rend la date, SAUF si le jour de semaine annoncé la contredit (cf. utils/jours).
+
+    On vérifie les deux bornes : sur « du vendredi 24 au lundi 27 septembre », une seule
+    peut être fausse, et une plage à moitié juste est une plage fausse."""
+    from utils import jours as _j
+    for iso in (debut, fin):
+        if iso and _j.contredit(texte, iso):
+            return ("", "", "jour_incoherent")
+    return (debut, fin, "parsed")
 
 
 # Heure : UNIQUEMENT des motifs avec un mot-clé de contexte sans ambiguïté (« à »/« dès »
@@ -787,7 +826,7 @@ def main(argv=None) -> int:
         "  AND COALESCE(translation_of,0) = 0"
     ).fetchall()
     log.info("Passe texte : %d événement(s) sans date de début à relire", len(rows))
-    parsed = parsed_article = fin_seule = 0
+    parsed = parsed_article = fin_seule = jour_incoherent = 0
     for r in rows:
         s, e, src = parse_dates(f"{r['title']}\n{r['description'] or ''}")
         titre_art = (r["article_title"] or "") if "article_title" in r.keys() else ""
@@ -795,6 +834,13 @@ def main(argv=None) -> int:
             s2, e2, src2 = parse_dates(titre_art)
             if src2 == "parsed":
                 s, e, src = s2, e2, "parsed_article"
+        # UN REFUS QUI NE SE COMPTE PAS SE DÉCOUVRE DES SEMAINES PLUS TARD (règle 6).
+        # Le portillon du jour de semaine laisse la fiche SANS date : c'est voulu, mais si
+        # personne ne dit combien de fiches il retient, on croira que la source est pauvre
+        # alors que c'est nous qui nous taisons. Elles restent dans « À compléter », donc
+        # dans le plan de travail de l'agent : rien n'est perdu, mais il faut le savoir.
+        if src == "jour_incoherent":
+            jour_incoherent += 1
         # ON N'EFFACE JAMAIS, ET ON NE RÉÉCRIT PAS CE QU'ON SAIT DÉJÀ. Une fiche peut
         # n'avoir qu'une date de FIN (« jusqu'au 20 septembre ») : la toute première
         # version réécrivait les deux colonnes à chaque passage, ce qui aurait effacé
@@ -838,6 +884,12 @@ def main(argv=None) -> int:
              "d'article), %d n'ont gagné qu'une date de fin (« jusqu'au… », elles restent "
              "incomplètes) — %d fiche(s) restent sans date de début",
              parsed, parsed_article, fin_seule, restant)
+    if jour_incoherent:
+        log.info("Passe texte : %d fiche(s) NON datées volontairement — le jour de semaine "
+                 "annoncé par le texte ne colle pas à la date calculée. Deux causes "
+                 "opposées et indiscernables ici (annonce ancienne projetée dans le futur, "
+                 "ou source qui se trompe de jour) : elles restent dans « À compléter » "
+                 "pour qu'une lecture tranche", jour_incoherent)
 
     # --- Passe 2 : page de l'événement (JSON-LD/<time>), pour les restants ---
     from_page = 0

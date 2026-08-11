@@ -111,50 +111,15 @@ def dates_du_texte(texte: str, ref: date) -> set[str]:
 
 _BALISES = re.compile(r"<[^>]{1,200}>")
 
-# Le jour de la semaine, en français et en italien. Lundi = 0, comme `date.weekday()`.
-_JOURS = {
-    "lundi": 0, "lunedi": 0, "mardi": 1, "martedi": 1, "mercredi": 2, "mercoledi": 2,
-    "jeudi": 3, "giovedi": 3, "vendredi": 4, "venerdi": 4, "samedi": 5, "sabato": 5,
-    "dimanche": 6, "domenica": 6,
-}
-_JOUR_RE = "|".join(_JOURS)
-_NOM_DU_JOUR = {v: k for k, v in (("lundi", 0), ("mardi", 1), ("mercredi", 2),
-                                  ("jeudi", 3), ("vendredi", 4), ("samedi", 5),
-                                  ("dimanche", 6))}
-
-
-def jours_nommes(texte: str) -> dict[tuple[int, int], set[int]]:
-    """{(mois, jour) : les jours de semaine annoncés pour cette date}, lus dans le texte.
-
-    LE SIGNAL LE PLUS SOUS-EXPLOITÉ DE TOUTE LA CHAÎNE, trouvé le 2026-08-11 au soir en
-    lisant l'extrait de la fiche 1069 : « ti basterà venire a trovarci sabato 7 maggio
-    dalle 16 ». Notre base annonçait le 7 mai 2027. Or le 7 mai ne tombe un SAMEDI ni en
-    2025, ni en 2026, ni en 2027 — il le fait en 2022, et la page Paratissima porte la
-    mention « 4 anni fa ». La fiche était en ligne, annonçant pour dans un an un événement
-    vieux de quatre.
-
-    Un texte français ou italien nomme presque toujours le jour de la semaine. C'est une
-    donnée GRATUITE, écrite par un humain qui savait de quoi il parlait, et qui contraint
-    l'année à une sur sept. Rien d'autre dans le texte ne fait ça.
-
-    C'est encore la même forme que les cinq trouvailles de la journée : on ne peut pas
-    EXTRAIRE une année d'un texte, mais on peut CONFIRMER celle qu'on a — ici en la
-    confrontant à un fait que l'auteur a écrit sans y penser.
-
-    TOUTES LES MENTIONS, PAS LA DERNIÈRE. La première version écrasait la clé à chaque
-    tour de boucle. Un texte qui nomme deux fois le même quantième ne gardait donc que la
-    SECONDE mention — et c'est ce qui a produit le faux positif Terra Madre (2026-09-27,
-    date confirmée par slowfood.it) : l'article disait « da giovedì 24 a domenica 27
-    settembre », puis reparlait du 27 ailleurs. La bonne mention existait, elle a été
-    remplacée par l'autre, en silence.
-
-    D'où l'ensemble : si le texte nomme NOTRE jour ne serait-ce qu'une fois, il nous
-    confirme. Une source qui se contredit elle-même ne prouve rien CONTRE nous."""
-    t = _strip(texte or "")
-    trouves: dict[tuple[int, int], set[int]] = {}
-    for j, d, mon in re.findall(rf"\b({_JOUR_RE})\s+(\d{{1,2}})\s+({_MONTH_RE})", t):
-        trouves.setdefault((_MONTHS[mon], int(d)), set()).add(_JOURS[j])
-    return trouves
+# LE VOCABULAIRE DES JOURS VIT DANS utils/jours.py, PAS ICI. Il en existait une copie dans
+# ce fichier jusqu'au 2026-08-11 au soir, jusqu'à ce que `dates.py` en ait besoin lui aussi
+# pour refuser de dater une annonce dont le jour ne colle pas. Deux listes de sept jours
+# dans deux fichiers, c'est deux listes qui divergeront — et le jour où l'une apprend
+# « mercoledì » sans l'autre, le portillon de la collecte et le contradicteur d'après
+# publication ne diront plus la même chose sur la même fiche.
+from utils.jours import (JOURS as _JOURS, JOUR_RE as _JOUR_RE,  # noqa: E402
+                         NOM_DU_JOUR as _NOM_DU_JOUR, annees_possibles as _annees,
+                         jours_nommes)
 
 
 def _materiau(row: sqlite3.Row) -> str:
@@ -241,9 +206,7 @@ def verdict_jour(stockees: set[str], jours: dict[tuple[int, int], set[int]]) -> 
         if not annonces or d.weekday() in annonces:
             continue
         annonce = sorted(annonces)[0]
-        candidates = [a for a in range(d.year - 6, d.year + 3)
-                      if _iso(a, d.month, d.day)
-                      and date(a, d.month, d.day).weekday() == annonce]
+        candidates = _annees(d.month, d.day, annonce, d.year)
         if candidates:
             proches = [a for a in candidates if abs(a - d.year) <= 1]
             lecture = ("décalage d'UN AN" if proches
