@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import usage
+from utils import radar
 from utils.google_auth import load_credentials
 from scripts.scraper_events import init_db
 
@@ -305,6 +306,20 @@ def insert_events(conn: sqlite3.Connection, events: list, email: dict,
     return inserted
 
 
+def expediteur_officiel(sender: str) -> bool:
+    """L'expéditeur peut-il alimenter le catalogue ? Faux pour la presse et les guides
+    tiers (config/non_institutional_sources.txt) et pour le tier radar.
+
+    Le domaine est lu dans l'adresse entre chevrons (« Nom <news@guidatorino.com> »).
+    Sans adresse lisible, on ACCEPTE : un expéditeur qu'on n'arrive pas à identifier
+    n'est pas une preuve de presse, et refuser sur un doute couperait des newsletters
+    d'organisateurs légitimes. Le filtre doit être précis, pas zélé."""
+    m = re.search(r"[\w.+-]+@([\w.-]+)", sender or "")
+    if not m:
+        return True
+    return radar.source_officielle("https://" + m.group(1).strip().lower())
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Collecte des newsletters Gmail.")
     parser.add_argument("--setup", action="store_true",
@@ -341,12 +356,29 @@ def main(argv=None) -> int:
     ids = list_label_messages(service, label, lookback)
     log.info("%d mails sous le label '%s' (modèle extraction : %s)", len(ids), label, model)
 
-    total = 0
+    total = ignores = 0
     for mid in ids:
         if already_seen(conn, mid):
             continue
         raw = service.users().messages().get(userId="me", id=mid, format="full").execute()
         email = parse_message(raw)
+        # LE TIER RADAR N'AVAIT ÉTÉ SUPPRIMÉ QUE DU CÔTÉ RSS (2026-08-11). Franck, en
+        # lisant la liste des fiches sans date : « on a encore du guida torino ? alors
+        # que c'est du radar et qu'on en veut pas ? […] je veux que des sources
+        # officielles. » Il avait raison : config/sources.txt a bien été purgé le 05/08,
+        # mais les newsletters entrent par une AUTRE porte, et celle-ci ne vérifiait rien.
+        # guidatorino.com figurait pourtant déjà dans config/non_institutional_sources.txt
+        # — la liste existait, ce canal ne la consultait simplement pas.
+        #
+        # On REFUSE avant l'extraction : c'est aussi un appel LLM économisé par mail, et
+        # surtout aucune fiche créée qu'il faudrait purger ensuite.
+        if not expediteur_officiel(email.get("sender", "")):
+            log.info("[%s] IGNORÉ — expéditeur non officiel (presse/guide) : %s",
+                     mid[:8], email.get("sender", "")[:70])
+            mark_seen(conn, mid)
+            conn.commit()
+            ignores += 1
+            continue
         events = extract_events(email, client, model)
         if events is API_ERROR:
             log.warning("Arrêt : panne API pendant l'extraction (mails restants repris au prochain run).")
@@ -360,7 +392,9 @@ def main(argv=None) -> int:
                  territoire or "??", email.get("subject", "")[:60])
 
     conn.close()
-    log.info("=== Collecte Gmail terminée : %d nouveaux événements ===", total)
+    # RÈGLE 6 : ce qu'on écarte se compte, sinon on le découvre des semaines plus tard.
+    log.info("=== Collecte Gmail terminée : %d nouveaux événements, %d mail(s) ignoré(s) "
+             "(expéditeur presse/guide) ===", total, ignores)
     return 0
 
 

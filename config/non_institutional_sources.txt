@@ -24,3 +24,14 @@ ledauphine.com
 nicerendezvous.com
 gazzettamatin.com
 quotidianopiemontese.it
+
+# ── Ajoutés le 2026-08-11, par la porte des NEWSLETTERS ────────────────────────
+# Le tier radar avait été supprimé de config/sources.txt le 05/08, mais les
+# newsletters entrent par scripts/gmail_collect.py, qui ne consultait AUCUNE de ces
+# listes. Franck, en lisant les fiches sans date : « on a encore du guida torino ?
+# alors que c'est du radar et qu'on en veut pas ? […] je veux que des sources
+# officielles. » guidatorino.com était déjà ici et passait quand même — la liste
+# existait, le canal ne la lisait pas. Le contrôle est désormais posé à l'entrée.
+mentelocale.it
+torinotoday.it
+mole24.it
