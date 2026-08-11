@@ -206,5 +206,19 @@ _check("aucune dette déjà réparée ne traîne dans la liste", not reparees,
        "Ces scripts filtrent désormais : les retirer de _DETTES_DATE — " + ", ".join(reparees))
 print(f"\n{len(_DETTES_DATE)} dette(s) connue(s), tolérée(s) mais comptée(s).")
 
+print("\n──── aucune fiche écrite deux fois dans une table de valeurs ────")
+# Erreur n°20 du 2026-08-11 : « 3279 : récurrent » a écrasé « 3279 : ville=Torino » écrit
+# trois heures plus tôt. Dans un dictionnaire Python la dernière clé gagne, SANS ERREUR —
+# le script tourne, écrit, annonce un succès, et une valeur a disparu.
+#
+# Le contrôle vit dans scripts/completer_verifie.py et s'exécute à l'IMPORT. On l'importe
+# donc ici pour qu'il tourne avec la suite, et pas seulement quand quelqu'un lance le
+# script : un garde-fou que personne ne déclenche n'est pas un garde-fou (règle 3).
+try:
+    import scripts.completer_verifie  # noqa: F401
+    _check("scripts/completer_verifie : aucune fiche en double", True)
+except SystemExit as exc:
+    _check("scripts/completer_verifie : aucune fiche en double", False, str(exc))
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)
