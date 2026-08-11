@@ -196,6 +196,24 @@ _ECARTS: dict[int, str] = {
     # d'aller lire la page.
     4563: "Museo del Risorgimento — exposition du 8 juin au 3 septembre 2023, terminée "
           "depuis trois ans (museorisorgimentotorino.it)",
+    # LE GRAND CONTINENT SUMMIT — proposé le matin, tranché le soir. La charte §2 est
+    # explicite : « un congrès, un colloque scientifique ou un salon B2B n'a pas sa place,
+    # même ouvert à tous ». C'est le PUBLIC VISÉ qui décide, jamais le mot du titre.
+    #
+    # Ce sommet réunit sur invitation environ 180 chefs de gouvernement, intellectuels et
+    # scientifiques ; seul le colloque inaugural est ouvert sur inscription. Et l'édition
+    # documentée (3-5 décembre, Grand Hotel Billia puis Petit Cervin) est celle de 2025 —
+    # aucune édition 2026 n'était annoncée au 2026-08-11, alors que la fiche affirme
+    # « du 3 au 6 décembre ».
+    #
+    # Ses deux points « À vérifier » (tarif, langue des sessions) sont insolubles pour la
+    # même raison : on ne publie pas les conditions d'accès d'un événement sur invitation.
+    # Écarter la fiche les fait disparaître avec elle, et c'est la bonne issue — pas un
+    # humain qui cherche une réponse qui n'existe pas.
+    3379: "Grand Continent Summit — colloque sur invitation (≈180 responsables et "
+          "chercheurs), hors charte §2 ; et l'édition documentée est celle de 2025, "
+          "aucune 2026 annoncée au 11/08 (regione.vda.it, summit.legrandcontinent.eu)",
+
     # PROPOSÉS PAR L'AGENT QUOTIDIEN À SON PREMIER RUN, motifs vérifiés et repris ici.
     2374: "Per Olivia (Teatro Stabile) — la page ne porte AUCUNE date, ni au 11/08 ni "
           "auparavant : les dates de la Stagione 2026-2027 vivent sur vivaticket. Rien à "
