@@ -132,21 +132,44 @@ def _sortie(argv=None):
 print("\n──── 2 bis. le jour de la semaine ────")
 _check("« sabato 7 maggio » est lu",
        verifier_dates.jours_nommes("venire a trovarci sabato 7 maggio dalle 16") ==
-       {(5, 7): 5})
+       {(5, 7): {5}})
 _check("le français aussi",
-       verifier_dates.jours_nommes("Le vendredi 21 août 2026 à 21h") == {(8, 21): 4})
+       verifier_dates.jours_nommes("Le vendredi 21 août 2026 à 21h") == {(8, 21): {4}})
+# LE FAUX POSITIF TERRA MADRE, RECOPIÉ. L'article nomme DEUX fois le 27 septembre ; la
+# première mention est juste. La version qui écrasait ne gardait que la seconde et
+# accusait une date confirmée par slowfood.it.
+_TM = ("Da giovedi 24 a domenica 27 settembre 2026 a Torino si terra la 40a edizione. "
+       "Lunedi 27 settembre le scuole restano chiuse.")
+_check("les DEUX mentions du même quantième sont gardées",
+       verifier_dates.jours_nommes(_TM) == {(9, 27): {6, 0}},
+       verifier_dates.jours_nommes(_TM))
+_check("et une source qui se contredit ne prouve rien CONTRE nous — Terra Madre passe",
+       verifier_dates.verdict_jour({"2026-09-27"}, verifier_dates.jours_nommes(_TM)) == "",
+       verifier_dates.verdict_jour({"2026-09-27"}, verifier_dates.jours_nommes(_TM)))
 _check("un texte sans jour nommé ne dit rien",
        verifier_dates.jours_nommes("Le 21 août 2026 à 21h") == {})
 # LE CAS 1069, RECOPIÉ : notre 07/05/2027 est un vendredi, la page dit samedi.
 _check("le désaccord de jour est signalé",
-       "samedi" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): 5}))
-_check("et il DIT la dernière année qui collerait — 2022, donc l'annonce est vieille",
-       "2022" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): 5}),
-       verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): 5}))
+       "samedi" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}))
+# LES ANNÉES SONT ÉNUMÉRÉES, PAS CHOISIES. La première version prenait max() sur une
+# fenêtre qui va jusqu'à deux ans devant : elle annonçait 2027 pour une annonce de 2021,
+# c'est-à-dire l'hypothèse la plus flatteuse. Un affichage qui choisit à la place du
+# lecteur choisit toujours dans le sens de celui qui l'a écrit.
+_check("annonce ancienne : la seule année possible est loin derrière, et c'est DIT",
+       "2022" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}) and
+       "ANCIENNE" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}),
+       verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}))
+_check("décalage d'un an : l'année voisine est proposée, et les DEUX sont listées",
+       "2021, 2027" in verifier_dates.verdict_jour({"2026-12-11"}, {(12, 11): {5}}) and
+       "UN AN" in verifier_dates.verdict_jour({"2026-12-11"}, {(12, 11): {5}}),
+       verifier_dates.verdict_jour({"2026-12-11"}, {(12, 11): {5}}))
 _check("un jour qui COLLE ne dit rien — le cas près de la frontière",
-       verifier_dates.verdict_jour({"2026-08-21"}, {(8, 21): 4}) == "")
+       verifier_dates.verdict_jour({"2026-08-21"}, {(8, 21): {4}}) == "")
 _check("un jour nommé pour une AUTRE date ne juge pas la nôtre",
-       verifier_dates.verdict_jour({"2026-08-21"}, {(9, 12): 5}) == "")
+       verifier_dates.verdict_jour({"2026-08-21"}, {(9, 12): {5}}) == "")
+_check("la phrase du jour de semaine est retrouvable — le signalement DOIT se lire",
+       "sabato 7 maggio" in verifier_dates.phrase_du_jour(
+           "ti bastera venire a trovarci sabato 7 maggio dalle 16.", 5, 7))
 
 print("\n──── 3. sur une base ────")
 vues, sortie = _sortie()

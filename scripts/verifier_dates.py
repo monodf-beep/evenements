@@ -123,8 +123,8 @@ _NOM_DU_JOUR = {v: k for k, v in (("lundi", 0), ("mardi", 1), ("mercredi", 2),
                                   ("dimanche", 6))}
 
 
-def jours_nommes(texte: str) -> dict[tuple[int, int], int]:
-    """{(mois, jour) : indice du jour de semaine annoncé}, lu dans le texte.
+def jours_nommes(texte: str) -> dict[tuple[int, int], set[int]]:
+    """{(mois, jour) : les jours de semaine annoncés pour cette date}, lus dans le texte.
 
     LE SIGNAL LE PLUS SOUS-EXPLOITÉ DE TOUTE LA CHAÎNE, trouvé le 2026-08-11 au soir en
     lisant l'extrait de la fiche 1069 : « ti basterà venire a trovarci sabato 7 maggio
@@ -139,11 +139,21 @@ def jours_nommes(texte: str) -> dict[tuple[int, int], int]:
 
     C'est encore la même forme que les cinq trouvailles de la journée : on ne peut pas
     EXTRAIRE une année d'un texte, mais on peut CONFIRMER celle qu'on a — ici en la
-    confrontant à un fait que l'auteur a écrit sans y penser."""
+    confrontant à un fait que l'auteur a écrit sans y penser.
+
+    TOUTES LES MENTIONS, PAS LA DERNIÈRE. La première version écrasait la clé à chaque
+    tour de boucle. Un texte qui nomme deux fois le même quantième ne gardait donc que la
+    SECONDE mention — et c'est ce qui a produit le faux positif Terra Madre (2026-09-27,
+    date confirmée par slowfood.it) : l'article disait « da giovedì 24 a domenica 27
+    settembre », puis reparlait du 27 ailleurs. La bonne mention existait, elle a été
+    remplacée par l'autre, en silence.
+
+    D'où l'ensemble : si le texte nomme NOTRE jour ne serait-ce qu'une fois, il nous
+    confirme. Une source qui se contredit elle-même ne prouve rien CONTRE nous."""
     t = _strip(texte or "")
-    trouves: dict[tuple[int, int], int] = {}
+    trouves: dict[tuple[int, int], set[int]] = {}
     for j, d, mon in re.findall(rf"\b({_JOUR_RE})\s+(\d{{1,2}})\s+({_MONTH_RE})", t):
-        trouves[(_MONTHS[mon], int(d))] = _JOURS[j]
+        trouves.setdefault((_MONTHS[mon], int(d)), set()).add(_JOURS[j])
     return trouves
 
 
@@ -186,29 +196,63 @@ def _materiau(row: sqlite3.Row) -> str:
     return _BALISES.sub(" ", "\n".join(bouts))
 
 
-def verdict_jour(stockees: set[str], jours: dict[tuple[int, int], int]) -> str:
+def phrase_du_jour(texte: str, mois: int, jour: int) -> str:
+    """La phrase où le texte nomme le jour de semaine de cette date. "" si introuvable.
+
+    ÉCRITE APRÈS AVOIR RENDU DIX-NEUF SIGNALEMENTS SANS ELLE (2026-08-11, 20h10). Les deux
+    autres familles affichaient leur extrait depuis le début ; celle-ci, la plus récente et
+    la plus tranchante, n'affichait que deux jours de semaine et une année. J'ai donc
+    demandé qu'on me croie sur dix-neuf nombres — précisément ce que je reproche au reste
+    de la chaîne depuis ce matin.
+
+    Et il y avait bien un faux positif dedans : Terra Madre, dont la date (24-27 septembre
+    2026) est confirmée par slowfood.it. Sans la phrase, impossible de savoir d'où sortait
+    le « lundi » — d'un autre événement cité dans le même article, d'une édition passée,
+    d'une coquille de la source."""
+    t = _strip(texte or "")
+    m = re.search(rf"\b({_JOUR_RE})\s+0?{jour}\s+({_MONTH_RE})", t)
+    if not m:
+        return ""
+    debut = max((t.rfind(c, 0, m.start()) for c in ".;!?\n"), default=-1)
+    fin = min((p for p in (t.find(c, m.end()) for c in ".;!?\n") if p != -1),
+              default=len(t))
+    return " ".join(texte[debut + 1:fin + 1].split())[:200].strip()
+
+
+def verdict_jour(stockees: set[str], jours: dict[tuple[int, int], set[int]]) -> str:
     """Le jour de semaine annoncé colle-t-il à notre date ? "" si rien à dire.
 
     On ne juge que les dates dont le texte nomme le jour POUR LE MÊME quantième et le
     même mois : sans ça on comparerait le samedi d'un autre événement au nôtre.
 
-    En prime, on cherche l'année qui, elle, collerait — sur une fenêtre large. Quand elle
-    est loin derrière, ce n'est plus une faute d'un an : c'est une annonce ancienne
-    remontée telle quelle, et le geste n'est pas de corriger la date mais d'écarter la
-    fiche."""
+    ON ÉNUMÈRE LES ANNÉES POSSIBLES, on n'en désigne pas une. La première version annonçait
+    « la dernière année où le 11/12 tombe un samedi est 2027 » — c'était `max()` sur une
+    fenêtre qui va jusqu'à deux ans devant. Or la fiche venait d'une annonce de 2021, et
+    2021 était dans la liste. Le lecteur était donc poussé vers l'année la plus flatteuse
+    (un décalage d'un an, ça se corrige) au lieu de la vraie (une annonce vieille de cinq
+    ans, ça s'écarte). **Un affichage qui choisit à la place du lecteur choisit toujours
+    dans le sens de celui qui l'a écrit.** La liste, elle, laisse voir les deux."""
     for iso in sorted(stockees):
         d = date.fromisoformat(iso)
-        annonce = jours.get((d.month, d.day))
-        if annonce is None or annonce == d.weekday():
+        annonces = jours.get((d.month, d.day)) or set()
+        # SI LE TEXTE NOMME NOTRE JOUR NE SERAIT-CE QU'UNE FOIS, il nous confirme. Une
+        # source qui se contredit elle-même ne prouve rien CONTRE nous — c'est la leçon
+        # du faux positif Terra Madre, dont la date était juste et confirmée à la source.
+        if not annonces or d.weekday() in annonces:
             continue
+        annonce = sorted(annonces)[0]
         candidates = [a for a in range(d.year - 6, d.year + 3)
                       if _iso(a, d.month, d.day)
                       and date(a, d.month, d.day).weekday() == annonce]
-        detail = (f"la dernière année où le {d.day:02d}/{d.month:02d} tombe un "
-                  f"{_NOM_DU_JOUR[annonce]} est {max(candidates)}"
-                  if candidates else
-                  f"aucune année proche ne place le {d.day:02d}/{d.month:02d} un "
-                  f"{_NOM_DU_JOUR[annonce]}")
+        if candidates:
+            proches = [a for a in candidates if abs(a - d.year) <= 1]
+            lecture = ("décalage d'UN AN" if proches
+                       else "annonce ANCIENNE, pas un décalage d'un an")
+            detail = (f"le {d.day:02d}/{d.month:02d} tombe un {_NOM_DU_JOUR[annonce]} en "
+                      f"{', '.join(str(a) for a in candidates)} → {lecture}")
+        else:
+            detail = (f"aucune année de {d.year - 6} à {d.year + 2} ne place le "
+                      f"{d.day:02d}/{d.month:02d} un {_NOM_DU_JOUR[annonce]}")
         return (f"le texte annonce un {_NOM_DU_JOUR[annonce]}, notre {iso} est un "
                 f"{_NOM_DU_JOUR[d.weekday()]} — {detail}")
     return ""
@@ -306,13 +350,28 @@ def main(argv: list[str]) -> int:
         if jour:
             v, motif, cible = "jour", jour, ""
         compte[v] += 1
+        phrase_jour = ""
+        if jour:
+            # La phrase EST le signalement. Sans elle on demande au lecteur de croire deux
+            # jours de semaine et une liste d'années — et le faux positif Terra Madre
+            # prouve qu'il ne le doit pas.
+            d0 = date.fromisoformat(sorted(stockees)[0])
+            for iso in sorted(stockees):
+                dd = date.fromisoformat(iso)
+                if (dd.month, dd.day) in jours_nommes(materiau):
+                    d0 = dd
+                    break
+            phrase_jour = phrase_du_jour(materiau, d0.month, d0.day)
         if v in ("contredit", "annee", "jour") or (args.tout and v == "indecis"):
             # LA PHRASE, PAS SEULEMENT LA DATE. Sans elle, le lecteur arbitre à l'aveugle
             # entre deux nombres et tranchera dans le sens de celui qui affiche — c'est
             # l'erreur 14 du 2026-08-11, où j'ai déclaré fausses deux dates qui étaient
             # justes. Ici l'enjeu est plus grand encore : ces fiches sont PUBLIÉES, donc
             # une correction à tort réécrit une page que des gens lisent.
-            phrase, exacte = phrase_de_l_annee(_materiau(r), cible)
+            if phrase_jour:
+                phrase, exacte = phrase_jour, True
+            else:
+                phrase, exacte = phrase_de_l_annee(materiau, cible)
             a_voir.append((r, v, motif, phrase, exacte))
 
     total = sum(compte.values())
