@@ -248,6 +248,15 @@ def verdict_jour(stockees: set[str], jours: dict[tuple[int, int], set[int]]) -> 
             proches = [a for a in candidates if abs(a - d.year) <= 1]
             lecture = ("décalage d'UN AN" if proches
                        else "annonce ANCIENNE, pas un décalage d'un an")
+            # LE GESTE, QUAND IL EST CERTAIN. Une seule année possible et elle est
+            # DERRIÈRE nous : l'événement a eu lieu, la règle 5 le déclare mort, et la
+            # bonne action n'est pas de corriger la date mais d'écarter la fiche. C'est
+            # l'écrasante majorité des cas trouvés le 2026-08-11 — des annonces passées
+            # que `_year()` avait projetées dans le futur, donc republiées comme à venir.
+            if len(candidates) == 1 and date(candidates[0], d.month, d.day) < date.today():
+                vraie = date(candidates[0], d.month, d.day).isoformat()
+                lecture = (f"l'événement a eu lieu le {vraie} → à ÉCARTER (règle 5), "
+                           f"pas à re-dater")
             detail = (f"le {d.day:02d}/{d.month:02d} tombe un {_NOM_DU_JOUR[annonce]} en "
                       f"{', '.join(str(a) for a in candidates)} → {lecture}")
         else:
@@ -411,9 +420,25 @@ def main(argv: list[str]) -> int:
             print(f"          le texte dit : « {phrase} »")
         print(f"          source : {r['source_name'] or '?'}\n")
 
+    # LA LISTE PRÊTE À L'EMPLOI. Recopier onze numéros à la main depuis un écran de
+    # terminal est une source d'erreur bête et évitable — et c'est moi qui les dicterais.
+    a_ecarter = [r["id"] for r, v, motif, _p, _e in a_voir if "à ÉCARTER" in motif]
+    if a_ecarter:
+        print(f"═══ {len(a_ecarter)} fiche(s) dont l'événement a DÉJÀ EU LIEU ═══")
+        print("Une seule année possible, et elle est derrière nous. Le geste est le même "
+              "pour toutes : corbeille WordPress + rejet, l'un et l'autre réversibles.\n")
+        print("  .venv/bin/python -m scripts.trash_by_ids "
+              + " ".join(str(i) for i in a_ecarter) + " \\")
+        print("      --statut rejected --motif \"Evenement passe : le jour de semaine "
+              "annonce par la source ne colle qu a une annee, deja ecoulee.\"")
+        print("  # relancer avec --apply si la sortie est conforme\n")
+
     print("SIGNALEMENT, PAS UN VERDICT : notre date peut être la bonne — elle vient "
           "parfois de la page officielle, que ce texte ne contient pas. La correction se "
           "fait page en main, par `completer_verifie --depuis` et sa clause « remplace ».")
+    print("⚠️ Le jour de semaine peut être FAUX DANS LA SOURCE : TorinoClick a écrit "
+          "« du vendredi 24 au lundi 27 septembre » pour Terra Madre 2026, dont les vraies "
+          "bornes sont un jeudi et un dimanche (slowfood.it). Lire la phrase avant d'agir.")
     conn.close()
     return 0
 

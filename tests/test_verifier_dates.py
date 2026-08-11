@@ -155,10 +155,15 @@ _check("le désaccord de jour est signalé",
 # fenêtre qui va jusqu'à deux ans devant : elle annonçait 2027 pour une annonce de 2021,
 # c'est-à-dire l'hypothèse la plus flatteuse. Un affichage qui choisit à la place du
 # lecteur choisit toujours dans le sens de celui qui l'a écrit.
-_check("annonce ancienne : la seule année possible est loin derrière, et c'est DIT",
-       "2022" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}) and
-       "ANCIENNE" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}),
+# UNE SEULE ANNÉE POSSIBLE, ET ELLE EST DERRIÈRE : le geste n'est pas de re-dater, c'est
+# d'écarter (règle 5). C'est le cas de l'écrasante majorité des 19 fiches du 2026-08-11.
+_check("annonce ancienne : le GESTE est nommé, et c'est écarter",
+       "2022-05-07" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}) and
+       "ÉCARTER" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}),
        verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): {5}}))
+_check("deux années possibles : aucun geste n'est dicté, l'ambiguïté est dite",
+       "ÉCARTER" not in verifier_dates.verdict_jour({"2026-12-11"}, {(12, 11): {5}}),
+       verifier_dates.verdict_jour({"2026-12-11"}, {(12, 11): {5}}))
 _check("décalage d'un an : l'année voisine est proposée, et les DEUX sont listées",
        "2021, 2027" in verifier_dates.verdict_jour({"2026-12-11"}, {(12, 11): {5}}) and
        "UN AN" in verifier_dates.verdict_jour({"2026-12-11"}, {(12, 11): {5}}),
