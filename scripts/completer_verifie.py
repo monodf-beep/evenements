@@ -210,6 +210,24 @@ _ECARTS: dict[int, str] = {
     2676: "page de blog du Circolo dei Lettori, sans même un titre",
     # CONGRÈS ET B2B — charte : « un congrès, un colloque scientifique ou un salon B2B
     # n'a pas sa place, même ouvert à tous ». C'est le PUBLIC VISÉ qui décide.
+    # INTROUVABLE PARTOUT, et pas faute d'avoir cherché (2026-08-11, 21h). La « balade
+    # gourmande aux Charmettes » n'est annoncée que dans la lettre de la Ville de
+    # Chambéry. Huit sources ouvertes, aucune ne la connaît : chambery.fr/207 (page des
+    # Charmettes), chambery.fr/621 (programme de l'été, 300 animations), l'agenda des
+    # musées de Chambéry, chamberymontagnes.com, explore-savoie, agendaculturel 73.
+    #
+    # Le programme d'été des Charmettes annonce « concerts et siestes musicales dans les
+    # jardins, balades BOTANIQUES, séances de Pilates ou ateliers herbier ». Le doute est
+    # donc double : la date manque, et l'intitulé lui-même ne correspond à rien de publié.
+    #
+    # Sans date, la fiche ne peut pas être publiée — la porte qualité l'exige — donc elle
+    # resterait indéfiniment dans la file. On ne publie pas un rendez-vous dont on est
+    # incapable de dire quand il a lieu. Réversible d'un clic si la Ville l'annonce.
+    4247: "Balade gourmande aux Charmettes — annoncée dans la seule lettre de Chambéry, "
+          "introuvable sur les huit sources publiques consultées ; le programme des "
+          "Charmettes ne mentionne que des balades BOTANIQUES. Sans date, impossible à "
+          "publier",
+
     # PAS UN ÉVÉNEMENT PUBLIC — trouvé le 2026-08-11 en cherchant à répondre au point
     # « format exact : masterclass, cours ouvert ou concert public ? ». Réponse : aucun
     # des trois. Les rendez-vous « Chitarra Jazz (Prof. L. Tessarollo) » du calendrier du
