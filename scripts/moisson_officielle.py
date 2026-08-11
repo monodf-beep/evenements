@@ -70,6 +70,7 @@ from utils.logger import get_logger  # noqa: E402
 from utils.images import fetch_og_image  # noqa: E402
 from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
 from utils.radar import source_officielle  # noqa: E402
+from utils import jsonld  # noqa: E402
 from scripts.dates import dates_from_page, ensure_columns, _robust_get  # noqa: E402
 from scripts.venues import venue_from_page  # noqa: E402
 
@@ -157,7 +158,28 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
         return {}
     html = r.text
     trouve: dict = {}
-    if not (ev.get("date_event_start") or "").strip():
+
+    # ── 1. LES DONNÉES STRUCTURÉES, LUES POUR DE BON ────────────────────────────
+    # « Implacable au niveau de la collecte des informations officielles AVANT de passer
+    # par les LLM » (Franck, 2026-08-11). Jusqu'ici on cherchait la chaîne
+    # `"startDate":"…"` dans le HTML — donc on ignorait le bloc `@graph` de Yoast et de
+    # Rank Math (la forme de la majorité des sites WordPress), les tableaux de plusieurs
+    # objets, les guillemets échappés et les microdata. utils/jsonld.py PARSE le
+    # document que le site publie pour être lu par des machines, au lieu d'y chercher
+    # un motif. Une seule lecture donne date, lieu, ville et image.
+    struct = jsonld.champs(html)
+    for cle, val in struct.items():
+        if not (ev.get(cle) or "").strip():
+            trouve[cle] = val
+    # SEULE EXCEPTION AU « ON N'ÉCRASE RIEN » : la date de FIN suit sa date de DÉBUT.
+    # Si le début vient d'être posé depuis cette page, garder une fin venue d'ailleurs
+    # fabriquerait un intervalle à deux sources — le genre de fiche qui se termine avant
+    # de commencer. Les deux bornes décrivent un seul fait, elles se remplacent ensemble.
+    if "date_event_start" in trouve and struct.get("date_event_end"):
+        trouve["date_event_end"] = struct["date_event_end"]
+
+    # ── 2. Les extracteurs historiques, en complément de ce qui manque encore ────
+    if not (ev.get("date_event_start") or "").strip() and "date_event_start" not in trouve:
         debut, fin, _src = dates_from_page(html)
         if debut:
             trouve["date_event_start"] = debut
@@ -167,12 +189,18 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
             # de commencer.
             if fin:
                 trouve["date_event_end"] = fin
-    if not (ev.get("lieu") or "").strip() or not (ev.get("ville") or "").strip():
+    if not (ev.get("lieu") or "").strip() and "lieu" not in trouve:
         lieu, ville, _src = venue_from_page(html)
-        if lieu and not (ev.get("lieu") or "").strip():
+        if lieu:
             trouve["lieu"] = lieu
-        if ville and not (ev.get("ville") or "").strip():
+        if ville and not (ev.get("ville") or "").strip() and "ville" not in trouve:
             trouve["ville"] = ville
+
+    # ── 3. Microdata, la seconde forme que schema.org autorise ──────────────────
+    if not trouve.get("date_event_start") and not (ev.get("date_event_start") or "").strip():
+        for cle, val in jsonld.champs_microdata(html).items():
+            if not (ev.get(cle) or "").strip() and cle not in trouve:
+                trouve[cle] = val
     # UNE BANNIÈRE COMPTE COMME UNE PLACE VIDE (2026-08-11, mesuré). Le premier
     # --diagnostic a donné le chiffre qui décide : 36 des 53 pages « muettes » portent un
     # og:image — mais aucune n'a été récoltée, parce que la condition testait seulement
@@ -195,6 +223,13 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
     if not trouve and marqueurs is not None:
         for nom in _diagnostic(html) or ["AUCUN marqueur connu"]:
             marqueurs[nom] += 1
+        # LA QUESTION À LAQUELLE LE PREMIER DIAGNOSTIC NE RÉPONDAIT PAS. Il comptait la
+        # PRÉSENCE d'un bloc JSON-LD, et j'en ai conclu devant Franck que « ces pages
+        # décrivent l'organisation, pas l'événement ». Le marqueur ne testait pas ça.
+        # Ici on lit les @type réellement déclarés : s'il y a des Event qu'on rate
+        # encore, ils apparaissent noir sur blanc.
+        for t in jsonld.types_presents(html):
+            marqueurs[f"  @type déclaré : {t}"] += 1
     return trouve
 
 

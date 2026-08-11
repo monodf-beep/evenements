@@ -122,7 +122,11 @@ f3 = dict(conn.execute("SELECT * FROM events_raw WHERE id=3").fetchone())
 conn.close()
 
 _check("date de début récoltée", f1["date_event_start"] == "2026-12-05", str(f1["date_event_start"]))
-_check("date de fin récoltée", f1["date_event_end"] == "2026-12-06", str(f1["date_event_end"]))
+# La fin SUIT le début : la fiche portait « 2026-12-31 » (une borne venue d'ailleurs),
+# et comme le début vient d'être posé depuis cette page, la fin est reprise avec lui.
+# Garder les deux bornes de sources différentes fabriquerait un intervalle faux.
+_check("date de fin récoltée, et elle suit son début",
+       f1["date_event_end"] == "2026-12-06", str(f1["date_event_end"]))
 _check("lieu récolté", f1["lieu"] == "Théâtre Charles Dullin", str(f1["lieu"]))
 _check("ville récoltée", f1["ville"] == "Chambéry", str(f1["ville"]))
 _check("image récoltée", f1["url_image"] == "https://officiel.fr/affiche.jpg",
