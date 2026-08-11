@@ -25,7 +25,11 @@ aurait trouvées.
 
 CE QU'IL RESPECTE
   • dry-run par défaut (règle 4) ;
-  • il n'écrase RIEN : un champ déjà rempli est laissé tel quel, et il le dit ;
+  • il n'écrase rien PAR SURPRISE : un champ déjà rempli est laissé tel quel, et il le
+    dit. Une seule exception, ajoutée le 2026-08-11 pour les années fausses signalées par
+    l'agent : la clause « remplace » du JSON, où l'appelant DÉCLARE la valeur erronée
+    qu'il corrige. Si la base ne la porte plus, la correction est refusée — quelqu'un est
+    passé après lui (cf. `_valeur_attendue`) ;
   • « écarter » = `statut='rejected'`, c'est-à-dire la même chose que le bouton du
     back-office : une RE-CLASSIFICATION réversible, aucune ligne supprimée ;
   • le bilan est recompté en base après écriture (règle 6).
@@ -255,6 +259,34 @@ def _norm(s: str) -> str:
     return " ".join("".join(c for c in n if not unicodedata.combining(c)).split())
 
 
+# ── La clause « remplace » : corriger une valeur FAUSSE sans jamais écraser à l'aveugle ──
+# Remplie uniquement par --depuis. {id: {colonne: valeur attendue en base}}
+_REMPLACEMENTS: dict[int, dict] = {}
+
+
+def _valeur_attendue(actuelle, attendue) -> bool:
+    """La base contient-elle bien ce que l'appelant croit y trouver ?
+
+    POURQUOI CETTE POIGNÉE DE MAIN. Le script refusait jusqu'ici d'écraser tout champ
+    rempli — protection juste, et devenue un mur : l'agent quotidien a signalé le
+    2026-08-11 trois fiches datées la bonne journée mais la mauvaise ANNÉE (4440 en 2025,
+    4691 et 4434 en 2024). Une année fausse n'est pas un trou, c'est une erreur ; la porte
+    ne savait combler que les trous. Ces fiches seraient restées fausses indéfiniment —
+    et invisibles, puisqu'une date passée les sort de toutes les files (règle 5).
+
+    Ouvrir la porte en grand aurait été pire : un agent qui écrase sur la foi de sa propre
+    lecture peut effacer une correction que Franck venait de faire à la main, sans que
+    rien ne le signale. D'où la poignée de main : l'appelant doit DÉCLARER la valeur
+    fausse qu'il croit remplacer. Si la base dit autre chose, quelqu'un est passé entre
+    temps — et c'est lui qui a raison, parce qu'il a agi APRÈS.
+
+    Comparaison souple sur la forme (espaces, casse, accents), stricte sur le fond : on
+    tolère « 2024-07-05 » écrit « 2024-07-05 », pas « 2024-07-06 »."""
+    if _est_vide(actuelle) and _est_vide(attendue):
+        return True
+    return _norm(str(actuelle)) == _norm(str(attendue))
+
+
 def _communes_grasse() -> set[str]:
     """Les 62 communes de l'arrondissement de Grasse — HORS PÉRIMÈTRE.
 
@@ -271,7 +303,10 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--apply", action="store_true", help="écrit (défaut : simulation)")
     ap.add_argument("--depuis", help="fichier JSON de valeurs vérifiées à ajouter à celles "
                                      "écrites en dur : {\"4621\": {\"champs\": "
-                                     "{\"lieu\": \"…\"}, \"source\": \"…\"}}")
+                                     "{\"lieu\": \"…\"}, \"source\": \"…\"}}. Pour CORRIGER "
+                                     "une valeur fausse (et non combler un trou), ajouter "
+                                     "\"remplace\": {\"date_event_start\": \"<la valeur "
+                                     "fausse attendue en base>\"}")
     args = ap.parse_args(argv)
 
     # PORTE D'ENTRÉE DE L'AGENT QUOTIDIEN (2026-08-11). Il ouvre les pages, lit, et dépose
@@ -296,7 +331,18 @@ def main(argv: list[str]) -> int:
             if inconnus:
                 print(f"  [{cle}] ignorée : champ(s) non autorisé(s) {sorted(inconnus)}")
                 continue
+            remplace = (val or {}).get("remplace") or {}
+            # On ne peut déclarer remplacer que ce qu'on écrit : une clause « remplace »
+            # portant sur un champ absent de « champs » ne veut rien dire, et laisserait
+            # croire à une correction qui n'aurait pas lieu.
+            orphelines = set(remplace) - set(champs)
+            if orphelines:
+                print(f"  [{cle}] ignorée : « remplace » porte sur des champs non "
+                      f"écrits {sorted(orphelines)}")
+                continue
             _VALEURS[int(cle)] = (champs, source)
+            if remplace:
+                _REMPLACEMENTS[int(cle)] = remplace
 
     if not DB_PATH.exists():
         print(f"Base introuvable : {DB_PATH}")
@@ -313,15 +359,35 @@ def main(argv: list[str]) -> int:
         if row is None:
             print(f"  [{eid:5}] introuvable en base — ignorée")
             continue
-        # ON N'ÉCRASE JAMAIS : si Franck a rempli le champ entre-temps, sa valeur gagne.
-        neufs = {c: v for c, v in champs.items() if _est_vide(row[c])}
-        deja = {c: row[c] for c in champs if not _est_vide(row[c])}
+        # ON N'ÉCRASE JAMAIS SANS LE DIRE : si Franck a rempli le champ entre-temps, sa
+        # valeur gagne — SAUF si l'appelant a déclaré exactement la valeur fausse qu'il
+        # corrige, et que la base la porte encore (cf. _valeur_attendue).
+        attendu = _REMPLACEMENTS.get(eid, {})
+        neufs, deja, desaccords = {}, {}, []
+        for c, v in champs.items():
+            if _est_vide(row[c]):
+                neufs[c] = v
+            elif c not in attendu:
+                deja[c] = row[c]
+            elif _valeur_attendue(row[c], attendu[c]):
+                neufs[c] = v
+            else:
+                desaccords.append((c, row[c], attendu[c]))
         if deja:
             print(f"  [{eid:5}] déjà rempli, laissé tel quel : {deja}")
+        for c, actuelle, attendue in desaccords:
+            print(f"  [{eid:5}] REFUSÉ sur {c} : la base contient « {actuelle} », "
+                  f"la correction en attendait « {attendue} ». Quelqu'un est passé "
+                  f"depuis — sa valeur gagne.")
         if neufs:
             a_ecrire.append((eid, neufs, source))
             detail = ", ".join(f"{c}={v}" for c, v in neufs.items())
             print(f"  [{eid:5}] {detail}\n          ↳ {source}")
+            corriges = sorted(set(attendu) & set(neufs))
+            if corriges:
+                print(f"          ⚠ CORRECTION d'une valeur fausse sur "
+                      f"{', '.join(corriges)} — ancienne valeur déclarée et retrouvée "
+                      f"en base ({', '.join(str(attendu[c]) for c in corriges)})")
 
     # ── 2. Les écarts nommés ────────────────────────────────────────────────────────
     print(f"\n═══ À écarter (statut « rejeté », réversible) ═══\n")

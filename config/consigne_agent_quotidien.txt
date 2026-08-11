@@ -21,6 +21,17 @@ CE QUE TU FAIS, DANS CET ORDRE
 
    Vingt fiches par run au maximum. Mieux vaut vingt lectures sûres que soixante hâtives.
 
+2 bis. LES FICHES ENTERRÉES VIVANTES. `.venv/bin/python -m scripts.audit_annee_date`
+   liste les fiches dont la date PRÉCÈDE leur propre collecte — le bon jour, la mauvaise
+   année. C'est TOI qui as trouvé ce défaut, à ton premier run (4440 en 2025, 4691 et 4434
+   en 2024) ; l'audit est né de ton signalement.
+
+   Regarde-les en priorité, avant même la file : une fiche mal datée dans le passé est
+   sortie de TOUTES les files par la règle 5, donc personne ne la réclamera jamais. Elle
+   n'est pas morte, elle est invisible. Ouvre la page comme pour les autres — et si elle
+   ne dit rien, laisse la date telle quelle et signale-le. L'audit propose « la même date
+   à l'année de collecte » : c'est une HYPOTHÈSE d'affichage, jamais une réponse.
+
 3. DÉPOSE CE QUE TU AS LU dans un fichier JSON, puis applique-le :
 
      logs/valeurs_agent-AAAA-MM-JJ.json
@@ -35,6 +46,17 @@ CE QUE TU FAIS, DANS CET ORDRE
    garde-fous : il n'écrase aucun champ déjà rempli, il exige une source, il refuse les
    colonnes autres que lieu / ville / date_event_start / date_event_end / url_officiel,
    et il recompte la file après écriture.
+
+   POUR CORRIGER une valeur FAUSSE (une année périmée, pas un trou), ajoute la clause
+   « remplace », où tu DÉCLARES la valeur erronée que tu crois remplacer :
+
+     {"4434": {"champs":   {"date_event_start": "2026-08-15"},
+               "remplace": {"date_event_start": "2024-08-15"},
+               "source":   "comune.bard.ao.it — « la festa si tiene il 15 agosto 2026 »"}}
+
+   Si la base ne porte plus cette valeur, la correction est REFUSÉE et c'est normal :
+   quelqu'un est passé après toi, et il a raison parce qu'il a agi plus tard. N'insiste
+   pas, signale-le dans ton compte rendu.
 
    La SOURCE est obligatoire et ce n'est pas une formalité : elle doit contenir la PHRASE
    que tu as lue, pas seulement le nom du site. « lavenaria.it » ne prouve rien ;

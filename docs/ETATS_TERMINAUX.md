@@ -270,6 +270,54 @@ parseur français.
 **À retenir pour la suite** : une valeur qui dépend de la date d'aujourd'hui et qu'on écrit
 ailleurs qu'en base doit avoir, dès sa première ligne, quelqu'un qui la recalcule.
 
+## L'état terminal qui n'est PAS un état — une date fausse dans le passé
+
+Trouvé le 2026-08-11 par l'agent quotidien, à son premier run : « trois fiches portent le
+bon jour mais une année périmée — 4440 en 2025, 4691 et 4434 en 2024 ».
+
+C'est la forme la plus discrète du motif, parce qu'**aucune colonne ne dit « garée »**.
+Rien n'est écarté, aucun statut n'est posé, aucun portillon n'a refusé quoi que ce soit :
+la fiche est parfaitement normale, elle porte simplement une date. Et c'est la règle 5 —
+la nôtre, celle qui protège Franck du travail inutile — qui la fait disparaître de toutes
+les files, de tous les audits et de tous les bilans, puisqu'un événement terminé ne
+regarde plus personne.
+
+Sauf que l'événement, lui, est peut-être devant nous. La fiche n'est pas morte : elle est
+enterrée vivante. Et rien ne la réclamera jamais, parce que **le mécanisme qui l'enterre
+est celui-là même qui nous empêche de la voir.**
+
+Les quatre questions :
+
+1. **Qui la rouvre ?** `scripts/audit_annee_date.py`, lu par l'agent quotidien (cron 9h15,
+   étape 2 bis de sa consigne). Ce n'est pas « un humain qui tape une commande » : c'est
+   une étape inscrite dans un brief exécuté tous les jours.
+2. **À quelle condition ?** Un fait, pas un délai : la dernière date de la fiche précède
+   sa propre COLLECTE de plus de 60 jours. Le seuil n'est pas un réglage de confort, il
+   est le miroir exact de la grâce de `dates._year()` — qui ne peut donc pas produire une
+   telle date. Une date pareille vient forcément d'une année écrite dans le texte, d'un
+   JSON-LD non mis à jour, ou d'une balise `<time>` qui datait l'article. Les deux
+   valeurs doivent bouger ensemble.
+3. **Où se voit le nombre ?** Dans la sortie de l'audit, avec son périmètre (« N fiches
+   examinées »), et repris dans le compte rendu Slack de l'agent.
+4. **Le rouvreur est-il branché ?** Oui, par la consigne de `agent_quotidien.sh`, elle-même
+   dans `crontab.txt` et surveillée par `watchdog_crons`.
+
+**Et il ne corrige rien.** Certaines de ces fiches sont des archives assumées dont la date
+est juste ; corriger d'office reviendrait à INVENTER une année, ce qui est la faute qu'on
+traque. L'audit montre donc la phrase d'où vient la date — le garde-fou né de l'erreur 14
+du même jour, où j'avais déclaré deux dates fausses alors qu'elles étaient bonnes.
+
+La correction, elle, passe par la clause `remplace` de `completer_verifie --depuis` : celui
+qui corrige doit DÉCLARER la valeur fausse qu'il croit remplacer, et la base doit la porter
+encore. Sinon quelqu'un est passé après lui — et c'est lui qui a raison. Sans cette poignée
+de main il aurait fallu choisir entre une porte qui ne sait que combler les trous (donc ces
+trois fiches restent fausses pour toujours) et une porte qui écrase (donc une correction
+faite à la main la veille disparaît sans un mot).
+
+**À retenir : chercher les états terminaux dans les colonnes de statut ne suffit pas. Une
+DONNÉE ordinaire peut sortir une fiche de toutes les files, et le fera d'autant plus
+silencieusement qu'elle emprunte une règle légitime pour le faire.**
+
 ## L'anti-spam qui ÉTAIT un état terminal sans le savoir
 
 Trouvé le 2026-08-05 en construisant l'apprentissage Slack (ci-dessous).
