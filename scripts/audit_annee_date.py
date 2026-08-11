@@ -133,6 +133,68 @@ def _colonnes(conn: sqlite3.Connection) -> set[str]:
     return {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
 
 
+def _explique(conn: sqlite3.Connection, ids: list[int], jours: int) -> int:
+    """Pourquoi CETTE fiche est-elle retenue, ou pas ? Une réponse par étage.
+
+    NÉ D'UN ZÉRO DE PRODUCTION. L'audit annonçait « 240 examinées, aucune suspecte » le
+    soir même où l'agent en avait nommé trois. Les deux affirmations ne pouvaient pas être
+    vraies ensemble, et rien dans la sortie ne permettait de trancher : il fallait ouvrir
+    SQLite à la main pour savoir laquelle des six conditions avait mangé les fiches.
+
+    C'est le défaut de tous les compteurs qui filtrent : ils disent ce qui reste, jamais ce
+    qui est tombé. Un filtre qui ne sait pas s'expliquer se croit — et on le croit d'autant
+    plus qu'il donne le chiffre qui arrange."""
+    for eid in ids:
+        r = conn.execute("SELECT * FROM events_raw WHERE id=?", (eid,)).fetchone()
+        print(f"\n═══ Fiche {eid} ═══")
+        if r is None:
+            print("  INTROUVABLE en base — elle n'existe pas (ou plus) sous ce numéro.")
+            continue
+        print(f"  {(r['title'] or '')[:76]}")
+        cles = ("statut", "duplicate_of", "recurring", "date_event_start",
+                "date_event_end", "date_source", "scrape_date", "wp_post_id_as")
+        for c in cles:
+            try:
+                print(f"    {c:<18} = {r[c]!r}")
+            except (IndexError, KeyError):
+                print(f"    {c:<18} = (colonne absente)")
+
+        motifs = []
+        if r["duplicate_of"]:
+            motifs.append(f"doublon de {r['duplicate_of']} — traitée sur l'original")
+        if (r["statut"] or "") in ("merged", "rejected"):
+            motifs.append(f"statut « {r['statut']} » : hors des files")
+        if r["recurring"]:
+            motifs.append("récurrente : pas de date unique, donc pas de date fausse")
+        if not (r["date_event_start"] or "").strip():
+            motifs.append("SANS date de début : c'est un TROU, pas une date fausse — "
+                          "elle relève de scripts.dates, pas de cet audit")
+        if not (r["scrape_date"] or "").strip():
+            motifs.append("sans date de collecte : rien à quoi comparer")
+        if motifs:
+            print("  ÉCARTÉE du périmètre :")
+            for m in motifs:
+                print(f"    • {m}")
+            continue
+
+        try:
+            collecte = date.fromisoformat((r["scrape_date"] or "")[:10])
+            fin = date.fromisoformat(
+                (r["date_event_end"] or r["date_event_start"] or "")[:10])
+        except ValueError:
+            print("  ÉCARTÉE : date illisible (ni ISO ni horodatage reconnu).")
+            continue
+        ecart = (collecte - fin).days
+        if ecart > jours:
+            print(f"  RETENUE : dernière date {fin}, collectée le {collecte} — "
+                  f"{ecart} jours AVANT (seuil {jours}).")
+        else:
+            print(f"  DANS LE PÉRIMÈTRE mais NON suspecte : dernière date {fin}, "
+                  f"collectée le {collecte} — écart {ecart} j, sous le seuil de {jours}. "
+                  f"C'est le cas normal.")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -141,6 +203,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--jours", type=int, default=GRACE_JOURS,
                     help=f"écart minimal en jours (défaut {GRACE_JOURS}, "
                          f"= la grâce de dates._year)")
+    ap.add_argument("--fiche", nargs="+", type=int, metavar="ID",
+                    help="explique, fiche par fiche, POURQUOI elle est retenue ou écartée "
+                         "du périmètre — la réponse à « pourquoi celle-là n'y est pas ? »")
     args = ap.parse_args(argv)
 
     if not DB_PATH.exists():
@@ -150,6 +215,33 @@ def main(argv: list[str]) -> int:
     conn.row_factory = sqlite3.Row
     cols = _colonnes(conn)
     corps = "mail_corps" if "mail_corps" in cols else "'' AS mail_corps"
+
+    if args.fiche:
+        code = _explique(conn, args.fiche, args.jours)
+        conn.close()
+        return code
+
+    # L'ENTONNOIR, ÉTAGE PAR ÉTAGE — écrit après un « 0 » de production (2026-08-11 au
+    # soir). L'audit annonçait « 240 fiches examinées, aucune suspecte » alors que l'agent
+    # en avait nommé trois. 240 sur près de cinq mille : le nombre criait que la sélection
+    # perdait quelque chose, et il n'y avait AUCUN moyen de savoir où.
+    #
+    # C'est mot pour mot la faute que CLAUDE.md décrit — « un zéro ne dit pas s'il vient
+    # d'un échec ou d'une absence de cas » — et je venais de l'écrire dans ce fichier, dans
+    # le commentaire d'à côté, en croyant qu'annoncer le total suffisait. Il ne suffit pas :
+    # un dénominateur sans sa décomposition ne se vérifie pas, il se croit.
+    print("═══ Fiches datées avant leur propre collecte ═══\n")
+    print("Entonnoir de sélection (chaque ligne retire des fiches de la précédente) :")
+    for libelle, clause in (
+            ("fiches en base", "1=1"),
+            ("  – dont doublons fusionnés",
+             "COALESCE(duplicate_of,0)<>0 OR COALESCE(statut,'') = 'merged'"),
+            ("  – dont écartées (rejected)", "COALESCE(statut,'') = 'rejected'"),
+            ("  – dont récurrentes (pas de date unique)", "COALESCE(recurring,0)=1"),
+            ("  – dont SANS date de début", "COALESCE(date_event_start,'')=''"),
+            ("  – dont sans date de collecte", "COALESCE(scrape_date,'')=''")):
+        n = conn.execute(f"SELECT COUNT(*) FROM events_raw WHERE {clause}").fetchone()[0]
+        print(f"  {n:>6}  {libelle}")
 
     # PÉRIMÈTRE, écrit ici et répété à l'écran (règle 6) : les fiches DATÉES, non
     # dédoublonnées, non écartées, dont la dernière date connue précède la collecte de
@@ -167,14 +259,18 @@ def main(argv: list[str]) -> int:
         "  AND COALESCE(scrape_date,'') <> '' "
         "ORDER BY id DESC").fetchall()
 
-    suspects, examinees = [], 0
+    suspects, examinees, illisibles = [], 0, []
     for r in lignes:
         try:
             collecte = date.fromisoformat((r["scrape_date"] or "")[:10])
             fin = date.fromisoformat(
                 (r["date_event_end"] or r["date_event_start"] or "")[:10])
         except ValueError:
-            continue                      # date illisible : ce n'est pas le sujet ici
+            # ON NE JETTE PLUS EN SILENCE. Une date illisible sortait du décompte sans
+            # laisser de trace : le total affiché était donc faux, et faux vers le bas —
+            # la direction qui rassure.
+            illisibles.append(r["id"])
+            continue
         examinees += 1
         if fin >= collecte - timedelta(days=args.jours):
             continue
@@ -183,14 +279,18 @@ def main(argv: list[str]) -> int:
     # UN ZÉRO DOIT DIRE D'OÙ IL VIENT (leçon du 2026-08-11 : trois fois un « 0 » a semblé
     # désigner une source pauvre, trois fois c'était la requête). On annonce donc toujours
     # combien de fiches ont été EXAMINÉES avant d'annoncer combien sont suspectes.
-    print(f"═══ Fiches datées avant leur propre collecte ═══")
-    print(f"Périmètre : {examinees} fiche(s) datées, actives, non récurrentes, examinées ; "
-          f"écart retenu > {args.jours} jours.\n")
+    print(f"\nPérimètre retenu : {examinees} fiche(s) datées, actives, non récurrentes, "
+          f"examinées ; écart retenu > {args.jours} jours.")
+    if illisibles:
+        print(f"⚠ {len(illisibles)} fiche(s) à date ILLISIBLE, hors décompte — "
+              f"{', '.join(str(i) for i in illisibles[:12])}"
+              f"{'…' if len(illisibles) > 12 else ''}")
+    print()
 
     if not suspects:
-        print("Aucune. Toutes les dates stockées sont postérieures (ou proches) de la "
-              "collecte, ce qui est le cas normal : une source n'annonce pas un événement "
-              "fini depuis deux mois.")
+        print("Aucune suspecte dans ce périmètre.")
+        print("Si une fiche que vous attendiez n'y est pas, demandez-lui pourquoi :")
+        print("  .venv/bin/python -m scripts.audit_annee_date --fiche 4440 4691 4434")
         conn.close()
         return 0
 

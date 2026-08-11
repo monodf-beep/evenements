@@ -157,6 +157,37 @@ vide, sortie_vide = _signalees(["--jours", "5000"])
 _check("aucune suspecte avec un seuil absurde", vide == set(), sorted(vide))
 _check("et le zéro annonce quand même combien de fiches ont été examinées",
        "examinées" in sortie_vide, sortie_vide[:300])
+# LE POINT LE PLUS IMPORTANT DE CETTE FIXTURE. En production, l'audit a rendu « 240
+# examinées, aucune suspecte » le soir même où l'agent en nommait trois. Un total sans sa
+# décomposition ne se vérifie pas : il se croit. Chaque étage doit donc être ÉCRIT.
+_check("l'entonnoir montre chaque étage de la sélection",
+       all(m in sortie_vide for m in ("fiches en base", "doublons fusionnés",
+                                      "récurrentes", "SANS date de début")),
+       sortie_vide[:600])
+_check("et le zéro dit comment interroger une fiche précise",
+       "--fiche" in sortie_vide, sortie_vide[-400:])
+
+print("\n──── 3 bis. « pourquoi celle-là n'y est pas ? » ────")
+import io as _io                                                    # noqa: E402
+import contextlib as _ctx                                           # noqa: E402
+
+
+def _pourquoi(*ids):
+    buf = _io.StringIO()
+    with _ctx.redirect_stdout(buf):
+        audit_annee_date.main(["--fiche", *[str(i) for i in ids]])
+    return buf.getvalue()
+
+
+_check("une fiche RETENUE dit son écart",
+       "RETENUE" in _pourquoi(4434) and "jours AVANT" in _pourquoi(4434))
+_check("une récurrente dit que c'est sa récurrence qui l'écarte",
+       "récurrente" in _pourquoi(103) and "ÉCARTÉE" in _pourquoi(103))
+_check("une écartée dit son statut", "rejected" in _pourquoi(104))
+_check("une fiche à 55 jours dit qu'elle est DANS le périmètre mais non suspecte",
+       "NON suspecte" in _pourquoi(100), _pourquoi(100))
+_check("un numéro inconnu le dit au lieu de se taire",
+       "INTROUVABLE" in _pourquoi(999999))
 
 # ── Deuxième moitié : la porte de correction ────────────────────────────────────────
 completer_verifie.DB_PATH = db
