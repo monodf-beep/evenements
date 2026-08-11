@@ -71,6 +71,11 @@ ATTENDUS = [
     ("Dates",                     "dates",           "dates.log",            30),
     ("Dédoublonnage",             "dedupe",          "dedupe.log",           30),
     ("Lieux",                     "venues",          "venues.log",           30),
+    # Ajoutés le 2026-08-11 AVEC leurs crons, comme la consigne au-dessus le demande.
+    # Tous deux sont silencieux quand ils ne trouvent rien — c'est même leur cas le plus
+    # fréquent — donc leur panne ressemble trait pour trait à leur fonctionnement normal.
+    ("Dates depuis les mails",    "dates_depuis_mail", "dates_mail.log",     30),
+    ("Moisson officielle",        "moisson_officielle", "moisson.log",       30),
     ("Évaluation",                "evaluator",       "evaluator.log",        30),
     ("Lot quotidien",             "daily_batch",     "daily_batch.log",      30),
     ("Référencement",             "seo_batch",       "seo_batch.log",        30),

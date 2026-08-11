@@ -29,6 +29,18 @@
 30 8 * * * cd /root/evenements && .venv/bin/python scripts/dedupe.py >> logs/dedupe.log 2>&1
 # Datation 8h45 : extrait la vraie date d'événement (déterministe, gratuit) → filtres par période
 45 8 * * * cd /root/evenements && .venv/bin/python scripts/dates.py >> logs/dates.log 2>&1
+# Rattrapage GRATUIT des fiches venues d'un mail (2026-08-11). gmail_collect conserve
+# désormais le corps du message : quand l'extraction a raté la date, elle est relue là,
+# près du titre de la fiche. Aucun appel Anthropic.
+# ⚠️ Ajouté ICI et pas seulement dans deploy/cron_pipeline.sh — ce fichier-là n'est PAS
+# planifié (le crontab réel appelle les scripts un par un), donc une ligne ajoutée là ne
+# tourne jamais. Trouvé le jour même, en cherchant à répondre à « comment tu vas être
+# autonome sans que je sois là ? ».
+47 8 * * * cd /root/evenements && .venv/bin/python -m scripts.dates_depuis_mail --apply >> logs/dates_mail.log 2>&1
+# Moisson officielle : UNE page lue, TOUS ses champs récoltés — date, lieu, ville, image,
+# et les infos pratiques (tarif, horaires, réservation, accès) qui remplissaient la file
+# « À vérifier ». Sans modèle. Elle n'avait jamais été planifiée depuis sa création.
+52 8 * * * cd /root/evenements && .venv/bin/python -m scripts.moisson_officielle --apply --cap 120 >> logs/moisson.log 2>&1
 # Extraction du LIEU 8h50 (après la datation, avant l'évaluation) — sa propre docstring
 # dit « Cron : après la datation » depuis toujours, mais il n'y avait JAMAIS été mis.
 # Conséquence mesurée le 2026-08-02 : la file de publication comptait 20 fiches et ZÉRO
