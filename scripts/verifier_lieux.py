@@ -26,6 +26,17 @@ pour des humains on ne peut pas extraire, seulement confirmer depuis un fait dé
     nomme une autre que nous connaissons aussi. Le plus large, et le seul qui puisse se
     tromper : « Café de Turin » est à Nice depuis 1908, son nom est un hommage et pas une
     adresse. D'où sa section à part, et le registre pour l'éteindre EN UNE LIGNE.
+    Confirmé au premier passage en production, le 2026-08-12 : il a signalé le Théâtre
+    Charles Dullin, à Chambéry, parce que Dullin est aussi une commune de Savoie. Le
+    contrôle ne l'a pas corrigé — il l'a mis en « à confirmer ». C'était le but.
+
+⚠ ET UNE QUATRIÈME FAMILLE, TROUVÉE LE MÊME JOUR ET QUI N'EST PAS UNE FAUTE DE DONNÉE.
+« Salle des Fêtes » à Margencel et à Draillant, deux fiches PUBLIÉES : ② les appelait un
+désaccord et affirmait que « les deux ne peuvent pas être vraies ». C'était faux — chaque
+village a la sienne. Le vrai défaut était en aval : `cs-publish.php` retrouvait ses fiches
+lieu PAR LEUR TITRE, donc toutes les salles des fêtes de la région se fondaient en une
+seule, avec une seule ville, et l'une des communes affichait celle de l'autre. Ces noms
+ont désormais leur section, avec le bon diagnostic et le bon geste — aucun, en base.
 
 CE QU'IL NE SIGNALE JAMAIS : l'absence. Ville vide, lieu inconnu, commune hors de nos
 listes — silence, et le nombre de muettes est affiché à côté. Un « 0 » qui ne dit pas
@@ -135,7 +146,12 @@ def main(argv: list[str]) -> int:
         elif v == "toponyme":
             toponyme.append((r, phrase, attendue))
 
-    desac = desaccords(confrontables)
+    # LES GÉNÉRIQUES D'ABORD, SORTIS DU DÉSACCORD. « Salle des Fêtes » à Margencel et à
+    # Draillant, ce sont deux salles ; nos deux fiches ont raison toutes les deux. Les
+    # laisser dans ② ferait dire au contrôle une chose fausse — « les deux ne peuvent pas
+    # être vraies » — et l'enverrait chercher une correction qui n'existe pas.
+    generiques = desaccords([r for r in confrontables if _lieux.est_generique(r["lieu"])])
+    desac = desaccords([r for r in confrontables if not _lieux.est_generique(r["lieu"])])
     titre_de = {r["id"]: (r["title"] or "")[:60] for r in confrontables}
 
     print("═══ Le lieu et la ville se contredisent-ils ? ═══")
@@ -147,6 +163,8 @@ def main(argv: list[str]) -> int:
           f"nomme une autre ville")
     print(f"  {len(desac):>5}  ② DÉSACCORDS INTERNES — un même lieu, deux villes chez "
           f"nous ; les deux ne peuvent pas être vraies")
+    print(f"  {len(generiques):>5}  ⚠ NOMS GÉNÉRIQUES partagés par plusieurs communes — "
+          f"pas un désaccord, une COLLISION de fiches lieu sur WordPress")
     print(f"  {len(toponyme):>5}  ③ toponymes — le nom du lieu nomme une autre commune "
           f"(peut être un hommage : à confirmer, pas à corriger)")
     print(f"  {len(avec_lieu) - len(confrontables):>5}  muettes — un lieu, pas de ville. "
@@ -179,6 +197,25 @@ def main(argv: list[str]) -> int:
                 print(f"      {ville:<22} {len(ids):>3} fiche(s) : {exemples}{suite}")
             print()
 
+    if generiques:
+        print(f"═══ ⚠ {len(generiques)} nom(s) de lieu partagé(s) par plusieurs communes "
+              f"═══")
+        print("CE N'EST PAS UN DÉSACCORD : chaque village a sa salle des fêtes, et nos "
+              "fiches ont raison toutes les deux. Le problème est en aval — WordPress "
+              "retrouve ses fiches lieu PAR LEUR TITRE (get_page_by_title, cs-publish.php) "
+              "et fusionne donc ces communes sur une seule fiche, avec une seule ville. "
+              "L'une des deux affiche la commune de l'autre.\n"
+              "Rien à corriger en base. Le correctif est dans cs-publish.php, qui cherche "
+              "désormais le lieu par TITRE + VILLE ; après un `publisher_as --update`, "
+              "chaque commune aura sa propre fiche lieu.\n")
+        for nom, villes in sorted(generiques.items()):
+            print(f"  « {nom} »")
+            for ville, ids in sorted(villes.items(), key=lambda kv: -len(kv[1])):
+                exemples = ", ".join(f"{i} ({titre_de.get(i, '')[:38]})" for i in ids[:3])
+                suite = f" … et {len(ids) - 3} autre(s)" if len(ids) > 3 else ""
+                print(f"      {ville:<22} {len(ids):>3} fiche(s) : {exemples}{suite}")
+            print()
+
     if toponyme:
         print(f"═══ ③ {len(toponyme)} fiche(s) dont le NOM du lieu nomme une autre "
               f"commune ═══")
@@ -190,9 +227,14 @@ def main(argv: list[str]) -> int:
             etat = f"EN LIGNE #{r['wp_post_id_as']}" if r["wp_post_id_as"] else "hors ligne"
             print(f"  [{r['id']:>5}] {etat}   {(r['title'] or '')[:56]}")
             print(f"          {phrase}")
+            # LE NOM EXACT DU LIEU, parce que c'est LUI qu'on recopie dans le registre —
+            # et il n'y était pas au premier run en production : la sortie disait « le nom
+            # du lieu contient la commune de Dullin » sans jamais écrire le nom du lieu.
+            # Impossible de rédiger la ligne d'arbitrage sans retourner en base.
+            print(f"          lieu={r['lieu']!r}")
             print(f"          source : {r['source_name'] or '?'}\n")
 
-    if not (registre or desac or toponyme):
+    if not (registre or desac or toponyme or generiques):
         print("Rien à corriger : aucune contradiction entre un lieu et sa ville dans ce "
               "périmètre.")
         if args.slack:
@@ -232,6 +274,9 @@ def main(argv: list[str]) -> int:
         for nom, villes in list(sorted(desac.items()))[:5]:
             msg.append(f"• « {nom} » : "
                        + " / ".join(f"{v} ({len(i)})" for v, i in villes.items()))
+        if generiques:
+            msg.append(f"… plus {len(generiques)} nom(s) générique(s) : collision de "
+                       f"fiches lieu sur WordPress, pas un désaccord.")
         if toponyme:
             msg.append(f"… plus {len(toponyme)} toponyme(s) à confirmer.")
         msg.append("Détail : `.venv/bin/python -m scripts.verifier_lieux"

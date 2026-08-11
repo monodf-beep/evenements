@@ -423,6 +423,21 @@ Les quatre questions :
 4. **Le rouvreur est-il branché ?** Oui, et par le chemin le plus fréquenté du dépôt : la
    publication elle-même. Rien à lancer à la main.
 
+**La fusion par le TITRE, trouvée au premier passage en production.** Le 2026-08-12,
+`verifier_lieux` a signalé « Salle des Fêtes » à Margencel (fiche 926) et à Draillant
+(925), toutes deux en ligne. Il les présentait comme un désaccord — « les deux ne peuvent
+pas être vraies » — et il avait tort : chaque village a la sienne. Le vrai défaut était
+en aval. `cs-publish.php` retrouvait ses fiches lieu par `get_page_by_title()`, sur le
+seul titre : **toutes les salles des fêtes de la région tombaient donc sur une même fiche,
+avec une seule ville**, et l'une des communes affichait celle de l'autre. La recherche se
+fait désormais par titre ET ville, avec une reprise des fiches lieu sans ville — sans
+cette reprise, le premier `--update` aurait dupliqué chaque lieu du site, remplaçant une
+fusion abusive par une prolifération.
+
+Le contrôle, lui, a gagné une quatrième famille à part : un nom générique n'est pas une
+faute de donnée et n'appelle aucune correction en base. Le compter avec les désaccords
+aurait envoyé quelqu'un chercher une réponse qui n'existe pas.
+
 **Le registre est-il à son tour un cul-de-sac ?** Une entrée de `config/lieux_villes.json`
 éteint définitivement un signalement, et rien ne la rouvre automatiquement. C'est assumé et
 c'est le seul cas du document où ça l'est : une commune ne déménage pas. Le garde-fou est

@@ -115,6 +115,12 @@ CAS = [
      "pending"),
     (7, "Visite guidée", "Castello di Rivoli", "Torino", AVENIR, AVENIR, None,
      "pending"),                                                        # ③ toponyme
+    # ⚠ NOM GÉNÉRIQUE : chaque village a sa salle des fêtes. Ce n'est PAS un désaccord —
+    # nos deux fiches ont raison. Cas réel, deux fiches EN LIGNE le 2026-08-12.
+    (12, "Una Historia Americana", "Salle des Fêtes", "Margencel", AVENIR, AVENIR, 8012,
+     "pending"),
+    (13, "Théâtre Mode d'Emploi", "Salle des Fêtes", "Draillant", AVENIR, AVENIR, 8013,
+     "pending"),
     (8, "Sortie au lac", "Base de loisirs", "", AVENIR, AVENIR, None, "pending"),  # muette
     # RÈGLE 5 : passé et rejeté sortent du périmètre, même contredits.
     (9, "Concert de mai", "Forte di Bard", "Aosta", PASSE, PASSE, None, "pending"),
@@ -146,11 +152,23 @@ vus, sortie = _sortie()
 _check("① la fiche contredite par le registre est signalée", 1 in vus, sortie[-1200:])
 _check("la fiche d'accord ne l'est pas", 2 not in vus)
 _check("③ le toponyme est signalé", 7 in vus)
+_check("   et il écrit le NOM EXACT du lieu, celui qu'on recopie dans le registre",
+       "lieu='Castello di Rivoli'" in sortie, sortie[-1200:])
 _check("la muette n'est pas une tâche", 8 not in vus)
 _check("le PASSÉ est hors périmètre (règle 5)", 9 not in vus)
 _check("la rejetée aussi", 10 not in vus)
 _check("SANS DATE n'est pas du passé : elle reste vue", 11 in vus)
 _check("② le désaccord interne est nommé", "Salle polyvalente du Bourg" in sortie)
+_check("⚠ un nom générique N'EST PAS présenté comme un désaccord — les deux sont vraies",
+       "Salle des Fêtes" in sortie
+       and sortie.index("Salle des Fêtes") > sortie.index("nom(s) de lieu partagé"),
+       sortie[-2500:])
+_check("   et le diagnostic pointe WordPress, pas la base",
+       "get_page_by_title" in sortie)
+_check("   « Salle des fêtes de Margencel » distingue, elle : pas générique",
+       not lieux.est_generique("Salle des fêtes de Margencel"))
+_check("   mais « Salle des Fêtes » toute seule l'est, casse et accents compris",
+       lieux.est_generique("SALLE DES FETES"))
 _check("   et il compte les fiches de chaque côté", re.search(
     r"Chamb[eé]ry\s+1 fiche", sortie) is not None, sortie[-1500:])
 _check("« Aoste » / « Aosta » ne fabriquent PAS un désaccord",

@@ -183,6 +183,39 @@ def registre() -> dict[str, dict]:
     return out
 
 
+# CES NOMS NE DÉSIGNENT PAS UN LIEU, ILS EN DÉSIGNENT CENT. Chaque village a sa salle des
+# fêtes ; « Salle des Fêtes » ne distingue donc rien. Ça n'aurait aucune importance si
+# WordPress ne retrouvait pas ses fiches lieu PAR LEUR TITRE (`get_page_by_title`, dans
+# cs-publish.php) : deux salles des fêtes de deux communes s'écrasent alors sur une seule
+# fiche, avec une seule ville, et l'une des deux affiche la commune de l'autre.
+#
+# Trouvé le 2026-08-12 au premier passage en production : « Salle des Fêtes » à Margencel
+# (fiche 926) et à Draillant (fiche 925), toutes deux PUBLIÉES. Le contrôle les avait
+# rangées en « désaccord interne » et disait « les deux ne peuvent pas être vraies » —
+# c'était faux, les deux sont vraies, et le vrai défaut était ailleurs.
+#
+# ÉGALITÉ STRICTE, jamais « commence par ». « Salle des fêtes de Margencel » distingue
+# parfaitement, et le signaler serait fabriquer du bruit. C'est l'ABSENCE de tout élément
+# distinctif qui pose problème, pas la présence des mots.
+GENERIQUES = {
+    "salle des fetes", "salle polyvalente", "salle communale", "salle municipale",
+    "salle des associations", "salle d animation", "salle de spectacle",
+    "maison des associations", "foyer rural", "centre culturel", "espace culturel",
+    "centre socioculturel", "mediatheque", "bibliotheque", "mairie", "eglise",
+    "chapelle", "temple", "gymnase", "place du village", "place de l eglise",
+    "office de tourisme", "parc municipal", "theatre municipal", "cinema",
+    "chateau", "halle", "esplanade", "salle des sports",
+    "piazza", "chiesa", "biblioteca", "municipio", "palazzo comunale",
+    "teatro comunale", "sala consiliare", "oratorio", "centro culturale",
+    "casa del popolo", "palazzetto dello sport",
+}
+
+
+def est_generique(lieu: str) -> bool:
+    """« Salle des Fêtes » : un nom que cent communes partagent, donc qui n'identifie rien."""
+    return plie(lieu) in GENERIQUES
+
+
 def toponyme_du_lieu(lieu: str) -> str:
     """La commune nommée DANS le nom du lieu (« Forte di Bard » → « Bard »). "" sinon.
 

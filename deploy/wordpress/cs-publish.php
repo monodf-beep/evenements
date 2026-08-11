@@ -26,6 +26,27 @@ Version: 1.0
 
 if (!defined('ABSPATH')) { exit; }
 
+/**
+ * Retrouve une fiche lieu (tribe_venue) par son TITRE EXACT + une condition sur sa ville.
+ *
+ * WordPress n'offre pas de recherche « titre + méta » toute faite : get_page_by_title()
+ * ignore les métas, et WP_Query['title'] ne comparait pas le titre exact avant WP 5.7.
+ * D'où ce petit intermédiaire, écrit une fois plutôt que recopié deux.
+ */
+function cs_trouver_venue($titre, $meta_query) {
+    $q = new WP_Query(array(
+        'post_type'              => 'tribe_venue',
+        'post_status'            => 'any',
+        'posts_per_page'         => 1,
+        'title'                  => $titre,
+        'meta_query'             => $meta_query,
+        'no_found_rows'          => true,
+        'ignore_sticky_posts'    => true,
+        'update_post_term_cache' => false,
+    ));
+    return !empty($q->posts) ? $q->posts[0] : null;
+}
+
 add_action('rest_api_init', function () {
     register_rest_route('cs/v1', '/event', array(
         'methods'             => 'POST',
@@ -138,7 +159,44 @@ function cs_publish_event(WP_REST_Request $req) {
     $venue = $b['venue'] ?? null;
     if (is_string($venue) && trim($venue) !== '') { $venue = array('Venue' => trim($venue)); }
     if (is_array($venue) && !empty($venue['Venue'])) {
-        $existing = get_page_by_title($venue['Venue'], OBJECT, 'tribe_venue');
+        // ON CHERCHE PAR TITRE **ET PAR VILLE**. Chercher par le seul titre fusionnait
+        // toutes les « Salle des Fêtes » de la région sur une même fiche lieu, avec une
+        // seule ville : l'une des communes affichait celle de l'autre. Constaté le
+        // 2026-08-12 sur deux fiches EN LIGNE — « Salle des Fêtes » à Margencel (926) et
+        // à Draillant (925). Chaque village a la sienne ; ce sont deux lieux, pas un.
+        //
+        // Repli sur le titre seul quand nous n'avons PAS de ville : sans ce repli on
+        // créerait une fiche lieu de plus à chaque publication sans ville, ce qui
+        // remplacerait une fusion abusive par une prolifération — l'inverse, pas mieux.
+        $existing = null;
+        $ville_cherchee = isset($venue['City']) ? trim((string) $venue['City']) : '';
+        if ($ville_cherchee !== '') {
+            // 1) MÊME NOM, MÊME VILLE — c'est le même lieu, sans discussion.
+            $existing = cs_trouver_venue($venue['Venue'], array(array(
+                'key' => '_VenueCity', 'value' => $ville_cherchee, 'compare' => '=',
+            )));
+            // 2) sinon MÊME NOM, VILLE ABSENTE — les fiches lieu créées avant ce
+            //    correctif n'ont souvent pas de ville. On les ADOPTE et le bloc ci-dessous
+            //    les remplit, plutôt que d'en créer un double à côté. Sans cette étape, le
+            //    premier `publisher_as --update` après déploiement aurait dupliqué chaque
+            //    lieu du site : on aurait remplacé une fusion abusive par une
+            //    prolifération, ce qui n'est pas un progrès.
+            if (!$existing) {
+                $existing = cs_trouver_venue($venue['Venue'], array(
+                    'relation' => 'OR',
+                    array('key' => '_VenueCity', 'value' => '', 'compare' => '='),
+                    array('key' => '_VenueCity', 'compare' => 'NOT EXISTS'),
+                ));
+            }
+            // 3) et RIEN D'AUTRE. Un lieu du même nom dans une AUTRE ville est un autre
+            //    lieu : on en crée un nouveau. C'est tout l'objet du correctif — sans ce
+            //    refus de se rabattre sur le titre seul, la salle des fêtes de Draillant
+            //    continuerait de pointer sur celle de Margencel.
+        } else {
+            // Pas de ville de notre côté : on ne peut que retomber sur le titre. Créer une
+            // fiche lieu de plus à chaque publication sans ville serait pire que la fusion.
+            $existing = get_page_by_title($venue['Venue'], OBJECT, 'tribe_venue');
+        }
         if ($existing) {
             $venue_id = (int) $existing->ID;
             // UNE FICHE LIEU CRÉÉE FAUSSE LE RESTAIT POUR TOUJOURS. On réutilisait le
