@@ -272,9 +272,21 @@ def mark_seen(conn: sqlite3.Connection, message_id: str) -> None:
     conn.execute("INSERT OR IGNORE INTO gmail_seen (message_id) VALUES (?)", (message_id,))
 
 
+def ensure_colonne_corps(conn) -> None:
+    """`mail_corps` : le texte du mail d'origine. Idempotent.
+
+    Ajouté le 2026-08-11 — voir le commentaire dans insert_events. Sans cette colonne,
+    une date ratée à l'extraction est irrécupérable."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
+    if "mail_corps" not in cols:
+        conn.execute("ALTER TABLE events_raw ADD COLUMN mail_corps TEXT")
+        conn.commit()
+
+
 def insert_events(conn: sqlite3.Connection, events: list, email: dict,
                   territoire: str) -> int:
     """Insère les événements extraits (statut='pending'). Dédup par url_source UNIQUE."""
+    ensure_colonne_corps(conn)
     inserted = 0
     for idx, ev in enumerate(events):
         if not isinstance(ev, dict):
@@ -288,8 +300,8 @@ def insert_events(conn: sqlite3.Connection, events: list, email: dict,
         cur = conn.execute("""
         INSERT OR IGNORE INTO events_raw
             (title, description, date_start, lieu, ville, territoire,
-             url_source, url_image, source_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             url_source, url_image, source_name, mail_corps)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             title,
             (ev.get("description") or "").strip()[:2000],
@@ -300,6 +312,19 @@ def insert_events(conn: sqlite3.Connection, events: list, email: dict,
             url,
             "",  # url_image : jamais depuis l'email (cf. parse_message) — résolu ensuite par scripts.visuals
             email.get("sender", "")[:200],
+            # LE CORPS DU MAIL, GARDÉ TEL QUEL (2026-08-11). Jusqu'ici seul le résumé
+            # réécrit par le modèle entrait en base : quand l'extraction ratait la date,
+            # celle-ci était perdue DÉFINITIVEMENT — pas de page à rouvrir, pas de texte
+            # à reparser. Seize fiches de la file « À compléter » en venaient, dont les
+            # six ateliers des musées de Chambéry, alors que leur mail écrit noir sur
+            # blanc « le vendredi 21 août à 18h30 ».
+            #
+            # C'est le même défaut que partout ailleurs — un rétrécissement que personne
+            # ne peut rouvrir (règle 3) — mais appliqué à la MATIÈRE plutôt qu'à un état,
+            # donc invisible dans tous les inventaires de culs-de-sac faits jusqu'ici.
+            # Conservé, le corps se relit gratuitement (utils/mail_dates.py), autant de
+            # fois qu'on veut, sans un appel d'API.
+            (email.get("body") or "")[:6000],
         ))
         if cur.rowcount:
             inserted += 1
