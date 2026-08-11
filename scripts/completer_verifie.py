@@ -141,6 +141,36 @@ _VALEURS: dict[int, tuple[dict, str]] = {
     526: ({"date_event_start": "2026-09-26", "date_event_end": "2026-09-26"},
           "opera-nice.org — la date est dans l'adresse même de la page : "
           "/agenda/…/20260926-1500/, soit le 26 septembre 2026 à 15h"),
+
+    # ── Troisième fournée : les neuf de la file, ouvertes une par une le 2026-08-11, 20h40
+    # Franck : « on en fait quoi de ce qui reste ? ». Sur neuf : quatre se complètent,
+    # trois sont des événements TERMINÉS (plus bas, dans _ECARTS), deux résistent — une
+    # page en panne et un rendez-vous que la source ne publie nulle part.
+    4527: ({"date_event_start": "2026-08-08", "date_event_end": "2026-10-11"},
+           "lavalleenotizie.it / aostasera.it — « Dall'8 agosto all'11 ottobre 2026 la "
+           "sala del Corpo di Guardia del Forte di Bard ospita Pastorale », inaugurée le "
+           "samedi 8 août à 11h. (L'autre exposition, à Cogne, court du 29 juillet au "
+           "7 septembre ; la fiche porte le Forte di Bard, donc ce sont ces dates-là.)"),
+    3087: ({"lieu": "Palais des Expositions"},
+           "palaisdesexpos.nice.fr — « EVO - NICE 2026 - 9 au 11 octobre 26 - Palais des "
+           "Expos - Nice »"),
+    4242: ({"date_event_start": "2026-09-20", "date_event_end": "2026-09-20"},
+           "patrimoines.savoie.fr (Journées européennes du patrimoine 2026) — « Dimanche "
+           "20 septembre 2026 de 14h30 à 15h30 et de 16h à 17h ». À NE PAS confondre avec "
+           "l'exposition, qui court du 13 juin au 15 novembre 2026 : la fiche porte la "
+           "VISITE COMMENTÉE, qui a une date unique."),
+    # RÉCURRENT, et c'est le bon geste. « Sentiers sous-marins du littoral » au pluriel :
+    # ce n'est ni un lieu unique ni une date unique. Le Département propose ces sorties
+    # tout l'été sur plusieurs sites (Théoule-sur-Mer du 15 juin au 15 septembre,
+    # Roquebrune-Cap-Martin chaque vendredi du 10 juillet au 28 août). Poser une date
+    # enverrait quelqu'un sur une plage un jour sans animateur.
+    4690: ({"recurring": 1,
+            "recurring_note": "Sorties accompagnées sur les sentiers sous-marins du "
+                              "littoral azuréen, tout l'été et sur plusieurs sites — "
+                              "inscription obligatoire, vérifiez le calendrier et le "
+                              "point de rendez-vous sur la source"},
+           "alpes-maritimes.gouv.fr + roquebrune-cap-martin.fr — programme saisonnier "
+           "multi-sites, sans date unique"),
 }
 
 # ⚠️ UN NUMÉRO NE DOIT APPARAÎTRE QU'UNE FOIS DANS CE DICTIONNAIRE. Écrit le 2026-08-11
@@ -187,6 +217,19 @@ _ECARTS: dict[int, str] = {
     # ACTION SOCIALE MUNICIPALE (La Ravoire). Public visé : les administrés d'une commune,
     # pas un public culturel. « Récital chant et piano » (4658) est GARDÉ : celui-là est
     # bien un événement culturel, et la frontière se trace là.
+    # ── Les trois de la file du 11/08 au soir dont l'événement est TERMINÉ ─────────────
+    # Elles n'avaient pas de date, donc la règle 5 ne pouvait pas les classer en passé —
+    # le cercle vicieux : sans date, pas de tri ; sans tri, personne ne va lire la page.
+    # La seule sortie est d'aller la lire, et c'est ce qui a été fait.
+    3834: "Festival AstroValberg : 17-19 juillet 2026, terminé "
+          "(astrovalberg.departement06.fr, alpesdazur-tourisme.fr)",
+    3835: "Les Folies des Lacs, lac de La Colmiane : 19 juillet 2026, 26e édition, "
+          "terminé (soirees-estivales.departement06.fr, 06-only.fr)",
+    4364: "Cordata 4061 : projet de juin 2026 (ascensions les 9-10 et 12-13 juin), "
+          "restitution le lundi 27 juillet 2026 à la Maison de la Grivola de Cogne — "
+          "terminé. ⚠️ La page gpff.it affiche « 29 Luglio 2026 » : c'est la date de "
+          "PUBLICATION du communiqué, pas celle de l'événement. Le même piège que la "
+          "colonne date_start, à un étage de plus.",
     4657: "La Ravoire — fête de rentrée municipale",
     4659: "La Ravoire — sensibilisation aux gestes qui sauvent, action de prévention",
     4660: "La Ravoire — thé dansant du CCAS",
