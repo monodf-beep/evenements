@@ -1,5 +1,11 @@
 # Connecter Claude Code à WordPress via MCP
 
+> **Ce document ne décrit pas le montage réellement utilisé.** Il porte sur le proxy
+> d'Automattic envisagé pour culturasabauda.eu, qui n'a pas été mis en service.
+> Le pilotage d'agendasabauda.eu passe par le connecteur **Novamira** : voir
+> [`MCP_NOVAMIRA.md`](MCP_NOVAMIRA.md), qui documente son usage, ses limites et
+> les règles à respecter pour ne pas mettre la production hors ligne.
+
 Objectif : permettre à **Claude Code** (dans les prochaines sessions) de lire/créer/
 vérifier les articles WordPress **directement**, en plus de la publication automatique
 du back-office (`scripts/publisher.py`, qui, lui, marche déjà via l'API REST).

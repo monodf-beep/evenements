@@ -106,6 +106,84 @@ session pipeline. Même légende propriétaire.*
 
 ---
 
+## Journal de session — 2026-08-08/11 (WordPress via MCP Novamira)
+
+Session menée entièrement côté WordPress. Ce qui suit a été **constaté en base ou sur le HTML
+servi**, pas déduit. Voir `docs/MCP_NOVAMIRA.md` pour l'outillage et
+`docs/POSTMORTEM_2026-08-11_MU_PLUGIN.md` pour l'incident de production.
+
+### ✅ Fait et vérifié en prod
+- 🤖 **28 sources officielles** écrites après double vérification de l'éditeur (15 + 13). Le
+  manque `source_officielle` passe de 59 à 31. Sauvegardes `cs_bk_sources_20260809`,
+  `cs_bk_sources_20260809_lot2`.
+- 🤖 **22 sources proscrites retirées** des fiches en ligne ou en brouillon : 13 vers
+  `rendezvous-vda.it` (magazine privé enregistré au tribunal d'Aoste), le reste vers
+  `agendaculturel.fr`, `piemontedalvivo.it`, `mentelocale.it`. Sauvegarde
+  `cs_bk_sources_proscrites_20260809`. La doctrine tranche : mieux vaut aucune source qu'une
+  source douteuse.
+- 🤖 **Spectacle annulé rattrapé** : la source officielle du Forte di Bard annonçait
+  l'annulation du K-Pop live show du 18/07, la fiche l'annonçait toujours comme maintenu.
+  Titre, avis de remboursement et `eventStatus: EventCancelled` posés sur les deux langues.
+- 🤖 **Fiche de report remise en forme d'annonce** (6352, Estivales Sauvages), nouveau titre,
+  nouveau slug, `EventRescheduled` + `previousStartDate`, ancienne URL en 301.
+- 🤖 **Titres nettoyés** : « - Torino Oggi » et « ANSA – » retirés (6275, 1873), redirections
+  301 vérifiées. Titre « Programme » corrigé en « Distribution » sur une fiche où le bloc ne
+  listait que la distribution (752).
+- 🤖 **Quatre mu-plugins** posés : `cs-corps-lint.php` (contrôle mécanique d'un corps),
+  `cs-event-statut.php` (statuts d'événement dans le graphe Yoast),
+  `cs-redirect-ancien-slug.php`, `cs-completude.php` (passe quotidienne).
+
+### 🔎 Diagnostics posés
+- 🤖 **`wp_old_slug_redirect()` ne fonctionne pas sur `tribe_events`.** The Events Calendar
+  intercepte l'URL, rend son archive et pose un 404 avant `template_redirect` priorité 5. Toute
+  fiche renommée jusqu'ici perdait son URL en silence.
+- 🤖 **Les placeholders de l'accueil sont servis aux robots.** Les deux faux articles
+  (« Juillet 2026 : douze expositions… ») étaient masqués en CSS mais présents dans le HTML.
+- 🤖 **La substance d'une fiche vient de la source ouverte**, pas de la consigne de rédaction :
+  sur 50 fiches réécrites sans source, 10 seulement ont dépassé 900 caractères, et ce sont
+  exactement celles dont l'agent avait lu la source.
+
+### ⏳ À corriger dans le pipeline (🧑 VPS, hors de portée du MCP)
+Tant que ces points tiennent, **tout nettoyage fait dans WordPress est réécrit à la
+republication suivante**.
+
+- 🧑 **Sources proscrites écrites dans `as_source_officielle_url`.** Le pipeline y met des
+  agrégateurs et des magazines privés. Il faut une liste de refus en amont.
+- 🧑 **Un report crée un article distinct** au lieu de mettre à jour la fiche existante. Google
+  demande l'inverse : même URL, on change `eventStatus` et on conserve l'ancienne date dans
+  `previousStartDate`. Deux URL pour un même événement se concurrencent.
+- 🧑 **Le panel rend un verdict `revise` sans motif.** Huit fiches portent
+  `as_panel_verdict = revise` avec `as_panel_revision` vide (6297, 7225, 6373, 7223, 2255,
+  6405, 7197, 6433). Un verdict sans reproche est inexploitable : soit la passe écrit ce
+  qu'elle reproche, soit elle ne rend pas ce verdict.
+- 🧑 **Le nom du média de collecte reste dans le titre** (« - Torino Oggi », « ANSA – »), avec
+  au passage un tiret demi-cadratin proscrit.
+- 🧑 **Les sources contredisent les fiches sans que personne ne le voie** : Nice Classic
+  Festival daté 2025 quand la source annonce 2026, Ah ! La Belle Saison daté 2026 quand la
+  source décrit 2025, Guitare en scène qui va jusqu'au 18/07 et non au 17, le Forte di Bard
+  situé à Aoste alors qu'il est à Bard, la Festa di San Savino donnée sur un jour quand la
+  commune annonce du 4 au 8 juillet, et une fiche 2026 rédigée depuis un communiqué de 2023.
+  La passe de vérification devrait comparer la fiche à sa source et signaler l'écart.
+- 🧑 Rappels des sessions précédentes toujours ouverts : passe-3 non bloquante, suffixe à tiret
+  cadratin, contrôle de langue, déduplication, coupe des extraits sur mot entier, écriture du
+  titre Yoast, artefact « l'Savoia » du dictionnaire FR vers IT.
+
+### ⏳ Reste à faire côté WordPress
+- 🤖 Déposer les 71 corps réécrits en meta `as_corps_propose` (jamais dans `post_content` :
+  « aucune publication autonome », Non-négociables).
+- 🤖 Seuil de disparition des fiches : décision Franck, **à minuit**, donc filtrage sur
+  `_EventEndDate` et non sur `_EventStartDate`. Deux fiches datées 2025 sont encore publiées et
+  l'une remonte dans le bloc « ce week-end ».
+- 🤖 Doublons entre blocs de l'accueil : « Aujourd'hui » reprend intégralement « À la une ».
+- 🎨 Gabarit « Le Fil » / Article inexistant. Le bloc « Nouveautés » ne pourra ressembler à
+  celui de Guida Torino, qui liste des **articles** et non des fiches, qu'une fois ce type de
+  contenu créé.
+- 🧑 Arbitrage : les organisateurs génériques du type `turismo` ou `mairie` ; les liens `#` des
+  réseaux sociaux sur l'accueil, dont les URLs n'ont jamais été fournies ; le périmètre
+  éditorial des salons d'affaires.
+
+---
+
 ## Le pipeline, étape par étape — où placent-on agents & règles ?
 
 ```
