@@ -2,7 +2,7 @@
 {% set active = 'dash' %}
 {% block title %}Aujourd'hui — Agenda CS{% endblock %}
 {% block h1 %}Aujourd'hui{% endblock %}
-{% block subtitle %}<div class="sub">Ce qui t'attend, tes outils du jour — tout part en brouillon, rien n'est publié sans toi.</div>{% endblock %}
+{% block subtitle %}<div class="sub">Une seule question : <strong>est-ce que tu dois intervenir ?</strong> Le reste tourne tout seul. Tout part en brouillon, rien n'est publié sans toi.</div>{% endblock %}
 
 {% block content %}
 
@@ -71,23 +71,9 @@
 </div>
 {% endif %}
 
-<!-- Quotidien : les 3 écrans de tous les jours, à portée de clic. -->
-<div class="section-title">Ton quotidien</div>
-<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
-  <a class="kpi" href="/pilotage"><div class="v">🧭</div><div class="l"><b>Pilotage</b> — santé éditoriale &amp; couverture</div></a>
-  <a class="kpi" href="/newsletter"><div class="v">📧</div><div class="l"><b>Newsletter</b> — {{ nl_active }} source(s) active(s), brouillon Brevo</div></a>
-  <a class="kpi" href="/reseaux"><div class="v">📣</div><div class="l"><b>Réseaux</b> — publications Instagram &amp; co</div></a>
-</div>
-
-<!-- KPIs : le vocabulaire des 2 destinations est UNIFIÉ (Cultura Sabauda / Agenda Sabauda) -->
-<div class="section-title">Le stock</div>
-<div class="kpis">
-  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés (actifs)</div></a>
-  <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
-  <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (≥ 7)</div></a>
-  <a class="kpi" href="{{ wp_base }}/wp-admin/edit.php?post_status=draft" target="_blank" rel="noopener"><div class="v">{{ drafts_cs }}</div><div class="l">Brouillons CS</div></a>
-  <a class="kpi" href="{{ wp_as_base }}/wp-admin/edit.php?post_status=draft&post_type=tribe_events" target="_blank" rel="noopener"><div class="v">{{ drafts_as }}</div><div class="l">Brouillons Agenda</div></a>
-</div>
+<!-- « Ton quotidien » (trois liens vers Pilotage / Newsletter / Réseaux) a été RETIRÉ le
+     2026-08-11 : ces trois entrées sont déjà dans le menu de gauche, en permanence. Un
+     raccourci vers ce qui est déjà à un clic n'est pas un raccourci, c'est du bruit. -->
 
 <!-- Pipeline : REPLIÉ par défaut — tout tourne automatiquement (cron). On ne
      l'ouvre que pour lancer une étape à la main. Évite le mur de boutons. -->
@@ -168,64 +154,45 @@
      s'ouvrait de lui-même en rouge pour un échec vieux de cinq semaines. Dans la cloche,
      il est disponible depuis TOUTES les pages et ne sonne que si l'échec est récent. -->
 
-<!-- Coûts -->
-<div class="section-title">Coûts API</div>
-<div class="card">
-  <div class="cost-line">Semaine {{ cost.week_label }} : <strong>${{ '%.4f'|format(cost.week) }}</strong>
-    &nbsp;·&nbsp; cumul : <strong>${{ '%.4f'|format(cost.total) }}</strong>
-    <span class="muted">({{ cost.calls_total }} appels)</span></div>
-  <!-- CE QUI FAIT LA FACTURE. Franck, 2026-08-11 : « il faudrait que tu expliques le
-       détail des coûts ». Un total sans sa décomposition ne se pilote pas, il se subit. -->
-  {% if cost.expl and cost.expl.appels %}
-  <div class="muted text-sm" style="margin-top:.55rem;line-height:1.65">
-    <strong>{{ cost.expl.appels }}</strong> appels, soit <strong>${{ '%.4f'|format(cost.expl.cout_par_appel) }}</strong> l'appel en moyenne.
-    {% if cost.expl.part_entree is not none %}
-    <br><strong>{{ cost.expl.part_entree }}&nbsp;% de la facture vient de ce qu'on ENVOIE</strong>, pas de ce que le modèle écrit —
-    {{ '{:,}'.format(cost.expl.entree_par_appel).replace(',', ' ') }} jetons en entrée par appel contre
-    {{ '{:,}'.format(cost.expl.sortie_par_appel).replace(',', ' ') }} en sortie{% if cost.expl.ratio %}, un rapport de {{ cost.expl.ratio }} contre 1{% endif %}.
-    <br>C'est contre-intuitif : l'entrée coûte cinq fois moins cher au jeton que la sortie, et pèse pourtant plus lourd,
-    parce qu'on en envoie dix fois plus. À chaque appel repartent la voix éditoriale, le savoir local, les personas,
-    la consigne et la matière source — en entier, à chaque fois.
-    {% endif %}
-  </div>
-  {% endif %}
-
-  {% if cost.by_label %}
-  <div class="section-title" style="font-size:.85rem;margin:.9rem 0 .3rem">À quoi sert l'argent</div>
-  <table>
-    <tr><th>Étape</th><th>Appels</th><th>Entrée / appel</th><th>Coût</th><th>Part</th></tr>
-    {% for lab, d in cost.by_label.items() %}
-    {% if loop.index <= 12 %}
-    <tr>
-      <td>{{ lab }}</td>
-      <td>{{ d.calls }}</td>
-      <td class="muted">{{ (d['in'] // d.calls) if d.calls else 0 }}</td>
-      <td>${{ '%.4f'|format(d.cost) }}</td>
-      <td class="muted">{{ ((d.cost / cost.total * 100)|round)|int if cost.total else 0 }}&nbsp;%</td>
-    </tr>
-    {% endif %}
-    {% endfor %}
-  </table>
-  <div class="muted text-sm" style="margin-top:.35rem">
-    L'étape la plus chère n'est pas forcément à réduire — la question est ce qu'elle produit.
-    Mais une étape chère qui produit peu se voit ici, et nulle part ailleurs.
-  </div>
-  {% endif %}
-
-  <div class="btn-row" style="margin-top:.5rem">
-    <a class="btn btn-sm" href="/couts">💶 Comparer par date →</a>
-  </div>
-
-  <div class="section-title" style="font-size:.85rem;margin:.9rem 0 .3rem">Par modèle</div>
-  {% if cost.by_model %}
-  <table style="margin-top:.6rem">
-    <tr><th>Modèle</th><th>Appels</th><th>Tokens (in/out)</th><th>Coût</th></tr>
-    {% for m, d in cost.by_model.items() %}
-    <tr><td>{{ m }}</td><td>{{ d.calls }}</td><td>{{ d['in'] }} / {{ d.out }}</td><td>${{ '%.4f'|format(d.cost) }}</td></tr>
-    {% endfor %}
-  </table>
-  {% endif %}
+<!-- LES COÛTS ONT DÉMÉNAGÉ le 2026-08-11. Franck : « on a encore le détail des coûts API
+     sur le tableau de bord ET en plus la page qui permet de comparer. C'est trop. »
+     Il a raison : le détail par étape, la répartition entrée/sortie et le jour par jour
+     vivent dans « État du système › Les coûts », où l'on peut choisir une période. Ici il
+     ne reste qu'un montant et un lien — parce que la question du tableau de bord n'est pas
+     « combien ça coûte » mais « dois-je intervenir ». -->
+<div class="muted text-sm" style="margin:1rem 0">
+  💶 Coûts API — semaine {{ cost.week_label }} : <strong>${{ '%.4f'|format(cost.week) }}</strong>,
+  cumul <strong>${{ '%.4f'|format(cost.total) }}</strong>.
+  <a href="/systeme?vue=couts">Détail par étape et par date →</a>
 </div>
+
+<!-- ── TOUT LE RESTE, SOUS UN SEUL REPLI ────────────────────────────────────────────
+     Franck, 2026-08-11 : « il faut que ce soit super simple pour moi, parce que moi je ne
+     vais pas l'utiliser. Normalement c'est tout automatique. Je veux juste que le tableau
+     de bord soit le plus minimal possible, avec les informations les plus importantes,
+     afin que je sache s'il faut que j'intervienne ou pas. »
+
+     Ça règle la question de ce qui reste EN HAUT : l'alerte, la prochaine action, les
+     files qui demandent sa main. Rien d'autre ne répond à « dois-je intervenir ».
+
+     Le stock, les statistiques, le calcul du score, le SEO, les sources et les
+     newsletters restent accessibles — ce sont des références utiles quand on les cherche,
+     jamais quand on ouvre la page. Ils tiennent donc sous UNE barre, pas six : dix
+     sections repliées ne valent guère mieux que dix sections ouvertes, on scrolle encore
+     pour trouver la bonne. Et l'état est retenu (data-pli) : ce qui est fermé le reste. -->
+<details class="pli" data-pli="dash-references">
+  <summary>Chiffres et références <span class="pli-resume">stock, statistiques, score, SEO, sources, newsletters</span></summary>
+  <div class="pli-corps">
+<!-- KPIs : le vocabulaire des 2 destinations est UNIFIÉ (Cultura Sabauda / Agenda Sabauda) -->
+<div class="section-title">Le stock</div>
+<div class="kpis">
+  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés (actifs)</div></a>
+  <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
+  <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (≥ 7)</div></a>
+  <a class="kpi" href="{{ wp_base }}/wp-admin/edit.php?post_status=draft" target="_blank" rel="noopener"><div class="v">{{ drafts_cs }}</div><div class="l">Brouillons CS</div></a>
+  <a class="kpi" href="{{ wp_as_base }}/wp-admin/edit.php?post_status=draft&post_type=tribe_events" target="_blank" rel="noopener"><div class="v">{{ drafts_as }}</div><div class="l">Brouillons Agenda</div></a>
+</div>
+
 
 <!-- Statistiques (repliable) -->
 <details class="box">
@@ -342,5 +309,8 @@
   </div>
 </details>
 <script>if(location.hash==='#sources-rss'){var s=document.getElementById('sources-rss');if(s)s.open=true;}if(location.hash==='#newsletters'){var n=document.getElementById('newsletters');if(n)n.open=true;}</script>
+
+  </div>
+</details>
 
 {% endblock %}
