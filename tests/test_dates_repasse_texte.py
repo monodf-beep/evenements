@@ -217,6 +217,32 @@ _check("… la fin connue n'a pas bougé", _lire(8)[1] == "2026-09-20", str(_lir
 _check("… et la provenance le dit", _lire(8)[2] == "page_corroboree", str(_lire(8)))
 dates_mod.fetch_event_dates = _vrai_fetch
 
+print("\n──── la passe page : règle 5, et les candidats d'abord ────")
+# Le run du 2026-08-11 à 14h41 : 717 fiches ré-armées, 200 pages lues, ZÉRO résultat —
+# alors que le même chemin avait daté 31 fiches sur 49 une heure plus tôt. Le plafond
+# prenait les 200 PREMIÈRES par numéro, donc les plus vieilles ; les fiches qui ont une
+# date de fin, seules à pouvoir servir la corroboration, étaient enterrées vers la 600ᵉ
+# place. Un plafond sans tri lit toujours le même fond de tiroir.
+c = sqlite3.connect(db)
+c.execute("INSERT INTO events_raw (id,title,description,url_source,date_source,"
+          "date_event_start,date_event_end) VALUES "
+          "(30,'Vieille fiche terminée','','https://exemple.fr/30','none','','2020-01-01'),"
+          "(31,'Fiche sans aucune date','','https://exemple.fr/31','none','',''),"
+          "(32,'Fin connue à venir','','https://exemple.fr/32','none','','2027-09-20')")
+c.commit()
+c.close()
+_lus = []
+dates_mod.fetch_event_dates = (lambda url, _capture=None:
+                               (_lus.append(url), ("", "", "nodate"))[1])
+dates_mod.main(["--no-llm", "--no-republish"])
+dates_mod.fetch_event_dates = _vrai_fetch
+_check("la fiche dont la FIN est passée n'est pas lue (règle 5)",
+       "https://exemple.fr/30" not in _lus, str(_lus))
+_check("la fiche SANS aucune date reste lue — absence n'est pas passé",
+       "https://exemple.fr/31" in _lus, str(_lus))
+_check("la fiche qui a une fin à venir est lue EN PREMIER (candidate à la corroboration)",
+       _lus and _lus[0] == "https://exemple.fr/32", str(_lus))
+
 print("\n──── le bilan de fin de run compte des DATES, pas des étiquettes ────")
 # Il comptait `date_source IN ('parsed','page','llm','copie-traduction')` : une liste en
 # dur, donc un compteur qui se périme dès qu'on ajoute une provenance. Le 11/08, l'arrivée

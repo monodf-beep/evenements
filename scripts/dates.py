@@ -828,6 +828,7 @@ def main(argv=None) -> int:
 
     # --- Passe 2 : page de l'événement (JSON-LD/<time>), pour les restants ---
     from_page = 0
+    today = date.today().isoformat()
     if not args.no_fetch:
         # SÉLECTION ÉLARGIE le 2026-08-11 (Franck : « date de début, date de fin ! »).
         # Elle portait sur date_source='none', or une fiche qui n'a gagné qu'une fin par
@@ -843,7 +844,20 @@ def main(argv=None) -> int:
             "  AND COALESCE(date_source,'') IN ('none', 'parsed', 'parsed_article') "
             "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
             "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
-            "LIMIT ?", (args.fetch_cap,)).fetchall()
+            # RÈGLE 5, QUI MANQUAIT ICI. Une fiche dont la FIN est passée est un événement
+            # terminé : lire sa page ne sert personne. Une fiche SANS aucune date, elle,
+            # reste dans le lot — l'absence de date n'est pas une preuve de passé, c'est
+            # une donnée manquante, et c'est justement ce qu'on vient chercher.
+            "  AND (COALESCE(date_event_end,'') = '' OR date_event_end >= ?) "
+            # ET UN ORDRE, QUI MANQUAIT AUSSI. Sans lui, LIMIT prenait les 200 premières
+            # par numéro, c'est-à-dire les plus VIEILLES. Le run du 2026-08-11 à 14h41 en
+            # est la démonstration : 717 fiches ré-armées, 200 pages lues, ZÉRO résultat —
+            # non parce que le chemin ne marchait pas (il avait daté 31 fiches sur 49 une
+            # heure plus tôt), mais parce que les 54 fiches qui avaient une date de fin,
+            # les seules que la corroboration puisse servir, étaient enterrées vers la
+            # 600ᵉ place. Un plafond sans tri lit toujours le même fond de tiroir.
+            "ORDER BY (COALESCE(date_event_end,'') <> '') DESC, id DESC "
+            "LIMIT ?", (today, args.fetch_cap)).fetchall()
         log.info("Passe page : %d page(s) à lire (cap %d)", len(todo), args.fetch_cap)
         corrobores = 0
         for r in todo:
