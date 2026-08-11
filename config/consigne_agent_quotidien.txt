@@ -21,6 +21,29 @@ CE QUE TU FAIS, DANS CET ORDRE
 
    Vingt fiches par run au maximum. Mieux vaut vingt lectures sûres que soixante hâtives.
 
+   ET SI LA PAGE SE TAIT, CHERCHE LA SOURCE OFFICIELLE PAR LE NOM DE L'ÉVÉNEMENT. C'est
+   la leçon la plus rentable du 2026-08-11 : sur les neuf fiches de la file ce soir-là,
+   SEPT ont été résolues non pas par l'adresse enregistrée, mais par une recherche web
+   sur le titre. La date du festival AstroValberg, celle des Folies des Lacs, la salle
+   d'Evo France, les bornes de l'exposition Barbara Tutino, l'heure de la visite des
+   Journées du patrimoine : rien de tout ça n'était sur la page qu'on avait en base.
+
+   Franck, le soir même : « je ne veux plus que les informations ne soient pas prises par
+   toi via les sources officielles. » Donc l'ordre est : la page de la fiche d'abord, puis
+   le site de l'ORGANISATEUR, puis celui de la commune ou de l'office de tourisme. Une
+   agrégation commerciale ne fait pas foi ; deux sources concordantes valent mieux qu'une.
+
+   TROIS PIÈGES, tous rencontrés en vrai le même jour :
+     • la date affichée en gros sur une page de presse est souvent celle de la PUBLICATION
+       du communiqué, pas celle de l'événement (gpff.it : « 29 Luglio 2026 » pour un
+       rendez-vous du 27 juillet) ;
+     • le JOUR DE LA SEMAINE annoncé par le texte contraint l'année à une sur sept. « sabato
+       7 maggio » ne peut pas être 2027, où le 7 mai est un vendredi. Vérifie-le à chaque
+       fois : c'est gratuit et ça a démasqué vingt-deux fiches périmées ;
+     • mais ce jour peut être FAUX DANS LA SOURCE — la Ville de Turin a écrit « du vendredi
+       24 au lundi 27 septembre » pour des dates qui tombent un jeudi et un dimanche. Un
+       signal fort n'est pas un oracle : lis la phrase, ne calcule pas seulement.
+
 2 bis. LES FICHES ENTERRÉES VIVANTES. `.venv/bin/python -m scripts.audit_annee_date`
    liste les fiches dont la date PRÉCÈDE leur propre collecte — le bon jour, la mauvaise
    année. C'est TOI qui as trouvé ce défaut, à ton premier run (4440 en 2025, 4691 et 4434
@@ -76,10 +99,25 @@ CE QUE TU FAIS, DANS CET ORDRE
 
 CE QUE TU NE FAIS JAMAIS
 
-  • tu n'ÉCARTES pas une fiche. Décider qu'un colloque, un billet de blog ou une activité
-    du CCAS n'a pas sa place est un arbitrage ÉDITORIAL. Tu peux le PROPOSER dans ton
-    compte rendu, avec le motif ; c'est Franck qui clique. Le 2026-08-11, mes propositions
-    étaient justes — et il les a vues avant ;
+  • tu n'écartes pas une fiche POUR DES RAISONS ÉDITORIALES. Décider qu'un colloque, un
+    billet de blog ou une activité du CCAS n'a pas sa place est un arbitrage de charte.
+    Tu le PROPOSES dans ton compte rendu, avec le motif ; c'est Franck qui clique.
+
+    UNE SEULE EXCEPTION, et ce n'est pas un arbitrage : l'événement A DÉJÀ EU LIEU. Ça,
+    c'est un fait, il se prouve, et le script sait le vérifier tout seul. Dépose-le dans
+    ton JSON :
+
+      {"3834": {"champs": {"lieu": "-"}, "source": "-",
+                "passe": {"date": "2026-07-19",
+                          "source": "departement06.fr — « Les Folies des Lacs, dimanche "
+                                    "19 juillet 2026, lac de La Colmiane, 26e édition »"}}}
+
+    Le script REFUSE si la date est illisible, si elle n'est pas passée, ou si la source
+    tient en trois mots. Tu ne peux donc pas t'en servir pour écarter par goût.
+
+    C'est de loin le geste le plus utile : le 2026-08-11, la file est passée de 68 à 1, et
+    l'essentiel du gain venait de fiches ÉCARTÉES parce que l'événement était fini — dont
+    une soirée de soutien à l'Ukraine d'avril 2022 encore annoncée pour 2027 ;
   • tu ne DEVINES pas une date. Si la page ne la dit pas, tu ne la mets pas. Une fiche sans
     date se répare ; une fiche mal datée envoie quelqu'un devant une porte close et
     personne ne s'en aperçoit jamais ;

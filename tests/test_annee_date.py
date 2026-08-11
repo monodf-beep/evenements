@@ -269,6 +269,45 @@ completer_verifie.main(["--depuis", fichier, "--apply"])
 _check("l'entrée entière est ignorée, pas appliquée à moitié",
        _lire(4440, "date_event_start") == "2025-07-20", _lire(4440, "date_event_start"))
 
+print("\n──── 7 bis. la porte « événement passé » ────")
+# Ouverte le 2026-08-11 : l'essentiel du gain de la journée n'est pas venu de champs
+# comblés mais de fiches ÉCARTÉES parce que l'événement avait eu lieu. L'agent n'avait pas
+# le droit de le proposer. Il l'a maintenant, mais par une porte que le script VÉRIFIE.
+def _statut(eid):
+    c = sqlite3.connect(db)
+    v = c.execute("SELECT statut FROM events_raw WHERE id=?", (eid,)).fetchone()[0]
+    c.close()
+    return v
+
+
+fichier = _depuis({"101": {"champs": {"lieu": "peu importe"},
+                           "source": "peu importe",
+                           "passe": {"date": "2026-02-03",
+                                     "source": "exemple.fr — « la fête a eu lieu le "
+                                               "3 février 2026 », compte rendu illustré"}}})
+completer_verifie.main(["--depuis", fichier, "--apply"])
+_check("un événement PROUVÉ passé est écarté", _statut(101) == "rejected", _statut(101))
+
+# Et les trois refus, qui sont l'essentiel : sans eux la porte servirait à écarter par goût.
+fichier = _depuis({"102": {"champs": {"lieu": "x"}, "source": "x",
+                           "passe": {"date": "2027-01-30",
+                                     "source": "une source parfaitement détaillée ici"}}})
+completer_verifie.main(["--depuis", fichier, "--apply"])
+_check("une date À VENIR est refusée — la porte ne sert qu'au passé",
+       _statut(102) != "rejected", _statut(102))
+
+fichier = _depuis({"4440": {"champs": {"lieu": "x"}, "source": "x",
+                            "passe": {"date": "2020-01-01", "source": "trop court"}}})
+completer_verifie.main(["--depuis", fichier, "--apply"])
+_check("une source trop maigre est refusée : il faut la PHRASE, pas un nom de site",
+       _statut(4440) != "rejected", _statut(4440))
+
+fichier = _depuis({"4691": {"champs": {"lieu": "x"}, "source": "x",
+                            "passe": {"date": "hier", "source": "une source bien assez "
+                                                               "longue pour passer"}}})
+completer_verifie.main(["--depuis", fichier, "--apply"])
+_check("une date illisible est refusée", _statut(4691) != "rejected", _statut(4691))
+
 print("\n──── 8. un trou se comble toujours sans déclaration ────")
 fichier = _depuis({"102": {"champs": {"lieu": "Bourg de Saint-Ours"},
                            "source": "regione.vda.it"}})

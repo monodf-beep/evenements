@@ -305,6 +305,11 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--en-ligne", action="store_true",
                     help="ne regarde que les fiches PUBLIÉES — un fait faux y coûte le "
                          "plus cher, puisqu'un visiteur le lit")
+    ap.add_argument("--slack", action="store_true",
+                    help="alerte Slack S'IL Y A QUELQUE CHOSE — silence sinon. Un "
+                         "message quotidien qui dit « rien » n'est plus lu au bout d'une "
+                         "semaine, et c'est le jour où il dira quelque chose qu'on le "
+                         "ratera")
     ap.add_argument("--tout", action="store_true",
                     help="affiche aussi les indécis et les muets (par défaut on ne liste "
                          "que ce sur quoi il y a un geste à faire)")
@@ -400,6 +405,8 @@ def main(argv: list[str]) -> int:
 
     if not a_voir:
         print("Rien à corriger : aucune contradiction franche dans ce périmètre.")
+        if args.slack:
+            print("(--slack : rien à signaler, aucun message envoyé.)")
         print("Les indécises et les muettes ne sont pas des tâches — il n'y a pas de "
               "geste au bout, et une file sans geste cache les vraies (règle 6).")
         conn.close()
@@ -432,6 +439,20 @@ def main(argv: list[str]) -> int:
         print("      --statut rejected --motif \"Evenement passe : le jour de semaine "
               "annonce par la source ne colle qu a une annee, deja ecoulee.\"")
         print("  # relancer avec --apply si la sortie est conforme\n")
+
+    if args.slack:
+        from utils import slack
+        lignes = [f"*{len(a_voir)} fiche(s)* dont la date est contredite par leur source "
+                  f"(périmètre : {total} fiches datées, encore devant nous"
+                  + (", publiées" if args.en_ligne else "") + ") :"]
+        for r, v, motif, _phrase, _exacte in a_voir[:10]:
+            etat = f"en ligne #{r['wp_post_id_as']}" if r["wp_post_id_as"] else "hors ligne"
+            lignes.append(f"• [{r['id']}] {(r['title'] or '')[:60]} — {etat}\n   {motif}")
+        if len(a_voir) > 10:
+            lignes.append(f"… et {len(a_voir) - 10} autre(s).")
+        lignes.append("Détail : `.venv/bin/python -m scripts.verifier_dates"
+                      + (" --en-ligne" if args.en_ligne else "") + "`")
+        slack.notify("\n".join(lignes))
 
     print("SIGNALEMENT, PAS UN VERDICT : notre date peut être la bonne — elle vient "
           "parfois de la page officielle, que ce texte ne contient pas. La correction se "

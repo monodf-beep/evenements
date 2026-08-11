@@ -45,6 +45,7 @@ import os
 import sqlite3
 import sys
 import unicodedata
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -401,6 +402,40 @@ def main(argv: list[str]) -> int:
             if inconnus:
                 print(f"  [{cle}] ignorée : champ(s) non autorisé(s) {sorted(inconnus)}")
                 continue
+            # ── LA PORTE « ÉVÉNEMENT PASSÉ », ouverte le 2026-08-11 au soir ──────────
+            # Franck : « on est passé de quatre cents tâches à une, et sans IA ». Vrai —
+            # mais l'essentiel du gain n'est PAS venu de champs comblés : il est venu de
+            # fiches ÉCARTÉES parce que l'événement avait déjà eu lieu. Vingt-deux ce
+            # jour-là, dont une soirée de soutien à l'Ukraine d'avril 2022 encore en ligne.
+            #
+            # Or la consigne de l'agent lui interdit d'écarter, et elle a raison : décider
+            # qu'un colloque ou un billet de blog n'a pas sa place est un arbitrage
+            # ÉDITORIAL. « L'événement a eu lieu le 26 avril 2026 » n'en est pas un : c'est
+            # un FAIT, et un fait que ce script peut vérifier tout seul.
+            #
+            # D'où cette porte étroite : l'agent ne dit pas « écarte-la », il dit « voici
+            # la date à laquelle elle a eu lieu, et voici la source ». Le script refuse si
+            # la date est illisible, si elle n'est pas passée, ou si la source manque. Il
+            # ne peut donc PAS servir à écarter par goût.
+            passe = (val or {}).get("passe") or {}
+            if passe:
+                reelle, preuve = str(passe.get("date") or ""), str(passe.get("source") or "")
+                try:
+                    d = date.fromisoformat(reelle[:10])
+                except ValueError:
+                    print(f"  [{cle}] « passe » ignorée : date illisible ({reelle!r})")
+                    continue
+                if d >= date.today():
+                    print(f"  [{cle}] « passe » REFUSÉE : {reelle} n'est pas passé. "
+                          f"Un événement à venir ne s'écarte pas sur ce motif.")
+                    continue
+                if len(preuve.strip()) < 20:
+                    print(f"  [{cle}] « passe » ignorée : la source doit porter la PHRASE "
+                          f"lue, pas seulement un nom de site")
+                    continue
+                _ECARTS[int(cle)] = (f"Événement passé — a eu lieu le {reelle}. {preuve}")
+                continue
+
             remplace = (val or {}).get("remplace") or {}
             # On ne peut déclarer remplacer que ce qu'on écrit : une clause « remplace »
             # portant sur un champ absent de « champs » ne veut rien dire, et laisserait
@@ -499,7 +534,9 @@ def main(argv: list[str]) -> int:
     # RECOMPTÉ EN BASE, et sur le périmètre EXACT de la pastille (règle 6) : c'est le
     # seul nombre qui répond à « est-ce que ça avance ? ».
     from scripts.lister_a_completer import _clause
-    from datetime import date
+    # `date` est importé en tête du module depuis le 2026-08-11 : le ré-importer ICI en
+    # faisait une variable LOCALE à main(), donc inaccessible plus haut dans la fonction.
+    # Python décide de la portée à la compilation, pas à l'exécution.
     where, params = _clause(date.today().isoformat())
     reste = conn.execute(f"SELECT COUNT(*) FROM events_raw WHERE {where}",
                          params).fetchone()[0]

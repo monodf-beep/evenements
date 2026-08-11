@@ -67,6 +67,10 @@ LOGS = ROOT / "logs"
 # le jour même plutôt que remise à plus tard.
 ATTENDUS = [
     ("Collecte des sources",      "scraper_events",  "scraper.log",          30),
+    # Ajouté le 2026-08-11 : sans cette ligne, l'arrêt du contradicteur de dates serait
+    # invisible — il ne parle que quand il trouve quelque chose, donc son silence est
+    # AMBIGU par construction. C'est exactement le genre d'outil qu'il faut surveiller.
+    ("Contradicteur de dates",    "verifier_dates",  "verifier_dates.log",   30),
     ("Relève Gmail",              "gmail_collect",   "gmail.log",            30),
     ("Dates",                     "dates",           "dates.log",            30),
     ("Dédoublonnage",             "dedupe",          "dedupe.log",           30),
