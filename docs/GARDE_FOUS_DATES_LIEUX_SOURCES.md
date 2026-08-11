@@ -43,16 +43,38 @@ déplace un jour où il n'y a rien, ou il cherche une forteresse dans la mauvais
 - 2265 porte en plus deux faits que la source ne contient pas, une foire équine et un défilé de
   chars. Invention à l'enrichissement, non rattrapée par le panel.
 
-### 3729 · Forte di Bard · l'erreur est dans la fiche lieu, pas dans l'événement
+### 3729 · Forte di Bard · l'erreur est dans la fiche lieu, et la cause est la duplication
 - Les dates de l'événement sont justes (9 juillet 2026, conformes à la source).
-- La **fiche lieu 208**, « Forte di Bard, Piazza d'Armi », porte `_VenueCity = Aosta`. La
-  forteresse est à **Bard**, à 40 km d'Aoste.
-- **Trois événements** pointent sur cette fiche lieu et héritent tous de l'erreur. Corriger un
-  événement ne corrigerait rien : c'est l'enregistrement partagé qu'il faut reprendre.
-- Mécanisme : la ville a été renseignée depuis l'entité administrative de rattachement, la
-  Vallée d'Aoste, au lieu de la commune.
-- Défaut annexe : le titre de la fiche lieu contient un **tiret demi-cadratin** stocké en entité
-  (`&#8211;`), proscrit par la charte, plus un `&rsquo;` brut.
+- La **fiche lieu 208**, « Forte di Bard - Piazza d'Armi », portait `_VenueCity = Aosta`. La
+  forteresse est à **Bard**, à 40 km d'Aoste. Corrigé le 2026-08-12, sauvegarde
+  `cs_bk_venue208_ville_20260812`. **Trois événements** en héritaient (209, 631, 3729).
+- **Le mécanisme n'est pas celui que j'avais supposé.** J'ai d'abord écrit que la ville venait de
+  l'entité administrative de rattachement. Le comptage le dément : il existe **cinq fiches lieu
+  pour le même endroit**, et **quatre disent Bard**.
+
+  | Lieu | Titre | Ville | Événements |
+  |---|---|---|---|
+  | 28 | Forte di Bard | Bard | 40 |
+  | 80 | Forte di Bard - Museo delle Fortificazioni | Bard | 0 |
+  | 208 | Forte di Bard - Piazza d'Armi | **Aosta** | 3 |
+  | 218 | Forte di Bard, Piazza d'Armi | Bard | 3 |
+  | 237 | Piazza d'Armi - Forte di Bard | Bard | 4 |
+
+  La cause réelle est donc la **création d'une fiche lieu à chaque variante de libellé**, sans
+  déduplication. Une seule des cinq a été mal renseignée, et rien ne l'a rattrapée parce que
+  rien ne compare les fiches lieu entre elles. Le garde-fou utile n'est pas « d'où vient la
+  ville » mais **« deux lieux dont les titres contiennent les mêmes noms propres sont le même
+  lieu, et doivent avoir la même ville »**.
+
+> **Note de méthode.** J'avais aussi écrit que le titre de la fiche lieu contenait un tiret
+> demi-cadratin stocké en entité. **C'est faux.** Le titre stocké contient un simple trait
+> d'union ; c'est `wptexturize`, filtre natif de WordPress, qui transforme « espace tiret
+> espace » en demi-cadratin **à l'affichage**. Je l'avais lu avec `get_the_title()`, qui applique
+> les filtres, au lieu de `get_post_field()`, qui ne les applique pas.
+> Le défaut existe quand même, mais il est ailleurs et il est plus large : **11 titres**
+> d'événements et de lieux contiennent « espace tiret espace » et sont donc tous rendus avec un
+> demi-cadratin, proscrit par la charte. Dix sont des fiches lieu. La correction est d'écrire une
+> virgule plutôt qu'un tiret dans les titres, pas de désactiver un filtre de WordPress.
 
 ### 864 · Château d'Introd · une source de 2023 pour un événement de 2026
 - Source : `grand-paradis.it/it/news/**2023**/visite-guidate-notturne-...`
@@ -79,8 +101,12 @@ déplace un jour où il n'y a rien, ou il cherche une forteresse dans la mauvais
    moment il ne relit la page pour vérifier que ce qu'il a écrit s'y trouve.
 2. **L'année courante sert de valeur par défaut** quand la page n'en donne pas.
 3. **La borne de fin est traitée comme exclusive**, sur les deux cas multi-jours vérifiés.
-4. **La ville d'un lieu vient de l'entité administrative**, pas de la commune, et l'erreur se
-   propage à tous les événements qui partagent la fiche lieu.
+4. **Les fiches lieu se dupliquent à chaque variante de libellé**, cinq pour le Forte di Bard,
+   et rien ne compare leurs champs entre elles : une seule mal renseignée contamine tous les
+   événements qui la référencent.
+4 bis. **Les événements aussi se dupliquent** : « Festival Ah ! La Belle Saison » existait en
+   deux fiches, 591 et 2319, même langue, mêmes dates, créées le même jour à quinze minutes
+   d'intervalle.
 5. **Une URL de source peut être fabriquée** et n'est jamais rechargée.
 6. **Le verdict de panel « revise » est enregistré sans motif** (8 fiches connues : 6297, 7225,
    6373, 7223, 2255, 6405, 7197, 6433), donc le seul filet posé en aval est inexploitable.
@@ -100,14 +126,21 @@ avec son motif, elle n'est pas perdue.
 | 3 | **L'URL de source ne contient pas une autre année** que celle de l'événement | 864 | Trivial |
 | 4 | **L'URL de source répond 200** au moment de l'écriture, et est recontrôlée périodiquement | 909 | Faible |
 | 5 | Les **numéros de jour** encadrant le nom du mois dans la source correspondent aux bornes stockées | 2289, 2265 | Moyen |
-| 6 | La **ville d'une fiche lieu est une commune existante**, et ne contredit pas un nom de commune contenu dans le titre du lieu | 3729 | Moyen |
+| 6 | Deux fiches lieu dont les titres partagent les mêmes noms propres **ne peuvent pas avoir deux villes différentes** | 3729 | Moyen |
+| 6 bis | Un titre d'événement ou de lieu ne contient **pas « espace tiret espace »**, que `wptexturize` rend en demi-cadratin | 11 titres | Trivial |
 | 7 | Un verdict de panel `revise` **sans motif** est un échec de traitement, pas un verdict | les 8 fiches | Faible |
 
-Deux contrôles de forme à ajouter au même endroit, déjà constatés ailleurs :
+Trois contrôles de forme à ajouter au même endroit, constatés en corrigeant les sept fiches :
 
-- **Aucun tiret cadratin ni demi-cadratin** dans un titre, y compris de fiche lieu, y compris
-  stocké en entité HTML (`&#8212;`, `&#8211;`, `&mdash;`, `&ndash;`).
-- **Aucune entité HTML brute** dans un titre (`&rsquo;`, `&amp;` en double échappement).
+- **Aucun tiret cadratin ni demi-cadratin** dans un titre, ni en caractère, ni en entité
+  (`&#8212;`, `&#8211;`), ni en « espace tiret espace » que `wptexturize` convertira.
+- **Aucun corps ne se termine par une troncature d'agrégateur** : « Leggi di più... », « Lire la
+  suite », ou une virgule suivie de points de suspension. Constaté sur 2334 et 2289, dont les
+  corps étaient des extraits copiés puis coupés.
+- **Aucun fait qui ne figure pas dans la source.** 2265 affirmait une foire équine d'importance
+  nationale, un défilé de carrosses et un feu d'artifice ; aucun des douze termes correspondants
+  n'apparaît sur la page officielle, qui dit seulement « Festa Patronale di San Savino. Dal 4
+  all'8 luglio 2026 ». Le corps a été ramené aux faits vérifiés.
 
 ### Où les poser
 
@@ -124,3 +157,27 @@ l'écriture peut mourir ensuite, comme celle de 909.
 > que jusqu'à la republication suivante. Sans ces contrôles en amont, les mêmes erreurs
 > reviendront à l'identique. C'est le même constat que pour le rejet des événements
 > professionnels, `CHARTE_EDITORIALE.md` §3 bis.
+
+---
+
+## 4. Ce qui a été corrigé le 2026-08-12
+
+Chaque correction a été faite après avoir rouvert la source, jamais en recopiant une note.
+Toutes ont une sauvegarde en option WordPress.
+
+| Fiche | Correction | Sauvegarde |
+|---|---|---|
+| Lieu 208 | Ville Aosta corrigée en Bard, héritée par 3 événements | `cs_bk_venue208_ville_20260812` |
+| 2334 | Dates 2025 remplacées par 21/07 au 09/08/2026, via `tribe_update_event` pour que la table des occurrences suive. Corps : année, jour de début, nom de l'Académie Internationale d'Été de Nice, et retrait du « Leggi di più... » | `cs_bk_2334_dates_20260812`, `cs_bk_2334_corps_20260812` |
+| 2289 | Fin portée au 18/07 conformément à la source. Corps : même date, retrait de la troncature, « Grégory Porter » corrigé en Gregory Porter | `cs_bk_2289_dates_20260812`, `cs_bk_2289_corps_20260812` |
+| 2265 | Fin portée au 08/07. Corps ramené aux seuls faits que la source soutient | `cs_bk_2265_dates_20260812`, `cs_bk_2265_corps_20260812` |
+| 591 et 2319 | Dépubliées : doublon l'une de l'autre, et dates fabriquées pour une édition 2026 que la source ne documente pas | `cs_bk_belle_saison_statuts_20260812` |
+| 864 | Source retirée : communiqué de 2023, dont l'URL ne résout plus que vers l'index des actualités de cette année-là | `cs_bk_sources_annee_20260812` |
+| 909 | Source retirée : 404 | `cs_bk_sources_annee_20260812` |
+
+Deux fiches restent sans source, 864 et 909, ce que la charte préfère à une source douteuse.
+Elles portent le motif dans la méta `cs_source_retiree_motif`.
+
+**Reste ouvert :** la déduplication des cinq fiches lieu du Forte di Bard, qui touche 50
+événements, et celle des titres en « espace tiret espace ». Aucune des deux n'est urgente, les
+deux demandent un arbitrage sur les URL et le graphe Yoast avant d'être menées.
