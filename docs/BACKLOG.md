@@ -113,6 +113,15 @@ servi**, pas déduit. Voir `docs/MCP_NOVAMIRA.md` pour l'outillage et
 `docs/POSTMORTEM_2026-08-11_MU_PLUGIN.md` pour l'incident de production.
 
 ### ✅ Fait et vérifié en prod
+- 🤖 **Décidia 2026 retiré du site (WP 1934), décision Franck du 2026-08-11** : salon d'affaires,
+  hors périmètre d'un agenda culturel. Mis à la corbeille, donc réversible, sauvegarde complète
+  du post et de ses 58 métas dans `cs_bk_1934_avant_corbeille_20260811`. L'URL répond 404.
+  **La règle qui manquait est écrite dans `docs/CHARTE_EDITORIALE.md` §3 bis** : la charte
+  demandait « le public peut-il assister », ce qu'un salon professionnel satisfait puisqu'on
+  peut s'y inscrire. Le critère devient « l'événement s'adresse-t-il au grand public », avec
+  quatre marqueurs et une liste de contre-exemples pour ne pas rejeter les foires et salons
+  grand public. **À porter dans la notation du pipeline** : sans ce critère en amont, l'édition
+  2027 reviendra toute seule.
 - 🤖 **28 sources officielles** écrites après double vérification de l'éditeur (15 + 13). Le
   manque `source_officielle` passe de 59 à 31. Sauvegardes `cs_bk_sources_20260809`,
   `cs_bk_sources_20260809_lot2`.

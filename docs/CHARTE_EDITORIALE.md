@@ -32,6 +32,51 @@ GuidaTorino) : expos, concerts, spectacles, festivals, **sagre & gastronomie**, 
 nomination, communiqué), inauguration/remise de prix **déjà passée**, infrastructure/voirie,
 consultation publique — tout ce à quoi on ne peut pas **assister à une date**.
 
+### 3 bis. Événements professionnels : rejet (décision Franck, 2026-08-11)
+
+Le filtre ci-dessus demande « le public **peut**-il assister ». Ce n'est pas assez : un salon
+d'affaires laisse entrer qui s'inscrit, donc il passe. La bonne question est **« l'événement
+s'adresse-t-il au grand public ? »**. Un agenda culturel n'a pas à référencer un salon
+professionnel, même ouvert, même prestigieux, même dans le périmètre géographique.
+
+**Rejeter (score 0) si le critère A est rempli, ou si deux critères parmi B, C et D le sont.**
+
+- **A. Le public visé est nommé par un rôle professionnel.** « consacré aux dirigeants et
+  managers », « réservé aux professionnels », « pour les chefs d'entreprise », les DRH, les
+  commerçants, les élus, les soignants, les exploitants. Le critère porte sur **à qui
+  l'annonce parle**, pas sur qui pourrait matériellement entrer.
+- **B. L'accès est conditionné à une qualité professionnelle.** Accréditation, badge,
+  invitation, inscription nominative avec nom d'entreprise, réservé aux adhérents d'un réseau.
+- **C. Le contenu porte sur l'exercice d'un métier.** Facturation, marchés publics, droit du
+  travail, financement, ressources humaines, RSE, conformité, transformation numérique,
+  souveraineté des données.
+- **D. Le vocabulaire est celui des affaires.** « salon professionnel », « convention
+  d'affaires », « B2B », « networking », « rendez-vous d'affaires », « speed meeting »,
+  « exposants », « réseau des décideurs ».
+
+**Ne pas rejeter par erreur.** Beaucoup de manifestations ont l'air professionnelles et sont
+grand public. Le test qui tranche : **un particulier peut-il s'y rendre sans justifier d'un
+métier, et l'annonce s'adresse-t-elle à lui ?** Si oui, on garde.
+
+| On garde | Pourquoi |
+|---|---|
+| Foires généralistes (Foire de Savoie, Fiera di Sant'Orso) | Grand public, même avec des exposants |
+| Salons de l'habitat, du mariage, du livre, du vin, de l'auto, des antiquaires | Le visiteur est un particulier |
+| Comices agricoles, concours de bétail, fêtes de métiers | Fête populaire, pas congrès |
+| Portes ouvertes d'entreprise, journées du patrimoine industriel | Ouvert à tous, sans qualité requise |
+| La conférence publique isolée d'un congrès scientifique | Seule la séance ouverte est l'événement, et seulement si elle est annoncée comme telle |
+
+**Cas de référence : Décidia 2026, retiré le 2026-08-11** (Savoiexpo, Chambéry, WP 1934, mis à
+la corbeille, sauvegarde `cs_bk_1934_avant_corbeille_20260811`). Les quatre critères y étaient
+réunis : « salon consacré aux **dirigeants et managers** des entreprises » (A), inscription
+préalable obligatoire pour chaque conférence et chaque atelier (B), ateliers sur la facturation
+électronique, les marchés publics, la RSE et la souveraineté numérique (C), « soirée **Réseau
+des Décideurs** » et cocktail avec les décideurs présents (D).
+
+**Où corriger.** Ce rejet appartient au **pipeline**, à la notation. Retirer la fiche dans
+WordPress ne tient que jusqu'à la republication suivante : sans ce critère en amont, Décidia
+revient à l'édition 2027.
+
 **Le score = IMPORTANCE, pas profondeur culturelle.** On mesure si l'événement va *réunir du
 monde* / *compte dans le territoire*. Somme de 5 critères (0-10) :
 - **Notoriété du lieu** (0-3) — lieu emblématique très cité vs local modeste (pondéré par la
