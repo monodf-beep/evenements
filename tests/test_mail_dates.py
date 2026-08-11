@@ -79,6 +79,36 @@ _check("titre vide → rien", date_pres_du_titre(MAIL, "") == ("", ""))
 _check("aucune date dans le corps → rien",
        date_pres_du_titre("Une lettre sans la moindre date.", "Une lettre") == ("", ""))
 
+print("\n──── les titres voisins bornent la fenêtre ────")
+# LE CAS RÉEL DU 2026-08-11 : une description longue, puis l'annonce suivante avec SA
+# date. Sans borne, la fenêtre déborde et la fiche reçoit la date de sa voisine — c'est
+# arrivé en production sur « La visite-atelier des 4-6 ans » et « Sieste musicale ».
+LONG = ("Musees de Chambery. "
+        "La visite-atelier des 4-6 ans : Ma petite icone. "
+        # Description assez courte pour que la date de la VOISINE tombe dans la fenêtre
+        # de 220 caractères : c'est ainsi que la fuite se produit réellement.
+        "Les enfants creeront leur icone imaginaire en atelier. "
+        "Sieste musicale aux Charmettes - OudeBach. Le jeudi 6 aout a 18h30.")
+sans_borne = date_pres_du_titre(LONG, "La visite-atelier des 4-6 ans : Ma petite icone")
+_check("sans borne, la fenêtre attrape bien la date de la voisine (le défaut constaté)",
+       sans_borne[0] == "2026-08-06", str(sans_borne))
+avec_borne = date_pres_du_titre(
+    LONG, "La visite-atelier des 4-6 ans : Ma petite icone",
+    autres_titres=["Sieste musicale aux Charmettes - OudeBach"])
+_check("avec le titre voisin comme borne, plus aucune date n'est posée",
+       avec_borne == ("", ""), str(avec_borne))
+_check("et la voisine, elle, garde bien sa date",
+       date_pres_du_titre(LONG, "Sieste musicale aux Charmettes - OudeBach",
+                          autres_titres=["La visite-atelier des 4-6 ans : Ma petite icone"]
+                          )[0] == "2026-08-06")
+
+print("\n──── l'extrait montré doit contenir la date ────")
+# Deux des trois dates du premier run étaient « prouvées » par un extrait sans aucune
+# date dedans. Une preuve qui ne montre pas le fait qu'elle établit rassure à tort.
+ex = []
+date_pres_du_titre(MAIL, "Sieste musicale aux Charmettes - OudéBach", _extraits=ex)
+_check("l'extrait affiché porte bien la date lue", ex and "21 aout" in ex[0], str(ex))
+
 print("\n──── deux dates différentes autour du même titre → rien ────")
 # Le cas qui arrive vraiment : la newsletter reprend le même intitulé deux fois, pour
 # deux séances. On ne devine pas laquelle est « la » date.

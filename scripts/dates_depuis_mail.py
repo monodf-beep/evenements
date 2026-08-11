@@ -92,6 +92,16 @@ def main(argv: list[str]) -> int:
     trouves: list[tuple[int, str, str, str]] = []
     sans_corps = sans_date = 0
 
+    # LES AUTRES ANNONCES DU MÊME MAIL, qui serviront de bornes. Six fiches de Chambéry
+    # viennent d'un seul envoi : le texte de chacune s'arrête où commence le titre de la
+    # suivante. Sans cette borne, la fenêtre déborde sur l'annonce d'à côté et la fiche
+    # reçoit SA date — constaté en production le 2026-08-11 sur 4244 et 4245.
+    titres_par_mail: dict[str, list[str]] = {}
+    for ev in cibles:
+        mid = message_id_de(ev["url_source"])
+        if mid:
+            titres_par_mail.setdefault(mid, []).append(ev.get("title") or "")
+
     for ev in cibles:
         mid = message_id_de(ev["url_source"])
         corps = (ev.get("mail_corps") or "").strip()
@@ -115,8 +125,10 @@ def main(argv: list[str]) -> int:
             sans_corps += 1
             continue
         extraits: list[str] = []
+        voisins = [t for t in titres_par_mail.get(mid, [])
+                   if t and t != (ev.get("title") or "")]
         debut, fin = date_pres_du_titre(corps, ev.get("title") or "",
-                                        _extraits=extraits)
+                                        autres_titres=voisins, _extraits=extraits)
         if not debut:
             sans_date += 1
             print(f"  [{ev['id']:>5}] mail relu, aucune date SÛRE près du titre — "
