@@ -86,16 +86,28 @@ CAS = [
     (6, "Flux de presse", "Le Dauphiné", "https://www.ledauphine.com/y",
      None, "2026-12-01", True),
     (7, "Provenance illisible", "Inconnu", "gmail:d#1", None, "2026-12-01", False),
+    # ── LE CAS QUI A FAILLI COÛTER CHER ────────────────────────────────────────
+    # La première version ne regardait que le domaine d'origine et proposait donc de
+    # sortir « La Saint-Ours 2026 », le « Festival Baroque de Tarentaise », « Monterosa
+    # Classica », l'expo Vespa au MAUTO — de vrais événements du catalogue, détectés par
+    # la presse puis RÉSOLUS vers la page de leur organisateur. C'est tout le principe du
+    # tier radar : détecter, puis remonter. Une fois la remontée prouvée, la fiche ne doit
+    # plus rien à la presse.
+    (8, "Détectée par la presse mais RÉSOLUE", "GuidaTorino <news@guidatorino.com>",
+     "gmail:e#1", None, "2026-12-01", False),
 ]
 for eid, titre, src, url, wp, fin, _a in CAS:
     conn.execute(
         "INSERT INTO events_raw (id,title,source_name,url_source,statut,date_event_end,"
-        "wp_post_id_as) VALUES (?,?,?,?, 'evaluated', ?,?)", (eid, titre, src, url, fin, wp))
+        "wp_post_id_as,url_officiel) VALUES (?,?,?,?, 'evaluated', ?,?,?)",
+        (eid, titre, src, url, fin, wp,
+         "https://www.museireali.it/mostra" if eid == 8 else ""))
 conn.commit()
 conn.close()
 
 for eid, titre, src, url, wp, fin, attendu in CAS:
-    ev = {"title": titre, "source_name": src, "url_source": url}
+    ev = {"title": titre, "source_name": src, "url_source": url,
+          "url_officiel": "https://www.museireali.it/mostra" if eid == 8 else ""}
     obtenu = pu._non_officielle(ev)
     _check(f"{'NON officielle' if obtenu else 'officielle   '} — {titre[:34]:34}",
            obtenu == attendu, f"attendu {attendu}")
@@ -115,6 +127,8 @@ _check("le flux officiel n'est PAS touché", statuts[5] == "evaluated", str(stat
 _check("le flux de presse est rejeté", statuts[6] == "rejected", str(statuts))
 _check("la fiche de provenance illisible n'est PAS touchée",
        statuts[7] == "evaluated", str(statuts))
+_check("la fiche détectée par la presse mais RÉSOLUE n'est PAS touchée",
+       statuts[8] == "evaluated", str(statuts))
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

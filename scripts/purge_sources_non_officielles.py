@@ -59,6 +59,25 @@ def _domaine(ev: dict) -> str:
 
 
 def _non_officielle(ev: dict) -> bool:
+    """Fiche à sortir du catalogue ? Non si elle a été RÉSOLUE vers une page officielle.
+
+    ⚠️ CORRIGÉ le 2026-08-11, avant que Franck ne lance la commande que ce script lui
+    proposait. La première version ne regardait que le domaine d'ORIGINE, et rangeait
+    donc parmi les fiches à sortir : « La Saint-Ours 2026 » (le rendez-vous artisanal de
+    la Vallée d'Aoste), le « Festival Baroque de Tarentaise », « Monterosa Classica »,
+    l'exposition Vespa au MAUTO. De vrais événements, en plein dans le catalogue.
+
+    C'est TOUT le principe du tier radar, écrit dans utils/radar.py : la presse sert à
+    DÉTECTER, puis on remonte à la page de l'organisateur. Une fois cette remontée faite
+    — `official_anchor` en apporte la preuve, produite par le résolveur déterministe et
+    jamais par le LLM — la fiche ne doit RIEN à la presse : elle cite, crédite et lie
+    l'officiel. Elle a d'ailleurs franchi le verrou de publication, qui exige exactement
+    cette preuve : les fiches EN LIGNE l'ont par construction.
+
+    Ce qui reste à sortir, c'est donc l'écho de presse qu'on n'a jamais su rattacher à
+    personne — et lui seul."""
+    if radar.official_anchor(ev):
+        return False
     d = _domaine(ev)
     # Sans domaine identifiable, on NE TOUCHE À RIEN : rejeter sur un doute couperait
     # des fiches d'organisateurs dont on n'a simplement pas su lire la provenance.
@@ -108,9 +127,15 @@ def main(argv=None) -> int:
         print(f"  ⚠️  [{ev['id']:>5}] WP#{ev['wp_post_id_as']} · "
               f"{(ev.get('title') or '')[:52]}")
     if en_ligne:
-        print("\n  Ces fiches sont visibles du public. Les retirer est une décision à "
-              "part :\n  .venv/bin/python -m scripts.trash_by_ids "
-              + " ".join(str(e["id"]) for e in en_ligne[:30]) + "\n")
+        # PAS DE COMMANDE TOUTE FAITE ICI. Une fiche en ligne sans ancre officielle est
+        # un cas à regarder une par une : elle a pu être publiée avant que le verrou
+        # n'existe, ou son ancre a pu se perdre à une fusion. Coller une liste de trente
+        # identifiants derrière `trash_by_ids`, c'est inviter à dépublier en masse ce
+        # qu'on n'a pas lu.
+        print("\n  Ces fiches sont EN LIGNE et n'ont aucune ancre officielle. À regarder"
+              "\n  une par une : soit leur page officielle existe et il faut la résoudre"
+              "\n  (.venv/bin/python -m scripts.enrich <id>), soit c'est un écho de"
+              "\n  presse sans objet et il faut la retirer (scripts.trash_by_ids <id>).\n")
 
     if not args.apply:
         print("Simulation — RIEN n'a été modifié. Ajouter --apply pour rejeter.")
