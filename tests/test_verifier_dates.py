@@ -129,6 +129,25 @@ def _sortie(argv=None):
     return {int(m) for m in re.findall(r"^  \[\s*(\d+)\]", s, re.M)}, s
 
 
+print("\n──── 2 bis. le jour de la semaine ────")
+_check("« sabato 7 maggio » est lu",
+       verifier_dates.jours_nommes("venire a trovarci sabato 7 maggio dalle 16") ==
+       {(5, 7): 5})
+_check("le français aussi",
+       verifier_dates.jours_nommes("Le vendredi 21 août 2026 à 21h") == {(8, 21): 4})
+_check("un texte sans jour nommé ne dit rien",
+       verifier_dates.jours_nommes("Le 21 août 2026 à 21h") == {})
+# LE CAS 1069, RECOPIÉ : notre 07/05/2027 est un vendredi, la page dit samedi.
+_check("le désaccord de jour est signalé",
+       "samedi" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): 5}))
+_check("et il DIT la dernière année qui collerait — 2022, donc l'annonce est vieille",
+       "2022" in verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): 5}),
+       verifier_dates.verdict_jour({"2027-05-07"}, {(5, 7): 5}))
+_check("un jour qui COLLE ne dit rien — le cas près de la frontière",
+       verifier_dates.verdict_jour({"2026-08-21"}, {(8, 21): 4}) == "")
+_check("un jour nommé pour une AUTRE date ne juge pas la nôtre",
+       verifier_dates.verdict_jour({"2026-08-21"}, {(9, 12): 5}) == "")
+
 print("\n──── 3. sur une base ────")
 vues, sortie = _sortie()
 _check("la contradiction franche est listée", 2 in vues, sorted(vues))
@@ -183,7 +202,32 @@ c.execute("INSERT INTO events_raw (id, title, description, url_source, source_na
            "parsed", "pending", COLLECTE))
 c.commit()
 c.close()
+# LE CAS 1069, EN BASE. Le texte dit « sabato 7 maggio » ; notre 07/05/2027 est un
+# vendredi. Aucune des deux autres règles ne le voit : le quantième CONCORDE des deux
+# côtés, donc le verdict serait « confirmé ». Seul le jour de semaine sépare 2022 de 2027.
+c = sqlite3.connect(db)
+c.execute("INSERT INTO events_raw (id, title, description, url_source, source_name, "
+          " date_event_start, date_event_end, date_source, statut, scrape_date) "
+          "VALUES (?,?,?,?,?,?,?,?,?,?)",
+          (10, "Studio Visit Paratissima Factory",
+           "La visita agli studio è libera: ti basterà venire a trovarci sabato 7 maggio "
+           "dalle 16.", "https://exemple.fr/10", "Paratissima (Torino)",
+           "2027-05-07", "2027-05-07", "parsed", "pending", COLLECTE))
+# Et le cas qui doit PASSER : jour annoncé, jour exact. Le 21/08/2026 est bien un vendredi.
+c.execute("INSERT INTO events_raw (id, title, description, url_source, source_name, "
+          " date_event_start, date_event_end, date_source, statut, scrape_date) "
+          "VALUES (?,?,?,?,?,?,?,?,?,?)",
+          (11, "Concert du vendredi", "Le vendredi 21 août 2026 à 21h au kiosque.",
+           "https://exemple.fr/11", "Source officielle", "2026-08-21", "2026-08-21",
+           "parsed", "pending", COLLECTE))
+c.commit()
+c.close()
 vues_meta, sortie_meta = _sortie()
+_check("le jour de semaine démasque la fiche 1069 — que les deux autres règles ratent",
+       10 in vues_meta, sorted(vues_meta))
+_check("et le jour de semaine JUSTE ne déclenche rien", 11 not in vues_meta,
+       sorted(vues_meta))
+_check("le compte rendu nomme la famille", "JOUR DE SEMAINE" in sortie_meta)
 _check("l'horodatage RSS ne contredit RIEN — ce n'est pas le texte de la source",
        8 not in vues_meta, sorted(vues_meta))
 _check("mais une date en HTML est bien lue, balises retirées", 9 in vues_meta,
