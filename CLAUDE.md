@@ -260,3 +260,21 @@ dans ces conditions**, dont 18 seulement ont leur double ici.
 Donc : le fichier vit dans `deploy/wordpress/`, `tests/test_php_syntax.py` le passe au
 `php -l` (avec une contre-épreuve : un fichier cassé DOIT être refusé), et
 `deploy/push-wordpress.sh` refuse d'envoyer ce qui ne compile pas.
+
+**Mais AVANT tout ça, établir OÙ le code vit.** Ajouté le 2026-08-12, après trois heures
+passées à réparer quatre transports successifs pour livrer un fichier que WordPress
+n'exécute pas : `cs-publish.php` n'est pas un mu-plugin, il est collé dans **Code
+Snippets**, en base. Aucun dépôt de fichier ne l'atteint. Son en-tête proposait les deux
+installations depuis le premier jour — personne n'avait vérifié laquelle avait été retenue.
+
+C'est la règle 1 transposée au code : un fichier dans `deploy/wordpress/` ne prouve ni
+qu'il est déployé, ni qu'il est à jour, ni même qu'il est la référence. Ce jour-là les
+trois étaient faux, et la version en ligne contenait **deux morceaux de code absents du
+dépôt** — dont le méta de tri qui fait apparaître la Foire de la Saint-Ours en page
+d'accueil. L'écraser aurait été une régression, pas un correctif.
+
+Le détail vérifié — où vit chaque chose, quels transports OVH répondent quoi, comment
+contrôler la syntaxe sans binaire `php`, et où est la sauvegarde d'avant — est dans
+`docs/DEPLOIEMENT_WORDPRESS.md`. Le canal qui marche est **Novamira**. La route
+`GET /wp-json/cs/v1/version` répond ce que la version EN LIGNE dit d'elle-même : tant
+qu'elle renvoie 404, le correctif n'est pas passé.
