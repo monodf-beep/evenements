@@ -318,6 +318,48 @@ def _focal(event: dict) -> tuple[float, float]:
     return (_c(event.get("card_focal_x")), _c(event.get("card_focal_y")))
 
 
+def motif_du_panel(panel: dict) -> str:
+    """POURQUOI le panel a voté ce qu'il a voté, en une phrase lisible. "" si rien à dire.
+
+    LE MANQUE QUE PERSONNE N'AVAIT NOMMÉ. Une session WordPress a relevé le 2026-08-12 que
+    huit verdicts `revise` avaient `as_panel_revision` vide, et en a conclu « un verdict
+    sans motif est inexploitable ». Le diagnostic était juste, la cause non :
+    `as_panel_revision` n'est pas un motif, c'est un STATUT à trois valeurs — 'aucune',
+    'appliquée', 'tentée' (enrich.py l.1705-1736). Un motif, il n'y en a jamais eu sur
+    WordPress.
+
+    Or il existe, et depuis toujours : chaque persona rend `manques` (ce qui lui manque
+    vraiment) et `note` (une phrase de conseil). Tout ça dort dans `enrich_data`, côté
+    back-office, et `publisher_as` n'envoyait que les chiffres. On affichait donc un
+    jugement sans jamais dire sur quoi il portait.
+
+    ON NE CITE QUE LES PERSONAS QUI ONT VOTÉ LA RÉVISION. Ce sont eux qui portent le
+    verdict ; agréger aussi les manques de ceux qui ont dit « ok » ferait dire au motif
+    l'inverse de ce que le panel a décidé. Et on déduplique : trois lecteurs réclament
+    souvent la même chose, et la répéter trois fois donne du volume, pas de l'information.
+    """
+    revisent = [r for r in (panel.get("reviews") or [])
+                if isinstance(r, dict) and r.get("verdict") == "revise"]
+    if not revisent:
+        return ""
+    vus, manques = set(), []
+    for r in revisent:
+        for m in (r.get("manques") or []):
+            m = " ".join(str(m).split())[:110]
+            cle = m.lower()
+            if m and cle not in vus:
+                vus.add(cle)
+                manques.append(m)
+    if manques:
+        return " · ".join(manques[:4])[:400]
+    # UN VOTE SANS MANQUE ÉNONCÉ RESTE UN FAIT À DIRE. Se rabattre sur le conseil au
+    # rédacteur vaut mieux que rendre "" — c'est le vide qui a fait conclure à tort qu'il
+    # n'y avait pas de motif du tout.
+    notes = [" ".join(str(r.get("note") or "").split()) for r in revisent]
+    notes = [n for n in notes if n]
+    return (" · ".join(dict.fromkeys(notes))[:400]) if notes else ""
+
+
 def _panel_meta(event: dict) -> dict:
     """Détail du panel de personas lecteurs (scripts.enrich.reader_panel), extrait de
     enrich_data pour l'exposer côté WP (as_panel_*) — mean/vmean/verdict tels quels,
@@ -336,6 +378,7 @@ def _panel_meta(event: dict) -> dict:
         "as_panel_votes":   panel.get("votes") if panel.get("votes") is not None else "",
         "as_panel_verdict": panel.get("verdict") or "",
         "as_panel_revision": panel.get("revision") or "",
+        "as_panel_motif":   motif_du_panel(panel),
         "as_affiches":      home.get("affiches") or "",
         "as_placement":     home.get("placement") or "",
     }

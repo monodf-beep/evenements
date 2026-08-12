@@ -181,6 +181,15 @@ $operations = array(
     array('quoi' => 'init $venue_city_fixed',    'de' => $ancien_init,     'vers' => $nouveau_init),
     array('quoi' => 'recherche du lieu',         'de' => $ancien_lieu,     'vers' => $nouveau_lieu),
     array('quoi' => 'reponse REST',              'de' => $ancienne_reponse,'vers' => $nouvelle_reponse),
+    // AJOUTÉ DANS LE MÊME CORRECTIF, pour ne pas refaire un aller-retour vers WordPress :
+    // le méta qui porte le MOTIF du panel. Jusqu'ici le site affichait un verdict de
+    // relecture sans jamais dire sur quoi il portait — au point qu'une session a conclu
+    // de ce silence que les motifs n'existaient pas. Ils existaient, dans enrich_data ;
+    // la liste $allowed ci-dessous ne les laissait simplement pas passer.
+    array('quoi' => 'meta as_panel_motif',
+          'de'   => "        'as_panel_revision', 'as_affiches', 'as_placement',",
+          'vers' => "        'as_panel_revision', 'as_affiches', 'as_placement',\n"
+                  . "        'as_panel_motif',"),
 );
 
 $code = $avant;

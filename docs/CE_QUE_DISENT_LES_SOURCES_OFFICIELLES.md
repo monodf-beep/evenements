@@ -139,8 +139,10 @@ honnête est éditoriale : publier sans, ou ne pas publier.
 
 ## 6. Et le plus inattendu : le modèle n'était pas le goulot
 
-Le plafond d'API court depuis ce matin et jusqu'au 2026-09-01. Tout ce que la journée a
-produit l'a été **sans un seul appel** :
+Le plafond d'API courait depuis ce matin — il a été levé le 12 août au soir, par un
+rechargement de crédits. Ce qui suit ne perd rien pour autant : tout ce que la journée a
+produit l'a été **sans un seul appel**, et c'est ça qui compte, pas la contrainte qui l'a
+provoqué :
 
 - 187 organisateurs faux retirés (3 faux positifs, rattrapés) ;
 - 31 fiches datées par leur page, dont 6 par corroboration ;

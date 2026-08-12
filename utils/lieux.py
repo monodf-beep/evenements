@@ -55,7 +55,6 @@ REGISTRE_JSON = CONFIG / "lieux_villes.json"
 _ALIAS = {
     "aosta": "aoste",
     "torino": "turin",
-    "chatillon": "chatillon",
 }
 
 
