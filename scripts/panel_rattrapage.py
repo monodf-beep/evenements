@@ -82,11 +82,14 @@ def a_relire(row: sqlite3.Row, rejuger: bool = False) -> tuple[bool, str]:
         # (cf. enrich._bloc_infos_pratiques, 2026-08-13). `--rejuger` le rouvre — et lui
         # seul : rejouer un verdict rendu par l'instrument ACTUEL sur la MÊME matière
         # serait le refus qui se rejoue à l'identique que la règle 3 interdit.
-        if rejuger and not panel.get("contexte"):
+        from scripts.enrich import PANEL_VERSION
+        courant = panel.get("version") == PANEL_VERSION
+        if rejuger and not courant:
             return True, ""
-        return False, ("a déjà un verdict" if panel.get("contexte") else
-                       "a un verdict de l'ANCIEN panel (sans les infos de la fiche) — "
-                       "`--rejuger` pour le refaire")
+        return False, ("a déjà un verdict de la version courante" if courant else
+                       f"a un verdict d'une version PÉRIMÉE du panel "
+                       f"({panel.get('version') or 'sans marque'} ≠ {PANEL_VERSION}) — "
+                       f"`--rejuger` pour le refaire")
     corps = ((data.get("article") or {}).get("corps") or "").strip()
     if not corps:
         return False, "aucun article en base — il n'y a rien à faire relire"
@@ -111,9 +114,10 @@ def main(argv: list[str]) -> int:
                          "le public lit déjà)")
     ap.add_argument("--ids", nargs="+", type=int, help="se limiter à ces fiches")
     ap.add_argument("--rejuger", action="store_true",
-                    help="rouvre AUSSI les verdicts rendus par l'ANCIEN panel, celui qui "
-                         "ne voyait pas les infos pratiques de la fiche. Condition de "
-                         "FAIT (l'instrument a changé), jamais un délai")
+                    help="rouvre AUSSI les verdicts rendus par une version PÉRIMÉE du "
+                         "panel (cf. enrich.PANEL_VERSION). Condition de FAIT — "
+                         "l'instrument a changé — jamais un délai. Un verdict de la "
+                         "version courante reste intouchable")
     args = ap.parse_args(argv)
 
     if not DB_PATH.exists():

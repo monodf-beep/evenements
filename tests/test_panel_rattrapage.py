@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts import panel_rattrapage  # noqa: E402
+from scripts.enrich import PANEL_VERSION as _VERSION  # noqa: E402
 from scripts.scraper_events import init_db  # noqa: E402
 
 echecs = 0
@@ -70,11 +71,16 @@ CAS = [
     (1, "Festival baroque", _ed(LONG), AVENIR, AVENIR, 7001),          # à relire
     (2, "Nuits de la guitare", _ed(LONG), AVENIR, AVENIR, 7002),       # à relire
     (3, "Jugée par le panel actuel",
-     _ed(LONG, {"verdict": "ok", "mean": 4, "contexte": "fiche"}),
+     _ed(LONG, {"verdict": "ok", "mean": 4, "version": _VERSION}),
      AVENIR, AVENIR, 7003),
-    # ANCIEN INSTRUMENT : verdict rendu sans les infos pratiques de la fiche.
-    (8, "Jugée par l'ancien panel", _ed(LONG, {"verdict": "revise", "mean": 2}),
+    # ANCIEN INSTRUMENT, DEUX FORMES : sans marque du tout (avant le 13/08), et avec une
+    # marque PÉRIMÉE (une version antérieure du même soir). Les deux doivent se rouvrir —
+    # c'est le second qui manquait, et qui a bloqué la troisième mesure en production.
+    (8, "Jugée sans marque", _ed(LONG, {"verdict": "revise", "mean": 2}),
      AVENIR, AVENIR, 7008),
+    (9, "Jugée par une version périmée",
+     _ed(LONG, {"verdict": "revise", "mean": 2, "version": "2026-08-13-a"}),
+     AVENIR, AVENIR, 7009),
     (4, "Entrée de catalogue", _ed(COURT), AVENIR, AVENIR, 7004),
     (5, "Jamais rédigée", _ed(""), AVENIR, AVENIR, 7005),
     (6, "Concert de mai", _ed(LONG), PASSE, PASSE, 7006),              # règle 5
@@ -161,9 +167,12 @@ _check("chaque écart est COMPTÉ, pas seulement subi", "écartées —" in s)
 # LE ROUVREUR, ET SA BORNE. Il doit rouvrir l'ancien instrument, et LUI SEUL.
 _check("un verdict de l'ANCIEN panel est écarté par défaut… ", "[    8]" not in s)
 _check("   …mais nommé comme tel, avec la commande qui le rouvre",
-       "ANCIEN panel" in s and "--rejuger" in s)
+       "version PÉRIMÉE" in s and "--rejuger" in s)
 s_rj = _sortie(["--rejuger"])
-_check("--rejuger le rouvre", "[    8]" in s_rj)
+_check("--rejuger rouvre un verdict SANS marque", "[    8]" in s_rj)
+_check("   et un verdict d'une version PÉRIMÉE — une provenance qui ne distingue pas "
+       "les versions successives n'est qu'une demi-provenance", "[    9]" in s_rj)
+_check("   le motif nomme la version périmée ET la courante", _VERSION in s)
 _check("   et NE rouvre PAS un verdict de l'instrument actuel — ce serait le refus "
        "qui se rejoue à l'identique (règle 3)", "[    3]" not in s_rj)
 
