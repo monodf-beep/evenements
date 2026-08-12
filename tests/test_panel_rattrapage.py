@@ -93,6 +93,14 @@ for eid, titre, ed, deb, fin, wp in CAS:
         "VALUES (?,?,?,?,?,?,?,?,?)",
         (eid, titre, ed, f"https://exemple.fr/{eid}", "Source officielle",
          deb, fin, "pending", wp))
+# UNE TRADUCTION de la fiche 1, dans le même lot. Elle ne doit PAS être jugée : on ne
+# réécrit jamais une traduction, on corrige l'original et on retraduit.
+conn.execute(
+    "INSERT INTO events_raw (id, title, enrich_data, url_source, source_name, "
+    " date_event_start, date_event_end, statut, wp_post_id_as, translation_of, "
+    " translated_lang) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    (10, "Festival barocco", _ed(LONG), "https://exemple.fr/10", "Source officielle",
+     AVENIR, AVENIR, "pending", 7010, 1, "it"))
 conn.commit()
 conn.close()
 panel_rattrapage.DB_PATH = db
@@ -163,6 +171,13 @@ _check("le PASSÉ est hors périmètre (règle 5)", "[    6]" not in s)
 _check("une fiche non publiée est hors périmètre par défaut", "[    7]" not in s)
 _check("… et --tout la fait entrer", "[    7]" in _sortie(["--tout"]))
 _check("chaque écart est COMPTÉ, pas seulement subi", "écartées —" in s)
+# CE QUE FRANCK A VU DANS LA SORTIE DES 42 : dix traductions relues en plus de leurs
+# originaux. Le coût double, et surtout le reproche ne s'adresse à personne.
+_check("une TRADUCTION n'est pas jugée — on corrige l'original, pas elle",
+       "[   10]" not in s)
+_check("   et l'écart est nommé, pas silencieux", "traduction —" in s)
+_check("   même avec --rejuger : ce n'est pas une question de version",
+       "[   10]" not in _sortie(["--rejuger"]))
 
 # LE ROUVREUR, ET SA BORNE. Il doit rouvrir l'ancien instrument, et LUI SEUL.
 _check("un verdict de l'ANCIEN panel est écarté par défaut… ", "[    8]" not in s)

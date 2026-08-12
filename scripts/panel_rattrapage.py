@@ -40,9 +40,16 @@ Cinéma au Valentino, Sous les portiques, Terra Madre, Montrottier, Matisse–YS
 appels indépendants, le même jugement : c'est la meilleure preuve de stabilité qu'on
 puisse avoir sur un instrument de ce genre, et elle est arrivée sans être cherchée.
 
-La dixième diverge — « Orchestre de la Suisse Romande », 3527 en ok 4.0 contre 930 en
-revise 2.5. À regarder : le titre de 930 est en minuscules, ce qui sent l'article plus
-pauvre plutôt que le panel instable, mais ça n'a pas été vérifié.
+La dixième diverge — « Orchestre de la Suisse Romande » : l'ORIGINAL français 930 note
+revise 2.5, sa TRADUCTION italienne 3527 note ok 4.0, avec les mêmes personas. La
+traduction est plus courte (6 696 octets d'enrich_data contre 7 515) et note mieux : « un
+article court est creux » ne tient donc pas comme explication générale. On ne sait pas
+laquelle des deux notes est la bonne, et c'est pour ça qu'on ne fait hériter aucun verdict.
+
+CONSÉQUENCE, TIRÉE PAR FRANCK EN LISANT CETTE SORTIE : ces dix paires, c'est un quart du
+lot payé deux fois. Les traductions sont désormais écartées — mais pour une raison qui
+n'est pas le coût : **un verdict sur une traduction ne désigne aucun geste**. On ne
+réécrit jamais une traduction directement, on corrige l'original et on retraduit.
 
 Règle 5 : seulement ce qui est encore devant nous. Un article mal noté sur un événement
 terminé ne sera ni republié ni relu par personne.
@@ -92,6 +99,26 @@ def a_relire(row: sqlite3.Row, rejuger: bool = False) -> tuple[bool, str]:
     (docs/ERREURS_2026-08-11.md)."""
     ev = dict(row)
     data = _data(ev)
+    # UNE TRADUCTION NE SE JUGE PAS, ET CE N'EST PAS D'ABORD UNE QUESTION DE COÛT.
+    # Franck, 2026-08-13, en lisant la sortie des 42 : « on a déjà Montrottier, on a déjà
+    # Matisse, on a déjà l'Orchestre de la Suisse Romande ». Dix des 42 étaient des
+    # traductions de fiches déjà relues dans le même lot — un quart du lot payé deux fois.
+    #
+    # Mais l'argument qui tranche est ailleurs : **un verdict sur une traduction ne
+    # désigne aucun geste**. On ne réécrit jamais une traduction directement — on corrige
+    # l'ORIGINAL et on retraduit (`translate_events`). Le reproche fait à la version
+    # italienne s'adresse donc à un texte que personne n'ira modifier. C'est la règle 6 :
+    # une file ne doit contenir que ce qu'un humain peut faire.
+    #
+    # ⚠️ ET CE N'EST PAS UN HÉRITAGE. On n'a PAS recopié le verdict de l'original sur sa
+    # traduction, parce que la mesure interdit de le supposer équivalent : sur la paire
+    # « Orchestre de la Suisse Romande », l'original 930 note 2.5 et sa traduction 3527
+    # note 4.0, avec les mêmes personas. Neuf paires sur dix s'accordent, la dixième non —
+    # et on ne sait pas laquelle des deux notes est la bonne. Poser un verdict qu'on n'a
+    # pas mesuré serait pire que ne rien poser.
+    if ev.get("translation_of"):
+        return False, ("traduction — c'est l'ORIGINAL qui se juge et qui se réécrit ; "
+                       "un reproche fait ici ne s'adresse à personne")
     panel = data.get("reader_panel") or {}
     if panel.get("verdict"):
         # LE SEUL ROUVREUR, ET SA CONDITION EST UN FAIT. Un verdict rendu SANS les infos
