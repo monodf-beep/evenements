@@ -331,7 +331,16 @@ function cs_publish_event(WP_REST_Request $req) {
     $cat_id = cs_resolve_term($b['category'] ?? '', 'tribe_events_cat');
     if ($cat_id) { wp_set_object_terms($post_id, array($cat_id), 'tribe_events_cat', false); }
     $terr_id = cs_resolve_term($b['territoire'] ?? '', 'territoire');
-    if ($terr_id) { wp_set_object_terms($post_id, array($terr_id), 'territoire', false); }
+    // Province (Piemont uniquement, cf. contrat de taxonomie 2bis) : terme ENFANT
+    // du territoire region, ajoute EN PLUS (pas a la place). cs_resolve_term ne cree
+    // rien : une valeur vide ou une ville non reconnue ne tague simplement rien de plus.
+    //
+    // ⚠️ RECOPIÉ DEPUIS LA PRODUCTION le 2026-08-12, où il tournait sans exister ici.
+    // Ce fichier n'était pas la référence qu'il prétendait être : voir
+    // docs/DEPLOIEMENT_WORDPRESS.md.
+    $prov_id = cs_resolve_term($b['province'] ?? '', 'territoire');
+    $terr_ids = array_filter(array($terr_id, $prov_id));
+    if ($terr_ids) { wp_set_object_terms($post_id, array_values($terr_ids), 'territoire', false); }
 
     // --- Étiquettes (post_tag) : TOUJOURS remplacées par la liste fournie -------
     // Liste vide = on nettoie les tags existants. Contrôle total côté publisher
@@ -364,7 +373,19 @@ function cs_publish_event(WP_REST_Request $req) {
         // home du même nom. Dérivé des critères d'importance de l'évaluateur
         // (utils/deplacement.py). ⚠️ Ne PAS trier cette section sur as_panel_vmean, qui
         // mesure la richesse de l'ARTICLE et non l'ampleur de l'événement.
-        'as_deplacement');
+        'as_deplacement',
+        // Score de TRI de la section (0-12, vide si la fiche ny a pas sa place) :
+        // lintrinseque releve par le TEMPS QUI RESTE pour y aller (utils/deplacement.py,
+        // fonction deplacement_now). Ajoute le 2026-08-03 : la section affichait deux
+        // expositions de 365 et 199 jours, une ouverte depuis sept mois, pendant que la
+        // Foire de la Saint-Ours napparaissait jamais. CEST CE META que la requete du
+        // snippet 44 doit trier, pas as_deplacement seul ni as_score.
+        //
+        // ⚠️ RECOPIÉ DEPUIS LA PRODUCTION le 2026-08-12. publisher_as ENVOIE ce méta
+        // depuis le 03/08 ; cette liste ne le connaissait pas, donc la version du dépôt
+        // l'aurait silencieusement jeté — et rendu à la section home le défaut qu'on
+        // avait mis une journée à corriger.
+        'as_deplacement_now');
     foreach ($allowed as $k) {
         if (array_key_exists($k, $meta)) {
             update_post_meta($post_id, $k, sanitize_text_field((string) $meta[$k]));
