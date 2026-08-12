@@ -158,7 +158,8 @@ def check_urls(urls: list[str], cap: int, workers: int = 5) -> tuple[list[dict],
     return findings, repondues
 
 
-def solder_disparus(conn, findings: list[dict], repondues: set[str]) -> list[tuple]:
+def solder_disparus(conn, findings: list[dict], repondues: set[str],
+                    urls_sitemap: set[str] | None = None) -> list[tuple]:
     """Referme les points de CE script que la mesure du jour ne retrouve plus.
 
     POURQUOI C'EST AJOUTÉ (2026-08-12). Ce script savait OUVRIR des points et rien ne
@@ -177,15 +178,35 @@ def solder_disparus(conn, findings: list[dict], repondues: set[str]) -> list[tup
 
     Le statut posé est `done`, réversible : la trouvaille reste en base avec sa date, et
     si le défaut revient, le run suivant la rouvre sous un nouvel id.
+
+    DEUXIÈME MOTIF DE CLÔTURE, AJOUTÉ DANS LA FOULÉE (2026-08-13, 00h36). La première
+    version de cette fonction n'avait que le motif ci-dessus, et le premier run réel n'a
+    soldé que 12 points sur les 34 attendus. Les 22 autres portaient sur des URLs
+    RETIRÉES du sitemap depuis : le script ne les vérifie plus, elles n'entrent donc
+    jamais dans `repondues`, et elles étaient devenues **impossibles à refermer** — un
+    cul-de-sac créé en réparant un cul-de-sac, ce que le CLAUDE.md décrit noir sur blanc
+    (« six culs-de-sac trouvés le 2026-08-03, dont un créé le jour même en corrigeant les
+    autres »).
+
+    Or ces trouvailles disent toutes « LE SITEMAP RÉFÉRENCE telle URL, qui redirige ». Si
+    l'URL ne figure plus au sitemap, la prémisse a disparu et le point n'a plus d'objet.
+    C'est une clôture légitime, et elle est mesurée — pas supposée.
+
+    ⚠️ Elle n'est appliquée que si l'énumération du sitemap a RÉUSSI (`urls_sitemap` non
+    vide). Sans ce garde-fou, un sitemap injoignable une nuit refermerait la totalité de
+    la file d'un coup, en annonçant un magnifique zéro.
     """
     encore_ouverts = {(f["page_url"], f["title"]) for f in findings}
+    sitemap_fiable = bool(urls_sitemap)
     soldes = []
     for pid, url, titre in conn.execute(
             "SELECT id, page_url, title FROM seo_findings "
             "WHERE status='todo' AND source_agent='site_health_check'").fetchall():
         if url in repondues and (url, titre) not in encore_ouverts:
-            soldes.append((pid, url, titre))
-    for pid, _, _ in soldes:
+            soldes.append((pid, url, titre, "vérifiée, le défaut a disparu"))
+        elif sitemap_fiable and url not in urls_sitemap:
+            soldes.append((pid, url, titre, "ne figure plus au sitemap"))
+    for pid, _, _, _ in soldes:
         conn.execute(
             "UPDATE seo_findings SET status='done', resolved_at=datetime('now') WHERE id=?",
             (pid,))
@@ -243,9 +264,9 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     _ensure_seo_tables(conn)
-    soldes = solder_disparus(conn, findings, repondues)
-    for pid, url, titre in soldes[:10]:
-        log.info("soldé #%d — %s (%s)", pid, titre[:60], url[:60])
+    soldes = solder_disparus(conn, findings, repondues, set(all_urls))
+    for pid, url, titre, motif in soldes[:10]:
+        log.info("soldé #%d [%s] — %s (%s)", pid, motif, titre[:52], url[:56])
     if len(soldes) > 10:
         log.info("… et %d autre(s) soldé(s).", len(soldes) - 10)
     if not findings:
