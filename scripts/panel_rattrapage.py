@@ -67,7 +67,7 @@ def _data(ev: dict) -> dict:
         return {}
 
 
-def a_relire(row: sqlite3.Row) -> tuple[bool, str]:
+def a_relire(row: sqlite3.Row, rejuger: bool = False) -> tuple[bool, str]:
     """(à relire ?, pourquoi pas). La raison est rendue pour être COMPTÉE, pas devinée.
 
     Un « 0 fiche à relire » qui ne dirait pas combien de cas se sont présentés, ni pourquoi
@@ -75,8 +75,18 @@ def a_relire(row: sqlite3.Row) -> tuple[bool, str]:
     (docs/ERREURS_2026-08-11.md)."""
     ev = dict(row)
     data = _data(ev)
-    if data.get("reader_panel", {}).get("verdict"):
-        return False, "a déjà un verdict"
+    panel = data.get("reader_panel") or {}
+    if panel.get("verdict"):
+        # LE SEUL ROUVREUR, ET SA CONDITION EST UN FAIT. Un verdict rendu SANS les infos
+        # pratiques de la fiche vient d'un instrument qui ne voyait pas la même chose
+        # (cf. enrich._bloc_infos_pratiques, 2026-08-13). `--rejuger` le rouvre — et lui
+        # seul : rejouer un verdict rendu par l'instrument ACTUEL sur la MÊME matière
+        # serait le refus qui se rejoue à l'identique que la règle 3 interdit.
+        if rejuger and not panel.get("contexte"):
+            return True, ""
+        return False, ("a déjà un verdict" if panel.get("contexte") else
+                       "a un verdict de l'ANCIEN panel (sans les infos de la fiche) — "
+                       "`--rejuger` pour le refaire")
     corps = ((data.get("article") or {}).get("corps") or "").strip()
     if not corps:
         return False, "aucun article en base — il n'y a rien à faire relire"
@@ -100,6 +110,10 @@ def main(argv: list[str]) -> int:
                     help="inclut les fiches non publiées (par défaut : seulement ce que "
                          "le public lit déjà)")
     ap.add_argument("--ids", nargs="+", type=int, help="se limiter à ces fiches")
+    ap.add_argument("--rejuger", action="store_true",
+                    help="rouvre AUSSI les verdicts rendus par l'ANCIEN panel, celui qui "
+                         "ne voyait pas les infos pratiques de la fiche. Condition de "
+                         "FAIT (l'instrument a changé), jamais un délai")
     args = ap.parse_args(argv)
 
     if not DB_PATH.exists():
@@ -126,7 +140,7 @@ def main(argv: list[str]) -> int:
 
     candidats, ecartes = [], {}
     for r in rows:
-        ok, motif = a_relire(r)
+        ok, motif = a_relire(r, rejuger=args.rejuger)
         if ok:
             candidats.append(r)
         else:
@@ -137,7 +151,12 @@ def main(argv: list[str]) -> int:
           + ("" if args.tout else ", PUBLIÉES") + " (règle 5).\n")
     for motif, n in sorted(ecartes.items(), key=lambda kv: -kv[1]):
         print(f"  {n:>5}  écartées — {motif}")
-    print(f"  {len(candidats):>5}  À RELIRE — un article existe, aucun verdict\n")
+    # LE LIBELLÉ DIT CE QU'IL COMPTE, ET IL CHANGE AVEC --rejuger. Écrit « aucun verdict »
+    # dans les deux cas, il aurait menti sur la moitié des passages : avec --rejuger, les
+    # fiches retenues EN ONT un, rendu par l'ancien instrument.
+    print(f"  {len(candidats):>5}  À RELIRE — "
+          + ("un article existe : aucun verdict, ou un verdict de l'ancien panel"
+             if args.rejuger else "un article existe, aucun verdict") + "\n")
 
     if not candidats:
         print("Rien à relire dans ce périmètre.")

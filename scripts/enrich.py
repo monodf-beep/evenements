@@ -1367,6 +1367,63 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
         (*params, BATCH_SIZE)).fetchall()
 
 
+def _bloc_infos_pratiques(ev: dict) -> str:
+    """Ce que la fiche affiche À CÔTÉ de l'article — date, lieu, horaire, tarif.
+
+    POURQUOI IL A FALLU L'AJOUTER, mesuré le 2026-08-13 sur cinq fiches publiées. Le panel
+    ne recevait que le titre, la catégorie et le corps. Il jugeait donc un article amputé
+    de tout ce que le lecteur voit autour, et lui reprochait de ne pas répéter la fiche :
+
+      · 4628, la PLUS LONGUE des cinq (2 566 caractères), notée 2.0 — « dates précises
+        d'ouverture », « prix d'entrée et horaires de visite », « lieu exact et accès » ;
+      · 3735 — « aucune date précise », « aucun horaire », « c'est gratuit ? payant ? » ;
+      · 3797 — « horaires d'ouverture en août », « comment y aller en transport ».
+
+    Quatre « revise » sur cinq, et la quasi-totalité des reproches portait sur des faits
+    qui SONT sur la page, dans les métas `as_horaire`, `as_tarif`, la date TEC et le lieu
+    Venue. C'est la faute de la règle 6 refaite sur un jugement au lieu d'un compteur : on
+    demandait à quelqu'un de vérifier une information qu'on ne lui montrait pas.
+
+    Franck, le 2026-08-13 : « ça veut dire qu'on ne respecte pas ce qu'on s'est dit. Il
+    faut que ça passe par le panel des personas. » Donc on ne contourne pas le panel et on
+    ne renonce pas au rattrapage — on lui donne ce qui lui manquait pour juger.
+
+    Ce bloc n'INVENTE rien : il n'affiche que des champs déjà remplis. Un champ vide reste
+    absent, et son absence redevient alors un vrai reproche — c'est même le seul cas où
+    « il manque l'horaire » désigne quelque chose à faire."""
+    lignes = []
+    debut = (ev.get("date_event_start") or "").strip()[:10]
+    fin = (ev.get("date_event_end") or "").strip()[:10]
+    if debut:
+        lignes.append(f"date : {debut}" + (f" → {fin}" if fin and fin != debut else ""))
+    lieu = " · ".join(x for x in ((ev.get("lieu") or "").strip(),
+                                  (ev.get("ville") or "").strip()) if x)
+    if lieu:
+        lignes.append(f"lieu : {lieu}")
+    if (ev.get("horaire") or "").strip():
+        lignes.append(f"horaire : {ev['horaire'].strip()}")
+    prix = (ev.get("prix") or "").strip()
+    if prix:
+        lignes.append(f"tarif : {prix}")
+    if not lignes:
+        return ""
+    return ("CE QUE LA FICHE AFFICHE DÉJÀ À CÔTÉ DE L'ARTICLE (le lecteur l'a sous les "
+            "yeux — ne reproche PAS à l'article de ne pas le répéter) :\n"
+            + "\n".join(f"  · {l}" for l in lignes) + "\n"
+            # ET CE QUI N'Y EST PAS. Mesuré le 2026-08-13 : une fois la date et le lieu
+            # donnés, les personas ont cessé de les réclamer — et se sont rabattus sur
+            # l'horaire et le tarif, absents de la base. Le reproche est légitime, mais il
+            # ne vise pas l'article : aucune réécriture ne fera apparaître un horaire que
+            # la source ne publie pas. Le faire peser sur la note, c'est reprocher à
+            # quelqu'un un silence dont il n'est pas responsable — la file des 454
+            # « points à contrôler » du 11/08, refaite sur un jugement.
+            #
+            # Ces manques-là ont déjà leur file : `lister_a_completer`. Le persona peut
+            # les dire, ils sont utiles à lire ; ils ne doivent pas faire baisser la note.
+            "Un fait pratique ABSENT de cette liste manque à la FICHE, pas à l'article : "
+            "signale-le si tu veux, mais qu'il ne fasse pas baisser ta note.\n")
+
+
 def reader_review(article: dict, ev: dict, client, model: str,
                   persona: dict | None = None, mode: str = "local") -> dict:
     """AGENT PERSONA LECTEUR : lit l'article dans la peau d'UN persona (docs/personas/) et
@@ -1385,9 +1442,11 @@ def reader_review(article: dict, ev: dict, client, model: str,
         "exigeant : tu veux apprendre quelque chose de concret sur CET événement.")
     pname = (persona or {}).get("title") or "Lecteur"
     mode_txt = (
-        "L'événement est dans TON territoire : juge s'il te parle et si tu peux y aller "
-        "(accès, distance depuis chez toi, prix quand c'est pertinent) — mais ne pénalise "
-        "pas un événement RÉEL et proche juste parce qu'un détail pratique manque encore."
+        "L'événement est dans TON territoire : juge s'il te PARLE, s'il t'apprend quelque "
+        "chose, s'il te donne envie. Tu peux dire que c'est loin de chez toi ou qu'un "
+        "détail pratique te manque — mais ces deux choses NE DOIVENT PAS FAIRE BAISSER TA "
+        "NOTE : ni la distance ni un horaire manquant ne sont le fait de l'article, et "
+        "aucune réécriture ne les changerait. Ta note mesure ce que l'article APPORTE."
         if mode == "local" else
         "ATTENTION : cet événement n'est PAS chez toi, il est dans une aire VOISINE de la "
         "tienne. Tu ne juges donc PAS l'accès quotidien, mais la valeur de DÉPLACEMENT : "
@@ -1413,6 +1472,7 @@ def reader_review(article: dict, ev: dict, client, model: str,
         f"{mode_txt}\n\n"
         f"TITRE : {art.get('titre') or ev.get('title')}\n"
         f"CATÉGORIE : {ev.get('llm_categorie', '')}\n"
+        + _bloc_infos_pratiques(ev) +
         f"ARTICLE :\n{corps}\n\n"
         'Réponds en JSON STRICT : {"interet": <0-5, 0=creux 5=riche>, '
         '"manques": ["<ce qui te manque VRAIMENT, selon TES attentes et le genre>"], '
@@ -1494,8 +1554,16 @@ def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
     except ValueError:
         seuil = 3.0
     verdict = "revise" if (mean is not None and mean < seuil) else "ok"
+    # LA PROVENANCE, ET C'EST LE GARDE-FOU DU CHANGEMENT DU 13/08. Le panel voit désormais
+    # les infos pratiques de la fiche (cf. _bloc_infos_pratiques) : il ne juge donc plus
+    # tout à fait la même chose qu'avant. Sans marque, les verdicts d'avant et d'après
+    # cohabiteraient sous le même nom — la faute des deux compteurs homonymes, transposée
+    # à un jugement, et plus grave qu'elle : un chiffre faux se recompte, un jugement faux
+    # se croit. `contexte` absent = ancien instrument ; c'est aussi la CONDITION qui permet
+    # à panel_rattrapage --rejuger de rouvrir les anciens, et rien d'autre.
     return {"reviews": reviews, "visite_reviews": visite_reviews,
-            "verdict": verdict, "mean": mean, "vmean": vmean, "votes": votes}
+            "verdict": verdict, "mean": mean, "vmean": vmean, "votes": votes,
+            "contexte": "fiche"}
 
 
 def revise_article(result: dict, panel: dict, ev: dict, material: str,
