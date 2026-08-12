@@ -8,8 +8,15 @@ de suite sur la même ligne :
     Connection closed by 54.36.142.132 port 22
 
 Ce n'est pas le mot de passe : c'est le port 22. Sur un hébergement mutualisé OVH, SFTP
-n'est ouvert que si SSH a été activé dans le manager, alors que FTPS (explicite, port 21)
-l'est toujours pour le compte FTP principal. Le transport existait, personne ne l'utilisait.
+n'est ouvert que si SSH a été activé dans le manager.
+
+⚠️ ET LE REPLI N'EST PAS AUSSI SÛR QUE JE L'AI ÉCRIT ICI D'ABORD. La première version de
+ce texte affirmait que FTPS « l'est toujours pour le compte FTP principal ». Le serveur a
+répondu, dix minutes plus tard : « 500 This security scheme is not implemented ». Une
+phrase écrite avec assurance sur un serveur qu'on n'avait pas interrogé — exactement ce
+que la règle 1 interdit de faire sur les fiches, et que j'ai fait sur un protocole.
+D'où la négociation en deux temps (« AUTH TLS » puis « AUTH SSL ») et, en dernier recours
+seulement, `--clair`.
 
 CE QUI DISTINGUE CE SCRIPT DE `sftp`, ET C'EST L'ESSENTIEL. `sftp`, lancé sur une liste de
 commandes, n'interrompt PAS sa session quand un `put` isolé est refusé : il rend 0, et le
@@ -69,6 +76,18 @@ def _cible() -> tuple[str, str, str]:
     return hote, user, mu.strip("/")
 
 
+def _auth_ssl(f: ftplib.FTP_TLS) -> None:
+    """Négocie TLS par « AUTH SSL » — la commande d'avant « AUTH TLS ».
+
+    ftplib n'essaie que « AUTH TLS », et le serveur d'OVH a répondu, le 2026-08-12 :
+    « 500 This security scheme is not implemented ». Beaucoup de serveurs FTP anciens
+    n'acceptent que l'orthographe SSL, pour la MÊME négociation TLS derrière. Reproduit ici
+    ce que fait `FTP_TLS.auth()` de CPython, au verbe près."""
+    f.voidcmd("AUTH SSL")
+    f.sock = f.context.wrap_socket(f.sock, server_hostname=f.host)
+    f.file = f.sock.makefile(mode="r", encoding=f.encoding)
+
+
 def connecte(hote: str, user: str, mdp: str, clair: bool) -> ftplib.FTP:
     if clair:
         print("⚠️  FTP EN CLAIR : le mot de passe traverse le réseau en clair. "
@@ -76,10 +95,17 @@ def connecte(hote: str, user: str, mdp: str, clair: bool) -> ftplib.FTP:
         f: ftplib.FTP = ftplib.FTP(hote, timeout=60)
         f.login(user, mdp)
         return f
-    f = ftplib.FTP_TLS(hote, timeout=60, context=ssl.create_default_context())
-    f.login(user, mdp)
-    f.prot_p()                      # chiffre AUSSI le canal de données, pas que le contrôle
-    return f
+    t = ftplib.FTP_TLS(timeout=60, context=ssl.create_default_context())
+    t.connect(hote, 21)
+    try:
+        t.auth()                    # « AUTH TLS »
+    except ftplib.error_perm as exc:
+        print(f"   AUTH TLS refusé ({str(exc).strip()[:60]}) — seconde tentative en "
+              f"AUTH SSL.")
+        _auth_ssl(t)
+    t.login(user, mdp)
+    t.prot_p()                      # chiffre AUSSI le canal de données, pas que le contrôle
+    return t
 
 
 def taille_distante(f: ftplib.FTP, chemin: str) -> int | None:

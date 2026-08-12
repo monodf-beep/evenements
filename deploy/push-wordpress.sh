@@ -115,14 +115,38 @@ done
 if printf "%b" "$CMDS" | sftp -oBatchMode=yes -P "$PORT" "$WP_DEPLOY_SSH" >/dev/null 2>&1; then
   echo "✅ Envoyé par SFTP (clé SSH)."
 else
-  echo "ℹ️  SFTP indisponible (pas de clé, ou port 22 fermé) — bascule sur FTPS."
+  echo "ℹ️  SFTP par clé indisponible sur $WP_DEPLOY_SSH."
+  # ON FRAPPAIT À LA MAUVAISE PORTE. Le .env porte l'hôte FTP (« ftp.cluster100… »),
+  # alors qu'OVH expose SSH sur « ssh.cluster100… » : le port 22 de l'hôte FTP est
+  # fermé, celui de l'hôte SSH ne l'est pas forcément. On tente donc la variante avant
+  # de renoncer — une lettre d'écart, deux jours d'attente possibles.
+  HOTE_SSH=""
+  case "$WP_DEPLOY_SSH" in
+    *@ftp.*) HOTE_SSH="${WP_DEPLOY_SSH/@ftp./@ssh.}" ;;
+  esac
+  DEPOSE=0
+  if [ -n "$HOTE_SSH" ]; then
+    echo "→ Essai sur $HOTE_SSH (mot de passe demandé ; Ctrl-C pour passer)."
+    if printf "%b" "$CMDS" | sftp -P "$PORT" "$HOTE_SSH"; then
+      echo "✅ Envoyé par SFTP sur l'hôte ssh.*"
+      echo "   ⚠️  Corrige .env : WP_DEPLOY_SSH=$HOTE_SSH — sinon on repassera par"
+      echo "      l'hôte FTP au prochain déploiement, et on rejouera cet échec."
+      DEPOSE=1
+    else
+      echo "ℹ️  L'hôte ssh.* refuse aussi — bascule sur FTPS."
+    fi
+  fi
   PY="$ROOT/.venv/bin/python"; [ -x "$PY" ] || PY="python3"
-  if ! "$PY" "$ROOT/deploy/push_ftp.py" "${FILES[@]}"; then
+  if [ "$DEPOSE" -eq 0 ] && ! "$PY" "$ROOT/deploy/push_ftp.py" "${FILES[@]}"; then
     echo >&2
     echo "❌ Ni SFTP ni FTPS n'ont abouti — RIEN n'est parti." >&2
     echo "   Deux issues, dans cet ordre :" >&2
     echo "   1. activer SSH sur l'hébergement dans le manager OVH (rubrique FTP-SSH) ;" >&2
-    echo "   2. à défaut, coller le contenu du fichier dans Code Snippets (wp-admin)," >&2
+    echo "   2. si le serveur refuse TLS sous les deux orthographes, en dernier" >&2
+    echo "      recours et en connaissance de cause :" >&2
+    echo "      .venv/bin/python deploy/push_ftp.py --clair ${FILES[*]##*/}" >&2
+    echo "      (mot de passe en clair sur le réseau — il ouvre TOUT le site) ;" >&2
+    echo "   3. à défaut, coller le contenu du fichier dans Code Snippets (wp-admin)," >&2
     echo "      SANS la ligne « <?php » — c'est l'installation B du fichier lui-même." >&2
     exit 4
   fi
