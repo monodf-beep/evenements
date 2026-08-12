@@ -369,6 +369,12 @@ function cs_publish_event(WP_REST_Request $req) {
         // affiche/placement — cf. docs/CONTRAT_META_AS.md, section Extensions post-gel.
         'as_panel_mean', 'as_panel_vmean', 'as_panel_votes', 'as_panel_verdict',
         'as_panel_revision', 'as_affiches', 'as_placement',
+        // POURQUOI le panel a voté ce qu'il a voté — les manques cités par les seuls
+        // personas ayant demandé la révision. Ajouté le 2026-08-12 : jusque-là WordPress
+        // affichait un verdict sans jamais dire sur quoi il portait, et une session a
+        // conclu de ce silence que les motifs n'existaient pas. Ils existaient, dans
+        // enrich_data ; ils ne traversaient simplement pas.
+        'as_panel_motif',
         // Score « ça vaut le déplacement » (0-8, vide si non mesuré) : TRI de la section
         // home du même nom. Dérivé des critères d'importance de l'évaluateur
         // (utils/deplacement.py). ⚠️ Ne PAS trier cette section sur as_panel_vmean, qui
