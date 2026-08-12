@@ -11,9 +11,10 @@
 # AUTH : idéalement une CLÉ SSH (déploiement sans mot de passe — voir le README plus bas).
 # À défaut, sftp demandera le mot de passe de façon interactive.
 #
-# USAGE :
-#   deploy/push-wordpress.sh                       # pousse deploy/wordpress/cs-polylang.php
-#   deploy/push-wordpress.sh fichier1.php f2.php   # pousse ces fichiers (chemins ou basenames dans deploy/wordpress/)
+# USAGE — la liste des fichiers est OBLIGATOIRE (voir plus bas pourquoi) :
+#   deploy/push-wordpress.sh cs-publish.php        # un fichier de deploy/wordpress/
+#   deploy/push-wordpress.sh f1.php f2.php         # plusieurs (chemins ou basenames)
+#   deploy/push-wordpress.sh                       # refuse, et liste ce qui est disponible
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -39,11 +40,26 @@ read_env() {
 : "${WP_DEPLOY_MU_DIR:?Manque WP_DEPLOY_MU_DIR=chemin/vers/wp-content/mu-plugins dans .env}"
 PORT="${WP_DEPLOY_PORT:-22}"
 
-# Fichiers à pousser : args (basename résolu dans deploy/wordpress/ si non trouvé tel quel),
-# sinon le mu-plugin Polylang par défaut.
+# Fichiers à pousser : args (basename résolu dans deploy/wordpress/ si non trouvé tel
+# quel). Aucun défaut — voir le refus ci-dessous.
 FILES=()
 if [ "$#" -eq 0 ]; then
-  FILES=("$ROOT/deploy/wordpress/cs-polylang.php")
+  # PAS DE DÉFAUT. Il y en avait un — cs-polylang.php — et il a coûté un déploiement le
+  # 2026-08-12 : on m'a demandé de pousser le correctif de cs-publish.php, la commande a
+  # été lancée sans argument, et le script a annoncé « Fichiers : cs-polylang.php ». Le
+  # bon fichier n'est jamais parti, et un AUTRE partait à sa place — celui-là même dont
+  # on ne voulait pas toucher la version en ligne.
+  #
+  # Un défaut qui envoie un fichier que personne n'a demandé sur un site en production
+  # n'est pas une commodité : c'est un piège, et il est silencieux. On exige donc la
+  # liste, et on l'affiche pour qu'elle se compose sans aller la chercher ailleurs.
+  echo "Rien à pousser : nomme les fichiers à envoyer." >&2
+  echo >&2
+  echo "  bash deploy/push-wordpress.sh cs-publish.php" >&2
+  echo >&2
+  echo "Disponibles dans deploy/wordpress/ :" >&2
+  for f in "$ROOT"/deploy/wordpress/*.php; do echo "  · $(basename "$f")" >&2; done
+  exit 2
 else
   for a in "$@"; do
     if [ -f "$a" ]; then FILES+=("$a")
@@ -98,8 +114,16 @@ if printf "%b" "$CMDS" | sftp -oBatchMode=yes -P "$PORT" "$WP_DEPLOY_SSH" >/dev/
 else
   echo "ℹ️  Pas de clé SSH utilisable — connexion interactive (mot de passe demandé)."
   printf "%b" "$CMDS" | sftp -P "$PORT" "$WP_DEPLOY_SSH"
-  echo "✅ Déployé."
+  echo "→ sftp terminé sans erreur fatale."
 fi
 
+# ON NE DIT PAS « DÉPLOYÉ », ON DIT COMMENT LE VÉRIFIER. sftp n'interrompt pas la session
+# quand un `put` isolé est refusé : il rendait donc un code 0 sur lequel ce script
+# annonçait un succès. Un fichier sur le disque ne prouve de toute façon rien sur ce que
+# WordPress EXÉCUTE (règle 1) — seule la route ci-dessous le dit.
 echo
-echo "Vérifie la route :  curl -s https://agendasabauda.eu/wp-json/cs/v1 | grep link-translations"
+echo "VÉRIFIE ce que le site exécute vraiment :"
+echo "  curl -s https://agendasabauda.eu/wp-json/cs/v1/version"
+echo "Elle doit renvoyer la version écrite en tête de deploy/wordpress/cs-publish.php :"
+grep -o "CS_PUBLISH_VERSION', '[^']*'" "$ROOT/deploy/wordpress/cs-publish.php" \
+  | sed "s/CS_PUBLISH_VERSION', /  attendu : /" || true

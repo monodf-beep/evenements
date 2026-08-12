@@ -26,6 +26,25 @@ Version: 1.0
 
 if (!defined('ABSPATH')) { exit; }
 
+// UN FICHIER SUR LE DISQUE NE PROUVE RIEN SUR CE QUE WORDPRESS EXÉCUTE — c'est la règle 1
+// appliquée au code plutôt qu'aux fiches. Le 2026-08-12, un correctif a été « déployé »
+// sans jamais partir : push-wordpress.sh avait un fichier par défaut et personne ne
+// pouvait le savoir depuis le VPS. D'où cette route, publique et en lecture seule, qui
+// répond ce que la version EN LIGNE dit d'elle-même :
+//     curl -s https://agendasabauda.eu/wp-json/cs/v1/version
+// À incrémenter (la date suffit) quand ce fichier change de comportement.
+define('CS_PUBLISH_VERSION', '2026-08-12 — fiche lieu retrouvée par titre ET ville');
+
+add_action('rest_api_init', function () {
+    register_rest_route('cs/v1', '/version', array(
+        'methods'             => 'GET',
+        'callback'            => function () {
+            return array('cs_publish' => CS_PUBLISH_VERSION);
+        },
+        'permission_callback' => '__return_true',
+    ));
+});
+
 /**
  * Retrouve une fiche lieu (tribe_venue) par son TITRE EXACT + une condition sur sa ville.
  *
