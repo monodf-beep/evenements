@@ -1409,7 +1409,19 @@ def _bloc_infos_pratiques(ev: dict) -> str:
         return ""
     return ("CE QUE LA FICHE AFFICHE DÉJÀ À CÔTÉ DE L'ARTICLE (le lecteur l'a sous les "
             "yeux — ne reproche PAS à l'article de ne pas le répéter) :\n"
-            + "\n".join(f"  · {l}" for l in lignes) + "\n")
+            + "\n".join(f"  · {l}" for l in lignes) + "\n"
+            # ET CE QUI N'Y EST PAS. Mesuré le 2026-08-13 : une fois la date et le lieu
+            # donnés, les personas ont cessé de les réclamer — et se sont rabattus sur
+            # l'horaire et le tarif, absents de la base. Le reproche est légitime, mais il
+            # ne vise pas l'article : aucune réécriture ne fera apparaître un horaire que
+            # la source ne publie pas. Le faire peser sur la note, c'est reprocher à
+            # quelqu'un un silence dont il n'est pas responsable — la file des 454
+            # « points à contrôler » du 11/08, refaite sur un jugement.
+            #
+            # Ces manques-là ont déjà leur file : `lister_a_completer`. Le persona peut
+            # les dire, ils sont utiles à lire ; ils ne doivent pas faire baisser la note.
+            "Un fait pratique ABSENT de cette liste manque à la FICHE, pas à l'article : "
+            "signale-le si tu veux, mais qu'il ne fasse pas baisser ta note.\n")
 
 
 def reader_review(article: dict, ev: dict, client, model: str,
@@ -1430,9 +1442,11 @@ def reader_review(article: dict, ev: dict, client, model: str,
         "exigeant : tu veux apprendre quelque chose de concret sur CET événement.")
     pname = (persona or {}).get("title") or "Lecteur"
     mode_txt = (
-        "L'événement est dans TON territoire : juge s'il te parle et si tu peux y aller "
-        "(accès, distance depuis chez toi, prix quand c'est pertinent) — mais ne pénalise "
-        "pas un événement RÉEL et proche juste parce qu'un détail pratique manque encore."
+        "L'événement est dans TON territoire : juge s'il te PARLE, s'il t'apprend quelque "
+        "chose, s'il te donne envie. Tu peux dire que c'est loin de chez toi ou qu'un "
+        "détail pratique te manque — mais ces deux choses NE DOIVENT PAS FAIRE BAISSER TA "
+        "NOTE : ni la distance ni un horaire manquant ne sont le fait de l'article, et "
+        "aucune réécriture ne les changerait. Ta note mesure ce que l'article APPORTE."
         if mode == "local" else
         "ATTENTION : cet événement n'est PAS chez toi, il est dans une aire VOISINE de la "
         "tienne. Tu ne juges donc PAS l'accès quotidien, mais la valeur de DÉPLACEMENT : "

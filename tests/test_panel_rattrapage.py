@@ -127,6 +127,23 @@ _check("un champ vide n'est pas inventé — il reste absent",
        "horaire" not in b2 and "tarif" not in b2 and "2026-09-18" in b2, b2)
 _check("aucune info du tout → aucun bloc, pas un cadre vide",
        _bloc_infos_pratiques({}) == "")
+# CE QUI MANQUE À LA FICHE NE DOIT PAS PESER SUR L'ARTICLE. Mesuré le 2026-08-13 : une
+# fois la date et le lieu donnés, les personas se sont rabattus sur l'horaire et le
+# tarif, absents de la base. Aucune réécriture ne les ferait apparaître — les compter
+# contre l'article, c'est reprocher un silence dont il n'est pas responsable.
+_check("un fait pratique absent est nommé comme un manque de la FICHE, pas de l'article",
+       "manque à la FICHE, pas à l'article" in b, b)
+# ⚠️ CONTRÔLE DE NIVEAU SOURCE, donc FRAGILE : la consigne est écrite sur plusieurs
+# littéraux, et chercher la phrase entière échouait sur la coupure de ligne alors que le
+# code était juste. On cherche donc un fragment qui tient sur UNE ligne. Même limite que
+# le contrôle du .env plus haut, et même raison de le garder : il empêche qu'on retire la
+# consigne sans s'en apercevoir.
+from scripts.enrich import reader_review  # noqa: E402
+import inspect  # noqa: E402
+_src_rr = inspect.getsource(reader_review)
+_check("et la distance ne fait plus baisser la note d'un local — elle n'est pas le fait "
+       "de l'article",
+       "NE DOIVENT PAS FAIRE BAISSER TA" in _src_rr)
 
 print("\n──── 1. la sélection, et ce qu'elle ÉCARTE en le disant ────")
 s = _sortie()
