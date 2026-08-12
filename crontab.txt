@@ -217,6 +217,18 @@
 # est relu en quelques jours, en boucle — une régression silencieuse a donc une durée de
 # vie bornée (la taxonomie avait tenu dix jours). Slack seulement s'il y a à dire.
 0 14 * * * cd /root/evenements && .venv/bin/python scripts/site_audit.py >> logs/site_audit.log 2>&1
+# Signaux SEO de GABARIT 14h15 — ce que ni homepage_health (qui compte des cartes) ni
+# site_audit (qui relit des fiches une par une) ne pouvaient voir : sept signaux de SITE,
+# dont l'en-tête de cache et la présence d'une entité éditrice. Trouvés par l'audit du
+# 2026-08-12, qui a montré que le site interdit toute mise en cache jusque sur les .css.
+# ⚠️ Il n'alerte QUE sur la BASCULE d'un signal, jamais sur sa valeur : au moment où il est
+# écrit, la moitié des signaux sont déjà au rouge, et un contrôle classique crierait tous
+# les jours sur une situation connue — la faute que site_audit documente lui-même. Le
+# retour au vert est signalé aussi : c'est la seule preuve qu'un correctif a atteint le
+# site. Rien ici ne bouge tout seul, donc ce cron est en pratique un détecteur de
+# déploiement — y compris des déploiements non annoncés, et il y en a (34 mu-plugins cs-*
+# vivent sur le serveur, 16 sans copie versionnée). Zéro coût API, deux requêtes HTTP.
+15 14 * * * cd /root/evenements && .venv/bin/python scripts/gabarit_health.py >> logs/gabarit_health.log 2>&1
 # Nettoyage hebdomadaire dimanche 5h — chaîne RÉVERSIBLE et DÉTERMINISTE uniquement
 # (purge hors-zone/passés/incomplétables, articles de presse publiés à tort, doublons
 # WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py

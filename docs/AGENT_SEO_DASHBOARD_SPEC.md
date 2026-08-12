@@ -72,6 +72,28 @@ plus que l'agent A.
 > Ordre de priorité : **B avant A.** Un gabarit parfait rend l'agent A presque superflu, sauf
 > pour la touche éditoriale des phares (réponse directe, FAQ, angle).
 
+### État d'avancement (mis à jour le 2026-08-12)
+
+**L'agent A tourne depuis des semaines, l'agent B n'avait jamais tourné** — l'inverse exact
+de l'ordre recommandé ci-dessus. `seo_batch.py` est en cron quotidien (10h30, cap 10, score
+≥ 7) ; rien ne relisait le gabarit.
+
+| | État | Où |
+|---|---|---|
+| Agent B — passe n°1 | **faite le 2026-08-12** | `docs/AUDIT_SEO_2026-08-12.md` — score 58/100 |
+| Trouvailles | 13 défauts de gabarit versés dans `/seo` | `docs/audit_seo_2026-08-12_findings.json` + `scripts/seo_findings_import.py` |
+| Surveillance entre deux passes | 7 signaux de site, alerte sur BASCULE | `scripts/gabarit_health.py` (cron quotidien) |
+| Agent B — passe n°2 | à faire **1×/trimestre** ou après un gros changement de gabarit | — |
+
+La passe n°1 confirme le pari de cette spec : **tout ce qu'elle a trouvé de coûteux est du
+gabarit** — l'en-tête de cache, l'entité `Organization` absente, `offers` manquant du schéma
+`Event`, `Place` absent des pages lieu. Aucune fiche à retoucher une par une.
+
+Sur la périodicité, ne pas céder à la tentation d'un audit hebdomadaire : deux rapports en
+prose sur le même site disent la même chose avec d'autres mots, et on ne peut pas les
+comparer. Le trimestre de cette spec est le bon rythme ; le quotidien est couvert par
+`gabarit_health`, qui est déterministe et ne parle que quand une valeur change.
+
 ---
 
 ## 4. Découpe déterministe vs LLM (règle maison `LLM_OU_CODE.md`)
