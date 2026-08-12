@@ -60,13 +60,56 @@ def _statut(conn, pid):
     return conn.execute("SELECT status FROM seo_findings WHERE id=?", (pid,)).fetchone()[0]
 
 
+# Le sitemap tel que le run l'a énuméré. `jamais-vue` en fait partie : c'est une URL
+# DÉCLARÉE au sitemap mais située au-delà de `--cap`, donc jamais vérifiée. La distinction
+# est tout l'objet du refermeur — « au-delà du plafond » (présente, non mesurée, on ne
+# touche pas) n'est PAS « retirée du sitemap » (absente, prémisse caduque, on solde). Ma
+# première fixture les confondait et le test est tombé au bon endroit.
+SITEMAP = {"https://agendasabauda.eu/a/", "https://agendasabauda.eu/jamais-dans-le-lot/",
+           "https://agendasabauda.eu/jamais-vue/",
+           "https://agendasabauda.eu/lente/", "https://agendasabauda.eu/b/"}
+
+
 def test_solde_ce_qui_a_disparu():
     """Le cas réel : l'URL répond, elle ne redirige plus, le point se referme."""
     conn = _base()
     pid = _ajoute(conn, "https://agendasabauda.eu/a/", REDIRIGE)
-    soldes = solder_disparus(conn, findings=[], repondues={"https://agendasabauda.eu/a/"})
+    soldes = solder_disparus(conn, findings=[], repondues={"https://agendasabauda.eu/a/"},
+                             urls_sitemap=SITEMAP)
     assert [s[0] for s in soldes] == [pid]
+    assert soldes[0][3] == "vérifiée, le défaut a disparu"
     assert _statut(conn, pid) == "done"
+
+
+def test_une_url_RETIREE_DU_SITEMAP_se_solde():
+    """Le cas qui manquait au premier run réel : 22 points bloqués à jamais.
+
+    « Le sitemap référence X, qui redirige » : si X n'est plus au sitemap, la prémisse a
+    disparu. Sans ce motif, ces points restaient ouverts pour toujours puisque le script
+    ne revérifie que ce que le sitemap déclare.
+    """
+    conn = _base()
+    pid = _ajoute(conn, "https://agendasabauda.eu/territoire/piemont/", REDIRIGE)
+    soldes = solder_disparus(conn, findings=[], repondues=set(), urls_sitemap=SITEMAP)
+    assert [s[0] for s in soldes] == [pid]
+    assert soldes[0][3] == "ne figure plus au sitemap"
+    assert _statut(conn, pid) == "done"
+
+
+def test_un_sitemap_INJOIGNABLE_ne_solde_RIEN_sur_ce_motif():
+    """Garde-fou : sans énumération fiable, tout point paraîtrait « retiré du sitemap ».
+
+    C'est le zéro qui vient d'un échec et non d'une absence de cas. Une nuit où le
+    sitemap ne répond pas, la file entière se refermerait — en annonçant un beau chiffre.
+    """
+    conn = _base()
+    a = _ajoute(conn, "https://agendasabauda.eu/territoire/piemont/", REDIRIGE)
+    b = _ajoute(conn, "https://agendasabauda.eu/a/", REDIRIGE)
+    for sitemap in (None, set()):
+        soldes = solder_disparus(conn, findings=[], repondues=set(), urls_sitemap=sitemap)
+        assert soldes == []
+    assert _statut(conn, a) == "todo"
+    assert _statut(conn, b) == "todo"
 
 
 def test_une_url_NON_MESUREE_reste_ouverte():
@@ -78,7 +121,7 @@ def test_une_url_NON_MESUREE_reste_ouverte():
     conn = _base()
     hors_cap = _ajoute(conn, "https://agendasabauda.eu/jamais-vue/", REDIRIGE)
     timeout = _ajoute(conn, "https://agendasabauda.eu/lente/", REDIRIGE)
-    soldes = solder_disparus(conn, findings=[], repondues=set())
+    soldes = solder_disparus(conn, findings=[], repondues=set(), urls_sitemap=SITEMAP)
     assert soldes == []
     assert _statut(conn, hors_cap) == "todo"
     assert _statut(conn, timeout) == "todo"
@@ -91,7 +134,8 @@ def test_un_point_d_audit_manuel_n_est_JAMAIS_solde():
                      "Aucune balise H1 sur la page d'accueil", agent="audit_manuel")
     sans_agent = _ajoute(conn, "https://agendasabauda.eu/a/",
                          "Titre trop court", agent=None)
-    soldes = solder_disparus(conn, findings=[], repondues={"https://agendasabauda.eu/a/"})
+    soldes = solder_disparus(conn, findings=[], repondues={"https://agendasabauda.eu/a/"},
+                             urls_sitemap=SITEMAP)
     assert soldes == []
     assert _statut(conn, manuel) == "todo"
     assert _statut(conn, sans_agent) == "todo"
@@ -101,7 +145,8 @@ def test_un_point_encore_constate_reste_ouvert():
     conn = _base()
     pid = _ajoute(conn, "https://agendasabauda.eu/a/", REDIRIGE)
     encore = [{"page_url": "https://agendasabauda.eu/a/", "title": REDIRIGE}]
-    soldes = solder_disparus(conn, findings=encore, repondues={"https://agendasabauda.eu/a/"})
+    soldes = solder_disparus(conn, findings=encore, repondues={"https://agendasabauda.eu/a/"},
+                             urls_sitemap=SITEMAP)
     assert soldes == []
     assert _statut(conn, pid) == "todo"
 
@@ -113,7 +158,8 @@ def test_meme_url_deux_defauts_on_ne_solde_que_celui_qui_a_disparu():
     reste = _ajoute(conn, "https://agendasabauda.eu/a/", "URL du sitemap en erreur (404)")
     encore = [{"page_url": "https://agendasabauda.eu/a/",
                "title": "URL du sitemap en erreur (404)"}]
-    soldes = solder_disparus(conn, findings=encore, repondues={"https://agendasabauda.eu/a/"})
+    soldes = solder_disparus(conn, findings=encore, repondues={"https://agendasabauda.eu/a/"},
+                             urls_sitemap=SITEMAP)
     assert [s[0] for s in soldes] == [parti]
     assert _statut(conn, parti) == "done"
     assert _statut(conn, reste) == "todo"
@@ -126,7 +172,8 @@ def test_un_point_deja_solde_n_est_pas_retouche():
     ecarte = _ajoute(conn, "https://agendasabauda.eu/b/", REDIRIGE, statut="dismissed")
     soldes = solder_disparus(conn, findings=[],
                              repondues={"https://agendasabauda.eu/a/",
-                                        "https://agendasabauda.eu/b/"})
+                                        "https://agendasabauda.eu/b/"},
+                             urls_sitemap=SITEMAP)
     assert soldes == []
     assert _statut(conn, fait) == "done"
     assert _statut(conn, ecarte) == "dismissed"
