@@ -196,10 +196,11 @@ notre possession ne corrobore : elle vient de la page ou du modèle, et on n'en 
 trace. Garder la phrase source au moment de la datation ferait monter ce chiffre
 mécaniquement.
 
-**d) Ce qui attend le 1ᵉʳ septembre** (le plafond d'API bloque la rédaction jusque-là) :
-le titre de la fiche Saint-Ours, qui annonce « 2026 » pour un événement de 2027 ; et six
-articles en ligne qui nomment un faux organisateur (une journaliste prise pour
-l'organisatrice).
+**d) Ce qui attendait le plafond d'API** — ⚠️ **il est levé depuis le 12 août au soir**,
+tu as rechargé les crédits et l'appel de contrôle répond. La rédaction et le panel de
+lecteurs remarchent ; ce qui suit redevient donc traitable tout de suite : le titre de la
+fiche Saint-Ours, qui annonce « 2026 » pour un événement de 2027, et six articles en ligne
+qui nomment un faux organisateur (une journaliste prise pour l'organisatrice).
 
 ---
 
