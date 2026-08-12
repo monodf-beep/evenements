@@ -1367,6 +1367,21 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
         (*params, BATCH_SIZE)).fetchall()
 
 
+# LA VERSION DU PANEL, ET POURQUOI CE N'EST PAS UN BOOLÉEN. La première marque valait
+# « fiche » : elle disait « nouveau panel », sans dire LEQUEL. Or le prompt a changé deux
+# fois dans la même nuit du 13/08 — le bloc d'infos pratiques, puis l'exclusion de la
+# distance et des manques de fiche. `--rejuger` a donc refusé de rouvrir des verdicts
+# rendus une demi-heure plus tôt par une version précédente, et il avait raison de son
+# point de vue : ils portaient la marque. Une provenance qui ne distingue pas les versions
+# successives d'un même instrument n'est qu'une demi-provenance.
+#
+# À INCRÉMENTER dès que le prompt du panel change de comportement — c'est ce qui permet à
+# `panel_rattrapage --rejuger` de rouvrir ce qui a été jugé par une version périmée, et
+# rien d'autre. Un verdict de la version COURANTE reste intouchable : le rejouer serait le
+# refus qui se rejoue à l'identique (règle 3).
+PANEL_VERSION = "2026-08-13-b"
+
+
 def _bloc_infos_pratiques(ev: dict) -> str:
     """Ce que la fiche affiche À CÔTÉ de l'article — date, lieu, horaire, tarif.
 
@@ -1563,7 +1578,7 @@ def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
     # à panel_rattrapage --rejuger de rouvrir les anciens, et rien d'autre.
     return {"reviews": reviews, "visite_reviews": visite_reviews,
             "verdict": verdict, "mean": mean, "vmean": vmean, "votes": votes,
-            "contexte": "fiche"}
+            "version": PANEL_VERSION}
 
 
 def revise_article(result: dict, panel: dict, ev: dict, material: str,
