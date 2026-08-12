@@ -27,6 +27,23 @@ CE QU'IL NE FAIT PAS, ET C'EST NON NÉGOCIABLE
     coûterait des appels pour produire un second avis sur la même matière — et deux
     verdicts sur une même fiche, on ne saurait plus lequel croire.
 
+CE QUE LE PREMIER PASSAGE COMPLET A MONTRÉ (2026-08-13, 42 fiches) : **26 « ok » et
+16 « revise »**. Les cinq premières relues, elles, donnaient 1 sur 5 — c'était un mauvais
+échantillon, trois articles de moins de mille caractères. L'instrument n'est pas sévère
+par construction.
+
+ET UNE VALIDATION QUI N'ÉTAIT PAS PRÉVUE. Dix de ces fiches sont des paires FR/IT du même
+événement, jugées séparément, sans que le panel sache qu'elles allaient ensemble — et
+souvent par des personas différents, puisque le territoire diffère. **Neuf paires sur dix
+rendent le même verdict** (MonumenTO, Istituzione musicale, parc d'Aoste, Collontrek,
+Cinéma au Valentino, Sous les portiques, Terra Madre, Montrottier, Matisse–YSL). Deux
+appels indépendants, le même jugement : c'est la meilleure preuve de stabilité qu'on
+puisse avoir sur un instrument de ce genre, et elle est arrivée sans être cherchée.
+
+La dixième diverge — « Orchestre de la Suisse Romande », 3527 en ok 4.0 contre 930 en
+revise 2.5. À regarder : le titre de 930 est en minuscules, ce qui sent l'article plus
+pauvre plutôt que le panel instable, mais ça n'a pas été vérifié.
+
 Règle 5 : seulement ce qui est encore devant nous. Un article mal noté sur un événement
 terminé ne sera ni republié ni relu par personne.
 
