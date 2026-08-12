@@ -9,5 +9,10 @@
 
  "_exemple_non_actif": {
    "ville": "— cette clé commence par « _ », elle est ignorée : elle ne montre que la forme"
+ },
+
+ "Théâtre Charles Dullin": {
+   "ville": "Chambéry",
+   "motif": "Hommage, pas une adresse — comme le Café de Turin à Nice. La salle d'Espace Malraux porte le nom de Charles Dullin, homme de théâtre né en Savoie ; Dullin est aussi une commune de l'Avant-Pays savoyard, d'où le signalement. Vérifié le 2026-08-12 sur malrauxchambery.fr, qui donne l'adresse « Place du Théâtre 73000 Chambéry – France » (fiche 2663, en ligne WP#1976)."
  }
 }
