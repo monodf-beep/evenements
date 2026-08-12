@@ -82,8 +82,17 @@ déplace un jour où il n'y a rien, ou il cherche une forteresse dans la mauvais
 - Mécanisme : un communiqué de 2023 a servi de source à une édition 2026. La page est une
   archive d'actualités qui cite toutes les années de 2010 à 2026, donc un contrôle « l'année
   figure-t-elle dans la page » ne l'aurait pas attrapée.
-- Le signal qui aurait suffi : **l'URL contient une année, 2023, différente de celle de
-  l'événement.**
+- Le signal qui aurait suffi : **l'URL contient une année en segment de chemin**, `/2023/`,
+  différente de celle de l'événement.
+- **Précision acquise en implémentant le contrôle.** Cherchée n'importe où dans l'URL, l'année
+  produit des faux positifs : un événement intitulé « Torino 1946-2026 » ou une saison
+  « 2025-2026 » se font signaler pour rien. Cherchée **entre deux barres**, elle ne retient que
+  le motif d'archive, qui est le vrai symptôme.
+- **Et ce n'est un signal, pas un verdict.** Le contrôle remonte aussi trois fiches sourcées sur
+  `visitmondovi.it/2020/...` : ce sont des pages permanentes d'office de tourisme, publiées en
+  2020, qui décrivent un événement récurrent et ne contiennent **aucune année**. La source est
+  légitime, elle ne confirme simplement pas les dates. À traiter comme « dates non confirmées »,
+  pas comme « source fausse ».
 
 ### 909 · Opéra de Nice · une source qui n'a jamais été ouverte
 - Source `opera-nice.org/agenda/chopin/**20260918**-1800/` : **404** au 2026-08-12.
@@ -119,10 +128,14 @@ déplace un jour où il n'y a rien, ou il cherche une forteresse dans la mauvais
 > Formulé « date de début antérieure à la date de collecte », il signale **94 fiches** sur le
 > corpus actuel, en très grande majorité des faux positifs : une exposition longue commence
 > légitimement avant qu'on la collecte. Avec le seuil de six mois, il tombe à **5 fiches**, et ce
-> sont les bonnes : 2013 (303 jours d'écart, publiée), 578 et 6245 (brouillons), et 6171 et 6176
-> dont la date de début est celle de l'**epoch Unix**, 1970, soit un horodatage à zéro jamais
-> rattrapé. Un contrôle qui crie sur 94 fiches n'est pas un contrôle, c'est du bruit que personne
-> ne lira.
+> sont les bonnes. Un contrôle qui crie sur 94 fiches n'est pas un contrôle, c'est du bruit que
+> personne ne lira.
+>
+> **Deuxième correction, du même jour.** J'avais écrit que 6171 et 6176 portaient une date à
+> l'epoch Unix, 1970. C'est faux : leur `_EventStartDate` est **vide**, et c'est `strtotime('')`
+> qui renvoie zéro. Deux défauts distincts se cachaient donc derrière un seul compteur. Le
+> contrôle les sépare désormais : **fiche sans aucune date** d'un côté (6171, 6176), **début
+> antérieur de plus de six mois** de l'autre (2013 publiée, 578 et 6245 en brouillon).
 
 Tous sont mécaniques : ils se calculent sans jugement, et chacun aurait attrapé au moins un des
 sept cas. Ils bloquent la **publication**, pas la collecte : une fiche recalée part en brouillon
@@ -132,7 +145,7 @@ avec son motif, elle n'est pas perdue.
 |---|---|---|---|
 | 1 | Date de début antérieure de **plus de six mois** à la date de collecte | 2334 | Trivial |
 | 2 | **L'année de l'événement figure dans le texte de la source** | 2319 | Faible |
-| 3 | **L'URL de source ne contient pas une autre année** que celle de l'événement | 864 | Trivial |
+| 3 | L'URL de source ne porte pas **une autre année en segment de chemin** (`/2020/`) que celle de l'événement | 864 | Trivial |
 | 4 | **L'URL de source répond 200** au moment de l'écriture, et est recontrôlée périodiquement | 909 | Faible |
 | 5 | Les **numéros de jour** encadrant le nom du mois dans la source correspondent aux bornes stockées | 2289, 2265 | Moyen |
 | 6 | Deux fiches lieu dont les titres partagent les mêmes noms propres **ne peuvent pas avoir deux villes différentes** | 3729 | Moyen |
