@@ -151,7 +151,12 @@ def main(argv: list[str]) -> int:
           + ("" if args.tout else ", PUBLIÉES") + " (règle 5).\n")
     for motif, n in sorted(ecartes.items(), key=lambda kv: -kv[1]):
         print(f"  {n:>5}  écartées — {motif}")
-    print(f"  {len(candidats):>5}  À RELIRE — un article existe, aucun verdict\n")
+    # LE LIBELLÉ DIT CE QU'IL COMPTE, ET IL CHANGE AVEC --rejuger. Écrit « aucun verdict »
+    # dans les deux cas, il aurait menti sur la moitié des passages : avec --rejuger, les
+    # fiches retenues EN ONT un, rendu par l'ancien instrument.
+    print(f"  {len(candidats):>5}  À RELIRE — "
+          + ("un article existe : aucun verdict, ou un verdict de l'ancien panel"
+             if args.rejuger else "un article existe, aucun verdict") + "\n")
 
     if not candidats:
         print("Rien à relire dans ce périmètre.")
