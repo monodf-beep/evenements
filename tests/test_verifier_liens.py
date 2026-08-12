@@ -100,7 +100,7 @@ PASSE = (date.today() - timedelta(days=30)).isoformat()
 
 MORT = "https://opera-nice.org/spectacle-retire"
 VIVANT = "https://villefranche-sur-mer.fr/agenda"
-REFUS = "https://agendaculturel.fr/73/evenement"
+REFUS = "https://ville-bloquee.fr/agenda"
 
 CAS = [
     # id, titre, url_officiel, début, fin, wp, statut
@@ -116,13 +116,23 @@ CAS = [
     # NON PUBLIÉE : personne ne peut cliquer ce lien, hors périmètre par défaut.
     (8, "Brouillon", MORT, AVENIR, AVENIR, None, "pending"),
 ]
+# LE MONTAGE DEMANDE DEUX PRÉCAUTIONS, et les deux viennent du code réel.
+#
+# 1. `url_source` porte une contrainte d'UNICITÉ en base : impossible d'y mettre deux
+#    fois la même adresse pour tester deux fiches qui partagent un lien.
+# 2. La publication ne lit pas `url_officiel` mais `publisher_as._source_publiable()`,
+#    qui retient l'ancre officielle et, à défaut, retombe sur `url_source`.
+#
+# On donne donc à chaque fiche une `url_source` unique sur un hôte que
+# `radar._is_official_host` REFUSE (un agrégateur) : elle ne peut jamais l'emporter, et
+# l'adresse testée est bien celle qu'on a voulu poser dans `url_officiel`.
 for eid, titre, url, deb, fin, wp, statut in CAS:
     conn.execute(
         "INSERT INTO events_raw (id, title, url_officiel, url_source, source_name, "
         " date_event_start, date_event_end, statut, wp_post_id_as) "
         "VALUES (?,?,?,?,?,?,?,?,?)",
-        (eid, titre, url, f"https://exemple.fr/{eid}", "Source officielle",
-         deb, fin, statut, wp))
+        (eid, titre, url, f"https://agendaculturel.fr/fixture-{eid}",
+         "Source officielle", deb, fin, statut, wp))
 conn.commit()
 conn.close()
 verifier_liens.DB_PATH = db
@@ -160,6 +170,17 @@ _check("une fiche non publiée est hors périmètre par défaut", "[    8]" not 
 _check("… et --tout la fait entrer", "[    8]" in _sortie(["--tout"]))
 _check("le périmètre est écrit à côté des chiffres (règle 6)",
        "adresse(s) distincte(s)" in s)
+_check("les fiches SANS lien sont comptées — sinon « 0 lien mort » se lirait\n       « tous nos liens sont bons »", "AUCUN lien officiel" in s)
+# LA VRAIE ADRESSE PUBLIÉE, pas la colonne qu'on croit. Contrôle ajouté après
+# avoir constaté que la première version lisait `url_officiel` seule.
+_check("l'adresse testée est celle que la PUBLICATION calcule",
+       verifier_liens.lien_publie({"url_officiel": "", "url_source": MORT,
+                                   "source_type": "", "source_name": "Mairie"})
+       == MORT)
+_check("   et le radar ne publie jamais son article de presse (charte §8)",
+       verifier_liens.lien_publie({"url_officiel": "", "url_source": MORT,
+                                   "source_type": "radar", "source_name": "X"})
+       == "")
 _check("le geste est nommé, pas seulement le problème", "completer_verifie" in s)
 
 # LE PLAFOND DOIT SE DIRE. Un « --cap » silencieux ferait lire la sortie comme une

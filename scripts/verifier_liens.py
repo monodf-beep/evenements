@@ -85,6 +85,30 @@ def etat(url: str) -> tuple[str, int | None]:
     return ("panne" if c >= 500 else "disparue"), c
 
 
+def lien_publie(row) -> str:
+    """L'adresse que le SITE affiche pour cette fiche, ou "" — telle que la calcule la
+    publication elle-même.
+
+    ON NE LA RECALCULE PAS. La première version lisait la colonne `url_officiel`, ce qui
+    paraissait évident et était faux : `publisher_as._source_publiable()` lit TROIS
+    signaux (la colonne, les pages officielles réellement téléchargées dans
+    `enrich_data.source.pages`, le booléen « matière officielle lue ») et, hors radar,
+    retombe sur `url_source`. Sur la base réelle du 2026-08-12, ma version ne voyait que
+    34 adresses là où le site en publie davantage : le « 0 lien mort » portait donc sur un
+    périmètre plus étroit que celui qu'il annonçait — le défaut exact que
+    docs/ERREURS_2026-08-11.md appelle « un zéro qui ne dit pas combien de cas se sont
+    présentés ».
+
+    Réutiliser la fonction qui DÉCIDE, au lieu d'en écrire une deuxième qui lui
+    ressemble, est la seule façon que les deux ne divergent pas un jour."""
+    ev = dict(row)
+    from scripts.publisher_as import _source_publiable
+    is_radar = (ev.get("source_type") == "radar"
+                or "(radar)" in (ev.get("source_name") or ""))
+    u = (_source_publiable(ev, is_radar) or "").strip()
+    return u if u.startswith("http") else ""
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -116,19 +140,21 @@ def main(argv: list[str]) -> int:
         where += " AND COALESCE(wp_post_id_as,0) <> 0"
 
     rows = conn.execute(
-        f"SELECT id, title, url_officiel, wp_post_id_as, source_name "
-        f"FROM events_raw WHERE {where} ORDER BY COALESCE(wp_post_id_as,0) DESC",
-        params).fetchall()
+        f"SELECT * FROM events_raw WHERE {where} "
+        f"ORDER BY COALESCE(wp_post_id_as,0) DESC", params).fetchall()
     conn.close()
 
     # UNE URL, UNE REQUÊTE. Plusieurs fiches partagent souvent la même page officielle
     # (une saison, un festival) : les interroger une fois chacune multiplierait le coût
     # sans rien apprendre de plus.
     par_url: dict[str, list[sqlite3.Row]] = defaultdict(list)
+    sans_lien = 0
     for r in rows:
-        u = (r["url_officiel"] or "").strip()
-        if u.startswith("http"):
+        u = lien_publie(r)
+        if u:
             par_url[u].append(r)
+        else:
+            sans_lien += 1
 
     urls = sorted(par_url)
     laisses = max(0, len(urls) - args.cap)
@@ -137,8 +163,14 @@ def main(argv: list[str]) -> int:
     print("═══ Le lien que nous publions mène-t-il encore quelque part ? ═══")
     print(f"Périmètre : {len(rows)} fiche(s) vivantes"
           + ("" if args.tout else ", PUBLIÉES")
-          + f" (règle 5) · {sum(len(v) for v in par_url.values())} portent un lien "
+          + f" (règle 5) · {sum(len(v) for v in par_url.values())} affichent un lien "
             f"officiel · {len(par_url)} adresse(s) distincte(s).")
+    # LE NOMBRE DE FICHES SANS LIEN, DIT ICI ET PAS AILLEURS. Ce n'est pas l'objet de ce
+    # contrôle et ce n'est pas une tâche — beaucoup de sources ne publient pas de page
+    # par événement. Mais sans lui, on lirait « aucun lien mort » comme « tous nos liens
+    # sont bons », alors que la question ne se pose que pour une partie des fiches.
+    print(f"            {sans_lien} fiche(s) n'affichent AUCUN lien officiel — hors sujet "
+          f"ici, mais c'est ce qui borne tout ce qui suit.")
     if laisses:
         # AUCUN PLAFOND SILENCIEUX : ce qui n'a pas été regardé est dit, sinon la sortie
         # se lit comme une couverture complète alors qu'elle ne l'est pas.
