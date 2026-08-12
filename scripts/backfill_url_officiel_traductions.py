@@ -71,11 +71,28 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
 
     lignes = conn.execute(REQUETE).fetchall()
+
+    # L'ENTONNOIR, ET PAS SEULEMENT LE RÉSULTAT. Ajouté le 2026-08-12 après m'être
+    # avancé sur son seul chiffre : `verifier_liens` montrait treize fiches traduites
+    # publiées sans lien, j'ai annoncé que ce script les réparerait, il en a rendu DEUX.
+    # Les onze autres n'ont rien à recopier — leur ORIGINAL n'a pas non plus de source
+    # officielle, ce qui est un manque en amont (résolution de source), pas un défaut de
+    # propagation. Un « 2 » sans dénominateur laisse croire au premier, et c'est le
+    # défaut que docs/ERREURS_2026-08-11.md nomme : un chiffre qui ne dit pas combien de
+    # cas se sont présentés.
+    sans_source = conn.execute(
+        "SELECT COUNT(*) FROM events_raw t WHERE t.translation_of IS NOT NULL "
+        "AND COALESCE(t.url_officiel,'') = ''").fetchone()[0]
+
     print("=" * 78)
     print("Reprise url_officiel sur les traductions — "
           + ("ÉCRITURE" if args.apply else "SIMULATION, rien n'est modifié"))
     print("=" * 78)
     print(f"Base                          : {DB_PATH}")
+    print(f"Traductions sans source       : {sans_source}")
+    print(f"  · dont l'original en a une  : {len(lignes)}   ← réparables ici")
+    print(f"  · dont l'original n'en a pas: {sans_source - len(lignes)}   "
+          f"(rien à recopier : le manque est EN AMONT, sur l'original)")
     print(f"Traductions réparables        : {len(lignes)}")
     en_ligne = [r for r in lignes if (r["wp_trad"] or 0) > 0]
     print(f"  · dont déjà publiées sur AS : {len(en_ligne)}"
