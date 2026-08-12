@@ -90,7 +90,7 @@ def _urls_in_sitemap(sitemap_url: str) -> list[str]:
     return re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", resp.text)
 
 
-def check_urls(urls: list[str], cap: int, workers: int = 5) -> list[dict]:
+def check_urls(urls: list[str], cap: int, workers: int = 5) -> tuple[list[dict], set[str]]:
     """Vérifie chaque URL (bornée par --cap), EN PARALLÈLE (`workers` requêtes à la
     fois — même valeur par défaut que « Concurrent requests » dans la config de crawl
     documentée par le skill claude-seo). Constaté en conditions réelles : en séquentiel
@@ -100,9 +100,17 @@ def check_urls(urls: list[str], cap: int, workers: int = 5) -> list[dict]:
     Chaque requête reste bornée par un timeout ABSOLU (20 s, ThreadPoolExecutor.result)
     — le `timeout` de `requests` seul se réinitialise à chaque octet reçu et ne suffit
     PAS à se protéger d'un serveur qui envoie les données au compte-goutte (constaté :
-    un run est resté bloqué >9 min sur une seule URL malgré timeout=15 côté requests)."""
+    un run est resté bloqué >9 min sur une seule URL malgré timeout=15 côté requests).
+
+    Renvoie AUSSI l'ensemble des URLs qui ont réellement RÉPONDU. Sans cette liste, on ne
+    peut pas solder un ancien point : une URL non vérifiée (au-delà de --cap) et une URL
+    vérifiée-et-saine se ressemblent exactement, et on refermerait des points sur une
+    absence de mesure plutôt que sur une mesure. Une URL en timeout n'y figure pas — elle
+    a produit son propre signalement, mais elle ne prouve rien sur ses défauts antérieurs.
+    """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
     findings = []
+    repondues: set[str] = set()
     checked = 0
     batch = urls[:cap]
     total = len(batch)
@@ -127,6 +135,7 @@ def check_urls(urls: list[str], cap: int, workers: int = 5) -> list[dict]:
                             "recommendation": "Vérifier manuellement — le serveur a peut-être "
                                               "un problème temporaire, ou l'URL est vraiment morte."})
             continue
+        repondues.add(url)
         if resp.status_code >= 400:
             findings.append({"page_url": url, "severity": "critical",
                             "title": f"URL du sitemap en erreur ({resp.status_code})",
@@ -143,9 +152,44 @@ def check_urls(urls: list[str], cap: int, workers: int = 5) -> list[dict]:
                             "recommendation": "Régénérer le sitemap avec l'URL finale "
                                               f"({final}), et mettre à jour les liens internes "
                                               "en dur qui pointent encore vers l'ancienne."})
-    log.info("%d URL(s) vérifiée(s), %d problème(s) trouvé(s)", checked, len(findings))
+    log.info("%d URL(s) vérifiée(s), %d ayant répondu, %d problème(s) trouvé(s)",
+             checked, len(repondues), len(findings))
     ex.shutdown(wait=False)  # jamais attendre un éventuel thread encore bloqué
-    return findings
+    return findings, repondues
+
+
+def solder_disparus(conn, findings: list[dict], repondues: set[str]) -> list[tuple]:
+    """Referme les points de CE script que la mesure du jour ne retrouve plus.
+
+    POURQUOI C'EST AJOUTÉ (2026-08-12). Ce script savait OUVRIR des points et rien ne
+    savait les FERMER — le défaut structurel que le CLAUDE.md décrit comme le sien
+    (règle 3). Résultat constaté ce soir dans `/seo` : 34 points « URL du sitemap
+    redirige », tous datés du 29 juillet, tous encore `todo`. Or une relecture des 230
+    URLs du sitemap le 12 août n'en trouve PLUS AUCUNE qui redirige : les redirections
+    avaient été corrigées depuis des jours, et la file continuait de les compter. Le
+    tableau annonçait 64 points à traiter là où il y en avait une vingtaine de réels.
+
+    On ne referme QUE les points portant `source_agent='site_health_check'` : les
+    trouvailles d'un audit manuel demandent un jugement humain, ce script n'a rien à en
+    dire. Et on ne referme QUE sur une URL qui a effectivement répondu pendant ce run —
+    une URL hors `--cap` ou en timeout n'a pas été mesurée, et une absence de mesure ne
+    vaut pas une preuve de réparation.
+
+    Le statut posé est `done`, réversible : la trouvaille reste en base avec sa date, et
+    si le défaut revient, le run suivant la rouvre sous un nouvel id.
+    """
+    encore_ouverts = {(f["page_url"], f["title"]) for f in findings}
+    soldes = []
+    for pid, url, titre in conn.execute(
+            "SELECT id, page_url, title FROM seo_findings "
+            "WHERE status='todo' AND source_agent='site_health_check'").fetchall():
+        if url in repondues and (url, titre) not in encore_ouverts:
+            soldes.append((pid, url, titre))
+    for pid, _, _ in soldes:
+        conn.execute(
+            "UPDATE seo_findings SET status='done', resolved_at=datetime('now') WHERE id=?",
+            (pid,))
+    return soldes
 
 
 def main(argv=None) -> int:
@@ -182,23 +226,36 @@ def main(argv=None) -> int:
     if len(all_urls) > args.cap:
         log.info("Borné à --cap %d (relance pour couvrir le reste).", args.cap)
 
-    findings = check_urls(all_urls, args.cap)
-
-    if not findings:
-        log.info("=== Aucun problème trouvé. ===")
-        return 0
+    findings, repondues = check_urls(all_urls, args.cap)
 
     for f in findings:
         log.info("[%s] %s — %s", f["severity"], f["title"], f["page_url"])
 
+    # ⚠️ PAS de sortie anticipée quand `findings` est vide. La première version renvoyait 0
+    # ici même — c'est-à-dire que le jour où tout est réparé, le script ne faisait RIEN,
+    # et les points ouverts la semaine d'avant restaient ouverts pour toujours. « Aucun
+    # problème trouvé » est précisément le moment où il y a le plus à solder.
     if not args.apply:
-        log.info("=== %d problème(s) détecté(s) (simulation : rien écrit — relance avec "
-                 "--apply). ===", len(findings))
+        log.info("=== %d problème(s) détecté(s), %d URL(s) ayant répondu (simulation : "
+                 "rien écrit — relance avec --apply). ===", len(findings), len(repondues))
         return 0
 
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     _ensure_seo_tables(conn)
+    soldes = solder_disparus(conn, findings, repondues)
+    for pid, url, titre in soldes[:10]:
+        log.info("soldé #%d — %s (%s)", pid, titre[:60], url[:60])
+    if len(soldes) > 10:
+        log.info("… et %d autre(s) soldé(s).", len(soldes) - 10)
+    if not findings:
+        conn.commit()
+        restants = conn.execute(
+            "SELECT COUNT(*) FROM seo_findings WHERE status='todo'").fetchone()[0]
+        conn.close()
+        log.info("=== Aucun problème trouvé ; %d point(s) soldé(s). %d point(s) à traiter "
+                 "en base. ===", len(soldes), restants)
+        return 0
     cur = conn.execute(
         "INSERT INTO seo_runs (scope, pages_count, agents_used, tokens_used, notes) "
         "VALUES (?, ?, ?, 0, ?)",
@@ -225,9 +282,13 @@ def main(argv=None) -> int:
              f["description"], f["recommendation"], "site_health_check"))
         written += 1
     conn.commit()
+    # Règle 6 : on recompte EN BASE après écriture, jamais sur la longueur d'une liste.
+    restants = conn.execute(
+        "SELECT COUNT(*) FROM seo_findings WHERE status='todo'").fetchone()[0]
     conn.close()
-    log.info("=== %d problème(s) écrit(s), %d déjà ouvert(s) (ignoré(s)) — run #%d. ===",
-             written, skipped_dup, run_id)
+    log.info("=== %d problème(s) écrit(s), %d déjà ouvert(s) (ignoré(s)), %d soldé(s) "
+             "car disparu(s) — run #%d. %d point(s) à traiter en base. ===",
+             written, skipped_dup, len(soldes), run_id, restants)
     return 0
 
 

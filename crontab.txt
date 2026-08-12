@@ -229,6 +229,15 @@
 # déploiement — y compris des déploiements non annoncés, et il y en a (34 mu-plugins cs-*
 # vivent sur le serveur, 16 sans copie versionnée). Zéro coût API, deux requêtes HTTP.
 15 14 * * * cd /root/evenements && .venv/bin/python scripts/gabarit_health.py >> logs/gabarit_health.log 2>&1
+# Veille sitemap/liens, dimanche 7h30 — le script existait depuis le 29/07 et son propre
+# commentaire disait « tourne chaque semaine en cron ». C'était faux : il n'a jamais été
+# relancé. Conséquence lue dans /seo le 2026-08-12 : 34 points « URL du sitemap redirige »
+# encore ouverts, tous du 29/07, alors qu'une relecture des 230 URLs n'en trouvait PLUS
+# AUCUNE. Le tableau annonçait 64 points là où il y en avait une vingtaine de réels.
+# Il sait désormais SOLDER ce qu'il ne retrouve plus (solder_disparus), et seulement sur
+# les URLs qui ont répondu pendant le run — une URL non mesurée reste ouverte. La
+# fraîcheur de la file est donc bornée à sept jours au lieu d'être infinie.
+30 7 * * 0 cd /root/evenements && .venv/bin/python scripts/site_health_check.py --apply >> logs/site_health_check.log 2>&1
 # Nettoyage hebdomadaire dimanche 5h — chaîne RÉVERSIBLE et DÉTERMINISTE uniquement
 # (purge hors-zone/passés/incomplétables, articles de presse publiés à tort, doublons
 # WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py
