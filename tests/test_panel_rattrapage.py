@@ -94,6 +94,17 @@ def _sortie(argv=None):
     return buf.getvalue()
 
 
+# LE .env, ET POURQUOI CE CONTRÔLE EST DE NIVEAU SOURCE. La première version de ce
+# script ne chargeait pas le .env : le dry-run passait parfaitement (il n'appelle rien) et
+# --apply s'arrêtait sur « clé absente » alors qu'elle était là. Aucune simulation ne peut
+# attraper ça, puisque le défaut ne vit QUE sur le chemin payant. On vérifie donc la
+# présence de l'appel dans le source — c'est faible, mais ça empêche de le retirer sans
+# s'en apercevoir, et c'est mieux que le contrôle qui n'existait pas.
+print("──── 0. la clé d'API doit être cherchée là où elle est ────")
+_src = (ROOT / "scripts" / "panel_rattrapage.py").read_text(encoding="utf-8")
+_check("le module charge le .env — sinon --apply échoue avec une clé pourtant présente",
+       "load_dotenv(" in _src)
+
 print("──── 1. la sélection, et ce qu'elle ÉCARTE en le disant ────")
 s = _sortie()
 _check("les deux fiches sans verdict sont retenues", "[    1]" in s and "[    2]" in s)

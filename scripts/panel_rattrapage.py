@@ -49,6 +49,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+# LA CLÉ VIT DANS LE .env, ET IL FAUT LE CHARGER. Oublié à la première version : le
+# dry-run passait très bien (il n'appelle rien), et `--apply` s'arrêtait sur
+# « ANTHROPIC_API_KEY absente » alors que la clé était là — c'est enrich.py qui appelle
+# load_dotenv, pas l'environnement du shell. Un défaut que seul le chemin PAYANT révèle
+# est exactement celui qu'une simulation ne peut pas attraper.
+from dotenv import load_dotenv  # noqa: E402
+load_dotenv(ROOT / ".env")
+
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
@@ -157,7 +165,8 @@ def main(argv: list[str]) -> int:
 
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
-        print("ANTHROPIC_API_KEY absente — impossible de faire tourner le panel.")
+        print("ANTHROPIC_API_KEY absente — ni dans l'environnement, ni dans "
+              f"{ROOT / '.env'}. Le panel ne peut pas tourner.")
         conn.close()
         return 1
 
