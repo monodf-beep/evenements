@@ -350,6 +350,23 @@ def main(argv: list[str] | None = None) -> int:
     # LLM. Il ne compte comme tâche QUE les 404/410 : un 403 est notre serveur qu'on
     # écarte, pas une page disparue, et en faire une file enverrait réparer des liens qui
     # marchent — agendaculturel.fr refuse ce serveur et porte 338 fiches.
+    # 3 bis) LA SOURCE DES TRADUCTIONS, avant de compter les liens — sinon on mesure un
+    # manque qu'on sait réparer. `translate_events` créait la fiche traduite sans copier
+    # `url_officiel` (corrigé le 2026-08-05) : la jumelle italienne d'une fiche
+    # parfaitement sourcée s'affichait sans source. Le réparateur a été écrit le jour même
+    # et N'A JAMAIS EU D'APPELANT — c'est l'erreur 11, et la quatrième question de
+    # docs/ETATS_TERMINAUX.md : « le rouvreur est-il BRANCHÉ ? ».
+    #
+    # Constaté le 2026-08-12 dans la sortie de verifier_liens : treize fiches publiées
+    # n'ont pour source que « translated:<id>:<langue> », donc aucun lien. --apply est
+    # défendable — il recopie une valeur déjà vérifiée par enrich.py sur l'original,
+    # n'écrase jamais une valeur existante et ne touche pas WordPress.
+    from scripts.backfill_url_officiel_traductions import main as backfill_main
+    rc, out = _run_captured(backfill_main, ["--apply"], "backfill_url_officiel_traductions")
+    sections.append(f"• Sources recopiées sur les traductions : {_tail(out, 2)}")
+    if rc:
+        echecs.append("backfill_url_officiel_traductions")
+
     from scripts.verifier_liens import main as liens_main
     rc, out = _run_captured(liens_main, [], "verifier_liens")
     sections.append(f"• Liens officiels morts (404/410 seulement) : {_tail(out, 2)}")

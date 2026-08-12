@@ -102,10 +102,21 @@ def lien_publie(row) -> str:
     Réutiliser la fonction qui DÉCIDE, au lieu d'en écrire une deuxième qui lui
     ressemble, est la seule façon que les deux ne divergent pas un jour."""
     ev = dict(row)
-    from scripts.publisher_as import _source_publiable
+    from scripts.publisher_as import _source_publiable, log as _log_pub
     is_radar = (ev.get("source_type") == "radar"
                 or "(radar)" in (ev.get("source_name") or ""))
-    u = (_source_publiable(ev, is_radar) or "").strip()
+    # ON TAIT SES AVERTISSEMENTS, PAS LES NÔTRES. `_source_publiable` journalise en
+    # WARNING chaque adresse non publiable (« translated:3596:it », « gmail:… ») : c'est
+    # utile AU MOMENT DE PUBLIER, où ça signale qu'une fiche part sans source. Ici on ne
+    # publie rien, on inventorie — et quatorze lignes rouges avant un rapport de lecture
+    # laissent croire à un incident. Le nombre de fiches sans lien est de toute façon
+    # affiché dans le périmètre, donc rien n'est perdu.
+    niveau = _log_pub.level
+    _log_pub.setLevel(50)
+    try:
+        u = (_source_publiable(ev, is_radar) or "").strip()
+    finally:
+        _log_pub.setLevel(niveau)
     return u if u.startswith("http") else ""
 
 
