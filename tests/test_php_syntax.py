@@ -67,7 +67,14 @@ if not PHP:
     sys.exit(0)
 
 print(f"──── php -l sur {WP_DIR.relative_to(ROOT)} ({PHP}) ────")
-fichiers = sorted(WP_DIR.glob("*.php"))
+# LES CORRECTIFS UNIQUES COMPTENT AUTANT QUE LES MU-PLUGINS. Ajouté le 2026-08-12, quand
+# on a découvert que `cs-publish.php` n'est pas un fichier du serveur mais un snippet en
+# base : on le corrige donc par un script PHP à exécuter, dans deploy/wordpress-patchs/.
+# Ce script tourne sur la production avec les mêmes conséquences qu'un mu-plugin — une
+# faute de syntaxe y coûte le même site injoignable. Le laisser hors du contrôle aurait
+# rouvert la porte que ce fichier existe pour fermer.
+fichiers = sorted(WP_DIR.glob("*.php")) + sorted((ROOT / "deploy" / "wordpress-patchs")
+                                                 .glob("*.php"))
 _check("au moins un mu-plugin à vérifier", bool(fichiers), f"{WP_DIR} vide")
 for f in fichiers:
     ok, sortie = _lint(f)
