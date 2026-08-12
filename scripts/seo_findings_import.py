@@ -31,10 +31,15 @@ Le compteur de fin dit ce qu'il compte : combien versées, combien ignorées par
 présentes, et sous quel statut — un « 0 versée » ne doit pas pouvoir se confondre avec un
 fichier vide ou une erreur de lecture.
 
+DRY-RUN PAR DÉFAUT (règle 4). Sans `--apply`, le script montre ce qu'il verserait et
+n'écrit rien. La première version faisait l'inverse — `--dry-run` en option, écriture par
+défaut — et c'est `tests/test_regles_du_depot.py` qui l'a refusée avant le déploiement,
+pas une relecture. Le cliquet fonctionne : on le laisse tel quel.
+
 Usage :
-    .venv/bin/python -m scripts.seo_findings_import docs/audit_seo_2026-08-12_findings.json --dry-run
     .venv/bin/python -m scripts.seo_findings_import docs/audit_seo_2026-08-12_findings.json
-    .venv/bin/python -m scripts.seo_findings_import <fichier> --force   # reverse même si déjà présent
+    .venv/bin/python -m scripts.seo_findings_import docs/audit_seo_2026-08-12_findings.json --apply
+    .venv/bin/python -m scripts.seo_findings_import <fichier> --apply --force  # reverse tout
 """
 from __future__ import annotations
 import argparse
@@ -88,8 +93,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Verse les trouvailles d'un audit SEO dans le tableau de bord /seo.")
     parser.add_argument("fichier", help="JSON produit par un audit (voir docs/).")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Montre ce qui serait versé, n'écrit rien. Défaut recommandé.")
+    parser.add_argument("--apply", action="store_true",
+                        help="Écrit réellement. SANS ce drapeau, rien n'est enregistré.")
     parser.add_argument("--force", action="store_true",
                         help="Reverse même les trouvailles déjà présentes (y compris soldées).")
     args = parser.parse_args(argv)
@@ -129,8 +134,8 @@ def main(argv: list[str] | None = None) -> int:
     for f, _ in a_verser:
         print(f"   + [{f['severity']:8}] {f['title'][:78]}")
 
-    if args.dry_run:
-        print("\n--dry-run : rien n'a été écrit.")
+    if not args.apply:
+        print("\nDry-run (défaut) : rien n'a été écrit. Relancer avec --apply pour verser.")
         conn.close()
         return 0
     if not a_verser:
