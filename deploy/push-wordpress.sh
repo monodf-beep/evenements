@@ -107,14 +107,25 @@ for f in "${FILES[@]}"; do
   CMDS+="put \"$f\" \"$WP_DEPLOY_MU_DIR/\"\n"
 done
 
-# Sans clé SSH, sftp -b échoue (batch = pas de mot de passe). On tente d'abord en batch
-# (clé) ; si ça échoue, on rejoue en interactif (sftp lit le mot de passe sur le terminal).
+# Deux transports, et le second n'est pas un luxe : le 2026-08-12, SFTP a été refusé deux
+# fois de suite par OVH — « Connection closed by 54.36.142.132 port 22 », juste après le
+# mot de passe. Sur un hébergement mutualisé, le port 22 n'est ouvert que si SSH a été
+# activé dans le manager ; FTPS (port 21) l'est toujours pour le compte FTP principal.
+# On tente donc SFTP par clé, puis FTPS, avant de renoncer.
 if printf "%b" "$CMDS" | sftp -oBatchMode=yes -P "$PORT" "$WP_DEPLOY_SSH" >/dev/null 2>&1; then
-  echo "✅ Déployé (clé SSH)."
+  echo "✅ Envoyé par SFTP (clé SSH)."
 else
-  echo "ℹ️  Pas de clé SSH utilisable — connexion interactive (mot de passe demandé)."
-  printf "%b" "$CMDS" | sftp -P "$PORT" "$WP_DEPLOY_SSH"
-  echo "→ sftp terminé sans erreur fatale."
+  echo "ℹ️  SFTP indisponible (pas de clé, ou port 22 fermé) — bascule sur FTPS."
+  PY="$ROOT/.venv/bin/python"; [ -x "$PY" ] || PY="python3"
+  if ! "$PY" "$ROOT/deploy/push_ftp.py" "${FILES[@]}"; then
+    echo >&2
+    echo "❌ Ni SFTP ni FTPS n'ont abouti — RIEN n'est parti." >&2
+    echo "   Deux issues, dans cet ordre :" >&2
+    echo "   1. activer SSH sur l'hébergement dans le manager OVH (rubrique FTP-SSH) ;" >&2
+    echo "   2. à défaut, coller le contenu du fichier dans Code Snippets (wp-admin)," >&2
+    echo "      SANS la ligne « <?php » — c'est l'installation B du fichier lui-même." >&2
+    exit 4
+  fi
 fi
 
 # ON NE DIT PAS « DÉPLOYÉ », ON DIT COMMENT LE VÉRIFIER. sftp n'interrompt pas la session
