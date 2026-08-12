@@ -80,16 +80,34 @@ def main(argv=None) -> int:
     # propagation. Un « 2 » sans dénominateur laisse croire au premier, et c'est le
     # défaut que docs/ERREURS_2026-08-11.md nomme : un chiffre qui ne dit pas combien de
     # cas se sont présentés.
+    #
+    # ET SON PÉRIMÈTRE À CÔTÉ DE LUI, parce que la première version ne l'avait pas et
+    # affichait « 104 » là où `verifier_liens` en montrait 13 : deux compteurs du même
+    # nom, deux périmètres, et c'est le plus gros qu'on aurait cru (règle 6, mot pour
+    # mot). Les 104 comptent TOUTES les traductions, passé compris ; les 13 ne comptaient
+    # que les publiées encore devant nous. On affiche donc les deux.
+    from datetime import date as _date
+    _auj = _date.today().isoformat()
+    _vivant = ("AND (COALESCE(t.recurring,0)=1 "
+               "     OR COALESCE(NULLIF(t.date_event_end,''), t.date_event_start,'') = '' "
+               "     OR COALESCE(NULLIF(t.date_event_end,''), t.date_event_start) >= ?)")
     sans_source = conn.execute(
         "SELECT COUNT(*) FROM events_raw t WHERE t.translation_of IS NOT NULL "
         "AND COALESCE(t.url_officiel,'') = ''").fetchone()[0]
+    sans_source_vivantes = conn.execute(
+        "SELECT COUNT(*) FROM events_raw t WHERE t.translation_of IS NOT NULL "
+        "AND COALESCE(t.url_officiel,'') = '' AND COALESCE(t.wp_post_id_as,0) <> 0 "
+        + _vivant, (_auj,)).fetchone()[0]
 
     print("=" * 78)
     print("Reprise url_officiel sur les traductions — "
           + ("ÉCRITURE" if args.apply else "SIMULATION, rien n'est modifié"))
     print("=" * 78)
     print(f"Base                          : {DB_PATH}")
-    print(f"Traductions sans source       : {sans_source}")
+    print(f"Traductions sans source       : {sans_source}   "
+          f"(TOUTES, passé compris)")
+    print(f"  · publiées et encore devant nous : {sans_source_vivantes}   "
+          f"← le seul sous-ensemble qu'un lecteur peut voir (règle 5)")
     print(f"  · dont l'original en a une  : {len(lignes)}   ← réparables ici")
     print(f"  · dont l'original n'en a pas: {sans_source - len(lignes)}   "
           f"(rien à recopier : le manque est EN AMONT, sur l'original)")
