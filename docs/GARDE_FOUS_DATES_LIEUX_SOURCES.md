@@ -115,13 +115,22 @@ déplace un jour où il n'y a rien, ou il cherche une forteresse dans la mauvais
 
 ## 3. Les garde-fous, par ordre de coût
 
+> **Le contrôle 1 a été mesuré avant d'être écrit ainsi, et la première rédaction était fausse.**
+> Formulé « date de début antérieure à la date de collecte », il signale **94 fiches** sur le
+> corpus actuel, en très grande majorité des faux positifs : une exposition longue commence
+> légitimement avant qu'on la collecte. Avec le seuil de six mois, il tombe à **5 fiches**, et ce
+> sont les bonnes : 2013 (303 jours d'écart, publiée), 578 et 6245 (brouillons), et 6171 et 6176
+> dont la date de début est celle de l'**epoch Unix**, 1970, soit un horodatage à zéro jamais
+> rattrapé. Un contrôle qui crie sur 94 fiches n'est pas un contrôle, c'est du bruit que personne
+> ne lira.
+
 Tous sont mécaniques : ils se calculent sans jugement, et chacun aurait attrapé au moins un des
 sept cas. Ils bloquent la **publication**, pas la collecte : une fiche recalée part en brouillon
 avec son motif, elle n'est pas perdue.
 
 | # | Contrôle | Attrape | Coût |
 |---|---|---|---|
-| 1 | Date de début **antérieure à la date de collecte** | 2334 | Trivial |
+| 1 | Date de début antérieure de **plus de six mois** à la date de collecte | 2334 | Trivial |
 | 2 | **L'année de l'événement figure dans le texte de la source** | 2319 | Faible |
 | 3 | **L'URL de source ne contient pas une autre année** que celle de l'événement | 864 | Trivial |
 | 4 | **L'URL de source répond 200** au moment de l'écriture, et est recontrôlée périodiquement | 909 | Faible |
