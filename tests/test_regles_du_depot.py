@@ -41,6 +41,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
 
+# LANÇABLE DES DEUX FAÇONS. Sans cette ligne, le fichier ne passe qu'en `-m
+# tests.test_regles_du_depot` : lancé par son chemin, l'import de
+# `scripts.completer_verifie` (plus bas) échoue en ModuleNotFoundError, et le test rend 1
+# alors que RIEN n'est en faute. Découvert le 2026-08-12 en passant toute la suite d'un
+# coup — le seul rouge de la soirée était le test lui-même.
+#
+# Ce n'est pas cosmétique : un contrôle qui casse selon la manière dont on l'appelle finit
+# par être rangé parmi les « celui-là échoue toujours », et c'est le jour où il a raison
+# qu'on ne le croit pas.
+sys.path.insert(0, str(ROOT))
+
 echecs = 0
 
 

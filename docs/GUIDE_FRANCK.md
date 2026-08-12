@@ -25,11 +25,23 @@ Les heures qui comptent :
 | 9h30 | rédaction + publication du lot du jour |
 | 10h45 | traductions italiennes |
 | **11h00** | **bilan du matin sur Slack** — c'est ton point de contrôle |
+| 11h30 | **le contradicteur de dates** — la source dit-elle la même date que nous ? |
+| 11h35 | **le contradicteur de lieux** — la ville qu'on affiche est-elle la bonne ? |
 | 12h00 | chien de garde : il te prévient si un cron n'a pas tourné |
-| dimanche 5h/6h | audits hebdomadaires + revue |
+| dimanche 5h/6h | audits hebdomadaires + revue, dont **le contradicteur de liens** |
 
 Si tu ne reçois rien sur Slack à 11h, quelque chose est cassé. C'est le seul signal qui
 compte vraiment.
+
+**Les trois contradicteurs se taisent quand ils n'ont rien**, et c'est voulu : un message
+quotidien qui dit « rien à signaler » n'est plus lu au bout d'une semaine, et c'est le jour
+où il dirait quelque chose qu'on le raterait. Leur silence n'est donc pas une panne — c'est
+le chien de garde de 12h qui surveille qu'ils ont bien tourné.
+
+Ils ne coûtent rien : aucun appel d'IA, ils ne font que confronter ce qu'on a écrit à ce
+qu'on tient déjà. C'est le contradicteur de dates qui a trouvé, le 11 août, vingt-deux
+fiches en ligne annonçant des événements déjà passés — dont une soirée d'avril 2022
+affichée pour avril 2027.
 
 ---
 
@@ -140,7 +152,11 @@ journée à démonter. Pour l'état du jour, une commande :
 ```bash
 .venv/bin/python -m scripts.lister_a_completer      # ce qui manque
 .venv/bin/python -m scripts.verifier_dates          # ce que la source contredit
+.venv/bin/python -m scripts.verifier_lieux          # la ville qu'on affiche
+.venv/bin/python -m scripts.verifier_liens          # les liens qui ne mènent plus nulle part
 ```
+
+Aucune des quatre n'écrit quoi que ce soit : elles lisent et elles montrent.
 
 Ce qui, en revanche, ne changera plus — les faits de la journée :
 
@@ -184,6 +200,34 @@ mécaniquement.
 le titre de la fiche Saint-Ours, qui annonce « 2026 » pour un événement de 2027 ; et six
 articles en ligne qui nomment un faux organisateur (une journaliste prise pour
 l'organisatrice).
+
+---
+
+## 6 bis. Déployer, et savoir ce qui est vraiment en ligne
+
+**Le VPS, c'est une commande.** Elle fait tout : récupérer le code, les dépendances, le
+redémarrage du service.
+
+```bash
+cd /root/evenements && bash deploy/update.sh
+```
+
+**WordPress, c'est autre chose, et on l'a appris à la dure le 12 août.** Le code qui publie
+les fiches (`cs-publish.php`) n'est PAS un fichier sur le serveur : il est collé dans
+**Code Snippets**, en base. Aucun envoi de fichier — ni FTP, ni SFTP — ne peut le mettre à
+jour. On a passé une matinée à réparer quatre transports pour livrer un fichier que
+WordPress n'exécute pas.
+
+Le canal qui marche est **Novamira**. Et pour savoir ce qui tourne réellement, sans rien
+supposer :
+
+```bash
+curl -s https://agendasabauda.eu/wp-json/cs/v1/version
+```
+
+Cette adresse répond ce que la version EN LIGNE dit d'elle-même. Tant qu'elle renvoie une
+erreur 404, le correctif n'est pas passé — quoi qu'en dise un script qui affiche
+« déployé ». Le détail est dans `docs/DEPLOIEMENT_WORDPRESS.md`.
 
 ---
 
