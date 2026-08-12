@@ -341,6 +341,21 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_temps_recit")
 
+    # 3) LES LIENS OFFICIELS MORTS. Le dernier fait qu'une fiche affirme au public :
+    # « voici la page de cet événement ». Signalé le 2026-08-12 sur la fiche 909, dont le
+    # lien vers opera-nice.org répondait 404 — un lecteur qui veut réserver tombe sur rien.
+    #
+    # ICI, ET PAS EN QUOTIDIEN : une page ne meurt pas tous les matins, et c'est le seul
+    # de nos contrôles qui sorte sur le réseau une fois par adresse. Lecture seule, aucun
+    # LLM. Il ne compte comme tâche QUE les 404/410 : un 403 est notre serveur qu'on
+    # écarte, pas une page disparue, et en faire une file enverrait réparer des liens qui
+    # marchent — agendaculturel.fr refuse ce serveur et porte 338 fiches.
+    from scripts.verifier_liens import main as liens_main
+    rc, out = _run_captured(liens_main, [], "verifier_liens")
+    sections.append(f"• Liens officiels morts (404/410 seulement) : {_tail(out, 2)}")
+    if rc:
+        echecs.append("verifier_liens")
+
     # Fiches liées à un post NON PUBLIC — état des lieux hebdomadaire, LECTURE SEULE.
     # L'outil sait aussi réparer (--apply + options par famille), mais l'ambiguïté de la
     # corbeille est un arbitrage : ici on ne fait que COMPTER et NOMMER, pour que le
