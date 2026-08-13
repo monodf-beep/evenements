@@ -96,6 +96,12 @@ def main(argv=None) -> int:
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 "
         "AND duplicate_of IS NULL").fetchall()]
+    # Les ORIGINAUX des traductions, publiés ou non : sans eux on ne peut pas dire à
+    # l'opérateur quel geste faire (voir `_gestes_traductions` plus bas). La requête
+    # ci-dessus ne rend que les fiches PUBLIÉES — un original en attente n'y serait pas,
+    # et on conclurait « il n'a pas d'article » alors qu'on ne l'a simplement pas lu.
+    _originaux = {r["id"]: dict(r) for r in conn.execute(
+        "SELECT id, title, enrich_data FROM events_raw").fetchall()}
     conn.close()
 
     # RÈGLE 5, AJOUTÉE LE 2026-08-11 — ce script annonçait « 108 fiches sous le plancher »
@@ -216,15 +222,55 @@ def main(argv=None) -> int:
               sans_article_seules)
 
     def _traductions_ecartees(trads: list[tuple[dict, int]]) -> None:
+        """Deux gestes DIFFÉRENTS, et se tromper coûte un article écrit pour rien.
+
+        Une traduction sans article a deux causes possibles, et l'audit peut les
+        séparer puisqu'il a l'original sous la main :
+
+        · l'original N'A PAS d'article non plus → il faut l'écrire (`enrich`), PUIS
+          re-traduire ;
+        · l'original EN A UN, et la traduction ne l'a pas reçu → `translate_article` a
+          échoué ou a été tronqué. Rien à réécrire : `translate_events --retranslate`
+          régénère le jumeau en place, garde son id et son post WP.
+
+        Le second cas était masqué : j'écrivais « réécrire l'original » pour les quatre,
+        alors que 3026 (Chagall FR, 223 mots) a bien son article — le réenrichir aurait
+        coûté 0,33 $ et n'aurait RIEN réparé du côté italien. Constaté le 2026-08-13 en
+        relisant la sortie que Franck venait de coller.
+        """
         if not trads:
             return
         tete = ("1 traduction mise de côté" if len(trads) == 1
                 else f"{len(trads)} traductions mises de côté")
         print(f"    ({tete} — enrich les REFUSE : il écrit en français et")
-        print(f"     écraserait la version italienne. C'est l'ORIGINAL qui se réécrit,")
-        print(f"     puis translate_events repasse.)")
-        for ev, _ in trads[:6]:
-            print(f"       id {ev['id']} → réécrire l'original {_traduction(ev)}")
+        print(f"     écraserait la version italienne.)")
+        a_traduire, a_ecrire = [], []
+        for ev, _ in trads:
+            oid = _traduction(ev)
+            orig = _originaux.get(oid)
+            if orig is None:
+                print(f"       id {ev['id']} → original {oid} INTROUVABLE en base "
+                      f"(liaison cassée, ne pas deviner)")
+            elif ((_article_de(orig) or {}).get("corps") or "").strip():
+                a_traduire.append((ev["id"], oid))
+            else:
+                a_ecrire.append((ev["id"], oid))
+        if a_traduire:
+            ids = " ".join(str(o) for _t, o in a_traduire)
+            print(f"     · {len(a_traduire)} dont l'original A DÉJÀ son article : rien à "
+                  f"réécrire, la traduction")
+            print(f"       ne l'a simplement jamais reçu "
+                  f"({', '.join(f'{t}←{o}' for t, o in a_traduire)}) —")
+            print(f"       .venv/bin/python -m scripts.translate_events --retranslate "
+                  f"{ids} --apply")
+        if a_ecrire:
+            ids = " ".join(str(o) for _t, o in a_ecrire)
+            print(f"     · {len(a_ecrire)} dont l'original n'a PAS d'article non plus : "
+                  f"l'écrire d'abord")
+            print(f"       ({', '.join(f'{t}←{o}' for t, o in a_ecrire)}) —")
+            print(f"       .venv/bin/python -m scripts.enrich {ids}")
+            print(f"       puis : .venv/bin/python -m scripts.translate_events "
+                  f"--retranslate {ids} --apply")
 
     seules_ok, seules_trad = _actionnables(sans_article_seules)
     if seules_ok:

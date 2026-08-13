@@ -204,9 +204,37 @@ _check("la traduction (id 7) ne figure dans AUCUNE commande enrich",
 _check("   mais l'original de même longueur (id 8) y est bien — sinon on aurait "
        "seulement appris à refuser",
        any(" 8" in l for l in _cmd), "\n".join(_cmd))
-_check("   et l'écart est DIT, avec l'id de l'original à réécrire",
-       "traduction mise de côté" in _t and "réécrire l'original 6" in _t,
-       _t[-900:])
+_check("   et l'écart est DIT", "traduction mise de côté" in _t, _t[-900:])
+
+# ── LE GESTE N'EST PAS LE MÊME SELON L'ORIGINAL ──────────────────────────────────────
+# Une traduction sans article a deux causes, et l'audit les confondait : il disait
+# « réécrire l'original » dans les deux. Or si l'original A DÉJÀ son article, le
+# réenrichir coûte 0,33 $ et ne répare rien côté italien — c'est `translate_article` qui
+# a échoué, et `--retranslate` régénère le jumeau en place. Vu le 2026-08-13 sur 4195,
+# dont l'original 3026 (Chagall FR) porte bien ses 223 mots.
+#
+# id 7 (déjà posé) traduit id 6, qui n'a PAS d'article  → enrich puis retranslate.
+# id 9 traduit id 4, qui EN A un (posé plus haut)       → retranslate SEUL.
+# id 10 traduit un id qui n'existe pas                  → on le dit, on ne devine pas.
+_c = _sq.connect(tmp)
+for eid, orig in ((9, 4), (10, 12345)):
+    _c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, enrich_data, "
+               "translation_of, translated_lang) VALUES (?,?,?,?,?,?,?)",
+               (eid, f"Jumelle {eid}", f"https://a.fr/{eid}", 990 - eid, "", orig, "it"))
+_c.commit(); _c.close()
+
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    audit.main([])
+_g = _buf.getvalue()
+_check("l'original QUI A DÉJÀ son article n'est pas renvoyé à enrich",
+       "--retranslate" in _g and "9←4" in _g, _g[-1200:])
+_check("   et la commande proposée pour lui est bien --retranslate, pas enrich",
+       "scripts.translate_events --retranslate 4 --apply" in _g, _g[-1200:])
+_check("l'original SANS article, lui, passe par enrich AVANT la re-traduction",
+       "7←6" in _g and "n'a PAS d'article non plus" in _g, _g[-1200:])
+_check("une liaison cassée est DITE, pas devinée",
+       "original 12345 INTROUVABLE" in _g, _g[-1200:])
 # La corbeille, elle, doit garder la traduction : dépublier l'original en laissant sa
 # version italienne en ligne laisserait justement ce qu'on retire.
 _trash = [l for l in _t.splitlines() if "trash_by_ids" in l]
