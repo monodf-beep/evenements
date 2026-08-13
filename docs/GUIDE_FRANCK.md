@@ -120,6 +120,32 @@ elle-même s'était trompée**.
 Corollaire : **lis la phrase avant d'appliquer.** Les scripts proposent, ils ne décident
 pas.
 
+### Combien de messages Slack, et quand
+
+**Deux par jour, et c'est tout** — depuis le 13 août 2026, où sept sont tombés en deux
+heures et où le seul qui demandait une décision est arrivé en cinquième position.
+
+| | |
+|---|---|
+| **11 h 45** | tout ce que la chaîne a produit depuis 8 h, en un bloc |
+| **20 h 00** | ce qui est tombé l'après-midi (santé de la home, relecture du site) |
+
+Les 🔴 **remontent en tête** du message, et l'en-tête dit combien il y en a. Le reste
+suit dans l'ordre où c'est arrivé, chaque rapport précédé de son heure et du script qui
+parle.
+
+**Une seule chose passe encore en direct : le chien de garde**, qui dit que la chaîne
+s'est arrêtée. C'est voulu — le regroupement est lui-même une tâche planifiée, donc si
+tout est mort, le récapitulatif ne part pas non plus. Lui doit pouvoir aboyer quand tout
+le reste s'est tu.
+
+Rien n'est perdu en route : si l'envoi échoue, le contenu reste en attente et repart au
+regroupement suivant. Pour voir ce qui attend sans rien envoyer :
+
+```bash
+.venv/bin/python -m scripts.slack_digest --voir
+```
+
 ---
 
 ## 4. Les quatre files du back-office, et ce qu'elles ne sont pas

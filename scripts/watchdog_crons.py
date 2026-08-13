@@ -320,7 +320,11 @@ def main(argv=None) -> int:
     msg.append("\n_Rien n'a été relancé : ce contrôle ne répare pas, il prévient. "
                "Colle ce message et le résultat des commandes ci-dessus à Claude si tu "
                "veux de l'aide pour la suite._")
-    slack.notify("\n".join(msg))
+    # urgent=True : ce message NE VA PAS dans la boîte du jour (utils/slack.py). Il dit
+    # que la chaîne est cassée — le différer de quelques heures le viderait de son sens,
+    # et un vidage est lui-même un cron : si le cron est mort, le digest ne part pas non
+    # plus. Le chien de garde doit pouvoir aboyer même quand le reste s'est tu.
+    slack.notify("\n".join(msg), urgent=True)
     log.warning("Alerte envoyée : %d en retard, %d en erreur.", len(retards), len(en_erreur))
     return 1
 

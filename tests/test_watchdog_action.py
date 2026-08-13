@@ -64,7 +64,15 @@ _check("chaque ligne porte une clé 'fichier'", all("fichier" in l for l in lign
 # ── 3. main(['--slack']) : le message envoyé contient une action concrète ───────
 print("\n──── main(['--slack']) : message Slack actionnable ────")
 messages = []
-slack.notify = lambda texte, blocks=None: messages.append(texte) or True
+urgences = []
+# Le stub accepte `urgent` ET l'enregistre : ce n'est pas de la complaisance envers la
+# signature, c'est le point qui compte depuis le 2026-08-13. La boîte du jour
+# (utils/slack.py) regroupe tous les rapports en un message pour tenir la demande de
+# Franck — « un ou deux par jour, pas sept ». Le chien de garde, lui, doit rester HORS
+# de la boîte : le vidage est un cron, donc si la chaîne est morte le digest ne part
+# pas. Différer l'alerte reviendrait à se taire précisément le jour où il faut parler.
+slack.notify = (lambda texte, blocks=None, urgent=False:
+                (messages.append(texte), urgences.append(urgent))[0] or True)
 
 wd.etat = lambda maintenant=None: [
     {"libelle": "Calibrage de l'évaluateur", "script": "audit_calibrage",
@@ -81,6 +89,9 @@ if messages:
           "crontab -l" in messages[0], messages[0])
     _check("le message invite à coller le résultat à Claude",
           "Claude" in messages[0], messages[0])
+    _check("il part en URGENT — hors de la boîte du jour, sinon il attendrait un "
+          "vidage qui ne viendra pas si la chaîne est morte",
+          urgences == [True], str(urgences))
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

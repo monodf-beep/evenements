@@ -75,9 +75,156 @@ def _archive(text: str, envoye: bool) -> None:
         log.warning("Archive Slack non écrite (%s) — le message est parti quand même", exc)
 
 
-def notify(text: str, blocks: list | None = None) -> bool:
-    """Poste un message sur Slack ET l'archive localement. Renvoie True si envoyé.
-    Jamais d'exception levée."""
+# ══ LA BOÎTE DU JOUR ═══════════════════════════════════════════════════════════════
+#
+# « J'ai trop de messages par jour. Il m'en faut un ou deux, mais c'est tout. »
+# — Franck, 2026-08-13, après une matinée à sept messages : agent quotidien (9h20), lot
+# de publication (9h50), SEO (10h30), traduction (10h48), bilan du matin (11h12),
+# contradicteur de dates (11h30), contradicteur de lieux (11h35).
+#
+# Aucun de ces messages n'était de trop PRIS SÉPARÉMENT : chacun disait quelque chose de
+# vrai et d'utile. C'est leur NOMBRE qui les rend illisibles — et un canal illisible ne
+# protège plus rien. Le 🔴 « 48 fiches que la base croit en ligne ne sont pas publiques »
+# est arrivé en cinquième position ce matin-là, entre un rapport SEO et deux
+# contradicteurs à zéro.
+#
+# POURQUOI ICI ET PAS DANS LES 22 SCRIPTS. `notify` est le seul passage obligé. Un
+# réglage posé là vaut pour tout ce qui existe ET pour ce qu'on écrira demain — alors
+# qu'un `--slack` retiré d'une ligne de crontab se réajoute sans qu'on s'en aperçoive,
+# et qu'un script neuf naîtrait bavard.
+#
+# CE QUI NE DOIT PAS ATTENDRE PASSE QUAND MÊME : `notify(..., urgent=True)`. Le chien de
+# garde dit que la machine est cassée ; le différer d'un demi-tour d'horloge le viderait
+# de son sens. C'est la SEULE exception, et elle se demande explicitement.
+#
+# LA BOÎTE N'EST PAS UNE POUBELLE. Ce qu'on y range part forcément — deux vidages par
+# jour, et le fichier reste sur disque si l'envoi échoue. Un différé silencieusement
+# perdu serait bien pire que sept messages : on croirait le canal sain.
+_DIFFERES = _ARCHIVE / "differes"
+
+
+def _digest_actif() -> bool:
+    return (os.getenv("SLACK_DIGEST") or "").strip().lower() in ("1", "true", "oui", "yes")
+
+
+def _fichier_du_jour() -> Path:
+    from datetime import datetime
+    return _DIFFERES / f"{datetime.now():%Y-%m-%d}.jsonl"
+
+
+def _differer(text: str, source: str) -> bool:
+    """Range un message dans la boîte du jour. Renvoie True — le message est PRIS EN
+    CHARGE, pas envoyé ; c'est le vidage qui l'enverra. Si l'écriture échoue, on poste
+    tout de suite plutôt que de perdre le message : la boîte ne doit jamais avaler."""
+    import json
+    from datetime import datetime
+    try:
+        _DIFFERES.mkdir(parents=True, exist_ok=True)
+        ligne = json.dumps({"at": datetime.now().isoformat(timespec="seconds"),
+                            "source": source, "texte": text}, ensure_ascii=False)
+        with _fichier_du_jour().open("a", encoding="utf-8") as f:
+            f.write(ligne + "\n")
+        _archive(text, envoye=False)
+        return True
+    except (OSError, ValueError) as exc:
+        log.warning("Boîte du jour inaccessible (%s) — le message part immédiatement", exc)
+        return False
+
+
+def _source_appelante() -> str:
+    """Le module qui appelle, pour titrer sa part du digest. Best-effort : si
+    l'introspection échoue, on rend '' plutôt que de faire tomber une notification."""
+    import inspect
+    try:
+        for frame in inspect.stack()[1:8]:
+            mod = (frame.frame.f_globals.get("__name__") or "")
+            if mod and not mod.startswith("utils.slack"):
+                return mod.rsplit(".", 1)[-1]
+    except Exception:  # noqa: BLE001 — jamais bloquant, c'est du confort de lecture
+        pass
+    return ""
+
+
+def vider_boite(entete: str = "") -> tuple[int, bool]:
+    """Poste EN UN SEUL MESSAGE tout ce que la boîte du jour contient, et la vide.
+
+    Renvoie (nombre de messages regroupés, envoyé ou non).
+
+    Le fichier est renommé AVANT l'envoi : un script qui écrirait pendant le vidage
+    alimente une boîte neuve au lieu de voir sa ligne disparaître. Si l'envoi échoue, on
+    remet le fichier en place — le prochain vidage réessaiera, et rien n'est perdu.
+
+    Ce qui porte un 🔴 remonte en tête. Un digest qui garde l'ordre chronologique
+    reproduirait le défaut qu'il corrige : ce matin-là, la seule décision à prendre était
+    en cinquième position.
+    """
+    import json
+    from datetime import datetime
+    src = _fichier_du_jour()
+    if not src.exists():
+        return 0, False
+    tampon = src.with_suffix(f".{datetime.now():%H%M%S}.envoi")
+    try:
+        src.rename(tampon)
+    except OSError as exc:
+        log.warning("Boîte du jour non verrouillée (%s) — vidage abandonné", exc)
+        return 0, False
+
+    lignes = []
+    for brut in tampon.read_text(encoding="utf-8").splitlines():
+        try:
+            lignes.append(json.loads(brut))
+        except ValueError:
+            continue
+    if not lignes:
+        tampon.unlink(missing_ok=True)
+        return 0, False
+
+    decisions = [l for l in lignes if "🔴" in (l.get("texte") or "")]
+    autres = [l for l in lignes if l not in decisions]
+    morceaux = []
+    for l in decisions + autres:
+        heure = (l.get("at") or "")[11:16]
+        src_nom = l.get("source") or "?"
+        morceaux.append(f"───── {heure} · {src_nom}\n{l.get('texte') or ''}")
+    corps = "\n\n".join(morceaux)
+    # Slack coupe au-delà de 40 000 caractères ; on tronque NOUS-MÊMES et on le dit,
+    # plutôt que de laisser la fin disparaître sans trace.
+    if len(corps) > 38000:
+        corps = corps[:38000] + "\n\n… (digest tronqué — tout est dans logs/slack/)"
+    # Le nombre est TOUJOURS là, même quand l'appelant fournit son propre titre : sans
+    # lui, un digest de dix rapports et un digest d'un seul ont exactement la même tête,
+    # et on ne saurait pas si la matinée a été calme ou si la chaîne s'est arrêtée.
+    tete = f"{entete or '🗂️ *Récapitulatif*'} — {len(lignes)} rapport(s)"
+    if decisions:
+        tete += f" · 🔴 {len(decisions)} demande(nt) une décision"
+    ok = notify(f"{tete}\n\n{corps}", urgent=True)
+    if ok:
+        tampon.unlink(missing_ok=True)
+    else:
+        # L'envoi a échoué : on rend son contenu à la boîte pour le prochain vidage.
+        try:
+            with _fichier_du_jour().open("a", encoding="utf-8") as f:
+                f.write(tampon.read_text(encoding="utf-8"))
+            tampon.unlink(missing_ok=True)
+        except OSError as exc:
+            log.error("Digest non envoyé ET non remis en boîte — contenu dans %s (%s)",
+                      tampon, exc)
+    return len(lignes), ok
+
+
+def notify(text: str, blocks: list | None = None, urgent: bool = False) -> bool:
+    """Poste un message sur Slack ET l'archive localement. Jamais d'exception levée.
+
+    Renvoie True si le message est PARTI — ou, quand la boîte du jour est active, s'il y
+    a été rangé pour le prochain vidage. Un appelant qui teste ce booléen demande « mon
+    message est-il pris en charge ? », jamais « est-il déjà à l'écran ? ».
+
+    `urgent=True` court-circuite la boîte : réservé à ce qui perdrait son sens différé
+    d'un demi-tour d'horloge (chien de garde, plafond API atteint).
+    """
+    if _digest_actif() and not urgent and _differer(text, _source_appelante()):
+        return True
     url = _webhook()
     if not url:
         log.info("SLACK_WEBHOOK_URL absente — notification ignorée : %s", text[:80])
