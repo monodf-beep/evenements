@@ -510,8 +510,16 @@ def main(argv=None) -> int:
     if echecs:
         print(f"\n--- {len(echecs)} ÉCHEC(S) — description toujours cassée, à reprendre "
               f"à la main ---")
+        # ON MONTRE CE QUE LE PORTILLON REPROCHE, PAS SEULEMENT L'ÉCHEC DE LA RÉPARATION.
+        # Sans cette ligne, une fiche bloquée à tort ressemble exactement à une fiche
+        # bloquée à raison dont la page est muette — et c'est comme ça que [3739] et
+        # [4420] sont restées neuf jours en file : le journal disait « écartée », jamais
+        # POURQUOI, donc personne ne pouvait voir que le motif était faux. Ajouté le
+        # 2026-08-13, une heure après avoir constaté ce défaut sur mes propres yeux.
         for r, motif in echecs:
             print(f"  [{r['id']}] WP#{r['wp_post_id_as']} {(r['title'] or '')[:46]} : {motif}")
+            print(f"        reproche : {r.get('_motif') or '—'}")
+            print(f"        en base  : {_apercu(r['description'], 90)}")
             print(f"        {r['_url'][:88]}")
 
     if not args.apply:

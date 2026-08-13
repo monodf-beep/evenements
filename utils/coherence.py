@@ -112,6 +112,81 @@ def _forme_commune(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _forme_casse(s: str) -> str:
+    """Comme `_forme_commune`, mais SANS passer en minuscules.
+
+    Sert à vérifier qu'un nom de commune trouvé dans un texte y figure bien avec une
+    MAJUSCULE — voir `_communes_nommees`. Les deux fonctions doivent appliquer les mêmes
+    transformations à part la casse : si elles divergent, la position d'un mot dans l'une
+    ne correspond plus à celle dans l'autre, et on retombe sur le défaut du 2026-08-04
+    (deux mesures différentes des deux côtés d'une comparaison)."""
+    s = unicodedata.normalize("NFD", s or "")
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    s = s.replace("’", "'").replace("‘", "'")
+    s = re.sub(r"[-_/‐-―]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+# NOMS DE COMMUNES QUI SONT AUSSI DES MOTS ORDINAIRES — français ou italien.
+#
+# TROUVÉ LE 2026-08-13, une heure après avoir fait du signal ② le SEUL juge habilité à
+# refuser une traduction. En listant l'index pour comprendre pourquoi [4576] restait
+# bloquée, 711 communes défilent — et parmi elles : « vers », « bonne », « école »,
+# « contes », « cordon », « menton », « grasse », « caille », « sales », « marin »,
+# « publier », et « isola » / « tende », qui sont des mots italiens courants.
+#
+# Une description d'agenda culturel qui écrit « vers 21h », « une bonne soirée »,
+# « contes et légendes », « l'école de musique » ou « l'isola » se faisait donc accuser
+# de nommer une autre commune. Sur un site bilingue FR/IT, « isola » et « tende » sont
+# quasi garantis d'apparaître.
+#
+# Deux gardes, pas une (cf. `_communes_nommees`) : la MAJUSCULE écarte l'immense majorité
+# des cas — un lieu est un nom propre —, et cette liste couvre ce que la majuscule laisse
+# passer, c'est-à-dire le début de phrase et les titres (« Contes et légendes », « École
+# buissonnière »). Aucune des deux ne suffit seule.
+#
+# Ce qu'on perd, et c'est assumé : une vraie fiche d'Ugine dont la description nommerait
+# « Grasse » ne sera plus signalée. Le coût d'un faux refus est une fiche jamais traduite
+# (neuf jours mesurés, et personne ne l'a vu) ; celui d'un faux passage est une alerte de
+# moins dans un rapport que Franck relit. L'asymétrie penche du même côté qu'ailleurs
+# dans ce fichier.
+_MOTS_COURANTS = {
+    "vers", "bonne", "ecole", "contes", "cordon", "menton", "grasse", "caille",
+    "sales", "sale", "marin", "marie", "mures", "clans", "drap", "gars", "novel",
+    "publier", "presle", "isola", "tende", "nice", "cannes", "chatel", "corbel",
+    "le mas", "la tour", "villard", "mercury", "orelle", "landry",
+}
+
+
+def _communes_nommees(texte: str, sauf: str = "") -> set[str]:
+    """Communes NOMMÉES dans un texte — au sens d'un nom propre, pas d'un mot ordinaire.
+
+    Trois conditions cumulatives, chacune née d'un faux positif réel :
+
+      1. le nom apparaît comme un MOT ENTIER (« Nice » ne se déclenche pas sur
+         « Nicermes », ni « Bex » sur « annexe ») ;
+      2. il porte une MAJUSCULE dans le texte d'origine — un lieu est un nom propre, et
+         « vers 21h » n'en est pas un ;
+      3. il n'est pas dans `_MOTS_COURANTS`, qui couvre ce que la majuscule laisse passer
+         en début de phrase ou dans un titre.
+
+    `sauf` : la commune de la fiche, sous forme normalisée. Les communes EMBOÎTÉES sont
+    écartées avec elle — une fiche d'Annecy-le-Vieux dont la description dit « Annecy »
+    parle bien de chez elle.
+    """
+    texte_n, texte_c = _forme_commune(texte), _forme_casse(texte)
+    trouvees = set()
+    for c in _communes():
+        if c == sauf or c in _MOTS_COURANTS or c not in texte_n:
+            continue
+        if sauf and (c in sauf or sauf in c):
+            continue
+        m = re.search(rf"\b{re.escape(c)}\b", texte_c, re.I)
+        if m and m.group(0)[:1].isupper():
+            trouvees.add(c)
+    return trouvees
+
+
 def _mots(s: str, mini: int = 4) -> set[str]:
     """Mots significatifs. Seuil à 4 lettres et non 3 : « lac », « art », « ville »
     reviennent partout et créeraient de faux recoupements rassurants."""
@@ -198,15 +273,12 @@ def incoherence_description(event: dict, bloquant: bool = False) -> str | None:
     # bains » rangé dans l'index, et le signal se trompait sur 45 % des communes.
     texte_n = _forme_commune(texte)
     mienne = _forme_commune(ville)
-    autres = {c for c in _communes() if c in texte_n and c != mienne}
-    # Une commune n'est nommée que si elle apparaît comme un MOT entier : « Nice » ne doit
-    # pas se déclencher sur « Nicermes », ni « Bex » sur « annexe ».
-    autres = {c for c in autres if re.search(rf"\b{re.escape(c)}\b", texte_n)}
-    # COMMUNES EMBOÎTÉES : une fiche d'Annecy-le-Vieux dont la description dit « Annecy »
-    # parle bien de chez elle. Nommer la commune voisine dont son nom dérive n'est pas
-    # « nommer une AUTRE ville » — et le contraire fabriquerait un faux positif sur toute
-    # la famille des « -le-Vieux », « -les-Bains », « -sur-Isère ».
-    autres = {c for c in autres if c not in mienne and mienne not in c} if mienne else set()
+    # `_communes_nommees` porte les trois gardes — mot entier, MAJUSCULE, et hors des
+    # noms qui sont aussi des mots courants. Les deux dernières ont été ajoutées le
+    # 2026-08-13 : voir `_MOTS_COURANTS`. Sans elles, « vers 21h », « une bonne soirée »,
+    # « contes et légendes » ou « l'isola » suffisaient à faire refuser une fiche, et ce
+    # signal venait précisément d'être promu SEUL juge habilité à bloquer.
+    autres = _communes_nommees(texte, sauf=mienne) if mienne else set()
     # Sa propre ville est-elle nommée ? En mot entier et sur le texte normalisé, exactement
     # comme les autres : deux mesures différentes sur les deux côtés d'une comparaison,
     # c'est précisément ce qui produisait le faux positif.

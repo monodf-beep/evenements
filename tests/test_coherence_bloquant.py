@@ -111,6 +111,47 @@ _check("une description qui nomme une AUTRE commune et jamais la sienne reste bl
 _check("   et le motif cite la commune fautive, pour qu'on puisse en juger",
        "annecy" in (motif or "").lower(), str(motif))
 
+# ── LES MOTS ORDINAIRES QUI SONT AUSSI DES COMMUNES ──────────────────────────────────
+# Trouvés une heure après avoir fait du signal ② le seul juge habilité à refuser : en
+# listant l'index pour comprendre pourquoi [4576] restait bloquée, 711 communes défilent,
+# et parmi elles « vers », « bonne », « école », « contes », « cordon », « menton »,
+# « grasse », « publier », plus « isola » et « tende » qui sont des mots ITALIENS
+# courants. Sur un agenda culturel bilingue, tous ces mots sont quasi garantis
+# d'apparaître : le signal aurait refusé des dizaines de fiches saines, et il venait
+# d'hériter du pouvoir de bloquer seul.
+print("\n──── les mots ordinaires ne sont pas des communes ────")
+
+
+def _torino(desc):
+    return {"id": 0, "title": "Rassegna", "lieu": "Cinema Massimo", "ville": "Torino",
+            "description": desc}
+
+
+ORDINAIRES = [
+    ("« vers 21h »", "La proiezione comincia vers 21h nella sala grande del cinema."),
+    ("« une bonne soirée »", "Une bonne soirée de projections vous attend au cinéma."),
+    ("« l'école »", "Les élèves de l'école de cinéma présentent leurs courts métrages."),
+    ("« contes »", "Une soirée de contes et de légendes projetés sur grand écran."),
+    ("« l'isola » (italien)", "Un documentario girato su l'isola di Lampedusa nel 1960."),
+    ("« le tende » (italien)", "Le tende del vecchio cinema sono state restaurate."),
+    ("« publier »", "L'organisateur vient de publier le programme complet de la saison."),
+    ("« menton » / « grasse »", "Un gros plan sur le menton de l'acteur, image grasse "
+                               "et contrastée, tournée en studio."),
+]
+for etiquette, desc in ORDINAIRES:
+    _check(f"{etiquette} ne fait plus refuser une fiche de Torino",
+           incoherence_description(_torino(desc), bloquant=True) is None,
+           str(incoherence_description(_torino(desc), bloquant=True)))
+
+_check("… mais une VRAIE commune, écrite en nom propre, déclenche toujours",
+       incoherence_description(_torino(
+           "La rassegna si sposta poi a Chambéry, poi a Annecy, per due serate."),
+           bloquant=True) is not None)
+_check("   et le nom en MINUSCULE ne suffit pas — un lieu est un nom propre",
+       incoherence_description(_torino(
+           "Le film parle de la vie à annecy dans les annees 1960 et rien d'autre."),
+           bloquant=True) is None)
+
 print("\n──── le signal ① n'est pas supprimé, il est DÉCLASSÉ ────")
 _check("hors mode bloquant, il parle encore (pour les rapports que Franck lit)",
        incoherence_description(EVO) is not None)

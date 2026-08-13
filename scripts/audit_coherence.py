@@ -52,6 +52,16 @@ def _vivant(ev: dict, auj: date) -> bool:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Fiches dont la description ne parle pas d'elles.")
     p.add_argument("--exemples", type=int, default=10, help="Exemples à afficher (défaut 10).")
+    # LE GESTE QUE J'AVAIS SAUTÉ (2026-08-13). CLAUDE.md dit : « avant de livrer un
+    # portillon, le passer sur des données réelles et LIRE ce qu'il refuse ». Le signal ①
+    # a bloqué la traduction neuf jours sur deux faux positifs faute de l'avoir fait, et
+    # le signal ② — devenu ce jour-là le seul juge habilité à bloquer — s'est révélé
+    # capable de prendre « vers 21h » ou « l'isola » pour des noms de communes.
+    # `--bloquant` montre EXACTEMENT ce qui serait refusé, et rien d'autre. Une option de
+    # lecture, donc, mais c'est celle qui permet de tenir la règle.
+    p.add_argument("--bloquant", action="store_true",
+                   help="N'afficher que ce qui REFUSE réellement (signal ② seul), "
+                        "c'est-à-dire ce que translate_events écarte.")
     args = p.parse_args(argv)
 
     conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
@@ -63,7 +73,8 @@ def main(argv=None) -> int:
     auj = date.today()
     vivants = [r for r in rows if _vivant(r, auj)]
     en_ligne = [r for r in vivants if (r.get("wp_post_id_as") or 0) > 0]
-    trouves = [(r, m) for r in vivants if (m := incoherence_description(r))]
+    trouves = [(r, m) for r in vivants
+               if (m := incoherence_description(r, bloquant=args.bloquant))]
     publies = [(r, m) for r, m in trouves if (r.get("wp_post_id_as") or 0) > 0]
 
     # « liées à un post » : ce script lit la base, où un `wp_post_id_as` renseigné survit à
@@ -71,7 +82,13 @@ def main(argv=None) -> int:
     # les plus susceptibles d'être lues —, mais l'affirmation « en ligne » demanderait
     # d'interroger WordPress numéro par numéro, ce qu'un audit hors-ligne ne fait pas.
     print(f"\n{len(rows)} fiche(s) actives, dont {len(vivants)} encore devant nous "
-          f"(règle 5) et {len(en_ligne)} liées à un post WordPress.\n")
+          f"(règle 5) et {len(en_ligne)} liées à un post WordPress.")
+    # RÈGLE 6 : le périmètre à côté du nombre. Les deux modes ne comptent pas la même
+    # chose, et sans cette ligne deux exécutions du même script se contrediraient.
+    print("Mode : " + ("BLOQUANT — uniquement ce qui fait REFUSER une traduction "
+                       "(signal ② seul)" if args.bloquant else
+                       "rapport — les deux signaux, dont un qui ne bloque plus rien "
+                       "(--bloquant pour ne voir que les refus)") + "\n")
     pct = 100 * len(trouves) / max(len(vivants), 1)
     print(f"⚠️  {len(trouves)} fiche(s) signalée(s) ({pct:.1f} %), dont "
           f"**{len(publies)} LIÉES À UN POST**.\n")
