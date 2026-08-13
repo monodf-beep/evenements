@@ -479,6 +479,36 @@ def main(argv=None) -> int:
                          f"EN LIGNE")
             elif "repart" in f:
                 suite = f" · {f['pourquoi']}" if not f["repart"] else " · repart au lot"
+            # ── CE QUI DÉCIDE VRAIMENT POUR UN « SUBI » (ajouté le 2026-08-13) ────────
+            # `--subis` republie. Reste à savoir CE QU'ON REPUBLIE, et la réponse tient à
+            # une relation que la base connaît déjà : la fiche est-elle la TRADUCTION
+            # d'un original encore public ?
+            #
+            #   · oui → la republier rend au site sa page dans l'autre langue, qui manque
+            #     aujourd'hui. C'est une réparation, pas un pari ;
+            #   · non → on remet en ligne une page que quelqu'un a peut-être retirée
+            #     exprès, sans que rien ne l'ait consigné.
+            #
+            # Sans cette ligne, les vingt-six « subis » se ressemblaient tous, et j'ai
+            # moi-même averti Franck que republier 3533 et 4195 « recréerait des
+            # doublons » — c'était faux : ce sont les versions italiennes manquantes de
+            # deux fiches françaises en ligne. Je raisonnais sur une liste qui n'affichait
+            # pas ce qui distinguait ses lignes.
+            trad_de = int(ev.get("translation_of") or 0)
+            if cle == "subi" and trad_de:
+                orig = next((o for o in autres if o["id"] == trad_de), None)
+                if orig and int(orig.get("wp_post_id_as") or 0):
+                    e_orig = cache.get(int(orig["wp_post_id_as"]))
+                    if e_orig == "public":
+                        suite += (f" · TRADUCTION de [{trad_de}], dont la page est EN "
+                                  f"LIGNE — la republier rend la langue manquante")
+                    elif e_orig:
+                        suite += (f" · traduction de [{trad_de}], retirée elle aussi — "
+                                  f"les deux langues sont hors ligne")
+                    else:
+                        suite += f" · traduction de [{trad_de}] (page non sondée)"
+                else:
+                    suite += f" · traduction de [{trad_de}], original sans page"
             print(f"  [{ev['id']:>5}] WP#{ev['wp_post_id_as']:<6} "
                   f"{(ev.get('title') or '')[:44]:46} statut={ev.get('statut')}"
                   f" · {(ev.get('date_event_start') or '—')[:10]}{suite}")
