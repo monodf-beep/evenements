@@ -131,18 +131,73 @@ print("\n──── 3. la frontière passé / à-venir (règle 5) ────
 _check("la paire d'un événement TERMINÉ n'est pas une tâche", (30, 31) not in ids, str(ids))
 
 print("\n──── 4. le geste au bout de la ligne ────")
-_check("la sortie dit quoi faire, et que c'est un arbitrage éditorial",
-       "arbitrage ÉDITORIAL" in sortie and "trash_by_ids" in sortie, sortie[-700:])
+_check("la sortie dit quoi faire, et que le choix reste éditorial",
+       "reste ÉDITORIAL" in sortie and "trash_by_ids" in sortie, sortie[-700:])
 _check("   et elle prévoit le cas « deux éditions », pour ne pas fabriquer une fusion",
        "DEUX ÉDITIONS" in sortie, sortie[-700:])
 _check("le permalien inconnu est DIT, jamais remplacé par /?p=<id> qui répond 404",
        "permalien inconnu" in sortie and "?p=" not in sortie, sortie[-900:])
 
-print("\n──── 5. le zéro qui se lit ────")
+# ── 5. LE CAS CHAGALL : DEUX PAIRES BILINGUES POUR UNE SEULE EXPOSITION ──────────────
+# Relevé en production le 2026-08-13. Quatre pages en ligne : 3021 (it) ↔ 4194 (fr) d'un
+# côté, 3026 (fr) ↔ 4195 (it) de l'autre. Chaque paire est correcte ; c'est l'exposition
+# entière qui est en double. Retirer « la fiche 4194 » aurait laissé 3021 seule en
+# italien, liée par Polylang à un post corbeillé — un site à moitié réparé, plus dur à
+# diagnostiquer qu'avant. On raisonne par FAMILLE.
+print("\n──── 5. deux paires bilingues pour un seul événement (cas Chagall) ────")
+import json as _json  # noqa: E402
+
+c = sqlite3.connect(tmp)
+CHAGALL = [
+    # id, titre, wp, translation_of, corps d'article, permalien
+    (3021, "Marc Chagall. Tra poesia e spiritualità", 2017, None, "", ""),
+    (4194, "Marc Chagall. Entre poésie et spiritualité", 3977, 3021, "", ""),
+    (3026, "Marc Chagall. Entre poésie et spiritualité", 2020, None,
+     "Le musée de Verceil réunit une centaine d'œuvres. " * 4,
+     "https://agendasabauda.eu/evenement/marc-chagall-entre-poesie-et-spiritualite/"),
+    (4195, "Marc Chagall. Tra poesia e spiritualità", 3981, 3026, "", ""),
+]
+for eid, titre, wp, trad, corps, perma in CHAGALL:
+    ed = _json.dumps({"article": {"corps": corps}}) if corps else ""
+    c.execute("INSERT INTO events_raw (id,title,url_source,wp_post_id_as,date_event_start,"
+              "date_event_end,translation_of,territoire,enrich_data,wp_permalink_as,"
+              "duplicate_of) VALUES (?,?,?,?,?,?,?,?,?,?,NULL)",
+              (eid, titre, f"https://a.it/{eid}", wp, FUTUR, FUTUR, trad, "piemont",
+               ed, perma))
+c.commit(); c.close()
+
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    vd.main([])
+chag = _buf.getvalue()
+_check("la famille qui porte l'article est proposée à la GARDE",
+       "[ 3026]" in chag and "← GARDER" in chag, chag[chag.find("Chagall") - 200:][:600])
+_check("   et son jumeau italien est gardé avec elle, pas séparé",
+       chag.split("[ 4195]")[1][:40].strip().startswith("WP#3981")
+       and "← retirer" not in chag.split("[ 4195]")[1][:80], chag)
+_check("l'autre paire ENTIÈRE est proposée au retrait — 3021 ET 4194",
+       "3021 4194" in chag or ("3021" in chag.split("trash_by_ids")[1][:40]
+                               and "4194" in chag.split("trash_by_ids")[1][:40]),
+       chag.split("trash_by_ids")[1][:120] if "trash_by_ids" in chag else chag[-500:])
+# Le motif est celui du critère qui a VRAIMENT départagé — pas une formule fixe. Sur
+# Chagall c'est l'article ; sur la paire « Tour de l'Avenir », où les deux familles sont
+# également nues, c'est l'ancienneté, et c'est dit tel quel. Une fixture qui exigerait la
+# même phrase partout obligerait le script à mentir sur son critère.
+_check("le critère du choix est DIT, et c'est bien l'article qui départage Chagall",
+       "porte 1 article(s) rédigé(s) chez nous contre 0" in chag,
+       chag[chag.find("défaut proposé"):][:300])
+_check("   et quand rien ne départage sauf l'âge, il le dit AUSSI, sans se draper "
+       "dans un critère qu'il n'a pas utilisé",
+       "la plus ancienne" in chag, chag[:800])
+_check("le jumeau ABSENT du groupe est signalé comme tel — sinon on croit n'en "
+       "retirer qu'une",
+       "jumeau" in chag, chag[-900:])
+
+print("\n──── 6. le zéro qui se lit ────")
 # On vide la base des paires : il ne doit plus rien rester à signaler, et la sortie doit
 # permettre de distinguer « rien trouvé » de « rien examiné ».
 c = sqlite3.connect(tmp)
-c.execute("UPDATE events_raw SET wp_post_id_as=NULL WHERE id IN (11, 31)")
+c.execute("UPDATE events_raw SET wp_post_id_as=NULL WHERE id IN (11, 31, 4194, 4195)")
 c.commit(); c.close()
 _buf = _io.StringIO()
 with _ctx.redirect_stdout(_buf):

@@ -39,6 +39,7 @@ Usage (VPS) :
 """
 from __future__ import annotations
 import argparse
+import json
 import os
 import sqlite3
 import sys
@@ -111,6 +112,95 @@ def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
                       "groupes": len(groupes), "traductions": ecartes}
 
 
+def _article(ev: dict) -> str:
+    """Le corps de l'article RÉDIGÉ, ou '' — sans jamais lever sur un JSON abîmé."""
+    try:
+        return (((json.loads(ev.get("enrich_data") or "") or {}).get("article")
+                 or {}).get("corps") or "").strip()
+    except (ValueError, TypeError):
+        return ""
+
+
+def _permalien_propre(ev: dict) -> bool:
+    """Un permalien de la forme `/evenement/mon-titre/` plutôt que `?post_type=…&p=1984`.
+
+    Ce n'est pas cosmétique : la seconde forme veut dire qu'on n'a jamais enregistré le
+    permalien réel du post. Entre deux jumelles, celle qui a un vrai chemin est celle que
+    Google connaît et que les partages pointent."""
+    return "/evenement" in (ev.get("wp_permalink_as") or "") or \
+           "/eventi" in (ev.get("wp_permalink_as") or "")
+
+
+def famille(ev: dict, par_id: dict[int, dict]) -> list[dict]:
+    """La fiche ET son jumeau dans l'autre langue — la plus petite unité qu'on puisse
+    retirer sans laisser d'orphelin.
+
+    POURQUOI CE N'EST PAS UN DÉTAIL. Le groupe Chagall du 2026-08-13 comptait quatre
+    pages : 3021 (it) ↔ 4194 (fr) d'un côté, 3026 (fr) ↔ 4195 (it) de l'autre. Deux
+    PAIRES bilingues correctes, et c'est l'exposition entière qui est en double. Retirer
+    « la fiche 4194 » aurait laissé 3021 seule en italien, liée par Polylang à un post
+    corbeillé : un site à moitié réparé, plus difficile à diagnostiquer qu'avant.
+    On raisonne donc par famille, jamais par fiche."""
+    fam = {ev["id"]: ev}
+    orig = int(ev.get("translation_of") or 0)
+    if orig and orig in par_id:
+        fam[orig] = par_id[orig]
+    for autre in par_id.values():
+        if int(autre.get("translation_of") or 0) in fam:
+            fam[autre["id"]] = autre
+    return [fam[k] for k in sorted(fam)]
+
+
+def _valeur(fam: list[dict]) -> tuple:
+    """De quoi CLASSER deux familles, du plus décisif au moins décisif.
+
+    Aucun de ces critères n'est un jugement éditorial : ils décrivent ce qui a été fait
+    sur chaque fiche, pas ce qu'elle vaut. Le choix reste à Franck — mais un défaut
+    ARGUMENTÉ vaut mieux qu'un blanc à remplir, parce qu'un blanc ne se remplit jamais.
+    """
+    return (
+        sum(1 for e in fam if _article(e)),        # ① un article écrit chez nous
+        sum(len(_article(e)) for e in fam),        # ② et le plus fourni
+        sum(1 for e in fam if _permalien_propre(e)),  # ③ l'adresse que Google connaît
+        -min(e["id"] for e in fam),                # ④ à égalité, la plus ancienne
+    )
+
+
+def recommandation(groupe: list[dict], par_id: dict[int, dict]) -> tuple[list, list, str]:
+    """(famille à garder, fiches à retirer, phrase qui dit pourquoi).
+
+    Rend ([], [], "") quand les deux familles se valent : dans ce cas, proposer un défaut
+    serait faire passer un tirage au sort pour un avis.
+    """
+    familles, vues = [], set()
+    for ev in groupe:
+        if ev["id"] in vues:
+            continue
+        fam = famille(ev, par_id)
+        vues |= {e["id"] for e in fam}
+        familles.append(fam)
+    if len(familles) < 2:
+        return [], [], ""
+    familles.sort(key=_valeur, reverse=True)
+    garde, reste = familles[0], [e for f in familles[1:] for e in f]
+    if _valeur(garde) == _valeur(familles[1]):
+        return [], [], ("les deux se valent sur tous les critères mesurables — "
+                        "aucun défaut proposé, c'est à vous de regarder")
+    n_art = sum(1 for e in garde if _article(e))
+    n_art_autre = sum(1 for e in familles[1] if _article(e))
+    if n_art > n_art_autre:
+        motif = (f"gardée parce qu'elle porte {n_art} article(s) rédigé(s) chez nous "
+                 f"contre {n_art_autre}")
+    elif sum(len(_article(e)) for e in garde) > sum(len(_article(e)) for e in familles[1]):
+        motif = "gardée parce que son article est le plus fourni"
+    elif sum(1 for e in garde if _permalien_propre(e)) > \
+            sum(1 for e in familles[1] if _permalien_propre(e)):
+        motif = "gardée parce que son adresse est un vrai permalien, pas un `?p=`"
+    else:
+        motif = "gardée parce que c'est la plus ancienne — elle porte l'historique"
+    return garde, reste, motif
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Deux fiches EN LIGNE sur le même événement. Lecture seule.")
@@ -150,22 +240,52 @@ def main(argv=None) -> int:
         print("c'est pour ça que les deux nombres sont là.")
         return 0
 
+    par_id = {ev["id"]: ev for ev in rows}
+    a_retirer: list[int] = []
     for n, g in enumerate(suspects, 1):
         print(f"--- {n}. {len(g)} fiches en ligne sur le même événement ---")
+        garde, reste, motif = recommandation(g, par_id)
+        ids_garde = {e["id"] for e in garde}
+        ids_reste = {e["id"] for e in reste}
         for ev in sorted(g, key=lambda e: e["id"]):
+            marque = ("  ← GARDER" if ev["id"] in ids_garde else
+                      "  ← retirer" if ev["id"] in ids_reste else "")
             print(f"  [{ev['id']:>5}] WP#{ev['wp_post_id_as']:<6} {_periode(ev):<24} "
-                  f"{(ev.get('title') or '')[:52]}")
+                  f"{(ev.get('title') or '')[:44]}{marque}")
             print(f"          {_lien(ev)}")
+        if garde:
+            print(f"     → défaut proposé : {motif}.")
+            # LES JUMEAUX SUIVENT LEUR ORIGINAL. Retirer une fiche sans sa traduction
+            # laisserait l'autre langue seule, liée par Polylang à un post corbeillé —
+            # un site à moitié réparé, plus dur à diagnostiquer qu'avant. Le groupe
+            # Chagall du 2026-08-13 comptait DEUX paires bilingues correctes pour une
+            # seule exposition : c'est la paire entière qui part.
+            caches = [e for e in reste if e not in g]
+            if caches:
+                print(f"       (dont {len(caches)} jumeau(x) dans l'autre langue, "
+                      f"absent(s) du groupe ci-dessus : "
+                      f"{', '.join(str(e['id']) for e in caches)} — les laisser en ligne "
+                      f"ferait un orphelin)")
+            a_retirer.extend(sorted(ids_reste))
+        else:
+            print(f"     → {motif or 'aucun défaut proposé'}.")
         print()
 
     # LE GESTE AU BOUT DE LA LIGNE (règle 6). Une file sans geste n'est pas une file :
     # sur les 454 « points à contrôler » du 2026-08-11, trois cents n'avaient rien qu'un
     # humain puisse faire, et le seul qui comptait était noyé dessous.
-    print("CE QU'IL Y A À FAIRE, groupe par groupe — c'est un arbitrage ÉDITORIAL, pas")
-    print("technique, et aucun script ne le prend à votre place :")
-    print("  • ouvrir les deux pages ; si c'est bien le même événement, garder celle qui")
-    print("    a le meilleur article et corbeiller l'autre (réversible) :")
-    print("      .venv/bin/python -m scripts.trash_by_ids <id à retirer> --apply")
+    print("CE QU'IL Y A À FAIRE. Le choix reste ÉDITORIAL — mais un défaut argumenté vaut")
+    print("mieux qu'un blanc à remplir, parce qu'un blanc ne se remplit jamais. Les ← ci-")
+    print("dessus disent ce que je retirerais, et sur quel critère mesurable.")
+    print()
+    print("  • ouvrir les pages marquées « retirer » ; si ce sont bien des doublons, une")
+    print("    seule commande les corbeille toutes (RÉVERSIBLE, dry-run sans --apply) :")
+    if a_retirer:
+        ids = " ".join(str(i) for i in sorted(set(a_retirer)))
+        print(f"      .venv/bin/python -m scripts.trash_by_ids {ids}")
+        print(f"      puis, une fois la sortie lue : … {ids} --apply")
+    else:
+        print("      (aucun défaut proposé — les groupes se valent, il faut regarder)")
     print("  • si ce sont DEUX ÉDITIONS différentes (2025 et 2026, ou deux dates), il n'y")
     print("    a rien à faire : les garder toutes les deux et me le dire, pour que la")
     print("    garde années/dates de dedupe soit corrigée plutôt que contournée.")
