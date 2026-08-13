@@ -154,9 +154,14 @@ journée à démonter. Pour l'état du jour, une commande :
 .venv/bin/python -m scripts.verifier_dates          # ce que la source contredit
 .venv/bin/python -m scripts.verifier_lieux          # la ville qu'on affiche
 .venv/bin/python -m scripts.verifier_liens          # les liens qui ne mènent plus nulle part
+.venv/bin/python -m scripts.verifier_doublons_publies  # deux pages sur le même événement
 ```
 
-Aucune des quatre n'écrit quoi que ce soit : elles lisent et elles montrent.
+Aucune des cinq n'écrit quoi que ce soit : elles lisent et elles montrent.
+
+La dernière est celle qui vous demandera un choix : elle repère deux pages en ligne qui
+racontent le même événement, mais elle ne décide pas laquelle garder. Elle écarte
+d'elle-même les paires français/italien, qui sont normales — deux langues, deux pages.
 
 Ce qui, en revanche, ne changera plus — les faits de la journée :
 

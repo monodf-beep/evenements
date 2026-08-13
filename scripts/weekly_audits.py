@@ -292,6 +292,20 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_bad_sources")
 
+    # Doublons EN LIGNE que la déduplication n'a jamais regardés (ajouté le 2026-08-13).
+    # `dedupe` tourne à 8h sur `statut='pending'` : il trie ce qui ARRIVE. Rien ne relisait
+    # le stock DÉJÀ publié, et sept titres en double dormaient dans la « bande maigre » de
+    # audit_substance_published — dont « Tour de l'Avenir 2026 - Strambino Lago Serrù »,
+    # deux pages à un tiret près. Lecture seule et SANS --apply, volontairement : trancher
+    # entre deux pages est un arbitrage éditorial, au même titre que défusionner (CLAUDE.md).
+    from scripts.verifier_doublons_publies import main as doublons_main
+    rc, out = _run_captured(doublons_main, [], "verifier_doublons_publies")
+    ligne = next((l.strip() for l in out.splitlines() if l.startswith("SUSPECTS")),
+                 _tail(out, 1))
+    sections.append(f"• Doublons EN LIGNE (verifier_doublons_publies) : {ligne}")
+    if rc:
+        echecs.append("verifier_doublons_publies")
+
     # Réparation des descriptions polluées — LE ROUVREUR QUI N'ÉTAIT BRANCHÉ NULLE PART.
     # Trouvé par le recensement du 2026-08-04 : `enrich` gare une fiche en
     # `matiere_polluee`, le tableau d'ETATS_TERMINAUX.md répond « rouvert par
