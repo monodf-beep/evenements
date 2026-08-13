@@ -392,6 +392,11 @@ def main(argv=None) -> int:
 
     print(f"\n{len(liees)} fiche(s) portent un identifiant WordPress · "
           f"{len(candidates)} encore devant nous, {len(ecartees)} passée(s) — non traitées.")
+    # Dire COMBIEN DE TEMPS ça va prendre, avant de se taire pendant trois minutes.
+    if candidates:
+        secondes = int(len(candidates) * (args.delay + 0.35))
+        print(f"Interrogation de WordPress, un post à la fois — environ "
+              f"{secondes // 60} min {secondes % 60:02d} s. Rien n'est écrit.", flush=True)
 
     # Univers des sœurs possibles : TOUTES les fiches liées à un post, y compris passées.
     # Une exposition terminée peut parfaitement être le doublon publié qui explique le
@@ -403,10 +408,21 @@ def main(argv=None) -> int:
     cache: dict[int, str] = {}
 
     def etat(post_id: int) -> str:
-        """Un appel par POST, pas par fiche : deux doublons se citent mutuellement."""
+        """Un appel par POST, pas par fiche : deux doublons se citent mutuellement.
+
+        LE SONDAGE DOIT SE VOIR. 198 posts à 0,8 s de pause font près de trois minutes
+        pendant lesquelles ce script n'affichait RIEN. Franck a collé sa sortie en croyant
+        qu'elle était complète — elle s'arrêtait au milieu du sondage. Un long silence ne
+        se distingue pas d'un plantage, surtout pour quelqu'un qui ne lit pas le code.
+        Une ligne tous les 25 posts suffit, et elle annonce le total pour qu'on sache
+        combien de temps attendre. (2026-08-13)
+        """
         pid = int(post_id)
         if pid not in cache:
             cache[pid] = _etat(wp_url, pid)
+            if len(cache) % 25 == 0:
+                print(f"    …{len(cache)}/{len(candidates)} post(s) interrogé(s)",
+                      flush=True)
             if args.delay:
                 time.sleep(args.delay)
         return cache[pid]
