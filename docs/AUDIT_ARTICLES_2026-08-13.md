@@ -127,36 +127,134 @@ tableau : la matière est là, l'article n'existe pas.
 
 ---
 
+## 3bis. Observation des SERP (13 août, après-midi) — et pourquoi elle change l'ordre
+
+*Ajouté après une passe de recherche demandée par Franck. **Mon index de recherche est
+américain** — c'est la limite que `INTENTIONS_RECHERCHE_SEO.md` §7 signalait déjà (« l'outil de
+recherche est indexé US »). Je n'en tire donc **aucun volume**. Ce que j'observe, en revanche, est
+solide : **qui publie, sur quel format, dans quelle langue.***
+
+### Ce qui est confirmé
+
+**Sur « que faire ce week-end à Annecy », le diagnostic du dépôt est exact.** Les sites qui
+occupent le terrain sont précisément ceux que `INTENTIONS_RECHERCHE_SEO.md` nommait :
+[jds.fr](https://www.jds.fr/annecy/agenda/), [agendaculturel.fr](https://74.agendaculturel.fr/agenda-culturel/annecy/),
+[alentoor.fr](https://www.alentoor.fr/annecy/agenda/weekend), plus [la-yaute.fr](https://la-yaute.fr/que-faire-en-haute-savoie-ce-week-end/).
+Et jds.fr utilise exactement le format que le §3 du dépôt prescrit : *« Sorties : que faire à
+Annecy ce week-end ? (27 février-1 mars 2026) »*, sur URL roulante. Rien à réviser là-dessus.
+
+À noter : jds.fr ne tient pas une page par ville mais **une grappe** — « ce week-end »,
+« aujourd'hui », « manifestations & festivals », l'agenda général. C'est le modèle à copier quand
+une ville franchira le seuil.
+
+### Ce qui n'était pas prévu : l'asymétrie de langue
+
+J'ai testé les deux sens du transfrontalier. Ils ne se ressemblent pas.
+
+**FR → côté italien** (« que faire à Turin », week-end, agenda) : les résultats sont
+[vanupied](https://www.vanupied.com/turin/pratique-turin/agenda-calendrier-culturel-turin.html),
+[ViaMichelin](https://www.viamichelin.fr/magazine/article/week-end-visiter-turin-en-trois-jours),
+[Petit Futé](https://www.petitfute.co.uk/v50133-turin/c1170-manifestation-evenement/),
+[Cityzeum](https://www.cityzeum.com/evenement/turin), [Italissime](https://italissime.com/week-end-a-turin/),
+Eventbrite. **Ce sont des guides touristiques, pas des agendas datés.** Aucun ne tient un
+calendrier frais des événements turinois en français.
+
+**IT → côté français** (« cosa fare in Savoia », eventi Annecy/Chambéry) : le premier résultat est
+[turismo-annecy.com](https://www.turismo-annecy.com/eventi-culturali-annecy/) — **la version
+italienne de l'office de tourisme d'Annecy lui-même**, avec des pages dédiées aux événements
+culturels, aux événements sportifs et à Chambéry. Puis
+[france-voyage.com](https://www.france-voyage.com/events/annecy-commune-29711.htm) en italien.
+
+**La conclusion se lit d'elle-même : le sens FR → Italie est un terrain vide, le sens IT → France
+est déjà tenu par les offices de tourisme eux-mêmes.** Ce n'est pas symétrique, et ça devrait
+peser plus lourd que l'équilibre territorial dans le choix des prochains articles.
+
+### Deux sujets où l'intention est massive et la page absente
+
+**Le Marché Vert Noël d'Aoste.** Place Chanoux, 48 chalets, du 22 novembre au 6 janvier, classé
+parmi les [douze meilleurs marchés de Noël d'Europe](https://www.lovevda.it/fr/evenements/marches-de-noel).
+La concurrence francophone est faite de l'office régional ([lovevda.it](https://www.lovevda.it/fr/base-de-donnees/4/noel-et-reveillon/vallee-d-aoste/marches-de-noel-et-bien-etre/5836)),
+de [valleedaoste.fr](https://valleedaoste.fr/marche-vert-noel-2025-aoste/), de
+[rendezvous-vda.it](https://rendezvous-vda.it/fr/marche-vert-noel-aoste/) et de voyagistes suisses.
+Aucun agenda daté. Agenda Sabauda n'a pas une ligne dessus.
+
+**La Foire de Saint-Ours.** Les 30 et 31 janvier, un millier d'artisans valdôtains, une tradition
+que la légende fait remonter à l'an 1000. Côté français : [Routard](https://www.routard.com/guide_agenda_detail/3640/foire_de_saint_ours_a_aoste.htm/),
+[Wikipédia](https://fr.wikipedia.org/wiki/Foire_de_Saint-Ours), [123savoie.com](https://123savoie.com/foire-de-saint-ours-a-aoste/),
+[lovevda.it](https://www.lovevda.it/fr/base-de-donnees/2/artisanat-foires-marches/aoste/foire-de-saint-ours/24090),
+[iAlpes](https://aoste.ialpes.com/foires/foires-vallee-d-aoste.html). Là encore : des guides, pas
+un agenda. Et le site en a déjà parlé — la Foire apparaît dans les fiches, jusqu'en 2027.
+
+### Et un sujet où je conseille la prudence
+
+**Les sagre du Piémont, en italien, c'est un marché encombré** :
+[itinerarinelgusto.it](https://www.itinerarinelgusto.it/sagre-e-feste/piemonte),
+[deepexperience.it](https://deepexperience.it/sagre-fiere-piemonte-2026/),
+[sagreautentiche.it](https://sagreautentiche.it/esplora/piemonte/agosto/),
+[guidatorino.com](https://www.guidatorino.com/sagre-piemonte-torino/),
+[piemonteweekend.it](https://www.piemonteweekend.it/articoli/sagre-agosto-piemonte/),
+[AssoSagre](https://www.assosagre.it/calendario_sagre.php?id_regioni=12&ordina_sagra=date_sagra),
+plus la presse locale. L'article `sagre-piemonte-2026` existe déjà et se bat contre tout ça.
+**Sa version française, elle, n'a quasiment aucun concurrent.** C'est un argument pour soigner le
+FR plutôt que d'investir davantage l'IT sur ce sujet.
+
+---
+
 ## 4. Les articles à écrire, dans l'ordre
+
+*Ordre **révisé** après le §3bis. La version initiale classait par matière et équilibre
+territorial ; l'observation des SERP ajoute un critère plus discriminant — **le degré de
+concurrence dans la langue visée**. Là où l'ancien ordre mettait « concerts en Savoie » en n°2 par
+souci d'équilibre, l'évidence dit qu'un article français sur l'Italie est mieux placé.*
+
+**La distinction qui structure tout, et qui n'était pas claire hier :**
+
+| | Pages **hub** (datées, roulantes) | **Articles** (annuels, evergreen) |
+|---|---|---|
+| Terrain | le cœur savoyard, comme dit le dépôt | **le français sur le versant italien** |
+| Concurrent | jds.fr, agendaculturel, alentoor | guides touristiques sans dates |
+| Arme | la fraîcheur | la donnée datée, que les guides n'ont pas |
+
+Le plan du dépôt (« consolider la Savoie d'abord ») reste juste **pour les hubs**. Pour les
+articles, l'avantage structurel du site est ailleurs : il est le seul à couvrir l'Italie du Nord
+en français **avec des dates**.
 
 Les gabarits de titre viennent de `INTENTIONS_RECHERCHE_SEO.md` §4 — je ne réinvente pas de
 patron. Chaque ligne indique la matière mesurée, pour que tu voies sur quoi elle s'appuie.
 
-### Vague 1 — la matière existe déjà, il n'y a qu'à écrire
+### Vague 1 — le créneau vide : le français sur le versant italien, saisonnier d'abord
+
+Ces trois-là cumulent les deux avantages : **aucun agenda daté concurrent en français**, et une
+**fenêtre saisonnière qui impose de s'y mettre maintenant**. Un article a besoin de plusieurs
+semaines pour être indexé : écrire un article de Noël en décembre, c'est publier après la
+bataille.
+
+| # | Article | Écrire en | Matière | Pourquoi celui-là |
+|---|---|---|---|---|
+| 1 | **Le Marché Vert Noël d'Aoste** (+ marchés de Noël valdôtains) | **septembre** | ⚠️ §5 | 48 chalets, 22 nov–6 janv, classé parmi les 12 meilleurs d'Europe. Concurrence FR : office régional et voyagistes, **aucun agenda daté** |
+| 2 | **La Foire de Saint-Ours d'Aoste** (30-31 janv.) | **octobre** | fiches jusqu'en 2027 | Un millier d'artisans, tradition millénaire, P1 au catalogue. Concurrence FR : Routard, Wikipédia, guides — **aucun agenda** |
+| 3 | **Le Carnaval d'Ivrea** | novembre | — | Le catalogue le signale (« Ivrea, Carnevale »), aucune page. Même créneau vide en français |
+
+**URL sans millésime pour les trois** (cf. §2.1) : ces trois événements reviennent chaque année,
+c'est exactement le cas où une URL stable cumule son autorité d'édition en édition.
+
+### Vague 2 — la matière est déjà là, il n'y a qu'à écrire
 
 | # | Article (FR + IT) | Matière | Pourquoi celui-là |
 |---|---|---|---|
-| 1 | **Les festivals du Piémont** | 7 fiches | Plus gros écart matière/absence du tableau. Le Piémont est le territoire le mieux fourni (36 fiches) |
-| 2 | **Les concerts en Savoie et Haute-Savoie** | 6 fiches | Nice a son article concerts, la Savoie non — alors qu'elle a *plus* de matière, et qu'elle est le cœur du plan |
-| 3 | **Les expositions en Savoie et Haute-Savoie** | 5 fiches | Rééquilibre le territoire prioritaire ; deuxième catégorie la mieux fournie du site |
-| 4 | **Les expositions dans le Comté de Nice** | 5 fiches | Complète Nice, dont l'article existant ne couvre que les concerts |
+| 4 | **Les festivals du Piémont** | 7 fiches | Plus gros écart matière/absence du tableau, et le Piémont est le territoire le mieux fourni (36 fiches) |
+| 5 | **Les expositions en Savoie et Haute-Savoie** | 5 fiches | Deuxième catégorie la mieux fournie ; rééquilibre le territoire que le dépôt classe prioritaire |
+| 6 | **Les concerts en Savoie et Haute-Savoie** | 6 fiches | Nice a son article concerts, la Savoie non — alors qu'elle a *plus* de matière |
+| 7 | **Les expositions dans le Comté de Nice** | 5 fiches | Complète Nice, dont l'article existant ne couvre que les concerts |
 
-### Vague 2 — saisonnier, à écrire maintenant pour être en place à temps
-
-Un article a besoin de plusieurs semaines pour être indexé et remonter. Écrire un article de Noël
-en décembre, c'est le publier après la bataille.
-
-| # | Article | Fenêtre d'écriture | Remarque |
-|---|---|---|---|
-| 5 | **Les marchés de Noël en Vallée d'Aoste et au Piémont** | **septembre** | ⚠️ voir §5 : la base ne contient que 5 fiches en décembre |
-| 6 | **La Foire de Saint-Ours d'Aoste** (30-31 janvier) | octobre | Evergreen, URL sans année. C'est LE rendez-vous valdôtain, et le catalogue le classe P1 |
-| 7 | **Le Carnaval d'Ivrea** | novembre | Classé P1 dans `CATALOGUE_GEO_SEO.md` (« Ivrea (P2, Carnevale) »), aucune page |
+*Ces quatre-là visent des marchés plus disputés que la vague 1 — c'est pourquoi ils passent après,
+alors que la version initiale de ce document les mettait devant.*
 
 ### Vague 3 — transversal, evergreen, aucun équivalent aujourd'hui
 
 `CATALOGUE_GEO_SEO.md` liste `gratuit` et `en famille / avec enfants` parmi les modificateurs
-thématiques, et **aucun article ne les traite**. Ce sont des intentions durables, non
-saisonnières, où l'Agenda a la donnée que les guides touristiques n'ont pas.
+thématiques, et **aucun article ne les traite**. Intentions durables, non saisonnières, où
+l'Agenda a la donnée que les guides touristiques n'ont pas.
 
 | # | Article | Matière |
 |---|---|---|
@@ -164,6 +262,16 @@ saisonnières, où l'Agenda a la donnée que les guides touristiques n'ont pas.
 | 9 | **Sorties en famille** | 4 fiches en catégorie Jeune public — faible, à consolider d'abord |
 
 Le 9 est signalé pour mémoire : **je ne le recommande pas encore**, la matière ne suit pas.
+
+### Ce que je ne recommande PAS
+
+**Renforcer l'italien sur les sagre du Piémont.** L'article existe déjà et affronte une demi-
+douzaine de sites italiens spécialisés plus la presse locale (§3bis). Le même sujet **en
+français** n'a quasiment personne en face — c'est là que l'effort paie.
+
+**Un article « que faire à Turin »** au sens touristique intemporel. C'est l'intention A, celle
+que `INTENTIONS_RECHERCHE_SEO.md` interdit de disputer : ViaMichelin, Petit Futé et Vanupied la
+tiennent. Le créneau du site est l'agenda **daté** de Turin, pas le guide de Turin.
 
 ---
 
