@@ -7,7 +7,8 @@ visites, et sur quelles requêtes ?** Sans ça, l'ordre des articles à écrire 
 matière disponible et la concurrence observée — deux critères honnêtes, mais indirects. La
 Search Console, elle, dit ce que les gens tapent VRAIMENT pour tomber sur le site.
 
-Ce script ne modifie rien, ni en base ni sur le site : il lit et il affiche.
+Ce script ne touche JAMAIS au site. En base, il n'ecrit que sur `--enregistrer --apply`,
+et seulement dans sa propre table `gsc_perf` : il n'approche aucune donnee du pipeline.
 
 ⚠️ TROIS PIÈGES, ET ILS COÛTENT CHACUN UNE HEURE SI ON NE LES CONNAÎT PAS.
 
@@ -33,11 +34,15 @@ Usage :
     .venv/bin/python -m scripts.gsc_report                   # rapport complet, 28 jours
     .venv/bin/python -m scripts.gsc_report --jours 90
     .venv/bin/python -m scripts.gsc_report --articles        # seulement les articles
+    .venv/bin/python -m scripts.gsc_report --csv export.zip  # sans API, depuis un export
+    .venv/bin/python -m scripts.gsc_report --auth --client client_secret.json
+    .venv/bin/python -m scripts.gsc_report --enregistrer --apply --jours 30   # archivage
 """
 from __future__ import annotations
 import argparse
 import os
 import re
+import sqlite3
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -50,6 +55,8 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 
 log = get_logger("gsc_report")
+
+DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 SCOPE = ["https://www.googleapis.com/auth/webmasters.readonly"]
 # Le décalage de fraîcheur de la Search Console. Trois jours est la marge sûre : à deux
@@ -106,9 +113,11 @@ def _service():
 
     log.error("aucun identifiant trouvé. Trois chemins possibles, du plus simple au plus lourd :")
     log.error("  A. OAuth (recommandé, aucune dérogation de sécurité) — créer un ID client "
-              "OAuth de type « Application de bureau », télécharger son JSON, puis lancer "
-              "sur une machine AVEC NAVIGATEUR : gsc_report.py --auth --client <le.json>")
-    log.error("     puis copier %s sur le VPS", jeton)
+              "OAuth de type « Application de bureau », télécharger son JSON sur le VPS, "
+              "puis : gsc_report.py --auth --client <le.json>")
+    log.error("     Le tour se fait DEPUIS LE VPS : le script affiche une adresse, tu "
+              "l'ouvres dans ton navigateur, tu recolles l'adresse de retour. Le jeton "
+              "atterrit dans %s", jeton)
     log.error("  B. Compte de service — clé JSON dans %s. Bloqué tant que la règle "
               "iam.disableServiceAccountKeyCreation s'applique au projet.", compte)
     log.error("  C. Sans API du tout : exporter le CSV depuis la Search Console et lancer "
@@ -117,30 +126,78 @@ def _service():
 
 
 def _autoriser(client_json: str, sortie: str) -> int:
-    """Fait le tour OAuth dans un navigateur et enregistre le jeton réutilisable.
+    """Tour OAuth SUR LE VPS, sans navigateur ni Python sur le poste de l'utilisateur.
 
-    À lancer sur une machine qui a un navigateur (ton portable), pas sur le VPS : Google a
-    supprimé en 2022 le mode « copier-coller le code » (`oob`), il faut un vrai aller-retour
-    par navigateur. Le fichier produit se copie ensuite sur le VPS et s'y rafraîchit tout
-    seul, indéfiniment — à condition que l'application soit « En production ».
+    POURQUOI CE DÉTOUR (2026-08-13). Google a supprimé en 2022 le mode « copier-coller le
+    code » (`urn:ietf:wg:oauth:2.0:oob`), ce qui laisse croire qu'il faut impérativement un
+    navigateur sur la machine qui s'authentifie. C'est faux, et la version précédente de
+    cette fonction demandait donc à Franck d'installer Python sur son portable pour une
+    opération de cinq minutes.
+
+    Le contournement standard : on demande une redirection vers `http://localhost:<port>`.
+    L'utilisateur ouvre l'adresse d'autorisation dans SON navigateur, autorise, et Google le
+    renvoie vers une adresse locale **qui n'aboutit pas** — page d'erreur « connexion
+    refusée », ce qui est NORMAL et doit être annoncé, sinon on croit à un échec. Le code
+    d'autorisation est dans la barre d'adresse ; il suffit de la recopier ici.
+
+    Un client de type « Application de bureau » autorise `http://localhost` sur n'importe
+    quel port sans qu'on ait à le déclarer.
     """
     try:
-        from google_auth_oauthlib.flow import InstalledAppFlow
+        from google_auth_oauthlib.flow import Flow
     except ImportError:
         log.error("bibliothèque absente — .venv/bin/pip install google-auth-oauthlib")
         return 2
     if not Path(client_json).exists():
         log.error("fichier d'ID client introuvable : %s", client_json)
         return 2
-    flow = InstalledAppFlow.from_client_secrets_file(client_json, SCOPE)
-    creds = flow.run_local_server(port=0, prompt="consent")
+
+    flow = Flow.from_client_secrets_file(
+        client_json, scopes=SCOPE, redirect_uri="http://localhost:8765/")
+    # access_type=offline + prompt=consent : sans les DEUX, Google ne renvoie pas de jeton
+    # de rafraîchissement à la deuxième autorisation, et le cron meurt à la première
+    # expiration sans qu'on comprenne pourquoi.
+    url, _ = flow.authorization_url(access_type="offline", prompt="consent",
+                                    include_granted_scopes="true")
+    print("\n1. Ouvre cette adresse dans ton navigateur habituel :\n")
+    print(f"   {url}\n")
+    print("2. Autorise l'accès avec le compte Google qui possède la Search Console.")
+    print("3. Ton navigateur affichera une page d'ERREUR (« connexion refusée » sur")
+    print("   localhost:8765). C'est NORMAL et attendu — rien n'a échoué.")
+    print("4. Copie l'adresse COMPLÈTE depuis la barre d'adresse et colle-la ci-dessous.\n")
+    try:
+        collee = input("Adresse collée > ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        log.error("interrompu — aucun jeton enregistré")
+        return 1
+
+    from urllib.parse import urlparse, parse_qs
+    params = parse_qs(urlparse(collee).query)
+    code = (params.get("code") or [None])[0]
+    if not code:
+        log.error("aucun paramètre `code` dans l'adresse collée. Colle bien l'adresse "
+                  "entière, celle qui commence par http://localhost:8765/?code=…")
+        return 2
+    try:
+        flow.fetch_token(code=code)
+    except Exception as exc:  # noqa: BLE001 — le message de Google est ce qui aide ici
+        log.error("échange du code refusé : %s", exc)
+        return 2
+
+    creds = flow.credentials
+    if not creds.refresh_token:
+        log.error("AUCUN jeton de rafraîchissement reçu — le script cesserait de marcher à "
+                  "la première expiration. Recommence : l'adresse d'autorisation doit "
+                  "contenir prompt=consent.")
+        return 2
     Path(sortie).parent.mkdir(parents=True, exist_ok=True)
     Path(sortie).write_text(creds.to_json(), encoding="utf-8")
-    print(f"\nJeton enregistré dans {sortie}")
-    print("Copie-le sur le VPS au même endroit, puis lance --check.")
-    if not creds.refresh_token:
-        log.warning("AUCUN jeton de rafraîchissement reçu — le script ne survivra pas à "
-                    "l'expiration. Relancer avec un consentement neuf.")
+    os.chmod(sortie, 0o600)
+    print(f"\n✓ Jeton enregistré dans {sortie} (lisible par toi seul)")
+    print("  Lance maintenant : .venv/bin/python -m scripts.gsc_report --check")
+    print("\n⚠️ Si l'application est en statut « Test » dans l'écran de consentement Google,")
+    print("   ce jeton expirera dans 7 jours. Publie l'application pour qu'il dure.")
     return 0
 
 
@@ -221,6 +278,53 @@ def _articles_du_sitemap(base: str) -> list[str]:
         return []
 
 
+def _enregistre(rows_page: list[dict], rows_query: list[dict],
+                debut: str, fin: str) -> tuple[int, int]:
+    """Archive le relevé en base. C'EST ÇA, l'automatisation qui compte.
+
+    POURQUOI ARCHIVER PLUTÔT QU'ALERTER. À 19 clics sur trois mois, un rapport hebdomadaire
+    envoyé sur Slack serait du bruit — et Franck a dit le 2026-08-13 « il m'en faut un ou
+    deux par jour, mais c'est tout ». Ce cron n'envoie donc RIEN.
+
+    Ce qu'il fait a plus de valeur : il constitue l'historique qui n'existe pas. Deux fois
+    en deux jours, une question est restée sans réponse faute de comparatif — « le creux
+    d'événements de novembre est-il un trou de sourcing ou un délai d'annonce ? » se
+    tranche en regardant la même période l'an dernier, donnée que personne n'avait gardée.
+    La Search Console ne conserve que seize mois et n'expose aucun passé antérieur à la
+    validation. Chaque relevé non pris est perdu pour toujours.
+
+    Rejouer la même période ne duplique pas : la clé est (période, dimension, valeur).
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS gsc_perf (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        releve_le TEXT DEFAULT (datetime('now')),
+        debut TEXT NOT NULL, fin TEXT NOT NULL,
+        dimension TEXT NOT NULL, valeur TEXT NOT NULL,
+        clics REAL, impressions REAL, ctr REAL, position REAL)""")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_gsc_perf_unique "
+                 "ON gsc_perf(debut, fin, dimension, valeur)")
+    n = {"page": 0, "query": 0}
+    for dim, rows in (("page", rows_page), ("query", rows_query)):
+        for r in rows:
+            conn.execute(
+                "INSERT OR REPLACE INTO gsc_perf "
+                "(debut, fin, dimension, valeur, clics, impressions, ctr, position) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (debut, fin, dim, r["keys"][0], r.get("clicks"), r.get("impressions"),
+                 r.get("ctr"), r.get("position")))
+            n[dim] += 1
+    conn.commit()
+    # Règle 6 : on recompte en base, on ne fait pas confiance aux compteurs de boucle.
+    total = conn.execute("SELECT COUNT(*) FROM gsc_perf").fetchone()[0]
+    periodes = conn.execute("SELECT COUNT(DISTINCT debut||fin) FROM gsc_perf").fetchone()[0]
+    conn.close()
+    print(f"\nArchivé : {n['page']} page(s), {n['query']} requête(s) pour {debut} → {fin}.")
+    print(f"En base après écriture : {total} ligne(s) sur {periodes} période(s) relevée(s).")
+    return n["page"], n["query"]
+
+
 def _tableau(titre: str, lignes: list[dict], cle: str = "keys", largeur: int = 62) -> None:
     print(f"\n=== {titre} ===")
     if not lignes:
@@ -251,6 +355,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="Tour OAuth dans un navigateur (à lancer sur ton portable).")
     parser.add_argument("--client", metavar="JSON",
                         help="Avec --auth : le fichier d'ID client OAuth téléchargé.")
+    parser.add_argument("--enregistrer", action="store_true",
+                        help="Archive le relevé en base (table gsc_perf) pour constituer "
+                             "l'historique. Silencieux : n'envoie rien sur Slack.")
+    parser.add_argument("--apply", action="store_true",
+                        help="Avec --enregistrer : écrit vraiment. Sans lui, simulation.")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -296,6 +405,17 @@ def main(argv: list[str] | None = None) -> int:
           f"a ce retard de publication)")
 
     try:
+        if args.enregistrer:
+            pages = _interroge(service, propriete, debut, fin, ["page"], 5000)
+            requetes = _interroge(service, propriete, debut, fin, ["query"], 5000)
+            print(f"\nRelevé : {len(pages)} page(s), {len(requetes)} requête(s).")
+            if not args.apply:
+                print("Simulation (défaut) : rien n'a été écrit. "
+                      "Relancer avec --apply pour archiver.")
+                return 0
+            _enregistre(pages, requetes, debut, fin)
+            return 0
+
         if not args.articles:
             _tableau("Requêtes", _interroge(service, propriete, debut, fin,
                                             ["query"], args.limite))

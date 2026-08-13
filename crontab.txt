@@ -266,6 +266,17 @@ SLACK_DIGEST=1
 # les URLs qui ont répondu pendant le run — une URL non mesurée reste ouverte. La
 # fraîcheur de la file est donc bornée à sept jours au lieu d'être infinie.
 30 7 * * 0 cd /root/evenements && .venv/bin/python scripts/site_health_check.py --apply >> logs/site_health_check.log 2>&1
+# Archivage Search Console, dimanche 7h45 — SILENCIEUX, aucune notification. À 19 clics sur
+# trois mois, un rapport hebdomadaire serait du bruit, et Franck a dit le 2026-08-13 « il
+# m'en faut un ou deux par jour, mais c'est tout ». Ce cron n'écrit qu'en base.
+# Ce qu'il fait a plus de valeur qu'une alerte : il CONSTITUE L'HISTORIQUE qui n'existe pas.
+# Deux fois en deux jours une question est restée sans réponse faute de comparatif — « le
+# creux d'événements de novembre est-il un trou de sourcing ou un délai d'annonce ? » se
+# tranche en regardant l'an dernier, donnée que personne n'avait gardée. La Search Console
+# ne conserve que seize mois et n'expose rien d'antérieur à la validation : chaque relevé
+# non pris est perdu pour toujours. Rejouer une période ne duplique pas (clé unique).
+# Tourne à vide et sans erreur tant qu'aucun identifiant n'est posé.
+45 7 * * 0 cd /root/evenements && .venv/bin/python -m scripts.gsc_report --enregistrer --apply --jours 30 >> logs/gsc_report.log 2>&1
 # Nettoyage hebdomadaire dimanche 5h — chaîne RÉVERSIBLE et DÉTERMINISTE uniquement
 # (purge hors-zone/passés/incomplétables, articles de presse publiés à tort, doublons
 # WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py
