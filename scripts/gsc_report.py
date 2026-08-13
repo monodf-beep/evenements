@@ -58,22 +58,137 @@ RETARD_JOURS = 3
 
 
 def _service():
-    """Construit le client Search Console, ou explique précisément ce qui manque."""
-    chemin = os.getenv("GSC_CREDENTIALS", str(ROOT / "data" / "gsc-credentials.json"))
-    if not Path(chemin).exists():
-        log.error("fichier d'identifiants introuvable : %s", chemin)
-        log.error("→ créer un compte de service Google Cloud, télécharger sa clé JSON, "
-                  "la déposer là, ou pointer GSC_CREDENTIALS vers elle dans .env")
-        return None
+    """Construit le client Search Console. DEUX chemins d'authentification, au choix.
+
+    POURQUOI DEUX (ajouté le 2026-08-13, après blocage réel). La première version n'acceptait
+    qu'une clé de compte de service. Or l'organisation `culturasabauda.eu` applique la règle
+    Google Cloud `iam.disableServiceAccountKeyCreation` — une protection activée par défaut
+    sur les organisations récentes, qui INTERDIT de créer ce genre de clé. Le script était
+    donc inutilisable sans affaiblir un réglage de sécurité, ce qui est un prix absurde pour
+    lire des statistiques de recherche.
+
+    Le compte OAuth ne tombe pas sous cette règle : ce n'est pas une clé de compte de
+    service, c'est une autorisation donnée par un humain à une application. Et pour la
+    Search Console c'est même MIEUX : l'utilisateur est déjà propriétaire de la propriété,
+    donc l'étape « ajouter le compte de service comme utilisateur » disparaît.
+
+    ⚠️ Le piège de l'OAuth, et il casse au bout d'une semaine sans prévenir : tant que
+    l'application reste en statut **« Test »** dans l'écran de consentement Google, le jeton
+    de rafraîchissement EXPIRE au bout de 7 jours. Il faut passer l'application « En
+    production » (bouton *Publier l'application*) pour obtenir un jeton durable. Sinon le
+    cron marche une semaine, puis échoue en silence.
+    """
     try:
-        from google.oauth2 import service_account
         from googleapiclient.discovery import build
     except ImportError:
         log.error("bibliothèques absentes — .venv/bin/pip install "
-                  "google-api-python-client google-auth")
+                  "google-api-python-client google-auth google-auth-oauthlib")
         return None
-    creds = service_account.Credentials.from_service_account_file(chemin, scopes=SCOPE)
-    return build("searchconsole", "v1", credentials=creds, cache_discovery=False)
+
+    jeton = os.getenv("GSC_OAUTH_TOKEN", str(ROOT / "data" / "gsc-oauth-token.json"))
+    compte = os.getenv("GSC_CREDENTIALS", str(ROOT / "data" / "gsc-credentials.json"))
+
+    # OAuth d'abord : c'est le chemin qui ne demande aucune dérogation de sécurité.
+    if Path(jeton).exists():
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        creds = Credentials.from_authorized_user_file(jeton, SCOPE)
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            Path(jeton).write_text(creds.to_json(), encoding="utf-8")
+            log.info("jeton OAuth rafraîchi")
+        return build("searchconsole", "v1", credentials=creds, cache_discovery=False)
+
+    if Path(compte).exists():
+        from google.oauth2 import service_account
+        creds = service_account.Credentials.from_service_account_file(compte, scopes=SCOPE)
+        return build("searchconsole", "v1", credentials=creds, cache_discovery=False)
+
+    log.error("aucun identifiant trouvé. Trois chemins possibles, du plus simple au plus lourd :")
+    log.error("  A. OAuth (recommandé, aucune dérogation de sécurité) — créer un ID client "
+              "OAuth de type « Application de bureau », télécharger son JSON, puis lancer "
+              "sur une machine AVEC NAVIGATEUR : gsc_report.py --auth --client <le.json>")
+    log.error("     puis copier %s sur le VPS", jeton)
+    log.error("  B. Compte de service — clé JSON dans %s. Bloqué tant que la règle "
+              "iam.disableServiceAccountKeyCreation s'applique au projet.", compte)
+    log.error("  C. Sans API du tout : exporter le CSV depuis la Search Console et lancer "
+              "gsc_report.py --csv <fichier>")
+    return None
+
+
+def _autoriser(client_json: str, sortie: str) -> int:
+    """Fait le tour OAuth dans un navigateur et enregistre le jeton réutilisable.
+
+    À lancer sur une machine qui a un navigateur (ton portable), pas sur le VPS : Google a
+    supprimé en 2022 le mode « copier-coller le code » (`oob`), il faut un vrai aller-retour
+    par navigateur. Le fichier produit se copie ensuite sur le VPS et s'y rafraîchit tout
+    seul, indéfiniment — à condition que l'application soit « En production ».
+    """
+    try:
+        from google_auth_oauthlib.flow import InstalledAppFlow
+    except ImportError:
+        log.error("bibliothèque absente — .venv/bin/pip install google-auth-oauthlib")
+        return 2
+    if not Path(client_json).exists():
+        log.error("fichier d'ID client introuvable : %s", client_json)
+        return 2
+    flow = InstalledAppFlow.from_client_secrets_file(client_json, SCOPE)
+    creds = flow.run_local_server(port=0, prompt="consent")
+    Path(sortie).parent.mkdir(parents=True, exist_ok=True)
+    Path(sortie).write_text(creds.to_json(), encoding="utf-8")
+    print(f"\nJeton enregistré dans {sortie}")
+    print("Copie-le sur le VPS au même endroit, puis lance --check.")
+    if not creds.refresh_token:
+        log.warning("AUCUN jeton de rafraîchissement reçu — le script ne survivra pas à "
+                    "l'expiration. Relancer avec un consentement neuf.")
+    return 0
+
+
+def _depuis_csv(chemin: str) -> int:
+    """Lit un export CSV de la Search Console — le chemin qui ne demande RIEN à débloquer.
+
+    L'interface de la Search Console exporte en un clic (bouton *Exporter*, en haut à
+    droite du rapport Performances). C'est la façon d'obtenir la réponse aujourd'hui, sans
+    projet Google Cloud, sans compte de service et sans dérogation. Accepte le .zip complet
+    ou un .csv isolé.
+
+    Les en-têtes changent selon la langue de l'interface : on repère donc la colonne des
+    libellés à son contenu (la première non numérique) plutôt qu'à son nom, ce qui évite de
+    casser le jour où l'export sort en anglais.
+    """
+    import csv
+    import io
+    import zipfile
+
+    p = Path(chemin)
+    if not p.exists():
+        log.error("fichier introuvable : %s", chemin)
+        return 2
+    tables: dict[str, list[list[str]]] = {}
+    if p.suffix.lower() == ".zip":
+        with zipfile.ZipFile(p) as z:
+            for nom in z.namelist():
+                if nom.lower().endswith(".csv"):
+                    texte = z.read(nom).decode("utf-8-sig", errors="replace")
+                    tables[nom] = list(csv.reader(io.StringIO(texte)))
+    else:
+        tables[p.name] = list(csv.reader(
+            p.read_text(encoding="utf-8-sig", errors="replace").splitlines()))
+
+    for nom, lignes in tables.items():
+        if len(lignes) < 2:
+            continue
+        entete, corps = lignes[0], lignes[1:]
+        print(f"\n=== {nom} — {len(corps)} ligne(s) ===")
+        print("   " + " | ".join(entete))
+        for l in corps[:25]:
+            print("   " + " | ".join(l))
+        if len(corps) > 25:
+            print(f"   … {len(corps) - 25} ligne(s) de plus (fichier complet non tronqué)")
+    if not tables:
+        log.error("aucun CSV lisible dans %s", chemin)
+        return 2
+    return 0
 
 
 def _fenetre(jours: int) -> tuple[str, str]:
@@ -129,9 +244,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--articles", action="store_true",
                         help="N'afficher que la performance des articles.")
     parser.add_argument("--limite", type=int, default=25, help="Lignes par tableau.")
+    parser.add_argument("--csv", metavar="FICHIER",
+                        help="Lit un export CSV/ZIP de la Search Console. Aucune API, "
+                             "aucun identifiant, aucune dérogation de sécurité.")
+    parser.add_argument("--auth", action="store_true",
+                        help="Tour OAuth dans un navigateur (à lancer sur ton portable).")
+    parser.add_argument("--client", metavar="JSON",
+                        help="Avec --auth : le fichier d'ID client OAuth téléchargé.")
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
+
+    if args.csv:
+        return _depuis_csv(args.csv)
+    if args.auth:
+        if not args.client:
+            log.error("--auth demande --client <fichier JSON d'ID client OAuth>")
+            return 2
+        return _autoriser(args.client,
+                          os.getenv("GSC_OAUTH_TOKEN",
+                                    str(ROOT / "data" / "gsc-oauth-token.json")))
+
     base = (os.getenv("WP_AS_URL") or "https://agendasabauda.eu").rstrip("/")
     propriete = os.getenv("GSC_PROPERTY") or f"sc-domain:{base.split('//')[-1]}"
 
