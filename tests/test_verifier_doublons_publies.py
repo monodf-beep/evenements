@@ -193,6 +193,36 @@ _check("le jumeau ABSENT du groupe est signalé comme tel — sinon on croit n'e
        "retirer qu'une",
        "jumeau" in chag, chag[-900:])
 
+# LA CONTRADICTION S'AFFICHE À CÔTÉ DE LA RECOMMANDATION. Sur la production du
+# 2026-08-13, la famille proposée au retrait portait le SEUL vrai permalien du lot —
+# l'adresse que Google connaît. Le critère qui avait départagé était une différence de
+# longueur d'article. Une recommandation qui n'affiche pas ce qui la contredit se lit
+# comme une certitude ; c'est la forme générale du défaut de cette journée.
+# On construit l'OPPOSITION, pas une famille qui gagne sur tout : 3021 reçoit l'article
+# le plus fourni (donc sa famille l'emporte), et c'est l'AUTRE famille qui porte le seul
+# vrai permalien. Sans cette opposition la fixture passerait au vert sans jamais exercer
+# le code — le défaut qu'a eu celle du 06/08.
+c = sqlite3.connect(tmp)
+c.execute("UPDATE events_raw SET enrich_data=? WHERE id=3021",
+          (_json.dumps({"article": {"corps": "Il museo di Vercelli riunisce un "
+                                             "centinaio di opere. " * 12}}),))
+c.execute("UPDATE events_raw SET wp_permalink_as='' WHERE id=3026")
+c.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=4195",
+          ("https://agendasabauda.eu/it/eventi/marc-chagall-tra-poesia/",))
+c.commit(); c.close()
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    vd.main([])
+contredit = _buf.getvalue()
+_check("quand la famille à RETIRER porte l'adresse indexée, la réserve est affichée",
+       "MAIS la famille à retirer porte l'adresse indexée" in contredit,
+       contredit[contredit.find("défaut proposé"):][:400])
+_check("   et la réserve nomme l'adresse en question, pour qu'on puisse aller voir",
+       "marc-chagall-tra-poesia" in contredit, contredit[-800:])
+_check("   la recommandation N'EST PAS inversée pour autant — on affiche la "
+       "contradiction, on ne déplace pas le problème",
+       "← GARDER" in contredit)
+
 print("\n──── 6. le zéro qui se lit ────")
 # On vide la base des paires : il ne doit plus rien rester à signaler, et la sortie doit
 # permettre de distinguer « rien trouvé » de « rien examiné ».

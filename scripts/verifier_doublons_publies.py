@@ -198,6 +198,29 @@ def recommandation(groupe: list[dict], par_id: dict[int, dict]) -> tuple[list, l
         motif = "gardée parce que son adresse est un vrai permalien, pas un `?p=`"
     else:
         motif = "gardée parce que c'est la plus ancienne — elle porte l'historique"
+
+    # ══ QUAND LE DÉFAUT EST MINCE, LE DIRE ════════════════════════════════════════════
+    # Ajouté le 2026-08-13 en lisant la sortie réelle sur le groupe Chagall. Le critère
+    # qui a départagé était une différence de longueur d'article — et la famille proposée
+    # au RETRAIT portait le seul vrai permalien du lot,
+    # `/evenement/marc-chagall-entre-poesie-et-spiritualite/`, c'est-à-dire l'adresse que
+    # Google connaît et que les partages pointent. La retirer est peut-être le bon choix,
+    # mais ce n'est plus un choix évident, et un « ← retirer » sans réserve le ferait
+    # passer pour tel.
+    #
+    # C'est la forme générale du défaut de la journée : une recommandation qui n'affiche
+    # pas ce qui la contredit se lit comme une certitude. On ne change donc PAS le
+    # classement — inverser l'ordre des critères déplacerait le problème sans le résoudre
+    # — on affiche la contradiction à côté.
+    perd_permalien = (sum(1 for e in familles[1] if _permalien_propre(e))
+                      > sum(1 for e in garde if _permalien_propre(e)))
+    if perd_permalien and "permalien" not in motif:
+        adresses = [(e.get("wp_permalink_as") or "") for e in familles[1]
+                    if _permalien_propre(e)]
+        motif += ("\n       ⚠ MAIS la famille à retirer porte l'adresse indexée "
+                  f"({adresses[0][:70]}…),\n         et celle qu'on garde n'en a pas. "
+                  "À regarder avant d'appliquer : ce critère-ci\n         n'a pas départagé, "
+                  "il a été contredit.")
     return garde, reste, motif
 
 
