@@ -120,13 +120,39 @@ _check("une fiche sans traduction ne reçoit aucune mention de traduction",
 _check("   et l'avertissement général sur --subis reste affiché pour tout le lot",
        "annule en silence" in sortie, sortie[-1500:])
 
-print("\n──── 4. rien n'a été écrit ────")
+# ── 4. LA PROMESSE DOIT TENIR COMPTE DE CE QUI LA PRÉCÈDE ────────────────────────────
+# Une heure après avoir ajouté l'annotation, la sortie de production portait DEUX lignes
+# où les deux moitiés se contredisaient : « statut 'merged' hors file de publication »
+# suivi de « la republier rend la langue manquante ». Une fiche 'merged' ne repart pas —
+# `--subis` n'y peut rien. Et c'est la seconde moitié, la plus engageante, qu'on croit.
+print("\n──── 4. une fiche qui ne repart pas ne peut rien rendre ────")
+c = sqlite3.connect(tmp)
+c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, statut, "
+          "date_event_start, date_event_end, translation_of, duplicate_of) "
+          "VALUES (?,?,?,?,?,?,?,?, NULL)",
+          (80, "Traduzione fusionata", "https://a.fr/80", 920, "merged", FUTUR, FUTUR, 49))
+c.commit(); c.close()
+ETATS[920] = "non_public"
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    rh.main(["--delay", "0"])
+sortie2 = buf.getvalue()
+ligne_80 = next((l for l in sortie2.splitlines() if "[   80]" in l or "[80]" in l), "")
+_check("une fiche 'merged' NE promet PAS de rendre une langue",
+       "rend la langue manquante" not in ligne_80, ligne_80 or sortie2[-1200:])
+_check("   et elle dit franchement qu'il n'y a rien à attendre de --subis",
+       "rien à attendre de --subis" in ligne_80, ligne_80)
+_check("   pendant que la fiche qui, elle, repart garde sa promesse",
+       "rend la langue manquante" in sortie2, sortie2[-1500:])
+
+print("\n──── 5. rien n'a été écrit ────")
 c = sqlite3.connect(tmp)
 restants = c.execute("SELECT COUNT(*) FROM events_raw "
                      "WHERE COALESCE(wp_post_id_as,0) > 0").fetchone()[0]
 statuts = dict(c.execute("SELECT id, statut FROM events_raw"))
 c.close()
-_check("les cinq liens WordPress sont intacts", restants == 5, str(restants))
+_check("les six liens WordPress sont intacts (cinq de départ + la fusionnée)",
+       restants == 6, str(restants))
 _check("   et aucun statut n'a bougé",
        all(statuts[eid] == st for eid, _t, _w, st, _tr in FICHES), str(statuts))
 

@@ -515,9 +515,19 @@ def main(argv=None) -> int:
                 orig = next((o for o in autres if o["id"] == trad_de), None)
                 if orig and int(orig.get("wp_post_id_as") or 0):
                     e_orig = cache.get(int(orig["wp_post_id_as"]))
-                    if e_orig == "public":
+                    if e_orig == "public" and f.get("repart"):
                         suite += (f" · TRADUCTION de [{trad_de}], dont la page est EN "
                                   f"LIGNE — la republier rend la langue manquante")
+                    elif e_orig == "public":
+                        # LA PROMESSE DOIT TENIR COMPTE DE CE QUI LA PRÉCÈDE. Deux fiches
+                        # ('merged', donc hors file de publication) portaient à la fois
+                        # « ne repart pas » et « la republier rend la langue manquante ».
+                        # Les deux moitiés de la ligne se contredisaient, et c'est la
+                        # seconde — la plus engageante — qu'on aurait crue. Vu le
+                        # 2026-08-13, une heure après avoir ajouté l'annotation.
+                        suite += (f" · traduction de [{trad_de}], dont la page est en "
+                                  f"ligne — mais CELLE-CI ne repartira pas : rien à "
+                                  f"attendre de --subis ici")
                     elif e_orig:
                         suite += (f" · traduction de [{trad_de}], retirée elle aussi — "
                                   f"les deux langues sont hors ligne")
