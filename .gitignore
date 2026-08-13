@@ -26,3 +26,7 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+
+# Clé de compte de service Google (Search Console) — JAMAIS dans le dépôt.
+data/gsc-credentials.json
+*gsc-credentials*.json
