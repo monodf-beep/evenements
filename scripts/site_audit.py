@@ -183,6 +183,36 @@ def auditer(row: dict, session: requests.Session) -> list[tuple[str, str]]:
                  "`.venv/bin/python -m scripts.reconcile_wp_deleted` (dry-run), qui "
                  "distingue corbeille et suppression via l'API REST"
                  if resp.status_code == 404 else "")
+        if resp.status_code == 404:
+            # ── LE 404 NE DIT PAS CE QU'IL A L'AIR DE DIRE (2026-08-13) ──────────────
+            # Ce bloc criait « ce que le VISITEUR voit est FAUX » et sortait un 🔴 par
+            # fiche. Le 13/08 au soir il en a produit huit — et les huit étaient des
+            # posts simplement À LA CORBEILLE, déjà classés l'heure d'avant par
+            # `reconcile_hors_ligne` qui, lui, interroge l'API REST. Cinq d'entre eux
+            # venaient même d'être traités : leur lien était vidé depuis 21h34.
+            #
+            # Trois défauts en un, tous nommés dans CLAUDE.md :
+            #   · RÈGLE 1 — le front-end ne distingue pas corbeille et suppression. Ce
+            #     commentaire le disait déjà trois lignes plus haut, et l'alerte partait
+            #     quand même ;
+            #   · RÈGLE 3 — aucune de ces fiches ne se répare ici. L'alerte se rejouait
+            #     à l'identique chaque jour à 14h sur les mêmes fiches, sans rouvreur ;
+            #   · RÈGLE 6 — « une file ne doit contenir que ce qu'un humain peut faire ».
+            #     Le geste est le même pour les huit, et c'est un autre script qui le
+            #     fait. Huit 🔴 pour une commande.
+            #
+            # On interroge donc l'API REST avant de crier. Un post à la corbeille n'est
+            # PAS « ce que le visiteur voit de faux » : le visiteur ne voit rien, et
+            # c'est déjà géré ailleurs. Seule une VRAIE disparition reste grave.
+            from scripts.reconcile_hors_ligne import _etat
+            wp_base = (os.getenv("WP_AS_URL") or "https://agendasabauda.eu").rstrip("/")
+            e = _etat(wp_base, int(row.get("wp_post_id_as") or 0))
+            if e == "non_public":
+                return [("corbeille", f"post à la CORBEILLE (404 attendu) — "
+                                      f"`reconcile_hors_ligne` le classe déjà")]
+            if e == "indetermine":
+                return [("avert", f"HTTP 404 sur {url}, et l'API REST n'a pas répondu — "
+                                  f"à revérifier, on ne conclut pas sur un aléa réseau")]
         return [("grave", f"HTTP {resp.status_code} sur {url}{suite}")]
     # Une redirection n'est pas une erreur pour le visiteur, mais elle signale un
     # permalien périmé en base : les liens qu'on publie ailleurs (newsletter, réseaux,
@@ -373,6 +403,7 @@ def main(argv: list[str] | None = None) -> int:
 
     session = requests.Session()
     graves, averts, saines = [], [], 0
+    corbeille: list[str] = []     # posts corbeillés : COMPTÉS, jamais criés un par un
     for i, row in enumerate(lot, 1):
         anomalies = auditer(row, session)
         titre = (row.get("title") or "")[:55]
@@ -382,6 +413,10 @@ def main(argv: list[str] | None = None) -> int:
         else:
             for niveau, msg in anomalies:
                 ligne = f"[{row['id']}] WP#{row['wp_post_id_as']} {titre} — {msg}"
+                if niveau == "corbeille":
+                    corbeille.append(f"[{row['id']}] WP#{row['wp_post_id_as']} {titre}")
+                    log.info("· %s", ligne)
+                    continue
                 (graves if niveau == "grave" else averts).append(ligne)
                 log.warning("%s %s", "🔴" if niveau == "grave" else "⚠️", ligne)
         if i < len(lot):
@@ -407,11 +442,21 @@ def main(argv: list[str] | None = None) -> int:
         corps += [f"⚠️ {l}" for l in averts[:10]]
         if len(averts) > 10:
             corps.append(f"…et {len(averts) - 10} autre(s).")
+    if corbeille:
+        # UNE LIGNE, PAS N ALERTES. Le geste est le même pour toutes, et c'est un autre
+        # script qui le fait : les énumérer une par une remplissait le message de 🔴 pour
+        # une seule commande, tous les jours, sur les mêmes fiches (règle 6).
+        corps.append(f"_{len(corbeille)} fiche(s) dont le post est à la CORBEILLE — "
+                     f"normal, `reconcile_hors_ligne` les classe. Pas une anomalie du "
+                     f"site._")
     msg = entete + ("\n" + "\n".join(corps) if corps else "")
     print(msg)
 
     # Slack UNIQUEMENT s'il y a quelque chose à dire : un rapport quotidien « tout va
     # bien » finit par ne plus être lu, et c'est le jour où il crie que ça compte.
+    # Les corbeillés NE DÉCLENCHENT PAS d'envoi : s'il n'y a qu'eux, il n'y a rien à
+    # signaler. C'est la même doctrine que les contradicteurs de 11h30 et 11h35 — un
+    # message quotidien qui ne demande aucun geste cesse d'être lu.
     if not args.quiet and (graves or averts):
         slack.notify(msg[:3500])
     pipeline_status.record_run("site_audit", ok=saines, warn=len(averts),
