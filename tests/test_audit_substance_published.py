@@ -141,6 +141,106 @@ _check("   et il dit d'où vient le texte affiché à la place",
        "DESCRIPTION BRUTE" in _sortie)
 _check("   et qu'elles échappent aussi au panel", "invisibles de nous" in _sortie)
 
+# CE QUI SUIT VIENT D'UN VRAI DÉFAUT, VU DANS LA SORTIE ET NON DANS LE CODE (2026-08-13).
+# Les deux lignes qui expliquent le panier 3 — « l'événement a eu lieu… ~34 $ pour rien »
+# — s'imprimaient APRÈS le panier 4. Elles se lisaient donc comme si elles décrivaient
+# les fiches sans article, c'est-à-dire l'inverse : celles-là, il FAUT les réparer. Rien
+# dans le code ne le montrait ; il a fallu lire la sortie. La fixture surveille l'ORDRE.
+_i3, _i4 = _sortie.find("3. MAIGRES MAIS PASSÉES"), _sortie.find("4. PUBLIÉES SANS ARTICLE")
+_ieu = _sortie.find("L'événement a eu lieu")
+_check("les paniers sortent dans l'ordre", -1 < _i3 < _i4, f"3={_i3} 4={_i4}")
+_check("l'explication « l'événement a eu lieu » reste ATTACHÉE au panier 3",
+       _i3 < _ieu < _i4, f"3={_i3} explication={_ieu} 4={_i4}")
+
+# RÈGLE 6 : le périmètre à côté du nombre. Ce compteur-ci porte sur TOUTES les publiées,
+# celui de `panel_rattrapage` sur les vivantes seulement — deux périmètres, et c'est le
+# plus gros qu'on croira si personne ne l'écrit.
+_check("le panier 4 écrit son périmètre à côté de son nombre",
+       "toutes dates confondues" in _sortie and "sur les" in _sortie, _sortie[_i4:_i4 + 300])
+_check("   et il dit combien il apporte de VRAIMENT nouveau, sans additionner les paniers",
+       "qu'AUCUNE commande ne visait" in _sortie, _sortie[_i4:_i4 + 400])
+
+# Le cas frontière du panier 4 : id 6 est LONGUE (elle passe le plancher grâce au repli)
+# et non rédigée. Elle doit donc apparaître dans la liste propre au panier 4, et surtout
+# PAS être recomptée avec les maigres du panier 1.
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    audit.main(["--ids"])
+_ids_out = _buf.getvalue()
+_check("la fiche longue-mais-non-rédigée est listée à part",
+       "AU-DESSUS du plancher" in _ids_out, _ids_out[-600:])
+_check("   et elle n'est PAS recomptée avec les maigres du panier 1",
+       "  [    1] " not in _ids_out.split("AU-DESSUS du plancher")[1],
+       _ids_out.split("AU-DESSUS du plancher")[-1][:400])
+
+# ── UNE TRADUCTION N'EST PAS UNE TÂCHE ───────────────────────────────────────────────
+# `enrich` REFUSE toute fiche dont `translation_of` est renseigné : il écrit en français
+# et écraserait la traduction. L'audit les mettait quand même dans sa commande — le
+# lecteur croyait lancer huit réparations et en obtenait six, sans que rien ne le dise.
+# Vu en production le 2026-08-13 sur la paire 4194/4195 (Chagall FR puis IT), les deux
+# dans le panier 4 le même jour.
+#
+# LES DEUX CÔTÉS DE LA FRONTIÈRE, y compris celui qui doit PASSER : id 7 est la traduction
+# (elle sort de la commande), id 8 est un original tout aussi long et non rédigé (il y
+# reste). Une fixture qui n'aurait que le cas refusé prouverait seulement qu'on sait
+# refuser.
+_c = _sq.connect(tmp)
+_c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, enrich_data, "
+           "translation_of, translated_lang) VALUES (?,?,?,?,?,?,?)",
+           (7, "Chagall, versione italiana", "https://a.fr/7", 994, "", 6, "it"))
+_c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, enrich_data, "
+           "translation_of) VALUES (?,?,?,?,?, NULL)",
+           (8, "Un original tout aussi long et non rédigé", "https://a.fr/8", 993, ""))
+_c.commit(); _c.close()
+
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    audit.main([])
+_t = _buf.getvalue()
+_cmd = [l for l in _t.splitlines() if "scripts.enrich " in l]
+_check("la traduction (id 7) ne figure dans AUCUNE commande enrich",
+       all(" 7 " not in f"{l} " and not l.rstrip().endswith(" 7") for l in _cmd),
+       "\n".join(_cmd))
+_check("   mais l'original de même longueur (id 8) y est bien — sinon on aurait "
+       "seulement appris à refuser",
+       any(" 8" in l for l in _cmd), "\n".join(_cmd))
+_check("   et l'écart est DIT", "traduction mise de côté" in _t, _t[-900:])
+
+# ── LE GESTE N'EST PAS LE MÊME SELON L'ORIGINAL ──────────────────────────────────────
+# Une traduction sans article a deux causes, et l'audit les confondait : il disait
+# « réécrire l'original » dans les deux. Or si l'original A DÉJÀ son article, le
+# réenrichir coûte 0,33 $ et ne répare rien côté italien — c'est `translate_article` qui
+# a échoué, et `--retranslate` régénère le jumeau en place. Vu le 2026-08-13 sur 4195,
+# dont l'original 3026 (Chagall FR) porte bien ses 223 mots.
+#
+# id 7 (déjà posé) traduit id 6, qui n'a PAS d'article  → enrich puis retranslate.
+# id 9 traduit id 4, qui EN A un (posé plus haut)       → retranslate SEUL.
+# id 10 traduit un id qui n'existe pas                  → on le dit, on ne devine pas.
+_c = _sq.connect(tmp)
+for eid, orig in ((9, 4), (10, 12345)):
+    _c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, enrich_data, "
+               "translation_of, translated_lang) VALUES (?,?,?,?,?,?,?)",
+               (eid, f"Jumelle {eid}", f"https://a.fr/{eid}", 990 - eid, "", orig, "it"))
+_c.commit(); _c.close()
+
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    audit.main([])
+_g = _buf.getvalue()
+_check("l'original QUI A DÉJÀ son article n'est pas renvoyé à enrich",
+       "--retranslate" in _g and "9←4" in _g, _g[-1200:])
+_check("   et la commande proposée pour lui est bien --retranslate, pas enrich",
+       "scripts.translate_events --retranslate 4 --apply" in _g, _g[-1200:])
+_check("l'original SANS article, lui, passe par enrich AVANT la re-traduction",
+       "7←6" in _g and "n'a PAS d'article non plus" in _g, _g[-1200:])
+_check("une liaison cassée est DITE, pas devinée",
+       "original 12345 INTROUVABLE" in _g, _g[-1200:])
+# La corbeille, elle, doit garder la traduction : dépublier l'original en laissant sa
+# version italienne en ligne laisserait justement ce qu'on retire.
+_trash = [l for l in _t.splitlines() if "trash_by_ids" in l]
+_check("la commande de DÉPUBLICATION, elle, garde la traduction",
+       any(" 7" in l for l in _trash), "\n".join(_trash))
+
 jamais_enrichies = [ev["id"] for ev in sous_plancher if not (ev.get("article_title") or "").strip()]
 _check("« jamais enrichie » repère bien id=1 (article_title vide), pas id=2",
        jamais_enrichies == [1], str(jamais_enrichies))

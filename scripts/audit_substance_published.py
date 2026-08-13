@@ -96,6 +96,12 @@ def main(argv=None) -> int:
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 "
         "AND duplicate_of IS NULL").fetchall()]
+    # Les ORIGINAUX des traductions, publiés ou non : sans eux on ne peut pas dire à
+    # l'opérateur quel geste faire (voir `_gestes_traductions` plus bas). La requête
+    # ci-dessus ne rend que les fiches PUBLIÉES — un original en attente n'y serait pas,
+    # et on conclurait « il n'a pas d'article » alors qu'on ne l'a simplement pas lu.
+    _originaux = {r["id"]: dict(r) for r in conn.execute(
+        "SELECT id, title, enrich_data FROM events_raw").fetchall()}
     conn.close()
 
     # RÈGLE 5, AJOUTÉE LE 2026-08-11 — ce script annonçait « 108 fiches sous le plancher »
@@ -145,6 +151,27 @@ def main(argv=None) -> int:
     # RÈGLE 5 ici aussi : une fiche non rédigée dont l'événement est passé ne sera pas
     # republiée. Elle reste en ligne, donc elle est comptée — mais à part.
     sans_article_vivantes = [t for t in sans_article if devant_nous(t[0], today)]
+    # Le panier 1 et le panier 4 se RECOUVRENT largement : une fiche jamais enrichie est
+    # à la fois maigre et non rédigée. Additionner les deux fabriquerait du travail qui
+    # n'existe pas (règle 6). On isole donc ce que le panier 4 apporte VRAIMENT : les
+    # fiches assez longues pour passer tous les contrôles, mais dont pas une ligne n'est
+    # de nous. Celles-là, aucune commande de ce script ne les visait.
+    _deja = {ev["id"] for ev, _ in sous_plancher}
+    sans_article_seules = [t for t in sans_article_vivantes if t[0]["id"] not in _deja]
+
+    # LES TRADUCTIONS NE SONT PAS DES TÂCHES (2026-08-13). `enrich` REFUSE une fiche dont
+    # `translation_of` est renseigné — il écrit en français et écraserait la traduction ;
+    # c'est l'original qu'on enrichit, puis translate_events repasse. Mettre malgré tout
+    # ces identifiants dans la commande donnait une file dont une partie est vouée au
+    # refus : le lecteur croit lancer huit réparations et en obtient six. Règle 6, « une
+    # file ne doit contenir que ce qu'un humain peut faire ». Vu sur la paire 4194/4195
+    # (Chagall FR/IT), toutes deux dans le panier 4 le même jour.
+    def _traduction(ev: dict) -> int:
+        return int(ev.get("translation_of") or 0)
+
+    def _actionnables(lot: list[tuple[dict, int]]) -> tuple[list, list]:
+        return ([t for t in lot if not _traduction(t[0])],
+                [t for t in lot if _traduction(t[0])])
 
     print("=" * 78)
     print("AUDIT « substance publiée » — lecture seule, rien n'a été modifié")
@@ -159,14 +186,23 @@ def main(argv=None) -> int:
     print(f"   · réparation en lot : .venv/bin/python -m scripts.repair_substance")
     print(f"2. BANDE MAIGRE ({plancher}-{substance.BANDE_MAIGRE} mots), publiable mais maigre : {len(bande_maigre)}")
     print(f"3. MAIGRES MAIS PASSÉES (comptées à part, NON réparables) : {len(passees)}")
-    print(f"4. PUBLIÉES SANS ARTICLE RÉDIGÉ : {len(sans_article)}, dont "
-          f"{len(sans_article_vivantes)} encore devant nous")
+    print(f"   L'événement a eu lieu : la fiche ne sera pas republiée, plus aucun visiteur")
+    print(f"   ne la cherche. Les réparer coûterait ~{0.33 * len(passees):.0f} $ pour rien.")
+    # RÈGLE 6 — le périmètre s'écrit À CÔTÉ du nombre. Celui-ci se compare mal avec les
+    # « 23 sans article » de `panel_rattrapage`, qui ne regarde que les fiches VIVANTES
+    # (à venir, en cours, récurrentes) : deux périmètres, pas deux mesures qui se
+    # contredisent. Sans cette ligne, c'est le plus gros des deux qu'on croira.
+    print(f"4. PUBLIÉES SANS ARTICLE RÉDIGÉ : {len(sans_article)} sur les {len(rows)} "
+          f"publiées, toutes dates confondues,")
+    print(f"   dont {len(sans_article_vivantes)} encore devant nous — ce sont celles-là "
+          f"qui se réparent,")
+    print(f"   et parmi elles {len(sans_article_seules)} qu'AUCUNE commande ne visait "
+          f"(les {len(sans_article_vivantes) - len(sans_article_seules)} autres sont déjà")
+    print(f"   comptées au panier 1 — être maigre et n'être pas rédigée va souvent ensemble).")
     print(f"   C'est la DESCRIPTION BRUTE de la source qui s'affiche (repli de")
     print(f"   publisher.build_post), pas notre rédaction — quelle que soit sa longueur.")
     print(f"   Ces fiches échappent AUSSI au panel de lecteurs et à tout contrôle qui lit")
     print(f"   enrich_data : visibles du public, invisibles de nous.")
-    print(f"   L'événement a eu lieu : la fiche ne sera pas republiée, plus aucun visiteur")
-    print(f"   ne la cherche. Les réparer coûterait ~{0.33 * len(passees):.0f} $ pour rien.")
     print()
 
     if args.ids:
@@ -182,16 +218,93 @@ def main(argv=None) -> int:
             print()
         _dump("SOUS LE PLANCHER, à réparer en priorité", sous_plancher)
         _dump("BANDE MAIGRE (publiable, à surveiller)", bande_maigre)
+        _dump("SANS ARTICLE RÉDIGÉ mais AU-DESSUS du plancher — hors panier 1",
+              sans_article_seules)
 
-    if sous_plancher:
-        ids = " ".join(str(ev["id"]) for ev, _ in sous_plancher[:50])
-        print("RIEN N'A ÉTÉ MODIFIÉ. Deux réparations possibles, décision par décision :")
-        print("  • ENRICHIR (la fiche gagnera un vrai article, puis repart au republish) :")
+    def _traductions_ecartees(trads: list[tuple[dict, int]]) -> None:
+        """Deux gestes DIFFÉRENTS, et se tromper coûte un article écrit pour rien.
+
+        Une traduction sans article a deux causes possibles, et l'audit peut les
+        séparer puisqu'il a l'original sous la main :
+
+        · l'original N'A PAS d'article non plus → il faut l'écrire (`enrich`), PUIS
+          re-traduire ;
+        · l'original EN A UN, et la traduction ne l'a pas reçu → `translate_article` a
+          échoué ou a été tronqué. Rien à réécrire : `translate_events --retranslate`
+          régénère le jumeau en place, garde son id et son post WP.
+
+        Le second cas était masqué : j'écrivais « réécrire l'original » pour les quatre,
+        alors que 3026 (Chagall FR, 223 mots) a bien son article — le réenrichir aurait
+        coûté 0,33 $ et n'aurait RIEN réparé du côté italien. Constaté le 2026-08-13 en
+        relisant la sortie que Franck venait de coller.
+        """
+        if not trads:
+            return
+        tete = ("1 traduction mise de côté" if len(trads) == 1
+                else f"{len(trads)} traductions mises de côté")
+        print(f"    ({tete} — enrich les REFUSE : il écrit en français et")
+        print(f"     écraserait la version italienne.)")
+        a_traduire, a_ecrire = [], []
+        for ev, _ in trads:
+            oid = _traduction(ev)
+            orig = _originaux.get(oid)
+            if orig is None:
+                print(f"       id {ev['id']} → original {oid} INTROUVABLE en base "
+                      f"(liaison cassée, ne pas deviner)")
+            elif ((_article_de(orig) or {}).get("corps") or "").strip():
+                a_traduire.append((ev["id"], oid))
+            else:
+                a_ecrire.append((ev["id"], oid))
+        if a_traduire:
+            ids = " ".join(str(o) for _t, o in a_traduire)
+            print(f"     · {len(a_traduire)} dont l'original A DÉJÀ son article : rien à "
+                  f"réécrire, la traduction")
+            print(f"       ne l'a simplement jamais reçu "
+                  f"({', '.join(f'{t}←{o}' for t, o in a_traduire)}) —")
+            print(f"       .venv/bin/python -m scripts.translate_events --retranslate "
+                  f"{ids} --apply")
+        if a_ecrire:
+            ids = " ".join(str(o) for _t, o in a_ecrire)
+            print(f"     · {len(a_ecrire)} dont l'original n'a PAS d'article non plus : "
+                  f"l'écrire d'abord")
+            print(f"       ({', '.join(f'{t}←{o}' for t, o in a_ecrire)}) —")
+            print(f"       .venv/bin/python -m scripts.enrich {ids}")
+            print(f"       puis : .venv/bin/python -m scripts.translate_events "
+                  f"--retranslate {ids} --apply")
+
+    seules_ok, seules_trad = _actionnables(sans_article_seules)
+    if seules_ok:
+        ids = " ".join(str(ev["id"]) for ev, _ in seules_ok[:50])
+        if len(seules_ok) == 1:
+            print("CETTE FICHE-LÀ passe le plancher — avec le texte de la source. Aucune")
+            print("commande de ce script ne la visait : le panier 1 ne la voit pas (elle est")
+            print("assez longue) et le panier 2 n'en propose aucune.")
+        else:
+            print(f"CES {len(seules_ok)} FICHES-LÀ passent le plancher — avec le texte de la")
+            print("source. Aucune commande de ce script ne les visait : le panier 1 ne les")
+            print("voit pas (elles sont assez longues) et le panier 2 n'en propose aucune.")
         print(f"      .venv/bin/python -m scripts.enrich {ids}")
         print("      puis : .venv/bin/python -m scripts.publish_batch_as --ids " + ids)
+        _traductions_ecartees(seules_trad)
+        print()
+
+    plancher_ok, plancher_trad = _actionnables(sous_plancher)
+    if plancher_ok:
+        ids = " ".join(str(ev["id"]) for ev, _ in plancher_ok[:50])
+        print("RIEN N'A ÉTÉ MODIFIÉ. Deux réparations possibles, décision par décision :")
+        print(f"  • ENRICHIR ces {len(plancher_ok)} fiches (elles gagneront un vrai article, "
+              f"puis repartent au republish) :")
+        print(f"      .venv/bin/python -m scripts.enrich {ids}")
+        print("      puis : .venv/bin/python -m scripts.publish_batch_as --ids " + ids)
+        _traductions_ecartees(plancher_trad)
+        # La corbeille, elle, n'a aucune raison d'écarter les traductions : dépublier un
+        # original en laissant sa version italienne en ligne laisserait justement en place
+        # ce qu'on retire. La liste est donc la COMPLÈTE, et elle diffère de celle du
+        # dessus — c'est voulu, et écrit ici pour qu'on ne la « corrige » pas plus tard.
+        ids_tous = " ".join(str(ev["id"]) for ev, _ in sous_plancher[:50])
         print("  • DÉPUBLIER (corbeille WordPress, réversible ; dry-run par défaut, "
               "--apply pour agir) :")
-        print(f"      .venv/bin/python -m scripts.trash_by_ids {ids}")
+        print(f"      .venv/bin/python -m scripts.trash_by_ids {ids_tous}")
     return 0
 
 
