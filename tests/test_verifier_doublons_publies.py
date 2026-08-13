@@ -86,9 +86,15 @@ def _check(label, cond, detail=""):
 
 import io as _io, contextlib as _ctx  # noqa: E402
 
+# ⚠️ AUCUN RÉSEAU. `_etat` interroge WordPress en vrai ; on le remplace par une table
+# post → état. Par défaut tout est « public », et chaque section qui veut simuler un
+# retrait le déclare explicitement — sinon la fixture testerait un site imaginaire.
+_ETATS: dict[int, str] = {}
+vd._etat = lambda wp_url, post_id: _ETATS.get(post_id, "public")
+
 _buf = _io.StringIO()
 with _ctx.redirect_stdout(_buf):
-    rc = vd.main([])
+    rc = vd.main(["--en-ligne"])
 sortie = _buf.getvalue()
 
 _check("rc=0 (lecture seule, jamais d'échec)", rc == 0)
@@ -168,7 +174,7 @@ c.commit(); c.close()
 
 _buf = _io.StringIO()
 with _ctx.redirect_stdout(_buf):
-    vd.main([])
+    vd.main(["--en-ligne"])
 chag = _buf.getvalue()
 _check("la famille qui porte l'article est proposée à la GARDE",
        "[ 3026]" in chag and "← GARDER" in chag, chag[chag.find("Chagall") - 200:][:600])
@@ -212,7 +218,7 @@ c.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=4195",
 c.commit(); c.close()
 _buf = _io.StringIO()
 with _ctx.redirect_stdout(_buf):
-    vd.main([])
+    vd.main(["--en-ligne"])
 contredit = _buf.getvalue()
 _check("quand la famille à RETIRER porte l'adresse indexée, la réserve est affichée",
        "MAIS la famille à retirer porte l'adresse indexée" in contredit,
@@ -223,7 +229,44 @@ _check("   la recommandation N'EST PAS inversée pour autant — on affiche la "
        "contradiction, on ne déplace pas le problème",
        "← GARDER" in contredit)
 
-print("\n──── 6. le zéro qui se lit ────")
+# ── 6. RÈGLE 1 : LA BASE NE PROUVE RIEN SUR LE SITE ──────────────────────────────────
+# La faute de ce script le jour de sa naissance. Le matin il annonçait « 4 doublons EN
+# LIGNE » d'après `wp_post_id_as` ; l'après-midi, `reconcile_hors_ligne` a montré que
+# cinq des huit pages étaient déjà à la corbeille. Sur Chagall, UNE SEULE page était
+# publique — et le retrait proposé la visait elle.
+print("\n──── 6. règle 1 : sans sonder WordPress, on ne propose RIEN ────")
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    vd.main([])
+sans_sonde = _buf.getvalue()
+_check("sans --en-ligne, AUCUNE commande de retrait n'est proposée",
+       "trash_by_ids" not in sans_sonde, sans_sonde[-600:])
+_check("   et le compteur dit qu'il n'est PAS vérifié",
+       "NON VÉRIFIÉS" in sans_sonde, sans_sonde[:900])
+_check("   et aucune fiche ne porte de flèche « retirer » sur une donnée qui ne prouve rien",
+       "← retirer" not in sans_sonde, sans_sonde[:1500])
+_check("   la raison est écrite, pas seulement le refus",
+       "survit à une mise à la corbeille" in sans_sonde, sans_sonde[:1500])
+
+# Avec la sonde : on simule WordPress. Le groupe Chagall n'a qu'UNE page publique → il
+# disparaît. Le vrai doublon (10/11), lui, a ses deux pages publiques → il reste.
+_ETATS.update({2017: "non_public", 3977: "non_public",
+               3981: "non_public"})   # 3021, 4194, 4195 : déjà à la corbeille
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    vd.main(["--en-ligne"])
+sonde = _buf.getvalue()
+_check("un groupe dont une seule page est publique n'est PLUS un doublon en ligne",
+       "écartés APRÈS SONDAGE" in sonde and "3021" not in sonde.split("trash_by_ids")[-1],
+       sonde[:1400])
+_check("   et le vrai doublon, lui, survit au sondage",
+       "trash_by_ids" in sonde and "11" in sonde.split("trash_by_ids")[1][:20],
+       sonde[-700:])
+_check("   les pages retirées du site sont dites telles quelles, pas effacées du rapport",
+       "non_public sur le site" in sonde or "écartés APRÈS SONDAGE   : 2" in sonde,
+       sonde[:1400])
+
+print("\n──── 7. le zéro qui se lit ────")
 # On vide la base des paires : il ne doit plus rien rester à signaler, et la sortie doit
 # permettre de distinguer « rien trouvé » de « rien examiné ».
 c = sqlite3.connect(tmp)
@@ -233,7 +276,7 @@ _buf = _io.StringIO()
 with _ctx.redirect_stdout(_buf):
     vd.main([])
 vide = _buf.getvalue()
-_check("plus aucun suspect", "SUSPECTS                 : 0" in vide, vide[:800])
+_check("plus aucun suspect", "SUSPECTS (NON VÉRIFIÉS)  : 0" in vide, vide[:800])
 _check("   et le zéro dit combien de cas se sont présentés",
        "fiches examinées" in vide and "groupes formés" in vide, vide[-500:])
 

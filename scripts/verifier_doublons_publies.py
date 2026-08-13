@@ -33,8 +33,22 @@ La définition de « même événement » n'est pas réinventée ici : on appell
 `scripts/dedupe.py`, avec ses gardes années et dates. Deux définitions concurrentes de
 la ressemblance finiraient par se contredire, et c'est la plus bavarde qu'on croirait.
 
+⚠️ ET LA FAUTE QUE CE SCRIPT A COMMISE LE JOUR DE SA NAISSANCE. Livré le matin du
+2026-08-13, il annonçait « 4 doublons EN LIGNE » sur la seule foi du `wp_post_id_as` de
+la base. L'après-midi, `reconcile_hors_ligne` — qui INTERROGE WordPress — a montré que
+cinq des huit pages concernées étaient déjà à la corbeille : sur le groupe Chagall, une
+seule page était encore publique, et le retrait que ce script proposait la visait ELLE.
+Un seul des quatre groupes était réel.
+
+C'est la RÈGLE 1 de CLAUDE.md, mot pour mot — « un identifiant en base ne prouve RIEN sur
+le site, il survit à une mise à la corbeille » — réintroduite dans un fichier neuf qui la
+citait déjà dans ses propres commentaires. D'où `--en-ligne`, et le refus de proposer le
+moindre retrait sans lui : un défaut argumenté sur une donnée qui ne prouve rien est pire
+qu'un blanc à remplir, parce que le blanc, au moins, ne se fait pas obéir.
+
 Usage (VPS) :
-    .venv/bin/python -m scripts.verifier_doublons_publies
+    .venv/bin/python -m scripts.verifier_doublons_publies             # candidats
+    .venv/bin/python -m scripts.verifier_doublons_publies --en-ligne  # vérifiés
     .venv/bin/python -m scripts.verifier_doublons_publies --slack
 """
 from __future__ import annotations
@@ -50,6 +64,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from scripts.dedupe import _groups  # noqa: E402  — MÊME définition que le dédoublonnage
 from scripts.audit_substance_published import devant_nous  # noqa: E402
+# LA RÈGLE 1, QUE CE SCRIPT A VIOLÉE LE JOUR MÊME DE SA NAISSANCE (2026-08-13).
+# `_etat` interroge WordPress post par post — la SEULE façon de savoir si une page est
+# publique, à la corbeille ou supprimée. On la réutilise plutôt que d'en écrire une
+# variante : c'est déjà la même fonction dans `reconcile_wp_deleted` et
+# `reconcile_hors_ligne`, et une quatrième copie finirait par diverger.
+from scripts.reconcile_hors_ligne import _etat  # noqa: E402
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
@@ -228,6 +248,29 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Deux fiches EN LIGNE sur le même événement. Lecture seule.")
     parser.add_argument("--slack", action="store_true", help="Poster le bilan sur Slack.")
+    # ══ RÈGLE 1 — CE SCRIPT L'A VIOLÉE LE JOUR DE SA NAISSANCE ════════════════════════
+    #
+    # Livré le 2026-08-13 au matin, il annonçait « 4 doublons EN LIGNE » en lisant le seul
+    # `wp_post_id_as` de la base. L'après-midi, le dry-run de `reconcile_hors_ligne` — qui
+    # interroge WordPress, lui — a montré que sur les huit pages concernées, CINQ étaient
+    # déjà à la corbeille :
+    #
+    #   · Chagall : 3021, 4194 et 4195 retirés ; SEUL 3026 (WP#2020) est public.
+    #     Il n'y a donc aucun doublon Chagall sur le site — et le défaut que je proposais
+    #     revenait à corbeiller la seule page vivante ;
+    #   · EVO : 2466 (WP#1984) était déjà à la corbeille.
+    #
+    # Un seul des quatre groupes était réel. C'est la première règle de CLAUDE.md, mot
+    # pour mot — « un identifiant en base ne prouve RIEN sur le site, il survit à une mise
+    # à la corbeille » — et je l'ai réintroduite dans un script neuf, écrit le jour même
+    # où je citais cette règle dans ses propres commentaires.
+    #
+    # D'où le choix ici : SANS `--en-ligne`, le script montre les groupes mais ne propose
+    # AUCUN retrait. Un défaut argumenté sur une donnée qui ne prouve rien est pire qu'un
+    # blanc à remplir — le blanc, au moins, ne se fait pas obéir.
+    parser.add_argument("--en-ligne", action="store_true",
+                        help="Interroger WordPress post par post (REST) avant de "
+                             "conclure. OBLIGATOIRE pour obtenir une commande de retrait.")
     args = parser.parse_args(argv)
 
     if not DB_PATH.exists():
@@ -243,8 +286,35 @@ def main(argv=None) -> int:
 
     suspects, compte = analyser(rows, date.today().isoformat())
 
+    # LA SONDE, quand on la demande. Un appel REST par post concerné, jamais une
+    # collection : The Events Calendar exclut les événements PASSÉS de ses listes (règle
+    # 2), donc une liste ne prouverait aucune absence. On ne sonde que les fiches des
+    # groupes suspects — pas les 357 publiées : le but est de trancher, pas d'inventorier.
+    etats: dict[int, str] = {}
+    if args.en_ligne:
+        import time
+        from dotenv import load_dotenv
+        load_dotenv(ROOT / ".env")
+        wp_url = (os.getenv("WP_AS_URL") or "https://agendasabauda.eu").rstrip("/")
+        vises = sorted({ev["id"] for g in suspects for ev in g}
+                       | {e["id"] for g in suspects for ev in g
+                          for e in famille(ev, {r["id"]: r for r in rows})})
+        print(f"Interrogation de WordPress pour {len(vises)} post(s)…")
+        par_id_tmp = {r["id"]: r for r in rows}
+        for n, eid in enumerate(vises):
+            etats[eid] = _etat(wp_url, par_id_tmp[eid]["wp_post_id_as"])
+            if n + 1 < len(vises):
+                time.sleep(0.4)
+        # Un groupe dont UNE SEULE page est publique n'est pas un doublon EN LIGNE : le
+        # site montre une page, pas deux. C'est le cas Chagall du 2026-08-13 — quatre
+        # fiches en base, une seule visible.
+        avant = len(suspects)
+        suspects = [g for g in suspects
+                    if sum(1 for ev in g if etats.get(ev["id"]) == "public") > 1]
+        compte["retires_du_site"] = avant - len(suspects)
+
     print("=" * 78)
-    print("DOUBLONS PARMI LES FICHES EN LIGNE — lecture seule, rien n'a été modifié")
+    print("DOUBLONS PARMI LES FICHES PUBLIÉES — lecture seule, rien n'a été modifié")
     print("=" * 78)
     print(f"Base                     : {DB_PATH}")
     print(f"Publiées (toutes dates)  : {compte['publiees']}")
@@ -252,8 +322,26 @@ def main(argv=None) -> int:
     print(f"Groupes de titres proches: {compte['groupes']}")
     print(f"…écartés (paires FR/IT)  : {compte['traductions']}  — normales, à LIER, "
           f"jamais à fusionner")
-    print(f"SUSPECTS                 : {len(suspects)}")
+    if args.en_ligne:
+        print(f"…écartés APRÈS SONDAGE   : {compte['retires_du_site']}  — une seule de "
+              f"leurs pages est encore publique")
+        print(f"SUSPECTS (VÉRIFIÉS)      : {len(suspects)}")
+    else:
+        print(f"SUSPECTS (NON VÉRIFIÉS)  : {len(suspects)}  ⚠ d'après la BASE seule")
     print()
+    if not args.en_ligne:
+        # RÈGLE 1, ET LE PIÈGE EST DANS LE MOT « publiée ». Un `wp_post_id_as` renseigné
+        # survit à une mise à la corbeille : la base dit « publiée » d'une page que
+        # personne ne voit. Le 2026-08-13, cinq des huit pages listées ici étaient déjà
+        # retirées, et le retrait que je proposais visait la seule encore vivante.
+        print("⚠️  SANS `--en-ligne`, CES GROUPES NE SONT QUE DES CANDIDATS. Un identifiant")
+        print("    WordPress en base survit à une mise à la corbeille : il ne prouve pas")
+        print("    qu'une page est visible. Le 13/08, cinq des huit pages listées ici")
+        print("    étaient déjà retirées — et un seul des quatre groupes était réel.")
+        print("    Aucune commande de retrait n'est proposée tant que WordPress n'a pas")
+        print("    été interrogé post par post :")
+        print("      .venv/bin/python -m scripts.verifier_doublons_publies --en-ligne")
+        print()
 
     if not suspects:
         print("Aucun groupe suspect. Ce zéro se lit : "
@@ -273,10 +361,14 @@ def main(argv=None) -> int:
         for ev in sorted(g, key=lambda e: e["id"]):
             marque = ("  ← GARDER" if ev["id"] in ids_garde else
                       "  ← retirer" if ev["id"] in ids_reste else "")
+            if not args.en_ligne:
+                marque = ""          # rien à recommander sur une donnée qui ne prouve rien
+            elif etats.get(ev["id"]) and etats[ev["id"]] != "public":
+                marque = f"  · {etats[ev['id']]} sur le site — rien à faire"
             print(f"  [{ev['id']:>5}] WP#{ev['wp_post_id_as']:<6} {_periode(ev):<24} "
                   f"{(ev.get('title') or '')[:44]}{marque}")
             print(f"          {_lien(ev)}")
-        if garde:
+        if garde and args.en_ligne:
             print(f"     → défaut proposé : {motif}.")
             # LES JUMEAUX SUIVENT LEUR ORIGINAL. Retirer une fiche sans sa traduction
             # laisserait l'autre langue seule, liée par Polylang à un post corbeillé —
@@ -290,13 +382,18 @@ def main(argv=None) -> int:
                       f"{', '.join(str(e['id']) for e in caches)} — les laisser en ligne "
                       f"ferait un orphelin)")
             a_retirer.extend(sorted(ids_reste))
-        else:
+        elif args.en_ligne:
             print(f"     → {motif or 'aucun défaut proposé'}.")
         print()
 
     # LE GESTE AU BOUT DE LA LIGNE (règle 6). Une file sans geste n'est pas une file :
     # sur les 454 « points à contrôler » du 2026-08-11, trois cents n'avaient rien qu'un
     # humain puisse faire, et le seul qui comptait était noyé dessous.
+    if not args.en_ligne:
+        print("Relancer avec `--en-ligne` pour savoir lesquels de ces groupes existent")
+        print("vraiment sur le site, et obtenir une commande de retrait.")
+        return 0
+
     print("CE QU'IL Y A À FAIRE. Le choix reste ÉDITORIAL — mais un défaut argumenté vaut")
     print("mieux qu'un blanc à remplir, parce qu'un blanc ne se remplit jamais. Les ← ci-")
     print("dessus disent ce que je retirerais, et sur quel critère mesurable.")
