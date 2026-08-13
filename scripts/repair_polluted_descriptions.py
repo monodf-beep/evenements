@@ -76,6 +76,16 @@ from scripts.scraper_events import init_db
 # redéfinir, pour que « avoir de la substance » veuille dire ici exactement ce qu'il
 # veut dire là-bas (si le seuil de dedupe évolue, ce script suit sans divergence).
 from scripts.dedupe import _text_len, _sig_tokens
+# LE PORTILLON QU'ON VIENT ROUVRIR (ajouté le 2026-08-13). `translate_events` écarte une
+# fiche dont la description « parle manifestement d'autre chose » — commentaire à l'appui,
+# il renvoie vers CE script comme rouvreur. Sauf que ce script sélectionnait sur
+# `motif_pollution` (« description sans substance ») : une description LONGUE et
+# SUBSTANTIELLE mais qui décrit un autre événement passait ici sans être vue.
+# Le rouvreur documenté ne répondait donc pas à la question posée par le portillon.
+# Constaté sur [4420] [3739] [4576], écartées à l'identique tous les jours depuis le
+# 2026-08-05 — neuf jours, zéro reprise. C'est la règle 3 : « un refus qui se rejoue sur
+# la MÊME entrée n'est pas un rouvreur. »
+from utils.coherence import incoherence_description
 from scripts.batch_report import _partagent_un_mot
 # Téléchargement + réduction HTML→texte : helpers déjà éprouvés d'enrich.py (User-Agent
 # de vrai navigateur — beaucoup de sites refusent un UA « …Bot » —, timeout, refus des
@@ -133,6 +143,32 @@ def motif_pollution(description: str | None) -> str:
     if visible < SEUIL_TEXTE and brut >= SEUIL_BRUT:
         return f"{visible} car. visibles pour {brut} car. bruts"
     return ""
+
+
+def _accepte(row: dict, nouvelle: str) -> bool:
+    """La description récupérée vaut-elle mieux que celle en base ?
+
+    DEUX RÈGLES, parce qu'il y a deux causes, et qu'appliquer la même aux deux
+    laisserait la moitié des fiches coincées :
+
+    · POLLUTION (blob Google News, texte visible ridicule) — on exige STRICTEMENT plus de
+      texte visible. La description en place n'est pas prouvée fausse, seulement pauvre :
+      la remplacer par plus court serait une régression, et le premier dry-run du
+      2026-08-02 a montré qu'une moitié des propositions étaient moins bonnes.
+
+    · INCOHÉRENCE (la description parle d'un autre événement) — la longueur ne peut PAS
+      décider. C'est même l'inverse : une description substantielle qui raconte la mauvaise
+      ville battrait toujours la bonne description, plus courte, et la fiche resterait
+      coincée pour toujours. On exige donc que la NOUVELLE soit cohérente avec l'identité
+      de la fiche, mesurée par la fonction même qui a servi à la refuser. Si la page
+      re-téléchargée est elle aussi incohérente, on ne touche à rien : on n'a pas trouvé
+      mieux, on a trouvé autre chose.
+    """
+    if row.get("_cause") != "incoherence":
+        return _text_len(nouvelle) > _text_len(row.get("description") or "")
+    candidat = dict(row)
+    candidat["description"] = nouvelle
+    return incoherence_description(candidat) is None
 
 
 def url_reparable(url_source: str | None, source_type: str | None) -> str:
@@ -307,8 +343,13 @@ def main(argv=None) -> int:
     conn.row_factory = sqlite3.Row
     init_db(conn)          # repose busy_timeout : la base est écrite par plusieurs process
 
+    # `lieu` et `ville` sont indispensables au second déclencheur : `incoherence_description`
+    # compare la description à l'IDENTITÉ de la fiche (titre + lieu + ville). Sans ces deux
+    # colonnes il jugerait sur le seul titre et rendrait un verdict plus sévère que celui
+    # du portillon qu'on cherche à rouvrir — deux mesures différentes des deux côtés d'une
+    # même frontière, exactement le faux positif corrigé dans utils/coherence.py.
     sql = ("SELECT id, title, description, url_source, source_type, wp_post_id_as, "
-           "duplicate_of, article_md FROM events_raw")
+           "duplicate_of, article_md, lieu, ville FROM events_raw")
     params: list = []
     if args.ids:
         sql += f" WHERE id IN ({','.join('?' * len(args.ids))})"
@@ -318,22 +359,59 @@ def main(argv=None) -> int:
     # duplicate_of renseigné = doublon FUSIONNÉ (statut 'merged') : sa description est
     # sa matière d'origine, elle n'a pas été écrasée (merge_group n'écrit que sur le
     # gagnant) et elle n'est jamais publiée telle quelle. Hors périmètre.
-    candidats, ecartes_radar = [], 0
+    candidats, ecartes_radar, sans_recours = [], 0, []
     for r in rows:
+        if r["duplicate_of"]:
+            continue
         motif = motif_pollution(r["description"])
-        if not motif or r["duplicate_of"]:
+        cause = "pollution"
+        if not motif:
+            # SECOND DÉCLENCHEUR : la description a de la substance, mais elle ne parle pas
+            # de cette fiche. C'est le motif exact du portillon de `translate_events`, et
+            # la réparation est LA MÊME — re-télécharger la vraie page. Seule la façon de
+            # juger le résultat change (voir plus bas : ici « plus long » ne suffit pas).
+            motif = incoherence_description(r) or ""
+            cause = "incoherence"
+        if not motif:
             continue
         url = url_reparable(r["url_source"], r["source_type"])
         if not url:
-            ecartes_radar += 1
+            if cause == "incoherence":
+                # CE SONT LES VRAIS CULS-DE-SAC, et ils doivent être NOMMÉS. Une fiche dont
+                # la description parle d'autre chose ET dont la page ne se re-télécharge pas
+                # (radar, gmail:, translated:) ne sera jamais rouverte par ce script. La
+                # taire ici recréerait le silence de neuf jours qu'on est en train de
+                # réparer — sauf qu'on l'aurait recréé en croyant l'avoir refermé.
+                r["_motif"] = motif
+                sans_recours.append(r)
+            else:
+                ecartes_radar += 1
             continue
-        r["_motif"], r["_url"] = motif, url
+        r["_motif"], r["_url"], r["_cause"] = motif, url, cause
         candidats.append(r)
 
-    print(f"\n{len(rows)} fiche(s) examinée(s) — {len(candidats)} description(s) sans "
-          f"substance ET rattachée(s) à une vraie page")
+    n_incoh = sum(1 for r in candidats if r.get("_cause") == "incoherence")
+    print(f"\n{len(rows)} fiche(s) examinée(s) — {len(candidats)} à re-télécharger, dont :")
+    print(f"  · {len(candidats) - n_incoh} description(s) SANS SUBSTANCE (le bug de fusion "
+          f"de 2026-08-02)")
+    print(f"  · {n_incoh} description(s) qui PARLENT D'AUTRE CHOSE — le motif pour lequel "
+          f"translate_events")
+    print(f"    les écarte, et que ce script ne regardait pas avant le 2026-08-13")
     print(f"{ecartes_radar} écartée(s) volontairement (radar / Google News / gmail: / "
-          f"translated: — leur description EST un lien, c'est normal)\n")
+          f"translated: — leur description EST un lien, c'est normal)")
+    if sans_recours:
+        # RÈGLE 6 : une file ne doit contenir que ce qu'un humain peut faire — et celle-ci
+        # en contient, justement. Le geste est écrit à côté.
+        print(f"\n🔴 {len(sans_recours)} fiche(s) SANS RECOURS — description incohérente ET "
+              f"page non re-téléchargeable :")
+        for r in sans_recours[:10]:
+            print(f"  [{r['id']}] {(r['title'] or '')[:50]} — {r['_motif'][:70]}")
+            print(f"        {(r['url_source'] or '')[:78]}")
+        print("  → aucune réparation automatique possible. Deux issues, au choix : "
+              "corriger la\n     description à la main dans le back-office, ou écarter la "
+              "fiche. Tant qu'on ne\n     fait ni l'un ni l'autre, elle sera refusée à la "
+              "traduction tous les jours.")
+    print()
     if not candidats:
         conn.close()
         return 0
@@ -348,7 +426,7 @@ def main(argv=None) -> int:
         nouvelle, provenance = recuperer_description(r["_url"])
         if not nouvelle:
             echecs.append((r, provenance))
-        elif _text_len(nouvelle) > _text_len(r["description"] or ""):
+        elif _accepte(r, nouvelle):
             r["_nouvelle"], r["_provenance"] = nouvelle, provenance
             remplacements.append(r)
         else:

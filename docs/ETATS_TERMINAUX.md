@@ -38,6 +38,27 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | `statut='rejected'` | `evaluator`, `purge_*`, back-office | `unreject_wp_online`, `reconcile_catalogue`, back-office | 🟡 partiel, **volontaire** |
 | `wp_post_id_as=NULL` après corbeille | `trash_by_ids`, `trash_wp_ids` | `relink_wp_ids_as` (par titre) | 🟡 partiel, **assumé** |
 | `statut='merged'` + `duplicate_of` | `dedupe` | `unmerge` (à la main, jamais en cron) | ✅ fermé le 2026-08-03 |
+| écart « description incohérente » (aucune colonne — l'écart est **implicite**) | `translate_events` | `repair_polluted_descriptions` | ✅ fermé le 2026-08-13, **après neuf jours de blocage** |
+
+**Le cas le plus instructif du tableau, parce qu'il avait l'air fermé.** `translate_events`
+écarte de la file de traduction toute fiche dont la description « parle manifestement
+d'autre chose », et son commentaire nommait `repair_polluted_descriptions` comme
+rouvreur. Sauf que ce script sélectionnait sur `motif_pollution` — « description SANS
+SUBSTANCE ». Une description longue, riche, mais qui raconte un autre événement passait
+donc au travers : **le rouvreur répondait à une autre question que le portillon**.
+
+Mesuré en production : `[4420] [3739] [4576]` écartées à l'identique tous les jours du
+2026-08-05 au 2026-08-13. Neuf jours, zéro reprise, et personne ne l'a vu parce que le
+tableau ci-dessus disait « fermé ».
+
+Deux leçons pour les prochaines lignes de ce fichier :
+
+- **écrire le rouvreur ne suffit pas — il faut vérifier qu'il sélectionne sur LE MÊME
+  critère que le portillon.** Deux prédicats voisins (« sans substance » / « parle
+  d'autre chose ») donnent l'illusion d'un circuit fermé ;
+- **un état sans colonne est le plus dangereux.** Ici rien n'est écrit en base : l'écart
+  se recalcule à chaque run. Il est donc invisible à tout audit qui interroge la base, et
+  seul le journal quotidien pouvait le montrer.
 | `home_override='excluded'` | back-office | back-office + republication, **rappelé par `weekly_digest`** | ✅ fermé le 2026-08-04, **corrigé le soir même** |
 
 ### `home_override='excluded'` — réversible, mais invisible

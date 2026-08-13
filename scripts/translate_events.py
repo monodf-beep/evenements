@@ -795,6 +795,19 @@ def main(argv=None) -> int:
         # fiches ne seront jamais traduites tant que leur description n'est pas réparée
         # (repair_polluted_descriptions, autocomplete, ou un nouveau passage de scraping),
         # et rien d'autre ne les compte. `scripts/audit_coherence` en tient le registre.
+        #
+        # ⚠️ CE RENVOI ÉTAIT FAUX JUSQU'AU 2026-08-13, et il l'était depuis le premier
+        # jour. `repair_polluted_descriptions` ne sélectionnait pas sur CE motif-ci mais
+        # sur `motif_pollution` — « description sans substance ». Une description longue
+        # et riche qui raconte un AUTRE événement (le cas exact de WP#6798) n'y entrait
+        # pas : le rouvreur nommé ici répondait à une autre question que le portillon.
+        # [4420] [3739] [4576] ont été écartées à l'identique tous les jours du 05/08 au
+        # 13/08 sans que rien ne les reprenne. Le script sélectionne désormais AUSSI sur
+        # `incoherence_description` — la fonction même qu'on appelle deux lignes plus
+        # haut, donc la même question des deux côtés — et il NOMME celles qu'il ne peut
+        # pas réparer (page non re-téléchargeable), qui restent à trancher à la main.
+        # Leçon générale, écrite dans docs/ETATS_TERMINAUX.md : nommer un rouvreur ne
+        # ferme rien tant qu'on n'a pas vérifié qu'il sélectionne sur le MÊME critère.
     rows = rows[:args.cap]
     log.info("%d événement(s) candidat(s) (score ≥ %d, en ligne, non traduits%s)",
              len(rows), args.min_score,
