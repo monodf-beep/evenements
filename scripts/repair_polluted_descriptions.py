@@ -168,7 +168,7 @@ def _accepte(row: dict, nouvelle: str) -> bool:
         return _text_len(nouvelle) > _text_len(row.get("description") or "")
     candidat = dict(row)
     candidat["description"] = nouvelle
-    return incoherence_description(candidat) is None
+    return incoherence_description(candidat, bloquant=True) is None
 
 
 def url_reparable(url_source: str | None, source_type: str | None) -> str:
@@ -370,7 +370,7 @@ def main(argv=None) -> int:
             # de cette fiche. C'est le motif exact du portillon de `translate_events`, et
             # la réparation est LA MÊME — re-télécharger la vraie page. Seule la façon de
             # juger le résultat change (voir plus bas : ici « plus long » ne suffit pas).
-            motif = incoherence_description(r) or ""
+            motif = incoherence_description(r, bloquant=True) or ""
             cause = "incoherence"
         if not motif:
             continue

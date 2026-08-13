@@ -506,7 +506,7 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
     # represente au run suivant, et elle repartira d'elle-même le jour où sa description
     # est réparée (repair_polluted_descriptions, autocomplete, ou une nouvelle passe de
     # scraping). C'est la condition pour qu'un blocage soit acceptable ici.
-    motif = incoherence_description(ev)
+    motif = incoherence_description(ev, bloquant=True)
     if motif:
         log.error("[%s] REFUS AVANT TRADUCTION — la description ne parle pas de cette "
                   "fiche : %s. Titre « %s » · %s, %s. Rien n'a été appelé ni publié.",
@@ -784,7 +784,7 @@ def main(argv=None) -> int:
     # Filtrer ici plutôt que refuser plus bas ne relâche AUCUNE garde : le portillon de
     # `_translate_one` reste en place comme seconde ceinture. Il change seulement qui paie
     # le refus — la fiche polluée au lieu de la file entière.
-    ecartees = [r for r in rows if incoherence_description(r)]
+    ecartees = [r for r in rows if incoherence_description(r, bloquant=True)]
     if ecartees:
         rows = [r for r in rows if r not in ecartees]
         log.warning("%d fiche(s) écartée(s) AVANT le plafond — description incohérente "

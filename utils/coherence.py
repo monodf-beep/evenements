@@ -150,11 +150,40 @@ def _communes() -> dict[str, str]:
     return _COMMUNES
 
 
-def incoherence_description(event: dict) -> str | None:
+def incoherence_description(event: dict, bloquant: bool = False) -> str | None:
     """Motif si la description ne parle manifestement pas de cette fiche, sinon None.
 
     None ≠ « description correcte » : ça veut dire « rien de contradictoire détecté ». La
-    nuance compte, c'est elle qui empêche de prendre ce contrôle pour une garantie."""
+    nuance compte, c'est elle qui empêche de prendre ce contrôle pour une garantie.
+
+    `bloquant=True` n'active QUE le signal ② (la description nomme une autre commune et
+    jamais la sienne). À réserver aux endroits où le verdict REFUSE quelque chose.
+
+    POURQUOI CETTE DISTINCTION, ET CE QU'ELLE A COÛTÉ D'APPRENDRE (2026-08-13).
+    Le signal ① — « aucun mot commun entre la description et l'identité de la fiche » —
+    bloquait la traduction. Passé sur les trois fiches qu'il retenait depuis neuf jours,
+    il s'est révélé faux DEUX FOIS SUR TROIS, et pour deux raisons qui sont l'ordinaire
+    de ce site :
+
+      • [4420] « Fiera Nazionale del Peperone di Carmagnola » — titre italien,
+        description française (« la plus grande manifestation italienne dédiée aux
+        poivrons, dix jours de saveurs… »). Excellente description. Aucun mot commun,
+        parce que le site est BILINGUE ;
+      • [3739] « EVO France 2026 » — description « deuxième édition européenne du plus
+        grand tournoi de jeux de combat au monde ». Excellente aussi. Aucun mot commun,
+        parce qu'une bonne description PARAPHRASE au lieu de répéter le titre.
+
+    Bilan honnête après neuf jours de production : signal ① = zéro vrai positif, deux
+    faux. Le vrai positif historique — WP#6798, description d'Annecy sur une fiche de
+    Chambéry — vient du signal ②, qui nomme une contradiction VÉRIFIABLE au lieu de
+    constater une absence. C'est la leçon du dépôt appliquée à un détecteur : sur un
+    texte écrit pour des humains, on ne peut pas EXTRAIRE, seulement CONFIRMER à partir
+    d'un fait qu'on connaît déjà. « Aucun mot commun » ne confirme rien ; il constate un
+    silence, et un silence n'est pas une contradiction.
+
+    Le signal ① n'est pas supprimé : il reste utile à un RAPPORT que Franck lit et
+    juge (`audit_coherence`). Il n'a simplement plus le droit de refuser tout seul.
+    """
     texte = _texte_visible(event.get("description"))
     if not texte:
         return None
@@ -190,6 +219,10 @@ def incoherence_description(event: dict) -> str | None:
     # fourni. Voir MIN_TEXTE_VISIBLE : une absence ne prouve quelque chose que s'il y avait
     # la place d'être présent. Le seuil ne doit surtout pas garder l'entrée des deux
     # signaux, cf. le correctif du 2026-08-04.
+    # Et il ne REFUSE plus rien tout seul depuis le 2026-08-13 : deux faux positifs sur
+    # trois en production (bilinguisme, paraphrase). Voir la docstring.
+    if bloquant:
+        return None
     if len(texte) < MIN_TEXTE_VISIBLE:
         return None
     if mots_ancrage and not (mots_ancrage & mots_texte):
