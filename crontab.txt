@@ -13,6 +13,22 @@
 # (règle 5), et deux heures d'écart font basculer les événements du jour du mauvais côté à
 # la frontière de minuit.
 
+# ══ UN OU DEUX MESSAGES PAR JOUR, PAS SEPT ════════════════════════════════════════════
+# Franck, 2026-08-13, après une matinée à sept notifications (agent 9h20, publication
+# 9h50, SEO 10h30, traduction 10h48, bilan 11h12, dates 11h30, lieux 11h35) : « J'ai trop
+# de messages par jour. Il m'en faut un ou deux, mais c'est tout. »
+#
+# Aucun n'était de trop pris séparément — c'est leur NOMBRE qui les rend illisibles. Ce
+# matin-là, le seul 🔴 qui demandait une décision (48 fiches que la base croit en ligne
+# et qui ne le sont pas) est arrivé en cinquième position, entre un rapport SEO et deux
+# contradicteurs à zéro.
+#
+# SLACK_DIGEST=1 fait que `utils/slack.notify` RANGE au lieu d'envoyer. Deux vidages
+# (11h45 et 20h) reversent tout en un message, les 🔴 en tête. Posé ICI plutôt que dans
+# chaque ligne : un script écrit demain obéit sans qu'on y pense.
+# Pour revenir à l'ancien comportement : mettre 0 (rien d'autre à toucher).
+SLACK_DIGEST=1
+
 # Scraping RSS quotidien 8h
 0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py >> logs/scraper.log 2>&1
 # Collecte des newsletters (label Gmail « Agenda ») 8h15
@@ -204,6 +220,12 @@
 # le Forte di Bard, qui est à Bard — trois événements l'affichaient au public, et la bonne
 # réponse dormait depuis des semaines dans docs/savoir/forte-di-bard.md.
 35 11 * * * cd /root/evenements && .venv/bin/python -m scripts.verifier_lieux --slack >> logs/verifier_lieux.log 2>&1
+# VIDAGE DE LA BOÎTE DU JOUR, 11h45 — après le dernier contradicteur (11h35). C'est LE
+# message du matin : tout ce que la chaîne a produit depuis 8h, en un seul bloc, les 🔴
+# en tête. Placé avant le chien de garde de 12h, qui lui parle en direct (urgent=True) :
+# le vidage est un cron, donc si la chaîne est morte il ne part pas — le chien de garde
+# doit pouvoir aboyer quand tout le reste s'est tu.
+45 11 * * * cd /root/evenements && .venv/bin/python -m scripts.slack_digest --titre "🌅 Récapitulatif du matin" >> logs/slack_digest.log 2>&1
 0 12 * * * cd /root/evenements && .venv/bin/python scripts/watchdog_crons.py --slack >> logs/watchdog.log 2>&1
 # Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.
 # incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
@@ -229,6 +251,12 @@
 # déploiement — y compris des déploiements non annoncés, et il y en a (34 mu-plugins cs-*
 # vivent sur le serveur, 16 sans copie versionnée). Zéro coût API, deux requêtes HTTP.
 15 14 * * * cd /root/evenements && .venv/bin/python scripts/gabarit_health.py >> logs/gabarit_health.log 2>&1
+# FILET DU SOIR, 20h — le second et dernier message de la journée. Il ramasse ce qui est
+# tombé après 11h45 : santé de la home (13h), relecture du site publié (14h), gabarits
+# (14h15). Sans lui, ces trois-là attendraient le lendemain matin — et un différé qui
+# dort douze heures finit par se faire oublier, ce qui est exactement le défaut qu'on
+# corrige, à l'envers.
+0 20 * * * cd /root/evenements && .venv/bin/python -m scripts.slack_digest --titre "🌆 Récapitulatif du soir" >> logs/slack_digest.log 2>&1
 # Veille sitemap/liens, dimanche 7h30 — le script existait depuis le 29/07 et son propre
 # commentaire disait « tourne chaque semaine en cron ». C'était faux : il n'a jamais été
 # relancé. Conséquence lue dans /seo le 2026-08-12 : 34 points « URL du sitemap redirige »
