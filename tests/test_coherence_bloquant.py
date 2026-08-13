@@ -143,14 +143,56 @@ for etiquette, desc in ORDINAIRES:
            incoherence_description(_torino(desc), bloquant=True) is None,
            str(incoherence_description(_torino(desc), bloquant=True)))
 
-_check("… mais une VRAIE commune, écrite en nom propre, déclenche toujours",
+_check("une commune en nom propre dans un texte qui parle BIEN de la fiche ne bloque "
+       "pas — c'est la conjonction qui décide, jamais un signal seul",
        incoherence_description(_torino(
-           "La rassegna si sposta poi a Chambéry, poi a Annecy, per due serate."),
-           bloquant=True) is not None)
-_check("   et le nom en MINUSCULE ne suffit pas — un lieu est un nom propre",
+           "La rassegna si sposta poi a Chambéry, per due serate."), bloquant=True) is None)
+_check("   et le nom en MINUSCULE ne compte pas non plus — un lieu est un nom propre",
        incoherence_description(_torino(
            "Le film parle de la vie à annecy dans les annees 1960 et rien d'autre."),
            bloquant=True) is None)
+
+# ── LES CINQ REFUS RÉELS DU SIGNAL ② ─────────────────────────────────────────────────
+# Sortis de `audit_coherence --bloquant` sur la base de production le 2026-08-13, une
+# fois les mots courants écartés. Cinq fiches, QUATRE fausses au moins, et trois causes
+# qui sont l'ordinaire d'un agenda de montagne. Elles sont ici parce qu'aucune ne peut
+# être devinée en relisant le code : il a fallu la donnée.
+print("\n──── les cinq refus réels du 13/08, relus un par un ────")
+
+REELS = [
+    ("[49] situer le lieu — nommer la ville voisine est le service rendu au lecteur",
+     {"title": "Visite au Château de Montrottier", "lieu": "Château de Montrottier",
+      "ville": "Lovagny",
+      "description": "Le château de Montrottier, à quinze minutes d'Annecy, ouvre ses "
+                     "collections au public pour des visites guidées de ses salles "
+                     "d'armes et de son donjon."}),
+    ("[3533] la même, côté italien",
+     {"title": "Visita al Castello di Montrottier", "lieu": "Château de Montrottier",
+      "ville": "Lovagny",
+      "description": "Il castello di Montrottier, a un quarto d'ora da Annecy, apre le "
+                     "sue collezioni al pubblico con visite guidate."}),
+    ("[2663] homonymie — « Dullin » est une commune ET le théâtre Charles-Dullin",
+     {"title": "Visite guidée entre théâtre et cinéma avec La Cordonnerie",
+      "lieu": "Théâtre Charles-Dullin", "ville": "Chambéry",
+      "description": "Une visite guidée du théâtre Dullin, entre plateau et cabine de "
+                     "projection, en compagnie de la compagnie La Cordonnerie."}),
+    ("[922] événement itinérant qui énumère ses étapes",
+     {"title": "Boîte Crânienne", "lieu": "Itinérance", "ville": "Thonon-Évian-Publier",
+      "description": "La Boîte Crânienne poursuit son itinérance et fait halte à Fessy, "
+                     "puis à Saint-Paul-en-Chablais et enfin à Yvoire."}),
+    ("[3538] une commune voisine citée dans une description qui parle bien de la fiche",
+     {"title": "Un salone di pittura eccezionale a Moûtiers", "lieu": "Centre culturel",
+      "ville": "Moûtiers",
+      "description": "Il salone di pittura riunisce una trentina di artisti, alcuni "
+                     "venuti da Bourg-Saint-Maurice, per tre giorni di esposizione."}),
+]
+for etiquette, fiche in REELS:
+    verdict = incoherence_description(fiche, bloquant=True)
+    _check(etiquette, verdict is None, str(verdict))
+
+_check("… et le signal ② SEUL les voyait bien toutes — c'est lui qui était trop seul",
+       all(incoherence_description(f) is not None for _e, f in REELS),
+       str([incoherence_description(f) for _e, f in REELS]))
 
 print("\n──── le signal ① n'est pas supprimé, il est DÉCLASSÉ ────")
 _check("hors mode bloquant, il parle encore (pour les rapports que Franck lit)",

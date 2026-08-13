@@ -231,8 +231,10 @@ def incoherence_description(event: dict, bloquant: bool = False) -> str | None:
     None ≠ « description correcte » : ça veut dire « rien de contradictoire détecté ». La
     nuance compte, c'est elle qui empêche de prendre ce contrôle pour une garantie.
 
-    `bloquant=True` n'active QUE le signal ② (la description nomme une autre commune et
-    jamais la sienne). À réserver aux endroits où le verdict REFUSE quelque chose.
+    `bloquant=True` exige les DEUX signaux À LA FOIS. À réserver aux endroits où le
+    verdict REFUSE quelque chose. Chacun pris seul s'est révélé faux sur la donnée réelle
+    du 2026-08-13 ; leur conjonction décrit la seule forme qu'on ait jamais vérifiée —
+    un texte qui parle d'ailleurs ET qui n'a rien à voir avec cette fiche-ci.
 
     POURQUOI CETTE DISTINCTION, ET CE QU'ELLE A COÛTÉ D'APPRENDRE (2026-08-13).
     Le signal ① — « aucun mot commun entre la description et l'identité de la fiche » —
@@ -248,16 +250,24 @@ def incoherence_description(event: dict, bloquant: bool = False) -> str | None:
         grand tournoi de jeux de combat au monde ». Excellente aussi. Aucun mot commun,
         parce qu'une bonne description PARAPHRASE au lieu de répéter le titre.
 
-    Bilan honnête après neuf jours de production : signal ① = zéro vrai positif, deux
-    faux. Le vrai positif historique — WP#6798, description d'Annecy sur une fiche de
-    Chambéry — vient du signal ②, qui nomme une contradiction VÉRIFIABLE au lieu de
-    constater une absence. C'est la leçon du dépôt appliquée à un détecteur : sur un
-    texte écrit pour des humains, on ne peut pas EXTRAIRE, seulement CONFIRMER à partir
-    d'un fait qu'on connaît déjà. « Aucun mot commun » ne confirme rien ; il constate un
-    silence, et un silence n'est pas une contradiction.
+    Bilan après neuf jours de production : signal ① = zéro vrai positif, deux faux.
 
-    Le signal ① n'est pas supprimé : il reste utile à un RAPPORT que Franck lit et
-    juge (`audit_coherence`). Il n'a simplement plus le droit de refuser tout seul.
+    J'ai alors cru que le signal ② suffisait — il porte le vrai positif historique
+    (WP#6798, description d'une soirée d'Annecy sur une fiche de Chambéry). Passé sur la
+    base une heure plus tard, il a signalé CINQ fiches dont quatre fausses, pour trois
+    causes qui sont l'ordinaire d'un agenda de montagne : situer un lieu par sa ville
+    voisine, une tournée qui énumère ses étapes, et l'homonymie d'un nom propre —
+    « Dullin » est une commune de Savoie ET le théâtre Charles-Dullin de Chambéry, ce qui
+    est mot pour mot le piège de la fiche 3588 que CLAUDE.md raconte.
+
+    Aucun des deux ne tient donc SEUL. Leur conjonction, si : les cinq faux positifs
+    partagent tous du vocabulaire avec leur propre titre, puisqu'ils décrivent bien leur
+    propre événement. C'est la leçon du dépôt appliquée à un détecteur — sur un texte
+    écrit pour des humains, on ne peut pas EXTRAIRE, seulement CONFIRMER à partir d'un
+    fait qu'on connaît déjà — et il en faut ici DEUX, dont aucun ne suffit.
+
+    Les deux signaux continuent de parler séparément dans les RAPPORTS que Franck lit et
+    juge (`audit_coherence`, sans `--bloquant`). Ils n'ont plus le droit de refuser seuls.
     """
     texte = _texte_visible(event.get("description"))
     if not texte:
@@ -283,21 +293,56 @@ def incoherence_description(event: dict, bloquant: bool = False) -> str | None:
     # comme les autres : deux mesures différentes sur les deux côtés d'une comparaison,
     # c'est précisément ce qui produisait le faux positif.
     sienne_nommee = bool(mienne and re.search(rf"\b{re.escape(mienne)}\b", texte_n))
-    if autres and ville and not sienne_nommee:
-        return (f"la description nomme {', '.join(sorted(autres)[:3])} et jamais "
+    signal2 = ((f"la description nomme {', '.join(sorted(autres)[:3])} et jamais "
                 f"« {ville} », qui est la ville de la fiche")
+               if (autres and ville and not sienne_nommee) else None)
+    # « Étranger à la fiche » : aucun mot significatif partagé avec titre + lieu + ville.
+    etranger = bool(mots_ancrage) and not (mots_ancrage & mots_texte)
 
-    # ① ENSUITE : universel, mais plus grossier — et c'est LUI SEUL qui exige un texte
-    # fourni. Voir MIN_TEXTE_VISIBLE : une absence ne prouve quelque chose que s'il y avait
-    # la place d'être présent. Le seuil ne doit surtout pas garder l'entrée des deux
-    # signaux, cf. le correctif du 2026-08-04.
-    # Et il ne REFUSE plus rien tout seul depuis le 2026-08-13 : deux faux positifs sur
-    # trois en production (bilinguisme, paraphrase). Voir la docstring.
+    # ══ CE QUI BLOQUE : LES DEUX SIGNAUX ENSEMBLE, JAMAIS UN SEUL ═════════════════════
+    #
+    # Passés sur la base réelle le 2026-08-13 — le geste que CLAUDE.md réclame et que
+    # j'avais sauté deux fois dans la même heure —, les deux signaux se sont révélés
+    # bruyants CHACUN DE SON CÔTÉ :
+    #
+    #   ① seul (« aucun mot commun ») : faux sur le bilinguisme (titre italien,
+    #     description française) et sur la paraphrase (une bonne description ne répète
+    #     pas son titre). Deux faux sur trois en neuf jours.
+    #
+    #   ② seul (« nomme une autre commune ») : cinq fiches signalées, quatre fausses, et
+    #     pour trois causes qui sont l'ordinaire d'un agenda de montagne —
+    #       · SITUER LE LIEU : « le château de Montrottier, à quinze minutes d'Annecy ».
+    #         Nommer la ville voisine est le service rendu au lecteur, pas une erreur ;
+    #       · ÉVÉNEMENT ITINÉRANT : une tournée qui énumère ses étapes (Fessy,
+    #         Saint-Paul-en-Chablais, Yvoire) ;
+    #       · HOMONYMIE DE NOM PROPRE : « Dullin » est une commune de Savoie ET le nom du
+    #         théâtre Charles-Dullin de Chambéry. C'est, à la lettre, le piège de la fiche
+    #         3588 que CLAUDE.md décrit — le marqueur venait du NOM PROPRE.
+    #
+    # Leur CONJONCTION, elle, décrit exactement la forme du seul vrai positif connu
+    # (WP#6798, la description d'une soirée d'Annecy sur une fiche de Chambéry) : un texte
+    # qui parle d'AILLEURS **et** qui n'a RIEN à voir avec cette fiche-ci. Aucun des cinq
+    # faux positifs ci-dessus n'a cette forme — tous partagent du vocabulaire avec leur
+    # propre titre, puisqu'ils décrivent bien leur propre événement.
+    #
+    # Le seuil de longueur ne s'applique PAS ici : il existait pour empêcher ① de conclure
+    # sur un texte trop court, or ② fournit la preuve positive qui manquait. C'est
+    # d'ailleurs indispensable — le blob Google News de WP#6798 était court par nature.
     if bloquant:
+        if signal2 and etranger:
+            return (signal2 + ", et elle ne partage aucun mot avec le titre, le lieu ou "
+                    "la ville — les deux signaux ensemble, jamais un seul")
         return None
+
+    # ── HORS MODE BLOQUANT : le rapport que Franck lit et juge ────────────────────────
+    # Les deux signaux parlent séparément. C'est voulu : un rapport a le droit d'être
+    # bavard, personne ne se fait refuser sur sa foi. Le seuil de longueur reste sur ①,
+    # parce que sur un texte court l'absence de recoupement ne prouve rien.
+    if signal2:
+        return signal2
     if len(texte) < MIN_TEXTE_VISIBLE:
         return None
-    if mots_ancrage and not (mots_ancrage & mots_texte):
+    if etranger:
         return ("aucun mot commun entre la description et l'identité de la fiche "
                 "(titre, lieu, ville)")
     return None
