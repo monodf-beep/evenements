@@ -37,6 +37,7 @@ Usage sur le VPS :
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sqlite3
 import sys
@@ -67,6 +68,14 @@ def devant_nous(ev: dict, today: str) -> bool:
         return True                       # pas de date unique : jamais « passé »
     fin = (ev.get("date_event_end") or ev.get("date_event_start") or "").strip()
     return not fin or fin[:10] >= today   # sans date = donnée manquante, pas un événement fini
+
+
+def _article_de(ev: dict) -> dict:
+    """L'article rédigé d'une fiche, ou {} — sans jamais lever sur un JSON abîmé."""
+    try:
+        return (json.loads(ev.get("enrich_data") or "") or {}).get("article") or {}
+    except (ValueError, TypeError):
+        return {}
 
 
 def main(argv=None) -> int:
@@ -102,7 +111,25 @@ def main(argv=None) -> int:
 
     plancher = substance.plancher()
     sous_plancher, bande_maigre, passees = [], [], []
+    # QUATRIÈME PANIER, AJOUTÉ LE 2026-08-13 : les fiches publiées SANS ARTICLE RÉDIGÉ.
+    # Ce script mesure une LONGUEUR ; il ne regardait pas la PROVENANCE du texte. Or
+    # `publisher.build_post` a un repli explicite — « article non enrichi → description
+    # brute » — qui publie le texte de la SOURCE dans un simple <p>. Une description de
+    # trois cents mots passe donc le plancher sans qu'une ligne ait été écrite par nous.
+    #
+    # Découvert en cherchant pourquoi `panel_rattrapage` en écartait 23 avec « aucun
+    # article en base ». Elles cumulent deux défauts qui se renforcent : c'est exactement
+    # le contenu qu'AdSense a qualifié de « faible valeur informative » le 2026-08-05, et
+    # elles sont INVISIBLES à tout notre appareil de contrôle, qui lit `enrich_data`.
+    # Visibles du public, invisibles de nous.
+    #
+    # Compté à part et NON mélangé aux maigres : une fiche peut être longue ET non
+    # rédigée. Ce sont deux questions différentes, et les confondre referait le défaut de
+    # périmètre que ce fichier documente déjà trois paragraphes plus haut.
+    sans_article = []
     for ev in rows:
+        if not ((_article_de(ev) or {}).get("corps") or "").strip():
+            sans_article.append((ev, substance.mots_publies(ev, build_post)))
         n = substance.mots_publies(ev, build_post)
         if n >= substance.BANDE_MAIGRE:
             continue
@@ -115,6 +142,9 @@ def main(argv=None) -> int:
     sous_plancher.sort(key=lambda t: t[1])  # les plus maigres d'abord
 
     jamais_enrichies = sum(1 for ev, _ in sous_plancher if not (ev.get("article_title") or "").strip())
+    # RÈGLE 5 ici aussi : une fiche non rédigée dont l'événement est passé ne sera pas
+    # republiée. Elle reste en ligne, donc elle est comptée — mais à part.
+    sans_article_vivantes = [t for t in sans_article if devant_nous(t[0], today)]
 
     print("=" * 78)
     print("AUDIT « substance publiée » — lecture seule, rien n'a été modifié")
@@ -129,6 +159,12 @@ def main(argv=None) -> int:
     print(f"   · réparation en lot : .venv/bin/python -m scripts.repair_substance")
     print(f"2. BANDE MAIGRE ({plancher}-{substance.BANDE_MAIGRE} mots), publiable mais maigre : {len(bande_maigre)}")
     print(f"3. MAIGRES MAIS PASSÉES (comptées à part, NON réparables) : {len(passees)}")
+    print(f"4. PUBLIÉES SANS ARTICLE RÉDIGÉ : {len(sans_article)}, dont "
+          f"{len(sans_article_vivantes)} encore devant nous")
+    print(f"   C'est la DESCRIPTION BRUTE de la source qui s'affiche (repli de")
+    print(f"   publisher.build_post), pas notre rédaction — quelle que soit sa longueur.")
+    print(f"   Ces fiches échappent AUSSI au panel de lecteurs et à tout contrôle qui lit")
+    print(f"   enrich_data : visibles du public, invisibles de nous.")
     print(f"   L'événement a eu lieu : la fiche ne sera pas republiée, plus aucun visiteur")
     print(f"   ne la cherche. Les réparer coûterait ~{0.33 * len(passees):.0f} $ pour rien.")
     print()

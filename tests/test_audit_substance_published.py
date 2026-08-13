@@ -108,6 +108,39 @@ _check("bande maigre : id 3 (180 mots)", ids_bande == [3], str(ids_bande))
 _check("id 4 (400 mots) n'est dans aucun des deux paniers",
        4 not in ids_sous and 4 not in ids_bande)
 
+# ── PANIER 4 : PUBLIÉE SANS ARTICLE RÉDIGÉ ───────────────────────────────────────────
+# LE CAS QUI COMPTE EST CELUI QUI PASSE TOUT LE RESTE. `publisher.build_post` a un repli
+# « article non enrichi → description brute » : une fiche dont la source a écrit trois
+# cents mots franchit le plancher de substance sans qu'une ligne soit de nous. Ce script
+# mesurait une longueur, pas une provenance — il ne la voyait donc pas, et le panel de
+# lecteurs non plus, puisqu'il lit enrich_data.
+import json as _json  # noqa: E402
+_c = _sq.connect(tmp)
+_c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, article_title, "
+           "enrich_data, duplicate_of) VALUES (?,?,?,?,?,?, NULL)",
+           (6, "Longue mais jamais rédigée", "https://a.fr/6", 995, None, ""))
+_c.execute("UPDATE events_raw SET enrich_data=? WHERE id=?",
+           (_json.dumps({"article": {"corps": "Un vrai article rédigé chez nous."}}), 4))
+_c.commit(); _c.close()
+
+_check("une fiche SANS corps rédigé est vue, même longue",
+       audit._article_de({"enrich_data": ""}) == {})
+_check("   et une fiche AVEC corps ne l'est pas",
+       (audit._article_de({"enrich_data": _json.dumps(
+           {"article": {"corps": "texte"}})}) or {}).get("corps") == "texte")
+_check("un enrich_data ABÎMÉ ne fait pas tomber l'audit — il compte comme non rédigé",
+       audit._article_de({"enrich_data": "{pas du json"}) == {})
+
+import io as _io, contextlib as _ctx  # noqa: E402
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    audit.main([])
+_sortie = _buf.getvalue()
+_check("le panier 4 est affiché", "PUBLIÉES SANS ARTICLE RÉDIGÉ" in _sortie, _sortie[-400:])
+_check("   et il dit d'où vient le texte affiché à la place",
+       "DESCRIPTION BRUTE" in _sortie)
+_check("   et qu'elles échappent aussi au panel", "invisibles de nous" in _sortie)
+
 jamais_enrichies = [ev["id"] for ev in sous_plancher if not (ev.get("article_title") or "").strip()]
 _check("« jamais enrichie » repère bien id=1 (article_title vide), pas id=2",
        jamais_enrichies == [1], str(jamais_enrichies))
