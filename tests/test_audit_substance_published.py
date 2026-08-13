@@ -173,6 +173,46 @@ _check("   et elle n'est PAS recomptée avec les maigres du panier 1",
        "  [    1] " not in _ids_out.split("AU-DESSUS du plancher")[1],
        _ids_out.split("AU-DESSUS du plancher")[-1][:400])
 
+# ── UNE TRADUCTION N'EST PAS UNE TÂCHE ───────────────────────────────────────────────
+# `enrich` REFUSE toute fiche dont `translation_of` est renseigné : il écrit en français
+# et écraserait la traduction. L'audit les mettait quand même dans sa commande — le
+# lecteur croyait lancer huit réparations et en obtenait six, sans que rien ne le dise.
+# Vu en production le 2026-08-13 sur la paire 4194/4195 (Chagall FR puis IT), les deux
+# dans le panier 4 le même jour.
+#
+# LES DEUX CÔTÉS DE LA FRONTIÈRE, y compris celui qui doit PASSER : id 7 est la traduction
+# (elle sort de la commande), id 8 est un original tout aussi long et non rédigé (il y
+# reste). Une fixture qui n'aurait que le cas refusé prouverait seulement qu'on sait
+# refuser.
+_c = _sq.connect(tmp)
+_c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, enrich_data, "
+           "translation_of, translated_lang) VALUES (?,?,?,?,?,?,?)",
+           (7, "Chagall, versione italiana", "https://a.fr/7", 994, "", 6, "it"))
+_c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, enrich_data, "
+           "translation_of) VALUES (?,?,?,?,?, NULL)",
+           (8, "Un original tout aussi long et non rédigé", "https://a.fr/8", 993, ""))
+_c.commit(); _c.close()
+
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    audit.main([])
+_t = _buf.getvalue()
+_cmd = [l for l in _t.splitlines() if "scripts.enrich " in l]
+_check("la traduction (id 7) ne figure dans AUCUNE commande enrich",
+       all(" 7 " not in f"{l} " and not l.rstrip().endswith(" 7") for l in _cmd),
+       "\n".join(_cmd))
+_check("   mais l'original de même longueur (id 8) y est bien — sinon on aurait "
+       "seulement appris à refuser",
+       any(" 8" in l for l in _cmd), "\n".join(_cmd))
+_check("   et l'écart est DIT, avec l'id de l'original à réécrire",
+       "traduction mise de côté" in _t and "réécrire l'original 6" in _t,
+       _t[-900:])
+# La corbeille, elle, doit garder la traduction : dépublier l'original en laissant sa
+# version italienne en ligne laisserait justement ce qu'on retire.
+_trash = [l for l in _t.splitlines() if "trash_by_ids" in l]
+_check("la commande de DÉPUBLICATION, elle, garde la traduction",
+       any(" 7" in l for l in _trash), "\n".join(_trash))
+
 jamais_enrichies = [ev["id"] for ev in sous_plancher if not (ev.get("article_title") or "").strip()]
 _check("« jamais enrichie » repère bien id=1 (article_title vide), pas id=2",
        jamais_enrichies == [1], str(jamais_enrichies))

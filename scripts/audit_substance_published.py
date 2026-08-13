@@ -153,6 +153,20 @@ def main(argv=None) -> int:
     _deja = {ev["id"] for ev, _ in sous_plancher}
     sans_article_seules = [t for t in sans_article_vivantes if t[0]["id"] not in _deja]
 
+    # LES TRADUCTIONS NE SONT PAS DES TÂCHES (2026-08-13). `enrich` REFUSE une fiche dont
+    # `translation_of` est renseigné — il écrit en français et écraserait la traduction ;
+    # c'est l'original qu'on enrichit, puis translate_events repasse. Mettre malgré tout
+    # ces identifiants dans la commande donnait une file dont une partie est vouée au
+    # refus : le lecteur croit lancer huit réparations et en obtient six. Règle 6, « une
+    # file ne doit contenir que ce qu'un humain peut faire ». Vu sur la paire 4194/4195
+    # (Chagall FR/IT), toutes deux dans le panier 4 le même jour.
+    def _traduction(ev: dict) -> int:
+        return int(ev.get("translation_of") or 0)
+
+    def _actionnables(lot: list[tuple[dict, int]]) -> tuple[list, list]:
+        return ([t for t in lot if not _traduction(t[0])],
+                [t for t in lot if _traduction(t[0])])
+
     print("=" * 78)
     print("AUDIT « substance publiée » — lecture seule, rien n'a été modifié")
     print("=" * 78)
@@ -201,24 +215,50 @@ def main(argv=None) -> int:
         _dump("SANS ARTICLE RÉDIGÉ mais AU-DESSUS du plancher — hors panier 1",
               sans_article_seules)
 
-    if sans_article_seules:
-        ids = " ".join(str(ev["id"]) for ev, _ in sans_article_seules[:50])
-        print(f"CES {len(sans_article_seules)} FICHES-LÀ passent le plancher — avec le texte de la")
-        print("source. Aucune commande de ce script ne les visait : le panier 1 ne les")
-        print("voit pas (elles sont assez longues) et le panier 2 n'en propose aucune.")
+    def _traductions_ecartees(trads: list[tuple[dict, int]]) -> None:
+        if not trads:
+            return
+        tete = ("1 traduction mise de côté" if len(trads) == 1
+                else f"{len(trads)} traductions mises de côté")
+        print(f"    ({tete} — enrich les REFUSE : il écrit en français et")
+        print(f"     écraserait la version italienne. C'est l'ORIGINAL qui se réécrit,")
+        print(f"     puis translate_events repasse.)")
+        for ev, _ in trads[:6]:
+            print(f"       id {ev['id']} → réécrire l'original {_traduction(ev)}")
+
+    seules_ok, seules_trad = _actionnables(sans_article_seules)
+    if seules_ok:
+        ids = " ".join(str(ev["id"]) for ev, _ in seules_ok[:50])
+        if len(seules_ok) == 1:
+            print("CETTE FICHE-LÀ passe le plancher — avec le texte de la source. Aucune")
+            print("commande de ce script ne la visait : le panier 1 ne la voit pas (elle est")
+            print("assez longue) et le panier 2 n'en propose aucune.")
+        else:
+            print(f"CES {len(seules_ok)} FICHES-LÀ passent le plancher — avec le texte de la")
+            print("source. Aucune commande de ce script ne les visait : le panier 1 ne les")
+            print("voit pas (elles sont assez longues) et le panier 2 n'en propose aucune.")
         print(f"      .venv/bin/python -m scripts.enrich {ids}")
         print("      puis : .venv/bin/python -m scripts.publish_batch_as --ids " + ids)
+        _traductions_ecartees(seules_trad)
         print()
 
-    if sous_plancher:
-        ids = " ".join(str(ev["id"]) for ev, _ in sous_plancher[:50])
+    plancher_ok, plancher_trad = _actionnables(sous_plancher)
+    if plancher_ok:
+        ids = " ".join(str(ev["id"]) for ev, _ in plancher_ok[:50])
         print("RIEN N'A ÉTÉ MODIFIÉ. Deux réparations possibles, décision par décision :")
-        print("  • ENRICHIR (la fiche gagnera un vrai article, puis repart au republish) :")
+        print(f"  • ENRICHIR ces {len(plancher_ok)} fiches (elles gagneront un vrai article, "
+              f"puis repartent au republish) :")
         print(f"      .venv/bin/python -m scripts.enrich {ids}")
         print("      puis : .venv/bin/python -m scripts.publish_batch_as --ids " + ids)
+        _traductions_ecartees(plancher_trad)
+        # La corbeille, elle, n'a aucune raison d'écarter les traductions : dépublier un
+        # original en laissant sa version italienne en ligne laisserait justement en place
+        # ce qu'on retire. La liste est donc la COMPLÈTE, et elle diffère de celle du
+        # dessus — c'est voulu, et écrit ici pour qu'on ne la « corrige » pas plus tard.
+        ids_tous = " ".join(str(ev["id"]) for ev, _ in sous_plancher[:50])
         print("  • DÉPUBLIER (corbeille WordPress, réversible ; dry-run par défaut, "
               "--apply pour agir) :")
-        print(f"      .venv/bin/python -m scripts.trash_by_ids {ids}")
+        print(f"      .venv/bin/python -m scripts.trash_by_ids {ids_tous}")
     return 0
 
 
