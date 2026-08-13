@@ -30,3 +30,5 @@ venv/
 # Clé de compte de service Google (Search Console) — JAMAIS dans le dépôt.
 data/gsc-credentials.json
 *gsc-credentials*.json
+data/oauth-client.json
+data/gsc-oauth-token.json

@@ -354,7 +354,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--auth", action="store_true",
                         help="Tour OAuth dans un navigateur (à lancer sur ton portable).")
     parser.add_argument("--client", metavar="JSON",
-                        help="Avec --auth : le fichier d'ID client OAuth téléchargé.")
+                        default=str(ROOT / "data" / "oauth-client.json"),
+                        help="Fichier d'ID client OAuth. Défaut : data/oauth-client.json — "
+                             "y déposer le JSON téléchargé depuis Google Cloud suffit.")
     parser.add_argument("--enregistrer", action="store_true",
                         help="Archive le relevé en base (table gsc_perf) pour constituer "
                              "l'historique. Silencieux : n'envoie rien sur Slack.")
@@ -367,8 +369,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.csv:
         return _depuis_csv(args.csv)
     if args.auth:
-        if not args.client:
-            log.error("--auth demande --client <fichier JSON d'ID client OAuth>")
+        if not Path(args.client).exists():
+            # Message écrit pour quelqu'un qui n'est pas développeur : on donne le geste
+            # exact, pas un nom de fichier entre chevrons — que bash interprète comme une
+            # redirection et qui produit « syntax error near unexpected token ». Vécu le
+            # 2026-08-13, à cause d'un exemple mal écrit de ma part.
+            log.error("fichier d'ID client absent : %s", args.client)
+            log.error("→ Google Cloud → API et services → Identifiants → Créer des "
+                      "identifiants → ID client OAuth → type « Application de bureau », "
+                      "puis télécharger le JSON.")
+            log.error("→ Le déposer ici sous le nom data/oauth-client.json, par exemple "
+                      "avec : nano data/oauth-client.json  (coller, Ctrl+O, Entrée, Ctrl+X)")
             return 2
         return _autoriser(args.client,
                           os.getenv("GSC_OAUTH_TOKEN",
