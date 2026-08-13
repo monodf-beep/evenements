@@ -402,8 +402,19 @@ def main(argv=None) -> int:
     print("    seule commande les corbeille toutes (RÉVERSIBLE, dry-run sans --apply) :")
     if a_retirer:
         ids = " ".join(str(i) for i in sorted(set(a_retirer)))
-        print(f"      .venv/bin/python -m scripts.trash_by_ids {ids}")
-        print(f"      puis, une fois la sortie lue : … {ids} --apply")
+        # `--statut rejected` N'EST PAS UN ORNEMENT. `trash_by_ids` REFUSE de corbeiller
+        # une fiche `published_sub` sans lui, et il a raison : corbeiller sans changer le
+        # statut laisse la fiche « retenue, sans post WP », c'est-à-dire dans le profil
+        # exact que `publish_batch_as` republie le lendemain matin. On aurait retiré la
+        # page et elle serait revenue seule, sur une adresse neuve.
+        # Écrit ici le 2026-08-13 après avoir dicté à Franck la commande AMPUTÉE, que le
+        # garde-fou a heureusement rejetée. Une commande incomplète dans un rapport est
+        # une commande qu'on retapera de travers : elle se donne entière ou pas du tout.
+        opts = '--statut rejected --motif "doublon d\'une fiche déjà en ligne"'
+        print(f"      .venv/bin/python -m scripts.trash_by_ids {ids} {opts}")
+        print(f"      puis, une fois la sortie lue : … --apply")
+        print(f"      (`--statut rejected` est OBLIGATOIRE : sans lui, la fiche reste")
+        print(f"       « retenue sans post », et le lot de demain matin la republie.)")
     else:
         print("      (aucun défaut proposé — les groupes se valent, il faut regarder)")
     print("  • si ce sont DEUX ÉDITIONS différentes (2025 et 2026, ou deux dates), il n'y")

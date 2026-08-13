@@ -141,6 +141,15 @@ _check("la sortie dit quoi faire, et que le choix reste éditorial",
        "reste ÉDITORIAL" in sortie and "trash_by_ids" in sortie, sortie[-700:])
 _check("   et elle prévoit le cas « deux éditions », pour ne pas fabriquer une fusion",
        "DEUX ÉDITIONS" in sortie, sortie[-700:])
+# LA COMMANDE SE DONNE ENTIÈRE OU PAS DU TOUT. `trash_by_ids` REFUSE de corbeiller une
+# fiche `published_sub` sans `--statut` — corbeiller sans changer le statut la laisse
+# dans le profil exact que `publish_batch_as` republie le lendemain. Le 2026-08-13 j'ai
+# dicté la commande amputée à Franck ; c'est le garde-fou qui l'a rattrapée, pas moi.
+_check("la commande porte --statut rejected, sinon trash_by_ids la refuse et la fiche "
+       "revient en ligne demain matin",
+       "--statut rejected" in sortie, sortie[-800:])
+_check("   et la raison de cette option est écrite, pas seulement l'option",
+       "le lot de demain matin la republie" in sortie, sortie[-800:])
 _check("le permalien inconnu est DIT, jamais remplacé par /?p=<id> qui répond 404",
        "permalien inconnu" in sortie and "?p=" not in sortie, sortie[-900:])
 
