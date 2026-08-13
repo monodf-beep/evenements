@@ -421,14 +421,39 @@ def main(argv=None) -> int:
     print("    a rien à faire : les garder toutes les deux et me le dire, pour que la")
     print("    garde années/dates de dedupe soit corrigée plutôt que contournée.")
 
-    if args.slack:
-        from utils import slack
-        lignes = [f"• {len(g)} pages : " + ", ".join(f"WP#{e['wp_post_id_as']}" for e in g)
-                  for g in suspects[:10]]
-        slack.post(f"*{len(suspects)} doublon(s) suspect(s) EN LIGNE* "
-                   f"(sur {compte['vivantes']} fiches publiées encore devant nous)\n"
-                   + "\n".join(lignes))
+    _slack(args, suspects, compte, a_retirer)
     return 0
+
+
+def _slack(args, suspects, compte, a_retirer) -> None:
+    """Le message Slack — appelé aussi quand il n'y a RIEN, et c'est voulu.
+
+    ⚠️ CETTE FONCTION APPELAIT `slack.post`, QUI N'EXISTE PAS. Le point d'entrée
+    d'`utils/slack.py` s'appelle `notify` ; `post` n'a jamais existé. Écrit le
+    2026-08-13 au matin, jamais exécuté de la journée parce que `--slack` n'a servi à
+    personne — jusqu'à ce que je place ce script dans le crontab le soir même. Il aurait
+    planté tous les matins à 9h50, et la seule trace en aurait été une ligne dans
+    logs/, que personne ne lit.
+
+    C'est la forme la plus banale du défaut de la journée : un chemin de code écrit,
+    relu, commité, et JAMAIS PARCOURU. La fixture le parcourt maintenant.
+
+    Se tait quand il n'y a rien : un message quotidien « aucun doublon » cesse d'être lu
+    au bout d'une semaine, et c'est le jour où il dira quelque chose qu'on le ratera.
+    """
+    if not args.slack or not suspects:
+        return
+    from utils import slack
+    lignes = [f"• {len(g)} pages : " + ", ".join(f"WP#{e['wp_post_id_as']}" for e in g)
+              for g in suspects[:10]]
+    corps = (f"🔴 *{len(suspects)} doublon(s) EN LIGNE, vérifié(s) sur WordPress* "
+             f"(sur {compte['vivantes']} fiches publiées encore devant nous)\n"
+             + "\n".join(lignes))
+    if a_retirer:
+        ids = " ".join(str(i) for i in sorted(set(a_retirer)))
+        corps += (f"\n`.venv/bin/python -m scripts.trash_by_ids {ids} "
+                  f"--statut rejected --motif \"doublon\"`")
+    slack.notify(corps)
 
 
 if __name__ == "__main__":

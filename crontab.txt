@@ -86,6 +86,17 @@ SLACK_DIGEST=1
 # listés dans le message Slack avec la raison précise (rien de silencieux). DAILY_BATCH_SIZE
 # (.env, défaut 10) règle la taille du lot — --cap l'outrepasse ponctuellement.
 30 9 * * * cd /root/evenements && .venv/bin/python scripts/daily_batch.py >> logs/daily_batch.log 2>&1
+# DOUBLONS NÉS DU LOT DU MATIN, 9h50 — juste après la publication, sur ce qui vient
+# d'être mis en ligne. La version hebdomadaire (weekly_audits, dimanche) ne suffit pas :
+# le 2026-08-13, [4763] a été publiée à 9h50 sur un événement DÉJÀ en ligne ([4702]) et
+# rien ne l'aurait vu avant quatre jours. Le même soir, `reconcile_hors_ligne --perimes`
+# a libéré 21 fiches qui repartiront à ce lot — dont plusieurs portent le titre d'une
+# fiche encore publiée. C'est donc le moment exact où le risque se crée.
+# `--en-ligne` interroge WordPress, mais SEULEMENT les fiches des groupes suspects
+# (8 posts le 13/08, pas 198) : le contrôle coûte quelques secondes. Sans lui, il
+# compterait des doublons dont une seule page est réellement visible — la faute de
+# règle 1 que ce script a commise le jour de sa naissance.
+50 9 * * * cd /root/evenements && .venv/bin/python -m scripts.verifier_doublons_publies --en-ligne --slack >> logs/verifier_doublons.log 2>&1
 # SEO quotidien 10h30 (après le lot du jour, sur le haut du panier score ≥ 7) — republie
 # automatiquement ce qui était déjà en ligne (sinon le SEO reste invisible en base). Petit
 # cap volontaire (coût LLM par événement) — ajuste --cap dans le script si besoin.

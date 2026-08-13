@@ -275,7 +275,37 @@ _check("   les pages retirées du site sont dites telles quelles, pas effacées 
        "non_public sur le site" in sonde or "écartés APRÈS SONDAGE   : 2" in sonde,
        sonde[:1400])
 
-print("\n──── 7. le zéro qui se lit ────")
+# ── 7. LE CHEMIN --slack, ÉCRIT LE MATIN ET JAMAIS PARCOURU ──────────────────────────
+# Il appelait `slack.post`, qui n'existe pas : le point d'entrée d'utils/slack.py
+# s'appelle `notify`. Relu, commité, et jamais exécuté de la journée — jusqu'à ce que ce
+# script entre dans le crontab le soir même. Il aurait planté tous les matins à 9h50, et
+# la seule trace en aurait été une ligne dans logs/, que personne ne lit.
+print("\n──── 7. le message Slack part vraiment ────")
+_envois: list[str] = []
+import utils.slack as _slk  # noqa: E402
+_slk.notify = lambda texte, blocks=None, urgent=False: _envois.append(texte) or True
+
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    vd.main(["--en-ligne", "--slack"])
+_check("un message est bien parti (le chemin --slack ne lève plus)",
+       len(_envois) == 1, str(_envois))
+if _envois:
+    _check("   il porte le 🔴, pour remonter en tête du récapitulatif du matin",
+           "🔴" in _envois[0], _envois[0][:200])
+    _check("   il dit son PÉRIMÈTRE à côté du nombre (règle 6)",
+           "encore devant nous" in _envois[0], _envois[0][:300])
+    _check("   et il donne la commande COMPLÈTE, --statut compris",
+           "--statut rejected" in _envois[0], _envois[0])
+
+# Et quand il n'y a rien, il se tait : un message quotidien « aucun doublon » cesse
+# d'être lu au bout d'une semaine, et c'est le jour où il dira quelque chose qu'on le
+# ratera. C'est la doctrine des deux contradicteurs de 11h30 et 11h35.
+_envois.clear()
+vd._slack(type("A", (), {"slack": True})(), [], {"vivantes": 0}, [])
+_check("aucun suspect → aucun message", not _envois, str(_envois))
+
+print("\n──── 8. le zéro qui se lit ────")
 # On vide la base des paires : il ne doit plus rien rester à signaler, et la sortie doit
 # permettre de distinguer « rien trouvé » de « rien examiné ».
 c = sqlite3.connect(tmp)
