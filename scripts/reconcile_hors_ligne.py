@@ -480,6 +480,22 @@ def main(argv=None) -> int:
         else:
             familles["subi"].append(fiche)
 
+    # L'ORIGINAL D'UNE TRADUCTION DOIT ÊTRE SONDÉ, MÊME HORS PÉRIMÈTRE (2026-08-13).
+    # `--ids` filtre la requête en amont — c'est voulu, ça évite de resonder 198 posts
+    # pour cinq fiches. Mais l'annotation qui décide du sort d'un « subi » (« traduction
+    # d'un original ENCORE EN LIGNE → la republier rend la langue manquante ») a besoin de
+    # l'état de cet original, qui n'est pas dans la liste. Sans ces quelques appels, le
+    # chemin que je viens de recommander à Franck — `--subis --ids 3533 3539 3552 4195
+    # 4198` — aurait affiché « page non sondée » sur les cinq, c'est-à-dire précisément
+    # rien de ce qui justifie de les avoir choisies.
+    for f in familles["subi"]:
+        trad_de = int(f["ev"].get("translation_of") or 0)
+        if not trad_de:
+            continue
+        orig = next((o for o in autres if o["id"] == trad_de), None)
+        if orig and int(orig.get("wp_post_id_as") or 0):
+            etat(orig["wp_post_id_as"])       # remplit `cache`, mis en cache par POST
+
     def _lignes(titre: str, cle: str, entete: list[str]) -> None:
         lot = familles[cle]
         if not lot:

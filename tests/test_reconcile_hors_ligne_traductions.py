@@ -145,7 +145,24 @@ _check("   et elle dit franchement qu'il n'y a rien à attendre de --subis",
 _check("   pendant que la fiche qui, elle, repart garde sa promesse",
        "rend la langue manquante" in sortie2, sortie2[-1500:])
 
-print("\n──── 5. rien n'a été écrit ────")
+# ── 5. AVEC --ids, L'ANNOTATION DOIT SURVIVRE ────────────────────────────────────────
+# `--ids` filtre la requête en amont pour ne pas resonder 198 posts. L'original de la
+# traduction n'est donc PAS dans la liste, et sans un sondage supplémentaire l'annotation
+# rendrait « page non sondée » — soit exactement rien de ce qui justifie d'avoir choisi
+# ces fiches-là. Or c'est le chemin recommandé à Franck : `--subis --ids …`.
+print("\n──── 5. avec --ids, l'annotation garde son sens ────")
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    rh.main(["--delay", "0", "--ids", "3533"])
+cible = buf.getvalue()
+_check("la fiche ciblée est bien seule dans le périmètre",
+       "1 fiche(s) portent un identifiant WordPress" in cible, cible[:300])
+_check("   et son original, hors périmètre, est sondé quand même",
+       "dont la page est EN LIGNE" in cible, cible[-900:])
+_check("   donc l'annotation ne dégénère pas en « page non sondée »",
+       "page non sondée" not in cible, cible[-900:])
+
+print("\n──── 6. rien n'a été écrit ────")
 c = sqlite3.connect(tmp)
 restants = c.execute("SELECT COUNT(*) FROM events_raw "
                      "WHERE COALESCE(wp_post_id_as,0) > 0").fetchone()[0]
