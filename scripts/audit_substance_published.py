@@ -145,6 +145,13 @@ def main(argv=None) -> int:
     # RÈGLE 5 ici aussi : une fiche non rédigée dont l'événement est passé ne sera pas
     # republiée. Elle reste en ligne, donc elle est comptée — mais à part.
     sans_article_vivantes = [t for t in sans_article if devant_nous(t[0], today)]
+    # Le panier 1 et le panier 4 se RECOUVRENT largement : une fiche jamais enrichie est
+    # à la fois maigre et non rédigée. Additionner les deux fabriquerait du travail qui
+    # n'existe pas (règle 6). On isole donc ce que le panier 4 apporte VRAIMENT : les
+    # fiches assez longues pour passer tous les contrôles, mais dont pas une ligne n'est
+    # de nous. Celles-là, aucune commande de ce script ne les visait.
+    _deja = {ev["id"] for ev, _ in sous_plancher}
+    sans_article_seules = [t for t in sans_article_vivantes if t[0]["id"] not in _deja]
 
     print("=" * 78)
     print("AUDIT « substance publiée » — lecture seule, rien n'a été modifié")
@@ -159,14 +166,23 @@ def main(argv=None) -> int:
     print(f"   · réparation en lot : .venv/bin/python -m scripts.repair_substance")
     print(f"2. BANDE MAIGRE ({plancher}-{substance.BANDE_MAIGRE} mots), publiable mais maigre : {len(bande_maigre)}")
     print(f"3. MAIGRES MAIS PASSÉES (comptées à part, NON réparables) : {len(passees)}")
-    print(f"4. PUBLIÉES SANS ARTICLE RÉDIGÉ : {len(sans_article)}, dont "
-          f"{len(sans_article_vivantes)} encore devant nous")
+    print(f"   L'événement a eu lieu : la fiche ne sera pas republiée, plus aucun visiteur")
+    print(f"   ne la cherche. Les réparer coûterait ~{0.33 * len(passees):.0f} $ pour rien.")
+    # RÈGLE 6 — le périmètre s'écrit À CÔTÉ du nombre. Celui-ci se compare mal avec les
+    # « 23 sans article » de `panel_rattrapage`, qui ne regarde que les fiches VIVANTES
+    # (à venir, en cours, récurrentes) : deux périmètres, pas deux mesures qui se
+    # contredisent. Sans cette ligne, c'est le plus gros des deux qu'on croira.
+    print(f"4. PUBLIÉES SANS ARTICLE RÉDIGÉ : {len(sans_article)} sur les {len(rows)} "
+          f"publiées, toutes dates confondues,")
+    print(f"   dont {len(sans_article_vivantes)} encore devant nous — ce sont celles-là "
+          f"qui se réparent,")
+    print(f"   et parmi elles {len(sans_article_seules)} qu'AUCUNE commande ne visait "
+          f"(les {len(sans_article_vivantes) - len(sans_article_seules)} autres sont déjà")
+    print(f"   comptées au panier 1 — être maigre et n'être pas rédigée va souvent ensemble).")
     print(f"   C'est la DESCRIPTION BRUTE de la source qui s'affiche (repli de")
     print(f"   publisher.build_post), pas notre rédaction — quelle que soit sa longueur.")
     print(f"   Ces fiches échappent AUSSI au panel de lecteurs et à tout contrôle qui lit")
     print(f"   enrich_data : visibles du public, invisibles de nous.")
-    print(f"   L'événement a eu lieu : la fiche ne sera pas republiée, plus aucun visiteur")
-    print(f"   ne la cherche. Les réparer coûterait ~{0.33 * len(passees):.0f} $ pour rien.")
     print()
 
     if args.ids:
@@ -182,6 +198,17 @@ def main(argv=None) -> int:
             print()
         _dump("SOUS LE PLANCHER, à réparer en priorité", sous_plancher)
         _dump("BANDE MAIGRE (publiable, à surveiller)", bande_maigre)
+        _dump("SANS ARTICLE RÉDIGÉ mais AU-DESSUS du plancher — hors panier 1",
+              sans_article_seules)
+
+    if sans_article_seules:
+        ids = " ".join(str(ev["id"]) for ev, _ in sans_article_seules[:50])
+        print(f"CES {len(sans_article_seules)} FICHES-LÀ passent le plancher — avec le texte de la")
+        print("source. Aucune commande de ce script ne les visait : le panier 1 ne les")
+        print("voit pas (elles sont assez longues) et le panier 2 n'en propose aucune.")
+        print(f"      .venv/bin/python -m scripts.enrich {ids}")
+        print("      puis : .venv/bin/python -m scripts.publish_batch_as --ids " + ids)
+        print()
 
     if sous_plancher:
         ids = " ".join(str(ev["id"]) for ev, _ in sous_plancher[:50])
