@@ -60,8 +60,8 @@ def main(argv=None) -> int:
     # `--bloquant` montre EXACTEMENT ce qui serait refusé, et rien d'autre. Une option de
     # lecture, donc, mais c'est celle qui permet de tenir la règle.
     p.add_argument("--bloquant", action="store_true",
-                   help="N'afficher que ce qui REFUSE réellement (signal ② seul), "
-                        "c'est-à-dire ce que translate_events écarte.")
+                   help="N'afficher que ce qui REFUSE réellement — les DEUX signaux "
+                        "réunis, c'est-à-dire ce que translate_events écarte.")
     args = p.parse_args(argv)
 
     conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
@@ -86,14 +86,30 @@ def main(argv=None) -> int:
     # RÈGLE 6 : le périmètre à côté du nombre. Les deux modes ne comptent pas la même
     # chose, et sans cette ligne deux exécutions du même script se contrediraient.
     print("Mode : " + ("BLOQUANT — uniquement ce qui fait REFUSER une traduction "
-                       "(signal ② seul)" if args.bloquant else
-                       "rapport — les deux signaux, dont un qui ne bloque plus rien "
-                       "(--bloquant pour ne voir que les refus)") + "\n")
+                       "(les deux signaux RÉUNIS : nomme une autre commune ET ne "
+                       "partage aucun mot avec la fiche)" if args.bloquant else
+                       "rapport — les deux signaux séparément, dont AUCUN ne refuse "
+                       "seul (--bloquant pour ne voir que les refus)") + "\n")
     pct = 100 * len(trouves) / max(len(vivants), 1)
     print(f"⚠️  {len(trouves)} fiche(s) signalée(s) ({pct:.1f} %), dont "
           f"**{len(publies)} LIÉES À UN POST**.\n")
     if not trouves:
         print("Rien à signaler.\n")
+        # UN ZÉRO DOIT DIRE D'OÙ IL VIENT — c'est le premier enseignement du journal du
+        # 11 août, et il vaut doublement ici : ce contrôle vient d'être RESSERRÉ le
+        # 2026-08-13 (les deux signaux exigés ensemble au lieu d'un seul). Sans cette
+        # phrase, « 0 » se lirait comme « le contrôle est éteint » — ou pire, ne se
+        # lirait pas du tout, et on le découvrirait des semaines plus tard.
+        if args.bloquant:
+            print(f"Ce zéro porte sur {len(vivants)} fiche(s) examinée(s), et le refus "
+                  f"exige les DEUX signaux\nensemble : la description nomme une autre "
+                  f"commune ET ne partage aucun mot avec le\ntitre, le lieu ou la ville. "
+                  f"Aucun des deux ne tient seul — vérifié sur cette base\nle 13/08 : ① "
+                  f"se trompe sur le bilinguisme et la paraphrase, ② sur le voisinage\n"
+                  f"(« à quinze minutes d'Annecy »), l'itinérance, et l'homonymie "
+                  f"(« Dullin » est une\ncommune de Savoie ET le théâtre de Chambéry).\n"
+                  f"Donc : « aucune fiche de cette forme aujourd'hui », pas « le contrôle "
+                  f"est éteint ».\n")
         return 0
 
     # Par MOTIF : les deux signaux n'ont pas la même fiabilité, et les mélanger dans un
@@ -127,11 +143,13 @@ def main(argv=None) -> int:
     # comme « non examinées » exactement les fiches pour lesquelles le contrôle existe.
     print(f"\nÀ LIRE AVANT DE CONCLURE. Un taux élevé ne dit pas à lui seul que la base est\n"
           f"polluée : il peut aussi dire que le contrôle est trop sévère. Les exemples\n"
-          f"ci-dessus servent à trancher entre les deux à la main. Rappel sur la portée des\n"
-          f"deux signaux : « autre commune nommée » s'applique à TOUTE longueur de texte\n"
-          f"(c'est lui qui attrape les fils Google News, courts par nature) ; « aucun mot\n"
-          f"commun » n'est évalué qu'au-dessus de {MIN_TEXTE_VISIBLE} caractères visibles,\n"
-          f"car sur un texte court l'absence de recoupement ne prouve rien.\n")
+          f"ci-dessus servent à trancher entre les deux à la main. AUCUN de ces deux\n"
+          f"signaux ne refuse quoi que ce soit à lui seul — `--bloquant` montre ce qui\n"
+          f"refuse vraiment, et il exige les deux ENSEMBLE. « Autre commune nommée »\n"
+          f"s'applique à TOUTE longueur de texte (c'est lui qui attrape les fils Google\n"
+          f"News, courts par nature) ; « aucun mot commun » n'est évalué qu'au-dessus de\n"
+          f"{MIN_TEXTE_VISIBLE} caractères visibles, car sur un texte court l'absence de\n"
+          f"recoupement ne prouve rien.\n")
     return 0
 
 
