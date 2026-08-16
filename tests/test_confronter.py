@@ -232,6 +232,34 @@ _check("Google News n'est pas une source à interroger → non_page",
        C.statut_source("https://news.google.com/rss/articles/x",
                        get=lambda u: _Rep(404))["verdict"] == "non_page")
 
+print("\n──── 4 bis. (d) LA DATE ENCODÉE DANS L'URL — corroborant, jamais valeur ────")
+# 917 « Face à face – Orlando » : le corps annonce « du 30 septembre au 6 octobre » (les
+# représentations d'Orlando), l'URL dit 20260929, et c'est l'URL qui a raison.
+_check("917 : l'URL de l'Opéra de Nice confirme notre jour",
+       C.url_contre_la_fiche(
+           "https://www.opera-nice.org/agenda/face-a-face-orlando/20260929-1800/",
+           "2026-09-29")["verdict"] == C.CONFIRME)
+r = C.url_contre_la_fiche(
+    "https://www.opera-nice.org/agenda/escape-game/20260913-1000/", "2025-10-01")
+_check("523 : l'URL dit 2026-09-13 et la base 2025-10-01 → contredit", r["verdict"] == C.CONTREDIT, r)
+
+# LES CAS QUI DOIVENT PASSER. Franck, 2026-08-16 : « beaucoup d'URL portent une date de
+# publication ou un identifiant qui en a l'air. » Un hôte non mesuré ne dit RIEN.
+_check("une date de PUBLICATION d'article ne dit rien de l'événement (fiche 2414)",
+       C.url_contre_la_fiche(
+           "https://www.quotidianopiemontese.it/2026/07/07/earthink-festival-2026/",
+           "2026-08-27")["verdict"] == "non_prouve")
+_check("un hôte sans motif mesuré → non_prouve, jamais contredit",
+       C.url_contre_la_fiche("https://74.agendaculturel.fr/festival/x-20260714.html",
+                             "2026-07-18")["verdict"] == "non_prouve")
+_check("une fiche SANS date ne peut être contredite par personne (règle 5)",
+       C.url_contre_la_fiche(
+           "https://www.opera-nice.org/agenda/escape-game/20261009-1000/",
+           "")["verdict"] == "non_prouve")
+_check("et la date lue n'est JAMAIS proposée comme valeur : on rend le constat, pas la date",
+       C.date_de_l_url("https://www.opera-nice.org/agenda/chopin/20260918-1800/")
+       == "2026-09-18")
+
 print("\n──── 5. L'AGRÉGAT : ce qui remonte à un humain ────")
 ev = {"date_event_start": "2026-07-14", "date_event_end": "2026-07-17",
       "url_source": "https://74.agendaculturel.fr/festival/guitare-en-scene.html",

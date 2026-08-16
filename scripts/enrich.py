@@ -997,6 +997,97 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
     return "\n\n".join(sections) or AUCUNE_MATIERE, official_pages
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CONFRONTATION — les trois garde-fous qui relisent la source (utils/confronter)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _texte_officiel(official_pages, limite: int = 20000) -> str:
+    """Le texte des PAGES OFFICIELLES lues à l'instant, et rien d'autre.
+
+    ⚠️ SURTOUT PAS `material`. La matière agrégée contient la description de l'agrégateur
+    — celle-là même qui a servi à DATER la fiche. La confronter à elle ne prouverait
+    qu'une chose, que le pipeline a bien recopié sa source : c'est exactement le mécanisme
+    de la fiche 2289, où « du 14 au 17 » venait de 74.agendaculturel.fr pendant que
+    guitare-en-scene.com écrivait « du 14 au 18 ». Le pipeline a transcrit fidèlement une
+    source fausse, et aucune relecture de cette matière ne pouvait le dire.
+
+    C'est aussi ce qui sépare ce contrôle de `scripts/verifier_dates.py`, qui lit la
+    matière collectée : ici on lit la PAGE OFFICIELLE, et seulement elle.
+    """
+    bouts = []
+    for p in (official_pages or []):
+        html = (p or {}).get("html") or ""
+        if html:
+            bouts.append(_html_to_text(html))
+    return "\n\n".join(bouts)[:limite]
+
+
+def _confrontation(ev: dict, official_pages) -> dict | None:
+    """Confronte la fiche à la page officielle PENDANT qu'elle est en mémoire.
+
+    C'est le seul moment de la chaîne où cette page est là. `dates.py` l'a peut-être lue
+    des semaines plus tôt, `verifier_dates` ne la lit jamais (il travaille sur la matière
+    collectée), et un audit qui la retéléchargerait paierait une requête par fiche pour
+    lire un texte qu'on avait déjà sous la main.
+
+    NE BLOQUE RIEN, N'ÉCRIT AUCUNE DATE. Le constat part dans `enrich_data.confrontation`,
+    et ses motifs — seulement ceux qui ont un geste au bout — dans la file « à vérifier »
+    par le canal qui existe déjà (`a_verifier` → `sync_checks`). Corriger d'office
+    reviendrait à choisir entre deux sources sans savoir laquelle a raison : sur Terra
+    Madre, c'est la source officielle qui se trompait, pas nous.
+
+    RIEN SUR LA PROSE, uniquement sur les DATES. Le brief du 12/08 réclamait aussi
+    « aucun fait qui ne figure pas dans la source » ; appliqué à la fiche 2265, il aurait
+    supprimé une foire équine, un défilé de carrosses et un feu d'artifice, tous les trois
+    écrits mot pour mot dans notre matière. On confronte ce qui est comparable.
+
+    Rend None quand aucune page officielle n'a été lue — et ce None se COMPTE (voir le log
+    de l'appelant) : sans lui, « 0 contradiction » ne dirait pas s'il vient de fiches
+    saines ou de pages qu'on n'a pas su joindre.
+    """
+    texte = _texte_officiel(official_pages)
+    if not texte.strip():
+        return None
+    from utils import confronter as _conf
+    # (b) DÉSACTIVÉ ICI, et ce n'est pas un oubli : `statut_source` interroge l'URL avec
+    # son propre User-Agent, alors que tout le reste du dépôt utilise un UA de NAVIGATEUR
+    # parce que « beaucoup de sites (WAF/CDN) renvoient 403/404 à un robot déclaré »
+    # (dates._UA). Un 403 de pare-feu deviendrait « source absente », c'est-à-dire
+    # exactement la faute de la règle 1 transposée aux sources : conclure à la mort d'une
+    # chose qu'on n'a pas su joindre. La mesure de ce contrôle se fait à part, par
+    # `scripts.audit_confrontation --urls`, où personne ne risque de le prendre pour un
+    # verdict.
+    return _conf.confronter(ev, texte, verifier_url=False)
+
+
+def verser_confrontation(result: dict, constat: dict | None) -> dict:
+    """Verse le constat dans le résultat d'enrichissement. Modifie `result` sur place.
+
+    DEUX DESTINATIONS, ET UNE SEULE EST UNE FILE :
+
+      • `enrich_data.confrontation` reçoit TOUT — y compris les muets et les ambigus.
+        C'est la mémoire : elle permet de rejouer une règle des mois plus tard sans
+        retélécharger la page, et de distinguer « 0 contradiction » de « 0 page lue » ;
+      • `a_verifier` ne reçoit QUE `motifs`, c'est-à-dire les verdicts qui ont un geste au
+        bout. Avant d'ajouter une ligne à une file, se demander ce que le lecteur en FERA
+        (règle 6) : sur les 454 points du 2026-08-11, 315 n'étaient que les silences de la
+        source, et le seul qui comptait s'y noyait.
+
+    Les points de l'agent sont CONSERVÉS et la confrontation s'ajoute derrière : c'est
+    l'agent qui a lu la matière en entier, ce contrôle-ci ne regarde que des dates.
+    """
+    if constat is None:
+        return result
+    result["confrontation"] = constat
+    if constat.get("a_lire"):
+        dej = result.get("a_verifier")
+        dej = [dej] if isinstance(dej, str) else (list(dej) if isinstance(dej, list) else [])
+        result["a_verifier"] = dej + [
+            f"Date : {m} (page officielle relue à l'enrichissement)"
+            for m in constat["motifs"]]
+    return result
+
+
 def _parse_day(s: str) -> "date | None":
     """Parse une date ISO tolérante (garde les 10 premiers caractères). None si illisible."""
     try:
@@ -1660,6 +1751,22 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                 ev["url_image"] = og
                 log.info("[%d] image récupérée (og:image) : %s", ev["id"], og[:80])
         material, official_pages = gather_material(conn, ev, client=client)
+        # LA PAGE OFFICIELLE EST EN MÉMOIRE MAINTENANT, et à aucun autre moment de la
+        # chaîne. On la confronte tout de suite (voir `_confrontation`). Le constat est
+        # gardé de côté et attaché au résultat plus bas ; il ne conditionne RIEN de ce qui
+        # suit — ni la rédaction, ni le panel, ni la publication.
+        constat = _confrontation(ev, official_pages)
+        if constat is None:
+            # Un zéro doit dire combien de cas se sont présentés (CLAUDE.md, journal des
+            # erreurs). Sans cette ligne, un run sans contradiction ressemble à un run où
+            # toutes les pages étaient lisibles.
+            log.info("[%d] confrontation : aucune page officielle lue — rien à confronter",
+                     ev["id"])
+        else:
+            log.info("[%d] confrontation : bornes=%s (%d plage(s) lue(s)), année=%s%s",
+                     ev["id"], constat["bornes"]["verdict"], constat["bornes"]["plages"],
+                     constat["annee"]["verdict"],
+                     " → À LIRE" if constat["a_lire"] else "")
         # AFFICHES OFFICIELLES : depuis les pages presse lues, on récupère l'affiche de
         # l'événement en portrait ET paysage (visuels HD), qui priment sur toute autre image.
         try:
@@ -1876,6 +1983,7 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                               "affiches": affiches, "placement": place}
             log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
                      ev["id"], hs, pm, has_official, affiches, place)
+        verser_confrontation(result, constat)
         title, md = build_article_md(result)
         # Heure de DÉBUT réelle (déterministe, zéro coût — scripts.dates.extract_time) :
         # l'agent écrit souvent l'heure en PROSE (« à 21h30 ») sans qu'elle soit jamais

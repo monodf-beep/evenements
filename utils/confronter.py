@@ -392,15 +392,27 @@ def statut_source(url: str, get=None, timeout: int = 8) -> dict:
 
     Les confondre produirait exactement la faute de la règle 1 transposée aux sources :
     conclure à la mort d'une chose qu'on n'a pas su joindre.
+
+    ⚠️ L'UA EST UN UA DE NAVIGATEUR, et ça n'a rien d'un détail. Ce contrôle s'annonçait
+    poliment (« AgendaSabauda/1.0 ») et rendait un 403 sur piemontedalvivo.it — la fiche
+    948, parfaitement en ligne. Vérifié le 2026-08-17, même URL, deux en-têtes :
+
+        UA robot       → 403
+        UA navigateur  → 200
+
+    Le dépôt le savait déjà, `dates._UA` porte le commentaire « beaucoup de sites
+    (WAF/CDN) renvoient 403/404 à un robot déclaré ». J'avais refait la faute un étage
+    plus haut, et elle produisait un signalement sur cinq. On réutilise donc l'en-tête du
+    dépôt plutôt que d'en inventer un second.
     """
     url = (url or "").strip()
     if not url or url.startswith(_PAS_UNE_PAGE) or "news.google.com" in url:
         return {"verdict": "non_page", "code": None, "motif": ""}
     if get is None:
         import requests
+        from scripts.dates import _UA
         def get(u):  # noqa: E306
-            return requests.get(u, timeout=timeout, allow_redirects=True,
-                                headers={"User-Agent": "Mozilla/5.0 (compatible; AgendaSabauda/1.0)"})
+            return requests.get(u, timeout=timeout, allow_redirects=True, headers=_UA)
     try:
         r = get(url)
     except Exception as exc:  # noqa: BLE001 — toute panne réseau vaut « on ne sait pas »
@@ -417,18 +429,86 @@ def statut_source(url: str, get=None, timeout: int = 8) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# (d) LA DATE ENCODÉE DANS L'URL — corroborant, jamais valeur
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ⚠️ UNE LISTE MESURÉE, PAS UNE LISTE DEVINÉE. Franck, le 2026-08-16 : « beaucoup d'URL
+# portent une date de PUBLICATION ou un identifiant qui en a l'air ». Un `/2026/07/07/`
+# dans une adresse de presse date l'ARTICLE, pas l'événement — la fiche 2414 (Earthink) en
+# est l'exemple : son URL quotidianopiemontese.it/2026/07/07/… annonce un festival qui
+# commence le 27 août. Inscrire ce motif-là ferait un contradicteur systématiquement faux.
+#
+# Donc : un hôte n'entre ici qu'après avoir été COMPTÉ sur la base. Pour opera-nice.org,
+# le 2026-08-17, sur les onze fiches de cet hôte : huit portent le motif, cinq d'entre
+# elles ont aussi une date en base, et ça donne QUATRE accords pour UN désaccord — la
+# fiche 523, dont l'URL dit 2026-09-13 quand la base dit 2025-10-01. Les trois autres
+# « désaccords » n'en sont pas : ce sont des fiches SANS date, et une donnée manquante ne
+# contredit rien (règle 5). Le motif est donc corroborant, et son unique désaccord est
+# précisément le genre de cas qu'on veut voir.
+#
+# Pour ajouter un hôte, refaire la mesure : `scripts/audit_confrontation.py --urls` et la
+# requête d'accord/désaccord qui va avec. Un motif non mesuré n'entre pas.
+_URL_DATEE = {
+    # /agenda/<spectacle>/AAAAMMJJ-HHMM/ — le CMS de l'Opéra de Nice encode la
+    # représentation dans l'adresse. C'est ce motif qui a permis à Franck de rattraper la
+    # fiche 917 : son corps annonçait « du 30 septembre au 6 octobre » (les
+    # représentations d'Orlando), l'URL disait 20260929, et c'est l'URL qui avait raison.
+    "opera-nice.org": re.compile(r"/(\d{4})(\d{2})(\d{2})-\d{3,4}/?$"),
+}
+
+
+def date_de_l_url(url: str) -> str:
+    """La date encodée dans l'URL, en ISO — "" si l'hôte n'a pas de motif PROUVÉ.
+
+    JAMAIS UNE VALEUR À ÉCRIRE. Arbitrage de Franck, 2026-08-16 : « oui, mais comme
+    corroborant seulement, jamais comme valeur écrite. » Une adresse n'est pas une
+    publication : elle peut survivre à un report, être recopiée d'une édition à l'autre,
+    ou n'avoir jamais été relevée — la fiche 909 en est la preuve, son URL était bien
+    formée et la page répond 404.
+    """
+    from urllib.parse import urlsplit
+    hote = urlsplit((url or "").strip()).netloc.lower()
+    hote = hote[4:] if hote.startswith("www.") else hote
+    motif = _URL_DATEE.get(hote)
+    if not motif:
+        return ""
+    m = motif.search(urlsplit(url).path)
+    return _iso(int(m[1]), int(m[2]), int(m[3])) or "" if m else ""
+
+
+def url_contre_la_fiche(url: str, debut: str) -> dict:
+    """(d) L'adresse de la source dit-elle le même jour que nous ?
+
+    Trois issues seulement, et la troisième est la plus fréquente :
+      • `confirme`   — l'URL encode NOTRE jour de début ;
+      • `contredit`  — elle en encode un autre, et nous en avons un à opposer ;
+      • `non_prouve` — hôte sans motif mesuré, ou fiche sans date. Aucun des deux ne
+        prouve quoi que ce soit, et les compter ensemble serait mentir sur le périmètre.
+    """
+    encodee = date_de_l_url(url)
+    debut = (debut or "").strip()[:10]
+    if not encodee or not debut:
+        return {"verdict": "non_prouve", "url_date": encodee, "motif": ""}
+    if encodee == debut:
+        return {"verdict": CONFIRME, "url_date": encodee, "motif": ""}
+    return {"verdict": CONTREDIT, "url_date": encodee,
+            "motif": (f"l'adresse de la source encode le {encodee}, la fiche dit {debut} "
+                      f"(motif d'URL mesuré sur cet hôte)")}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # L'AGRÉGAT
 # ─────────────────────────────────────────────────────────────────────────────
 
 def confronter(ev: dict, texte_source: str, ref: date | None = None,
                verifier_url: bool = True, get=None) -> dict:
-    """Les trois contrôles d'un coup, sur la page DÉJÀ en mémoire.
+    """Les quatre contrôles d'un coup, sur la page DÉJÀ en mémoire.
 
     Rend un constat sérialisable, destiné à `enrich_data['confrontation']` :
 
         {"a_lire": bool,          # au moins un verdict qui demande une lecture humaine
          "motifs": [str, ...],    # ce qu'on dirait à Franck, en français
-         "bornes": {...}, "annee": {...}, "source": {...}}
+         "bornes": {...}, "annee": {...}, "source": {...}, "url_date": {...}}
 
     `a_lire` est FAUX quand tout est confirmé ET quand tout est muet : dans les deux cas il
     n'y a pas de geste au bout. Les verdicts muets et ambigus restent dans le constat pour
@@ -442,10 +522,13 @@ def confronter(ev: dict, texte_source: str, ref: date | None = None,
     annee = annee_dans_la_source(ev.get("date_event_start", ""), texte)
     source = ({"verdict": "non_verifie", "code": None, "motif": ""} if not verifier_url
               else statut_source(ev.get("url_source", ""), get=get))
-    motifs = [c["motif"] for c in (bornes, annee, source)
+    # (d) gratuit : aucune requête, aucun texte à lire — juste l'adresse qu'on a déjà.
+    url_date = url_contre_la_fiche(ev.get("url_source", ""),
+                                   ev.get("date_event_start", ""))
+    motifs = [c["motif"] for c in (bornes, annee, source, url_date)
               if c.get("verdict") in A_LIRE and c.get("motif")]
-    return {"a_lire": bool(motifs), "motifs": motifs,
-            "bornes": bornes, "annee": annee, "source": source}
+    return {"a_lire": bool(motifs), "motifs": motifs, "bornes": bornes, "annee": annee,
+            "source": source, "url_date": url_date}
 
 
 def _ref_de_collecte(ev: dict) -> date:
