@@ -88,26 +88,43 @@ AVENIR = (date.today() + timedelta(days=40)).isoformat()
 PASSE = (date.today() - timedelta(days=40)).isoformat()
 COLLECTE = date.today().isoformat() + " 06:00:00"
 
+# ⚠️ LES DATES DES FICHES SONT RELATIVES À AUJOURD'HUI, ET C'EST INDISPENSABLE.
+# Elles étaient écrites en dur (« 2026-08-21 », « 2026-08-15 ») : la fixture est passée
+# au ROUGE toute seule le 2026-08-16, quand le 15 août est devenu la veille et que la
+# règle 5 a écarté la fiche « année périmée » du rapport. Trois assertions sont tombées
+# sans qu'une ligne de code ait bougé.
+#
+# Le danger n'est pas l'échec, il est l'HABITUDE qu'il installe : un test qui rougit
+# selon le calendrier s'explique par « c'est juste la date », et le jour où il rougit
+# pour une vraie régression, on le classera pareil.
+#
+# Les dates du TEXTE suivent celles de la base, construites ensemble : c'est leur écart
+# qui fait le verdict, jamais leur valeur absolue.
+_J = date.today() + timedelta(days=40)
+_TXT = f"{_J.day} août {_J.year}" if _J.month == 8 else _J.strftime("%d/%m/%Y")
+_J1 = _J + timedelta(days=1)
+_TXT1 = f"{_J1.day} août {_J1.year}" if _J1.month == 8 else _J1.strftime("%d/%m/%Y")
+
 CAS = [
     # (id, titre, description, début, fin, wp, statut)
     (1, "Tribute to Céline Dion",
-     "Le vendredi 21 août 2026 à 21h, le Théâtre de Verdure accueille le spectacle.",
-     "2026-08-21", "2026-08-21", 7001, "pending"),                     # confirmé
+     f"Le {_TXT} à 21h, le Théâtre de Verdure accueille le spectacle.",
+     _J.isoformat(), _J.isoformat(), 7001, "pending"),                 # confirmé
     (2, "Concert d'été",
-     "Rendez-vous le 21 août 2026 au kiosque.",
-     "2026-08-22", "2026-08-22", 7002, "pending"),                     # CONTREDIT
+     f"Rendez-vous le {_TXT} au kiosque.",
+     _J1.isoformat(), _J1.isoformat(), 7002, "pending"),               # CONTREDIT
     (3, "Fête patronale",
-     "Come ogni anno, la festa si tiene il 15 agosto 2024 in piazza.",
-     "2026-08-15", "2026-08-15", None, "pending"),                     # ANNÉE
+     f"Come ogni anno, la festa si tiene il {_J.day} agosto {_J.year - 2} in piazza.",
+     _J.isoformat(), _J.isoformat(), None, "pending"),                 # ANNÉE
     (4, "Saison culturelle",
      "Programme : 2 juin 2026, 15 juillet 2026, 30 septembre 2026. Réservations ouvertes.",
      AVENIR, AVENIR, None, "pending"),                                 # indécis
     (5, "Sortie au lac", "Entrée libre, chaussures de marche conseillées.",
      AVENIR, AVENIR, None, "pending"),                                 # muet
     # PASSÉ : une date fausse n'y envoie plus personne devant une porte close (règle 5).
-    (6, "Concert de mai", "Le 21 août 2026 au kiosque.", PASSE, PASSE, None, "pending"),
-    (7, "Déjà écartée", "Le 21 août 2026 au kiosque.",
-     "2026-08-22", "2026-08-22", None, "rejected"),
+    (6, "Concert de mai", f"Le {_TXT} au kiosque.", PASSE, PASSE, None, "pending"),
+    (7, "Déjà écartée", f"Le {_TXT} au kiosque.",
+     _J1.isoformat(), _J1.isoformat(), None, "rejected"),
 ]
 for eid, titre, desc, deb, fin, wp, statut in CAS:
     conn.execute(
@@ -236,9 +253,12 @@ _check("le périmètre est écrit à côté du total", "règle 5" in sortie)
 _check("la portée est bornée", "SIGNALEMENT" in sortie)
 # Ces fiches-là sont PUBLIÉES : une correction à tort réécrit une page que des gens
 # lisent. Le lecteur doit voir la PHRASE, pas deux nombres qui s'opposent.
+# Les libellés attendus se construisent depuis les MÊMES dates que les fiches : les
+# écrire en dur, c'est ce qui a fait rougir cette fixture toute seule le 2026-08-16.
 _check("la phrase du texte source est montrée pour la contradiction",
-       "le texte dit : «" in sortie and "21 août 2026" in sortie, sortie[-1200:])
-_check("et pour l'année périmée aussi", "15 agosto 2024" in sortie, sortie[-1200:])
+       "le texte dit : «" in sortie and _TXT in sortie, sortie[-1200:])
+_check("et pour l'année périmée aussi",
+       f"{_J.day} agosto {_J.year - 2}" in sortie, sortie[-1200:])
 _check("le verdict rend la date du texte qui a déclenché le signalement",
        verifier_dates.verdict({"2026-08-22"}, {"2026-08-21"})[2] == "2026-08-21")
 _check("et rien quand il n'y a pas de signalement",
