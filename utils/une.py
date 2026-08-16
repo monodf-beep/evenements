@@ -95,17 +95,31 @@ def interet(event: dict) -> int | None:
     return _score_criteres(event.get("llm_score_detail"))
 
 
-def _visuel(event: dict) -> str:
-    """Ce que la rédaction a trouvé comme image : 'deux' | 'une' | 'photo officielle' |
-    'aucune'. Lu dans `enrich_data`, jamais recalculé — c'est `enrich.py` qui a comparé
-    le domaine de l'image aux domaines officiels, et refaire ce calcul ici finirait par
-    diverger du sien."""
-    import json
-    try:
-        data = json.loads(event.get("enrich_data") or "{}")
-    except (ValueError, TypeError):
-        return "aucune"
-    return str(((data.get("home") or {}).get("affiches") or "aucune"))
+def a_une_image(event: dict) -> bool:
+    """La fiche a-t-elle une VRAIE image, qui s'affichera sur la carte ?
+
+    ⚠️ CE PORTILLON A D'ABORD TESTÉ `enrich_data["home"]["affiches"]`, ET C'ÉTAIT FAUX.
+    Passé sur la base réelle le 2026-08-17, il écartait 84 fiches sur 164 pour « aucune
+    image propre » — plus de la moitié du catalogue vivant. Invraisemblable, et vérifié :
+    `affiches` mesure la PROVENANCE du visuel (affiche officielle, ou photo prise sur le
+    site officiel de l'organisateur), pas son existence. Une bonne photo scrapée sur un
+    office de tourisme qui ne figure pas dans les pages officielles lues vaut « aucune ».
+
+    Mon motif annonçait pourtant « la carte afficherait le visuel générique ». Il disait
+    donc autre chose que ce que le test faisait — le défaut exact qu'on passe cette
+    session à corriger ailleurs, cette fois dans du code que je venais d'écrire.
+
+    On teste maintenant ce qu'on prétend tester : une image existe, et ce n'est pas un
+    pictogramme. `is_logo_image` est la définition du dépôt (logos, blasons, favicons,
+    SVG) — on l'importe plutôt que d'en écrire une variante qui divergerait.
+
+    La PROVENANCE, elle, n'est pas perdue : elle est déjà dans `home_score`, sous forme
+    de points (+1,5 pour deux affiches, +0,75 pour une seule ou une photo officielle).
+    Elle relève donc le classement sans commander l'entrée.
+    """
+    from utils.sources import is_logo_image
+    url = (event.get("url_image") or "").strip()
+    return bool(url) and not is_logo_image(url)
 
 
 def une_etat(event: dict, aujourdhui=None) -> tuple[int | None, str]:
@@ -124,12 +138,11 @@ def une_etat(event: dict, aujourdhui=None) -> tuple[int | None, str]:
     # faute de mieux. Le score seul ne suffisait pas à l'exclure — il faut un portillon.
     if (event.get("enrich_status") or "") != "enriched":
         return None, "jamais rédigée — la une ne se remplit pas faute de mieux"
-    visuel = _visuel(event)
-    if visuel == "aucune":
-        # C'est le cas du pilates : sa carte affiche le visuel GÉNÉRIQUE du site (une
-        # silhouette de Chambéry), pas une image de l'événement. Une une sans image propre
-        # est une une qui ment sur ce qu'elle montre.
-        return None, "aucune image propre — la carte afficherait le visuel générique"
+    if not a_une_image(event):
+        # Le cas du pilates : sa carte affiche le visuel GÉNÉRIQUE du site (une silhouette
+        # de Chambéry), pas une image de l'événement. Une une sans image est une une qui
+        # ne montre rien.
+        return None, "aucune image — la carte afficherait le visuel générique du site"
     rendu = event.get("home_score")
     if rendu is None:
         return None, "score de rendu non calculé"

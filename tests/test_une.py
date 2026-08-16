@@ -39,7 +39,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from utils.une import UNE_HORIZON_JOURS, interet, une_etat, une_now  # noqa: E402
+from utils.une import (UNE_HORIZON_JOURS, a_une_image, interet, une_etat,  # noqa: E402
+                       une_now)
 
 AUJ = date(2026, 8, 17)
 echecs = 0
@@ -64,6 +65,7 @@ def _det(rayon=2, spec=1, edition=1, notoriete=2) -> str:
 def _f(**kw) -> dict:
     """Une fiche par défaut ÉLIGIBLE et intéressante : chaque cas ne change qu'une chose."""
     ev = {"enrich_status": "enriched", "home_score": 8.0,
+          "url_image": "https://exemple.fr/photos/concert-2026.jpg",
           "enrich_data": json.dumps({"home": {"affiches": "deux"}}),
           "llm_score_detail": _det(),
           "date_event_start": "2026-08-22", "date_event_end": "2026-08-22"}
@@ -101,14 +103,28 @@ _check("   et il monte encore en approchant", (n_veille or 0) > (n_pres or 0),
 _check("l'événement PASSÉ sort (règle 5)",
        une_now(concert, date(2026, 9, 23)) is None)
 
-print("\n──── 3. pas d'image propre, pas de une ────")
-n, m = une_etat(_f(enrich_data=json.dumps({"home": {"affiches": "aucune"}})), AUJ)
+print("\n──── 3. pas d'image, pas de une ────")
+n, m = une_etat(_f(url_image=""), AUJ)
 _check("écartée", n is None, str(n))
 _check("   et le motif dit ce que le visiteur VERRAIT à la place",
        "visuel générique" in m, m)
-_check("une photo officielle suffit, elle — on n'exige pas l'affiche",
-       une_now(_f(enrich_data=json.dumps({"home": {"affiches": "photo officielle"}})),
-               AUJ) is not None)
+_check("un pictogramme ne compte pas pour une image",
+       une_now(_f(url_image="https://exemple.fr/img/logo-ville.svg"), AUJ) is None)
+
+# ⚠️ LE CAS QUI M'A FAIT LIVRER UN PORTILLON FAUX (2026-08-17). Ce test lisait d'abord
+# `enrich_data["home"]["affiches"]` — et sur la base réelle il écartait 84 fiches sur
+# 164 pour « aucune image propre ». `affiches` mesure la PROVENANCE du visuel (affiche
+# officielle, photo du site de l'organisateur), pas son existence : une bonne photo
+# venue d'un office de tourisme vaut « aucune ». Le motif, lui, annonçait « la carte
+# afficherait le visuel générique » — il disait autre chose que ce que le test faisait.
+photo_ordinaire = _f(enrich_data=json.dumps({"home": {"affiches": "aucune"}}),
+                     url_image="https://office-tourisme.fr/media/fete-du-lac.jpg")
+_check("une VRAIE photo sans provenance officielle passe — c'est le cas des 84 fiches "
+       "que le portillon écartait à tort",
+       une_now(photo_ordinaire, AUJ) is not None, str(une_etat(photo_ordinaire, AUJ)))
+_check("   et la provenance reste comptée AILLEURS, dans home_score, où elle relève "
+       "le classement sans commander l'entrée",
+       a_une_image(photo_ordinaire))
 
 print("\n──── les portillons d'éligibilité ────")
 _check("jamais rédigée → jamais en une (règle Franck du 2026-07-30)",

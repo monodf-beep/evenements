@@ -101,13 +101,27 @@ def main(argv=None) -> int:
         print("    les motifs d'écart ci-dessous, ils disent lequel des trois seuils mord.\n")
     else:
         print("## Ce qui serait en une, dans l'ordre\n")
-        print("| Rang | Score | Territoire | Fiche | Pourquoi |")
-        print("|---:|---:|---|---|---|")
+        # LA LANGUE EST AFFICHÉE, parce que sans elle on lit deux événements là où il y
+        # en a un. Sortie du 2026-08-17 : « Brahms / Chostakovitch » et « Brahms /
+        # Šostakovič » occupaient les rangs 6 et 7 — c'est la même soirée, dans ses deux
+        # versions Polylang. Sur la home FRANÇAISE la version italienne ne s'affiche pas
+        # (Polylang filtre), mais ce rapport-ci ne le sait pas : il doit donc le montrer
+        # plutôt que de laisser croire à un doublon de vitrine.
+        print("| Rang | Score | Langue | Territoire | Fiche | Pourquoi |")
+        print("|---:|---:|---|---|---|---|")
         for i, (ev, n, motif) in enumerate(
                 sorted(retenues, key=lambda t: -t[1])[:15], 1):
-            print(f"| {i} | {n} | {(ev.get('territoire') or '—')} | "
-                  f"{(ev.get('title') or '')[:44]} | {motif[:56]} |")
+            lang = "it" if (ev.get("translated_lang") or "") == "it" else (
+                   "→it" if ev.get("translation_of") else "fr")
+            print(f"| {i} | {n} | {lang} | {(ev.get('territoire') or '—')} | "
+                  f"{(ev.get('title') or '')[:42]} | {motif[:52]} |")
         print()
+        paires = sum(1 for e, _n, _m in retenues if e.get("translation_of"))
+        if paires:
+            print(f"> {paires} des {len(retenues)} retenues sont des TRADUCTIONS : elles "
+                  f"n'entrent pas en\n> concurrence avec leur original, chacune sert sa "
+                  f"langue. Le total ci-dessus\n> compte donc des pages, pas des "
+                  f"événements distincts.\n")
 
         # PAR TERRITOIRE : le total peut rester confortable pendant qu'une colonne se vide.
         # Même leçon que le banc de « Ça vaut le déplacement ».
