@@ -40,7 +40,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.completeness import is_recurring
-from utils.deplacement import (_CRITERES, DEPLACEMENT_MIN, HORIZON_JOURS, MAX_SCORE,
+from utils.deplacement import (_CRITERES, _PONDERATION, POIDS_LANGUE, DEPLACEMENT_MIN,
+                               HORIZON_JOURS, MAX_SCORE, accessibilite_langue,
                                deplacement_raisons, deplacement_score)
 
 
@@ -137,17 +138,30 @@ def main(argv=None) -> int:
     # empoche 2 points, pendant que les deux critères qui disent vraiment « ça vaut le
     # déplacement » — le rayonnement et l'ancrage identitaire — donnaient 1 et 0.
     #
-    # Les quatre critères pèsent 1 dans la formule, mais leurs MAXIMA diffèrent (3, 2, 2,
-    # 1) : `notoriete_lieu` peut donc à lui seul apporter 3 des 8 points. Le poids réel
-    # n'est pas le poids déclaré, et personne ne l'avait mesuré.
+    # ══ CE TABLEAU A MESURÉ L'ANCIENNE FORMULE PENDANT DOUZE JOURS ═══════════════════
     #
-    # Ce tableau dit si le cas est isolé ou systémique. On mesure AVANT de repondérer :
-    # changer les poids sur un seul exemple, c'est calibrer sur le bruit.
-    print("\n## D'où viennent les points (part de chaque critère)\n")
-    total_pts = {c: 0 for c in _CRITERES}
+    # Il additionnait les points BRUTS de `llm_score_detail`, sans appliquer ni les poids
+    # ni le plafond de `_PONDERATION`. Son commentaire d'origine — « les quatre critères
+    # pèsent 1 dans la formule, mais leurs MAXIMA diffèrent » — décrivait la formule
+    # d'AVANT la repondération du 2026-08-04, et n'a pas été relu quand elle a changé.
+    #
+    # Conséquence lue le 2026-08-16 : le rapport annonçait « notoriete_lieu 46 %, il pèse
+    # le plus lourd » et concluait « c'est la PONDÉRATION qu'il faudrait revoir ». Or
+    # `_PONDERATION` PLAFONNE déjà `notoriete_lieu` à 1 point, précisément pour que la
+    # réputation de la salle n'écrase pas la raison de s'y rendre. Le rapport réclamait
+    # un correctif DÉJÀ APPLIQUÉ, et l'appliquer une seconde fois l'aurait cassé.
+    #
+    # On mesure donc la contribution RÉELLE — poids et plafond compris, via la même table
+    # que le score, jamais une copie — et on ajoute l'accessibilité linguistique, qui vaut
+    # deux points sur douze et n'apparaissait nulle part.
+    print("\n## D'où viennent les points (contribution RÉELLE à la note sur 12)\n")
+    brut = {c: 0 for c in _CRITERES}
+    pondere = {c: 0 for c in _CRITERES}
     plafonds = {c: 0 for c in _CRITERES}
+    langue = 0
     for lot in notes.values():
         for e in lot:
+            langue += accessibilite_langue(e) * POIDS_LANGUE
             try:
                 d = json.loads(e.get("llm_score_detail") or "{}")
             except (ValueError, TypeError):
@@ -156,17 +170,25 @@ def main(argv=None) -> int:
                 bloc = d.get(c)
                 pts = bloc.get("points") if isinstance(bloc, dict) else bloc
                 if isinstance(pts, (int, float)):
-                    total_pts[c] += int(pts)
-                    plafonds[c] = max(plafonds[c], int(pts))
-    somme = sum(total_pts.values()) or 1
-    print("| Critère | Points donnés | Part du total | Max observé |")
-    print("|---|---:|---:|---:|")
+                    poids, plafond = _PONDERATION[c]
+                    p = int(pts)
+                    brut[c] += p
+                    pondere[c] += (min(p, plafond) if plafond is not None else p) * poids
+                    plafonds[c] = max(plafonds[c], p)
+    somme = sum(pondere.values()) + langue or 1
+    print("| Critère | Poids | Plafond | Points bruts | **Contribution réelle** | Part |")
+    print("|---|---:|---:|---:|---:|---:|")
     for c in _CRITERES:
-        print(f"| `{c}` | {total_pts[c]} | {100 * total_pts[c] / somme:.0f} % | {plafonds[c]} |")
-    print("\n> `notoriete_lieu` note LA SALLE, pas l'événement. S'il pèse le plus lourd,\n"
-          "> la note récompense la réputation du lieu plutôt que la raison de s'y rendre —\n"
-          "> et un plancher plus haut ne corrigerait pas ça, il ne ferait que retenir les\n"
-          "> événements des grandes salles. C'est la PONDÉRATION qu'il faudrait revoir.\n")
+        poids, plafond = _PONDERATION[c]
+        cap = str(plafond) if plafond is not None else "—"
+        print(f"| `{c}` | ×{poids} | {cap} | {brut[c]} | **{pondere[c]}** | "
+              f"{100 * pondere[c] / somme:.0f} % |")
+    print(f"| `accessibilite_langue` | ×{POIDS_LANGUE} | — | — | **{langue}** | "
+          f"{100 * langue / somme:.0f} % |")
+    print("\n> La colonne qui compte est la CONTRIBUTION RÉELLE, pas les points bruts :\n"
+          "> `notoriete_lieu` est plafonné à 1, donc une salle prestigieuse rapporte\n"
+          "> autant qu'une salle simplement connue. C'est voulu — elle note LA SALLE,\n"
+          "> pas la raison de s'y rendre.\n")
 
     # SATURATION EN HAUT — objection soulevée à la première simulation (2026-08-04) : les
     # trois premières du Piémont étaient toutes à 12/12. Un barème qui met plusieurs fiches
