@@ -103,6 +103,27 @@ _check("   et il monte encore en approchant", (n_veille or 0) > (n_pres or 0),
 _check("l'événement PASSÉ sort (règle 5)",
        une_now(concert, date(2026, 9, 23)) is None)
 
+print("\n──── 2 bis. le MILIEU d'un long parcours n'est pas une nouvelle ────")
+# TROUVÉ AU DEUXIÈME PASSAGE SUR LA BASE (2026-08-17). Le premier horizon ne regardait
+# que le DÉBUT : une exposition ouverte en juillet et fermant en novembre avait donc un
+# début dans le passé, elle passait sans bonus — et avec un intérêt élevé elle
+# s'installait dans la une pour des mois. La plainte de départ, déplacée d'un cran.
+# Une une annonce une OUVERTURE ou signale une DERNIÈRE CHANCE ; entre les deux, c'est
+# « Ça vaut le déplacement » qui prend le relais, avec son horizon de six mois.
+longue = _f(date_event_start="2026-07-01", date_event_end="2026-10-31")
+n, m = une_etat(longue, AUJ)
+_check("une expo en cours qui court encore 75 jours n'est PAS en une", n is None, str(n))
+_check("   et le motif dit pourquoi : ni ouverture, ni dernière chance",
+       "ni une ouverture ni une dernière chance" in m, m)
+_check("la MÊME expo dans son dernier mois y revient",
+       une_now(_f(date_event_start="2026-07-01", date_event_end="2026-08-29"),
+               AUJ) is not None)
+ouvre = _f(date_event_start="2026-08-27", date_event_end="2026-12-20")
+_check("et une longue expo qui OUVRE dans dix jours y entre — c'est une annonce",
+       une_now(ouvre, AUJ) is not None, str(une_etat(ouvre, AUJ)))
+_check("   puis en sort une fois ouverte, au lieu d'y camper",
+       une_now(ouvre, date(2026, 9, 1)) is None, str(une_etat(ouvre, date(2026, 9, 1))))
+
 print("\n──── 3. pas d'image, pas de une ────")
 n, m = une_etat(_f(url_image=""), AUJ)
 _check("écartée", n is None, str(n))

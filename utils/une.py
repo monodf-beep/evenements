@@ -167,11 +167,31 @@ def une_etat(event: dict, aujourdhui=None) -> tuple[int | None, str]:
         return base, "sans date — intérêt seul, aucun bonus d'imminence"
     if derniere < auj:
         return None, "événement terminé (règle 5)"
-    if debut and (debut - auj).days > UNE_HORIZON_JOURS:
-        return None, (f"commence dans {(debut - auj).days} jours — la une parle du mois "
-                      f"qui vient, pas de la saison (horizon {UNE_HORIZON_JOURS} j)")
-
     restant = (derniere - auj).days
+    dans = (debut - auj).days if debut else 0
+    # ── LA FUITE DU MILIEU DE PARCOURS (2026-08-17, deuxième passage sur la base) ──────
+    # Le premier horizon ne regardait que le DÉBUT. Une exposition ouverte depuis juillet
+    # et fermant en novembre a donc un début dans le passé : elle passait, sans bonus
+    # d'imminence — et avec un intérêt élevé elle s'installait dans la une pour des mois.
+    # C'était très exactement la plainte de départ, déplacée d'un cran.
+    #
+    # Une une est une NOUVELLE. Un événement y a sa place quand il OUVRE bientôt (c'est
+    # l'annonce) ou quand il FERME bientôt (c'est la dernière chance) — pas pendant les
+    # quatre mois qui séparent les deux. Le milieu d'un long parcours n'est pas une
+    # nouvelle, et « Ça vaut le déplacement » est justement là pour lui, avec son horizon
+    # de six mois.
+    # Une OUVERTURE proche est un début encore à venir, à moins d'un mois. Pour un
+    # événement déjà commencé, `dans` est NÉGATIF : son ouverture n'est pas proche, elle
+    # est passée — et c'est cette nuance qui manquait au premier essai, où l'exposition
+    # de 75 jours restait retenue.
+    ouverture_proche = 0 <= dans <= UNE_HORIZON_JOURS
+    fermeture_proche = restant <= UNE_HORIZON_JOURS
+    if not ouverture_proche and not fermeture_proche:
+        if dans > 0:
+            return None, (f"commence dans {dans} jours — la une parle du mois qui vient, "
+                          f"pas de la saison (horizon {UNE_HORIZON_JOURS} j)")
+        return None, (f"en cours, et encore {restant} jours à courir — ni une ouverture "
+                      f"ni une dernière chance (horizon {UNE_HORIZON_JOURS} j)")
     bonus = next((pts for seuil, pts in _FENETRES if restant <= seuil), 0)
     if debut and fin and (fin - debut).days <= PONCTUEL_MAX_JOURS:
         bonus += 1
