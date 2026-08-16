@@ -288,7 +288,14 @@ def bornes_contre_la_page(debut: str, fin: str, texte: str, ref: date) -> dict:
 # (a) L'ANNÉE
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ANNEE = re.compile(r"\b(19|20)\d{2}\b")
+_ANNEE = re.compile(r"\b(?:19|20)\d{2}\b")
+
+# Une année qui DATE quelque chose : collée à un mois (« juillet 2025 », « settembre
+# 2026 », « giugno del 2026 ») ou écrite en ISO. Voir le ⚠️ de `annee_dans_la_source` —
+# sans cet ancrage, « Chagall (1887–1985) » passe pour une contradiction de date.
+_ANNEE_DATANTE = re.compile(
+    rf"(?:{_MONTH_RE})\.?\s*(?:de[l']\s*|dell'\s*|di\s+)?((?:19|20)\d{{2}})\b"
+    rf"|\b((?:19|20)\d{{2}})-\d{{2}}-\d{{2}}\b")
 
 
 def annee_dans_la_source(debut: str, texte: str) -> dict:
@@ -304,22 +311,59 @@ def annee_dans_la_source(debut: str, texte: str) -> dict:
     confirme simplement pas la date.
 
     D'où la séparation, qui est tout l'intérêt de la fonction :
-      • la page porte d'autres années mais pas la nôtre → `absente`, il y a un geste au bout ;
-      • la page ne porte aucune année → `muet`, il n'y a rien à faire et rien à afficher.
+      • la page DATE l'événement d'une autre année → `absente`, il y a un geste au bout ;
+      • la page ne date rien → `muet`, il n'y a rien à faire et rien à afficher.
     Confondre les deux, c'est refabriquer la file de 454 points dont 315 étaient des silences.
+
+    ⚠️ « PORTER UNE ANNÉE » N'EST PAS « DATER », et c'est la mesure du 2026-08-16 qui l'a
+    montré — le premier passage de `scripts/audit_confrontation.py` sur 141 fiches publiées
+    rendait HUIT signalements, tous de ce contrôle, et les cinq que j'ai lus étaient faux
+    des cinq :
+
+        « lo scooter Piaggio lanciato nel 1946 »   (Vespa au MAUTO)
+        « Chagall (1887–1985) »                    (les dates de sa vie)
+        « MITO nasce nel 2007 »                    (la fondation du festival)
+        « la torcia dei Giochi di Rio 2016 »       (une pièce du musée)
+        « a partire dagli anni 2000 »              (une période)
+
+    Aucune de ces années ne date notre événement : ce sont des mentions historiques, et
+    la prose culturelle en est pleine. C'est le même défaut que la règle « une seule plage
+    → contredit » réfutée le même jour (voir l'en-tête) : nommer un désaccord là où rien
+    n'ancre les deux textes l'un à l'autre.
+
+    L'ancrage retenu ici : **une année qui date porte un mois à côté d'elle** — « juin et
+    juillet 2025 », « settembre 2026 », ou une date ISO. Une année seule dans la prose est
+    comptée, jamais listée. Le cas 2319 qui a dicté ce contrôle survit à l'ancrage : la page
+    du Théâtre des Collines écrit « spectacles en juin et juillet 2025 ».
+
+    L'ASYMÉTRIE EST VOULUE : pour CONFIRMER, notre année suffit où qu'elle soit (une
+    « Edizione 2026 » corrobore) ; pour REFUSER, il faut une année datante. Un faux
+    « confirme » est un raté, un faux « absente » est du travail fabriqué — et c'est le
+    travail fabriqué qui a fait dire « 548 tâches, c'est ingérable ».
+
+    APRÈS L'ANCRAGE, sur la même population : **8 signalements → 1**, et celui-là est vrai.
+    Fiche 1016 (WP 658, Paratissima) : sa matière écrit « fino al 28 settembre 2025 » —
+    même jour, même mois que notre fin, autre millésime — pendant que la fiche annonce
+    2026. C'est la famille que `dates.parse_dates` documente déjà, l'annonce ANCIENNE que
+    `_year()` projette dans le futur. Un contrôle qui ne rendait que du bruit rend
+    maintenant le seul cas qui méritait un humain.
     """
     debut = (debut or "").strip()
     if len(debut) < 4:
         return {"verdict": MUET, "motif": "", "annees": []}
     notre = debut[:4]
-    annees = sorted({m.group() for m in _ANNEE.finditer(texte or "")})
+    t = _strip(texte or "")
+    annees = sorted({m.group() for m in _ANNEE.finditer(t)})
     if not annees:
         return {"verdict": MUET, "motif": "", "annees": []}
     if notre in annees:
         return {"verdict": CONFIRME, "motif": "", "annees": annees}
-    return {"verdict": ABSENTE, "annees": annees,
-            "motif": (f"la source ne cite jamais {notre} ; elle porte "
-                      f"{', '.join(annees[:4])}")}
+    datantes = sorted({m.group(1) or m.group(2) for m in _ANNEE_DATANTE.finditer(t)})
+    if not datantes:
+        return {"verdict": MUET, "motif": "", "annees": annees, "datantes": []}
+    return {"verdict": ABSENTE, "annees": annees, "datantes": datantes,
+            "motif": (f"la source date l'événement d'une autre année que {notre} : elle "
+                      f"écrit {', '.join(datantes[:4])} à côté d'un mois")}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

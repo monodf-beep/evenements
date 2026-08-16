@@ -163,6 +163,43 @@ r = C.annee_dans_la_source("2026-07-19", "Archivio news 2010 2011 2020 2023 2026
 _check("864 : une archive qui cite notre année passe ce contrôle (c'est l'URL qui l'attrape)",
        r["verdict"] == C.CONFIRME, r)
 
+print("\n──── 3 bis. (a) « PORTER UNE ANNÉE » N'EST PAS « DATER » (mesure du 16/08) ────")
+# Le premier passage de `scripts.audit_confrontation` sur 141 fiches publiées rendait HUIT
+# signalements de ce contrôle. Les cinq que j'ai lus étaient faux des cinq : de la prose
+# culturelle qui cite une date historique. Ils doivent tous PASSER.
+for label, texte in (
+    ("1016 bis — la vie de l'artiste", "Chagall (1887–1985) ha attraversato il secolo."),
+    ("4632 — l'objet exposé",  "Mostra dedicata allo scooter Piaggio lanciato nel 1946."),
+    ("4440 — la fondation",    "MITO nasce nel 2007 dall'incontro di due città."),
+    ("4628 — la pièce de musée", "Dalla torcia dei Giochi di Rio 2016 agli oggetti del XVI secolo."),
+    ("3017 — une période",     "Artista coinvolto da Xing a partire dagli anni 2000."),
+):
+    r = C.annee_dans_la_source("2026-09-18", texte)
+    _check(f"{label} → muet, JAMAIS « absente »", r["verdict"] == C.MUET, r)
+
+# LE VRAI POSITIF QUI SURVIT, et qui justifie qu'on garde le contrôle : fiche 1016
+# (WP 658, Paratissima). Le texte date l'exposition de 2025 — même jour, même mois que
+# notre fin, autre millésime. C'est la famille documentée dans `dates.py` : une annonce
+# ANCIENNE que `_year()` projette dans le futur.
+r = C.annee_dans_la_source(
+    "2026-07-11",
+    "Nel castello di Ivrea, uno tra i più antichi manieri sabaudi, fino al 28 settembre "
+    "2025, interagiscono con gli spazi le opere site-specific. Il maniero fu carcere "
+    "dal 1700 al 1974 e l'artista risiede in Italia dal 2005.")
+_check("1016 : « fino al 28 settembre 2025 » date l'événement → absente",
+       r["verdict"] == C.ABSENTE, r)
+_check("1016 : et le motif ne cite QUE l'année datante, pas 1700/1974/2005",
+       "2025" in r["motif"] and "1700" not in r["motif"] and "2005" not in r["motif"],
+       r["motif"])
+
+# Le cas 2319 qui a DICTÉ ce contrôle doit survivre à l'ancrage : sa page écrit bien
+# « juin et juillet 2025 », donc une année collée à un mois.
+r = C.annee_dans_la_source("2026-06-01",
+                           "La belle saison 2025. Spectacles en juin et juillet 2025 "
+                           "au Théâtre des Collines.")
+_check("2319 survit à l'ancrage (« juillet 2025 » porte un mois)",
+       r["verdict"] == C.ABSENTE, r)
+
 print("\n──── 4. (b) L'URL ────")
 
 
