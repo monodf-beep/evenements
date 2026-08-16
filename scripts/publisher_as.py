@@ -41,6 +41,7 @@ from utils.sources import (is_logo_image, load_territory_images, load_territory_
                            pick_banner_image, is_blocked_image, load_blocked_image_domains)
 # Score « ça vaut le déplacement » dérivé des critères d'importance de l'évaluateur.
 from utils.deplacement import deplacement_score, deplacement_now
+from utils.une import une_now
 # Ancre officielle : la MÊME fonction que celle du verrou de publication, pour que
 # « on a le droit de publier » et « voici la source » ne puissent pas diverger.
 from utils import radar
@@ -396,6 +397,10 @@ def _build_payload(event: dict) -> dict:
     # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
     depl = deplacement_score(event)
     depl_now = deplacement_now(event)
+    # Une SEULE évaluation, comme pour `depl`/`depl_now` : appeler `une_now` deux fois dans
+    # le dict ferait deux calculs qui peuvent diverger si la date change entre les deux
+    # (minuit), et c'est le genre d'écart qu'on ne retrouve jamais.
+    une = une_now(event)
     # Une seule évaluation, réutilisée deux fois plus bas (meta + champ natif TEC) et
     # ici pour la date de vérification : les trois ne peuvent pas diverger.
     source_url = _source_publiable(event, is_radar)
@@ -445,6 +450,16 @@ def _build_payload(event: dict) -> dict:
         # `as_deplacement` reste publié à côté : c'est lui qui est auditable critère par
         # critère au back-office, et il ne bouge pas avec le calendrier.
         "as_deplacement_now":       depl_now if depl_now is not None else "",
+        # ⚠️ C'EST SUR CELUI-CI QUE « À LA UNE » DOIT TRIER (ajouté le 2026-08-17), et
+        # PLUS sur `as_home_score`. Constat de Franck devant la home : un cours de pilates
+        # en une, et deux concerts de fin septembre installés là depuis des semaines.
+        # Une seule cause : `as_home_score` mesure la QUALITÉ DU RENDU (panel + source +
+        # visuels) et pas l'intérêt de l'événement, et il est figé au jour de la rédaction.
+        # Le rendu devient donc un FILTRE (une fiche qu'on ne peut pas montrer n'est pas
+        # une une) et le classement passe à l'intérêt relevé par l'imminence — exactement
+        # ce qu'on avait fait pour « Ça vaut le déplacement » le 2026-08-03. Vide = la
+        # fiche n'a pas sa place dans la section, et `utils/une.une_etat` dit pourquoi.
+        "as_une_now":               une if une is not None else "",
         # Détail du score home (panel lecteurs + statut affiche) — cf. _panel_meta.
         **_panel_meta(event),
         "as_gratuit":               _is_free(prix),
