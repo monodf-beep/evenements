@@ -536,6 +536,48 @@ def fetch_page_text(url: str, title: str = "") -> str:
     return re.sub(r"\s+", " ", htmlmod.unescape(doc)).strip()[:6000]
 
 
+_JOUR_ECRIT = re.compile(
+    rf"(?<!\d)\d{{1,2}}(?:er|e?r?°|o)?\s+(?:{_MONTH_RE})"      # « 14 juillet », « 1er août »
+    rf"|(?:{_MONTH_RE})\s+(?<!\d)\d{{1,2}}(?!\d)"              # « luglio 14 »
+    rf"|\b\d{{4}}-\d{{2}}-\d{{2}}\b"                           # ISO
+    rf"|\b\d{{1,2}}[/.]\d{{1,2}}[/.]\d{{2,4}}\b"               # 05/07/2026
+    rf"|\b(?:1er|premier|primo)\b")                            # le quantième en toutes lettres
+
+
+def _quantieme_invente(s: str, e: str, material: str) -> bool:
+    """La réponse du modèle est-elle une BORNE DE MOIS fabriquée ?
+
+    LE CAS, mesuré le 2026-08-13 (fiche 845) : la description disait seulement « se
+    déroulera en juin et juillet ». Aucun quantième nulle part. Le modèle a rendu
+    2026-06-01 → 2026-07-31, c'est-à-dire le premier et le dernier jour des deux mois. La
+    fiche est partie en ligne avec des bornes que personne n'a jamais écrites.
+
+    Le prompt le lui interdit désormais, mais une consigne de prompt est un espoir, pas
+    une garde — d'où ce portillon, qui est déterministe et gratuit.
+
+    SA FORME EST ÉTROITE, EXPRÈS. Il ne se déclenche que sur la signature exacte du défaut
+    — début au 1er d'un mois ET fin au dernier jour d'un mois — ET seulement si la matière
+    ne montre AUCUN quantième, nulle part. Un festival qui va réellement du 1er au 31 août
+    est écrit « du 1er au 31 août » : le quantième est là, on accepte. C'est le cas qui
+    doit PASSER, et il est dans la fixture.
+
+    QUI ROUVRE (CLAUDE.md règle 3) : le refus rend la fiche NON DATÉE, pas rejetée. Elle
+    reste dans la file d'`app.incomplete_clause` que l'agent de 9h15 relit, `dates.py` la
+    re-tente après DATE_COOLDOWN_DAYS, et `_rearme_matiere_changee` la reprend dès que la
+    page change. Le refus ne se rejoue donc pas indéfiniment sur la même matière :
+    DATE_MAX_TENTATIVES le borne à trois. Franck, 2026-08-16 : « sans jour dans la
+    matière, la fiche reste sans date plutôt que datée faux. »
+    """
+    import calendar
+    try:
+        d1, d2 = date.fromisoformat(s), date.fromisoformat(e)
+    except ValueError:
+        return False
+    if d1.day != 1 or d2.day != calendar.monthrange(d2.year, d2.month)[1]:
+        return False
+    return not _JOUR_ECRIT.search(_strip(material or ""))
+
+
 def llm_dates(material: str, ref: date, client, model: str,
               title: str = "", context: str = "") -> tuple[str, str, str]:
     """Le LLM lit la matière et rend la période de l'ÉVÉNEMENT. ('','','llm_none') si rien.
@@ -565,7 +607,11 @@ def llm_dates(material: str, ref: date, client, model: str,
         f"Date du jour (pour déduire l'année si absente) : {ref.isoformat()}.\n"
         "Règles : une seule date → start = end ; une plage → les deux ; une fin seule "
         "(« jusqu'au… ») → start vide, end rempli ; si aucune date de l'événement cible "
-        "n'est trouvable, found=false.\n\n"
+        "n'est trouvable, found=false.\n"
+        "⚠️ N'INVENTE JAMAIS UN QUANTIÈME. Si le texte ne donne que des MOIS (« en juin "
+        "et juillet », « per tutta l'estate »), ne rends pas le 1er du premier mois et le "
+        "dernier jour du dernier : rends found=false. Une fiche sans date sera reprise ; "
+        "une fiche datée faux envoie quelqu'un devant une porte close.\n\n"
         f"{cible}"
         f"TEXTE :\n{material[:4000]}\n\n"
         'Réponds en JSON STRICT et rien d\'autre : '
@@ -606,6 +652,13 @@ def llm_dates(material: str, ref: date, client, model: str,
     # Validation stricte : on n'accepte que des dates ISO réelles.
     s = s if (re.fullmatch(r"\d{4}-\d{2}-\d{2}", s) and _iso(*map(int, s.split("-")))) else ""
     e = e if (re.fullmatch(r"\d{4}-\d{2}-\d{2}", e) and _iso(*map(int, e.split("-")))) else ""
+    if s and e and _quantieme_invente(min(s, e), max(s, e), material):
+        # On JETTE une réponse pourtant bien formée. C'est le seul cas où on préfère une
+        # fiche non datée à une fiche datée : les bornes n'existent nulle part dans la
+        # matière, et une date fausse envoie un visiteur devant une porte close.
+        log.warning("datation LLM REFUSÉE : bornes de mois (%s → %s) alors que la matière "
+                    "ne porte aucun quantième — la fiche repart sans date", s, e)
+        return ("", "", "llm_none")
     if s and e:
         return (min(s, e), max(s, e), "llm")
     if s or e:
