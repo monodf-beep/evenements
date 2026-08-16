@@ -107,6 +107,9 @@ def main(argv=None) -> int:
         # versions Polylang. Sur la home FRANÇAISE la version italienne ne s'affiche pas
         # (Polylang filtre), mais ce rapport-ci ne le sait pas : il doit donc le montrer
         # plutôt que de laisser croire à un doublon de vitrine.
+        print("_Les deux langues sont mélangées ci-dessous : un visiteur n'en voit "
+              "qu'une.\nLa section « Est-ce que ça tourne » plus bas les sépare, "
+              "comme le site._\n")
         print("| Rang | Score | Langue | Territoire | Fiche | Pourquoi |")
         print("|---:|---:|---|---|---|---|")
         for i, (ev, n, motif) in enumerate(
@@ -181,14 +184,28 @@ def main(argv=None) -> int:
     print("## Est-ce que ça TOURNE vraiment ?\n")
     print("Mêmes règles, trois dates. Si les trois lignes montrent les mêmes fiches, la")
     print("rotation ne marche pas — c'était tout le problème de départ.\n")
-    for delta in (0, 7, 14, 21):
-        j = auj + timedelta(days=delta)
-        # On repart de `rows` : à J+21, une fiche « passée » aujourd'hui l'est encore,
-        # mais une fiche écartée par l'horizon aujourd'hui peut être entrée depuis.
-        lot = sorted(((ev, une_etat(ev, j)[0]) for ev in rows), key=lambda t: -(t[1] or -1))
-        tete = [f"{(e.get('title') or '')[:26]}" for e, n in lot if n is not None][:3]
-        print(f"- **{j.isoformat()}** ({delta:>2} j) : "
-              + (" · ".join(tete) if tete else "_aucune_"))
+    # ⚠️ PAR LANGUE, ET C'EST LA CORRECTION QUI COMPTE (2026-08-17, deuxième relecture).
+    # La première version classait toutes les pages ensemble : le Tour de l'Avenir
+    # occupait les rangs 1 ET 2, en français puis en italien, et la « tête de liste »
+    # affichait donc deux fois le même événement. Or un visiteur ne voit qu'une langue —
+    # Polylang filtre. Le rapport montrait une une qui n'existe pour personne.
+    #
+    # On sépare donc les deux versants, comme le site. Et si la requête JetEngine, elle,
+    # NE filtrait pas par langue, ce tableau le dirait aussi : les trois cartes montreraient
+    # le même concert deux fois, et ça se verrait ici avant de se voir en ligne.
+    for langue, libelle in (("fr", "versant FRANÇAIS"), ("it", "versant ITALIEN")):
+        print(f"\n### {libelle}\n")
+        for delta in (0, 7, 14, 21):
+            j = auj + timedelta(days=delta)
+            # On repart de `rows` : à J+21, une fiche « passée » aujourd'hui l'est encore,
+            # mais une fiche écartée par l'horizon aujourd'hui peut être entrée depuis.
+            cote = [ev for ev in rows
+                    if ((ev.get("translated_lang") or "fr") == langue)]
+            lot = sorted(((ev, une_etat(ev, j)[0]) for ev in cote),
+                         key=lambda t: -(t[1] or -1))
+            tete = [f"{(e.get('title') or '')[:26]}" for e, n in lot if n is not None][:3]
+            print(f"- **{j.isoformat()}** ({delta:>2} j) : "
+                  + (" · ".join(tete) if tete else "_aucune_"))
     return 0
 
 
