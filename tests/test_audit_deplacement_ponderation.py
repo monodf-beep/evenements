@@ -26,7 +26,13 @@ CE QUE LA FIXTURE SURVEILLE :
   3. `accessibilite_langue`, 2 points sur 12, apparaît dans le tableau ;
   4. et le total des contributions égale EXACTEMENT la somme des notes rendues par
      `deplacement_score` : c'est la seule vérification qui interdit au tableau de
-     diverger à nouveau du calcul qu'il décrit.
+     diverger à nouveau du calcul qu'il décrit ;
+  5. le relevé « ce que la barrière de la langue écarterait de la traduction » LISTE les
+     fiches notées 0 au lieu de les compter. Ajouté le 2026-08-16, quand Franck a
+     objecté « si je suis un touriste, j'aimerais avoir la traduction » : le seul motif
+     défendable de ne pas traduire est la langue, et avant d'en faire une règle il faut
+     LIRE ce qu'elle refuse. C'est la consigne de CLAUDE.md que trois portillons du
+     2026-08-13 avaient sautée.
 
 Lancer : .venv/bin/python -m tests.test_audit_deplacement_ponderation
 """
@@ -94,6 +100,23 @@ def _check(label, cond, detail=""):
         print(f"ÉCHEC {label} {detail}")
 
 
+# Trois fiches de plus, une par valeur d'accessibilité linguistique — dont le cas
+# frontière : « Visite guidée » est classé 0 par le titre (un format de PAROLE), même
+# rangé en Expositions. C'est peut-être un faux positif (une visite guidée peut être
+# bilingue) : la fixture ne tranche pas, elle vérifie qu'il est AFFICHÉ pour qu'un œil
+# tranche.
+_c = sqlite3.connect(tmp)
+for eid, titre, cat in ((3, "Fiera del Peperone", "Gastronomie & Sagre"),
+                        (4, "Brahms / Chostakovitch", "Concerts & Musique"),
+                        (5, "Café philo : habiter la montagne", "Conférences & Rencontres"),
+                        (6, "Visite guidée du théâtre", "Expositions & Patrimoine")):
+    _c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, statut, "
+               "llm_categorie, llm_score_detail, date_event_start, date_event_end, "
+               "territoire, duplicate_of) VALUES (?,?,?,?,?,?,?,?,?,?, NULL)",
+               (eid, titre, f"https://a.fr/{eid}", 900 + eid, "published_sub", cat,
+                json.dumps(FICHES[1][3]), FUTUR, FUTUR, "Savoie"))
+_c.commit(); _c.close()
+
 buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
     ad.main([])
@@ -113,14 +136,16 @@ if "notoriete_lieu" in lignes:
            brut == "3" and reel == "1", f"{brut} / {reel}")
 
 print("\n──── 2. les poids sont appliqués ────")
-if "specificite_territoriale" in lignes:
-    g = lignes["specificite_territoriale"]
-    _check(f"1 point brut ×3 contribue 3 (brut={g.group(4)}, réel={g.group(5)})",
-           g.group(4) == "1" and g.group(5) == "3", g.group(0))
-if "rayonnement" in lignes:
-    g = lignes["rayonnement"]
-    _check(f"2 points bruts ×2 contribuent 4 (réel={g.group(5)})", g.group(5) == "4",
-           g.group(0))
+# On vérifie le RAPPORT (réel = brut × poids), jamais des totaux absolus : ceux-ci
+# dépendent du nombre de fiches de la fixture, et deux assertions sont tombées le
+# 2026-08-16 pour cette seule raison quand on en a ajouté quatre. Un test qui casse
+# parce qu'on enrichit son jeu de données n'apprend rien à personne.
+for crit in ("specificite_territoriale", "rayonnement"):
+    if crit in lignes:
+        g = lignes[crit]
+        poids, brut, reel = int(g.group(2)), int(g.group(4)), int(g.group(5))
+        _check(f"`{crit}` : {brut} bruts ×{poids} = {reel}", reel == brut * poids,
+               g.group(0))
 
 print("\n──── 3. l'accessibilité linguistique n'est plus invisible ────")
 _check("elle a sa ligne dans le tableau", "accessibilite_langue" in sortie,
@@ -146,6 +171,27 @@ _check("il ne dit plus « c'est la PONDÉRATION qu'il faudrait revoir »",
        "qu'il faudrait revoir" not in sortie, sortie[-900:])
 _check("   et il explique que le plafond est VOULU",
        "plafonné à 1" in sortie, sortie[sortie.find("La colonne qui compte"):][:400])
+
+print("\n──── 6. ce que la barrière de la langue écarterait ────")
+_check("le relevé existe", "barrière de la langue écarterait" in sortie, sortie[-400:])
+_check("   il écrit son PÉRIMÈTRE, et dit qu'il n'est PAS celui de la traduction",
+       "PAS la file de traduction" in sortie, sortie[sortie.find("barrière de la"):][:400])
+_check("les fiches à 0 sont LISTÉES, pas seulement comptées",
+       "Café philo : habiter la montagne" in sortie
+       and "notées 0 — À LIRE UNE PAR UNE" in sortie,
+       sortie[sortie.find("notées 0"):][:500])
+_check("   avec leur catégorie, qui est le motif du verdict",
+       "_Conférences & Rencontres_" in sortie, sortie[sortie.find("notées 0"):][:500])
+# LE CAS FRONTIÈRE, et c'est lui qui justifie de LIRE plutôt que de compter : le titre
+# « Visite guidée » vaut 0 même sur une fiche rangée en Expositions. Une visite guidée
+# bilingue serait donc écartée à tort — invisible dans un total, évidente dans la liste.
+_check("le cas frontière (visite guidée rangée en Expositions) est visible",
+       "Visite guidée du théâtre" in sortie.split("notées 0")[-1],
+       sortie.split("notées 0")[-1][:500])
+_check("celles qu'on traduirait ne sont PAS listées — la file ne contient que "
+       "ce qu'un œil doit trancher",
+       "Fiera del Peperone" not in sortie.split("notées 0")[-1],
+       sortie.split("notées 0")[-1][:500])
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)

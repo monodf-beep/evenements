@@ -282,6 +282,64 @@ def main(argv=None) -> int:
                   f"{(e.get('title') or '')[:60]}")
             for r in deplacement_raisons(e.get("llm_score_detail"))[:2]:
                 print(f"    - {r[:118]}")
+
+    # ══ CE QUE LA BARRIÈRE DE LA LANGUE ÉCARTERAIT DE LA TRADUCTION ═══════════════════
+    #
+    # Question de Franck, 2026-08-16 : « si je suis un touriste, j'aimerais avoir la
+    # traduction ». Elle déplace le sujet, et à raison — le touriste ne choisit pas entre
+    # une page italienne et une page française, il choisit entre une page italienne et
+    # RIEN. Le tri par attractivité répond à « faut-il faire la route ? », jamais à « je
+    # suis déjà là, qu'est-ce qu'il y a ce soir ? », qui est la question la plus fréquente.
+    #
+    # Reste un seul motif défendable de ne pas traduire : la LANGUE. Traduire en italien
+    # une conférence tenue en français, c'est inviter quelqu'un dans une salle où il ne
+    # comprendra rien. `accessibilite_langue` note exactement ça, sans LLM.
+    #
+    # CE TABLEAU N'EST PAS UNE RÈGLE, C'EST CE QU'ON LIT AVANT D'EN FAIRE UNE. Le
+    # 2026-08-13, trois portillons livrés sans avoir été passés sur les données réelles se
+    # sont révélés faux ; CLAUDE.md le dit depuis le 11 : « avant de livrer un portillon,
+    # le passer sur des données réelles et LIRE ce qu'il refuse ». On imprime donc les
+    # fiches à 0 en entier, avec leur catégorie, pour qu'un œil tranche.
+    #
+    # ⚠️ PÉRIMÈTRE, et il n'est pas celui de la traduction : ce sont les fiches PUBLIÉES
+    # encore devant nous, celles que cet audit charge déjà. La file de traduction est
+    # plus large. Ce relevé dit donc « à quoi ressemble le verdict », pas « combien de
+    # fiches seraient écartées ».
+    par_langue: dict[int, list[dict]] = {}
+    for lot in notes.values():
+        for e in lot:
+            par_langue.setdefault(accessibilite_langue(e), []).append(e)
+    total_l = sum(len(v) for v in par_langue.values()) or 1
+    print(f"\n## Ce que la barrière de la langue écarterait de la traduction\n")
+    print(f"Périmètre : les {total_l} fiche(s) publiées encore devant nous — PAS la file "
+          f"de traduction,\nqui est plus large. On regarde ici la TÊTE du verdict, pas "
+          f"son volume.\n")
+    print("| Accessibilité | Fiches | Part | Ce que ça veut dire |")
+    print("|---:|---:|---:|---|")
+    _SENS = {2: "on en profite sans un mot de la langue",
+             1: "la langue aide, elle ne commande pas",
+             0: "il faut comprendre ce qui est dit — traduire enverrait dans une "
+                "salle incompréhensible"}
+    for v in (2, 1, 0):
+        lot = par_langue.get(v, [])
+        print(f"| {v} | {len(lot)} | {100 * len(lot) / total_l:.0f} % | {_SENS[v]} |")
+
+    zeros = par_langue.get(0, [])
+    if zeros:
+        print(f"\n### Les {len(zeros)} fiche(s) notées 0 — À LIRE UNE PAR UNE\n")
+        print("C'est la seule façon de savoir si le critère dit vrai. Une visite guidée "
+              "bilingue\nrangée à 0, une exposition dont tous les cartels sont en "
+              "français rangée à 2 : ça se\nvoit ici en dix secondes, et jamais en "
+              "relisant le code.\n")
+        for e in sorted(zeros, key=lambda x: (x.get("llm_categorie") or ""))[:40]:
+            print(f"- _{(e.get('llm_categorie') or '—')}_ · "
+                  f"{(e.get('title') or '')[:70]}")
+        if len(zeros) > 40:
+            print(f"- …et {len(zeros) - 40} autre(s).")
+    else:
+        print("\n> Aucune fiche à 0 dans ce périmètre — le critère n'écarterait rien ici. "
+              "Ce n'est\n> pas une preuve qu'il est juste : c'est une preuve qu'il ne "
+              "s'est pas prononcé.\n")
     return 0
 
 
