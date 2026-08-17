@@ -264,6 +264,18 @@ SLACK_DIGEST=1
 # #formulaire au lieu de disparaître. C'est voulu — un message mal rangé se voit.
 45 11 * * * cd /root/evenements && .venv/bin/python -m scripts.slack_digest --titre "🌅 Récapitulatif du matin" >> logs/slack_digest.log 2>&1
 0 12 * * * cd /root/evenements && .venv/bin/python scripts/watchdog_crons.py --slack >> logs/watchdog.log 2>&1
+# RELEVÉ DE SANTÉ 12h05 — juste après le chien de garde, donc sur la matinée complète.
+# Franck, 2026-08-17 : « j'aimerais que tu sois autonome et que tu n'aies pas besoin de
+# moi. » Deux de mes six sollicitations de la journée n'étaient pas des décisions mais des
+# allers-retours : « le crédit API est-il rétabli ? », « quel est l'état des files ? ». Il a
+# collé des sorties de terminal. Le pipeline savait tout ça et ne l'exposait à personne.
+# Ce cron dépose l'état (révision déployée, passages des crons, files et goulot, crédit vu
+# par ses conséquences) dans une option WordPress, via la route cs/v1/sante et
+# l'authentification qui sert DÉJÀ à publier — donc aucun secret de plus à confier.
+# Une session Claude lit ce relevé sans accès au serveur : plus de copier-coller.
+# SILENCIEUX : aucune notification Slack, c'est de la donnée, pas une alerte. Et le relevé
+# ne transporte AUCUN secret — le script refuse d'envoyer s'il en détecte un.
+5 12 * * * cd /root/evenements && .venv/bin/python -m scripts.publier_sante --publier >> logs/sante.log 2>&1
 # Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.
 # incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
 # resserre facilement si besoin de plus de fréquence.
