@@ -29,6 +29,20 @@
 # Pour revenir à l'ancien comportement : mettre 0 (rien d'autre à toucher).
 SLACK_DIGEST=1
 
+# DÉPLOIEMENT AUTONOME 7h50 — la journée commence sur le code le plus récent.
+# Franck, 2026-08-17 : « j'aimerais que tu sois autonome et que tu n'aies pas besoin de
+# moi. Comment faire ? » Ce jour-là il a tapé `bash deploy/update.sh` deux fois, dont une
+# avec une variable dictée — et la première n'a RIEN déployé de mon travail, parce que le
+# script vise une branche et que je poussais sur une autre. Aucune de ces deux frappes
+# n'était une décision.
+# CE QUI REND LA CHOSE SÛRE : le code candidat est sorti dans un worktree jetable,
+# `tests.run_all` y tourne, et le déploiement N'A LIEU QUE si le code de sortie est 0.
+# Fixtures rouges = rien ne part, et Slack le dit en distinguant les trois cas (refusé /
+# en échec / déployé). Il ne fusionne rien : deux branches qui divergent, c'est un
+# arbitrage, il le SIGNALE et s'arrête.
+# Placé AVANT le scraping de 8h, et son message tombe dans la boîte du jour : il arrive
+# donc dans le récapitulatif de 11h45, pas en notification séparée.
+50 7 * * * cd /root/evenements && .venv/bin/python -m scripts.auto_deploiement --apply >> logs/auto_deploiement.log 2>&1
 # Scraping RSS quotidien 8h
 0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py >> logs/scraper.log 2>&1
 # Collecte des newsletters (label Gmail « Agenda ») 8h15
