@@ -29,11 +29,19 @@ récupération de page, la construction du prompt, la doctrine, le coordinateur)
 des trouvailles RECONSTRUITES à la main, jamais générées par un vrai persona.
 
 Usage :
-    .venv/bin/python -m scripts.panel_site              # 5 pages, panel complet
+    .venv/bin/python -m scripts.panel_site               # 5 pages, panel complet
     .venv/bin/python -m scripts.panel_site --pages home  # une seule page
+    .venv/bin/python -m scripts.panel_site --guides 2422 # UN guide, à la main
+    .venv/bin/python -m scripts.panel_site --guides      # les 12 guides publiés
+
+`--guides` répond à la demande de Franck du 2026-08-17 : « que le guide puisse être lu
+par le panel de personas pour vérifier si ça correspond bien à ce qu'on fait avec le
+reste du site, mais c'est tout. » À la main, quand un guide vient d'être écrit — pas de
+cron (voir le commentaire de GUIDES_SLUGS pour ce que cette décision a écarté).
 """
 from __future__ import annotations
 import argparse
+import html
 import json
 import os
 import re
@@ -66,6 +74,129 @@ PAGES = [
 SEUIL_MOTIF = int(os.getenv("PANEL_SITE_SEUIL", "2"))
 FETCH_TIMEOUT = 20
 _UA = {"User-Agent": "Mozilla/5.0 (compatible; AgendaSabaudaBot/1.0)"}
+
+# ══ LES GUIDES, À LA DEMANDE ET SANS CRON ═══════════════════════════════════════════
+#
+# Franck, 2026-08-17 : « les guides, ça doit être rédigé une fois et c'est tout. Il n'y a
+# pas d'autre chose. La seule chose que je demande, c'est que le guide puisse être lu par
+# le panel de personas pour vérifier si ça correspond bien à ce qu'on fait avec le reste
+# du site, mais c'est tout. »
+#
+# D'où DEUX décisions, et la seconde est la plus importante :
+#   • le panel sait lire un guide comme il lit une page — même trois étages, même
+#     coordinateur, même doctrine. Rien de neuf, juste une source de plus ;
+#   • AUCUN CRON. Un guide se relit quand on vient de l'écrire, pas tous les jours. Un
+#     audit quotidien de la péremption des guides existait (Code Snippets #138, écrit le
+#     matin même) : il est abandonné sur cette décision, et le motif est écrit dans
+#     deploy/wordpress/code-snippets/README.md pour qu'une prochaine session ne le
+#     ressuscite pas en croyant combler un trou.
+#
+# L'OBJECTION QUI A ÉTÉ ÉCARTÉE, notée ici parce qu'elle reste vraie : un guide « écrit
+# une fois » vieillit quand même — « Festivals de l'été en Savoie 2026 » annonce des dates
+# passées, et il est servi en premier sur l'accueil pour la Savoie. Ce n'est pas un défaut
+# technique mais un choix éditorial, et il appartient à Franck. Si un jour la question se
+# repose, elle se posera sur la FRAÎCHEUR, pas sur ce panel-ci.
+#
+# Le panel n'est PAS gratuit (un appel par persona et par guide) : il ne tourne donc que
+# sur demande explicite, `--guides`, jamais par défaut.
+# Slugs VÉRIFIÉS sur le site le 2026-08-17, pas devinés : la catégorie française est
+# `guides` (id 445, 6 articles), l'italienne `guide-it` (id 447, 6 articles) — Polylang
+# suffixe le slug de la traduction quand il entrerait en collision. Chercher `guide` ne
+# rendait RIEN, et la liste s'arrêtait donc aux six guides français sans le dire.
+GUIDES_SLUGS = ("guides", "guide", "guide-it", "guide-fr")
+LANGUES = ("fr", "it")
+
+
+def guides_publies(base: str = "https://agendasabauda.eu") -> list[dict]:
+    """Les guides publiés, au format de PAGES. Lecture PUBLIQUE : aucun crédit, aucun secret.
+
+    Le filtre passe par la CATÉGORIE, pas par « tous les articles » : au 2026-08-17 les
+    douze articles publiés sont tous des guides, mais le jour où un autre article paraîtra,
+    « tous les articles » le ferait relire par huit personas sans que personne l'ait demandé.
+    Si la catégorie ne peut pas être résolue, on le DIT et on ne devine pas (règle 6 : un
+    zéro doit dire d'où il vient).
+    """
+    # `requests` est importé au plus près de l'usage dans ce module (voir
+    # fetch_page_text) : on garde la même convention plutôt que d'ajouter un import
+    # global qui changerait le coût de chargement du script pour tous les autres.
+    import requests
+    # UNE PASSE PAR LANGUE, catégories COMPRISES — et c'est un correctif, pas une
+    # précaution. Le premier essai résolvait les catégories en une fois, sans `lang`, et
+    # rendait SIX guides sur douze : Polylang filtre les collections REST (articles ET
+    # catégories) sur la langue courante, sans le dire. Le compteur « 6 guide(s) » avait
+    # l'air parfaitement juste. Trouvé en LISANT la sortie, pas en relisant le code — c'est
+    # la faute n° 4 de docs/ERREURS_2026-08-17.md, prise en flagrant délit le jour même.
+    # Si Polylang disparaît, `lang` est ignoré, les deux passes rendent la même chose, et
+    # la déduplication par identifiant garde le résultat correct.
+    posts, vus, langues_vides = [], set(), []
+    for langue in LANGUES:
+        try:
+            cats = requests.get(f"{base}/wp-json/wp/v2/categories",
+                                params={"slug": ",".join(GUIDES_SLUGS), "per_page": 20,
+                                        "lang": langue},
+                                timeout=FETCH_TIMEOUT, headers=_UA)
+            cats.raise_for_status()
+            ids = [c["id"] for c in cats.json() or []]
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            log.warning("Catégories « guides » non résolues en %s (%s) — liste INCOMPLÈTE.",
+                        langue, exc)
+            continue
+        if not ids:
+            langues_vides.append(langue)
+            continue
+        try:
+            r = requests.get(f"{base}/wp-json/wp/v2/posts",
+                             params={"categories": ",".join(map(str, ids)), "per_page": 100,
+                                     "status": "publish", "lang": langue,
+                                     "_fields": "id,link,title"},
+                             timeout=FETCH_TIMEOUT, headers=_UA)
+            r.raise_for_status()
+            for p in r.json() or []:
+                if p.get("id") not in vus:
+                    vus.add(p.get("id"))
+                    posts.append(p)
+        except (requests.RequestException, ValueError) as exc:
+            log.warning("Guides non récupérés en %s (%s) — la liste est INCOMPLÈTE.",
+                        langue, exc)
+    if langues_vides:
+        # Ne JAMAIS laisser une langue muette passer pour une langue sans guides : c'est
+        # exactement ce qui a caché la moitié de la liste au premier essai.
+        log.warning("Aucune catégorie de guides trouvée en %s (slugs cherchés : %s) — "
+                    "renommée ? La liste est peut-être incomplète.",
+                    "/".join(langues_vides), ", ".join(GUIDES_SLUGS))
+    if not posts:
+        log.warning("Aucun guide publié listé — ce n'est PAS la preuve qu'il n'y en a pas.")
+
+    return guides_depuis_payload(posts)
+
+
+def guides_depuis_payload(posts: list[dict]) -> list[dict]:
+    """Transforme la réponse de l'API en entrées au format de PAGES. Fonction PURE :
+    c'est elle que la fixture éprouve (tests/test_panel_guides.py), sans réseau."""
+    guides, vus = [], set()
+    for p in posts:
+        if p.get("id") in vus:
+            continue
+        vus.add(p.get("id"))
+        brut = ((p.get("title") or {}).get("rendered") or "")
+        # Les titres de l'API arrivent en HTML : `l&rsquo;été` doit devenir `l’été` avant
+        # d'entrer dans un prompt de persona, sinon on lui fait lire du balisage.
+        titre = html.unescape(re.sub(r"<[^>]+>", "", brut)).strip()
+        guides.append({
+            "cle": f"guide-{p.get('id')}",
+            "label": f"Guide : {titre or p.get('id')}",
+            "url": p.get("link") or "",
+            # TERRITOIRE VOLONTAIREMENT NON RENSEIGNÉ, donc TOUT le panel lit le guide.
+            # Deux raisons, et la première a failli me faire écrire une fausse mécanique :
+            # la taxonomie du site rend des IDENTIFIANTS de termes, que `personas_for()`
+            # ne reconnaît pas — il se rabattrait sur le panel complet en donnant
+            # l'illusion d'un ciblage. Et surtout, la demande est de vérifier « si ça
+            # correspond bien à ce qu'on fait avec le RESTE du site » : c'est un contrôle
+            # de cohérence d'ensemble, où le regard d'un persona d'un autre territoire
+            # vaut autant que celui du local.
+            "territoire": None,
+        })
+    return [g for g in guides if g["url"]]
 
 
 # --------------------------------------------------------------------------- #
@@ -199,10 +330,30 @@ def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Panel de personas sur le site + coordinateur.")
     parser.add_argument("--pages", nargs="+", choices=[p["cle"] for p in PAGES], default=None,
-                        help="Sous-ensemble de pages (défaut : toutes).")
+                        help="Sous-ensemble de pages (défaut : toutes, sauf si --guides).")
+    parser.add_argument("--guides", nargs="*", default=None, metavar="ID",
+                        help="Fait lire les GUIDES par le panel : sans argument, tous les "
+                             "guides publiés ; avec des identifiants (2422 3648), ceux-là "
+                             "seulement. Demande de Franck du 2026-08-17 — à la main, "
+                             "quand un guide vient d'être écrit, JAMAIS en cron.")
     args = parser.parse_args(argv)
 
-    pages = [p for p in PAGES if not args.pages or p["cle"] in args.pages]
+    # --guides seul ne lit QUE les guides : demander la relecture d'un guide qu'on vient
+    # d'écrire ne doit pas facturer au passage les cinq pages du site.
+    pages = [] if (args.guides is not None and args.pages is None) else \
+        [p for p in PAGES if not args.pages or p["cle"] in args.pages]
+    if args.guides is not None:
+        guides = guides_publies()
+        if args.guides:
+            voulus = {str(i).strip() for i in args.guides}
+            guides = [g for g in guides if g["cle"].split("-")[-1] in voulus]
+            manquants = voulus - {g["cle"].split("-")[-1] for g in guides}
+            if manquants:
+                log.warning("Identifiant(s) sans guide publié correspondant : %s — "
+                            "vérifier qu'ils sont publiés et en catégorie « Guides ».",
+                            ", ".join(sorted(manquants)))
+        log.info("%d guide(s) à faire lire par le panel.", len(guides))
+        pages = pages + guides
     doctrine = load_doctrine()
     log.info("%d page(s) à lire, %d entrée(s) de doctrine chargée(s).", len(pages), len(doctrine))
 

@@ -28,9 +28,30 @@ Les copies **d'avant** les modifications du 2026-08-17 sont sur le serveur, dans
 `wp-content/uploads/cs-snippets-sauvegarde-2026-08-17/` (`130-avant.txt`, `135-avant.txt`,
 `136-avant.txt`). C'est le retour arrière.
 
-Un quatrième audit existe, **#138 « fraîcheur des guides »** : il est **désactivé** et son
-cron n'est plus programmé — donc personne ne surveille la péremption des guides. Il n'est
-pas copié ici tant que son sort n'est pas tranché (le réactiver ou le supprimer).
+### #138 « fraîcheur des guides » — ABANDONNÉ, décision de Franck du 2026-08-17
+
+Un quatrième audit a existé une journée. Il est **désactivé**, son cron est **déprogrammé**,
+et il doit **rester** ainsi. Franck : « les guides, ça doit être rédigé une fois et c'est
+tout. Il n'y a pas d'autre chose. La seule chose que je demande, c'est que le guide puisse
+être lu par le panel de personas pour vérifier si ça correspond bien à ce qu'on fait avec le
+reste du site, mais c'est tout. »
+
+**Ne pas le ressusciter en croyant combler un trou.** Ce qu'il faisait — signaler les guides
+citant une date passée et ceux qui périment sous 21 jours — est un choix éditorial qui a été
+tranché contre. Ce qui le remplace est à la demande et sans cron :
+
+```sh
+.venv/bin/python -m scripts.panel_site --guides 2422   # un guide, après l'avoir écrit
+.venv/bin/python -m scripts.panel_site --guides        # les douze guides publiés
+```
+
+L'objection écartée reste vraie et est notée pour que personne ne la redécouvre comme une
+nouveauté : « Festivals de l'été en Savoie 2026 » annonce des dates passées et il est servi
+en premier sur l'accueil pour la Savoie. Si la question revient, elle portera sur la
+FRAÎCHEUR — pas sur ce panel-là.
+
+Le code du snippet n'est pas copié ici : il est abandonné, pas maintenu. Il reste lisible
+dans la base (`SELECT code FROM wp_snippets WHERE id=138`), inactif.
 
 ## Le format, et le contrôle de syntaxe
 
