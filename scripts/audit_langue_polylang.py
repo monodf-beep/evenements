@@ -48,6 +48,25 @@ from scripts.audit_substance_published import devant_nous
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
+def cote_du_permalien(url: str) -> str:
+    """Le versant que WordPress a servi à la publication, lu dans l'adresse — '' si muet.
+
+    Polylang préfixe les adresses de la langue secondaire (`/it/…`). L'adresse enregistrée
+    est donc la RÉPONSE de WordPress au moment de la publication : bien plus solide qu'une
+    devinette faite depuis la base.
+
+    ⚠️ Mais ce n'est pas une preuve de l'état ACTUEL — c'est un champ de la base, écrit un
+    jour donné, et la règle 1 dit exactement ce qu'il vaut. Une republication ultérieure a
+    pu déplacer la page sans que cette colonne bouge. D'où le libellé « à la publication »
+    partout où cette valeur s'affiche, et l'adresse laissée en clair pour aller voir.
+    """
+    u = (url or "").strip().lower()
+    for lang in ("it", "fr"):
+        if f"/{lang}/" in u:
+            return lang
+    return ""
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Langue Polylang des traductions. Lecture seule.")
     p.add_argument("--tout", action="store_true",
@@ -66,6 +85,12 @@ def main(argv=None) -> int:
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0) > 0 "
         "AND duplicate_of IS NULL AND translation_of IS NOT NULL "
         "AND COALESCE(translated_lang,'') <> ''")]
+    # L'ORIGINAL de chaque traduction : `--retranslate` part de LUI, et il ne peut pas
+    # partir d'une fiche que la publication refuse. Sans ça le relevé proposait un geste
+    # impossible — vu en vrai sur la fiche 3509, dont l'original 308 est une fiche RADAR
+    # non résolue, que `publish_batch_as` écarte à chaque passage.
+    originaux = {r["id"]: dict(r) for r in conn.execute(
+        "SELECT id, title, statut, wp_post_id_as, source_type FROM events_raw")}
     conn.close()
 
     examinees = [r for r in rows if args.tout or devant_nous(r, auj)]
@@ -94,19 +119,54 @@ def main(argv=None) -> int:
         return 0
 
     print("Pour chacune, une republication SANS `force_lang` poserait l'autre langue.")
-    print("Vérifier d'abord ce que WordPress sert AUJOURD'HUI (règle 1) — la republication")
-    print("de cette nuit a pu déjà la déplacer, ou pas :\n")
-    print("| Fiche | Voulue | Devinée | Territoire | Titre | Page à ouvrir |")
-    print("|---:|---|---|---|---|---|")
+    print("La colonne « Servie » dit de quel côté WordPress a rangé la page À LA")
+    print("PUBLICATION, d'après le préfixe de son adresse. C'est sa réponse à lui, pas")
+    print("notre devinette — mais c'est un champ de la base, écrit un jour donné : pour")
+    print("l'état d'AUJOURD'HUI, ouvrir l'adresse (règle 1).\n")
+    print("| Fiche | Voulue | Devinée | Servie | Territoire | Titre | Page à ouvrir |")
+    print("|---:|---|---|---|---|---|---|")
     for r, voulue, devinee in ecarts:
-        print(f"| {r['id']} | {voulue} | **{devinee}** | {r.get('territoire') or '—'} | "
-              f"{(r.get('title') or '')[:38]} | {r.get('wp_permalink_as') or '—'} |")
+        servie = cote_du_permalien(r.get("wp_permalink_as") or "")
+        # On ne met en gras QUE ce qui contredit la langue demandée : un tableau où tout
+        # crie ne désigne plus rien.
+        marque = f"**{servie}**" if servie and servie != voulue else (servie or "—")
+        print(f"| {r['id']} | {voulue} | {devinee} | {marque} | "
+              f"{r.get('territoire') or '—'} | {(r.get('title') or '')[:38]} | "
+              f"{r.get('wp_permalink_as') or '—'} |")
     print()
-    print("Le geste, si la page est du mauvais côté du sélecteur de langue :")
-    originaux = sorted({str(r["translation_of"]) for r, _v, _d in ecarts})
-    print(f"    .venv/bin/python -m scripts.translate_events --retranslate "
-          f"{' '.join(originaux)} --apply")
-    print("(il republie par `force_lang`, donc il IMPOSE la langue au lieu de la deviner.)")
+
+    deja = [(r, v) for r, v, _d in ecarts
+            if cote_du_permalien(r.get("wp_permalink_as") or "") not in ("", v)]
+    if deja:
+        print(f"⚠️  {len(deja)} sur {len(ecarts)} n'est pas un risque À VENIR : l'adresse")
+        print("    enregistrée montre que la page était DÉJÀ du mauvais côté. Le sélecteur")
+        print("    de langue renvoie donc le lecteur vers une page qu'il ne sait pas lire.")
+        print()
+
+    # LE GESTE, ET SEULEMENT QUAND IL EXISTE. `--retranslate` repart de l'ORIGINAL : si
+    # celui-ci n'est pas publiable, la commande est un cul-de-sac. Les proposer ensemble
+    # ferait une file dont une partie ne mène nulle part — précisément ce que la règle 6
+    # interdit.
+    faisables, bloques = [], []
+    for r, _v, _d in ecarts:
+        orig = originaux.get(r.get("translation_of")) or {}
+        if orig and int(orig.get("wp_post_id_as") or 0) > 0:
+            faisables.append(str(r["translation_of"]))
+        else:
+            bloques.append((r, orig))
+    if faisables:
+        print("Le geste, si la page est du mauvais côté du sélecteur de langue :")
+        print(f"    .venv/bin/python -m scripts.translate_events --retranslate "
+              f"{' '.join(sorted(set(faisables)))} --apply")
+        print("(il republie par `force_lang`, donc il IMPOSE la langue au lieu de la deviner.)")
+        print()
+    for r, orig in bloques:
+        print(f"⚠️  Fiche {r['id']} : PAS de geste automatique. Son original "
+              f"{r.get('translation_of')} n'est pas en ligne "
+              f"(« {(orig.get('title') or '?')[:44]} », statut {orig.get('statut') or '—'}) — "
+              f"`--retranslate` partirait d'une fiche que la publication refuse.")
+        print("    Une traduction en ligne dont l'original ne l'est pas est un arbitrage,")
+        print("    pas une réparation : à trancher à la main.")
     return 0
 
 

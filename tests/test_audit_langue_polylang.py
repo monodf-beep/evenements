@@ -56,18 +56,34 @@ FICHES = [
     # 3. LE CAS QUI DOIT SORTIR : titre-programme sans phrase, aucun marqueur de langue.
     #    Le territoire italien départage seul et emporte la fiche du mauvais côté.
     (3, "Brahms / Chostakovitch", "Brahms, Chostakovitch.", "Piemonte", 1, "fr"),
+    # 4. LE CAS TROUVÉ EN PRODUCTION (fiche 3509) : une traduction en ligne dont
+    #    l'ORIGINAL, lui, n'est pas publié — une fiche radar que `publish_batch_as`
+    #    écarte à chaque passage. `--retranslate` partirait donc d'une fiche que la
+    #    publication refuse : il ne faut pas la proposer, il faut le DIRE.
+    (4, "MonumenTO, Torino Capitale", "MonumenTO, Torino Capitale.", "Piemonte", 5, "fr"),
+    # 5. …et l'original en question, sans `wp_post_id_as` : jamais publié.
+    (5, "MonumenTO — dépêche radar", "Dépêche.", "Piemonte", None, None),
 ]
+# La fiche 5 n'a pas de page : c'est ce qui rend le geste impossible pour la 4.
+SANS_PAGE = {5}
+# Adresses : la 3 est encore du bon côté (risque À VENIR), la 4 est DÉJÀ passée côté
+# italien — deux situations que le relevé ne doit pas confondre.
+COTE_SERVI = {3: "fr", 4: "it"}
 
 conn = sqlite3.connect(tmp)
 init_db(conn)
 for eid, titre, desc, terr, orig, lang in FICHES:
+    prefixe = COTE_SERVI.get(eid, "")
     conn.execute(
         "INSERT INTO events_raw (id, title, description, url_source, wp_post_id_as, "
         "statut, date_event_start, date_event_end, territoire, duplicate_of, "
         "translation_of, translated_lang, wp_permalink_as) "
         "VALUES (?,?,?,?,?,?,?,?,?,NULL,?,?,?)",
-        (eid, titre, desc, f"https://a.fr/{eid}", 900 + eid, "published_sub",
-         FUTUR, FUTUR, terr, orig, lang, f"https://agendasabauda.eu/e/{eid}"))
+        (eid, titre, desc, f"https://a.fr/{eid}",
+         None if eid in SANS_PAGE else 900 + eid,
+         "radar" if eid in SANS_PAGE else "published_sub",
+         FUTUR, FUTUR, terr, orig, lang,
+         f"https://agendasabauda.eu/{prefixe + '/' if prefixe else ''}e/{eid}"))
 conn.commit()
 conn.close()
 
@@ -98,28 +114,46 @@ print("\n──── ce qui doit sortir, sort ────")
 _check("la traduction que le territoire emporte est signalée",
        "Brahms / Chostakovitch" in sortie, sortie)
 _check("   avec la langue VOULUE et la langue DEVINÉE côte à côte",
-       "| fr | **it** |" in sortie, sortie[sortie.find("| Fiche"):][:400])
+       "| 3 | fr | it |" in sortie, sortie[sortie.find("| Fiche"):][:500])
 _check("   et l'adresse de la page, parce que seul WordPress dit l'état réel (règle 1)",
-       "https://agendasabauda.eu/e/3" in sortie, sortie[-600:])
+       "https://agendasabauda.eu/fr/e/3" in sortie,
+       sortie[sortie.find("| Fiche"):][:500])
+
+print("\n──── un risque À VENIR et un fait ACCOMPLI ne se disent pas pareil ────")
+# Les deux fiches sortent pour le même motif calculé, mais l'une est encore du bon côté
+# et l'autre a déjà basculé. Les mélanger ferait lire « à surveiller » là où il faut lire
+# « un lecteur tombe dessus aujourd'hui ».
+_check("la page déjà passée côté italien est signalée comme telle",
+       "était DÉJÀ du mauvais côté" in sortie, sortie)
+_check("   et le compte distingue les deux situations",
+       "1 sur 2 n'est pas un risque À VENIR" in sortie, sortie)
+_check("la colonne « Servie » ne met en gras que ce qui contredit la langue voulue",
+       "| **it** |" in sortie and "| fr | it | fr |" in sortie,
+       sortie[sortie.find("| Fiche"):][:500])
 
 print("\n──── les nombres disent leur périmètre ────")
 _check("le total examiné est affiché à côté du total publié",
        "EXAMINÉES ici" in sortie and "encore devant nous" in sortie, sortie[:600])
-_check("le relevé compte 2 traductions, pas 3 fiches",
-       "Traductions publiées   : 2" in sortie, sortie[:600])
+_check("le relevé compte les 3 traductions, pas les 5 fiches",
+       "Traductions publiées   : 3" in sortie, sortie[:600])
 
-print("\n──── le geste est au bout de la file ────")
-_check("il propose --retranslate, qui repasse par force_lang",
-       "--retranslate 1" in sortie, sortie[-500:])
+print("\n──── le geste n'est proposé que quand il existe ────")
+_check("il propose --retranslate pour l'original qui EST en ligne",
+       "--retranslate 1 --apply" in sortie, sortie[-900:])
 _check("   et dit POURQUOI ça règle le problème",
-       "IMPOSE la langue" in sortie, sortie[-400:])
+       "IMPOSE la langue" in sortie, sortie[-900:])
+_check("⚠️ il ne le propose PAS pour l'original qui n'est pas publié",
+       "--retranslate 5" not in sortie and "1 5" not in sortie, sortie[-900:])
+_check("   il dit à la place que c'est un arbitrage, avec le statut de l'original",
+       "PAS de geste automatique" in sortie and "statut radar" in sortie,
+       sortie[-700:])
 
 print("\n──── un zéro doit dire son dénominateur ────")
 # On rejoue sur une base où il n'y a QUE le cas franc : le relevé doit alors annoncer
 # « aucun écart sur N examinée(s) », jamais un 0 nu. Un zéro sans dénominateur ressemble
 # exactement à un monde où il n'y a rien à trouver (journal du 2026-08-11).
 c = sqlite3.connect(tmp)
-c.execute("DELETE FROM events_raw WHERE id=3")   # base JETABLE, pas data/events.db
+c.execute("DELETE FROM events_raw WHERE id IN (3,4)")  # base JETABLE, pas data/events.db
 c.commit(); c.close()
 buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
