@@ -29,7 +29,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from scripts.auto_deploiement import BRANCHE_DEPLOYEE, rapport  # noqa: E402
+from scripts.auto_deploiement import (  # noqa: E402
+    BRANCHE_DEPLOYEE, commandes_crontab, rapport,
+)
 
 echecs = 0
 
@@ -101,6 +103,34 @@ verifier("un serveur hors branche est signalé", "pas sur" in r, r)
 # ── 7. …et le silence quand tout va bien ────────────────────────────────────────
 r = rapport(dict(BASE, commits_de_retard=0), "aucun")
 verifier("rien à dire quand tout est à jour et propre", r.strip() == "", repr(r))
+
+# ── 8. Le crontab du dépôt n'est pas le crontab installé ────────────────────────
+# Le trou trouvé le 2026-08-17 : la ligne de cron de ce script même était committée et
+# INERTE, faute d'un `crontab crontab.txt`. La comparaison ignore les commentaires (sinon
+# elle crierait tous les jours), garde les affectations de variables, et normalise les
+# espaces (`crontab -l` ne rend pas toujours l'alignement du fichier).
+TEXTE = """
+# un commentaire, qui ne compte pas
+SLACK_DIGEST=1
+
+0 8 * * *   cd /root/evenements &&  .venv/bin/python scripts/scraper_events.py
+# 30 9 * * * une ligne COMMENTÉE, donc désactivée
+"""
+cmd = commandes_crontab(TEXTE)
+verifier("les commentaires ne comptent pas", not any("commentaire" in c for c in cmd), cmd)
+verifier("une ligne commentée n'est pas prise pour une tâche active",
+         not any(c.startswith("30 9") for c in cmd), cmd)
+verifier("l'affectation de variable compte", "SLACK_DIGEST=1" in cmd, cmd)
+verifier("les espaces sont normalisés",
+         "0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py" in cmd,
+         cmd)
+verifier("deux lignes seulement dans cet exemple", len(cmd) == 2, cmd)
+
+# Et le fichier réel du dépôt doit contenir le cron de déploiement : sans lui, tout ce
+# fichier ne sert à rien.
+reel = commandes_crontab((ROOT / "crontab.txt").read_text(encoding="utf-8"))
+verifier("crontab.txt planifie bien le déploiement autonome",
+         any("scripts.auto_deploiement --apply" in c for c in reel))
 
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

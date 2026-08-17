@@ -128,6 +128,98 @@ def fixtures_vertes(rev: str) -> tuple[bool, str]:
         _git("worktree", "remove", "--force", str(dossier))
 
 
+def commandes_crontab(texte: str) -> set[str]:
+    """Les lignes de COMMANDE d'un crontab, commentaires et vides retirés, espaces normalisés.
+
+    Pure, donc éprouvable (tests/test_auto_deploiement.py). On ne compare pas les
+    commentaires : `crontab.txt` en porte des dizaines de lignes d'explication que
+    `crontab -l` ne rend pas forcément à l'identique, et un contrôle qui crierait chaque
+    jour pour un commentaire déplacé finirait par ne plus être lu — le défaut que
+    `gabarit_health` documente déjà. Les affectations de variables (SLACK_DIGEST=1) sont
+    des lignes de crontab à part entière et comptent, elles.
+    """
+    lignes = set()
+    for l in texte.splitlines():
+        l = l.strip()
+        if not l or l.startswith("#"):
+            continue
+        lignes.add(" ".join(l.split()))
+    return lignes
+
+
+def ecart_crontab() -> tuple[int, int, str]:
+    """Compare le crontab INSTALLÉ à `crontab.txt`. Renvoie (ajouts, retraits, résumé).
+
+    LE TROU QUE CECI FERME, et c'est la règle 1 transposée une fois de plus : un fichier
+    dans le dépôt ne prouve pas qu'il tourne. `crontab.txt` est la référence écrite, mais
+    seul `crontab crontab.txt` la rend vivante — donc une ligne ajoutée par une session
+    Claude ne s'exécute JAMAIS avant que quelqu'un ne tape cette commande. C'est ce qui
+    s'est passé le 2026-08-17 : le cron de déploiement automatique était committé et inerte.
+
+    On compare les lignes de COMMANDE seules (ni commentaires, ni lignes vides) : le fichier
+    du dépôt porte des dizaines de lignes d'explication que `crontab -l` ne rend pas
+    forcément à l'identique, et comparer les commentaires ferait crier ce contrôle tous les
+    jours pour rien — le défaut de `gabarit_health` évité de justesse.
+    """
+    fichier = ROOT / "crontab.txt"
+    if not fichier.exists():
+        return 0, 0, "crontab.txt introuvable"
+
+    voulu = commandes_crontab(fichier.read_text(encoding="utf-8"))
+    # `crontab` peut ne pas exister (conteneur de développement) : le contrôle ne doit pas
+    # faire tomber le script, qui tourne juste APRÈS un déploiement réussi. Trouvé en
+    # l'exécutant, pas en le relisant — un FileNotFoundError non rattrapé.
+    try:
+        r = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+    except (FileNotFoundError, OSError) as exc:
+        log.warning("Commande `crontab` indisponible (%s) — écart NON mesuré.", exc)
+        return 0, 0, "crontab indisponible sur cette machine, écart non mesuré"
+    installe = _commandes(r.stdout if r.returncode == 0 else "")
+    ajouts = sorted(voulu - installe)
+    retraits = sorted(installe - voulu)
+    resume = ""
+    if ajouts:
+        resume += f"{len(ajouts)} ligne(s) à installer, dont : {ajouts[0][:90]}"
+    if retraits:
+        resume += ((" · " if resume else "")
+                   + f"{len(retraits)} ligne(s) installée(s) hors du dépôt, dont : "
+                     f"{retraits[0][:90]}")
+    return len(ajouts), len(retraits), resume
+
+
+def installer_crontab() -> tuple[bool, str]:
+    """Rend `crontab.txt` vivant. RÉVERSIBLE : le crontab précédent est sauvegardé d'abord.
+
+    Autorisé sans demander (`Bash(crontab:*)` dans .claude/settings.json, et CLAUDE.md
+    range le crontab parmi les gestes réversibles). Le fichier du dépôt est la référence :
+    on n'invente aucune ligne ici.
+    """
+    try:
+        r = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+    except (FileNotFoundError, OSError) as exc:
+        return False, f"commande `crontab` indisponible ({exc}) — rien installé"
+    if r.returncode == 0 and r.stdout.strip():
+        sauvegarde = ROOT / "logs" / "crontab-avant-installation.txt"
+        try:
+            sauvegarde.parent.mkdir(parents=True, exist_ok=True)
+            sauvegarde.write_text(r.stdout, encoding="utf-8")
+        except OSError as exc:
+            return False, f"sauvegarde du crontab impossible ({exc}) — rien installé"
+    try:
+        pose = subprocess.run(["crontab", str(ROOT / "crontab.txt")],
+                              capture_output=True, text=True)
+    except (FileNotFoundError, OSError) as exc:
+        return False, f"commande `crontab` indisponible ({exc}) — rien installé"
+    if pose.returncode != 0:
+        return False, (pose.stdout + pose.stderr).strip()[:200]
+    # RÈGLE 6 : on RECOMPTE après l'écriture au lieu d'annoncer l'intention.
+    reste_a, reste_r, _ = ecart_crontab()
+    if reste_a or reste_r:
+        return False, (f"installé, mais l'écart persiste ({reste_a} manquante(s), "
+                       f"{reste_r} en trop) — à regarder à la main")
+    return True, "crontab installé, écart nul après recomptage"
+
+
 def deployer() -> tuple[bool, str]:
     r = subprocess.run(["bash", str(UPDATE_SH)], cwd=str(ROOT),
                        capture_output=True, text=True)
@@ -203,7 +295,20 @@ def main(argv=None) -> int:
         return 1
 
     ok, derniere = deployer()
-    msg = rapport(e, "deploye" if ok else "echec", derniere)
+
+    # LE CRONTAB SUIT LE CODE. Sans ça, une ligne de cron ajoutée par un commit reste
+    # inerte jusqu'à ce qu'un humain tape `crontab crontab.txt` — c'est arrivé le jour même
+    # où ce script a été écrit : son propre cron était committé et ne tournait pas.
+    suite_cron = ""
+    if ok:
+        a, r_, resume = ecart_crontab()
+        if a or r_:
+            pose, detail = installer_crontab()
+            suite_cron = (f"\n:calendar: Crontab {'mis à jour' if pose else 'NON mis à jour'} "
+                          f"— {resume}. {detail}")
+            log.info("Crontab : %d à installer, %d hors dépôt — %s", a, r_, detail)
+
+    msg = rapport(e, "deploye" if ok else "echec", derniere) + suite_cron
     slack.notify(msg)
     print(msg)
     # RÈGLE 6 — on rapporte le RÉSULTAT : on RELIT ce que le dépôt dit de lui-même après
