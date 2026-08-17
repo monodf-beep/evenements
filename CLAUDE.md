@@ -139,7 +139,28 @@ Deux exigences, donc, pour tout chiffre destiné à un humain :
 ## Le journal des erreurs
 
 `docs/ERREURS_2026-08-11.md` liste les quinze fautes d'une seule journée, avec pour chacune
-le garde-fou qui l'empêche de revenir. **Neuf sur quinze étaient des récidives d'une règle
+le garde-fou qui l'empêche de revenir. `docs/ERREURS_2026-08-17.md` fait de même pour six
+autres, dont trois récidives — et elles ont une racine commune qui mérite d'être ici :
+
+**Conclure sur un indice de SURFACE, au lieu d'aller lire la chose.** Ce jour-là : quatre
+audits WordPress déclarés « redondants » sur la seule ressemblance de leurs titres (aucun ne
+l'était, et j'ai proposé de les supprimer) ; quarante minutes de recherche dans ce dépôt
+pour un code qui vivait dans la base WordPress, alors que l'ABSENCE D'ACCENTS des messages
+désignait leur provenance dès le premier coup d'œil ; une baisse de 7 à 6 attribuée à mon
+correctif quand elle venait d'un `array_slice(…, 0, 6)` d'affichage. Les deux fois où j'ai
+lu — le code des audits, la sortie réelle du filtre — la conclusion s'est INVERSÉE.
+
+Deux corollaires opérationnels :
+
+- **une liste tronquée doit annoncer son total.** Sans ça elle fabrique de fausses causes,
+  y compris pour celui qui l'a écrite ;
+- **un fichier poussé sur une branche ne prouve pas qu'il est déployé** (règle 1
+  transposée) : `deploy/update.sh` remet le dépôt sur `claude/quirky-davinci-jvqrnw`, donc
+  du travail poussé ailleurs n'arrive pas — et sera EFFACÉ au déploiement suivant. Vérifier
+  la branche que vise le script avant de dicter la commande, et la donner avec son
+  répertoire.
+
+**Neuf des quinze fautes du 11/08 étaient des récidives d'une règle
 déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le
 périmètre affiché à côté du nombre qui tiennent, parce qu'eux se déclenchent tout seuls.
 
