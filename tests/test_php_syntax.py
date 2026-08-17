@@ -80,6 +80,22 @@ for f in fichiers:
     ok, sortie = _lint(f)
     _check(f"{f.name}", ok, sortie)
 
+# LES COPIES DES SNIPPETS AUSSI (2026-08-17). Trois audits quotidiens vivent dans la base
+# WordPress (table wp_snippets) et n'avaient AUCUNE copie ici — le défaut du 12/08, pour
+# lequel il a fallu trois heures et quatre transports. Leur code est désormais versionné
+# dans deploy/wordpress/code-snippets/, au format de Code Snippets, donc SANS `<?php` :
+# on le préfixe pour le contrôler. Une copie de secours syntaxiquement fausse ne se
+# découvrirait qu'au moment de restaurer, c'est-à-dire au pire moment.
+snippets = sorted((WP_DIR / "code-snippets").glob("*.php"))
+if snippets:
+    print(f"\n──── php -l sur {(WP_DIR / 'code-snippets').relative_to(ROOT)} "
+          f"(préfixés `<?php`) ────")
+    for f in snippets:
+        tmp = Path(tempfile.mkdtemp()) / f.name
+        tmp.write_text("<?php\n" + f.read_text(encoding="utf-8"), encoding="utf-8")
+        ok, sortie = _lint(tmp)
+        _check(f"{f.name}", ok, sortie)
+
 # ── Contre-épreuve : la faute EXACTE de l'incident doit être attrapée ────────────
 print("\n──── contre-épreuve : la faute du 2026-08-08 est bien refusée ────")
 casse = Path(tempfile.mkdtemp()) / "cs-source-garde-cassé.php"

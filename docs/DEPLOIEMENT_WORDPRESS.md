@@ -99,3 +99,70 @@ trois.
 
 La route `GET /wp-json/cs/v1/version` existe pour ça : elle répond ce que la version en
 ligne dit d'elle-même. Tant qu'elle renvoie 404, le correctif n'est pas passé.
+
+---
+
+## 6. Ce qui a été ajouté le 2026-08-17, et par quel chemin
+
+Journée d'un seul sujet : « les messages ne doivent arriver uniquement dans la chaîne
+#agendasabauda et non pas dans formulaire ». Elle a produit deux mu-plugins, une route,
+trois snippets modifiés — et elle confirme la règle du § 5 dans les deux sens.
+
+### Où vit quoi, maintenant
+
+| Chose | Où elle vit | Copie versionnée |
+|---|---|---|
+| `cs_slack_notify()` / `cs_slack_notify_form()`, boîte du jour, route REST | mu-plugin `wp-content/mu-plugins/cs-slack-formulaires.php` | `deploy/wordpress/cs-slack-formulaires.php` |
+| Filtre de périmètre des audits (règle 5) | mu-plugin `wp-content/mu-plugins/cs-audit-perimetre.php` | `deploy/wordpress/cs-audit-perimetre.php` |
+| Audits quotidiens #130, #135, #136 | **base WordPress**, table `wp_snippets` | `deploy/wordpress/code-snippets/` (copies, pas la référence) |
+| Rapatriement des rapports vers Slack | VPS, `scripts/rapports_wordpress.py`, appelé par `scripts/slack_digest.py` | le dépôt EST la référence |
+
+Sauvegardes d'avant la journée, sur le serveur :
+`wp-content/mu-plugins/cs-slack-formulaires.php.bak-2026-08-17` et
+`wp-content/uploads/cs-snippets-sauvegarde-2026-08-17/{130,135,136}-avant.txt`.
+
+### La route `cs/v1/slack-boite`
+
+WordPress ne poste plus rien sur Slack de lui-même : il TIENT ses rapports, et le
+récapitulatif de 11h45 du VPS vient les chercher. Motif, donné par Franck le jour même
+(« tu publies déjà dans ce canal, pourquoi je devrais te redonner le webhook ? ») : le
+webhook de #agendasabauda reste dans le seul `.env` du VPS, au lieu d'exister en double
+dans la base d'un site public.
+
+```
+GET    /?rest_route=/cs/v1/slack-boite         → {count, messages:[{id, at, heure, texte}]}
+DELETE /?rest_route=/cs/v1/slack-boite&ids=…   → retire EXACTEMENT ces identifiants
+```
+
+Authentification : celle de la publication quotidienne (`X-CS-Auth` ou Application
+Password), capacité `edit_posts`. Vérifié en ligne : **401** sans authentification, **200**
+avec.
+
+Deux points à ne pas rouvrir :
+
+- **la purge se fait par identifiants, jamais par borne d'horodatage.** La première version
+  bornait « jusqu'à la seconde lue » et détruisait un rapport écrit après la lecture dans
+  la même seconde — les horloges WordPress sont à la seconde et les audits partent du même
+  cron. Fixture : `tests/test_slack_boite_wordpress.py`, avec contre-épreuve ;
+- **le GET vaut preuve de vie**, pas seulement le DELETE : les jours sans rapport il n'y a
+  rien à supprimer, et sans cette marque WordPress croirait le pipeline mort au bout de
+  26 h et reprendrait la parole dans le mauvais canal.
+
+Si plus personne ne vient vider la réserve pendant 26 h, WordPress **reprend la parole tout
+seul** sur son propre webhook (donc #formulaire, faute d'autre). C'est voulu : un message
+mal rangé se voit, une file silencieuse non. Voir `docs/ETATS_TERMINAUX.md`.
+
+### Le transport qui a marché, et ses limites
+
+Même canal qu'au § 3 (Novamira), avec deux précisions apprises ce jour-là :
+
+1. **`novamira/write-file` refuse le PHP hors du bac à sable.** Pour un mu-plugin :
+   `novamira/create-upload-link` sur un chemin en `.nouveau`, `curl -X PUT --data-binary`,
+   puis un `execute-php` qui (a) compare le **md5** au fichier local, (b) **sauvegarde**
+   l'ancienne version, (c) contrôle la syntaxe par `token_get_all(…, TOKEN_PARSE)` — il n'y
+   a pas de binaire `php` sur l'hébergement —, (d) fait un `rename()` **atomique**. Un
+   mu-plugin se charge avant tout le reste : la moitié d'un fichier écrit tue le site.
+2. **Les grosses charges ne passent pas par l'argument d'un appel** : deux `502 Bad
+   gateway` de suite sur ~5 ko de patch. Les déposer en fichier et les lire sur place. Et
+   après un échec de transport, **vérifier l'état avant de retenter** — c'est ce qui a
+   montré que le patch n'était pas passé, donc qu'il n'y avait rien à défaire.

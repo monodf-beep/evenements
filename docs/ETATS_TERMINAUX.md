@@ -39,6 +39,7 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | `wp_post_id_as=NULL` après corbeille | `trash_by_ids`, `trash_wp_ids` | `relink_wp_ids_as` (par titre) | 🟡 partiel, **assumé** |
 | `statut='merged'` + `duplicate_of` | `dedupe` | `unmerge` (à la main, jamais en cron) | ✅ fermé le 2026-08-03 |
 | écart « description incohérente » (aucune colonne — l'écart est **implicite**) | `translate_events` | `repair_polluted_descriptions` | ✅ fermé le 2026-08-13, **après neuf jours de blocage** |
+| réserve Slack de WordPress (option `cs_slack_boite_du_jour`) | `cs_slack_notify` (mu-plugin `cs-slack-formulaires.php`) | `scripts.rapports_wordpress`, appelé par le digest de 11h45 et 20h ; **à défaut, WordPress lui-même après 26 h** | ✅ fermé le 2026-08-17 |
 
 **Le cas le plus instructif du tableau, parce qu'il avait l'air fermé.** `translate_events`
 écarte de la file de traduction toute fiche dont la description « parle manifestement
@@ -488,3 +489,48 @@ Avant d'ajouter un état qui écarte une fiche d'une file, répondre par écrit 
    filtre sur `translated_at=''`) est un renvoi mort, exactement comme celui
    d'`audit_wp_ghosts` vers `relink_wp_ids_as`. Et un état posé en base qui n'atteint pas
    le site (`home_override`) ne rouvre rien de ce que voit le visiteur.
+
+---
+
+## L'état terminal créé le 2026-08-17 — une file qui attend quelqu'un d'un AUTRE serveur
+
+Nouveau cas, et d'une forme inédite dans ce fichier : l'état est posé sur **WordPress**, et
+son rouvreur normal vit sur le **VPS**. Deux machines, deux dépôts de code, deux pannes
+possibles.
+
+**Ce qui le pose.** Les quatre audits quotidiens de WordPress et les refus de publication
+de `cs-completude.php` postaient dans le canal Slack réservé aux formulaires publics — que
+personne ne lit ; le refus de la fiche 7686 y a dormi. Ils ne postent plus : ils rangent
+leur rapport dans l'option `cs_slack_boite_du_jour`.
+
+**Ce qui le rouvre.** `scripts.rapports_wordpress`, appelé depuis `scripts.slack_digest`
+(11h45 et 20h), lit la réserve par `GET /?rest_route=/cs/v1/slack-boite`, met chaque rapport
+dans le récapitulatif de #agendasabauda, puis retire par `DELETE …&ids=…` **exactement** ce
+qu'il a pris en charge.
+
+**Et si ce rouvreur disparaît ?** C'est la question que ce fichier existe pour poser, et
+elle est ici plus sérieuse qu'ailleurs : le VPS peut s'arrêter, la ligne de cron peut être
+retirée, le mot de passe d'application peut être révoqué — trois pannes qu'aucun code de
+WordPress ne peut voir.
+
+Réponse : **WordPress reprend la parole tout seul.** Chaque passage du pipeline (le GET
+suffit, pas seulement le DELETE) horodate `cs_slack_dernier_drain`. Passé **26 h** sans
+aucun passage, `cs_slack_vider_boite()` cesse de se taire et poste sur son propre webhook —
+donc dans #formulaire, faute d'autre canal configuré là-bas. Les rapports réapparaissent
+dans le mauvais canal plutôt que de disparaître : **un message mal rangé se voit, une file
+silencieuse non.**
+
+C'est aussi pour ça que le seuil est de 26 h et non de 12 h : deux vidages quotidiens (11h45
+et 20h) laissent au plus ~16 h entre deux passages, donc 26 h ne se franchit que si quelque
+chose est réellement cassé, jamais par simple décalage d'horaire.
+
+**Où se voit le nombre de fiches garées** (l'autre exigence de ce fichier) : dans la réponse
+du GET (`count`), et dans le journal du digest — « 1 lu(s), 1 pris en charge, 1 retiré(s) ».
+Les trois nombres sont donnés séparément parce qu'ils peuvent différer, et c'est quand ils
+diffèrent qu'il faut regarder.
+
+**Ce qui reste ouvert, et qu'il faut nommer :** la fiche refusée à la publication (7686 le
+2026-08-17, `as_source_officielle_url` vide) est, elle, un état terminal **non** fermé. Le
+rapport arrive maintenant dans le bon canal — mais aucun script ne va chercher la source
+officielle manquante, et la fiche reste en brouillon jusqu'à ce qu'un humain s'en occupe.
+Signaler au bon endroit n'est pas rouvrir.
