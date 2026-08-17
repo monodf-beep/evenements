@@ -39,9 +39,45 @@ from utils.une import (UNE_HORIZON_JOURS, UNE_INTERET_MIN, UNE_RENDU_MIN,
 # Le déclarer ici sert aussi le dénominateur, qui comptait le passé et gonflait donc le
 # périmètre annoncé (règle 6).
 from scripts.audit_substance_published import devant_nous
+from utils.lang import effective_lang
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 TERRITOIRES = ("Savoie", "Piemonte", "Vallee-Aoste", "Nice")
+# La section affiche TROIS cartes. En dessous, le visiteur voit un trou.
+CARTES_UNE = 3
+
+
+def langue_fiche(ev: dict) -> str:
+    """La langue que Polylang sert à CETTE page — 'fr' ou 'it'.
+
+    ⚠️ TROISIÈME PASSAGE SUR CE MÊME DÉFAUT (2026-08-17), et c'est le pire des trois.
+    Ce script séparait les deux versants sur `translated_lang or "fr"`. Or ce champ ne
+    dit qu'une chose : « cette ligne est une traduction VERS telle langue ». Un ORIGINAL
+    ne le porte pas — quelle que soit sa langue. Toutes les fiches scrapées en italien
+    sur des sources piémontaises tombaient donc dans le versant FRANÇAIS.
+
+    Ce que le rapport affichait ce matin, en conséquence :
+
+        ### versant FRANÇAIS
+        - 2026-08-31 : Palio Montis Regalis: la t · Fiera Nazionale del Pepero · …
+
+    Trois titres italiens présentés comme la une d'un lecteur francophone — alors que la
+    version française du Palio existe (WP#2285) et que c'est ELLE qui s'afficherait. Et
+    symétriquement, le versant italien paraissait vide à J+14 : il ne comptait que les
+    traductions, en ignorant tout le stock piémontais d'origine.
+
+    C'est mot pour mot la faute corrigée il y a douze heures (« le rapport montrait une
+    une qui n'existe pour personne »), une couche plus bas : j'avais réparé la SÉPARATION
+    des versants sans vérifier le CRITÈRE qui les sépare.
+
+    La bonne réponse existait déjà dans le dépôt — `app.py::_lang_fiche`, qui sert à
+    choisir entre « ANNULÉ » et « ANNULLATO ». On la reprend telle quelle plutôt que d'en
+    inventer une deuxième : deux définitions de la langue d'une fiche finiraient par
+    diverger, et c'est la plus fausse qu'on croirait.
+    """
+    if ev.get("translation_of"):
+        return ev.get("translated_lang") or "it"
+    return effective_lang(ev)
 
 
 def _connect_ro(path: Path) -> sqlite3.Connection:
@@ -114,9 +150,7 @@ def main(argv=None) -> int:
         print("|---:|---:|---|---|---|---|")
         for i, (ev, n, motif) in enumerate(
                 sorted(retenues, key=lambda t: -t[1])[:15], 1):
-            lang = "it" if (ev.get("translated_lang") or "") == "it" else (
-                   "→it" if ev.get("translation_of") else "fr")
-            print(f"| {i} | {n} | {lang} | {(ev.get('territoire') or '—')} | "
+            print(f"| {i} | {n} | {langue_fiche(ev)} | {(ev.get('territoire') or '—')} | "
                   f"{(ev.get('title') or '')[:42]} | {motif[:52]} |")
         print()
         paires = sum(1 for e, _n, _m in retenues if e.get("translation_of"))
@@ -194,18 +228,25 @@ def main(argv=None) -> int:
     # NE filtrait pas par langue, ce tableau le dirait aussi : les trois cartes montreraient
     # le même concert deux fois, et ça se verrait ici avant de se voir en ligne.
     for langue, libelle in (("fr", "versant FRANÇAIS"), ("it", "versant ITALIEN")):
-        print(f"\n### {libelle}\n")
+        # On repart de `rows` : à J+21, une fiche « passée » aujourd'hui l'est encore,
+        # mais une fiche écartée par l'horizon aujourd'hui peut être entrée depuis.
+        cote = [ev for ev in rows if langue_fiche(ev) == langue]
+        print(f"\n### {libelle} — {len(cote)} page(s) publiée(s) de ce côté\n")
         for delta in (0, 7, 14, 21):
             j = auj + timedelta(days=delta)
-            # On repart de `rows` : à J+21, une fiche « passée » aujourd'hui l'est encore,
-            # mais une fiche écartée par l'horizon aujourd'hui peut être entrée depuis.
-            cote = [ev for ev in rows
-                    if ((ev.get("translated_lang") or "fr") == langue)]
             lot = sorted(((ev, une_etat(ev, j)[0]) for ev in cote),
                          key=lambda t: -(t[1] or -1))
-            tete = [f"{(e.get('title') or '')[:26]}" for e, n in lot if n is not None][:3]
+            eligibles = [e for e, n in lot if n is not None]
+            tete = [f"{(e.get('title') or '')[:26]}" for e in eligibles[:CARTES_UNE]]
+            # LE TROU SE DIT, IL NE SE DEVINE PAS (règle 6). Ce matin, deux versants
+            # affichaient deux titres au lieu de trois et la ligne se lisait comme un
+            # relevé normal : rien ne disait que la troisième carte serait vide. Un
+            # compteur qui peut valoir moins que prévu doit annoncer son manque.
+            manque = ("" if len(eligibles) >= CARTES_UNE else
+                      f"   ⚠️ {len(eligibles)} seulement — {CARTES_UNE - len(eligibles)} "
+                      f"carte(s) vide(s)")
             print(f"- **{j.isoformat()}** ({delta:>2} j) : "
-                  + (" · ".join(tete) if tete else "_aucune_"))
+                  + (" · ".join(tete) if tete else "_aucune_") + manque)
     return 0
 
 
