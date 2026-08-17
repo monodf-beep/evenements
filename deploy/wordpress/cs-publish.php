@@ -391,7 +391,29 @@ function cs_publish_event(WP_REST_Request $req) {
         // depuis le 03/08 ; cette liste ne le connaissait pas, donc la version du dépôt
         // l'aurait silencieusement jeté — et rendu à la section home le défaut qu'on
         // avait mis une journée à corriger.
-        'as_deplacement_now');
+        'as_deplacement_now',
+        // Score de TRI de « À LA UNE » (6-14, vide si la fiche n'y a pas sa place) :
+        // intérêt intrinsèque de l'événement RELEVÉ par son imminence (utils/une.py,
+        // fonction une_now). Ajouté le 2026-08-17, après la capture d'écran de Franck :
+        // « pilate en "à la une" ??? les 2 autres, ça fait des semaines qu'ils sont à la
+        // une ». La section triait sur as_home_score, qui mesure la QUALITÉ DU RENDU et
+        // reste figée au jour de la rédaction — un cours de pilates bien illustré y
+        // battait un festival, et rien ne savait qu'on était à cinq semaines de la date.
+        //
+        // ⚠️ ET C'EST LA CINQUIÈME FOIS QUE CE MÉTA-CI SE PERD EN CHEMIN. Le lot du
+        // 2026-08-17 a rendu « 156 publié(s), 0 échec(s) » — et `postmeta` en comptait
+        // ZÉRO. `publisher_as` envoyait bien la valeur ; cette liste ne la connaissait
+        // pas, `update_post_meta` n'a donc jamais été appelé, et rien dans la réponse
+        // HTTP ne le signale : un méta inconnu est jeté EN SILENCE. C'est mot pour mot
+        // ce que raconte le commentaire de `as_deplacement_now` cinq lignes plus haut,
+        // écrit le 12 août pour que ça n'arrive plus.
+        //
+        // La leçon, puisque le commentaire seul n'a pas suffi : ce fichier n'est PAS le
+        // code qui tourne. Il vit dans Code Snippets, en base (docs/DEPLOIEMENT_WORDPRESS.md).
+        // Ajouter une clé ici ne la fait traverser nulle part tant que le snippet EN
+        // LIGNE ne l'a pas lui aussi — et l'y ajouter se fait ligne à ligne, jamais en
+        // écrasant le snippet, dont la version en ligne contient du code absent d'ici.
+        'as_une_now');
     foreach ($allowed as $k) {
         if (array_key_exists($k, $meta)) {
             update_post_meta($post_id, $k, sanitize_text_field((string) $meta[$k]));
