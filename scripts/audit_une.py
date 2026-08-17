@@ -39,7 +39,12 @@ from utils.une import (UNE_HORIZON_JOURS, UNE_INTERET_MIN, UNE_RENDU_MIN,
 # Le déclarer ici sert aussi le dénominateur, qui comptait le passé et gonflait donc le
 # périmètre annoncé (règle 6).
 from scripts.audit_substance_published import devant_nous
-from utils.lang import effective_lang
+# ⚠️ ON IMPORTE LA FONCTION QUI A RÉELLEMENT POSÉ LA LANGUE, pas une qui lui ressemble.
+# C'est `publisher_as._lang` qui remplit le champ `language` du payload Polylang à la
+# publication : elle est la seule à dire ce que WordPress sert vraiment. Voir le
+# commentaire de `langue_fiche` ci-dessous — s'en écarter d'un cheveu a déjà coûté deux
+# rapports faux dans la même journée.
+from scripts.publisher_as import _lang as _lang_publiee
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 TERRITOIRES = ("Savoie", "Piemonte", "Vallee-Aoste", "Nice")
@@ -49,6 +54,25 @@ CARTES_UNE = 3
 
 def langue_fiche(ev: dict) -> str:
     """La langue que Polylang sert à CETTE page — 'fr' ou 'it'.
+
+    ⚠️ DEUXIÈME CORRECTION EN UNE HEURE, ET LA LEÇON EST DANS L'ÉCART ENTRE LES DEUX.
+    La première version de cette fonction appelait `utils.lang.effective_lang`, reprise
+    de `app.py::_lang_fiche`. Ça semblait rigoureux — « la définition existait déjà dans
+    le dépôt » — sauf qu'il en existe DEUX, et que celle-là ne sert qu'à choisir entre
+    « ANNULÉ » et « ANNULLATO » dans un titre. `effective_lang` préfère l'ARTICLE ; or
+    `scripts.enrich` rédige toujours en français par défaut, donc elle classait français
+    tout événement italien enrichi — « Fiera Nazionale del Peperone », « Svelate le date
+    di risò »… exactement les titres qui rendaient le rapport absurde.
+
+    La seule définition qui compte est celle qui a ÉCRIT la langue sur WordPress :
+    `publisher_as._lang`, dont le résultat part dans le champ `language` du payload
+    Polylang. On l'importe telle quelle. Un rapport sur l'état du site doit appeler le
+    code du site, pas un cousin qui lui ressemble — c'est la règle 1 appliquée au code
+    plutôt qu'aux identifiants.
+
+    Conséquence assumée : si `_lang` se trompe, ce rapport se trompera PAREIL. C'est
+    voulu. Un audit doit refléter le site tel qu'il est, y compris ses défauts — sinon il
+    décrit un site qui n'existe pas, ce qui était le problème depuis le début.
 
     ⚠️ TROISIÈME PASSAGE SUR CE MÊME DÉFAUT (2026-08-17), et c'est le pire des trois.
     Ce script séparait les deux versants sur `translated_lang or "fr"`. Or ce champ ne
@@ -68,16 +92,11 @@ def langue_fiche(ev: dict) -> str:
 
     C'est mot pour mot la faute corrigée il y a douze heures (« le rapport montrait une
     une qui n'existe pour personne »), une couche plus bas : j'avais réparé la SÉPARATION
-    des versants sans vérifier le CRITÈRE qui les sépare.
-
-    La bonne réponse existait déjà dans le dépôt — `app.py::_lang_fiche`, qui sert à
-    choisir entre « ANNULÉ » et « ANNULLATO ». On la reprend telle quelle plutôt que d'en
-    inventer une deuxième : deux définitions de la langue d'une fiche finiraient par
-    diverger, et c'est la plus fausse qu'on croirait.
+    des versants sans vérifier le CRITÈRE qui les sépare — puis, du premier coup, choisi
+    le mauvais critère de remplacement. D'où la règle qui vaut pour la suite : quand une
+    valeur est ÉCRITE quelque part, on lit le code qui l'écrit, pas celui qui la devine.
     """
-    if ev.get("translation_of"):
-        return ev.get("translated_lang") or "it"
-    return effective_lang(ev)
+    return _lang_publiee(ev)
 
 
 def _connect_ro(path: Path) -> sqlite3.Connection:

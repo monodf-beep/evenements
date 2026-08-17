@@ -21,10 +21,17 @@ pas « langue de la fiche », il dit « cette ligne est une TRADUCTION vers tell
 Un original ne le porte jamais, quelle que soit sa langue — donc tous les originaux
 italiens basculaient côté français.
 
-C'est le même défaut que la veille (« le rapport montrait une une qui n'existe pour
-personne »), une couche plus bas : la séparation avait été réparée, pas le critère qui
-sépare. D'où cette fixture, qui tient le CRITÈRE et pas seulement la présence de deux
-sections.
+ET LA PREMIÈRE RÉPARATION S'EST TROMPÉE AUSSI, une heure plus tard : elle est passée à
+`utils.lang.effective_lang`, qui privilégie l'ARTICLE. Or `scripts.enrich` rédige
+toujours en français par défaut — la « Fiera Nazionale del Peperone » restait donc côté
+français, avec juste un meilleur argumentaire. Il existe DEUX fonctions de langue dans ce
+dépôt et j'ai pris la mauvaise : celle-là sert à choisir entre « ANNULÉ » et
+« ANNULLATO ».
+
+La seule qui compte est celle qui ÉCRIT la langue sur WordPress — `publisher_as._lang`,
+dont le résultat part dans le champ `language` du payload Polylang. D'où la vérification
+centrale de cette fixture : le rapport et le publieur doivent rendre la même valeur pour
+chaque fiche, pas seulement pour les cas qu'on a imaginés.
 
 CE QU'ELLE SURVEILLE :
   1. un ORIGINAL italien (aucun `translated_lang`) part du côté ITALIEN ;
@@ -56,6 +63,7 @@ os.environ["DB_PATH"] = str(tmp)
 
 from scripts.scraper_events import init_db  # noqa: E402
 import scripts.audit_une as au  # noqa: E402
+from scripts.publisher_as import _lang as _lang_publie  # noqa: E402
 
 au.DB_PATH = tmp
 DANS_10_J = (date.today() + timedelta(days=10)).isoformat()
@@ -146,14 +154,21 @@ lignes = {f[0]: dict(zip(
 for f in FICHES:
     lignes[f[0]]["enrich_data"] = _article(f[6], f[7])
 
-_check("un ORIGINAL italien est reconnu italien — sans `translated_lang`, "
-       "c'est l'article qui fait foi",
+_check("un ORIGINAL italien est reconnu italien",
        au.langue_fiche(lignes[1]) == "it", au.langue_fiche(lignes[1]))
 _check("sa TRADUCTION française est reconnue française",
        au.langue_fiche(lignes[2]) == "fr", au.langue_fiche(lignes[2]))
 _check("⚠️ et un original FRANÇAIS sur territoire italophone reste français "
        "(le cas qui doit passer)",
        au.langue_fiche(lignes[3]) == "fr", au.langue_fiche(lignes[3]))
+
+# LA VÉRIFICATION QUI TIENT VRAIMENT, et la seule qui aurait arrêté les deux versions
+# fausses de la journée : le rapport doit rendre EXACTEMENT ce que le publieur a envoyé
+# à Polylang. Les trois contrôles ci-dessus décrivent des cas ; celui-ci interdit la
+# divergence, quels que soient les cas à venir.
+_check("pour CHAQUE fiche, le rapport dit la même langue que le publieur",
+       all(au.langue_fiche(l) == _lang_publie(l) for l in lignes.values()),
+       str({i: (au.langue_fiche(l), _lang_publie(l)) for i, l in lignes.items()}))
 
 print("\n──── ce que le rapport affiche ────")
 buf = io.StringIO()
