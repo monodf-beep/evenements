@@ -30,10 +30,20 @@ Description: Point d'appel UNIQUE pour tout ce que WordPress poste sur Slack :
   message. Ce fichier est donc le pendant WordPress de utils/slack.py.
 
   ── CE QUI EN DÉCOULE ───────────────────────────────────────────────────────
-  • un seul canal : option `cs_slack_webhook_url` (#agendasabauda). Tant
-    qu'elle est vide, on retombe sur `cs_slack_webhook_url_formulaires` —
-    un message mal rangé vaut mieux qu'un message perdu, et le journal PHP
-    dit lequel des deux a servi ;
+  • un seul canal, et SANS nouveau secret. Franck, le 2026-08-17 : « Mais tu
+    publies déjà dans ce canal. Pourquoi je devrais te donner de nouveau le
+    webhook ? » Il a raison : le webhook de #agendasabauda vit dans le `.env`
+    du VPS, que le pipeline utilise chaque jour. Le dupliquer dans la base
+    WordPress ferait deux copies d'un même secret à révoquer, pour un
+    problème qui n'est QUE d'acheminement. WordPress ne poste donc plus rien
+    de lui-même : il TIENT ses rapports dans la boîte, et le récapitulatif de
+    11h45 du VPS vient les chercher (route cs/v1/slack-boite ci-dessous, même
+    authentification X-CS-Auth que la publication quotidienne). Les rapports
+    WordPress arrivent ainsi DANS le message du pipeline — un canal, un
+    message, aucun secret déplacé ;
+  • l'option `cs_slack_webhook_url` reste lue si elle est renseignée un jour,
+    et `cs_slack_webhook_url_formulaires` sert de repli — mais uniquement
+    quand PERSONNE n'est venu vider la boîte depuis 26 h (voir plus bas) ;
   • un seul message par jour : cs_slack_notify() RANGE, un cron quotidien
     vide la boîte. `$urgent = true` court-circuite (rien ne s'en sert
     aujourd'hui : c'est la porte de sortie si un contrôle futur ne peut pas
@@ -44,12 +54,20 @@ Description: Point d'appel UNIQUE pour tout ce que WordPress poste sur Slack :
     quatre snippets en base + un mu-plugin, c'est quatre occasions de casser
     le site pour un problème d'acheminement.
 
-  LA BOÎTE N'EST PAS UNE POUBELLE. Le cron WordPress dépend du trafic : il
-  peut ne pas passer. Si le plus ancien message a plus de 26 h, ou s'il y en a
-  plus de 20, la boîte se vide d'elle-même au message suivant — sans quoi un
-  refus de publication pourrait dormir là indéfiniment, ce qui est pire que le
-  canal encombré qu'on corrige (cf. règle 3 de CLAUDE.md : tout état qui met
-  une fiche de côté doit avoir quelqu'un qui la rouvre).
+  LA BOÎTE N'EST PAS UNE POUBELLE, ET C'EST LE POINT DÉLICAT. Elle attend
+  désormais quelqu'un qui vient d'ailleurs : si le VPS s'arrête, si le cron de
+  11h45 disparaît, si les identifiants WordPress sont révoqués, alors plus
+  personne ne la vide et les rapports dorment — un refus de publication resté
+  invisible est exactement ce qu'on corrige aujourd'hui, à l'envers.
+
+  D'où le rouvreur, et il est explicite (règle 3 de CLAUDE.md : tout état qui
+  met quelque chose de côté doit avoir quelqu'un qui l'en sorte, et « un humain
+  qui tape une commande » n'est pas une réponse) : passé 26 h SANS aucun
+  passage du pipeline, WordPress reprend la parole tout seul sur son propre
+  webhook — le canal des formulaires si c'est le seul configuré. Un message
+  mal rangé se voit ; une boîte silencieuse, non. Le cron quotidien de 11h40
+  n'existe que pour ça, et il se TAIT tant que le pipeline fait son travail
+  (option `cs_slack_dernier_drain`).
 
   JAMAIS BLOQUANT : une soumission de formulaire ne doit jamais échouer parce
   que Slack est injoignable ou mal configuré. Toute erreur part dans le
@@ -69,13 +87,32 @@ if (!defined('ABSPATH')) { exit; }
 const CS_SLACK_BOITE_OPTION = 'cs_slack_boite_du_jour';
 const CS_SLACK_VIDAGE_HOOK  = 'cs_slack_vidage_event';
 
+/** Horodatage du dernier passage du pipeline VPS sur cs/v1/slack-boite.
+ *  C'est lui qui décide si WordPress doit se taire ou reprendre la parole. */
+const CS_SLACK_DRAIN_OPTION = 'cs_slack_dernier_drain';
+
 /** Heure locale du vidage : juste avant le récapitulatif de 11h45 du pipeline,
  *  pour que la matinée arrive d'un bloc plutôt qu'en deux fois. */
 const CS_SLACK_VIDAGE_HEURE = '11:40';
 
-/** Garde-fous d'une boîte que le cron n'aurait pas vidée (voir l'en-tête). */
+/** Garde-fous d'une boîte que PERSONNE n'aurait vidée (voir l'en-tête). */
 const CS_SLACK_BOITE_AGE_MAX = 26 * HOUR_IN_SECONDS;
 const CS_SLACK_BOITE_MAX     = 20;
+
+/**
+ * Le pipeline VPS est-il venu chercher les rapports récemment ?
+ *
+ * Tant que la réponse est oui, WordPress se tait : les rapports arrivent dans
+ * le récapitulatif de 11h45, sur #agendasabauda, sans qu'aucun webhook Slack
+ * n'ait été recopié dans cette base. Si la réponse devient non — VPS arrêté,
+ * cron supprimé, mot de passe d'application révoqué — WordPress reprend la
+ * parole de lui-même : c'est le rouvreur de la règle 3, et il ne dépend de
+ * personne.
+ */
+function cs_slack_pipeline_actif(): bool {
+    $dernier = (int) get_option(CS_SLACK_DRAIN_OPTION, 0);
+    return $dernier > 0 && (time() - $dernier) < CS_SLACK_BOITE_AGE_MAX;
+}
 
 /**
  * L'URL du webhook, et le nom de l'option qui l'a fournie (pour le journal).
@@ -134,20 +171,27 @@ function cs_slack_post(string $texte): bool {
 function cs_slack_ranger(string $texte): bool {
     $boite = get_option(CS_SLACK_BOITE_OPTION, []);
     if (!is_array($boite)) { $boite = []; }
-    $boite[] = ['at' => time(), 'texte' => $texte];
+    // `id` et pas seulement `at` : voir cs_slack_boite_purger(). Deux rapports
+    // peuvent naître dans la même seconde, et un horodatage ne les distingue
+    // alors plus — la fixture du 2026-08-17 l'a montré en effaçant un message
+    // jamais lu.
+    $boite[] = ['id' => wp_generate_uuid4(), 'at' => time(), 'texte' => $texte];
     $ok = update_option(CS_SLACK_BOITE_OPTION, $boite, false);
     if (!$ok && get_option(CS_SLACK_BOITE_OPTION, null) === null) {
         error_log('[cs-slack] boite du jour non enregistree — envoi immediat');
         return cs_slack_post($texte);
     }
-    // La boîte se vide d'elle-même si le cron WordPress n'est pas passé.
+    // La boîte se vide d'elle-même si PERSONNE ne l'a vidée — ni le pipeline
+    // (route cs/v1/slack-boite), ni le cron quotidien.
     $plus_ancien = (int) ($boite[0]['at'] ?? time());
-    if (count($boite) > CS_SLACK_BOITE_MAX
-        || (time() - $plus_ancien) > CS_SLACK_BOITE_AGE_MAX) {
-        error_log('[cs-slack] boite du jour non videe par le cron ('
+    if (!cs_slack_pipeline_actif()
+        && (count($boite) > CS_SLACK_BOITE_MAX
+            || (time() - $plus_ancien) > CS_SLACK_BOITE_AGE_MAX)) {
+        error_log('[cs-slack] boite du jour abandonnee ('
             . count($boite) . ' message(s), le plus ancien de '
-            . round((time() - $plus_ancien) / HOUR_IN_SECONDS) . ' h) — vidage force');
-        cs_slack_vider_boite();
+            . round((time() - $plus_ancien) / HOUR_IN_SECONDS) . ' h, aucun passage '
+            . 'du pipeline) — vidage force');
+        cs_slack_vider_boite(true);
     }
     return true;
 }
@@ -161,10 +205,14 @@ function cs_slack_ranger(string $texte): bool {
  *
  * @return array{0: int, 1: bool} (nombre de messages regroupés, envoyé ou non)
  */
-function cs_slack_vider_boite(): array {
+function cs_slack_vider_boite(bool $force = false): array {
     $boite = get_option(CS_SLACK_BOITE_OPTION, []);
     if (!is_array($boite) || !$boite) {
         return [0, false];
+    }
+    // Le pipeline vient les chercher : WordPress ne double pas le message.
+    if (!$force && cs_slack_pipeline_actif()) {
+        return [count($boite), false];
     }
     update_option(CS_SLACK_BOITE_OPTION, [], false);
 
@@ -213,6 +261,115 @@ function cs_slack_notify(string $texte, bool $urgent = false): bool {
 function cs_slack_notify_form(string $texte): bool {
     return cs_slack_notify($texte);
 }
+
+/* ══ LA ROUTE QUE LE PIPELINE VIENT INTERROGER ═══════════════════════════════
+ *
+ * GET    /?rest_route=/cs/v1/slack-boite         → ce qui attend
+ * DELETE /?rest_route=/cs/v1/slack-boite&ids=…   → retire ce qui est parti
+ *
+ * `ids` est la liste (séparée par des virgules) des rapports que l'appelant a
+ * réellement pris en charge, et elle est obligatoire : on ne retire QUE ceux-là.
+ *
+ * CE FUT D'ABORD UNE BORNE D'HORODATAGE (`jusqu_a`), et la fixture du
+ * 2026-08-17 l'a démolie à la première épreuve : un rapport écrit APRÈS le GET
+ * mais dans la MÊME SECONDE que le dernier message lu tombait sous la borne
+ * (`at <= jusqu_a`) et disparaissait sans avoir jamais été envoyé. Les
+ * horodatages WordPress sont à la seconde ; quatre audits déclenchés par le
+ * même passage de cron naissent régulièrement dans la même seconde. Le défaut
+ * était donc exactement celui que la borne prétendait empêcher — un rapport
+ * perdu en silence. D'où un identifiant par message, qui ne dépend d'aucune
+ * horloge.
+ *
+ * Le GET vaut PREUVE DE VIE, pas seulement le DELETE : les jours où la boîte
+ * est vide, le pipeline n'a rien à supprimer, et sans cette marque WordPress
+ * le croirait mort au bout de 26 h et reprendrait la parole dans le mauvais
+ * canal — précisément le défaut du jour.
+ *
+ * Authentification : celle qui sert déjà à la publication quotidienne
+ * (cs-rest-auth.php, en-tête X-CS-Auth, ou Application Password). La capacité
+ * exigée est `edit_posts` : ces rapports nomment des fiches non publiées.
+ */
+function cs_slack_boite_permission(): bool {
+    return current_user_can('edit_posts');
+}
+
+function cs_slack_boite_lire(): WP_REST_Response {
+    update_option(CS_SLACK_DRAIN_OPTION, time(), false);
+    $boite = get_option(CS_SLACK_BOITE_OPTION, []);
+    if (!is_array($boite)) { $boite = []; }
+    // Rattrapage : les messages rangés avant l'ajout des identifiants n'en ont
+    // pas. On leur en donne un et on l'enregistre, sinon ils ne pourraient
+    // jamais être retirés et reviendraient dans chaque récapitulatif.
+    $complete = false;
+    foreach ($boite as $i => $ligne) {
+        if (empty($ligne['id'])) {
+            $boite[$i]['id'] = wp_generate_uuid4();
+            $complete = true;
+        }
+    }
+    if ($complete) {
+        update_option(CS_SLACK_BOITE_OPTION, $boite, false);
+    }
+    $messages = [];
+    foreach ($boite as $ligne) {
+        $at = (int) ($ligne['at'] ?? 0);
+        $messages[] = [
+            'id'    => (string) $ligne['id'],
+            'at'    => $at,
+            'heure' => $at ? wp_date('H:i', $at) : '',
+            'texte' => (string) ($ligne['texte'] ?? ''),
+        ];
+    }
+    return new WP_REST_Response([
+        'count'    => count($messages),
+        'messages' => $messages,
+    ], 200);
+}
+
+function cs_slack_boite_purger(WP_REST_Request $req): WP_REST_Response {
+    update_option(CS_SLACK_DRAIN_OPTION, time(), false);
+    $brut = $req->get_param('ids');
+    $ids = is_array($brut) ? $brut : explode(',', (string) $brut);
+    $ids = array_filter(array_map('trim', $ids));
+    if (!$ids) {
+        return new WP_REST_Response(['supprimes' => 0, 'restants' => null,
+            'erreur' => 'aucun identifiant fourni'], 400);
+    }
+    $boite = get_option(CS_SLACK_BOITE_OPTION, []);
+    if (!is_array($boite)) { $boite = []; }
+    $restants = [];
+    foreach ($boite as $ligne) {
+        if (!in_array((string) ($ligne['id'] ?? ''), $ids, true)) { $restants[] = $ligne; }
+    }
+    update_option(CS_SLACK_BOITE_OPTION, $restants, false);
+    return new WP_REST_Response([
+        'supprimes' => count($boite) - count($restants),
+        'restants'  => count($restants),
+    ], 200);
+}
+
+add_action('rest_api_init', function (): void {
+    register_rest_route('cs/v1', '/slack-boite', [
+        [
+            'methods'             => 'GET',
+            'callback'            => 'cs_slack_boite_lire',
+            'permission_callback' => 'cs_slack_boite_permission',
+        ],
+        [
+            'methods'             => 'DELETE',
+            'callback'            => 'cs_slack_boite_purger',
+            'permission_callback' => 'cs_slack_boite_permission',
+            'args'                => [
+                'ids' => [
+                    'required'          => true,
+                    'validate_callback' => static function ($v) {
+                        return is_array($v) ? (bool) $v : trim((string) $v) !== '';
+                    },
+                ],
+            ],
+        ],
+    ]);
+});
 
 add_action(CS_SLACK_VIDAGE_HOOK, 'cs_slack_vider_boite');
 

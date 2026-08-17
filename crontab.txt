@@ -236,6 +236,18 @@ SLACK_DIGEST=1
 # en tête. Placé avant le chien de garde de 12h, qui lui parle en direct (urgent=True) :
 # le vidage est un cron, donc si la chaîne est morte il ne part pas — le chien de garde
 # doit pouvoir aboyer quand tout le reste s'est tu.
+# ⚠️ DEPUIS LE 2026-08-17, CE VIDAGE VA AUSSI CHERCHER LES RAPPORTS DE WORDPRESS. Quatre
+# audits quotidiens écrits en Code Snippets (doctrine éditoriale, garde-fous dates/sources,
+# garde-fous panel/formes/lieux, fraîcheur des guides) et les refus de cs-completude.php
+# postaient dans #formulaire — le canal réservé au bruit des formulaires publics, que
+# personne ne lit ; le refus de la fiche #7686 y a dormi. Ils sont maintenant tenus en
+# réserve côté WordPress et rapatriés par scripts.rapports_wordpress (appelé DEPUIS
+# slack_digest, donc AUCUNE ligne de cron à ajouter ici) pour arriver dans CE message.
+# Le webhook de #agendasabauda n'a pas été recopié dans la base WordPress : il reste
+# uniquement dans le .env du VPS, un seul exemplaire à révoquer.
+# Si ce cron cesse de tourner, WordPress s'en aperçoit (aucun passage depuis 26 h) et
+# reprend la parole tout seul sur son propre webhook : les rapports réapparaissent dans
+# #formulaire au lieu de disparaître. C'est voulu — un message mal rangé se voit.
 45 11 * * * cd /root/evenements && .venv/bin/python -m scripts.slack_digest --titre "🌅 Récapitulatif du matin" >> logs/slack_digest.log 2>&1
 0 12 * * * cd /root/evenements && .venv/bin/python scripts/watchdog_crons.py --slack >> logs/watchdog.log 2>&1
 # Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.

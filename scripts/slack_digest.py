@@ -50,6 +50,8 @@ def main(argv=None) -> int:
     parser.add_argument("--titre", default="", help="En-tête du message (facultatif).")
     parser.add_argument("--voir", action="store_true",
                         help="Affiche ce qui attend, sans envoyer ni vider.")
+    parser.add_argument("--sans-wordpress", action="store_true",
+                        help="N'interroge pas WordPress avant de vider la boîte.")
     args = parser.parse_args(argv)
 
     if args.voir:
@@ -68,6 +70,25 @@ def main(argv=None) -> int:
             print(f"  {(l.get('at') or '')[11:16]} · {l.get('source') or '?'}{marque} "
                   f"— {len((l.get('texte') or ''))} caractères")
         return 0
+
+    # LES RAPPORTS DE WORDPRESS, D'ABORD (2026-08-17). Les quatre audits quotidiens
+    # écrits en Code Snippets et les refus de cs-completude.php postaient dans
+    # #formulaire — le canal réservé au bruit des formulaires publics, que personne ne
+    # lit. Ils sont désormais tenus en réserve côté WordPress (route cs/v1/slack-boite)
+    # et rapatriés ICI, juste avant le vidage, pour arriver dans CE message.
+    # Branché dans le digest plutôt qu'en ligne de crontab à part : une ligne de cron de
+    # plus, c'est un passage de plus à surveiller pour un rapport qui n'a de sens que
+    # dans ce message-là. Et jamais bloquant — si WordPress ne répond pas, le
+    # récapitulatif part quand même, c'est le seul message de la matinée.
+    if not args.sans_wordpress:
+        try:
+            from scripts.rapports_wordpress import collecter
+            pris, retires = collecter()
+            if pris:
+                print(f"{pris} rapport(s) WordPress ajouté(s) au récapitulatif "
+                      f"({retires} retiré(s) de WordPress).")
+        except Exception as exc:  # noqa: BLE001 — le digest ne doit jamais tomber pour ça
+            log.warning("Rapports WordPress non récupérés (%s) — digest envoyé sans eux.", exc)
 
     n, envoye = slack.vider_boite(args.titre)
     # RÈGLE 6 — on rapporte le RÉSULTAT, jamais l'intention. « 0 » a deux causes ici
