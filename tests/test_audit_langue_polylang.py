@@ -115,9 +115,18 @@ _check("la traduction que le territoire emporte est signalée",
        "Brahms / Chostakovitch" in sortie, sortie)
 _check("   avec la langue VOULUE et la langue DEVINÉE côte à côte",
        "| 3 | fr | it |" in sortie, sortie[sortie.find("| Fiche"):][:500])
-_check("   et l'adresse de la page, parce que seul WordPress dit l'état réel (règle 1)",
-       "https://agendasabauda.eu/fr/e/3" in sortie,
-       sortie[sortie.find("| Fiche"):][:500])
+# ⚠️ L'ADRESSE DONNÉE DOIT ÊTRE CELLE QUI RÉPOND. Le 2026-08-17, ce relevé affichait le
+# lien public ; Franck l'a ouvert et a vu « 404 Pagina non trovata » — la forme `?p=<id>`
+# rend 404 pour TOUT tribe_events, en ligne ou non, et CLAUDE.md le documente depuis le
+# 2026-08-02. Un relevé qui envoie vérifier au mauvais endroit est pire qu'un relevé
+# muet : il fabrique une certitude fausse.
+_check("   et l'adresse de vérification est l'API REST, pas le lien public",
+       "/wp-json/wp/v2/tribe_events/903" in sortie,
+       sortie[sortie.find("| Fiche"):][:600])
+_check("   allégée pour être lisible dans un navigateur",
+       "_fields=link,status,title" in sortie, sortie[sortie.find("| Fiche"):][:600])
+_check("   et le relevé dit POURQUOI le lien public ne vaut rien ici",
+       "répond 404 pour tout tribe_events" in sortie, sortie[:1800])
 
 print("\n──── un risque À VENIR et un fait ACCOMPLI ne se disent pas pareil ────")
 # Les deux fiches sortent pour le même motif calculé, mais l'une est encore du bon côté

@@ -67,6 +67,34 @@ def cote_du_permalien(url: str) -> str:
     return ""
 
 
+def url_de_verification(url: str, post_id) -> str:
+    """L'adresse REST qui répond VRAIMENT — pas le lien public, qui ment.
+
+    ⚠️ ÉCRIT APRÈS AVOIR ENVOYÉ FRANCK DANS LE MUR (2026-08-17). Ce relevé affichait
+    `wp_permalink_as` en disant « ouvrir l'adresse ». Or pour ces deux fiches, l'adresse
+    enregistrée est la forme provisoire `…/?post_type=tribe_events&p=2205` — et CLAUDE.md
+    documente depuis le 2026-08-02 que cette forme rend 404 pour TOUT `tribe_events`,
+    vivant, corbeillé ou supprimé. Franck a donc vu une page « 404 Pagina non trovata »
+    qui ne disait rien du tout, et j'avais présenté ça comme « dix secondes qui tranchent,
+    règle 1 ». La règle 1 dit exactement le contraire : c'est l'API REST, et elle seule,
+    qui sépare les trois états.
+
+    On construit donc l'adresse REST à partir de l'origine du permalien (pas d'appel
+    réseau ici, pas de lecture d'environnement : ce script reste en lecture seule) et on
+    la donne à la place. `_fields` la rend lisible dans un navigateur : trois valeurs au
+    lieu d'un pavé JSON. C'est `link` qu'il faut regarder — le permalien PROPRE, dont le
+    préfixe `/it/` ou son absence donne le versant réel.
+    """
+    origine = ""
+    u = (url or "").strip()
+    if "//" in u:
+        origine = "/".join(u.split("/")[:3])          # https://agendasabauda.eu
+    if not origine or not post_id:
+        return "—"
+    return (f"{origine}/wp-json/wp/v2/tribe_events/{post_id}"
+            f"?_fields=link,status,title")
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Langue Polylang des traductions. Lecture seule.")
     p.add_argument("--tout", action="store_true",
@@ -121,18 +149,21 @@ def main(argv=None) -> int:
     print("Pour chacune, une republication SANS `force_lang` poserait l'autre langue.")
     print("La colonne « Servie » dit de quel côté WordPress a rangé la page À LA")
     print("PUBLICATION, d'après le préfixe de son adresse. C'est sa réponse à lui, pas")
-    print("notre devinette — mais c'est un champ de la base, écrit un jour donné : pour")
-    print("l'état d'AUJOURD'HUI, ouvrir l'adresse (règle 1).\n")
-    print("| Fiche | Voulue | Devinée | Servie | Territoire | Titre | Page à ouvrir |")
-    print("|---:|---|---|---|---|---|---|")
+    print("notre devinette — mais c'est un champ de la base, écrit un jour donné.\n")
+    print("⚠️  Pour l'état d'AUJOURD'HUI, ouvrir l'adresse REST de la dernière colonne,")
+    print("    JAMAIS le lien public : `?p=<id>` répond 404 pour tout tribe_events, en")
+    print("    ligne ou non (CLAUDE.md, règle 1). Regarder `link` dans la réponse — son")
+    print("    préfixe /it/, ou son absence, donne le versant réel.\n")
+    print("| Fiche | Voulue | Devinée | Servie | Titre | Vérifier (API REST) |")
+    print("|---:|---|---|---|---|---|")
     for r, voulue, devinee in ecarts:
         servie = cote_du_permalien(r.get("wp_permalink_as") or "")
         # On ne met en gras QUE ce qui contredit la langue demandée : un tableau où tout
         # crie ne désigne plus rien.
         marque = f"**{servie}**" if servie and servie != voulue else (servie or "—")
         print(f"| {r['id']} | {voulue} | {devinee} | {marque} | "
-              f"{r.get('territoire') or '—'} | {(r.get('title') or '')[:38]} | "
-              f"{r.get('wp_permalink_as') or '—'} |")
+              f"{(r.get('title') or '')[:34]} | "
+              f"{url_de_verification(r.get('wp_permalink_as') or '', r.get('wp_post_id_as'))} |")
     print()
 
     deja = [(r, v) for r, v, _d in ecarts
