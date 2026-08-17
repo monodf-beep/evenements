@@ -46,8 +46,11 @@ Usage :
 from __future__ import annotations
 import argparse
 import base64
+import json
 import os
+import re
 import sys
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -62,6 +65,28 @@ log = get_logger("rapports_wordpress")
 
 _UA = {"User-Agent": "agenda-sabauda-backoffice/1.0"}
 _ROUTE = "/?rest_route=/cs/v1/slack-boite"
+
+# ══ LA TENDANCE, PARCE QUE « DE MOINS EN MOINS » NE SE PROMET PAS ═══════════════════
+#
+# Franck, 2026-08-17 : « J'aimerais que les messages slack d'erreur soient de moins en
+# moins. » C'est le bon objectif, et il ne se tient pas par bonne volonté : un rapport
+# quotidien qui affiche « 18 points » ne dit pas s'il y en avait 25 hier ou 12. Sans
+# comparaison, personne — ni lui, ni moi la semaine prochaine — ne sait si le dispositif
+# s'assainit ou s'enfonce, et une file qui stagne finit par ne plus être lue.
+#
+# On garde donc, par rapport, le NOMBRE DE POINTS SIGNALÉS chaque jour, et on l'affiche
+# à côté du nombre du jour. Trois usages, dans l'ordre d'utilité :
+#   • voir la baisse quand elle a lieu (c'est la demande) ;
+#   • voir la HAUSSE tout de suite, au lieu de la découvrir trois semaines plus tard ;
+#   • voir ce qui NE BOUGE PAS. Un point signalé quinze jours de suite n'est pas une
+#     alerte, c'est une décision qui n'a pas été prise — ou un contrôle qui se rejoue
+#     sur la même matière, ce que CLAUDE.md (règle 3) interdit précisément.
+#
+# Ce n'est qu'un COMPTEUR DE LIGNES, et il le dit : il compare des rapports, pas des
+# fiches, et deux fiches réparées le même jour qu'une nouvelle apparaît donnent un
+# nombre identique. Il désigne une direction, il ne remplace pas la lecture du rapport.
+_HISTO = ROOT / "logs" / "tendance_wordpress.json"
+_HISTO_JOURS = 30  # au-delà, la comparaison n'apprend plus rien et le fichier gonfle
 
 
 def _wp() -> tuple[str, tuple[str, str]] | None:
@@ -81,6 +106,88 @@ def _headers(auth: tuple[str, str]) -> dict:
     (même mécanisme que scripts/publisher_as.py, lu par cs-rest-auth.php)."""
     jeton = base64.b64encode(f"{auth[0]}:{auth[1]}".encode("utf-8")).decode("ascii")
     return {**_UA, "X-CS-Auth": jeton}
+
+
+def cle_rapport(texte: str) -> str:
+    """Identifiant stable d'un rapport : son titre, sans emoji ni gras.
+
+    Le titre est ce qui ne change pas d'un jour à l'autre, alors que le corps change
+    tous les jours. Si un audit est renommé, sa série repart de zéro et le rapport le
+    DIT (« premier relevé ») plutôt que de comparer deux choses différentes.
+    """
+    premiere = (texte or "").strip().splitlines()[0] if (texte or "").strip() else ""
+    nue = re.sub(r":[a-z0-9_+-]+:", " ", premiere)      # :shield:, :triangular_ruler:…
+    nue = nue.replace("*", " ").replace("_", " ")
+    return re.sub(r"\s+", " ", nue).strip().lower()
+
+
+def compter_points(texte: str) -> int:
+    """Nombre de POINTS signalés : les lignes du rapport qui commencent par `*`.
+
+    C'est la forme que ces audits donnent à chaque constat (`*troncature* : 11 -> …`).
+    La ligne de titre et la mention de périmètre n'en sont pas et ne comptent pas.
+    """
+    return sum(1 for l in (texte or "").splitlines() if l.strip().startswith("*"))
+
+
+def tendance(cle: str, n: int, histo: dict, aujourdhui: str) -> str:
+    """Phrase de tendance à coller sous un rapport. `histo` est modifié (jour enregistré).
+
+    Fonction PURE hormis l'écriture dans `histo` : elle ne lit ni fichier ni horloge, pour
+    qu'une fixture puisse la mettre à l'épreuve sur des séries choisies (voir
+    tests/test_tendance_wordpress.py).
+
+    RÈGLE 6 — un « 0 » doit dire d'où il vient. Le premier relevé d'une série l'annonce au
+    lieu de laisser croire à une baisse : sans historique, « 0 point » et « rien mesuré »
+    ont exactement la même tête.
+    """
+    jours = histo.setdefault(cle, {})
+    veille = {j: v for j, v in jours.items() if j < aujourdhui}
+    jours[aujourdhui] = n
+    # On ne garde qu'une fenêtre glissante.
+    for vieux in sorted(jours)[:-_HISTO_JOURS]:
+        del jours[vieux]
+
+    if not veille:
+        return f"_{n} point(s) signalé(s). Premier relevé : rien à comparer encore._"
+
+    dernier_jour = max(veille)
+    precedent = veille[dernier_jour]
+    serie = [veille[j] for j in sorted(veille)][-7:]
+    plus_ancien = serie[0]
+
+    if n < precedent:
+        sens = "en baisse"
+    elif n > precedent:
+        sens = "EN HAUSSE"
+    else:
+        sens = "inchangé"
+    phrase = (f"_{n} point(s) signalé(s), {sens} — {precedent} au relevé précédent "
+              f"({dernier_jour}), {plus_ancien} il y a {len(serie)} relevé(s)._")
+
+    # Ce qui ne bouge pas est le vrai sujet : ni une alerte, ni un progrès.
+    stables = [j for j in sorted(veille, reverse=True) if veille[j] == n]
+    if len(stables) >= 5 and n > 0:
+        phrase += (f"\n_Ce nombre n'a pas bougé depuis {len(stables)} relevés : ce ne sont "
+                   f"plus des alertes, c'est une décision en attente (les faire corriger, "
+                   f"ou les taire explicitement)._")
+    return phrase
+
+
+def _charger_histo() -> dict:
+    try:
+        return json.loads(_HISTO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _enregistrer_histo(histo: dict) -> None:
+    """Jamais bloquant : une tendance non enregistrée ne doit pas retenir un rapport."""
+    try:
+        _HISTO.parent.mkdir(parents=True, exist_ok=True)
+        _HISTO.write_text(json.dumps(histo, ensure_ascii=False, indent=1), encoding="utf-8")
+    except OSError as exc:
+        log.warning("Tendance non enregistrée (%s) — les rapports partent quand même.", exc)
 
 
 def collecter(vider: bool = True) -> tuple[int, int]:
@@ -116,6 +223,8 @@ def collecter(vider: bool = True) -> tuple[int, int]:
     # WordPress sont à la seconde, et quatre audits lancés par le même cron
     # naissent dans la même seconde : une borne effacerait un rapport écrit
     # après la lecture. Éprouvé le 2026-08-17, la borne a perdu un message.
+    histo = _charger_histo()
+    aujourdhui = date.today().isoformat()
     pris_ids: list[str] = []   # à retirer de WordPress (postés OU vides)
     pris = 0                   # réellement ajoutés au récapitulatif
     for m in messages:
@@ -131,12 +240,20 @@ def collecter(vider: bool = True) -> tuple[int, int]:
             continue
         heure = m.get("heure") or ""
         entete = f"_(WordPress{', ' + heure if heure else ''})_\n"
-        if not slack.notify(entete + texte):
+        # La tendance est calculée sur une COPIE, et la série n'est mise à jour que si le
+        # rapport est effectivement parti : un envoi manqué ne doit pas laisser un relevé
+        # fantôme, sinon le lendemain se compare à un jour qui n'a jamais été affiché.
+        provisoire = {k: dict(v) for k, v in histo.items()}
+        suite = tendance(cle_rapport(texte), compter_points(texte), provisoire, aujourdhui)
+        if not slack.notify(entete + texte + ("\n" + suite if suite else "")):
             log.warning("Rapport WordPress de %s non pris en charge — laissé sur place.", heure)
             break
+        histo = provisoire
         pris_ids.append(mid)
         pris += 1
 
+    if pris:
+        _enregistrer_histo(histo)
     retires = 0
     if vider and pris_ids:
         try:
