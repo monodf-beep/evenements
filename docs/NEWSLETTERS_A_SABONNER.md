@@ -34,13 +34,34 @@ page (label Gmail `Agenda`, jamais une automatisation directe).
 - [ ] **Maurienne Tourisme** (couvre Saint-Jean-de-Maurienne, 0 évén.) — http://www.maurienne-tourisme.com/inscription-newsletter-destination-maurienne/
 - [ ] ⭐ **ATL Terre dell'Alto Piemonte** (*hebdo* — couvre EN UNE FOIS Biella, Vercelli, Novara et Valsesia, toutes à 0-1 évén.) — https://www.atl.biella.it/newsletter/dettaglio/-/d/newsletter-settimanale
 - [ ] **Mairie de Villefranche-sur-Mer** (Nice, mentionne explicitement les événements à venir) — https://www.villefranche-sur-mer.fr/newsletter/
+- [ ] **Sallanches Mont-Blanc Tourisme** (page dédiée, distincte de Savoie Mont Blanc) — https://sallanchesmontblanc.com/newsletters
+- [ ] **Distretto dei Laghi** (VCO/Verbano-Cusio-Ossola, 0 évén.) — https://www.distrettolaghi.it/it/newsletter
+- [ ] **Alexala** (Alessandria, 0 évén. — formulaire en page d'accueil, pas d'URL dédiée) — https://www.alexala.it/it
+- [ ] **Visit Cuneese** (province de Cuneo) — https://www.visitcuneese.it/newsletter
+- [ ] **Cœur de Tarentaise Tourisme** (Moûtiers) — https://www.coeurdetarentaise-tourisme.com/ (formulaire Mailchimp en page d'accueil)
+- [ ] ⭐ **Explore Nice Côte d'Azur** (territoire Comté de Nice entier) — https://www.explorenicecotedazur.com/newsletter/
+- [ ] **Destination Léman** (Chablais, couvre aussi Évian) — https://www.destination-leman.com/newsletter/
+- [ ] **Turismo Torino e Provincia** couvre explicitement Ivrea et le Canavese — déjà listé plus haut, à cocher pour cette zone aussi, pas de source séparée nécessaire.
 
-Non résolu, à rechercher plus loin (pas de page d'inscription newsletter
-dédiée trouvée en date du 18/08, seulement un site web) :
-- **Sallanches** — office de tourisme existe (sallanchesmontblanc.com) mais
-  pas de newsletter propre confirmée ; probablement couvert par la newsletter
-  générale **Savoie Mont Blanc** déjà `[x]` plus haut — à vérifier que
-  Sallanches y apparaît bien avant de conclure à un manque.
+Vérifié le 18/08 mais **incertain** — bloc « Newsletter » présent en page
+mais aucun champ email statique capturé (rendu JavaScript), à confirmer à la
+main avant de compter dessus :
+- **Visit Asti** (province d'Asti) — https://visit.asti.it/ ; `provincia.asti.it` reste bloqué (403).
+- **VisitPiemonte DMO** (région Piémont) — `/newsletter/` répond 404, aucun
+  formulaire d'inscription trouvé sur la page d'accueil : **à écarter** tant
+  que non prouvé, ne pas cocher en l'état.
+
+Non résolu, à rechercher plus loin (blocage technique, pas une absence
+prouvée) :
+- **Annemasse** — le site bloque systématiquement les accès automatisés
+  (reset de connexion sur tous les user-agents testés) ; une page
+  `annemasse.fr/Annemasse/Newsletter` est mentionnée par la recherche web
+  mais invérifiable depuis cet environnement — à tester depuis un poste non
+  filtré.
+- **Aoste (ville)** — `aostalife.it` a renvoyé une erreur de proxy réseau
+  (pas une preuve d'absence) ; rien trouvé sur `comune.aosta.it` — à
+  retester. La Vallée d'Aoste reste couverte à l'échelle régionale par
+  **LoveVDA**, déjà listé plus bas.
 - **Cluses / Thonon-les-Bains / Aix-les-Bains / Chamonix / Megève** — déjà
   `[x]` plus haut (Musiques en Stock, Maison des Arts du Léman, OT
   Aix-les-Bains, OT Chamonix, Megève Tourisme) : si ces zones restent à 0
