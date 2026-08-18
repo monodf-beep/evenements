@@ -165,5 +165,63 @@ _check("la fiche hors une est marquée VIDE (pas NULL) — sinon elle serait rep
 _check("le bilan RECOMPTE en base au lieu d'annoncer une longueur de liste",
        "2 fiche(s) marquées sur 2 (recompté en base)" in marque, marque)
 
+print("\n──── deux fiches sur un même post : nommer, jamais écraser ────")
+# D'OÙ ÇA VIENT (2026-08-18). L'en-tête annonçait « 266 fiches », la charge en contenait
+# 265, et rien ne disait laquelle manquait : deux fiches portaient le même wp_post_id_as
+# et la seconde écrasait la première dans le dictionnaire. Deux tours de vérification
+# perdus, et j'ai d'abord accusé ma propre recopie — la faute était à la source.
+conn = sqlite3.connect(tmp)
+conn.execute(
+    "INSERT INTO events_raw (id, title, url_source, wp_post_id_as, statut, llm_categorie, "
+    "llm_score_detail, date_event_start, date_event_end, territoire, duplicate_of, "
+    "enrich_status, home_score, url_image, enrich_data, article_title) "
+    "VALUES (?,?,?,?,?,?,?,?,?,?,NULL,?,?,?,?,?)",
+    (3, "Jumelle qui vise le MÊME post", "https://a.fr/3", 6380, "published_sub",
+     "Festivals", DETAIL, PASSE, PASSE, "Piemonte", "enriched", 8.0,
+     "https://exemple.fr/p/3.jpg", ARTICLE, "Jumelle"))
+conn.commit(); conn.close()
+
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    ex.main([])
+coll = buf.getvalue()
+donnees_c = _json_de(coll)
+
+_check("les deux nombres sont affichés — fiches ET posts distincts",
+       "Fiches liées à un post WordPress : 3" in coll
+       and "Posts DISTINCTS visés : 2" in coll, coll[:400])
+_check("   et l'écart est signalé au lieu de rester invisible",
+       "partagent un post avec une autre" in coll, coll[:400])
+_check("la collision est NOMMÉE, avec les deux fiches et leurs valeurs",
+       "WP#6380" in coll and "fiche 1 →" in coll and "fiche 3 →" in coll,
+       coll[coll.find("POST(S)"):][:400])
+# ⚠️ LE POINT QUI COMPTE : les deux fiches ne disent PAS la même chose (l'une est en une
+# à 13, l'autre est passée donc hors une). Choisir au hasard poserait une note fausse sans
+# que personne ne puisse savoir laquelle. On refuse d'écrire sur ce post.
+_check("en DÉSACCORD, aucune valeur n'est écrite pour ce post",
+       "6380" not in donnees_c, donnees_c)
+_check("   et le refus est dit en toutes lettres",
+       "DÉSACCORD : rien n'est écrit sur ce post" in coll,
+       coll[coll.find("POST(S)"):][:400])
+_check("   avec la commande qui sert à trancher",
+       "verifier_doublons_publies" in coll, coll[coll.find("POST(S)"):][:500])
+_check("l'autre post, lui, reste exporté normalement",
+       "6381" in donnees_c, donnees_c)
+# ET LE CAS QUI DOIT PASSER : deux fiches d'accord ne bloquent rien. Sans lui, on aurait
+# un portillon qui refuse toute collision, y compris celles qui n'ont aucune conséquence.
+conn = sqlite3.connect(tmp)
+conn.execute("UPDATE events_raw SET date_event_start=?, date_event_end=? WHERE id=3",
+             (DANS_8_J, DANS_8_J))
+conn.commit(); conn.close()
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    ex.main([])
+accord = buf.getvalue()
+_check("⚠️ deux fiches D'ACCORD n'empêchent pas l'écriture (le cas qui doit passer)",
+       _json_de(accord).get("6380") == "13", _json_de(accord))
+_check("   mais la collision reste signalée — elle est anormale même sans conséquence",
+       "WP#6380" in accord and "la valeur est écrite" in accord,
+       accord[accord.find("POST(S)"):][:400])
+
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)

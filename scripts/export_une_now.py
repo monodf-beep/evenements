@@ -57,13 +57,47 @@ SQL = ("SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as, 0) > 0 "
        "AND duplicate_of IS NULL AND wp_deleted_at IS NULL")
 
 
-def _valeurs(lignes: list[dict], auj: date) -> dict[str, str]:
-    """{post_id: valeur} — la valeur EXACTE que `publisher_as` aurait posée aujourd'hui."""
-    out: dict[str, str] = {}
+def _par_post(lignes: list[dict], auj: date) -> dict[str, list[tuple[int, str]]]:
+    """{post_id: [(id_fiche, valeur), …]} — plusieurs fiches PEUVENT viser le même post."""
+    out: dict[str, list[tuple[int, str]]] = {}
     for ev in lignes:
         v = une_now(ev, aujourdhui=auj)
-        out[str(int(ev["wp_post_id_as"]))] = "" if v is None else str(v)
+        out.setdefault(str(int(ev["wp_post_id_as"])), []).append(
+            (int(ev["id"]), "" if v is None else str(v)))
     return out
+
+
+def _valeurs(lignes: list[dict], auj: date) -> tuple[dict[str, str], list[tuple]]:
+    """({post_id: valeur}, collisions) — la valeur que `publisher_as` aurait posée.
+
+    ⚠️ CE QUE LA PREMIÈRE VERSION FAISAIT, ET C'ÉTAIT UN MENSONGE SILENCIEUX (2026-08-18).
+    Elle écrivait `out[post_id] = valeur` en boucle. Quand DEUX fiches portent le même
+    `wp_post_id_as`, la seconde écrasait la première sans un mot : l'en-tête annonçait
+    « 266 fiches », la charge en contenait 265, et rien ne disait laquelle avait disparu
+    ni pourquoi.
+
+    Le contrôle de Novamira l'a attrapé — mais j'ai d'abord accusé MA recopie et ajouté
+    une empreinte de transport, en cherchant la faute sur le trajet alors qu'elle était à
+    la source. L'empreinte reste utile ; le diagnostic était faux. Encore une conclusion
+    sur un indice de surface : « il manque une entrée » ne dit pas OÙ elle a été perdue,
+    et les deux hypothèses étaient à une commande l'une de l'autre.
+
+    Deux fiches sur un même post, c'est une ANOMALIE DE DONNÉES, pas un détail de format :
+    l'une des deux a un lien périmé, ou c'est un doublon que `verifier_doublons_publies`
+    doit trancher. On ne la répare pas ici — on la NOMME, et on refuse d'écrire quand les
+    deux fiches ne disent pas la même chose, parce que choisir au hasard poserait une note
+    fausse sans que personne ne puisse savoir laquelle.
+    """
+    out: dict[str, str] = {}
+    collisions: list[tuple] = []
+    for post_id, paires in _par_post(lignes, auj).items():
+        valeurs_distinctes = {v for _i, v in paires}
+        if len(paires) > 1:
+            collisions.append((post_id, paires, len(valeurs_distinctes) == 1))
+            if len(valeurs_distinctes) > 1:
+                continue          # désaccord : on n'écrit rien sur ce post
+        out[post_id] = paires[0][1]
+    return out, collisions
 
 
 def main(argv=None) -> int:
@@ -88,12 +122,17 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(f"file:{DB_PATH}?mode={mode}", uri=True)
     conn.row_factory = sqlite3.Row
     lignes = [dict(r) for r in conn.execute(SQL)]
-    valeurs = _valeurs(lignes, auj)
+    valeurs, collisions = _valeurs(lignes, auj)
     non_vides = {k: v for k, v in valeurs.items() if v}
 
     # Le périmètre s'écrit à côté du nombre, et un zéro dit son dénominateur (règle 6).
+    # LES DEUX NOMBRES, TOUJOURS. Tant qu'un seul était affiché, l'écart entre les
+    # fiches et les entrées de la charge restait invisible (règle 6).
     print(f"# Fiches liées à un post WordPress : {len(lignes)} (non doublons, non "
           f"supprimées)")
+    print(f"# Posts DISTINCTS visés : {len(_par_post(lignes, auj))}"
+          + (f"  ⚠️ {len(lignes) - len(_par_post(lignes, auj))} fiche(s) partagent un post "
+             f"avec une autre" if len(_par_post(lignes, auj)) != len(lignes) else ""))
     print(f"# Dont une place en une aujourd'hui ({auj.isoformat()}) : {len(non_vides)}")
     print(f"# Les {len(valeurs) - len(non_vides)} autres reçoivent une valeur VIDE — "
           f"« pas sa place », qui n'est pas « jamais calculée ».")
@@ -103,6 +142,17 @@ def main(argv=None) -> int:
         print("# Les cinq plus hautes, pour reconnaître le résultat sur le site :")
         for pid, v in tete:
             print(f"#   WP#{pid:<6} {v:>3}  {titres.get(pid, '')}")
+    if collisions:
+        print()
+        print(f"# ⚠️ {len(collisions)} POST(S) VISÉ(S) PAR PLUSIEURS FICHES — à trancher, "
+              f"ce n'est pas normal :")
+        for post_id, paires, accord in collisions:
+            détail = " · ".join(f"fiche {i} → {v or '(hors une)'}" for i, v in paires)
+            verdict = ("les deux disent la même chose, la valeur est écrite" if accord
+                       else "DÉSACCORD : rien n'est écrit sur ce post")
+            print(f"#   WP#{post_id} : {détail} — {verdict}")
+        print(f"#   Pour trancher : .venv/bin/python -m scripts.verifier_doublons_publies "
+              f"--en-ligne")
     print()
 
     if not args.marquer:
@@ -139,14 +189,19 @@ def main(argv=None) -> int:
         except sqlite3.OperationalError:
             pass
     for ev in lignes:
+        cle = str(int(ev["wp_post_id_as"]))
+        if cle not in valeurs:
+            continue      # post en désaccord : rien n'a été écrit, on ne marque pas
         conn.execute("UPDATE events_raw SET une_now_publie=? WHERE id=?",
-                     (valeurs[str(int(ev["wp_post_id_as"]))], ev["id"]))
+                     (valeurs[cle], ev["id"]))
     conn.commit()
 
     # RECOMPTER EN BASE plutôt que de croire la longueur d'une liste (règle 6).
     relu = [dict(r) for r in conn.execute(SQL)]
     justes = sum(1 for ev in relu
-                 if (ev.get("une_now_publie") or "") == valeurs[str(int(ev["wp_post_id_as"]))])
+                 if str(int(ev["wp_post_id_as"])) in valeurs
+                 and (ev.get("une_now_publie") or "")
+                 == valeurs[str(int(ev["wp_post_id_as"]))])
     conn.close()
     print(f"✅ {justes} fiche(s) marquées sur {len(relu)} (recompté en base).")
     print("   Le rafraîchisseur de 10h45 ne les republiera donc pas pour rien.")
