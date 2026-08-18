@@ -86,5 +86,23 @@ verifier("le relevé composé sur une machine sans base ne contient aucun secret
 verifier("une base absente est DITE, pas passée sous silence",
          "erreur" in r["files"] or r["files"].get("etages") is not None, r["files"])
 
+# ── 5. Les coûts : le champ ajouté pour répondre « et si on fait 10 fiches/jour ? » ──
+from scripts.publier_sante import etat_couts  # noqa: E402
+
+c = etat_couts()
+verifier("la section coûts existe et ne lève pas, même sans base",
+         isinstance(c, dict), str(type(c)))
+if "erreur" not in c:
+    verifier("elle rend le dénominateur avec le total (un coût par fiche sans fiches "
+             "publiées ne veut rien dire)",
+             "fiches_publiees" in c and "cout_usd_total" in c, str(sorted(c)))
+    verifier("elle dit combien d'appels ont été MESURÉS — un total bas peut venir d'une "
+             "instrumentation incomplète, pas d'une chaîne sobre",
+             "appels_mesures" in c, str(sorted(c)))
+    verifier("sans fiche publiée, le coût par fiche est None, jamais 0",
+             c.get("fiches_publiees") or c.get("cout_usd_par_fiche") is None, str(c))
+verifier("aucun secret ne s'est glissé dans les coûts", not contient_un_secret(c),
+         contient_un_secret(c))
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

@@ -170,6 +170,50 @@ def etat_api() -> dict:
     return out
 
 
+def etat_couts(jours: int = 7) -> dict:
+    """Ce que la chaîne a coûté, et pour quel résultat.
+
+    AJOUTÉ LE 2026-08-18, parce que Franck a posé LA question que je ne pouvais pas
+    trancher : « quelle conséquence il va y avoir avec les dix fiches par jour ? ». Le
+    coût par fiche est mesuré depuis le 11/08 (scripts/audit_couts), mais il vit dans la
+    base du serveur — donc hors de portée d'une session. Sans ce champ, la réponse à
+    toute question d'arbitrage de coût est « lance cette commande et colle-moi le
+    résultat », c'est-à-dire exactement la dépendance qu'on supprime.
+
+    On REPREND les fonctions d'audit_couts au lieu de recompter : deux compteurs du même
+    nom finissent par se contredire, et c'est le plus gros qu'on croit (règle 6).
+
+    ⚠️ Le coût par fiche n'a de sens qu'avec son dénominateur : on rend les deux, plus le
+    nombre de postes mesurés — un total bas peut vouloir dire « peu dépensé » ou
+    « instrumentation incomplète », et ces deux-là n'appellent pas la même décision.
+    """
+    from datetime import timedelta
+    try:
+        from scripts.audit_couts import _lire, _fiches_publiees
+    except Exception as exc:  # noqa: BLE001 — un relevé ne doit jamais tomber
+        return {"erreur": f"audit_couts illisible : {exc}"[:120]}
+    depuis = (datetime.now() - timedelta(days=jours)).date().isoformat()
+    try:
+        lignes = _lire(depuis)
+        publiees = _fiches_publiees(depuis)
+    except Exception as exc:  # noqa: BLE001
+        return {"erreur": str(exc)[:120]}
+    total = sum(float(e.get("cout_usd") or 0) for e in lignes)
+    par_poste: dict[str, float] = {}
+    for e in lignes:
+        poste = str(e.get("poste") or e.get("script") or "?")
+        par_poste[poste] = par_poste.get(poste, 0.0) + float(e.get("cout_usd") or 0)
+    haut = sorted(par_poste.items(), key=lambda kv: kv[1], reverse=True)[:6]
+    return {
+        "jours": jours,
+        "appels_mesures": len(lignes),
+        "cout_usd_total": round(total, 2),
+        "fiches_publiees": publiees,
+        "cout_usd_par_fiche": round(total / publiees, 2) if publiees else None,
+        "postes_les_plus_chers": [{"poste": k, "usd": round(v, 2)} for k, v in haut],
+    }
+
+
 def releve() -> dict:
     """Le relevé complet. Composé CHAMP PAR CHAMP : aucun balayage d'environnement, donc
     aucun secret ne peut s'y glisser par accident."""
@@ -179,6 +223,7 @@ def releve() -> dict:
         "crons": etat_crons(),
         "files": etat_files(),
         "api": etat_api(),
+        "couts": etat_couts(),
     }
 
 
@@ -237,6 +282,20 @@ def main(argv=None) -> int:
     ok, detail = publier(r)
     print(f"\n{'OK' if ok else 'ÉCHEC'} — {detail}")
     log.info("Relevé de santé : %s (%s)", "déposé" if ok else "non déposé", detail)
+    if not ok:
+        # IL SE TAIT QUAND TOUT VA BIEN — JAMAIS QUAND IL A ÉCHOUÉ.
+        # Défaut constaté sur mon propre dispositif, le 2026-08-18 à 13h01 : le premier
+        # passage (12h05) n'a rien déposé, et personne ne l'a su. Je l'avais écrit
+        # « silencieux : c'est de la donnée, pas une alerte » — vrai pour le SUCCÈS,
+        # faux pour l'échec. Un relevé de santé muet quand il tombe est un relevé qui
+        # ment par omission : on croit l'état bon parce qu'on ne voit rien.
+        # Le message part dans la boîte du jour, donc dans le récapitulatif — pas en
+        # notification séparée : c'est une panne d'observation, pas une urgence.
+        from utils import slack
+        slack.notify(f"🩺 *Relevé de santé non déposé* — {detail}\n"
+                     f"_Sans lui, une session Claude ne peut pas voir l'état du serveur "
+                     f"(files, crons, crédit) et devra vous le demander. "
+                     f"Journal : `tail -30 logs/sante.log`._")
     return 0 if ok else 1
 
 
