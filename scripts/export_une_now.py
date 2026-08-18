@@ -28,7 +28,7 @@ DEUX TEMPS, ET L'ORDRE COMPTE :
   1. `.venv/bin/python -m scripts.export_une_now`
      → rend le JSON à donner à Novamira. Rien n'est écrit.
 
-  2. `.venv/bin/python -m scripts.export_une_now --marquer`
+  2. `.venv/bin/python -m scripts.export_une_now --apply`
      → APRÈS que Novamira a confirmé l'écriture, enregistre `une_now_publie` en base.
      Sans cette seconde passe, `refresh_deplacement` croira la valeur jamais publiée et
      republiera tout le catalogue au retour du réseau.
@@ -68,7 +68,12 @@ def _valeurs(lignes: list[dict], auj: date) -> dict[str, str]:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         description="Exporte as_une_now pour écriture hors publication. Lecture seule.")
-    p.add_argument("--marquer", action="store_true",
+    # `--apply` est la convention de TOUS les scripts d'écriture de ce dépôt, et
+    # `tests/test_regles_du_depot.py` la fait respecter — il a refusé ce fichier tant
+    # qu'il ne portait que `--marquer`. La règle est bonne : un nom d'option inventé
+    # oblige à relire l'aide avant chaque geste, là où `--apply` se tape de mémoire.
+    # On garde donc les deux, l'alias disant CE QUE ça écrit.
+    p.add_argument("--apply", "--marquer", action="store_true", dest="marquer",
                    help="Enregistre une_now_publie en base. À NE FAIRE QU'APRÈS "
                         "confirmation que WordPress a bien reçu les valeurs.")
     args = p.parse_args(argv)
@@ -103,7 +108,7 @@ def main(argv=None) -> int:
         print(json.dumps(valeurs, separators=(",", ":"), sort_keys=True))
         print()
         print("# ↑ à donner à Novamira. Puis, APRÈS sa confirmation seulement :")
-        print("#   .venv/bin/python -m scripts.export_une_now --marquer")
+        print("#   .venv/bin/python -m scripts.export_une_now --apply")
         conn.close()
         return 0
 

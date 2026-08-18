@@ -127,7 +127,7 @@ _check("   et la sortie rappelle que le marquage vient APRÈS la confirmation",
 print("\n──── avec --marquer, la base porte les mêmes valeurs ────")
 buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
-    ex.main(["--marquer"])
+    ex.main(["--apply"])
 marque = buf.getvalue()
 
 conn = sqlite3.connect(tmp); conn.row_factory = sqlite3.Row
