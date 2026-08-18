@@ -519,9 +519,54 @@ def diagnostic(url: str) -> str:
     except OSError as exc:
         lignes.append(f"TCP 443 : REFUSÉ/SANS RÉPONSE après "
                       f"{time.monotonic() - debut:.1f} s ({exc.__class__.__name__})")
-        lignes.append("→ la connexion n'aboutit pas : filtrage ou limite de connexions "
-                      "par IP chez l'hébergeur. Réessayer plus tard, ou depuis une autre "
-                      "IP, dira lequel des deux.")
+        # « Réessayer plus tard dira lequel des deux » — c'est ce que disait la première
+        # version, et c'était une dérobade : elle renvoyait la question à un humain alors
+        # que la machine peut trancher en trois secondes. Mesuré le 2026-08-18 : le port
+        # 80 de la même adresse tombait AUSSI, tandis que www.ovh.com répondait en 0,1 s
+        # et que le ping ne recevait rien. Trois signaux concordants qui désignent un
+        # blocage de NOTRE adresse par l'hôte visé — et non un port filtré, ni une route
+        # cassée. Le diagnostic les prend donc lui-même.
+        # UN REFUS N'EST PAS UN BLOCAGE, et les confondre enverrait chercher au mauvais
+        # endroit. `ConnectionRefusedError` arrive en quelques millisecondes : la machine
+        # d'en face a RÉPONDU « rien n'écoute ici » — elle nous voit très bien. Un blocage,
+        # lui, jette les paquets sans répondre, et ça se lit comme une EXPIRATION. C'est
+        # cette dernière qu'on a mesurée le 2026-08-18 : ping perdu à 100 %, ports 80 et
+        # 443 expirés, pendant que le même réseau répondait ailleurs en 0,1 s.
+        rejet = isinstance(exc, ConnectionRefusedError)
+        port80 = "muet"
+        try:
+            with socket.create_connection((hote, 80), timeout=6):
+                port80 = "ouvert"
+        except ConnectionRefusedError:
+            port80 = "refusé (la machine répond, rien n'écoute)"
+            rejet = True
+        except OSError:
+            pass
+        lignes.append(f"TCP 80 (même adresse) : {port80}")
+        if rejet:
+            lignes.append("→ la machine d'en face RÉPOND (refus immédiat) : elle nous voit, "
+                          "mais rien n'écoute sur ce port. Ce n'est pas un blocage de "
+                          "notre adresse — vérifier le port, le serveur web, ou l'adresse "
+                          "visée.")
+            return "\n".join(lignes)
+        if port80 == "ouvert":
+            lignes.append("→ seul le HTTPS est coupé : c'est le port 443 qui est filtré, "
+                          "pas notre adresse. Le serveur web répond encore.")
+            return "\n".join(lignes)
+        # Ni 443 ni 80, alors que la sortie IPv4 fonctionne : c'est cette destination-là
+        # qui refuse cette machine. On rend l'adresse à communiquer à l'hébergeur.
+        notre_ip = "inconnue"
+        try:
+            notre_ip = requests.get("https://ipv4.icanhazip.com", timeout=8).text.strip()
+        except requests.RequestException:
+            pass
+        lignes.append(f"→ AUCUN port ne répond, et rien ne refuse non plus — les paquets "
+                      f"sont JETÉS, alors que la sortie réseau fonctionne : l'hébergement "
+                      f"du site bloque notre adresse "
+                      f"IPv4 ({notre_ip}). C'est ce qu'il faut lui donner pour débloquer.")
+        lignes.append("→ ⚠️ NE PAS INSISTER : chaque nouvelle tentative peut prolonger le "
+                      "blocage, qui est en général posé automatiquement après une rafale "
+                      "de requêtes. Attendre, puis vérifier avec un seul appel.")
         return "\n".join(lignes)
 
     try:
