@@ -141,5 +141,49 @@ verifier("et il écarte explicitement WordPress — c'est ce qui économise l'al
 verifier("le diagnostic ne transporte aucun secret", not contient_un_secret({"d": d}),
          contient_un_secret({"d": d}))
 
+# ── 8. L'AFFICHAGE ne doit pas jeter le chiffre qu'on est venu chercher ────────
+# D'OÙ ÇA VIENT — 2026-08-18, et c'est la faute la plus bête de la journée. La sortie
+# terminal était `json.dumps(relevé)[:2000]` ; la provenance est la DERNIÈRE section du
+# relevé. Elle a donc été calculée puis coupée trois fois de suite, en silence, et j'en ai
+# conclu que le script ne la produisait pas. Trois allers-retours avec Franck pour un
+# `[:2000]`. La fixture reproduit exactement ce cas : un relevé dont les sections amont
+# sont ÉNORMES, et une provenance minuscule tout au bout.
+import io  # noqa: E402
+import contextlib  # noqa: E402
+
+from scripts.publier_sante import afficher  # noqa: E402
+
+faux = {
+    "date": "2026-08-18T12:00:00",
+    "git": {"head": "abc1234"},
+    # Volontairement gigantesque : c'est ce qui poussait la provenance hors de la coupe.
+    "files": {"etages": [{"nom": f"etage-{i}", "restants": i} for i in range(200)]},
+    "api": {"api_error": 2},
+    "provenance": {
+        "date_source": {"detail": {"page": 300, "llm": 12},
+                        "gratuit": 300, "payant": 12, "non_resolu": 5,
+                        "part_gratuite_pct": 96},
+    },
+}
+tampon = io.StringIO()
+with contextlib.redirect_stdout(tampon):
+    afficher(faux)
+vu = tampon.getvalue()
+
+verifier("la provenance survit à un relevé énorme (le défaut du [:2000])",
+         "date_source" in vu and "300" in vu and "96" in vu, vu[-300:])
+verifier("la part du code est LUE en clair, pas à reconstituer",
+         "part du code" in vu, vu[:200])
+verifier("l'abrègement de l'état est DIT, jamais silencieux",
+         "abrégé" in vu, vu[-300:])
+# Le cas près de la frontière qui doit PASSER : un relevé SANS provenance ne doit pas
+# faire lever l'affichage ni mentir — il doit dire qu'il n'y a rien.
+tampon = io.StringIO()
+with contextlib.redirect_stdout(tampon):
+    afficher({"date": "x", "git": {}, "provenance": {"erreur": "base absente"}})
+vu2 = tampon.getvalue()
+verifier("une provenance absente est DITE, pas passée sous silence",
+         "indisponible" in vu2 and "base absente" in vu2, vu2)
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

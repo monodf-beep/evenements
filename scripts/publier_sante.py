@@ -422,13 +422,53 @@ def diagnostic(url: str) -> str:
     return "\n".join(lignes)
 
 
+def afficher(r: dict) -> None:
+    """Ce que le terminal montre. LE PLUS IMPORTANT D'ABORD, et rien de coupé en silence.
+
+    D'OÙ ÇA VIENT — 2026-08-18. La sortie était `json.dumps(relevé)[:2000]`. Or la
+    provenance — le chiffre demandé par Franck, « pourquoi on a besoin d'agents » — est la
+    DERNIÈRE section du relevé. Elle a donc été calculée trois fois et jetée trois fois
+    par la troncature, sans que rien ne le dise : les trois sorties s'arrêtaient au milieu
+    de la section « api », et j'ai cru que le script ne l'avait pas produite. Trois
+    allers-retours pour un `[:2000]`.
+
+    C'est la règle du 17/08 mot pour mot : **une liste tronquée doit annoncer son total**,
+    sans quoi elle fabrique de fausses causes — y compris pour celui qui l'a écrite. Donc
+    ici : les sections courtes et décisives en entier, le reste résumé, et la coupe DITE.
+    """
+    prov = r.get("provenance") or {}
+    if "erreur" in prov:
+        print(f"PROVENANCE : indisponible — {prov['erreur']}")
+    elif prov:
+        print("PROVENANCE — d'où viennent les dates et les lieux des fiches ENCORE DEVANT NOUS")
+        for champ, m in prov.items():
+            pct = m.get("part_gratuite_pct")
+            print(f"  {champ:13s} code={m.get('gratuit')}  modèle={m.get('payant')}  "
+                  f"non résolu={m.get('non_resolu')}  "
+                  f"part du code : {pct if pct is not None else '—'}%")
+            detail = ", ".join(f"{k}={v}" for k, v in (m.get("detail") or {}).items())
+            print(f"                {detail}")
+    else:
+        print("PROVENANCE : aucune donnée (colonnes date_source/venue_source absentes ?)")
+
+    couts = r.get("couts") or {}
+    if couts:
+        print("\nCOÛTS : " + ", ".join(f"{k}={v}" for k, v in couts.items()))
+
+    print("\nÉTAT — " + json.dumps({k: v for k, v in r.items()
+                                    if k not in ("provenance", "couts")},
+                                   ensure_ascii=False)[:1200])
+    print("(état abrégé pour le terminal ; le relevé COMPLET est ce qui part sur "
+          "WordPress, rien n'est coupé à l'envoi)")
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Dépose l'état du pipeline sur WordPress.")
     p.add_argument("--publier", action="store_true", help="Envoie réellement.")
     args = p.parse_args(argv)
 
     r = releve()
-    print(json.dumps(r, ensure_ascii=False, indent=1)[:2000])
+    afficher(r)
     faute = contient_un_secret(r)
     if faute:
         print(f"\n⚠️ REFUS : « {faute} » trouvé dans le relevé.")
