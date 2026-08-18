@@ -36,6 +36,7 @@ import json
 import os
 import sqlite3
 import subprocess
+import time
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -52,7 +53,15 @@ from utils.logger import get_logger  # noqa: E402
 log = get_logger("publier_sante")
 
 DB = ROOT / "data" / "events.db"
-_UA = {"User-Agent": "agenda-sabauda-backoffice/1.0"}
+# LE MÊME EN-TÊTE QUE LE CHEMIN QUI MARCHE (scripts/publisher_as.py). Constaté le
+# 2026-08-18 : `publish_batch_as` a mis à jour WP#6380 à 13h01, et sept minutes plus tard
+# ce script rendait un ConnectTimeoutError sur le MÊME hôte. La seule différence entre les
+# deux requêtes était l'en-tête : un agent utilisateur maison contre un navigateur. Le
+# filtrage devant le site (Cloudflare/WAF) laisse passer l'un et fait tomber l'autre dans
+# le vide — pas un 403 franc, un silence, ce qui est plus dur à diagnostiquer.
+# On reprend donc l'en-tête éprouvé plutôt que d'en inventer un.
+_UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                     "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
 _ROUTE = "/?rest_route=/cs/v1/sante"
 
 # Tout ce qui ressemble à un secret n'a rien à faire dans un relevé d'exploitation. La
@@ -252,17 +261,27 @@ def publier(r: dict) -> tuple[bool, str]:
         return False, (f"REFUS : le relevé contient « {faute} » — un relevé "
                        f"d'exploitation ne transporte aucun secret")
     jeton = base64.b64encode(f"{user}:{mdp}".encode("utf-8")).decode("ascii")
-    try:
-        rep = requests.post(f"{url}{_ROUTE}", json={"releve": r},
-                            auth=(user, mdp),
-                            headers={**_UA, "X-CS-Auth": jeton}, timeout=20)
-        if rep.status_code == 404:
-            return False, "route cs/v1/sante absente — mu-plugin cs-sante.php déployé ?"
-        rep.raise_for_status()
-        gardes = (rep.json() or {}).get("gardes")
-        return True, f"relevé déposé, {gardes} en réserve"
-    except (requests.RequestException, ValueError) as exc:
-        return False, str(exc)[:160]
+    # TROIS TENTATIVES ESPACÉES. Le premier échec observé était un ConnectTimeoutError,
+    # pas un refus : le site n'a pas dit non, il n'a pas répondu. Un relevé quotidien qui
+    # abandonne au premier hoquet réseau laisse une journée sans état, et c'est exactement
+    # l'angle mort qu'il existe pour fermer.
+    dernier = ""
+    for essai in range(3):
+        try:
+            rep = requests.post(f"{url}{_ROUTE}", json={"releve": r},
+                                auth=(user, mdp),
+                                headers={**_UA, "X-CS-Auth": jeton}, timeout=30)
+            if rep.status_code == 404:
+                return False, "route cs/v1/sante absente — mu-plugin cs-sante.php déployé ?"
+            rep.raise_for_status()
+            gardes = (rep.json() or {}).get("gardes")
+            return True, f"relevé déposé, {gardes} en réserve"
+        except (requests.RequestException, ValueError) as exc:
+            dernier = str(exc)[:160]
+            log.warning("Dépôt du relevé, tentative %d/3 : %s", essai + 1, dernier)
+            if essai < 2:
+                time.sleep(5 * (essai + 1))
+    return False, dernier
 
 
 def main(argv=None) -> int:
