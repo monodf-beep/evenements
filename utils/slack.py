@@ -30,7 +30,41 @@ from utils.logger import get_logger
 log = get_logger("slack")
 
 
+def _depuis_les_tests() -> bool:
+    """Vrai si l'appel vient d'un fichier de `tests/`.
+
+    INCIDENT RÉEL, 2026-08-17 à 01h05 : « :rotating_light: chaîne morte » et « message
+    ordinaire » sont apparus dans #agendasabauda. Aucune panne — c'était
+    `tests/test_slack_digest.py` qui postait POUR DE VRAI. Cette fixture retire pourtant
+    `SLACK_WEBHOOK_URL` de l'environnement avant de commencer ; seulement `_webhook()`
+    rappelle `load_dotenv()` à chaque envoi, ce qui RÉINJECTE l'URL depuis le `.env`. Le
+    garde-fou était défait par le code qu'il testait.
+
+    Le danger a changé d'échelle le jour même : `scripts/auto_deploiement` lance TOUTES
+    les fixtures sur le VPS avant chaque déploiement. Une fausse alerte « chaîne morte »
+    serait donc partie chaque matin — exactement le message qu'on ne peut pas se
+    permettre de crier au loup.
+
+    POSÉ ICI, ET PAS DANS LES SEPT FIXTURES qui appellent `notify` : une seule d'entre
+    elles se protégeait, et une fixture écrite demain n'y penserait pas. Même raisonnement
+    que SLACK_DIGEST — le point de passage obligé est le bon endroit.
+    """
+    import inspect
+    dossier = str(ROOT / "tests")
+    try:
+        for frame in inspect.stack()[1:12]:
+            if str(frame.filename).startswith(dossier):
+                return True
+    except Exception:  # noqa: BLE001 — jamais bloquant
+        pass
+    return False
+
+
 def _webhook() -> str:
+    if _depuis_les_tests():
+        # Transport coupé, logique intacte : `notify` prend exactement le chemin
+        # « webhook absent », celui que les fixtures veulent éprouver.
+        return ""
     load_dotenv(ROOT / ".env")
     return (os.getenv("SLACK_WEBHOOK_URL") or "").strip()
 
