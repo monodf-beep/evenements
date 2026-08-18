@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""RAFRAÎCHIR `as_deplacement_now` — le score de tri de « Ça vaut le déplacement »
-n'est pas une valeur, c'est une valeur DATÉE.
+"""RAFRAÎCHIR LES SCORES DATÉS des sections de l'accueil — `as_deplacement_now` (« Ça
+vaut le déplacement ») et `as_une_now` (« À la une ») ne sont pas des valeurs, ce sont
+des valeurs DATÉES.
+
+⚠️ LE NOM DU FICHIER EST DEVENU TROP ÉTROIT (2026-08-18) : il en couvre deux. Il n'a pas
+été renommé parce que le crontab installé le désigne par ce chemin, et qu'un renommage
+qui casse un cron coûte plus cher qu'un nom imparfait. À reprendre le jour où l'on
+touchera au crontab pour autre chose.
 
 LE DÉFAUT QU'IL CORRIGE, et c'en était un de conception. `utils.deplacement.deplacement_now`
 relève le score intrinsèque (0-12 depuis la repondération du 2026-08-04 — la valeur de tri
@@ -67,6 +73,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.deplacement import deplacement_now
+from utils.une import une_now
 from utils.logger import get_logger
 
 log = get_logger("refresh-deplacement")
@@ -81,11 +88,12 @@ def _ensure_col(conn: sqlite3.Connection) -> None:
     pas », et il faudrait tout republier chaque jour. NULL compte comme « jamais publié »,
     donc la fiche sera poussée au premier passage — le rattrapage est voulu, pas subi.
     """
-    try:
-        conn.execute("ALTER TABLE events_raw ADD COLUMN deplacement_now_publie TEXT")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
+    for col in ("deplacement_now_publie", "une_now_publie"):
+        try:
+            conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} TEXT")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
 
 
 def _propager_score_detail(conn: sqlite3.Connection, apply: bool) -> list[tuple[int, str]]:
@@ -149,9 +157,33 @@ def _valeur(ev: dict, auj: date) -> str:
     return "" if v is None else str(v)
 
 
+def _valeur_une(ev: dict, auj: date) -> str:
+    """Idem pour `as_une_now`, le score de tri de « À la une ».
+
+    ⚠️ AJOUTÉ LE 2026-08-18, ET C'EST UNE RÉCIDIVE. `as_une_now` a été créé la veille avec
+    exactement la nature que ce fichier décrit depuis le 2026-08-04 : un score intrinsèque
+    RELEVÉ PAR LA DATE, calculé par `publisher_as` au moment de la publication, donc gelé
+    ensuite. Les trois dérives listées en tête de ce fichier l'attendaient telles quelles :
+
+      • le Tour de l'Avenir vaut 13 aujourd'hui à huit jours de la course ; sans ce
+        rafraîchissement il vaudrait encore 13 en octobre, en tête de la vitrine ;
+      • une fiche publiée en juin pour un festival de septembre est figée hors une ; le
+        jour où elle devient imminente, RIEN ne le lui dit ;
+      • un événement passé doit SORTIR (`une_now` renvoie None) — sa méta gelée continue
+        de le classer.
+
+    Autrement dit : le correctif fait pour supprimer « ça fait des semaines qu'ils sont à
+    la une » aurait recréé la même plainte par un autre chemin. Le rouvreur de la règle 3
+    vaut aussi pour les valeurs vivantes, et il était déjà écrit ici — il suffisait de le
+    lire avant d'ajouter une méta datée de plus.
+    """
+    v = une_now(ev, aujourdhui=auj)
+    return "" if v is None else str(v)
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
-        description="Recalcule as_deplacement_now et republie les fiches dont il a changé.")
+        description="Recalcule as_deplacement_now ET as_une_now, republie ce qui a changé.")
     p.add_argument("--apply", action="store_true", help="Écrit et republie (sinon dry-run).")
     p.add_argument("--cap", type=int, default=200,
                    help="Nombre maximum de republications par passage (défaut 200).")
@@ -195,9 +227,16 @@ def main(argv=None) -> int:
     for ev in lignes:
         avant = ev.get("deplacement_now_publie")
         apres = _valeur(ev, auj)
+        avant_u = ev.get("une_now_publie")
+        apres_u = _valeur_une(ev, auj)
         # NULL ≠ '' : « jamais publié » n'est pas « publié vide ». Sans cette distinction,
         # le rattrapage du premier passage n'aurait pas lieu pour les fiches hors section.
-        if avant is not None and avant == apres:
+        # UNE SEULE des deux qui bouge suffit : la republication pousse les deux métas
+        # d'un coup, donc les traiter séparément doublerait les révisions WordPress pour
+        # rien. C'est aussi pourquoi ce script n'a pas de jumeau : un second cron
+        # republierait les mêmes fiches deux fois par jour.
+        if (avant is not None and avant == apres
+                and avant_u is not None and avant_u == apres_u):
             continue
         # PUBLIÉE AUJOURD'HUI → DÉJÀ À JOUR CÔTÉ WORDPRESS, on enregistre sans republier.
         # Double écriture trouvée au tour des automatisations du 2026-08-04 : le lot de
@@ -209,10 +248,11 @@ def main(argv=None) -> int:
         # seule exception, une fiche dont les dates auraient été corrigées à la main entre
         # 9h30 et ce passage — elle attendra demain, et c'est un moindre mal.
         publiee_auj = str(ev.get("published_as_date") or "")[:10] == auj.isoformat()
-        if avant is None and publiee_auj:
-            fraiches.append({"ev": ev, "apres": apres})
+        if publiee_auj and (avant is None or avant_u is None):
+            fraiches.append({"ev": ev, "apres": apres, "apres_u": apres_u})
             continue
-        changees.append({"ev": ev, "avant": avant, "apres": apres})
+        changees.append({"ev": ev, "avant": avant, "apres": apres,
+                         "avant_u": avant_u, "apres_u": apres_u})
 
     print(f"\n{len(lignes)} fiche(s) liées à un post, {len(changees)} dont la valeur a changé"
           + (f", {len(fraiches)} publiée(s) aujourd'hui (déjà à jour, enregistrées sans "
@@ -220,8 +260,13 @@ def main(argv=None) -> int:
     for c in changees[:args.cap]:
         av = "—" if c["avant"] is None else (c["avant"] or "(hors section)")
         ap = c["apres"] or "(hors section)"
-        print(f"  [{c['ev']['id']:>5}] WP#{c['ev']['wp_post_id_as']:<6} {av:>14} → {ap:<14} "
-              f"{(c['ev'].get('title') or '')[:45]}")
+        av_u = "—" if c["avant_u"] is None else (c["avant_u"] or "(hors une)")
+        ap_u = c["apres_u"] or "(hors une)"
+        # Les DEUX transitions sont montrées, même celle qui ne bouge pas : sans ça on
+        # lirait « republiée » sans savoir laquelle des deux sections est concernée.
+        print(f"  [{c['ev']['id']:>5}] WP#{c['ev']['wp_post_id_as']:<6} "
+              f"déplacement {av:>12} → {ap:<12} · une {av_u:>10} → {ap_u:<10} "
+              f"{(c['ev'].get('title') or '')[:34]}")
     if len(changees) > args.cap:
         # Un plafond qui tronque en silence se lit comme « tout est traité » (règle 6).
         print(f"\n  … {len(changees) - args.cap} au-delà du plafond --cap, reportées au "
@@ -238,8 +283,8 @@ def main(argv=None) -> int:
     # déjà la bonne valeur (posée par publisher_as à la publication du matin), il ne manque
     # que la trace en base. Cf. le commentaire du tri ci-dessus.
     for c in fraiches:
-        conn.execute("UPDATE events_raw SET deplacement_now_publie=? WHERE id=?",
-                     (c["apres"], c["ev"]["id"]))
+        conn.execute("UPDATE events_raw SET deplacement_now_publie=?, une_now_publie=? "
+                     "WHERE id=?", (c["apres"], c["apres_u"], c["ev"]["id"]))
     if fraiches:
         conn.commit()
     pousse = 0
@@ -258,15 +303,16 @@ def main(argv=None) -> int:
         if not wp_id:
             par_etat.setdefault("echec_publication", []).append(ev["id"])
             continue
-        conn.execute("UPDATE events_raw SET deplacement_now_publie=? WHERE id=?",
-                     (c["apres"], ev["id"]))
+        conn.execute("UPDATE events_raw SET deplacement_now_publie=?, une_now_publie=? "
+                     "WHERE id=?", (c["apres"], c["apres_u"], ev["id"]))
         pousse += 1
     conn.commit()
 
     # RECOMPTER EN BASE plutôt qu'annoncer la longueur d'une liste (règle 6).
     restant = 0
     for ev in [dict(r) for r in conn.execute(sql, params)]:
-        if (ev.get("deplacement_now_publie")) != _valeur(ev, auj):
+        if (ev.get("deplacement_now_publie") != _valeur(ev, auj)
+                or ev.get("une_now_publie") != _valeur_une(ev, auj)):
             restant += 1
     conn.close()
 
