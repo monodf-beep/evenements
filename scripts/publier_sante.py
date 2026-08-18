@@ -339,6 +339,13 @@ def publier(r: dict) -> tuple[bool, str]:
     # retombe forcément dans la même fenêtre : les trois tentatives n'en faisaient qu'une.
     dernier = ""
     for essai, attente in enumerate((30, 120, 0)):
+        # IL DIT QU'IL TRAVAILLE. Constaté le 2026-08-18 : après avoir porté les attentes
+        # à 30 s puis 120 s, la commande reste muette près de cinq minutes — Franck a
+        # écrit « rien ne se passe » et a cru le script mort. Un dispositif fait pour
+        # rendre autonome ne peut pas ressembler à une panne pendant qu'il fonctionne.
+        # Ces lignes servent deux fois : à l'écran, et dans logs/sante.log, où leurs
+        # horodatages disent ensuite OÙ le temps est parti.
+        print(f"→ dépôt du relevé, tentative {essai + 1}/3…", flush=True)
         try:
             rep = requests.post(f"{url}{_ROUTE}", json={"releve": r},
                                 auth=(user, mdp),
@@ -357,6 +364,8 @@ def publier(r: dict) -> tuple[bool, str]:
             dernier = str(exc)[:160]
             log.warning("Dépôt du relevé, tentative %d/3 : %s", essai + 1, dernier)
             if attente:
+                print(f"   échec ({dernier[:70]}…) — nouvelle tentative dans {attente} s",
+                      flush=True)
                 time.sleep(attente)
     return False, f"{dernier}\n{diagnostic(url)}"
 
