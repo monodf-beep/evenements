@@ -585,7 +585,14 @@ Sa seconde section compte ces fiches **par motif**, et sépare surtout ce qui es
 restant de ce qui n'en est pas — les 80 qui ont déjà un lieu ne sont pas une tâche, et les
 compter comme telle fabriquerait la file ingérable du 11/08.
 
-**Ce qui reste à trancher, et qui n'est pas technique** : écarter 311 fiches est réversible,
-donc autorisé sans demander (`CLAUDE.md`, « réversible = seul »). Mais le faire d'un coup
-change ce que Franck voit dans son back-office du jour au lendemain. Le dry-run d'abord,
-et lire sa sortie — règle 4.
+**⚠️ ET CE COMPTAGE N'EST PAS CELUI DE LA FILE.** Vérifié le 2026-08-18, après avoir
+annoncé le contraire : `discard_uncompletable --no-page` rend **0 à écarter**, sur une file
+« à compléter » qui contenait **3** fiches. Les deux nombres sont justes et portent sur des
+ensembles différents — ici les fiches à venir sans provenance de lieu, quel que soit leur
+statut ; là-bas les seules fiches encore dans la file. Une fiche déjà publiée ou déjà
+rejetée apparaît ici et n'encombre rien.
+
+Donc **rien n'indique aujourd'hui que ces 311 fiches demandent un geste.** Ce paragraphe
+décrit un chemin absent, pas une charge de travail. Avant de brancher
+`discard_uncompletable` en cron, mesurer ce que la FILE contient — et le dry-run reste la
+première commande (règle 4).

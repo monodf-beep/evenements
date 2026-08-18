@@ -166,7 +166,7 @@ conn.close()
 conn = base_jetable([
     # A un lieu, mais la provenance n'a pas été notée : PAS un manque.
     {"title": "Concert", "url": "https://x.fr/1", "lieu": "Le Manège", "ville": "",
-     "venue_source": ""},
+     "venue_source": "", "statut": "published"},
     # Newsletter : exclue des DEUX passes de venues.py, donc jamais située, jamais
     # re-tentée. C'est le cul-de-sac sans rouvreur.
     {"title": "Lettre du mois", "url": "gmail:abc123", "venue_source": ""},
@@ -202,6 +202,14 @@ verifier("les sorties DÉJÀ ÉCRITES sont nommées, pour qu'on ne les réécriv
          "discard_uncompletable" in _r and "gmail_relink" in _r, _r[-400:])
 verifier("et il est dit qu'elles ne sont pas planifiées — c'est ça le défaut",
          "n'est planifié" in _r, _r[-400:])
+# LE STATUT, PARCE QUE SANS LUI CE COMPTAGE MENT SUR SON PÉRIMÈTRE. Le 2026-08-18 j'ai
+# annoncé « 311 fiches encombrent la file à compléter » ; `discard_uncompletable` a
+# répondu « 0 à écarter ». Les deux nombres étaient justes, les périmètres non. Une fiche
+# déjà publiée n'encombre aucune file — et elle est ici.
+verifier("le statut des fiches est rendu : c'est lui qui dit si elles encombrent quelque chose",
+         v["par_statut"].get("published") == 1, str(v.get("par_statut")))
+verifier("et le rapport PRÉVIENT que ce n'est pas le compteur de discard_uncompletable",
+         "discard_uncompletable" in _r and "n'encombre rien" in _r, _r[:600])
 conn.close()
 
 conn = base_jetable([])

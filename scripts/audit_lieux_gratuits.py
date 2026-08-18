@@ -326,6 +326,21 @@ def pourquoi_sans_provenance(conn: sqlite3.Connection) -> dict:
         f"SELECT id, title, url_source, lieu, statut FROM events_raw "
         f"WHERE {devant} AND COALESCE(venue_source,'')=''", (auj,))]
 
+    # LE STATUT, PARCE QUE SANS LUI CE COMPTAGE MENT SUR SON PÉRIMÈTRE.
+    # Mesuré le 2026-08-18 : j'ai annoncé « 311 fiches encombrent la file à compléter »,
+    # et `discard_uncompletable --no-page` a répondu « 0 à écarter ». Les deux nombres
+    # étaient justes — ils ne portaient simplement pas sur le même ensemble. Ce script
+    # compte les fiches À VENIR sans provenance de lieu, quel que soit leur statut ;
+    # `discard_uncompletable` ne regarde que celles qui sont DANS la file « à compléter ».
+    # Une fiche déjà publiée, ou déjà rejetée, apparaît ici et pas là-bas — et elle
+    # n'encombre rien du tout.
+    # C'est le défaut du 2026-08-11 (« 793 points à vérifier ») dans sa forme exacte : deux
+    # compteurs de même nom, deux périmètres, et c'est le plus gros qu'on croit.
+    par_statut: dict[str, int] = {}
+    for lg in lignes:
+        st = (lg.get("statut") or "(vide)")
+        par_statut[st] = par_statut.get(st, 0) + 1
+
     motifs = {"a deja un lieu": 0, "adresse gmail (newsletter)": 0,
               "adresse news.google": 0, "fiche fusionnee": 0,
               "eligible, en attente": 0}
@@ -345,7 +360,8 @@ def pourquoi_sans_provenance(conn: sqlite3.Connection) -> dict:
         motifs[motif] += 1
         if len(exemples[motif]) < 3:
             exemples[motif].append(f"[{lg['id']}] {(lg.get('title') or '')[:60]}")
-    return {"total": len(lignes), "motifs": motifs, "exemples": exemples}
+    return {"total": len(lignes), "motifs": motifs, "exemples": exemples,
+            "par_statut": par_statut}
 
 
 def rapport_vides(v: dict) -> str:
@@ -365,7 +381,17 @@ def rapport_vides(v: dict) -> str:
         L.append(f"  {n:5d}  {motif}")
         for ex in v["exemples"][motif]:
             L.append(f"           {ex}")
+    L += ["", "Leur STATUT — c'est lui qui dit si elles encombrent quelque chose :"]
+    for st, n in sorted(v.get("par_statut", {}).items(), key=lambda kv: -kv[1]):
+        L.append(f"  {n:5d}  statut « {st} »")
     L += ["",
+          "⚠️ CE COMPTAGE N'EST PAS CELUI DE `discard_uncompletable`, et les confondre "
+          "fait dire n'importe quoi. Ici : les fiches À VENIR sans provenance de lieu, "
+          "quel que soit leur statut. Là-bas : les fiches DANS la file « à compléter ». "
+          "Une fiche déjà publiée ou déjà rejetée apparaît ici et pas là-bas — et "
+          "n'encombre rien. Le 2026-08-18, j'ai annoncé « 311 fiches encombrent la file » "
+          "quand la file en contenait 3.",
+          "",
           "CE QU'IL FAUT EN FAIRE, motif par motif :",
           "  · « a déjà un lieu » — pas un manque : le lieu est là, seule la provenance "
           "n'a pas été notée. À retirer des compteurs de travail restant, sinon on "
