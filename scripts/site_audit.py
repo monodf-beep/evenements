@@ -402,6 +402,41 @@ def main(argv: list[str] | None = None) -> int:
              len(lot), len(toutes), etat.get("dernier_id") or "—")
 
     session = requests.Session()
+
+    # LE SITE RÉPOND-IL, AVANT DE JUGER SES PAGES UNE PAR UNE ?
+    #
+    # `auditer()` rend « page INJOIGNABLE » en gravité GRAVE quand la requête échoue. C'est
+    # juste pour UNE page qui tombe alors que le site va bien. Mais quand c'est le site
+    # entier qui est hors d'atteinte, ce même code crie une anomalie grave par fiche : un
+    # incident réseau devient des centaines de pages « cassées ».
+    #
+    # Ce n'est pas théorique. Le 2026-08-18 à 13h05, l'hébergement du site a cessé de
+    # répondre à l'adresse du VPS — ping perdu à 100 %, ports 80 et 443 expirés, pendant
+    # que le reste du réseau fonctionnait. Le cron de 14h aurait rendu un rapport de
+    # plusieurs centaines de lignes graves, toutes fausses, et il aurait fallu le
+    # démonter à la main pour s'apercevoir qu'il n'y avait qu'UN problème.
+    #
+    # C'est la règle 6 de CLAUDE.md : une file ne doit contenir que ce qu'un humain peut
+    # faire. Face à un site injoignable, le seul geste utile est d'attendre — pas de relire
+    # trois cents fiches. Et c'est aussi « un zéro doit dire d'où il vient », dans l'autre
+    # sens : un rapport catastrophique doit dire s'il vient d'une catastrophe ou d'un câble.
+    if not args.ids:
+        temoin = (os.getenv("WP_AS_URL") or "").rstrip("/")
+        if temoin:
+            try:
+                session.get(temoin + "/", timeout=20, headers=UA)
+            except requests.RequestException as exc:
+                msg = (f"🔴 *Audit du site NON EFFECTUÉ* — {temoin} est injoignable depuis "
+                       f"le serveur : {str(exc)[:160]}\n"
+                       f"_Aucune conclusion n'est tirée sur les {len(toutes)} fiches "
+                       f"publiées : elles n'ont pas été relues. Un site hors d'atteinte "
+                       f"n'est pas un site cassé, et le seul geste utile est d'attendre "
+                       f"qu'il réponde._")
+                log.error(msg.replace("*", ""))
+                if not args.quiet:
+                    slack.notify(msg)
+                return 1
+
     graves, averts, saines = [], [], 0
     corbeille: list[str] = []     # posts corbeillés : COMPTÉS, jamais criés un par un
     for i, row in enumerate(lot, 1):
