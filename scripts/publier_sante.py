@@ -649,8 +649,9 @@ def message_echec(detail: str) -> str:
 
     Si le port 443 du site ne s'ouvre plus depuis le VPS, ce n'est plus le relevé le sujet :
     c'est TOUTE la chaîne de publication qui passe par là. Constaté le 2026-08-18 — le port
-    est tombé entre 13h01 (dernier `publish_batch_as` réussi) et 13h08, et `curl` le
-    confirmait encore à 14h15, alors que le déploiement joignait GitHub en 443 à la même
+    est tombé dès 09h58 — c'est le bilan du matin de 11h05 qui le disait, avant moi — et
+    `curl` le confirmait encore à 14h15. La coupure est INTERMITTENTE : un
+    `publish_batch_as` a réussi à 13h01, entre deux creux, alors que le déploiement joignait GitHub en 443 à la même
     minute. Donc le VPS sort très bien : c'est cette destination-là qui le refuse.
     Annoncer ça comme « relevé non déposé » enterrerait une panne de production sous un
     incident d'outillage — exactement le défaut de périmètre que CLAUDE.md reproche aux

@@ -230,7 +230,7 @@ verifier("le périmètre voyage avec le nombre (règle 6)",
          "règle 5" in d["perimetre"] and "RÉSOLUS" in d["perimetre"], d["perimetre"])
 
 # ── 10. Une panne de production ne doit pas se déguiser en incident d'outillage ──
-# D'OÙ ÇA VIENT — 2026-08-18, 13h05 : le port 443 du site cesse de s'ouvrir DEPUIS LE VPS,
+# D'OÙ ÇA VIENT — 2026-08-18, 09h58 : le port 443 du site cesse de s'ouvrir DEPUIS LE VPS,
 # alors que le déploiement joint GitHub en 443 à la même minute et que le site répond en
 # deux secondes depuis ailleurs. Or toute la publication passe par ce port. Annoncer ça
 # « relevé de santé non déposé » enterrerait l'arrêt de la publication sous un incident

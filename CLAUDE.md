@@ -175,6 +175,11 @@ Trois corollaires opérationnels :
 - **une liste tronquée doit annoncer son total.** Sans ça elle fabrique de fausses causes,
   y compris pour celui qui l'a écrite. Le 18/08, le chiffre que Franck attendait depuis le
   matin était calculé puis jeté par un `[:2000]`, trois fois de suite ;
+- **avant de diagnostiquer une panne, LIRE #agendasabauda.** Le 18/08, le bilan
+  automatique de 11h05 portait déjà le bon diagnostic — heure de début (09h58), preuve que
+  le réseau du VPS allait bien, et la conséquence « 0 fiche publiée aujourd'hui, pas 8 ».
+  J'ai passé l'après-midi à le retrouver, avec quatre hypothèses fausses au passage.
+  L'accès en lecture existait ; je ne l'avais pas ouvert ;
 - **un dispositif fait pour rendre autonome ne peut pas ressembler à une panne pendant
   qu'il travaille.** Cinq minutes de silence entre deux tentatives, et une commande donnée
   avec `| tail`, qui retient tout jusqu'à la fin : Franck a cru le script mort. Annoncer

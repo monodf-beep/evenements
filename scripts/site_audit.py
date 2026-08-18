@@ -410,8 +410,8 @@ def main(argv: list[str] | None = None) -> int:
     # entier qui est hors d'atteinte, ce même code crie une anomalie grave par fiche : un
     # incident réseau devient des centaines de pages « cassées ».
     #
-    # Ce n'est pas théorique. Le 2026-08-18 à 13h05, l'hébergement du site a cessé de
-    # répondre à l'adresse du VPS — ping perdu à 100 %, ports 80 et 443 expirés, pendant
+    # Ce n'est pas théorique. Le 2026-08-18 à 09h58, l'hébergement du site a cessé de
+    # répondre à l'adresse du VPS — par intermittence, avec un retour vers 13h01 — ping perdu à 100 %, ports 80 et 443 expirés, pendant
     # que le reste du réseau fonctionnait. Le cron de 14h aurait rendu un rapport de
     # plusieurs centaines de lignes graves, toutes fausses, et il aurait fallu le
     # démonter à la main pour s'apercevoir qu'il n'y avait qu'UN problème.

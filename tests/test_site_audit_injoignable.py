@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Fixture : un site injoignable ne doit pas devenir des centaines de pages « cassées ».
 
-D'OÙ ÇA VIENT — 2026-08-18, 13h05 : l'hébergement du site a cessé de répondre à l'adresse
-du VPS. Ping perdu à 100 %, ports 80 et 443 expirés, pendant que le reste du réseau
+D'OÙ ÇA VIENT — 2026-08-18, 09h58 : l'hébergement du site a cessé de répondre à l'adresse
+du VPS, par intermittence (un lot est repassé à 13h01, puis plus rien). Ping perdu à 100 %, ports 80 et 443 expirés, pendant que le reste du réseau
 fonctionnait parfaitement. Le cron `site_audit` de 14h aurait relu les fiches publiées une
 par une, et `auditer()` rend « page INJOIGNABLE » en gravité GRAVE à chaque échec de
 requête : un rapport de plusieurs centaines de lignes graves, toutes fausses, qu'il aurait
