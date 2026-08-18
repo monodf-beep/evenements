@@ -190,9 +190,18 @@ verifier("news.google est isolé de même", v["motifs"]["adresse news.google"] =
 verifier("une fusionnée n'est pas confondue avec une fiche en attente",
          v["motifs"]["fiche fusionnee"] == 1 and v["motifs"]["eligible, en attente"] == 1,
          str(v["motifs"]))
+# CHAQUE MOTIF DOIT DIRE QUOI EN FAIRE, sinon ce n'est pas une file mais du bruit — et il
+# doit nommer les DEUX sorties qui existent déjà (discard_uncompletable, gmail_relink).
+# Le premier texte disait « cul-de-sac sans rouvreur » : c'était faux, les rouvreurs sont
+# écrits, ils ne sont simplement pas planifiés. Dire « il n'y en a pas » enverrait en
+# écrire un troisième.
+_r = A.rapport_vides(v)
 verifier("chaque motif dit quoi en faire, sinon ce n'est pas une file mais du bruit",
-         "cul-de-sac" in A.rapport_vides(v) and "pas un manque" in A.rapport_vides(v),
-         A.rapport_vides(v)[-400:])
+         "pas un manque" in _r, _r[-400:])
+verifier("les sorties DÉJÀ ÉCRITES sont nommées, pour qu'on ne les réécrive pas",
+         "discard_uncompletable" in _r and "gmail_relink" in _r, _r[-400:])
+verifier("et il est dit qu'elles ne sont pas planifiées — c'est ça le défaut",
+         "n'est planifié" in _r, _r[-400:])
 conn.close()
 
 conn = base_jetable([])

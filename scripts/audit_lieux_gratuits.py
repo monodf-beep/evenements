@@ -305,10 +305,11 @@ def pourquoi_sans_provenance(conn: sqlite3.Connection) -> dict:
       1. **une fiche qui a DÉJÀ un lieu** ne repasse plus — normal, mais alors son
          `venue_source` vide n'est pas un manque : c'est un compteur qui ment. Il faut
          savoir combien, sinon on répare un problème qui n'existe pas ;
-      2. **une adresse `gmail:` ou `news.google.com`** est exclue des DEUX passes. Elle ne
-         sera donc jamais située, jamais re-tentée, et rien ne la signale : c'est un
-         cul-de-sac au sens de `docs/ETATS_TERMINAUX.md`, sans rouvreur. Or
-         `gmail_collect` tourne tous les jours à 8h15 — la file se remplit toute seule ;
+      2. **une adresse `gmail:` ou `news.google.com`** est exclue des DEUX passes, et de
+         `dates.py` et `enrich.py` par-dessus le marché — à juste titre : il n'y a pas de
+         page à lire au bout d'un lien d'agrégateur. Le dépôt a prévu les deux sorties,
+         `discard_uncompletable` et `gmail_relink`, mais AUCUNE des deux n'est planifiée.
+         Le rouvreur est écrit, il n'est pas branché (docs/ETATS_TERMINAUX.md) ;
       3. **le reste est simplement en attente** : éligible, mais le plafond de
          téléchargements (VENUES_FETCH_CAP, 200 par run) ne l'a pas encore atteint. Celui-là
          se résorbe tout seul, à condition que le débit dépasse l'arrivée.
@@ -369,9 +370,11 @@ def rapport_vides(v: dict) -> str:
           "  · « a déjà un lieu » — pas un manque : le lieu est là, seule la provenance "
           "n'a pas été notée. À retirer des compteurs de travail restant, sinon on "
           "fabrique une file qui n'a pas d'objet.",
-          "  · « adresse gmail » et « news.google » — exclues des DEUX passes de "
-          "venues.py, donc jamais situées et jamais re-tentées. C'est un cul-de-sac sans "
-          "rouvreur (docs/ETATS_TERMINAUX.md), et gmail_collect le remplit chaque matin.",
+          "  · « adresse gmail » et « news.google » — pas de page à lire au bout, donc "
+          "jamais situées. Le dépôt a POURTANT les deux sorties : discard_uncompletable "
+          "(écarte les sans-page, réversible, sans API) et gmail_relink (retrouve la "
+          "vraie adresse d'une newsletter). Ni l'un ni l'autre n'est planifié — "
+          "voir docs/ETATS_TERMINAUX.md.",
           "  · « éligible, en attente » — se résorbe tout seul si le débit dépasse "
           "l'arrivée. Si ce nombre ne baisse pas d'un jour à l'autre, c'est que le "
           "plafond VENUES_FETCH_CAP est trop bas, pas que le code échoue."]

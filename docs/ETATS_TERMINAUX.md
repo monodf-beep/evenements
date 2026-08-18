@@ -537,29 +537,43 @@ Signaler au bon endroit n'est pas rouvrir.
 
 ---
 
-## Le lieu des fiches de newsletter — cul-de-sac trouvé le 2026-08-18
+## Les fiches « à compléter » que rien ne peut compléter — mesuré le 2026-08-18
 
-**Qui l'a posé.** Personne, volontairement. Les deux passes de `scripts/venues.py`
-excluent la même chose :
+**LE CHIFFRE D'ABORD**, parce que j'ai d'abord écrit ce paragraphe à l'envers. Sur les 403
+fiches du périmètre dont `venue_source` est vide :
 
-    passe page : … AND url_source NOT LIKE 'gmail:%'
-                 AND url_source NOT LIKE '%news.google.com%'
-    passe LLM  : … AND venue_source IN ('novenue','none')
+|  n  | motif | ce que c'est |
+|---|---|---|
+| 311 | adresse `news.google.com` | un lien d'agrégateur, illisible : aucune page à télécharger |
+|  80 | **a déjà un lieu** | pas un manque du tout — seule la provenance n'a pas été notée |
+|  12 | adresse `gmail:` | une newsletter, pas de page non plus |
+|   0 | fusionnée, ou en attente | — |
 
-L'exclusion de la passe page est légitime — il n'y a pas de page à télécharger pour une
-adresse `gmail:`. Mais elle a un effet qui ne l'est pas : la fiche garde un `venue_source`
-**vide**, or la passe LLM ne sélectionne que `'novenue'` ou `'none'`. La fiche n'est donc
-dans aucune des deux, à jamais.
+**Ma première version de ce paragraphe accusait les newsletters** et annonçait que
+`gmail_collect` remplissait la file chaque matin. C'est vrai à hauteur de **12 fiches sur
+403**. Le cas dominant est Google News, vingt-six fois plus gros. Encore une inférence
+présentée comme un fait, le jour même où j'écrivais la règle qui l'interdit.
 
-**Qui l'en sort.** Personne. Le ré-armement automatique en tête de `main()` porte sur
-`venue_source IN ('llm_none','novenue')` — pas sur le vide. Une fiche de newsletter n'est
-donc ni située, ni re-tentée, ni signalée : elle n'apparaît même pas dans les compteurs
-d'échec, puisqu'elle n'a jamais échoué. C'est la forme la plus discrète du cul-de-sac, la
-même que celle décrite plus haut : invisible pour une raison disparue.
+**Et le vrai défaut n'est pas là où je le cherchais.** Ces exclusions ne sont pas un oubli
+de `venues.py` : `dates.py`, `enrich.py` et `venues.py` écartent tous les trois
+`gmail:` et `news.google.com`, et c'est justifié — il n'y a rien à lire au bout. Le dépôt
+a même prévu les deux sorties :
 
-**Pourquoi ça compte.** `gmail_collect` tourne chaque matin à 8h15 : la file se remplit
-toute seule, sans plafond. Et `dates_depuis_mail` existe pour les DATES des mêmes fiches —
-la symétrie manquante côté lieu est un oubli, pas une décision.
+- `scripts/discard_uncompletable` écarte les fiches sans page (Google News, radar presse)
+  en passant leur `statut` à `'rejected'`. **Réversible, aucun appel API**, et il épargne
+  explicitement les newsletters ;
+- `scripts/gmail_relink` rattrape les fiches de newsletter en retrouvant leur vraie
+  adresse.
+
+**Aucun des deux n'est planifié.** Ni dans `crontab.txt`, ni dans `deploy/cron_pipeline.sh`
+pour le premier ; le second est l'un des quatorze orphelins déjà listés par
+`scripts/audit_orphelins`.
+
+**Qui rouvre, alors ?** Personne — mais pas faute d'avoir écrit le rouvreur : faute de
+l'avoir branché. C'est le motif de `docs/AUDIT_COMPLETUDE_2026-08-18.md` §3, « un script
+dans le dépôt ne prouve pas qu'il s'exécute », dans sa forme la plus coûteuse : 311 fiches
+occupent la file « à compléter » alors qu'un script écrit, réversible et gratuit sait
+exactement quoi en faire.
 
 **Où se voit le nombre de fiches garées** :
 
@@ -567,18 +581,11 @@ la symétrie manquante côté lieu est un oubli, pas une décision.
 .venv/bin/python -m scripts.audit_lieux_gratuits
 ```
 
-Sa seconde section compte les fiches à `venue_source` vide **par motif**, et sépare
-explicitement ce qui est du travail restant de ce qui n'en est pas :
+Sa seconde section compte ces fiches **par motif**, et sépare surtout ce qui est du travail
+restant de ce qui n'en est pas — les 80 qui ont déjà un lieu ne sont pas une tâche, et les
+compter comme telle fabriquerait la file ingérable du 11/08.
 
-- « a déjà un lieu » — le lieu est là, seule la provenance n'a pas été notée. À retirer des
-  files de travail, sinon on fabrique une tâche sans objet (défaut du 11/08) ;
-- « adresse gmail » / « news.google » — le cul-de-sac décrit ici ;
-- « éligible, en attente » — se résorbe seul tant que le débit dépasse l'arrivée. Si ce
-  nombre ne baisse pas d'un jour à l'autre, c'est `VENUES_FETCH_CAP` qui est trop bas, pas
-  le code qui échoue.
-
-**Ce qui n'est PAS encore fait, et qu'il ne faut pas croire réglé** : compter n'est pas
-rouvrir. Il n'existe toujours aucun chemin qui pose un lieu sur une fiche de newsletter —
-ni un `venues_depuis_mail` symétrique de `dates_depuis_mail`, ni une remise à `'none'` qui
-la ferait tomber dans la passe LLM. Tant que l'un des deux n'existe pas, ce cul-de-sac est
-**mesuré, pas fermé**.
+**Ce qui reste à trancher, et qui n'est pas technique** : écarter 311 fiches est réversible,
+donc autorisé sans demander (`CLAUDE.md`, « réversible = seul »). Mais le faire d'un coup
+change ce que Franck voit dans son back-office du jour au lendemain. Le dry-run d'abord,
+et lire sa sortie — règle 4.
