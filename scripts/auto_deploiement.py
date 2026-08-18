@@ -122,8 +122,23 @@ def fixtures_vertes(rev: str) -> tuple[bool, str]:
         r = subprocess.run([str(python) if python.exists() else sys.executable,
                             "-m", "tests.run_all"],
                            cwd=str(dossier), capture_output=True, text=True)
-        derniere = [l for l in (r.stdout or "").splitlines() if l.strip()]
-        return r.returncode == 0, (derniere[-1] if derniere else "(aucune sortie)")
+        lignes = [l.strip() for l in (r.stdout or "").splitlines() if l.strip()]
+        if r.returncode == 0:
+            return True, (lignes[-1] if lignes else "(aucune sortie)")
+        # UN REFUS DOIT ÊTRE ACTIONNABLE. Sans le nom des fixtures fautives, le message
+        # Slack dit « ça n'est pas passé » et laisse chercher — or c'est lui qu'on lira,
+        # pas le journal du serveur. On rapatrie donc le compte ET la liste « À REPRENDRE »
+        # que run_all imprime déjà.
+        compte = next((l for l in lignes if "au rouge" in l), "")
+        try:
+            i = lignes.index("À REPRENDRE :")
+            noms = [l.lstrip("· ").strip() for l in lignes[i + 1:] if l.startswith("·")]
+        except ValueError:
+            noms = []
+        detail = compte or (lignes[-1] if lignes else "(aucune sortie)")
+        if noms:
+            detail += " — " + ", ".join(noms[:6])
+        return False, detail
     finally:
         _git("worktree", "remove", "--force", str(dossier))
 

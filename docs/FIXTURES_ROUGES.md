@@ -71,3 +71,30 @@ Une fixture qui ne peut pas tourner ici doit être **nommée, comptée et expliq
 silencieusement ignorée, jamais mélangée aux vraies régressions. Si une cinquième
 s'ajoute, elle vient dans ce tableau avec sa raison, et `_outil_manquant` n'apprend un
 nouveau motif que si c'est bien un outil qui manque.
+
+---
+
+## Trois de plus, et elles ne sont rouges QUE hors du serveur (2026-08-18)
+
+| Fixture | Ce qui manque | Où c'est vert |
+|---|---|---|
+| `test_action_annuler` | `flask` | sur le VPS : le back-office tourne dessus |
+| `test_file_verifier` | `flask` | idem |
+| `test_image_audit_plafond` | `PIL` (Pillow) | idem, `requirements.txt` l'installe |
+
+Constaté dans un conteneur de développement où seules les dépendances strictement
+nécessaires étaient posées. Ce ne sont pas des régressions : ces trois-là importent des
+bibliothèques de l'APPLICATION, présentes dans le `.venv` du serveur.
+
+**Pourquoi `run_all` les compte quand même comme rouges, et pourquoi c'est juste.**
+`_outil_manquant` ne reconnaît que l'absence d'un **lanceur de tests** (pytest). Élargir
+ce motif à « n'importe quelle bibliothèque absente » ferait passer pour « non exécutable »
+un vrai `ModuleNotFoundError` dû à du code cassé — exactement ce que ce lanceur existe pour
+attraper. La distinction reste donc étroite, et c'est ce document qui porte le contexte.
+
+**Conséquence pratique, à connaître depuis le 2026-08-18** : `scripts/auto_deploiement`
+lance cette suite AVANT chaque déploiement et refuse de déployer si elle est rouge. Sur le
+serveur, ces trois fixtures sont vertes, donc le déploiement passe. Mais si un jour le
+message Slack annonce « Déploiement REFUSÉ », il NOMME désormais les fixtures fautives :
+commencer par vérifier si c'est une dépendance absente (`.venv/bin/pip install -r
+requirements.txt`) avant de soupçonner le code.

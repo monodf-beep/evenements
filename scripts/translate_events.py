@@ -90,11 +90,86 @@ def _norm(s: str) -> str:
 
 def _ensure_cols(conn):
     for col, decl in (("translation_of", "INTEGER"), ("translated_at", "TEXT"),
-                      ("translated_lang", "TEXT")):
+                      ("translated_lang", "TEXT"),
+                      # Le couple compteur + empreinte qui ferme le martèlement des
+                      # portillons — voir _rearme_traductions plus bas.
+                      ("traduction_tentatives", "INTEGER DEFAULT 0"),
+                      ("traduction_matiere", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
             pass
+
+
+# ══ LE MARTÈLEMENT DES PORTILLONS, ET SON ROUVREUR ═══════════════════════════════════
+#
+# MESURÉ EN PRODUCTION dans la nuit du 2026-08-17 : le portillon de langue a refusé CINQ
+# FOIS la même fiche [473] « La Saint-Ours 2026 — Rendez Vous en Vallée d'Aoste », puis
+# [4702] « Glaciers, enquête sur une disparition ». Deux appels API par passage, toutes
+# les nuits, pour un résultat identique.
+#
+# CE QUE ÇA DÉMENT, ET C'ÉTAIT ÉCRIT DANS CE FICHIER : « le LLM étant stochastique un
+# titre correctement ancré passera ». C'est l'hypothèse que CLAUDE.md (règle 3) interdit
+# de poser sans la tester — « si la réponse repose sur le LLM est stochastique, c'est une
+# hypothèse : la tester ou renoncer ». La production l'a testée : cinq fois le même refus.
+#
+# ET LE VERDICT N'EST PAS FORCÉMENT FAUX. « Rendez Vous en Vallée d'Aoste » est le NOM
+# PROPRE de l'événement : sa version italienne lui ressemblera toujours, donc le portillon
+# refusera toujours. Aucune heuristique plus fine ne réglera ce cas — c'est la RÉPÉTITION
+# qu'il faut arrêter, pas le verdict.
+#
+# D'où le mécanisme éprouvé de dates.py : un compteur, une empreinte de la matière jugée,
+# et un rouvreur qui ne dépend de personne. Après MAX_REFUS refus sur une matière
+# INCHANGÉE, la fiche est garée — elle cesse de consommer un créneau de --cap et des
+# appels API. Dès que sa matière bouge (titre corrigé, description réparée, article
+# ré-enrichi), elle repart d'elle-même le lendemain.
+MAX_REFUS = int(os.getenv("TRADUCTION_MAX_REFUS", "3"))
+
+
+def _empreinte_traduction(ev: dict) -> str:
+    """Résumé stable de ce sur quoi les portillons se prononcent. S'il change, un nouvel
+    essai peut légitimement donner un AUTRE résultat — c'est ce qui autorise à rouvrir."""
+    import hashlib
+    brut = "|".join(str(ev.get(c) or "") for c in
+                    ("title", "description", "lieu", "ville", "organisateur", "enrich_data"))
+    return hashlib.sha1(brut.encode("utf-8", "replace")).hexdigest()[:16]
+
+
+def _rearme_traductions(conn) -> int:
+    """C'EST LE ROUVREUR. Il ne dépend d'aucune commande ni d'aucun humain : une fiche
+    garée dont la matière a changé redevient candidate dès le lendemain."""
+    lignes = conn.execute(
+        "SELECT id, title, description, lieu, ville, organisateur, enrich_data, "
+        "       traduction_matiere FROM events_raw "
+        "WHERE COALESCE(traduction_tentatives,0) >= ?", (MAX_REFUS,)).fetchall()
+    rouverts = [r["id"] for r in lignes
+                if r["traduction_matiere"]
+                and _empreinte_traduction(dict(r)) != r["traduction_matiere"]]
+    if rouverts:
+        ph = ",".join("?" * len(rouverts))
+        conn.execute(f"UPDATE events_raw SET traduction_tentatives=0 "
+                     f"WHERE id IN ({ph})", rouverts)
+        conn.commit()
+        log.info("Ré-ouverture : %d fiche(s) dont la matière a changé depuis leur dernier "
+                 "refus de traduction — elles repassent : %s", len(rouverts),
+                 " ".join(str(i) for i in rouverts[:12]))
+    return len(rouverts)
+
+
+def garees(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """(candidates encore actives, fiches garées). Fonction pure, éprouvée par
+    tests/test_traduction_garage.py."""
+    actives = [r for r in rows if (r.get("traduction_tentatives") or 0) < MAX_REFUS]
+    return actives, [r for r in rows if (r.get("traduction_tentatives") or 0) >= MAX_REFUS]
+
+
+def marquer_refus(conn, ev: dict) -> None:
+    """Compte le refus ET fige la matière jugée. C'est le COUPLE qui ferme le martèlement :
+    le compteur seul garerait pour toujours, l'empreinte seule ne compterait rien."""
+    conn.execute("UPDATE events_raw SET traduction_tentatives=COALESCE(traduction_tentatives,0)+1, "
+                 "traduction_matiere=? WHERE id=?",
+                 (_empreinte_traduction(ev), ev["id"]))
+    conn.commit()
 
 
 def _target(src_lang: str) -> str:
@@ -784,6 +859,20 @@ def main(argv=None) -> int:
     # Filtrer ici plutôt que refuser plus bas ne relâche AUCUNE garde : le portillon de
     # `_translate_one` reste en place comme seconde ceinture. Il change seulement qui paie
     # le refus — la fiche polluée au lieu de la file entière.
+    # LE ROUVREUR D'ABORD : une fiche dont la matière a changé depuis son dernier refus
+    # redevient candidate avant même la sélection du jour.
+    _rearme_traductions(conn)
+    rows_avant_garage = len(rows)
+    rows, rows_garees = garees(rows)
+    if rows_garees:
+        # LES NOMMER, jamais les faire disparaître : une file qui rétrécit sans le dire est
+        # le défaut que ce dépôt corrige depuis le 11/08. Ces fiches ne repartiront que si
+        # leur matière change — c'est écrit, et c'est vérifiable.
+        log.warning("%d fiche(s) garée(s) après %d refus sur une matière inchangée "
+                    "(elles ne consomment plus ni créneau ni appel API ; elles repartent "
+                    "dès que leur matière change) : %s", len(rows_garees), MAX_REFUS,
+                    ", ".join(f"[{r['id']}] {(r.get('title') or '')[:34]}"
+                              for r in rows_garees[:8]))
     ecartees = [r for r in rows if incoherence_description(r, bloquant=True)]
     if ecartees:
         rows = [r for r in rows if r not in ecartees]
@@ -868,6 +957,11 @@ def main(argv=None) -> int:
     # `results` est rempli dans l'ORDRE de soumission des futures, donc dans l'ordre de
     # `rows` : on peut renommer les refus sans plomberie supplémentaire.
     refus = [rows[i] for i, v in enumerate(results) if v == "refus"]
+    # COMPTER LE REFUS, sinon il se rejoue à l'identique demain (règle 3). On ne marque
+    # qu'en --apply : une simulation ne doit pas garer une fiche.
+    if args.apply:
+        for ev in refus:
+            marquer_refus(conn, ev)
     log.info("=== Traduction terminée : %d traduit(s), %d ignoré(s), %d refusé(s)%s ===",
              done, skipped, len(refus), "" if args.apply else "  (simulation : rien écrit)")
     if args.apply:
@@ -877,6 +971,15 @@ def main(argv=None) -> int:
         from utils import pipeline_status
         msg = (f"🌍 *Traduction quotidienne* — {done} traduit(s) sur {len(rows)} "
                f"candidat(s), {skipped} ignoré(s)")
+        if rows_garees:
+            # RÈGLE 6 : un état qui sort une fiche de la file la sort aussi des bilans.
+            # On le compte explicitement, sinon on le découvre des semaines plus tard.
+            msg += (f"\n🅿️ {len(rows_garees)} fiche(s) garée(s) après {MAX_REFUS} refus "
+                    f"sur une matière inchangée (sur {rows_avant_garage} candidates) — "
+                    f"elles ne brûlent plus d'appels et repartent dès que leur matière "
+                    f"change : "
+                    + " · ".join(f"[{e['id']}] « {(e.get('title') or '')[:32]} »"
+                                 for e in rows_garees[:4]))
         if errors:
             msg += f", {errors} erreur(s)"
         if refus:
