@@ -229,5 +229,27 @@ verifier("une valeur inconnue est SIGNALÉE au lieu d'être comptée comme un é
 verifier("le périmètre voyage avec le nombre (règle 6)",
          "règle 5" in d["perimetre"] and "RÉSOLUS" in d["perimetre"], d["perimetre"])
 
+# ── 10. Une panne de production ne doit pas se déguiser en incident d'outillage ──
+# D'OÙ ÇA VIENT — 2026-08-18, 13h05 : le port 443 du site cesse de s'ouvrir DEPUIS LE VPS,
+# alors que le déploiement joint GitHub en 443 à la même minute et que le site répond en
+# deux secondes depuis ailleurs. Or toute la publication passe par ce port. Annoncer ça
+# « relevé de santé non déposé » enterrerait l'arrêt de la publication sous un incident
+# d'outillage — le défaut de périmètre du 11/08, transposé aux alertes.
+from scripts.publier_sante import message_echec  # noqa: E402
+
+injoignable = message_echec("ConnectTimeoutError…\n— diagnostic —\nTCP 443 : REFUSÉ/SANS "
+                            "RÉPONSE après 10.0 s (TimeoutError)")
+verifier("site injoignable → l'alerte NOMME l'arrêt de la publication, pas le relevé",
+         "publication" in injoignable and "à l'arrêt" in injoignable, injoignable[:200])
+verifier("elle donne le moyen de savoir si c'est revenu", "curl" in injoignable,
+         injoignable[:200])
+
+# LE CAS VOISIN QUI NE DOIT PAS ESCALADER : le site répond, seul le dépôt a raté. Sans ce
+# cas, l'alerte crierait au feu à chaque hoquet et on cesserait de la lire.
+ordinaire = message_echec("401 — identifiants WordPress refusés")
+verifier("dépôt raté mais site debout → pas d'alarme de production",
+         "publication" not in ordinaire and "Relevé de santé non déposé" in ordinaire,
+         ordinaire[:200])
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

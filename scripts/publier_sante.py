@@ -559,6 +559,41 @@ def afficher(r: dict) -> None:
           "WordPress, rien n'est coupé à l'envoi)")
 
 
+def message_echec(detail: str) -> str:
+    """Le message Slack, choisi selon CE QUI est tombé — pas selon ce qui a été lancé.
+
+    DEUX PANNES DE GRAVITÉ TRÈS DIFFÉRENTES, ET IL FAUT LES SÉPARER.
+
+    Si le dépôt échoue mais que le site répond, c'est une panne d'OBSERVATION : on ne voit
+    plus l'état du serveur, le site continue de vivre. Ça part dans le récapitulatif, sans
+    réveiller personne.
+
+    Si le port 443 du site ne s'ouvre plus depuis le VPS, ce n'est plus le relevé le sujet :
+    c'est TOUTE la chaîne de publication qui passe par là. Constaté le 2026-08-18 — le port
+    est tombé entre 13h01 (dernier `publish_batch_as` réussi) et 13h08, et `curl` le
+    confirmait encore à 14h15, alors que le déploiement joignait GitHub en 443 à la même
+    minute. Donc le VPS sort très bien : c'est cette destination-là qui le refuse.
+    Annoncer ça comme « relevé non déposé » enterrerait une panne de production sous un
+    incident d'outillage — exactement le défaut de périmètre que CLAUDE.md reproche aux
+    compteurs, transposé aux alertes.
+    """
+    if "TCP 443 : REFUSÉ" in detail:
+        return (f"🚨 *Le site est injoignable depuis le VPS* — le port 443 de "
+                f"agendasabauda.eu ne s'ouvre plus.\n"
+                f"*Ce n'est pas qu'un problème de relevé : la publication passe par le "
+                f"même chemin, donc elle est à l'arrêt elle aussi.*\n"
+                f"Le VPS sort normalement par ailleurs (le déploiement joint GitHub en "
+                f"443) — c'est donc l'hébergement du site qui refuse cette IP, "
+                f"typiquement une limite anti-flood après un lot de publication.\n"
+                f"_Vérifier si c'est revenu :_ "
+                f"`curl -sS -o /dev/null -w '%{{http_code}}' --max-time 15 "
+                f"https://agendasabauda.eu/`\n```{detail[-500:]}```")
+    return (f"🩺 *Relevé de santé non déposé* — {detail}\n"
+            f"_Sans lui, une session Claude ne peut pas voir l'état du serveur "
+            f"(files, crons, crédit) et devra vous le demander. "
+            f"Journal : `tail -30 logs/sante.log`._")
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Dépose l'état du pipeline sur WordPress.")
     p.add_argument("--publier", action="store_true", help="Envoie réellement.")
@@ -583,13 +618,21 @@ def main(argv=None) -> int:
         # « silencieux : c'est de la donnée, pas une alerte » — vrai pour le SUCCÈS,
         # faux pour l'échec. Un relevé de santé muet quand il tombe est un relevé qui
         # ment par omission : on croit l'état bon parce qu'on ne voit rien.
-        # Le message part dans la boîte du jour, donc dans le récapitulatif — pas en
-        # notification séparée : c'est une panne d'observation, pas une urgence.
+        # DEUX PANNES DE GRAVITÉ TRÈS DIFFÉRENTES, ET IL FAUT LES SÉPARER.
+        #
+        # Si le dépôt échoue mais que le site répond, c'est une panne d'OBSERVATION : je
+        # ne vois plus l'état du serveur, le site continue de vivre. Ça part dans le
+        # récapitulatif, sans réveiller personne.
+        #
+        # Si le port 443 du site ne s'ouvre plus depuis le VPS, ce n'est plus mon relevé
+        # le sujet : c'est TOUTE la chaîne de publication qui passe par là. Constaté le
+        # 2026-08-18 — le port est tombé entre 13h01 (dernier `publish_batch_as` réussi)
+        # et 13h08, et `curl` le confirmait encore à 14h15, alors que le déploiement
+        # joignait GitHub en 443 à la même minute. Donc le VPS sort très bien : c'est
+        # cette destination-là qui le refuse. Annoncer ça comme « relevé non déposé »
+        # enterrerait une panne de production sous un incident d'outillage.
         from utils import slack
-        slack.notify(f"🩺 *Relevé de santé non déposé* — {detail}\n"
-                     f"_Sans lui, une session Claude ne peut pas voir l'état du serveur "
-                     f"(files, crons, crédit) et devra vous le demander. "
-                     f"Journal : `tail -30 logs/sante.log`._")
+        slack.notify(message_echec(detail))
     return 0 if ok else 1
 
 
