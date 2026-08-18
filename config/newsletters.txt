@@ -98,6 +98,7 @@ Comune di Domodossola (RSS + newsletter réels, plugin tnp);comune.domodossola.v
 Stresa Festival (RSS + newsletter réels);stresafestival.eu;Piemonte;candidat;https://www.stresafestival.eu/newsletter
 #fuoriluogo (festival littéraire, Biella, Mailchimp confirmé);fuoriluogofestival.it;Piemonte;candidat;https://www.fuoriluogofestival.it/
 Sacro Monte di Varallo (UNESCO, newsletter confirmée — RSS existe mais vide au 18/08);sacri-monti.com;Piemonte;candidat;https://www.sacri-monti.com/Newsletter
+Artissima (foire d'art contemporain, Torino — formulaire confirmé);artissima.art;Piemonte;candidat;https://www.artissima.art/newsletter/
 
 # ======================= NICE / ALPES-MARITIMES (Comté de Nice) =======================
 Théâtre National de Nice (TNN);tnn.fr;Nice;actif;https://www.tnn.fr/fr/
