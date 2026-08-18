@@ -20,6 +20,50 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 
 ---
 
+## ⚡⚡ Priorité — zones à 0-4 événements vues dans « Intentions de recherche » (18/08)
+
+Recherche complémentaire du 2026-08-18, sur les zones que la page *Outils >
+Intentions de recherche* signale comme sous le seuil. **Vérifié : pas de flux
+RSS exploitable chez ces organismes** (post-type événement absent du flux
+WordPress standard, ou pages non-WordPress) — testé par curl réel sur ~25
+sites avant de conclure. La newsletter est donc la seule voie côté source
+officielle pour ces zones-là, avec le même mode d'emploi que le reste de cette
+page (label Gmail `Agenda`, jamais une automatisation directe).
+
+- [ ] **Courchevel Tourisme** — https://www.courchevel.com/en/form/newsletter (Savoie, 0 évén.)
+- [ ] **Maurienne Tourisme** (couvre Saint-Jean-de-Maurienne, 0 évén.) — http://www.maurienne-tourisme.com/inscription-newsletter-destination-maurienne/
+- [ ] ⭐ **ATL Terre dell'Alto Piemonte** (*hebdo* — couvre EN UNE FOIS Biella, Vercelli, Novara et Valsesia, toutes à 0-1 évén.) — https://www.atl.biella.it/newsletter/dettaglio/-/d/newsletter-settimanale
+- [ ] **Mairie de Villefranche-sur-Mer** (Nice, mentionne explicitement les événements à venir) — https://www.villefranche-sur-mer.fr/newsletter/
+
+Non résolu, à rechercher plus loin (pas de page d'inscription newsletter
+dédiée trouvée en date du 18/08, seulement un site web) :
+- **Sallanches** — office de tourisme existe (sallanchesmontblanc.com) mais
+  pas de newsletter propre confirmée ; probablement couvert par la newsletter
+  générale **Savoie Mont Blanc** déjà `[x]` plus haut — à vérifier que
+  Sallanches y apparaît bien avant de conclure à un manque.
+- **Cluses / Thonon-les-Bains / Aix-les-Bains / Chamonix / Megève** — déjà
+  `[x]` plus haut (Musiques en Stock, Maison des Arts du Léman, OT
+  Aix-les-Bains, OT Chamonix, Megève Tourisme) : si ces zones restent à 0
+  évén., ce n'est **pas un manque de source** mais un problème de flux
+  (label Gmail non appliqué, ou domaine expéditeur absent de
+  `config/whitelist_gmail.txt`) — à diagnostiquer, pas à re-sourcer (même
+  logique que le cas Menton ci-dessous).
+- **Province du VCO / Verbano-Cusio-Ossola** — organisme identifié
+  (Distretto dei Laghi, distrettolaghi.it), site refondu récemment, aucune
+  page newsletter dédiée trouvée en recherche web — à vérifier directement
+  sur le site.
+- **Alessandria / Asti** — Alexala (alexala.it) a un formulaire d'inscription
+  en page d'accueil mais pas d'URL dédiée stable trouvée ; Visit Asti a
+  renvoyé une erreur d'accès lors de la vérification — à revisiter à la main.
+- **Alba / Monferrato** — déjà couvert par **Ente Turismo Langhe Monferrato
+  Roero** `[ ]` plus bas (section Piémont) : à cocher en priorité, c'est déjà
+  identifié comme *le* pivot Langhe/Roero/Monferrato/Alba.
+- **Courmayeur** — déjà listé `[ ]` plus bas (section Vallée d'Aoste) : à
+  cocher, et **LoveVDA** `[ ]` (même section) couvre aussi Courmayeur en plus
+  du reste de la VdA — la source la plus rentable, à faire en 1er.
+
+---
+
 ## ⚡ Priorité — combler les trous vus dans « Couverture géo » (21/07)
 
 La page **Couverture géo** a chiffré les zones à ZÉRO. La bonne nouvelle : les sources
