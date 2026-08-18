@@ -112,3 +112,55 @@ ces zones-là, et elles sont indexables.
 Ce n'est pas une erreur technique : c'est une divergence entre le plan écrit et
 ce qui a été construit. Soit le plan a évolué, soit ces pages devraient attendre
 d'avoir de la matière.
+
+---
+
+## 6. Comment on retrouve ces pages (2026-08-18, seconde passe)
+
+Question de Franck : autrement que par la barre de recherche, comment atteindre
+ces pages ? Il évoquait un nuage de mots.
+
+**Un nuage n'est pas la bonne forme ici.** Il donne le même poids à tout et
+efface la hiérarchie. Ces pages ont une structure nette, territoire puis ville
+puis moment. Trois surfaces ont été mises en place, de la plus large à la plus
+contextuelle.
+
+### Le menu de pied de page
+
+Les villes sont reliées par le menu `footer-territoires` (281) et sa jumelle
+italienne (521), en **sous-menu du territoire**. C'est le mécanisme existant,
+et c'est là que les huit nouvelles villes ont été ajoutées, sous Savoie (1576)
+et sous Savoia (3318).
+
+> **Les 112 pages créées étaient orphelines** : présentes au sitemap, sans un
+> seul lien entrant. Créer des pages sans les relier, c'est les rendre
+> invisibles à la navigation et faibles pour Google. À vérifier
+> systématiquement après toute création.
+
+### Le plan du site, désormais calculé
+
+`[cs_plan_du_site]`, snippet 148. La page était 10 Ko de HTML écrit à la main :
+les nouvelles pages n'y figuraient pas et n'auraient pu y figurer sans
+réécriture manuelle à chaque ajout. Elle est maintenant générée depuis les pages
+réelles, groupée par territoire, chaque zone suivie de ses trois moments.
+Sauvegarde de l'ancien HTML dans `cs_bk_plan_du_site_20260818`.
+
+### La rangée de villes sur les hubs de territoire
+
+`[cs_villes_du_territoire]`, même snippet, posé sur les huit hubs de territoire.
+Des pastilles cliquables vers les villes et zones du territoire. C'est la forme
+la plus proche d'un nuage qui reste utile : compacte, scannable, et surtout
+contextuelle, donc bien plus forte qu'un lien de pied de page pour le
+référencement.
+
+### Trois pièges rencontrés en l'écrivant
+
+1. **`\x{2019}` dans une chaîne PHP simple** ne vaut que dans une expression
+   régulière : les apostrophes se seraient affichées littéralement. Écrire les
+   vrais caractères.
+2. **Le filtre `lang` de `get_posts` ne mord pas hors contexte front.** Les hubs
+   français et italiens portant le même titre, chaque zone sortait en double.
+   Filtrer explicitement avec `pll_get_post_language()`.
+3. **`pll_current_language()` rend `false` hors contexte front**, et un ternaire
+   retenait ce `false` au lieu du repli : plus aucune page ne correspondait.
+   Tester la valeur, pas seulement l'existence de la fonction.
