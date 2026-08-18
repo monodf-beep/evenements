@@ -45,6 +45,17 @@ C'est volontaire : un signal qui exige de retélécharger la page ne peut pas ê
 pendant que le VPS est coupé du réseau, et surtout ces quatre-là sont les moins chers de
 tous. S'ils suffisent, il n'y a rien d'autre à écrire.
 
+LE RÉSULTAT DU 2026-08-18 EST DANS docs/MESURE_LIEUX_GRATUITS_2026-08-18.md, ET IL DIT
+NON. Au moins un signal tombe juste sur 67 fiches sur 454 — 15 %. Les deux signaux qui
+marchent un peu marchent mal, et pour des raisons structurelles : l'adresse de la page donne
+la ville de l'ÉDITEUR (l'office de tourisme du Grand Annecy publie dans tout son
+territoire), et un dictionnaire de communes appliqué à du texte libre ramasse « La
+Saint-Ours » et « l'école Montessori » comme des noms de communes.
+
+Conclusion consignée : ces signaux ne sont PAS branchés, et le modèle gagne ses 454 appels
+sur ce champ — il fait ce que le code ne sait pas faire, distinguer le lieu de l'événement
+de la ville de celui qui l'annonce. Relire le document avant de rouvrir la question.
+
 Usage :
     .venv/bin/python -m scripts.audit_lieux_gratuits            # mesure et rapport
     .venv/bin/python -m scripts.audit_lieux_gratuits --exemples 15
