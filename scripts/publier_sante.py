@@ -450,11 +450,45 @@ def diagnostic(url: str) -> str:
 
     import socket
     try:
-        ips = sorted({x[4][0] for x in socket.getaddrinfo(hote, 443)})
-        lignes.append(f"DNS : {', '.join(ips)}")
+        infos = socket.getaddrinfo(hote, 443, type=socket.SOCK_STREAM)
+        v4 = sorted({x[4][0] for x in infos if x[0] == socket.AF_INET})
+        v6 = sorted({x[4][0] for x in infos if x[0] == socket.AF_INET6})
+        lignes.append(f"DNS : IPv4 {', '.join(v4) or '—'} | IPv6 {', '.join(v6) or '—'}")
     except OSError as exc:
         return "\n".join(lignes + [f"DNS : ÉCHEC ({exc}) → le nom ne se résout pas depuis "
                                    f"cette machine ; WordPress n'est pas en cause."])
+
+    # DE QUELLE FAMILLE CETTE MACHINE SORT-ELLE ? La question qui m'a manqué le
+    # 2026-08-18. Le VPS répondait `2a02:4780:79:a707::1` à ifconfig.me — donc il sortait
+    # en IPv6. Or agendasabauda.eu n'a QU'UN enregistrement A : le joindre exige de
+    # l'IPv4. GitHub et ifconfig.me, eux, ont de l'IPv6 et répondaient parfaitement — ce
+    # qui donnait l'illusion d'un réseau en bon état et m'a fait accuser l'hébergeur du
+    # site. Les deux sondes ci-dessous séparent les deux familles sur des adresses
+    # LITTÉRALES (Cloudflare), donc sans dépendre du DNS.
+    for famille, cible, nom in ((socket.AF_INET, "1.1.1.1", "IPv4"),
+                                (socket.AF_INET6, "2606:4700:4700::1111", "IPv6")):
+        try:
+            sonde_fam = socket.socket(famille, socket.SOCK_STREAM)
+        except OSError:
+            # La pile n'existe pas du tout sur cette machine — à distinguer d'une pile
+            # présente mais sans route, qui est le cas intéressant.
+            lignes.append(f"sortie {nom} : pile absente sur cette machine")
+            continue
+        sonde_fam.settimeout(6)
+        try:
+            sonde_fam.connect((cible, 443))
+            lignes.append(f"sortie {nom} : OK")
+        except OSError as exc:
+            lignes.append(f"sortie {nom} : HORS SERVICE ({exc.__class__.__name__})")
+            if nom == "IPv4" and v4 and not v6:
+                lignes.append("→ ⚠️ CAUSE PROBABLE : cette machine n'a plus d'IPv4, et "
+                              "l'hôte visé n'existe qu'en IPv4 (aucun AAAA). Les autres "
+                              "destinations continuent de répondre parce qu'elles, elles "
+                              "ont de l'IPv6 — d'où l'impression trompeuse d'un réseau "
+                              "sain. Ce n'est PAS l'hébergement du site qui bloque : "
+                              "c'est la route IPv4 du serveur qui est tombée.")
+        finally:
+            sonde_fam.close()
 
     # UN PROXY EXPLIQUERAIT TOUT. `requests` honore http_proxy/https_proxy de
     # l'environnement — et `publier()` appelle `load_dotenv()`, donc une ligne de proxy
