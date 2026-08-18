@@ -164,3 +164,36 @@ référencement.
 3. **`pll_current_language()` rend `false` hors contexte front**, et un ternaire
    retenait ce `false` au lieu du repli : plus aucune page ne correspondait.
    Tester la valeur, pas seulement l'existence de la fonction.
+
+### Le contrôle quotidien des pages orphelines
+
+**Snippet 149**, `CS - Audit des pages orphelines`, tous les jours à 10 h,
+rapport Slack seulement s'il y a quelque chose à dire.
+
+Il charge les surfaces qui relient (les deux plans du site, les huit hubs de
+territoire), lit les menus en base, puis vérifie que chaque page portant
+`cs_hub_ville` figure quelque part. Première passe : 232 pages contrôlées,
+**zéro orpheline**.
+
+> **Pourquoi un contrôle et pas une colonne dans le tableau.** Il faudrait
+> compter les liens en base, or les surfaces qui relient sont des **shortcodes** :
+> le plan du site rend 328 liens qui n'existent pas dans `post_content`. Un
+> comptage en base annonçait **196 orphelines alors qu'il n'y en avait aucune**.
+> Il faut charger la page et regarder le HTML rendu. Trop lourd pour un tableau
+> affiché à chaque visite, juste ce qu'il faut une fois par jour.
+
+**À quoi sert un lien entrant**, puisque la question s'est posée. Il rend la page
+atteignable autrement que par la recherche. Il dit à Google qu'elle compte, le
+maillage interne étant un signal d'importance. Et il fait revenir le robot plus
+souvent, ce qui, pour un agenda dont le contenu se périme, vaut plus que pour un
+site ordinaire.
+
+### Les cinq contrôles quotidiens
+
+| Heure | Contrôle |
+|---|---|
+| 09:00 | Médiathèque : vocabulaire et tirets dans les alternatives, mesures |
+| 10:00 | Pages orphelines |
+| 11:06 | Garde-fous 2 : panel, formes, lieux |
+| 15:19 | Doctrine éditoriale, liste complète du lexique |
+| 23:30 | Garde-fous dates et sources |
