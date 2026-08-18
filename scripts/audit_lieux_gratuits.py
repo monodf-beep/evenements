@@ -285,6 +285,99 @@ def rapport(m: dict, exemples: int = 8) -> str:
     return "\n".join(L)
 
 
+def pourquoi_sans_provenance(conn: sqlite3.Connection) -> dict:
+    """Les fiches dont `venue_source` est VIDE : pourquoi ne passent-elles jamais ?
+
+    D'OÙ ÇA VIENT — la provenance du 2026-08-18 : 403 fiches du périmètre portent un
+    `venue_source` vide. Ni gratuit, ni payant, ni « cherché sans succès » : RIEN. Presque
+    autant que les 454 qu'on cherchait à payer moins cher.
+
+    LES MOTIFS SONT LUS DANS LE CODE DE `venues.py`, pas devinés. Ses deux passes
+    sélectionnent sur des conditions précises, et tout ce qui n'y répond pas reste vide
+    indéfiniment :
+
+        passe page : lieu vide ET venue_source vide ET statut != 'merged'
+                     ET url NOT LIKE 'gmail:%' ET url NOT LIKE '%news.google.com%'
+        passe LLM  : lieu vide ET venue_source IN ('novenue','none')
+
+    Trois conséquences, que ce comptage sépare :
+
+      1. **une fiche qui a DÉJÀ un lieu** ne repasse plus — normal, mais alors son
+         `venue_source` vide n'est pas un manque : c'est un compteur qui ment. Il faut
+         savoir combien, sinon on répare un problème qui n'existe pas ;
+      2. **une adresse `gmail:` ou `news.google.com`** est exclue des DEUX passes. Elle ne
+         sera donc jamais située, jamais re-tentée, et rien ne la signale : c'est un
+         cul-de-sac au sens de `docs/ETATS_TERMINAUX.md`, sans rouvreur. Or
+         `gmail_collect` tourne tous les jours à 8h15 — la file se remplit toute seule ;
+      3. **le reste est simplement en attente** : éligible, mais le plafond de
+         téléchargements (VENUES_FETCH_CAP, 200 par run) ne l'a pas encore atteint. Celui-là
+         se résorbe tout seul, à condition que le débit dépasse l'arrivée.
+
+    Distinguer ces trois-là change complètement ce qu'il y a à faire — et les confondre
+    ferait exactement le contraire.
+    """
+    conn.row_factory = sqlite3.Row
+    auj = date.today().isoformat()
+    devant = ("COALESCE(duplicate_of,0)=0 AND COALESCE(translation_of,0)=0 "
+              "AND (COALESCE(date_event_end, date_event_start, '')='' "
+              "     OR COALESCE(date_event_end, date_event_start) >= ?)")
+    lignes = [dict(r) for r in conn.execute(
+        f"SELECT id, title, url_source, lieu, statut FROM events_raw "
+        f"WHERE {devant} AND COALESCE(venue_source,'')=''", (auj,))]
+
+    motifs = {"a deja un lieu": 0, "adresse gmail (newsletter)": 0,
+              "adresse news.google": 0, "fiche fusionnee": 0,
+              "eligible, en attente": 0}
+    exemples: dict[str, list] = {k: [] for k in motifs}
+    for lg in lignes:
+        url = lg.get("url_source") or ""
+        if (lg.get("lieu") or "").strip():
+            motif = "a deja un lieu"
+        elif url.startswith("gmail:"):
+            motif = "adresse gmail (newsletter)"
+        elif "news.google.com" in url:
+            motif = "adresse news.google"
+        elif (lg.get("statut") or "") == "merged":
+            motif = "fiche fusionnee"
+        else:
+            motif = "eligible, en attente"
+        motifs[motif] += 1
+        if len(exemples[motif]) < 3:
+            exemples[motif].append(f"[{lg['id']}] {(lg.get('title') or '')[:60]}")
+    return {"total": len(lignes), "motifs": motifs, "exemples": exemples}
+
+
+def rapport_vides(v: dict) -> str:
+    L = ["", "=" * 72, "",
+         "LES FICHES SANS AUCUNE PROVENANCE DE LIEU — pourquoi ne passent-elles jamais ?",
+         "",
+         f"Périmètre : {v['total']} fiches encore devant nous (ou sans date), non "
+         f"doublons, non traductions, dont `venue_source` est vide.",
+         ""]
+    if not v["total"]:
+        L.append("AUCUNE fiche dans ce cas : il n'y a rien à expliquer, ce qui n'est pas "
+                 "la même chose qu'un comptage qui échoue.")
+        return "\n".join(L)
+    for motif, n in sorted(v["motifs"].items(), key=lambda kv: -kv[1]):
+        if not n:
+            continue
+        L.append(f"  {n:5d}  {motif}")
+        for ex in v["exemples"][motif]:
+            L.append(f"           {ex}")
+    L += ["",
+          "CE QU'IL FAUT EN FAIRE, motif par motif :",
+          "  · « a déjà un lieu » — pas un manque : le lieu est là, seule la provenance "
+          "n'a pas été notée. À retirer des compteurs de travail restant, sinon on "
+          "fabrique une file qui n'a pas d'objet.",
+          "  · « adresse gmail » et « news.google » — exclues des DEUX passes de "
+          "venues.py, donc jamais situées et jamais re-tentées. C'est un cul-de-sac sans "
+          "rouvreur (docs/ETATS_TERMINAUX.md), et gmail_collect le remplit chaque matin.",
+          "  · « éligible, en attente » — se résorbe tout seul si le débit dépasse "
+          "l'arrivée. Si ce nombre ne baisse pas d'un jour à l'autre, c'est que le "
+          "plafond VENUES_FETCH_CAP est trop bas, pas que le code échoue."]
+    return "\n".join(L)
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         description="Mesure ce que des signaux gratuits auraient trouvé à la place du "
@@ -299,6 +392,7 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
     try:
         print(rapport(mesurer(conn), args.exemples))
+        print(rapport_vides(pourquoi_sans_provenance(conn)))
     finally:
         conn.close()
     return 0

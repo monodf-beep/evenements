@@ -150,10 +150,35 @@ désignait leur provenance dès le premier coup d'œil ; une baisse de 7 à 6 at
 correctif quand elle venait d'un `array_slice(…, 0, 6)` d'affichage. Les deux fois où j'ai
 lu — le code des audits, la sortie réelle du filtre — la conclusion s'est INVERSÉE.
 
-Deux corollaires opérationnels :
+`docs/ERREURS_2026-08-18.md` ajoute sept fautes, et **quatre d'entre elles sont la MÊME
+faute que ci-dessus** — commise le lendemain du jour où je l'ai écrite. Un dépôt HTTPS
+échouait ; j'ai annoncé quatre causes successives comme établies (l'en-tête HTTP, une
+limite de l'hébergeur, une IPv4 disparue, puis l'hébergeur à nouveau), et j'ai failli
+faire demander à OVH le déblocage d'une IP sur la foi de la deuxième. Ce qui a tranché
+tenait en quatre commandes qu'il fallait taper à la première minute : ping, port 80,
+port 443, et un hôte de contrôle.
+
+D'où la formulation la plus utile de cette racine, celle à relire avant de répondre :
+
+**Ne jamais présenter une INFÉRENCE comme un FAIT.** Les deux sont acceptables — mesurer,
+ou dire « c'est une hypothèse ». Les confondre coûte une demi-journée et use la confiance
+dans tout le reste. Ce jour-là, cinq affirmations pour cinq mesures disponibles que
+personne n'avait demandées : `ifconfig.me` répondait depuis toujours, `parsed=175` était
+en base depuis des semaines, la sortie du filtre était à une commande.
+
+Corollaire pour tout diagnostic : **un diagnostic qui pose une alternative sans la
+trancher n'est pas un diagnostic.** « Réessayer plus tard dira lequel des deux » rendait à
+un humain une question que la machine règle en trois secondes.
+
+Trois corollaires opérationnels :
 
 - **une liste tronquée doit annoncer son total.** Sans ça elle fabrique de fausses causes,
-  y compris pour celui qui l'a écrite ;
+  y compris pour celui qui l'a écrite. Le 18/08, le chiffre que Franck attendait depuis le
+  matin était calculé puis jeté par un `[:2000]`, trois fois de suite ;
+- **un dispositif fait pour rendre autonome ne peut pas ressembler à une panne pendant
+  qu'il travaille.** Cinq minutes de silence entre deux tentatives, et une commande donnée
+  avec `| tail`, qui retient tout jusqu'à la fin : Franck a cru le script mort. Annoncer
+  chaque étape, et donner les commandes longues SANS `tail` ;
 - **un fichier poussé sur une branche ne prouve pas qu'il est déployé** (règle 1
   transposée) : `deploy/update.sh` remet le dépôt sur `claude/quirky-davinci-jvqrnw`, donc
   du travail poussé ailleurs n'arrive pas — et sera EFFACÉ au déploiement suivant. Vérifier

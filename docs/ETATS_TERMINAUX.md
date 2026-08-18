@@ -534,3 +534,51 @@ diffèrent qu'il faut regarder.
 rapport arrive maintenant dans le bon canal — mais aucun script ne va chercher la source
 officielle manquante, et la fiche reste en brouillon jusqu'à ce qu'un humain s'en occupe.
 Signaler au bon endroit n'est pas rouvrir.
+
+---
+
+## Le lieu des fiches de newsletter — cul-de-sac trouvé le 2026-08-18
+
+**Qui l'a posé.** Personne, volontairement. Les deux passes de `scripts/venues.py`
+excluent la même chose :
+
+    passe page : … AND url_source NOT LIKE 'gmail:%'
+                 AND url_source NOT LIKE '%news.google.com%'
+    passe LLM  : … AND venue_source IN ('novenue','none')
+
+L'exclusion de la passe page est légitime — il n'y a pas de page à télécharger pour une
+adresse `gmail:`. Mais elle a un effet qui ne l'est pas : la fiche garde un `venue_source`
+**vide**, or la passe LLM ne sélectionne que `'novenue'` ou `'none'`. La fiche n'est donc
+dans aucune des deux, à jamais.
+
+**Qui l'en sort.** Personne. Le ré-armement automatique en tête de `main()` porte sur
+`venue_source IN ('llm_none','novenue')` — pas sur le vide. Une fiche de newsletter n'est
+donc ni située, ni re-tentée, ni signalée : elle n'apparaît même pas dans les compteurs
+d'échec, puisqu'elle n'a jamais échoué. C'est la forme la plus discrète du cul-de-sac, la
+même que celle décrite plus haut : invisible pour une raison disparue.
+
+**Pourquoi ça compte.** `gmail_collect` tourne chaque matin à 8h15 : la file se remplit
+toute seule, sans plafond. Et `dates_depuis_mail` existe pour les DATES des mêmes fiches —
+la symétrie manquante côté lieu est un oubli, pas une décision.
+
+**Où se voit le nombre de fiches garées** :
+
+```sh
+.venv/bin/python -m scripts.audit_lieux_gratuits
+```
+
+Sa seconde section compte les fiches à `venue_source` vide **par motif**, et sépare
+explicitement ce qui est du travail restant de ce qui n'en est pas :
+
+- « a déjà un lieu » — le lieu est là, seule la provenance n'a pas été notée. À retirer des
+  files de travail, sinon on fabrique une tâche sans objet (défaut du 11/08) ;
+- « adresse gmail » / « news.google » — le cul-de-sac décrit ici ;
+- « éligible, en attente » — se résorbe seul tant que le débit dépasse l'arrivée. Si ce
+  nombre ne baisse pas d'un jour à l'autre, c'est `VENUES_FETCH_CAP` qui est trop bas, pas
+  le code qui échoue.
+
+**Ce qui n'est PAS encore fait, et qu'il ne faut pas croire réglé** : compter n'est pas
+rouvrir. Il n'existe toujours aucun chemin qui pose un lieu sur une fiche de newsletter —
+ni un `venues_depuis_mail` symétrique de `dates_depuis_mail`, ni une remise à `'none'` qui
+la ferait tomber dans la passe LLM. Tant que l'un des deux n'existe pas, ce cul-de-sac est
+**mesuré, pas fermé**.

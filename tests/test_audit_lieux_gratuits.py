@@ -65,7 +65,8 @@ verifier("un texte sans commune ne propose rien",
 # respecté : la base est JETABLE, jamais data/events.db (CLAUDE.md, « Développement »).
 SCHEMA = ("CREATE TABLE events_raw (id INTEGER PRIMARY KEY, title TEXT, url_source TEXT, "
           "lieu TEXT, ville TEXT, venue_source TEXT, date_event_start TEXT, "
-          "date_event_end TEXT, duplicate_of INTEGER, translation_of INTEGER)")
+          "date_event_end TEXT, duplicate_of INTEGER, translation_of INTEGER, "
+          "statut TEXT)")
 
 
 def base_jetable(lignes):
@@ -76,9 +77,9 @@ def base_jetable(lignes):
     for lg in lignes:
         conn.execute(
             "INSERT INTO events_raw (title, url_source, lieu, ville, venue_source, "
-            "date_event_start, date_event_end) VALUES (?,?,?,?,?,?,?)",
+            "date_event_start, date_event_end, statut) VALUES (?,?,?,?,?,?,?,?)",
             (lg["title"], lg["url"], lg.get("lieu", ""), lg.get("ville", ""),
-             lg["venue_source"], "2099-01-01", "2099-01-01"))
+             lg["venue_source"], "2099-01-01", "2099-01-01", lg.get("statut", "")))
     conn.commit()
     return conn
 
@@ -155,6 +156,48 @@ verifier("le périmètre est écrit à côté des nombres",
          "Périmètre :" in texte and "non doublons" in texte, texte[:300])
 verifier("le rapport prévient que l'étalon est le modèle, pas la vérité",
          "n'est pas la vérité" in texte, texte[-400:])
+conn.close()
+
+# ── Les fiches SANS provenance : trois causes qu'il ne faut pas confondre ──────
+# D'OÙ ÇA VIENT : 403 fiches du périmètre ont un `venue_source` vide. Les traiter comme un
+# seul tas ferait construire le mauvais correctif — et surtout, certaines ONT déjà un lieu :
+# ce n'est pas du travail restant, c'est un compteur qui ment. C'est exactement la faute de
+# périmètre du 11/08 (« 793 points à vérifier »).
+conn = base_jetable([
+    # A un lieu, mais la provenance n'a pas été notée : PAS un manque.
+    {"title": "Concert", "url": "https://x.fr/1", "lieu": "Le Manège", "ville": "",
+     "venue_source": ""},
+    # Newsletter : exclue des DEUX passes de venues.py, donc jamais située, jamais
+    # re-tentée. C'est le cul-de-sac sans rouvreur.
+    {"title": "Lettre du mois", "url": "gmail:abc123", "venue_source": ""},
+    {"title": "Revue de presse", "url": "https://news.google.com/xyz", "venue_source": ""},
+    # Fusionnée : hors file, normal.
+    {"title": "Doublon", "url": "https://x.fr/2", "venue_source": "", "statut": "merged"},
+    # Éligible : elle passera, elle attend son tour sous le plafond.
+    {"title": "Expo", "url": "https://x.fr/3", "venue_source": ""},
+    # Déjà située par un appel payant : hors de ce comptage.
+    {"title": "Autre", "url": "https://x.fr/4", "ville": "Annecy", "venue_source": "llm"},
+])
+v = A.pourquoi_sans_provenance(conn)
+verifier("seules les fiches à provenance VIDE sont comptées", v["total"] == 5,
+         str(v["total"]))
+verifier("une fiche qui a déjà un lieu n'est PAS du travail restant",
+         v["motifs"]["a deja un lieu"] == 1, str(v["motifs"]))
+verifier("les newsletters sont isolées — c'est le cul-de-sac sans rouvreur",
+         v["motifs"]["adresse gmail (newsletter)"] == 1, str(v["motifs"]))
+verifier("news.google est isolé de même", v["motifs"]["adresse news.google"] == 1,
+         str(v["motifs"]))
+verifier("une fusionnée n'est pas confondue avec une fiche en attente",
+         v["motifs"]["fiche fusionnee"] == 1 and v["motifs"]["eligible, en attente"] == 1,
+         str(v["motifs"]))
+verifier("chaque motif dit quoi en faire, sinon ce n'est pas une file mais du bruit",
+         "cul-de-sac" in A.rapport_vides(v) and "pas un manque" in A.rapport_vides(v),
+         A.rapport_vides(v)[-400:])
+conn.close()
+
+conn = base_jetable([])
+verifier("zéro fiche dans ce cas est DIT, et distingué d'un comptage qui échoue",
+         "AUCUNE fiche" in A.rapport_vides(A.pourquoi_sans_provenance(conn)))
 conn.close()
 
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
