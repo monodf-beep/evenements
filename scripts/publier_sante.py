@@ -392,6 +392,28 @@ def diagnostic(url: str) -> str:
         return "\n".join(lignes + [f"DNS : ÉCHEC ({exc}) → le nom ne se résout pas depuis "
                                    f"cette machine ; WordPress n'est pas en cause."])
 
+    # UN PROXY EXPLIQUERAIT TOUT. `requests` honore http_proxy/https_proxy de
+    # l'environnement — et `publier()` appelle `load_dotenv()`, donc une ligne de proxy
+    # dans `.env` s'appliquerait ici. Un proxy mort donne exactement un ConnectTimeoutError
+    # alors que le port du site, lui, s'ouvre très bien. On ne rend QUE le schéma et le
+    # nom d'hôte du proxy : une URL de proxy peut porter un identifiant.
+    # On ne garde que les clés qui pilotent VRAIMENT requests : la lecture de
+    # l'environnement ramasse aussi npm_config_https, yarn_https, docker_https… qui ne
+    # concernent pas ce script et noieraient la ligne utile.
+    proxies = {k: v for k, v in requests.utils.get_environ_proxies(url).items()
+               if k in ("http", "https", "all")}
+    if proxies:
+        noms = []
+        for schema, cible in proxies.items():
+            h = urlparse(cible).hostname or "?"
+            noms.append(f"{schema}→{h}")
+        lignes.append(f"PROXY configuré : {', '.join(noms)}")
+        lignes.append("→ c'est par là que passe la requête, PAS en direct. Si le test TCP "
+                      "ci-dessous réussit alors que le dépôt échoue, le proxy est le "
+                      "coupable (variable http_proxy/https_proxy, éventuellement dans .env).")
+    else:
+        lignes.append("PROXY : aucun (connexion directe)")
+
     debut = time.monotonic()
     try:
         with socket.create_connection((hote, 443), timeout=10):
