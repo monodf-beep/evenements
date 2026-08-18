@@ -396,6 +396,16 @@ def main(argv: list[str] | None = None) -> int:
     from scripts.verifier_liens import main as liens_main
     rc, out = _run_captured(liens_main, [], "verifier_liens")
     sections.append(f"• Liens officiels morts (404/410 seulement) : {_tail(out, 2)}")
+
+    # SCRIPTS ÉCRITS ET JAMAIS PLANIFIÉS (2026-08-18). Cinq cas en trois semaines, dont
+    # `autocomplete` — l'orchestrateur de la complétude, inerte depuis sa naissance parce
+    # qu'il n'est déclaré que dans deploy/cron_pipeline.sh, lui-même non planifié. La
+    # règle 1 a un frère : un script dans le dépôt ne prouve pas qu'il s'exécute, et
+    # `watchdog_crons` ne peut pas signaler l'absence de ce qui n'a jamais été inscrit.
+    # Lecture seule, coût nul, hebdomadaire : ce qui bouge ici bouge lentement.
+    from scripts.audit_orphelins import main as orphelins_main
+    rc, out = _run_captured(orphelins_main, [], None)
+    sections.append(f"• Scripts périodiques jamais planifiés : {_tail(out, 3)}")
     if rc:
         echecs.append("verifier_liens")
 
