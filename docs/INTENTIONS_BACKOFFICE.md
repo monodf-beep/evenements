@@ -197,3 +197,64 @@ site ordinaire.
 | 11:06 | Garde-fous 2 : panel, formes, lieux |
 | 15:19 | Doctrine éditoriale, liste complète du lexique |
 | 23:30 | Garde-fous dates et sources |
+
+---
+
+## 7. Mise à jour SEO du 2026-08-18, seconde partie
+
+### Les indexables Yoast ne suivent pas un changement de langue
+
+Yoast sert ses données depuis la table `yoast_indexable`, pas depuis les métas.
+Après avoir rebasculé huit fiches en français, **sept y portaient encore leur
+ancienne URL `/it/`**. Le canonique et l'`og:url` servis étaient donc faux.
+
+Lignes supprimées et reconstruites par `YoastSEO()->meta->for_post()`, après
+sauvegarde dans `cs_bk_yoast_indexable_20260818`. Vérifié sur le HTML servi :
+canonique, `og:url` et `og:locale` à `fr_FR` corrects.
+
+> **À retenir : tout changement de langue, de slug ou de statut demande une
+> reconstruction de l'indexable.** Sinon WordPress dit une chose et Yoast en
+> déclare une autre aux moteurs.
+
+### Quatre paires de jumelles n'étaient pas reliées
+
+Appariées sur date de début **et** lieu identiques, un critère volontairement
+strict, quatre paires FR/IT du même événement vivaient côte à côte sans lien de
+traduction :
+
+| FR | IT | Événement |
+|---|---|---|
+| 756 | 2299 | Orchestre de la Suisse Romande à Évian |
+| 2255 | 7610 | Foire du sanctuaire de Vicoforte |
+| 6373 | 7223 | Mausoleo della Bela Rosin, Turin |
+| 6405 | 7197 | Salone Auto Torino 2026 |
+
+Reliées par `pll_save_post_translations`, sauvegarde dans
+`cs_bk_traductions_20260818`. **Les quatre émettent désormais leur `hreflang`**,
+vérifié sur le HTML servi. Deux d'entre elles sont des fiches rebasculées la
+veille : leur vraie version italienne existait bien, simplement non reliée.
+
+Un lien de traduction ne coûte aucun texte et produit le `hreflang`, qui dit à
+Google que deux pages sont le même contenu en deux langues. Sans lui, les deux
+se concurrencent.
+
+### Deux vérifications qui n'ont rien donné, et c'est une bonne nouvelle
+
+**Le défaut inverse n'existe pas** : zéro fiche déclarée française et rédigée en
+italien. Le décalage n'allait que dans un sens.
+
+**Un seul slug porte un nom de site tiers** : la 6445, avec
+`...-summit-valledaostaglocal-it`. Le contrôle couvrait quatorze noms de sources
+et d'agrégateurs, plus les suffixes de domaine.
+
+### Les pages /explore/ déclarent le canonique de l'accueil
+
+`/explore/savoie/`, `/explore/piemont/` et les autres portent le titre de
+l'accueil et canonisent vers `/`. C'est la conséquence du routage : ces URL
+rendent la page 928.
+
+**Ce n'est pas un défaut à corriger.** Ce sont des vues filtrées de l'accueil,
+et elles disent correctement aux moteurs d'indexer l'accueil à leur place. Les
+pages destinées à se classer sont ailleurs et sont saines : `/que-faire-en-savoie/`
+et `/it/cosa-fare-in-savoia/` portent leur propre titre, leur propre canonique
+et leur `hreflang` croisé. Vérifié sur les trois hubs testés.
