@@ -122,5 +122,24 @@ pv = etat_provenance()
 verifier("la mesure ne lève pas, même sans base", isinstance(pv, dict), str(type(pv)))
 verifier("aucun secret dans la provenance", not contient_un_secret(pv), contient_un_secret(pv))
 
+# ── 7. Le diagnostic : un échec doit DIRE sa cause, pas la faire deviner ────────
+# D'OÙ ÇA VIENT : le 2026-08-18, le dépôt a échoué sur un « ConnectTimeoutError » nu.
+# J'en ai déduit un filtrage sur l'agent utilisateur — c'était faux, et il a fallu deux
+# allers-retours avec Franck pour l'écarter. Un dispositif fait pour rendre autonome ne
+# peut pas rendre un message qui ouvre une enquête.
+#
+# La fixture reste HORS RÉSEAU : elle vérifie la seule branche qui se teste sans dépendre
+# d'Internet — un nom qui ne se résout pas — plus les deux invariants qui comptent partout.
+from scripts.publier_sante import diagnostic  # noqa: E402
+
+d = diagnostic("https://ceci-nexiste-pas.agendasabauda.invalid")
+verifier("un nom introuvable ne fait pas lever le diagnostic", isinstance(d, str), str(type(d)))
+verifier("il DÉSIGNE le DNS comme cause, au lieu de rendre un code d'erreur nu",
+         "DNS" in d and "se résout pas" in d, d)
+verifier("et il écarte explicitement WordPress — c'est ce qui économise l'aller-retour",
+         "WordPress n'est pas en cause" in d, d)
+verifier("le diagnostic ne transporte aucun secret", not contient_un_secret({"d": d}),
+         contient_un_secret({"d": d}))
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

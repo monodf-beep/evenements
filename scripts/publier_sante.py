@@ -53,13 +53,20 @@ from utils.logger import get_logger  # noqa: E402
 log = get_logger("publier_sante")
 
 DB = ROOT / "data" / "events.db"
-# LE MÊME EN-TÊTE QUE LE CHEMIN QUI MARCHE (scripts/publisher_as.py). Constaté le
-# 2026-08-18 : `publish_batch_as` a mis à jour WP#6380 à 13h01, et sept minutes plus tard
-# ce script rendait un ConnectTimeoutError sur le MÊME hôte. La seule différence entre les
-# deux requêtes était l'en-tête : un agent utilisateur maison contre un navigateur. Le
-# filtrage devant le site (Cloudflare/WAF) laisse passer l'un et fait tomber l'autre dans
-# le vide — pas un 403 franc, un silence, ce qui est plus dur à diagnostiquer.
-# On reprend donc l'en-tête éprouvé plutôt que d'en inventer un.
+# LE MÊME EN-TÊTE QUE LE CHEMIN QUI MARCHE (scripts/publisher_as.py) — par cohérence,
+# PAS parce qu'on a prouvé que l'en-tête était en cause.
+#
+# ⚠️ CORRECTION DU 2026-08-18, ÉCRITE ICI PARCE QUE JE M'ÉTAIS TROMPÉ. J'avais d'abord
+# noté que ce script rendait un `ConnectTimeoutError` sept minutes après un
+# `publish_batch_as` réussi sur le MÊME hôte, et j'en avais conclu qu'un filtrage devant
+# le site laissait passer le navigateur et faisait tomber l'agent maison. Mesuré ensuite,
+# depuis une autre machine : `https://agendasabauda.eu/?rest_route=/cs/v1/sante` répond
+# en 1,5 à 2,5 s avec l'en-tête navigateur ET avec `python-requests/2.31` — 401 sur GET
+# sans authentification, 400 sur POST sans corps. Aucun des deux n'est filtré. La cause
+# est donc AILLEURS (côté réseau du VPS, ou fenêtre anti-flood de l'hébergeur mutualisé),
+# et l'en-tête n'y change rien. C'est la faute type de `docs/ERREURS_2026-08-17.md` :
+# conclure sur un indice de surface au lieu d'aller mesurer. Le diagnostic ci-dessous
+# existe pour que le PROCHAIN échec dise sa cause au lieu de me la faire deviner.
 _UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
 _ROUTE = "/?rest_route=/cs/v1/sante"
@@ -324,27 +331,95 @@ def publier(r: dict) -> tuple[bool, str]:
         return False, (f"REFUS : le relevé contient « {faute} » — un relevé "
                        f"d'exploitation ne transporte aucun secret")
     jeton = base64.b64encode(f"{user}:{mdp}".encode("utf-8")).decode("ascii")
-    # TROIS TENTATIVES ESPACÉES. Le premier échec observé était un ConnectTimeoutError,
-    # pas un refus : le site n'a pas dit non, il n'a pas répondu. Un relevé quotidien qui
-    # abandonne au premier hoquet réseau laisse une journée sans état, et c'est exactement
-    # l'angle mort qu'il existe pour fermer.
+    # TROIS TENTATIVES ESPACÉES DE 30 s PUIS 120 s. L'espacement d'origine (5 s, 10 s) a
+    # été choisi contre un « hoquet réseau » ; l'échec réellement observé est un
+    # `ConnectTimeoutError`, c'est-à-dire une connexion TCP qui n'aboutit pas. Sur un
+    # hébergement mutualisé, ça se produit par FENÊTRE — une limite de connexions par IP
+    # qui se referme pour une à quelques minutes. Rejouer trois fois en quinze secondes
+    # retombe forcément dans la même fenêtre : les trois tentatives n'en faisaient qu'une.
     dernier = ""
-    for essai in range(3):
+    for essai, attente in enumerate((30, 120, 0)):
         try:
             rep = requests.post(f"{url}{_ROUTE}", json={"releve": r},
                                 auth=(user, mdp),
                                 headers={**_UA, "X-CS-Auth": jeton}, timeout=30)
             if rep.status_code == 404:
                 return False, "route cs/v1/sante absente — mu-plugin cs-sante.php déployé ?"
+            if rep.status_code in (401, 403):
+                # Un refus n'est pas un hoquet : le rejouer deux fois ne fait qu'user le
+                # compte. On sort tout de suite, en DISANT lequel des deux c'est.
+                return False, (f"{rep.status_code} — identifiants WordPress refusés "
+                               f"(WP_AS_USER / WP_AS_APP_PASSWORD), pas un problème réseau")
             rep.raise_for_status()
             gardes = (rep.json() or {}).get("gardes")
             return True, f"relevé déposé, {gardes} en réserve"
         except (requests.RequestException, ValueError) as exc:
             dernier = str(exc)[:160]
             log.warning("Dépôt du relevé, tentative %d/3 : %s", essai + 1, dernier)
-            if essai < 2:
-                time.sleep(5 * (essai + 1))
-    return False, dernier
+            if attente:
+                time.sleep(attente)
+    return False, f"{dernier}\n{diagnostic(url)}"
+
+
+def diagnostic(url: str) -> str:
+    """POURQUOI le dépôt a échoué — mesuré, pas supposé.
+
+    ÉCRIT APRÈS M'ÊTRE TROMPÉ (2026-08-18). Le premier échec ne disait que
+    « ConnectTimeoutError ». J'ai supposé un filtrage sur l'agent utilisateur, corrigé
+    l'agent, et l'échec a continué : deux allers-retours avec Franck pour une hypothèse
+    que dix secondes de mesure auraient écartée. Un dispositif censé RENDRE autonome ne
+    peut pas se permettre de rendre un message d'erreur qui demande une enquête.
+
+    Les trois questions, dans l'ordre où elles éliminent des causes :
+
+      1. le nom se résout-il ?           non → DNS, rien à voir avec WordPress ;
+      2. le port 443 s'ouvre-t-il ?      non → filtrage ou fenêtre anti-flood côté hôte ;
+      3. la route répond-elle SANS       401 → la route vit, seul l'identifiant a manqué ;
+         authentification ?              autre → c'est WordPress qui est en cause.
+
+    Aucun secret n'est employé ici : c'est justement une sonde anonyme, pour séparer
+    « on ne m'atteint pas » de « on me refuse ».
+    """
+    from urllib.parse import urlparse
+    hote = urlparse(url).hostname or url
+    lignes = [f"— diagnostic sur {hote} —"]
+
+    import socket
+    try:
+        ips = sorted({x[4][0] for x in socket.getaddrinfo(hote, 443)})
+        lignes.append(f"DNS : {', '.join(ips)}")
+    except OSError as exc:
+        return "\n".join(lignes + [f"DNS : ÉCHEC ({exc}) → le nom ne se résout pas depuis "
+                                   f"cette machine ; WordPress n'est pas en cause."])
+
+    debut = time.monotonic()
+    try:
+        with socket.create_connection((hote, 443), timeout=10):
+            lignes.append(f"TCP 443 : ouvert en {time.monotonic() - debut:.1f} s")
+    except OSError as exc:
+        lignes.append(f"TCP 443 : REFUSÉ/SANS RÉPONSE après "
+                      f"{time.monotonic() - debut:.1f} s ({exc.__class__.__name__})")
+        lignes.append("→ la connexion n'aboutit pas : filtrage ou limite de connexions "
+                      "par IP chez l'hébergeur. Réessayer plus tard, ou depuis une autre "
+                      "IP, dira lequel des deux.")
+        return "\n".join(lignes)
+
+    try:
+        sonde = requests.get(f"{url}{_ROUTE}", headers=_UA, timeout=15)
+        lignes.append(f"GET sans authentification : {sonde.status_code}")
+        if sonde.status_code == 401:
+            lignes.append("→ la route vit et exige une authentification, comme prévu. "
+                          "L'échec du dépôt vient donc des identifiants ou du POST, "
+                          "pas du réseau.")
+        elif sonde.status_code == 404:
+            lignes.append("→ route absente : mu-plugin cs-sante.php non déployé.")
+        else:
+            lignes.append("→ réponse inattendue : c'est WordPress qu'il faut regarder.")
+    except requests.RequestException as exc:
+        lignes.append(f"GET sans authentification : ÉCHEC ({str(exc)[:90]})")
+        lignes.append("→ le port s'ouvre mais HTTPS ne répond pas : couche TLS ou serveur "
+                      "web saturé.")
+    return "\n".join(lignes)
 
 
 def main(argv=None) -> int:
