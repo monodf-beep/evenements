@@ -101,6 +101,37 @@ def _ensure_col(conn: sqlite3.Connection) -> None:
         pass
 
 
+def bilan(disparus: int, corbeille: int, dormants: int, repartiraient: int,
+          revenus: int, indetermines: int) -> str:
+    """La DERNIÈRE ligne du script, et donc celle que le digest hebdomadaire retient.
+
+    POURQUOI ELLE EXISTE (2026-08-18). `weekly_audits` résume chaque étape par ses TROIS
+    DERNIÈRES lignes (`_tail`). Or ce script finissait sur le milieu d'un listing : le
+    message Slack du dimanche montrait deux fiches prises au hasard et « …et 90 autre(s) ».
+    Le lecteur y voyait une file de 92 tâches là où il n'y avait, en général, RIEN à faire
+    — la plupart de ces lignes sont des constats que `--apply` enregistre tout seul.
+
+    Elle dit donc, dans l'ordre : le PÉRIMÈTRE, puis le seul geste humain, puis le reste.
+    C'est la règle 6 — « avant d'ajouter une ligne à une file, se demander ce que le
+    lecteur en FERA » : sur ces six catégories, une seule appelle un arbitrage.
+    """
+    total = disparus + corbeille + dormants + repartiraient + revenus + indetermines
+    lignes = [f"=== BILAN — {total} fiche(s) portant un lien WordPress vérifiée(s) une "
+              f"par une (périmètre : toutes, passées comprises)."]
+    if repartiraient:
+        lignes.append(f"⚠️ À TRANCHER À LA MAIN : {repartiraient} — à venir, toujours "
+                      f"retenue(s) en base, mais corbeillée(s) sur le site. Elles "
+                      f"repartiraient en ligne au prochain lot.")
+    else:
+        lignes.append("Aucune contradiction à trancher : rien ne repartirait en ligne "
+                      "contre une décision prise sur le site.")
+    lignes.append(f"Sans geste de votre part : {disparus} lien(s) coupé(s), {corbeille} "
+                  f"constat(s) horodaté(s), {dormants} sans effet de bord (passées ou non "
+                  f"retenues), {revenus} constat(s) périmé(s) effacé(s), {indetermines} "
+                  f"à revérifier au prochain passage.")
+    return "\n".join(lignes)
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Réconcilie la base avec les posts WordPress supprimés.")
     p.add_argument("--apply", action="store_true", help="Écrit (sinon dry-run).")
@@ -198,6 +229,8 @@ def main(argv=None) -> int:
         print(f"\n(dry-run : rien écrit — --apply couperait {len(disparus)} lien(s), "
               f"horodaterait {len(corbeille)} fiche(s) hors ligne et déshorodaterait "
               f"{len(revenus)} revenue(s).)")
+        print("\n" + bilan(len(disparus), len(corbeille), len(dormants),
+                           len(repartiraient), len(revenus), len(indetermines)))
         conn.close()
         return 0
 
@@ -224,6 +257,10 @@ def main(argv=None) -> int:
     log.info("=== %d lien(s) coupé(s) · %d horodatée(s) hors ligne · %d revenue(s) · "
              "%d repartiraient au prochain lot ===",
              len(disparus), len(corbeille), len(revenus), len(repartiraient))
+    # EN DERNIER, et en `print` : c'est cette ligne que `weekly_audits._tail` retient pour
+    # le digest du dimanche. Le journal (log.info ci-dessus) ne lui parvient pas.
+    print("\n" + bilan(len(disparus), len(corbeille), len(dormants),
+                       len(repartiraient), len(revenus), len(indetermines)))
     return 0
 
 
