@@ -22,6 +22,8 @@
 # Mis à jour 2026-07-21 (réconcilié avec docs/NEWSLETTERS_A_SABONNER.md + URLs).
 
 # ============================ SAVOIE / HAUTE-SAVOIE ============================
+# Gros événement (pas une institution permanente, mais matière saisonnière prévisible)
+Festival International du Film d'Animation d'Annecy (juin);annecyfestival.com;Savoie;candidat;https://www.annecyfestival.com/
 Bonlieu Scène Nationale (Annecy);bonlieu-annecy.com;Savoie;actif;https://www.bonlieu-annecy.com/inscription-newsletter
 Espace Malraux Scène Nationale (Chambéry);malrauxchambery.fr;Savoie;actif;https://billetterie.malrauxchambery.fr/3web_mailing_cherche?template=11720
 Cité des Arts Chambéry;chambery.fr;Savoie;actif;https://www.chambery.fr/522-newsletter-de-la-cite-des-arts.htm
@@ -83,6 +85,8 @@ ATL Terre dell'Alto Piemonte (Biella/Vercelli/Novara/Valsesia, hebdo);atl.biella
 Distretto dei Laghi (province du VCO);distrettolaghi.it;Piemonte;candidat;https://www.distrettolaghi.it/it/newsletter
 Alexala (province d'Alessandria);alexala.it;Piemonte;candidat;https://www.alexala.it/it
 Visit Cuneese (province de Cuneo);visitcuneese.it;Piemonte;candidat;https://www.visitcuneese.it/newsletter
+# Gros événements ponctuels Torino (matière saisonnière prévisible, forte affluence)
+Salone del Vermouth di Torino (février);salonedelvermouth.com;Piemonte;candidat;https://salonedelvermouth.com/en/
 
 # ======================= NICE / ALPES-MARITIMES (Comté de Nice) =======================
 Théâtre National de Nice (TNN);tnn.fr;Nice;actif;https://www.tnn.fr/fr/
