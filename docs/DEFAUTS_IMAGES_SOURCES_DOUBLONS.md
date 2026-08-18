@@ -199,3 +199,52 @@ comparer à une fiche témoin.
 `tribe_events-sitemap1.xml`, `2` et `3`, qui n'existent pas : trois zéros
 rassurants qui ne prouvaient rien. Le sitemap réel est
 `tribe_events-sitemap.xml`, sans numéro, et l'index le dit.
+
+---
+
+## Neuf fiches françaises publiées sous l'étiquette italienne (2026-08-18)
+
+Parti chercher des slugs mal traduits, trouvé plus grave.
+
+**Neuf fiches déclarées italiennes étaient écrites en français**, titre et corps.
+Sur la 6405, 75 marqueurs français contre 7 italiens en 377 mots. Un lecteur
+piémontais ouvrant la section italienne tombait sur neuf pages en français.
+
+**Huit des neuf n'avaient aucune jumelle française** : il n'existait donc aucune
+version française de ces événements, tous piémontais ou valdôtains.
+
+> **À ne pas confondre avec un défaut général.** 126 des 244 fiches publiées
+> n'ont pas de jumelle, toutes langues confondues. L'absence de jumelle est un
+> état du catalogue. Ce qui était propre à ces neuf, c'est **le décalage entre
+> la langue déclarée et la langue écrite**.
+
+### Correction retenue
+
+Décision de Franck : **rebasculer en français**, plutôt que traduire ou
+dépublier. Aucun texte inventé, la page devient exacte immédiatement, et la
+version italienne viendra par le pipeline avec passage au panel. Conforme au
+non-négociable « aucune publication autonome ».
+
+Huit fiches basculées : 6405, 6445, 6373, 7455, 7548, 7552, 7598, 7648.
+Sauvegarde complète, langue, URL et groupe de traduction, dans
+`cs_bk_langue9_20260818`. Les huit répondent 200.
+
+**La 732 a été laissée de côté** : elle a une jumelle française (2232), la
+basculer aurait mis deux fiches françaises dans le même groupe Polylang. C'est
+une vraie traduction jamais faite, doublée d'un quasi-doublon de la 2232.
+
+### Ce que fait l'ancienne URL
+
+Elle ne redirige pas : `/it/evenement/<slug>/` continue de répondre 200. Mais
+elle **déclare le canonique vers la nouvelle adresse**, vérifié sur le HTML
+servi. Le signal est correct pour les moteurs, qui consolideront. Une 301 serait
+plus propre, elle n'est pas nécessaire.
+
+### Deux restes à traiter
+
+**Slug italien sur page française**, l'inverse du défaut d'origine, sur 6445 et
+7455. Changer un slug change une URL : c'est une décision, pas une réparation.
+
+**Un nom de site tiers dans une URL** : la 6445 porte
+`...-il-grand-continent-summit-valledaostaglocal-it`. Le nom de la source a fini
+dans notre slug. À corriger avec le point précédent.
