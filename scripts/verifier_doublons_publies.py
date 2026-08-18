@@ -312,6 +312,22 @@ def main(argv=None) -> int:
         suspects = [g for g in suspects
                     if sum(1 for ev in g if etats.get(ev["id"]) == "public") > 1]
         compte["retires_du_site"] = avant - len(suspects)
+        # UN ZÉRO NE DIT PAS S'IL VIENT D'UN ÉCHEC OU D'UNE ABSENCE DE CAS.
+        #
+        # `_etat` rend 'indetermine' quand la requête échoue, et c'est le bon choix : un
+        # aléa réseau n'autorise aucune action. Mais le filtre ci-dessus ne garde que les
+        # groupes dont DEUX pages sont 'public' — donc si le site est injoignable, TOUS
+        # les sondages rendent 'indetermine', tous les groupes disparaissent, et le
+        # rapport annonce « SUSPECTS (VÉRIFIÉS) : 0 ».
+        #
+        # Un feu vert impeccable, produit par une panne de réseau, et présenté comme
+        # VÉRIFIÉ alors que rien ne l'a été. Le 2026-08-18, l'hébergement du site a cessé
+        # de répondre à l'adresse du VPS pendant tout l'après-midi : ce cron de 9h50 aurait
+        # rendu ce zéro-là le lendemain matin.
+        #
+        # On compte donc les sondages sans réponse, et le rapport le dira.
+        compte["indetermines"] = sum(1 for v in etats.values() if v == "indetermine")
+        compte["sondages"] = len(vises)
 
     print("=" * 78)
     print("DOUBLONS PARMI LES FICHES PUBLIÉES — lecture seule, rien n'a été modifié")
@@ -325,7 +341,22 @@ def main(argv=None) -> int:
     if args.en_ligne:
         print(f"…écartés APRÈS SONDAGE   : {compte['retires_du_site']}  — une seule de "
               f"leurs pages est encore publique")
-        print(f"SUSPECTS (VÉRIFIÉS)      : {len(suspects)}")
+        ind, tot = compte.get("indetermines", 0), compte.get("sondages", 0)
+        if ind and ind == tot:
+            # Rien n'a été vérifié : le dire, et ne surtout pas rendre un zéro rassurant.
+            print(f"SONDAGE IMPOSSIBLE       : {ind}/{tot} interrogations sans réponse")
+            print()
+            print("⚠️  AUCUNE VÉRIFICATION N'A EU LIEU. WordPress n'a répondu à aucune")
+            print("    interrogation — site injoignable depuis ce serveur. Le nombre de")
+            print("    suspects ci-dessus ne vaut RIEN : il est bas parce que le sondage a")
+            print("    échoué, pas parce que le site est sain. Relancer quand le site")
+            print("    répond ; en attendant, ce rapport n'autorise aucun geste.")
+            print()
+        elif ind:
+            print(f"…sondages SANS RÉPONSE   : {ind}/{tot}  ⚠ ces pages n'ont pas été "
+                  f"vérifiées — un groupe réel a pu être écarté à tort")
+        print(f"SUSPECTS (VÉRIFIÉS)      : {len(suspects)}"
+              + ("  ⚠ CHIFFRE NON FIABLE, voir ci-dessus" if ind == tot and tot else ""))
     else:
         print(f"SUSPECTS (NON VÉRIFIÉS)  : {len(suspects)}  ⚠ d'après la BASE seule")
     print()

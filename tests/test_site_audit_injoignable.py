@@ -86,5 +86,31 @@ verifier("un aléa réseau rend « indetermine » — jamais « inexistant »",
          -1 < i_exc and 'return "indetermine"' in corps[i_exc:i_exc + 120],
          corps[i_exc:i_exc + 120])
 
+
+# ── Le faux « tout va bien » de verifier_doublons_publies --en-ligne ────────────
+# LE PIÈGE : `_etat` rend « indetermine » quand la requête échoue — c'est le bon choix.
+# Mais le filtre ne garde que les groupes dont DEUX pages sont « public ». Site
+# injoignable → tous les sondages indéterminés → tous les groupes écartés → le rapport
+# annonce « SUSPECTS (VÉRIFIÉS) : 0 ». Un feu vert impeccable, produit par une panne, et
+# présenté comme VÉRIFIÉ alors que rien ne l'a été.
+#
+# C'est « un zéro ne dit pas s'il vient d'un échec ou d'une absence de cas » (CLAUDE.md),
+# dans sa version la plus dangereuse : le zéro rassure.
+dbl = (ROOT / "scripts" / "verifier_doublons_publies.py").read_text(encoding="utf-8")
+
+verifier("les sondages sans réponse sont COMPTÉS, pas ignorés",
+         'compte["indetermines"]' in dbl and 'compte["sondages"]' in dbl)
+verifier("un sondage entièrement muet est annoncé comme tel",
+         "AUCUNE VÉRIFICATION N'A EU LIEU" in dbl)
+verifier("et le zéro rassurant est explicitement DÉSAVOUÉ",
+         "ne vaut RIEN" in dbl and "CHIFFRE NON FIABLE" in dbl)
+verifier("le rapport dit que ce n'est pas un geste à faire, mais un état à attendre",
+         "n'autorise aucun geste" in dbl)
+# LE CAS INTERMÉDIAIRE, celui qu'on oublie : quelques sondages échouent, pas tous. Le
+# rapport reste utilisable, mais un groupe réel a pu être écarté à tort — il faut le dire
+# sans crier au feu, sinon on apprend à ignorer l'avertissement.
+verifier("un échec PARTIEL est signalé sans invalider tout le rapport",
+         "sondages SANS RÉPONSE" in dbl and "écarté à tort" in dbl)
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)
