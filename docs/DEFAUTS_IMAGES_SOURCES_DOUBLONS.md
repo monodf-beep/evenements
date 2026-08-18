@@ -153,3 +153,49 @@ D'où la règle à retenir pour les correctifs : quand une valeur ne peut pas ê
 plausible. Le repli visuel par territoire, la source absente, l'alt vide sont des
 manques honnêtes. L'affiche d'une bibliothèque sous le nom d'une étape cycliste ne
 l'est pas.
+
+---
+
+## Le Vélotour de Chambéry : ce n'était pas une anomalie (2026-08-18)
+
+**Je cherchais un défaut là où le site faisait ce qu'on lui avait demandé.**
+
+La fiche 1917 est publiée, française, avec son occurrence, `as_deplacement` à 8
+pour le 30 août : éligible sur tous les critères, et pourtant absente de toute
+la page Savoie. J'avais éliminé six pistes sans trouver.
+
+La cause est le **snippet 126**, `CS - Exclusion editoriale (as_exclu)`, créé le
+2026-08-03 à la demande de Franck pour les contenus liés aux unités militaires
+de montagne, 13e BCA côté français, Alpini et ANA côté italien. Le Vélotour
+ouvre les portes du 13e BCA. **Une seule fiche du catalogue porte ce drapeau, et
+c'est celle-là.**
+
+Le mécanisme fonctionnait correctement : `posts_where` la retire des listes,
+`template_redirect` renvoie 404 sur son permalien.
+
+### Le vrai défaut, lui, était ailleurs
+
+**Elle restait au sitemap.** Google était donc invité sur une URL que le site
+refuse volontairement, et le contrôle de santé du pipeline la signalait en
+critique chaque jour depuis le 16 août.
+
+Correctif ajouté au snippet 126, filtre `wpseo_exclude_from_sitemap_by_post_ids`,
+vérifié présent dans Yoast 28 avant de s'en servir. Sauvegarde de l'ancien code
+dans `cs_bk_snippet126_20260818`. Après vidage du cache Yoast :
+`tribe_events-sitemap.xml` répond 200, 158 URLs, la fiche n'y est plus.
+
+> **Une exclusion éditoriale doit valoir sur les trois surfaces à la fois :** les
+> listes, l'accès direct, et ce que l'on déclare aux moteurs. Deux sur trois ne
+> suffisent pas.
+
+### Deux erreurs de méthode à retenir
+
+**Chercher un bug avant de chercher une décision.** Six pistes techniques
+éliminées alors qu'un `grep as_exclu` sur les snippets donnait la réponse en une
+requête. Devant un contenu qui ne sort pas, lire d'abord ses métas et les
+comparer à une fiche témoin.
+
+**Vérifier sur le bon fichier.** J'ai d'abord interrogé
+`tribe_events-sitemap1.xml`, `2` et `3`, qui n'existent pas : trois zéros
+rassurants qui ne prouvaient rien. Le sitemap réel est
+`tribe_events-sitemap.xml`, sans numéro, et l'index le dit.
