@@ -223,6 +223,68 @@ def etat_couts(jours: int = 7) -> dict:
     }
 
 
+# Ce que chaque provenance COÛTE. C'est la seule classification qui compte pour
+# l'arbitrage : « gratuit » = lecture déterministe (données structurées de la page,
+# corps du mail, registre de lieux connus), « payant » = un appel au modèle.
+PROVENANCES_GRATUITES = ("page", "mail", "source", "registre", "moisson", "jsonld")
+PROVENANCES_PAYANTES = ("llm", "web")
+
+
+def etat_provenance() -> dict:
+    """D'où viennent RÉELLEMENT les dates et les lieux : du code, ou du modèle ?
+
+    D'OÙ ÇA VIENT — Franck, 2026-08-18 : « toutes les données qu'on trouve dans les
+    sources, pourquoi on a besoin d'agents ? Je te rappelle qu'une fois on avait quatre
+    cents tâches et on a utilisé ZÉRO API. »
+
+    La doctrine du dépôt (docs/LLM_OU_CODE.md) répond déjà « code par défaut, LLM pour
+    l'irréductible ». Mais PERSONNE N'A JAMAIS MESURÉ la part réelle de chacun, alors que
+    la base la connaît depuis toujours : `date_source` et `venue_source` enregistrent la
+    provenance à chaque écriture. Sans ce chiffre, « on a besoin d'agents » et « on n'en a
+    pas besoin » sont deux opinions ; avec lui, c'est un arbitrage.
+
+    Le comptage porte sur les fiches ENCORE DEVANT NOUS (règle 5) : ce qui a été trouvé
+    pour un événement de juin ne dit rien sur ce qu'il faut financer demain.
+    """
+    if not DB.exists():
+        return {"erreur": "base absente"}
+    from datetime import date as _date
+    auj = _date.today().isoformat()
+    out: dict = {}
+    try:
+        conn = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+        try:
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
+            for champ in ("date_source", "venue_source"):
+                if champ not in cols:
+                    continue
+                lignes = conn.execute(
+                    f"SELECT COALESCE({champ},'(vide)') p, COUNT(*) n FROM events_raw "
+                    "WHERE COALESCE(duplicate_of,0)=0 AND COALESCE(translation_of,0)=0 "
+                    "  AND (COALESCE(date_event_end, date_event_start, '')='' "
+                    "       OR COALESCE(date_event_end, date_event_start) >= ?) "
+                    f"GROUP BY p ORDER BY n DESC", (auj,)).fetchall()
+                detail = {str(p): int(n) for p, n in lignes}
+                gratuit = sum(v for k, v in detail.items() if k in PROVENANCES_GRATUITES)
+                payant = sum(v for k, v in detail.items() if k in PROVENANCES_PAYANTES)
+                # Le reste (vide, none, llm_none, nodate) n'est ni l'un ni l'autre : ce
+                # sont les champs NON RÉSOLUS. Les compter avec les gratuits ferait passer
+                # un échec pour une économie.
+                out[champ] = {
+                    "detail": detail,
+                    "gratuit": gratuit,
+                    "payant": payant,
+                    "non_resolu": sum(detail.values()) - gratuit - payant,
+                    "part_gratuite_pct": (round(100 * gratuit / (gratuit + payant))
+                                          if (gratuit + payant) else None),
+                }
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        return {"erreur": str(exc)[:120]}
+    return out
+
+
 def releve() -> dict:
     """Le relevé complet. Composé CHAMP PAR CHAMP : aucun balayage d'environnement, donc
     aucun secret ne peut s'y glisser par accident."""
@@ -233,6 +295,7 @@ def releve() -> dict:
         "files": etat_files(),
         "api": etat_api(),
         "couts": etat_couts(),
+        "provenance": etat_provenance(),
     }
 
 

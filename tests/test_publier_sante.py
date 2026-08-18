@@ -104,5 +104,23 @@ if "erreur" not in c:
 verifier("aucun secret ne s'est glissé dans les coûts", not contient_un_secret(c),
          contient_un_secret(c))
 
+# ── 6. La provenance : code ou modèle ? La question de Franck du 18/08 ──────────
+from scripts.publier_sante import (  # noqa: E402
+    PROVENANCES_GRATUITES, PROVENANCES_PAYANTES, etat_provenance,
+)
+
+verifier("« page » (données structurées) compte comme GRATUIT",
+         "page" in PROVENANCES_GRATUITES)
+verifier("« llm » et « web » comptent comme PAYANTS",
+         "llm" in PROVENANCES_PAYANTES and "web" in PROVENANCES_PAYANTES)
+# Le piège : un champ NON RÉSOLU n'est pas une économie. Le compter avec les gratuits
+# ferait passer un échec pour une réussite — le défaut de périmètre du 11/08.
+for echec in ("llm_none", "nodate", "none", "(vide)"):
+    verifier(f"« {echec} » n'est compté ni gratuit ni payant",
+             echec not in PROVENANCES_GRATUITES and echec not in PROVENANCES_PAYANTES)
+pv = etat_provenance()
+verifier("la mesure ne lève pas, même sans base", isinstance(pv, dict), str(type(pv)))
+verifier("aucun secret dans la provenance", not contient_un_secret(pv), contient_un_secret(pv))
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)
