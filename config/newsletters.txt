@@ -42,6 +42,13 @@ Le Brise Glace / MJC Annecy (concerts);le-brise-glace.com;Savoie;candidat;https:
 Château Rouge (Annemasse);chateau-rouge.net;Savoie;candidat;https://www.chateau-rouge.net/newsletters/
 Maison des Arts du Léman (Thonon);mal-thonon.org;Savoie;candidat;https://mal-thonon.org/inscription-newsletter/
 La Turbine (Cran-Gevrier, cinéma/sciences);cinema-laturbine.fr;Savoie;candidat;https://cinema-laturbine.fr/FR/72/newsletter-la-turbine-cran-gevrier.html
+# ⚡ GAP « Intentions de recherche » 18/08 (zones à 0-4 évén. : St-Jean-de-Maurienne,
+# Sallanches, Moûtiers, Évian/Chablais, Courchevel) : PRIORITÉ
+Courchevel Tourisme;courchevel.com;Savoie;candidat;https://www.courchevel.com/en/form/newsletter
+Maurienne Tourisme (St-Jean-de-Maurienne);maurienne-tourisme.com;Savoie;candidat;http://www.maurienne-tourisme.com/inscription-newsletter-destination-maurienne/
+Sallanches Mont-Blanc Tourisme;sallanchesmontblanc.com;Savoie;candidat;https://sallanchesmontblanc.com/newsletters
+Cœur de Tarentaise Tourisme (Moûtiers);coeurdetarentaise-tourisme.com;Savoie;candidat;https://www.coeurdetarentaise-tourisme.com/
+Destination Léman (Chablais, couvre Évian);destination-leman.com;Savoie;candidat;https://www.destination-leman.com/newsletter/
 
 # ============================ PIÉMONT ====================================
 GuidaTorino (agenda hebdo);guidatorino.com;Piemonte;actif;https://www.guidatorino.com/iscrizione-newsletter/
@@ -69,6 +76,13 @@ Reggia di Venaria;lavenaria.it;Piemonte;candidat;https://lavenaria.it/it
 Cinema Massimo (Torino, art & essai);cinemamassimotorino.it;Piemonte;candidat;https://www.cinemamassimotorino.it/
 Institut français Italia (antenne Torino);institutfrancais.it;Piemonte;candidat;https://www.institutfrancais.it/
 VisitPiemonte DMO;visitpiemonte-dmo.org;Piemonte;candidat;https://www.visitpiemonte-dmo.org/newsletter/
+# ⚡ GAP « Intentions de recherche » 18/08 (provinces isolées à 0-1 évén. : VCO,
+# Vercelli, Novara, Biella, Alessandria, Cuneo) : PRIORITÉ — une seule newsletter
+# hebdo pour Biella+Vercelli+Novara+Valsesia (ATL Terre dell'Alto Piemonte).
+ATL Terre dell'Alto Piemonte (Biella/Vercelli/Novara/Valsesia, hebdo);atl.biella.it;Piemonte;candidat;https://www.atl.biella.it/newsletter/dettaglio/-/d/newsletter-settimanale
+Distretto dei Laghi (province du VCO);distrettolaghi.it;Piemonte;candidat;https://www.distrettolaghi.it/it/newsletter
+Alexala (province d'Alessandria);alexala.it;Piemonte;candidat;https://www.alexala.it/it
+Visit Cuneese (province de Cuneo);visitcuneese.it;Piemonte;candidat;https://www.visitcuneese.it/newsletter
 
 # ======================= NICE / ALPES-MARITIMES (Comté de Nice) =======================
 Théâtre National de Nice (TNN);tnn.fr;Nice;actif;https://www.tnn.fr/fr/
@@ -84,6 +98,8 @@ Villa Arson (Nice);villa-arson.fr;Nice;candidat;https://villa-arson.fr/newslette
 Nice Jazz Festival;nicejazzfest.fr;Nice;candidat;https://www.nicejazzfest.fr/
 Forum Jacques Prévert (Carros);forumcarros.com;Nice;candidat;https://forumcarros.com/
 Les Écrans du Sud (réseau art & essai 06);seances-speciales.fr;Nice;candidat;https://seances-speciales.fr/
+# ⚡ GAP « Intentions de recherche » 18/08 (Villefranche à 5 évén., sous le seuil)
+Mairie de Villefranche-sur-Mer;villefranche-sur-mer.fr;Nice;candidat;https://www.villefranche-sur-mer.fr/newsletter/
 Musées nationaux Alpes-Maritimes (Chagall);musees-nationaux-alpesmaritimes.fr;Nice;inactif;
 # — HORS espace sabaudo (arrondissement de Grasse) : NE PAS s'abonner —
 # Palais des Festivals Cannes ; Sortir à Cannes (SEMEC) ; Anthéa (Antibes) ;
