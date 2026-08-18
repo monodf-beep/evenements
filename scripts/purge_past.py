@@ -69,8 +69,15 @@ def main(argv=None) -> int:
         print("Aucun événement passé. 🎉")
         return 0
     if on_wp:
-        print(f"\nℹ {on_wp} sont déjà sur l'agenda (brouillon WP) → pense à "
-              "`scripts.cleanup_as_dupes --past --execute` pour les mettre à la corbeille.")
+        # Ce message disait « pense à `cleanup_as_dupes --past --execute` » : il demandait
+        # à un humain un geste réversible que la chaîne hebdomadaire pouvait faire
+        # elle-même (règle 3). Depuis le 2026-08-18, `weekly_audits` passe `--past` à
+        # l'étape 6 — donc plus rien à taper quand ce script tourne dans le ménage. On
+        # garde l'information, parce qu'un lancement À LA MAIN, lui, ne nettoie toujours
+        # pas WordPress.
+        print(f"\nℹ {on_wp} sont déjà sur l'agenda (brouillon WP). Le ménage hebdomadaire "
+              "les met à la corbeille lui-même (weekly_audits, étape 6, `--past`).\n"
+              "  En lancement manuel : `scripts.cleanup_as_dupes --past --execute`.")
     if not args.execute:
         print(f"\nDRY-RUN : {len(rows)} seraient écartés. Relance avec --execute.")
         conn.close()

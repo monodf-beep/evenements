@@ -95,11 +95,28 @@ def find_incomplete_past(events: list[dict], today: str, *,
                          incomplete: bool, past: bool) -> dict:
     """Repère, CÔTÉ WORDPRESS, les événements « déchet » (indépendamment de la base).
 
-    Depuis l'inventaire cs/v1/list on connaît : venue (lieu), thumb (image), start.
+    Depuis l'inventaire cs/v1/list on connaît : venue (lieu), thumb (image), start, end.
       - INCOMPLET « déchet » = pas de lieu OU pas de date. (Un événement qui a lieu +
         date mais pas d'image = « image seule » → PROTÉGÉ, récupérable par un run visuels.)
-      - PASSÉ = date de début révolue.
+      - PASSÉ = date de FIN révolue, et à défaut de fin, date de début.
     Ne touche jamais un exemplaire publié. Renvoie {id: raison}.
+
+    ⚠️ CORRIGÉ LE 2026-08-18, avant d'automatiser `--past` dans le ménage hebdomadaire.
+    Le critère ne regardait que le DÉBUT. Or l'inventaire du site contient, ce jour-là :
+
+        [582] « Marc Chagall s'expose à Vercelli » — brouillon, début 2026-03-29,
+              fin 2026-10-13
+
+    Un début révolu de cinq mois, une exposition qui court encore deux mois. L'ancien
+    critère l'aurait mise à la corbeille en plein milieu — et la même requête en trouve
+    trois autres. C'est la règle 5 de CLAUDE.md, mot pour mot : « c'est `date_event_end`
+    qui décide, jamais `date_event_start` seule ».
+
+    La route ne rendait d'ailleurs PAS la fin : il a fallu l'ajouter côté WordPress
+    (snippet #10 « CS Trash », pas le fichier du dépôt — voir
+    deploy/wordpress/code-snippets/README.md). Un appelant qui reçoit un inventaire sans
+    `end` retombe sur le début, donc rien ne casse ; mais alors il ne protège plus les
+    événements longs, et c'est écrit ici pour qu'on ne l'oublie pas.
     """
     flagged: dict[int, str] = {}
     for ev in events:
@@ -114,8 +131,12 @@ def find_incomplete_past(events: list[dict], today: str, *,
             if not start:
                 manque.append("date")
             flagged[ev["id"]] = "incomplet (sans " + "/".join(manque) + ")"
-        elif past and start and start < today:
-            flagged[ev["id"]] = f"passé ({start})"
+        else:
+            # La FIN décide ; à défaut de fin, le début (inventaire ancien, cf. docstring).
+            fin = (ev.get("end") or "")[:10] or start
+            if past and fin and fin < today:
+                flagged[ev["id"]] = (f"passé (fin {fin})" if (ev.get("end") or "")[:10]
+                                     else f"passé (début {start}, fin inconnue)")
     return flagged
 
 

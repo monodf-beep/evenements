@@ -236,8 +236,20 @@ def main(argv: list[str] | None = None) -> int:
         ("Incomplétables (discard_uncompletable)", discard_unc_main, ["--apply"], None),
         ("Articles de presse publiés à tort (audit_non_events)", audit_ne_main,
          ["--apply"], "audit-non-events"),
-        ("Doublons nés dans WordPress (cleanup_as_dupes)", cleanup_dupes_main,
-         ["--execute"], "cleanup_as_dupes"),
+        # `--past` AJOUTÉ LE 2026-08-18. `purge_past` (étape 2 ci-dessus) écarte en BASE
+        # les retenus devenus passés, puis imprimait : « ℹ 21 sont déjà sur l'agenda
+        # (brouillon WP) → pense à `cleanup_as_dupes --past --execute` ». Un message
+        # automatique qui demande à un humain de taper une commande RÉVERSIBLE, alors que
+        # la chaîne qui l'imprime pourrait la lancer : c'est la règle 3 prise en défaut,
+        # et ces brouillons dormaient donc sur le site depuis des semaines.
+        # ⚠️ NE PAS L'AJOUTER AVANT D'AVOIR LU cleanup_as_dupes.find_incomplete_past : le
+        # critère « passé » tranchait sur la date de DÉBUT, et l'aurait appliqué à
+        # « Marc Chagall s'expose à Vercelli » (brouillon, début 29/03, FIN 13/10). Il
+        # regarde la fin depuis le même jour, la route cs/v1/list ayant été complétée pour
+        # la rendre. Sans ce préalable, automatiser ici aurait corbeillé des expositions
+        # en cours — un dégât silencieux, et sur le site public.
+        ("Doublons nés dans WordPress + brouillons passés (cleanup_as_dupes)",
+         cleanup_dupes_main, ["--execute", "--past"], "cleanup_as_dupes"),
         # ── AJOUTÉES LE 2026-08-03 ────────────────────────────────────────────────────
         # La journée du 2026-08-03 a été faite ENTIÈREMENT À LA MAIN : 28 fiches hors
         # périmètre retirées une par une, deux archivages faux rouverts, des liens périmés

@@ -23,6 +23,14 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `130-audit-doctrine-editoriale.php` | #130 · Audit doctrine editoriale | front-end | oui | `ed75042bf2b81194c55473df5367ec37` |
 | `135-garde-fous-dates-et-sources.php` | #135 · Garde-fous dates et sources | front-end | oui | `daafdd83a310978e18eae9b41ae6151a` |
 | `136-garde-fous-panel-formes-lieux.php` | #136 · Garde-fous 2 : panel, formes, lieux | front-end | oui | `59582f3cbccf3c03c089ac740cd41f8d` |
+| `10-cs-trash.php` | #10 · CS Trash (routes `cs/v1/trash` et `cs/v1/list`) | global | oui | `d882c18b020ddb1686fb0ee171612812` |
+
+**Le cas #10 mérite d'être lu avant de toucher à quoi que ce soit.** Le dépôt contenait
+déjà `deploy/wordpress/cs-trash.php` — et il n'y a **aucun** `mu-plugins/cs-trash.php` sur
+le serveur : ces routes sont servies par le snippet, en base. Le 2026-08-18, j'ai modifié
+le fichier du dépôt en croyant corriger le site ; il ne se passait rien. C'est exactement
+la faute du 12/08, refaite malgré la règle écrite. Le fichier d'origine porte désormais un
+avertissement en tête, et la copie fidèle est ici.
 
 Les copies **d'avant** les modifications du 2026-08-17 sont sur le serveur, dans
 `wp-content/uploads/cs-snippets-sauvegarde-2026-08-17/` (`130-avant.txt`, `135-avant.txt`,
