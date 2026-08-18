@@ -233,8 +233,75 @@ def etat_couts(jours: int = 7) -> dict:
 # Ce que chaque provenance COÛTE. C'est la seule classification qui compte pour
 # l'arbitrage : « gratuit » = lecture déterministe (données structurées de la page,
 # corps du mail, registre de lieux connus), « payant » = un appel au modèle.
-PROVENANCES_GRATUITES = ("page", "mail", "source", "registre", "moisson", "jsonld")
+# LES VALEURS RÉELLEMENT PRÉSENTES EN BASE, relevées le 2026-08-18 — pas devinées.
+#
+# ⚠️ MA PREMIÈRE LISTE ÉTAIT ÉCRITE DE MÉMOIRE, et elle a menti sur son périmètre. Elle
+# ignorait `parsed` (175 dates), `manuel` (36), `page_corroboree` (2) et `novenue` (32) :
+# faute d'y figurer, ces champs RÉSOLUS étaient comptés comme « non résolus ». Le premier
+# relevé annonçait donc « 27 % venus du code » là où la réponse est 66 %. Un compteur qui
+# se trompe de périmètre ne se trompe pas un peu : il INVERSE la conclusion, et c'est
+# celle-là qui décide de brancher ou non une couche payante.
+#
+# D'où la règle appliquée ici : tout ce qui n'est dans AUCUNE liste est rendu à part, sous
+# « non classé », jamais fondu dans les échecs. Un compteur doit dire ce qu'il compte.
+
+# Le code a lu la donnée quelque part : rien n'a été payé.
+PROVENANCES_GRATUITES = (
+    "page", "page_corroboree", "parsed", "reparse", "jsonld",
+    "mail", "source", "registre", "moisson", "scrape_date",
+)
+# Un appel de modèle ou une recherche web : facturé.
 PROVENANCES_PAYANTES = ("llm", "web")
+# Un humain l'a saisi. Ni code ni modèle — et surtout : ne se répétera pas tout seul.
+PROVENANCES_HUMAINES = ("manuel",)
+# La recherche a eu lieu et n'a rien donné, ou n'a jamais eu lieu. C'est du TRAVAIL RESTANT.
+PROVENANCES_NON_RESOLUES = ("llm_none", "none", "nodate", "(vide)", "")
+# Une DÉCISION, pas un manque : cet événement n'a pas de lieu unique (parcours, multi-sites).
+# La compter comme un échec gonflerait la file de fiches sur lesquelles il n'y a rien à
+# faire — le défaut des « 315 tarifs non publiés » du 2026-08-11.
+PROVENANCES_DELIBEREES = ("novenue", "multi", "recurrent")
+
+
+def classer(detail: dict) -> dict:
+    """Range chaque provenance dans sa famille, et RENDS COMPTE de tout le total.
+
+    Fonction séparée pour qu'une fixture puisse l'éprouver sans base : c'est ici que la
+    faute du 2026-08-18 s'est produite, et elle était invisible tant que le calcul vivait
+    au milieu d'une requête SQL.
+    """
+    def _somme(liste):
+        return sum(v for k, v in detail.items() if k in liste)
+
+    gratuit = _somme(PROVENANCES_GRATUITES)
+    payant = _somme(PROVENANCES_PAYANTES)
+    humain = _somme(PROVENANCES_HUMAINES)
+    non_resolu = _somme(PROVENANCES_NON_RESOLUES)
+    delibere = _somme(PROVENANCES_DELIBEREES)
+    connues = (set(PROVENANCES_GRATUITES) | set(PROVENANCES_PAYANTES)
+               | set(PROVENANCES_HUMAINES) | set(PROVENANCES_NON_RESOLUES)
+               | set(PROVENANCES_DELIBEREES))
+    # CE QUI N'EST DANS AUCUNE LISTE SE VOIT. Sans cette ligne, une valeur ajoutée demain
+    # par un nouveau script serait rangée en silence dans les échecs, et le chiffre se
+    # dégraderait sans que personne sache pourquoi.
+    non_classe = {k: v for k, v in detail.items() if k not in connues}
+    resolu = gratuit + payant + humain
+    return {
+        "detail": detail,
+        "gratuit": gratuit,
+        "payant": payant,
+        "humain": humain,
+        "non_resolu": non_resolu,
+        "sans_objet": delibere,
+        "non_classe": non_classe,
+        "part_gratuite_pct": (round(100 * gratuit / resolu) if resolu else None),
+        # LE PÉRIMÈTRE, ÉCRIT À CÔTÉ DU NOMBRE (règle 6). Sans lui, « 59 % » et « 27 % »
+        # sont deux chiffres qui se contredisent, et c'est le plus gros qu'on croira.
+        "perimetre": ("fiches non doublons et non traductions dont la date de fin est à "
+                      "venir OU ABSENTE — une fiche sans date n'est pas un événement "
+                      "passé (règle 5), donc les non résolus en contiennent beaucoup ; "
+                      "part_gratuite_pct porte sur les seuls champs RÉSOLUS, pas sur "
+                      "le total"),
+    }
 
 
 def etat_provenance() -> dict:
@@ -272,19 +339,7 @@ def etat_provenance() -> dict:
                     "       OR COALESCE(date_event_end, date_event_start) >= ?) "
                     f"GROUP BY p ORDER BY n DESC", (auj,)).fetchall()
                 detail = {str(p): int(n) for p, n in lignes}
-                gratuit = sum(v for k, v in detail.items() if k in PROVENANCES_GRATUITES)
-                payant = sum(v for k, v in detail.items() if k in PROVENANCES_PAYANTES)
-                # Le reste (vide, none, llm_none, nodate) n'est ni l'un ni l'autre : ce
-                # sont les champs NON RÉSOLUS. Les compter avec les gratuits ferait passer
-                # un échec pour une économie.
-                out[champ] = {
-                    "detail": detail,
-                    "gratuit": gratuit,
-                    "payant": payant,
-                    "non_resolu": sum(detail.values()) - gratuit - payant,
-                    "part_gratuite_pct": (round(100 * gratuit / (gratuit + payant))
-                                          if (gratuit + payant) else None),
-                }
+                out[champ] = classer(detail)
         finally:
             conn.close()
     except sqlite3.Error as exc:
@@ -474,11 +529,22 @@ def afficher(r: dict) -> None:
         print("PROVENANCE — d'où viennent les dates et les lieux des fiches ENCORE DEVANT NOUS")
         for champ, m in prov.items():
             pct = m.get("part_gratuite_pct")
-            print(f"  {champ:13s} code={m.get('gratuit')}  modèle={m.get('payant')}  "
-                  f"non résolu={m.get('non_resolu')}  "
-                  f"part du code : {pct if pct is not None else '—'}%")
+            resolu = (m.get("gratuit") or 0) + (m.get("payant") or 0) + (m.get("humain") or 0)
+            print(f"  {champ}")
+            print(f"    RÉSOLUS ({resolu}) : code={m.get('gratuit')}, "
+                  f"modèle={m.get('payant')}, humain={m.get('humain')}"
+                  f"  →  part du code : {pct if pct is not None else '—'}%")
+            print(f"    RESTE À FAIRE : {m.get('non_resolu')}   "
+                  f"sans objet (pas de lieu unique, etc.) : {m.get('sans_objet')}")
+            if m.get("non_classe"):
+                print(f"    ⚠️ NON CLASSÉ : {m['non_classe']} — valeurs absentes des listes, "
+                      f"à ranger avant de se fier au pourcentage")
             detail = ", ".join(f"{k}={v}" for k, v in (m.get("detail") or {}).items())
-            print(f"                {detail}")
+            print(f"    détail : {detail}")
+        # Le périmètre suit le nombre, jamais l'inverse.
+        p0 = next((m.get("perimetre") for m in prov.values() if m.get("perimetre")), "")
+        if p0:
+            print(f"  périmètre : {p0}")
     else:
         print("PROVENANCE : aucune donnée (colonnes date_source/venue_source absentes ?)")
 

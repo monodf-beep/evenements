@@ -185,5 +185,49 @@ vu2 = tampon.getvalue()
 verifier("une provenance absente est DITE, pas passée sous silence",
          "indisponible" in vu2 and "base absente" in vu2, vu2)
 
+# ── 9. Le classement des provenances : la faute qui INVERSAIT la conclusion ─────
+# D'OÙ ÇA VIENT — 2026-08-18. La première liste des provenances était écrite de mémoire.
+# Elle ignorait `parsed`, `manuel`, `page_corroboree` et `novenue` — quatre valeurs bien
+# présentes en base. Faute d'y figurer, ces champs RÉSOLUS tombaient dans « non résolu »,
+# et le relevé annonçait « 27 % venus du code » là où la mesure dit 59 %. Ce n'est pas une
+# imprécision : c'est la conclusion à l'envers, sur le chiffre qui décide de brancher ou
+# non une couche payante.
+from scripts.publier_sante import classer  # noqa: E402
+
+# LES CHIFFRES RÉELS DU VPS, relevés le 2026-08-18. Une fixture sur des valeurs inventées
+# n'aurait pas vu la faute : c'est la base qui la contenait.
+reel_dates = {"llm_none": 550, "none": 346, "parsed": 175, "nodate": 112, "llm": 91,
+              "page": 39, "manuel": 36, "web": 23, "mail": 4, "page_corroboree": 2}
+d = classer(reel_dates)
+verifier("« parsed » (175 dates lues par le code) compte comme RÉSOLU, pas comme un échec",
+         d["gratuit"] >= 175, str(d))
+verifier("« manuel » est à part : ni code ni modèle — une saisie humaine ne se répétera pas",
+         d["humain"] == 36, str(d))
+verifier("la part du code sur les dates est bien 59 %, pas 27 %",
+         d["part_gratuite_pct"] == 59, str(d["part_gratuite_pct"]))
+
+reel_lieux = {"llm": 438, "(vide)": 403, "llm_none": 317, "none": 93, "source": 61,
+              "novenue": 32, "page": 18, "web": 16}
+v = classer(reel_lieux)
+verifier("« novenue » est SANS OBJET, pas un travail restant (pas de lieu unique)",
+         v["sans_objet"] == 32 and v["non_resolu"] == 813, str(v))
+verifier("et le lieu reste massivement payé au modèle : 15 %", v["part_gratuite_pct"] == 15,
+         str(v["part_gratuite_pct"]))
+
+# L'INVARIANT QUI EMPÊCHE LA FAUTE DE REVENIR : rien ne se perd. Si demain un script écrit
+# une valeur neuve, elle ne peut pas être avalée par une famille — elle doit ressortir.
+for nom, detail in (("dates", reel_dates), ("lieux", reel_lieux),
+                    ("valeur inédite", {"page": 10, "provenance_inventee_demain": 7})):
+    c = classer(detail)
+    total = (c["gratuit"] + c["payant"] + c["humain"] + c["non_resolu"]
+             + c["sans_objet"] + sum(c["non_classe"].values()))
+    verifier(f"tout le total est rendu ({nom}) — aucune valeur ne disparaît",
+             total == sum(detail.values()), f"{total} ≠ {sum(detail.values())}")
+verifier("une valeur inconnue est SIGNALÉE au lieu d'être comptée comme un échec",
+         classer({"provenance_inventee_demain": 7})["non_classe"] == {"provenance_inventee_demain": 7},
+         str(classer({"provenance_inventee_demain": 7})))
+verifier("le périmètre voyage avec le nombre (règle 6)",
+         "règle 5" in d["perimetre"] and "RÉSOLUS" in d["perimetre"], d["perimetre"])
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)
