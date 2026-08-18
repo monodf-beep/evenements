@@ -31,6 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from utils import tentatives as _tent  # noqa: E402
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
@@ -78,6 +79,9 @@ def _manques(ev: dict) -> list[str]:
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--tout", action="store_true",
+                    help="montrer aussi les fiches dont tous les angles de recherche sont "
+                         "épuisés (par défaut elles sont comptées, pas listées).")
     ap.add_argument("--manque", help="ne montrer que celles à qui il manque ce champ "
                                      "(date, lieu, ville, territoire, catégorie, image)")
     ap.add_argument("--cap", type=int, default=200, help="nombre maximum de lignes")
@@ -93,11 +97,34 @@ def main(argv: list[str]) -> int:
     rows = [dict(r) for r in conn.execute(
         f"SELECT * FROM events_raw WHERE {where} ORDER BY COALESCE(llm_score,0) DESC, id",
         params)]
-    conn.close()
+    # La connexion reste OUVERTE : la mémoire des recherches (utils.tentatives) est lue
+    # plus bas, fiche par fiche. Elle est refermée à la fin de main().
 
     lignes = [(ev, _manques(ev)) for ev in rows]
     if args.manque:
         lignes = [(ev, m) for ev, m in lignes if args.manque.lower() in m]
+
+    # ÉPUISÉES : tous les angles essayés, la source ne publie pas l'information. Elles
+    # sortent de la file — sinon elles la saturent, et une file où l'on ne peut rien faire
+    # décourage sans protéger (les 315 « tarifs non publiés » du 2026-08-11). Elles ne
+    # DISPARAISSENT pas : elles sont comptées ci-dessous, et `utils.tentatives.a_rouvrir`
+    # les y ramène après 30 jours, parce qu'une source publie parfois tard.
+    epuisees = []
+    if not args.tout:
+        actives = []
+        for ev, m in lignes:
+            manques_ouverts = [c for c in m
+                               if not _tent.epuisee(_tent.deja_tentes(conn, ev["id"], c))
+                               or _tent.a_rouvrir(_tent.deja_tentes(conn, ev["id"], c))]
+            # Les champs épuisés d'une fiche encore active ne doivent pas DISPARAÎTRE de
+            # l'affichage : sans cette trace, on croirait le champ renseigné. Règle 6 —
+            # un état qui sort quelque chose d'une file doit rester comptable.
+            ev["_champs_epuises"] = [c for c in m if c not in manques_ouverts]
+            if manques_ouverts:
+                actives.append((ev, manques_ouverts))
+            else:
+                epuisees.append((ev, m))
+        lignes = actives
 
     print(f"═══ {len(lignes)} fiche(s) à compléter "
           f"({'manque ' + args.manque if args.manque else 'tous manques confondus'}) ═══")
@@ -114,10 +141,29 @@ def main(argv: list[str]) -> int:
         print(f"[{ev['id']:>5}] manque : {', '.join(m):<28} {titre}")
         print(f"        {quand} · {ou}")
         print(f"        {url}")
+        # LA MÉMOIRE DES RECHERCHES (2026-08-18). Sans elle, cette file rendait chaque
+        # matin la même chose, et l'agent rouvrait la même page muette. Franck : « des
+        # fois c'est mal cherché […] il faut relancer sur des événements spécifiques ».
+        # Ce qui suit dit ce qui a DÉJÀ été tenté et par où continuer — c'est la seule
+        # façon qu'une relance soit autre chose qu'une répétition (règle 3).
+        for champ in m:
+            faits = _tent.deja_tentes(conn, ev["id"], champ)
+            if faits:
+                print(f"        ↳ {champ} : {_tent.resume(faits)}")
+        for champ in (ev.get("_champs_epuises") or []):
+            print(f"        ↳ {champ} : MANQUE TOUJOURS, mais tous les angles ont été "
+                  f"essayés — la source ne le publie pas. Nouvelle chance dans "
+                  f"{_tent.EPUISEMENT_JOURS} jours.")
     if len(lignes) > args.cap:
         print(f"\n… {len(lignes) - args.cap} ligne(s) de plus (relancer avec --cap).")
     # Répartition : dit tout de suite si le travail est de même nature ou dispersé.
     from collections import Counter
+    if epuisees:
+        print(f"\n🅿️ {len(epuisees)} fiche(s) écartée(s) de la file : tous les angles de "
+              f"recherche épuisés, la source ne publie pas l'information. Elles "
+              f"repasseront dans {_tent.EPUISEMENT_JOURS} jours (une source publie "
+              f"parfois tard) — `--tout` pour les voir.")
+    conn.close()
     par_manque = Counter(x for _, m in lignes for x in m)
     print("\nCe qui manque, tous cas confondus : "
           + " · ".join(f"{k} {v}" for k, v in par_manque.most_common()))

@@ -13,6 +13,32 @@ CE QUE TU FAIS, DANS CET ORDRE
    ton plan de travail, et son périmètre est exactement celui de la pastille du
    back-office — donc ton résultat sera visible par Franck.
 
+   ⚠️ LIS LES LIGNES « ↳ » : elles disent ce qui a DÉJÀ été cherché sur cette fiche, par
+   quel angle, et ce que ça a donné. Elles t'indiquent aussi le PROCHAIN ANGLE. Suis-le.
+   Rouvrir la page qui se taisait hier, c'est brûler un créneau pour rien — et c'est
+   exactement ce que ce dispositif existe pour empêcher (Franck, 2026-08-18 : « des fois
+   c'est mal cherché, c'est mal trouvé, et donc il faut relancer sur des événements
+   spécifiques »).
+
+   L'échelle des angles, du moins cher au plus cher :
+     page_fiche → site_organisateur → commune_ot → recherche_nom → fiche_soeur → reseaux
+
+   Une fiche sans ligne « ↳ » n'a jamais été cherchée : commence par `page_fiche`.
+
+1 bis. NOTE CHAQUE TENTATIVE, trouvée OU NON :
+
+   .venv/bin/python -m scripts.noter_tentative <id> <champ> <angle> <trouve|muet|inaccessible> \
+       --note "ce que tu as lu"
+
+   Le « muet » compte autant que le « trouvé » : c'est lui qui fait passer la fiche à
+   l'angle suivant demain. Et la NOTE est ce qu'il y a de plus utile — « la page ne donne
+   que l'heure » évite à celui qui reprendra la fiche de relire ce que tu as déjà lu.
+
+   Quand les six angles sont épuisés, la fiche QUITTE la file d'elle-même : ce n'est pas
+   un échec, c'est un constat sur la SOURCE. Elle repassera dans 30 jours, parce qu'un
+   office de tourisme publie parfois son programme tardivement. Tu n'as rien à faire de
+   plus, et surtout : ne la complète pas au jugé.
+
 2. OUVRE LES PAGES, UNE PAR UNE. C'est ton vrai travail, et c'est le seul qu'aucun cron
    ne sait faire. Le 2026-08-11, quatre passes automatiques n'avaient pas su lire ce
    qu'une lecture donnait en trois minutes : « Le vendredi 21 août 2026 à 21h, le Théâtre
