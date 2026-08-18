@@ -113,6 +113,31 @@ _check("l'export annonce son périmètre et son dénominateur",
 _check("   et montre les plus hautes, pour reconnaître le résultat sur le site",
        "WP#6380" in sortie, sortie[:600])
 
+print("\n──── l'empreinte rend le transport vérifiable sans faire confiance ────")
+# D'OÙ ÇA VIENT : le 2026-08-18, ce JSON a traversé une conversation et UNE entrée vide
+# s'est perdue à la recopie. Le compte l'a attrapée — mais un compte juste avec une VALEUR
+# modifiée serait passé. L'empreinte couvre les deux, et se recalcule côté destinataire :
+# le contrôle ne dépend donc plus de qui transporte.
+import hashlib  # noqa: E402
+attendue = hashlib.sha256(
+    json.dumps(donnees, separators=(",", ":"), sort_keys=True).encode("utf-8")
+).hexdigest()[:12]
+_check("la sortie porte une empreinte du JSON",
+       f"sha256(12) = {attendue}" in sortie,
+       sortie[sortie.find("CONTRÔLE"):][:300])
+_check("   et le compte d'entrées à côté d'elle", "entrées = 2 · non vides = 1" in sortie,
+       sortie[sortie.find("CONTRÔLE"):][:300])
+_check("   avec la commande pour la recalculer de l'autre côté",
+       "hash('sha256'" in sortie, sortie[sortie.find("CONTRÔLE"):][:300])
+# ⚠️ ET SURTOUT : l'empreinte doit CHANGER si une seule entrée bouge. Sans ce contrôle-ci,
+# on aurait pu poser une constante et croire le transport vérifié.
+autre = dict(donnees); autre["6381"] = "4"
+bougee = hashlib.sha256(
+    json.dumps(autre, separators=(",", ":"), sort_keys=True).encode("utf-8")
+).hexdigest()[:12]
+_check("une seule valeur modifiée change l'empreinte", bougee != attendue,
+       f"{attendue} vs {bougee}")
+
 print("\n──── ⚠️ sans --marquer, la base ne bouge pas ────")
 conn = sqlite3.connect(tmp)
 cols = [c[1] for c in conn.execute("PRAGMA table_info(events_raw)")]

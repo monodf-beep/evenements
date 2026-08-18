@@ -39,6 +39,7 @@ CLAUDE.md interdit : un identifiant en base ne prouve rien sur le site.
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 import os
 import sqlite3
@@ -105,7 +106,26 @@ def main(argv=None) -> int:
     print()
 
     if not args.marquer:
-        print(json.dumps(valeurs, separators=(",", ":"), sort_keys=True))
+        charge = json.dumps(valeurs, separators=(",", ":"), sort_keys=True)
+        # ── EMPREINTE DE TRANSPORT ────────────────────────────────────────────────────
+        # AJOUTÉE LE 2026-08-18, APRÈS AVOIR PERDU UNE ENTRÉE EN LA RECOPIANT. Ce JSON
+        # traverse une conversation avant d'être écrit sur WordPress : il est retapé,
+        # collé, éventuellement tronqué. Une entrée disparue au milieu ne se voit pas —
+        # elle produit une fiche qui garde son ancienne note, en silence.
+        #
+        # Le compte seul ne suffit pas : il attrape une perte, pas une VALEUR modifiée.
+        # L'empreinte attrape les deux, et elle se recalcule en une ligne de PHP côté
+        # destinataire — donc le contrôle ne dépend plus de qui transporte, ce qui est
+        # tout l'objet. Douze caractères : assez pour qu'une altération se voie, assez
+        # court pour être comparé à l'œil.
+        empreinte = hashlib.sha256(charge.encode("utf-8")).hexdigest()[:12]
+        print(f"# CONTRÔLE — à vérifier AVANT d'écrire quoi que ce soit :")
+        print(f"#   entrées = {len(valeurs)} · non vides = {len(non_vides)} · "
+              f"sha256(12) = {empreinte}")
+        print(f"#   côté WordPress : substr(hash('sha256', $json), 0, 12)")
+        print(f"#   (sur la chaîne EXACTE, sans espace ni retour à la ligne autour)")
+        print()
+        print(charge)
         print()
         print("# ↑ à donner à Novamira. Puis, APRÈS sa confirmation seulement :")
         print("#   .venv/bin/python -m scripts.export_une_now --apply")
