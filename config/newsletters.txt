@@ -134,6 +134,8 @@ Forum Jacques Prévert (Carros);forumcarros.com;Nice;candidat;https://forumcarro
 Les Écrans du Sud (réseau art & essai 06);seances-speciales.fr;Nice;candidat;https://seances-speciales.fr/
 # ⚡ GAP « Intentions de recherche » 18/08 (Villefranche à 5 évén., sous le seuil)
 Mairie de Villefranche-sur-Mer;villefranche-sur-mer.fr;Nice;candidat;https://www.villefranche-sur-mer.fr/newsletter/
+OT Beaulieu-sur-Mer (RSS + newsletter réels, formulaire Gravity Forms);destination.beaulieusurmer.fr;Nice;candidat;https://destination.beaulieusurmer.fr/
+Ville de Beausoleil (RSS + newsletter réels);villedebeausoleil.fr;Nice;candidat;https://www.villedebeausoleil.fr/newsletter/
 MANCA Festival (musique contemporaine, Nice — formulaire confirmé);cirm-manca.org;Nice;candidat;https://www.cirm-manca.org/actualites-newsletter.htm
 Musées nationaux Alpes-Maritimes (Chagall);musees-nationaux-alpesmaritimes.fr;Nice;inactif;
 # — HORS espace sabaudo (arrondissement de Grasse) : NE PAS s'abonner —

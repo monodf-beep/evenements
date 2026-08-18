@@ -218,3 +218,10 @@ https://www.stresafestival.eu/feed/;Piemonte;Stresa Festival;officielle;;Stresa
 https://www.lefestivaldulivredenice.com/feed/;Nice;Festival du Livre de Nice;officielle;;Nice
 # -- Institution large (actualités municipales générales, pas un flux événements dédié) --
 https://www.nice.fr/feed;Nice;Ville de Nice (actualités municipales);institution;;Nice
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-08-18 (suite) — petites communes de l'arrondissement de Nice, non
+# cherchées jusqu'ici. RSS confirmé (vrais <item>).
+# ═════════════════════════════════════════════════════════════════════════════
+https://destination.beaulieusurmer.fr/feed/;Nice;OT Beaulieu-sur-Mer;tourisme;;Beaulieu-sur-Mer
+https://www.villedebeausoleil.fr/feed/;Nice;Ville de Beausoleil;institution;;Beausoleil

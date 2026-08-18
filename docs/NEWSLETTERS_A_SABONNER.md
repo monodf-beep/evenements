@@ -20,6 +20,44 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 
 ---
 
+## Contacts presse — gros événements sans newsletter grand public accessible
+
+Recherche du 2026-08-18. Pour ces gros événements, aucune newsletter grand
+public n'a pu être trouvée/confirmée (site anti-bot, ou rien du tout). Mais
+Cultura Sabauda est un **média**, pas juste un agrégateur (CHARTE §5, §8) :
+le bon canal est une **demande d'accréditation presse**, distincte de
+`docs/PIPELINE_COLLECTE.md` §4 (le canal `press_kits.py`, label Gmail
+`Presse`) — ça donne accès aux dossiers de presse, photos avec droits, info
+avant le public. **Action manuelle requise : écrire un mail de présentation
+du média** à chaque contact, ce n'est pas automatisable ni une simple case à
+cocher comme les newsletters ci-dessus.
+
+- ⭐ **Palio di Asti** — https://www.fondazionepalio.org/stampa/ —
+  `comunicazione@fondazionepalio.org`, formulaire d'accréditation PDF
+- ⭐ **Carnaval de Nice** — https://www.nicecarnaval.com/en/journalists/ —
+  `christophe.viale@nicecotedazur.org`, formulaire d'accréditation en ligne
+- ⭐ **Fête du Citron (Menton)** — https://www.fete-du-citron.com/-Presse-.html
+  et `+demande-accreditation-presse+.html` — formulaire officiel, service Presse
+  Ville de Menton
+- **Torino Design City** — https://www.torinodesigncity.it/en/press-2/ —
+  `design@comune.torino.it` (Ufficio Stampa Città di Torino), pas de
+  formulaire, contact direct par email
+
+Pistes plus faibles, à recouper avant d'écrire :
+- Foire de Saint-Ours (Aoste) — page « Per i giornalisti » trouvée
+  (regione.vda.it) mais contenu qui semble dater d'une édition passée
+  (2010 dans l'extrait récupéré) — vérifier que l'URL sert bien l'édition
+  courante avant d'écrire.
+- Salone del Vino di Torino — une page « Area stampa e media » existe
+  (salonedelvinotorino.it/area-stampa/) mais aucun email/formulaire capturé
+  (site probablement en JS) — à revérifier au navigateur.
+- Grandi Langhe — site protégé anti-bot, aucun contact presse confirmé par
+  accès direct ; les consortiums organisateurs (Barolo/Barbaresco/Langhe)
+  ont probablement une dégustation presse dédiée, à chercher autrement
+  (contact direct des consortiums plutôt que le site de l'événement).
+
+---
+
 ## ⚡⚡ Priorité — zones à 0-4 événements vues dans « Intentions de recherche » (18/08)
 
 Recherche complémentaire du 2026-08-18, sur les zones que la page *Outils >
