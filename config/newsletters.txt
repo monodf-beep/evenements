@@ -26,6 +26,12 @@
 Festival International du Film d'Animation d'Annecy (juin);annecyfestival.com;Savoie;candidat;https://www.annecyfestival.com/
 # Confirmé le 18/08 via Claude dans Chrome (formulaire vu et navigué)
 Val d'Isère (office de tourisme — Critérium de la Première Neige, Classicaval);valdisere.com;Savoie;candidat;https://www.valdisere.com/en/suscribe-to-the-newsletter/
+# NON VÉRIFIÉ par curl (site en SPA/JS) — mais le JS embarqué référence un
+# vrai système de comptes+newsletters ("optinReset", "newsletters" dans les
+# clés i18n), donc probablement réel. À confirmer au navigateur (Claude dans
+# Chrome) avant de compter dessus. UTMB = un des plus gros événements sportifs
+# internationaux du massif (10 000+ coureurs), à ne pas laisser de côté.
+UTMB Mont-Blanc (Chamonix, ultra-trail international);utmb.world;Savoie;candidat;https://utmb.world/newsletter
 Bonlieu Scène Nationale (Annecy);bonlieu-annecy.com;Savoie;actif;https://www.bonlieu-annecy.com/inscription-newsletter
 Espace Malraux Scène Nationale (Chambéry);malrauxchambery.fr;Savoie;actif;https://billetterie.malrauxchambery.fr/3web_mailing_cherche?template=11720
 Cité des Arts Chambéry;chambery.fr;Savoie;actif;https://www.chambery.fr/522-newsletter-de-la-cite-des-arts.htm
