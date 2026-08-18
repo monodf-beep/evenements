@@ -87,6 +87,17 @@ Alexala (province d'Alessandria);alexala.it;Piemonte;candidat;https://www.alexal
 Visit Cuneese (province de Cuneo);visitcuneese.it;Piemonte;candidat;https://www.visitcuneese.it/newsletter
 # Gros événements ponctuels Torino (matière saisonnière prévisible, forte affluence)
 Salone del Vermouth di Torino (février);salonedelvermouth.com;Piemonte;candidat;https://salonedelvermouth.com/en/
+# ⚡ GAP « Intentions de recherche » 18/08 — 2e passe multi-agents, 1 agent par
+# province piémontaise. Comptes communaux avec un VRAI flux RSS+newsletter
+# (rare — la plupart des petites collectivités n'en ont aucun, cf. plus haut) :
+# à traiter en priorité, ce sont les sources les plus fiables trouvées à date.
+Comune di Biella (RSS + newsletter réels, plugin tnp);comune.biella.it;Piemonte;candidat;https://www.comune.biella.it/newsletter
+Comune di Cossato (RSS + newsletter réels, plugin tnp);comune.cossato.bi.it;Piemonte;candidat;https://www.comune.cossato.bi.it/newsletter
+Comune di Casale Monferrato (RSS + newsletter réels, plugin tnp);comune.casale-monferrato.al.it;Piemonte;candidat;https://www.comune.casale-monferrato.al.it/newsletter
+Comune di Domodossola (RSS + newsletter réels, plugin tnp);comune.domodossola.vb.it;Piemonte;candidat;https://www.comune.domodossola.vb.it/newsletter
+Stresa Festival (RSS + newsletter réels);stresafestival.eu;Piemonte;candidat;https://www.stresafestival.eu/newsletter
+#fuoriluogo (festival littéraire, Biella, Mailchimp confirmé);fuoriluogofestival.it;Piemonte;candidat;https://www.fuoriluogofestival.it/
+Sacro Monte di Varallo (UNESCO, newsletter confirmée — RSS existe mais vide au 18/08);sacri-monti.com;Piemonte;candidat;https://www.sacri-monti.com/Newsletter
 
 # ======================= NICE / ALPES-MARITIMES (Comté de Nice) =======================
 Théâtre National de Nice (TNN);tnn.fr;Nice;actif;https://www.tnn.fr/fr/
@@ -104,6 +115,7 @@ Forum Jacques Prévert (Carros);forumcarros.com;Nice;candidat;https://forumcarro
 Les Écrans du Sud (réseau art & essai 06);seances-speciales.fr;Nice;candidat;https://seances-speciales.fr/
 # ⚡ GAP « Intentions de recherche » 18/08 (Villefranche à 5 évén., sous le seuil)
 Mairie de Villefranche-sur-Mer;villefranche-sur-mer.fr;Nice;candidat;https://www.villefranche-sur-mer.fr/newsletter/
+MANCA Festival (musique contemporaine, Nice — formulaire confirmé);cirm-manca.org;Nice;candidat;https://www.cirm-manca.org/actualites-newsletter.htm
 Musées nationaux Alpes-Maritimes (Chagall);musees-nationaux-alpesmaritimes.fr;Nice;inactif;
 # — HORS espace sabaudo (arrondissement de Grasse) : NE PAS s'abonner —
 # Palais des Festivals Cannes ; Sortir à Cannes (SEMEC) ; Anthéa (Antibes) ;

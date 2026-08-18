@@ -195,3 +195,26 @@ https://www.interreg-alcotra.eu/rss.xml;Savoie;Interreg ALCOTRA (transfrontalier
 # -- Traditions / mono-événement --
 https://www.nicecarnaval.com/feed/;Nice;Carnaval de Nice;officielle;;Nice
 https://www.langhe.net/feed/;Piemonte;LoveLanghe (traditions/sagre Langhe);tourisme
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-08-18 — recherche multi-agents « Intentions de recherche » : zones
+# à 0-4 évén. + gros événements ponctuels. Chaque flux ci-dessous vérifié par
+# curl réel avant ajout (code 200 après redirection, vrais <item> avec contenu
+# daté — pas juste un channel vide). Deux candidats trouvés par les agents
+# n'ont PAS été ajoutés faute de preuve à la revérification : fieranocciolacortemilia.it
+# (0 item au moment du contrôle final) et doujador.it (items figés depuis 2019-2020).
+# -- Comptes communaux avec vrai flux RSS (rare chez ces petites collectivités) --
+https://www.comune.biella.it/feed;Piemonte;Comune di Biella;institution;;Biella
+https://www.comune.cossato.bi.it/feed;Piemonte;Comune di Cossato;institution;;Cossato
+https://www.comune.casale-monferrato.al.it/feed;Piemonte;Comune di Casale Monferrato;institution;;Casale Monferrato
+https://www.comune.domodossola.vb.it/feed;Piemonte;Comune di Domodossola;institution;;Domodossola
+# -- Offices de tourisme locaux --
+https://turismo.comuneacqui.it/feed/;Piemonte;Turismo Acqui Terme;tourisme;;Acqui Terme
+https://www.visitovada.com/feed/;Piemonte;Visit Ovada;tourisme;;Ovada
+# -- Gros événements / festivals ponctuels --
+https://www.marrone.net/feed/;Piemonte;Fiera Nazionale del Marrone (Cuneo);officielle;;Cuneo
+https://www.torinojazzfestival.it/feed/;Piemonte;Torino Jazz Festival;officielle;;Torino
+https://www.stresafestival.eu/feed/;Piemonte;Stresa Festival;officielle;;Stresa
+https://www.lefestivaldulivredenice.com/feed/;Nice;Festival du Livre de Nice;officielle;;Nice
+# -- Institution large (actualités municipales générales, pas un flux événements dédié) --
+https://www.nice.fr/feed;Nice;Ville de Nice (actualités municipales);institution;;Nice
