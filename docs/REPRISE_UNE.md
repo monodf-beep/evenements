@@ -1,132 +1,136 @@
-# « À la une » — où on en est, et par quoi reprendre
+# « À la une » — état, et ce qui reste
 
-État au **2026-08-17, fin de journée**. Ce document existe parce que la session qui a fait
-ce travail ne sera plus là demain, et que trois quarts de la journée sont passés à
-re-découvrir des choses déjà sues.
+Dernière mise à jour : **2026-08-18, fin de journée**.
 
 ---
 
-## Le point de blocage, et il n'y en a qu'un
+## FAIT — la section fonctionne
 
-**On ne sait pas encore si le méta `as_une_now` arrive sur WordPress.**
+Deux jours après la capture d'écran de Franck (« pilate en "à la une" ??? les 2 autres, ça
+fait des semaines qu'ils sont à la une »), la vitrine tourne. Ce qu'elle sert au 18/08 :
 
-Tout le reste est prêt. La prochaine action est une VÉRIFICATION, pas une écriture — et
-tant qu'elle n'est pas faite, republier ou changer un tri ne sert à rien.
+| | versant FR | versant IT |
+|---|---|---|
+| 1 | 6380 · **13** · Tour de l'Avenir, étape finale | 7113 · **13** · Tour de l'Avenir |
+| 2 | 6311 · **11** · Treno storico Torino-Lanzo-Ceres | 7209 · **11** · Treno storico |
+| 3 | 6386 · **10** · Fiera del Peperone | 7518 · **10** · Filarmonica della Scala |
 
-### L'action à faire en premier, demain
+La chaîne complète, dans l'ordre où elle a été montée :
 
-La fiche 4421 (Tour de l'Avenir, post WP **6380**) a été republiée seule à 16h26. Elle
-doit porter `as_une_now = 13`. Le vérifier via Novamira :
+1. `utils/une.py` — la note : intérêt intrinsèque RELEVÉ par l'imminence. Vide si la fiche
+   n'a pas sa place, sinon 6 à 14. Une une annonce une OUVERTURE ou signale une DERNIÈRE
+   CHANCE, jamais le milieu d'un parcours de quatre mois ;
+2. `scripts/audit_une.py` — le banc de mesure, qui rejoue les règles à J+0/7/14/21 par
+   versant linguistique et montre ce qu'elles ÉCARTENT ;
+3. `publisher_as` pousse `as_une_now` ; l'allow-list du snippet 6 l'accepte (ajoutée le
+   18/08 — sans elle WordPress la jetait en silence) ;
+4. `refresh_deplacement` la RECALCULE tous les jours à 10h45, en même temps que
+   `as_deplacement_now`. Sans ce rouvreur la note serait gelée au jour de la publication,
+   et le correctif aurait recréé la plainte de départ ;
+5. snippet 44, mode `une_now` : exclut les métas vides du vivier (exclusion, jamais
+   relégation — sinon le tri retombe sur la date), trie en numérique décroissant,
+   `$max_reuse = 0` pour ne pas recombler la section.
 
-> Sur le post WordPress 6380, lis la méta `as_une_now` dans postmeta et donne-moi sa
-> valeur exacte. Puis compte combien de posts au total portent cette clé. Ne modifie rien.
+**Le mode `une_now` ne sert QUE `ala-une`.** `evidence` et `evidence-bottom` restent sur
+`vedette` — les toucher les aurait mis à égalité sur du vide.
 
-- **13** → l'allowlist est bonne, enchaîner sur « la suite » ci-dessous ;
-- **vide ou absente** → `'as_une_now'` n'est pas (ou mal) ajouté au `$allowed` du snippet
-  `cs-publish` **en ligne**. C'est ça qu'il faut régler avant tout le reste ;
-- **autre valeur** → le calcul et la publication divergent : à creuser avant d'aller plus
-  loin.
+### Décisions prises, et pourquoi
 
----
-
-## Pourquoi cette vérification, et pas la confiance dans le journal
-
-Le lot de la nuit du 16 au 17 a rendu **« 156 publié(s), 0 échec(s) »**. Le lendemain
-matin, l'inventaire WordPress comptait **zéro** fiche portant `as_une_now`.
-
-`publisher_as` envoyait bien la valeur. Le tableau `$allowed` de `cs-publish.php` ne la
-connaissait pas, `update_post_meta` n'a donc jamais été appelé — **un méta inconnu est
-jeté en silence**, sans rien changer au code HTTP.
-
-Un lot « 0 échec » et un lot dont la donnée n'arrive pas sont **indistinguables vus depuis
-le journal du publieur**. C'est pour ça que la vérification passe par le site, jamais par
-la sortie du script (règle 1).
-
-⚠️ Le même incident, exactement, s'était produit le 2026-08-12 avec `as_deplacement_now`.
-Un commentaire avait été écrit dans `cs-publish.php` pour que ça n'arrive plus ; il n'a
-rien empêché, parce qu'un commentaire n'est lu que par qui ouvre déjà le bon fichier.
-D'où `tests/test_contrat_meta_as.py`, qui compare les clés envoyées par le publieur au
-`$allowed` et échoue sur la moindre qui ne traverse pas.
-
-**Rappel qui vaut pour tout ce dossier :** `deploy/wordpress/cs-publish.php` n'est PAS le
-code qui tourne. Le vrai vit dans **Code Snippets**, en base, et sa version en ligne
-contient du code absent du dépôt. Une clé s'y ajoute **ligne à ligne**, jamais en écrasant
-le snippet (voir `docs/DEPLOIEMENT_WORDPRESS.md`).
+- **La une ne se sert PAS en premier** dans le plan d'allocation. Servir `ala-une` avant
+  `weekend` lui donnerait 6377 et 7295 (notés 11) à la place d'une fiche notée 10 — un
+  point d'écart — mais retirerait deux cartes sur six au week-end, alors que ce sont
+  justement des événements du week-end. Un lecteur qui prépare son samedi les cherche là.
+- **Moins de trois candidates → moins de trois cartes.** Une une comblée par l'ancien
+  classement ramènerait le cours de pilates, qui est le problème de départ.
+- **`as_une_now` commande, pas `cs_une_note`** (snippet 140). Cette dernière dérive de
+  `as_deplacement`, qui inclut `accessibilite_langue` — un critère fait pour décider si on
+  traverse une frontière. Sur une home lue dans sa propre langue il n'a aucun sens.
 
 ---
 
-## La suite, une fois la méta confirmée
+## CE QUI RESTE
 
-**1. Reprendre le lot complet.** Celui de 16h11 a été coupé par une déconnexion SSH à
-90 fiches sur 166. Le relancer détaché, pour qu'une coupure ne le tue plus :
+### Bloqué par le réseau
 
-```
-cd ~/evenements && nohup .venv/bin/python -m scripts.publish_batch_as \
-    --update --skip-media --cap 200 > /tmp/lot.log 2>&1 &
-tail -20 /tmp/lot.log      # pour suivre, même après reconnexion
-```
+Depuis le 18/08 ~13h, **le VPS ne joint plus `agendasabauda.eu`** : ping, port 80 et port
+443 tous en timeout vers 5.135.23.164, et uniquement vers elle, alors que la même IPv4
+joint tout le reste. Les paquets sont jetés à destination — ticket hébergeur.
 
-**2. Recompter** : environ 24 fiches doivent porter `as_une_now`, valeurs entre 6 et 14.
+En attendant, `scripts/export_une_now.py` contourne : le VPS calcule, un autre canal écrit.
+265 métas ont été posées comme ça le 18/08. Le scraping, les dates, les lieux,
+l'enrichissement et l'évaluation continuent normalement ; seules les publications sont à
+l'arrêt.
 
-**3. Alors seulement, le tri.** Et c'est là qu'est le piège principal.
+### À reprendre quand le réseau revient
 
-### Ce que l'inventaire Novamira a établi le 17/08
+- **Terra Madre / post 2190.** La version française est en ligne ; la version italienne
+  n'existe plus nulle part — le post italien 1931 a été écrasé par le texte français puis
+  mis à la corbeille le 03/08. L'article italien est toujours en base (fiche 2507) : il
+  faut le republier sur une page neuve et relier la paire.
+- **`verifier_doublons_publies --en-ligne`** : il refuse de conclure tant qu'il ne peut pas
+  sonder WordPress, et il a raison de le dire.
 
-Il n'y a **aucune requête JetEngine Query Builder** derrière « À la une ». Les quatorze
-blocs de l'accueil sont sans `query_id`. La sélection et le tri sont calculés en PHP par
-le **snippet 44**, « CS · Anti-doublon home (offsets sections dynamiques) », qui impose
-ses identifiants au bloc via `post__in`.
+### Le sujet suivant : l'aiguillage par langue
 
-Tri actuel, un `usort` à quatre niveaux :
+Trois occurrences en deux jours, ce n'est plus une série d'accidents :
 
-1. `as_home_override === 'featured'` en tête ;
-2. `as_home_order` croissant, vide relégué ;
-3. `as_home_score` décroissant, vide traité comme −1 ;
-4. `_EventStartDate` croissant.
+- fiches 3495 et 3509, traductions françaises servies côté italien ;
+- Terra Madre : le texte français a écrasé les DEUX pages, dont l'italienne ;
+- post 7490 : titre français, étiquette italienne, doublon de 7518 sur le même concert.
 
-Filtres : `_EventStartDate >= maintenant`, exclusion de `as_home_override = 'excluded'`,
-`as_enrich_status = 'enriched'` strict, et `post__not_in` des sections prioritaires.
-Territoire : conditionnel (`cs_territoire_actif`). Langue : explicite, `'lang' => $lang`,
-cache indexé par langue. Vivier de 60 fiches, 6 allouées à `ala-une`, **3 affichées**.
+Commencer par une MESURE — combien de fiches portent une étiquette de langue qui ne
+correspond pas à leur texte — avant d'écrire quoi que ce soit.
+`scripts/audit_langue_polylang.py` en couvre une partie, mais seulement les traductions ;
+il faudra l'élargir aux originaux.
 
-> ⚠️ **CE TRI SERT TOUTES LES SECTIONS DE L'ACCUEIL**, pas seulement « à la une ».
-> `as_une_now` est vide sur la grande majorité des fiches : l'appliquer au classement
-> général mettrait « ce week-end », « les 7 prochains jours » et « en évidence » à égalité
-> sur du vide. **Le changement doit être limité à l'allocation `ala-une`**, en laissant
-> `as_home_score` gouverner le reste.
+### Plus petit
 
-`as_home_override` est en place mais **inerte** : trois fiches seulement le portent, une
-seule avec une valeur (`excluded`), aucune avec `featured`. Ne pas y toucher.
+- `cs_une_note` (snippet 140) gouverne désormais `evidence`, alors qu'elle a été écrite
+  pour la une. Effet de bord du 18/08 au matin, à trancher.
+- `$sizes['ala-une']` est passé à 1 le 17/08 ; le prélèvement, lui, est à 3. Si
+  l'affichage n'en montre qu'une, c'est là qu'il faut regarder.
+- La Savoie n'a qu'UNE fiche qui passe le plancher d'intérêt 6. Descendre à 4 en donnerait
+  trois, mais ramènerait le cours de pilates. C'est un problème de sources, pas de seuil.
 
----
-
-## Pourquoi `as_une_now` plutôt que `as_home_score`
-
-Capture d'écran de Franck, 17/08 : « pilate en "à la une" ??? les 2 autres, ça fait des
-semaines qu'ils sont à la une, c'est des événements fin septembre. »
-
-`as_home_score` mesure la **qualité du rendu** (panel + source officielle + visuels) et
-reste figée au jour de la rédaction. Un cours de pilates bien illustré y battait un
-festival, et rien ne savait qu'on était à cinq semaines de la date.
-
-`as_une_now` (`utils/une.py`) combine l'**intérêt intrinsèque** de l'événement et son
-**imminence** : vide si la fiche n'a pas sa place en une, sinon 6 à 14 — jamais 0, jamais
-négatif. Un filtre numérique `> 0` suffit donc à écarter les vides.
-
-Une fiche entre en une quand elle **ouvre** bientôt ou quand elle **ferme** bientôt ; pas
-pendant les quatre mois qui séparent les deux. Le banc de mesure est
-`scripts/audit_une.py`, qui rejoue les règles à J+0/7/14/21 par versant linguistique.
 
 ---
 
-## Ce qui reste ouvert, et qui demande un arbitrage humain
+## Les pièges rencontrés, parce qu'ils se représenteront
 
-- **La Savoie n'a qu'UNE fiche** qui passe le plancher d'intérêt 6. À 4 elle en aurait
-  trois — mais ramènerait le cours de pilates, exactement ce qui a déclenché la demande.
-  Ce n'est pas un problème de seuil, c'est un problème de sources.
-- **Deux traductions du mauvais côté du sélecteur de langue** (fiches 3495 et 3509), sur
-  47 examinées : `.venv/bin/python -m scripts.audit_langue_polylang` les liste, avec
-  l'adresse REST à ouvrir pour vérifier l'état réel.
-- **MonumenTO (fiche 308)** s'est débloquée toute seule au lot de 16h11 et a été publiée
-  (nouveau post 7750). Ça règle l'orphelinat de sa traduction 3509 — **à revérifier** une
-  fois le lot complet passé.
+**Un lot « 0 échec » ne prouve pas que la donnée soit arrivée.** Le lot du 17/08 a rendu
+« 156 publié(s), 0 échec(s) » et WordPress n'a rien reçu : l'allow-list `$allowed` du
+snippet 6 ne connaissait pas la clé, et un méta inconnu est jeté EN SILENCE, sans rien
+changer au code HTTP. Le même incident avait eu lieu le 12/08 avec `as_deplacement_now`,
+et un commentaire avait été écrit pour l'empêcher — il n'a servi à rien, parce qu'un
+commentaire n'est lu que par qui ouvre déjà le bon fichier. D'où
+`tests/test_contrat_meta_as.py`, qui compare les clés envoyées par le publieur à
+l'allow-list et échoue sur la moindre qui ne traverse pas.
+
+**Le fichier du dépôt n'est pas le code qui tourne.** `deploy/wordpress/cs-publish.php`
+est une copie ; le vrai vit dans Code Snippets, en base, et la version en ligne contient
+du code absent du dépôt. Une clé s'y ajoute LIGNE À LIGNE, jamais en écrasant le snippet.
+
+**Une valeur datée doit avoir quelqu'un qui la recalcule.** C'est la règle 3 appliquée aux
+valeurs vivantes, et elle était déjà écrite en tête de `refresh_deplacement.py` — je ne
+l'avais pas lue avant d'ajouter une méta datée de plus.
+
+**« Il manque une entrée » ne dit pas OÙ elle s'est perdue.** L'export annonçait 266 fiches
+et rendait 265 entrées ; j'ai accusé ma recopie, ajouté une empreinte de transport et fait
+recommencer deux tours de vérification. La faute était à la source : deux fiches portaient
+le même `wp_post_id_as` et l'une écrasait l'autre dans le dictionnaire. Les deux hypothèses
+étaient à une commande l'une de l'autre.
+
+**Il existait DEUX fonctions de langue dans ce dépôt, et j'ai pris la mauvaise.**
+`effective_lang` privilégie l'article — or `enrich` rédige en français par défaut, donc
+elle classait français tout événement italien enrichi. La seule qui compte est celle qui
+ÉCRIT la langue sur WordPress : `publisher_as._lang`. Un rapport sur l'état du site doit
+appeler le code du site, pas un cousin qui lui ressemble.
+
+**Vérifier au bon endroit.** `/?p=<id>` répond 404 pour tout `tribe_events`, en ligne ou
+non. Seule l'API REST par NUMÉRO sépare les trois états. J'ai envoyé Franck sur la
+mauvaise adresse et il a vu un 404 qui ne voulait rien dire.
+
+**Raisonner sur le principe sans regarder les fiches.** J'ai recommandé de servir la une
+avant le week-end au nom de « une vitrine ne doit pas hériter du reste ». Les deux fiches
+concernées étaient des événements DU week-end : les déplacer n'aurait servi personne. Le
+gain se chiffrait à un point d'écart, le coût à deux cartes sur six.
