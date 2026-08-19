@@ -316,3 +316,51 @@ et que la page serait **mieux remplie** que celle du week-end.
 > langues font 696 pages, presque toutes vides et périmées d'avance. Le bon
 > objet est une quatrième page glissante, « ce mois-ci », sur le modèle exact
 > des trois autres : 58 pages, pas 696.
+
+---
+
+## 9. Les FAQ génériques (2026-08-19)
+
+### Ce que la mesure a montré
+
+Le snippet 61 construisait la FAQ en « socle hybride » : quatre questions
+communes **toujours** présentes, plus une surcouche par ville lue dans
+`cs_hub_faq`. Deux conséquences que le nom « socle » masquait.
+
+**Le socle s'ajoutait à la FAQ rédigée au lieu d'être remplacé par elle.** Sur
+Chambéry, la page servait les quatre questions génériques *puis* les questions
+écrites à la main sur l'Espace Malraux, le théâtre Charles Dullin et les
+Charmettes. Deux blocs empilés sur la même page.
+
+**Il s'affichait aussi sur les 174 pages datées.** Le même bloc, avec le même
+balisage `FAQPage`, sur **232 pages**. Du balisage de questions dupliqué à cette
+échelle est au mieux ignoré, au pire lu comme du remplissage.
+
+### Ce qui est corrigé
+
+| | Avant | Après |
+|---|---|---|
+| Pages datées (aujourd'hui, week-end, semaine) | FAQ + schéma | **plus de FAQ du tout** |
+| Hub avec `cs_hub_faq` | socle **+** FAQ rédigée | **FAQ rédigée seule** |
+| Hub sans `cs_hub_faq` | socle | socle, en attendant sa rédaction |
+
+Le bloc générique a disparu de **191 pages sur 232**. Sauvegarde du code dans
+`cs_bk_snippet61_20260819`.
+
+### Ce qui reste : 41 hubs à écrire
+
+17 hubs ont une FAQ rédigée, **41 n'en ont pas** et gardent donc le socle : les
+8 villes de Savoie créées le 2026-08-18, les 8 provinces du Piémont, les 4
+territoires, et les jumelles italiennes manquantes.
+
+> **Une FAQ ne se remplit pas, elle s'écrit.** Le modèle est celui de Chambéry :
+> des lieux nommés, une programmation réelle. « Misez sur les sorties couvertes »
+> ne dit rien que la page ne dise déjà, et le dit à l'identique partout.
+
+**Méthode retenue :** la matière vient du site lui-même, lieux du catalogue
+(`tribe_venue`), texte d'introduction du hub déjà validé, événements récurrents.
+On n'invente pas un patrimoine, on nomme celui qui est déjà documenté.
+
+**Les propositions vont dans `cs_hub_faq_propose`, jamais directement dans
+`cs_hub_faq`**, conformément au non-négociable « aucune publication autonome ».
+Première proposition écrite : Annemasse, français et italien (7823 et 7824).
