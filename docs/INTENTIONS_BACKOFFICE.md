@@ -258,3 +258,61 @@ et elles disent correctement aux moteurs d'indexer l'accueil à leur place. Les
 pages destinées à se classer sont ailleurs et sont saines : `/que-faire-en-savoie/`
 et `/it/cosa-fare-in-savoia/` portent leur propre titre, leur propre canonique
 et leur `hreflang` croisé. Vérifié sur les trois hubs testés.
+
+---
+
+## 8. Trouver les villes : état réel au 2026-08-18
+
+### Ce qui existe
+
+29 hubs racines en français, chacun avec exactement **trois** pages datées
+filles : aujourd'hui, ce week-end, cette semaine. Soit 116 pages françaises et
+autant d'italiennes.
+
+| Territoire | Hubs racines |
+|---|---|
+| Savoie | Savoie, Chambéry, Annecy, Chamonix, Aix-les-Bains, Albertville, Annemasse, Cluses, Moûtiers, Sallanches, Saint-Jean-de-Maurienne, Thonon-les-Bains, Chablais |
+| Piémont | Piémont, Turin, Monferrato, et les 8 provinces |
+| Comté de Nice | Comté de Nice, Nice, Côte d'Azur |
+| Vallée d'Aoste | Vallée d'Aoste, Aoste |
+
+### Le déséquilibre, qui est le vrai sujet
+
+**Onze villes en Savoie, une seule au Piémont, une à Nice, une en Vallée
+d'Aoste.** Le Piémont n'a que Turin, alors qu'Asti, Alba, Cuneo, Vercelli,
+Novare, Biella, Ivrée existent comme provinces mais pas comme villes. Le comté
+de Nice n'a que Nice, sans Menton, Antibes, Grasse ni Vence. La Vallée d'Aoste
+n'a qu'Aoste, sans Courmayeur, Châtillon ni Cogne.
+
+Ce n'est pas un défaut de navigation : c'est un défaut de couverture.
+
+### Le pied de page pointait à côté
+
+Les quatre intitulés de territoire du menu `footer-territoires` (281) pointaient
+vers `/territoire/savoie/`, une archive de taxonomie qui **301 vers le vrai
+hub**. Les liens marchaient, au prix d'un saut inutile sur chaque lien interne.
+
+**Le pied de page italien (521), lui, pointait déjà correctement** vers
+`/it/cosa-fare-in-savoia/`. L'asymétrie ne venait pas d'un choix, mais d'un
+oubli côté français.
+
+Corrigé : les quatre pointent maintenant directement sur leur hub. Sauvegarde
+dans `cs_bk_menu281_20260818`.
+
+### Quinze hubs ne sont pas au pied de page
+
+Les 8 provinces, plus Monferrato, Côte d'Azur et Chablais. Ils ne sont pas
+orphelins pour autant : le plan du site généré et la rangée de villes des hubs
+de territoire les relient. Les mettre au pied de page allongerait beaucoup une
+colonne déjà longue, pour des pages très fines.
+
+### Il n'existe aucune page « ce mois-ci »
+
+Les trois moments sont aujourd'hui, ce week-end, cette semaine.
+« Que faire à Annecy en septembre » n'a pas de page, alors que la requête existe
+et que la page serait **mieux remplie** que celle du week-end.
+
+> **Une page par mois calendaire serait un piège** : 29 hubs × 12 mois × 2
+> langues font 696 pages, presque toutes vides et périmées d'avance. Le bon
+> objet est une quatrième page glissante, « ce mois-ci », sur le modèle exact
+> des trois autres : 58 pages, pas 696.
