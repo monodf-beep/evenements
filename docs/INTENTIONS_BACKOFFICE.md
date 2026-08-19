@@ -364,3 +364,58 @@ On n'invente pas un patrimoine, on nomme celui qui est déjà documenté.
 **Les propositions vont dans `cs_hub_faq_propose`, jamais directement dans
 `cs_hub_faq`**, conformément au non-négociable « aucune publication autonome ».
 Première proposition écrite : Annemasse, français et italien (7823 et 7824).
+
+---
+
+## 10. Ce que doit contenir le résumé d'un hub (2026-08-19)
+
+### La question
+
+Faut-il détailler les lieux dans le résumé d'une ville, ou parler de la ville ?
+Position de Franck : les lieux sont déjà cités dans les fiches d'événements.
+
+### Réponse mesurée
+
+**D'accord sur le sujet, pas sur le motif.** Les lieux ne sont cités dans les
+fiches que si des événements s'y tiennent au moment de la visite. Annemasse en
+compte trois. Si aucun ne se joue à Château Rouge cette semaine, la page ne
+nomme jamais l'équipement principal de la ville. Le hub est justement la page
+qui doit poser les ancrages, parce que la liste ne peut pas s'en charger.
+
+**Le défaut est ailleurs.** Sur 29 hubs français :
+
+| Constat | Nombre |
+|---|---|
+| Même phrase « Retrouvez ici tout ce qu'il y a à faire à… » | 11 |
+| Même phrase « l'agenda passe des concerts et des expositions… » | 5 |
+| Intro sous 70 mots | 12 |
+
+Les douze intros courtes sont les 8 provinces (33 à 45 mots), **les 4
+territoires** (54 à 59) et Annecy (57). Les pages censées se classer le plus
+large sont les plus maigres.
+
+### Le partage retenu
+
+- **Intro** : deux ou trois phrases sur la ville, puis deux ou trois sur le
+  **rythme** de ce qui s'y passe. C'est la seule matière que ni Wikipédia ni les
+  fiches ne portent. Modèle déjà en production : Chamonix, « l'agenda y suit le
+  rythme de la montagne, entre saison estivale et hivernale ».
+- **FAQ** : les mêmes lieux, mais pour dire **comment s'en servir** — horaires,
+  gratuité, quel parc quel soir. Pas une seconde description.
+
+### La recherche n'est pas optionnelle
+
+Sur Annemasse, elle a corrigé une erreur de fond de mon brouillon : les
+Musical'été occupent **deux** parcs, le vendredi à La Fantasia (sonorités du
+monde) et le samedi à Montessuit (jazz), du 3 juillet au 22 août, gratuits,
+portés par Château Rouge et la Ville. Elle a aussi rétabli deux faits que
+j'avais affaiblis par prudence : la Villa du Parc est bien **centre d'art
+contemporain d'intérêt national**, et Château Rouge présente **environ 130
+spectacles par saison dans quatre salles**.
+
+Sources chez les organisateurs, jamais les agrégateurs, conformément au vault.
+Le site de la ville d'Annemasse est derrière une protection anti-robot : elle
+n'est pas contournée.
+
+**Compter environ trois recherches par ville**, soit une centaine pour les 41
+hubs. Ce n'est plus de la rédaction, c'est de la documentation.
