@@ -248,3 +248,50 @@ plus propre, elle n'est pas nécessaire.
 **Un nom de site tiers dans une URL** : la 6445 porte
 `...-il-grand-continent-summit-valledaostaglocal-it`. Le nom de la source a fini
 dans notre slug. À corriger avec le point précédent.
+
+---
+
+## Chaque version dans sa langue : le reste du lot (2026-08-19)
+
+Règle posée par Franck : le français quand le français est choisi, l'italien
+quand l'italien est choisi. Les noms propres d'institutions et d'événements se
+citent tels quels, comme le prévoit le vault.
+
+### Les résumés de hubs respectaient déjà la règle
+
+Mesure sur les 232 hubs : **zéro écart**.
+
+> **Mon premier détecteur en avait signalé quatorze, tous faux.** Il comptait
+> « la » et « le » comme français alors qu'ils sont aussi italiens, et il
+> comptait les mots français contenus dans les noms propres, comme
+> « Maison **des** Jeux Olympiques ». Un détecteur de langue doit retirer les
+> noms propres et n'utiliser que des mots-outils non ambigus.
+
+### Les fiches, elles, étaient en écart
+
+L'audit du snippet 130 tenait la liste : **17 fiches déclarées italiennes,
+rédigées en français**. Quinze n'avaient aucune jumelle, deux en avaient une.
+
+Décision de Franck de la veille appliquée telle quelle : **les 15 sans jumelle
+sont rebasculées en français**. Sauvegarde `cs_bk_langue17_20260819`.
+Indexables Yoast reconstruits dans la foulée, sauvegarde
+`cs_bk_yoast_indexable17_20260819`, zéro permalien resté en `/it/`.
+
+**732 et 7610 sont laissées** : elles ont une jumelle française (2232 et 2255),
+les basculer mettrait deux fiches françaises dans le même groupe Polylang. Ce
+sont de vraies traductions jamais faites.
+
+Après passage, l'audit tombe de **17 à 2**.
+
+### Ce que cet épisode apprend
+
+**L'audit avait déjà tout trouvé.** Ses listes `langue_it_fr` et `doublons`
+contenaient les fiches et les paires que j'ai redécouvertes en enquêtant, dont
+6373+7223 et 6405+7197. Le rapport partait sur Slack depuis le 18 août.
+
+> **Lire le rapport avant d'enquêter.** Un audit qui tourne tous les jours et que
+> personne ne dépouille coûte autant qu'il rapporte.
+
+Reste ouvert : **33 signalements de vocabulaire proscrit**, dont six pages
+institutionnelles (À propos, Aujourd'hui, Où manger, Chi siamo, Aoste, Vallée
+d'Aoste) et la fiche Collontrek 2026 qui en cumule sept à elle seule.
