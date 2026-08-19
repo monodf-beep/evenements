@@ -419,3 +419,27 @@ n'est pas contournée.
 
 **Compter environ trois recherches par ville**, soit une centaine pour les 41
 hubs. Ce n'est plus de la rédaction, c'est de la documentation.
+
+### Les FAQ rédigées, ville par ville (2026-08-19)
+
+Six villes traitées après Annemasse, français et italien, avec recherche chez
+les organisateurs et les communes avant écriture :
+
+| Ville | Ce que la recherche a apporté |
+|---|---|
+| Albertville | Le Dôme réunit théâtre (scène conventionnée), cinéma Art et Essai deux salles, médiathèque ; Théâtre de Maistre 400 places ; Halle olympique, ancienne patinoire de 1992 rénovée en 2015, jusqu'à 9 000 personnes en concert |
+| Thonon-les-Bains | Maison des Arts du Léman, plus de 60 rendez-vous par saison, au théâtre Maurice Novarina (1961) ; galerie de l'Étrave, trois expositions photo par an ; Chemins de Traverse d'octobre à mai, Montjoux Festival en juillet ; Ripaille visitable d'avril à octobre, mardi au dimanche |
+| Saint-Jean-de-Maurienne | Cloître de 1450, stalles en noyer de 1498, l'un des treize ensembles du Credo savoyard subsistant en Europe ; théâtre Gérard Philipe de 1934, 328 places ; musée Opinel dans l'atelier du grand-père Jean |
+| Moûtiers | Centre culturel Marius Hudry dans l'ancien palais archiépiscopal des comtes de Tarentaise, entrée libre, expositions mensuelles ; cathédrale à chœur roman, façade gothique, nefs néoclassiques, orgue Cavaillé-Coll |
+| Sallanches | Château des Rubins, Observatoire des Alpes, rouvert en juillet 2021, cinquante modules interactifs sur quatre étages et 500 m² ; église Saint-Jacques reconstruite en 1681, juste devant |
+| Cluses | Musée de l'Horlogerie et du Décolletage dans l'Espace Carpano et Pons, pièce la plus ancienne du XVIe siècle, fondé par l'École nationale d'horlogerie |
+
+Réponses de 38 à 80 mots, sans gras, sauvegardes dans `cs_bk_faq_<id>_20260819`.
+Vérifié sur les seize pages servies : le socle générique n'apparaît plus.
+
+**16 hubs sur 29 ont une FAQ rédigée.** Restent Aix-les-Bains, les quatre
+territoires et les huit provinces.
+
+> **La recherche apporte ce que le catalogue ne contient pas.** Aucun de ces
+> faits, 9 000 places, 1498, 1681, 500 mètres carrés, ne se trouvait dans la
+> base du site. Ce sont eux qui distinguent une page.
