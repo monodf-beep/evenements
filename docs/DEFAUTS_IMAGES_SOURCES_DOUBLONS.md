@@ -295,3 +295,67 @@ contenaient les fiches et les paires que j'ai redécouvertes en enquêtant, dont
 Reste ouvert : **33 signalements de vocabulaire proscrit**, dont six pages
 institutionnelles (À propos, Aujourd'hui, Où manger, Chi siamo, Aoste, Vallée
 d'Aoste) et la fiche Collontrek 2026 qui en cumule sept à elle seule.
+
+---
+
+## Le vocabulaire proscrit : 33 signalements traités (2026-08-19)
+
+### Le tri d'abord, la correction ensuite
+
+**Cinq signalements sur trente-trois n'étaient pas des fautes.** L'audit repère
+le mot, pas le sens. « Le versant sud de la Mandallaz » et « le Col d'Èze répété
+par deux versants différents » sont de la topographie ; le vault proscrit
+*versant* comme métaphore de limite, pas comme flanc de montagne. De même,
+« les frontières contemporaines » dans une fiche sur Gaza ne parle pas de notre
+espace.
+
+Ils sont inscrits dans `cs_doctrine_audit_ignore_vocab`, l'option prévue pour
+ça, format `array('terme' => array(ids))`. Ils ne reviendront plus.
+
+> **Corriger un signalement sans le lire, c'est abîmer un texte juste.**
+
+### Ce qui a été corrigé
+
+| Page ou fiche | Avant | Après |
+|---|---|---|
+| Aujourd'hui (929) | les Alpes franco-italiennes | l'espace sabaudo |
+| À propos (933) | des Alpes franco-italiennes | de l'espace sabaudo |
+| Vallée d'Aoste (2861) | un bilinguisme franco-italien toujours vivant | une région bilingue à statut spécial, terre de langue française et de langue savoyarde |
+| Chi siamo (2170) | da un versante all'altro delle Alpi | nello spazio sabaudo |
+| Aoste (2468) | …, de part et d'autre des Alpes. | … (clause retirée) |
+| Forte di Bard (3737) | le versant savoyard et le versant piémontais · espace alpin occidental | la Savoie et le Piémont · arc alpin occidental |
+| Barbara Tutino (7578) | sur le versant piémontais | du côté piémontais |
+| Marché au Fort (6805), Anni '90 (7217) | al confine con il Piemonte | al limite provinciale con il Piemonte |
+| Niccolò Fabi (3749) | la chanson d'auteur transalpine | la chanson d'auteur italienne |
+| Salone Auto (6405, 7197) | constructeurs historiques transalpins | constructeurs historiques italiens |
+| Cosmojazz (2207), OSR (2299) | in Alta Savoia | in Savoia (prov. Annecy) |
+| Turin / Gaza (7552) | espace alpin occidental | arc alpin occidental |
+
+`Alta Savoia` méritait deux passages : le terme vivait dans la **méta description
+Yoast** pour l'une et dans le **post_excerpt** pour l'autre, jamais dans le corps.
+Un audit de vocabulaire doit lire tous les champs publiés, pas seulement le corps.
+
+Sauvegardes : `cs_bk_vocab_20260819`, `cs_bk_metadesc_2207`, `cs_bk_excerpt_2207`.
+
+### Résultat
+
+| | Avant | Après |
+|---|---|---|
+| Vocabulaire proscrit | 33 | **12** |
+| Fiches concernées | 17 | **1 paire** |
+| Langue déclarée fausse | 17 | 2 |
+| Doublons | 7 | 4 |
+
+### Les 12 restants sont une seule fiche, et elle demande un arbitrage
+
+**Collontrek 2026 (1920 fr / 3761 it)** cumule *transfrontalier*, *frontière*,
+*frontalier*, *francoprovençal*, *versant*, *côté national*, *confine*.
+
+La course relie **Bionaz, en Vallée d'Aoste, à Arolla, en Valais**. Or la règle
+du vault porte sur *notre* espace, et le Valais n'en fait pas partie : le vault
+admet explicitement « franco-italien » pour Lyon-Milan ou Paris-Rome, qui ne sont
+pas nos territoires. Décrire une limite réelle entre Vallée d'Aoste et Valais
+n'est peut-être pas la faute que la règle vise.
+
+**Un point n'est pas ambigu :** « le dialecte francoprovençal » doit devenir
+« la langue savoyarde », la règle du 3 août ne souffre que les noms propres.
