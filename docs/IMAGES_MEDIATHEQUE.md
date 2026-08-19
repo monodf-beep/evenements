@@ -214,3 +214,47 @@ Casino Grand-Cercle, le repère que le texte du hub cite lui-même. Attachement
 
 Sept villes de Savoie, les trois attributions manquantes, puis les images des
 villes à créer au Piémont, dans le comté de Nice et en Vallée d'Aoste.
+
+### Les huit images d'en-tête posées le 2026-08-19
+
+| Hub | Sujet | Auteur, licence |
+|---|---|---|
+| Annemasse | Hôtel de Ville | Yann, CC BY-SA 4.0 |
+| Saint-Jean-de-Maurienne | Cathédrale Saint-Jean-Baptiste | Benjamin Smith, CC BY-SA 4.0 |
+| Moûtiers | Cathédrale Saint-Pierre | MOSSOT, CC BY-SA 3.0 |
+| Sallanches | Église de Sallanches | TarichaRivularis, CC BY-SA 3.0 |
+| Cluses | Église Saint-Nicolas | Tournasol7, CC BY 4.0 |
+| Albertville | Cité de Conflans et son clocher | Florian Pépellin, CC BY-SA 4.0 |
+| Thonon-les-Bains | Port de Rives | Krzysztof Golik, CC BY-SA 4.0 |
+| Chamonix | Statue de Balmat et Saussure | Fred Romero, CC BY 2.0 |
+
+Chacune porte son alternative, sa légende de crédit, `as_image_credit` et
+`as_image_source` vers la page Commons, et sert les deux langues du hub.
+
+**21 hubs sur 29 ont désormais une image.** Restent les 8 provinces du Piémont.
+
+### Le critère, corrigé par Franck
+
+Ma première image d'Annemasse était une photo de concert prise dans la salle de
+Château Rouge : sombre, une foule, des projecteurs. Elle ne disait rien
+d'Annemasse.
+
+> **Une photo de ville ou un monument historique reconnaissable.** Les treize
+> images posées avant moi respectaient ce motif, château des ducs de Savoie,
+> Palais de l'Isle, Piazza San Carlo, Arc d'Auguste, port de Villefranche. Je
+> l'avais rompu.
+
+Chamonix a été remplacée dans la foulée, sur la même remarque : la vue de vallée
+disait la montagne, la statue de Balmat et Saussure dit Chamonix.
+
+**Deux pièges de sélection automatique.** Une recherche sur un nom de ville
+remonte volontiers des planches de guides anciens (Baedeker 1913) et des photos
+de presse d'archives en format portrait. Filtrer sur le ratio, écarter les
+titres contenant *map*, *handbook*, *plan*, et vérifier que le nom de la ville
+est bien dans le titre du fichier.
+
+**Le bandeau ne montre que les 180 premiers pixels** d'un rendu en 1024 de large,
+avec `overflow:hidden`. Le sujet doit donc être dans le haut de l'image.
+
+L'ancienne photo d'Annemasse (7940) reste en médiathèque, inutilisée : rien
+n'est supprimé.
