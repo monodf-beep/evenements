@@ -359,3 +359,64 @@ n'est peut-être pas la faute que la règle vise.
 
 **Un point n'est pas ambigu :** « le dialecte francoprovençal » doit devenir
 « la langue savoyarde », la règle du 3 août ne souffre que les noms propres.
+
+---
+
+## Quatre doublons rendus visibles par ma propre correction (2026-08-19)
+
+### Ce qui s'est passé
+
+Le matin même, j'avais rebasculé en français des fiches « déclarées italiennes,
+rédigées en français ». J'ai traité cela comme **une erreur d'étiquette de
+langue**. Pour quatre d'entre elles, c'était en réalité **une création en double
+par le pipeline**.
+
+Tant qu'elles portaient l'étiquette italienne, elles ne sortaient pas côté
+français. Ma bascule les a rendues visibles, et l'accueil a montré deux fois le
+même événement sous deux titres différents.
+
+| Doublon (créé le 17/08) | Fiche canonique | Événement |
+|---|---|---|
+| 7552 | 2269 | Fondazione Merz, Gaza, Turin |
+| 7558 | 2281 | Sotto i portici del Risorgimento |
+| 7598 | 2285 | Palio Montis Regalis, Mondovì |
+| 7639 | 6433 | EVO France 2026, Nice |
+
+Dans les quatre cas, mêmes date de début et même lieu, et **la fiche ancienne
+portait déjà sa jumelle italienne** alors que la récente était seule.
+
+### Ce qui a été fait
+
+Les quatre doublons sont passés en **brouillon**, pas à la corbeille. Chacun
+porte `as_doublon_de` avec l'identifiant de la fiche canonique et une note
+expliquant que, si son texte est meilleur, il faut le **fusionner** plutôt que
+republier. Sauvegarde des statuts dans `cs_bk_doublons_20260819`.
+
+Contrôle élargi ensuite sur toutes les fiches françaises publiées, appariées par
+date de début et lieu : **exactement quatre, pas une de plus.** La bascule n'en
+a pas réveillé d'autres. L'audit `doublons` est retombé à zéro.
+
+### Les deux leçons
+
+> **L'audit le disait déjà.** Sa liste `doublons` nommait les quatre paires,
+> 2269+7552, 2281+7558, 2285+7598, 6433+7639, avant que je ne touche à quoi que
+> ce soit. Je ne l'avais pas croisée avec ma liste de bascules.
+
+**Un même symptôme peut avoir deux causes.** « Texte français sous étiquette
+italienne » désignait tantôt une étiquette fausse, tantôt un doublon. Avant de
+rebasculer, vérifier qu'il n'existe pas déjà une fiche française du même
+événement.
+
+### Le défaut de pipeline sous-jacent
+
+Le 2026-08-17, le pipeline a **créé** ces fiches au lieu de mettre à jour les
+existantes, et les a étiquetées italiennes alors qu'il les rédigeait en
+français. Correctif attendu côté VPS, avec ceux déjà notés sur le
+re-téléversement des médias.
+
+### Une fausse alerte, à ne pas confondre
+
+Après correction, l'accueil contient encore deux fois le bloc de cartes dans son
+HTML. **Ce n'est pas un doublon** : la page rend une variante par défaut et une
+variante `as-home-desktop`, l'une des deux étant masquée par CSS selon la
+largeur. Le lecteur n'en voit qu'une.
