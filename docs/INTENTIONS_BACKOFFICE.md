@@ -443,3 +443,63 @@ territoires et les huit provinces.
 > **La recherche apporte ce que le catalogue ne contient pas.** Aucun de ces
 > faits, 9 000 places, 1498, 1681, 500 mètres carrés, ne se trouvait dans la
 > base du site. Ce sont eux qui distinguent une page.
+
+---
+
+## 11. Comment tenir les villes et les hubs quand ils se multiplient (2026-08-19)
+
+### Le problème posé
+
+Le pied de page montrait onze villes sous Savoie et **une seule** sous Piémont,
+Nice et Vallée d'Aoste. Déséquilibre créé le 2026-08-18 en ajoutant les huit
+nouvelles villes de Savoie sans traiter les autres territoires.
+
+Ce n'est pas qu'une affaire d'apparence. La Charte commune pose que **Nice est
+core, pas périphérique**, et que les quatre territoires sont à égalité. Un pied
+de page à onze contre un dit le contraire, au lecteur comme aux moteurs.
+
+### Le principe retenu : quatre étages, un seul qui grandit
+
+| Surface | Contenu | Croît ? |
+|---|---|---|
+| Pied de page | les 4 territoires, jusqu'à 4 villes chacun | **non, stable** |
+| Hub de territoire | toutes les villes, zones et provinces | oui |
+| Hub de ville | les villes voisines du même territoire | oui |
+| Plan du site | tout, généré | oui |
+
+**Le pied de page ne doit pas grandir.** Il est présent sur toutes les pages ;
+au delà de quelques entrées par colonne, plus personne ne le lit et la valeur de
+chaque lien se divise. **La surface qui grandit, c'est le hub de territoire**,
+où un lien vers une ville est thématiquement adjacent, donc bien plus fort.
+
+### Ce qui a été fait, dans cet ordre
+
+**1. La rangée de villes voisines, d'abord.** `[cs_villes_du_territoire]` posé
+sur les **50 hubs de ville et de province**, français et italiens. Le shortcode
+exclut déjà la page courante et filtre par territoire : aucun développement.
+Chaque ville de Savoie pointe désormais vers dix voisines, Turin vers neuf.
+
+**2. Le pied de page, ensuite.** Quatorze entrées retirées, sept par langue :
+Albertville, Annemasse, Cluses, Moûtiers, Sallanches, Saint-Jean-de-Maurienne,
+Thonon-les-Bains. Restent Chambéry, Annecy, Chamonix et Aix-les-Bains sous
+Savoie. Sauvegarde complète dans `cs_bk_menus_footer_20260819`.
+
+> **L'ordre n'est pas un détail :** ajouter les liens avant d'en retirer garantit
+> qu'aucune page ne passe, même une minute, par un état non relié.
+
+Contrôle des orphelines relancé après coup : **232 pages, zéro orpheline.** Les
+sept villes retirées du pied de page répondent toujours 200 et sont reliées par
+dix pages sœurs, par leur hub de territoire et par le plan du site, soit
+davantage qu'avant.
+
+### Une fausse piste écartée
+
+Le bloc « Aux alentours » des hubs de ville n'est pas un lien vers les villes
+voisines : c'est un repli qui affiche **d'autres événements du même territoire**.
+Il ne pouvait pas jouer ce rôle, d'où la rangée ajoutée.
+
+### La suite
+
+Le pied de page se remplira à mesure que les villes du Piémont, du comté de Nice
+et de la Vallée d'Aoste seront créées, **jusqu'à quatre par territoire, pas
+au delà**.
