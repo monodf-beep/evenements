@@ -161,3 +161,56 @@ La méthode fiable : écrire le contenu avec `novamira/write-file` dans un fichi
 valider la syntaxe avec `token_get_all(..., TOKEN_PARSE)`, insérer, supprimer le
 fichier. Les PHP ne peuvent aller que dans le bac à sable ; les autres extensions
 vont où l'on veut sous `ABSPATH`.
+
+---
+
+## 6. Les images d'en-tête des hubs (2026-08-18)
+
+### La méthode était déjà là, mais pas écrite
+
+Les 13 hubs qui ont une image la tiennent de **Wikimedia Commons**, sous licence
+CC, **l'attribution étant portée par la légende du média** (`post_excerpt`) et
+non par `as_image_credit` :
+
+> `© Florian Pépellin / Wikimedia Commons (CC BY-SA 4.0)` (Chambéry)
+
+C'est reproductible : l'API de Commons rend l'auteur et la licence exacts dans
+`extmetadata`, ce qui évite d'attribuer de mémoire.
+
+| État | Hubs |
+|---|---|
+| Image en place | 13 : les 4 territoires, Chambéry, Annecy, Turin, Nice, Aoste, Chamonix, Monferrato, Côte d'Azur, Chablais |
+| `cs_hub_image_a_fournir` | 8 villes de Savoie créées le 2026-08-18 |
+| Rien du tout | 8 provinces du Piémont |
+
+### Trois images CC sans attribution
+
+**Chamonix (2658), Monferrato (2659) et Villefranche-sur-Mer (2660) n'ont aucune
+légende.** Sur du CC BY-SA, l'attribution n'est pas une politesse, c'est la
+condition de la licence. À retrouver et à écrire.
+
+### Aix-les-Bains, faite de bout en bout
+
+Casino Grand-Cercle, le repère que le texte du hub cite lui-même. Attachement
+7921, alt « Le Casino Grand-Cercle à Aix-les-Bains », légende
+`© Morio60 / Wikimedia Commons (CC BY-SA 2.0)`, plus `as_image_credit` et
+`as_image_source` vers la page Commons. Posée sur le hub français **et** italien.
+
+### Trois pièges rencontrés, à connaître avant les suivantes
+
+1. **`chr(224)` et `chr(169)` ne sont pas de l'UTF-8.** Ces octets isolés font
+   rejeter la requête par la base, silencieusement du point de vue de
+   `update_post_meta`. Écrire les vrais caractères, « à » et « © ». C'est
+   exactement ce que dit la note de mémoire sur les accents, et je l'ai quand
+   même fait.
+2. **La conversion WebP touche l'original sur un ajout programmatique.** La
+   documentation dit qu'elle ne touche que les sous-tailles : c'est vrai par la
+   médiathèque, faux ici. `_wp_attached_file` passe en `.webp` tandis que
+   `post_mime_type` reste `image/jpeg`. Corriger le type après coup.
+3. **`wp_insert_attachment` a rendu 0 sans erreur.** `wp_insert_post` avec
+   `post_type => attachment` puis `_wp_attached_file` à la main fonctionne.
+
+### Reste à faire
+
+Sept villes de Savoie, les trois attributions manquantes, puis les images des
+villes à créer au Piémont, dans le comté de Nice et en Vallée d'Aoste.
