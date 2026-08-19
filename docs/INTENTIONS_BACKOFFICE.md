@@ -503,3 +503,38 @@ Il ne pouvait pas jouer ce rôle, d'où la rangée ajoutée.
 Le pied de page se remplira à mesure que les villes du Piémont, du comté de Nice
 et de la Vallée d'Aoste seront créées, **jusqu'à quatre par territoire, pas
 au delà**.
+
+### Première fournée de villes hors Savoie (2026-08-19)
+
+Trois villes créées, 24 pages, français et italien, avec leurs trois pages
+datées chacune et le lien de traduction posé.
+
+| Ville | Territoire | Ce qui la fonde |
+|---|---|---|
+| **Asti** | Piémont | Palio attesté depuis 1275, plus de 1 200 figurants ; Douja d'Or, dix jours autour du vin ; Festival delle Sagre. Septembre porte l'essentiel de l'année |
+| **Ivrea** | Piémont | Patrimoine mondial depuis 2018 comme ville industrielle du XXe siècle (Olivetti) ; carnaval le plus ancien d'Italie, bataille des oranges, environ 700 tonnes de fruits ; Grande Invasione, Open Papyrus Jazz Festival, Apolide ; capitale italienne du livre en 2022 |
+| **Menton** | Comté de Nice | Fête du Citron créée en 1933, seule fête au monde consacrée aux agrumes, 145 tonnes de fruits et plus de 230 000 visiteurs ; jardins du Val Rahmeh et de la Serre de la Madone ; Festival de musique l'été |
+
+Chaque intro suit le partage décidé plus haut : deux ou trois phrases sur la
+ville, puis le **rythme** de ce qui s'y passe. Rien n'y vient du catalogue, tout
+de la recherche.
+
+**Contrôles après création :** les 24 pages répondent 200 ; les paires de
+traduction sont liées, donc le `hreflang` est émis ; le hub du Piémont liste
+Asti et Ivrea, celui du comté de Nice liste Menton ; l'audit des orphelines
+passe de 232 à **256 pages contrôlées, zéro orpheline**.
+
+**Pied de page complété** dans la limite posée : Piémont porte maintenant Turin,
+Asti et Ivrea ; le comté de Nice porte Nice et Menton. Quatre colonnes enfin
+comparables, contre onze sous Savoie et une partout ailleurs le matin même.
+
+> **Ce qui manque encore à ces trois villes :** leur image d'en-tête, marquée
+> `cs_hub_image_a_fournir`, et leur FAQ. Même séquence que pour les huit villes
+> de Savoie : structure d'abord, image et FAQ ensuite.
+
+**Le choix des villes est fondé, pas exhaustif.** Asti et Ivrea sont des
+chefs-lieux à identité culturelle forte et ont déjà des événements au catalogue ;
+Menton porte un festival déjà présent. Restent à créer, quand la liste sera
+arbitrée : Alba, Cuneo, Vercelli, Novara, Biella et Alessandria côté Piémont,
+Bard, Courmayeur et Châtillon en Vallée d'Aoste. **Bard mérite une attention
+particulière : 30 événements au catalogue, plus que Nice.**
