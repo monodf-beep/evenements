@@ -91,6 +91,10 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Distribution des notes de déplacement, par territoire.")
     p.add_argument("--exemples", type=int, default=3,
                    help="Nombre d'exemples à montrer par note (défaut 3).")
+    # `--slack` n'envoie QUE le verdict de rotation, jamais le rapport entier : un pavé
+    # de trente lignes dans un digest se saute, et ce qu'on veut lire tient en quatre.
+    p.add_argument("--slack", action="store_true",
+                   help="Dépose le verdict de rotation dans la boîte du jour (digest).")
     args = p.parse_args(argv)
 
     conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
@@ -340,11 +344,13 @@ def main(argv=None) -> int:
         print("\n> Aucune fiche à 0 dans ce périmètre — le critère n'écarterait rien ici. "
               "Ce n'est\n> pas une preuve qu'il est juste : c'est une preuve qu'il ne "
               "s'est pas prononcé.\n")
-    _rotation(vivants, auj)
+    verdict = _rotation(vivants, auj)
+    if args.slack:
+        _poster(verdict)
     return 0
 
 
-def _rotation(vivants: list[dict], auj: date) -> None:
+def _rotation(vivants: list[dict], auj: date) -> list[tuple[str, int, str, str]]:
     """« Est-ce que la rangée CHANGE ? » — la question que Franck a posée le 2026-08-18.
 
     « On a des événements trop loin dans le temps, il faudrait bien sûr les notes mais
@@ -409,11 +415,41 @@ def _rotation(vivants: list[dict], auj: date) -> None:
     if figes:
         print(f"\n> {len(figes)} territoire(s) sur {len(terrs)} montrent la MÊME fiche à")
         print(f"> six mois d'intervalle. Le bonus d'imminence ne joue que dans les")
-        print(f"> {max(s for s, _p in _FENETRES)} derniers jours ; au-delà, le classement")
+        print(f"> {max(x for x, _p in _FENETRES)} derniers jours ; au-delà, le classement")
         print("> est purement intrinsèque, donc immobile.")
     else:
         print("\n> Aucune case figée : la rangée tourne d'elle-même, il n'y a rien à")
         print("> corriger de ce côté.")
+
+    # (territoire, nb de fiches distinctes, tête à J+0, tête à J+180) — de quoi écrire un
+    # verdict ailleurs sans re-parser la sortie affichée.
+    return [(t, len({x.split(" (")[0] for x in tetes[t] if x != "—"}),
+             tetes[t][0], tetes[t][-1]) for t in terrs]
+
+
+def _poster(verdict: list[tuple[str, int, str, str]]) -> None:
+    """Dépose le verdict dans la boîte du jour — pas un message de plus, quelques lignes
+    dans le digest que Franck reçoit déjà.
+
+    POURQUOI CE CHEMIN EXISTE (2026-08-18). Franck est en congés jusqu'au 3 septembre,
+    sans accès au VPS, avec son téléphone. La mesure, elle, a besoin de la base — donc du
+    VPS. Ce drapeau lui fait traverser le seul canal qui reste ouvert. C'est aussi la
+    raison de sa brièveté : ça se lit sur un écran de téléphone, ou ça ne se lit pas.
+    """
+    from utils import slack
+    figes = [v for v in verdict if v[1] <= 1]
+    lignes = [f"📐 *Rotation de « Ça vaut le déplacement »* — {len(figes)} case(s) figée(s) "
+              f"sur {len(verdict)}."]
+    for terr, distinctes, j0, j180 in verdict:
+        if distinctes <= 1:
+            lignes.append(f"🔴 {terr} : la même fiche sur 6 mois — {j0}")
+        else:
+            lignes.append(f"· {terr} : {distinctes} fiches différentes "
+                          f"({j0} → {j180})")
+    if figes:
+        lignes.append("_Le bonus d'imminence ne joue que dans les 45 derniers jours ; "
+                      "au-delà le classement est immobile._")
+    slack.notify("\n".join(lignes))
 
 
 if __name__ == "__main__":

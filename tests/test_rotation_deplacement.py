@@ -127,5 +127,30 @@ _check("il cite la fenêtre au-delà de laquelle le bonus ne joue plus",
 _check("   et compte les territoires concernés sur le total",
        "territoire(s) sur" in bloc, bloc[-500:])
 
+print("\n──── le verdict qui part sur Slack ────")
+# Franck est en congés sans accès au VPS : ce verdict est le SEUL chemin par lequel la
+# mesure lui parvient. S'il partait vide, ou s'il partait pour de vrai depuis les tests,
+# on ne le saurait qu'en le lisant sur son téléphone.
+import utils.slack as slack_mod  # noqa: E402
+envoyes: list[str] = []
+slack_mod.notify = lambda text, blocks=None, urgent=False: envoyes.append(text) or True
+
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    ad.main(["--slack"])
+
+_check("un seul message est déposé, pas un par territoire", len(envoyes) == 1, envoyes)
+msg = envoyes[0] if envoyes else ""
+_check("il annonce combien de cases sont figées sur le total",
+       "case(s) figée(s) sur" in msg, msg)
+_check("le territoire figé est marqué en rouge, avec la fiche concernée",
+       "🔴 Piemonte" in msg and "Fiera lontana" in msg, msg)
+_check("⚠️ celui qui tourne n'est PAS marqué en rouge (le cas qui doit passer)",
+       "🔴 Nice" not in msg and "Nice :" in msg, msg)
+_check("   et il montre son mouvement, de J+0 à J+180",
+       "→" in [l for l in msg.splitlines() if l.startswith("· Nice")][0], msg)
+_check("le message tient sur un écran de téléphone (moins de 10 lignes)",
+       len(msg.splitlines()) < 10, f"{len(msg.splitlines())} lignes")
+
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)
