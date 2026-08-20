@@ -67,6 +67,12 @@ function cs_doctrine_run_audit() {
         'arpitan'            => '/arpitan\w*/iu',
         'langues regionales' => '/langues?\s+r\x{e9}gionales?/iu',
         'espace alpin'       => '/espace\s+alpin|spazio\s+alpino/iu',
+        // Surnom touristique interdit pour Annecy (arbitrage Franck, 2026-08-19) : le
+        // registre "annuaire touristique" que la charte editoriale definit comme l'inverse
+        // de notre positionnement (doc §1, anti-GuidaTorino). FR et IT, variantes courantes.
+        'surnom touristique' => '/Venise\s+des\s+Alpes|Venise\s+du\s+Nord|petite\s+Venise'
+            . '|perle\s+des\s+Alpes|Venezia\s+delle\s+Alpi|piccola\s+Venezia'
+            . '|perla\s+delle\s+Alpi/iu',
         // Equivalents italiens, decision du 8 aout 2026 (cf. Vocabulaire interdit.md).
         'confine (it)'       => '/\bconfin[ei]\b/iu',
         'transfrontaliero'   => '/transfrontalier[oaie]\w*/iu',
@@ -76,6 +82,19 @@ function cs_doctrine_run_audit() {
         'alta savoia'        => '/Alta\s+Savoia/iu',
         'haut-savoyard'      => '/haut[- ]savoyard|altosavoiard\w*/iu',
         'francais de Savoie' => '/fran\x{e7}ais\s+de\s+Savoie/iu',
+        // 2026-08-18 : alignement sur le Lexique sabaud complet. Ces termes
+        // manquaient et c'est ce trou qui a laisse passer "versant" dans quatre
+        // articles publies (2420, 2421, 2422, 2423), dont un TITRE de section,
+        // "du jardin au versant italien". Un controle partiel donne l'assurance
+        // sans la couverture, ce qui est pire qu'une absence de controle.
+        'versant'            => '/\bversant[se]?\b|\bversant[ei]\b/iu',
+        'transalpin'         => '/transalpin\w*|oltralpe/iu',
+        'cote national'      => '/c\x{f4}t\x{e9}\s+(fran\x{e7}ais|italien)|lato\s+(francese|italiano)/iu',
+        'de part et autre'   => '/de\s+part\s+et\s+d.{0,7}autre/iu',
+        'franco-italien'     => '/franco[- ]?italien\w*|italo[- ]?franc\w*/iu',
+        'neo-savoyard'       => '/n\x{e9}o-[- ]savoyard\w*|neo[- ]savoiard\w*/iu',
+        'aostois'            => '/aostois\w*/iu',
+        'irredentisme'       => '/Nizza\s+Marittima|Savoia\s+italiana|Nizza\s+italiana|terre\s+irredente/iu',
     );
 
     // Occurrences examinees et validees comme legitimes (metaphores, noms propres) :

@@ -205,6 +205,14 @@ Registre soutenu mais accessible, phrases claires, pas de jargon gratuit. Biling
 **FR/IT** assumé (la langue du territoire est une valeur). Pas de superlatifs creux
 (« incontournable », « magique », « à ne pas manquer »).
 
+**Surnoms touristiques interdits.** Aucune ville du périmètre ne se désigne par un
+surnom de guide touristique — « Venise des Alpes » pour Annecy est **interdit**
+(arbitrage Franck, 2026-08-19), et la règle vaut pour tout surnom du même type
+(« Venise du Nord », « petite Venise », « perle des Alpes »…). On nomme la ville par
+son nom, jamais par une comparaison flatteuse : c'est exactement le registre
+« annuaire touristique » que §1 définit comme l'inverse de notre positionnement
+(anti-GuidaTorino). Vaut en FR comme en IT (§6 bis).
+
 **Casse — jamais de TOUT EN CAPITALES.** Un titre, un intertitre ou un nom d'événement
 ne s'écrit **jamais entièrement en majuscules**, même quand la source (affiche, flux RSS,
 billetterie) le fournit ainsi — ex. « COREOGRAFIE DEL POSSIBILE » → « Coreografie del

@@ -325,6 +325,8 @@ RÈGLES DE FOND (voix Enrico Nos Alpes — factuelle, sobre, jamais promotionnel
 - Registre sobre : ZÉRO superlatif ni mot de communication (« exceptionnel »,
   « incontournable », « unique », « ambitieux », « innovant », « immanquable »,
   « magique », « féerique »). Zéro point d'exclamation.
+- Aucun surnom touristique de ville (« Venise des Alpes » pour Annecy, « Venise du
+  Nord », « petite Venise »…) — le nom de la ville seul, jamais une comparaison.
 - N'INVENTE AUCUNE INFORMATION. N'utilise QUE les données fournies ci-dessous. S'il
   manque une info (horaire, tarif...), ne la mentionne simplement pas.
 

@@ -18,9 +18,9 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 
 ## L'inventaire
 
-| Fichier | Snippet | Portée | Actif | md5 au 2026-08-17 |
+| Fichier | Snippet | Portée | Actif | md5 (date de relevé) |
 |---|---|---|---|---|
-| `130-audit-doctrine-editoriale.php` | #130 · Audit doctrine editoriale | front-end | oui | `ed75042bf2b81194c55473df5367ec37` |
+| `130-audit-doctrine-editoriale.php` | #130 · Audit doctrine editoriale | front-end | oui | `9d1437c9851c0d311a49ad673319fdc4` (2026-08-19) |
 | `135-garde-fous-dates-et-sources.php` | #135 · Garde-fous dates et sources | front-end | oui | `daafdd83a310978e18eae9b41ae6151a` |
 | `136-garde-fous-panel-formes-lieux.php` | #136 · Garde-fous 2 : panel, formes, lieux | front-end | oui | `59582f3cbccf3c03c089ac740cd41f8d` |
 | `10-cs-trash.php` | #10 · CS Trash (routes `cs/v1/trash` et `cs/v1/list`) | global | oui | `d882c18b020ddb1686fb0ee171612812` |
@@ -31,6 +31,16 @@ le serveur : ces routes sont servies par le snippet, en base. Le 2026-08-18, j'a
 le fichier du dépôt en croyant corriger le site ; il ne se passait rien. C'est exactement
 la faute du 12/08, refaite malgré la règle écrite. Le fichier d'origine porte désormais un
 avertissement en tête, et la copie fidèle est ici.
+
+**Le cas #130 rappelle la même leçon.** La copie du 17/08 était PÉRIMÉE : entre le 17 et
+le 19, huit termes ont été ajoutés en base (`versant`, `transalpin`, `cote national`,
+`de part et autre`, `franco-italien`, `neo-savoyard`, `aostois`, `irredentisme` — l'écart
+mesuré le 18/08 après la fuite « versant » sur quatre articles) sans que la copie ici ne
+soit remise à jour. Le 19/08, avant d'ajouter le terme « surnom touristique », le code
+réellement en base a été relu et comparé (empreinte différente : `62afa37a…` vs
+`ed75042b…`), l'ajout a été fait par ANCRE EXACTE sur le code LIVE — jamais en réécrivant
+depuis ce fichier — puis la copie ici a été resynchronisée depuis la base. Procédure
+suivie à la lettre plus bas dans ce document.
 
 Les copies **d'avant** les modifications du 2026-08-17 sont sur le serveur, dans
 `wp-content/uploads/cs-snippets-sauvegarde-2026-08-17/` (`130-avant.txt`, `135-avant.txt`,

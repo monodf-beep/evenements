@@ -252,6 +252,9 @@ GARDE-FOUS STRICTS :
   mince, mets "confiance": "faible" et reste factuel.
 - Pas de superlatifs creux ("incontournable", "magique", "à ne pas manquer"), aucun
   dark pattern (urgence factice, clickbait).
+- Aucun surnom touristique de ville ("Venise des Alpes" pour Annecy, "Venise du Nord",
+  "petite Venise", "perle des Alpes"...) — nomme la ville par son nom, jamais par une
+  comparaison flatteuse de guide touristique (CHARTE §6).
 - Nomme toujours la géographie : ville → province/département → territoire.
 - CASSE : jamais de titre/nom TOUT EN CAPITALES, même si la source l'écrit ainsi
   ("COREOGRAFIE DEL POSSIBILE" → "Coreografie del Possibile"). Normalise en casse de

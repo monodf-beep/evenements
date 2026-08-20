@@ -192,7 +192,9 @@ def _charte_prompt(target: str, voix: str = "") -> str:
         topo = ('Torino (pas "Turin"), Aosta, Nizza, Vercelli ; territoires : Savoia, '
                 'Piemonte, Valle d\'Aosta, Contea di Nizza')
         superl = ('« imperdibile », « da non perdere », « evento clou », « magico », '
-                  '« unico/straordinario » (quand c\'est vide), « il migliore »')
+                  '« unico/straordinario » (quand c\'est vide), « il migliore », et tout '
+                  'surnom touristique de ville — « Venezia delle Alpi » pour Annecy, '
+                  '« piccola Venezia », « perla delle Alpi »')
         darkp = ('fausse urgence (« ultimi posti! », « solo oggi », « affrettati »), '
                  'clickbait (« non crederai… »), confirmshaming')
         casse_lang = ('En italien, MOIS et JOURS en MINUSCULE (« 5 luglio », « domenica »). '
@@ -201,7 +203,9 @@ def _charte_prompt(target: str, voix: str = "") -> str:
     else:
         topo = ('Turin (pas "Torino"), Aoste, Nice, Verceil ; territoires : Savoie, '
                 'Piémont, Vallée d\'Aoste, Comté de Nice')
-        superl = '« incontournable », « magique », « à ne pas manquer », « événement phare »'
+        superl = ('« incontournable », « magique », « à ne pas manquer », « événement phare », '
+                  'et tout surnom touristique de ville — « Venise des Alpes » pour Annecy, '
+                  '« Venise du Nord », « petite Venise », « perle des Alpes »')
         darkp = ('fausse urgence (« plus que 2 places ! », « dernier jour »), clickbait '
                  '(« vous n\'allez pas croire… »), confirmshaming')
         casse_lang = 'En français, mois et jours en minuscule. Jamais de title case anglais.'
