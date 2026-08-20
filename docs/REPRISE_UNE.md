@@ -46,6 +46,30 @@ La chaîne complète, dans l'ordre où elle a été montée :
   `as_deplacement`, qui inclut `accessibilite_langue` — un critère fait pour décider si on
   traverse une frontière. Sur une home lue dans sa propre langue il n'a aucun sens.
 
+### ⚠️ LA RÈGLE QUI PRIME SUR TOUTES LES AUTRES (Franck, 2026-08-18)
+
+> « On ne doit pas vouloir changer les règles du nombre d'éléments affichés, les
+> événements vont arriver, on aura assez de contenu. »
+
+**On ne calibre pas les seuils sur la pénurie du moment.** Le catalogue est en train de
+grandir, et il a cessé de grandir CETTE SEMAINE seulement, à cause de la coupure réseau
+(`docs/INCIDENT_RESEAU_2026-08-18.md`). Une règle taillée pour le stock d'aujourd'hui sera
+fausse dans un mois, et personne ne pensera à la desserrer.
+
+Ce que cette consigne interdit, nommément :
+
+- **baisser `UNE_INTERET_MIN` de 6 à 4** parce que la Savoie n'a qu'une candidate. Ça
+  ferait revenir le cours de pilates, qui est le problème de départ. La Savoie manque de
+  SOURCES, pas de seuil ;
+- **réduire le nombre de cartes** d'une section parce qu'elle est courte aujourd'hui ;
+- **combler une section** avec un classement de repli pour qu'elle paraisse pleine. Une
+  rangée à deux cartes est honnête ; une rangée remplie de médiocre ment.
+
+Et ce qu'elle décide, pour la suite : quand une section paraît figée, **le levier n'est
+pas de rétrécir le vivier** (raccourcir l'horizon écarterait du contenu, et viderait la
+Vallée d'Aoste qui en produit peu). C'est de faire jouer la DATE dans le classement à
+vivier constant.
+
 ---
 
 ## CE QUI RESTE

@@ -360,6 +360,13 @@ def _rotation(vivants: list[dict], auj: date) -> None:
     janvier, le festival du film de novembre — occupe la case de son territoire jusqu'à
     ce qu'elle soit à moins de 45 jours, c'est-à-dire pendant des mois.
 
+    ⚠️ ET LE LEVIER EST CONTRAINT (Franck, 2026-08-18) : « on ne doit pas vouloir changer
+    les règles du nombre d'éléments affichés, les événements vont arriver, on aura assez de
+    contenu. » Raccourcir `HORIZON_JOURS` est donc EXCLU — ça rétrécirait le vivier et
+    viderait la Vallée d'Aoste, qui produit peu. Si ce relevé montre des cases figées, la
+    correction devra faire jouer la DATE à vivier constant : graduer le bonus sur toute la
+    longueur de l'horizon au lieu des 45 derniers jours.
+
     Ce relevé ne DÉCIDE rien : il MESURE. Si les colonnes montrent la même fiche partout,
     la rangée est figée et il faut retoucher les fenêtres ou l'horizon. Si elles changent,
     l'intuition était fausse et il ne faut rien toucher. C'est la même méthode que pour la
