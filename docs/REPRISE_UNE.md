@@ -52,9 +52,10 @@ La chaîne complète, dans l'ordre où elle a été montée :
 
 ### Bloqué par le réseau
 
-Depuis le 18/08 ~13h, **le VPS ne joint plus `agendasabauda.eu`** : ping, port 80 et port
-443 tous en timeout vers 5.135.23.164, et uniquement vers elle, alors que la même IPv4
-joint tout le reste. Les paquets sont jetés à destination — ticket hébergeur.
+Depuis le 18/08 ~13h, **le VPS ne joint plus `agendasabauda.eu`**. Les mesures, la liste
+complète de ce qui est à l'arrêt, la phrase pour le ticket et l'ordre de reprise sont dans
+**`docs/INCIDENT_RESEAU_2026-08-18.md`** — un seul endroit, pour que les deux documents ne
+se contredisent pas.
 
 En attendant, `scripts/export_une_now.py` contourne : le VPS calcule, un autre canal écrit.
 265 métas ont été posées comme ça le 18/08. Le scraping, les dates, les lieux,
