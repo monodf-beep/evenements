@@ -53,7 +53,7 @@ La chaîne complète, dans l'ordre où elle a été montée :
 
 **On ne calibre pas les seuils sur la pénurie du moment.** Le catalogue est en train de
 grandir, et il a cessé de grandir CETTE SEMAINE seulement, à cause de la coupure réseau
-(`docs/INCIDENT_RESEAU_2026-08-18.md`). Une règle taillée pour le stock d'aujourd'hui sera
+(`docs/PANNE_OVH_2026-08-18.md`). Une règle taillée pour le stock d'aujourd'hui sera
 fausse dans un mois, et personne ne pensera à la desserrer.
 
 Ce que cette consigne interdit, nommément :
@@ -78,7 +78,7 @@ vivier constant.
 
 Depuis le 18/08 ~13h, **le VPS ne joint plus `agendasabauda.eu`**. Les mesures, la liste
 complète de ce qui est à l'arrêt, la phrase pour le ticket et l'ordre de reprise sont dans
-**`docs/INCIDENT_RESEAU_2026-08-18.md`** — un seul endroit, pour que les deux documents ne
+**`docs/PANNE_OVH_2026-08-18.md`** — un seul endroit, pour que les deux documents ne
 se contredisent pas.
 
 En attendant, `scripts/export_une_now.py` contourne : le VPS calcule, un autre canal écrit.
