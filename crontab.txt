@@ -275,6 +275,7 @@ SLACK_DIGEST=1
 # retour, une fois le gradient décidé — sinon elle repartira l'an prochain, ce qui est le
 # genre de surprise que ce dépôt collectionne.
 40 11 19-20 8 * cd /root/evenements && .venv/bin/python -m scripts.audit_deplacement --slack >> logs/audit_deplacement.log 2>&1
+41 11 19-20 8 * cd /root/evenements && .venv/bin/python -m scripts.audit_home_visible --slack >> logs/audit_home_visible.log 2>&1
 # ────────────────────────────────────────────────────────────────────────────────────
 45 11 * * * cd /root/evenements && .venv/bin/python -m scripts.slack_digest --titre "🌅 Récapitulatif du matin" >> logs/slack_digest.log 2>&1
 0 12 * * * cd /root/evenements && .venv/bin/python scripts/watchdog_crons.py --slack >> logs/watchdog.log 2>&1
