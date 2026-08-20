@@ -46,7 +46,8 @@ from utils.logger import get_logger
 from utils.lang import detect_lang, effective_lang, titre_semble_intraduit
 from utils.coherence import incoherence_description
 from scripts.scraper_events import init_db
-from scripts.publisher_as import publish_to_as, wp_original_est_en_ligne
+from scripts.publisher_as import (publish_to_as, wp_original_est_en_ligne,
+                                  wp_site_joignable)
 from scripts.link_translations_as import _post_link
 # Portillon de justesse du titre traduit (C2 de docs/GO_NOGO_TRADUCTION.md). Défini dans
 # batch_report parce que c'est là que vit la doctrine des contrôles de justesse et la
@@ -794,6 +795,23 @@ def main(argv=None) -> int:
                              "traduite en place avec les règles courantes : article complet, voix, "
                              "toponymes) au lieu de créer une nouvelle traduction.")
     args = parser.parse_args(argv)
+
+    # ── SONDE AVANT DÉPENSE (2026-08-18) ────────────────────────────────────────────────
+    # `wp_original_est_en_ligne` refuse toute fiche quand le site est injoignable — bon
+    # choix pour UNE fiche, mais ce contrôle a lieu APRÈS `translate_title_desc`. Pendant
+    # la panne réseau du 18/08, chaque passage traduisait donc intégralement jusqu'à dix
+    # fiches (deux appels chacune) avant de les refuser, tous les jours, pour une cause qui
+    # ne bougeait pas. C'est le cul-de-sac de la règle 3, et il se paie en appels API.
+    #
+    # On demande donc d'abord « puis-je parler au site ? », une seule fois pour tout le
+    # lot. Si non, rien n'est tenté : les fiches restent candidates et repasseront telles
+    # quelles au retour du réseau — aucune n'est marquée, aucun état terminal n'est posé.
+    if args.apply and not wp_site_joignable():
+        log.error("Site injoignable depuis cette machine — AUCUNE traduction tentée, "
+                  "AUCUN appel API dépensé. Les fiches restent candidates et repasseront "
+                  "au prochain run une fois le site joignable. "
+                  "(Ce n'est pas un refus éditorial : voir docs/PANNE_OVH_2026-08-18.md.)")
+        return 0
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row

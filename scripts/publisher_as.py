@@ -63,6 +63,43 @@ def _headers(auth) -> dict:
     return {**_UA, "X-CS-Auth": token}
 
 
+def wp_site_joignable(essais: int = 2) -> bool:
+    """Le site répond-il DU TOUT depuis cette machine ? — à appeler AVANT de travailler.
+
+    D'OÙ ÇA VIENT (2026-08-18). `wp_original_est_en_ligne` répond False sur une erreur
+    réseau, et c'est le bon choix pour UNE fiche : mieux vaut un faux refus qu'un jumeau
+    orphelin en ligne. Mais son commentaire justifie ce choix par « la traduction attend le
+    run suivant » — or ce raisonnement ne tient que si la cause est passagère.
+
+    Quand le site est injoignable pendant des JOURS (panne réseau du 18/08, ticket OVH en
+    cours), le run suivant échoue à l'identique. Et comme le contrôle a lieu APRÈS
+    `translate_title_desc`, chaque fiche est intégralement traduite avant d'être refusée :
+    dix fiches par jour, deux appels chacune, tous les jours, pour une cause qui ne bougera
+    pas. C'est mot pour mot le cul-de-sac de la règle 3 de CLAUDE.md — « un refus qui se
+    rejoue sur la MÊME entrée n'est pas un rouvreur » — et il brûle de l'argent réel.
+
+    D'où cette sonde, distincte et posée EN AMONT : elle ne demande pas « ce post est-il
+    publié ? » mais « puis-je parler au site ? ». Un appelant qui obtient False sait que
+    tout ce qu'il entreprendrait serait perdu, et peut s'arrêter avant de dépenser.
+
+    Deux essais : une coupure intermittente (c'est le cas ici) ne doit pas suspendre une
+    journée entière de travail sur un seul paquet perdu.
+    """
+    wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
+    if not wp_url:
+        return False
+    for _ in range(max(1, essais)):
+        try:
+            r = requests.get(f"{wp_url}/wp-json/", timeout=10)
+        except requests.RequestException:
+            continue
+        # < 500 suffit : on demande si le site RÉPOND, pas s'il autorise. Un 401 ou un 404
+        # prouvent qu'il y a quelqu'un au bout du fil, ce qui est toute la question.
+        if r.status_code < 500:
+            return True
+    return False
+
+
 def wp_original_est_en_ligne(wp_post_id) -> bool:
     """True SEULEMENT si wp_post_id est confirmé `publish` sur WordPress maintenant.
 

@@ -48,7 +48,7 @@ from utils import saison
 from utils import substance
 from scripts.perimetre import ville_hors_perimetre
 from scripts.publisher import build_post
-from scripts.publisher_as import publish_to_as
+from scripts.publisher_as import publish_to_as, wp_site_joignable
 
 log = get_logger("publish_batch_as")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -186,6 +186,20 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
+
+    # ── SONDE AVANT LE LOT (2026-08-18) ─────────────────────────────────────────────────
+    # Pendant la panne réseau, chaque fiche attendait 60 s avant d'abandonner : sur 173
+    # fiches, presque trois heures de timeouts, plus des vignettes générées et téléversées
+    # dans le vide. Le lot annonçait ensuite des « échecs » un par un, ce qui se lit comme
+    # un problème de données alors que c'est un problème de tuyau.
+    # Une seule question, posée une seule fois : le site répond-il ? Sinon on ne tente
+    # rien. Aucune fiche n'est marquée, aucun état n'est posé — elles repassent au lot
+    # suivant exactement comme elles sont.
+    if not args.dry_run and not wp_site_joignable():
+        log.error("Site injoignable depuis cette machine — AUCUNE publication tentée. "
+                  "Rien n'a été marqué : le lot repassera à l'identique une fois le site "
+                  "joignable. (Voir docs/PANNE_OVH_2026-08-18.md.)")
+        return 0
     today = date.today().isoformat()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
