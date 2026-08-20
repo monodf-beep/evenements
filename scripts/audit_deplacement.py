@@ -34,7 +34,7 @@ import json
 import os
 import sqlite3
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,7 +42,7 @@ sys.path.insert(0, str(ROOT))
 from utils.completeness import is_recurring
 from utils.deplacement import (_CRITERES, _PONDERATION, POIDS_LANGUE, DEPLACEMENT_MIN,
                                HORIZON_JOURS, MAX_SCORE, accessibilite_langue,
-                               deplacement_raisons, deplacement_score)
+                               deplacement_raisons, deplacement_score, deplacement_now, _FENETRES)
 
 
 def _par_territoire(notes: dict) -> dict[str, list[dict]]:
@@ -340,7 +340,73 @@ def main(argv=None) -> int:
         print("\n> Aucune fiche à 0 dans ce périmètre — le critère n'écarterait rien ici. "
               "Ce n'est\n> pas une preuve qu'il est juste : c'est une preuve qu'il ne "
               "s'est pas prononcé.\n")
+    _rotation(vivants, auj)
     return 0
+
+
+def _rotation(vivants: list[dict], auj: date) -> None:
+    """« Est-ce que la rangée CHANGE ? » — la question que Franck a posée le 2026-08-18.
+
+    « On a des événements trop loin dans le temps, il faudrait bien sûr les notes mais
+    aussi se préoccuper des dates, sinon on a des homepages identiques sur 6 mois ! »
+
+    LE MÉCANISME EST DANS `utils/deplacement.py`, et il se lit en deux constantes :
+    `HORIZON_JOURS = 183` rend éligible tout ce qui commence dans les six mois, mais
+    `_FENETRES = ((7,3),(21,2),(45,1))` ne donne de bonus d'imminence QUE dans les
+    45 derniers jours. Entre 46 et 183 jours, tout le monde est à bonus ZÉRO : le
+    classement se réduit alors au score intrinsèque, qui ne bouge pas d'un jour à l'autre.
+
+    Conséquence attendue : une fiche très bien notée et lointaine — la Saint-Ours de
+    janvier, le festival du film de novembre — occupe la case de son territoire jusqu'à
+    ce qu'elle soit à moins de 45 jours, c'est-à-dire pendant des mois.
+
+    Ce relevé ne DÉCIDE rien : il MESURE. Si les colonnes montrent la même fiche partout,
+    la rangée est figée et il faut retoucher les fenêtres ou l'horizon. Si elles changent,
+    l'intuition était fausse et il ne faut rien toucher. C'est la même méthode que pour la
+    une, où le banc a servi à choisir le plancher au lieu de le poser au jugé.
+    """
+    print("\n\n## Est-ce que la rangée CHANGE, ou reste-t-elle la même pendant des mois ?\n")
+    print("La section montre UNE carte par territoire. On rejoue donc, territoire par")
+    print("territoire, la fiche qui serait en tête à plusieurs dates — mêmes règles, même")
+    print("base, seule la date change.\n")
+
+    jalons = (0, 15, 30, 60, 90, 120, 180)
+    terrs = sorted({(e.get("territoire") or "—") for e in vivants})
+    tetes: dict[str, list[str]] = {t: [] for t in terrs}
+    for delta in jalons:
+        j = auj + timedelta(days=delta)
+        for t in terrs:
+            lot = [(e, deplacement_now(e, aujourdhui=j)) for e in vivants
+                   if (e.get("territoire") or "—") == t]
+            lot = [(e, n) for e, n in lot if n is not None]
+            lot.sort(key=lambda c: -c[1])
+            tetes[t].append(f"{(lot[0][0].get('title') or '')[:24]} ({lot[0][1]})"
+                            if lot else "—")
+
+    entete = " | ".join(f"J+{d}" for d in jalons)
+    print(f"| Territoire | {entete} |")
+    print("|---" * (len(jalons) + 1) + "|")
+    for t in terrs:
+        print(f"| {t} | " + " | ".join(tetes[t]) + " |")
+
+    # LE CHIFFRE QUI RÉPOND À LA QUESTION, et il dit son dénominateur : combien de fiches
+    # DIFFÉRENTES occupent la case sur toute la période. 1 sur 7 relevés = figée.
+    print()
+    figes = []
+    for t in terrs:
+        noms = {x.split(" (")[0] for x in tetes[t] if x != "—"}
+        etat = ("**FIGÉE**" if len(noms) <= 1 else f"{len(noms)} fiches différentes")
+        print(f"- **{t}** : {etat} sur {len(jalons)} relevés.")
+        if len(noms) <= 1:
+            figes.append(t)
+    if figes:
+        print(f"\n> {len(figes)} territoire(s) sur {len(terrs)} montrent la MÊME fiche à")
+        print(f"> six mois d'intervalle. Le bonus d'imminence ne joue que dans les")
+        print(f"> {max(s for s, _p in _FENETRES)} derniers jours ; au-delà, le classement")
+        print("> est purement intrinsèque, donc immobile.")
+    else:
+        print("\n> Aucune case figée : la rangée tourne d'elle-même, il n'y a rien à")
+        print("> corriger de ce côté.")
 
 
 if __name__ == "__main__":
