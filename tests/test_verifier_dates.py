@@ -103,6 +103,10 @@ COLLECTE = date.today().isoformat() + " 06:00:00"
 _J = date.today() + timedelta(days=40)
 _TXT = f"{_J.day} août {_J.year}" if _J.month == 8 else _J.strftime("%d/%m/%Y")
 _J1 = _J + timedelta(days=1)
+# Trois dates de programme, TOUTES différentes de la nôtre et toutes à venir : c'est ce
+# qui fait l'indécision, et rien d'autre. Les décaler de `_J` garantit qu'aucune ne
+# deviendra notre date au fil des jours.
+_P1, _P2, _P3 = (_J + timedelta(days=d) for d in (10, 20, 30))
 _TXT1 = f"{_J1.day} août {_J1.year}" if _J1.month == 8 else _J1.strftime("%d/%m/%Y")
 
 CAS = [
@@ -113,11 +117,19 @@ CAS = [
     (2, "Concert d'été",
      f"Rendez-vous le {_TXT} au kiosque.",
      _J1.isoformat(), _J1.isoformat(), 7002, "pending"),               # CONTREDIT
+    # ANNÉE — même jour ET même MOIS, autre millésime. Le mois était écrit « agosto » en
+    # dur : le 2026-08-21 il a cessé de correspondre à `_J`, passé en septembre, et le cas
+    # est devenu un simple « contredit ». Le compteur ANNÉE est tombé à zéro sans que rien
+    # ne le dise. Tout ce qui vient d'une date se construit donc à partir de `_J`.
     (3, "Fête patronale",
-     f"Come ogni anno, la festa si tiene il {_J.day} agosto {_J.year - 2} in piazza.",
+     f"Come ogni anno, la festa si tiene il {_J.day:02d}/{_J.month:02d}/{_J.year - 2} in piazza.",
      _J.isoformat(), _J.isoformat(), None, "pending"),                 # ANNÉE
+    # INDÉCIS — plusieurs dates dans le texte, AUCUNE n'est la nôtre. Les trois étaient
+    # écrites en dur ; le 2026-08-21, « 30 septembre 2026 » EST devenue notre date, et le
+    # cas est passé de « indécis » à « confirmé ». Un cas-frontière qui se retourne tout
+    # seul ne prouve plus rien — il prouve même le contraire de ce qu'il annonce.
     (4, "Saison culturelle",
-     "Programme : 2 juin 2026, 15 juillet 2026, 30 septembre 2026. Réservations ouvertes.",
+     f"Programme : {_P1:%d/%m/%Y}, {_P2:%d/%m/%Y}, {_P3:%d/%m/%Y}. Réservations ouvertes.",
      AVENIR, AVENIR, None, "pending"),                                 # indécis
     (5, "Sortie au lac", "Entrée libre, chaussures de marche conseillées.",
      AVENIR, AVENIR, None, "pending"),                                 # muet
@@ -258,7 +270,7 @@ _check("la portée est bornée", "SIGNALEMENT" in sortie)
 _check("la phrase du texte source est montrée pour la contradiction",
        "le texte dit : «" in sortie and _TXT in sortie, sortie[-1200:])
 _check("et pour l'année périmée aussi",
-       f"{_J.day} agosto {_J.year - 2}" in sortie, sortie[-1200:])
+       f"{_J.day:02d}/{_J.month:02d}/{_J.year - 2}" in sortie, sortie[-1200:])
 _check("le verdict rend la date du texte qui a déclenché le signalement",
        verifier_dates.verdict({"2026-08-22"}, {"2026-08-21"})[2] == "2026-08-21")
 _check("et rien quand il n'y a pas de signalement",
