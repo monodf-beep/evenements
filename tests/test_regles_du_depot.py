@@ -87,6 +87,11 @@ _SANS_DATE_OK = {
         "périme pas.",
     "audit_sources_bloquees.py":
         "juge des SOURCES, pas des événements : leur santé ne dépend pas d'une date.",
+    "audit_vocabulaire.py":
+        "cherche une expression interdite dans le TEXTE publié, pas dans une annonce : "
+        "une page reste lisible et indexée des années après l'événement, et « royaume "
+        "de Sardaigne » y demeure faux. Écarter le passé ici laisserait la faute en "
+        "ligne précisément là où elle dure le plus longtemps.",
     "purge_radar.py":
         "le tier radar est sorti du catalogue en entier, sans considération de date.",
     "audit_non_events.py":

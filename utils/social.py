@@ -325,6 +325,7 @@ RÈGLES DE FOND (voix Enrico Nos Alpes — factuelle, sobre, jamais promotionnel
 - Registre sobre : ZÉRO superlatif ni mot de communication (« exceptionnel »,
   « incontournable », « unique », « ambitieux », « innovant », « immanquable »,
   « magique », « féerique »). Zéro point d'exclamation.
+- Ne dis JAMAIS « royaume de Sardaigne » : écris « les États de Savoie » (arbitrage Franck 2026-08-21 ; liste complète : config/vocabulaire_interdit.json).
 - Aucun surnom touristique de ville (« Venise des Alpes » pour Annecy, « Venise du
   Nord », « petite Venise »…) — le nom de la ville seul, jamais une comparaison.
 - N'INVENTE AUCUNE INFORMATION. N'utilise QUE les données fournies ci-dessous. S'il

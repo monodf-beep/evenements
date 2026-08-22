@@ -1,0 +1,22 @@
+{
+  "_regle": "Le vocabulaire de Franck. Ce fichier est la SOURCE UNIQUE : avant lui, la même consigne était recopiée dans quatre prompts (enrich, translate_events, conform_articles, social) et dans la charte — cinq copies qui divergent tôt ou tard, et dont aucune ne dit laquelle fait foi.",
+  "_deux_temps": "Les prompts empêchent d'ÉCRIRE l'expression demain ; scripts/audit_vocabulaire.py la trouve dans ce qui est DÉJÀ publié. Une consigne de prompt ne corrige jamais le passé — « Venise des Alpes » a été écrit, généré, publié, et trouvé en ligne le 2026-08-18.",
+  "_pas_de_remplacement_automatique": "L'audit SIGNALE, il ne réécrit pas. Une expression interdite peut être le titre officiel d'une exposition ou une citation : « Il Regno di Sardegna » sur l'affiche d'un musée n'est pas notre prose. Seul un œil tranche, la phrase sous les yeux.",
+
+  "interdits": [
+    {
+      "expression": "royaume de Sardaigne",
+      "variantes": ["royaume de sardaigne", "regno di sardegna", "reame di sardegna"],
+      "remplacement_fr": "les États de Savoie",
+      "remplacement_it": "gli Stati Sabaudi",
+      "_motif": "Arbitrage de Franck, 2026-08-21, sur https://agendasabauda.eu/expositions-turin-2026/ : « ne jamais mettre royaume de Sardaigne mais mettre les États de Savoie ». C'est la voix de l'agenda : le sujet est l'espace savoyard, pas l'appellation diplomatique de 1720."
+    },
+    {
+      "expression": "Venise des Alpes",
+      "variantes": ["venise des alpes", "venise du nord", "venezia delle alpi"],
+      "remplacement_fr": "",
+      "remplacement_it": "",
+      "_motif": "Surnom de guide touristique. Interdit par la charte éditoriale (§ voix). Aucun remplacement : on nomme la ville, c'est tout. Trouvé EN LIGNE le 2026-08-18 malgré la consigne présente dans quatre prompts — la preuve qu'un prompt ne suffit pas."
+    }
+  ]
+}

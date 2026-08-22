@@ -59,6 +59,7 @@ RÈGLES À FAIRE RESPECTER (corrige seulement les manquements) :
   → « Les nuits de la photo »). Casse de phrase : initiale + noms propres. Préserve les
   vrais sigles (FIAF, ONU) et la casse de marque (iMac).
 - Pas de SUPERLATIFS CREUX (« incontournable », « magique », « à ne pas manquer »…).
+- Ne dis JAMAIS « royaume de Sardaigne » : écris « les États de Savoie » (arbitrage Franck 2026-08-21 ; liste complète : config/vocabulaire_interdit.json).
 - Aucun SURNOM TOURISTIQUE DE VILLE (« Venise des Alpes » pour Annecy, « Venise du Nord »,
   « petite Venise », « perle des Alpes »…) — remplace par le nom de la ville seul.
 - Aucun DARK PATTERN : fausse urgence/rareté, clickbait, confirmshaming.

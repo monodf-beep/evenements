@@ -205,6 +205,7 @@ def _charte_prompt(target: str, voix: str = "") -> str:
         topo = ('Turin (pas "Torino"), Aoste, Nice, Verceil ; territoires : Savoie, '
                 'Piémont, Vallée d\'Aoste, Comté de Nice')
         superl = ('« incontournable », « magique », « à ne pas manquer », « événement phare », '
+                  'Ne dis JAMAIS « royaume de Sardaigne » / « Regno di Sardegna » : écris « les États de Savoie » / « gli Stati Sabaudi » (config/vocabulaire_interdit.json). '
                   'et tout surnom touristique de ville — « Venise des Alpes » pour Annecy, '
                   '« Venise du Nord », « petite Venise », « perle des Alpes »')
         darkp = ('fausse urgence (« plus que 2 places ! », « dernier jour »), clickbait '
