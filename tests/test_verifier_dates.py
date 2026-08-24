@@ -107,6 +107,29 @@ _J1 = _J + timedelta(days=1)
 # qui fait l'indécision, et rien d'autre. Les décaler de `_J` garantit qu'aucune ne
 # deviendra notre date au fil des jours.
 _P1, _P2, _P3 = (_J + timedelta(days=d) for d in (10, 20, 30))
+# Pour les cas « jour de semaine » (8bis) : deux dates de plus, avec leur VRAI jour de
+# semaine calculé — jamais écrit en dur, sinon le cas se dérègle au fil du calendrier
+# exactement comme _J1 avant lui (fiches 3 et 4, corrigé le 2026-08-18).
+from utils.jours import NOM_DU_JOUR as _NOM_JOUR  # noqa: E402
+_J8 = _J + timedelta(days=3)                       # sert le cas RSS (peu importe le jour)
+_J9 = _J + timedelta(days=5)                        # sert le cas HTML — un jour AVANT
+_J9M1 = _J9 - timedelta(days=1)
+_J11 = _J + timedelta(days=7)                       # jour annoncé = jour RÉEL, cas qui passe
+_JOUR_J11 = _NOM_JOUR[_J11.weekday()]
+# Fiche 10 (Paratissima) : il faut un jour de semaine FAUX pour la date choisie. On prend
+# le jour civilement suivant celui de _J (garanti différent, aucun calcul de calendrier
+# fragile) plutôt qu'un jour écrit en dur qui pourrait un jour coïncider par hasard.
+_J10 = _J + timedelta(days=14)
+_JOUR_J10_FAUX = _NOM_JOUR[(_J10.weekday() + 1) % 7]
+# Noms de mois écrits ici, PAS lus dans utils.jours._MOIS (privé, sans accent, fait pour
+# la RECONNAISSANCE — pas pour construire un texte lisible). Les deux jeux ne se
+# recouvrent que par les valeurs, jamais par l'objet.
+_MOIS_FR = {1: "janvier", 2: "février", 3: "mars", 4: "avril", 5: "mai", 6: "juin",
+            7: "juillet", 8: "août", 9: "septembre", 10: "octobre", 11: "novembre",
+            12: "décembre"}
+_MESE_IT = {1: "gennaio", 2: "febbraio", 3: "marzo", 4: "aprile", 5: "maggio",
+            6: "giugno", 7: "luglio", 8: "agosto", 9: "settembre", 10: "ottobre",
+            11: "novembre", 12: "dicembre"}
 _TXT1 = f"{_J1.day} août {_J1.year}" if _J1.month == 8 else _J1.strftime("%d/%m/%Y")
 
 CAS = [
@@ -287,14 +310,16 @@ c.execute("INSERT INTO events_raw (id, title, description, url_source, source_na
           " scrape_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
           (8, "Charlie Winston", "Concert à la Maison des Arts du Léman. Tarifs sur place.",
            "https://exemple.fr/8", "Maison des Arts du Léman",
-           "Wed, 24 Jun 2026 13:44:10 +0000", AVENIR, AVENIR, "parsed", "pending",
+           f"Wed, {_J8:%d %b %Y} 13:44:10 +0000", AVENIR, AVENIR, "parsed", "pending",
            COLLECTE))
 # Et le HTML brut, qui rendait l'extrait illisible (fiche 473 : « <time>20/05/2026</time> »)
 c.execute("INSERT INTO events_raw (id, title, description, url_source, source_name, "
           " date_event_start, date_event_end, date_source, statut, scrape_date) "
           "VALUES (?,?,?,?,?,?,?,?,?,?)",
-          (9, "Fête balisée", "<p>Rendez-vous le <time>21 août 2026</time> au kiosque.</p>",
-           "https://exemple.fr/9", "Source officielle", "2026-08-22", "2026-08-22",
+          (9, "Fête balisée",
+           f"<p>Rendez-vous le <time>{_J9M1.day} {_MOIS_FR[_J9M1.month]} {_J9M1.year}"
+           "</time> au kiosque.</p>",
+           "https://exemple.fr/9", "Source officielle", _J9.isoformat(), _J9.isoformat(),
            "parsed", "pending", COLLECTE))
 c.commit()
 c.close()
@@ -306,15 +331,17 @@ c.execute("INSERT INTO events_raw (id, title, description, url_source, source_na
           " date_event_start, date_event_end, date_source, statut, scrape_date) "
           "VALUES (?,?,?,?,?,?,?,?,?,?)",
           (10, "Studio Visit Paratissima Factory",
-           "La visita agli studio è libera: ti basterà venire a trovarci sabato 7 maggio "
-           "dalle 16.", "https://exemple.fr/10", "Paratissima (Torino)",
-           "2027-05-07", "2027-05-07", "parsed", "pending", COLLECTE))
+           f"La visita agli studio è libera: ti basterà venire a trovarci "
+           f"{_JOUR_J10_FAUX} {_J10.day} {_MESE_IT[_J10.month]} dalle 16.",
+           "https://exemple.fr/10", "Paratissima (Torino)",
+           _J10.isoformat(), _J10.isoformat(), "parsed", "pending", COLLECTE))
 # Et le cas qui doit PASSER : jour annoncé, jour exact. Le 21/08/2026 est bien un vendredi.
 c.execute("INSERT INTO events_raw (id, title, description, url_source, source_name, "
           " date_event_start, date_event_end, date_source, statut, scrape_date) "
           "VALUES (?,?,?,?,?,?,?,?,?,?)",
-          (11, "Concert du vendredi", "Le vendredi 21 août 2026 à 21h au kiosque.",
-           "https://exemple.fr/11", "Source officielle", "2026-08-21", "2026-08-21",
+          (11, f"Concert du {_JOUR_J11}",
+           f"Le {_JOUR_J11} {_J11.day} {_MOIS_FR[_J11.month]} {_J11.year} à 21h au kiosque.",
+           "https://exemple.fr/11", "Source officielle", _J11.isoformat(), _J11.isoformat(),
            "parsed", "pending", COLLECTE))
 c.commit()
 c.close()
@@ -329,7 +356,8 @@ _check("l'horodatage RSS ne contredit RIEN — ce n'est pas le texte de la sourc
 _check("mais une date en HTML est bien lue, balises retirées", 9 in vues_meta,
        sorted(vues_meta))
 _check("et son extrait se lit sans balises",
-       "21 août 2026" in sortie_meta and "<time>" not in sortie_meta,
+       f"{_J9M1.day} {_MOIS_FR[_J9M1.month]} {_J9M1.year}" in sortie_meta
+       and "<time>" not in sortie_meta,
        sortie_meta[-900:])
 
 print("\n──── 4 ter. classé sans suite : vérifié une fois, tu ne le redis plus ────")
@@ -354,24 +382,36 @@ _check("mais elle est COMPTÉE, pas tue — sinon on la découvre des semaines p
 
 # LE POINT CENTRAL : le classement doit TOMBER quand la question change. Un classement
 # définitif serait un cul-de-sac de plus (règle 3).
+#
+# ⚠️ ICI-MÊME, LE 2026-08-24 : les deux dates qui suivent étaient écrites en dur
+# ('2026-08-23', '2026-08-22'). Le calendrier a avancé, elles sont passées dans le passé,
+# et la fiche 2 est sortie du périmètre (règle 5) pour tout le RESTE du fichier — trois
+# assertions en cascade sont tombées, dont une ("re-classée après re-vérification") est
+# restée VERTE pour la mauvaise raison : elle passait parce que la fiche avait disparu du
+# périmètre, pas parce que le classement tenait. La même faute qu'aux fiches 3 et 4,
+# retrouvée six jours plus tard dans un coin du fichier qu'on n'avait pas relu.
+_J2A = _J1 + timedelta(days=1)          # future, ET différente de _J1 : invalide la mémoire
 c = sqlite3.connect(db)
-c.execute("UPDATE events_raw SET date_event_start='2026-08-23', date_event_end='2026-08-23' "
-          "WHERE id=2")
+c.execute("UPDATE events_raw SET date_event_start=?, date_event_end=? WHERE id=2",
+          (_J2A.isoformat(), _J2A.isoformat()))
 c.commit(); c.close()
 _rouvert, _ = _sortie()
 _check("notre date change → le classement TOMBE, le signalement revient",
        2 in _rouvert, sorted(_rouvert))
 
 # Et l'inverse : si la matière source bouge, pareil.
+_J2B = _J + timedelta(days=25)
 c = sqlite3.connect(db)
-c.execute("UPDATE events_raw SET date_event_start='2026-08-22', date_event_end='2026-08-22' "
-          "WHERE id=2")
+c.execute("UPDATE events_raw SET date_event_start=?, date_event_end=? WHERE id=2",
+          (_J2B.isoformat(), _J2B.isoformat()))
 c.commit(); c.close()
 _cl.main(["2", "--motif", "re-vérifié après changement, la source confirme notre date "
                           "telle qu'elle est aujourd'hui"])
 _check("re-classée après re-vérification", 2 not in _sortie()[0])
+_J2C = _J + timedelta(days=50)
 c = sqlite3.connect(db)
-c.execute("UPDATE events_raw SET description='Rendez-vous le 30 septembre 2026.' WHERE id=2")
+c.execute("UPDATE events_raw SET description=? WHERE id=2",
+          (f"Rendez-vous le {_J2C.day} {_MOIS_FR[_J2C.month]} {_J2C.year}.",))
 c.commit(); c.close()
 _check("la SOURCE change → le classement tombe aussi", 2 in _sortie()[0], sorted(_sortie()[0]))
 
