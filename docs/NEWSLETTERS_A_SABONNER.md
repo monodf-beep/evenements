@@ -20,6 +20,109 @@ Rappel : les billetteries (Fnac, Ticketmaster, Dice, TicketOne, Vivaticket…) n
 
 ---
 
+## Contacts presse — gros événements sans newsletter grand public accessible
+
+Recherche du 2026-08-18. Pour ces gros événements, aucune newsletter grand
+public n'a pu être trouvée/confirmée (site anti-bot, ou rien du tout). Mais
+Cultura Sabauda est un **média**, pas juste un agrégateur (CHARTE §5, §8) :
+le bon canal est une **demande d'accréditation presse**, distincte de
+`docs/PIPELINE_COLLECTE.md` §4 (le canal `press_kits.py`, label Gmail
+`Presse`) — ça donne accès aux dossiers de presse, photos avec droits, info
+avant le public. **Action manuelle requise : écrire un mail de présentation
+du média** à chaque contact, ce n'est pas automatisable ni une simple case à
+cocher comme les newsletters ci-dessus.
+
+- ⭐ **Palio di Asti** — https://www.fondazionepalio.org/stampa/ —
+  `comunicazione@fondazionepalio.org`, formulaire d'accréditation PDF
+- ⭐ **Carnaval de Nice** — https://www.nicecarnaval.com/en/journalists/ —
+  `christophe.viale@nicecotedazur.org`, formulaire d'accréditation en ligne
+- ⭐ **Fête du Citron (Menton)** — https://www.fete-du-citron.com/-Presse-.html
+  et `+demande-accreditation-presse+.html` — formulaire officiel, service Presse
+  Ville de Menton
+- **Torino Design City** — https://www.torinodesigncity.it/en/press-2/ —
+  `design@comune.torino.it` (Ufficio Stampa Città di Torino), pas de
+  formulaire, contact direct par email
+
+Pistes plus faibles, à recouper avant d'écrire :
+- Foire de Saint-Ours (Aoste) — page « Per i giornalisti » trouvée
+  (regione.vda.it) mais contenu qui semble dater d'une édition passée
+  (2010 dans l'extrait récupéré) — vérifier que l'URL sert bien l'édition
+  courante avant d'écrire.
+- Salone del Vino di Torino — une page « Area stampa e media » existe
+  (salonedelvinotorino.it/area-stampa/) mais aucun email/formulaire capturé
+  (site probablement en JS) — à revérifier au navigateur.
+- Grandi Langhe — site protégé anti-bot, aucun contact presse confirmé par
+  accès direct ; les consortiums organisateurs (Barolo/Barbaresco/Langhe)
+  ont probablement une dégustation presse dédiée, à chercher autrement
+  (contact direct des consortiums plutôt que le site de l'événement).
+
+---
+
+## ⚡⚡ Priorité — zones à 0-4 événements vues dans « Intentions de recherche » (18/08)
+
+Recherche complémentaire du 2026-08-18, sur les zones que la page *Outils >
+Intentions de recherche* signale comme sous le seuil. **Vérifié : pas de flux
+RSS exploitable chez ces organismes** (post-type événement absent du flux
+WordPress standard, ou pages non-WordPress) — testé par curl réel sur ~25
+sites avant de conclure. La newsletter est donc la seule voie côté source
+officielle pour ces zones-là, avec le même mode d'emploi que le reste de cette
+page (label Gmail `Agenda`, jamais une automatisation directe).
+
+- [ ] **Courchevel Tourisme** — https://www.courchevel.com/en/form/newsletter (Savoie, 0 évén.)
+- [ ] **Maurienne Tourisme** (couvre Saint-Jean-de-Maurienne, 0 évén.) — http://www.maurienne-tourisme.com/inscription-newsletter-destination-maurienne/
+- [ ] ⭐ **ATL Terre dell'Alto Piemonte** (*hebdo* — couvre EN UNE FOIS Biella, Vercelli, Novara et Valsesia, toutes à 0-1 évén.) — https://www.atl.biella.it/newsletter/dettaglio/-/d/newsletter-settimanale
+- [ ] **Mairie de Villefranche-sur-Mer** (Nice, mentionne explicitement les événements à venir) — https://www.villefranche-sur-mer.fr/newsletter/
+- [ ] **Sallanches Mont-Blanc Tourisme** (page dédiée, distincte de Savoie Mont Blanc) — https://sallanchesmontblanc.com/newsletters
+- [ ] **Distretto dei Laghi** (VCO/Verbano-Cusio-Ossola, 0 évén.) — https://www.distrettolaghi.it/it/newsletter
+- [ ] **Alexala** (Alessandria, 0 évén. — formulaire en page d'accueil, pas d'URL dédiée) — https://www.alexala.it/it
+- [ ] **Visit Cuneese** (province de Cuneo) — https://www.visitcuneese.it/newsletter
+- [ ] **Cœur de Tarentaise Tourisme** (Moûtiers) — https://www.coeurdetarentaise-tourisme.com/ (formulaire Mailchimp en page d'accueil)
+- [ ] ⭐ **Explore Nice Côte d'Azur** (territoire Comté de Nice entier) — https://www.explorenicecotedazur.com/newsletter/
+- [ ] **Destination Léman** (Chablais, couvre aussi Évian) — https://www.destination-leman.com/newsletter/
+- [ ] **Turismo Torino e Provincia** couvre explicitement Ivrea et le Canavese — déjà listé plus haut, à cocher pour cette zone aussi, pas de source séparée nécessaire.
+
+Vérifié le 18/08 mais **incertain** — bloc « Newsletter » présent en page
+mais aucun champ email statique capturé (rendu JavaScript), à confirmer à la
+main avant de compter dessus :
+- **Visit Asti** (province d'Asti) — https://visit.asti.it/ ; `provincia.asti.it` reste bloqué (403).
+- **VisitPiemonte DMO** (région Piémont) — `/newsletter/` répond 404, aucun
+  formulaire d'inscription trouvé sur la page d'accueil : **à écarter** tant
+  que non prouvé, ne pas cocher en l'état.
+
+Non résolu, à rechercher plus loin (blocage technique, pas une absence
+prouvée) :
+- **Annemasse** — le site bloque systématiquement les accès automatisés
+  (reset de connexion sur tous les user-agents testés) ; une page
+  `annemasse.fr/Annemasse/Newsletter` est mentionnée par la recherche web
+  mais invérifiable depuis cet environnement — à tester depuis un poste non
+  filtré.
+- **Aoste (ville)** — `aostalife.it` a renvoyé une erreur de proxy réseau
+  (pas une preuve d'absence) ; rien trouvé sur `comune.aosta.it` — à
+  retester. La Vallée d'Aoste reste couverte à l'échelle régionale par
+  **LoveVDA**, déjà listé plus bas.
+- **Cluses / Thonon-les-Bains / Aix-les-Bains / Chamonix / Megève** — déjà
+  `[x]` plus haut (Musiques en Stock, Maison des Arts du Léman, OT
+  Aix-les-Bains, OT Chamonix, Megève Tourisme) : si ces zones restent à 0
+  évén., ce n'est **pas un manque de source** mais un problème de flux
+  (label Gmail non appliqué, ou domaine expéditeur absent de
+  `config/whitelist_gmail.txt`) — à diagnostiquer, pas à re-sourcer (même
+  logique que le cas Menton ci-dessous).
+- **Province du VCO / Verbano-Cusio-Ossola** — organisme identifié
+  (Distretto dei Laghi, distrettolaghi.it), site refondu récemment, aucune
+  page newsletter dédiée trouvée en recherche web — à vérifier directement
+  sur le site.
+- **Alessandria / Asti** — Alexala (alexala.it) a un formulaire d'inscription
+  en page d'accueil mais pas d'URL dédiée stable trouvée ; Visit Asti a
+  renvoyé une erreur d'accès lors de la vérification — à revisiter à la main.
+- **Alba / Monferrato** — déjà couvert par **Ente Turismo Langhe Monferrato
+  Roero** `[ ]` plus bas (section Piémont) : à cocher en priorité, c'est déjà
+  identifié comme *le* pivot Langhe/Roero/Monferrato/Alba.
+- **Courmayeur** — déjà listé `[ ]` plus bas (section Vallée d'Aoste) : à
+  cocher, et **LoveVDA** `[ ]` (même section) couvre aussi Courmayeur en plus
+  du reste de la VdA — la source la plus rentable, à faire en 1er.
+
+---
+
 ## ⚡ Priorité — combler les trous vus dans « Couverture géo » (21/07)
 
 La page **Couverture géo** a chiffré les zones à ZÉRO. La bonne nouvelle : les sources
