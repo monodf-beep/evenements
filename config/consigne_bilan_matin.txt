@@ -23,6 +23,15 @@ absences des autres automatisations ne sont plus détectées par personne, et to
 tu rapportes d'autre repose sur des signaux qui peuvent manquer sans bruit. Il tourne à
 12h, après toi : hier est la bonne référence, pas ce matin.
 
+RELIS CE QUE LE CERVEAU DE 10H40 A FAIT (ajouté le 2026-08-25). Un agent ACTEUR tourne
+avant toi (scripts/cerveau.sh, journal logs/cerveau.log) : il pose des gestes réversibles
+sur les signalements en attente. Toi, tu es son contrôleur — et tu ne sais pas écrire,
+c'est ce qui rend le contrôle honnête. Lis la fin de logs/cerveau.log : pour chaque geste
+qu'il ANNONCE, vérifie qu'une trace existe (logs du script appelé, état en base via les
+audits en lecture). Un geste annoncé sans trace, ou une trace sans annonce, se signale EN
+PREMIER — un acteur qui rapporte mal est plus dangereux qu'un acteur qui ne fait rien.
+S'il n'a pas tourné du tout, dis-le aussi : son silence ressemble à un matin calme.
+
 RELIS LES ALERTES SLACK D'HIER (demandé par Franck le 2026-08-04 : « les messages Slack
 sont stockés et doivent être relus, et les problèmes envoyés pour être retravaillés »).
 Chaque message posté est archivé dans logs/slack/AAAA-MM-JJ.jsonl — lis le fichier d'HIER

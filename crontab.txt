@@ -204,6 +204,18 @@ SLACK_DIGEST=1
 # (Le rafraîchissement du tri « Ça vaut le déplacement » tourne DANS la ligne de 10h45
 # ci-dessus, enchaîné après la traduction — voir le commentaire de cette ligne. Son
 # journal reste logs/refresh_deplacement.log, le chien de garde ne change pas.)
+# Cerveau du matin 10h40 — demandé par Franck le 2026-08-25 (« les décisions tu dois les
+# prendre en autonomie, et les informations via les différents scripts »). Lance Claude
+# Code en NON-INTERACTIF sur config/consigne_cerveau.txt : il relit les signalements en
+# attente (digests archivés, logs du matin) et AGIT dans les limites du réversible —
+# corbeille cs/v1, changements de statut, marqueurs de résolution — via les scripts
+# existants, un par un. Il ne modifie AUCUN fichier (pas d'outil d'écriture) et escalade
+# tout le reste. Déclencheur concret : la fiche 4839 proposée à l'écartement quatre
+# matins de suite sans geste. Placé AVANT le bilan de 11h, exprès : le bilan (lecture
+# seule) relit ce que le cerveau a fait — l'acteur et le contrôleur sont deux agents
+# séparés, et le contrôleur ne sait pas écrire. Toute la mécanique des verrous est en
+# tête de scripts/cerveau.sh ; la fixture tests/test_cerveau.py garde sa liste d'outils.
+40 10 * * * cd /root/evenements && scripts/cerveau.sh >> logs/cerveau.log 2>&1
 # Bilan du matin 11h — accord de Franck le 2026-08-03. Lance Claude Code en NON-INTERACTIF
 # sur config/consigne_bilan_matin.txt et poste le résultat sur Slack. Toute la mécanique
 # (outils autorisés, verrous d'écriture, raisons de passer par un script plutôt qu'une ligne

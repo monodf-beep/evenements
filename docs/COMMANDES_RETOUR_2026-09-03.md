@@ -26,6 +26,20 @@ lire la sortie, puis appliquer.
 
 ---
 
+## 0 ter. Relire ce que le cerveau a fait pendant l'absence
+
+```bash
+# Son journal, jour par jour (gestes posés, différés, escaladés)
+less logs/cerveau.log
+```
+
+```bash
+# L'arrêter si besoin : commenter sa ligne dans crontab.txt puis
+crontab crontab.txt
+```
+
+---
+
 ## 1. Vérifier que le site répond
 
 ```bash
