@@ -52,8 +52,22 @@ for texte, attendu in cas:
 
 # ══════════════ scripts/panel_site.py : fetch (site réel, pas d'API) ══════════════
 print("\n──── fetch_page_text sur le VRAI site (aucune clé API nécessaire) ────")
+# D'OÙ ÇA VIENT (2026-08-25) : ce test a fait ÉCHOUER `auto_deploiement` — donc REFUSÉ un
+# déploiement — trois jours de suite pendant l'épisode de blocage IP intermittent du VPS
+# (docs/PANNE_OVH...). `fetch_page_text` rend '' EN SILENCE sur toute panne réseau (c'est
+# documenté dans sa propre docstring : "'' si inaccessible") — la fixture prenait ce ''
+# pour un bug du code candidat, alors que c'était le réseau du serveur qui testait. Un
+# fichier au vert ici ne prouve donc PAS que le fetch marche ; ça, seule une page reçue le
+# prouve. `texte_home == ''` doit donc être NON CONCLUANT (on le dit, on ne fait pas
+# échouer le déploiement pour ça), jamais un échec — sans quoi une panne réseau côté site
+# bloque indéfiniment tout correctif, y compris celui qui la réglerait.
 texte_home = panel.fetch_page_text("https://agendasabauda.eu/")
-_check(f"page d'accueil récupérée ({len(texte_home)} caractères)", len(texte_home) > 200)
+if texte_home == "":
+    print("NON CONCLUANT  page d'accueil injoignable depuis cette machine — le réseau vers "
+          "agendasabauda.eu est hors de portée de cette fixture (règle CLAUDE.md : ne pas "
+          "présenter une inférence comme un fait). Ne bloque pas le déploiement.")
+else:
+    _check(f"page d'accueil récupérée ({len(texte_home)} caractères)", len(texte_home) > 200)
 
 texte_bidon = panel.fetch_page_text("https://agendasabauda.eu/cette-page-n-existe-pas-du-tout/")
 _check("page inexistante → chaîne vide ou tolérée sans exception", isinstance(texte_bidon, str))

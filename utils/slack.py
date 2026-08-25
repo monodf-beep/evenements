@@ -91,6 +91,10 @@ def enabled() -> bool:
 # JAMAIS BLOQUANT, exactement comme l'envoi lui-même : si l'écriture échoue, on loggue et
 # on continue. Une archive qui ferait tomber une publication serait pire que pas d'archive.
 _ARCHIVE = ROOT / "logs" / "slack"
+# Sentinelle FIGÉE, jamais réaffectée : sert à détecter qu'une fixture a — ou n'a PAS —
+# redirigé `_ARCHIVE`/`_DIFFERES` vers un dossier jetable avant d'appeler `notify()`.
+# Voir le garde-fou dans `notify()`, plus bas.
+_ARCHIVE_PAR_DEFAUT = _ARCHIVE
 
 
 def _archive(text: str, envoye: bool) -> None:
@@ -256,8 +260,25 @@ def notify(text: str, blocks: list | None = None, urgent: bool = False) -> bool:
 
     `urgent=True` court-circuite la boîte : réservé à ce qui perdrait son sens différé
     d'un demi-tour d'horloge (chien de garde, plafond API atteint).
+
+    RÉCIDIVE, 2026-08-25. `SLACK_DIGEST=1` est posé en PERMANENCE en tête du crontab réel,
+    donc hérité par `auto_deploiement --apply`, qui rejoue TOUTES les fixtures avant
+    chaque déploiement. Toute fixture qui appelle `notify()` pour de vrai (pas de mock)
+    SANS rediriger `slack._ARCHIVE`/`slack._DIFFERES` vers un dossier jetable écrivait
+    donc dans la VRAIE boîte du jour — et le vidage suivant (11h45/20h) l'a posté pour de
+    vrai dans #agendasabauda. Constaté sur `tests/test_slack_jamais_depuis_les_tests.py`
+    ET sur d'autres fixtures (SEO, autocomplete) qui n'y pensaient pas : huit jours de
+    messages-canaris mêlés au digest réel, 18→25/08.
+
+    Le garde-fou ci-dessous est donc CENTRAL, pas fixture par fixture — même raisonnement
+    que `_depuis_les_tests()` dans `_webhook()` : depuis les tests, tant qu'une fixture n'a
+    PAS explicitement redirigé `_DIFFERES` (donc tant qu'il pointe encore sur le dossier
+    de PRODUCTION), on refuse de différer — le message retombe sur le chemin webhook, déjà
+    coupé par `_depuis_les_tests()`. Une fixture qui redirige (test_slack_digest.py) n'est
+    pas concernée : `_DIFFERES` n'est alors plus le dossier par défaut.
     """
-    if _digest_actif() and not urgent and _differer(text, _source_appelante()):
+    _bac_a_sable = not (_depuis_les_tests() and _DIFFERES == _ARCHIVE_PAR_DEFAUT / "differes")
+    if _digest_actif() and not urgent and _bac_a_sable and _differer(text, _source_appelante()):
         return True
     url = _webhook()
     if not url:

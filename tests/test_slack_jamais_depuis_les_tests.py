@@ -21,16 +21,39 @@ Le correctif est central (`utils.slack._depuis_les_tests`) et non dans les sept 
 qui appellent `notify` : une seule se protégeait, et celle qu'on écrira demain n'y
 penserait pas.
 
+RÉCIDIVE, 2026-08-25 — le même défaut, une deuxième porte. `notify()` a une sortie que ce
+garde-fou ne couvrait pas : quand `SLACK_DIGEST=1` (posé en tête du crontab RÉEL, hérité
+par `auto_deploiement --apply` qui rejoue cette fixture chaque matin), le message n'est
+pas jeté en silence — il est RANGÉ dans la vraie boîte du jour (`logs/slack/differes/`),
+et le vidage suivant (11h45/20h) le poste réellement dans #agendasabauda. Constaté en
+production : le canari de cette fixture est parti pour de vrai huit matins de suite,
+18→25/08, noyé dans le digest. `notify()` ne peut pas deviner qu'on le teste ; le
+correctif est donc ICI, comme le fait déjà `tests/test_slack_digest.py` : rediriger
+`slack._ARCHIVE`/`slack._DIFFERES` vers un dossier jetable AVANT d'appeler `notify`.
+
 Lancer : .venv/bin/python -m tests.test_slack_jamais_depuis_les_tests
 """
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from utils import slack  # noqa: E402
+
+# La VRAIE boîte du jour, capturée AVANT redirection — c'est elle qu'on veut prouver
+# intacte après coup, pas celle (jetable) sur laquelle les tests vont écrire.
+_VRAIE_BOITE_DU_JOUR = slack._fichier_du_jour()
+
+# Dossier JETABLE, comme tests/test_slack_digest.py : notify() écrit sur disque
+# (l'archive, et la boîte du jour si SLACK_DIGEST=1) même quand le webhook est coupé.
+# Sans cette redirection, un appel à `notify()` fait depuis les tests laisse une trace
+# dans le VRAI logs/slack/ — bénin pour l'archive, mais pour la boîte du jour ça veut
+# dire un message posté pour de vrai au prochain vidage (incident du 18→25/08 ci-dessus).
+slack._ARCHIVE = Path(tempfile.mkdtemp()) / "slack"
+slack._DIFFERES = slack._ARCHIVE / "differes"
 
 echecs = 0
 
@@ -47,6 +70,10 @@ def verifier(libelle, ok, detail=""):
 # On pose une URL de webhook PARFAITEMENT valide dans l'environnement : c'est la situation
 # du VPS, où le .env en contient une vraie. Le transport doit rester coupé quand même.
 os.environ["SLACK_WEBHOOK_URL"] = "https://hooks.slack.com/services/T00000/B00000/xxxxxxxx"
+# Chemin de base sans SLACK_DIGEST : posé explicitement, pas supposé absent. Le vrai
+# crontab le laisse à 1 en permanence (voir la RÉCIDIVE ci-dessus) — sans ce retrait, ce
+# premier essai hériterait de l'environnement ambiant au lieu de tester ce qu'il annonce.
+os.environ.pop("SLACK_DIGEST", None)
 
 verifier("l'appel est reconnu comme venant des tests", slack._depuis_les_tests())
 verifier("le webhook est vu comme absent, malgré l'URL dans l'environnement",
@@ -55,6 +82,23 @@ verifier("le webhook est vu comme absent, malgré l'URL dans l'environnement",
 # Le chemin complet : notify ne doit rien envoyer et le DIRE (False = pas parti).
 envoye = slack.notify("🚨 chaîne morte — CECI EST UNE FIXTURE, rien ne doit partir")
 verifier("notify rend False : le message n'est pas parti", envoye is False, str(envoye))
+
+# ⚠️ LE CAS QUI DOIT PASSER — trouvé le 2026-08-25 : `SLACK_DIGEST=1` tourne dans le VRAI
+# crontab (posé en tête de fichier, hérité par `auto_deploiement --apply`, qui rejoue
+# cette fixture chaque matin dans un worktree). Sous ce réglage, `notify()` RANGE le
+# message (`_differer`) au lieu de le jeter — c'est le comportement voulu, éprouvé par
+# tests/test_slack_digest.py. Le danger n'était pas ce chemin, c'était son ADRESSE : sans
+# la redirection ci-dessus, il écrivait dans le VRAI `logs/slack/differes/`, et le vidage
+# suivant (11h45/20h) l'a posté pour de vrai dans #agendasabauda — huit matins de suite,
+# 18→25/08. Ici la boîte (jetable) reçoit bien le message ; c'est la VRAIE boîte qui doit
+# rester intacte.
+os.environ["SLACK_DIGEST"] = "1"
+envoye_digest = slack.notify("🚨 chaîne morte — CECI EST UNE FIXTURE (digest), rien ne doit partir")
+verifier("notify range le message dans la boîte JETABLE (comportement normal, isolé)",
+         envoye_digest is True, str(envoye_digest))
+verifier("   et la VRAIE boîte du jour, elle, ne reçoit RIEN — c'est elle qui compte",
+         not _VRAIE_BOITE_DU_JOUR.exists(), str(_VRAIE_BOITE_DU_JOUR))
+os.environ.pop("SLACK_DIGEST", None)
 
 # L'archive locale, elle, doit garder la trace : un message non parti est justement
 # celui qu'on cherchera plus tard.
