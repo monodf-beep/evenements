@@ -152,5 +152,56 @@ _check("   et il montre son mouvement, de J+0 à J+180",
 _check("le message tient sur un écran de téléphone (moins de 10 lignes)",
        len(msg.splitlines()) < 10, f"{len(msg.splitlines())} lignes")
 
+print("\n──── la question HEBDOMADAIRE de Franck, pas les jalons épars ────")
+# Franck, 2026-08-24 : « chaque semaine, je vais aller voir [...] qu'est-ce que je vais
+# faire ce week-end ». Les jalons ci-dessus (0,15,30,60,90,120,180) peuvent sauter
+# par-dessus une longue série immobile sans jamais le montrer — d'où ce second relevé,
+# UN point par semaine sur tout l'horizon.
+bloc_hebdo = sortie[sortie.find("Si je reviens chaque semaine"):]
+_check("le bloc hebdomadaire existe", bloc_hebdo != "", sortie[-200:])
+_check("Piemonte, réellement figée, affiche une longue série immobile",
+       "**Piemonte** : jusqu'à **" in bloc_hebdo, bloc_hebdo[:500])
+
+import re as _re  # noqa: E402
+m_piem = _re.search(r"\*\*Piemonte\*\* : jusqu'à \*\*(\d+) semaines", bloc_hebdo)
+m_nice = _re.search(r"\*\*Nice\*\* : jusqu'à \*\*(\d+) semaines", bloc_hebdo)
+_check("   avec un nombre de semaines assez grand pour être un problème réel (≥15)",
+       m_piem is not None and int(m_piem.group(1)) >= 15, bloc_hebdo)
+_check("   et ZÉRO changement sur tout l'horizon — elle est FIGÉE au sens fort",
+       "Piemonte** : jusqu'à **" in bloc_hebdo
+       and "et 0 changement(s)" in bloc_hebdo.split("Piemonte")[1][:120],
+       bloc_hebdo)
+
+# ⚠️ LE CAS QUI DOIT PASSER, ET IL EST INSTRUCTIF : le relevé SPARSE plus haut dit déjà
+# que Nice « tourne » (2 fiches différentes sur 7 jalons). La question hebdomadaire montre
+# une réalité plus dure — Nice reste PARFOIS immobile plusieurs semaines d'affilée elle
+# aussi, juste moins longtemps que Piemonte. Sans cette comparaison, on pourrait croire
+# qu'un territoire qui « tourne » au sens sparse n'a plus de problème hebdomadaire.
+_ligne_nice = bloc_hebdo.split("**Nice**")[1].splitlines()[0] if "**Nice**" in bloc_hebdo else ""
+_m_chg_nice = _re.search(r"et (\d+) changement", _ligne_nice)
+_check("Nice a AU MOINS un changement (contrairement à Piemonte)",
+       _m_chg_nice is not None and int(_m_chg_nice.group(1)) >= 1, _ligne_nice)
+_check("   et sa PIRE série immobile est plus courte que celle de Piemonte — "
+       "c'est la comparaison qui compte, pas un seuil absolu",
+       m_piem and m_nice and int(m_nice.group(1)) < int(m_piem.group(1)),
+       f"Nice={m_nice.group(1) if m_nice else '?'} Piemonte={m_piem.group(1) if m_piem else '?'}")
+
+_check("le relevé explique QUEL chiffre compte pour un rendez-vous hebdomadaire",
+       "PIRE série immobile" in bloc_hebdo, bloc_hebdo[-400:])
+
+print("\n──── le pire cas hebdomadaire part aussi sur Slack ────")
+envoyes2: list[str] = []
+slack_mod.notify = lambda text, blocks=None, urgent=False: envoyes2.append(text) or True
+buf3 = io.StringIO()
+with contextlib.redirect_stdout(buf3):
+    ad.main(["--slack"])
+msg3 = envoyes2[0] if envoyes2 else ""
+_check("le message Slack cite le pire cas hebdomadaire, pas seulement le relevé sparse",
+       "Pire cas hebdomadaire" in msg3 and "Piemonte" in msg3, msg3)
+_check("   avec le nombre de semaines et la fiche en cause",
+       "semaines**" in msg3 and "Fiera lontana" in msg3, msg3)
+_check("   et le message tient toujours sur un écran de téléphone",
+       len(msg3.splitlines()) <= 8, f"{len(msg3.splitlines())} lignes : {msg3}")
+
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)

@@ -344,10 +344,51 @@ def main(argv=None) -> int:
         print("\n> Aucune fiche à 0 dans ce périmètre — le critère n'écarterait rien ici. "
               "Ce n'est\n> pas une preuve qu'il est juste : c'est une preuve qu'il ne "
               "s'est pas prononcé.\n")
-    verdict = _rotation(vivants, auj)
+    verdict, hebdo = _rotation(vivants, auj)
     if args.slack:
-        _poster(verdict)
+        _poster(verdict, hebdo)
     return 0
+
+
+def _semaines_sans_nouveaute(vivants: list[dict], auj: date) -> dict[str, dict]:
+    """Combien de SEMAINES D'AFFILÉE la tête ne change pas — la question de Franck,
+    2026-08-24 : « il faut qu'il y ait de la nouveauté [...] chaque semaine, je vais aller
+    voir, le mardi, mercredi ou jeudi, qu'est-ce que je vais faire ce week-end. »
+
+    ⚠️ CE QUE LE RELEVÉ DU 2026-08-18 NE MESURAIT PAS. Ses jalons (0, 15, 30, 60, 90, 120,
+    180) peuvent sauter PAR-DESSUS six semaines d'immobilité sans jamais le montrer — deux
+    jalons qui tombent chacun sur une fiche différente ne disent rien de ce qui s'est passé
+    ENTRE les deux. La question de Franck est un rendez-vous HEBDOMADAIRE, littéralement :
+    il faut donc UN point par semaine, sur tout l'horizon, pas une poignée de jalons épars.
+
+    Renvoie, par territoire : la plus longue série de semaines consécutives avec la MÊME
+    tête (`semaines_immobile`), la fiche concernée, et le nombre total de changements sur
+    tout l'horizon — le pendant positif du même chiffre.
+    """
+    jalons = list(range(0, HORIZON_JOURS + 1, 7))
+    terrs = sorted({(e.get("territoire") or "—") for e in vivants})
+    out: dict[str, dict] = {}
+    for t in terrs:
+        seq: list[str | None] = []
+        for delta in jalons:
+            j = auj + timedelta(days=delta)
+            lot = [(e, deplacement_now(e, aujourdhui=j)) for e in vivants
+                   if (e.get("territoire") or "—") == t]
+            lot = [(e, n) for e, n in lot if n is not None]
+            lot.sort(key=lambda c: -c[1])
+            seq.append((lot[0][0].get("title") or "")[:44] if lot else None)
+        # `itertools.groupby` donne la longueur de chaque série de valeurs IDENTIQUES
+        # consécutives — exactement une « série de semaines sans rien de nouveau ». None
+        # (aucune fiche éligible) n'est jamais compté comme une série immobile : une
+        # absence n'est pas une répétition.
+        import itertools
+        series = [(nom, len(list(g))) for nom, g in itertools.groupby(seq) if nom is not None]
+        pire = max(series, key=lambda kv: kv[1], default=(None, 0))
+        changements = sum(1 for i in range(1, len(seq))
+                          if seq[i] is not None and seq[i] != seq[i - 1])
+        out[t] = {"semaines_totales": len(jalons) - 1, "semaines_immobile": pire[1],
+                  "tete_figee": pire[0], "changements": changements}
+    return out
 
 
 def _rotation(vivants: list[dict], auj: date) -> list[tuple[str, int, str, str]]:
@@ -421,13 +462,33 @@ def _rotation(vivants: list[dict], auj: date) -> list[tuple[str, int, str, str]]
         print("\n> Aucune case figée : la rangée tourne d'elle-même, il n'y a rien à")
         print("> corriger de ce côté.")
 
+    # LA QUESTION HEBDOMADAIRE, littéralement — pas les jalons épars ci-dessus.
+    hebdo = _semaines_sans_nouveaute(vivants, auj)
+    print("\n## Si je reviens chaque semaine, est-ce que je vois autre chose ?\n")
+    print("Un point par SEMAINE, sur tout l'horizon — les jalons ci-dessus peuvent sauter")
+    print("par-dessus une série immobile sans la montrer ; ici, aucune semaine n'est")
+    print("sautée.\n")
+    for t in terrs:
+        h = hebdo[t]
+        if h["semaines_immobile"] >= 2:
+            print(f"- **{t}** : jusqu'à **{h['semaines_immobile']} semaines d'affilée** "
+                  f"sans changement — « {h['tete_figee']} » — et {h['changements']} "
+                  f"changement(s) au total sur {h['semaines_totales']} semaines.")
+        else:
+            print(f"- **{t}** : jamais plus d'une semaine sans changement — "
+                  f"{h['changements']} changement(s) sur {h['semaines_totales']} semaines.")
+    print("\n> Le nombre qui compte pour un rendez-vous hebdomadaire n'est pas le total de")
+    print("> changements sur six mois, c'est la PIRE série immobile : c'est elle qui")
+    print("> décide si quelqu'un qui revient chaque mardi finit par ne plus revenir.")
+
     # (territoire, nb de fiches distinctes, tête à J+0, tête à J+180) — de quoi écrire un
     # verdict ailleurs sans re-parser la sortie affichée.
-    return [(t, len({x.split(" (")[0] for x in tetes[t] if x != "—"}),
-             tetes[t][0], tetes[t][-1]) for t in terrs]
+    verdict = [(t, len({x.split(" (")[0] for x in tetes[t] if x != "—"}),
+               tetes[t][0], tetes[t][-1]) for t in terrs]
+    return verdict, hebdo
 
 
-def _poster(verdict: list[tuple[str, int, str, str]]) -> None:
+def _poster(verdict: list[tuple[str, int, str, str]], hebdo: dict[str, dict]) -> None:
     """Dépose le verdict dans la boîte du jour — pas un message de plus, quelques lignes
     dans le digest que Franck reçoit déjà.
 
@@ -449,6 +510,16 @@ def _poster(verdict: list[tuple[str, int, str, str]]) -> None:
     if figes:
         lignes.append("_Le bonus d'imminence ne joue que dans les 45 derniers jours ; "
                       "au-delà le classement est immobile._")
+    # LA QUESTION HEBDOMADAIRE : « je reviens chaque mardi, est-ce que je vois autre
+    # chose ? » Un seul chiffre par territoire — la pire série immobile en semaines —
+    # parce que c'est lui qui décide si quelqu'un continue de revenir.
+    pire_terr, pire_h = max(hebdo.items(), key=lambda kv: kv[1]["semaines_immobile"])
+    if pire_h["semaines_immobile"] >= 2:
+        lignes.append(f"📅 Pire cas hebdomadaire : {pire_terr} peut rester "
+                      f"**{pire_h['semaines_immobile']} semaines** sans rien de nouveau "
+                      f"(« {pire_h['tete_figee']} »).")
+    else:
+        lignes.append("📅 Aucun territoire ne reste plus d'une semaine sans changement.")
     slack.notify("\n".join(lignes))
 
 

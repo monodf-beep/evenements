@@ -44,6 +44,11 @@ Le lendemain, vérifier qu'il n'est rien resté derrière le plafond de 200 :
 .venv/bin/python -m scripts.audit_deplacement
 ```
 
+Deux relevés dans sa sortie : le premier à jalons espacés (0/15/30/60/90/120/180 jours),
+le second — « Si je reviens chaque semaine, est-ce que je vois autre chose ? » — un point
+par semaine sur tout l'horizon, avec la PIRE série de semaines consécutives sans
+changement par territoire. C'est le second qui répond à la question posée le 24/08.
+
 ```bash
 .venv/bin/python -m scripts.audit_home_visible
 ```
