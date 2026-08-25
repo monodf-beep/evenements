@@ -40,6 +40,7 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | `statut='merged'` + `duplicate_of` | `dedupe` | `unmerge` (à la main, jamais en cron) | ✅ fermé le 2026-08-03 |
 | écart « description incohérente » (aucune colonne — l'écart est **implicite**) | `translate_events` | `repair_polluted_descriptions` | ✅ fermé le 2026-08-13, **après neuf jours de blocage** |
 | réserve Slack de WordPress (option `cs_slack_boite_du_jour`) | `cs_slack_notify` (mu-plugin `cs-slack-formulaires.php`) | `scripts.rapports_wordpress`, appelé par le digest de 11h45 et 20h ; **à défaut, WordPress lui-même après 26 h** | ✅ fermé le 2026-08-17 |
+| décision `resolue` (registre `data/decisions.jsonl`) | `scripts.decisions --resoudre` (le cerveau, ou une session) | tout nouveau `--signaler` sur la MÊME clé rouvre automatiquement — même critère que le signaleur, réouvertures comptées et affichées par `--liste` | ✅ fermé à la naissance (2026-08-25), éprouvé par `tests/test_decisions.py` |
 
 **Le cas le plus instructif du tableau, parce qu'il avait l'air fermé.** `translate_events`
 écarte de la file de traduction toute fiche dont la description « parle manifestement

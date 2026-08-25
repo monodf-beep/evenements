@@ -44,6 +44,9 @@ OUTILS=(
   "Bash(.venv/bin/python scripts/count_grasse.py:*)"
   "Bash(.venv/bin/python scripts/status_report.py:*)"
   "Bash(.venv/bin/python scripts/diagnose_backlog.py:*)"
+# Le registre des décisions, en LECTURE SEULE (--liste). Le motif est borné exprès :
+# le bilan contrôle le cerveau, il ne doit pas pouvoir amender sa mémoire.
+  "Bash(.venv/bin/python -m scripts.decisions --liste:*)"
 )
 INTERDITS=(Write Edit NotebookEdit WebFetch WebSearch)
 

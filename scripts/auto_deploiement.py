@@ -107,16 +107,20 @@ def etat(branche: str = BRANCHE_DEPLOYEE) -> dict:
     }
 
 
-def fixtures_vertes(rev: str) -> tuple[bool, str]:
+def fixtures_vertes(rev: str) -> tuple[bool, str, list[str]]:
     """Sort `rev` dans un worktree jetable et y lance TOUTES les fixtures.
 
     On teste le code CANDIDAT, jamais celui qui tourne : tester après déploiement, c'est
     découvrir la casse en production. Le worktree est retiré dans tous les cas.
+
+    Renvoie (vertes, résumé, noms des fixtures rouges). Les NOMS servent au verdict
+    comparatif : sans eux, impossible de distinguer « le candidat casse » de
+    « l'environnement est malade ».
     """
-    dossier = ROOT.parent / f".essai-deploiement-{rev}"
+    dossier = ROOT.parent / f".essai-deploiement-{rev.replace('/', '-')}"
     code, sortie = _git("worktree", "add", "--detach", str(dossier), rev)
     if code != 0:
-        return False, f"worktree impossible : {sortie}"
+        return False, f"worktree impossible : {sortie}", []
     try:
         python = ROOT / ".venv" / "bin" / "python"
         r = subprocess.run([str(python) if python.exists() else sys.executable,
@@ -124,7 +128,7 @@ def fixtures_vertes(rev: str) -> tuple[bool, str]:
                            cwd=str(dossier), capture_output=True, text=True)
         lignes = [l.strip() for l in (r.stdout or "").splitlines() if l.strip()]
         if r.returncode == 0:
-            return True, (lignes[-1] if lignes else "(aucune sortie)")
+            return True, (lignes[-1] if lignes else "(aucune sortie)"), []
         # UN REFUS DOIT ÊTRE ACTIONNABLE. Sans le nom des fixtures fautives, le message
         # Slack dit « ça n'est pas passé » et laisse chercher — or c'est lui qu'on lira,
         # pas le journal du serveur. On rapatrie donc le compte ET la liste « À REPRENDRE »
@@ -138,9 +142,30 @@ def fixtures_vertes(rev: str) -> tuple[bool, str]:
         detail = compte or (lignes[-1] if lignes else "(aucune sortie)")
         if noms:
             detail += " — " + ", ".join(noms[:6])
-        return False, detail
+        return False, detail, noms
     finally:
         _git("worktree", "remove", "--force", str(dossier))
+
+
+def verdict_comparatif(rouges_candidat: list[str],
+                       rouges_deploye: list[str]) -> tuple[list[str], list[str]]:
+    """Sépare la RÉGRESSION de l'ENVIRONNEMENT MALADE. Pure, donc éprouvable.
+
+    D'OÙ ÇA VIENT (2026-08-24/25) : deux fixtures sensibles à l'environnement — l'une
+    appelait le vrai site pendant le blocage IP intermittent, l'autre fuyait vers la
+    vraie boîte Slack sous SLACK_DIGEST=1 — ont GELÉ tout déploiement deux jours durant.
+    Le code candidat n'y était pour rien : les mêmes fixtures échouaient déjà sur le code
+    déployé. Un portail tout-ou-rien ne sait pas le voir ; celui-ci compare.
+
+    Renvoie (régressions, communes) :
+      - RÉGRESSIONS : rouges sur le candidat, vertes sur le déployé → le candidat casse,
+        on refuse — c'est le portail d'origine, inchangé ;
+      - COMMUNES : rouges des DEUX côtés → l'environnement est malade, pas le candidat.
+        Refuser n'y protégerait rien (la casse tourne déjà) et bloquerait justement le
+        correctif. Déployer reste sûr : rien ne régresse.
+    """
+    return (sorted(set(rouges_candidat) - set(rouges_deploye)),
+            sorted(set(rouges_candidat) & set(rouges_deploye)))
 
 
 def commandes_crontab(texte: str) -> set[str]:
@@ -301,13 +326,32 @@ def main(argv=None) -> int:
               "n'aurait lieu qu'en cas de succès. Relancer avec --apply.")
         return 0
 
-    vertes, resume = fixtures_vertes(f"origin/{args.branche}")
+    vertes, resume, rouges = fixtures_vertes(f"origin/{args.branche}")
+    environnement = ""
     if not vertes:
-        msg = rapport(e, "refuse", resume)
-        slack.notify(msg)
-        print(msg)
-        log.error("Fixtures rouges sur %s — rien déployé (%s).", e["disponible"], resume)
-        return 1
+        # AVANT DE REFUSER : les mêmes fixtures échouent-elles sur le code DÉJÀ déployé ?
+        # Si oui, c'est l'environnement qui est malade, pas le candidat — refuser
+        # bloquerait précisément le correctif (vécu les 24-25/08, deux jours de gel).
+        # Sans noms de fixtures, pas de comparaison possible : le défaut reste « non ».
+        regressions = rouges or None
+        if rouges:
+            vertes_dep, _, rouges_dep = fixtures_vertes("HEAD")
+            regressions, communes = verdict_comparatif(rouges, rouges_dep)
+            if not regressions and communes:
+                environnement = (f"\n:thermometer: {len(communes)} fixture(s) rouges sur le "
+                                 f"candidat ET sur le code déjà déployé "
+                                 f"({', '.join(communes[:4])}) : environnement malade, pas "
+                                 f"une régression — déployé quand même. À soigner à part.")
+                log.warning("Fixtures rouges des DEUX côtés (%s) — environnement malade, "
+                            "déploiement maintenu.", ", ".join(communes))
+        if not environnement:
+            if regressions and rouges != regressions:
+                resume += f" — RÉGRESSION : {', '.join(regressions[:6])}"
+            msg = rapport(e, "refuse", resume)
+            slack.notify(msg)
+            print(msg)
+            log.error("Fixtures rouges sur %s — rien déployé (%s).", e["disponible"], resume)
+            return 1
 
     ok, derniere = deployer()
 
@@ -323,7 +367,7 @@ def main(argv=None) -> int:
                           f"— {resume}. {detail}")
             log.info("Crontab : %d à installer, %d hors dépôt — %s", a, r_, detail)
 
-    msg = rapport(e, "deploye" if ok else "echec", derniere) + suite_cron
+    msg = rapport(e, "deploye" if ok else "echec", derniere) + environnement + suite_cron
     slack.notify(msg)
     print(msg)
     # RÈGLE 6 — on rapporte le RÉSULTAT : on RELIT ce que le dépôt dit de lui-même après

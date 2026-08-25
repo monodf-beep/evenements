@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.auto_deploiement import (  # noqa: E402
-    BRANCHE_DEPLOYEE, commandes_crontab, rapport,
+    BRANCHE_DEPLOYEE, commandes_crontab, rapport, verdict_comparatif,
 )
 
 echecs = 0
@@ -103,6 +103,39 @@ verifier("un serveur hors branche est signalé", "pas sur" in r, r)
 # ── 7. …et le silence quand tout va bien ────────────────────────────────────────
 r = rapport(dict(BASE, commits_de_retard=0), "aucun")
 verifier("rien à dire quand tout est à jour et propre", r.strip() == "", repr(r))
+
+# ── 7 bis. Le verdict comparatif : régression ou environnement malade ? ─────────
+# D'OÙ ÇA VIENT (24-25/08) : deux fixtures sensibles à l'environnement (site injoignable,
+# SLACK_DIGEST hérité du cron) ont gelé TOUT déploiement deux jours — y compris le
+# correctif qui les réparait. Le portail compare désormais les rouges du candidat aux
+# rouges du code déployé : mêmes rouges des deux côtés = environnement malade, on déploie
+# quand même ; rouge seulement côté candidat = régression, on refuse comme avant.
+
+# Le cas vécu : les MÊMES fixtures échouent des deux côtés → aucune régression.
+reg, com = verdict_comparatif(["test_panel_site", "test_slack_jamais_depuis_les_tests"],
+                              ["test_panel_site", "test_slack_jamais_depuis_les_tests"])
+verifier("mêmes rouges des deux côtés → zéro régression, l'environnement est en cause",
+         reg == [] and len(com) == 2, f"reg={reg} com={com}")
+
+# ⚠️ LE CAS QUI DOIT REFUSER : le candidat casse une fixture verte sur le déployé.
+# Sans lui, ce verdict ne prouverait que sa capacité à dire oui.
+reg, com = verdict_comparatif(["test_une", "test_panel_site"], ["test_panel_site"])
+verifier("une rouge NOUVELLE sur le candidat est une régression, et elle est nommée",
+         reg == ["test_une"] and com == ["test_panel_site"], f"reg={reg} com={com}")
+
+# Une rouge sur le déployé mais VERTE sur le candidat n'est ni l'un ni l'autre :
+# le candidat répare, il ne doit surtout pas être retenu pour ça.
+reg, com = verdict_comparatif([], ["test_panel_site"])
+verifier("un candidat qui RÉPARE la rouge du déployé n'a ni régression ni commune",
+         reg == [] and com == [], f"reg={reg} com={com}")
+
+# Et le cas-frontière qui garde le défaut à « non » : rouges sans noms (run_all n'a pas
+# rendu sa liste « À REPRENDRE ») → main() ne compare pas et refuse. On vérifie ici que
+# la SOURCE porte bien ce garde-fou, pas seulement l'intention.
+src_ad = (ROOT / "scripts" / "auto_deploiement.py").read_text(encoding="utf-8")
+verifier("sans noms de fixtures, pas de comparaison : le refus reste le défaut",
+         "Sans noms de fixtures, pas de comparaison" in src_ad
+         and "if rouges:" in src_ad)
 
 # ── 8. Le crontab du dépôt n'est pas le crontab installé ────────────────────────
 # Le trou trouvé le 2026-08-17 : la ligne de cron de ce script même était committée et

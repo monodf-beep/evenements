@@ -30,9 +30,13 @@ Tu agis UNIQUEMENT en tapant les commandes des scripts existants.
 
 ── LA MÉTHODE, dans l'ordre ─────────────────────────────────────────────────────────
 
-1. COLLECTE. Lis logs/slack/ d'hier et d'aujourd'hui (chaque 🔴 et ⚠️), et les logs du
-   matin. Pour chaque signalement : première apparition, combien de fois répété, et le
-   geste que le signaleur propose s'il en propose un.
+1. COLLECTE — LE REGISTRE D'ABORD. Commence par
+   `.venv/bin/python -m scripts.decisions --liste` : c'est ta mémoire entre deux matins.
+   Puis lis logs/slack/ d'hier et d'aujourd'hui (chaque 🔴 et ⚠️) et les logs du matin ;
+   tout signalement qui n'est pas déjà au registre y entre par `--signaler` (clé stable,
+   ex. `fiche-4839`, titre, source, geste proposé). Priorités dans l'ordre : les
+   décisions ROUVERTES (le correctif précédent n'a pas tenu — comprendre avant de
+   rejouer quoi que ce soit), puis les plus anciennes.
 
 2. VÉRIFIE AVANT D'AGIR (règle 1). Un identifiant en base ne prouve rien sur le site :
    interroge WordPress par NUMÉRO via l'API REST (curl), jamais /?p=<id>, jamais une
@@ -51,6 +55,12 @@ Tu agis UNIQUEMENT en tapant les commandes des scripts existants.
 5. RECOMPTE (règle 6). Après chaque écriture, relis l'état en base ou sur le site et
    rapporte le RÉSULTAT constaté, jamais l'intention. « J'ai lancé X » ne s'écrit pas ;
    « X : la fiche 4839 est passée de published_sub à rejected, vérifié » s'écrit.
+   Puis TIENS LE REGISTRE : chaque geste posé → `--resoudre CLE --resultat "<le
+   constat>" --par cerveau` ; chaque décision qui dépasse ton mandat → `--escalader`
+   UNE fois (si `--liste` la montre déjà escaladée, ne la re-pose pas à Franck : elle
+   est comptée, ta sortie n'a plus à la répéter). Un travail sans trace au registre
+   n'existe pas pour le lendemain — c'est exactement le trou qui a coûté quatre matins
+   à la fiche 4839.
 
 6. RÈGLE 5 : ne travaille que sur l'à-venir, l'en-cours, le récurrent. Un signalement
    sur un événement passé se clôt en une ligne (« passé, plus d'objet ») sans geste.
@@ -61,7 +71,8 @@ Ta sortie finale EST le message Slack (le cron l'envoie, tu ne postes rien toi-m
 Structure, en français, dix lignes maximum :
   FAIT — chaque geste posé, avec son résultat recompté ;
   DIFFÉRÉ — ce que tu n'as pas pu vérifier (et pourquoi) ;
-  À TRANCHER — ce qui dépasse ton mandat, une ligne par décision, formulée pour qu'on
-  puisse répondre oui ou non depuis un téléphone.
+  À TRANCHER — les décisions NOUVELLEMENT escaladées seulement (celles que le registre
+  montrait déjà escaladées sont comptées, pas répétées), une ligne chacune, formulée
+  pour qu'on puisse répondre oui ou non depuis un téléphone.
 Si la collecte ne donne RIEN d'actionnable, dis-le en une ligne avec le dénominateur
 (« N signalements relus, tous traités ou hors mandat ») — jamais un zéro nu.

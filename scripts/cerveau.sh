@@ -58,6 +58,7 @@ OUTILS=(
   "Bash(.venv/bin/python -m scripts.sans_api:*)"
 # …et les gestes RÉVERSIBLES, un par un (CLAUDE.md, arbitrage du 2026-08-03).
 # La corbeille passe par la route MAISON cs/v1/trash — réversible en un clic.
+  "Bash(.venv/bin/python -m scripts.decisions:*)"
   "Bash(.venv/bin/python -m scripts.backup_db:*)"
   "Bash(.venv/bin/python scripts/backup_db.py:*)"
   "Bash(.venv/bin/python -m scripts.trash_by_ids:*)"
