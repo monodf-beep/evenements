@@ -8,6 +8,24 @@ Tout se lance depuis le VPS, dans `~/evenements`.
 
 ---
 
+## 0 bis. Ajouté le 25/08 — vérifier le déploiement et fiche 4839
+
+```bash
+# Confirmer que le serveur est bien reparti sur la bonne branche et à jour
+cd ~/evenements && git rev-parse --abbrev-ref HEAD && git log -1 --format='%h %ci'
+# Attendu : claude/quirky-davinci-jvqrnw, commit 545b8fa ou plus récent
+```
+
+```bash
+# Fiche 4839 « Coro & Bentu » (restaurant mal catégorisé) — trouver le bon audit d'abord
+grep -rln "4839\|Coro.*Bentu" logs/*.log
+```
+
+Une fois le script identifié : le lancer SANS `--apply`/`--execute` d'abord (règle 4),
+lire la sortie, puis appliquer.
+
+---
+
 ## 1. Vérifier que le site répond
 
 ```bash
