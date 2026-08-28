@@ -65,7 +65,7 @@ LIGNE_DE_CRON = re.compile(r"(^|\n)\s*#?\s*Cron\s*:|\b[0-9]{1,2} [0-9*/,-]+ \* \
 
 # Scripts lancés par un agent Claude ou par un shell, donc atteints sans passer par une
 # ligne `python -m`. Recensés ici plutôt que devinés.
-ENTREES_SHELL = ("agent_quotidien.sh", "bilan_matin.sh", "revue_hebdo.sh")
+ENTREES_SHELL = ("agent_quotidien.sh", "bilan_matin.sh", "revue_hebdo.sh", "cerveau.sh")
 
 
 def docstring(fichier: Path) -> str:

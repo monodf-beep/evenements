@@ -96,6 +96,12 @@ ATTENDUS = [
     # de message Slack le matin — mais c'est exactement le raisonnement qui a laissé passer
     # l'incident du 2026-07-31 : personne ne remarque un message qui NE vient PAS.
     ("Bilan du matin",             "bilan_matin",     "bilan_matin.log",      30),
+    # Ajouté le 2026-08-28 : le cerveau lui-même a tourné SANS surveillance mécanique
+    # pendant trois jours (26→28/08) — sa panne (crontab jamais installé après un
+    # déploiement en échec) n'avait été vue que par la lecture prose du bilan de 11h,
+    # pas par ce chien de garde. Exactement le défaut que cette liste existe pour
+    # fermer : un silence qui ressemble à un jour sans rien à faire.
+    ("Cerveau du matin",          "cerveau",         "cerveau.log",          30),
     # Ajoutée le 2026-08-04 avec la réactivation du cron. Elle était volontairement absente
     # tant que la ligne était commentée — surveiller l'absence d'un cron qui n'existe pas
     # aurait sonné tous les jours pour rien, et une alerte qui crie à tort finit par ne plus

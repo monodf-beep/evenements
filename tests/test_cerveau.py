@@ -134,6 +134,20 @@ _check("le cerveau passe AVANT le bilan — sinon le contrôle a un jour de reta
        t_cerveau is not None and t_bilan is not None and t_cerveau < t_bilan,
        f"cerveau={t_cerveau} bilan={t_bilan} (minutes depuis minuit)")
 
+print("\n──── le cerveau est surveillé par du MÉCANIQUE, pas seulement par la prose ────")
+# D'OÙ ÇA VIENT (2026-08-28) : le cerveau a tourné SANS surveillance pendant TROIS
+# JOURS (crontab jamais installé après un déploiement en échec) — vu seulement par la
+# lecture prose du bilan de 11h, jamais par le chien de garde mécanique qui couvre
+# tous les autres crons. Un dispositif censé fermer un cul-de-sac (règle 3) qui n'a
+# lui-même aucun rouvreur MÉCANIQUE est le prochain cul-de-sac.
+watchdog_src = (ROOT / "scripts" / "watchdog_crons.py").read_text(encoding="utf-8")
+_check("le cerveau est dans la liste du chien de garde (silence → alerte en 30h)",
+       '"cerveau","cerveau.log"' in watchdog_src.replace(" ", ""))
+orphelins_src = (ROOT / "scripts" / "audit_orphelins.py").read_text(encoding="utf-8")
+_check("cerveau.sh est listé comme point d'entrée — sinon scripts.decisions "
+       "serait signalé « orphelin » à tort",
+       "cerveau.sh" in orphelins_src)
+
 print("\n──── le harnais est du shell valide, et exécutable au checkout ────")
 r = subprocess.run(["bash", "-n", str(HARNAIS)], capture_output=True, text=True)
 _check("bash -n accepte scripts/cerveau.sh", r.returncode == 0, r.stderr[-300:])
