@@ -70,6 +70,31 @@ verifier("le contrôle NE s'applique PAS à un appel ciblé --ids",
          "if not args.ids:" in src[max(0, i_controle - 1500):i_controle],
          src[max(0, i_controle - 1500):i_controle][-300:])
 
+# ── AU REGISTRE DES DÉCISIONS (ajouté le 2026-08-28) ─────────────────────────────
+# Avant, « injoignable » se re-signalait à l'identique chaque jour, et le bilan de 11h
+# recalculait « 3e jour » en relisant les logs de mémoire (fragile — c'est ce dépôt qui
+# a documenté « ne jamais présenter une inférence comme un fait »). Ce contrôle
+# mécanique et quotidien EST la source de vérité sur la durée.
+verifier("le contrôle signale au registre (compte les jours tout seul)",
+         'decisions.signaler("site-injoignable"' in src)
+verifier("   et escalade dès le premier jour — le site étant hors d'atteinte pour "
+         "TOUT le pipeline, pas seulement une fiche",
+         'decisions.escalader("site-injoignable"' in src)
+i_escalade = src.find('decisions.escalader("site-injoignable"')
+verifier("   sans faire de bruit si déjà escaladée : entouré d'un try/except ValueError",
+         "try:" in src[i_escalade - 60:i_escalade]
+         and "except ValueError:" in src[i_escalade:i_escalade + 300])
+
+# LE CAS QUI DOIT ROUVRIR TOUT SEUL — sans lui, ce serait un cul-de-sac de plus
+# (règle 3) : quelqu'un devrait se souvenir de taper une commande le jour où le site
+# revient. Le prochain passage MÊME du script referme la décision automatiquement.
+verifier("le retour du site RÉSOUT la décision automatiquement — pas d'intervention "
+         "humaine requise",
+         'decisions.resoudre("site-injoignable"' in src)
+i_resout = src.find('decisions.resoudre("site-injoignable"')
+verifier("   posé dans le chemin où le témoin a RÉPONDU (après le bloc try/except)",
+         i_resout > i_controle)
+
 # ── Et le reste de la chaîne, lui, était déjà correct : on le vérifie, on n'y touche pas ──
 # `reconcile_hors_ligne._etat` rend 'indetermine' sur aléa réseau, ce qui n'autorise
 # aucune action. C'est ce qui protège `verifier_doublons_publies --en-ligne`, qui tourne

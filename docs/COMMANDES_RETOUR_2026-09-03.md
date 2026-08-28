@@ -40,6 +40,18 @@ crontab crontab.txt
 
 ---
 
+## 0 quater. Inventaire WordPress — premier lancement, SUPERVISÉ
+
+```bash
+scripts/audit_wp_code.sh
+```
+
+Lire la sortie en entier avant d'en tirer une conclusion : jamais éprouvé contre la
+vraie production (voir `AU_RETOUR_2026-09-03.md`, section 0 sexies). Pas de cron tant
+que ce premier passage n'a pas été relu.
+
+---
+
 ## 1. Vérifier que le site répond
 
 ```bash

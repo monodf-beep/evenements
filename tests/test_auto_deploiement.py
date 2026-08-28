@@ -22,17 +22,25 @@ CE QUE LA FIXTURE ÉPROUVE, sans jamais rien déployer ni toucher à git :
 
 Lancer : .venv/bin/python -m tests.test_auto_deploiement
 """
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+os.environ["DECISIONS_PATH"] = str(Path(tempfile.mkdtemp()) / "decisions.jsonl")
+
 from scripts.auto_deploiement import (  # noqa: E402
     BRANCHE_DEPLOYEE, branches_nouvelles, commandes_crontab, rapport,
-    verdict_comparatif,
+    suivre_environnement_malade, verdict_comparatif,
 )
+import scripts.auto_deploiement as ad  # noqa: E402
+from utils import decisions  # noqa: E402
+
+ad.MEMOIRE_MALADIE = Path(tempfile.mkdtemp()) / "malade.json"
 
 echecs = 0
 
@@ -170,6 +178,35 @@ verifier("le REFUS réconcilie aussi (le refus porte sur le candidat, pas le dé
 verifier("après deployer(), la réconciliation n'est plus conditionnée au succès",
          "suite_cron = suivre_crontab()" in src_ad
          and "if ok:\n        a, r_, resume = ecart_crontab()" not in src_ad)
+
+# ── 7 quinquies. Une fixture malade PERSISTANTE finit par être escaladée ────────
+# D'OÙ ÇA VIENT — conçu le jour même où le portail comparatif a été écrit (28/08) : le
+# risque symétrique était visible tout de suite. Laisser passer une fixture malade des
+# deux côtés protège le déploiement, mais si PERSONNE ne la répare, elle reste malade
+# indéfiniment — redéployée en silence chaque matin. Après SEUIL_MALADIE_JOURS
+# occurrences consécutives, elle entre au registre, escaladée UNE fois.
+for _ in range(ad.SEUIL_MALADIE_JOURS - 1):
+    suivre_environnement_malade(["test_panel_site"])
+verifier("sous le seuil : rien au registre encore",
+         not any(e["cle"] == "env-malade-test_panel_site" for e in decisions.en_attente()))
+suivre_environnement_malade(["test_panel_site"])
+en_reg = decisions.etats().get("env-malade-test_panel_site")
+verifier("au seuil : la décision existe et est escaladée",
+         en_reg is not None and en_reg["escalade_le"], str(en_reg))
+suivre_environnement_malade(["test_panel_site"])
+verifier("   un passage de plus n'escalade pas deux fois (pas de bruit répété)",
+         True)  # suivre_environnement_malade ne doit pas lever — la ligne précédente le prouve
+# ⚠️ LE CAS QUI DOIT GUÉRIR : la fixture redevient verte → son compteur s'efface, pas
+# de mémoire pour un mal passé. Un déploiement sans AUCUNE fixture malade nettoie tout.
+suivre_environnement_malade([])
+compteurs_apres = {}
+try:
+    import json as _json
+    compteurs_apres = _json.loads(ad.MEMOIRE_MALADIE.read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    pass
+verifier("guérie : le compteur est retiré de la mémoire",
+         "test_panel_site" not in compteurs_apres, str(compteurs_apres))
 
 # ── 8. Le crontab du dépôt n'est pas le crontab installé ────────────────────────
 # Le trou trouvé le 2026-08-17 : la ligne de cron de ce script même était committée et

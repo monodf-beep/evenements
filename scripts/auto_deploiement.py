@@ -298,6 +298,51 @@ def rapport(e: dict, action: str, detail: str = "") -> str:
 
 
 MEMOIRE_ATTENTE = ROOT / "logs" / "deploiement_branches_signalees.json"
+MEMOIRE_MALADIE = ROOT / "logs" / "deploiement_environnement_malade.json"
+SEUIL_MALADIE_JOURS = 3
+
+
+def suivre_environnement_malade(communes: list[str]) -> None:
+    """Une fixture « environnement malade » qui se redéploie en silence plusieurs jours
+    de suite n'a personne pour la réparer — le portail comparatif (verdict_comparatif)
+    la laisse passer, à raison, mais laisser passer n'est pas la SOIGNER.
+
+    D'OÙ ÇA VIENT (2026-08-28, le jour même où le portail comparatif a été construit) :
+    en le concevant, le risque symétrique est apparu tout de suite — une fixture malade
+    peut rester malade indéfiniment, redéployée chaque matin avec une simple note dans
+    le digest, jamais reprise. Après `SEUIL_MALADIE_JOURS` occurrences CONSÉCUTIVES,
+    elle entre au registre des décisions (une fois — l'escalade ne se répète pas, même
+    principe que les branches en attente et les fiches du cerveau). Une fixture qui
+    REDEVIENT verte efface son compteur : pas de mémoire pour un mal déjà guéri.
+    """
+    import json as _json
+    try:
+        compteurs = _json.loads(MEMOIRE_MALADIE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        compteurs = {}
+    from utils import decisions
+    for nom in list(compteurs):
+        if nom not in communes:
+            del compteurs[nom]  # guérie — pas de mémoire pour un mal passé
+    for nom in communes:
+        compteurs[nom] = compteurs.get(nom, 0) + 1
+        if compteurs[nom] == SEUIL_MALADIE_JOURS:
+            cle = f"env-malade-{nom}"
+            decisions.signaler(cle, f"Fixture « {nom} » rouge {SEUIL_MALADIE_JOURS} "
+                               f"déploiements de suite, sur le candidat ET le déployé",
+                               "auto_deploiement",
+                               geste=f".venv/bin/python -m tests.{nom}")
+            try:
+                decisions.escalader(cle, f"« {nom} » n'est plus fiable — l'environnement "
+                                    f"est malade depuis {SEUIL_MALADIE_JOURS} jours, pas "
+                                    f"seulement aujourd'hui. À réparer.")
+            except ValueError:
+                pass  # déjà escaladée (rouverte puis re-atteint le seuil) — pas de bruit
+    try:
+        MEMOIRE_MALADIE.parent.mkdir(parents=True, exist_ok=True)
+        MEMOIRE_MALADIE.write_text(_json.dumps(compteurs), encoding="utf-8")
+    except OSError as exc:
+        log.warning("Mémoire de maladie non écrite (%s) — le compte repart de zéro", exc)
 
 
 def branches_nouvelles(en_attente: list[tuple[str, int, str]],
@@ -401,6 +446,12 @@ def main(argv=None) -> int:
 
     vertes, resume, rouges = fixtures_vertes(f"origin/{args.branche}")
     environnement = ""
+    if vertes:
+        # Tout est vert : aucune fixture n'est malade AUJOURD'HUI — nettoie une mémoire
+        # de maladie éventuellement laissée par un jour précédent. Appelé même quand il
+        # n'y a rien à nettoyer (fonction bon marché) : sans ce passage, une fixture
+        # guérie garderait un compteur qui ne se videra jamais tout seul.
+        suivre_environnement_malade([])
     if not vertes:
         # AVANT DE REFUSER : les mêmes fixtures échouent-elles sur le code DÉJÀ déployé ?
         # Si oui, c'est l'environnement qui est malade, pas le candidat — refuser
@@ -411,6 +462,7 @@ def main(argv=None) -> int:
             vertes_dep, _, rouges_dep = fixtures_vertes("HEAD")
             regressions, communes = verdict_comparatif(rouges, rouges_dep)
             if not regressions and communes:
+                suivre_environnement_malade(communes)
                 environnement = (f"\n:thermometer: {len(communes)} fixture(s) rouges sur le "
                                  f"candidat ET sur le code déjà déployé "
                                  f"({', '.join(communes[:4])}) : environnement malade, pas "

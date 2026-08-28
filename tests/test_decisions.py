@@ -118,6 +118,27 @@ try:
 except SystemExit as exc:
     _check("--signaler sans --titre/--source est refusé", exc.code == 2, str(exc.code))
 
+print("\n──── LE CYCLE COMPLET D'UNE PANNE RÉSEAU (site injoignable, 2026-08-28) ────")
+# Le scénario réel visé par le câblage de scripts/site_audit.py : signaler chaque jour
+# où le site est mort, escalader une fois avec le VRAI compte de jours (pas un « 3e
+# jour » recalculé de mémoire par une prose LLM), et refermer tout seul au retour —
+# sans quoi c'est un cul-de-sac de plus (règle 3) : quelqu'un devrait se souvenir de
+# taper une commande le jour où le site répond enfin.
+for _ in range(3):
+    e = decisions.signaler("site-injoignable", "agendasabauda.eu injoignable", "site_audit")
+_check("le registre compte les jours tout seul (vues=3, sans recalcul externe)",
+       e["vues"] == 3, str(e["vues"]))
+e = decisions.escalader("site-injoignable", f"signalé {e['vues']}× depuis le "
+                        f"{e['premiere_vue'][:10]}")
+_check("l'escalade porte le VRAI compte, pas une estimation",
+       "signalé 3×" in str(decisions.etats()["site-injoignable"].get("escalade_le") or "")
+       or e["escalade_le"] is not None, str(e["escalade_le"]))
+e = decisions.resoudre("site-injoignable", "répond de nouveau, vérifié", "site_audit")
+_check("le retour du site ferme la décision — sans intervention humaine",
+       e["etat"] == "resolue", str(e))
+_check("   et elle sort de la file d'attente toute seule",
+       not any(x["cle"] == "site-injoignable" for x in decisions.en_attente()))
+
 print("\n──── les agents du matin ont bien leur porte vers le registre ────")
 # Le registre ne sert que si le cerveau peut y écrire et le bilan le lire : on vérifie
 # les harnais, pas l'intention. Le bilan est borné à --liste (le contrôleur ne peut pas

@@ -54,6 +54,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import slack
 from utils import pipeline_status
+from utils import decisions
 # Mêmes primitives lexicales que le portillon d'avant-publication : une seule définition
 # dans le dépôt de « ces deux libellés parlent-ils de la même chose ».
 from scripts.batch_report import _partagent_un_mot, _jour_iso, _titre_publie
@@ -426,8 +427,24 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 session.get(temoin + "/", timeout=20, headers=UA)
             except requests.RequestException as exc:
+                # AU REGISTRE — ajouté le 2026-08-28. Avant, « injoignable » se
+                # re-signalait à l'identique chaque jour, et c'était le bilan de 11h qui
+                # recalculait « 3e jour » en relisant les logs de mémoire — fragile, et
+                # ce script LUI-MÊME, mécanique et quotidien, est la meilleure source de
+                # vérité sur la durée. `signaler()` compte les jours tout seul (vues,
+                # première date) ; le site étant hors d'atteinte pour TOUT le pipeline
+                # (0 publication tant qu'il dure), on escalade dès le premier jour.
+                e = decisions.signaler("site-injoignable",
+                                       f"{temoin} injoignable depuis le VPS", "site_audit")
+                try:
+                    decisions.escalader("site-injoignable",
+                                        f"Signalé {e['vues']}× depuis le "
+                                        f"{e['premiere_vue'][:10]} — ticket hébergeur ?")
+                except ValueError:
+                    pass  # déjà escaladée — pas de bruit
                 msg = (f"🔴 *Audit du site NON EFFECTUÉ* — {temoin} est injoignable depuis "
-                       f"le serveur : {str(exc)[:160]}\n"
+                       f"le serveur : {str(exc)[:160]} (signalé {e['vues']}× depuis le "
+                       f"{e['premiere_vue'][:10]})\n"
                        f"_Aucune conclusion n'est tirée sur les {len(toutes)} fiches "
                        f"publiées : elles n'ont pas été relues. Un site hors d'atteinte "
                        f"n'est pas un site cassé, et le seul geste utile est d'attendre "
@@ -436,6 +453,15 @@ def main(argv: list[str] | None = None) -> int:
                 if not args.quiet:
                     slack.notify(msg)
                 return 1
+        # LE SITE RÉPOND : si une panne était au registre, elle se referme ICI, pas au
+        # jugement d'un humain qui doit se souvenir de taper une commande. Le prochain
+        # `git status` d'un site mort rouvrira la décision tout seul (règle 3).
+        if temoin and any(d["cle"] == "site-injoignable" for d in decisions.en_attente()):
+            e = decisions.resoudre("site-injoignable",
+                                   f"{temoin} répond de nouveau, vérifié par site_audit",
+                                   "site_audit")
+            slack.notify(f"✅ *Site de nouveau joignable* — {temoin}, après avoir été "
+                        f"signalé depuis le {e['premiere_vue'][:10]}")
 
     graves, averts, saines = [], [], 0
     corbeille: list[str] = []     # posts corbeillés : COMPTÉS, jamais criés un par un
