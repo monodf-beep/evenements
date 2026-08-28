@@ -30,7 +30,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.auto_deploiement import (  # noqa: E402
-    BRANCHE_DEPLOYEE, commandes_crontab, rapport, verdict_comparatif,
+    BRANCHE_DEPLOYEE, branches_nouvelles, commandes_crontab, rapport,
+    verdict_comparatif,
 )
 
 echecs = 0
@@ -136,6 +137,39 @@ src_ad = (ROOT / "scripts" / "auto_deploiement.py").read_text(encoding="utf-8")
 verifier("sans noms de fixtures, pas de comparaison : le refus reste le défaut",
          "Sans noms de fixtures, pas de comparaison" in src_ad
          and "if rouges:" in src_ad)
+
+# ── 7 ter. Les branches en attente ne se re-détaillent pas à l'identique ────────
+# Franck, 2026-08-28 : « les résumés sont beaucoup trop longs. » Les mêmes trois
+# paragraphes « Fusion à trancher » partaient chaque matin depuis des jours. Détail au
+# premier signalement (ou au moindre changement), une ligne de compte ensuite.
+ATTENTE = [("origin/claude/a", 3, "2026-08-04"), ("origin/claude/b", 105, "2026-08-12")]
+det, n = branches_nouvelles(ATTENTE, [])
+verifier("jamais signalées → tout le détail part", det == ATTENTE and n == 0)
+det, n = branches_nouvelles(ATTENTE, [["origin/claude/a", 3], ["origin/claude/b", 105]])
+verifier("déjà signalées à l'identique → zéro détail, deux comptées",
+         det == [] and n == 2, f"det={det} n={n}")
+# ⚠️ LE CAS QUI DOIT RE-PARLER : la branche a BOUGÉ (un commit de plus) — elle
+# retrouve son paragraphe entier. Sans lui, ce filtre serait un silencieux définitif.
+det, n = branches_nouvelles([("origin/claude/a", 4, "2026-08-28")],
+                            [["origin/claude/a", 3]])
+verifier("une branche qui a bougé retrouve son détail",
+         det == [("origin/claude/a", 4, "2026-08-28")] and n == 0, f"det={det}")
+
+# ── 7 quater. Le crontab se réconcilie À CHAQUE passage, pas au seul déploiement ──
+# L'incident des 26→28/08 : le cron du cerveau committé le 25, INERTE trois matins.
+# update.sh avait échoué APRÈS son git reset (code en place, code de sortie non) ;
+# l'installation, accrochée au seul chemin « déploiement réussi », a été sautée — et
+# les matins suivants n'avaient plus rien à déployer : l'écart n'avait AUCUN rouvreur.
+# On vérifie le câblage dans la source : les trois chemins de main() appellent
+# suivre_crontab (jour sans déploiement, refus, et après deployer() sans condition ok).
+src_ad = (ROOT / "scripts" / "auto_deploiement.py").read_text(encoding="utf-8")
+verifier("le jour SANS déploiement réconcilie le crontab (en --apply)",
+         'suivre_crontab() if args.apply else ""' in src_ad)
+verifier("le REFUS réconcilie aussi (le refus porte sur le candidat, pas le déployé)",
+         'rapport(e, "refuse", resume) + rappel_attente + suivre_crontab()' in src_ad)
+verifier("après deployer(), la réconciliation n'est plus conditionnée au succès",
+         "suite_cron = suivre_crontab()" in src_ad
+         and "if ok:\n        a, r_, resume = ecart_crontab()" not in src_ad)
 
 # ── 8. Le crontab du dépôt n'est pas le crontab installé ────────────────────────
 # Le trou trouvé le 2026-08-17 : la ligne de cron de ce script même était committée et

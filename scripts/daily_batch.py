@@ -174,10 +174,20 @@ def _run(argv: list[str]) -> int:
     # une perte (« laissé(s) pour un prochain run »), le même chiffre se lit comme un
     # retard tous les matins — alors que sa hausse signifie que le portillon filtre
     # davantage, donc que moins de fiches fausses partent en ligne.
-    incomplet_lines = []
+    # AGRÉGÉES PAR CAUSE, plus une ligne par fiche — Franck, 2026-08-28 : « les résumés
+    # sont beaucoup trop longs. » Dix lignes « 🛠️ [id] titre — article : VIDE » disent
+    # dix fois la même chose ; « 10 fiches : article vide [ids] » le dit une fois, et le
+    # détail par fiche reste dans logs/daily_batch.log. Le lecteur du digest n'a AUCUN
+    # geste par fiche à faire ici (elles repassent seules) : la cause et le compte
+    # suffisent, les identifiants permettent de creuser si besoin.
+    par_cause: dict[str, list[int]] = {}
     for i, title, lines in incomplet:
         reasons = "; ".join(l.strip().lstrip("✗ ") for l in lines if l.strip().startswith("✗"))
-        incomplet_lines.append(f"🛠️ [{i}] {title[:60]} — à compléter : {reasons or 'incomplet'}")
+        par_cause.setdefault(reasons or "incomplet", []).append(i)
+        log.info("Retenue [%d] %s — %s", i, title[:60], reasons or "incomplet")
+    incomplet_lines = [
+        f"🛠️ {len(ids)} fiche(s) — {cause} — [{', '.join(str(x) for x in ids)}]"
+        for cause, ids in sorted(par_cause.items(), key=lambda kv: -len(kv[1]))]
 
     msg = (f"📰 *Lot quotidien Agenda Sabauda* — {len(complet)} fiche(s) en ligne, "
            f"{len(incomplet)} retenue(s) avant publication\n")

@@ -183,6 +183,46 @@ def _source_appelante() -> str:
     return ""
 
 
+_LIGNES_MAX_PAR_RAPPORT = 12
+_MARQUEURS_ALERTE = ("🔴", "⚠️", "🚨", "🚩", "⛔", "🅿️")
+
+
+def condenser(texte: str, max_lignes: int = _LIGNES_MAX_PAR_RAPPORT) -> str:
+    """Ramène un rapport trop long à l'essentiel pour le digest. Pure, donc éprouvable.
+
+    D'OÙ ÇA VIENT — Franck, 2026-08-28 : « les résumés sont beaucoup trop longs, il y a
+    trop d'informations. » Le digest du matin portait ce jour-là un compte rendu d'agent
+    de ~40 lignes et un lot de 14 : illisible sur un téléphone — et un canal illisible ne
+    protège plus rien, c'est le défaut qui a créé la boîte du jour (13/08) qui revient
+    par la LONGUEUR au lieu du NOMBRE.
+
+    Ce qui est gardé : TOUTES les lignes d'alerte (🔴 ⚠️ 🚨 🚩…), où qu'elles soient —
+    tronquer une décision serait pire que tout — plus le début du rapport jusqu'au
+    budget. Les coupes sont marquées, et la dernière ligne dit COMBIEN a été retranché
+    et où lire le rapport complet : une liste tronquée doit annoncer son total
+    (journal du 2026-08-18).
+    """
+    lignes = texte.splitlines()
+    if len(lignes) <= max_lignes:
+        return texte
+    garde = {i for i, l in enumerate(lignes) if any(m in l for m in _MARQUEURS_ALERTE)}
+    for i in range(len(lignes)):
+        if len(garde) >= max_lignes:
+            break
+        garde.add(i)
+    morceaux, precedent = [], -1
+    for i in sorted(garde):
+        if i > precedent + 1:
+            morceaux.append("  …")
+        morceaux.append(lignes[i])
+        precedent = i
+    retranchees = len(lignes) - len(garde)
+    if retranchees > 0:
+        morceaux.append(f"_({retranchees} ligne(s) retranchées du digest — rapport "
+                        f"complet dans logs/slack/)_")
+    return "\n".join(morceaux)
+
+
 def vider_boite(entete: str = "") -> tuple[int, bool]:
     """Poste EN UN SEUL MESSAGE tout ce que la boîte du jour contient, et la vide.
 
@@ -224,7 +264,7 @@ def vider_boite(entete: str = "") -> tuple[int, bool]:
     for l in decisions + autres:
         heure = (l.get("at") or "")[11:16]
         src_nom = l.get("source") or "?"
-        morceaux.append(f"───── {heure} · {src_nom}\n{l.get('texte') or ''}")
+        morceaux.append(f"───── {heure} · {src_nom}\n{condenser(l.get('texte') or '')}")
     corps = "\n\n".join(morceaux)
     # Slack coupe au-delà de 40 000 caractères ; on tronque NOUS-MÊMES et on le dit,
     # plutôt que de laisser la fin disparaître sans trace.

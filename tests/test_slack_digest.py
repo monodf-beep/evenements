@@ -121,6 +121,32 @@ _check("l'échec est rapporté tel quel, pas maquillé en succès", n == 1 and n
 _check("et le rapport est REVENU dans la boîte pour le prochain vidage",
        len(_boite()) == 1, str(_boite()))
 
+print("\n──── 5 bis. un rapport-fleuve est CONDENSÉ, ses alertes jamais ────")
+# Franck, 2026-08-28 : « les résumés sont beaucoup trop longs, il y a trop
+# d'informations. » Le digest du jour portait un compte rendu de ~40 lignes dont la
+# seule décision (🔴) était enfouie au milieu. Le condenseur garde TOUTES les lignes
+# d'alerte où qu'elles soient, le début du rapport, et annonce ce qu'il retranche —
+# une liste tronquée doit dire son total (journal du 2026-08-18).
+fleuve = "\n".join([f"ligne de détail numéro {i}" for i in range(1, 20)]
+                   + ["🔴 la seule décision du rapport, enfouie à la ligne 20"]
+                   + [f"encore du détail {i}" for i in range(20, 35)])
+c = slack.condenser(fleuve)
+verifier = _check  # même vocabulaire que le reste du fichier
+verifier("le rapport condensé est réellement plus court",
+         len(c.splitlines()) < len(fleuve.splitlines()) / 2,
+         f"{len(c.splitlines())} lignes")
+verifier("   la ligne 🔴 enfouie SURVIT à la coupe", "la seule décision" in c, c)
+verifier("   et la coupe annonce son total (« retranchées »)",
+         "retranchées" in c and "logs/slack/" in c, c[-200:])
+verifier("   les coupes intermédiaires sont marquées", "…" in c, c)
+court = "deux lignes\nseulement"
+verifier("un rapport court passe INTACT — pas de condensation gratuite",
+         slack.condenser(court) == court)
+# Contre-épreuve : un rapport fait UNIQUEMENT d'alertes ne perd rien, même très long.
+que_alertes = "\n".join(f"⚠️ alerte {i}" for i in range(30))
+verifier("un rapport tout en alertes ne perd AUCUNE ligne d'alerte",
+         all(f"alerte {i}" in slack.condenser(que_alertes) for i in range(30)))
+
 print("\n──── 6. vider une boîte vide ne ment pas ────")
 slack._fichier_du_jour().unlink(missing_ok=True)
 n, ok = slack.vider_boite()

@@ -297,6 +297,50 @@ def rapport(e: dict, action: str, detail: str = "") -> str:
     return "\n".join(lignes)
 
 
+MEMOIRE_ATTENTE = ROOT / "logs" / "deploiement_branches_signalees.json"
+
+
+def branches_nouvelles(en_attente: list[tuple[str, int, str]],
+                       deja_vues: list) -> tuple[list[tuple[str, int, str]], int]:
+    """Sépare ce qui mérite le DÉTAIL (branche nouvelle, ou dont le nombre de commits a
+    bougé) de ce qui a déjà été signalé à l'identique. Pure, donc éprouvable.
+
+    D'OÙ ÇA VIENT — Franck, 2026-08-28 : « les résumés sont beaucoup trop longs. » Les
+    mêmes trois paragraphes « Fusion à trancher » partaient CHAQUE matin, identiques,
+    depuis des jours. Une question posée à Franck ne se re-pose pas tant qu'elle n'a pas
+    changé : elle se COMPTE (même principe que l'escalade unique du registre des
+    décisions). Le jour où une branche bouge — un commit de plus, une branche neuve —
+    elle retrouve son paragraphe entier.
+    """
+    vues = {(str(v[0]), int(v[1])) for v in deja_vues if len(v) >= 2}
+    nouvelles = [b for b in en_attente if (b[0], b[1]) not in vues]
+    return nouvelles, len(en_attente) - len(nouvelles)
+
+
+def suivre_crontab() -> str:
+    """Aligne le crontab installé sur crontab.txt. Renvoie la ligne de rapport, ou "".
+
+    APPELÉ À CHAQUE PASSAGE EN --apply, PAS SEULEMENT APRÈS UN DÉPLOIEMENT RÉUSSI.
+    L'incident qui l'a imposé (26→28/08) : le cron du cerveau, committé le 25/08, est
+    resté INERTE trois matins. L'installation du crontab était accrochée au seul chemin
+    « déploiement réussi » — or update.sh peut échouer APRÈS son git reset (le code est
+    en place, le code de sortie non), et les matins suivants il n'y a plus rien à
+    déployer : l'écart n'avait AUCUN rouvreur. La règle 3, violée par le script même qui
+    la prêche — le bilan l'a signalé trois jours de suite sans qu'aucun automatisme ne
+    comble l'écart.
+
+    Un jour sans déploiement, crontab.txt EST celui du code déployé : l'installer est
+    exactement ce qu'il faut. Réversible (sauvegarde d'abord, cf. installer_crontab).
+    """
+    a, r_, resume = ecart_crontab()
+    if not (a or r_):
+        return ""
+    pose, detail = installer_crontab()
+    log.info("Crontab : %d à installer, %d hors dépôt — %s", a, r_, detail)
+    return (f"\n:calendar: Crontab {'mis à jour' if pose else 'NON mis à jour'} "
+            f"— {resume}. {detail}")
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Déploie le VPS si la branche a bougé et que "
                                             "les fixtures passent.")
@@ -308,10 +352,39 @@ def main(argv=None) -> int:
     log.info("Déployé %s · disponible %s · retard %s · branche %s",
              e["deploye"], e["disponible"], e["commits_de_retard"], e["branche_courante"])
 
+    # LES BRANCHES EN ATTENTE NE SE RE-DÉTAILLENT PAS À L'IDENTIQUE chaque matin : le
+    # détail au premier signalement (ou au moindre changement), une ligne de compte
+    # ensuite. En dry-run la mémoire n'est PAS écrite — une simulation ne doit pas
+    # faire taire le signalement du vrai passage.
+    import json as _json
+    attente_totale = list(e["en_attente"])
+    deja_vues = []
+    try:
+        deja_vues = _json.loads(MEMOIRE_ATTENTE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    e["en_attente"], deja_signalees = branches_nouvelles(attente_totale, deja_vues)
+    rappel_attente = ""
+    if deja_signalees:
+        rappel_attente = (f"\n:triangular_flag_on_post: {deja_signalees} branche(s) en "
+                          f"attente déjà signalée(s), inchangée(s) — fusion toujours à "
+                          f"trancher (détail au premier signalement).")
+    if args.apply:
+        try:
+            MEMOIRE_ATTENTE.parent.mkdir(parents=True, exist_ok=True)
+            MEMOIRE_ATTENTE.write_text(
+                _json.dumps([[b[0], b[1]] for b in attente_totale]), encoding="utf-8")
+        except OSError as exc:
+            log.warning("Mémoire des branches non écrite (%s) — le détail reviendra demain",
+                        exc)
+
     if e["commits_de_retard"] <= 0:
         # RIEN À FAIRE n'est pas RIEN À DIRE : une branche qui attend, ou un serveur sur la
-        # mauvaise branche, doivent se voir même un jour sans déploiement.
-        msg = rapport(e, "aucun")
+        # mauvaise branche, doivent se voir même un jour sans déploiement. Et le crontab se
+        # réconcilie AUSSI ces jours-là — c'est le jour sans déploiement qui a laissé le
+        # cron du cerveau inerte trois matins (cf. suivre_crontab).
+        msg = (rapport(e, "aucun") + rappel_attente
+              + (suivre_crontab() if args.apply else "")).strip("\n")
         if msg:
             slack.notify(msg)
             print(msg)
@@ -347,7 +420,9 @@ def main(argv=None) -> int:
         if not environnement:
             if regressions and rouges != regressions:
                 resume += f" — RÉGRESSION : {', '.join(regressions[:6])}"
-            msg = rapport(e, "refuse", resume)
+            # Même refusé, le crontab se réconcilie : le refus porte sur le CANDIDAT,
+            # crontab.txt sur disque est celui du code déjà déployé.
+            msg = rapport(e, "refuse", resume) + rappel_attente + suivre_crontab()
             slack.notify(msg)
             print(msg)
             log.error("Fixtures rouges sur %s — rien déployé (%s).", e["disponible"], resume)
@@ -355,19 +430,14 @@ def main(argv=None) -> int:
 
     ok, derniere = deployer()
 
-    # LE CRONTAB SUIT LE CODE. Sans ça, une ligne de cron ajoutée par un commit reste
-    # inerte jusqu'à ce qu'un humain tape `crontab crontab.txt` — c'est arrivé le jour même
-    # où ce script a été écrit : son propre cron était committé et ne tournait pas.
-    suite_cron = ""
-    if ok:
-        a, r_, resume = ecart_crontab()
-        if a or r_:
-            pose, detail = installer_crontab()
-            suite_cron = (f"\n:calendar: Crontab {'mis à jour' if pose else 'NON mis à jour'} "
-                          f"— {resume}. {detail}")
-            log.info("Crontab : %d à installer, %d hors dépôt — %s", a, r_, detail)
+    # LE CRONTAB SUIT LE CODE — à chaque passage désormais, cf. suivre_crontab : accroché
+    # au seul chemin « déploiement réussi », il a laissé le cron du cerveau inerte trois
+    # matins (l'échec d'update.sh APRÈS son git reset sautait l'installation, et les jours
+    # suivants n'avaient plus rien à déployer).
+    suite_cron = suivre_crontab()
 
-    msg = rapport(e, "deploye" if ok else "echec", derniere) + environnement + suite_cron
+    msg = (rapport(e, "deploye" if ok else "echec", derniere) + environnement
+           + rappel_attente + suite_cron)
     slack.notify(msg)
     print(msg)
     # RÈGLE 6 — on rapporte le RÉSULTAT : on RELIT ce que le dépôt dit de lui-même après

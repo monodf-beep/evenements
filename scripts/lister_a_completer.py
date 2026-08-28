@@ -113,9 +113,16 @@ def main(argv: list[str]) -> int:
     if not args.tout:
         actives = []
         for ev, m in lignes:
-            manques_ouverts = [c for c in m
-                               if not _tent.epuisee(_tent.deja_tentes(conn, ev["id"], c))
-                               or _tent.a_rouvrir(_tent.deja_tentes(conn, ev["id"], c))]
+            manques_ouverts = []
+            for c in m:
+                t = _tent.deja_tentes(conn, ev["id"], c)
+                # Une TROUVAILLE NON APPLIQUÉE garde le champ ACTIF : les angles sont
+                # faits mais un geste attend (poser la valeur via completer_verifie).
+                # Sans ça, la fiche 4785 — image trouvée le 22/08, jamais posée —
+                # serait sortie de la file 30 jours avec sa valeur sous le bras.
+                if (not _tent.epuisee(t) or _tent.a_rouvrir(t)
+                        or _tent.trouvaille_en_souffrance(t)):
+                    manques_ouverts.append(c)
             # Les champs épuisés d'une fiche encore active ne doivent pas DISPARAÎTRE de
             # l'affichage : sans cette trace, on croirait le champ renseigné. Règle 6 —
             # un état qui sort quelque chose d'une file doit rester comptable.

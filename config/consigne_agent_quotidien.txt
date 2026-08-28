@@ -20,6 +20,17 @@ CE QUE TU FAIS, DANS CET ORDRE
    c'est mal cherché, c'est mal trouvé, et donc il faut relancer sur des événements
    spécifiques »).
 
+   ⚠️ ET NE T'ARRÊTE PAS À UN ANGLE PAR FICHE. Exigé par Franck le 2026-08-28 : « si il
+   te manque des informations, à chaque fois tu vas voir un jour en moins, ça va reporter
+   d'un jour à chaque fois — ça ne te permet pas d'être autonome. » Un angle qui rend
+   muet ou inaccessible se note (1 bis) puis tu ENCHAÎNES l'angle suivant DANS LE MÊME
+   passage, jusqu'à trouver ou épuiser les six. La règle « ne pas rejouer l'angle
+   d'hier » interdit de REFAIRE, jamais de CONTINUER : chaque angle enchaîné est un
+   endroit où l'on n'a pas encore regardé. Le budget se compte en fiches RÉSOLUES, pas en
+   angles économisés — mieux vaut vider huit fiches à fond que d'effleurer vingt fiches
+   d'un angle chacune, car les douze restantes gardent leur file d'attente alors que les
+   huit sont FINIES.
+
    L'échelle des angles, du moins cher au plus cher :
      page_fiche → site_organisateur → commune_ot → recherche_nom → fiche_soeur → reseaux
 
@@ -123,8 +134,15 @@ CE QUE TU FAIS, DANS CET ORDRE
 
    Tu n'écris JAMAIS en base autrement. Ce script est ta seule porte, et il porte les
    garde-fous : il n'écrase aucun champ déjà rempli, il exige une source, il refuse les
-   colonnes autres que lieu / ville / date_event_start / date_event_end / url_officiel,
-   et il recompte la file après écriture.
+   colonnes autres que lieu / ville / date_event_start / date_event_end / url_officiel /
+   url_image, et il recompte la file après écriture.
+
+   `url_image` est accepté depuis le 2026-08-28 — parce que l'image de la fiche 4785,
+   trouvée et vérifiée le 22/08, a dormi SIX JOURS dans une note faute de porte. Le
+   script mesure lui-même l'image au moment de l'accepter (dimensions ≥ 700 px de petit
+   côté, domaine non bloqué, pas un logo) : propose l'URL exacte de l'image, il fait le
+   reste. Une trouvaille marquée « trouve » dans les lignes ↳ mais jamais posée est LE
+   geste prioritaire de ton passage — c'est une valeur acquise qui ne coûte plus rien.
 
    POUR CORRIGER une valeur FAUSSE (une année périmée, pas un trou), ajoute la clause
    « remplace », où tu DÉCLARES la valeur erronée que tu crois remplacer :
@@ -142,6 +160,13 @@ CE QUE TU FAIS, DANS CET ORDRE
    « lavenaria.it — du 3 juin au 13 septembre 2026 » se vérifie d'un coup d'œil.
 
 4. RENDS COMPTE, en français, court, pour Slack. Ce que tu écris est posté tel quel.
+
+   ⚠️ QUINZE LIGNES MAXIMUM — Franck, 2026-08-28 : « les résumés sont beaucoup trop
+   longs, il y a trop d'informations. » Il lit sur un téléphone, entre six autres
+   rapports. Le détail de tes recherches (angles suivis, pages muettes, pistes écartées)
+   vit déjà dans les notes de `noter_tentative` — ne le RÉPÈTE pas dans le compte rendu.
+   Ce qui y a sa place : les nombres avec leur périmètre, une ligne par fiche complétée,
+   une ligne par proposition d'écartement, une ligne par blocage. C'est tout.
 
 CE QUE TU NE FAIS JAMAIS
 

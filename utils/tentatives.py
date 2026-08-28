@@ -118,10 +118,27 @@ def prochain_angle(tentatives: list[dict]) -> str | None:
 
 
 def epuisee(tentatives: list[dict]) -> bool:
-    """Tous les angles essayés, aucun n'a trouvé."""
-    if any(t.get("resultat") == "trouve" for t in tentatives):
-        return False
+    """Tous les angles essayés — il n'y a plus rien à CHERCHER sur ce champ.
+
+    ⚠️ CORRIGÉ LE 2026-08-28, mesuré en production sur les fiches 4785 et 4809. La
+    version d'origine rendait faux dès qu'une tentative valait « trouve », en supposant
+    qu'une trouvaille remplit le champ et fait sortir la fiche par la complétude. Faux :
+    une valeur peut être trouvée et INAPPLICABLE (l'image de 4785, localisée le 22/08,
+    refusée six jours par la porte de completer_verifie). La fiche devenait un ZOMBIE —
+    jamais « épuisée » donc jamais rouverte par le délai, plus d'angle suivant donc plus
+    rien à faire, et une ligne permanente dans la file sans geste au bout.
+
+    « Épuisée » répond donc à UNE question : reste-t-il un angle à essayer ? Ce qu'il
+    advient d'une trouvaille est l'affaire de `resume()` (qui la signale comme un geste
+    d'APPLICATION, pas de recherche) et de la porte d'application."""
     return prochain_angle(tentatives) is None
+
+
+def trouvaille_en_souffrance(tentatives: list[dict]) -> bool:
+    """Vrai si un angle a TROUVÉ mais que la fiche est encore dans la file — donc la
+    valeur n'a pas été appliquée. Ce n'est plus une recherche, c'est un geste qui
+    attend : le distinguer est ce qui évite de re-chercher ce qu'on a déjà."""
+    return any(t.get("resultat") == "trouve" for t in tentatives)
 
 
 def a_rouvrir(tentatives: list[dict], maintenant: datetime | None = None) -> bool:
@@ -147,6 +164,14 @@ def resume(tentatives: list[dict]) -> str:
         return "jamais cherché → commencer par : page_fiche"
     faits = ", ".join(f"{t['angle']}={t['resultat']}" for t in tentatives)
     suivant = prochain_angle(tentatives)
+    # UNE TROUVAILLE NON APPLIQUÉE PASSE AVANT TOUT : si la fiche est encore dans la
+    # file alors qu'un angle a trouvé, la valeur attend d'être POSÉE, pas re-cherchée.
+    # Sans cette ligne, le résumé disait « la source ne publie pas cette information »
+    # sur une fiche dont la note portait l'URL exacte de l'image (4785, six jours).
+    if trouvaille_en_souffrance(tentatives):
+        return (f"déjà tenté : {faits} → ⚠️ TROUVÉ mais PAS APPLIQUÉ : lire la note du "
+                f"« trouve » et poser la valeur via completer_verifie — c'est un geste, "
+                f"plus une recherche")
     if suivant:
         return f"déjà tenté : {faits} → PROCHAIN ANGLE : {suivant}"
     return (f"déjà tenté : {faits} → TOUS LES ANGLES ÉPUISÉS "

@@ -62,10 +62,32 @@ tous = [{"angle": a, "resultat": "muet"} for a in t.ANGLES]
 verifier("quand tout a été essayé, il n'y a plus d'angle", t.prochain_angle(tous) is None)
 verifier("et la fiche est déclarée épuisée", t.epuisee(tous))
 
-# ── Ce qui est TROUVÉ n'est plus cherché ────────────────────────────────────────
+# ── Ce qui est TROUVÉ n'est plus cherché… mais doit être APPLIQUÉ ───────────────
 trouve = [{"angle": "page_fiche", "resultat": "muet"},
           {"angle": "site_organisateur", "resultat": "trouve"}]
-verifier("un angle qui a trouvé clôt la recherche", not t.epuisee(trouve))
+verifier("des angles restent : la fiche n'est pas épuisée", not t.epuisee(trouve))
+verifier("et la trouvaille est signalée comme EN SOUFFRANCE tant que la fiche est là",
+         t.trouvaille_en_souffrance(trouve))
+r_trouve = t.resume(trouve)
+verifier("le résumé oriente vers l'APPLICATION, plus vers la recherche",
+         "PAS APPLIQUÉ" in r_trouve and "completer_verifie" in r_trouve, r_trouve)
+
+# LE CAS ZOMBIE DE PRODUCTION (fiches 4785 et 4809, mesuré le 2026-08-28) : les six
+# angles faits, dont un « trouve » jamais appliqué (la porte refusait la colonne image).
+# L'ancienne `epuisee()` rendait FAUX à cause du « trouve » : la fiche n'était ni active
+# (plus d'angle suivant) ni épuisée (donc jamais rouverte par le délai) — une ligne
+# permanente dans la file, sans geste au bout, et un résumé qui affirmait « la source ne
+# publie pas cette information » alors que la note portait l'URL exacte de l'image.
+zombie = ([{"angle": a, "resultat": "muet"} for a in t.ANGLES[:-1]]
+          + [{"angle": t.ANGLES[-1], "resultat": "trouve",
+              "note": "oktoberfest.torino.it/…/3x2-1.jpg, 2000×1334, HTTP 200"}])
+verifier("six angles faits + un trouve : la fiche est bien ÉPUISÉE côté recherche",
+         t.epuisee(zombie))
+r_zombie = t.resume(zombie)
+verifier("le résumé du zombie ne MENT plus (« la source ne publie pas » interdit ici)",
+         "la source ne publie pas" not in r_zombie, r_zombie)
+verifier("   il désigne le geste : lire la note du trouve, poser via completer_verifie",
+         "PAS APPLIQUÉ" in r_zombie, r_zombie)
 
 # ── Le rouvreur : après le délai, pas avant ─────────────────────────────────────
 maintenant = datetime(2026, 9, 20, 10, 0, 0)

@@ -398,10 +398,36 @@ def main(argv: list[str]) -> int:
                 continue
             inconnus = set(champs) - {"lieu", "ville", "date_event_start",
                                       "date_event_end", "url_officiel",
-                                      "recurring", "recurring_note"}
+                                      "recurring", "recurring_note", "url_image"}
             if inconnus:
                 print(f"  [{cle}] ignorée : champ(s) non autorisé(s) {sorted(inconnus)}")
                 continue
+            # ── LA PORTE « IMAGE », ouverte le 2026-08-28 ────────────────────────────
+            # Le trou qu'elle ferme, mesuré par l'agent quotidien lui-même : l'image de
+            # la fiche 4785 était TROUVÉE et localisée depuis le 22/08 (URL vérifiée,
+            # 2000×1334), et dormait dans une note depuis six jours parce que ce script
+            # refusait la colonne. Chaque information trouvée mais inapplicable coûte un
+            # jour par relance — c'est le tapis roulant que Franck a nommé le 28/08.
+            #
+            # Même exigence que la chaîne d'images (visuals/images_web), pas moins : on
+            # MESURE l'image au moment de l'accepter, on ne croit pas l'URL sur parole.
+            if "url_image" in champs:
+                from utils.images import remote_dims, MIN_DIM
+                from utils.sources import (is_blocked_image, is_logo_image,
+                                           load_blocked_image_domains)
+                u = str(champs["url_image"] or "").strip()
+                if not u.startswith("http"):
+                    print(f"  [{cle}] image ignorée : URL invalide ({u[:60]!r})")
+                    continue
+                if is_blocked_image(u, load_blocked_image_domains()) or is_logo_image(u):
+                    print(f"  [{cle}] image REFUSÉE : domaine bloqué ou logo ({u[:70]})")
+                    continue
+                w, h = remote_dims(u)
+                if min(w, h) < MIN_DIM:
+                    print(f"  [{cle}] image REFUSÉE : {w}×{h} mesurée "
+                          f"({'injoignable' if not w else f'petit côté < {MIN_DIM}px'}) "
+                          f"— {u[:70]}")
+                    continue
             # ── LA PORTE « ÉVÉNEMENT PASSÉ », ouverte le 2026-08-11 au soir ──────────
             # Franck : « on est passé de quatre cents tâches à une, et sans IA ». Vrai —
             # mais l'essentiel du gain n'est PAS venu de champs comblés : il est venu de
