@@ -8,73 +8,6 @@ Tout se lance depuis le VPS, dans `~/evenements`.
 
 ---
 
-## 0 bis. Ajouté le 25/08 — vérifier le déploiement et fiche 4839
-
-```bash
-# Confirmer que le serveur est bien reparti sur la bonne branche et à jour
-cd ~/evenements && git rev-parse --abbrev-ref HEAD && git log -1 --format='%h %ci'
-# Attendu : claude/quirky-davinci-jvqrnw, commit 545b8fa ou plus récent
-```
-
-```bash
-# Fiche 4839 « Coro & Bentu » (restaurant mal catégorisé) — trouver le bon audit d'abord
-grep -rln "4839\|Coro.*Bentu" logs/*.log
-```
-
-Une fois le script identifié : le lancer SANS `--apply`/`--execute` d'abord (règle 4),
-lire la sortie, puis appliquer.
-
----
-
-## 0 ter. Relire ce que le cerveau a fait pendant l'absence
-
-```bash
-# Son journal, jour par jour (gestes posés, différés, escaladés)
-less logs/cerveau.log
-```
-
-```bash
-# L'arrêter si besoin : commenter sa ligne dans crontab.txt puis
-crontab crontab.txt
-```
-
----
-
-## 0 quater. Inventaire WordPress — premier lancement, SUPERVISÉ
-
-```bash
-scripts/audit_wp_code.sh
-```
-
-Lire la sortie en entier avant d'en tirer une conclusion : jamais éprouvé contre la
-vraie production (voir `AU_RETOUR_2026-09-03.md`, section 0 sexies). Pas de cron tant
-que ce premier passage n'a pas été relu.
-
----
-
-## 0 quinquies. Sources par province — voir les manques
-
-```bash
-.venv/bin/python -m scripts.audit_sources_provinces
-```
-
-Ou directement dans le back-office : `/sources-provinces` (menu Analyse). Manque déjà
-trouvé au 31/08 : la province de Novara (Piémont), zéro source ET zéro newsletter.
-
----
-
-## 0 sexies. Heure de l'événement — vérifier avant de déployer
-
-```bash
-curl -4 -sS https://agendasabauda.eu/wp-json/cs/v1/version
-```
-
-`404` → toujours pas déployé, suivre `docs/DEPLOIEMENT_WORDPRESS.md` §3 (Novamira,
-sauvegarde d'abord) pour coller `deploy/wordpress/cs-publish.php`. Une réponse JSON →
-déjà réglé par une autre voie, ne rien écraser sans vérifier ce qui tourne.
-
----
-
 ## 1. Vérifier que le site répond
 
 ```bash
@@ -153,29 +86,7 @@ avant de les corbeiller une seconde fois).
 
 ---
 
-## 5. Nettoyer le crontab temporaire
-
-Ces quatre lignes ne doivent PAS survivre — elles repartiraient l'an prochain sinon.
-Les retirer de `crontab.txt` :
-
-```
-40 11 19-20 8 * cd /root/evenements && .venv/bin/python -m scripts.audit_deplacement --slack >> logs/audit_deplacement.log 2>&1
-41 11 19-20 8 * cd /root/evenements && .venv/bin/python -m scripts.audit_home_visible --slack >> logs/audit_home_visible.log 2>&1
-42 11 19-20 8 * cd /root/evenements && .venv/bin/python -m scripts.audit_acronymes --slack >> logs/audit_acronymes.log 2>&1
-43 11 19-20 8 * cd /root/evenements && .venv/bin/python -m scripts.audit_vocabulaire --slack >> logs/audit_vocabulaire.log 2>&1
-```
-
-(et le bloc de commentaires juste au-dessus, qui n'a plus d'objet une fois les lignes
-parties). Puis committer/pousser, et laisser `auto_deploiement` de 7h50 installer le
-crontab nettoyé — ou forcer tout de suite :
-
-```bash
-.venv/bin/python -m scripts.auto_deploiement --apply
-```
-
----
-
-## 6. Vérifier l'état général
+## 5. Vérifier l'état général
 
 ```bash
 .venv/bin/python -m tests.run_all
@@ -184,3 +95,87 @@ crontab nettoyé — ou forcer tout de suite :
 ```bash
 .venv/bin/python -m scripts.publier_sante
 ```
+
+---
+
+# Ajouts de la dernière semaine
+
+Ces commandes-ci ne sont pas dans le déroulé principal : ce sont des vérifications
+ponctuelles, ajoutées entre le 25 et le 31/08. À faire après le tour ci-dessus.
+
+### Vérifier la branche du serveur, et la fiche 4839
+
+```bash
+# Confirmer que le serveur est bien reparti sur la bonne branche et à jour
+cd ~/evenements && git rev-parse --abbrev-ref HEAD && git log -1 --format='%h %ci'
+# Attendu : claude/quirky-davinci-jvqrnw, commit 545b8fa ou plus récent
+```
+
+```bash
+# Fiche 4839 « Coro & Bentu » (restaurant mal catégorisé) — trouver le bon audit d'abord
+grep -rln "4839\|Coro.*Bentu" logs/*.log
+```
+
+Une fois le script identifié : le lancer SANS `--apply`/`--execute` d'abord (règle 4),
+lire la sortie, puis appliquer.
+
+---
+
+### Relire ce que le cerveau a fait pendant l'absence
+
+```bash
+# Son journal, jour par jour (gestes posés, différés, escaladés)
+less logs/cerveau.log
+```
+
+```bash
+# L'arrêter si besoin : commenter sa ligne dans crontab.txt puis
+crontab crontab.txt
+```
+
+---
+
+### Inventaire WordPress — premier lancement, SUPERVISÉ
+
+```bash
+scripts/audit_wp_code.sh
+```
+
+Lire la sortie en entier avant d'en tirer une conclusion : jamais éprouvé contre la
+vraie production (voir `AU_RETOUR_2026-09-03.md`, section 0 sexies). Pas de cron tant
+que ce premier passage n'a pas été relu.
+
+---
+
+### Sources par province — voir les manques
+
+```bash
+.venv/bin/python -m scripts.audit_sources_provinces
+```
+
+Ou directement dans le back-office : `/sources-provinces` (menu Analyse). Manque déjà
+trouvé au 31/08 : la province de Novara (Piémont), zéro source ET zéro newsletter.
+
+---
+
+### Heure de l'événement — vérifier avant de déployer
+
+```bash
+curl -4 -sS https://agendasabauda.eu/wp-json/cs/v1/version
+```
+
+`404` → toujours pas déployé, suivre `docs/DEPLOIEMENT_WORDPRESS.md` §3 (Novamira,
+sauvegarde d'abord) pour coller `deploy/wordpress/cs-publish.php`. Une réponse JSON →
+déjà réglé par une autre voie, ne rien écraser sans vérifier ce qui tourne.
+
+---
+
+## ~~Nettoyer le crontab temporaire~~ — FAIT le 31/08
+
+Les quatre lignes datées `19-20 8` ont été retirées du dépôt. Reste à vérifier que le
+crontab INSTALLÉ a suivi :
+
+```bash
+crontab -l | grep '19-20'   # ne doit RIEN rendre
+```
+
