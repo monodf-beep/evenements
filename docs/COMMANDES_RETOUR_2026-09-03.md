@@ -52,6 +52,17 @@ que ce premier passage n'a pas été relu.
 
 ---
 
+## 0 quinquies. Sources par province — voir les manques
+
+```bash
+.venv/bin/python -m scripts.audit_sources_provinces
+```
+
+Ou directement dans le back-office : `/sources-provinces` (menu Analyse). Manque déjà
+trouvé au 31/08 : la province de Novara (Piémont), zéro source ET zéro newsletter.
+
+---
+
 ## 1. Vérifier que le site répond
 
 ```bash

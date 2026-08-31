@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% set active = 'sources_provinces' %}
+{% block title %}Sources par province{% endblock %}
+{% block h1 %}Sources par province{% endblock %}
+{% block subtitle %}<div class="sub">Combien de <b>sources RSS</b> et de <b>newsletters suivies</b> par province — pour voir où l'agenda manque encore de matière. Une case à <b>0/0</b> = un manque. Lecture seule : les fichiers se modifient dans le dépôt (<code>config/sources.txt</code>, <code>config/newsletters.txt</code>).</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:1000px;">
+
+  <div class="card" style="padding:.8rem 1.1rem;margin-bottom:1.2rem;font-size:.9rem;">
+    {% if total_gaps %}
+      <b style="color:#dc2626;">{{ total_gaps }}</b> province(s) sans AUCUNE source ni newsletter.
+    {% else %}
+      Aucune province sans couverture — chacune a au moins une source ou une newsletter.
+    {% endif %}
+    Le classement se fait par la ville de la source, ou une commune reconnue dans son
+    nom — jamais deviné : une source vraiment régionale (sans ville dédiée) reste
+    <i>« non classée »</i>, comptée à part, pas forcée dans une province.
+  </div>
+
+  {% macro cell(n) %}
+    {% if n == 0 %}<td style="text-align:center;color:#dc2626;font-weight:700;background:#fdeaea;">{{ n }}</td>
+    {% else %}<td style="text-align:center;font-weight:600;">{{ n }}</td>{% endif %}
+  {% endmacro %}
+
+  {% for t in territoires %}
+  <div class="card" style="padding:0;margin-bottom:1rem;overflow-x:auto;">
+    <div style="padding:.7rem 1rem;border-bottom:1px solid var(--border,#e2e4e8);">
+      <b style="font-size:1.02rem;">{{ t.nom }}</b>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:420px;">
+      <thead><tr style="background:var(--code-bg,#f6f7f9);text-align:left;">
+        <th style="padding:.45rem .8rem;">Province</th>
+        <th style="text-align:center;padding:.45rem .8rem;">Sources RSS</th>
+        <th style="text-align:center;padding:.45rem .8rem;">Newsletters</th>
+      </tr></thead>
+      <tbody>
+      {% for r in t.rows %}
+        <tr style="border-top:1px solid var(--border,#e2e4e8);">
+          <td style="padding:.45rem .8rem;">{{ r.province }}
+            {% if r.n_src == 0 and r.n_nl == 0 %}<span class="muted text-sm"> — rien du tout</span>{% endif %}
+          </td>
+          {{ cell(r.n_src) }}{{ cell(r.n_nl) }}
+        </tr>
+        {% if r.noms_src or r.noms_nl %}
+        <tr style="border-top:1px dashed var(--border,#e2e4e8);">
+          <td colspan="3" class="muted text-sm" style="padding:.2rem .8rem .6rem;">
+            {% if r.noms_src %}RSS : {{ r.noms_src|join(', ') }}{% endif %}
+            {% if r.noms_src and r.noms_nl %}<br>{% endif %}
+            {% if r.noms_nl %}Newsletters : {{ r.noms_nl|join(', ') }}{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+      {% if t.non_classees_src or t.non_classees_nl %}
+        <tr style="border-top:1px solid var(--border,#e2e4e8);">
+          <td style="padding:.45rem .8rem;"><i>Non classées</i>
+            <span class="muted text-sm"> — régionales, sans ville dédiée, pas un manque</span></td>
+          <td style="text-align:center;">{{ t.non_classees_src|length }}</td>
+          <td style="text-align:center;">{{ t.non_classees_nl|length }}</td>
+        </tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

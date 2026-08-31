@@ -1,0 +1,19 @@
+{
+ "_source": "Découpage administratif réel : Savoie = département 73 (préfecture Chambéry), Haute-Savoie = département 74 (préfecture Annecy). Deux provinces, demande de Franck le 2026-08-31.",
+ "_pourquoi": "Le territoire éditorial « Savoie » (config/sources.txt, config/newsletters.txt) fusionne les deux départements depuis le début du projet. Pour voir les manques de sources par sous-zone, il faut savoir à quel département chaque commune appartient — sans ça, l'agrégat masque un vide entier (ex. la Maurienne).",
+ "_comparaison": "Comparé sans accents, sans casse et sans ponctuation, comme config/communes_comte_de_nice.json.",
+ "Savoie": [
+  "Chambéry", "Albertville", "Aix-les-Bains", "Montmélian", "La Ravoire", "Ugine",
+  "Moûtiers", "Yenne", "Courchevel", "Val d'Isère", "Saint-Jean-de-Maurienne",
+  "Modane", "Tignes", "Méribel", "La Plagne", "Bourg-Saint-Maurice", "Les Menuires",
+  "Val Thorens", "Bozel", "Aime", "La Motte-Servolex"
+ ],
+ "Haute-Savoie": [
+  "Haute-Savoie",
+  "Annecy", "Cran-Gevrier", "Annecy-le-Vieux", "Megève", "Thonon-les-Bains",
+  "Annemasse", "Chamonix-Mont-Blanc", "Chamonix", "Cluses", "Saint-Julien-en-Genevois",
+  "Sallanches", "Évian-les-Bains", "Evian-les-Bains", "Passy", "Combloux",
+  "Praz-sur-Arly", "Faverges", "Rumilly", "Bonneville", "La Roche-sur-Foron",
+  "Douvaine", "Publier", "Cranves-Sales", "Gaillard"
+ ]
+}

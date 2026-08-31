@@ -1888,6 +1888,42 @@ def couverture_geo():
     return render_template("couverture_geo.html", active="couverture_geo", **data)
 
 
+def _sources_provinces_data():
+    """Aucune base : lit config/sources.txt et config/newsletters.txt (règle 6, un
+    zéro doit dire son dénominateur — voir scripts.audit_sources_provinces)."""
+    from scripts.audit_sources_provinces import (
+        SOURCES_FILE, NEWSLETTERS_FILE, _TOUTES_PROVINCES, classer)
+    src = classer(SOURCES_FILE, i_territoire=1, i_nom=2, i_ville=5)
+    nl = classer(NEWSLETTERS_FILE, i_territoire=2, i_nom=0, i_ville=None)
+    territoires = []
+    total_gaps = 0
+    for territoire, provinces in _TOUTES_PROVINCES.items():
+        rows = []
+        for province in provinces:
+            noms_src = sorted(src["par_province"][territoire].get(province, []))
+            noms_nl = sorted(nl["par_province"][territoire].get(province, []))
+            if not noms_src and not noms_nl:
+                total_gaps += 1
+            rows.append({"province": province, "n_src": len(noms_src),
+                        "n_nl": len(noms_nl), "noms_src": noms_src, "noms_nl": noms_nl})
+        territoires.append({
+            "nom": territoire,
+            "rows": rows,
+            "non_classees_src": sorted(src["non_classees"][territoire]),
+            "non_classees_nl": sorted(nl["non_classees"][territoire]),
+        })
+    return {"territoires": territoires, "total_gaps": total_gaps}
+
+
+@app.route("/sources-provinces")
+@require_auth
+def sources_provinces():
+    """Sources et newsletters triées par PROVINCE — pour voir les manques (Franck,
+    2026-08-31). Aucune base : lit config/sources.txt et config/newsletters.txt."""
+    return render_template("sources_provinces.html", active="sources_provinces",
+                           **_sources_provinces_data())
+
+
 # ---------- Composeur de newsletter (Phase 1 : voir / curer / ordonner) ----------
 # Une newsletter par TERRITOIRE, envoyée le vendredi matin. On la compose toute la
 # semaine (dès lundi). Sélection auto = retenus du territoire dans la fenêtre, triés
