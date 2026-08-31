@@ -179,3 +179,10 @@ crontab INSTALLÉ a suivi :
 crontab -l | grep '19-20'   # ne doit RIEN rendre
 ```
 
+Si une ligne sort encore, le fichier du dépôt est propre — seule l'installation a pu
+rester en retard :
+
+```bash
+crontab crontab.txt
+```
+
