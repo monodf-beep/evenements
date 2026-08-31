@@ -54,6 +54,7 @@ load_dotenv(ROOT / ".env")
 from utils.logger import get_logger
 from utils import usage
 from utils import slack
+from utils import acronymes
 from utils.eventness import non_event_reason
 from utils.images import fetch_og_image
 from scripts.dates import extract_time
@@ -253,6 +254,7 @@ GARDE-FOUS STRICTS :
 - Pas de superlatifs creux ("incontournable", "magique", "à ne pas manquer"), aucun
   dark pattern (urgence factice, clickbait).
 - Ne dis JAMAIS « royaume de Sardaigne » : écris « les États de Savoie » (arbitrage Franck 2026-08-21 ; liste complète : config/vocabulaire_interdit.json).
+- SIGLES : à leur PREMIÈRE mention, développe-les avant de les employer seuls — « Théâtre national de Nice (TNN) », puis « le TNN » ensuite (arbitrage Franck 2026-08-18 ; liste complète : config/acronymes.json). N'invente AUCUN développement pour un sigle absent de cette liste : emploie-le tel quel.
 - Aucun surnom touristique de ville ("Venise des Alpes" pour Annecy, "Venise du Nord",
   "petite Venise", "perle des Alpes"...) — nomme la ville par son nom, jamais par une
   comparaison flatteuse de guide touristique (CHARTE §6).
@@ -1988,6 +1990,29 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
             log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
                      ev["id"], hs, pm, has_official, affiches, place)
         verser_confrontation(result, constat)
+        # SIGLES développés à leur première mention (Franck, 2026-08-18 puis 31/08 : « ça
+        # doit être une consigne dans le ton de rédaction, comme le vocabulaire déjà »).
+        # DÉTERMINISTE, en plus de la consigne du prompt ci-dessus : un rédacteur LLM peut
+        # oublier une instruction de FORMATAGE au milieu d'un prompt long — utils.acronymes
+        # ne peut pas l'oublier, elle n'agit que sur le dictionnaire confirmé, jamais
+        # n'invente, et est idempotente (deja_developpe() : rien ne s'empile). Décision de
+        # Franck le 31/08 : APPLIQUÉ SEULEMENT ICI (rédaction), jamais en rattrapage sur
+        # le stock déjà publié — conform_articles.py n'y touche pas exprès.
+        _art0 = result.get("article")
+        if isinstance(_art0, dict):
+            # UN SEUL contexte « déjà développé », partagé dans l'ORDRE DE LECTURE réel
+            # (titre → chapô → corps → encadré → programme) : sans ça, un sigle présent
+            # dans le titre ET le corps serait développé deux fois — une fois chacun,
+            # puisque chaque champ est un texte séparé pour `developper()`.
+            _sigles_vus: set[str] = set()
+            for _champ in ("titre", "chapo", "corps", "encadre"):
+                if isinstance(_art0.get(_champ), str) and _art0[_champ]:
+                    _art0[_champ] = acronymes.developper(_art0[_champ], "fr", _sigles_vus)
+            _prog0 = _art0.get("programme")
+            if isinstance(_prog0, list):
+                _art0["programme"] = [
+                    acronymes.developper(str(p), "fr", _sigles_vus) if isinstance(p, str)
+                    else p for p in _prog0]
         title, md = build_article_md(result)
         # Heure de DÉBUT réelle (déterministe, zéro coût — scripts.dates.extract_time) :
         # l'agent écrit souvent l'heure en PROSE (« à 21h30 ») sans qu'elle soit jamais

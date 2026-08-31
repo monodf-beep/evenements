@@ -45,6 +45,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils.lang import detect_lang, effective_lang, titre_semble_intraduit
 from utils.coherence import incoherence_description
+from utils import acronymes
 from scripts.scraper_events import init_db
 from scripts.publisher_as import (publish_to_as, wp_original_est_en_ligne,
                                   wp_site_joignable)
@@ -425,6 +426,19 @@ def translate_article(client, model, enrich_json: str, target: str,
             # quitte à laisser ces faits non traduits plutôt qu'en tronquer.
             log.warning("Programme traduit incohérent (%s≠%s lignes) — original conservé.",
                         len(op) if isinstance(op, list) else "?", len(prog_src))
+    # SIGLES développés à leur première mention, VERSION ITALIENNE (Franck, 2026-08-18
+    # puis 31/08). Même mécanisme déterministe qu'à la rédaction FR (scripts/enrich.py) :
+    # un contexte PARTAGÉ dans l'ordre de lecture, pour qu'un sigle du titre ET du corps
+    # ne soit pas développé deux fois. N'agit que sur les champs RETRADUITS ci-dessus —
+    # un champ non touché par cette traduction garde ce que la rédaction FR y a déjà mis.
+    _sigles_vus_it: set = set()
+    for _champ in ("titre", "chapo", "corps", "encadre"):
+        if isinstance(new_art.get(_champ), str) and new_art[_champ]:
+            new_art[_champ] = acronymes.developper(new_art[_champ], "it", _sigles_vus_it)
+    if isinstance(new_art.get("programme"), list):
+        new_art["programme"] = [
+            acronymes.developper(str(p), "it", _sigles_vus_it) if isinstance(p, str) else p
+            for p in new_art["programme"]]
     new_data = dict(data)
     new_data["article"] = new_art
     return json.dumps(new_data, ensure_ascii=False)

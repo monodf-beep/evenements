@@ -87,18 +87,25 @@ def a_developper(texte: str, langue: str = "fr") -> list[str]:
             if developpement(s, langue) and not deja_developpe(texte, s, langue)]
 
 
-def developper(texte: str, langue: str = "fr") -> str:
+def developper(texte: str, langue: str = "fr", deja_vus: set[str] | None = None) -> str:
     """Développe la PREMIÈRE mention de chaque sigle connu ; laisse les suivantes.
 
     Ne touche à rien si le développement est déjà là — sinon on l'empilerait à chaque
     passage, et une fiche republiée tous les jours finirait par ne plus contenir que ça.
-    """
+
+    `deja_vus` (optionnel) : les sigles DÉJÀ développés dans un champ précédent du MÊME
+    article — un titre puis un corps sont deux appels séparés (`developper()` ne voit
+    que le texte qu'on lui donne), et sans ce partage, un sigle présent dans les deux
+    serait développé DEUX FOIS : une fois dans le titre, une fois dans le corps. Passé en
+    mutable, l'appelant l'enrichit d'un champ à l'autre — voir scripts/enrich.py."""
     out = texte or ""
+    vus = deja_vus if deja_vus is not None else set()
     for sigle in sigles_presents(out):
         dev = developpement(sigle, langue)
-        if not dev or deja_developpe(out, sigle, langue):
+        if not dev or sigle in vus or deja_developpe(out, sigle, langue):
             continue
         out = _motif(sigle).sub(f"{dev} ({sigle})", out, count=1)
+        vus.add(sigle)
     return out
 
 

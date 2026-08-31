@@ -63,6 +63,18 @@ trouvé au 31/08 : la province de Novara (Piémont), zéro source ET zéro newsl
 
 ---
 
+## 0 sexies. Heure de l'événement — vérifier avant de déployer
+
+```bash
+curl -4 -sS https://agendasabauda.eu/wp-json/cs/v1/version
+```
+
+`404` → toujours pas déployé, suivre `docs/DEPLOIEMENT_WORDPRESS.md` §3 (Novamira,
+sauvegarde d'abord) pour coller `deploy/wordpress/cs-publish.php`. Une réponse JSON →
+déjà réglé par une autre voie, ne rien écraser sans vérifier ce qui tourne.
+
+---
+
 ## 1. Vérifier que le site répond
 
 ```bash

@@ -89,6 +89,43 @@ _check("   et le texte italien reçoit celle-là",
 _check("une langue absente du dictionnaire ne développe rien",
        developper("Le TNN joue", "es") == "Le TNN joue")
 
+print("\n──── LE CONTEXTE PARTAGÉ ENTRE CHAMPS (2026-08-31, décision de Franck) ────")
+# D'OÙ ÇA VIENT : la consigne s'applique à la rédaction, champ par champ (titre, chapô,
+# corps…). Sans contexte PARTAGÉ, un sigle présent dans le titre ET le corps serait
+# développé DEUX FOIS — chaque appel à developper() ne voit que son propre texte. C'est
+# le cas réel que scripts/enrich.py et scripts/translate_events.py doivent éviter.
+vus = set()
+titre = developper("Concert au TNN", "fr", vus)
+corps = developper("Rendez-vous au TNN ce soir, entrée libre.", "fr", vus)
+_check("le PREMIER champ développe le sigle", "Théâtre national de Nice (TNN)" in titre, titre)
+_check("le SECOND champ ne le redéveloppe pas — déjà vu dans le premier",
+       "Théâtre national de Nice" not in corps and "TNN" in corps, corps)
+_check("le sigle est bien passé dans l'ensemble partagé", vus == {"TNN"}, vus)
+# Contre-épreuve : SANS contexte partagé, le défaut se reproduit — pour être sûr que
+# le test précédent prouve quelque chose, pas un hasard de formulation.
+sans_contexte = developper("Rendez-vous au TNN ce soir, entrée libre.", "fr")
+_check("   (contre-épreuve : sans contexte partagé, ce même champ SE développe, seul)",
+       "Théâtre national de Nice (TNN)" in sans_contexte, sans_contexte)
+
+print("\n──── LES DEUX SCRIPTS DE RÉDACTION SONT CÂBLÉS, PAS SEULEMENT LE MODULE ────")
+# Décision de Franck, 2026-08-31 : « une consigne dans le ton de rédaction, comme le
+# vocabulaire déjà » — ET déterministe (une consigne de FORMATAGE au milieu d'un prompt
+# long peut être oubliée par le LLM ; utils.acronymes ne peut pas l'oublier). Appliqué
+# SEULEMENT à la rédaction (enrich = FR, translate_events = IT), jamais en rattrapage :
+# conform_articles.py (passe RÉTROACTIVE sur le stock déjà publié) n'y touche pas exprès.
+enrich_src = (ROOT / "scripts" / "enrich.py").read_text(encoding="utf-8")
+_check("enrich.py porte la consigne de prompt (comme le vocabulaire)",
+       "config/acronymes.json" in enrich_src and "SIGLES" in enrich_src)
+_check("enrich.py applique developper() de façon déterministe, contexte partagé",
+       "_sigles_vus" in enrich_src and "acronymes.developper(" in enrich_src)
+translate_src = (ROOT / "scripts" / "translate_events.py").read_text(encoding="utf-8")
+_check("translate_events.py applique developper() en italien, même logique de contexte",
+       "_sigles_vus_it" in translate_src and 'acronymes.developper(' in translate_src)
+conform_src = (ROOT / "scripts" / "conform_articles.py").read_text(encoding="utf-8")
+_check("conform_articles.py (rattrapage RÉTROACTIF) n'applique PAS l'expansion des sigles "
+       "— décision explicite de Franck : « ce sera pour les prochaines », pas le stock",
+       "acronymes.developper(" not in conform_src)
+
 print("\n──── le DÉTECTEUR de candidats : ce qu'il ne doit PAS ramasser ────")
 # Tous ces exemples viennent du corpus réel du 2026-08-17. Un détecteur naïf de
 # majuscules les prendrait tous pour des sigles, et la file serait inutilisable.
