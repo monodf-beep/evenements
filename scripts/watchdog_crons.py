@@ -124,6 +124,32 @@ ATTENDUS = [
     # fonctionnement normal. Sans cette ligne, une revue en panne serait indiscernable
     # d'une semaine sans défaut — et c'est précisément la semaine où l'on aimerait savoir.
     ("Revue du code",             "revue_hebdo",     "revue_hebdo.log",     200),
+    # ── SEPT OUBLIS TROUVÉS PAR L'AUDIT DE SIMPLIFICATION DU 2026-08-31 ──────────────
+    # Tous remplissent le critère d'inclusion écrit plus haut : ils sont SILENCIEUX quand
+    # tout va bien, donc leur panne ressemble trait pour trait à leur fonctionnement
+    # normal. Deux d'entre eux ont déjà coûté quelque chose :
+    #
+    #   • `auto_deploiement` est le SEUL mécanisme qui installe le crontab — s'il meurt,
+    #     ce fichier cesse d'avoir le moindre effet. C'est arrivé du 26 au 28/08 : le cron
+    #     du cerveau était committé, déployé, et jamais installé. Trois matins perdus,
+    #     signalés chaque jour par le bilan sans que rien ne les comble ;
+    #   • `site_health_check` s'annonçait « tourne chaque semaine en cron » dans son propre
+    #     commentaire alors qu'il n'avait jamais été relancé — deux semaines de faux points
+    #     affichés (crontab.txt, ligne de cette tâche).
+    #
+    # Et `slack_digest` est le cas le plus grave dans son genre : c'est le SEUL canal vers
+    # Franck. S'il casse, l'absence de messages ressemble exactement à un jour calme.
+    ("Déploiement autonome",      "auto_deploiement", "auto_deploiement.log", 30),
+    ("Digest Slack",              "slack_digest",    "slack_digest.log",     30),
+    ("Doublons publiés",          "verifier_doublons_publies", "verifier_doublons.log", 30),
+    # ⚠️ `sante.log` et non `publier_sante.log` : le nom du journal suit la REDIRECTION du
+    # crontab, pas le nom du script. Vérifié ligne à ligne — une entrée qui viserait le
+    # mauvais fichier crierait tous les jours, et un chien de garde qui crie à tort finit
+    # par ne plus être lu.
+    ("Relevé d'état (WordPress)", "publier_sante",   "sante.log",            30),
+    ("Santé des gabarits",        "gabarit_health",  "gabarit_health.log",   30),
+    ("Search Console",            "gsc_report",      "gsc_report.log",      200),
+    ("Santé du site (hebdo)",     "site_health_check", "site_health_check.log", 200),
 ]
 
 

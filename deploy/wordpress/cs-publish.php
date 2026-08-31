@@ -7,7 +7,10 @@ Description: Expose une route REST maison « /wp-json/cs/v1/event » qui crée o
   côté serveur : dates via tribe_create_event(), lieu (Venue), catégorie
   (tribe_events_cat), taxonomie maison « territoire », méta du contrat « as_* »,
   méta SEO Rank Math, image à la une (téléversée depuis l'URL), et AUTEUR selon le
-  score (Cultura Sabauda ≥ 7 / Agenda Sabauda < 7). TOUJOURS en status=draft.
+  score (Cultura Sabauda ≥ 7 / Agenda Sabauda < 7).
+  ⚠️ PAS « toujours en status=draft » — cette ligne l'a dit à tort pendant un mois.
+  Le défaut de $pub_status (plus bas) est 'publish' : sans 'status' dans le payload,
+  la fiche part EN LIGNE PUBLIQUE. Rétabli le 2026-08-31 (audit de simplification).
 Author: Cultura Sabauda
 Version: 1.0
 

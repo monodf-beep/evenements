@@ -99,8 +99,15 @@ def main(argv=None) -> int:
               "scripts ont posté eux-mêmes. `--voir` et logs/slack/ tranchent.")
         log.info("Boîte vide.")
         return 0
-    print(f"{n} rapport(s) regroupé(s) — {'envoyé' if envoye else 'ÉCHEC D’ENVOI, '
-                                          'contenu remis en boîte pour le prochain vidage'}.")
+    # ⚠️ NE PAS remettre d'apostrophes imbriquées dans cette f-string. La version d'origine
+    # (13/08) coupait une chaîne interne sur deux lignes AVEC les mêmes quotes que la
+    # f-string : c'est valide à partir de Python 3.12 seulement (PEP 701), et `install.sh`
+    # accepte 3.10+. Sur 3.10 ou 3.11, le fichier ne s'IMPORTE même pas — et comme aucune
+    # fixture ne l'importait, la porte de déploiement ne pouvait pas le voir. Ce module est
+    # le SEUL canal vers Franck (les deux vidages de 11h45 et 20h) : sa panne aurait
+    # ressemblé trait pour trait à une journée calme. Trouvé par l'audit du 31/08.
+    etat = "envoyé" if envoye else "ÉCHEC D'ENVOI, contenu remis en boîte pour le prochain vidage"
+    print(f"{n} rapport(s) regroupé(s) — {etat}.")
     log.info("Digest : %d rapport(s), envoyé=%s", n, envoye)
     return 0 if envoye else 1
 

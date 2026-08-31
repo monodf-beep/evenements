@@ -55,6 +55,13 @@ REGISTRE_JSON = CONFIG / "lieux_villes.json"
 _ALIAS = {
     "aosta": "aoste",
     "torino": "turin",
+    # Forme COURANTE ≠ nom officiel. Le registre des communes porte « Chamonix-Mont-Blanc »
+    # (nom légal) ; sources, affiches et titres écrivent « Chamonix » tout court. Sans cet
+    # alias, la commune la plus visible du massif est inconnue de tout contrôle qui
+    # s'appuie sur le registre. Ajouté le 2026-08-31 en branchant `utils/provinces.py` sur
+    # le registre officiel : c'est exactement la commune que la liste écrite à la main
+    # connaissait et que le registre, lui, nomme autrement.
+    "chamonix": "chamonix mont blanc",
 }
 
 

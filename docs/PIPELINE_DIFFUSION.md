@@ -17,7 +17,17 @@ Une fois qu'un événement est **retenu, daté, illustré, rédigé** (voir `IMA
 | **Régie pub** | blocs pub de la home WP | `/regie*` + `/api/active-ads` | 0 | Saisie manuelle |
 
 **Deux constantes de sécurité, partout :**
-- **Rien ne se publie « en live » tout seul.** WordPress reçoit toujours `status=draft` (les deux publishers), Brevo reçoit un **brouillon** (jamais de `scheduledAt`, cf. `utils/brevo.py`), Instagram n'est jamais posté en boucle automatique.
+- ⚠️ **CORRIGÉ LE 2026-08-31 — cette ligne était FAUSSE, et c'était la contradiction la
+  plus coûteuse du dépôt.** Elle disait « Rien ne se publie en live tout seul, WordPress
+  reçoit toujours `status=draft` ». **Le chemin Agenda Sabauda publie EN LIGNE
+  PUBLIQUE, immédiatement, sans relecture humaine** : `publish_batch_as` n'envoie aucun
+  `status`, et `cs-publish.php` applique son défaut `'publish'`. C'est ainsi depuis le
+  2026-07-31 ; la correction n'avait été écrite que dans la docstring de
+  `publish_batch_as`, et trois autres endroits promettaient encore un garde-fou humain
+  inexistant. Ce qui protège la publication, ce sont les contrôles AMONT (eventness,
+  complétude, verrou radar), pas un clic.
+- Brevo reçoit bien un **brouillon** (jamais de `scheduledAt`, cf. `utils/brevo.py`), et
+  Instagram n'est jamais posté en boucle automatique. Ces deux-là restent vrais.
 - Le **radar** (source de presse) n'est **jamais crédité ni lié** (charte §8) : `url_source` est vidé sur les fiches radar dans chaque canal (`is_radar` / `_is_radar`).
 
 ### Schéma — les canaux de diffusion depuis une fiche

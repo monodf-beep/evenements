@@ -1,51 +1,35 @@
 ================================================================================
-AGENDA SABAUDA — Crontab Configuration
+AGENDA SABAUDA — ⚠️ CE FICHIER N'EST PLUS LA RÉFÉRENCE. NE PAS L'INSTALLER.
 ================================================================================
 
-Installation (on your VPS as root):
-  crontab -e
-  (paste the entries below)
-  OR
-  crontab deploy/CRONTAB_SETUP.txt
+Le crontab de la machine, c'est  →  crontab.txt  (à la racine du dépôt).
 
-Setup (one-time):
-  chmod +x /root/evenements/deploy/cron_pipeline.sh
-  mkdir -p /root/evenements/logs
+NE TAPEZ PAS `crontab deploy/CRONTAB_SETUP.txt`.
 
-================================================================================
+POURQUOI, ET CE QUE ÇA CASSERAIT (trouvé par l'audit de simplification du 2026-08-31) :
 
-# Agenda Sabauda — collecte, préparation, porte qualité
-# Fenêtre de travail glissante : 180 jours par défaut (PIPELINE_WINDOW_DAYS)
+`crontab <fichier>` REMPLACE la table entière — ce n'est pas un ajout. Ce fichier ne
+portait plus que 6 lignes quand `crontab.txt` en porte 37. L'installer effacerait donc
+d'un coup le déploiement autonome de 7h50, la chaîne du matin, les deux digests Slack,
+le chien de garde de midi et tout le reste.
 
-# Pipeline complet — quotidien à 6h05
-5 6 * * * /root/evenements/deploy/cron_pipeline.sh >> /root/evenements/logs/cron_pipeline.log 2>&1
+Et l'effet aurait été DOUBLEMENT déroutant : `scripts/auto_deploiement` réinstalle
+`crontab.txt` chaque matin, même les jours sans déploiement. Les lignes posées depuis ici
+auraient donc disparu au plus tard le lendemain à 7h50, sans explication — après avoir
+supprimé le reste entre-temps.
 
-# Auto-complétion seule — 6h40 (rattrape ce qui reste, optionnel)
-40 6 * * * /root/evenements/deploy/cron_pipeline.sh autocomplete >> /root/evenements/logs/cron_pipeline.log 2>&1
+────────────────────────────────────────────────────────────────────────────────
+CE QUE CE FICHIER CONTENAIT ET QUE `crontab.txt` NE REPREND PAS
+────────────────────────────────────────────────────────────────────────────────
 
-# Brouillon newsletter — lundi 7h00 (envoi manuel ensuite)
-0 7 * * 1 /root/evenements/deploy/cron_pipeline.sh newsletter >> /root/evenements/logs/cron_pipeline.log 2>&1
+Conservé ici comme mémoire, PAS comme instructions — c'est un arbitrage en attente, pas
+un oubli à réparer à l'aveugle (voir docs/AUDIT_SIMPLIFICATION_2026-08-31.md) :
 
-# Audit visuel (planches contact + agent vision) — dimanche 5h00
-# Digest Slack des photos suspectes, hebdomadaire (coût non-nul)
-0 5 * * 0 /root/evenements/deploy/cron_pipeline.sh images-audit >> /root/evenements/logs/cron_pipeline.log 2>&1
+  • `deploy/cron_pipeline.sh` (le pipeline complet en un seul lanceur, 6h05) — jamais
+    planifié : le crontab réel appelle les scripts un par un, et `crontab.txt` l'explique
+    à sa ligne « ⚠️ Ajouté ICI et pas seulement dans deploy/cron_pipeline.sh » ;
+  • `scripts/ig_scheduler.py` (toutes les 15 min) — publication Instagram programmée ;
+  • `scripts/semaine_reminder.py` (lundi 9h) — rappel de la session « Cette semaine ».
 
-# Rappel Slack hebdomadaire — lundi 9h00 pour la session « Cette semaine »
-0 9 * * 1 cd /root/evenements && .venv/bin/python3 -m scripts.semaine_reminder >> /root/evenements/logs/semaine_reminder.log 2>&1
-
-# Publications Instagram programmées — toutes les 15 min (scheduler séparé)
-# L'API Graph n'offre pas de programmation native ; ce script fait le travail
-*/15 * * * * cd /root/evenements && .venv/bin/python3 -m scripts.ig_scheduler >> /root/evenements/logs/ig_scheduler.log 2>&1
-
-================================================================================
-
-Monitoring logs:
-  tail -f /root/evenements/logs/cron_pipeline.log
-  tail -f /root/evenements/logs/semaine_reminder.log
-  tail -f /root/evenements/logs/ig_scheduler.log
-
-Testing (before enabling in crontab):
-  /root/evenements/deploy/cron_pipeline.sh          # full pipeline
-  /root/evenements/deploy/cron_pipeline.sh autocomplete     # quick test
-  .venv/bin/python3 -m scripts.semaine_reminder --dry-run   # preview message
-  .venv/bin/python3 -m scripts.ig_scheduler --help  # check options
+Les deux derniers sont écrits, corrects, et n'ont jamais tourné. Les brancher est une
+décision (l'un publie sur un réseau social, l'autre écrit sur Slack), pas un nettoyage.

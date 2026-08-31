@@ -76,7 +76,16 @@ INTERDITS=(Write Edit NotebookEdit WebFetch WebSearch)
 
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') — cerveau du matin ===" >> "$JOURNAL"
 
-SORTIE="$("$CLAUDE" -p "$(cat config/consigne_cerveau.txt)" \
+# PLAFOND DE DURÉE — ajouté le 2026-08-31 par l'audit de simplification, qui a trouvé
+# que le cerveau n'en avait aucun alors que `agent_quotidien.sh` en porte un depuis
+# toujours, pour une raison qui vaut ici mot pour mot : « un agent qui attend quelque
+# chose attend indéfiniment, et dans un cron il resterait planté sans que personne le
+# sache — le chien de garde ne s'inquiète qu'après 30 heures ».
+#
+# 900 s (15 min) et pas 1200 : son CONTRÔLEUR passe à 11h00, soit 20 minutes après lui.
+# S'il débordait, le bilan lirait un journal tronqué et CERTIFIERAIT un travail partiel —
+# un contrôleur qui valide à tort est pire qu'un contrôleur absent.
+SORTIE="$(timeout 900 "$CLAUDE" -p "$(cat config/consigne_cerveau.txt)" \
   --allowedTools "${OUTILS[@]}" \
   --disallowedTools "${INTERDITS[@]}" \
   --strict-mcp-config \

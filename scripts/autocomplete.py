@@ -11,8 +11,11 @@ réutilisant tout l'outillage existant, du plus sûr au dernier recours :
               (la bannière territoire reste le filet ; on préfère une vraie photo vérifiée)
 
 Puis il RE-VÉRIFIE la complétude et émet un SIGNAL :
-    • « bon »     → tout est là : on POUSSE en brouillon sur Agenda Sabauda
-                    (draft, jamais en ligne auto) + notification Slack ;
+    • « bon »     → tout est là : on POUSSE sur Agenda Sabauda + notification Slack.
+                    ⚠️ PAS « en brouillon, jamais en ligne auto » — cette ligne le disait
+                    à tort. Sans `status` dans le payload, `cs-publish.php` publie EN
+                    LIGNE (corrigé le 2026-08-31, cinquième et dernier endroit qui
+                    promettait une relecture humaine inexistante) ;
     • « pas bon » → il manque encore : l'événement RESTE dans le dashboard
                     (liste « À compléter ») + notification Slack à Franck avec la
                     liste des manques, pour qu'il complète (dashboard ou réponse Slack).

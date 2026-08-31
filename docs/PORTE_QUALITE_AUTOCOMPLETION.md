@@ -28,7 +28,9 @@ Six champs **obligatoires** (`utils/completeness.py` — source unique de vérit
 Pour chaque événement **retenu, à venir, incomplet** : il complète (date → lieu →
 image, du plus sûr au dernier recours), **re-vérifie**, puis :
 
-- **complet** → pousse en **brouillon** Agenda Sabauda (jamais en ligne auto) +
+- **complet** → pousse sur Agenda Sabauda. ⚠️ **PAS en brouillon** (corrigé le
+  2026-08-31) : `publish_batch_as` n'envoie aucun `status`, `cs-publish.php` applique
+  son défaut `'publish'` → la fiche est EN LIGNE PUBLIQUE aussitôt, sans relecture. +
   Slack ✅ ;
 - **incomplet** → **reste** dans le dashboard (onglet « À compléter ») + Slack ⚠️
   avec la **liste des manques**.
@@ -97,6 +99,8 @@ Sans `SLACK_WEBHOOK_URL`, les signaux sont simplement ignorés (rien ne casse).
 
 ## 7. Sécurité (rappel)
 
-Publication **toujours** en `draft`. Aucun secret dans le dépôt (tout en `.env`).
+⚠️ Publication **EN LIGNE**, pas en `draft` (corrigé le 2026-08-31 — voir plus haut :
+ce document promettait un garde-fou humain qui n'existe pas depuis le 31/07).
+Aucun secret dans le dépôt (tout en `.env`).
 Le webhook Slack et le signing secret sont **révocables**. La recherche web d'image
 respecte la charte §8 (source licenciable/institutionnelle, jamais le radar crédité).

@@ -130,11 +130,18 @@ crontab -l               # vérifier
 ## Mettre à jour (déploiements suivants)
 
 ```bash
-cd /root/evenements && bash deploy.sh
+cd /root/evenements && bash deploy/update.sh
 ```
 
-`deploy.sh` force la branche canonique, met à jour les dépendances et redémarre
-le service. Les secrets et la base `data/events.db` sont préservés (non suivis par git).
+`deploy/update.sh` force la branche canonique, met à jour les dépendances et redémarre
+le service. Les secrets et la base `data/events.db` sont préservés (non suivis par git),
+et **`.claude/settings.json` aussi** — c'est ce qui distingue ce script.
+
+⚠️ **Corrigé le 2026-08-31.** Ce document disait `bash deploy.sh`, un second script qui
+faisait la même chose SANS préserver `.claude/settings.json` : le suivre rejouait
+l'incident du 11/08 (permissions d'autonomie effacées en silence par un déploiement).
+`deploy.sh` délègue désormais ici, mais c'est `deploy/update.sh` qu'il faut taper —
+c'est aussi ce que dit CLAUDE.md, et ce qu'appelle le déploiement autonome de 7h50.
 
 ## Dépannage
 

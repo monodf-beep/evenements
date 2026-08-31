@@ -10,7 +10,17 @@ Tout le travail TEC se fait CÔTÉ SERVEUR dans le mu-plugin deploy/wordpress/
 cs-publish.php (route REST cs/v1/event : tribe_create_event, lieu, catégorie
 tribe_events_cat, taxonomie « territoire », méta « as_* », SEO Rank Math, image à
 la une, auteur selon le score). Ici on construit un JSON propre et on l'envoie.
-TOUJOURS status=draft côté serveur — jamais publish automatiquement.
+⚠️ NON : les fiches partent EN LIGNE PUBLIQUE, pas en brouillon. Cette ligne a dit le
+contraire pendant un mois. Le payload ne fixe AUCUN `status`, et `cs-publish.php` applique
+alors son défaut, qui est `'publish'` (deploy/wordpress/cs-publish.php, `$pub_status`).
+Corrigé dans la docstring de `publish_batch_as` le 2026-07-31 ; la correction n'avait été
+propagée ni ici, ni dans cs-publish.php, ni dans docs/PIPELINE_DIFFUSION.md — quatre
+endroits promettaient une relecture humaine qui n'existe pas. Rétabli le 2026-08-31 par
+l'audit de simplification.
+
+Ce qui protège la publication n'est donc PAS un humain : ce sont les garde-fous AMONT
+(eventness, complétude, verrou radar, porte de `daily_batch._porte_publication`). Les
+affaiblir, c'est publier faux — il n'y a personne derrière.
 
 Variables .env dédiées (ne PAS réutiliser celles de culturasabauda.eu) :
   WP_AS_URL=https://agendasabauda.eu

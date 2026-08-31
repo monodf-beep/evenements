@@ -28,21 +28,33 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from utils.provinces import province_de  # noqa: E402
+from utils.provinces import province_de, provinces_savoie  # noqa: E402
 
 SOURCES_FILE = ROOT / "config" / "sources.txt"
 NEWSLETTERS_FILE = ROOT / "config" / "newsletters.txt"
 
-# Toutes les provinces CONNUES, même à 0 source — sinon une province totalement absente
-# de sources.txt disparaîtrait du tableau au lieu d'afficher son zéro (règle 6 : un zéro
-# doit dire son dénominateur).
-_TOUTES_PROVINCES = {
-    "Savoie": ("Savoie", "Haute-Savoie"),
-    "Piemonte": ("Torino", "Cuneo", "Alessandria", "Asti", "Biella", "Novara",
-                "Verbano-Cusio-Ossola", "Vercelli"),
-    "Vallee-Aoste": ("Vallée d'Aoste",),
-    "Nice": ("Comté de Nice",),
-}
+def _provinces_connues() -> dict[str, tuple[str, ...]]:
+    """Toutes les provinces connues, même à 0 source — sinon une province absente de
+    sources.txt disparaîtrait du tableau au lieu d'afficher son zéro (règle 6 : un zéro
+    doit dire son dénominateur).
+
+    ⚠️ LUES, jamais recopiées (audit du 31/08). La première version écrivait les huit noms
+    piémontais en dur ici, alors qu'ils sont déjà les clés de
+    `config/provinces_piemonte.json` — troisième exemplaire d'un même dénominateur, dans
+    un dépôt qui a déjà payé la duplication de config une fois (« Venise des Alpes »).
+    Le versant français se déduit du département, comme dans `utils.provinces`."""
+    import json
+    piemonte = json.loads((ROOT / "config" / "provinces_piemonte.json")
+                          .read_text(encoding="utf-8"))
+    return {
+        "Savoie": provinces_savoie(),
+        "Piemonte": tuple(p for p in piemonte if not p.startswith("_")),
+        "Vallee-Aoste": ("Vallée d'Aoste",),
+        "Nice": ("Comté de Nice",),
+    }
+
+
+_TOUTES_PROVINCES = _provinces_connues()
 
 
 def lire_sources(chemin: Path, colonne_ville: int | None) -> list[dict]:

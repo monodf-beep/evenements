@@ -71,6 +71,46 @@ print("\n──── un territoire hors périmètre ne casse rien ────"
 _check("un territoire inconnu rend None plutôt que lever",
        province_de("Grasse", "Cannes", "") is None)
 
+print("\n──── AUCUNE LISTE DE COMMUNES RECOPIÉE (audit du 31/08) ────")
+# D'OÙ ÇA VIENT : la première version de utils/provinces.py, écrite le matin même,
+# chargeait un `config/provinces_savoie.json` de 45 communes écrites À LA MAIN — alors
+# que `config/communes_savoie_dept.json` en portait 552 avec leur département depuis le
+# 24/08. Les deux avaient divergé le jour de leur création (dix entrées fantômes, dont
+# des stations qui ne sont pas des communes). C'est l'incident « Venise des Alpes »
+# rejoué en une heure. Cette fixture interdit qu'il se rejoue une troisième fois.
+from utils.provinces import _TABLES  # noqa: E402
+_check("le registre savoyard vient du fichier des 552, pas d'une liste à la main",
+       len(_TABLES["savoie"]) > 500, len(_TABLES["savoie"]))
+_check("   et le fichier écrit à la main a bien disparu",
+       not (ROOT / "config" / "provinces_savoie.json").exists())
+# ⚠️ CÔTÉ PIÉMONT, le fichier reste — et c'est justifié : `communes_italiennes.json`
+# liste les communes SANS dire leur province, l'information est donc neuve, pas recopiée.
+# Ce qu'il faut garder, c'est qu'aucune commune ne reçoive DEUX provinces (erreur franche,
+# invisible à la lecture d'un JSON de 8 listes).
+import json as _json  # noqa: E402
+from utils.lieux import plie  # noqa: E402
+
+_brut = _json.loads((ROOT / "config" / "provinces_piemonte.json").read_text(encoding="utf-8"))
+_vues, _doublons = set(), []
+for _prov, _communes in _brut.items():
+    if _prov.startswith("_"):
+        continue
+    for _c in _communes:
+        if plie(_c) in _vues:
+            _doublons.append(_c)
+        _vues.add(plie(_c))
+_check("aucune commune piémontaise n'est rangée dans deux provinces à la fois",
+       not _doublons, _doublons)
+# MESURE, pas verdict : combien de communes du registre italien n'ont pas encore de
+# province ? Le registre s'assume incomplet (`_piemont_incomplet`), donc un écart n'est
+# pas une faute — mais il doit se VOIR, sinon il grandit en silence (règle 6).
+_ital = _json.loads((ROOT / "config" / "communes_italiennes.json").read_text(encoding="utf-8"))
+_connues = {plie(c) for c in _ital.get("piemont", [])}
+_sans_province = sorted(_connues - set(_TABLES["piemonte"]))
+print(f"      · {len(_connues - set(_sans_province))} des {len(_connues)} communes du "
+      f"registre italien ont une province ; {len(_sans_province)} n'en ont pas encore"
+      + (f" ({', '.join(_sans_province[:6])}…)" if _sans_province else ""))
+
 print("\n──── l'audit tourne sur les VRAIES données et trouve un vrai manque ────")
 # Contre-épreuve avec les fichiers réels du dépôt : Novara n'a, au 31/08, ni source RSS
 # ni newsletter suivie — un manque resté invisible tant que le compteur restait agrégé
