@@ -154,7 +154,9 @@ que ce premier passage n'a pas été relu.
 ```
 
 Ou directement dans le back-office : `/sources-provinces` (menu Analyse). Manque déjà
-trouvé au 31/08 : la province de Novara (Piémont), zéro source ET zéro newsletter.
+trouvé au 31/08 : la province de Novara (Piémont), zéro source RSS. Le zéro newsletter a
+été comblé le même jour (recherche exhaustive, voir `AU_RETOUR_2026-09-03.md`
+section 0 septies) — le zéro source RSS, lui, reste ouvert.
 
 ---
 

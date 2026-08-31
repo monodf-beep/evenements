@@ -112,14 +112,16 @@ print(f"      · {len(_connues - set(_sans_province))} des {len(_connues)} commu
       + (f" ({', '.join(_sans_province[:6])}…)" if _sans_province else ""))
 
 print("\n──── l'audit tourne sur les VRAIES données et trouve un vrai manque ────")
-# Contre-épreuve avec les fichiers réels du dépôt : Novara n'a, au 31/08, ni source RSS
-# ni newsletter suivie — un manque resté invisible tant que le compteur restait agrégé
-# au niveau « Piemonte ». Si cette assertion casse un jour, c'est une BONNE nouvelle
-# (le manque a été comblé) : à confirmer avant de simplement l'ajuster.
+# Contre-épreuve avec les fichiers réels du dépôt. Jusqu'au 31/08, Novara n'avait ni
+# source RSS ni newsletter suivie — un manque resté invisible tant que le compteur
+# restait agrégé au niveau « Piemonte ». Comblé le 31/08 (recherche exhaustive demandée
+# par Franck : newsletter « Restiamo in contatto » du Comune di Novara, vérifiée en
+# ligne). L'assertion porte maintenant sur ce qui reste réellement à 0 : aucune source
+# RSS pour Novara (la newsletter ne remplace pas un flux à scraper).
 import scripts.audit_sources_provinces as asp  # noqa: E402
 rap = asp.rapport()
-_check("Novara ressort comme province sans aucune couverture (état réel, 31/08)",
-       "| Novara | 0 | 0 |" in rap, rap[rap.find("## Piemonte"):rap.find("## Piemonte") + 900])
+_check("Novara reste sans aucune source RSS (newsletter comblée le 31/08)",
+       "| Novara | 0 | 1 |" in rap, rap[rap.find("## Piemonte"):rap.find("## Piemonte") + 900])
 _check("le rapport dit le TOTAL de provinces connues (pas de zéro sans dénominateur)",
        "provinces connues" in rap)
 _check("les sources régionales sans ville restent comptées, jamais silencieuses",

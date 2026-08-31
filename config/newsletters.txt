@@ -104,6 +104,10 @@ Comune di Cossato (RSS + newsletter réels, plugin tnp);comune.cossato.bi.it;Pie
 Comune di Casale Monferrato (RSS + newsletter réels, plugin tnp);comune.casale-monferrato.al.it;Piemonte;candidat;https://www.comune.casale-monferrato.al.it/newsletter
 Comune di Domodossola (RSS + newsletter réels, plugin tnp);comune.domodossola.vb.it;Piemonte;candidat;https://www.comune.domodossola.vb.it/newsletter
 Stresa Festival (RSS + newsletter réels);stresafestival.eu;Piemonte;candidat;https://www.stresafestival.eu/newsletter
+# Recherche exhaustive du 31/08 (demande Franck), ciblée sur les provinces à 0 : Asti et
+# Novara n'avaient RIEN — première fois que ces deux provinces ont une newsletter connue.
+Comune di Novara — « Restiamo in contatto » (hebdo, culture/tempo libero);comune.novara.it;Piemonte;candidat;https://integrazioni.comune.novara.it/drupal/servizi/cultura-tempo-libero/newsletter
+Asti Cultura (mensuel, Assessorato alla Cultura — comble la province d'Asti, à 0 jusqu'ici);comune.asti.it;Piemonte;candidat;https://facebook.us17.list-manage.com/subscribe?u=cf0da99f64696d191c59de8c1&id=a717b9a45c
 #fuoriluogo (festival littéraire, Biella, Mailchimp confirmé);fuoriluogofestival.it;Piemonte;candidat;https://www.fuoriluogofestival.it/
 Sacro Monte di Varallo (UNESCO, newsletter confirmée — RSS existe mais vide au 18/08);sacri-monti.com;Piemonte;candidat;https://www.sacri-monti.com/Newsletter
 Artissima (foire d'art contemporain, Torino — formulaire confirmé);artissima.art;Piemonte;candidat;https://www.artissima.art/newsletter/
