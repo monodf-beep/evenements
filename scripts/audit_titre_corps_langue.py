@@ -50,19 +50,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from utils.lang import _score  # noqa: E402 — heuristique déterministe, pas de LLM
+from utils.lang import lang_nette  # noqa: E402 — heuristique déterministe, pas de LLM
 from scripts.audit_substance_published import devant_nous  # noqa: E402
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-
-
-def _lang_nette(texte: str) -> str:
-    """'fr' / 'it' si le texte tranche nettement, '' sinon (ambigu ou vide) — même
-    seuil de marge (>=2) que `detect_lang` pour rester cohérent avec le reste du dépôt."""
-    fr, it = _score(texte or "")
-    if abs(fr - it) < 2:
-        return ""
-    return "it" if it > fr else "fr"
 
 
 def _corps_de(ev: dict) -> str:
@@ -129,8 +120,8 @@ def main(argv=None) -> int:
     tranchables = []
     ecarts = []
     for r in publiees:
-        lt = _lang_nette(r.get("title") or "")
-        lc = _lang_nette(_corps_de(r))
+        lt = lang_nette(r.get("title") or "")
+        lc = lang_nette(_corps_de(r))
         if not lt or not lc:
             continue
         tranchables.append(r)

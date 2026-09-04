@@ -57,6 +57,7 @@ from utils import slack
 from utils import acronymes
 from utils.eventness import non_event_reason
 from utils.images import fetch_og_image
+from utils.lang import lang_nette
 from scripts.dates import extract_time
 from scripts.scraper_events import init_db
 
@@ -1324,6 +1325,26 @@ def sync_checks(conn: sqlite3.Connection, event_id: int, labels) -> None:
         conn.execute("INSERT INTO checks (event_id, label) VALUES (?, ?)", (event_id, label))
 
 
+def titre_corps_langue_desaccord(art: dict) -> tuple[str, str, str] | None:
+    """(langue du titre, langue du corps, texte du corps) si le TITRE de l'article et
+    son CORPS (chapô+corps) parlent nettement des langues différentes — None sinon (titre
+    absent, ou l'une des deux langues trop ambiguë pour trancher).
+
+    Pure, déterministe, testable sans appel API (`tests/test_enrich_titre_langue.py`) —
+    la correction elle-même (appel LLM) reste dans `_process_one_event`, qui seul a un
+    `client` et un budget. Voir le commentaire à l'appel : trouvé le 2026-09-04, WP#7472
+    « Regine in Scena » publiée avec un titre resté italien sous un corps français."""
+    titre = (art.get("titre") or "").strip()
+    if not titre:
+        return None
+    corps_ref = f"{art.get('chapo', '')} {art.get('corps', '')}"
+    lang_titre = lang_nette(titre)
+    lang_corps = lang_nette(corps_ref)
+    if lang_titre and lang_corps and lang_titre != lang_corps:
+        return lang_titre, lang_corps, corps_ref
+    return None
+
+
 def build_article_md(data: dict) -> tuple[str, str]:
     """Assemble (titre, markdown) depuis le JSON de l'agent (déterministe)."""
     from utils.clean_text import polish_prose
@@ -2013,6 +2034,36 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                 _art0["programme"] = [
                     acronymes.developper(str(p), "fr", _sigles_vus) if isinstance(p, str)
                     else p for p in _prog0]
+        # TITRE vs CORPS, même langue ? (2026-09-04, WP#7472 « Regine in Scena »). Le
+        # prompt fait écrire le CORPS dans la langue voulue (français par défaut, cf.
+        # docstring de `utils.lang.effective_lang`), mais le champ « titre » du JSON
+        # n'obéit pas à la même consigne — l'agent peut le laisser tel quel dans la
+        # langue SOURCE. `detect_lang(titre, description)` classe ensuite souvent la
+        # fiche côté FR (le corps, plus long, pèse plus que le titre), et un titre resté
+        # italien se publie sous une fiche étiquetée française sans que rien ne l'arrête.
+        # Corrigé ICI, AVANT `build_article_md`, pour que `article_title`, le "# titre"
+        # en tête de `article_md` et le `enrich_data` restent cohérents entre eux — un
+        # seul titre corrigé, jamais trois versions qui divergent.
+        _art_courant = result.get("article")
+        _desaccord = titre_corps_langue_desaccord(_art_courant if isinstance(_art_courant, dict) else {})
+        if _desaccord:
+            _lang_titre, _lang_corps, _corps_ref = _desaccord
+            log.warning("[%d] titre d'article en %s alors que le corps est en %s — "
+                        "retraduction du titre seul avant publication : « %s »",
+                        ev["id"], _lang_titre, _lang_corps, _art_courant["titre"][:60])
+            from scripts.translate_events import translate_title_desc
+            from utils.voix import voix_block
+            _correction = translate_title_desc(
+                client, model, _art_courant["titre"], _corps_ref, _lang_corps,
+                voix=voix_block())
+            if _correction and _correction.get("title"):
+                _art_courant["titre"] = _correction["title"]
+                log.info("[%d] titre d'article corrigé en %s : « %s »",
+                         ev["id"], _lang_corps, _correction["title"][:60])
+            else:
+                log.warning("[%d] retraduction du titre ÉCHOUÉE — titre laissé tel "
+                            "quel, restera signalé par "
+                            "scripts.audit_titre_corps_langue.", ev["id"])
         title, md = build_article_md(result)
         # Heure de DÉBUT réelle (déterministe, zéro coût — scripts.dates.extract_time) :
         # l'agent écrit souvent l'heure en PROSE (« à 21h30 ») sans qu'elle soit jamais

@@ -87,6 +87,22 @@ def _score(text: str) -> tuple[int, int]:
     return fr, it
 
 
+def lang_nette(text: str) -> str:
+    """'fr' / 'it' si `text` tranche nettement (marge >= 2, même seuil que `detect_lang`),
+    '' sinon — texte trop court, ambigu, ou un simple nom propre.
+
+    Partagée par `scripts.enrich` (aligner le TITRE sur la langue du CORPS avant
+    publication — trouvé le 2026-09-04 : WP#7472 « Regine in Scena » publiée avec un
+    titre resté italien sous un corps français, `enrich_event` n'écrivant que le CORPS
+    en français par défaut, jamais le champ « titre » de l'article) et
+    `scripts.audit_titre_corps_langue` (l'audit lecture seule du même écart sur le stock
+    déjà publié). Une seule fonction pour ne pas faire diverger le seuil entre les deux."""
+    fr, it = _score(text)
+    if abs(fr - it) < 2:
+        return ""
+    return "it" if it > fr else "fr"
+
+
 # Part des mots du titre traduit déjà présents dans le titre SOURCE au-delà de laquelle
 # on considère que le traducteur n'a pas réécrit le titre, il l'a RECOPIÉ. 0.8 laisse
 # passer un mot changé sur cinq — au-dessus, ce n'est plus une traduction.
