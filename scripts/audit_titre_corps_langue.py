@@ -22,12 +22,24 @@ n'ait retraduit le titre : la fiche sort bien côté FR, mais son titre ment.
 
 CE QUE CE SCRIPT FAIT. Pour chaque fiche PUBLIÉE encore devant nous (règle 5), on
 compare :
-  - la langue du TITRE SEUL (`_score` sur `title`, décision nette uniquement — un titre
-    ambigu, ex. un seul nom propre, ne prouve rien et est écarté) ;
-  - la langue du CORPS SEUL (`_score` sur l'article rédigé si présent — chapô+corps —
-    sinon sur `description`, décision nette uniquement).
+  - la langue du TITRE RÉELLEMENT SERVI par WordPress (`_titre_publie` : même priorité
+    que `build_post` — `article_title`, puis `enrich_data.article.titre`, puis `title`
+    brut en dernier repli SEULEMENT — décision nette uniquement, un titre ambigu comme
+    un simple nom propre ne prouve rien et est écarté) ;
+  - la langue du CORPS SEUL (chapô+corps de l'article rédigé s'il existe, sinon
+    `description`, décision nette uniquement).
 Un écart entre les deux, quand les deux sont nets, est le signe concret du bug : le
 lecteur voit un titre dans une langue et un texte dans une autre.
+
+⚠️ CORRIGÉ le 2026-09-04, quelques minutes après la première version : celle-ci
+comparait le CORPS au `title` BRUT (la colonne scrapée), pas au titre RÉELLEMENT
+publié. Or dès qu'un article existe, `build_post` sert `article_title` en priorité —
+`title` n'est qu'un dernier repli, jamais affiché tel quel dans ce cas. Conséquence
+mesurée : 29 écarts annoncés, dont 25 étaient déjà résolus dans `article_title` et ne
+sortaient donc PAS en ligne dans la mauvaise langue. `scripts.fix_titre_corps_langue`,
+qui lisait directement `enrich_data.article.titre` (la bonne source depuis le début),
+n'en a trouvé que 4 sur le même lot — l'écart entre les deux outils est ce qui a
+révélé l'erreur (comparer un chiffre à un autre chiffre, pas se relire soi-même).
 
 CE QU'ON EN FAIT. Une ligne ici est un CANDIDAT à retraduire le TITRE (pas la fiche
 entière) via `scripts.translate_events`, ou à vérifier à la main si le titre est un nom
@@ -56,16 +68,38 @@ from scripts.audit_substance_published import devant_nous  # noqa: E402
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
-def _corps_de(ev: dict) -> str:
+def _article_de(ev: dict) -> dict:
+    try:
+        return (json.loads(ev.get("enrich_data") or "") or {}).get("article") or {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def _corps_de(art: dict, ev: dict) -> str:
     """Le texte du CORPS publié : l'article rédigé (chapô+corps) s'il existe — c'est LUI
     que le lecteur voit sur la fiche — sinon la description brute. Jamais le titre."""
-    try:
-        art = (json.loads(ev.get("enrich_data") or "") or {}).get("article") or {}
-    except (ValueError, TypeError):
-        art = {}
     if art:
         return f"{art.get('chapo', '')} {art.get('corps', '')}"
     return ev.get("description") or ""
+
+
+def _titre_publie(art: dict, ev: dict) -> str:
+    """Le titre RÉELLEMENT servi par WordPress — même priorité que `build_post`
+    (scripts/publisher.py:87) : `article_title` d'abord, puis le champ « titre » de
+    l'article, puis `title` (le titre brut scrapé) en dernier repli.
+
+    ⚠️ CORRIGÉ le 2026-09-04, après avoir annoncé 29 écarts à Franck sur la foi du seul
+    `title` brut : la première version de ce script comparait le titre SCRAPÉ au corps,
+    pas le titre PUBLIÉ. Or `scripts.enrich` écrit l'article dans `enrich_data` et copie
+    son propre titre dans `article_title` — c'est CETTE colonne, prioritaire dans
+    `build_post`, que WordPress affiche, pas `title`. Sur 29 fiches signalées, 25 avaient
+    en réalité un `article_title`/`titre` d'article DÉJÀ dans la langue du corps ; seul le
+    `title` brut, jamais affiché tel quel dès qu'un article existe, était resté dans
+    l'autre langue. `scripts.fix_titre_corps_langue`, qui lit `enrich_data.article.titre`
+    (la bonne source), n'en a trouvé que 4 sur le même lot — c'est LUI qui avait raison."""
+    return ((ev.get("article_title") or "").strip()
+            or (art.get("titre") or "").strip()
+            or (ev.get("title") or "").strip())
 
 
 def cote_du_permalien(url: str) -> str:
@@ -120,13 +154,14 @@ def main(argv=None) -> int:
     tranchables = []
     ecarts = []
     for r in publiees:
-        lt = lang_nette(r.get("title") or "")
-        lc = lang_nette(_corps_de(r))
+        art = _article_de(r)
+        lt = lang_nette(_titre_publie(art, r))
+        lc = lang_nette(_corps_de(art, r))
         if not lt or not lc:
             continue
         tranchables.append(r)
         if lt != lc:
-            ecarts.append((r, lt, lc))
+            ecarts.append((r, lt, lc, _titre_publie(art, r)))
 
     print("=" * 78)
     print("Titre vs corps publiés — même langue ?")
@@ -151,11 +186,11 @@ def main(argv=None) -> int:
     print("l'adresse REST de la dernière colonne pour ça (règle 1, CLAUDE.md).\n")
     print("| Fiche | Titre | Corps | Servie | Titre publié | Vérifier (API REST) |")
     print("|---:|---|---|---|---|---|")
-    for r, lt, lc in ecarts:
+    for r, lt, lc, titre_publie in ecarts:
         servie = cote_du_permalien(r.get("wp_permalink_as") or "")
         marque = f"**{servie}**" if servie and servie not in (lt, lc) else (servie or "—")
         print(f"| {r['id']} | {lt} | {lc} | {marque} | "
-              f"{(r.get('title') or '')[:44]} | "
+              f"{titre_publie[:44]} | "
               f"{url_de_verification(r.get('wp_permalink_as') or '', r.get('wp_post_id_as'))} |")
     print()
     print("Pour chaque ligne : vérifier à la main si le titre est un NOM PROPRE resté")
