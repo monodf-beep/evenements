@@ -36,7 +36,6 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils import usage
 from scripts.dedupe import _sig_tokens
 from scripts.gmail_collect import (
     API_ERROR, DEFAULT_MODEL, build_service, extract_events, parse_message,

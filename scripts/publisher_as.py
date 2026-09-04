@@ -47,8 +47,7 @@ from utils.logger import get_logger
 from scripts.dates import extract_time
 from scripts.publisher import build_post, _map_category, _upload_featured_media
 # Détection des logos/pictogrammes + bannières de repli par territoire × catégorie + filtres image.
-from utils.sources import (is_logo_image, load_territory_images, load_territory_category_images,
-                           pick_banner_image, is_blocked_image, load_blocked_image_domains)
+from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains
 # Score « ça vaut le déplacement » dérivé des critères d'importance de l'évaluateur.
 from utils.deplacement import deplacement_score, deplacement_now
 from utils.une import une_now
@@ -303,14 +302,6 @@ def _source_publiable(event: dict, is_radar: bool) -> str:
                     event.get("id"), url[:80])
         return ""
     return url
-
-
-def _banner(event: dict, banners: dict, cat_banners: dict | None = None) -> str:
-    """Bannière de repli territoire × catégorie (vignette pertinente propre), ou
-    la bannière générique du territoire si la catégorie est absente/inconnue."""
-    return pick_banner_image(event.get("territoire", ""), event.get("llm_categorie", ""),
-                             key=str(event.get("id", "")),
-                             cat_images=cat_banners or {}, fallback_images=banners)
 
 
 def _is_radar(event: dict) -> bool:
@@ -703,12 +694,12 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
                 mode=(event.get("card_mode") or "auto"))
             if media_id:
                 hero_source = recovered
-    # Repli 2 (bannière territoire × catégorie) : plus besoin d'un appel séparé à
-    # _banner() ici — quand ni la vraie affiche ni la récupération page n'ont abouti,
-    # `url_image` contient DÉJÀ la bannière de repli (posée en amont par
-    # scripts/visuals.py, même fonction pick_banner_image), et le bloc ci-dessus l'a
-    # donc déjà téléversée comme featured media. `_banner()` reste dispo pour un appel
-    # direct ailleurs (ex. republication ciblée) mais n'est plus appelée dans ce flux.
+    # Repli 2 (bannière territoire × catégorie) : pas d'appel séparé ici — quand ni la
+    # vraie affiche ni la récupération page n'ont abouti, `url_image` contient DÉJÀ la
+    # bannière de repli (posée en amont par scripts/visuals.py via pick_banner_image),
+    # et le bloc ci-dessus l'a donc déjà téléversée comme featured media. L'ancien
+    # `_banner()` gardé « au cas où » n'était appelé nulle part : retiré le 04/09
+    # (audit du 31/08 §2.7).
     if media_id:
         payload["featured_media_id"] = media_id
 

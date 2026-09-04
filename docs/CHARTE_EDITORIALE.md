@@ -33,7 +33,7 @@ au découpage administratif.
 
 Référence vérifiable : `config/communes_comte_de_nice.json` (101 communes pour Nice,
 62 pour Grasse — total 163, le compte exact du département, donc listes complètes et
-disjointes), lue par `utils/sources.est_comte_de_nice()` et
+disjointes), lue par `utils/sources.communes_comte_de_nice()` et
 `est_arrondissement_grasse()`. On ne filtre PAS sur des mots-clés : « Vence » est
 contenu dans « Provence », « Grasse » dans « grasse matinée ». La comparaison se fait
 sur le champ `ville`, où elle est exacte.

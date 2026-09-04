@@ -52,7 +52,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.sources import load_territory_images, load_territory_category_images, pick_banner_image
+from utils.sources import load_territory_category_images, pick_banner_image
 from scripts.scraper_events import init_db
 from scripts.publisher_as import publish_to_as
 
@@ -77,7 +77,6 @@ def main(argv=None) -> int:
     init_db(conn)
     conn.row_factory = sqlite3.Row
 
-    banners = load_territory_images()
     cat_banners = load_territory_category_images()
 
     # On cible DEUX populations qui se recouvrent en partie :
@@ -109,7 +108,7 @@ def main(argv=None) -> int:
         if is_leak:
             leaking += 1
         new_url = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
-                                    str(ev["id"]), cat_banners, banners)
+                                    str(ev["id"]), cat_banners)
         changed = bool(new_url) and new_url != old_url
 
         # pick_banner_image corrigé renvoie "" si le territoire est hors des 4 couverts

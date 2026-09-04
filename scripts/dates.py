@@ -40,7 +40,7 @@ import re
 import sqlite3
 import sys
 import unicodedata
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 import requests

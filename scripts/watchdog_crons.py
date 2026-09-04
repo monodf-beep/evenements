@@ -41,13 +41,12 @@ import argparse
 import os
 import sqlite3
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils import pipeline_status
 
 log = get_logger("watchdog-crons")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))

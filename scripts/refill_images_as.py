@@ -63,8 +63,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import images
 from utils.sources import (is_logo_image, load_blocked_image_domains,
-                           load_territory_images, load_territory_category_images,
-                           pick_banner_image)
+                           load_territory_category_images, pick_banner_image)
 from scripts.scraper_events import init_db
 from scripts.visuals import resolve_image
 from scripts.publisher_as import publish_to_as
@@ -409,7 +408,6 @@ def main(argv=None) -> int:
     verify_client = None if args.no_verify else client
     verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
 
-    banners = load_territory_images()
     cat_banners = load_territory_category_images()
     blocked = load_blocked_image_domains()
     # defaultdict : robuste à toute source renvoyée par resolve_image (og, page, commons,
@@ -435,7 +433,7 @@ def main(argv=None) -> int:
         # cf. scripts.visuals.resolve_image). Seul --lowres a le droit de remplacer
         # l'image actuelle — et uniquement par strictement plus grand (garde plus bas).
         url, credit, source, focal_x, focal_y = resolve_image(
-            ev, client, blocked, banners,
+            ev, client, blocked,
             verify_client=verify_client, verify_model=verify_model,
             cat_banners=cat_banners, keep_existing=not args.lowres)
 
@@ -455,7 +453,7 @@ def main(argv=None) -> int:
         # (repli bannière territoire plutôt que de re-publier le bandeau hors-sujet).
         if args.bad_url and url and args.bad_url in url:
             url = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
-                                    str(ev["id"]), cat_banners, banners) or ""
+                                    str(ev["id"]), cat_banners) or ""
             credit, source = "", ("banner" if url else "none")
 
         # Garde --recheck : on ne re-pousse QUE si l'image change vraiment (sinon

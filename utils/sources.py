@@ -3,14 +3,30 @@
 # économique » (fuite de marque, charte §9) — il résout exclusivement dans le set
 # catégorie Agenda (config/territory_category_images.txt) et renvoie "" à défaut.
 # À répercuter lors de l'extraction cultura-core (ne PAS écraser avec la version amont).
-"""Dérive le domaine et le libellé d'une source à partir d'un enregistrement de veille.
+# DIVERGENCE ASSUMÉE (04/09) : onze fonctions sans appelant CÔTÉ AGENDA retirées (liste
+# dans le docstring). L'Observatoire en utilise peut-être encore — domain_of/source_label
+# créditaient SA newsletter, is_welcome_subject/is_newsletter_junk filtraient SES mails.
+# Ne PAS porter ces suppressions à l'aveugle dans l'amont : y vérifier les appelants d'abord.
+"""Filtres et registres de sources : ce qui se lit dans config/ et se teste sur un
+titre, une URL ou une ville.
 
-Sert à créditer les sources dans la newsletter (favicon + nom) sans rien inventer :
-tout vient des champs réellement collectés (lien RSS, en-tête From d'un email…).
+- presse (config/press_domains.txt) : sources radar, jamais créditées ni liées (charte §8) ;
+- images : domaines proscrits, détection de logo, bannières territoire × catégorie
+  (pick_banner_image, set Agenda hébergé sur agendasabauda.eu) ;
+- newsletters suivies (config/newsletters.txt), sources larges, filtres radar / périmètre /
+  hors-zone / événements exclus ;
+- Comté de Nice : appartenance d'une commune (config/communes_comte_de_nice.json).
 
-Gère aussi les domaines de PRESSE (config/press_domains.txt) : ces sources servent
-de radar mais ne sont jamais créditées/liées dans la newsletter (pas de pub aux
-journaux concurrents) — l'info est attribuée à l'acteur primaire.
+NETTOYÉ le 04/09 (audit du 31/08 §2.7) : ce module portait onze fonctions publiques sans
+aucun appelant — mesuré par grep sur tout le dépôt, tests compris — dont quatre lisaient
+des fichiers de config QUI N'EXISTENT PAS (official_links.txt, offtopic_keywords.txt,
+economic_keywords.txt) et une lisait territory_images.txt, vidé exprès depuis la fuite de
+marque Observatoire (charte §9). L'ancien docstring décrivait « le crédit des sources dans
+la newsletter (favicon + nom) » : c'était domain_of/source_label, mortes aussi. Retirées :
+strip_tracking, is_welcome_subject, is_newsletter_junk, load_topic_filter, is_offtopic,
+load_territory_images, pick_image, load_official_links, resolve_official, domain_of,
+source_label, est_comte_de_nice — plus le paramètre `fallback_images` de
+pick_banner_image, ignoré ici mais encore chargé et passé pour rien par six scripts.
 """
 from __future__ import annotations
 
@@ -75,14 +91,6 @@ _LOGO_NAME_TOKENS = frozenset((
 ))
 
 
-# Préfixes/clés de paramètres de TRAÇAGE à retirer des URLs (emailing, pub, analytics).
-_TRACKING_KEYS = (
-    "utm_", "mc_", "pk_", "mtm_", "hsa_", "_hs", "vero_", "ck_", "oly_", "spm",
-    "gclid", "fbclid", "msclkid", "igshid", "mkt_tok", "ref_src", "ref", "source",
-    "sendethic", "wt_mc", "trk", "cmpid", "ncid",
-)
-
-
 _STORY_PLACES = {
     "savoie", "haute", "piemonte", "piedmont", "piemontese", "torino", "turin", "aoste",
     "aosta", "valdotaine", "valdostano", "vallee", "nice", "nizza", "alcotra", "alpes",
@@ -116,23 +124,6 @@ def same_story(a: str, b: str) -> bool:
     if shared_proper:
         return True
     return len((sig(a) & sig(b)) - _STORY_PLACES) >= 3
-
-
-def strip_tracking(url: str) -> str:
-    """Retire les paramètres de traçage (utm_*, fbclid, mc_*, …) d'une URL.
-    Garde les paramètres « utiles » (id d'article, page…). '' reste ''."""
-    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-
-    if not url or "?" not in url:
-        return url
-    try:
-        parts = urlsplit(url)
-        kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
-                if not any(k.lower().startswith(t) or k.lower() == t for t in _TRACKING_KEYS)]
-        return urlunsplit((parts.scheme, parts.netloc, parts.path,
-                           urlencode(kept), parts.fragment))
-    except Exception:
-        return url
 
 
 def is_logo_image(url: str) -> bool:
@@ -169,58 +160,6 @@ def is_blocked_image(url: str, blocked: set[str]) -> bool:
     return any(host == b or host.endswith("." + b) for b in blocked)
 
 
-# --------------------------------------------------------------------------- #
-# Filtres de QUALITÉ des newsletters (anti-déchets + emails de bienvenue)
-# --------------------------------------------------------------------------- #
-# Sujets d'emails à IGNORER entièrement : confirmations d'abonnement, bienvenue,
-# double opt-in… aucun contenu économique.
-_WELCOME_SUBJECT = (
-    "bienvenue", "benvenut", "welcome", "confirmez votre", "confirmer votre",
-    "confirme votre", "votre inscription", "inscription est valid", "inscription valid",
-    "confirm your subscription", "confirm your email", "conferma la tua",
-    "conferma l'iscrizione", "grazie per esserti", "grazie per la tua iscrizione",
-    "merci de votre inscription", "merci pour votre inscription",
-    "merci de vous etre inscrit", "double opt", "opt-in", "veuillez confirmer",
-)
-# Réseaux sociaux / liens utilitaires (texte d'ancre exact ou inclus).
-_NL_JUNK_SUBSTR = (
-    "desabonn", "unsubscribe", "telecharg", "plus d'infos", "plus d infos",
-    "en savoir plus", "voir en ligne", "voir dans le navigateur", "view online",
-    "view in browser", "poll results", "follow us", "suivez ce lien", "suivez-nous",
-    "lire la suite", "read more", "leggi tutto", "scopri di", "manage your",
-    "gerer vos", "preferences", "privacy", "cookie", "facebook", "linkedin",
-    "instagram", "twitter", "youtube", "tiktok", "whatsapp", "telegram",
-    "je contacte", "je decouvre", "je participe", "je m'informe", "je m informe",
-    "je me connecte", "je m'inscris", "nous contacter", "contactez", "mentions legales",
-)
-_NL_JUNK_EXACT = {"www", "x", "rss", "email", "e-mail", "contact", "menu", "+", "-"}
-
-
-def is_welcome_subject(subject: str) -> bool:
-    """Vrai si l'objet est un email de bienvenue/confirmation (à ignorer)."""
-    s = _strip_accents(subject or "").lower()
-    return any(w in s for w in _WELCOME_SUBJECT)
-
-
-def is_newsletter_junk(text: str) -> bool:
-    """Vrai si le texte d'un lien de newsletter est un DÉCHET (bouton, réseau social,
-    fragment), pas un titre d'article. Élimine « >> Je découvre », « Facebook », « ai »…"""
-    t = _strip_accents(text or "").lower().strip()
-    if not t or t in _NL_JUNK_EXACT:
-        return True
-    if t[0] in ">•·|→#":                  # puces / flèches de bouton
-        return True
-    if t.startswith("je "):               # CTA français « Je découvre/participe… »
-        return True
-    if any(s in t for s in _NL_JUNK_SUBSTR):
-        return True
-    words = t.split()
-    # Trop court → fragment de bannière / nom isolé sans contexte économique.
-    if len(words) < 3 and len(t) < 18:
-        return True
-    return False
-
-
 _NEWSLETTERS_FILE = Path(__file__).resolve().parent.parent / "config" / "newsletters.txt"
 
 
@@ -244,10 +183,6 @@ def load_newsletters(path: Path | None = None) -> list[dict]:
     return out
 
 
-_OFFTOPIC_FILE = Path(__file__).resolve().parent.parent / "config" / "offtopic_keywords.txt"
-_ECONOMIC_FILE = Path(__file__).resolve().parent.parent / "config" / "economic_keywords.txt"
-
-
 def _load_keywords(path: Path) -> list[str]:
     if not path.exists():
         return []
@@ -266,15 +201,6 @@ def _compile_keywords(words: list[str]):
     # Tri par longueur décroissante pour que les expressions multi-mots priment.
     parts = sorted((re.escape(w) for w in words), key=len, reverse=True)
     return re.compile(r"\b(?:" + "|".join(parts) + r")\b")
-
-
-def load_topic_filter(
-    offtopic_path: Path | None = None, economic_path: Path | None = None
-) -> tuple[object, object]:
-    """Charge (regex hors-sujet, regex économique) pour filtrer le radar presse."""
-    off = _compile_keywords(_load_keywords(offtopic_path or _OFFTOPIC_FILE))
-    eco = _compile_keywords(_load_keywords(economic_path or _ECONOMIC_FILE))
-    return off, eco
 
 
 _RADAR_CULTURAL_FILE = Path(__file__).resolve().parent.parent / "config" / "radar_cultural_exceptions.txt"
@@ -420,21 +346,6 @@ def is_broad_source(domain: str, broad: set[str]) -> bool:
     return any(domain == b or domain.endswith("." + b) for b in broad)
 
 
-def is_offtopic(title: str, offtopic_re, economic_re) -> bool:
-    """Vrai si le titre de presse est HORS-SUJET : il matche un mot hors-sujet
-    ET ne contient aucun mot économique (filet de sécurité). Sert à élaguer le
-    bruit du radar (sport, faits divers, météo…) sans jeter les vraies brèves éco.
-    """
-    if offtopic_re is None or not title:
-        return False
-    norm = _strip_accents(title).lower()
-    if not offtopic_re.search(norm):
-        return False
-    if economic_re is not None and economic_re.search(norm):
-        return False  # angle économique détecté → on garde
-    return True
-
-
 def is_radar_relevant(text: str, cultural_re) -> bool:
     """Vrai si un texte radar (presse généraliste) mentionne un marqueur culturel/
     touristique connu (config/radar_cultural_exceptions.txt) — filtre POSITIF pour
@@ -451,44 +362,14 @@ def is_radar_relevant(text: str, cultural_re) -> bool:
     return bool(cultural_re.search(_strip_accents(text).lower()))
 
 
-_IMAGES_FILE = Path(__file__).resolve().parent.parent / "config" / "territory_images.txt"
-
-
-def load_territory_images(path: Path | None = None) -> dict[str, list[str]]:
-    """Charge les images de substitution par territoire : {territoire: [url, ...]}."""
-    path = path or _IMAGES_FILE
-    images: dict[str, list[str]] = {}
-    if not path.exists():
-        return images
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or ";" not in line:
-            continue
-        territory, url = (p.strip() for p in line.split(";", 1))
-        if territory and url:
-            images.setdefault(territory, []).append(url)
-    return images
-
-
-def pick_image(territory: str, key: str, images: dict[str, list[str]]) -> str:
-    """Choisit une image de substitution (déterministe par 'key', pour varier)."""
-    import hashlib
-
-    pool = images.get(territory) or images.get("default") or []
-    if not pool:
-        return ""
-    idx = int(hashlib.md5(key.encode("utf-8")).hexdigest(), 16) % len(pool)
-    return pool[idx]
-
-
 _CATEGORY_IMAGES_FILE = Path(__file__).resolve().parent.parent / "config" / "territory_category_images.txt"
 
 
 def load_territory_category_images(path: Path | None = None) -> dict[str, dict[str, str]]:
     """Charge les images de substitution par (territoire, catégorie) :
-    {territoire: {catégorie: url}} — plus pertinentes visuellement que la simple
-    bannière de marque par territoire (config/territory_images.txt, qui reste le
-    repli ultime si la catégorie est absente/inconnue)."""
+    {territoire: {catégorie: url}} — le SEUL set de repli (config/
+    territory_category_images.txt, hébergé sur agendasabauda.eu). Sans catégorie
+    connue, pick_banner_image pioche dans le territoire ; sinon "" (charte §9)."""
     path = path or _CATEGORY_IMAGES_FILE
     images: dict[str, dict[str, str]] = {}
     if not path.exists():
@@ -530,8 +411,7 @@ def _canon_territory(value: str) -> str:
 
 
 def pick_banner_image(territory: str, category: str, key: str,
-                      cat_images: dict[str, dict[str, str]],
-                      fallback_images: dict[str, list[str]]) -> str:
+                      cat_images: dict[str, dict[str, str]]) -> str:
     """Visuel de repli Agenda, TOUJOURS pris dans le set catégorie (hébergé sur
     agendasabauda.eu). Ne sert JAMAIS la bannière « Observatoire économique » —
     charte §9 : « pas d'image plutôt qu'un visuel inadapté ».
@@ -539,14 +419,13 @@ def pick_banner_image(territory: str, category: str, key: str,
     Résolution :
       1. `_canon_territory(territory)` → clé du set catégorie ; si inconnu → "" ;
       2. dans le sous-dico du territoire, la catégorie exacte si présente ;
-      3. sinon, à défaut de catégorie, une image Agenda DÉTERMINISTE (hash de `key`,
-         même principe que pick_image) parmi les valeurs du territoire — jamais la
-         bannière de marque territoriale ;
+      3. sinon, à défaut de catégorie, une image Agenda DÉTERMINISTE (hash de `key`)
+         parmi les valeurs du territoire — jamais la bannière de marque territoriale ;
       4. sinon → "" (aucune image ; PAS de repli Observatoire).
 
-    `fallback_images` : conservé pour compat d'appel uniquement (anciennement les
-    bannières territoire de config/territory_images.txt). PLUS UTILISÉ ici — le repli
-    Observatoire fuitait comme image à la une (violation charte §9), retiré.
+    Le paramètre `fallback_images` (bannières de marque de territory_images.txt) a été
+    retiré le 04/09 : ignoré ici depuis le retrait du repli Observatoire (charte §9),
+    il était encore chargé et passé par six scripts pour rien.
     """
     import hashlib
 
@@ -563,83 +442,12 @@ def pick_banner_image(territory: str, category: str, key: str,
     return ""
 
 
-_OFFICIAL_FILE = Path(__file__).resolve().parent.parent / "config" / "official_links.txt"
-
-
 def _strip_accents(text: str) -> str:
     import unicodedata
 
     return "".join(
         c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn"
     )
-
-
-def _normalize_domain(value: str) -> str:
-    """Réduit une valeur (domaine ou URL) à un domaine nu, sans www ni chemin."""
-    value = value.strip()
-    if "//" in value:
-        value = urlparse(value).netloc or value
-    value = value.split("/", 1)[0].lower()
-    if value.startswith("www."):
-        value = value[4:]
-    return value
-
-
-def load_official_links(path: Path | None = None) -> dict[str, str]:
-    """Charge l'annuaire des sites officiels : {motclé normalisé: domaine officiel}."""
-    path = path or _OFFICIAL_FILE
-    links: dict[str, str] = {}
-    if not path.exists():
-        return links
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or ";" not in line:
-            continue
-        key, value = (p.strip() for p in line.split(";", 1))
-        domain = _normalize_domain(value)
-        if key and domain:
-            links[_strip_accents(key).lower()] = domain
-    return links
-
-
-def resolve_official(actor: str, title: str, links: dict[str, str]) -> str:
-    """Renvoie le DOMAINE officiel si un motclé curé apparaît dans l'acteur/le titre.
-
-    En cas de correspondances multiples, le motclé le PLUS LONG (le plus précis)
-    l'emporte. '' si aucune correspondance — la brève reste alors sans lien.
-    """
-    if not links:
-        return ""
-    haystack = _strip_accents(f"{actor} {title}").lower()
-    best_key = ""
-    for key in links:
-        if key in haystack and len(key) > len(best_key):
-            best_key = key
-    return links.get(best_key, "")
-
-
-def domain_of(record: dict) -> str:
-    """Domaine de la source (sans www), pour le favicon. '' si introuvable."""
-    link = record.get("link") or record.get("feed_url") or ""
-    if link:
-        host = urlparse(link).netloc.lower()
-        if host.startswith("www."):
-            host = host[4:]
-        if host:
-            return host
-    match = re.search(r"@([\w.-]+)", record.get("from", ""))
-    return match.group(1).lower() if match else ""
-
-
-def source_label(record: dict) -> str:
-    """Nom lisible de la source (titre du flux, nom de l'expéditeur, ou domaine)."""
-    if record.get("feed_title"):
-        return record["feed_title"]
-    sender = record.get("from", "")
-    match = re.match(r'\s*"?([^"<]+?)"?\s*<', sender)
-    if match:
-        return match.group(1).strip()
-    return domain_of(record) or "Source"
 
 
 # --------------------------------------------------------------------------- #
@@ -712,19 +520,6 @@ def communes_comte_de_nice() -> set[str]:
         except (OSError, ValueError):
             _comte_nice_cache = set()
     return _comte_nice_cache
-
-
-def est_comte_de_nice(ville: str) -> bool | None:
-    """La commune appartient-elle au Comté de Nice (arrondissement de Nice) ?
-
-    True  = oui (étiquette `comte-de-nice`)
-    False = non, c'est l'arrondissement de Grasse ou une commune inconnue des
-            Alpes-Maritimes — dans les deux cas, PAS d'étiquette comte-de-nice
-    None  = ville vide : on ne sait pas, on ne décide pas.
-    """
-    if not (ville or "").strip():
-        return None
-    return _cherche_commune(ville, communes_comte_de_nice())
 
 
 _grasse_cache: "set | None" = None

@@ -31,13 +31,12 @@ import sqlite3
 import sys
 from pathlib import Path
 
-import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from scripts.scraper_events import init_db
-from scripts.dates import fetch_page_text, _UA, FETCH_TIMEOUT, _sans_script, signale_annulation_page
+from scripts.dates import fetch_page_text, _sans_script, signale_annulation_page
 from dotenv import load_dotenv
 
 log = get_logger("venues")

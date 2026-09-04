@@ -117,7 +117,7 @@ _BALISES = re.compile(r"<[^>]{1,200}>")
 # dans deux fichiers, c'est deux listes qui divergeront — et le jour où l'une apprend
 # « mercoledì » sans l'autre, le portillon de la collecte et le contradicteur d'après
 # publication ne diront plus la même chose sur la même fiche.
-from utils.jours import (JOURS as _JOURS, JOUR_RE as _JOUR_RE,  # noqa: E402
+from utils.jours import (JOUR_RE as _JOUR_RE,  # noqa: E402
                          NOM_DU_JOUR as _NOM_DU_JOUR, annees_possibles as _annees,
                          jours_nommes)
 

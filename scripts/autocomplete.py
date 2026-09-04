@@ -31,7 +31,6 @@ Exemples :
 """
 from __future__ import annotations
 import argparse
-import json
 import os
 import sqlite3
 import sys
@@ -142,7 +141,7 @@ def _fill_venue(ev: dict, client, model_extract: str, allow_web: bool,
     return {}
 
 
-def _fill_image(ev: dict, client, blocked, banners, cat_banners, allow_web: bool,
+def _fill_image(ev: dict, client, blocked, cat_banners, allow_web: bool,
                 want_banner: bool, conn, event_id: int) -> dict:
     # Déjà une vraie photo → rien à faire.
     if comp.has_real_image(ev):
@@ -159,7 +158,7 @@ def _fill_image(ev: dict, client, blocked, banners, cat_banners, allow_web: bool
     #    gratuite/économique. On ne lance l'agent web (payant) que si elle échoue.
     from scripts.visuals import resolve_image
     url, credit, source, fx, fy = resolve_image(
-        ev, client, blocked, banners, cat_banners=cat_banners,
+        ev, client, blocked, cat_banners=cat_banners,
         verify_client=verify_client, verify_model=verify_model)
     if url and source != "banner":
         out = {"url_image": url, "image_credit": credit, "image_source": source}
@@ -186,7 +185,7 @@ def _fill_image(ev: dict, client, blocked, banners, cat_banners, allow_web: bool
     return {}
 
 
-def complete_event(ev: dict, conn, client, blocked, banners, cat_banners, *,
+def complete_event(ev: dict, conn, client, blocked, cat_banners, *,
                    allow_web: bool, want_banner: bool, model_extract: str) -> dict:
     """Applique les passes de complétion et renvoie l'événement à jour (en base)."""
     updates: dict = {}
@@ -194,7 +193,7 @@ def complete_event(ev: dict, conn, client, blocked, banners, cat_banners, *,
     for filler in (
         lambda: _fill_date(ev, client, model_extract, allow_web, conn, eid),
         lambda: _fill_venue(ev, client, model_extract, allow_web, conn, eid),
-        lambda: _fill_image({**ev, **updates}, client, blocked, banners, cat_banners,
+        lambda: _fill_image({**ev, **updates}, client, blocked, cat_banners,
                             allow_web, want_banner, conn, eid),
     ):
         got = filler()
@@ -302,10 +301,8 @@ def main(argv=None) -> int:
         log.warning("ANTHROPIC_API_KEY absente : complétion déterministe seulement.")
     model_extract = os.getenv("ANTHROPIC_MODEL_EXTRACT", "claude-haiku-4-5")
 
-    from utils.sources import (load_blocked_image_domains, load_territory_images,
-                               load_territory_category_images)
+    from utils.sources import load_blocked_image_domains, load_territory_category_images
     blocked = load_blocked_image_domains()
-    banners = load_territory_images()
     cat_banners = load_territory_category_images()
 
     allow_web = not args.no_web
@@ -322,7 +319,7 @@ def main(argv=None) -> int:
     plafonne = False
     for i, ev in enumerate(incomplete, 1):
         try:
-            ev = complete_event(ev, conn, client, blocked, banners, cat_banners,
+            ev = complete_event(ev, conn, client, blocked, cat_banners,
                                 allow_web=allow_web, want_banner=want_banner,
                                 model_extract=model_extract)
         except PlafondAPI as exc:

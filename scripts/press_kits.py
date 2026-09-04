@@ -39,7 +39,7 @@ from utils.sources import _STORY_PLACES, _STORY_STOP, _strip_accents
 from scripts.scraper_events import init_db
 # Réutilise toute la plomberie Gmail du canal newsletter (une seule source de vérité).
 from scripts.gmail_collect import (
-    build_service, parse_message, _walk, _header, load_whitelist, match_territory,
+    build_service, parse_message, _walk, load_whitelist, match_territory,
 )
 
 log = get_logger("press_kits")

@@ -25,7 +25,6 @@ pas notre prose. Le module SIGNALE ; c'est un œil qui tranche, la phrase sous l
 from __future__ import annotations
 
 import json
-import re
 import unicodedata
 from functools import lru_cache
 from pathlib import Path

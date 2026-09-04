@@ -39,8 +39,7 @@ from utils.images import (commons_search, europeana_search, fetch_og_image,
                           fetch_content_image, remote_dims, looks_like_banner_shape,
                           MIN_DIM)
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
-                           load_territory_images, load_territory_category_images,
-                           pick_banner_image)
+                           load_territory_category_images, pick_banner_image)
 from utils import image_verify
 from utils.api_limite import PlafondAPI, est_plafond
 from scripts.scraper_events import init_db
@@ -172,7 +171,7 @@ def _verified(url: str, ev: dict, verify_client, verify_model: str,
     return image_verify.verify_relevance(buf, mime, ev, verify_client, verify_model, subject)
 
 
-def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
+def resolve_image(ev: dict, client, blocked: set[str],
                   verify_client=None,
                   verify_model: str = "claude-haiku-4-5",
                   cat_banners: dict | None = None,
@@ -293,7 +292,7 @@ def resolve_image(ev: dict, client, blocked: set[str], banners: dict,
         return content_fallback
     # Étage 4 — bannière territoire × catégorie (repli garanti, jamais parasite).
     banner = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
-                               str(ev["id"]), cat_banners or {}, banners)
+                               str(ev["id"]), cat_banners or {})
     if banner:
         return banner, "", "banner", 0.5, 0.5
     return "", "", "", 0.5, 0.5
@@ -376,7 +375,6 @@ def main(argv=None) -> int:
     else:
         log.warning("ANTHROPIC_API_KEY absente : pas de recherche Commons, og:image + bannière seulement.")
 
-    banners = load_territory_images()
     cat_banners = load_territory_category_images()
     blocked = load_blocked_image_domains()
     verify_client = client if args.verify else None
@@ -386,7 +384,7 @@ def main(argv=None) -> int:
     for ev in rows:
         try:
             url, credit, source, fx, fy = resolve_image(
-                ev, client, blocked, banners, verify_client=verify_client,
+                ev, client, blocked, verify_client=verify_client,
                 verify_model=verify_model, cat_banners=cat_banners)
         except PlafondAPI as exc:
             # ON N'ÉCRIT RIEN — ni pour cette fiche, ni pour les suivantes. Un plafond

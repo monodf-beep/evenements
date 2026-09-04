@@ -32,7 +32,6 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.lang import detect_lang
 from scripts.scraper_events import init_db
 
 log = get_logger("audit-article-quality")

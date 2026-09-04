@@ -41,7 +41,6 @@ from utils import usage
 from utils import completeness as comp
 from utils import triage as triage_mod
 from utils import checks as checks_mod
-from utils import slack
 from utils import organizers
 from utils import semaine as semaine_mod
 from dotenv import load_dotenv
@@ -1524,7 +1523,7 @@ def _relancer_image(conn, event_id: int) -> None:
     ev = dict(row)
     old_url = (row["url_image"] or "").strip()
     ev["url_image"] = ""  # force la re-recherche depuis le début de la chaîne
-    cat_banners = banners = None
+    cat_banners = None
     try:
         from scripts import visuals as vz
         client = None
@@ -1532,14 +1531,13 @@ def _relancer_image(conn, event_id: int) -> None:
         if api_key:
             import anthropic
             client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
-        banners = vz.load_territory_images()
         cat_banners = vz.load_territory_category_images()
         blocked = vz.load_blocked_image_domains()
         verify_model = os.getenv("ANTHROPIC_MODEL_VISION") or "claude-haiku-4-5"
         # verify_client=client : on ACTIVE l'agent vision (comme --verify) — on relance
         # justement parce qu'une image douteuse est passée, autant vérifier la nouvelle.
         url, credit, source, fx, fy = vz.resolve_image(
-            ev, client, blocked, banners,
+            ev, client, blocked,
             verify_client=client, verify_model=verify_model,
             cat_banners=cat_banners, keep_existing=False)
     except Exception as exc:  # noqa: BLE001 — on veut afficher toute erreur à l'humain
@@ -1554,7 +1552,7 @@ def _relancer_image(conn, event_id: int) -> None:
     if not url or url == old_url:
         from utils.sources import pick_banner_image
         burl = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
-                                 str(event_id), cat_banners or {}, banners or {})
+                                 str(event_id), cat_banners or {})
         if not burl:
             flash(f"Fiche {event_id} : aucune meilleure image ni bannière disponible.", "err")
             return

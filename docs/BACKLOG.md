@@ -383,8 +383,9 @@ Sujets ouverts, par ordre d'idée (pas de priorité figée). Voir aussi
   `scripts/dedupe.py`, appelé par le cron de 8h30 (avant `dates.py` et `evaluator.py`,
   comme demandé). L'entrée « Déduplication multi-sources » plus bas dans ce fichier était
   restée à `[ ]` malgré l'implémentation — corrigée en `[x]`.
-- `utils/sources.py:same_story()`/`strip_tracking()` existent déjà (pas de divergence
-  Observatoire constatée à date, contrairement à la note historique du backlog).
+- `utils/sources.py:same_story()` existe déjà (pas de divergence Observatoire constatée
+  à date, contrairement à la note historique du backlog). `strip_tracking()` existait
+  aussi, sans aucun appelant — retirée le 04/09.
 - Algorithme en place : union-find par territoire + `same_story(titre)` (+ garde
   `_years_incompatible` pour ne pas fusionner deux éditions annuelles distinctes) ; gagnant
   = `max(score)` avec `TIER_RANK` (`officielle`=3 > `institution`=2 > `tourisme`=1 >

@@ -187,6 +187,17 @@ des fichiers de config **qui n'existent pas**, et une vingtaine d'imports inutil
 **Pourquoi ton accord** : ça touche des fichiers du chemin de publication quotidien. Le
 retrait est mécanique et testable, mais il se fait à froid, pas en fin de journée.
 
+> **FAIT le 04/09** (Franck : « avance sur d'autres sujets »). Remesuré avant de toucher,
+> et l'audit sous-comptait : **11** fonctions publiques de `utils/sources.py` sans aucun
+> appelant (grep sur tout le dépôt, tests compris — et aucun `import *` ni import
+> dynamique qui aurait pu tromper le grep), pas 7 ; **23** imports inutilisés (`ruff
+> F401`), la fonction morte de `publisher_as` (`_banner`, gardée « au cas où » et jamais
+> appelée), et la plomberie `fallback_images` sur les six fichiers. Deux docs présentaient
+> des fonctions mortes comme actives (`strip_tracking` dans PIPELINE_COLLECTE,
+> `est_comte_de_nice` dans la charte) — corrigées. Bilan : 27 fichiers, −313 lignes,
+> suite de fixtures 108/108 au vert avant ET après. `config/territory_images.txt` est
+> gardé (manifeste de sync amont), plus lu par personne — dit dans son en-tête.
+
 ---
 
 # 3. DEMANDE UNE RÉFLEXION PLUS APPROFONDIE

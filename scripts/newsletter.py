@@ -41,8 +41,7 @@ from utils.logger import get_logger
 from utils.brevo import (BrevoError, campaign_edit_url, create_draft_campaign,
                          list_contact_lists, list_senders)
 from utils.newsletter_variants import variant_magazine
-from utils.sources import (load_territory_images, load_territory_category_images,
-                           pick_banner_image)
+from utils.sources import load_territory_category_images, pick_banner_image
 
 log = get_logger("newsletter")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -105,7 +104,7 @@ def _domain(url: str) -> str:
         return ""
 
 
-def build_item(ev: dict, banners: dict | None = None, cat_banners: dict | None = None) -> dict:
+def build_item(ev: dict, cat_banners: dict | None = None) -> dict:
     """Transforme un enregistrement événement en item de gabarit.
 
     Image : celle en base ; à défaut, repli sur la bannière territoire × catégorie
@@ -114,9 +113,9 @@ def build_item(ev: dict, banners: dict | None = None, cat_banners: dict | None =
     radar = _is_radar(ev)
     url = "" if radar else (ev.get("url_source") or "")
     image = ev.get("url_image") or ""
-    if not image and banners is not None:
+    if not image and cat_banners is not None:
         image = pick_banner_image(ev.get("territoire", ""), ev.get("llm_categorie", ""),
-                                  str(ev.get("id", "")), cat_banners or {}, banners)
+                                  str(ev.get("id", "")), cat_banners)
     return {
         # `_id` : privé, ignoré par le gabarit ; sert à tracer ce qui est parti en
         # newsletter (anti-répétition persistante, cf. _record_sent).
@@ -265,12 +264,11 @@ def build_data(rows: list[dict], *, week_label: str, tagline: str,
     passées, cf. _seen_continue_ids) est retiré du seau « continue » → un événement long
     n'y figure qu'UNE fois sur toute sa durée. Reste le bornage déterministe MAX_CONTINUE
     (tri stable par importance)."""
-    banners = load_territory_images()
     cat_banners = load_territory_category_images()
 
     # Composition manuelle : l'humain a ordonné la sélection → on n'en change pas l'ordre.
     if not temporal or not (pfrom and pto):
-        items = [build_item(ev, banners, cat_banners) for ev in rows]
+        items = [build_item(ev, cat_banners) for ev in rows]
         hero = items[0] if items else None
         rest = items[1:]
         return _pack_data(week_label, tagline, hero, rest[:MAX_CARDS], rest[MAX_CARDS:])
@@ -279,18 +277,18 @@ def build_data(rows: list[dict], *, week_label: str, tagline: str,
 
     # Le NEUF alimente le héros puis les cartes détaillées ; l'éventuel surplus repart
     # en sommaire compact (voir plus bas).
-    ouvre = [build_item(ev, banners, cat_banners) for ev in ouvre_rows]
+    ouvre = [build_item(ev, cat_banners) for ev in ouvre_rows]
     hero = ouvre[0] if ouvre else None
     cards = ouvre[1:1 + MAX_CARDS]
     ouvre_overflow = ouvre[1 + MAX_CARDS:]
 
-    derniere = [build_item(ev, banners, cat_banners) for ev in derniere_rows]
+    derniere = [build_item(ev, cat_banners) for ev in derniere_rows]
     # « continue » : anti-répétition PERSISTANTE — on retire les événements déjà listés en
     # sommaire lors d'une édition précédente (ils ont eu leur apparition, ils restent au
     # catalogue), puis bornage déterministe (MAX_CONTINUE, tri stable par score).
     seen = seen or set()
     fresh_continue = [ev for ev in continue_rows if ev.get("id") not in seen]
-    continue_ = [build_item(ev, banners, cat_banners) for ev in fresh_continue[:MAX_CONTINUE]]
+    continue_ = [build_item(ev, cat_banners) for ev in fresh_continue[:MAX_CONTINUE]]
 
     # Sommaire « Aussi cette semaine » : dernière chance → surplus d'ouvertures → continue.
     signaux = derniere + ouvre_overflow + continue_

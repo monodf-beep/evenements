@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import seo as seo_mod
-from utils.api_limite import PlafondAPI, est_plafond
+from utils.api_limite import est_plafond
 
 log = get_logger("seo_batch")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
