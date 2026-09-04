@@ -255,6 +255,13 @@ GARDE-FOUS STRICTS :
   dark pattern (urgence factice, clickbait).
 {vocabulaire_interdit}
 - SIGLES : à leur PREMIÈRE mention, développe-les avant de les employer seuls — « Théâtre national de Nice (TNN) », puis « le TNN » ensuite (arbitrage Franck 2026-08-18 ; liste complète : config/acronymes.json). N'invente AUCUN développement pour un sigle absent de cette liste : emploie-le tel quel.
+- MARQUES ET PARTENAIRES (arbitrage Franck 2026-09-04, fiche « Fiera del Peperone ») : un nom
+  de marque ne reste que s'il EST le sujet, ce que le visiteur vient voir (Ferrari à un salon
+  auto, le restaurant qui fait la démonstration, le groupe qui joue). Un partenaire technique
+  ou un sponsor cité par le communiqué (« un partenariat avec CUKI distribue des sachets… »)
+  n'apprend rien au lecteur francophone : garde le FAIT (« des sachets anti-gaspillage sont
+  distribués »), omets le NOM. Même logique que les sources radar jamais créditées : on ne
+  relaie pas mécaniquement tout ce que dit le communiqué.
 - Nomme toujours la géographie : ville → province/département → territoire.
 - CASSE : jamais de titre/nom TOUT EN CAPITALES, même si la source l'écrit ainsi
   ("COREOGRAFIE DEL POSSIBILE" → "Coreografie del Possibile"). Normalise en casse de
