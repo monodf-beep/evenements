@@ -43,7 +43,8 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.lang import detect_lang, effective_lang, titre_semble_intraduit
+from utils.lang import (detect_lang, effective_lang, titre_reecrit_mauvaise_langue,
+                        titre_semble_intraduit)
 from utils.coherence import incoherence_description
 from utils import acronymes
 from scripts.scraper_events import init_db
@@ -477,6 +478,11 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
                       "l'autre langue (cible %s) : « %s ». Fiche laissée intacte.",
                       tw["id"], tgt, tr["title"][:70])
             return "refus"
+        if titre_reecrit_mauvaise_langue(tr["title"], tgt, orig.get("title", "")):
+            log.error("[jumeau %s] REFUS — le titre re-traduit a été réécrit mais reste "
+                      "dans l'autre langue (cible %s) : « %s ». Fiche laissée intacte.",
+                      tw["id"], tgt, tr["title"][:70])
+            return "refus"
         tr_enrich = tr_art_title = ""
         src_enrich = (orig.get("enrich_data") or "").strip()
         if src_enrich:
@@ -642,6 +648,13 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
     # translated_at reste vide, la fiche se représente au run suivant.
     if titre_semble_intraduit(tr["title"], tgt, ev.get("title", "")):
         log.error("[%s] REFUS — le titre \"traduit\" est resté en %s (cible %s) : "
+                  "« %s ». Rien n'a été publié.", ev["id"], src, tgt, tr["title"][:70])
+        return "refus"
+    # Second portillon, complémentaire — trouvé le 31/08 (voir docstring de la fonction) :
+    # celui du dessus ne voit rien quand le titre a été RÉÉCRIT (pas recopié) mais dans
+    # la mauvaise langue. 16 fiches en production dans ce cas, jamais interceptées.
+    if titre_reecrit_mauvaise_langue(tr["title"], tgt, ev.get("title", "")):
+        log.error("[%s] REFUS — le titre a été réécrit mais reste en %s (cible %s) : "
                   "« %s ». Rien n'a été publié.", ev["id"], src, tgt, tr["title"][:70])
         return "refus"
     # Parité éditoriale : si la source porte un article enrichi (enrich_data), on le

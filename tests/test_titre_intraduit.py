@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from utils.lang import titre_semble_intraduit  # noqa: E402
+from utils.lang import titre_reecrit_mauvaise_langue, titre_semble_intraduit  # noqa: E402
 
 echecs = 0
 
@@ -74,6 +74,37 @@ CAS = [
 ]
 for titre, source, cible, attendu in CAS:
     obtenu = titre_semble_intraduit(titre, cible, source)
+    _check(f"cible={cible} « {titre[:42]} » → signalé={obtenu}", obtenu == attendu,
+          f"attendu {attendu}")
+
+# ── 1bis. titre_reecrit_mauvaise_langue — portillon complémentaire (31/08) ──────
+# titre_semble_intraduit ne voit rien quand le titre a été RÉÉCRIT (pas recopié) mais
+# dans la mauvaise langue : le recouvrement de mots avec la source tombe sous 80 %,
+# donc son garde-fou (condition 1) ne se déclenche jamais. Trouvé en audit de
+# production, pas en fixture — cas réel ci-dessous, tiré tel quel de la fiche #732.
+print("\n──── titre_reecrit_mauvaise_langue, cas réels (production, 31/08) ────")
+CAS_REECRIT = [
+    # (titre produit, titre SOURCE, cible, doit_signaler)
+    # LE VRAI BUG : titre RÉÉCRIT (pas recopié — 50 % de recouvrement, sous les 80 %
+    # de titre_semble_intraduit) mais resté entièrement français, publié comme fiche
+    # italienne #732. Doit être détecté ICI, précisément parce que l'autre gate le rate.
+    ("Risò 2026 : le festival international du riz revient à Vercelli en septembre",
+     "Riso 2026 : les dates du Festival international du riz dévoilées", "it", True),
+    # CAS-FRONTIÈRE QUI DOIT PASSER (règle 3 de CLAUDE.md — pas seulement des cas qui
+    # confirment le design) : titre correctement traduit en italien, qui garde un NOM
+    # PROPRE français (le vrai nom du lieu). Le seul mot vraiment nouveau ici est
+    # « alla » (italien) — rien à refuser, même si le titre entier contient du français.
+    ("Ankama alla Cité Internationale du Cinéma d'Animation!",
+     "Ankama à la Cité Internationale du Cinéma d'Animation !", "it", False),
+    # Titre italien familier, quasi identique à la source (peu de mots nouveaux) :
+    # ne doit pas être signalé par excès de zèle sur un mot neutre isolé.
+    ("pizza show a vercelli!", "pizza show a vercelli!", "it", False),
+    # Sans titre source, on se tait.
+    ("Risò 2026 : le festival international du riz revient à Vercelli en septembre",
+     "", "it", False),
+]
+for titre, source, cible, attendu in CAS_REECRIT:
+    obtenu = titre_reecrit_mauvaise_langue(titre, cible, source)
     _check(f"cible={cible} « {titre[:42]} » → signalé={obtenu}", obtenu == attendu,
           f"attendu {attendu}")
 
@@ -160,6 +191,23 @@ resultat = te._translate_one_interne(
     auth=("", ""), img_lang={}, img_lang_lock=threading.Lock())
 _check("résultat = 'done'", resultat == "done", f"obtenu {resultat!r}")
 _check("publish_to_as appelé une fois", len(appels_publish) == 1, str(appels_publish))
+
+# ── 4. Câblage du second portillon : titre RÉÉCRIT mais mauvaise langue → REFUS ──
+print("\n──── _translate_one_interne : le titre réécrit-mais-mauvaise-langue est REFUSÉ ────")
+appels_publish.clear()
+te.publish_to_as = lambda ev: (appels_publish.append(ev) or (0, "", ""))
+# Le titre est bien RÉÉCRIT (pas recopié — passerait sous le radar du 1er portillon),
+# mais reste en français alors que la cible est l'italien. Cas réel #732.
+te.translate_title_desc = lambda *a, **k: {
+    "title": "Risò 2026 : le festival international du riz revient à Vercelli en septembre",
+    "description": "La Sant'Orso 2026 è un evento culturale che si svolge in Vallée "
+                   "d'Aoste, con prodotti tipici e tradizioni locali.",
+}
+resultat = te._translate_one_interne(
+    ev, _Args(), client=object(), api_key="factice", voix="", wp_url="",
+    auth=("", ""), img_lang={}, img_lang_lock=threading.Lock())
+_check("résultat = 'refus'", resultat == "refus", f"obtenu {resultat!r}")
+_check("publish_to_as JAMAIS appelé (2e portillon)", appels_publish == [], str(appels_publish))
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

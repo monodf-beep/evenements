@@ -143,6 +143,67 @@ def titre_semble_intraduit(titre: str, cible: str, titre_source: str = "") -> bo
     return autre >= 1 and autre > decompte_cible
 
 
+def _mots_nouveaux(titre: str, titre_source: str) -> str:
+    """Les mots de `titre` ABSENTS de `titre_source` (comparaison accents/casse
+    ignorés), avec leur graphie d'origine conservée — `_score` EST sensible aux
+    accents (« très », « più », « è »…), donc on ne les retire pas ici."""
+    src = _tokens_titre(titre_source)
+    mots = re.findall(r"\w+", titre or "", re.UNICODE)
+    return " ".join(m for m in mots if _strip_accents(m).lower() not in src)
+
+
+def titre_reecrit_mauvaise_langue(titre: str, cible: str, titre_source: str = "") -> bool:
+    """True si les mots que le "traducteur" a AJOUTÉS par rapport à la source (donc
+    jamais hérités d'un nom propre repris tel quel) sont dominés par la langue
+    SOURCE au lieu de la langue CIBLE — signe que le titre a été RÉÉCRIT, mais dans
+    la mauvaise langue.
+
+    TROUVÉ le 31/08, en audit de production (pas en fixture) : `titre_semble_intraduit`
+    ci-dessus ne détecte que la RECOPIE quasi verbatim (≥ 80 % des mots du titre source
+    repris tels quels). Il ne voit RIEN quand le modèle a vraiment réécrit le titre —
+    nouvelle formulation, nouveaux mots — mais dans la langue source au lieu de la
+    cible. Cas réel : fiche italienne #732, titre publié « Risò 2026 : le festival
+    international du riz revient à Vercelli en septembre » contre une source FR « Riso
+    2026 : les dates du Festival international du riz dévoilées » — recouvrement de
+    mots à peine 50 %, sous le seuil de 80 % de `titre_semble_intraduit`, qui ne s'est
+    donc jamais déclenché, alors que le titre produit est entièrement français.
+    `utils.lang.detect_lang` appliqué aux 42 fiches italiennes publiées du site en a
+    trouvé 16 dans ce cas (38 % du catalogue italien) — 13 corrigées manuellement le
+    31/08, les 3 restantes (Ankama, pizza show a Vercelli, Orlando déjà couvert
+    ailleurs) laissées intactes : ce sont des noms propres/graphies neutres, pas des
+    titres non traduits (voir plus bas pourquoi ce gate-ci les laisse passer).
+
+    Pourquoi juger seulement les mots NOUVEAUX, pas le titre entier : un titre
+    correctement traduit garde souvent un NOM PROPRE dans la langue source — ex.
+    « Ankama alla Cité Internationale du Cinéma d'Animation! », où « Cité
+    Internationale du Cinéma d'Animation » est le nom réel du lieu, en français, et
+    RESTE correct côté italien. Juger la langue du TITRE ENTIER refuserait ce cas à
+    tort — exactement le bug du 2026-08-06 que `titre_semble_intraduit` a dû corriger
+    le 2026-08-08 pour la RECOPIE. Ce gate-ci l'évite structurellement : sur ce titre,
+    le seul mot absent de la source est « alla » — italien — donc rien n'est refusé.
+
+    Fixture obligatoire (règle 3 de CLAUDE.md) : `tests/test_titre_intraduit.py`
+    porte le cas Risò (doit REFUSER) et le cas Ankama (doit PASSER), les deux tirés de
+    données réelles, pas inventés pour confirmer le design.
+
+    Seuil `autre >= 2` (pas 1, contrairement à `titre_semble_intraduit`) : les mots
+    nouveaux sont un sous-ensemble plus petit et plus bruité (parfois un seul mot,
+    ambigu) — exiger deux marqueurs concordants réduit le risque qu'un mot neutre
+    isolé déclenche un refus.
+
+    `titre_source` absent, ou aucun mot nouveau (titre identique à la source — déjà
+    couvert par `titre_semble_intraduit`) : on ne peut rien conclure, on se tait
+    (False)."""
+    if not titre_source:
+        return False
+    nouveaux = _mots_nouveaux(titre, titre_source)
+    if not nouveaux.strip():
+        return False
+    fr, it = _score(nouveaux)
+    autre, decompte_cible = (fr, it) if cible == "it" else (it, fr)
+    return autre >= 2 and autre > decompte_cible
+
+
 def detect_lang(title: str = "", description: str = "", territoire: str = "") -> str:
     """Renvoie 'fr' ou 'it'. Le TITRE (pesé ×3) prime : un titre nettement dans une
     langue l'emporte, même si la description bruite. À égalité, on regarde titre+desc,
