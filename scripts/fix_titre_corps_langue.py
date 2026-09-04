@@ -43,6 +43,7 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from utils.api_limite import PlafondAPI
 from utils.logger import get_logger
 from utils.voix import voix_block
 from scripts.audit_substance_published import devant_nous
@@ -122,8 +123,20 @@ def main(argv: list[str]) -> int:
                  ev["id"], lang_titre, lang_corps, art["titre"][:60])
         if not args.execute:
             continue
-        correction = translate_title_desc(client, model, art["titre"], corps_ref,
-                                          lang_corps, voix=voix)
+        try:
+            correction = translate_title_desc(client, model, art["titre"], corps_ref,
+                                              lang_corps, voix=voix)
+        except PlafondAPI as exc:
+            # Même distinction que scripts.translate_events : « cette fiche a échoué »
+            # (compté, on continue) ≠ « l'API refuse tout le monde » (le lot s'ARRÊTE —
+            # rien à gagner à marteler les fiches suivantes sur le même plafond). Rien
+            # n'est marqué : les candidats non tentés se représenteront au prochain
+            # passage, identiques.
+            log.error("=== PLAFOND API : lot interrompu sur la fiche %s (%s) — se lève "
+                      "dans la console Anthropic (Plans & Billing), rien n'a été écrit "
+                      "pour cette fiche, les candidats restants se représenteront "
+                      "d'eux-mêmes au prochain passage ===", ev["id"], exc)
+            break
         if not correction or not correction.get("title"):
             echecs += 1
             log.warning("[%s] retraduction ÉCHOUÉE — titre laissé tel quel, "
