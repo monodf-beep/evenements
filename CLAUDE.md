@@ -158,6 +158,14 @@ faire demander à OVH le déblocage d'une IP sur la foi de la deuxième. Ce qui 
 tenait en quatre commandes qu'il fallait taper à la première minute : ping, port 80,
 port 443, et un hôte de contrôle.
 
+`docs/ERREURS_2026-09-04.md` ajoute quatre fautes en chaîne sur un seul signalement
+(titre publié dans une autre langue que son corps) : le bug lui-même, un audit qui
+comparait le mauvais champ (29 fiches annoncées en tort, 4 réelles — débusqué en
+comparant deux outils indépendants, pas en se relisant), une republication qui
+défaisait le correctif de texte qu'elle portait (deux fonctions du dépôt répondaient
+chacune à « dans quelle langue est cette fiche », et pouvaient diverger — fusionnées en
+une seule), et un plafond API non capturé dans un script écrit le jour même.
+
 D'où la formulation la plus utile de cette racine, celle à relire avant de répondre :
 
 **Ne jamais présenter une INFÉRENCE comme un FAIT.** Les deux sont acceptables — mesurer,
