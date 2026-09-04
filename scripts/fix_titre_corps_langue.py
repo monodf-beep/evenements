@@ -152,8 +152,15 @@ def main(argv: list[str]) -> int:
         conn.commit()
         corriges += 1
         log.info("[%s] titre corrigé en %s : « %s »", ev["id"], lang_corps, title[:60])
+        # force_lang=lang_corps (2026-09-04, récidive en production le jour même) : ON
+        # SAIT la langue de cette fiche, on vient de la mesurer sur son propre corps —
+        # `publisher_as._lang()` n'a plus besoin de la redeviner sur un `title` brut qui,
+        # LUI, reste dans la langue source (ce script ne le touche jamais). Sans ce
+        # `force_lang`, la republication ci-dessous a réassigné Polylang="it" à WP#7472
+        # alors que titre ET corps venaient d'être corrigés en français — le correctif
+        # de texte s'est défait au même instant que lui-même se publiait.
         ev.update({"enrich_data": json.dumps(data, ensure_ascii=False),
-                   "article_title": title, "article_md": md})
+                   "article_title": title, "article_md": md, "force_lang": lang_corps})
         # skip_media=True : passe de TEXTE seul (même précaution que conform_articles) —
         # on ne retéléverse aucune image pour un simple correctif de titre.
         post_id, _perma, _img = publish_to_as(ev, skip_media=True)

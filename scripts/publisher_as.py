@@ -346,13 +346,33 @@ def _recover_image(event: dict) -> str:
 def _lang(event: dict) -> str:
     """Langue Polylang de l'événement ('fr'|'it'). Forcée par event['force_lang'] si
     présent (cas des traductions : on ne devine pas, on impose), sinon détectée sur
-    titre+description (départagée par le territoire)."""
+    l'article EFFECTIVEMENT publié (départagée par le territoire).
+
+    ⚠️ CORRIGÉ le 2026-09-04 — RÉCIDIVE EN PRODUCTION LE JOUR MÊME. Cette fonction
+    devinait sur `event['title']`/`event['description']` : le TITRE BRUT SCRAPÉ et la
+    description brute, jamais l'article réellement écrit et servi par `build_post`
+    (article_title > enrich_data.article.titre > title). `scripts.enrich` peut réparer
+    le titre de l'article (voir `titre_corps_langue_desaccord`) sans jamais toucher au
+    `title` brut — donc une republication SANS `force_lang` continuait de deviner sur
+    l'ancien titre, resté dans l'autre langue.
+
+    Constaté en clair sur WP#7472 (« Regine in Scena », signalée par Franck) : la
+    fiche venait d'être corrigée — article_title en français, corps en français — et
+    republiée par `scripts.fix_titre_corps_langue` (sans force_lang, car il ne s'agit
+    pas d'une traduction). `_lang()` a re-deviné sur le `title` brut resté italien, et
+    Polylang a réassigné la fiche côté IT — son adresse s'est retrouvée préfixée
+    `/it/` MALGRÉ un contenu entièrement français. Le correctif de texte avait
+    fonctionné, celui-ci l'a défait au même moment.
+
+    `utils.lang.effective_lang` porte déjà cette priorité (elle sert `translate_events`
+    à décider si une fiche a besoin d'être traduite) : on la réutilise ICI aussi, pour
+    qu'une seule fonction du dépôt décide « dans quelle langue est cette fiche »,
+    jamais deux qui peuvent diverger."""
     forced = str(event.get("force_lang") or "").strip().lower()
     if forced in ("fr", "it"):
         return forced
-    from utils.lang import detect_lang
-    return detect_lang(event.get("title", ""), event.get("description", ""),
-                       event.get("territoire", ""))
+    from utils.lang import effective_lang
+    return effective_lang(event)
 
 
 def _focal(event: dict) -> tuple[float, float]:
