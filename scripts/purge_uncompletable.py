@@ -14,6 +14,16 @@ main que si le rattrapage n'a rien donné.
 On ne touche PAS les événements qui ont une vraie page officielle (le « gisement »
 récupérable) ni ceux déjà complets.
 
+FUSIONNÉ avec `discard_uncompletable` le 2026-09-04 (audit du 31/08, §2.1 — décision
+de Franck : « fais ce qui te semble le plus adéquat »). Les deux scripts tournaient
+l'un après l'autre dans le hebdo du dimanche avec la MÊME requête de sélection et le
+MÊME prédicat radar ; leur seule branche vraiment distincte était « année révolue
+dans le titre » (`discard_uncompletable --past`), reprise ci-dessous. Sa branche
+« sans page » était déjà entièrement absorbée par celle-ci — mesuré en production :
+`discard_uncompletable --no-page` rendait 0, purge_uncompletable étant lancé avant
+dans la même chaîne. `discard_uncompletable.py` reste dans le dépôt (utilisable à la
+main), mais n'est plus appelé par `weekly_audits.py`.
+
 Exemples :
   .venv/bin/python3 -m scripts.purge_uncompletable                 # dry-run
   .venv/bin/python3 -m scripts.purge_uncompletable --execute
@@ -22,6 +32,7 @@ Exemples :
 from __future__ import annotations
 import argparse
 import os
+import re
 import sqlite3
 import sys
 from datetime import date
@@ -51,11 +62,28 @@ def _no_page(e: dict) -> bool:
     return (not u) or "news.google.com" in u
 
 
+def _is_newsletter(e: dict) -> bool:
+    return (e.get("url_source") or "").startswith("gmail:")
+
+
+def _is_past_year(e: dict) -> bool:
+    """Une année RÉVOLUE apparaît dans le titre (ou la date brute) — signe d'une
+    fiche recopiée d'une édition passée d'un événement récurrent, jamais mise à jour.
+    Repris de `discard_uncompletable.is_past` lors de la fusion du 04/09 : ne
+    s'applique qu'aux fiches SANS DATE (une vraie date passée est déjà le travail de
+    `purge_past`, pas celui-ci)."""
+    year = date.today().year
+    past_years = "|".join(str(y) for y in range(2015, year))
+    blob = f"{e.get('title', '')} {e.get('date_start', '')}"
+    return bool(re.search(rf"(?<!\d)({past_years})(?!\d)", blob))
+
+
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="Écarte le bruit incomplétable (radar / sans page).")
+    p = argparse.ArgumentParser(
+        description="Écarte le bruit incomplétable (radar / sans page / année révolue).")
     p.add_argument("--execute", action="store_true", help="Agir (sinon DRY-RUN).")
     p.add_argument("--radar-only", action="store_true",
-                   help="Ne viser que le radar presse (laisser les newsletters).")
+                   help="Ne viser que le radar presse (laisser sans-page et année révolue).")
     args = p.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
@@ -80,9 +108,16 @@ def main(argv=None) -> int:
         if source_bad and (missing & {"Date", "Lieu"}):
             reason = "radar (presse)" if radar else "sans page (Google News)"
             targets.append((e, reason))
+        elif (not args.radar_only and "Date" in missing
+              and comp._empty(e.get("date_event_start")) and not _is_newsletter(e)
+              and _is_past_year(e)):
+            # Repris de discard_uncompletable --past (fusion du 04/09) : aucune date,
+            # une année révolue dans le titre — jamais une newsletter (rattrapable
+            # via gmail_relink), jamais couvert par la branche radar/sans-page ci-dessus.
+            targets.append((e, "année révolue dans le titre"))
 
     mode = "EXÉCUTION" if args.execute else "DRY-RUN (rien ne bouge)"
-    scope = "radar uniquement" if args.radar_only else "radar + sans-page"
+    scope = "radar uniquement" if args.radar_only else "radar + sans-page + année révolue"
     print(f"\nBruit incomplétable à écarter ({scope}) — {mode} · {len(targets)}\n")
     for e, why in targets[:60]:
         print(f"  [{e['id']}] {(e.get('title') or '')[:58]:58} · {why}")
@@ -97,10 +132,18 @@ def main(argv=None) -> int:
         conn.close()
         return 0
 
+    # Motif écrit sur la fiche propre à CHAQUE raison — pas un texte générique unique
+    # (le premier écrivait « source sans page officielle » même sur le cas « année
+    # révolue », qui n'a rien à voir avec la page de la source).
+    justifs = {
+        "radar (presse)": "Incomplétable (source radar, presse — détection seule) — écarté.",
+        "sans page (Google News)": "Incomplétable (source sans page officielle) — écarté.",
+        "année révolue dans le titre":
+            "Incomplétable (année révolue dans le titre, sans date) — écarté.",
+    }
     conn.executemany(
-        "UPDATE events_raw SET statut='rejected', "
-        "llm_justification='Incomplétable (source sans page officielle) — écarté.' "
-        "WHERE id=?", [(e["id"],) for e, _ in targets])
+        "UPDATE events_raw SET statut='rejected', llm_justification=? WHERE id=?",
+        [(justifs[why], e["id"]) for e, why in targets])
     conn.commit()
     conn.close()
     print(f"\n=== {len(targets)} événement(s) incomplétable(s) écarté(s) (réversible). ===")

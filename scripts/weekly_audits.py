@@ -13,8 +13,16 @@ Chaque étape ci-dessous répond aux deux critères qui la rendent sûre à auto
 plus fins qui suivent) :
   1. purge_out_of_zone   --apply           (hors zone / passés, statut→rejected)
   2. purge_past          --execute         (retenus devenus passés, statut→rejected)
-  3. purge_uncompletable --execute         (radar/sans-page incomplétables, statut→rejected)
-  4. discard_uncompletable --apply         (même famille, critère complémentaire)
+  3. purge_uncompletable --execute         (radar/sans-page/année révolue incomplétables,
+                                            statut→rejected — FUSIONNÉ le 04/09 avec
+                                            discard_uncompletable, qui tournait juste
+                                            après avec la MÊME requête de sélection et
+                                            le MÊME prédicat radar ; sa seule branche
+                                            distincte, « année révolue dans le titre »,
+                                            vit maintenant ici. Script encore dans le
+                                            dépôt, utilisable à la main, mais plus
+                                            appelé par ce hebdo — voir
+                                            docs/AUDIT_SIMPLIFICATION_2026-08-31.md §2.1)
   5. audit_non_events    --apply           (articles de presse publiés à tort → corbeille)
   6. cleanup_as_dupes    --execute         (doublons NÉS dans WordPress → corbeille)
   6b. reconcile_catalogue --apply          (AJOUTÉ 2026-08-03 — les deux réparations que
@@ -220,7 +228,6 @@ def main(argv: list[str] | None = None) -> int:
     from scripts.purge_out_of_zone import main as purge_zone_main
     from scripts.purge_past import main as purge_past_main
     from scripts.purge_uncompletable import main as purge_unc_main
-    from scripts.discard_uncompletable import main as discard_unc_main
     from scripts.audit_non_events import main as audit_ne_main
     from scripts.cleanup_as_dupes import main as cleanup_dupes_main
     from scripts.reconcile_catalogue import main as reconcile_cat_main
@@ -231,9 +238,8 @@ def main(argv: list[str] | None = None) -> int:
     etapes = [
         ("Hors zone / passés (purge_out_of_zone)", purge_zone_main, ["--apply"], "purge_zone"),
         ("Retenus devenus passés (purge_past)", purge_past_main, ["--execute"], "purge_past"),
-        ("Incomplétables radar/sans-page (purge_uncompletable)", purge_unc_main,
+        ("Incomplétables radar/sans-page/année révolue (purge_uncompletable)", purge_unc_main,
          ["--execute"], "purge_uncompletable"),
-        ("Incomplétables (discard_uncompletable)", discard_unc_main, ["--apply"], None),
         ("Articles de presse publiés à tort (audit_non_events)", audit_ne_main,
          ["--apply"], "audit-non-events"),
         # `--past` AJOUTÉ LE 2026-08-18. `purge_past` (étape 2 ci-dessus) écarte en BASE
