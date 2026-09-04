@@ -49,9 +49,11 @@ flowchart TD
   vision -->|oui| ok([✅ Photo retenue + point focal])
   vision -->|non — à chaque étage on descend| web[Étage 3-bis · AGENT WEB<br/>payant · DERNIER recours]
   web --> vision
-  web -->|rien| fb[Étage 4 · PAS de bake<br/>thumbnail laissé VIDE]
-  fb --> rt[[Repli runtime WordPress<br/>bannière fallback-territoire-catégorie<br/>+ og:image via Yoast]]
+  web -->|rien| fb[Étage 4 · Bannière territoire×catégorie<br/>TÉLÉVERSÉE comme vraie media WordPress<br/>même chemin qu'une vraie affiche]
+  fb --> ok
 ```
+
+⚠️ Le repli a changé le 2026-07-31 (détail §10) : ce schéma décrivait avant cette date un filtre PHP runtime (`cs_fallback_visual`, snippet 87) qui substituait la bannière SANS l'uploader — Franck a explicitement refusé ce modèle le 31/07. Depuis, la bannière est **téléversée comme une vraie image**, exactement comme une affiche. Le snippet 87 ne sert plus qu'en filet de sécurité pour les fiches publiées avant le correctif.
 
 **Deux défenses filtrent chaque candidat** avant de le retenir (détail §3) : des **règles déterministes** (domaine/logo/forme, gratuites) puis l'**agent vision** (payant, « ça correspond vraiment ? »).
 

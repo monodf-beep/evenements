@@ -175,25 +175,35 @@ prochaine collecte.
 
 ## Nice / Alpes-Maritimes
 - [ ] ⭐ **Explore Nice Côte d'Azur** (OT Nice, agenda sorties) — https://www.explorenicecotedazur.com/
-- [x] ⭐ **Palais des Festivals Cannes** (*mensuel*) — https://en.palaisdesfestivals.com/newsletter-subscribe/
 - [x] ⭐ **Côte d'Azur France** (CRT / Dépt 06) — https://cotedazurfrance.fr/sabonner_aux_newsletters/
 - [x] ⭐ **Menton, Riviera & Merveilles** (*mensuel*) — https://www.menton-riviera-merveilles.fr/sinscrire-a-la-newsletter/
-- [ ] ⭐ **Sortir à Cannes** (SEMEC) — https://www.sortiracannes.com/agenda
 - [x] Opéra Nice Côte d'Azur — https://www.opera-nice.org/newsletter/
 - [ ] Théâtre National de Nice (TNN) — https://www.tnn.fr/fr/
-- [ ] Anthéa (Antibes) — https://www.anthea-antibes.fr/
-- [ ] Fondation Maeght (Saint-Paul-de-Vence) — https://www.fondation-maeght.com/
-- [ ] Théâtre de Grasse — https://www.theatredegrasse.com/
 - [ ] Forum Jacques Prévert (Carros) — https://forumcarros.com/
 - [ ] MAMAC Nice — https://www.mamac-nice.org/
 - [ ] Musée Matisse Nice — https://www.musee-matisse-nice.org/
 - [ ] Villa Arson (Nice) — https://villa-arson.fr/newsletter/
 - [ ] Nice Jazz Festival — https://www.nicejazzfest.fr/
-- [ ] Jazz à Juan (Antibes) — https://jazzajuan.com/
-- [ ] Nuits du Sud (Vence) — https://www.nuitsdusud.com/
-- [ ] Antibes Juan-les-Pins Tourisme — https://www.antibesjuanlespins.com/
-- [ ] Cannes.com (Ville de Cannes) — https://www.cannes.com/
 - [x] Forum Sirius (billetterie / agenda spectacles Nice) — https://www.forumsirius.fr/orion/tdn.phtml?fiche=news
+
+### HORS PÉRIMÈTRE (arrondissement de Grasse) — NE PAS s'abonner
+Corrigé le 04/09 (audit du 31/08, §2.4) : ces neuf-là étaient listées comme des candidates
+normales, dont une cochée (Palais des Festivals Cannes) — alors que CLAUDE.md exclut
+explicitement les 62 communes de l'arrondissement de Grasse (Cannes, Antibes, Grasse,
+Vence…), et que `config/newsletters.txt` les marque déjà « NE PAS s'abonner ». Gardées ici,
+barrées, pour qu'on ne les propose plus jamais par erreur — pas supprimées, pour ne pas
+les réinventer dans six mois en cherchant « une newsletter Cannes ».
+
+- ~~Palais des Festivals Cannes~~ — hors périmètre (Cannes). *Si déjà cochée par erreur
+  avant cette correction : rien à défaire, juste ne pas en tenir compte dans le comptage.*
+- ~~Sortir à Cannes (SEMEC)~~ — hors périmètre (Cannes).
+- ~~Cannes.com (Ville de Cannes)~~ — hors périmètre (Cannes).
+- ~~Anthéa (Antibes)~~ — hors périmètre (Antibes).
+- ~~Jazz à Juan (Antibes)~~ — hors périmètre (Antibes).
+- ~~Antibes Juan-les-Pins Tourisme~~ — hors périmètre (Antibes).
+- ~~Fondation Maeght (Saint-Paul-de-Vence)~~ — hors périmètre (Vence).
+- ~~Nuits du Sud (Vence)~~ — hors périmètre (Vence).
+- ~~Théâtre de Grasse~~ — hors périmètre (Grasse).
 
 ## Piémont
 - [x] ⭐ **GuidaTorino** (agenda *hebdo*, Turin + environs) — https://www.guidatorino.com/iscrizione-newsletter/

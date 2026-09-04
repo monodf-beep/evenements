@@ -60,7 +60,7 @@ actif malgré cette recommandation.
 | `scripts/apply-tokens.mjs` | Pousse `design-system/tokens.css` dans Code Snippets (site-css, idempotent) |
 | `scripts/apply-settings.mjs` | Identité du site (titre, accroche, fuseau) |
 | `scripts/build-structure.mjs` | 7 pages piliers + menu « Principal FR » (idempotent) |
-| `scripts/apply-components.mjs` | Pousse `design-system/components.css` (site-css, idempotent) |
+| `scripts/apply-components.mjs` | Pousse `design-system/components.css` (site-css) — ⚠️ **PAS idempotent** : le snippet de production a divergé du dépôt (dette constatée, `docs/CORRECTIFS_CSS_PRETS.md` §6, `docs/DEPLOIEMENT_CSS_PAS_A_PAS.md` §1) — le relancer écraserait le snippet de production par la version courte du dépôt et détruirait des Ko de CSS **sans retour arrière**. Resynchroniser production → dépôt d'abord. |
 | `scripts/apply-carte-evenement.mjs` | Met à jour le contenu Gutenberg du Listing Item carte-événement (post 969) |
 | `scripts/apply-carte-a-la-une.mjs` | Met à jour le contenu Gutenberg du Listing Item carte "à la une" (post 976) |
 | `scripts/apply-homepage.mjs` | Pousse le contenu Gutenberg de la home mobile (24 sections) sur la page Accueil (928) |
