@@ -1,3 +1,8 @@
+> ⚠️ **ARCHIVÉ le 04/09** (audit du 31/08, §2.6). Feuille de route « de l'état actuel au
+> lancement » — le lancement a eu lieu, le site tourne en production. Gardé pour la trace
+> des choix d'architecture pré-lancement (JetEngine, GeneratePress…), plus une référence
+> pour le jour-le-jour.
+
 # Plan de développement — Agenda Sabauda
 
 *Feuille de route unique, de l'état actuel au lancement. Deux chantiers en parallèle :*

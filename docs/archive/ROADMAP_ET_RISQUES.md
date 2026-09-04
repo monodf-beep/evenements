@@ -1,3 +1,8 @@
+> ⚠️ **ARCHIVÉ le 04/09** (audit du 31/08, §2.6). Prémisse devenue fausse : ce document
+> part de « Agenda Sabauda n'existe pas encore » — c'est aujourd'hui le site en
+> production (`agendasabauda.eu`). Gardé pour la trace de la réflexion pré-lancement,
+> plus une référence.
+
 # Agenda Sabauda — Reste à faire, risques & challenge
 
 *État au 02/07/2026. Document critique : ce qui reste, ce qui cloche, ce qui manque, et la

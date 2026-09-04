@@ -8,6 +8,10 @@ site `agendasabauda.eu`, 14 crons quotidiens/hebdomadaires (`crontab.txt`).
 plusieurs centaines sont publiées et visibles du public. Il n'y a pas d'environnement de
 test.
 
+Ce document-ci s'adresse à la machine (moi). Pour Franck : `docs/GUIDE_FRANCK.md` — écrit
+pour lui le 2026-08-11, à sa demande, dit ce qui tourne tout seul, ce qu'il tape lui-même,
+et comment lire ce que ça répond. Resté orphelin (cité nulle part) jusqu'au 04/09.
+
 ---
 
 ## Les six règles, tirées d'incidents réels
