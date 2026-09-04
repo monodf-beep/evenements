@@ -73,9 +73,15 @@ ATTENDUS = [
     ("Contradicteur de dates",    "verifier_dates",  "verifier_dates.log",   30),
     ("Contradicteur de lieux",    "verifier_lieux",  "verifier_lieux.log",   30),
     ("Relève Gmail",              "gmail_collect",   "gmail.log",            30),
+    # Ajoutée le 04/09 avec le cron : le script existait depuis des semaines, écrit et
+    # correct, mais jamais planifié (audit du 31/08 §2.2). Un silence ici ressemblerait
+    # à « aucune fiche gmail: à rattraper aujourd'hui », son cas le plus fréquent.
+    ("Rattrapage URL Gmail",      "gmail_relink",    "gmail_relink.log",     30),
     ("Dates",                     "dates",           "dates.log",            30),
     ("Dédoublonnage",             "dedupe",          "dedupe.log",           30),
     ("Lieux",                     "venues",          "venues.log",           30),
+    # Ajoutée le 04/09 avec le cron, même motif que « Rattrapage URL Gmail » ci-dessus.
+    ("Tri des séances de cinéma", "cleanup_cinema",  "cleanup_cinema.log",   30),
     # Ajoutés le 2026-08-11 AVEC leurs crons, comme la consigne au-dessus le demande.
     # Tous deux sont silencieux quand ils ne trouvent rien — c'est même leur cas le plus
     # fréquent — donc leur panne ressemble trait pour trait à leur fonctionnement normal.

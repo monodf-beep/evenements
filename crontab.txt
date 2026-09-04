@@ -47,6 +47,14 @@ SLACK_DIGEST=1
 0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py >> logs/scraper.log 2>&1
 # Collecte des newsletters (label Gmail « Agenda ») 8h15
 15 8 * * * cd /root/evenements && .venv/bin/python scripts/gmail_collect.py >> logs/gmail.log 2>&1
+# Rattrapage de l'URL des fiches « gmail: » 8h20 (écrit, jamais planifié — audit du
+# 31/08 §2.2, activé le 04/09 avec l'accord de Franck). Un mail newsletter n'est pas
+# une vraie page web ; ce script rejoue le mail déjà collecté, retrouve le lien réel
+# (<a href>, désormais préservé par gmail_collect) et le pose sur la fiche, pour que
+# dates.py/venues.py juste après puissent lire une vraie page au lieu du placeholder
+# « gmail:{message_id}#{idx} ». Placé avant leur passage, comme prévu dans
+# deploy/cron_pipeline.sh — ce fichier-là n'est pas planifié, cette ligne-ci l'est.
+20 8 * * * cd /root/evenements && .venv/bin/python -m scripts.gmail_relink --execute >> logs/gmail_relink.log 2>&1
 # Pré-datation GRATUITE 8h25 — parsing texte seul (ni téléchargement de page, ni LLM :
 # aucun coût, aucun quota consommé). Sert UNIQUEMENT à armer la garde de dates de
 # dedupe (_dates_incompatible) sur les fiches scrapées le matin même : sans elle, la
@@ -81,6 +89,14 @@ SLACK_DIGEST=1
 # Même forme que dates.py : JSON-LD d'abord (déterministe, gratuit), LLM en second
 # recours, borné et désactivable (VENUES_LLM=0).
 50 8 * * * cd /root/evenements && .venv/bin/python scripts/venues.py >> logs/venues.log 2>&1
+# Tri des séances de cinéma 8h55 (écrit, jamais planifié — audit du 31/08 §2.2, activé
+# le 04/09 avec l'accord de Franck : « oui je ne comprends pas pourquoi on a encore des
+# séances commerciales »). Écarte les projections courantes de salle commerciale
+# (Pathé, UGC…), garde les vrais rendez-vous cinéma culturels (festival, rétrospective,
+# hommage, plein air associatif) — tri par ORGANISATEUR, pas par score. Idempotent et
+# auto-correcteur (rétablit ce qu'un passage précédent aurait écarté à tort). Placé
+# après venues.py (a besoin du lieu pour juger l'organisateur) et avant l'évaluation.
+55 8 * * * cd /root/evenements && .venv/bin/python -m scripts.cleanup_cinema --execute >> logs/cleanup_cinema.log 2>&1
 # Évaluation LLM 9h (après scraping)
 # NB : le cron évalue TOUTE la file pending (rattrapage quotidien). Le pilotage par
 # période (« ce week-end ») se fait à la MAIN via le bouton du dashboard.
