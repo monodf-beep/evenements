@@ -14,18 +14,46 @@
       "fr": "Musée national de l'automobile",
       "it": "Museo Nazionale dell'Automobile",
       "_source": "Le nom de lieu de la source le donne lui-même : « MAUTO - Museo Nazionale dell'Automobile » (fiches 3433 et 4632)."
+    },
+    "TFF": {
+      "fr": "Festival du film de Turin",
+      "it": "Torino Film Festival",
+      "_source": "Vérifié le 04/09 (torinofilmfest.org, Wikipédia) : le nom officiel italien/international est déjà « Torino Film Festival », sans traduction — repéré dans le corpus via « Il 44TFF sarà dedicato a Marilyn Monroe »."
+    },
+    "TJF": {
+      "fr": "Festival de jazz de Turin",
+      "it": "Torino Jazz Festival",
+      "_source": "Vérifié le 04/09 (italiajazz.it, piemontedalvivo.it) : « TJF PIEMONTE 2026 » est la tournée hors les murs du Torino Jazz Festival — repéré via « TJF PIEMONTE 2026: al via l'ottava edizione », Teatro Alfieri, Asti."
+    },
+    "GAM": {
+      "fr": "Galerie civique d'art moderne et contemporain (Turin)",
+      "it": "Galleria Civica d'Arte Moderna e Contemporanea",
+      "_source": "Vérifié le 04/09 (comune.torino.it, MuseoTorino, Wikipédia) — repéré via « Musei civici (Palazzo Madama, MAO, GAM) », Turin."
+    },
+    "MAO": {
+      "fr": "Musée d'art oriental (Turin)",
+      "it": "Museo d'Arte Orientale",
+      "_source": "Vérifié le 04/09 (cultura.gov.it, comune.torino.it) — même source que GAM."
+    },
+    "OGR": {
+      "fr": "Grands ateliers de réparation (Turin)",
+      "it": "Officine Grandi Riparazioni",
+      "_source": "Vérifié le 04/09 (Wikipédia, cultura.gov.it) : anciens ateliers de maintenance ferroviaire, aujourd'hui lieu culturel — repéré via « Lingotto Fiere / OGR Torino »."
+    },
+    "C2C": {
+      "fr": "Club to Club",
+      "it": "Club to Club",
+      "_source": "Vérifié le 04/09 (clubtoclub.it, Wikipédia) : le sigle épelle littéralement son propre nom (« 2 » = « to »), identique en français et en italien — repéré via « un anniversaire marquant pour le C2C »."
+    },
+    "MITO": {
+      "fr": "Milan-Turin",
+      "it": "Milano-Torino",
+      "_source": "Vérifié le 04/09 (mitosettembremusica.it, Wikipédia italienne) : MITO = MIlano + TOrino, les deux villes qui coproduisent le festival MITO SettembreMusica — repéré via « MITO per la », Museo del Risorgimento."
     }
   },
 
   "_candidats_a_confirmer": {
     "_note": "REPÉRÉS dans le corpus, développement NON VÉRIFIÉ. Ils ne sont PAS appliqués — ils attendent une confirmation à la source. Les déplacer dans « sigles » une fois vérifiés.",
-    "TFF": "vu dans « Il 44TFF sarà dedicato a Marilyn Monroe », Mole Antonelliana, catégorie Cinéma",
-    "TJF": "vu dans « TJF PIEMONTE 2026: al via l'ottava edizione », Teatro Alfieri, Asti",
-    "GAM": "vu dans « Musei civici (Palazzo Madama, MAO, GAM) », Turin",
-    "MAO": "même source que GAM",
-    "OGR": "vu dans « Lingotto Fiere / OGR Torino »",
-    "C2C": "vu dans « un anniversaire marquant pour le C2C »",
-    "MITO": "vu dans « MITO per la », Museo del Risorgimento",
-    "ARCA": "vu comme lieu : « Polo Espositivo ARCA », Vercelli — peut-être un nom propre et non un sigle"
+    "_resolus_hors_sigles": "ARCA vérifié le 04/09 (visitvalsesiavercelli.it, comune.vercelli.it) : CE N'EST PAS UN SIGLE — « arca » est le mot italien pour « arche », le lieu tire son nom de l'image d'une arche moderne (verre et acier) protégeant l'ancienne église médiévale qui l'abrite. Retiré des candidats, rien à développer."
   }
 }
