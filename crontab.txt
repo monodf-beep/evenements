@@ -131,6 +131,17 @@ SLACK_DIGEST=1
 # automatiquement ce qui était déjà en ligne (sinon le SEO reste invisible en base). Petit
 # cap volontaire (coût LLM par événement) — ajuste --cap dans le script si besoin.
 30 10 * * * cd /root/evenements && .venv/bin/python scripts/seo_batch.py --cap 10 >> logs/seo_batch.log 2>&1
+# Photo PAYSAGE (16:9) du haut du panier, 10h35 — écrit, jamais planifié (audit du
+# 31/08 §2.2, activé le 04/09 : Franck, « amélioration visuelle qui est quand même
+# super importante pour un article »). Un agent va chercher, chez la source
+# OFFICIELLE de l'événement, une vraie photo paysage (jamais une agence, jamais
+# inventée) pour les événements déjà publiés et bien notés (score ≥ 7) qui n'ont
+# encore que le format portrait — publisher_as sert alors le bon format par
+# emplacement. Coûte un appel IA par photo trouvée : --cap 15 le plafonne. Placé
+# après seo_batch (même public : le haut du panier déjà en ligne). À REGARDER
+# après une semaine (coût réel vu dans le digest, qualité des photos trouvées) —
+# décision de garder ou d'éteindre à reprendre alors, pas figée ici.
+35 10 * * * cd /root/evenements && .venv/bin/python -m scripts.images_wide --apply --cap 15 --min-score 7 >> logs/images_wide.log 2>&1
 # Traduction FR/IT quotidienne 10h45 — ▶️ ACTIVE. Mise en pause le 2026-08-01 au soir,
 # rallumée le 2026-08-04. L'historique ci-dessous est conservé : c'est le seul endroit où
 # la chaîne complète de l'incident est écrite, et la relire avant de toucher au cap évite

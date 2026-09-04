@@ -93,6 +93,9 @@ ATTENDUS = [
     ("Évaluation",                "evaluator",       "evaluator.log",        30),
     ("Lot quotidien",             "daily_batch",     "daily_batch.log",      30),
     ("Référencement",             "seo_batch",       "seo_batch.log",        30),
+    # Ajoutée le 04/09 avec le cron, même motif que « Rattrapage URL Gmail » plus haut :
+    # écrit depuis des semaines, jamais planifié avant ce jour (audit du 31/08 §2.2).
+    ("Photo paysage (images_wide)", "images_wide",   "images_wide.log",      30),
     # Ajouté le 2026-08-03 avec le cron lui-même : un rafraîchissement de classement qui
     # s'arrête ne casse rien de visible — la section continue d'afficher un tri, seulement
     # il vieillit. C'est précisément le genre de panne qu'on découvre trois semaines plus
