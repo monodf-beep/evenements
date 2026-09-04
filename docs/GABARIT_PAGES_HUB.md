@@ -22,6 +22,23 @@ création. Le contenu éditorial des pages « prêtes » est dans `docs/pages/<l
   **méta `as_ville`** (ville), **taxonomie `territoire`** (4 termes), **`tribe_events_cat`**
   (catégorie), dates `_EventStartDate` / `_EventEndDate` (borne « à venir »).
 
+  > ⚠️ **Corrigé le 04/09, vérifié en base (Novamira)** : ce paragraphe décrit un mécanisme
+  > JetEngine qui n'a jamais été construit. Les 24 pages ville/zone réellement en ligne
+  > utilisent un shortcode maison, `[cs_hub_ville villes="…" territoire="…"]`
+  > (Code Snippets #61 « CS · Hub ville »), qui filtre par **`_VenueCity`** (méta du CPT
+  > `tribe_venue`, pas `as_ville` de l'événement) pour une liste de villes fixée EN DUR dans
+  > le contenu de chaque page. Les 4 pages territoire (§B0) filtrent par la taxonomie
+  > `territoire` seule, sans liste de villes. Encore la règle 1 : ce document décrivait un
+  > plan, pas ce qui a fini par être construit — personne ne l'avait revérifié après coup.
+
+- **04/09, décision de Franck sur les 19 pages ville/zone sous le seuil de 8** (dont 8 à zéro
+  événement, trouvées le 31/08 : Aix-les-Bains, Chamonix, Cluses, Menton, Moûtiers,
+  Saint-Jean-de-Maurienne, Sallanches, Thonon-les-Bains — toujours à zéro le 04/09, mesuré à
+  nouveau via le shortcode réel) : **restent en `index`, choix assumé**, pari sur un
+  remplissage rapide plutôt qu'un passage en `noindex` le temps de graduer. Pas d'action
+  technique prise. Si le remplissage tarde, revenir sur ce choix plutôt que de le laisser
+  dormir sans y repenser — ce n'est pas un état terminal, personne ne le rouvre tout seul.
+
 ---
 
 ## B. Le plan complet des pages (la feuille de route)
