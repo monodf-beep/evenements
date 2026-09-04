@@ -47,6 +47,7 @@ from utils.lang import (detect_lang, effective_lang, titre_reecrit_mauvaise_lang
                         titre_semble_intraduit)
 from utils.coherence import incoherence_description
 from utils import acronymes
+from utils import vocabulaire
 from scripts.scraper_events import init_db
 from scripts.publisher_as import (publish_to_as, wp_original_est_en_ligne,
                                   wp_site_joignable)
@@ -195,9 +196,7 @@ def _charte_prompt(target: str, voix: str = "") -> str:
         topo = ('Torino (pas "Turin"), Aosta, Nizza, Vercelli ; territoires : Savoia, '
                 'Piemonte, Valle d\'Aosta, Contea di Nizza')
         superl = ('« imperdibile », « da non perdere », « evento clou », « magico », '
-                  '« unico/straordinario » (quand c\'est vide), « il migliore », et tout '
-                  'surnom touristique de ville — « Venezia delle Alpi » pour Annecy, '
-                  '« piccola Venezia », « perla delle Alpi »')
+                  '« unico/straordinario » (quand c\'est vide), « il migliore »')
         darkp = ('fausse urgence (« ultimi posti! », « solo oggi », « affrettati »), '
                  'clickbait (« non crederai… »), confirmshaming')
         casse_lang = ('En italien, MOIS et JOURS en MINUSCULE (« 5 luglio », « domenica »). '
@@ -206,10 +205,7 @@ def _charte_prompt(target: str, voix: str = "") -> str:
     else:
         topo = ('Turin (pas "Torino"), Aoste, Nice, Verceil ; territoires : Savoie, '
                 'Piémont, Vallée d\'Aoste, Comté de Nice')
-        superl = ('« incontournable », « magique », « à ne pas manquer », « événement phare », '
-                  'Ne dis JAMAIS « royaume de Sardaigne » / « Regno di Sardegna » : écris « les États de Savoie » / « gli Stati Sabaudi » (config/vocabulaire_interdit.json). '
-                  'et tout surnom touristique de ville — « Venise des Alpes » pour Annecy, '
-                  '« Venise du Nord », « petite Venise », « perle des Alpes »')
+        superl = ('« incontournable », « magique », « à ne pas manquer », « événement phare »')
         darkp = ('fausse urgence (« plus que 2 places ! », « dernier jour »), clickbait '
                  '(« vous n\'allez pas croire… »), confirmshaming')
         casse_lang = 'En français, mois et jours en minuscule. Jamais de title case anglais.'
@@ -221,7 +217,7 @@ def _charte_prompt(target: str, voix: str = "") -> str:
          f"nationalité ; pas de mots-frontière ni d'irrédentisme) et les patterns — EN {tgt.upper()} "
          f"comme en français. Tu RÉ-APPLIQUES ces règles en {tgt}, tu ne recopies pas un défaut. "
          f"En cas de désaccord, la voix prime sur ce qui suit.\n\n" if voix else "") +
-        f"Tu produis la version {tgt} d'un événement culturel de l'espace alpin occidental "
+        f"Tu produis la version {tgt} d'un événement culturel de l'espace sabaud "
         f"(Savoie · Piémont · Vallée d'Aoste · Nice), pour un média bilingue exigeant "
         f"(esprit *Internazionale* / *Le Monde Diplomatique*).\n\n"
         f"RÈGLE MÈRE — TRADUIRE N'EST PAS RECOPIER : la version {tgt} obéit à la MÊME charte "
@@ -236,6 +232,7 @@ def _charte_prompt(target: str, voix: str = "") -> str:
         f"Préserve les vrais sigles/acronymes (FIAF, MAO, ONU) et la casse voulue d'une "
         f"marque (iMac, PSG).\n\n"
         f"SUPERLATIFS CREUX INTERDITS en {tgt} : {superl}. Reste factuel et incarné.\n\n"
+        f"VOCABULAIRE INTERDIT en {tgt} :\n{vocabulaire.consigne_prompt(target)}\n\n"
         f"DARK PATTERNS INTERDITS en {tgt} (le lecteur d'abord, jamais le clic) : {darkp}.\n\n"
         f"TOPONYMES dans la langue cible : {topo}. Garde la chaîne ville → province → "
         f"territoire. Conserve les NOMS PROPRES réels (lieux, artistes, festivals, œuvres) "

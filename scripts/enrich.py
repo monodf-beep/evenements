@@ -253,11 +253,8 @@ GARDE-FOUS STRICTS :
   mince, mets "confiance": "faible" et reste factuel.
 - Pas de superlatifs creux ("incontournable", "magique", "à ne pas manquer"), aucun
   dark pattern (urgence factice, clickbait).
-- Ne dis JAMAIS « royaume de Sardaigne » : écris « les États de Savoie » (arbitrage Franck 2026-08-21 ; liste complète : config/vocabulaire_interdit.json).
+{vocabulaire_interdit}
 - SIGLES : à leur PREMIÈRE mention, développe-les avant de les employer seuls — « Théâtre national de Nice (TNN) », puis « le TNN » ensuite (arbitrage Franck 2026-08-18 ; liste complète : config/acronymes.json). N'invente AUCUN développement pour un sigle absent de cette liste : emploie-le tel quel.
-- Aucun surnom touristique de ville ("Venise des Alpes" pour Annecy, "Venise du Nord",
-  "petite Venise", "perle des Alpes"...) — nomme la ville par son nom, jamais par une
-  comparaison flatteuse de guide touristique (CHARTE §6).
 - Nomme toujours la géographie : ville → province/département → territoire.
 - CASSE : jamais de titre/nom TOUT EN CAPITALES, même si la source l'écrit ainsi
   ("COREOGRAFIE DEL POSSIBILE" → "Coreografie del Possibile"). Normalise en casse de
@@ -1186,6 +1183,7 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
     peut alors creuser le site officiel, jamais le web ouvert (règle Franck)."""
     from utils.voix import voix_block
     from utils import settings as pipeline_settings  # COURT_MAX_TOKENS (mode court)
+    from utils import vocabulaire
     _court = court
     prompt = voix_block() + ENRICH_PROMPT.format(
         title=ev.get("title", ""),
@@ -1195,6 +1193,7 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         organisateur=ev.get("organisateur") or ev.get("source_name") or "—",
         categorie=ev.get("llm_categorie") or "—",
         material=material,
+        vocabulaire_interdit=vocabulaire.consigne_prompt("fr"),
     )
     if _court:
         prompt += ("\n\n[MODE COURT — petit événement] Encore plus BREF (~120-200 mots, 1-2 "

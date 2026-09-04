@@ -90,13 +90,55 @@ _check("   et l'italien a la sienne", "gli Stati Sabaudi" in consigne_prompt("it
 _check("celle sans remplacement se lit autrement",
        "N'emploie JAMAIS « Venise des Alpes »" in c, c)
 
-print("\n──── LES QUATRE PROMPTS portent la règle ────")
-# Le contrôle qui compte : une consigne absente d'un prompt ne peut rien empêcher. Les
-# quatre chemins d'écriture sont distincts et personne ne les tient à jour ensemble.
-for chemin in ("scripts/enrich.py", "scripts/translate_events.py",
-               "scripts/conform_articles.py", "utils/social.py"):
-    src = (ROOT / chemin).read_text(encoding="utf-8")
-    _check(f"{chemin}", "royaume de Sardaigne" in src or "Regno di Sardegna" in src)
+print("\n──── LES QUATRE PROMPTS portent la règle — EN VRAI, PAS RECOPIÉE ────")
+# CORRIGÉ le 04/09 (audit du 31/08 §2.5, décision de Franck le même jour sur
+# « transfrontalier »/« espace alpin ») : jusque-là, ce bloc vérifiait qu'une CHAÎNE
+# recopiée à la main figurait dans le SOURCE des 4 fichiers — un contrôle qui ne
+# prouvait rien sur ce qui part vraiment au LLM, et qui expliquait pourquoi « petite
+# Venise »/« perle des Alpes » vivaient dans les prompts sans jamais être dans ce
+# fichier JSON (donc jamais vues par l'audit sur le déjà-publié). Les 4 prompts
+# appellent maintenant `vocabulaire.consigne_prompt()` au lieu de recopier — ce bloc
+# APPELLE CHAQUE CHEMIN RÉEL et vérifie ce qui en sort, pas ce qui est écrit en dur.
+import scripts.enrich as _enrich                      # noqa: E402
+import scripts.translate_events as _te                # noqa: E402
+import scripts.conform_articles as _ca                # noqa: E402
+import utils.social as _social                         # noqa: E402
+
+rendu_enrich = _enrich.ENRICH_PROMPT.format(
+    title="t", dates="d", lieu="l", territoire="terr", organisateur="org",
+    categorie="cat", material="mat", vocabulaire_interdit=consigne_prompt("fr"))
+_check("scripts/enrich.py (rendu réel)", "royaume de Sardaigne" in rendu_enrich)
+
+rendu_te_fr = _te._charte_prompt("fr")
+rendu_te_it = _te._charte_prompt("it")
+_check("scripts/translate_events.py, cible FR", "royaume de Sardaigne" in rendu_te_fr)
+# consigne_prompt() affiche toujours l'EXPRESSION en français (c'est la clé du JSON),
+# seul le REMPLACEMENT change de langue — cohérent avec le test dédié plus haut
+# (« et l'italien a la sienne » vérifie déjà gli Stati Sabaudi, pas Regno di Sardegna).
+_check("scripts/translate_events.py, cible IT (le remplacement, en italien)",
+      "gli Stati Sabaudi" in rendu_te_it)
+
+rendu_ca = _ca.PROMPT.format(article_json="{}", vocabulaire_interdit=consigne_prompt("fr"))
+_check("scripts/conform_articles.py (rendu réel)", "royaume de Sardaigne" in rendu_ca)
+
+rendu_social = _social._CAPTION_AI_RULES.format(
+    lang_full="français", vocabulaire_interdit=consigne_prompt("fr"))
+_check("utils/social.py (rendu réel)", "royaume de Sardaigne" in rendu_social)
+
+print("\n──── la décision du 04/09 (transfrontalier / espace alpin) est bien vivante ────")
+_check("« transfrontalier » est détecté", trouver("Cette exposition transfrontalière.") != [])
+_check("« espace alpin » est détecté", trouver("Un événement au cœur de l'espace alpin.") != [])
+_check("la consigne envoyée aux 4 prompts porte bien les deux",
+      "transfrontalier" in consigne_prompt("fr") and "espace alpin" in consigne_prompt("fr"))
+# Les 2 usages du mot dans le PROMPT LUI-MÊME (translate_events décrivait le média comme
+# « alpin transfrontalier », social.py pareil) ont été corrigés en « sabaud » — sinon le
+# prompt aurait interdit d'une main ce qu'il écrit de l'autre.
+_check("translate_events.py ne s'auto-décrit plus comme « transfrontalier »",
+      "transfrontalier" not in rendu_te_fr.split("VOCABULAIRE INTERDIT")[0])
+rendu_social_complet = _social._CAPTION_AI_RULES.format(
+    lang_full="français", vocabulaire_interdit="")
+_check("utils/social.py ne s'auto-décrit plus comme « transfrontalier » non plus",
+      "transfrontalier" not in rendu_social_complet)
 
 print("\n──── l'audit sur une base ────")
 conn = sqlite3.connect(tmp)

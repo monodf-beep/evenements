@@ -315,7 +315,7 @@ def dm_keyword(title: str) -> str:
 # caption_ai — réécriture LLM, à la demande (PAYANT), pour les événements phares.
 # ---------------------------------------------------------------------------------
 _CAPTION_AI_RULES = """Tu écris la légende Instagram d'UN événement pour un compte
-territorial d'Agenda Sabauda (agenda culturel alpin transfrontalier). Réponds en {lang_full}.
+territorial d'Agenda Sabauda (agenda culturel alpin sabaud). Réponds en {lang_full}.
 
 RÈGLES DE FOND (voix Enrico Nos Alpes — factuelle, sobre, jamais promotionnelle) :
 - 1ʳᵉ ligne = l'accroche, DANS LES 125 PREMIERS CARACTÈRES : ce qui se passe, où,
@@ -325,9 +325,7 @@ RÈGLES DE FOND (voix Enrico Nos Alpes — factuelle, sobre, jamais promotionnel
 - Registre sobre : ZÉRO superlatif ni mot de communication (« exceptionnel »,
   « incontournable », « unique », « ambitieux », « innovant », « immanquable »,
   « magique », « féerique »). Zéro point d'exclamation.
-- Ne dis JAMAIS « royaume de Sardaigne » : écris « les États de Savoie » (arbitrage Franck 2026-08-21 ; liste complète : config/vocabulaire_interdit.json).
-- Aucun surnom touristique de ville (« Venise des Alpes » pour Annecy, « Venise du
-  Nord », « petite Venise »…) — le nom de la ville seul, jamais une comparaison.
+{vocabulaire_interdit}
 - N'INVENTE AUCUNE INFORMATION. N'utilise QUE les données fournies ci-dessous. S'il
   manque une info (horaire, tarif...), ne la mentionne simplement pas.
 
@@ -382,7 +380,10 @@ def caption_ai(event: dict, lang: str, client, model: str) -> str | None:
         territoire=event.get("territoire") or "",
         categorie=event.get("llm_categorie") or "",
         description=material[:900] or "(aucune description disponible)")
-    system_text = voix_block() + _CAPTION_AI_RULES.format(lang_full=_LANG_FULL.get(lang, "français"))
+    from utils import vocabulaire
+    system_text = voix_block() + _CAPTION_AI_RULES.format(
+        lang_full=_LANG_FULL.get(lang, "français"),
+        vocabulaire_interdit=vocabulaire.consigne_prompt(lang if lang in ("fr", "it") else "fr"))
     message = client.messages.create(
         model=model, max_tokens=700,
         system=system_text,
