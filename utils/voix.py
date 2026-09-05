@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
-"""Voix éditoriale : injecte le TON JOURNALISTIQUE (défini dans Obsidian) dans les prompts.
+"""Voix éditoriale : injecte le TON JOURNALISTIQUE dans les prompts de rédaction.
 
-Source de vérité UNIQUE = une note Obsidian, sur le VPS, pointée par la variable
-d'environnement OBSIDIAN_VOIX_PATH. Le pipeline la lit à chaque run : tu édites la note
-dans Obsidian, le prochain enrichissement/newsletter en tient compte — aucune synchro.
+Source EN COUCHES, pas unique (corrigé le 2026-09-05 : cette docstring annonçait
+« source de vérité UNIQUE = une note Obsidian », ce que le code d'en dessous contredit
+depuis toujours — _DEFAULT_VOIX se décrit lui-même comme « voix CANONIQUE versionnée ».
+Franck a posé la question, « c'est pas sur Obsidian que tout devrait être ? », et les
+deux réponses coexistaient dans le même fichier). L'ordre réel, cf. _sources() :
+
+  1. OBSIDIAN_VOIX_PATH : une ou plusieurs notes Obsidian sur le VPS, chargées DANS
+     L'ORDRE et concaténées. Si la variable est définie, elle prime sur tout le reste ;
+  2. les couches choisies au back-office (settings.voix_layers) ;
+  3. la voix mono-choisie au back-office (settings.voix_active) ;
+  4. filet : docs/voix/VOIX.md, versionné ici. La voix n'est donc JAMAIS vide.
+
+Obsidian reste l'atelier d'écriture : tu édites la note, le prochain run en tient
+compte, sans synchro. Le fichier du dépôt garantit que le pipeline tourne quand même.
+
+⚠️ Le plafond _max_chars() s'applique APRÈS concaténation. Avec plusieurs couches, c'est
+donc la DERNIÈRE qui est rognée en premier, c'est-à-dire la surcharge projet, celle qui
+est censée avoir le dernier mot. Raison de plus pour que la troncature s'annonce.
 
 On l'applique aux textes LONGS (article enrichi, newsletter, réponse directe SEO) où le
 ton se voit ; pas à la description factuelle de 2 phrases (on ne brode pas sur les faits).
