@@ -17,10 +17,17 @@ turismotorino.org;Piemonte
 fondazionetorinomusei.it;Piemonte
 gamtorino.it;Piemonte
 circololettori.it;Piemonte
+# ajoutés le 05/09, relevés en vrai sous le label Gmail « Agenda » (45 j) — sans eux,
+# ces mails passaient avec territoire vide (comportement documenté en tête de fichier) :
+tobevents.it;Piemonte
+visitlmr.it;Piemonte
 
 # ---- Nice / Alpes-Maritimes ----
 tnn.fr;Nice
 forumsirius.fr;Nice
+# ajouté le 05/09 : le VRAI domaine d'envoi du TNN est theatredenice.org, pas tnn.fr
+# (celui-ci n'a plus été vu recevoir aucun mail) — les deux gardés, au cas où.
+theatredenice.org;Nice
 departement06.fr;Nice
 explorenicecotedazur.com;Nice
 explorenca.com;Nice
@@ -96,6 +103,9 @@ chateau-rouge.net;Savoie
 mal-thonon.org;Savoie
 chambery.fr;Savoie
 mairie-chambery.fr;Savoie
+# ajouté le 05/09 : la Cité des Arts envoie via un compte Mailchimp dédié
+# (mairie-chambery.fr ne reçoit jamais rien) — sous-domaine précis, pas générique.
+24929155.mailchimpapp.com;Savoie
 cinema-laturbine.fr;Savoie
 musilac.com;Savoie
 guitare-en-scene.com;Savoie
