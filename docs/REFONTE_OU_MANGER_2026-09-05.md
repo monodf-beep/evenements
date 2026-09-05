@@ -337,3 +337,130 @@ Jumelles IT à utiliser — **toutes vérifiées 200 et auto-canoniques le 05/09
    FR + IT, avec les cinq correctifs techniques du §4.4.
 3. Les deux anomalies du §5 (URL de nav canonicalisées vers la home, footer IT en français)
    valent plus de trafic que cette page. À planifier à part.
+
+---
+
+## 9. Révision après retour de Franck (05/09, même jour)
+
+Franck : *« on n'a pas ces 3 articles ? il me semblait »* et *« il faut aussi Turin, les Langhe,
+voire dans les vallées, voire lac Majeur et Lago d'Orta, voire arrière-pays nissart, voire
+Chablais, avant-pays savoyard. »*
+
+### 9.1 Non, ces trois articles n'existent pas — vérifié en base
+
+Requête SQL directe (Novamira), `post_type IN ('post','page')`, **tous statuts sauf
+auto-draft/inherit** — donc brouillons, privés et corbeille compris :
+
+| ID | Statut | Type | Titre |
+|---|---|---|---|
+| 1811 / 1812 | publish | page | Où manger / Dove Mangiare |
+| 3648 / 3650 | publish | post | Où manger niçois : Cuisine Nissarde |
+| 2418 / 2419 | publish | post | Sagre du Piémont 2026 / Sagre del Piemonte |
+
+**Six entrées, pas une de plus. Aucun brouillon.** Il n'existe pas d'article « où manger » pour
+le Piémont, la Vallée d'Aoste ni la Savoie. La confusion vient probablement de
+`/sagre-piemont-2026/` : c'est bien du Piémont et de la gastronomie, mais ce sont des
+**événements**, pas des tables.
+
+### 9.2 Sur la granularité : Franck a raison, et j'avais tort
+
+Mon §4 proposait des rayons **par territoire**. C'est trop grossier, et il le dit justement :
+personne ne cherche « où manger en Piémont ». On cherche « où manger à Turin ». La demande
+vit au niveau de la **destination**, pas du territoire administratif. Point accordé.
+
+**Mais la contrainte n'est pas l'architecture d'URL — c'est la matière.** Décompte exact des
+44 adresses de la page :
+
+| Destination proposée | Adresses disponibles |
+|---|---|
+| Comté de Nice (Nice 13 + hors Nice 10 + merenda 9) | **32** — et elles sont déjà dans un article |
+| Turin (les piole) | **5** |
+| Aoste | **4** |
+| Annecy / fermes-auberges | **3** |
+| Langhe · vallées piémontaises · Lac Majeur · Lago d'Orta · arrière-pays nissart · Chablais · avant-pays savoyard | **0** |
+
+**Hors Nice, il reste douze adresses pour huit destinations, dont six à zéro.** Ouvrir ces pages
+aujourd'hui, c'est publier huit pages vides. C'est exactement ce que `GABARIT_PAGES_HUB.md`
+interdit — et ce document a déjà eu raison une fois, sur les pages ville.
+
+### 9.3 La critique de fond — ce que ni Franck ni moi n'avions posé
+
+**(a) Une liste de restaurants est un état terminal sans rouvreur** (règle 3 du CLAUDE.md).
+
+C'est le vrai argument, et il est structurel. Un événement expire proprement : la date passe, la
+fiche sort des files, personne n'est trompé. **Une liste de restaurants pourrit en silence.** Un
+établissement ferme, change de mains, change de cuisine — et la page continue de l'annoncer,
+sans qu'aucun signal ne se déclenche. Qui la rouvre, à quelle condition, et où voit-on le nombre
+d'adresses non revérifiées ? Aucune réponse aujourd'hui. Multiplier par huit une file que
+personne ne relit, c'est fabriquer huit dettes.
+
+**(b) Sur « où manger à Turin », le combat est perdu d'avance** — face à TripAdvisor, TheFork,
+Michelin et GuidaTorino (qui figure dans la base comme source, `organisateur/guidatorino-com`).
+Avec cinq piole, il n'y a pas de match. Ce n'est pas du pessimisme, c'est le même constat que les
+0 impressions de `/ou-manger/`.
+
+### 9.4 Ce qui marche déjà, et pourquoi — la vraie leçon
+
+`/cuisine-nissarde-tables-labellisees/` ne se classe pas parce qu'elle parle de Nice. Elle se
+classe parce que **ce n'est pas une liste de restaurants : c'est la couverture d'une liste
+officielle, datée et vérifiable** — un label, un organisme émetteur, une date de remise
+(6 novembre 2025), un décompte (29 établissements). C'est du journalisme adossé à une source,
+exactement ce que demande la charte éditoriale. Et ça règle le problème (a) : **le label est son
+propre rouvreur**, il republie à échéance fixe.
+
+**Or chaque territoire a son label.** Et — c'est le point — ces labels sont déjà découpés à
+l'échelle des destinations que Franck réclame :
+
+| Territoire / destination | Label | État de vérification |
+|---|---|---|
+| Comté de Nice | **Cuisine Nissarde** (office de tourisme métropolitain) | ✅ article en ligne, édition 2025/26 |
+| Vallée d'Aoste | **Saveurs du Val d'Aoste** (label régional) | ✅ déjà cité sur `/ou-manger/`, reste à sourcer la liste |
+| **Turin & province** | **Maestri del Gusto di Torino e provincia** — Camera di commercio di Torino + Slow Food + Laboratorio Chimico, sélection **biennale** | ✅ existe ; **édition 2025-2026 : 218 lauréats, dont 71 en ville** (192 reconductions, 26 nouveaux) |
+| Savoie & Haute-Savoie | **Savoie Mont Blanc Excellence** / restaurants agréés **Marque Savoie** (Savoie Mont Blanc Tourisme) | ⚠️ **piste, à vérifier** — le périmètre « restaurants » semble moins figé que les trois autres |
+
+> ⚠️ **Réserve honnête sur les Maestri del Gusto** : la sélection distingue surtout des
+> **artisans du goût** — fromagers, salumieri, pâtissiers, producteurs — pas seulement des
+> restaurants. Le cadrage juste n'est donc pas « où manger à Turin » mais « où goûter et
+> rapporter » — ce qui est adjacent, et honnête. Ne pas forcer l'étiquette « restaurant » sur
+> cette liste : ce serait exactement le genre d'approximation que la charte proscrit.
+
+### 9.5 Architecture révisée
+
+**L'axe n'est pas la géographie, c'est le label vérifiable — et il donne la géographie par
+surcroît.**
+
+```
+/ou-manger/  (hub, carrefour, jamais un catalogue)
+   ├── Comté de Nice     → /cuisine-nissarde-tables-labellisees/     ✅ en ligne
+   ├── Turin & province  → « Les Maestri del Gusto 2025-2026 »       ⏳ à écrire, source solide
+   ├── Vallée d'Aoste    → « Les tables Saveurs du Val d'Aoste »     ⏳ à écrire, liste à sourcer
+   └── Savoie/Hte-Savoie → label à confirmer, sinon reste dans le hub ⚠️
+```
+
+Franck obtient sa granularité destination (Maestri del Gusto **est** Turin + province ; Cuisine
+Nissarde **est** Nice et son arrière-pays), sans ouvrir de page pour le Chablais ou le lac d'Orta
+où il n'y a rien à écrire. Les Langhe, les vallées, Orta viendront **quand une source
+institutionnelle leur donnera une liste** — pas avant. Et chaque page a alors un rouvreur : la
+prochaine édition du label.
+
+**Ce qui reste dans le hub** : les piole turinoises (elles ne sont pas un label, elles sont un
+type de lieu — c'est du contexte, pas une liste à maintenir) et les fermes-auberges de
+Haute-Savoie, tant qu'aucun label ne les couvre.
+
+### 9.6 Le point de décision, reformulé
+
+La question n'est plus « une page ou quatre ». Elle est : **Agenda Sabauda couvre-t-il des
+listes officielles gastronomiques comme il couvre des événements — avec une source, une date et
+une prochaine édition — ou tient-il un guide de restaurants ?** Le premier est du journalisme et
+tient dans la charte. Le second est un guide de ville, que le plan du site exclut explicitement,
+et qui pourrira faute de rouvreur.
+
+Ma recommandation : le premier. Et le prochain geste concret n'est pas une refonte de gabarit,
+c'est **un article « Maestri del Gusto 2025-2026 »** — source institutionnelle, chiffres publics,
+ancrage turinois, et le même modèle que la seule page gastronomique du site qui remonte.
+
+*Sources vérifiées le 05/09 :*
+*[Camera di commercio di Torino — Maestri del Gusto](https://www.to.camcom.it/maestridelgusto) ·*
+*[TorinoToday — édition 2025-2026](https://www.torinotoday.it/social/maestri-gusto-2025-2026-torino-provincia.html) ·*
+*[Savoie Mont Blanc Excellence](https://pro.savoie-mont-blanc.com/Demarche-d-Excellence/Savoie-Mont-Blanc-Excellence-c-est-quoi) ·*
+*[Marque Savoie — restaurants agréés](http://www.marque-savoie.com/nos-restaurants-agrees-marque-savoie)*
