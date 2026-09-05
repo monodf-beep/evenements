@@ -42,7 +42,7 @@ sys.path.insert(0, str(ROOT))
 from utils.completeness import is_recurring
 from utils.deplacement import (_CRITERES, _PONDERATION, POIDS_LANGUE, DEPLACEMENT_MIN,
                                HORIZON_JOURS, MAX_SCORE, accessibilite_langue,
-                               deplacement_raisons, deplacement_score, deplacement_now, _FENETRES)
+                               deplacement_raisons, deplacement_score, deplacement_now)
 
 
 def _par_territoire(notes: dict) -> dict[str, list[dict]]:
@@ -398,21 +398,30 @@ def _rotation(vivants: list[dict], auj: date) -> list[tuple[str, int, str, str]]
     aussi se préoccuper des dates, sinon on a des homepages identiques sur 6 mois ! »
 
     LE MÉCANISME EST DANS `utils/deplacement.py`, et il se lit en deux constantes :
-    `HORIZON_JOURS = 183` rend éligible tout ce qui commence dans les six mois, mais
-    `_FENETRES = ((7,3),(21,2),(45,1))` ne donne de bonus d'imminence QUE dans les
-    45 derniers jours. Entre 46 et 183 jours, tout le monde est à bonus ZÉRO : le
-    classement se réduit alors au score intrinsèque, qui ne bouge pas d'un jour à l'autre.
+    `HORIZON_JOURS = 183` rend éligible tout ce qui commence dans les six mois, et
+    `_FENETRES = ((7,3),(21,2),(45,1))` donne un bonus d'imminence dans les 45 derniers
+    jours.
 
-    Conséquence attendue : une fiche très bien notée et lointaine — la Saint-Ours de
-    janvier, le festival du film de novembre — occupe la case de son territoire jusqu'à
-    ce qu'elle soit à moins de 45 jours, c'est-à-dire pendant des mois.
+    ⚠️ CORRIGÉ le 05/09 (ce relevé, rejoué après la première mesure du même jour) :
+    au-delà de 45 jours, le bonus vaut ZÉRO partout — le classement se réduisait alors
+    au score intrinsèque, qui ne bouge pas d'un jour à l'autre. Piémont et Vallée
+    d'Aoste montraient la même tête 12 et 21 SEMAINES d'affilée sur les 26 mesurées.
+    `_bonus_lointain` (même fichier) referme ce trou : décroissance de 1 à 0 entre
+    45 et 183 jours, continue avec le dernier palier de `_FENETRES`. Il ne PROMET pas
+    l'absence de case figée pour autant — deux fiches à égalité stricte, ou un
+    territoire à une seule fiche, restent figés à raison. Ce relevé mesure toujours,
+    il ne suppose plus rien du mécanisme corrigé.
 
-    ⚠️ ET LE LEVIER EST CONTRAINT (Franck, 2026-08-18) : « on ne doit pas vouloir changer
-    les règles du nombre d'éléments affichés, les événements vont arriver, on aura assez de
-    contenu. » Raccourcir `HORIZON_JOURS` est donc EXCLU — ça rétrécirait le vivier et
-    viderait la Vallée d'Aoste, qui produit peu. Si ce relevé montre des cases figées, la
-    correction devra faire jouer la DATE à vivier constant : graduer le bonus sur toute la
-    longueur de l'horizon au lieu des 45 derniers jours.
+    Conséquence attendue AVANT le correctif : une fiche très bien notée et lointaine —
+    la Saint-Ours de janvier, le festival du film de novembre — occupait la case de son
+    territoire jusqu'à ce qu'elle soit à moins de 45 jours, c'est-à-dire pendant des mois.
+
+    ⚠️ ET LE LEVIER ÉTAIT CONTRAINT (Franck, 2026-08-18) : « on ne doit pas vouloir
+    changer les règles du nombre d'éléments affichés, les événements vont arriver, on
+    aura assez de contenu. » Raccourcir `HORIZON_JOURS` était donc EXCLU — ça
+    rétrécirait le vivier et viderait la Vallée d'Aoste, qui produit peu. C'est
+    pourquoi le correctif retenu fait jouer la DATE à vivier constant, plutôt que d'en
+    exclure une partie.
 
     Ce relevé ne DÉCIDE rien : il MESURE. Si les colonnes montrent la même fiche partout,
     la rangée est figée et il faut retoucher les fenêtres ou l'horizon. Si elles changent,
@@ -455,9 +464,10 @@ def _rotation(vivants: list[dict], auj: date) -> list[tuple[str, int, str, str]]
             figes.append(t)
     if figes:
         print(f"\n> {len(figes)} territoire(s) sur {len(terrs)} montrent la MÊME fiche à")
-        print(f"> six mois d'intervalle. Le bonus d'imminence ne joue que dans les")
-        print(f"> {max(x for x, _p in _FENETRES)} derniers jours ; au-delà, le classement")
-        print("> est purement intrinsèque, donc immobile.")
+        print(f"> six mois d'intervalle, MALGRÉ le gradient d'imminence (05/09, jusqu'à")
+        print(f"> {HORIZON_JOURS} jours). Une seule fiche dans la colonne, ou une égalité")
+        print("> stricte de score entre concurrentes, restent figées à raison — lire le")
+        print("> détail avant de conclure à un défaut du mécanisme.")
     else:
         print("\n> Aucune case figée : la rangée tourne d'elle-même, il n'y a rien à")
         print("> corriger de ce côté.")
@@ -508,8 +518,8 @@ def _poster(verdict: list[tuple[str, int, str, str]], hebdo: dict[str, dict]) ->
             lignes.append(f"· {terr} : {distinctes} fiches différentes "
                           f"({j0} → {j180})")
     if figes:
-        lignes.append("_Le bonus d'imminence ne joue que dans les 45 derniers jours ; "
-                      "au-delà le classement est immobile._")
+        lignes.append("_Gradient d'imminence en place jusqu'à l'horizon (05/09) — une case "
+                      "figée peut l'être à raison (fiche seule, égalité de score)._")
     # LA QUESTION HEBDOMADAIRE : « je reviens chaque mardi, est-ce que je vois autre
     # chose ? » Un seul chiffre par territoire — la pire série immobile en semaines —
     # parce que c'est lui qui décide si quelqu'un continue de revenir.

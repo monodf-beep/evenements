@@ -7,11 +7,15 @@ D'OÙ ÇA VIENT. Franck, 2026-08-18 : « on a des événements trop loin dans le
 faudrait bien sûr les notes mais aussi se préoccuper des dates, sinon on a des homepages
 identiques sur 6 mois ! »
 
-`utils/deplacement.py` rend éligible tout ce qui commence dans les `HORIZON_JOURS` = 183,
-mais ne donne de bonus d'imminence que dans les 45 derniers jours (`_FENETRES`). Entre 46
-et 183 jours, tout le monde est à bonus zéro : le classement se réduit au score
-intrinsèque, qui ne bouge pas. Une fiche lointaine et bien notée occupe donc la case de
-son territoire pendant des mois.
+`utils/deplacement.py` rend éligible tout ce qui commence dans les `HORIZON_JOURS` = 183.
+CE QUI SUIT DÉCRIT L'ÉTAT D'AVANT LE 05/09 : le bonus d'imminence ne jouait alors que
+dans les 45 derniers jours (`_FENETRES`) ; entre 46 et 183 jours, tout le monde était à
+bonus zéro, le classement se réduisait au score intrinsèque, figé, et une fiche
+lointaine bien notée occupait la case de son territoire pendant des mois — exactement ce
+que cette fixture a servi à mesurer et confirmer le 05/09 (Piémont : 12 semaines
+d'affilée ; Vallée d'Aoste : 21). `utils.deplacement._bonus_lointain` referme ce trou
+depuis, testé par `tests/test_gradient_deplacement.py` — cette fixture-ci continue de
+vérifier que le BANC DE MESURE dit vrai, gradient ou pas.
 
 Le banc de `audit_deplacement` mesure ça. Cette fixture vérifie qu'il MESURE, au lieu de
 confirmer l'intuition de celui qui l'a écrit :
@@ -122,8 +126,15 @@ _check("   il compte combien de fiches différentes s'y succèdent",
        ligne_n and "fiches différentes" in ligne_n[0], ligne_n)
 
 print("\n──── le verdict nomme le mécanisme, pour qu'on sache quoi corriger ────")
-_check("il cite la fenêtre au-delà de laquelle le bonus ne joue plus",
-       "derniers jours" in bloc and "purement intrinsèque" in bloc, bloc[-500:])
+# CORRIGÉ le 05/09, en même temps que le gradient (`utils.deplacement._bonus_lointain`) :
+# le verdict n'affirme plus « au-delà, le classement est purement intrinsèque » — c'est
+# devenu FAUX depuis que le bonus s'étend jusqu'à l'horizon. Il nomme désormais le
+# gradient et rappelle qu'une case peut rester figée À RAISON (une seule fiche dans la
+# colonne, comme Piemonte ici — 150 jours, sans concurrente).
+_check("il cite le gradient d'imminence, pas l'ancienne fenêtre à 45 jours",
+       "gradient d'imminence" in bloc, bloc[-500:])
+_check("   et distingue une case figée À RAISON d'un défaut du mécanisme",
+       "à raison" in bloc, bloc[-500:])
 _check("   et compte les territoires concernés sur le total",
        "territoire(s) sur" in bloc, bloc[-500:])
 

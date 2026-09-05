@@ -181,6 +181,7 @@ def deplacement_score(event: dict) -> int | None:
 DEPLACEMENT_MIN = 10
 # Fenêtres (jours restants → points). Volontairement peu de paliers : trois marches
 # lisibles valent mieux qu'une formule continue que personne ne saura expliquer.
+# Couvre 0-45 jours ; au-delà, voir _bonus_lointain ci-dessous (05/09).
 _FENETRES = ((7, 3), (21, 2), (45, 1))
 # Durée totale au-delà de laquelle on ne parle plus d'un « événement » mais d'une
 # programmation continue. Sert au bonus de rareté, pas à exclure.
@@ -215,6 +216,49 @@ MAX_TRI = MAX_SCORE + MAX_BONUS          # 16
 # aujourd'hui, quelle que soit sa date de clôture. C'est la date à partir de laquelle on
 # PEUT y aller qui compte.
 HORIZON_JOURS = 183
+
+
+# --------------------------------------------------------------------------- #
+# LE GRADIENT SUR TOUT L'HORIZON (05/09) — au-delà de 45 jours, plus rien ne bougeait
+#
+# Franck, 24/08, en précisant l'exigence du 18/08 : « il faut qu'il y ait de la
+# nouveauté chaque semaine, je vais aller voir, le mardi ou le jeudi, qu'est-ce que je
+# vais faire ce week-end. » Mesuré le 05/09 par `scripts/audit_deplacement.py`
+# (`_semaines_sans_nouveaute`) : Piémont et Vallée d'Aoste montrent la MÊME tête 12 et
+# 21 SEMAINES d'affilée sur les 26 mesurées — parce qu'au-delà du dernier palier de
+# `_FENETRES` (45 jours), le bonus vaut 0 partout, et le score intrinsèque (figé par
+# construction) tranche seul, pour des mois.
+#
+# CE QUE CE BONUS FAIT : il prolonge la DÉCROISSANCE de `_FENETRES` au lieu du mur.
+# Entre 45 jours et l'horizon (183 jours), il descend LINÉAIREMENT de 1 vers 0 —
+# continu avec le dernier palier (1 pt à 45 jours), nul pile à l'horizon, là où la
+# fiche sort de toute façon de la section. Ne s'ajoute JAMAIS au bonus de `_FENETRES` :
+# les deux zones ne se chevauchent pas (`_FENETRES` couvre 0-45 jours, ce gradient
+# 46-183), donc pas de double-comptage, et le plafond global (`MAX_BONUS`, calculé sur
+# `_FENETRES` seul) reste valable sans qu'on y touche.
+#
+# ARRONDI SEULEMENT À LA FIN (`deplacement_now`), JAMAIS TRONQUÉ — piège trouvé en le
+# codant : le mu-plugin WordPress qui lit `as_deplacement_now`
+# (`deploy/wordpress/cs-cvld-dynamique.php`) le CASTE en `(int)`, donc PHP TRONQUE une
+# décimale au lieu de l'arrondir (13.9 deviendrait 13, pas 14). Pousser un entier déjà
+# arrondi côté Python rend ce cast inoffensif ; pousser un flottant lui aurait fait
+# perdre la moitié du gradient sans qu'aucun test ne le voie (rien ici n'appelle PHP).
+#
+# CE QUE ÇA CHANGE, HONNÊTEMENT : après arrondi, cette zone ne rend que deux valeurs
+# (0 ou 1, la bascule se faisant à mi-chemin, ≈114 jours) — pas un vrai continuum
+# visible, un mur repoussé de 45 à ~114 jours, pas supprimé. Une fiche jusqu'ici
+# invisible tant qu'elle restait à plus de 45 jours peut désormais l'emporter sur un
+# concurrent de score égal ou inférieur dès qu'elle passe sous ~114 jours. Ce que ça
+# change EN VRAI sur le blocage mesuré (12 et 21 semaines) reste à REMESURER après coup
+# (`audit_deplacement`) — pas à affirmer ici.
+def _bonus_lointain(restant: int) -> float:
+    """Décroissance linéaire 1 → 0 entre le dernier palier de `_FENETRES` (45 jours) et
+    `HORIZON_JOURS` (183). 0 en dehors de cette zone — `_FENETRES` couvre le reste, et
+    rien ne reste éligible au-delà de l'horizon."""
+    seuil_proche = max(seuil for seuil, _pts in _FENETRES)      # 45
+    if restant <= seuil_proche or restant > HORIZON_JOURS:
+        return 0.0
+    return 1.0 - (restant - seuil_proche) / (HORIZON_JOURS - seuil_proche)
 
 
 def _jour(valeur) -> "date | None":
@@ -269,6 +313,7 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
 
     restant = (derniere - auj).days
     bonus = next((pts for seuil, pts in _FENETRES if restant <= seuil), 0)
+    bonus += _bonus_lointain(restant)    # 0 dans la zone déjà couverte par _FENETRES
 
     # RARETÉ : un événement de quelques jours est, par nature, un déplacement — on y va
     # POUR LUI. Une programmation continue se visite en passant. Un seul point : c'est un
@@ -278,7 +323,10 @@ def deplacement_now(event: dict, aujourdhui=None) -> int | None:
     elif debut and not fin:
         bonus += 1                       # date unique = ponctuel par définition
 
-    return base + bonus
+    # Arrondi ICI, jamais avant : `_bonus_lointain` est fractionnaire par construction
+    # (voir son commentaire) — round(), pas int(), pour ne pas tronquer la moitié utile
+    # du gradient avant même que WordPress n'ait sa propre occasion de le faire.
+    return round(base + bonus)
 
 
 # --------------------------------------------------------------------------- #
