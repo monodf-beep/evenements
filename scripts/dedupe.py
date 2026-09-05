@@ -15,6 +15,16 @@ plus autoritaire/riche) et on FUSIONNE sans rien perdre :
 LLM ? NON — 100 % déterministe (heuristique same_story + score). Voir docs/LLM_OU_CODE.md.
 Cron : 0 8 * * * (après scraping/gmail, avant l'évaluation de 9h) — évite aussi de
 payer l'évaluation LLM sur des doublons.
+
+DRY-RUN (ajouté le 05/09) : `.venv/bin/python scripts/dedupe.py --dry-run [--rescan]`
+imprime chaque groupe qu'il FUSIONNERAIT — gagnant et perdants, avec titre, statut,
+source — et n'écrit RIEN. Jusque-là ce script écrivait d'office, à rebours de la règle
+4 du dépôt (« dry-run d'abord, toujours ») : impossible de LIRE ce qu'un changement de
+critère fusionnerait avant qu'il parte en production au déploiement automatique de
+7h50. Le cron, lui, ne change pas (pas de --apply exigé : la ligne du crontab reste
+valable telle quelle). La garde « suspicion d'annulation » n'est PAS évaluée en
+dry-run — elle écrit en base — donc l'aperçu peut montrer un groupe que le vrai passage
+retiendrait ; il ne montre jamais moins.
 """
 from __future__ import annotations
 import argparse
@@ -503,6 +513,9 @@ def main(argv=None) -> int:
                         help="FUSIONNER aussi les paires FR/IT (⚠️ à éviter sur un site "
                              "bilingue : les traductions sont à LIER via Polylang, pas à "
                              "fusionner). Désactivé par défaut.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="N'écrit RIEN : imprime les groupes qui seraient fusionnés "
+                             "(gagnant + perdants). À lire avant tout changement de critère.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -521,6 +534,21 @@ def main(argv=None) -> int:
     merged = suspectees = 0
     groups = _groups(rows, cross_lang=args.cross_lang)
     dups = [g for g in groups if len(g) > 1]
+    if args.dry_run:
+        # Aperçu lisible par un humain : ce que le passage réel fusionnerait, et dans quel
+        # sens. Rien n'est écrit — pas même la garde annulation (elle empile en base).
+        print(f"DRY-RUN — {len(rows)} événement(s) examiné(s), "
+              f"{len(dups)} groupe(s) de doublons (rien n'est écrit)")
+        for g in dups:
+            winner = max(g, key=score)
+            print(f"\n▶ GAGNANT id={winner['id']} [{winner.get('statut')}] "
+                  f"« {(winner.get('title') or '')[:70]} » — {winner.get('url_source') or '?'}")
+            for e in sorted((e for e in g if e["id"] != winner["id"]), key=lambda e: e["id"]):
+                print(f"   ↳ fusionné id={e['id']} [{e.get('statut')}] "
+                      f"« {(e.get('title') or '')[:70]} » — {e.get('url_source') or '?'}")
+        conn.close()
+        log.info("=== DRY-RUN : %d groupe(s) auraient été fusionnés, 0 écriture ===", len(dups))
+        return 0
     for g in dups:
         signal = _porte_annulation(conn, g, annulation_re)
         if signal:
