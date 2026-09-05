@@ -35,7 +35,13 @@ def _spec() -> str:
 
 
 def _max_chars() -> int:
-    return int(os.getenv("VOIX_MAX_CHARS", "6000"))
+    # 8000 et non 6000 depuis le 2026-09-05. Mesuré ce jour-là : docs/voix/VOIX.md faisait
+    # 6775 caractères, donc load_voix() en COUPAIT 775 — soit la règle entière « Les Alpes
+    # ne sont pas une frontière » et la section « Deux longueurs ». Le pipeline ne les a
+    # jamais vues, sans le moindre signal : la voix s'appliquait amputée de sa fin depuis
+    # que la note a dépassé la limite. Le plafond reste utile (un prompt n'est pas
+    # extensible), mais il tronque désormais À VOIX HAUTE (cf. load_voix).
+    return int(os.getenv("VOIX_MAX_CHARS", "8000"))
 
 
 # Voix CANONIQUE versionnée dans le dépôt : sert de source par défaut ET de garde-fou
@@ -169,7 +175,21 @@ def load_voix() -> str:
             layers.append(txt)
     if not layers:
         return ""
-    return "\n\n".join(layers)[:_max_chars()].strip()
+    texte = "\n\n".join(layers)
+    limite = _max_chars()
+    if len(texte) > limite:
+        # Une troncature SILENCIEUSE de la charte est indétectable dans les textes produits :
+        # le ton reste plausible, seules les dernières règles cessent d'être appliquées.
+        # C'est ainsi que 775 caractères ont disparu sans bruit (cf. _max_chars). On le dit.
+        try:
+            from utils.logger import get_logger
+            get_logger(__name__).warning(
+                "voix tronquée : %d caractères chargés sur %d, la FIN de la charte "
+                "n'est pas appliquée (VOIX_MAX_CHARS=%d)", limite, len(texte), limite)
+        except Exception:
+            print(f"[voix] ATTENTION : charte tronquée, {len(texte) - limite} caractères "
+                  f"perdus en fin de note (VOIX_MAX_CHARS={limite})")
+    return texte[:limite].strip()
 
 
 def _title_of(text: str) -> str:
