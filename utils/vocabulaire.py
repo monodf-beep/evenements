@@ -118,6 +118,12 @@ def _parse_terme(cellule: str) -> tuple[str, list[str], str]:
     guillemets et hors gras (« pour Savoie + Piémont », « en H1 »)."""
     formes = [f.strip() for f in _RE_GUILLEMETS.findall(cellule)]
     reste = _RE_GUILLEMETS.sub("", cellule)
+    # Le gras qui entourait le terme entre guillemets devient «**»+«**» une fois le terme
+    # retiré (ex. "**« x »**" → "****") : de purs astérisques résiduels, jamais un vrai
+    # gras à préserver ici — on les enlève avant _demarquer, sinon "****" (aucun caractère
+    # entre les deux paires) ne matche pas le motif et le motif du terme affiche un
+    # « (****) » vide dès qu'il n'y a aucun qualificatif hors guillemets.
+    reste = reste.replace("*", "")
     reste = _demarquer(reste).strip(" ,.")
     if not formes:
         return "", [], reste

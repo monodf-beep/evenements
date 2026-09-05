@@ -63,7 +63,7 @@ tags: [charte, niveau-1, non-négociable, vocabulaire]
 | **« royaume de Sardaigne »**, « Regno di Sardegna », « reame di Sardegna » | Le sujet est l'espace savoyard, pas l'appellation diplomatique de 1720 | **les États de Savoie** *(IT : gli Stati Sabaudi)* |
 | **« Venise des Alpes »**, « Venise du Nord », « petite Venise », « perle des Alpes » | Surnom de guide touristique | Nommer la ville, sans remplacement |
 | **« frontière »** | Politiquement chargé pour l'espace franco-italien alpin | Reformuler (« au-delà des Alpes », « en Piémont ») |
-| **« transfrontalier »** en H1 | Cadre politique administratif | Formuler la fluidité culturelle autrement |
+| **« transfrontalier »** | Cadre politique administratif | Formuler la fluidité culturelle autrement |
 | **« espace alpin »**, « spazio alpino » pour Savoie + Piémont | Efface la spécificité culturelle | **espace sabaud** *(IT : spazio sabaudo)* |
 """
 
@@ -162,6 +162,15 @@ _check("scripts/conform_articles.py (rendu réel)", "royaume de Sardaigne" in re
 rendu_social = _social._CAPTION_AI_RULES.format(
     lang_full="français", vocabulaire_interdit=consigne_prompt("fr"))
 _check("utils/social.py (rendu réel)", "royaume de Sardaigne" in rendu_social)
+
+print("\n──── ⚠️ un terme SANS qualificatif hors guillemets a un motif propre ────")
+# Régression du 05/09 : « **« x »** » sans texte après devient « **** » une fois le
+# terme retiré entre guillemets — un motif qui affichait « (****) » pour rien.
+e_transfrontalier = next(e for e in interdits() if e["expression"] == "transfrontalier")
+_check("le motif ne traîne aucun astérisque résiduel",
+       "*" not in e_transfrontalier["_motif"], e_transfrontalier["_motif"])
+_check("   et n'affiche pas de parenthèses vides",
+       "()" not in e_transfrontalier["_motif"], e_transfrontalier["_motif"])
 
 print("\n──── transfrontalier / espace alpin toujours vivants ────")
 _check("« transfrontalier » est détecté", trouver("Cette exposition transfrontalière.") != [])
