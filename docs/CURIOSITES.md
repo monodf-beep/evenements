@@ -61,9 +61,11 @@ de production et le soin apporté à la version croisée qui changent.
    slug ne porte PAS le nombre (`/curiosites-turin/`, `/curiosita-torino/`) : le titre peut
    passer de 7 à 12 sans casser l'adresse.
 3. **Le vocabulaire de l'agenda** (`config/vocabulaire_interdit.json`) s'applique : jamais
-   « royaume de Sardaigne », « espace alpin », « Venise des Alpes ». La description actuelle
-   de la catégorie contient « Sous le royaume de Sardaigne » — à corriger en reprenant le
-   texte (proposé : « Au XIXe siècle, l'administration sarde italianisait les toponymes »).
+   « royaume de Sardaigne », « espace alpin », « Venise des Alpes ». **Corrigé le 05/09** :
+   la description WordPress de la catégorie disait « Sous le royaume de Sardaigne,
+   l'administration sarde italianisait… » ; remplacé, sur arbitrage de Franck, par le
+   remplacement officiel du fichier — FR « Sous les États de Savoie… », IT « Sotto gli
+   Stati Sabaudi… ». Vérifié sans résidu dans les deux langues.
 4. **Une curiosité est un fait vérifiable et datable**, pas une activité commerciale (le
    « vol en parapente insolite » des SERP d'Annecy n'a rien à faire ici).
 5. **Le lien vers l'agenda** : chaque article se termine par un renvoi vers la page hub de la
