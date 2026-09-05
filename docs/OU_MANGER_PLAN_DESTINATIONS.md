@@ -155,3 +155,124 @@ départementales dédiées.*
 [Gambero Rosso — Langhe](https://www.gamberorosso.it/ristoranti/dove-mangiare-nelle-langhe-a-barolo-e-barbaresco/) ·
 [Camera di commercio di Torino — Maestri del Gusto](https://www.to.camcom.it/maestridelgusto) ·
 [OT Aix-les-Bains Riviera — restaurants savoyards](https://www.aixlesbains-rivieradesalpes.com/blog/restaurants-specialites-savoyardes/)*
+
+---
+
+## 6. Correction de fond : j'ai jugé sur l'acquisition seule (05/09, après retour de Franck)
+
+Franck : *« je visite quelque chose dans les Langhe, je veux qu'on me suggère des restaurants
+dans les Langhe. Peut-être que je vais pas forcément trouver la page en faisant une recherche
+sur Google, mais en lien interne c'est important. »*
+
+**Il a raison, et ça invalide le classement du §1 comme critère unique.** J'ai évalué chaque
+destination sur une seule question — cette page peut-elle remonter dans Google ? — et j'en ai
+déduit « ne fais pas les Langhe ». Mais une page a deux métiers :
+
+- **acquisition** : capter un inconnu depuis un moteur ;
+- **service** : répondre à quelqu'un **déjà sur le site**, arrivé par une fiche événement.
+
+Le second est le moment de plus forte intention de tout le site : un lecteur qui vient de lire
+« Fiera del Tartufo à Alba » n'est pas en train de comparer des sites, il prépare son
+déplacement. Une page qui ne capte rien mais qui sert ce lecteur-là **a de la valeur**, et
+Gambero Rosso ne lui fait aucune concurrence à cet endroit — il n'est pas sur Gambero Rosso, il
+est chez nous.
+
+### 6.1 Donc le bon critère de granularité, c'est où sont les ÉVÉNEMENTS
+
+Ça se mesure. Requête sur la base WordPress, événements **publiés, à venir ou en cours**
+(`date_end >= now`, donc conforme à la règle 5) :
+
+| Rang | Zone | Événements | Article « où manger » ? |
+|---|---|---|---|
+| 1 | **Turin** (Torino 33 + Turin 6) | **39** | ❌ **rien** |
+| 2 | Comté de Nice (Nice 15 + Villefranche 4) | 19 | ✅ Cuisine Nissarde |
+| 3 | Vallée d'Aoste (Bard 8 + Aoste 4 + Bionaz 2 + Saint-Vincent 1) | 15 | ❌ |
+| 4 | Savoie hors Chablais (Chambéry 5, Albertville 3, Annecy 2, Montmélian, Lovagny) | 12 | ❌ |
+| 5 | Chablais / Léman (Thonon 4+1, Évian 2, Draillant 2, Annemasse 1) | 10 | ❌ |
+| 6 | Cuneese / Monregalese (Vicoforte 2, Carrù 2, Mondovì 1, Cuneo 1, Roccaforte 1) | 7 | ❌ |
+| — | **Langhe proprement dites** (Alba, Barolo, Barbaresco, La Morra…) | **0 publié** | — |
+
+*Total : 123 événements à venir ou en cours, 36 villes.*
+
+**L'inversion est brutale et elle me donne tort deux fois.** Turin, que j'avais classé 🔴 et
+relégué en vague 4 sur le critère d'acquisition, est **de très loin le premier** sur le critère
+de service : 39 événements y renvoient, soit quatre fois le Chablais que je proposais en tête.
+Et c'est la seule zone majeure du site sans aucune page « où manger ».
+
+### 6.2 Mais sur les Langhe précisément, il y a un fait gênant
+
+**Le site ne publie aucun événement dans les Langhe.** Vérifié sur les communes du secteur
+(Alba, Barolo, Barbaresco, La Morra, Monforte, Neive, Serralunga, Dogliani, Treiso, Roddino,
+Cherasco, Bra), tous statuts et toutes dates confondus :
+
+- **Alba : 2 événements, tous les deux à la CORBEILLE** ;
+- Cuneo : 1 publié, 3 à la corbeille · Mondovì : 1 publié, 1 brouillon ;
+- Carrù 2, Vicoforte 2 — mais c'est le **Monregalese**, pas les Langhe.
+
+Donc le raisonnement de Franck est juste et ne s'applique pas encore ici : **une page « où
+manger dans les Langhe » n'aurait aujourd'hui aucun lien interne entrant non plus**, faute
+d'événements pour la pointer. Elle serait invisible des deux côtés.
+
+Ce n'est pas un « non », c'est un ordre :
+
+1. **regarder les deux fiches Alba en corbeille** — si elles sont valides, les republier vaut
+   mieux qu'écrire une page qui n'a rien pour l'appeler ;
+2. traiter les Langhe **dans un article Piémont/Cuneese** (Vicoforte, Carrù, Mondovì ont 6
+   événements réels, et la Fiera del Bue Grasso di Carrù est un sujet gourmand en soi), avec une
+   section Langhe qui pourra se détacher le jour où Alba est couverte ;
+3. et **dans tous les cas, poser le lien interne depuis la fiche événement**, ce qui est le vrai
+   sujet de Franck — voir §6.4.
+
+### 6.3 Mangébin : Franck a trouvé ce que j'avais déclaré inexistant
+
+J'avais écrit qu'il n'existait pas de label **restaurants** pour Turin, et que les Maestri del
+Gusto ne couvraient que des artisans. La première moitié était fausse : **je n'avais pas
+cherché.** C'est exactement la faute décrite dans `ERREURS_2026-08-17` — conclure sur un indice
+de surface au lieu d'aller lire.
+
+**Mangébin** (`turismotorino.org/fr/decouvrir/a-voir-a-faire/vins-et-gastronomie/mangebin`) est
+le **réseau des restaurants de cuisine piémontaise typique de Turin et de sa province**, porté
+par **Turismo Torino e Provincia** — l'office de tourisme, donc une institution, exactement le
+statut de la Cuisine Nissarde vis-à-vis de l'office métropolitain de Nice. Et il coche tout :
+
+- ce sont des **restaurants**, pas des artisans — ma réserve tombe ;
+- **la page officielle existe en français**, ce qui est rare et précieux pour un site FR/IT ;
+- deux listes : **Mangébin à Torino** et **Mangébin hors de Torino** — la granularité
+  ville/province que Franck demandait, fournie par la source elle-même ;
+- **elle se met à jour** (« Ouverture des restaurants Mangébin en août 2026 ») : le rouvreur
+  est intégré ;
+- et elle **croise déjà l'agenda** : « Les restaurants Mangébin célèbrent le poivron de
+  Carmagnola », alors que la 77ᵉ Fiera del Peperone di Carmagnola est dans la base. C'est le
+  pont « manger / événement » en vrai, pas en théorie.
+
+**Récupéré et vérifié — Mangébin hors de Torino, 10 établissements :** Alpeggio Menzio ·
+Ca' Praudin · Il Poggio Agrisport · La Table Dlouz Amis · Agriturismo Crè Seren · L'Fouie ·
+Fermata Alpi Graie · Ristorante Freidour · Trattoria Bel Deuit · Ristorante L'Incontro.
+
+> ⚠️ **La liste « Mangébin à Torino » n'a PAS pu être récupérée dans cette session** : elle est
+> rendue en JavaScript, et le navigateur Chromium de l'environnement est bloqué par le proxy
+> (`ERR_CONNECTION_RESET`) sur ce domaine. Elle est donc **à récupérer avant rédaction** — et
+> c'est précisément le genre de trou qu'il ne faut pas combler en devinant. *(Cette réserve-ci
+> est signalée dans le document de travail, pas publiée sur le site : c'est la faute que
+> `/ou-manger/` commet aujourd'hui.)*
+
+### 6.4 Ce qui compte le plus, et qui n'est dans aucun de mes plans précédents
+
+Franck ne demande pas d'abord une page. Il demande **qu'on lui suggère un restaurant quand il
+regarde un événement**. Le livrable décisif n'est donc pas l'article : c'est **le bloc « Où
+manger dans le coin » sur la fiche événement et sur les pages ville**, qui pointe vers l'article
+du territoire.
+
+C'est ce qui transforme 123 événements en 123 portes d'entrée vers les pages « où manger » — au
+lieu d'un lien de footer perdu dans « Infos & légal ». Et ça fonctionne **même pour les pages
+que Google ignorera**, ce qui est exactement l'argument de Franck sur les Langhe.
+
+Ordre de bataille révisé :
+
+| # | Chantier | Pourquoi d'abord |
+|---|---|---|
+| 1 | **Bloc « Où manger dans le coin » sur la fiche événement + pages ville** | Sans lui, tous les articles restent invisibles. C'est le multiplicateur |
+| 2 | **Article Turin — Mangébin** (+ les piole déjà en base) | 39 événements pointent dessus. Source officielle, en français |
+| 3 | Article Vallée d'Aoste — *ristori agrituristici* | 15 événements, source officielle `lovevda.it` |
+| 4 | Article Chablais / Léman — poissons du lac | 10 événements, et SERP la plus faible : le seul qui gagne AUSSI en acquisition |
+| 5 | Article Piémont sud (Cuneese/Monregalese, section Langhe) | 7 événements ; à réévaluer si Alba est republiée |
