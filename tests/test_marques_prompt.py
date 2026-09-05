@@ -18,11 +18,23 @@ test_vocabulaire le 04/09 : un contrôle sur le source ne prouve rien sur ce qui
 
 Lancer : .venv/bin/python -m tests.test_marques_prompt
 """
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+# Depuis le 05/09/2026, le vocabulaire interdit vit dans Obsidian, plus dans le dépôt
+# (voir tests/test_vocabulaire.py) : une note minimale, fabriquée ici, suffit à vérifier
+# que le bloc s'insère toujours correctement dans le prompt rendu.
+_note = Path(tempfile.mkdtemp()) / "Vocabulaire interdit.md"
+_note.write_text(
+    "| Terme interdit | Pourquoi | Alternative |\n| --- | --- | --- |\n"
+    "| **« royaume de Sardaigne »** | motif | **les États de Savoie** |\n",
+    encoding="utf-8")
+os.environ["OBSIDIAN_VOCAB_PATH"] = str(_note)
 
 from utils.vocabulaire import consigne_prompt          # noqa: E402
 import scripts.enrich as _enrich                       # noqa: E402

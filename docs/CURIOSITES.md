@@ -60,7 +60,9 @@ de production et le soin apporté à la version croisée qui changent.
 2. **Le nombre du titre est le nombre réel.** « 12 curiosités » = douze entrées sourcées. Le
    slug ne porte PAS le nombre (`/curiosites-turin/`, `/curiosita-torino/`) : le titre peut
    passer de 7 à 12 sans casser l'adresse.
-3. **Le vocabulaire de l'agenda** (`config/vocabulaire_interdit.json`) s'applique : jamais
+3. **Le vocabulaire de l'agenda** (note Obsidian `01-Commun/Vocabulaire interdit.md`,
+   lue en direct par `utils/vocabulaire.py` depuis le 05/09 — voir `docs/VOCABULAIRE_OBSIDIAN.md`)
+   s'applique : jamais
    « royaume de Sardaigne », « espace alpin », « Venise des Alpes ». **Corrigé le 05/09** :
    la description WordPress de la catégorie disait « Sous le royaume de Sardaigne,
    l'administration sarde italianisait… » ; remplacé, sur arbitrage de Franck, par le
