@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% set active = 'calendrier_categories' %}
+{% block title %}Calendrier des catégories{% endblock %}
+{% block h1 %}Calendrier des catégories — ce qu'on met en avant, et quand{% endblock %}
+{% block subtitle %}<div class="sub">Quelle catégorie est <b>de saison</b>, et donc laquelle mérite une tuile dans le bloc « Explorer d'autres catégories » de la home. <b>La saison ordonne, le nombre de fiches ne fait que retirer</b> (une tuile vers une page vide est pire qu'une tuile absente). Lecture seule : les fenêtres se modifient dans <code>config/calendrier_categories.json</code>.</div>{% endblock %}
+
+{% block content %}
+{% set couleur = {'fort': '#1a7f4b', 'moyen': '#b7791f', 'base': '#9aa0a6', 'exclu': '#dc2626'} %}
+{% set fond = {'fort': '#d9f2e3', 'moyen': '#fdf0d5', 'base': '#eef0f2', 'exclu': '#fdeaea'} %}
+{% set libelle = {'fort': 'de saison, en avant', 'moyen': 'de saison', 'base': 'hors fenêtre, éligible en dernier', 'exclu': 'retirée'} %}
+<div style="max-width:1100px;">
+
+  <form method="get" class="card" style="padding:.6rem 1rem;margin-bottom:1rem;font-size:.9rem;display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;">
+    <span>Jour regardé : <b>{{ jour.strftime('%d/%m/%Y') }}</b></span>
+    <label class="muted text-sm">autre jour <input type="date" name="jour" value="{{ jour.isoformat() }}" style="font-size:.9rem;"></label>
+    <button type="submit" class="btn" style="font-size:.85rem;">Voir</button>
+    {% if jour != today_date %}<a href="/calendrier-categories" class="muted text-sm">revenir à aujourd'hui</a>{% endif %}
+  </form>
+
+  {# ---------- 1. Ce qu'on FAIT : la sélection du jour, et l'écart avec la home ---------- #}
+  <div class="card" style="padding:.9rem 1.1rem;margin-bottom:1.2rem;">
+    <h2 style="margin:0 0 .5rem;font-size:1.05rem;">Les {{ selection.n }} tuiles que le calendrier choisirait le {{ jour.strftime('%d/%m') }}</h2>
+    <ol style="margin:.3rem 0 .8rem 1.3rem;padding:0;line-height:1.55;">
+      {% for e in selection.retenues %}
+      <li><b>{{ e.nom }}</b>
+        <span style="display:inline-block;padding:0 .45rem;border-radius:3px;font-size:.78rem;background:{{ fond[e.niveau] }};color:{{ couleur[e.niveau] }};">{{ libelle[e.niveau] }}</span>
+        <span class="muted text-sm">— {{ e.compte }} fiche(s) devant nous · {{ e.raison }}</span></li>
+      {% endfor %}
+      {% if not selection.retenues %}<li class="muted">aucune — toutes les catégories secondaires sont retirées ou sous le seuil</li>{% endif %}
+    </ol>
+
+    <div style="font-size:.9rem;line-height:1.5;padding:.6rem .8rem;border-radius:4px;background:{{ '#fdf0d5' if (ecart.a_retirer or ecart.a_ajouter) else '#d9f2e3' }};">
+      <b>La home aujourd'hui</b> (six tuiles fixes dans le HTML des pages WP 928 / 1717, relevées le 05/09) :
+      {{ en_ligne|join(', ') }}.
+      {% if ecart.a_retirer or ecart.a_ajouter %}
+        <br><b>Écart</b> :
+        {% if ecart.a_retirer %}à retirer → <b style="color:#dc2626;">{{ ecart.a_retirer|join(', ') }}</b>{% endif %}
+        {% if ecart.a_retirer and ecart.a_ajouter %} · {% endif %}
+        {% if ecart.a_ajouter %}à ajouter → <b style="color:#1a7f4b;">{{ ecart.a_ajouter|join(', ') }}</b>{% endif %}
+        <br><span class="muted text-sm">Tant que le bloc n'est pas piloté par ce calendrier, l'écart se corrige à la main dans la page WP (FR et IT).</span>
+      {% else %}
+        <br>Conforme au calendrier.
+      {% endif %}
+    </div>
+
+    <details style="margin-top:.7rem;font-size:.88rem;">
+      <summary class="muted">Pourquoi les autres n'y sont pas ({{ selection.ecartees|length }})</summary>
+      <ul style="margin:.4rem 0 0 1.2rem;line-height:1.5;">
+        {% for e in selection.ecartees %}
+        <li><b>{{ e.nom }}</b> <span class="muted">— {{ e.motif }}</span></li>
+        {% endfor %}
+      </ul>
+    </details>
+  </div>
+
+  {# ---------- 2. Ce qu'on A : l'état de chaque catégorie aujourd'hui ---------- #}
+  <div class="card" style="padding:0;margin-bottom:1.2rem;overflow-x:auto;">
+    <div style="padding:.7rem 1rem;border-bottom:1px solid var(--border,#e2e4e8);">
+      <b style="font-size:1.02rem;">Les onze catégories le {{ jour.strftime('%d/%m/%Y') }}</b>
+      <span class="muted text-sm"> — fiches publiées et encore devant nous (à venir, en cours, récurrentes ; FR + IT ensemble). L'identifiant WP en base ne prouve pas la mise en ligne : ordre de grandeur, pas inventaire.</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:640px;">
+      <thead><tr style="background:var(--code-bg,#f6f7f9);text-align:left;">
+        <th style="padding:.45rem .8rem;">Catégorie</th>
+        <th style="padding:.45rem .8rem;">Aujourd'hui</th>
+        <th style="padding:.45rem .8rem;text-align:center;">Devant nous</th>
+        <th style="padding:.45rem .8rem;text-align:center;">Sans date</th>
+        <th style="padding:.45rem .8rem;">Pourquoi</th>
+      </tr></thead>
+      <tbody>
+      {% for e in saisons %}
+        <tr style="border-top:1px solid var(--border,#e2e4e8);">
+          <td style="padding:.45rem .8rem;white-space:nowrap;"><b>{{ e.nom }}</b>
+            {% if e.tuile == 'principale' %}<br><span class="muted text-sm">bloc principal de la home</span>{% endif %}</td>
+          <td style="padding:.45rem .8rem;white-space:nowrap;"><span style="display:inline-block;padding:.05rem .5rem;border-radius:3px;font-size:.8rem;font-weight:600;background:{{ fond[e.niveau] }};color:{{ couleur[e.niveau] }};">{{ libelle[e.niveau] }}</span></td>
+          <td style="padding:.45rem .8rem;text-align:center;font-weight:600;{% if e.compte == 0 %}color:#dc2626;background:#fdeaea;{% endif %}">{{ e.compte }}</td>
+          <td style="padding:.45rem .8rem;text-align:center;" class="muted">{{ e.sans_date or '' }}</td>
+          <td style="padding:.45rem .8rem;" class="text-sm">{{ e.raison }}
+            {% if e.fenetre %}<span class="muted">({{ e.fenetre.debut }} → {{ e.fenetre.fin }})</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ---------- 3. Ce qui vient : les prochaines bascules ---------- #}
+  <div class="card" style="padding:.9rem 1.1rem;margin-bottom:1.2rem;">
+    <h2 style="margin:0 0 .4rem;font-size:1.05rem;">À partir de quelle date ça change (120 prochains jours)</h2>
+    {% if changements %}
+    <ul style="margin:.3rem 0 0 1.2rem;line-height:1.55;font-size:.9rem;">
+      {% for c in changements %}
+      <li><b>{{ c.date.strftime('%d/%m') }}</b> — {{ c.nom }} :
+        <span style="color:{{ couleur[c.avant] }};">{{ libelle[c.avant] }}</span> →
+        <b style="color:{{ couleur[c.apres] }};">{{ libelle[c.apres] }}</b>
+        <span class="muted text-sm">· {{ c.raison }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Aucune bascule dans les 120 jours.</p>{% endif %}
+  </div>
+
+  {# ---------- 4. L'année entière ---------- #}
+  <div class="card" style="padding:.9rem 1.1rem;margin-bottom:1.2rem;overflow-x:auto;">
+    <h2 style="margin:0 0 .2rem;font-size:1.05rem;">L'année {{ annee }} d'un coup d'œil</h2>
+    <div class="muted text-sm" style="margin-bottom:.7rem;">
+      <span style="display:inline-block;width:.8rem;height:.8rem;background:{{ couleur.fort }};vertical-align:middle;"></span> de saison, en avant &nbsp;
+      <span style="display:inline-block;width:.8rem;height:.8rem;background:{{ couleur.moyen }};vertical-align:middle;"></span> de saison &nbsp;
+      <span style="display:inline-block;width:.8rem;height:.8rem;background:{{ fond.base }};border:1px solid {{ couleur.base }};vertical-align:middle;"></span> hors fenêtre, éligible &nbsp;
+      <span style="display:inline-block;width:.8rem;height:.8rem;background:{{ fond.exclu }};border:1px solid {{ couleur.exclu }};vertical-align:middle;"></span> retirée &nbsp;
+      · le trait vertical = le jour regardé. Survoler un segment donne la raison.
+    </div>
+    <div style="min-width:720px;">
+      <div style="display:flex;margin-left:190px;font-size:.72rem;color:#6b7280;">
+        {% for m in mois %}<div style="flex:1;border-left:1px solid #e2e4e8;padding-left:3px;">{{ m.strftime('%b') }}</div>{% endfor %}
+      </div>
+      {% for l in grille %}
+      <div style="display:flex;align-items:center;margin:3px 0;">
+        <div style="width:190px;font-size:.85rem;padding-right:.5rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ l.nom }}">{{ l.nom }}{% if l.tuile == 'principale' %} <span class="muted" title="bloc principal">★</span>{% endif %}</div>
+        <div style="flex:1;position:relative;height:1.35rem;background:#f6f7f9;border-radius:3px;overflow:hidden;">
+          {% for s in l.segments %}
+          <div title="{{ s.debut.strftime('%d/%m') }} → {{ s.fin.strftime('%d/%m') }} : {{ libelle[s.niveau] }} — {{ s.raison }}"
+               style="position:absolute;top:0;bottom:0;left:{{ '%.3f'|format(s.gauche*100) }}%;width:{{ '%.3f'|format(s.largeur*100) }}%;
+                      background:{{ couleur[s.niveau] if s.niveau in ('fort','moyen') else fond[s.niveau] }};
+                      {% if s.niveau == 'exclu' %}background-image:repeating-linear-gradient(45deg,transparent 0 4px,#f5b5b5 4px 6px);{% endif %}"></div>
+          {% endfor %}
+          <div style="position:absolute;top:0;bottom:0;left:{{ '%.3f'|format(jour_pos*100) }}%;width:2px;background:#1D1D1B;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ---------- 5. Les fenêtres et leurs ancres ---------- #}
+  <div class="card" style="padding:.9rem 1.1rem;margin-bottom:1.2rem;">
+    <h2 style="margin:0 0 .4rem;font-size:1.05rem;">Les fenêtres, et ce qui les justifie</h2>
+    <p class="muted text-sm" style="margin:0 0 .6rem;">Les exemples sont des ancres vérifiées (une source en face), pas une liste d'événements à publier. Les vacances scolaires sont celles de 2026-2027 : à recaler chaque été.</p>
+    {% for c in cfg.categories %}
+    <details style="margin:.25rem 0;font-size:.9rem;">
+      <summary><b>{{ c.nom }}</b>
+        <span class="muted text-sm">— {{ c.fenetres|length }} fenêtre(s) · hors fenêtre : {{ 'retirée' if c.hors_fenetre == 'exclu' else 'éligible en dernier' }}{% if c.tuile == 'principale' %} · bloc principal{% endif %}</span></summary>
+      {% if c._arbitrage %}<p style="margin:.4rem 0 .2rem 1rem;padding:.4rem .6rem;background:#fdf0d5;border-radius:3px;font-size:.85rem;">⚖️ {{ c._arbitrage }}</p>{% endif %}
+      <ul style="margin:.3rem 0 .5rem 1.2rem;line-height:1.5;">
+        {% for f in c.fenetres %}
+        <li><b>{{ f.debut }} → {{ f.fin }}</b>
+          <span style="display:inline-block;padding:0 .4rem;border-radius:3px;font-size:.78rem;background:{{ fond[f.niveau] }};color:{{ couleur[f.niveau] }};">{{ libelle[f.niveau] }}</span>
+          {{ f.raison }}
+          {% if f.exemples %}<ul class="muted text-sm" style="margin:.15rem 0 .3rem 1rem;">
+            {% for ex in f.exemples %}<li>{{ ex.nom }} — {{ ex.dates }}{% if ex.source %} · <a href="{{ ex.source }}" target="_blank" rel="noopener">source</a>{% endif %}</li>{% endfor %}
+          </ul>{% endif %}
+        </li>
+        {% endfor %}
+        {% for f in c.fenetres_non_retenues or [] %}
+        <li class="muted"><s>{{ f.debut }} → {{ f.fin }}</s> — non retenue : {{ f.raison }}
+          {% for ex in f.exemples %}<span class="text-sm">({{ ex.nom }}, {{ ex.dates }})</span>{% endfor %}</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

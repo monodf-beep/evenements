@@ -1922,6 +1922,74 @@ def sources_provinces():
                            **_sources_provinces_data())
 
 
+def _calendrier_comptes(conn, today: str) -> dict:
+    """Fiches PUBLIÉES et ENCORE DEVANT NOUS par catégorie (règle 5 : à venir, en
+    cours — c'est date_event_end qui décide — ou récurrentes). FR et IT ensemble,
+    comme /couverture-geo. Une fiche sans date est comptée À PART (`sans_date`) :
+    ce n'est pas un événement passé, mais on ne peut pas non plus la promettre à un
+    visiteur. `wp_post_id_as` ne prouve pas la mise en ligne (règle 1) : ce compte est
+    un ordre de grandeur pour le filet, pas un inventaire du site."""
+    rows = conn.execute(
+        "SELECT llm_categorie AS cat, "
+        "  SUM(CASE WHEN COALESCE(recurring,0)=1 "
+        "            OR COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '') >= ? "
+        "      THEN 1 ELSE 0 END) AS devant, "
+        "  SUM(CASE WHEN COALESCE(recurring,0)=0 "
+        "            AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '')='' "
+        "      THEN 1 ELSE 0 END) AS sans_date "
+        "FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
+        "GROUP BY llm_categorie", (today,)).fetchall()
+    return {"devant": {(r["cat"] or "").strip(): int(r["devant"] or 0) for r in rows},
+            "sans_date": {(r["cat"] or "").strip(): int(r["sans_date"] or 0) for r in rows}}
+
+
+def _calendrier_data(conn, jour=None):
+    from utils import calendrier as cal
+    jour = jour or date.today()
+    cfg = cal.charger()
+    comptes = _calendrier_comptes(conn, jour.isoformat())
+    sel = cal.tuiles(jour, comptes["devant"], cfg)
+    saisons = cal.saisons(jour, cfg)
+    for e in saisons:
+        e["compte"] = comptes["devant"].get(e["nom"], 0)
+        e["sans_date"] = comptes["sans_date"].get(e["nom"], 0)
+    # Ce que dit le calendrier vs ce qui est EN LIGNE (six tuiles fixes, relevées dans le
+    # HTML de la home — voir `home_actuelle` dans le fichier). L'écart est la tâche.
+    en_ligne = list(cfg.get("home_actuelle", []))
+    voulues = [e["nom"] for e in sel["retenues"]]
+    ecart = {"a_retirer": [n for n in en_ligne if n not in voulues],
+             "a_ajouter": [n for n in voulues if n not in en_ligne]}
+    mois = [date(jour.year, m, 1) for m in range(1, 13)]
+    return {"jour": jour, "today_date": date.today(), "cfg": cfg, "saisons": saisons,
+            "selection": sel,
+            "changements": cal.prochains_changements(jour, cfg, horizon=120),
+            "grille": cal.grille_annee(jour.year, cfg), "annee": jour.year,
+            "mois": mois, "jour_pos": (jour - date(jour.year, 1, 1)).days
+            / (date(jour.year + 1, 1, 1) - date(jour.year, 1, 1)).days,
+            "en_ligne": en_ligne, "ecart": ecart}
+
+
+@app.route("/calendrier-categories")
+@require_auth
+def calendrier_categories():
+    """Le calendrier des catégories (Franck, 05/09 : « il va falloir que tu le mettes
+    aussi dans le back-office quelque part pour au moins que j'aie la visibilité de ce
+    qu'on a et de ce qu'on fait »). `?jour=AAAA-MM-JJ` pour regarder un autre jour."""
+    jour = None
+    q = (request.args.get("jour") or "").strip()
+    if q:
+        try:
+            jour = date.fromisoformat(q)
+        except ValueError:
+            jour = None
+    conn = get_db()
+    try:
+        data = _calendrier_data(conn, jour)
+    finally:
+        conn.close()
+    return render_template("calendrier_categories.html", active="calendrier_categories", **data)
+
+
 # ---------- Composeur de newsletter (Phase 1 : voir / curer / ordonner) ----------
 # Une newsletter par TERRITOIRE, envoyée le vendredi matin. On la compose toute la
 # semaine (dès lundi). Sélection auto = retenus du territoire dans la fenêtre, triés

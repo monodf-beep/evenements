@@ -43,6 +43,27 @@ qu'on tient déjà. C'est le contradicteur de dates qui a trouvé, le 11 août, 
 fiches en ligne annonçant des événements déjà passés — dont une soirée d'avril 2022
 affichée pour avril 2027.
 
+### Le calendrier des catégories (ajouté le 05/09)
+
+Tu l'as demandé devant la tuile « Cinéma » encore affichée en septembre : « il faut un
+calendrier où à partir de telle date on valorise telle catégorie, d'autres s'enlèvent à
+partir d'une date ». Il est dans le back-office, menu **Développer & analyser →
+Calendrier des catégories**. La page dit, pour le jour regardé (tu peux en choisir un
+autre) :
+
+- les six tuiles que le calendrier choisirait pour « Explorer d'autres catégories », et
+  l'**écart** avec ce qui est réellement dans la home aujourd'hui ;
+- l'état des onze catégories (de saison / retirée), avec le nombre de fiches publiées
+  encore devant nous — le nombre ne fait que retirer, c'est la saison qui ordonne ;
+- **à partir de quelle date** ça change, sur 120 jours ;
+- l'année entière en une barre par catégorie, et les fenêtres avec leurs justifications.
+
+Les fenêtres vivent dans `config/calendrier_categories.json` : c'est là qu'on corrige
+une date ou un arbitrage (Cinéma = plein air seulement, Festivals = l'été), pas dans le
+code. **La home ne suit pas encore ce calendrier toute seule** : ses six tuiles sont
+écrites en dur dans les pages WordPress 928 (FR) et 1717 (IT). Tant que ce n'est pas
+branché, l'écart affiché par la page se corrige à la main.
+
 ---
 
 ## 2. Les commandes que tu tapes toi-même
