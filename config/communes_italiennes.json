@@ -1,0 +1,45 @@
+{
+ "_a_quoi_ca_sert": "RECONNAÎTRE un toponyme déjà écrit par la source, JAMAIS valider un périmètre. La différence est tout : une commune absente de cette liste ne produit aucun signal (silence), elle ne produit jamais un faux verdict. C'est le même principe que le reste de la journée du 2026-08-11 — sur un texte écrit pour des humains on ne peut pas EXTRAIRE, seulement CONFIRMER à partir d'un fait déjà connu.",
+
+ "_provenance": "Rédigée de mémoire le 2026-08-11, PAS téléchargée d'une source officielle. Assumé, et c'est pour ça que l'usage est borné à la reconnaissance : une entrée fautive ne peut que ne jamais s'apparier ; une entrée manquante ne peut que se taire. Ne pas s'en servir pour dire « cette ville n'existe pas » ni « cette ville est hors périmètre » — ni l'une ni l'autre ne se déduisent d'une liste incomplète.",
+
+ "_pourquoi_elle_existe": "La fiche lieu WordPress 208 porte _VenueCity = Aosta pour le Forte di Bard, qui est à Bard, à cinquante kilomètres. Trois événements en héritaient et affichaient au public une ville fausse. Rien dans la chaîne ne comparait le NOM d'un lieu à sa VILLE, alors que le nom contenait la réponse.",
+
+ "vallee_d_aoste": [
+  "Allein", "Antey-Saint-André", "Aoste", "Aosta", "Arnad", "Arvier", "Avise",
+  "Ayas", "Aymavilles", "Bard", "Bionaz", "Brissogne", "Brusson",
+  "Challand-Saint-Anselme", "Challand-Saint-Victor", "Chambave", "Chamois",
+  "Champdepraz", "Champorcher", "Charvensod", "Châtillon", "Cogne", "Courmayeur",
+  "Donnas", "Doues", "Emarèse", "Etroubles", "Fénis", "Fontainemore", "Gaby",
+  "Gignod", "Gressan", "Gressoney-La-Trinité", "Gressoney-Saint-Jean", "Hône",
+  "Introd", "Issime", "Issogne", "Jovençan", "La Magdeleine", "La Salle",
+  "La Thuile", "Lillianes", "Montjovet", "Morgex", "Nus", "Ollomont", "Oyace",
+  "Perloz", "Pollein", "Pontboset", "Pontey", "Pont-Saint-Martin",
+  "Pré-Saint-Didier", "Quart", "Rhêmes-Notre-Dame", "Rhêmes-Saint-Georges",
+  "Roisan", "Saint-Christophe", "Saint-Denis", "Saint-Marcel", "Saint-Nicolas",
+  "Saint-Oyen", "Saint-Pierre", "Saint-Rhémy-en-Bosses", "Saint-Vincent", "Sarre",
+  "Torgnon", "Valgrisenche", "Valpelline", "Valsavarenche", "Valtournenche",
+  "Verrayes", "Verrès", "Villeneuve"
+ ],
+
+ "_piemont_incomplet": "Le Piémont compte plus de mille communes : les énumérer de mémoire serait une invention. On ne garde que celles qui portent les lieux culturels que nous publions déjà. La liste s'allonge quand une fiche l'exige — elle n'a pas vocation à être exhaustive et ne doit jamais être lue comme telle.",
+
+ "piemont": [
+  "Torino", "Turin", "Rivoli", "Venaria Reale", "Moncalieri", "Chieri", "Ivrea",
+  "Pinerolo", "Susa", "Avigliana", "Bardonecchia", "Sestriere", "Chivasso",
+  "Settimo Torinese", "Carmagnola", "Collegno", "Grugliasco", "Rivalta di Torino",
+  "Cuorgnè", "Rivarolo Canavese", "Caluso", "Agliè", "Racconigi", "Cavour",
+  "Biella", "Candelo", "Vercelli", "Trino", "Crescentino", "Santhià", "Gattinara",
+  "Varallo", "Alagna Valsesia", "Novara", "Arona", "Borgomanero", "Verbania",
+  "Domodossola", "Stresa", "Omegna", "Asti", "Nizza Monferrato", "Govone",
+  "Alessandria", "Casale Monferrato", "Acqui Terme", "Ovada", "Tortona",
+  "Cuneo", "Alba", "Bra", "Barolo", "La Morra", "Neive", "Cherasco", "Saluzzo",
+  "Fossano", "Mondovì", "Savigliano", "Ceva", "Garessio", "Grinzane Cavour",
+  "Serralunga d'Alba"
+ ],
+
+ "_ambigus": "Ces noms sont de vraies communes, mais aussi des mots courants : « le quart », « la Sarre », « Gaby », « il avise », « Nus ». On les garde pour reconnaître une VILLE (le champ est déjà un nom de ville, aucun risque), on les écarte du balayage des NOMS DE LIEUX (« Théâtre des Nus » ne parle pas de la commune de Nus). Sans cette liste, le contrôle se serait mis à crier sur des noms d'usage.",
+
+ "ambigus": ["Nus", "Quart", "Sarre", "Gaby", "Avise", "Doues", "Ayas", "Introd",
+             "Bra", "Alba", "Neive", "Torgnon", "Cavour", "Trino"]
+}

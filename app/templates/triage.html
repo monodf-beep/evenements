@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% set active = 'triage' %}
+{% block title %}Triage / débloquer — Agenda CS{% endblock %}
+{% block h1 %}Triage / débloquer <span class="muted" style="font-size:1rem">({{ counts.total }})</span>{% endblock %}
+{% block subtitle %}<div class="sub">Les fiches « À compléter » ne sont pas un seul problème : ce sont plusieurs causes. On <strong>devine la cause</strong> et on propose la bonne action en 1 clic. Marquer « récurrent » ou « multi-lieux » ne publie rien et n'invente aucune donnée — ça relâche juste une exigence (réversible).</div>{% endblock %}
+
+{% block content %}
+
+{% if counts.total == 0 %}
+  <div class="card" style="padding:1.4rem;text-align:center">
+    🎉 File vide — rien à débloquer.
+  </div>
+{% else %}
+
+<div class="card" style="padding:1rem 1.1rem;margin-bottom:1rem">
+  <div style="display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center">
+    <strong>{{ counts.total }}</strong> fiche·s bloquée·s :
+    <span title="Une simple case suffit à les compléter">🟢 résolubles en 1 clic : <strong>{{ counts.resolvable }}</strong></span>
+    <span>🔁 récurrent : {{ counts.recurring }}</span>
+    <span>📍 multi-lieux : {{ counts.multi_lieux }}</span>
+    <span>🔁📍 les deux : {{ counts.both }}</span>
+    <span>✋ à trancher : {{ counts.manual }}</span>
+  </div>
+  {% set nb_rec = counts.recurring + counts.both %}
+  {% set nb_multi = counts.multi_lieux + counts.both %}
+  {% if nb_rec or nb_multi %}
+  <div class="btn-row" style="margin-top:.9rem">
+    {% if nb_rec %}
+    <form method="POST" action="/triage/apply" style="display:inline"
+          onsubmit="return confirm('Marquer « récurrent » toutes les fiches où le texte parle d\'activité permanente ? (réversible)')">
+      <input type="hidden" name="kind" value="recurring">
+      <button class="btn btn-primary btn-sm">🔁 Marquer récurrents les évidents ({{ nb_rec }})</button>
+    </form>
+    {% endif %}
+    {% if nb_multi %}
+    <form method="POST" action="/triage/apply" style="display:inline"
+          onsubmit="return confirm('Marquer « multi-lieux » toutes les fiches où le texte parle d\'itinérance ? (réversible)')">
+      <input type="hidden" name="kind" value="multi_lieux">
+      <button class="btn btn-primary btn-sm">📍 Marquer multi-lieux les évidents ({{ nb_multi }})</button>
+    </form>
+    {% endif %}
+    <span class="muted" style="margin-left:.4rem">Puis vérifie les fiches « à trancher » à la main.</span>
+  </div>
+  {% endif %}
+</div>
+
+{% macro fiche(e) %}
+{% set t = e._triage %}
+<div class="card" id="e{{ e.id }}" style="padding:.9rem 1rem;margin-bottom:.7rem">
+  <div style="display:flex;gap:.9rem;align-items:flex-start">
+    {% if e._img %}<img src="{{ e._img }}" alt="" style="width:88px;height:66px;object-fit:cover;border-radius:.4rem;flex:0 0 auto">{% endif %}
+    <div style="flex:1 1 auto;min-width:0">
+      <div style="font-weight:700">{{ e.title }}</div>
+      <div class="muted" style="font-size:.85rem;margin:.15rem 0">
+        {{ e.territoire or '—' }} · {{ e.source_name or 'source ?' }}
+        {% if e.date_event_start %} · {{ e.date_event_start }}{% endif %}
+      </div>
+      <div style="font-size:.85rem">
+        Manque : {% for m in t.missing %}<span class="pill">{{ m }}</span> {% endfor %}
+      </div>
+      {% if t.suggest_recurring or t.suggest_multi %}
+        <div style="font-size:.82rem;margin-top:.3rem;color:#2f6b34">
+          {% if t.resolved_by_flags %}✅ Une case suffit à la compléter.{% else %}
+          Après la case, il manquera encore : {% for r in t.residual %}<strong>{{ r }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="btn-row" style="margin-top:.6rem">
+    {% if t.suggest_recurring %}
+    <form method="POST" action="/action/{{ e.id }}/recurring" style="display:inline">
+      <input type="hidden" name="next" value="/triage#e{{ e.id }}">
+      <button class="btn btn-sm">🔁 Récurrent</button>
+    </form>
+    {% endif %}
+    {% if t.suggest_multi %}
+    <form method="POST" action="/action/{{ e.id }}/multi_lieux" style="display:inline">
+      <input type="hidden" name="next" value="/triage#e{{ e.id }}">
+      <button class="btn btn-sm">📍 Multi-lieux</button>
+    </form>
+    {% endif %}
+    <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"
+          onsubmit="return confirm('Rejeter cette fiche (source morte / périmé / ingérable) ?')">
+      <input type="hidden" name="next" value="/triage">
+      <button class="btn btn-sm btn-danger">🗑 Rejeter</button>
+    </form>
+    <a href="/preview/{{ e.id }}" class="btn btn-sm" target="_blank">👁 Ouvrir</a>
+  </div>
+</div>
+{% endmacro %}
+
+{% if buckets.both %}
+<h2 class="sec">🔁📍 Récurrent ET multi-lieux probable ({{ buckets.both|length }})</h2>
+{% for e in buckets.both %}{{ fiche(e) }}{% endfor %}
+{% endif %}
+
+{% if buckets.recurring %}
+<h2 class="sec">🔁 Récurrent probable ({{ buckets.recurring|length }})</h2>
+{% for e in buckets.recurring %}{{ fiche(e) }}{% endfor %}
+{% endif %}
+
+{% if buckets.multi_lieux %}
+<h2 class="sec">📍 Multi-lieux probable ({{ buckets.multi_lieux|length }})</h2>
+{% for e in buckets.multi_lieux %}{{ fiche(e) }}{% endfor %}
+{% endif %}
+
+{% if buckets.manual %}
+<h2 class="sec">✋ À trancher à la main ({{ buckets.manual|length }})</h2>
+<div class="muted" style="margin:-.3rem 0 .6rem">Aucun indice « permanent » ni « itinérant » : il manque une vraie donnée (date, lieu précis…) ou la source est morte/ambiguë. Ouvre la fiche pour décider — compléter, ou rejeter.</div>
+{% for e in buckets.manual %}{{ fiche(e) }}{% endfor %}
+{% endif %}
+
+{% endif %}
+{% endblock %}

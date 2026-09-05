@@ -1,0 +1,37 @@
+# Domaines à NE JAMAIS créditer/lier comme « source » d'un article (charte §8) : guides
+# touristiques tiers, agrégateurs, presse/médias — aucun n'est l'organisateur ni une
+# institution, même quand la page est publiquement lisible et a servi de matière d'appoint.
+# Une ligne = un domaine (sans www, sans schéma). Extensible sans code, cf.
+# scripts/enrich.py:filter_official_sources (agi à l'enrichissement) et
+# scripts/publisher.py:build_post (filet à chaque republication).
+#
+# Cas constaté (2026-07-29) : guidatorino.com cité comme source d'un événement dont il
+# n'est ni l'organisateur ni une institution (c'est un guide touristique privé de Turin).
+guidatorino.com
+# Presse/média régionale (radio, actu locale) : jamais créditée comme source (charte §8,
+# 2e alinéa) — même règle que le radar presse pour les événements.
+ici.fr
+aostaoggi.it
+# AJOUTÉS 2026-08-05 (désactivation du tier radar, config/sources.txt) : ces quatre
+# domaines de presse/guides étaient jusque-là reconnus via `utils.radar.radar_hosts()`,
+# qui LIT config/sources.txt pour ses seules lignes `tier=radar`. Une fois ces lignes
+# commentées (plus de collecte), `radar_hosts()` devient vide et ne les protège plus —
+# sans ce déplacement, `utils.radar.official_anchor` aurait pu se remettre à accepter
+# un `url_officiel` pointant sur le journal lui-même comme preuve de résolution
+# officielle (le piège WP#1097/WP#1105, en pire : silencieux). guidatorino.com et
+# aostaoggi.it étaient déjà ici, donc déjà protégés des deux façons.
+ledauphine.com
+nicerendezvous.com
+gazzettamatin.com
+quotidianopiemontese.it
+
+# ── Ajoutés le 2026-08-11, par la porte des NEWSLETTERS ────────────────────────
+# Le tier radar avait été supprimé de config/sources.txt le 05/08, mais les
+# newsletters entrent par scripts/gmail_collect.py, qui ne consultait AUCUNE de ces
+# listes. Franck, en lisant les fiches sans date : « on a encore du guida torino ?
+# alors que c'est du radar et qu'on en veut pas ? […] je veux que des sources
+# officielles. » guidatorino.com était déjà ici et passait quand même — la liste
+# existait, le canal ne la lisait pas. Le contrôle est désormais posé à l'entrée.
+mentelocale.it
+torinotoday.it
+mole24.it

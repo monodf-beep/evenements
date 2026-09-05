@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% set active = 'pipeline' %}
+{% block title %}Pipeline automatique{% endblock %}
+{% block h1 %}Pipeline automatique{% endblock %}
+{% block subtitle %}<div class="sub">La <b>création d'article</b> (enrichissement) et la <b>traduction IT</b> tournent désormais <b>toutes seules</b> (cron quotidien) — plus besoin de bouton ni de Claude Code. Cette page montre l'état des passages. Pour couper la dépense IA : <a href="/reglages">Réglages</a>.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+  <!-- État du dernier passage -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .5rem;">🔄 Dernier passage</h2>
+  {% if run %}
+    <div class="card" style="padding:.8rem 1rem;margin-bottom:1.3rem;">
+      <div class="muted text-sm" style="margin-bottom:.5rem;">
+        Démarré : <b>{{ run.started or '—' }}</b> ·
+        {% if run.ended %}<span style="color:#16a34a;font-weight:700;">terminé ✓</span>
+        {% else %}<span style="color:#d97706;font-weight:700;">interrompu / en cours</span>{% endif %}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:.35rem;">
+        {% for s in run.steps %}
+          <span class="card" style="padding:.15rem .5rem;font-size:.8rem;border-radius:999px;
+            {% if s.ok %}background:#e9f6ee;color:#166534;{% else %}background:#fdecec;color:#b91c1c;{% endif %}">
+            {{ '✓' if s.ok else '✗' }} {{ s.name }}</span>
+        {% endfor %}
+      </div>
+      <div class="muted text-sm" style="margin-top:.6rem;">
+        Rédaction FR (enrichissement) : {{ '✅ vue' if run.enrich_seen else '—' }} ·
+        Traduction IT : {{ '✅ vue' if run.translate_seen else '⚠️ absente de ce passage' }}
+      </div>
+    </div>
+  {% else %}
+    <div class="card" style="padding:.8rem 1rem;margin-bottom:1.3rem;">
+      <b>Aucun passage trouvé.</b>
+      <div class="muted text-sm" style="margin-top:.3rem;">Le journal <code>logs/cron_pipeline.log</code> est vide ou absent.
+      Vérifie que la crontab est installée (<code>crontab deploy/CRONTAB_SETUP.txt</code>).</div>
+    </div>
+  {% endif %}
+
+  <!-- Réglage coût (raccourci) -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .5rem;">💸 État de la dépense</h2>
+  <div class="card" style="padding:.8rem 1rem;margin-bottom:1.3rem;">
+    Enrichissement :
+    {% if st.enrich_mode=='off' %}<b style="color:#9ca3af;">désactivé</b> — les fiches gardent la description brute (aucun article rédigé).
+    {% elif st.enrich_mode=='court' %}<b style="color:#16a34a;">court</b> — article concis, sans recherche web (coût modéré).
+    {% else %}<b style="color:#d97706;">long</b> — article complet avec recherche web (coût élevé).{% endif %}
+    <a href="/reglages" style="margin-left:.4rem;">Changer →</a>
+  </div>
+
+  <!-- Planning -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .5rem;">⏰ Planning automatique</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+    <thead><tr style="text-align:left;border-bottom:1px solid #e5e7eb;">
+      <th style="padding:.4rem .3rem;">Tâche</th><th style="padding:.4rem .3rem;">Quand</th><th style="padding:.4rem .3rem;">Ce qu'elle fait</th></tr></thead>
+    <tbody>
+      {% for name, when, what in schedule %}
+      <tr style="border-bottom:1px solid #f1f1f1;">
+        <td style="padding:.4rem .3rem;"><b>{{ name }}</b></td>
+        <td style="padding:.4rem .3rem;white-space:nowrap;">{{ when }}</td>
+        <td style="padding:.4rem .3rem;" class="muted">{{ what }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="muted text-sm" style="margin-top:.6rem;">
+    Source : <code>deploy/cron_pipeline.sh</code> + <code>deploy/CRONTAB_SETUP.txt</code>.
+    L'ordre garantit que la traduction IT passe <b>après</b> la publication FR (elle a besoin du post publié).
+  </div>
+
+</div>
+{% endblock %}

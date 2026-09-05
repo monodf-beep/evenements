@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% set active = 'couverture' %}
+{% block title %}Couverture — compteurs par section{% endblock %}
+{% block h1 %}Couverture du site{% endblock %}
+{% block subtitle %}<div class="sub">Combien d'événements <b>en ligne</b> (publiés sur Agenda Sabauda) alimentent chaque <b>section × territoire × langue</b>. Les cases à <b>0</b> = un manque à combler.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:1000px;">
+
+  <div class="card" style="padding:.8rem 1.1rem;margin-bottom:1.2rem;font-size:.9rem;">
+    <b>{{ n_total }}</b> événements en ligne comptés
+    {% if undated %}· <span class="muted">{{ undated }} sans date (exclus des fenêtres temporelles)</span>{% endif %}.
+    Les compteurs « Ce week-end / Cette semaine » <b>roulent tout seuls</b> : quand le week-end passe,
+    ils basculent sur le suivant. Langue détectée sur le texte (titre + description).
+  </div>
+
+  {% macro cell(n) %}
+    {% if n == 0 %}<td style="text-align:center;color:#dc2626;font-weight:700;background:#fdeaea;">0</td>
+    {% else %}<td style="text-align:center;font-weight:600;">{{ n }}</td>{% endif %}
+  {% endmacro %}
+
+  {% for s in sections %}
+  <div class="card" style="padding:0;margin-bottom:1rem;overflow-x:auto;">
+    <div style="padding:.7rem 1rem;border-bottom:1px solid var(--border,#e2e4e8);display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap;">
+      <b style="font-size:1.02rem;">{{ s.name }}</b>
+      <span class="muted text-sm">{{ s.label }} · total <b>{{ s.tot }}</b> ({{ s.tot_fr }} FR / {{ s.tot_it }} IT)</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:420px;">
+      <thead><tr style="background:var(--code-bg,#f6f7f9);text-align:left;">
+        <th style="padding:.45rem .8rem;">Territoire</th>
+        <th style="text-align:center;padding:.45rem .8rem;">🇫🇷 FR</th>
+        <th style="text-align:center;padding:.45rem .8rem;">🇮🇹 IT</th>
+        <th style="text-align:center;padding:.45rem .8rem;">Total</th>
+      </tr></thead>
+      <tbody>
+      {% for r in s.rows %}
+        <tr style="border-top:1px solid var(--border,#e2e4e8);">
+          <td style="padding:.45rem .8rem;">{{ r.terr }}</td>
+          {{ cell(r.fr) }}{{ cell(r.it) }}
+          <td style="text-align:center;color:#6F6B62;">{{ r.total }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+  <!-- Par catégorie (à venir) -->
+  <h2 style="margin:1.4rem 0 .5rem;font-size:1.05rem;">Par catégorie — à venir</h2>
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;min-width:420px;">
+      <thead><tr style="background:var(--code-bg,#f6f7f9);text-align:left;">
+        <th style="padding:.45rem .8rem;">Catégorie</th>
+        <th style="text-align:center;padding:.45rem .8rem;">🇫🇷 FR</th>
+        <th style="text-align:center;padding:.45rem .8rem;">🇮🇹 IT</th>
+        <th style="text-align:center;padding:.45rem .8rem;">Total</th>
+      </tr></thead>
+      <tbody>
+      {% for r in cats %}
+        <tr style="border-top:1px solid var(--border,#e2e4e8);">
+          <td style="padding:.45rem .8rem;">{{ r.cat }}</td>
+          {{ cell(r.fr) }}{{ cell(r.it) }}
+          <td style="text-align:center;color:#6F6B62;">{{ r.total }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="muted" style="padding:.6rem .8rem;">Aucun événement à venir.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="muted text-sm" style="margin-top:.8rem;">
+    « En ligne » = publié sur Agenda Sabauda (<code>wp_post_id_as</code> renseigné), hors doublons.
+    Un <b>0 rouge</b> signale une section sans contenu — typiquement l'IT sur les territoires
+    français (sources françaises → pas de fiche italienne). C'est là qu'il faut sourcer ou traduire.
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% set active = 'validation' %}
+{% block title %}À valider — Agenda CS{% endblock %}
+{% block h1 %}{% if has_period %}Plan de la période{% else %}À valider{% endif %}{% endblock %}
+{% block subtitle %}<div class="sub">{% if has_period %}<strong>{{ plabel }}</strong> — les retenus + les événements encore en cours à re-valoriser.{% else %}Événements notés ≥ 7 par Claude, en attente de ton choix.{% endif %}</div>{% endblock %}
+
+{% block content %}
+
+{% if not has_period and (n_queue or n_past or badge_off) %}
+<!-- File À valider (Cultura Sabauda) : on/off de la pastille + archivage des passés -->
+<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:.55rem .9rem;margin-bottom:.8rem;">
+  <div class="text-sm">
+    <b>{{ n_queue }}</b> à valider pour <b>Cultura Sabauda</b>{% if n_past %} · dont <b style="color:#b45309;">{{ n_past }} passé(s)</b>{% endif %}.
+    {% if badge_off %}<span style="color:#16a34a;font-weight:600;">Pastille masquée.</span>{% else %}<span class="muted">Tu ne travailles pas CS ? Masque la pastille (elle reviendra quand tu la réactives).</span>{% endif %}
+  </div>
+  <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+    {% if n_past %}
+    <form method="post" action="/validation/tidy" style="margin:0;" onsubmit="return confirm('Archiver les {{ n_past }} événement(s) déjà passé(s) ? (statut « rejeté », consultable, réversible)')">
+      <input type="hidden" name="action" value="archive_past">
+      <button class="btn btn-ghost btn-sm">🗓️ Archiver les {{ n_past }} passés</button>
+    </form>
+    {% endif %}
+    {% if badge_off %}
+    <form method="post" action="/validation/tidy" style="margin:0;">
+      <input type="hidden" name="action" value="badge_on">
+      <button class="btn btn-ok btn-sm">🔔 Réafficher la pastille</button>
+    </form>
+    {% else %}
+    <form method="post" action="/validation/tidy" style="margin:0;">
+      <input type="hidden" name="action" value="badge_off">
+      <button class="btn btn-ok btn-sm">🙈 Masquer la pastille</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Barre de période -->
+<form class="period" method="GET" action="/validation" style="margin-bottom:.7rem">
+  <span class="plabel">📅 Période :</span>
+  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
+  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
+  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
+  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
+  <span class="sep"></span>
+  du <input type="date" name="dfrom" value="{{ dfrom }}"> au <input type="date" name="dto" value="{{ dto }}">
+  <button class="pbtn">Plage perso</button>
+  {% if has_period %}<a href="/validation" class="muted">✕ toute la file</a>{% endif %}
+</form>
+{% if has_period %}<p class="muted" style="font-size:.85rem;margin:.1rem 0 .9rem">
+  <span class="badge new">🆕 nouveau</span> retenu à traiter ·
+  <span class="badge re">🔁 déjà publié</span> à re-valoriser ·
+  <span class="badge last">⏳ dernier week-end</span> dernière chance ·
+  <span class="badge ready">✓ prêt</span> article + photo + date.</p>{% endif %}
+
+{% if not events %}
+  <div class="card empty">Aucun événement {% if has_period %}sur cette période{% else %}en attente de validation{% endif %}.</div>
+{% else %}
+<div class="table-wrap cards">
+<table class="table-cards">
+  <thead>
+  <tr><th scope="col">Photo</th><th scope="col">Score</th><th scope="col">Titre</th><th scope="col">Date</th><th scope="col">Lieu</th><th scope="col">Justification</th><th scope="col">Statut (clic = classer)</th><th scope="col">Actions</th></tr>
+  </thead>
+  <tbody>
+  {% for e in events %}
+  <tr id="e{{ e.id }}" {% if e._republish %}style="background:#faf7ff"{% endif %}>
+    <td class="full cell-photo" data-label="">{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="badge fail" title="Pas de photo — lance « Compléter les visuels »">🖼 sans photo</span>{% endif %}</td>
+    <td data-label="Score"><strong style="font-size:1.05rem;color:{{ 'var(--ok-ink)' if (e.llm_score or 0) >= 9 else 'var(--brand-ink)' }}">{{ e.llm_score if e.llm_score is not none else '—' }}</strong>/10
+      {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
+    <td class="full cell-title" data-label="">
+      <a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
+      {% set ready = e.enrich_status == 'enriched' and e.url_image and (e.date_event_start or e.date_event_end) %}
+      {% if ready %}<br><span class="badge ready" title="Article + photo + date : publiable tel quel">✓ prêt à publier</span>
+      {% elif e.enrich_status == 'enriched' %}<br><span class="badge article">✍️ article prêt</span>
+      {% elif e.enrich_status in ('error','api_error') %}<br><span class="badge fail">✍️ échec enrich.</span>{% endif %}
+      {% if e._new and has_period %}<br><span class="badge new">🆕 nouveau</span>{% endif %}
+      {% if e._republish %}<br><span class="badge re">🔁 déjà publié{% if e.published_cs_date %} le {{ e.published_cs_date[:10] }}{% endif %}</span>{% endif %}
+      {% if e._ending %}<br><span class="badge last">⏳ dernier week-end</span>{% endif %}
+      {% if e.territoire %}<br><small class="muted">{{ e.territoire }}</small>{% endif %}
+    </td>
+    <td data-label="Date">
+      {% if e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
+        <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
+      {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>
+      {% elif e.date_event_end %}<span class="daterange">jusqu'au {{ e.date_event_end }}</span>
+      {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
+    </td>
+    <td data-label="Lieu">{{ e.lieu or '' }} {{ e.ville or '' }}</td>
+    <td class="stack muted" style="font-size:.85rem" data-label="Pourquoi"><em>{{ e.llm_justification }}</em></td>
+    <td class="stack" data-label="Statut">
+      {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabauda'),('rejected','Rejeté')] %}
+      <div class="stpick">
+      {% for key, lbl in picks %}
+        {% if e.statut == key %}
+          <span class="st st-{{ key }}">{{ lbl }}</span>
+        {% else %}
+          <form method="POST" action="/set-status/{{ e.id }}/{{ key }}">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <button type="submit" class="st st-off" title="Classer : {{ lbl }} (sans publier)">{{ lbl }}</button>
+          </form>
+        {% endif %}
+      {% endfor %}
+      </div>
+      {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ brouillon WP #{{ e.wp_post_id_cs }}</a>{% endif %}
+    </td>
+    <td class="full cell-actions" data-label="">
+      <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline" onsubmit="return confirm('Créer un brouillon WordPress (Cultura Sabauda) ?')"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon WordPress Cultura Sabauda">🚀 Publier CS</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,227 @@
+# Sources RSS des événements culturels — Sprint 1
+# Format : url_rss;territoire;nom_source;tier[;lieu;ville]
+# Territoire : Savoie | Piemonte | Vallee-Aoste | Nice
+# Tier (priorité de source pour la déduplication/fusion, voir docs/CHARTE_EDITORIALE.md §8) :
+#   officielle  = organisateur / lieu primaire (théâtre, musée, opéra…)   [priorité max]
+#   institution = collectivité / institution (ville, département, métropole)
+#   tourisme    = office de tourisme / portail touristique
+#   radar       = presse / Google News (DÉTECTION seule, jamais crédité/lié)
+#     ⚠️ « DÉTECTION seule » a été APPLIQUÉ le 2026-08-02 (utils/radar.py, verrou dans
+#     scripts/publish_batch_as.py) : une fiche née d'un flux radar n'était publiée QUE
+#     si le pipeline avait résolu sa page OFFICIELLE. Auparavant le tier radar
+#     n'empêchait que le CRÉDIT et le LIEN : des articles de presse (faits divers,
+#     conseils municipaux, revues de presse) partaient en ligne comme des événements
+#     (cf. WP#1097, WP#1105).
+#     ⛔ TIER DÉSACTIVÉ le 2026-08-05 (Franck : « trop de bruit, on garde les sources
+#     officielles ») : les 14 flux radar (Google News ×5, presse/guides ×9) sont
+#     COMMENTÉS ci-dessous, plus aucune collecte. `utils/radar.py` et son verrou de
+#     publication restent en place SANS RIEN CASSER : ils continuent de protéger le
+#     stock déjà en base (fiches radar existantes non résolues) — voir
+#     scripts/purge_radar.py pour l'écoulement de ce stock. Les domaines de presse
+#     radar (ledauphine.com, nicerendezvous.com, gazzettamatin.com,
+#     quotidianopiemontese.it) sont désormais dans config/non_institutional_sources.txt
+#     pour que `utils.radar.official_anchor` continue de les refuser comme ancre
+#     officielle même une fois `radar_hosts()` vidé par cette désactivation — sans ce
+#     déplacement, une fiche déjà en base avec `url_officiel` pointant sur le journal
+#     lui-même aurait pu se remettre à paraître « résolue ». Réactiver : décommenter
+#     les lignes ci-dessous.
+# lieu;ville (OPTIONNELS) : pour une source « officielle » (un lieu précis), le lieu
+#   EST la source → renseignés ici, appliqués par défaut (scripts/venues.py, passe 0).
+#   Laisse vide (ou n'écris que la ville) quand le lieu varie (ville, office, festival
+#   itinérant). Format « ;;Ville » = seulement la ville.
+# Lignes commençant par # ignorées.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# Flux VÉRIFIÉS le 2026-06-30 (HTTP 200 + corps XML RSS/Atom + ≥1 item réel).
+# Beaucoup d'institutions n'exposent AUCUN flux RSS → couvertes par le canal
+# newsletter (Gmail) et le scraping HTML. Les « Google News » servent de RADAR.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ============================ SAVOIE / HAUTE-SAVOIE ============================
+https://www.malrauxchambery.fr/feed/;Savoie;Malraux scène nationale Chambéry;officielle;Espace Malraux;Chambéry
+https://www.albertville.fr/feed/;Savoie;Ville d'Albertville;institution
+https://www.aix-les-bains.com/feed/;Savoie;Office de Tourisme Aix-les-Bains;tourisme
+https://www.aixlesbains-rivieradesalpes.com/feed/;Savoie;Aix-les-Bains Riviera des Alpes;tourisme
+https://www.lac-annecy.com/feed/;Savoie;Office de Tourisme du Lac d'Annecy;tourisme
+https://www.megeve.com/feed/;Savoie;Megève Tourisme;tourisme
+# DÉSACTIVÉ (fil d'ACTU générale du département, pas un agenda → ~90% non-événements :
+# réunions de conseil, conventions, inaugurations passées, voirie). La culture 74 vient
+# mieux des musées/scènes/newsletters. Réactiver en retirant le # si besoin.
+# https://www.hautesavoie.fr/feed/;Savoie;Département de la Haute-Savoie;institution
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Savoie+OR+%22Haute-Savoie%22&hl=fr&gl=FR&ceid=FR:fr;Savoie;Google News - Culture Savoie/Haute-Savoie (radar);radar
+# NB : 6 pistes Savoie (theatrecharlesdullin.fr, chambery-tourisme.com, citedesarts-chambery.fr,
+# grand-chambery.fr, chateau-annecy.fr, museedumontblanc.com) testées depuis le VPS le
+# 2026-06-30 → domaines morts (DNS/timeout). Écartées.
+
+# ================================= PIÉMONT ====================================
+https://www.piemonteitalia.eu/it/rss.xml;Piemonte;Piemonte Italia (VisitPiemonte);tourisme
+https://www.museireali.beniculturali.it/feed/;Piemonte;Musei Reali Torino;officielle;Musei Reali;Torino
+https://www.castellodirivoli.org/feed/;Piemonte;Castello di Rivoli - Arte Contemporanea;officielle;Castello di Rivoli;Rivoli
+https://www.teatrostabiletorino.it/feed/;Piemonte;Teatro Stabile di Torino;officielle;Teatro Stabile;Torino
+https://www.circololettori.it/feed/;Piemonte;Fondazione Circolo dei Lettori;officielle;Circolo dei Lettori;Torino
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+Torino+OR+Piemonte&hl=it&gl=IT&ceid=IT:it;Piemonte;Google News - Cultura Torino/Piemonte (radar);radar
+
+# ============================== VALLÉE D'AOSTE ================================
+https://www.fortedibard.it/eventi/feed/;Vallee-Aoste;Forte di Bard - Eventi;officielle;Forte di Bard;Bard
+https://www.fortedibard.it/feed/;Vallee-Aoste;Forte di Bard - Notizie;officielle;Forte di Bard;Bard
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=mostra+OR+festival+OR+spettacolo+%22Valle+d%27Aosta%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura VdA (radar);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=cultura+eventi+%22Valle+d%27Aosta%22+OR+%22Vall%C3%A9e+d%27Aoste%22&hl=it&gl=IT&ceid=IT:it;Vallee-Aoste;Google News - Cultura/Eventi VdA bilingue (radar);radar
+
+# ========================= NICE / ALPES-MARITIMES ============================
+https://www.opera-nice.org/agenda/feed/;Nice;Opéra Nice Côte d'Azur - Agenda;officielle;Opéra de Nice;Nice
+https://www.mamac-nice.org/feed/;Nice;MAMAC de Nice;officielle;MAMAC;Nice
+https://www.musee-matisse-nice.org/fr/feed/;Nice;Musée Matisse de Nice;officielle;Musée Matisse;Nice
+https://www.nicecotedazur.org/feed/;Nice;Métropole Nice Côte d'Azur;institution
+https://www.nice.fr/feed/;Nice;Ville de Nice;institution
+https://www.grasse.fr/feed/;Nice;Ville de Grasse;institution
+https://www.explorenicecotedazur.com/feed/;Nice;Office de Tourisme Nice Côte d'Azur;tourisme
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://news.google.com/rss/search?q=exposition+OR+festival+OR+spectacle+Nice+OR+%22Alpes-Maritimes%22&hl=fr&gl=FR&ceid=FR:fr;Nice;Google News - Culture 06 (radar);radar
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-01 — recherche multi-agents ville par ville. Flux vérifiés au
+# curl (HTTP 200 après redirections + RSS + items événementiels réels). URL
+# canoniques (redirections résolues). Le scraper ignore sans risque un flux mort.
+# Découverte clé : agendaculturel.fr expose un agenda culturel PAR DÉPARTEMENT.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ------------------------------ SAVOIE / HAUTE-SAVOIE ------------------------
+# ─── RETIRÉE LE 2026-08-04, décision de Franck : « agendaculturel.fr, on supprime
+# cette source et les fiches en lien ». Le domaine répond 403 à ce serveur sur TOUS
+# ses sous-domaines (06., 73., 74., www.), racine comprise, avec ou sans user-agent
+# de navigateur. 338 fiches en venaient, dont 242 encore devant nous et 207 sans date.
+# Or dates, lieux, descriptions et complétion se réparent en RELISANT la page source :
+# ces fiches étaient donc définitivement incomplétables, et chaque cron réessayait
+# indéfiniment, une fiche à la fois, sans que la panne commune soit jamais nommée.
+# Une source qu'on ne peut plus lire n'est plus une source.
+# Les fiches produites ont été rejetées et corbeillées (réversible) par
+# scripts/retirer_source.py. Rétablir les lignes ci-dessous si le domaine rouvre —
+# scripts/audit_sources_bloquees le dira au premier dimanche.
+#https://73.agendaculturel.fr/rss;Savoie;Agenda Culturel Savoie (73);tourisme
+#https://74.agendaculturel.fr/rss;Savoie;Agenda Culturel Haute-Savoie (74);tourisme
+https://www.mjc-chambery.com/feed/;Savoie;MJC de Chambéry;institution;MJC de Chambéry;Chambéry
+https://montmelian.com/category/culture/feed/;Savoie;Ville de Montmélian - Culture;officielle;;Montmélian
+https://www.laravoire.fr/agenda/feed/;Savoie;Ville de La Ravoire - Agenda;officielle;;La Ravoire
+https://www.pays-albertville.com/feed/;Savoie;OT Pays d'Albertville;tourisme
+https://www.coeurdetarentaise-tourisme.com/feed/;Savoie;OT Coeur de Tarentaise (Moûtiers);tourisme
+https://dentduchat.com/feed/;Savoie;OT Yenne - Dent du Chat;tourisme
+https://www.ugine.com/feed/;Savoie;Ville d'Ugine;officielle;;Ugine
+https://mal-thonon.org/feed/;Savoie;Maison des Arts du Léman (Thonon);officielle;Maison des Arts du Léman;Thonon-les-Bains
+https://mjc-annemasse.fr/feed/;Savoie;MJC Annemasse;officielle;MJC Annemasse;Annemasse
+https://www.chateau-rouge.net/feed/;Savoie;Château Rouge (Annemasse);officielle;Château Rouge;Annemasse
+
+# --------------------------------- PIÉMONT ----------------------------------
+https://www.turismoinlanga.it/it/feed/;Piemonte;Turismo in Langa;tourisme
+https://piemontedalvivo.it/feed/;Piemonte;Piemonte dal Vivo;officielle
+https://www.fondazionemerz.org/feed/;Piemonte;Fondazione Merz (Torino);officielle;Fondazione Merz;Torino
+https://fondazionecrc.it/feed/;Piemonte;Fondazione CRC (Cuneo);officielle;Fondazione CRC;Cuneo
+https://www.scrittorincitta.it/feed/;Piemonte;scrittorincittà (Cuneo);officielle;;Cuneo
+https://www.paratissima.it/feed/;Piemonte;Paratissima (Torino);officielle;;Torino
+https://flowersfestival.it/feed/;Piemonte;Flowers Festival (Collegno);officielle;Flowers Festival;Collegno
+https://museodiffusotorino.it/feed/;Piemonte;Museo Diffuso della Resistenza (Torino);officielle;Museo Diffuso della Resistenza;Torino
+https://www.fondazioneaccorsi-ometto.it/feed/;Piemonte;Museo Accorsi-Ometto (Torino);officielle;Museo Accorsi-Ometto;Torino
+https://www.museorisorgimentotorino.it/feed/;Piemonte;Museo del Risorgimento (Torino);officielle;Museo del Risorgimento;Torino
+https://visitvalsesiavercelli.it/feed/;Piemonte;ATL Valsesia Vercelli;tourisme
+https://www.teatroalfieriasti.it/feed/;Piemonte;Teatro Alfieri (Asti);officielle;Teatro Alfieri;Asti
+https://www.visitmondovi.it/feed/;Piemonte;Visit Mondovì;tourisme
+
+# ------------------------------- VALLÉE D'AOSTE -----------------------------
+https://www.grand-paradis.it/it/rss.xml;Vallee-Aoste;Fondation Grand Paradis;institution
+https://rendezvous-vda.it/feed/;Vallee-Aoste;Rendez-Vous en Vallée d'Aoste;tourisme
+https://rendezvous-vda.it/fr/feed/;Vallee-Aoste;Rendez-Vous en Vallée d'Aoste (FR);tourisme
+https://valledaostaheritage.com/feed/;Vallee-Aoste;Valle d'Aosta Heritage;institution
+https://www.courmayeurmontblanc.it/feed/;Vallee-Aoste;OT Courmayeur Mont-Blanc;tourisme
+
+# --------------------------- NICE / ALPES-MARITIMES -------------------------
+# ─── RETIRÉE LE 2026-08-04 — voir le bloc en section Savoie.
+#https://06.agendaculturel.fr/rss;Nice;Agenda Culturel Alpes-Maritimes (06);tourisme
+https://www.fondation-maeght.com/feed/;Nice;Fondation Maeght (Saint-Paul-de-Vence);institution;Fondation Maeght;Saint-Paul-de-Vence
+https://www.theatredegrasse.com/feed/;Nice;Théâtre de Grasse;officielle;Théâtre de Grasse;Grasse
+https://scene55.fr/feed/;Nice;Scène 55 (Mougins);officielle;Scène 55;Mougins
+https://vence-tourisme.com/feed/;Nice;OT de Vence;tourisme
+https://www.ville-valbonne.fr/feed/;Nice;Ville de Valbonne;institution
+https://www.ville-grasse.fr/feed/;Nice;Ville de Grasse;institution
+https://mougins.fr/category/agenda/feed/;Nice;Ville de Mougins - Agenda;institution
+https://www.villefranche-sur-mer.fr/agenda/feed/;Nice;Ville de Villefranche - Agenda;institution
+https://www.nuitsdusud.com/feed/;Nice;Festival Nuits du Sud (Vence);officielle;;Vence
+
+# À CONFIRMER depuis le VPS (bloqués par WAF/anti-bot depuis l'environnement de
+# recherche, mais lieux/festivals réels et majeurs → très probablement OK en prod).
+https://www.reggiavenaria.it/feed/;Piemonte;Reggia di Venaria;officielle;Reggia di Venaria;Venaria Reale
+https://www.fondazionesandretto.it/feed/;Piemonte;Fondazione Sandretto Re Rebaudengo (Torino);officielle;Fondazione Sandretto Re Rebaudengo;Torino
+https://www.legrandbivouac.com/feed/;Savoie;Festival Le Grand Bivouac (Albertville);officielle;;Albertville
+https://jazzajuan.com/feed/;Nice;Jazz à Juan (Antibes);officielle;;Antibes
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-01 (2) — agrégateurs & rubriques AGENDA de médias, recherche
+# multi-agents. FILTRE ASSUMÉ : on ne garde que l'événementiel ciblé (guides
+# what's-on + rubriques agenda/eventi). Les fils d'actu générale (ANSA, réseau
+# morenews, Nice-Matin, France 3…) sont ÉCARTÉS : trop de bruit, comme Google News.
+# Guides tiers concurrents → tier `radar` (on détecte, on ne crédite/lie jamais).
+# ═════════════════════════════════════════════════════════════════════════════
+https://www.torinoclick.it/feed/;Piemonte;TorinoClick (agence Ville de Turin);tourisme
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.guidatorino.com/feed/;Piemonte;GuidaTorino (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.nicerendezvous.com/actus-culture-2?format=feed&type=rss;Nice;NiceRendezVous - Culture (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.nicerendezvous.com/actus-loisirs-2?format=feed&type=rss;Nice;NiceRendezVous - Loisirs (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.nicerendezvous.com/actus-spectacles-2.feed?type=rss;Nice;NiceRendezVous - Spectacles (guide);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.gazzettamatin.com/category/oggi-domani/appuntamenti/feed/;Vallee-Aoste;Gazzetta Matin - Appuntamenti (agenda);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.aostaoggi.it/eventi?format=feed&type=rss;Vallee-Aoste;Aostaoggi - Eventi (agenda);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.quotidianopiemontese.it/category/eventi/feed/;Piemonte;Quotidiano Piemontese - Eventi (agenda);radar
+# Le Dauphiné : ÉDITIONS LOCALES géo-scopées (73/74) au lieu du flux national
+# « culture-loisirs » qui débordait (Avignon, Pyrénées…). Radar = détection seule.
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.ledauphine.com/savoie/rss;Savoie;Le Dauphiné - Savoie (édition locale);radar
+# DÉSACTIVÉ 2026-08-05 (tier radar, Franck : trop de bruit) — https://www.ledauphine.com/haute-savoie/rss;Savoie;Le Dauphiné - Haute-Savoie (édition locale);radar
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-01 (3) — TYPES de sources nouveaux (recherche multi-agents) :
+# cinéma art & essai + festivals ciné, conservatoires, bibliothèques civiques,
+# agenda universitaire, coopération transfrontalière. Renfort notable pour la VdA.
+# ═════════════════════════════════════════════════════════════════════════════
+# -- Cinéma (art & essai, festivals) --
+https://www.torinofilmfest.org/feed/;Piemonte;Torino Film Festival;officielle;;Torino
+https://www.cinemamassimotorino.it/feed/;Piemonte;Cinema Massimo (art & essai, Torino);officielle;Cinema Massimo;Torino
+https://www.loversff.com/feed/;Piemonte;Lovers Film Festival (Torino);officielle;;Torino
+https://www.sottodiciottofilmfestival.it/feed/;Piemonte;Sottodiciotto Film Festival (Torino);officielle;;Torino
+https://www.festivalcinemambiente.it/it/feed/;Piemonte;CinemAmbiente (Torino);officielle;;Torino
+https://www.gpff.it/feed/;Vallee-Aoste;Gran Paradiso Film Festival (Cogne);officielle;;Cogne
+https://acrira.org/feed/;Savoie;ACRIRA - cinémas indépendants alpins;institution
+https://seances-speciales.fr/feed/;Nice;Les Écrans du Sud - art & essai PACA;institution
+# -- Conservatoires & bibliothèques --
+https://www.conservatoriotorino.eu/eventi/feed/;Piemonte;Conservatorio G. Verdi Torino - Eventi;officielle;Conservatorio Giuseppe Verdi;Torino
+https://bct.comune.torino.it/rss.xml;Piemonte;Biblioteche Civiche Torinesi;institution;;Torino
+https://www.consaosta.it/feed/;Vallee-Aoste;Conservatoire de Musique de la Vallée d'Aoste;officielle;Conservatoire de la Vallée d'Aoste;Aoste
+# -- Université & transfrontalier --
+https://www.univ-smb.fr/agenda/feed/;Savoie;Université Savoie Mont Blanc - Agenda;institution
+https://www.interreg-alcotra.eu/rss.xml;Savoie;Interreg ALCOTRA (transfrontalier);institution
+# -- Traditions / mono-événement --
+https://www.nicecarnaval.com/feed/;Nice;Carnaval de Nice;officielle;;Nice
+https://www.langhe.net/feed/;Piemonte;LoveLanghe (traditions/sagre Langhe);tourisme
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-08-18 — recherche multi-agents « Intentions de recherche » : zones
+# à 0-4 évén. + gros événements ponctuels. Chaque flux ci-dessous vérifié par
+# curl réel avant ajout (code 200 après redirection, vrais <item> avec contenu
+# daté — pas juste un channel vide). Deux candidats trouvés par les agents
+# n'ont PAS été ajoutés faute de preuve à la revérification : fieranocciolacortemilia.it
+# (0 item au moment du contrôle final) et doujador.it (items figés depuis 2019-2020).
+# -- Comptes communaux avec vrai flux RSS (rare chez ces petites collectivités) --
+https://www.comune.biella.it/feed;Piemonte;Comune di Biella;institution;;Biella
+https://www.comune.cossato.bi.it/feed;Piemonte;Comune di Cossato;institution;;Cossato
+https://www.comune.casale-monferrato.al.it/feed;Piemonte;Comune di Casale Monferrato;institution;;Casale Monferrato
+https://www.comune.domodossola.vb.it/feed;Piemonte;Comune di Domodossola;institution;;Domodossola
+# -- Offices de tourisme locaux --
+https://turismo.comuneacqui.it/feed/;Piemonte;Turismo Acqui Terme;tourisme;;Acqui Terme
+https://www.visitovada.com/feed/;Piemonte;Visit Ovada;tourisme;;Ovada
+# -- Gros événements / festivals ponctuels --
+https://www.marrone.net/feed/;Piemonte;Fiera Nazionale del Marrone (Cuneo);officielle;;Cuneo
+https://www.torinojazzfestival.it/feed/;Piemonte;Torino Jazz Festival;officielle;;Torino
+https://www.stresafestival.eu/feed/;Piemonte;Stresa Festival;officielle;;Stresa
+https://www.lefestivaldulivredenice.com/feed/;Nice;Festival du Livre de Nice;officielle;;Nice
+# -- Institution large (actualités municipales générales, pas un flux événements dédié) --
+https://www.nice.fr/feed;Nice;Ville de Nice (actualités municipales);institution;;Nice
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-08-18 (suite) — petites communes de l'arrondissement de Nice, non
+# cherchées jusqu'ici. RSS confirmé (vrais <item>).
+# ═════════════════════════════════════════════════════════════════════════════
+https://destination.beaulieusurmer.fr/feed/;Nice;OT Beaulieu-sur-Mer;tourisme;;Beaulieu-sur-Mer
+https://www.villedebeausoleil.fr/feed/;Nice;Ville de Beausoleil;institution;;Beausoleil

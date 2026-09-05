@@ -1,0 +1,442 @@
+/* ============================================================================
+   Agenda Sabauda / Cultura Sabauda — système de design du back-office
+   Un seul fichier, partagé par toutes les pages (base.html).
+   Identité : MARINE de marque + ROUGE de Savoie (alignée sur la newsletter).
+   Règles de contraste : texte blanc → fond ton 600/700 (≥ 4.5:1 AA) ;
+   texte coloré → fond « -soft » + variante « -ink ».
+   ========================================================================== */
+:root {
+  /* ---- Marque ---- */
+  --brand:        #1f3a63;   /* marine principale */
+  --brand-ink:    #17304f;   /* marine foncée : texte/hover sur fond clair */
+  --brand-strong: #0f2440;   /* marine très foncée : sidebar, boutons dark */
+  --brand-soft:   #eef2f8;   /* fond teinté marine (barres, surbrillance) */
+  --brand-border: #d3ddec;
+
+  --accent:      #c8102e;    /* rouge de marque (signature, compteurs, hot) */
+  --accent-ink:  #a20d25;
+  --accent-soft: #fdecef;
+
+  /* ---- Neutres froids ---- */
+  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#fafbfc;
+  --ink:#16202e; --ink-2:#384456; --muted:#5c6675;
+  --line:#e4e8ee; --line-2:#cfd6df;
+
+  /* ---- Sémantiques (fond plein AA / texte-sur-clair / fond clair) ---- */
+  --ok:#15803d;     --ok-ink:#116932;     --ok-soft:#e7f6ec;
+  --warn:#b45309;   --warn-ink:#8a3f07;   --warn-soft:#fdf0dc;
+  --danger:#c0233b; --danger-ink:#991b28; --danger-soft:#fdecef;
+  --info:#1f6feb;   --info-ink:#1a5fd0;   --info-soft:#e8f1fe;
+  --purple:#6d28d9; --purple-ink:#5b21b6; --purple-soft:#f0eafc;
+
+  --radius:10px; --radius-sm:7px; --radius-lg:14px; --radius-pill:999px;
+  --shadow-sm:0 1px 2px rgba(15,36,64,.06);
+  --shadow:0 1px 3px rgba(15,36,64,.08), 0 1px 2px rgba(15,36,64,.05);
+  --shadow-md:0 4px 12px rgba(15,36,64,.10);
+  --sidebar:240px;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ink); background:var(--bg); font-size:15px; line-height:1.5; }
+a { color:var(--brand-ink); text-decoration:none; }
+a:hover { text-decoration:underline; }
+/* Serif = titres de CONTENU + chiffres KPI. L'UI (labels, th) reste en sans. */
+h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; font-weight:700; line-height:1.2; }
+.muted { color:var(--muted); }
+.text-sm { font-size:.85rem; } .text-xs { font-size:.76rem; }
+
+/* Navigation clavier visible partout (a11y) */
+a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
+.st:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
+
+/* ---------- Shell : sidebar + main ---------- */
+/* minmax(0,1fr) : sans ça, une table large (min-width:auto) élargit la colonne
+   au-delà de l'écran et fait déborder toute la page horizontalement sur mobile. */
+.app-shell { display:grid; grid-template-columns:var(--sidebar) minmax(0,1fr); min-height:100vh; }
+.sidebar { background:var(--brand-strong); color:#c2ccd9; display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh; padding:1.1rem .8rem; }
+.brand { display:flex; align-items:center; gap:.6rem; padding:.2rem .4rem 1rem; }
+.brand-mark { width:34px; height:34px; border-radius:9px; background:var(--accent);
+  color:#fff; font-weight:800; display:grid; place-items:center; font-family:Georgia,serif; }
+.brand b { color:#fff; display:block; font-size:.98rem; }
+.brand small { color:#8b96a8; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
+.nav { display:flex; flex-direction:column; gap:.15rem; margin-top:.4rem;
+  flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+/* filet de scroll discret quand le menu dépasse la hauteur de l'écran */
+.nav::-webkit-scrollbar { width:8px; }
+.nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.16); border-radius:8px; }
+.nav a { display:flex; align-items:center; gap:.55rem; padding:.55rem .7rem; border-radius:8px;
+  color:#c2ccd9; font-size:.92rem; font-weight:500; }
+.nav a:hover { background:rgba(255,255,255,.07); color:#fff; text-decoration:none; }
+.nav a.on { background:var(--brand); color:#fff; }
+.nav-badge { margin-left:auto; background:var(--accent); color:#fff; font-size:.72rem;
+  font-weight:700; padding:.06rem .42rem; border-radius:var(--radius-pill); }
+.nav a.on .nav-badge { background:#fff; color:var(--brand-ink); }
+/* Repère de SITE DE DESTINATION (culturasabauda.eu vs agendasabauda.eu), quand
+   plusieurs liens d'une même section publient sur des sites différents. */
+.nav-tag { font-size:.62rem; font-weight:700; letter-spacing:.03em; padding:.04rem .34rem;
+  border-radius:4px; }
+.nav-tag-cs { background:rgba(200,16,46,.25); color:#ffc2ca; }   /* culturasabauda.eu */
+.nav-tag-as { background:rgba(31,111,139,.3); color:#9fdcf0; }   /* agendasabauda.eu */
+.nav a.on .nav-tag-cs { background:rgba(255,255,255,.22); color:#fff; }
+.nav a.on .nav-tag-as { background:rgba(255,255,255,.22); color:#fff; }
+/* Intertitres de section (regroupement par produit dans la barre latérale) */
+.nav-section { font-size:.64rem; letter-spacing:.11em; text-transform:uppercase;
+  color:#7c8798; font-weight:700; padding:.8rem .75rem .28rem; }
+/* Groupes secondaires REPLIABLES (Analyse, Aide) : réduit le nombre d'items toujours
+   visibles. <details> natif — s'ouvre au clic, ou tout seul si la page active est dedans
+   (cf. base.html). */
+.nav details summary { display:flex; align-items:center; gap:.4rem; cursor:pointer;
+  list-style:none; font-size:.64rem; letter-spacing:.11em; text-transform:uppercase;
+  color:#7c8798; font-weight:700; padding:.8rem .75rem .28rem; user-select:none; }
+.nav details summary::-webkit-details-marker { display:none; }
+.nav details summary::marker { content:''; }
+.nav details summary:hover { color:#c2ccd9; }
+.nav details summary .chev { transition:transform .15s; font-size:.9em; }
+.nav details[open] summary .chev { transform:rotate(90deg); }
+.nav-foot { margin-top:auto; padding-top:1rem; border-top:1px solid rgba(255,255,255,.12); }
+.nav-foot a { color:#8b96a8; font-size:.85rem; padding:.4rem .7rem; display:block; }
+
+.main { padding:1.6rem 2rem 4rem; max-width:1180px; min-width:0; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.2rem; }
+.topbar h1 { font-size:1.5rem; margin:0; }
+.topbar .sub { color:var(--muted); font-size:.9rem; }
+
+/* ---------- Cartes ---------- */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow-sm); padding:1.1rem 1.2rem; margin-bottom:1.1rem; }
+.card > h2:first-child, .card > h3:first-child { margin-top:0; }
+.card h2 { font-size:1.05rem; margin:0 0 .7rem; }
+.card h3 { font-size:.98rem; margin:0 0 .5rem; }
+/* Bandeau « prochaine action » : mise en avant marine, sobre */
+.card-cta { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:1rem; border-left:3px solid var(--brand); background:var(--brand-soft);
+  border-color:var(--brand-border); }
+.section-title { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:.78rem; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--muted); font-weight:700; margin:1.6rem 0 .6rem;
+  padding-bottom:.35rem; border-bottom:1px solid var(--line); }
+
+/* ---------- KPIs ---------- */
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.8rem; margin-bottom:1.1rem; }
+.kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:.9rem 1rem; box-shadow:var(--shadow-sm); color:inherit; display:block;
+  transition:border-color .12s, box-shadow .12s; }
+.kpi:hover { border-color:var(--brand); box-shadow:var(--shadow-md); text-decoration:none; }
+.kpi .v { font-size:1.8rem; font-weight:800; font-family:Georgia,serif; line-height:1;
+  font-variant-numeric:tabular-nums; }
+.kpi .l { font-size:.8rem; color:var(--muted); margin-top:.3rem; }
+.kpi.hot { border-color:var(--accent); }
+.kpi.hot .v { color:var(--accent-ink); }
+.kpi.hot .l { color:var(--accent-ink); font-weight:600; }
+
+/* ---------- Boutons : UNE action primaire par écran, le reste sobre ---------- */
+.btn { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .9rem;
+  border-radius:var(--radius-sm); border:1px solid transparent; font-size:.88rem; font-weight:600;
+  cursor:pointer; text-decoration:none; background:#eceff3; color:var(--ink-2);
+  transition:background .12s, border-color .12s; }
+.btn:hover { text-decoration:none; background:#e2e6ec; }
+.btn:disabled { opacity:.5; cursor:default; pointer-events:none; }
+.btn-primary { background:var(--brand); color:#fff; }
+.btn-primary:hover { background:var(--brand-ink); }
+.btn-dark { background:var(--brand-strong); color:#fff; }
+.btn-dark:hover { background:#0a1c33; }
+.btn-ghost { background:#fff; border-color:var(--line-2); color:var(--ink-2); }
+.btn-ghost:hover { background:var(--surface-2); border-color:var(--muted); }
+.btn-ok { background:var(--ok); color:#fff; }       .btn-ok:hover { background:var(--ok-ink); }
+.btn-danger { background:var(--danger); color:#fff; } .btn-danger:hover { background:var(--danger-ink); }
+.btn-purple { background:var(--purple); color:#fff; } .btn-purple:hover { background:var(--purple-ink); }
+.btn-sm { padding:.34rem .62rem; font-size:.78rem; border-radius:6px; }
+.btn-row { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+
+/* ---------- Champs de formulaire ---------- */
+.field, select.field, input.field { font:inherit; font-size:.85rem; color:var(--ink);
+  padding:.42rem .6rem; border:1px solid var(--line-2); border-radius:var(--radius-sm); background:#fff; }
+.field:focus { outline:2px solid var(--brand); outline-offset:1px; border-color:var(--brand); }
+
+/* ---------- Phases du pipeline ---------- */
+.phases { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; }
+.phase-h { display:flex; align-items:baseline; gap:.5rem; margin-bottom:.2rem; }
+.phase-num { width:22px; height:22px; border-radius:50%; background:var(--brand-soft); color:var(--brand-ink);
+  font-size:.78rem; font-weight:800; display:grid; place-items:center;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+.phase-h h3 { margin:0; }
+.phase p.hint { color:var(--muted); font-size:.82rem; margin:.1rem 0 .8rem; }
+.task { display:flex; flex-direction:column; }
+.task .btn { justify-content:flex-start; width:100%; }
+.task small { color:var(--muted); font-size:.76rem; margin:.15rem 0 .55rem .1rem; }
+
+/* ---------- Badges & pastilles ---------- */
+.badge { display:inline-block; font-size:.72rem; font-weight:700; padding:.14rem .5rem;
+  border-radius:var(--radius-pill); white-space:nowrap; }
+.badge.new  { background:var(--ok-soft);     color:var(--ok-ink); }
+.badge.last { background:var(--warn-soft);   color:var(--warn-ink); }
+.badge.re   { background:var(--purple-soft); color:var(--purple-ink); }
+.badge.grey { background:#eceff3;            color:var(--ink-2); }
+.badge.article { background:var(--ok-soft);  color:var(--ok-ink); }
+.badge.fail    { background:var(--danger-soft); color:var(--danger-ink); }
+/* « prêt à publier » = article + photo + date : le signal éditorial clé */
+.badge.ready { background:var(--brand); color:#fff; }
+
+/* Pastilles de statut : fonds ≥ ton 600 → texte blanc AA (≥ 4.5:1) */
+.st { display:inline-block; font-size:.72rem; font-weight:600; padding:.14rem .55rem;
+  border-radius:var(--radius-pill); color:#fff; white-space:nowrap; }
+/* Triage rapide : pastilles cliquables. Active = colorée ; inactive = grise cliquable. */
+.stpick { display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+.stpick form { margin:0; display:inline; }
+button.st { border:0; font-family:inherit; line-height:1.5; cursor:pointer; }
+.st-off { background:#eceff3; color:#4a5563; cursor:pointer; transition:background .1s, color .1s; }
+.st-off:hover { background:#dbe1e9; color:#293240; }
+.st-pending      { background:#556377; }
+.st-evaluated    { background:#b45309; }   /* ambre foncé — 4.6:1 */
+.st-published_cs { background:#15803d; }   /* vert foncé — 4.8:1 */
+.st-published_sub{ background:#1f3a63; }   /* marine de marque */
+.st-rejected     { background:#b0182c; }
+.st-merged       { background:#6b7688; }
+/* Annulation (docs/EVENEMENTS_ANNULES.md) : PAS un statut (`statut` ne change pas), donc
+   pas de `.st-annule` — c'est un bandeau à part, posé À CÔTÉ de la pastille de statut
+   habituelle, pour ne jamais laisser croire que la fiche a quitté son statut retenu. */
+.annule-banner { display:inline-flex; align-items:center; gap:.35rem; font-size:.72rem;
+  font-weight:700; padding:.14rem .55rem; border-radius:var(--radius-pill);
+  background:#b0182c; color:#fff; white-space:nowrap; }
+.pill { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+/* lien discret vers le brouillon WordPress créé */
+.wplink { font-size:.75rem; color:var(--ok-ink); white-space:nowrap; }
+
+/* ---------- Alertes métier (dashboard) ---------- */
+.alerts-inline { display:flex; flex-wrap:wrap; gap:.5rem; margin:-.4rem 0 1rem; }
+.alerts-inline a { display:inline-flex; align-items:center; gap:.35rem;
+  font-size:.8rem; font-weight:600; padding:.3rem .7rem; border-radius:var(--radius-pill);
+  background:var(--warn-soft); color:var(--warn-ink); border:1px solid #f3ddba; }
+.alerts-inline a:hover { text-decoration:none; filter:brightness(.97); }
+
+/* ---------- Période (barre de filtre) ---------- */
+.period { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;
+  padding:.55rem .75rem; background:var(--brand-soft); border:1px solid var(--brand-border);
+  border-radius:var(--radius); font-size:.9rem; }
+.period .plabel { font-weight:700; color:var(--brand-ink); }
+.period input[type=date] { padding:.35rem .45rem; border:1px solid var(--line-2);
+  border-radius:6px; background:#fff; font:inherit; font-size:.85rem; }
+.period .sep, .sep { display:inline-block; width:1px; align-self:stretch;
+  background:var(--brand-border); margin:0 .25rem; min-height:1.4em; }
+.pbtn { padding:.32rem .72rem; border:1px solid var(--brand-border); border-radius:var(--radius-pill);
+  background:#fff; color:var(--brand-ink); cursor:pointer; font-size:.85rem; text-decoration:none; }
+.pbtn:hover { text-decoration:none; border-color:var(--brand); }
+.pbtn.on { background:var(--brand); color:#fff; border-color:var(--brand); }
+
+/* ---------- Tableaux ---------- */
+.table-wrap { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow-sm); overflow-x:auto; -webkit-overflow-scrolling:touch; }
+table { width:100%; border-collapse:collapse; font-size:.88rem; }
+th,td { padding:.6rem .75rem; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
+th { background:var(--surface-2); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:.74rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+tbody tr { transition:background .1s; }
+tbody tr:hover { background:var(--brand-soft); }
+tbody tr:last-child td { border-bottom:none; }
+.thumb { width:56px; height:38px; object-fit:cover; border-radius:6px; display:block; background:#eceff3; }
+.daterange { white-space:nowrap; font-weight:600; font-variant-numeric:tabular-nums; }
+.ongoing { font-size:.72rem; color:var(--warn-ink); display:block; }
+
+/* ---------- Barres de stats ---------- */
+.bar-row { display:flex; align-items:center; gap:.6rem; margin:.28rem 0; font-size:.9rem; }
+.bar-row .lbl { width:150px; flex-shrink:0; }
+.bar-row .track { flex:1; background:#eceff3; border-radius:5px; height:15px; overflow:hidden; }
+.bar-row .fill { background:var(--brand); height:15px; border-radius:5px; min-width:2px; display:block; }
+.bar-row .n { width:38px; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+.cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.1rem; }
+
+/* ---------- Alertes / flash ---------- */
+.alert { background:var(--danger); color:#fff; padding:.8rem 1rem; border-radius:var(--radius-sm);
+  margin-bottom:1rem; font-weight:600; }
+.alert small { font-weight:400; opacity:.9; }
+.flash { padding:.65rem .95rem; border-radius:var(--radius-sm); margin-bottom:.7rem; font-size:.9rem; border:1px solid; }
+.flash.ok { background:var(--ok-soft); color:var(--ok-ink); border-color:#b7e4c5; }
+.flash.err { background:var(--danger-soft); color:var(--danger-ink); border-color:#f6c6ce; }
+
+/* ---------- Divers ---------- */
+details.box { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow-sm); padding:.5rem 1rem; margin-bottom:1.1rem; }
+details.box > summary { cursor:pointer; font-weight:600; padding:.35rem 0; }
+.cost-line { font-size:1rem; }
+.cost-line strong { font-size:1.15rem; }
+.empty { text-align:center; color:var(--muted); padding:2.5rem 1rem; }
+.pager { margin-top:1rem; display:flex; gap:.8rem; align-items:center; font-size:.9rem; }
+
+/* ---------- Fiche aperçu (preview) : typo éditoriale, chrome commun ---------- */
+.article-page { max-width:760px; font-family:Georgia,"Times New Roman",serif; line-height:1.6; }
+.article-page .eyebrow { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  text-transform:uppercase; letter-spacing:.08em; font-size:.72rem;
+  color:var(--accent-ink); font-weight:700; margin-bottom:.4rem; }
+.article-page h1 { font-size:2rem; line-height:1.2; margin:0 0 .6rem; }
+.article-page .meta { font-family:-apple-system,sans-serif; font-size:.85rem; color:var(--muted); margin-bottom:1.2rem; }
+.article-page .hero { width:100%; max-height:380px; object-fit:cover; border-radius:8px; margin:1rem 0 1.4rem; }
+.article-page .article { border:1px solid var(--line-2); border-radius:var(--radius);
+  padding:1.2rem 1.4rem; margin:1.4rem 0; background:var(--surface-2); }
+.article-page .article h2 { font-size:1.5rem; margin:0 0 .5rem; }
+.article-page .chapo { font-weight:bold; font-size:1.12rem; color:var(--ink); }
+.article-page .corps { margin-top:.8rem; white-space:pre-wrap; font-size:1.05rem; }
+.article-page .encadre { font-family:-apple-system,sans-serif; font-size:.9rem; background:#f1f3f6;
+  border-radius:8px; padding:.7rem .9rem; margin-top:1rem; white-space:pre-wrap; }
+.article-page .ctx { font-family:-apple-system,sans-serif; font-size:.9rem; color:var(--ink-2); margin-top:.8rem; }
+.article-page .src { font-family:-apple-system,sans-serif; font-size:.82rem; color:var(--muted); margin-top:.8rem; }
+.article-page .src a { word-break:break-all; }
+.article-page .credits, .article-page .note { font-family:-apple-system,sans-serif; font-size:.88rem;
+  margin-top:1.6rem; color:var(--ink-2); background:var(--surface-2);
+  border:1px solid var(--line); border-radius:8px; padding:.7rem .9rem; }
+.article-page .note { border-left:4px solid var(--accent); }
+.article-page .note .s { font-weight:bold; font-size:1rem; }
+.conf { font-family:-apple-system,sans-serif; font-size:.72rem; text-transform:uppercase;
+  letter-spacing:.05em; border-radius:var(--radius-pill); padding:.12rem .55rem; }
+.conf-haute { background:var(--ok-soft); color:var(--ok-ink); }
+.conf-moyenne { background:var(--warn-soft); color:var(--warn-ink); }
+.conf-faible { background:var(--danger-soft); color:var(--danger-ink); }
+
+/* ---------- Responsive ---------- */
+/* Barre mobile (masquée sur desktop) + tiroir de navigation hors-écran. */
+.mobile-bar { display:none; }
+.nav-backdrop { display:none; }
+
+@media (max-width:820px) {
+  .app-shell { grid-template-columns:1fr; }
+
+  /* Barre supérieure mobile : hamburger + marque, collante. */
+  .mobile-bar { display:flex; align-items:center; gap:.6rem; position:sticky; top:0; z-index:40;
+    margin:-1.1rem -1rem 1rem; padding:.55rem .9rem;
+    background:var(--brand-strong); color:#fff; box-shadow:var(--shadow-sm); }
+  .nav-toggle { background:transparent; border:0; color:#fff; font-size:1.5rem; line-height:1;
+    cursor:pointer; padding:.1rem .45rem; border-radius:7px; }
+  .nav-toggle:hover { background:rgba(255,255,255,.12); }
+  .mobile-brand { font-weight:700; display:flex; align-items:center; gap:.5rem; color:#fff; }
+  .mobile-brand .brand-mark { width:26px; height:26px; font-size:.78rem; }
+
+  /* Sidebar = tiroir qui glisse depuis la gauche. */
+  .sidebar { position:fixed; top:0; left:0; height:100dvh; width:min(82vw,290px); z-index:60;
+    transform:translateX(-100%); transition:transform .22s ease; box-shadow:var(--shadow-md);
+    overflow-y:auto; }
+  body.nav-open .sidebar { transform:translateX(0); }
+
+  /* Voile derrière le tiroir ouvert. */
+  .nav-backdrop { display:block; position:fixed; inset:0; z-index:50;
+    background:rgba(15,36,64,.5); opacity:0; pointer-events:none; transition:opacity .22s; }
+  body.nav-open .nav-backdrop { opacity:1; pointer-events:auto; }
+  body.nav-open { overflow:hidden; }   /* fige le fond pendant l'ouverture */
+
+  /* Cibles tactiles + confort de lecture. */
+  .nav a { padding:.7rem .8rem; font-size:1rem; }
+  .main { padding:1.1rem 1rem 3rem; max-width:100%; }
+  .topbar { flex-wrap:wrap; }
+  .topbar h1 { font-size:1.3rem; }
+
+  /* --- Barres de filtres : tout doit rétrécir et rester dans l'écran --- */
+  .btn-row { gap:.4rem; }
+  .period { gap:.4rem; font-size:.85rem; }
+  .period .sep, .sep { display:none; }                     /* les séparateurs verticaux gênent en wrap */
+  .field, select.field { flex:1 1 46%; min-width:0 !important; }
+  input.field, input[type=text].field { flex:1 1 100%; min-width:0 !important; width:100%; }
+  .period input[type=date] { flex:1 1 44%; min-width:0; }
+  .pbtn { font-size:.82rem; }
+
+  /* --- Tables de liste → CARTES empilées (events, à valider…) --- */
+  /* Réservé aux wraps de cartes : les autres tables gardent leur scroll horizontal. */
+  .table-wrap.cards { border:none; box-shadow:none; background:transparent; overflow:visible; }
+  table.table-cards, .table-cards tbody, .table-cards tr { display:block; width:100%; }
+  .table-cards thead { display:none; }                      /* les en-têtes deviennent des libellés inline */
+  .table-cards tr { border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow-sm); background:var(--surface); margin-bottom:.85rem; overflow:hidden; }
+  .table-cards td { display:flex; gap:.9rem; justify-content:space-between; align-items:baseline;
+    border:none; border-bottom:1px solid var(--line); padding:.5rem .85rem; text-align:right; }
+  .table-cards tr td:last-child { border-bottom:none; }
+  .table-cards td::before { content:attr(data-label); font-weight:700; color:var(--muted);
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.03em; text-align:left; flex:none; }
+  /* cellules pleine largeur : pas de libellé, contenu empilé à gauche */
+  .table-cards td.full { display:block; text-align:left; }
+  .table-cards td.full::before { display:none; }
+  .table-cards td.cell-photo { padding:0; }
+  .table-cards td.cell-photo .thumb { width:100%; height:170px; border-radius:0; }
+  .table-cards td.cell-title { font-size:1.02rem; padding-top:.7rem; padding-bottom:.6rem; }
+  .table-cards td.cell-title .badge { margin-top:.35rem; }
+  /* cellules « empilées » : libellé au-dessus, contenu en dessous (texte long, statut) */
+  .table-cards td.stack { display:block; text-align:left; }
+  .table-cards td.stack::before { display:block; margin-bottom:.35rem; }
+  .table-cards td.stack .stpick { justify-content:flex-start; }
+  /* actions : boutons pleine largeur empilés */
+  .table-cards td.cell-actions { display:flex; flex-direction:column; gap:.45rem;
+    background:var(--surface-2); padding:.7rem .85rem; }
+  .table-cards td.cell-actions::before { display:none; }
+  .table-cards td.cell-actions form { display:block; width:100%; margin:0; }
+  .table-cards td.cell-actions .btn { width:100%; justify-content:center; }
+  .table-cards .daterange { white-space:normal; }
+  .pager { justify-content:center; }
+
+  /* Formulaire de complétion « À compléter » : une colonne sur mobile. */
+  .complete-grid { grid-template-columns:1fr !important; }
+  /* Cartes génériques : on évite tout débordement horizontal du contenu. */
+  .card { overflow-wrap:anywhere; }
+  .kpis { grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
+}
+@media (max-width:680px) {
+  .bar-row { flex-wrap:wrap; }
+  .bar-row .lbl { width:100%; }
+  .period input[type=date] { flex:1 1 120px; min-width:0; }
+  .kpis { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
+  .btn, .pbtn { min-height:38px; }   /* cibles tactiles */
+}
+
+/* ---------- Desktop : colonne « Actions » toujours atteignable ----------
+   Les listes (Événements, À valider) ont beaucoup de colonnes : si la table
+   dépasse la largeur, elle défile dans .table-wrap. On ÉPINGLE la dernière
+   colonne (Actions : boutons Publier) à droite pour qu'elle reste visible. */
+@media (min-width:821px) {
+  .table-cards th:last-child, .table-cards td:last-child {
+    position:sticky; right:0; z-index:1;
+    box-shadow:-8px 0 8px -8px rgba(15,36,64,.15); }
+  .table-cards td:last-child { background:var(--surface); }
+  .table-cards th:last-child { background:var(--surface-2); }
+  .table-cards tbody tr:hover td:last-child { background:var(--brand-soft); }
+  /* Colonne justification : on la borne pour laisser de la place aux actions. */
+  .table-cards td:nth-child(6) { max-width:280px; }
+}
+
+/* ---------- Fiche événement : onglets par usage (refonte back-office) ----------
+   La fiche est dense : Édition / Article & panel / Visuels / SEO & réseaux.
+   Les panes sont masquées via [hidden] ; l'onglet actif porte .on. */
+.tabs { display:flex; flex-wrap:wrap; gap:.35rem; margin:.9rem 0 .2rem;
+  border-bottom:2px solid var(--line); padding-bottom:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+.tabs .tab { appearance:none; border:1px solid var(--line); border-bottom:none;
+  background:var(--surface-2, #f4f1ea); color:var(--muted); cursor:pointer;
+  font-size:.88rem; font-weight:600; padding:.5rem .9rem;
+  border-radius:10px 10px 0 0; margin-bottom:-2px; }
+.tabs .tab:hover { color:var(--ink, #222); }
+.tabs .tab.on { background:var(--surface); color:var(--ink, #222);
+  border-color:var(--line); border-bottom:2px solid var(--surface); }
+.tab-hint { margin-left:.35rem; font-size:.72rem; font-weight:700;
+  background:var(--brand-soft, #e8eef6); border-radius:999px; padding:.05rem .4rem; }
+.tab-hint.warn { background:#fde8c8; color:#92400e; }
+.tabpane[hidden] { display:none; }
+.tabpane { animation:fadein .12s ease-in; }
+@keyframes fadein { from { opacity:.55; } to { opacity:1; } }
+
+/* ── SECTIONS REPLIABLES (mécanique dans app.js) ───────────────────────────────────
+   Franck, 2026-08-11 : « il faut refaire un peu ce back-office qui soit un peu pliable,
+   parce qu'il y a trop en hauteur d'écran. Il y a trois scrolls. »
+
+   Le problème n'est pas la quantité d'information — chaque bloc a sa raison d'être — c'est
+   qu'ils sont tous DÉPLIÉS en même temps. Un titre replié doit rester lisible comme un
+   titre, pas ressembler à un widget technique : d'où le chevron discret et le résumé
+   aligné à droite, qui dit ce qu'on rate en gardant fermé. */
+details.pli { border: 1px solid var(--line-2); border-radius: .5rem; margin-bottom: .8rem; }
+details.pli > summary { list-style: none; cursor: pointer; padding: .55rem .75rem;
+                        font-weight: 600; font-size: .86rem; letter-spacing: .02em;
+                        display: flex; align-items: center; gap: .45rem; }
+details.pli > summary::-webkit-details-marker { display: none; }
+details.pli > summary::before { content: "\203A"; display: inline-block; transition: transform .15s;
+                                color: #64748b; font-size: 1.05rem; line-height: 1; }
+details.pli[open] > summary::before { transform: rotate(90deg); }
+details.pli > summary:hover { background: var(--line-2); border-radius: .5rem; }
+details.pli > .pli-corps { padding: 0 .75rem .7rem; }
+details.pli > summary .pli-resume { margin-left: auto; font-weight: 400; font-size: .78rem;
+                                    color: #64748b; }

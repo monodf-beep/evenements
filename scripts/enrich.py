@@ -1,0 +1,2176 @@
+#!/usr/bin/env python3
+"""Enrichissement + rédaction des événements retenus (étapes 3 & 4 du pipeline).
+
+À partir du SIGNAL d'un événement retenu (titre, date, lieu, entités) et de toute
+la MATIÈRE disponible (sa description + celle des doublons fusionnés, même venus
+d'un radar gratuit), un agent LLM :
+
+1. RECHERCHE le contexte sur le web → privilégie le DOSSIER DE PRESSE (source primaire,
+   voir scripts/press_kits.py) puis la source officielle libre (organisateur, lieu,
+   agenda, billetterie) — voir CHARTE §5 ;
+2. ENRICHIT selon la nature de l'événement (lieu, artiste, conférencier, plat…) ;
+3. RÉDIGE un article (titre, chapô, corps, encadré pratique) selon CHARTE §4/§6/§7.
+
+GARDE-FOUS (CHARTE §5/§7) :
+- FAITS vs EXPRESSION : la presse (même payante) sert à récupérer des FAITS (dates,
+  lieu, casting) — jamais son texte, qu'on ne recopie pas et qu'on ne crédite pas.
+  L'expression et l'attribution vont à la source officielle/primaire.
+- Ne JAMAIS inventer : une info non trouvée n'est pas écrite (sinon "confiance" basse).
+- Coût maîtrisé : réservé aux événements retenus (score ≥ seuil), traité par petits
+  lots, modèle configurable. PAS en cron par défaut — déclenché à la main (bouton).
+
+LLM ? OUI — jugement éditorial + recherche + rédaction (langue). La sélection des
+candidats et l'agrégation de la matière restent déterministes. Voir docs/LLM_OU_CODE.md.
+
+SDK anthropic DIRECT + outil serveur de recherche web (web_search_20260209).
+Usage :
+    python scripts/enrich.py            # lot par défaut (ENRICH_BATCH)
+    python scripts/enrich.py 12 15 18   # enrichit ces id précis (bouton « 1 événement »)
+"""
+from __future__ import annotations
+import anthropic
+import html as htmlmod
+import json
+import os
+import re
+import sqlite3
+import sys
+import threading
+import unicodedata
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime, timezone
+from pathlib import Path
+
+import requests
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+# Charge le .env DÈS l'import : les réglages ENRICH_* (recherche web, thinking, seuils…)
+# sont lus en globals ci-dessous, donc AVANT que main() n'appelle load_dotenv. Sans ça,
+# une variable posée dans .env (ex. ENRICH_WEB_SEARCH=1) serait ignorée à l'import.
+# load_dotenv n'écrase pas l'environnement déjà défini : un export shell garde la priorité.
+load_dotenv(ROOT / ".env")
+from utils.logger import get_logger
+from utils import usage
+from utils import slack
+from utils import acronymes
+from utils.eventness import non_event_reason
+from utils.images import fetch_og_image
+from scripts.dates import extract_time
+from scripts.scraper_events import init_db
+
+log = get_logger("enrich")
+DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
+
+# Modèle dédié à l'enrichissement (recherche web + rédaction). Sonnet 5 par défaut :
+# bon rapport qualité/prix et compatible avec l'outil de recherche web dynamique.
+DEFAULT_MODEL = "claude-sonnet-5"
+# PLANCHER d'enrichissement : TOUT événement retenu (statut 'evaluated', non rejeté)
+# au-dessus de ce score reçoit AU MOINS un article COURT (CHARTE §3 : score < 7 = vrai
+# événement → catalogue, jamais la description brute). Les non-événements sont déjà
+# écartés par le statut ('rejected'), pas par ce seuil. Court = pas de recherche web
+# → coût faible ; le débit reste borné par ENRICH_BATCH. Relever ce seuil si on veut
+# réserver la rédaction aux événements plus notables.
+MIN_SCORE = int(os.getenv("ENRICH_MIN_SCORE", "1"))
+# Seuil du LONG : au-dessus, article COMPLET (Cultura Sabauda, recherche web) ; entre
+# MIN_SCORE et ici, article COURT (Agenda). CHARTE §3 (mise en avant vs catalogue).
+LONG_MIN_SCORE = int(os.getenv("ENRICH_LONG_MIN_SCORE", "7"))
+# Taille de lot : l'enrichissement (web + rédaction) coûte cher → petit lot.
+BATCH_SIZE = int(os.getenv("ENRICH_BATCH", "10"))
+# Plafond de recherches web par événement (outil serveur).
+MAX_WEB_SEARCHES = int(os.getenv("ENRICH_MAX_SEARCHES", "3"))
+# Texte VISIBLE minimum (hors balises et URLs) pour qu'une description de DOUBLON entre
+# dans la matière de rédaction — cf. gather_material. Volontairement bas : on écarte les
+# coquilles vides (lien Google News nu), pas les descriptions simplement laconiques.
+MATERIAL_MIN_VISIBLE = int(os.getenv("ENRICH_MATERIAL_MIN_VISIBLE", "60"))
+# Délai avant de re-tenter une fiche dont la RÉDACTION a échoué (enrich_status='error' :
+# le modèle a rendu de l'inexploitable). Même convention et même valeur par défaut que
+# WEB_COOLDOWN_DAYS (scraper_events) et VENUE_COOLDOWN_DAYS (venues) — trois délais
+# différents pour la même idée seraient un piège de réglage.
+# 'api_error' n'est PAS concerné : c'est une panne extérieure, pas un échec de la fiche,
+# et le rythme quotidien du cron suffit à l'espacer.
+ENRICH_RETRY_DAYS = int(os.getenv("ENRICH_RETRY_DAYS", os.getenv("WEB_COOLDOWN_DAYS", "7")))
+# Budget de sortie de l'article JSON. 12000 s'est révélé trop juste sur un événement à
+# matière riche (panel + programme détaillé) : stop_reason=max_tokens → JSON tronqué →
+# article perdu (aucun repli partiel). 16000 laisse de la marge sans coût significatif
+# (le budget n'est consommé que si la réponse en a réellement besoin).
+MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "16000"))
+# Raisonnement étendu : COÛTEUX et LENT (runs de ~5 min, budget de tokens épuisé avant
+# le JSON → stop_reason=max_tokens). Inutile pour « chercher + rédiger en JSON ».
+# Désactivé par défaut ; ENRICH_THINKING=1 pour l'activer (articles plus fouillés, plus chers).
+USE_THINKING = os.getenv("ENRICH_THINKING", "0").lower() in ("1", "true", "yes", "on")
+# Outil de recherche web (serveur Anthropic) : à activer seulement s'il est disponible
+# sur la clé. Par défaut OFF — on fournit nous-mêmes la PAGE OFFICIELLE comme matière
+# (déterministe, fiable, moins cher). ENRICH_WEB_SEARCH=1 pour l'ajouter en bonus.
+USE_WEB_SEARCH = os.getenv("ENRICH_WEB_SEARCH", "0").lower() in ("1", "true", "yes", "on")
+# En-têtes de VRAI navigateur : beaucoup de sites (agrégateurs, sites de festivals)
+# bloquent un User-Agent « …Bot » ou l'absence d'Accept/Accept-Language. On lit des pages
+# PUBLIQUES (programme, presse) pour la rédaction éditoriale, sans franchir de mur d'accès.
+_UA = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"),
+    "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,"
+               "image/webp,*/*;q=0.8"),
+    "Accept-Language": "fr-FR,fr;q=0.9,it;q=0.8,en;q=0.7",
+}
+
+# Sentinel : échec d'APPEL API. L'événement n'est pas marqué → réenrichi plus tard.
+API_ERROR = object()
+
+_REGAIN_ACCESS_RX = re.compile(
+    r"regain access on (\d{4}-\d{2}-\d{2}) at (\d{2}:\d{2}) UTC", re.I)
+
+
+def _alert_expired(message: str) -> bool:
+    """True si le message d'erreur donne une heure de reset ("regain access on ... UTC")
+    et qu'elle est déjà passée. False si pas d'heure trouvée (on garde le blocage par
+    prudence) ou si elle n'est pas encore atteinte."""
+    m = _REGAIN_ACCESS_RX.search(message)
+    if not m:
+        return False
+    try:
+        reset_at = datetime.strptime(f"{m.group(1)} {m.group(2)}", "%Y-%m-%d %H:%M")
+        reset_at = reset_at.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    return datetime.now(timezone.utc) >= reset_at
+
+WEB_SEARCH_TOOL = {
+    "type": "web_search_20260209",
+    "name": "web_search",
+    "max_uses": MAX_WEB_SEARCHES,
+}
+
+ENRICH_PROMPT = """Si une VOIX ÉDITORIALE est fournie ci-dessus, elle RÉGIT le ton, le
+style et les interdits (connecteurs, mise en forme, marqueurs) : en cas de désaccord avec
+ce qui suit, la voix prime. Ce prompt, lui, définit ta TÂCHE et le FORMAT de sortie.
+
+Tu es l'agent éditorial d'Agenda Sabauda, l'agenda culturel bilingue FR/IT des territoires
+sabauds : Savoie/Haute-Savoie, Piémont, Vallée d'Aoste, Nice/Alpes-Maritimes. Un lecteur
+d'agenda veut SAVOIR CE QUI SE PASSE : quoi, quand, qui, comment y aller. Pas un essai de
+magazine.
+
+MISSION : RÉDIGE un PREVIEW d'événement, COURT et INFORMATIF, à partir de la MATIÈRE fournie
+ci-dessous (page officielle, dossier de presse, flux). Appuie-toi EN PRIORITÉ sur la PAGE
+OFFICIELLE et le DOSSIER DE PRESSE (sources primaires). N'affirme aucun fait qui n'y figure
+pas ; en cas de doute, baisse la confiance.
+
+STRUCTURE — PYRAMIDE INVERSÉE (l'info d'abord), JAMAIS l'escalier de magazine :
+1. ACCROCHE : quoi, quand, où, la raison d'y aller (tête d'affiche, temps fort, nouveauté).
+   N'y mets QUE des éléments CONFIRMÉS pour CETTE édition. Ne fais JAMAIS passer un nom de
+   l'an dernier pour la programmation à venir (ce serait un appât malhonnête) ;
+2. ESSENTIEL (le cœur) : la PROGRAMMATION CONCRÈTE, avec la substance PROPRE AU GENRE — pour
+   un concert pop/variété, les têtes d'affiche ; pour un festival de musique CLASSIQUE, les
+   œuvres, compositeurs, orchestres, solistes, chefs et lieux ; pour une expo, les artistes
+   et œuvres ; pour un spectacle, la pièce et la troupe ; plus les temps forts et horaires.
+   Ne plaque PAS une logique « têtes d'affiche » sur un genre qui n'en a pas.
+   RÈGLE TEMPORELLE — sois HONNÊTE sur l'ÉDITION (regarde la ligne « dates » : à venir / en
+   cours / terminé) :
+   - Programme de CETTE édition connu (dans la MATIÈRE) → donne-le, sans dire « à venir ».
+   - Programme de CETTE édition PAS encore annoncé (édition future) → dis-le clairement
+     (« programmation à venir »), et donne l'édition PRÉCÉDENTE UNIQUEMENT comme repère de
+     passé, EXPLICITEMENT datée (« l'édition 2026 réunissait Katy Perry, Orelsan… »). JAMAIS
+     présenter l'an dernier comme la programmation de l'édition à venir.
+   - Ne MÉLANGE jamais deux éditions sans dire clairement laquelle est laquelle ;
+3. IDENTITÉ (1-2 items) : ce qui FAIT cet événement (artistes/œuvres marquants, affluence,
+   ce qui revient chaque année) ;
+4. STOP. On reste sur CET événement. INTERDIT : le contexte historique/économique du lieu
+   (le thermalisme d'Aix, l'économie du tourisme…), ce qui se passe ailleurs, toute montée
+   vers une « question universelle ». Ça, c'est Cultura Sabauda ; ici on veut l'événement.
+Longueur : COURT et dense — vise 150 à 300 mots. Utile et concret vaut mieux que long.
+
+RÈGLE DE SUBSTANCE : avant de conclure, demande-toi « qu'est-ce que le lecteur APPREND ? ».
+S'il n'apprend rien de concret (des NOMS, des temps forts, ce qui distingue l'événement),
+l'article a échoué : va chercher la matière (programme fourni, édition précédente par
+recherche web) au lieu de meubler avec des généralités.
+
+INTERDIT ABSOLU — MÉTA-COMMENTAIRE SUR L'INFO MANQUANTE. N'écris JAMAIS que l'info te manque
+(« à ce stade, la matière disponible ne précise ni les compositeurs, ni les tarifs… »,
+« le programme n'est pas encore connu », « les détails restent à confirmer »). Tu écris ce
+que tu SAIS, un point c'est tout — et tu te tais sur le reste. Un article qui parle de son
+propre vide est le PIRE des échecs. Si après recherche tu n'as vraiment pas de programme
+concret, cherche l'ÉDITION PRÉCÉDENTE ; si tu n'as toujours rien, écris court et factuel
+sur ce qui est certain, sans jamais commenter ce qui manque. Les doutes vont dans le champ
+« a_verifier » (back-office), JAMAIS dans le corps de l'article.
+
+LE TEMPS DES VERBES — RÈGLE ABSOLUE, ELLE PASSE AVANT TOUT LE RESTE.
+Agenda Sabauda ANNONCE des événements à venir. Tu écris donc au FUTUR (« Stefano Mancuso
+donnera une conférence », « le festival réunira ») ou au PRÉSENT d'annonce (« la
+conférence a lieu jeudi », « le festival se tient du 3 au 6 »). Pour un événement DÉJÀ
+COMMENCÉ mais pas terminé : présent (« l'exposition est visible jusqu'au 20 septembre »).
+
+Tu n'écris JAMAIS de compte rendu. Sont INTERDITS : « est intervenu », « a défendu »,
+« a évoqué », « devant le public », « s'est tenu », « les visiteurs ont pu découvrir » —
+et toute autre forme qui raconte ce qui A EU LIEU. Un lecteur d'agenda cherche à savoir
+s'il doit se déplacer ; un compte rendu lui dit qu'il est trop tard.
+
+Écrit le 2026-08-11, sur un cas réel : « Le chercheur italien Stefano Mancuso est
+intervenu jeudi 23 juillet 2026 au Fort de Bard […] Devant le public du Fort, il a défendu
+l'idée que les végétaux… ». Franck : « c'est plutôt du journalisme qui pourrait se trouver
+dans Nos Alpes. Ce n'est pas du tout ce que je veux pour Agenda Sabauda. » Raconter ce qui
+s'est passé est le métier d'un autre média ; ici on donne envie d'y aller.
+
+ENRICHISSEMENT (ce que tu vas chercher SELON la nature de l'événement) :
+- Lieu (théâtre, musée, château, abbaye…) : histoire/identité, importance patrimoniale.
+- Artiste / groupe : origine (local ? de territoires proches ? renommée), genre.
+- Conférencier / auteur : qui c'est, pourquoi ça compte.
+- Plat / produit (si intérêt culturel local) : origine, tradition, ce qu'il raconte.
+- Œuvre / exposition : artiste, période, intérêt.
+- Date / récurrence : rendez-vous historique ? édition anniversaire ?
+
+FAITS STRUCTURÉS OBLIGATOIRES (CHARTE §5 bis) — dès que la MATIÈRE les contient, tu DOIS
+les restituer, quel que soit le format d'article. Un programme / line-up / déroulé de
+séances se rend TOUJOURS en LISTE (champ "programme"), jamais noyé en prose. Selon le type :
+- Exposition : horaires d'ouverture (≠ la simple plage de dates !), tarif/gratuité, artistes.
+- Concert / série : line-up + horaires, salle, billetterie.
+- Spectacle : distribution/casting, durée, réservation.
+- Festival / multi-jours : programme PAR JOUR (liste), line-up complet.
+- Sagra / gastronomie : ce qu'on mange/boit, dates, prix.
+- Marché : récurrence (« chaque 1er dimanche »), horaires, type d'exposants.
+- Conférence : intervenant, sujet, LANGUE (FR/IT), inscription.
+- Sport : distingue les DEUX publics — spectateurs (venir voir, souvent gratuit, horaire
+  de passage) vs participants (inscription, tarif d'engagement, catégories). Ne les mélange pas.
+- Cinéma : film(s) + horaires de séance, VO/VF (langue !), lieu, tarif ; plein air : gratuité + heure.
+- Fêtes populaires : programme multi-jours (temps forts : défilé, feu d'artifice, bal), gratuité, récurrence.
+Une info pratique que la matière contenait mais que tu as omise est une ERREUR, pas un résumé.
+
+EXPLOITER LA PRESSE POUR LES FAITS (pas pour le texte) :
+- Tu PEUX consulter la presse, y compris via des extraits de recherche, pour en tirer
+  des FAITS : dates, lieu, programme, distribution/casting, tarifs. Les faits ne sont
+  pas protégés — sers-t'en pour avoir le MAXIMUM de matière.
+- Tu ne dois JAMAIS recopier l'EXPRESSION d'un article (phrases, formules, l'analyse
+  ou l'avis d'un journaliste) : reformule tout dans tes propres mots.
+- Ne cite PAS la presse comme source. Dans "sources", ne mets que des pages
+  OFFICIELLES/LIBRES (organisateur, lieu, agenda officiel, billetterie), où les faits
+  sont vérifiables. Si un fait ne vient que de la presse, tu peux l'utiliser mais
+  baisse la "confiance".
+- Le DOSSIER DE PRESSE fourni (s'il y en a un) est la matière PRIORITAIRE : c'est la
+  source primaire, avec droits d'usage — appuie-toi dessus en premier.
+
+GARDE-FOUS STRICTS :
+- N'invente RIEN. Si une info n'est pas trouvée, ne l'écris pas. En cas de matière trop
+  mince, mets "confiance": "faible" et reste factuel.
+- Pas de superlatifs creux ("incontournable", "magique", "à ne pas manquer"), aucun
+  dark pattern (urgence factice, clickbait).
+{vocabulaire_interdit}
+- SIGLES : à leur PREMIÈRE mention, développe-les avant de les employer seuls — « Théâtre national de Nice (TNN) », puis « le TNN » ensuite (arbitrage Franck 2026-08-18 ; liste complète : config/acronymes.json). N'invente AUCUN développement pour un sigle absent de cette liste : emploie-le tel quel.
+- MARQUES ET PARTENAIRES (arbitrage Franck 2026-09-04, fiche « Fiera del Peperone ») : un nom
+  de marque ne reste que s'il EST le sujet, ce que le visiteur vient voir (Ferrari à un salon
+  auto, le restaurant qui fait la démonstration, le groupe qui joue). Un partenaire technique
+  ou un sponsor cité par le communiqué (« un partenariat avec CUKI distribue des sachets… »)
+  n'apprend rien au lecteur francophone : garde le FAIT (« des sachets anti-gaspillage sont
+  distribués »), omets le NOM. Même logique que les sources radar jamais créditées : on ne
+  relaie pas mécaniquement tout ce que dit le communiqué.
+- Nomme toujours la géographie : ville → province/département → territoire.
+- CASSE : jamais de titre/nom TOUT EN CAPITALES, même si la source l'écrit ainsi
+  ("COREOGRAFIE DEL POSSIBILE" → "Coreografie del Possibile"). Normalise en casse de
+  phrase (initiale + noms propres, selon la langue FR/IT) ; garde les vrais sigles
+  (FIAF, ONU) et la casse voulue d'une marque (iMac). Vaut pour le titre ET le corps.
+
+SIGNAL :
+Titre : {title}
+Dates de l'événement : {dates}
+Lieu / ville : {lieu}
+Territoire : {territoire}
+Organisateur : {organisateur}
+Catégorie évaluée : {categorie}
+
+MATIÈRE DISPONIBLE (déjà collectée, à vérifier/compléter par ta recherche) :
+{material}
+
+Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la forme :
+{{
+  "contexte_lieu": "<ce que la recherche apprend du lieu, ou ''>",
+  "contexte_entites": "<artiste/conférencier/plat/œuvre : origine, renommée, intérêt, ou ''>",
+  "angle": "<l'accroche : en une phrase, la raison d'aller à CET événement (tête d'affiche, temps fort, nouveauté) — jamais une montée vers l'universel>",
+  "infos_pratiques": "<dates, lieu, accès, tarif/gratuité, lien officiel — factuel>",
+  "sources": ["<url officielle/libre consultée>", "..."],
+  "confiance": "<haute|moyenne|faible>",
+  "a_verifier": ["<UNIQUEMENT un fait que TON ARTICLE AFFIRME et dont tu n'es pas sûr : nom peut-être mal orthographié, line-up ambigu (1 ou 2 artistes ?), date/horaire incertain, tarif annoncé mais non confirmé. Formule le DOUTE, pas le sujet : « gratuité annoncée mais non confirmée », jamais « tarifs ». JAMAIS D'ORTHOGRAPHE : les noms propres (personnes, lieux, groupes, œuvres) se RECOPIENT caractère pour caractère depuis la matière ci-dessus, accents et majuscules compris — ne les retranscris pas de mémoire, et ne demande jamais de confirmer une graphie. Si un nom n'est pas dans la matière, ne l'écris pas. INTERDIT : lister ce que la matière ne dit pas (tarifs non publiés, programme détaillé, capacités, âges, durées) — un article qui n'affirme rien ne peut pas se tromper, et personne ne peut vérifier une information que la source ne publie pas. Maximum DEUX. Liste vide [] si tu es sûr, et c'est le cas le plus fréquent>"],
+  "article": {{
+    "titre": "<titre informatif et incarné, pas racoleur>",
+    "chapo": "<1-2 phrases : l'essentiel (quoi/quand/lieu en bref) + l'angle. C'est la SEULE fois où ces faits de base sont énoncés en phrase complète — le corps ne les reformule PAS>",
+    "corps": "<le lecteur a DÉJÀ LU le chapô : ne réécris PAS quoi/quand/où sous une autre forme (interdiction stricte d'une phrase-jumelle du chapô, même reformulée — ex. chapô 'le festival se poursuit jusqu'au 7 août' PUIS corps 'le festival se joue jusqu'au 7 août' est un DOUBLON À BANNIR). Le corps ENCHAÎNE directement sur du NOUVEAU : la PROGRAMMATION de cette édition (line-up, temps forts, horaires, nouveautés) — c'est la matière principale, pas un rappel. Termine au plus par UNE phrase de mise en perspective (jamais une reformulation des dates/lieu). On reste sur CET événement : AUCUN contexte historique/économique du lieu ou du territoire, AUCUNE montée vers l'universel, RIEN sur ce qui se passe ailleurs (ça, c'est Cultura Sabauda, pas ici). COURT : 150-300 mots ; au plus un ou deux sous-titres '## ' si vraiment nécessaire. Phrases COURTES (<20 mots), CONCRÈTES, de JOURNALISTE : on dit ce qui se passe, jamais ce que « ça raconte » (pas de « X n'est pas neutre », pas de fausse profondeur). GRAS UTILE : 3 à 5 expressions structurantes (tête d'affiche, temps fort, nouveauté), JAMAIS sur noms propres, lieux, dates ou chiffres. PAS de tiret cadratin (— ou –) : virgule, parenthèse, deux-points, point. Français soigné, aucun anglicisme (« programmes », pas « programs »), et AUCUN mot laissé dans une autre langue (un terme du billet comme « poltrona » se traduit : fauteuil/place — jamais recopié tel quel). N'écris PAS l'encadré pratique dans le corps — ni les dates/lieu/tarif, NI L'ACCÈS (parking, navette, réservation restaurant, contact accessibilité) : tout ça va dans « encadre », le site l'affiche nativement, le répéter en prose ferait doublon>",
+    "programme": ["<UNE entrée par ligne de programme : jour/heure + intitulé (concert, séance, temps fort…). LISTE, jamais de la prose. Vide [] si l'événement n'a pas de programme/line-up dans la matière>"],
+    "encadre": "<encadré pratique, TOUT ce qui est logistique (jamais dans le corps) : dates, lieu, tarif/gratuité (le détail des places s'il y en a plusieurs), accès (parking, navette, transports), réservation/contact (restaurant, accessibilité), lien officiel. Français, rien laissé dans une autre langue>"
+  }}
+}}"""
+
+
+def gather_press_kits(conn: sqlite3.Connection, ev: dict) -> str:
+    """Matière PRIORITAIRE : dossiers de presse (source primaire) EXPLICITEMENT rattachés
+    à l'événement. Le rattachement (déterministe) est fait par scripts/press_kits.py ;
+    ici on ne fait que lire. Vide si le canal presse n'a jamais tourné (table absente)."""
+    try:
+        rows = conn.execute(
+            "SELECT subject, body_text, pdf_text, n_photos FROM press_kits "
+            "WHERE matched_event_id = ?", (ev["id"],)).fetchall()
+    except sqlite3.OperationalError:
+        return ""
+    chunks = []
+    for r in rows:
+        body = (r["body_text"] or "").strip()
+        pdf = (r["pdf_text"] or "").strip()
+        photos = f" [{r['n_photos']} photo(s) HD jointe(s)]" if r["n_photos"] else ""
+        chunk = "\n".join(x for x in (body, pdf) if x)
+        if chunk:
+            chunks.append(f"« {r['subject']} »{photos}\n{chunk}")
+    return "\n\n===\n\n".join(chunks)[:12000]
+
+
+def _html_to_text(doc: str) -> str:
+    """Retire scripts/styles/navigation, puis les balises, puis décode les entités."""
+    doc = re.sub(r"(?is)<(script|style|nav|header|footer|noscript)[^>]*>.*?</\1>", " ", doc)
+    doc = re.sub(r"(?s)<[^>]+>", " ", doc)
+    doc = htmlmod.unescape(doc)
+    return re.sub(r"\s+", " ", doc).strip()
+
+
+def _fetch(url: str, timeout: int = 8) -> tuple:
+    """(HTML, URL_FINALE_après_redirections). Cruciale : une variante de domaine
+    (musique-menton.fr → www.festival-musique-menton.fr) redirige, et c'est l'URL FINALE
+    qui doit servir de base pour suivre les liens internes (sinon ils paraissent externes).
+    ("", "") si inaccessible. Ne franchit aucun mur."""
+    if not url or url.startswith("gmail:") or "news.google.com" in url:
+        return "", ""
+    try:
+        r = requests.get(url, timeout=timeout, headers=_UA)
+        if r.status_code != 200 or not r.text:
+            return "", ""
+        return r.text, r.url
+    except Exception:
+        return "", ""
+
+
+def _get_html(url: str, timeout: int = 8) -> str:
+    """HTML brut d'une page publique (ou "" si inaccessible)."""
+    return _fetch(url, timeout)[0]
+
+
+def fetch_official_page(url: str, timeout: int = 8) -> str:
+    """Récupère le TEXTE de la page officielle de l'événement (source primaire, libre).
+    Déterministe : le code va chercher la matière, le LLM la rédige. Skip radar/Gmail."""
+    doc = _get_html(url, timeout)
+    return _html_to_text(doc)[:6000] if doc else ""
+
+
+# Ancres/URL qui trahissent une page « presse / programmation / line-up / affiche » — FR+IT.
+# On les suit depuis la page d'accueil : la SOURCE OFFICIELLE (site + dossier de presse) FAIT
+# FOI, avant tout. Les pages « presse » (relations-presse, espace presse, dossier de presse)
+# concentrent le programme réel ET les visuels HD (affiche portrait + paysage) : on les suit
+# en PRIORITÉ (score doublé, voir _programme_links).
+_PRESS_HINTS = (
+    "presse", "press", "dossier", "communiqu", "media-kit", "mediakit", "presskit",
+    "espace-pro", "cartella-stampa", "ufficio-stampa", "rassegna-stampa",
+    # Italien natif : « stampa » (racine : area stampa, comunicati stampa, stampa nu) et
+    # « comunicat » (comunicati/comunicato) — les libellés IT les plus fréquents.
+    "stampa", "comunicat",
+)
+_PROG_HINTS = (
+    "programm", "line-up", "lineup", "line_up", "affiche", "artist", "artisti",
+    "concert", "spettacol", "spectacle", "cartellone", "edition", "édition",
+    "au-programme", "en-scene", "en-scène", "invit", "guest", "intervenant",
+    "au-menu", "temps-fort",
+) + _PRESS_HINTS
+# Ancres à IGNORER (bruit : billetterie, mentions, contact, cookies…).
+_PROG_STOP = ("billet", "ticket", "cookie", "mentions", "contact", "privacy",
+              "cgv", "newsletter", "login", "compte", "panier", "boutique", "impressum")
+
+
+def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
+    """Depuis le HTML d'accueil, renvoie jusqu'à `limit` URLs INTERNES qui ressemblent à
+    des pages programmation/line-up (même domaine), triées par pertinence de l'ancre."""
+    from urllib.parse import urljoin, urlparse
+    base_host = urlparse(base_url).netloc.lower()
+    if not base_host:
+        return []
+    scored: dict[str, int] = {}
+    for m in re.finditer(r'(?is)<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', html):
+        href, anchor = m.group(1), _html_to_text(m.group(2)).lower()
+        if href.startswith(("#", "mailto:", "tel:", "javascript:")):
+            continue
+        absu = urljoin(base_url, href)
+        pu = urlparse(absu)
+        if pu.scheme not in ("http", "https") or pu.netloc.lower() != base_host:
+            continue
+        hay = (pu.path + " " + anchor).lower()
+        if any(s in hay for s in _PROG_STOP):
+            continue
+        score = sum(2 for h in _PROG_HINTS if h in anchor) + \
+            sum(1 for h in _PROG_HINTS if h in pu.path.lower())
+        # PRIORITÉ à la page presse : elle concentre programme + visuels HD officiels.
+        if any(h in hay for h in _PRESS_HINTS):
+            score += 5
+        if score <= 0:
+            continue
+        clean = absu.split("#")[0]
+        if clean.rstrip("/") == base_url.split("#")[0].rstrip("/"):
+            continue  # pas la page d'accueil elle-même
+        scored[clean] = max(scored.get(clean, 0), score)
+    # IFRAMES internes : les dossiers de presse sont souvent chargés en iframe (ex.
+    # « Téléchargez l'affiche… » → <iframe src="/presse/">). On les suit comme des pages.
+    for m in re.finditer(r'(?is)<iframe[^>]+src=["\']([^"\']+)["\']', html):
+        absu = urljoin(base_url, m.group(1)).split("#")[0]
+        pu = urlparse(absu)
+        if pu.scheme in ("http", "https") and pu.netloc.lower() == base_host \
+                and absu.rstrip("/") != base_url.split("#")[0].rstrip("/"):
+            scored[absu] = max(scored.get(absu, 0), 6)
+    ordered = sorted(scored, key=lambda u: scored[u], reverse=True)
+    return ordered[:limit]
+
+
+# Domaines qui ne sont JAMAIS le site officiel d'un événement : réseaux sociaux,
+# billetteries, agrégateurs, plateformes. On ne les prend pas pour « la source ».
+_NOT_OFFICIAL = (
+    "facebook.", "fb.me", "fb.com", "instagram.", "twitter.", "x.com", "youtube.",
+    "youtu.be", "tiktok.", "linkedin.", "google.", "goo.gl", "wikipedia.", "billetweb.",
+    "weezevent.", "fnac", "ticketmaster.", "digitick.", "eventbrite.", "helloasso.",
+    "yurplan.", "shotgun.", "dice.fm", "tripadvisor.", "spotify.", "deezer.", "apple.",
+    "agendaculturel.", "mapstr.", "waze.", "instagr.am", "bit.ly",
+)
+# Mots trop génériques pour discriminer un domaine officiel (on les garde mais ils pèsent
+# comme les autres : c'est le CUMUL de correspondances qui distingue le bon domaine).
+_TITLE_STOP = {"festival", "concert", "spectacle", "exposition", "salon", "foire", "fete",
+               "fête", "edition", "édition", "saison", "rencontres", "journees", "journées"}
+
+
+def _fold(s: str) -> str:
+    """Minuscule + retrait des accents (NFKD) : « humanité » → « humanite », pour comparer un
+    token de titre à un domaine désaccentué (fete.humanite.fr…)."""
+    return "".join(c for c in unicodedata.normalize("NFKD", (s or "").lower())
+                   if not unicodedata.combining(c))
+
+
+def _strip_www(host: str) -> str:
+    """Retire le PRÉFIXE www. (et non des caractères : lstrip('www.') mangeait les hosts en
+    'w', ex. 'wine-festival' → 'ine-festival')."""
+    return re.sub(r"^www\.", "", (host or "").lower())
+
+
+_TITLE_STOP_FOLDED = {"festival", "concert", "spectacle", "exposition", "salon", "foire",
+                      "fete", "edition", "saison", "rencontres", "journees"}
+
+
+def _event_tokens(title: str) -> list[str]:
+    """Mots significatifs du titre (>3 lettres, désaccentués) pour reconnaître le domaine
+    officiel. On retire les mots trop génériques (_TITLE_STOP_FOLDED)."""
+    return [w for w in re.findall(r"[a-z0-9]+", _fold(title))
+            if len(w) > 3 and w not in _TITLE_STOP_FOLDED]
+
+
+def _find_official_site(html: str, base_url: str, title: str) -> str:
+    """Depuis une page (souvent un AGRÉGATEUR), trouve le lien SORTANT vers le vrai site
+    OFFICIEL de l'événement : un domaine externe dont le nom recoupe le titre. Un token LONG
+    (≥ 8 lettres, ex. « interceltique ») suffit ; une ancre « site officiel » ne compte QUE
+    si un token du titre est aussi présent (sinon « en savoir plus » sauterait vers un
+    sponsor). "" si rien de fiable — on ne devine pas."""
+    from urllib.parse import urlparse
+    base_host = _strip_www(urlparse(base_url).netloc)
+    toks = _event_tokens(title)
+    best, best_score = "", 0
+    for m in re.finditer(r'(?is)<a\b[^>]*href=["\'](https?://[^"\']+)["\'][^>]*>(.*?)</a>', html):
+        href, anchor = m.group(1), _html_to_text(m.group(2)).lower()
+        host = urlparse(href).netloc.lower()
+        if not host or _strip_www(host) == base_host:
+            continue                                   # lien interne à l'agrégateur
+        if any(bad in host for bad in _NOT_OFFICIAL):
+            continue                                   # réseau/billetterie/agrégateur
+        # Sous-domaine SANS RAPPORT avec le titre (hotelcavour.fortedibard.it — l'hôtel du
+        # lieu, pas Raf ni Cazzullo) → on remonte au DOMAINE RACINE avant de scorer, sinon
+        # le score compte les tokens du domaine parent (« forte », « bard ») et fige l'hôtel.
+        labels = host.split(".")
+        if len(labels) > 2 and labels[0] != "www" and not any(t in _fold(labels[0]) for t in toks):
+            host = ".".join(labels[-2:])
+        fhost = _fold(host)
+        tokmatch = sum(2 if len(t) >= 8 else 1 for t in toks if t in fhost)
+        strong_anchor = any(k in anchor for k in
+                            ("site officiel", "officiel", "site web", "site internet", "site du"))
+        score = tokmatch + (3 if (strong_anchor and tokmatch > 0) else 0)
+        cand = f"{urlparse(href).scheme}://{host}/"
+        # À score égal, préférer le DOMAINE RACINE (www.fortedibard.it) à un sous-domaine.
+        if score > best_score or (score == best_score and best and
+                                  len(_strip_www(host)) < len(_strip_www(urlparse(best).netloc))):
+            best, best_score = cand, score
+    return best if best_score >= 2 else ""
+
+
+def _same_domain_iframes(html: str, base_url: str) -> list[str]:
+    """URLs des iframes INTERNES d'une page (les dossiers de presse y sont souvent chargés :
+    <iframe src="/presse/">)."""
+    from urllib.parse import urljoin, urlparse
+    base_host = urlparse(base_url).netloc.lower()
+    out = []
+    for m in re.finditer(r'(?is)<iframe[^>]+src=["\']([^"\']+)["\']', html or ""):
+        absu = urljoin(base_url, m.group(1)).split("#")[0]
+        pu = urlparse(absu)
+        if pu.scheme in ("http", "https") and pu.netloc.lower() == base_host:
+            out.append(absu)
+    return out
+
+
+def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[tuple]:
+    """Suit les pages presse/programme d'un site. Renvoie [(link, html, texte), …] : le HTML
+    sert à en extraire les AFFICHES (visuels HD), le texte à nourrir la rédaction. Suit AUSSI
+    les iframes internes de chaque sous-page (dossier de presse embarqué : /presse/…)."""
+    out = []
+    for link in _programme_links(html, url, limit=n_sub):
+        h = _get_html(link, timeout)
+        txt = _html_to_text(h)[:5000]
+        if txt:
+            out.append((link, h, txt))
+            log.info("%s : page presse/programme lue (%s)", tag, link[:90])
+        # Dossier de presse chargé en iframe DANS cette sous-page (affiches + PDF).
+        for ifr in _same_domain_iframes(h, link)[:2]:
+            ih = _get_html(ifr, timeout)
+            if ih:
+                out.append((ifr, ih, _html_to_text(ih)[:2000]))
+                log.info("%s : dossier de presse (iframe) lu (%s)", tag, ifr[:90])
+    return out
+
+
+def resolve_official_site(title: str, lieu: str, client) -> str:
+    """Trouve le SITE OFFICIEL d'un événement par une recherche web CIBLÉE (1 requête), quand
+    la source (souvent un agrégateur) est inaccessible depuis le VPS (403). Renvoie l'URL de
+    la page d'accueil officielle, ou "" (réseau social / billetterie / agrégateur écartés)."""
+    if client is None:
+        return ""
+    from urllib.parse import urlparse
+    from utils import settings as _ps
+    q = ("Trouve le SITE OFFICIEL de cet événement culturel et réponds UNIQUEMENT par l'URL "
+         "de sa page d'accueil (https://…), rien d'autre. PAS un agrégateur (agendaculturel, "
+         "infoconcert, billetreduc…), PAS un réseau social, PAS une billetterie.\n"
+         f"Événement : {title}\nLieu : {lieu}")
+    messages = [{"role": "user", "content": q}]
+    log.info("résolution du site officiel en cours (recherche web)… : %s", (title or "")[:60])
+    try:
+        # L'outil de recherche web (serveur) renvoie un `pause_turn` : le modèle cherche puis
+        # a besoin d'un second tour pour formuler la réponse. On boucle comme le rédacteur.
+        # Modèle QUALITÉ (Sonnet) : l'outil de recherche web serveur n'est pas supporté par
+        # l'éco (Haiku) → BadRequestError. On reste sur une seule requête, donc coût contenu.
+        search_model = os.getenv("ENRICH_LONG_MODEL", "").strip() or _ps.model_qualite()
+        for _ in range(MAX_WEB_SEARCHES + 3):
+            with client.messages.stream(model=search_model, max_tokens=600,
+                                        tools=[WEB_SEARCH_TOOL], messages=messages) as stream:
+                msg = stream.get_final_message()
+            # MESURÉ, comme les autres (2026-08-11) : cet appel-ci utilise le modèle
+            # QUALITÉ *et* la recherche web serveur (facturée à part), et il tourne
+            # jusqu'à MAX_WEB_SEARCHES+3 fois par fiche. Il n'était pas compté : la
+            # facture d'un poste invisible est celle qu'on ne peut pas discuter.
+            usage.record_message(search_model, msg, label="site_officiel_recherche")
+            if msg.stop_reason == "pause_turn":
+                messages.append({"role": "assistant", "content": msg.content})
+                continue
+            break
+    except Exception as exc:  # noqa: BLE001 — non bloquant
+        log.warning("résolution site officiel : échec API (%s)", type(exc).__name__)
+        return ""
+    m = re.search(r'https?://[^\s"\'<>)]+', _final_text(msg))
+    if not m:
+        log.warning("résolution site officiel : aucune URL dans la réponse pour '%s'",
+                    (title or "")[:60])
+        return ""
+    host = urlparse(m.group(0)).netloc.lower()
+    if not host or any(bad in host for bad in _NOT_OFFICIAL):
+        log.info("résolution site officiel : URL écartée (%s)", host)
+        return ""
+    return f"https://{host}/"
+
+
+_SRC_TIERS: "dict | None" = None
+
+
+def _source_trusted(url_source: str) -> bool:
+    """La SOURCE est-elle un flux tier « officielle » (lieu/organisateur primaire, cf.
+    config/sources.txt) ? Seules ces sources peuvent faire foi de LEUR PROPRE domaine ;
+    radar/presse, guides, institutions, tourisme doivent être résolus vers l'organisateur."""
+    global _SRC_TIERS
+    from urllib.parse import urlparse
+    if _SRC_TIERS is None:
+        try:
+            from scripts.scraper_events import load_sources
+            _SRC_TIERS = {}
+            for s in load_sources():
+                host = _strip_www(urlparse(s.get("url", "")).netloc)
+                if host:
+                    _SRC_TIERS[host] = (s.get("type") or "").lower()
+        except Exception:  # noqa: BLE001 — non bloquant
+            _SRC_TIERS = {}
+    host = _strip_www(urlparse(url_source or "").netloc)
+    return _SRC_TIERS.get(host, "") == "officielle"
+
+
+_NON_INSTITUTIONAL_FILE = Path(__file__).resolve().parent.parent / "config" / "non_institutional_sources.txt"
+_NON_INSTITUTIONAL: "set | None" = None
+
+
+def _non_institutional_domains() -> set:
+    """Domaines connus NON institutionnels (guides touristiques tiers, presse locale…),
+    cf. `config/non_institutional_sources.txt` — extensible sans code, une ligne = un
+    domaine. Chargé une fois, en mémoire (comme `_SRC_TIERS`)."""
+    global _NON_INSTITUTIONAL
+    if _NON_INSTITUTIONAL is None:
+        _NON_INSTITUTIONAL = set()
+        if _NON_INSTITUTIONAL_FILE.exists():
+            for raw in _NON_INSTITUTIONAL_FILE.read_text(encoding="utf-8").splitlines():
+                line = raw.strip().lower()
+                if line and not line.startswith("#"):
+                    _NON_INSTITUTIONAL.add(line.lstrip("."))
+    return _NON_INSTITUTIONAL
+
+
+def filter_official_sources(sources: list) -> tuple[list, list]:
+    """GARDE-FOU DÉTERMINISTE (charte §8 : seules les sources institutionnelles/officielles
+    sont créditées/liées) : écarte, dans la liste « sources » écrite par l'agent, les URLs
+    dont le domaine est un réseau/billetterie/plateforme générique (`_NOT_OFFICIAL`) ou un
+    guide touristique/média tiers CONNU (`config/non_institutional_sources.txt`).
+
+    PERMISSIF PAR DÉFAUT (liste noire, pas liste blanche) : un domaine que le pipeline n'a
+    pas explicitement « résolu officiel » cette fois (`official_pages` vide, `url_officiel`
+    pas encore mémorisée — fréquent sur les fiches enrichies avant l'ajout de ce suivi, ou
+    quand l'agent a trouvé le vrai site officiel par recherche web générale plutôt que par
+    notre résolveur déterministe) reste GARDÉ : une première version, en liste blanche
+    stricte, a écarté à tort ~54 % des sources déjà publiées (musilac.com, comune.torino.it,
+    castellodirivoli.org… tous légitimes) faute d'avoir été « vus » par notre résolveur —
+    bien pire que le problème d'origine. Seul un domaine CONNU comme non institutionnel est
+    écarté ; le prompt demande déjà à l'agent de ne citer que des pages officielles/libres,
+    ce filtre attrape juste les cas où il s'est trompé (ex. guidatorino.com, un guide
+    touristique privé de Turin, cité comme source d'un événement dont il n'est ni
+    l'organisateur ni une institution). Renvoie (sources_gardées, sources_écartées)."""
+    from urllib.parse import urlparse as _up
+    blocked = _non_institutional_domains()
+    kept, dropped = [], []
+    for s in (sources or []):
+        s = (s or "").strip()
+        if not s:
+            continue
+        host = _strip_www(_up(s).netloc)
+        if not host:
+            dropped.append(s)  # pas une vraie URL (prose glissée par l'agent) — jamais publiable
+        elif any(b in host for b in _NOT_OFFICIAL) or any(
+                host == d or host.endswith("." + d) for d in blocked):
+            dropped.append(s)
+        else:
+            kept.append(s)
+    return kept, dropped
+
+
+def fetch_official_material(url: str, timeout: int = 8, title: str = "",
+                            lieu: str = "", client=None, is_official: bool = False,
+                            trusted_source: bool = False) -> tuple:
+    """SOURCE OFFICIELLE = première source (règle Franck). On lit `url` ; si ce N'EST PAS le
+    site de l'organisateur, on remonte au vrai site officiel (lien sortant, sinon recherche
+    web), puis on lit sa page presse/programme (programme réel + visuels HD).
+    `is_official` : `url` EST le site officiel connu (url_officiel mémorisée) → lue direct.
+    `trusted_source` : la SOURCE est un flux tier « officielle » (lieu/organisateur primaire,
+    cf. config/sources.txt) → son propre domaine PEUT faire foi. Toute autre source (radar/
+    presse, guide, institution, tourisme) est traitée comme un AGRÉGATEUR : jamais lue comme
+    officielle, jamais mémorisée (cas guidatorino pris pour le site de la Tranvia).
+    Renvoie (texte_matière, pages)."""
+    from urllib.parse import urlparse as _up
+    html, url = _fetch(url, timeout)   # url = URL FINALE (après redirections) → bonne base
+    if not html and is_official:
+        # URL officielle VERROUILLÉE mais injoignable (transitoire) : NE PAS re-résoudre —
+        # sinon on sauterait vers un autre domaine. On saute ce run proprement.
+        return "", []
+    resolved = url if (html and is_official) else ""   # connu officiel → traité comme résolu
+    agg_landing = ""
+    src_is_agg = bool(html) and not is_official and (
+        any(b in _up(url).netloc.lower() for b in _NOT_OFFICIAL) or not trusted_source)
+    if (not html or src_is_agg) and not is_official:
+        # Source BLOQUÉE (403) ou NON-ORGANISATRICE accessible : on remonte au VRAI site
+        # officiel — d'abord par LIEN SORTANT (gratuit), sinon par recherche web.
+        if src_is_agg:
+            agg_landing = _html_to_text(html)[:4000]   # texte de la source = matière d'appoint
+            out = _find_official_site(html, url, title)
+            if out:
+                h2, u2 = _fetch(out, timeout)
+                if h2 and not any(b in _up(u2).netloc.lower() for b in _NOT_OFFICIAL):
+                    html, url, resolved = h2, u2, u2
+                    log.info("site officiel trouvé via la source : %s", u2[:90])
+        if not resolved:
+            cand = resolve_official_site(title, lieu, client)
+            if cand:
+                h2, u2 = _fetch(cand, timeout)
+                if h2:
+                    html, url, resolved = h2, u2, u2
+                    log.info("site officiel résolu par recherche web : %s → %s",
+                             cand[:70], u2[:90])
+        if not resolved:
+            # Rien d'officiel atteignable : la source reste de la MATIÈRE, jamais « officielle ».
+            body = f"[PAGE SOURCE (non officielle, matière d'appoint)]\n{agg_landing}" \
+                if agg_landing else ""
+            return body, []
+    landing = _html_to_text(html)[:6000]
+    deep = os.getenv("ENRICH_SITE_DEEP", "1") == "1"
+    try:
+        n_sub = int(os.getenv("ENRICH_SITE_SUBPAGES", "3") or 3)
+    except ValueError:
+        n_sub = 3
+    # `url` est-il ENCORE un domaine interdit ? (filet — ne devrait plus arriver ici)
+    cur_is_agg = any(b in _up(url).netloc.lower() for b in _NOT_OFFICIAL)
+    if not deep or n_sub <= 0:
+        return landing, ([{"url": url, "html": html}] if (resolved and not cur_is_agg) else [])
+    blocks: list[str] = []
+    pages: list[dict] = []
+    # Site officiel à lire en profondeur : soit `url` lui-même (résolu/direct), soit un lien
+    # sortant depuis une page-source accessible.
+    official = "" if resolved else _find_official_site(html, url, title)
+    if official and official != url:
+        ohtml, official = _fetch(official, timeout)   # base = URL finale du site officiel
+        if ohtml:
+            pages.append({"url": official, "html": ohtml})
+            otext = _html_to_text(ohtml)[:6000]
+            if otext:
+                blocks.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — {official}]\n{otext}")
+                log.info("site officiel trouvé via la source : %s", official[:90])
+            for link, lhtml, ltxt in _deep_read(ohtml, official, timeout, n_sub, "site officiel"):
+                pages.append({"url": link, "html": lhtml})
+                blocks.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{ltxt}")
+    if agg_landing:
+        blocks.append(f"[PAGE SOURCE (agrégateur, matière d'appoint)]\n{agg_landing}")
+    if landing:
+        blocks.append(f"[PAGE SOURCE — {url}]\n{landing}")
+    # `url` EST le site officiel (résolu/direct sans lien sortant) → lire ses sous-pages.
+    # JAMAIS si c'est encore un agrégateur (on ne tague pas ses pages « officielles » — G2).
+    if (not official or official == url) and not cur_is_agg:
+        if resolved:
+            pages.append({"url": url, "html": html})   # la page d'accueil officielle
+        for link, lhtml, ltxt in _deep_read(html, url, timeout, n_sub, "site officiel"):
+            pages.append({"url": link, "html": lhtml})
+            blocks.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{ltxt}")
+    return "\n\n".join(blocks), pages
+
+
+# Indices de FICHIER pour reconnaître une affiche officielle (visuel HD de l'événement).
+_AFFICHE_HINT = ("affiche", "visuel", "poster", "programme", "couv", "cover", "print",
+                 "bandeau", "key-visual", "keyvisual", "-kv", "manifesto", "locandina")
+# Images à IGNORER (habillage du site, pas l'affiche de l'événement).
+_IMG_SKIP = ("logo", "sponsor", "partenaire", "partner", "icon", "favicon", "pixel",
+             "avatar", "picto", "cookie", "/menu", "footer", "header-", "flag-", "drapeau",
+             "facebook", "instagram", "twitter", "spinner", "loader")
+_IMG_RE = re.compile(r'(?i)(?:src|href)\s*=\s*["\']([^"\']+\.(?:jpe?g|png|webp))(?:\?[^"\']*)?["\']')
+
+
+_OG_RE = re.compile(
+    r'(?is)<meta[^>]+(?:property|name)\s*=\s*["\'](?:og:image|twitter:image)[^"\']*["\']'
+    r'[^>]+content\s*=\s*["\']([^"\']+)["\']')
+_OG_RE2 = re.compile(
+    r'(?is)<meta[^>]+content\s*=\s*["\']([^"\']+)["\'][^>]+'
+    r'(?:property|name)\s*=\s*["\'](?:og:image|twitter:image)')
+
+
+_DIM_RE = re.compile(r"\d{2,4}\s*[x×]\s*\d{2,4}")   # « 120x176 », « 320 x 240 » : format d'affiche
+# Suffixe de VIGNETTE WordPress (« photo-800x600.jpg », « img-1024x683-scaled.jpg ») : ce
+# n'est PAS un format d'affiche, c'est une image de contenu redimensionnée. À exclure.
+_WP_THUMB = re.compile(r"-\d{2,4}x\d{2,4}(?:-scaled)?\.(?:jpe?g|png|webp)$", re.I)
+# Chemins qui trahissent le DOSSIER DE PRESSE (ses images = les affiches officielles).
+# « /medias » retiré (trop générique → matchait des galeries de contenu). Ajouts IT.
+_KIT_PATH = ("/presse", "/dossier", "presskit", "kit-presse", "cartella-stampa",
+             "ufficio-stampa", "area-stampa", "-stampa", "comunicat", "press-area")
+
+
+# Signaux d'un dossier de presse RÉSERVÉ (accréditation / login) — FR + IT.
+_GATED_SIGNALS = ("login-form", "mot de passe", "accrédit", "accredit", "identifiant",
+                  "s'identifier", "espace réservé", "réservé à la presse", "accès presse",
+                  "area riservata", "accesso riservato", "password", "connexion presse")
+
+
+def press_kit_status(pages: list, has_affiche: bool) -> dict:
+    """Statut du DOSSIER DE PRESSE pour le back-office, pour que Franck SACHE s'il existe et
+    s'il faut demander l'accès. Renvoie {"url": <page presse|"">, "statut": ...} où statut =
+    'public' (accessible, affiche récupérée), 'accreditation' (existe mais réservé → demander
+    l'accès), 'sans_affiche' (public mais pas d'affiche téléchargeable → coller à la main),
+    'absent'."""
+    press_url, gated = "", False
+    for p in pages or []:
+        u = (p.get("url") or "")
+        low = u.lower()
+        if any(k in low for k in _PRESS_HINTS) or any(k in low for k in _KIT_PATH):
+            press_url = press_url or u
+            if any(s in (p.get("html") or "").lower() for s in _GATED_SIGNALS):
+                gated = True
+    if not press_url:
+        return {"url": "", "statut": "absent"}
+    if has_affiche:
+        return {"url": press_url, "statut": "public"}
+    return {"url": press_url, "statut": "accreditation" if gated else "sans_affiche"}
+
+
+def extract_press_visuals(pages: list, title: str = "") -> dict:
+    """Depuis les pages OFFICIELLES lues (dossier de presse), trouve l'AFFICHE de l'événement
+    en PORTRAIT et en PAYSAGE (visuels HD). Priorise l'og:image, puis les fichiers au nom
+    d'affiche / de FORMAT (120x176…) / reprenant le titre ; télécharge les candidats pour
+    mesurer leur orientation. Renvoie {'portrait':url|None, 'wide':url|None, 'poster':url|None}."""
+    from urllib.parse import urljoin, urlparse, quote
+    from utils.images import remote_dims
+    toks = _event_tokens(title)
+
+    def _abs(base, ref):
+        # Résout et encode les espaces (« 120x176 - Festival ….jpg ») pour le téléchargement.
+        return quote(urljoin(base, ref.strip()).split("?")[0], safe=":/%?&=#")
+
+    # On ne retient QUE des images « affiche-grade » : issues du DOSSIER DE PRESSE (chemin
+    # /presse/…), au nom de FORMAT (120x176…), ou au nom d'affiche explicite. JAMAIS une
+    # og:image ou une photo au hasard (sinon on pose une photo d'artiste ou un visuel social
+    # comme affiche, ce qui est faux). Mieux vaut aucune affiche qu'une mauvaise.
+    cands: dict[str, int] = {}
+    for p in pages or []:
+        html, base = p.get("html", ""), p.get("url", "")
+        from_kit = any(k in (base or "").lower() for k in _KIT_PATH)
+        for m in _IMG_RE.finditer(html or ""):
+            raw = m.group(1)
+            u = _abs(base, raw)
+            low = (raw + " " + u).lower()
+            if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
+                continue
+            is_kit = from_kit or any(k in low for k in _KIT_PATH)
+            has_name = any(h in low for h in _AFFICHE_HINT)
+            # Un nom de FORMAT (120x176) est un indice, mais PAS une éligibilité à lui seul
+            # (sinon les vignettes WordPress -800x600 deviennent des affiches). Et on exclut
+            # explicitement le suffixe de vignette WP.
+            has_dim = bool(_DIM_RE.search(low)) and not _WP_THUMB.search(u)
+            if not (is_kit or has_name):
+                continue                            # affiche-grade = dossier de presse OU nom d'affiche
+            score = (15 if is_kit else 0) + (3 if has_dim else 0) \
+                + sum(2 for h in _AFFICHE_HINT if h in low) \
+                + sum(1 for t in toks if t in low)
+            cands[u] = max(cands.get(u, 0), score)
+    ordered = [u for u in sorted(cands, key=lambda u: cands[u], reverse=True) if cands[u] > 0]
+    ordered = ordered[:6]                           # coût borné (téléchargements de mesure)
+    portrait = wide = None
+    for u in ordered:                               # ordre de SCORE décroissant
+        if portrait and wide:
+            break
+        w, h = remote_dims(u)
+        if w < 350 or h < 350:          # trop petit → logo/vignette, pas une affiche
+            continue
+        ratio = w / h
+        if ratio <= 0.9 and portrait is None:       # portrait le mieux noté
+            portrait = u
+        elif ratio >= 1.3 and wide is None:         # paysage le mieux noté
+            wide = u
+    if not portrait and not wide:
+        return {}
+    # L'affiche officielle du dossier de presse prime comme image principale.
+    kit = next((u for u in (portrait, wide) if u and any(k in u.lower() for k in _KIT_PATH)), None)
+    return {"portrait": portrait, "wide": wide,
+            "poster": kit or portrait or wide, "from_kit": bool(kit)}
+
+
+AUCUNE_MATIERE = "(aucune — titre seul)"
+
+
+def _materiau_pollue(description: str, url_source: str | None = None) -> bool:
+    """Cette description est-elle un item Google News, c'est-à-dire un TITRE D'ARTICLE
+    déguisé en matière ?
+
+    EXCLUSION PAR PROVENANCE, PAS PAR VOLUME — et c'est mesuré, pas supposé. Le blob
+    d'origine (« Fête du lac 2026 : les spectateurs qui n'habitent pas Annecy paieront plus
+    cher ») compte 91 caractères visibles, au-dessus du seuil de 60, parce que ce texte
+    visible EST le titre de l'article : le filtre de longueur attrapait les liens vraiment
+    creux et laissait passer le dangereux. Relever le seuil ne marcherait pas davantage —
+    une vraie description laconique tomberait avec. Un item Google News n'apporte JAMAIS de
+    matière rédactionnelle ; on l'écarte sur sa provenance, qui est un fait.
+
+    Une seule définition, appelée aux DEUX endroits où de la matière entre (la description
+    propre de la fiche et celle de ses doublons fusionnés) : c'est d'avoir filtré l'un sans
+    l'autre qui a laissé passer WP#6798."""
+    d = description or ""
+    return "news.google.com" in d or "news.google.com" in (url_source or "")
+
+
+def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
+    """Agrège (déterministe) la matière, par ordre de priorité :
+    1) dossiers de presse rattachés ; 2) SITE OFFICIEL récupéré en direct (résolu par
+    recherche web si la source est bloquée) ; 3) signaux flux/radar. Le LLM rédige à partir
+    de cette matière RÉELLE — il n'a pas à « connaître » l'événement. `client` sert au
+    secours « résoudre le site officiel »."""
+    parts = []
+    own = (ev.get("description") or "").strip()
+    # ⚠️ LA DESCRIPTION PROPRE ÉTAIT VERSÉE SANS AUCUN FILTRE (corrigé le 2026-08-03, C4).
+    # Tout le soin ci-dessous ne portait que sur la matière des DOUBLONS ; la matière de la
+    # fiche elle-même entrait telle quelle. Or l'enquête sur WP#6798 conclut noir sur blanc
+    # que « la pollution est dans la description de l'ORIGINAL, la traduction la recopie
+    # fidèlement » : on filtrait la porte de service en laissant l'entrée principale
+    # ouverte. Un blob Google News arrivé là par une fusion à tort (dedupe choisissait la
+    # description la plus LONGUE) devenait la matière de rédaction, et l'article — puis sa
+    # traduction — parlait d'un autre événement.
+    if own and _materiau_pollue(own, ev.get("url_source")):
+        log.warning("[%s] description PROPRE écartée de la matière : item Google News "
+                    "(titre d'article, aucune matière rédactionnelle). Voir "
+                    "scripts/repair_polluted_descriptions.py.", ev["id"])
+        own = ""
+    if own:
+        parts.append(own)
+    # Matière des DOUBLONS fusionnés — filtrée sur la SUBSTANCE, pas sur le volume brut.
+    # Un item Google News RSS se réduit à un `<a href="…">` dont l'URL encodée pèse des
+    # centaines de caractères pour un texte visible quasi nul : versé tel quel dans la
+    # matière de rédaction, il n'apporte rien et son ancre (le titre d'un ARTICLE, souvent
+    # un autre sujet) oriente le LLM sur le mauvais événement. C'est le maillon final de
+    # la cascade du 2026-08-01 : dedupe apparie à tort → la description parasite entre
+    # ici → l'article, puis sa traduction, parlent d'autre chose (« Festa del Lago 2026 »
+    # sur un spectacle de théâtre à Chambéry). dedupe ne choisit plus la description la
+    # plus LONGUE, mais un doublon légitime peut parfaitement rester un lien creux.
+    from scripts.dedupe import _text_len
+    for row in conn.execute(
+        "SELECT description, source_name, url_source FROM events_raw WHERE duplicate_of = ?",
+        (ev["id"],)
+    ):
+        d = (row["description"] or "").strip()
+        if not d or d in parts:
+            continue
+        # ⚠️ EXCLUSION PAR SOURCE, PAS SEULEMENT PAR LONGUEUR. Le seuil de texte visible
+        # ci-dessous ne suffit PAS sur le cas d'origine, mesuré : le blob Google News de
+        # « Fête du lac 2026 : les spectateurs qui n'habitent pas Annecy paieront plus
+        # cher » compte 91 caractères visibles — au-dessus du seuil de 60 — parce que ce
+        # texte visible EST le titre de l'article, c'est-à-dire précisément l'élément
+        # trompeur. Le filtre de longueur attrapait les liens vraiment creux et laissait
+        # passer le dangereux. Relever le seuil ne marcherait pas non plus : une vraie
+        # description laconique tomberait avec. Un item Google News n'apporte JAMAIS de
+        # matière rédactionnelle — il n'a que le titre d'un article, souvent sur un autre
+        # sujet. On l'écarte donc sur sa provenance, qui est un fait, pas une mesure.
+        if _materiau_pollue(d, row["url_source"]):
+            log.debug("[%s] matière du doublon ignorée : item Google News (titre "
+                      "d'article, aucune matière)", ev["id"])
+            continue
+        if _text_len(d) < MATERIAL_MIN_VISIBLE:
+            log.debug("[%s] matière du doublon ignorée : %d car. visibles seulement",
+                      ev["id"], _text_len(d))
+            continue
+        parts.append(d)
+    from utils.clean_text import strip_boilerplate
+    rss = re.sub(r"(?s)<[^>]+>", " ", "\n\n---\n\n".join(parts))
+    rss = strip_boilerplate(rss)[:6000]   # retire spacers Elementor, pied RSS, boutons
+
+    press = gather_press_kits(conn, ev)
+    if press:
+        press = re.sub(r"(?s)<[^>]+>", " ", press)
+    # URL OFFICIELLE mémorisée (résolution déjà réussie) : on la lit DIRECTEMENT — plus de
+    # recherche web, plus de variante de domaine aléatoire. Sinon on part de la source.
+    locked = (ev.get("url_officiel") or "").strip()
+    src_url = locked or ev.get("url_source", "")
+    page, official_pages = fetch_official_material(
+        src_url, title=ev.get("title", ""),
+        lieu=ev.get("lieu") or ev.get("ville") or "", client=client,
+        is_official=bool(locked),
+        trusted_source=_source_trusted(ev.get("url_source", "")))
+    # ⚠️ LE VERROU `url_officiel` ÉTAIT DÉFINITIF (corrigé le 2026-08-03). Balayage :
+    # aucun script du dépôt ne l'efface jamais. Or il commande une lecture DIRECTE — « plus
+    # de recherche web, plus de variante de domaine aléatoire » — donc une URL mémorisée à
+    # tort empoisonnait tous les enrichissements suivants de cette fiche, définitivement,
+    # et d'autant plus silencieusement qu'elle est censée être la source qui fait foi.
+    #
+    # Le test de pertinence existait déjà… mais seulement au moment de POSER le verrou
+    # (« pages sans mention du titre → on ne fige rien »). On ne l'appliquait jamais à
+    # l'usage. On vérifiait la serrure en la fabriquant, jamais en s'en servant.
+    #
+    # ON N'EFFACE QUE SUR UNE LECTURE RÉUSSIE ET NON PERTINENTE. `official_pages` vide
+    # signifie que le réseau a échoué — pas que le verrou est faux : effacer là-dessus
+    # perdrait une bonne URL sur une panne passagère. Et le coût d'un effacement à tort
+    # reste borné : une résolution de plus au run suivant, qui re-posera très probablement
+    # la même URL. L'erreur va dans le sens réparable.
+    if locked and official_pages:
+        _joint = _fold(" ".join((p.get("html") or "")[:20000] for p in official_pages))
+        _toks = _event_tokens(ev.get("title", ""))
+        if _toks and not any(t in _joint for t in _toks):
+            conn.execute("UPDATE events_raw SET url_officiel=NULL WHERE id=?", (ev["id"],))
+            conn.commit()
+            ev["url_officiel"] = ""
+            log.warning("[%s] verrou url_officiel LEVÉ : %s ne mentionne pas l'événement "
+                        "— la résolution repartira de zéro au prochain run.",
+                        ev["id"], locked[:60])
+    # La PAGE SOURCE reste lue MÊME quand url_officiel est verrouillée : pour un flux de
+    # lieu (tier « officielle »), c'est LA page de l'événement (line-up, dates) — le site
+    # verrouillé sert au dossier de presse/programme général. Sans ça, verrouiller ferait
+    # PERDRE la matière événement (régression 1452 : Fondation Maeght réduite à /about/).
+    src0 = (ev.get("url_source") or "").strip()
+    if locked and src0 and not src0.startswith("gmail:") and "news.google.com" not in src0:
+        s_html, s_final = _fetch(src0)
+        if s_html:
+            s_txt = _html_to_text(s_html)[:6000]
+            if s_txt:
+                bloc = f"[PAGE DE L'ÉVÉNEMENT (source) — {s_final}]\n{s_txt}"
+                page = (page + "\n\n" + bloc) if page else bloc
+            if _source_trusted(src0):
+                # Flux du lieu/organisateur : sa page événement EST officielle → sert aussi
+                # à l'extraction d'affiches.
+                official_pages = list(official_pages or []) + [{"url": s_final, "html": s_html}]
+
+    sections = []
+    if press:
+        sections.append(f"[DOSSIER(S) DE PRESSE — source primaire, prioritaire]\n{press}")
+    if page:
+        sections.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — accueil + programmation, lu en direct, source primaire]\n{page}")
+    if rss:
+        sections.append(f"[SIGNAUX FLUX / RADAR]\n{rss}")
+    return "\n\n".join(sections) or AUCUNE_MATIERE, official_pages
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONFRONTATION — les trois garde-fous qui relisent la source (utils/confronter)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _texte_officiel(official_pages, limite: int = 20000) -> str:
+    """Le texte des PAGES OFFICIELLES lues à l'instant, et rien d'autre.
+
+    ⚠️ SURTOUT PAS `material`. La matière agrégée contient la description de l'agrégateur
+    — celle-là même qui a servi à DATER la fiche. La confronter à elle ne prouverait
+    qu'une chose, que le pipeline a bien recopié sa source : c'est exactement le mécanisme
+    de la fiche 2289, où « du 14 au 17 » venait de 74.agendaculturel.fr pendant que
+    guitare-en-scene.com écrivait « du 14 au 18 ». Le pipeline a transcrit fidèlement une
+    source fausse, et aucune relecture de cette matière ne pouvait le dire.
+
+    C'est aussi ce qui sépare ce contrôle de `scripts/verifier_dates.py`, qui lit la
+    matière collectée : ici on lit la PAGE OFFICIELLE, et seulement elle.
+    """
+    bouts = []
+    for p in (official_pages or []):
+        html = (p or {}).get("html") or ""
+        if html:
+            bouts.append(_html_to_text(html))
+    return "\n\n".join(bouts)[:limite]
+
+
+def _confrontation(ev: dict, official_pages) -> dict | None:
+    """Confronte la fiche à la page officielle PENDANT qu'elle est en mémoire.
+
+    C'est le seul moment de la chaîne où cette page est là. `dates.py` l'a peut-être lue
+    des semaines plus tôt, `verifier_dates` ne la lit jamais (il travaille sur la matière
+    collectée), et un audit qui la retéléchargerait paierait une requête par fiche pour
+    lire un texte qu'on avait déjà sous la main.
+
+    NE BLOQUE RIEN, N'ÉCRIT AUCUNE DATE. Le constat part dans `enrich_data.confrontation`,
+    et ses motifs — seulement ceux qui ont un geste au bout — dans la file « à vérifier »
+    par le canal qui existe déjà (`a_verifier` → `sync_checks`). Corriger d'office
+    reviendrait à choisir entre deux sources sans savoir laquelle a raison : sur Terra
+    Madre, c'est la source officielle qui se trompait, pas nous.
+
+    RIEN SUR LA PROSE, uniquement sur les DATES. Le brief du 12/08 réclamait aussi
+    « aucun fait qui ne figure pas dans la source » ; appliqué à la fiche 2265, il aurait
+    supprimé une foire équine, un défilé de carrosses et un feu d'artifice, tous les trois
+    écrits mot pour mot dans notre matière. On confronte ce qui est comparable.
+
+    Rend None quand aucune page officielle n'a été lue — et ce None se COMPTE (voir le log
+    de l'appelant) : sans lui, « 0 contradiction » ne dirait pas s'il vient de fiches
+    saines ou de pages qu'on n'a pas su joindre.
+    """
+    texte = _texte_officiel(official_pages)
+    if not texte.strip():
+        return None
+    from utils import confronter as _conf
+    # (b) DÉSACTIVÉ ICI, et ce n'est pas un oubli : `statut_source` interroge l'URL avec
+    # son propre User-Agent, alors que tout le reste du dépôt utilise un UA de NAVIGATEUR
+    # parce que « beaucoup de sites (WAF/CDN) renvoient 403/404 à un robot déclaré »
+    # (dates._UA). Un 403 de pare-feu deviendrait « source absente », c'est-à-dire
+    # exactement la faute de la règle 1 transposée aux sources : conclure à la mort d'une
+    # chose qu'on n'a pas su joindre. La mesure de ce contrôle se fait à part, par
+    # `scripts.audit_confrontation --urls`, où personne ne risque de le prendre pour un
+    # verdict.
+    return _conf.confronter(ev, texte, verifier_url=False)
+
+
+def verser_confrontation(result: dict, constat: dict | None) -> dict:
+    """Verse le constat dans le résultat d'enrichissement. Modifie `result` sur place.
+
+    DEUX DESTINATIONS, ET UNE SEULE EST UNE FILE :
+
+      • `enrich_data.confrontation` reçoit TOUT — y compris les muets et les ambigus.
+        C'est la mémoire : elle permet de rejouer une règle des mois plus tard sans
+        retélécharger la page, et de distinguer « 0 contradiction » de « 0 page lue » ;
+      • `a_verifier` ne reçoit QUE `motifs`, c'est-à-dire les verdicts qui ont un geste au
+        bout. Avant d'ajouter une ligne à une file, se demander ce que le lecteur en FERA
+        (règle 6) : sur les 454 points du 2026-08-11, 315 n'étaient que les silences de la
+        source, et le seul qui comptait s'y noyait.
+
+    Les points de l'agent sont CONSERVÉS et la confrontation s'ajoute derrière : c'est
+    l'agent qui a lu la matière en entier, ce contrôle-ci ne regarde que des dates.
+    """
+    if constat is None:
+        return result
+    result["confrontation"] = constat
+    if constat.get("a_lire"):
+        dej = result.get("a_verifier")
+        dej = [dej] if isinstance(dej, str) else (list(dej) if isinstance(dej, list) else [])
+        result["a_verifier"] = dej + [
+            f"Date : {m} (page officielle relue à l'enrichissement)"
+            for m in constat["motifs"]]
+    return result
+
+
+def _parse_day(s: str) -> "date | None":
+    """Parse une date ISO tolérante (garde les 10 premiers caractères). None si illisible."""
+    try:
+        return date.fromisoformat((s or "").strip()[:10])
+    except ValueError:
+        return None
+
+
+def _dates_hint(ev: dict) -> str:
+    """Dates réelles de l'événement pour le prompt, AVEC LE STATUT calculé par rapport à
+    AUJOURD'HUI (déterministe). Le modèle ne connaît pas la date du jour : sans ça, il
+    annonce au futur (« à venir », « billetterie pas encore publiée ») un événement déjà
+    commencé. On lui impose le cadre temporel."""
+    s = (ev.get("date_event_start") or "").strip()
+    e = (ev.get("date_event_end") or "").strip()
+    today = datetime.now().date()
+    ds, de = _parse_day(s), _parse_day(e)
+    start_d, end_d = ds, (de or ds)
+    plage = f"du {s} au {e}" if (s and e and s != e) else (s or (f"jusqu'au {e}" if e else ""))
+    now_str = today.isoformat()
+    if start_d and end_d:
+        if today < start_d:
+            return (f"{plage or s} — À VENIR (nous sommes le {now_str}). Écris au futur proche, "
+                    "sans inventer d'infos non encore publiées.")
+        if today > end_d:
+            # « parle au passé » : c'est cette phrase, ici, qui a produit l'article de
+            # Stefano Mancuso — « est intervenu jeudi 23 juillet », « il a défendu ». Elle
+            # est supprimée. Un agenda ANNONCE ; il ne raconte pas ce qui a eu lieu, c'est
+            # le métier d'un autre média. La sélection ci-dessus ne devrait plus laisser
+            # passer une fiche terminée ; ce message est le filet pour l'événement qui se
+            # termine PENDANT le run.
+            return (f"{plage or e} — TERMINÉ depuis le {end_d.isoformat()} (nous sommes le "
+                    f"{now_str}). Cette fiche n'aurait pas dû arriver jusqu'à toi. N'écris "
+                    "SURTOUT PAS de compte rendu (« il est intervenu », « il a défendu ») : "
+                    "Agenda Sabauda annonce, il ne raconte pas. Mets \"confiance\": \"faible\" "
+                    "et signale-le dans \"a_verifier\".")
+        return (f"{plage or e} — EN COURS aujourd'hui {now_str} (commencé le "
+                f"{start_d.isoformat()}, se termine le {end_d.isoformat()}). Écris au PRÉSENT "
+                "« en cours jusqu'au … » ; n'écris JAMAIS « à venir », « prochainement », ni "
+                "que le programme ou la billetterie « n'est pas encore » publié : l'événement "
+                "a commencé.")
+    # Dates non exploitables : filet minimal.
+    return plage or ev.get("date_start") or "à confirmer"
+
+
+def _final_text(message) -> str:
+    """Concatène les blocs texte de la réponse (en ignorant les blocs d'outil web)."""
+    out = []
+    for block in message.content:
+        if getattr(block, "type", None) == "text":
+            out.append(block.text)
+    return "\n".join(out)
+
+
+def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
+    """Décide le PALIER (court/long) et le MODÈLE pour un événement (CHARTE §3).
+
+    - mode "auto" (défaut) : le SCORE décide — ≥ LONG_MIN_SCORE → LONG, sinon COURT ;
+      "court"/"long" forcent ; "off" est géré en amont.
+    - modèle : Haiku PARTOUT par défaut (économique). Pour donner aux PHARES un
+      modèle supérieur : ENRICH_LONG_MODEL=claude-sonnet-5. ANTHROPIC_MODEL_ENRICH
+      force un modèle unique pour tout (voir plus bas)."""
+    from utils import settings as pipeline_settings
+    score = int(ev.get("llm_score") or 0)
+    if mode == "long":
+        court = False
+    elif mode == "court":
+        court = True
+    else:  # "auto"
+        court = score < LONG_MIN_SCORE
+    # Modèle : Haiku (éco) partout PAR DÉFAUT — on ne dépense pas tant que le prompt
+    # renforcé (gras/structure) n'a pas été jugé insuffisant. Pour offrir aux PHARES
+    # (long) un modèle supérieur : ENRICH_LONG_MODEL=claude-sonnet-5. ANTHROPIC_MODEL_ENRICH
+    # force un modèle UNIQUE pour tout (test / contrôle de coût).
+    forced = os.getenv("ANTHROPIC_MODEL_ENRICH", "").strip()
+    long_model = os.getenv("ENRICH_LONG_MODEL", "").strip() or pipeline_settings.model_eco()
+    model = forced or (pipeline_settings.model_eco() if court else long_model)
+    return court, model
+
+
+def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: str,
+                 court: bool, extra_task: str = "", allow_web: bool = True,
+                 web_domains: "list | None" = None):
+    """Un appel agentique (recherche web → rédaction). Gère pause_turn + API_ERROR.
+    `court`/`model` sont décidés par l'appelant via _tier_model. `extra_task` : consigne
+    supplémentaire ajoutée en fin de prompt (ex. retour de l'agent persona lecteur pour une
+    révision). `allow_web` : autorise la recherche web (coupée quand on a déjà la matière
+    officielle — la source officielle fait foi, le web n'est qu'un secours).
+    `web_domains` : RESTREINT la recherche à ces domaines (le site officiel) — la révision
+    peut alors creuser le site officiel, jamais le web ouvert (règle Franck)."""
+    from utils.voix import voix_block
+    from utils import settings as pipeline_settings  # COURT_MAX_TOKENS (mode court)
+    from utils import vocabulaire
+    _court = court
+    prompt = voix_block() + ENRICH_PROMPT.format(
+        title=ev.get("title", ""),
+        dates=_dates_hint(ev),
+        lieu=ev.get("lieu") or ev.get("ville") or "—",
+        territoire=ev.get("territoire", ""),
+        organisateur=ev.get("organisateur") or ev.get("source_name") or "—",
+        categorie=ev.get("llm_categorie") or "—",
+        material=material,
+        vocabulaire_interdit=vocabulaire.consigne_prompt("fr"),
+    )
+    if _court:
+        prompt += ("\n\n[MODE COURT — petit événement] Encore plus BREF (~120-200 mots, 1-2 "
+                   "paragraphes), SANS recherche web : appuie-toi uniquement sur les informations "
+                   "ci-dessus. Va droit à l'essentiel — MAIS garde les FAITS STRUCTURÉS OBLIGATOIRES "
+                   "(§5 bis) : le champ \"programme\" (liste : horaires, séances, line-up…), les tarifs "
+                   "et la langue sont OBLIGATOIRES dès que la matière les contient.")
+    if extra_task:
+        prompt += "\n\n" + extra_task
+    # MISE EN CACHE DU PROMPT (2026-08-11) — le plus gros levier de coût du dépôt, mesuré.
+    #
+    # Sur 14 jours : 138 $ d'API dont 121 $ (87,7 %) pour ce seul appel, et 29,9 M de
+    # jetons d'ENTRÉE contre 3,2 M de sortie. L'entrée fait donc les deux tiers de la
+    # facture — et elle est massivement RÉPÉTÉE : la boucle de l'outil web ci-dessous
+    # renvoie `messages` EN ENTIER à chaque tour, jusqu'à sept fois. Or ce prompt pèse à
+    # lui seul ~7 000 jetons (le gabarit fait 10 800 caractères, la matière jusqu'à
+    # 12 000) et il ne change pas d'un tour à l'autre : on le repayait plein tarif sept
+    # fois par fiche.
+    #
+    # Le marqueur `cache_control` fait payer l'écriture 1,25× au premier tour, puis les
+    # lectures 0,1× aux suivants. Rien d'autre ne change : même modèle, même prompt, même
+    # sortie — c'est une remise sur la répétition, pas un compromis sur la qualité.
+    # (Un prompt trop court pour être mis en cache est simplement ignoré, sans erreur.)
+    messages = [{"role": "user", "content": [
+        {"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]}]
+    try:
+        # Boucle de l'outil serveur : on relance tant que le tour est « en pause ».
+        # STREAMING : indispensable ici (recherche web + raisonnement = requêtes longues)
+        # — évite les read-timeouts silencieux. On logge chaque tour pour la traçabilité.
+        # Mode COURT (Agenda) : tokens réduits, PAS de recherche web ni thinking → bien
+        # moins cher. Mode LONG (Cultura Sabauda) : plein (web + thinking + 8000 tokens).
+        _max = pipeline_settings.COURT_MAX_TOKENS if _court else MAX_TOKENS
+        web_on = USE_WEB_SEARCH and allow_web and not _court
+        kwargs = dict(model=model, max_tokens=_max, messages=messages)
+        if web_on:
+            _tool = dict(WEB_SEARCH_TOOL)
+            if web_domains:
+                # Recherche BORNÉE au(x) domaine(s) officiel(s) : creuser le site officiel,
+                # jamais le web ouvert.
+                _tool["allowed_domains"] = [d for d in web_domains if d][:20]
+            kwargs["tools"] = [_tool]
+        if USE_THINKING and not _court:
+            kwargs["thinking"] = {"type": "adaptive"}
+        for turn in range(1, (MAX_WEB_SEARCHES + 4) if web_on else 2):
+            log.info("[%d] appel API tour %d… (web=%s, thinking=%s)",
+                     ev["id"], turn, web_on, USE_THINKING)
+            kwargs["messages"] = messages
+            with client.messages.stream(**kwargs) as stream:
+                message = stream.get_final_message()
+            # On n'utilise PAS record_message ici : il ne lit que `input_tokens`, et
+            # depuis la mise en cache les jetons relus n'y figurent plus. Le rapport de
+            # coûts verrait la facture « baisser » de jetons pourtant payés. On enregistre
+            # donc l'ÉQUIVALENT PLEIN TARIF (écriture 1,25× / lecture 0,1×) : le coût reste
+            # juste, et c'est le coût qu'on discute. La contrepartie est assumée et écrite
+            # dans scripts/audit_couts.py : la colonne « entrée » n'est plus un décompte de
+            # jetons réels pour ce poste, c'est un équivalent facturé.
+            _u = getattr(message, "usage", None)
+            _cw = getattr(_u, "cache_creation_input_tokens", 0) or 0
+            _cr = getattr(_u, "cache_read_input_tokens", 0) or 0
+            _stu = getattr(_u, "server_tool_use", None)
+            usage.record(model,
+                         (getattr(_u, "input_tokens", 0) or 0) + int(_cw * 1.25) + int(_cr * 0.1),
+                         getattr(_u, "output_tokens", 0) or 0,
+                         getattr(_stu, "web_search_requests", 0) or 0,
+                         label="enrichissement")
+            out_tok = getattr(_u, "output_tokens", "?")
+            log.info("[%d] tour %d : stop_reason=%s, %s tokens sortie, cache %s écrit / "
+                     "%s relu", ev["id"], turn, message.stop_reason, out_tok, _cw, _cr)
+            if message.stop_reason == "max_tokens":
+                log.warning("[%d] réponse coupée (max_tokens=%d) — augmente ENRICH_MAX_TOKENS",
+                            ev["id"], MAX_TOKENS)
+            if message.stop_reason == "pause_turn":
+                messages.append({"role": "assistant", "content": message.content})
+                continue
+            break
+    except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        was_flagged = usage.get_alert() is not None
+        usage.note_api_error(exc)
+        if not was_flagged and usage.get_alert() is not None:
+            slack.notify(f"🚨 *Enrichissement stoppé — problème API* : {str(exc)[:200]}")
+        log.error("[%d] Erreur API Anthropic : %s", ev["id"], exc)
+        return API_ERROR
+    except Exception as exc:  # tout autre échec (ne jamais rester silencieux)
+        log.error("[%d] Échec enrichissement inattendu : %s", ev["id"], exc)
+        return API_ERROR
+
+    raw = _final_text(message)
+    match = re.search(r"\{.*\}", raw, re.S)
+    if not match:
+        log.warning("Pas de JSON pour '%s'", ev.get("title", "")[:50])
+        return None
+    try:
+        return json.loads(match.group())
+    except json.JSONDecodeError as exc:
+        log.warning("JSON invalide pour '%s' : %s", ev.get("title", "")[:50], exc)
+        return None
+
+
+_CHECKS_DDL = """
+CREATE TABLE IF NOT EXISTS checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now')),
+    resolved_at TEXT
+)"""
+
+
+def _ensure_checks_table(conn: sqlite3.Connection) -> None:
+    """Table des points « à vérifier » (garde-fou humain sur les faits). Idempotent."""
+    conn.execute(_CHECKS_DDL)
+    conn.commit()
+
+
+def sync_checks(conn: sqlite3.Connection, event_id: int, labels) -> None:
+    """Resynchronise les points EN ATTENTE d'un événement avec les doutes de l'agent.
+    On retire les 'pending' existants (l'enrichissement fait foi) et on réinsère la
+    nouvelle liste ; les points déjà 'done' (vérifiés par l'humain) sont conservés.
+    Défensif : labels peut être None, une chaîne, ou une liste."""
+    _ensure_checks_table(conn)
+    if isinstance(labels, str):
+        labels = [labels]
+    clean = [str(x).strip() for x in labels if str(x).strip()] if isinstance(labels, list) else []
+    conn.execute("DELETE FROM checks WHERE event_id=? AND status='pending'", (event_id,))
+    for label in clean:
+        conn.execute("INSERT INTO checks (event_id, label) VALUES (?, ?)", (event_id, label))
+
+
+def build_article_md(data: dict) -> tuple[str, str]:
+    """Assemble (titre, markdown) depuis le JSON de l'agent (déterministe)."""
+    from utils.clean_text import polish_prose
+    art = data.get("article") or {}
+    titre = (art.get("titre") or "").strip()
+    # Corps et chapô : nettoyage déterministe en CODE (tiret cadratin, gras sur chiffres)
+    # car le modèle n'est pas fiable. Le rendu (build_post) l'applique aussi. Titres/
+    # programme laissés intacts.
+    chapo = polish_prose((art.get("chapo") or "").strip())
+    corps = polish_prose((art.get("corps") or "").strip())
+    encadre = (art.get("encadre") or "").strip()
+    # Programme (CHARTE §5 bis) : faits structurés en LISTE, y compris en mode court.
+    # Défensif : le champ peut être absent, None, vide, ou (erreur LLM) une chaîne.
+    prog = art.get("programme")
+    if isinstance(prog, str):
+        prog = [prog]
+    programme = [str(p).strip() for p in prog if str(p).strip()] if isinstance(prog, list) else []
+
+    md = []
+    if titre:
+        md.append(f"# {titre}")
+    if chapo:
+        # PAS de gras forcé sur le chapô : l'accroche Agenda porte dates/noms/chiffres,
+        # sur lesquels la charte interdit le gras. Le chapô se distingue par sa position.
+        md.append(chapo)
+    if corps:
+        md.append(corps)
+    if programme:
+        md.append("## Programme\n\n" + "\n".join(f"- {p}" for p in programme))
+    if encadre:
+        md.append("## En pratique\n\n" + encadre)
+    # PAS de bloc « ## Sources » dans le corps (Franck, 2026-07-31) : la fiche affiche
+    # déjà un bouton « Source officielle » unique (as_source_officielle_url, dérivé de
+    # url_source) — lister en plus toutes les pages consultées par l'agent (souvent
+    # plusieurs pages du même site : accueil, agenda, fiche artiste) fait doublon et
+    # dilue la source unique et vérifiable. `data["sources"]` reste utilisé pour le
+    # garde-fou de fiabilité (filter_official_sources) mais n'est plus rendu ici.
+    return titre, "\n\n".join(md).strip()
+
+
+def select_events(conn: sqlite3.Connection, ids: list[int],
+                  dfrom: str = "", dto: str = "") -> list[sqlite3.Row]:
+    if ids:
+        qmarks = ",".join("?" * len(ids))
+        rows = conn.execute(
+            f"SELECT * FROM events_raw WHERE id IN ({qmarks})", ids).fetchall()
+        # LA MÊME PROTECTION QUE CI-DESSOUS, ET POUR LA MÊME RAISON. La sélection
+        # automatique exclut les traductions parce qu'enrich écrit TOUJOURS en français :
+        # « enrichir » une fiche italienne remplace son article par un texte français
+        # fraîchement généré (constaté en vrai, id 4312, Niccolò Fabi). Passer des ids à
+        # la main court-circuitait cette exclusion — c'est-à-dire exactement le mode
+        # d'emploi qu'on suit pour réparer une fiche précise. La garde était donc absente
+        # du seul chemin où l'opérateur choisit lui-même, et où une liste recopiée depuis
+        # un audit peut contenir une jumelle sans qu'on l'ait voulu.
+        # On REFUSE au lieu d'avertir : la perte est silencieuse et irréversible, et
+        # l'original reste enrichissable par son propre id.
+        trad = [r for r in rows if (r["translation_of"] or 0)]
+        if trad:
+            for r in trad:
+                log.error("[%s] REFUS — fiche TRADUITE (%s, original id=%s). Enrich écrit "
+                          "en français et écraserait sa traduction. Enrichir l'original, "
+                          "puis relancer translate_events : %s",
+                          r["id"], r["translated_lang"] or "?", r["translation_of"],
+                          (r["title"] or "")[:55])
+            rows = [r for r in rows if not (r["translation_of"] or 0)]
+        return rows
+    # Événements retenus (≥ seuil), pas encore enrichis. Les doublons 'merged' sont
+    # exclus : leur matière est déjà agrégée vers le gagnant. Les fiches TRADUITES
+    # (translation_of renseigné) sont exclues aussi : enrich écrit TOUJOURS en français
+    # par défaut, donc les « enrichir » écraserait silencieusement la traduction déjà
+    # produite par translate_events.py (constaté en vrai : id 4312, l'italien de
+    # Niccolò Fabi effacé et remplacé par un article français fraîchement généré).
+    where = ["statut IN ('evaluated', 'published_sub')", "llm_score >= ?",
+             # ⚠️ 'error' ET 'api_error' ÉTAIENT DÉFINITIFS (corrigé le 2026-08-03).
+             # Vérifié par balayage : AUCUN script du dépôt n'efface jamais
+             # `enrich_status`. Cette condition était donc un cul-de-sac, et le plus
+             # injuste des cinq trouvés ce jour-là — `api_error` n'est PAS un défaut de
+             # la fiche. Il est posé sur une panne EXTÉRIEURE (limite de débit, réseau,
+             # crédit épuisé), et le code lève `stop_flag` dans la foulée : une seule
+             # coupure d'API condamnait donc DÉFINITIVEMENT tout le lot en vol, sans que
+             # rien ne le signale. La fiche était parfaite, l'API était en panne, la fiche
+             # ne serait jamais rédigée.
+             #
+             # DEUX DÉLAIS, parce que les deux causes n'ont rien à voir :
+             #   • 'api_error' — panne extérieure, déjà terminée quand le cron repasse le
+             #     lendemain. Aucun délai : le rythme quotidien du cron EST l'espacement.
+             #   • 'error' — le modèle a rendu quelque chose d'inexploitable sur CETTE
+             #     matière. Re-tenter demain re-paierait probablement le même échec ;
+             #     re-tenter après ENRICH_RETRY_DAYS laisse le temps à la matière de
+             #     changer (page mise à jour, doublon fusionné, description réparée).
+             # `enriched_at` porte déjà la date de la tentative — posée au moment même où
+             # l'échec est enregistré. Pas de colonne à ajouter.
+             "(enrich_status IS NULL OR enrich_status = '' OR enrich_status = 'api_error' "
+             " OR (enrich_status = 'error' AND (enriched_at IS NULL "
+             f"     OR enriched_at < datetime('now', '-{ENRICH_RETRY_DAYS} days'))))",
+             "(duplicate_of IS NULL)",
+             "COALESCE(translation_of,0)=0",
+             # ⚠️ DATE EXIGÉE EN AMONT — mesuré sur le lot du 2026-08-02 à 9h41 : DIX
+             # enrichissements (Sonnet, panel lecteurs, recherches web) pour UNE seule
+             # publication. Les neuf autres ont été retenues par le portillon, toutes
+             # sur la MÊME raison : « AUCUNE date ISO exploitable ». On payait donc la
+             # rédaction complète de neuf fiches qu'on savait d'avance impubliables.
+             #
+             # Le portillon de daily_batch et la porte qualité de publish_batch_as
+             # exigent tous deux `date_event_start`. Or l'enrichissement NE DATE PAS :
+             # c'est scripts/dates.py qui s'en charge, et il tourne AVANT (8h45).
+             # Une fiche encore sans date à 9h30 n'en aura pas davantage après. La
+             # sélection est triée par score décroissant : exclure les non datées ne
+             # réduit pas le lot, elle le remplit avec des fiches réellement publiables.
+             #
+             # Rien n'est perdu : une fiche non datée reste candidate et repartira dès
+             # que dates.py lui aura trouvé une date (passe texte, page ou LLM, plus le
+             # --retry pour les impasses).
+             "COALESCE(date_event_start,'') <> ''",
+             # ⚠️ ET L'ÉVÉNEMENT DOIT ÊTRE DEVANT NOUS (2026-08-11). Franck, en lisant
+             # l'article de Stefano Mancuso au Fort de Bard : « on parle au passé.
+             # L'événement est déjà passé, on dit ce qui s'est fait. Ce n'est pas du tout
+             # ce que je veux pour Agenda Sabauda. » Il avait raison, et la cause n'était
+             # pas le modèle : la sélection n'excluait pas les événements terminés, et
+             # `_dates_hint` leur ordonnait alors « parle au passé ». Le modèle a obéi.
+             #
+             # Résultat : « Stefano Mancuso est intervenu jeudi 23 juillet », « il a
+             # défendu l'idée que… ». Du journalisme, publié sur un AGENDA. Or un agenda
+             # annonce ce qui va avoir lieu ; raconter ce qui a eu lieu est le métier d'un
+             # autre média (Nos Alpes). On payait en plus la rédaction complète d'un
+             # article que personne ne peut utiliser pour sortir de chez soi.
+             #
+             # Un récurrent n'a pas de date unique : il n'est jamais « passé » (règle 5).
+             "(COALESCE(recurring,0)=1 OR "
+             " COALESCE(NULLIF(date_event_end,''), date_event_start) >= date('now'))"]
+    params: list = [MIN_SCORE]
+    if dfrom and dto:  # circonscrit à la période de travail (chevauchement)
+        where.append("COALESCE(date_event_start,'') <= ? AND COALESCE(date_event_end,'') >= ?")
+        params += [dto, dfrom]
+    return conn.execute(
+        f"SELECT * FROM events_raw WHERE {' AND '.join(where)} "
+        "ORDER BY llm_score DESC, scrape_date DESC LIMIT ?",
+        (*params, BATCH_SIZE)).fetchall()
+
+
+# LA VERSION DU PANEL, ET POURQUOI CE N'EST PAS UN BOOLÉEN. La première marque valait
+# « fiche » : elle disait « nouveau panel », sans dire LEQUEL. Or le prompt a changé deux
+# fois dans la même nuit du 13/08 — le bloc d'infos pratiques, puis l'exclusion de la
+# distance et des manques de fiche. `--rejuger` a donc refusé de rouvrir des verdicts
+# rendus une demi-heure plus tôt par une version précédente, et il avait raison de son
+# point de vue : ils portaient la marque. Une provenance qui ne distingue pas les versions
+# successives d'un même instrument n'est qu'une demi-provenance.
+#
+# À INCRÉMENTER dès que le prompt du panel change de comportement — c'est ce qui permet à
+# `panel_rattrapage --rejuger` de rouvrir ce qui a été jugé par une version périmée, et
+# rien d'autre. Un verdict de la version COURANTE reste intouchable : le rejouer serait le
+# refus qui se rejoue à l'identique (règle 3).
+PANEL_VERSION = "2026-08-13-b"
+
+
+def _bloc_infos_pratiques(ev: dict) -> str:
+    """Ce que la fiche affiche À CÔTÉ de l'article — date, lieu, horaire, tarif.
+
+    POURQUOI IL A FALLU L'AJOUTER, mesuré le 2026-08-13 sur cinq fiches publiées. Le panel
+    ne recevait que le titre, la catégorie et le corps. Il jugeait donc un article amputé
+    de tout ce que le lecteur voit autour, et lui reprochait de ne pas répéter la fiche :
+
+      · 4628, la PLUS LONGUE des cinq (2 566 caractères), notée 2.0 — « dates précises
+        d'ouverture », « prix d'entrée et horaires de visite », « lieu exact et accès » ;
+      · 3735 — « aucune date précise », « aucun horaire », « c'est gratuit ? payant ? » ;
+      · 3797 — « horaires d'ouverture en août », « comment y aller en transport ».
+
+    Quatre « revise » sur cinq, et la quasi-totalité des reproches portait sur des faits
+    qui SONT sur la page, dans les métas `as_horaire`, `as_tarif`, la date TEC et le lieu
+    Venue. C'est la faute de la règle 6 refaite sur un jugement au lieu d'un compteur : on
+    demandait à quelqu'un de vérifier une information qu'on ne lui montrait pas.
+
+    Franck, le 2026-08-13 : « ça veut dire qu'on ne respecte pas ce qu'on s'est dit. Il
+    faut que ça passe par le panel des personas. » Donc on ne contourne pas le panel et on
+    ne renonce pas au rattrapage — on lui donne ce qui lui manquait pour juger.
+
+    Ce bloc n'INVENTE rien : il n'affiche que des champs déjà remplis. Un champ vide reste
+    absent, et son absence redevient alors un vrai reproche — c'est même le seul cas où
+    « il manque l'horaire » désigne quelque chose à faire."""
+    lignes = []
+    debut = (ev.get("date_event_start") or "").strip()[:10]
+    fin = (ev.get("date_event_end") or "").strip()[:10]
+    if debut:
+        lignes.append(f"date : {debut}" + (f" → {fin}" if fin and fin != debut else ""))
+    lieu = " · ".join(x for x in ((ev.get("lieu") or "").strip(),
+                                  (ev.get("ville") or "").strip()) if x)
+    if lieu:
+        lignes.append(f"lieu : {lieu}")
+    if (ev.get("horaire") or "").strip():
+        lignes.append(f"horaire : {ev['horaire'].strip()}")
+    prix = (ev.get("prix") or "").strip()
+    if prix:
+        lignes.append(f"tarif : {prix}")
+    if not lignes:
+        return ""
+    return ("CE QUE LA FICHE AFFICHE DÉJÀ À CÔTÉ DE L'ARTICLE (le lecteur l'a sous les "
+            "yeux — ne reproche PAS à l'article de ne pas le répéter) :\n"
+            + "\n".join(f"  · {l}" for l in lignes) + "\n"
+            # ET CE QUI N'Y EST PAS. Mesuré le 2026-08-13 : une fois la date et le lieu
+            # donnés, les personas ont cessé de les réclamer — et se sont rabattus sur
+            # l'horaire et le tarif, absents de la base. Le reproche est légitime, mais il
+            # ne vise pas l'article : aucune réécriture ne fera apparaître un horaire que
+            # la source ne publie pas. Le faire peser sur la note, c'est reprocher à
+            # quelqu'un un silence dont il n'est pas responsable — la file des 454
+            # « points à contrôler » du 11/08, refaite sur un jugement.
+            #
+            # Ces manques-là ont déjà leur file : `lister_a_completer`. Le persona peut
+            # les dire, ils sont utiles à lire ; ils ne doivent pas faire baisser la note.
+            "Un fait pratique ABSENT de cette liste manque à la FICHE, pas à l'article : "
+            "signale-le si tu veux, mais qu'il ne fasse pas baisser ta note.\n")
+
+
+def reader_review(article: dict, ev: dict, client, model: str,
+                  persona: dict | None = None, mode: str = "local") -> dict:
+    """AGENT PERSONA LECTEUR : lit l'article dans la peau d'UN persona (docs/personas/) et
+    renvoie son retour au rédacteur. `mode` : "local" (l'événement est dans SON territoire :
+    accès, pertinence quotidienne) ou "visite" (l'événement est dans une aire adjacente : le
+    persona juge si ça vaut un aller-retour / week-end). {} si l'appel échoue. Renvoie
+    {"persona": ..., "role": "local"|"visite", "interet": 0-5, "manques": [...],
+    "verdict": "ok"|"revise", "note": ...}."""
+    import re as _re
+    art = (article.get("article") or {}) if isinstance(article, dict) else {}
+    corps = (art.get("corps") or "")[:3000]
+    if not corps:
+        return {}
+    who = (persona or {}).get("text") or (
+        "Tu es un LECTEUR de l'agenda culturel Agenda Sabauda (PAS un rédacteur), pressé et "
+        "exigeant : tu veux apprendre quelque chose de concret sur CET événement.")
+    pname = (persona or {}).get("title") or "Lecteur"
+    mode_txt = (
+        "L'événement est dans TON territoire : juge s'il te PARLE, s'il t'apprend quelque "
+        "chose, s'il te donne envie. Tu peux dire que c'est loin de chez toi ou qu'un "
+        "détail pratique te manque — mais ces deux choses NE DOIVENT PAS FAIRE BAISSER TA "
+        "NOTE : ni la distance ni un horaire manquant ne sont le fait de l'article, et "
+        "aucune réécriture ne les changerait. Ta note mesure ce que l'article APPORTE."
+        if mode == "local" else
+        "ATTENTION : cet événement n'est PAS chez toi, il est dans une aire VOISINE de la "
+        "tienne. Tu ne juges donc PAS l'accès quotidien, mais la valeur de DÉPLACEMENT : "
+        "est-ce un assez bon motif pour faire l'aller-retour ou un week-end depuis chez toi ? "
+        "Qu'est-ce qui donnerait envie de faire la route ? Ne pénalise pas la simple distance "
+        "(elle est admise, tu es prêt à te déplacer si ça vaut le coup) : juge si l'article te "
+        "DONNE une vraie raison de venir.")
+    prompt = (
+        "Tu incarnes CE persona lecteur de l'agenda culturel Agenda Sabauda (tu n'es PAS un "
+        "rédacteur, tu es ce lecteur précis, avec ses attentes et ses agacements) :\n"
+        f"\"\"\"\n{who}\n\"\"\"\n\n"
+        "Lis ce preview d'événement et réponds franchement, DE TON POINT DE VUE : est-ce que "
+        "ça t'APPREND quelque chose d'utile et de concret sur CET événement, ou est-ce creux "
+        "(« festival au bord du lac, programmation à venir ») ? Un bon preview te donne envie "
+        "d'y aller ET t'apprend quelque chose.\n\n"
+        "JUGE LA SUBSTANCE SELON LE TYPE D'ÉVÉNEMENT, pas selon un modèle unique : la « tête "
+        "d'affiche » n'a de sens que pour un concert pop/variété. Pour un festival de musique "
+        "CLASSIQUE, la substance ce sont les œuvres, compositeurs, orchestres, solistes, "
+        "chefs, lieux ; pour une expo, les artistes et les œuvres ; pour un spectacle, la "
+        "pièce et la troupe ; pour une fête, le programme et les temps forts. Ne réclame pas "
+        "des noms « grand public » quand le genre n'en a pas : demande la substance de CE "
+        "genre-là.\n"
+        f"{mode_txt}\n\n"
+        f"TITRE : {art.get('titre') or ev.get('title')}\n"
+        f"CATÉGORIE : {ev.get('llm_categorie', '')}\n"
+        + _bloc_infos_pratiques(ev) +
+        f"ARTICLE :\n{corps}\n\n"
+        'Réponds en JSON STRICT : {"interet": <0-5, 0=creux 5=riche>, '
+        '"manques": ["<ce qui te manque VRAIMENT, selon TES attentes et le genre>"], '
+        '"verdict": "ok"|"revise", "note": "<1 phrase de conseil au rédacteur>"}. '
+        'verdict = "revise" seulement si l\'article est réellement creux pour TOI (interet <= 2) '
+        "ou s'il lui manque une substance qui EXISTE et qu'il aurait dû donner."
+    )
+    try:
+        msg = client.messages.create(model=model, max_tokens=400,
+                                     messages=[{"role": "user", "content": prompt}])
+    except Exception:  # noqa: BLE001 — non bloquant
+        return {}
+    # MESURÉ (2026-08-11). C'est l'appel le plus RÉPÉTÉ du pipeline : trois à quatre
+    # relectures par fiche (locaux + visiteurs), et le double quand le panel vote la
+    # révision — car le panel entier se rejoue sur l'article réécrit. Il envoie en outre
+    # le persona ENTIER à chaque fois (un fichier markdown complet). Il n'était pas
+    # compté du tout : impossible de dire ce que coûte le panel, donc impossible de
+    # décider s'il vaut son prix.
+    usage.record_message(model, msg, label="panel_lecteur")
+    raw = "".join(getattr(b, "text", "") for b in msg.content
+                  if getattr(b, "type", None) == "text")
+    m = _re.search(r"\{.*\}", raw, _re.S)
+    if not m:
+        return {}
+    try:
+        out = json.loads(m.group())
+    except (ValueError, TypeError):
+        return {}
+    if not isinstance(out, dict):
+        return {}
+    out["persona"] = pname
+    out["role"] = mode
+    return out
+
+
+def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
+    """Fait relire l'article par le panel de personas CIBLÉ SUR LE TERRITOIRE de l'événement
+    (un événement de Menton est jugé par des lecteurs de Nice, pas de Maurienne — sinon la
+    note mesure la distance, pas la qualité). Renvoie un verdict agrégé :
+    {"reviews": [...], "verdict": "ok"|"revise", "mean": <float>}. Révision si la MAJORITÉ
+    vote « revise ». {} si aucun persona (panel désactivé, non bloquant)."""
+    territoire = ev.get("territoire", "")
+    try:
+        from utils import personas as personas_mod
+        locaux = personas_mod.personas_for(territoire)
+        visiteurs = personas_mod.personas_visiting(territoire)
+    except Exception:  # noqa: BLE001 — non bloquant
+        locaux, visiteurs = [], []
+    if not locaux:
+        return {}
+    try:
+        cap = int(os.getenv("ENRICH_READER_PERSONAS", "0") or 0)
+    except ValueError:
+        cap = 0
+    if cap > 0:
+        locaux = locaux[:cap]
+    log.info("[%s] panel territoire=%s | locaux: %s | visiteurs: %s", ev.get("id"),
+             territoire or "?",
+             ", ".join(p["title"].split(",")[0] for p in locaux) or "—",
+             ", ".join(p["title"].split(",")[0] for p in visiteurs) or "—")
+
+    reviews = [r for r in (reader_review(article, ev, client, model, persona=p, mode="local")
+                           for p in locaux) if r]
+    visite_reviews = [r for r in (reader_review(article, ev, client, model, persona=p,
+                                                 mode="visite") for p in visiteurs) if r]
+    if not reviews:
+        return {}
+    # La NOTE et la décision de révision sont pilotées par les LOCAUX (le public premier) ;
+    # les visiteurs sont un signal complémentaire (« ça vaut le déplacement ? »).
+    votes = sum(1 for r in reviews if r.get("verdict") == "revise")
+    scores = [r["interet"] for r in reviews if isinstance(r.get("interet"), (int, float))]
+    mean = round(sum(scores) / len(scores), 1) if scores else None
+    vscores = [r["interet"] for r in visite_reviews if isinstance(r.get("interet"), (int, float))]
+    vmean = round(sum(vscores) / len(vscores), 1) if vscores else None
+    # Révision déclenchée par la NOTE des locaux, pas un demi-vote : un article correct
+    # (≥ seuil) ne doit pas subir une réécriture coûteuse. ENRICH_REVISE_UNDER (défaut 3).
+    try:
+        seuil = float(os.getenv("ENRICH_REVISE_UNDER", "3") or 3)
+    except ValueError:
+        seuil = 3.0
+    verdict = "revise" if (mean is not None and mean < seuil) else "ok"
+    # LA PROVENANCE, ET C'EST LE GARDE-FOU DU CHANGEMENT DU 13/08. Le panel voit désormais
+    # les infos pratiques de la fiche (cf. _bloc_infos_pratiques) : il ne juge donc plus
+    # tout à fait la même chose qu'avant. Sans marque, les verdicts d'avant et d'après
+    # cohabiteraient sous le même nom — la faute des deux compteurs homonymes, transposée
+    # à un jugement, et plus grave qu'elle : un chiffre faux se recompte, un jugement faux
+    # se croit. `contexte` absent = ancien instrument ; c'est aussi la CONDITION qui permet
+    # à panel_rattrapage --rejuger de rouvrir les anciens, et rien d'autre.
+    return {"reviews": reviews, "visite_reviews": visite_reviews,
+            "verdict": verdict, "mean": mean, "vmean": vmean, "votes": votes,
+            "version": PANEL_VERSION}
+
+
+def revise_article(result: dict, panel: dict, ev: dict, material: str,
+                   client, model: str, court: bool, allow_web: bool = True,
+                   web_domains: "list | None" = None):
+    """Réécrit l'article en tenant compte des retours DU PANEL de lecteurs. Renvoie le
+    nouveau result, ou l'ancien si la révision échoue. `web_domains` : la recherche de la
+    révision est restreinte au SITE OFFICIEL (jamais le web ouvert)."""
+    lignes = []
+    for r in (panel.get("reviews") or []) + (panel.get("visite_reviews") or []):
+        if r.get("verdict") != "revise":
+            continue
+        role = "visiteur" if r.get("role") == "visite" else "local"
+        lignes.append("- %s (%s, intérêt %s) : %s%s" % (
+            r.get("persona", "Lecteur"), role, r.get("interet"),
+            r.get("note") or "—",
+            (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else ""))
+    critique = "\n".join(lignes) or "Article jugé creux par le panel."
+    web_note = ("\nTu PEUX chercher les RÉPONSES PRÉCISES à ces manques (horaires, parcours, "
+                "points d'accès, gratuité…) — la recherche est RESTREINTE AU SITE OFFICIEL de "
+                "l'événement : creuse ses pages, rien d'autre."
+                if web_domains else "")
+    extra = ("[RETOURS DE LECTEURS sur ton brouillon précédent — CORRIGE-LE]\n" + critique +
+             web_note +
+             "\nRends l'article plus SUBSTANTIEL et CONCRET, avec les éléments propres AU TYPE "
+             "d'événement (classique : œuvres, compositeurs, orchestres, solistes, chefs, "
+             "lieux ; pop : têtes d'affiche ; expo : artistes et œuvres ; spectacle : pièce et "
+             "troupe), pris du programme de CETTE édition. Si CETTE édition n'a pas encore de "
+             "programme annoncé, dis-le honnêtement (« programmation à venir ») et ne cite "
+             "l'édition PRÉCÉDENTE qu'EXPLICITEMENT datée (« en 2026 : … »), jamais comme si "
+             "c'était la programmation à venir. N'INVENTE RIEN : si une info (nom, tarif, horaire) n'est pas "
+             "publiée, ne la fabrique pas — mais NE COMMENTE PAS non plus son absence "
+             "(« à ce stade, la matière ne précise pas… » est INTERDIT). Écris seulement les "
+             "faits certains, sans jamais parler de ce qui manque. Ne meuble pas : le lecteur "
+             "doit APPRENDRE quelque chose de réel.")
+    revised = enrich_event(ev, material, client, model, court, extra_task=extra,
+                           allow_web=allow_web, web_domains=web_domains)
+    return revised if (revised and revised is not API_ERROR) else result
+
+
+def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -> str:
+    """Traite UN événement de bout en bout (matière → rédaction → panel → score → écriture
+    DB), avec sa PROPRE connexion SQLite (WAL : plusieurs écrivains coexistent, cf.
+    scripts/scraper_events.init_db) — permet d'appeler cette fonction en parallèle sur
+    plusieurs événements (cf. main(), ThreadPoolExecutor). Renvoie 'done' | 'error' |
+    'api_error' | 'skip' | 'rejected'. `stop_flag` : threading.Event positionné par l'appelant dès
+    qu'un premier worker rencontre une erreur API — les autres workers EN COURS finissent
+    leur événement, mais un worker qui n'a pas encore commencé abandonne proprement (même
+    esprit que le `break` de l'ancienne boucle séquentielle : ne pas s'acharner si l'API
+    est en panne, sans pour autant perdre le travail déjà engagé)."""
+    if stop_flag.is_set():
+        return "skip"
+    ev = dict(event)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        # Bug 2026-07-31 : les ids explicites court-circuitent le pré-filtre de l'évaluateur
+        # (select_events ne filtre pas par statut quand des ids sont donnés) → même garde-fou ici.
+        reason = non_event_reason(ev.get("title", ""), ev.get("description", ""))
+        if reason:
+            conn.execute(
+                "UPDATE events_raw SET statut='rejected', llm_justification=? WHERE id=?",
+                ("Article de presse, pas un événement : %s." % reason, ev["id"]))
+            conn.commit()
+            log.warning("[%d] non-événement (%s) → rejeté sans appel API | %s",
+                        ev["id"], reason, ev.get("title", "")[:50])
+            return "rejected"
+        # Vignette de secours : si le flux n'a pas d'image, prendre l'og:image de la
+        # page source (déterministe) — SAUF si la source est un agrégateur (son og:image est
+        # une carte sociale/logo générique, pas l'événement — M4).
+        from urllib.parse import urlparse as _up0
+        _src_host = _up0(ev.get("url_source", "") or "").netloc.lower()
+        _src_agg = any(b in _src_host for b in _NOT_OFFICIAL)
+        if not (ev.get("url_image") or "").strip() and not _src_agg:
+            og = fetch_og_image(ev.get("url_source", ""))
+            if og:
+                conn.execute("UPDATE events_raw SET url_image=? WHERE id=?", (og, ev["id"]))
+                conn.commit()
+                ev["url_image"] = og
+                log.info("[%d] image récupérée (og:image) : %s", ev["id"], og[:80])
+        material, official_pages = gather_material(conn, ev, client=client)
+        # LA PAGE OFFICIELLE EST EN MÉMOIRE MAINTENANT, et à aucun autre moment de la
+        # chaîne. On la confronte tout de suite (voir `_confrontation`). Le constat est
+        # gardé de côté et attaché au résultat plus bas ; il ne conditionne RIEN de ce qui
+        # suit — ni la rédaction, ni le panel, ni la publication.
+        constat = _confrontation(ev, official_pages)
+        if constat is None:
+            # Un zéro doit dire combien de cas se sont présentés (CLAUDE.md, journal des
+            # erreurs). Sans cette ligne, un run sans contradiction ressemble à un run où
+            # toutes les pages étaient lisibles.
+            log.info("[%d] confrontation : aucune page officielle lue — rien à confronter",
+                     ev["id"])
+        else:
+            log.info("[%d] confrontation : bornes=%s (%d plage(s) lue(s)), année=%s%s",
+                     ev["id"], constat["bornes"]["verdict"], constat["bornes"]["plages"],
+                     constat["annee"]["verdict"],
+                     " → À LIRE" if constat["a_lire"] else "")
+        # AFFICHES OFFICIELLES : depuis les pages presse lues, on récupère l'affiche de
+        # l'événement en portrait ET paysage (visuels HD), qui priment sur toute autre image.
+        try:
+            vis = extract_press_visuals(official_pages, title=ev.get("title", ""))
+        except Exception as exc:  # noqa: BLE001 — non bloquant
+            log.warning("[%d] extraction affiches : %s", ev["id"], type(exc).__name__)
+            vis = {}
+        # On n'écrit une affiche que si on en TROUVE une ce run (NON destructif : ne jamais
+        # effacer une affiche déjà posée, surtout manuelle — cf. verrou manuel au back-office).
+        # Le filtre affiche-grade (G1) garantit qu'on ne pose plus de fausse affiche.
+        if vis:
+            sets, params = [], []
+            if vis.get("portrait"):
+                sets.append("url_image_portrait=?"); params.append(vis["portrait"])
+            if vis.get("wide"):
+                sets.append("url_image_wide=?"); params.append(vis["wide"])
+            # Image de carte : l'affiche du DOSSIER DE PRESSE prime et REMPLACE (source
+            # officielle qui fait foi) ; sinon on ne pose que si aucune image n'existe.
+            if vis.get("poster") and (vis.get("from_kit") or not (ev.get("url_image") or "").strip()):
+                sets.append("url_image=?"); params.append(vis["poster"])
+                ev["url_image"] = vis["poster"]
+            if sets:
+                conn.execute(f"UPDATE events_raw SET {', '.join(sets)} WHERE id=?",
+                             (*params, ev["id"]))
+                conn.commit()
+                log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
+                         bool(vis.get("portrait")), bool(vis.get("wide")))
+        has_official = ("[PAGE PRESSE/PROGRAMME" in material or "[DOSSIER" in material)
+        # MÉMORISER l'URL officielle dès qu'une résolution a payé (pages presse trouvées) :
+        # les runs suivants la liront directement → déterministe, plus de recherche web ni
+        # de variante de domaine aléatoire (musique-menton.fr vs festival-musique-menton.fr).
+        if has_official and not (ev.get("url_officiel") or "").strip() and official_pages:
+            from urllib.parse import urlparse as _up
+            _p = _up(official_pages[0]["url"])
+            _agg = any(b in _p.netloc.lower() for b in _NOT_OFFICIAL)
+            # PERTINENCE avant mémorisation : les pages lues doivent MENTIONNER l'événement
+            # (au moins un mot significatif du titre). Sinon le résolveur a rendu un site
+            # générique (nice.fr et ses pages « conseil municipal » pour la Farandole) —
+            # on garde la matière du run, mais on ne fige RIEN.
+            _joined = _fold(" ".join((p.get("html") or "")[:20000] for p in official_pages))
+            _toks = _event_tokens(ev.get("title", ""))
+            _relevant = (not _toks) or any(t in _joined for t in _toks)
+            if not _relevant:
+                log.info("[%d] URL officielle NON mémorisée (%s : pages sans mention du titre)",
+                         ev["id"], _p.netloc)
+            elif _p.scheme and _p.netloc and not _agg:  # jamais mémoriser un agrégateur (G2)
+                base = f"{_p.scheme}://{_p.netloc}/"
+                conn.execute("UPDATE events_raw SET url_officiel=? WHERE id=?", (base, ev["id"]))
+                conn.commit()
+                ev["url_officiel"] = base
+                log.info("[%d] URL officielle mémorisée : %s", ev["id"], base)
+        # PORTILLON C4 — on ne rédige PAS depuis le titre seul quand la seule matière
+        # disponible était fausse. Écarter la description polluée (voir _materiau_pollue)
+        # peut ne rien laisser du tout : ni dossier de presse, ni page officielle lisible,
+        # ni signal de flux. Rédiger là-dessus, c'est demander au modèle d'INVENTER un
+        # article à partir d'un titre — exactement le mécanisme qui a produit WP#6798, à
+        # ceci près qu'on le ferait sciemment.
+        # Volontairement ÉTROIT : on ne bloque pas toute fiche sans matière (il en existe de
+        # légitimes, que la page officielle rattrape au run suivant), seulement celles dont
+        # la matière propre a été ÉCARTÉE pour pollution. Le cas est nommé, pas deviné.
+        # Le statut posé est 'matiere_polluee' et NON 'error' : ce n'est pas une panne, et
+        # scripts/repair_polluted_descriptions.py sait quoi en faire.
+        if material == AUCUNE_MATIERE and _materiau_pollue(ev.get("description"),
+                                                           ev.get("url_source")):
+            conn.execute(
+                "UPDATE events_raw SET enrich_status='matiere_polluee', "
+                "enriched_at=datetime('now') WHERE id=?", (ev["id"],))
+            conn.commit()
+            log.warning("[%d] RÉDACTION REFUSÉE — la description propre est un item Google "
+                        "News et aucune autre matière n'a pu être lue. Rédiger reviendrait "
+                        "à inventer. → scripts/repair_polluted_descriptions.py | %s",
+                        ev["id"], (ev.get("title") or "")[:50])
+            return "matiere_polluee"
+        court, model = _tier_model(ev, mode)   # palier + modèle PAR événement
+        # SCORE AVANT : si on a la matière officielle (dossier de presse), on POUSSE l'article
+        # COMPLET (complétion maximale) même si le llm_score l'aurait mis en court — on a tout
+        # pour bien faire. (En mode auto seulement ; court/long forcés restent respectés.)
+        if has_official and court and mode == "auto":
+            court = False
+            model = os.getenv("ENRICH_LONG_MODEL", "").strip() or pipeline_settings.model_qualite()
+            log.info("[%d] matière officielle → article COMPLET (complétion max)", ev["id"])
+        # La source officielle fait foi : si on a déjà la matière officielle, on COUPE la
+        # recherche web (redondante, lente, source de troncature) — secours seulement sinon.
+        allow_web = not has_official
+        log.info("[%d] palier=%s modèle=%s (score=%s) | matière officielle=%s → web=%s",
+                 ev["id"], "court" if court else "long", model, ev.get("llm_score"),
+                 has_official, USE_WEB_SEARCH and allow_web and not court)
+        result = enrich_event(ev, material, client, model, court, allow_web=allow_web)
+        if result is API_ERROR:
+            # Trace visible côté back-office (sinon l'utilisateur ne voit « rien »).
+            conn.execute(
+                "UPDATE events_raw SET enrich_status='api_error', "
+                "enriched_at=datetime('now'), enrich_model=? WHERE id=?", (model, ev["id"]))
+            conn.commit()
+            log.warning("[%d] erreur API — marqué 'api_error'", ev["id"])
+            stop_flag.set()
+            return "api_error"
+        if result is None:
+            conn.execute(
+                "UPDATE events_raw SET enrich_status='error', "
+                "enriched_at=datetime('now'), enrich_model=? WHERE id=?",
+                (model, ev["id"]))
+            conn.commit()
+            return "error"
+        # GARDE-FOU SOURCES (charte §8) : ne garde, dans « sources », que des URLs au domaine
+        # VÉRIFIÉ officiel — le prompt seul ne suffit pas (cas vécu : guidatorino.com, un
+        # guide touristique tiers, cité comme source d'un événement dont il n'est ni
+        # l'organisateur ni une institution).
+        if isinstance(result, dict) and result.get("sources"):
+            kept, dropped = filter_official_sources(result.get("sources"))
+            if dropped:
+                log.warning("[%d] source(s) écartée(s) (domaine non institutionnel vérifié) : %s",
+                            ev["id"], ", ".join(dropped))
+            result["sources"] = kept
+        # PANEL LECTEURS : sur les articles développés (palier long), tout le panel de
+        # personas (docs/personas/) relit le brouillon. Si la majorité le juge creux (pas de
+        # têtes d'affiche, pas de temps forts), on demande UNE révision au rédacteur. Les
+        # retours sont stockés pour le back-office. Non bloquant, long uniquement (le court
+        # est un catalogue).
+        if not court and os.getenv("ENRICH_READER_REVIEW", "1") == "1":
+            review_model = pipeline_settings.model_eco()
+            panel = reader_panel(result, ev, client, review_model)
+            # Statut de révision (back-office + WP, cf. as_panel_revision) : 'aucune' (le
+            # panel a validé direct) · 'appliquée' (révisé ET la révision a gagné) ·
+            # 'tentée' (révisé mais le brouillon initial notait mieux — révision écartée).
+            revision = "aucune"
+            if panel.get("verdict") == "revise":
+                log.info("[%d] panel lecteurs: moyenne=%s, %s vote(s) révision → révision",
+                         ev["id"], panel.get("mean"), panel.get("votes"))
+                # On GARDE LA MEILLEURE version : une révision peut faire PIRE (matière
+                # limitée → le rédacteur sur-corrige). Si le panel note la révision plus
+                # bas que le brouillon initial, on revient au brouillon initial.
+                first_result, first_panel = result, panel
+                # La révision peut CREUSER LE SITE OFFICIEL (règle Franck : jamais le web
+                # ouvert) : les manques du panel (horaires, parcours, accès, gratuité…) sont
+                # des faits absents de la matière — la recherche est RESTREINTE aux domaines
+                # officiels connus de l'événement. Sans domaine officiel, comportement inchangé.
+                _off_doms = sorted({_strip_www(_up0(p.get("url") or "").netloc)
+                                    for p in (official_pages or [])} |
+                                   {_strip_www(_up0(ev.get("url_officiel") or "").netloc)})
+                _off_doms = [d for d in _off_doms if d]
+                revised = revise_article(result, panel, ev, material, client, model, court,
+                                         allow_web=(allow_web or bool(_off_doms)),
+                                         web_domains=_off_doms or None)
+                rev_panel = reader_panel(revised, ev, client, review_model)
+                fm = first_panel.get("mean") or 0
+                rm = (rev_panel or {}).get("mean") or 0
+                if rev_panel and rm >= fm:
+                    result, panel = revised, rev_panel
+                    revision = "appliquée"
+                else:
+                    result, panel = first_result, first_panel
+                    revision = "tentée"
+                    log.info("[%d] révision MOINS bien notée (%.1f < %.1f) → on garde le "
+                             "brouillon initial", ev["id"], rm, fm)
+            if panel:
+                panel["revision"] = revision
+                result["reader_panel"] = panel
+        # STATUT DE SOURCE (back-office) : l'article a-t-il été écrit depuis la matière
+        # OFFICIELLE (page presse/programme du site officiel) ou en repli sur la recherche
+        # web ? On stocke le fait + les pages officielles lues, pour l'afficher au preview.
+        if isinstance(result, dict):
+            _has_aff = bool((vis or {}).get("portrait") or (vis or {}).get("wide"))
+            result["source"] = {
+                "officielle": bool(has_official),
+                "pages": [p.get("url") for p in (official_pages or []) if p.get("url")],
+                "web": bool(USE_WEB_SEARCH and allow_web and not court),
+                # Statut du dossier de presse (public / accréditation / sans affiche / absent)
+                # pour que Franck sache s'il faut demander l'accès.
+                "dossier": press_kit_status(official_pages, _has_aff),
+            }
+            # SCORE HOME (curation de la home Agenda) : la qualité éditoriale domine, mais
+            # une source directe (dossier de presse) + les visuels officiels prouvent qu'on
+            # a l'info ET l'image, sans deviner → ça monte la fiche. 0-10.
+            pm = (result.get("reader_panel") or {}).get("mean")
+            has_p = bool(vis.get("portrait")) if isinstance(vis, dict) else False
+            has_w = bool(vis.get("wide")) if isinstance(vis, dict) else False
+            # PHOTO OFFICIELLE (règle Franck) : une photo qui vient du SITE OFFICIEL (ex. la
+            # photo Cazzullo de la page événement du Forte di Bard) vaut mise en avant même
+            # sans affiche — la note reste haute. On compare le domaine de url_image aux
+            # domaines officiels lus (pages + url_officiel).
+            photo_off = False
+            _img_host = _strip_www(_up0(ev.get("url_image") or "").netloc)
+            if _img_host:
+                _off_hosts = {_strip_www(_up0(p.get("url") or "").netloc)
+                              for p in (official_pages or [])}
+                _off_hosts.add(_strip_www(_up0(ev.get("url_officiel") or "").netloc))
+                photo_off = _img_host in {h for h in _off_hosts if h}
+            affiches = ("deux" if (has_p and has_w) else
+                        "une" if (has_p or has_w) else
+                        "photo officielle" if photo_off else "aucune")
+            q = (pm or 0) / 5 * 6                    # qualité éditoriale (panel local) : 0-6
+            src = 2.5 if has_official else 0.0        # source directe fiable : +2,5
+            aff = (1.5 if (has_p and has_w)           # visuels : affiches > photo officielle
+                   else 0.75 if (has_p or has_w or photo_off) else 0.0)
+            hs = round(min(10.0, q + src + aff), 1)
+            # PLACEMENT : où cette fiche PEUT aller sur le site et en newsletter, déduit du
+            # score et des visuels. Affiche officielle OU photo du site officiel → mise en
+            # avant visuelle possible ; le HERO reste réservé au combo d'affiches.
+            has_visu = has_p or has_w or photo_off
+            if hs >= 8 and has_p and has_w:
+                place = ("À la une (hero home) · En évidence · newsletter AVEC visuel — "
+                         "combo complet")
+            elif hs >= 6 and has_visu:
+                place = ("En évidence (home) · sélections · newsletter AVEC visuel"
+                         + (" (photo du site officiel)" if (photo_off and not (has_p or has_w)) else ""))
+            elif hs >= 6:
+                place = ("sélections & listes (texte) · newsletter en brève SANS visuel — "
+                         "pas de mise en avant home sans affiche ni photo officielle")
+            else:
+                place = "catalogue / listes seulement (agenda, archives)"
+            result["home"] = {"score": hs, "panel": pm,
+                              "source_officielle": bool(has_official),
+                              "affiches": affiches, "placement": place}
+            log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
+                     ev["id"], hs, pm, has_official, affiches, place)
+        verser_confrontation(result, constat)
+        # SIGLES développés à leur première mention (Franck, 2026-08-18 puis 31/08 : « ça
+        # doit être une consigne dans le ton de rédaction, comme le vocabulaire déjà »).
+        # DÉTERMINISTE, en plus de la consigne du prompt ci-dessus : un rédacteur LLM peut
+        # oublier une instruction de FORMATAGE au milieu d'un prompt long — utils.acronymes
+        # ne peut pas l'oublier, elle n'agit que sur le dictionnaire confirmé, jamais
+        # n'invente, et est idempotente (deja_developpe() : rien ne s'empile). Décision de
+        # Franck le 31/08 : APPLIQUÉ SEULEMENT ICI (rédaction), jamais en rattrapage sur
+        # le stock déjà publié — conform_articles.py n'y touche pas exprès.
+        _art0 = result.get("article")
+        if isinstance(_art0, dict):
+            # UN SEUL contexte « déjà développé », partagé dans l'ORDRE DE LECTURE réel
+            # (titre → chapô → corps → encadré → programme) : sans ça, un sigle présent
+            # dans le titre ET le corps serait développé deux fois — une fois chacun,
+            # puisque chaque champ est un texte séparé pour `developper()`.
+            _sigles_vus: set[str] = set()
+            for _champ in ("titre", "chapo", "corps", "encadre"):
+                if isinstance(_art0.get(_champ), str) and _art0[_champ]:
+                    _art0[_champ] = acronymes.developper(_art0[_champ], "fr", _sigles_vus)
+            _prog0 = _art0.get("programme")
+            if isinstance(_prog0, list):
+                _art0["programme"] = [
+                    acronymes.developper(str(p), "fr", _sigles_vus) if isinstance(p, str)
+                    else p for p in _prog0]
+        title, md = build_article_md(result)
+        # Heure de DÉBUT réelle (déterministe, zéro coût — scripts.dates.extract_time) :
+        # l'agent écrit souvent l'heure en PROSE (« à 21h30 ») sans qu'elle soit jamais
+        # structurée ailleurs → cs-publish.php force sinon une fiche « journée entière »
+        # (00:00-23:59) qui contredit le Schema.org Event affiché. Ordre de priorité :
+        # infos_pratiques et l'encadré (factuels) avant le programme et la prose.
+        art = result.get("article") or {}
+        _prog = art.get("programme")
+        _prog_text = " ".join(str(p) for p in _prog) if isinstance(_prog, list) else str(_prog or "")
+        time_start = ""
+        for _txt in (result.get("infos_pratiques", ""), art.get("encadre", ""),
+                    _prog_text, art.get("chapo", ""), art.get("corps", "")):
+            time_start = extract_time(_txt or "")
+            if time_start:
+                break
+        conn.execute("""
+        UPDATE events_raw SET
+            enrich_status='enriched', enriched_at=datetime('now'), enrich_model=?,
+            enrich_data=?, article_title=?, article_md=?, home_score=?,
+            time_start=COALESCE(NULLIF(?,''), time_start)
+        WHERE id=?
+        """, (model, json.dumps(result, ensure_ascii=False), title, md,
+              (result.get("home") or {}).get("score"), time_start, ev["id"]))
+        conn.commit()
+        # File « À vérifier » : les doutes factuels signalés par l'agent sont poussés au
+        # back-office (garde-fou humain). On resynchronise les points EN ATTENTE (les
+        # points déjà « vérifiés » sont conservés).
+        labels = result.get("a_verifier")
+        sync_checks(conn, ev["id"], labels)
+        conn.commit()
+        log.info("[%d] enrichi (confiance=%s) | %d à vérifier | %s", ev["id"],
+                 result.get("confiance", "?"), len(labels or []), ev.get("title", "")[:60])
+        return "done"
+    finally:
+        conn.close()
+
+
+def main(argv: list[str]) -> int:
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        log.error("ANTHROPIC_API_KEY non définie")
+        return 1
+    # Kill-switch cron : un run précédent a déjà signalé un souci API (quota/crédit/
+    # facturation) il y a moins de 7 jours → inutile de retenter, on économise l'appel.
+    # Bug 2026-07-31 corrigé ici : bloquer purement et simplement rendait l'alerte
+    # increvable (elle ne se lève qu'au PROCHAIN appel réussi — or ce kill-switch empêche
+    # justement tout appel, donc plus aucune chance de la lever avant 7 jours). Le message
+    # Anthropic donne l'heure de reset exacte ("regain access on AAAA-MM-JJ at HH:MM UTC") :
+    # on la respecte si elle est passée, sinon on bloque comme avant.
+    alert = usage.get_alert()
+    if alert and not _alert_expired(alert.get("message") or ""):
+        log.warning("Alerte API active depuis %s (%s) — rien lancé, réessaie plus tard.",
+                    alert.get("ts", "?"), (alert.get("message") or "")[:150])
+        return 0
+    if alert:
+        log.info("Alerte API dépassée (heure de reset annoncée passée) — nouvelle tentative.")
+    # Réglages back-office : on/off + court/long, et profil de modèle.
+    from utils import settings as pipeline_settings
+    if not pipeline_settings.enrich_enabled():
+        log.info("Enrichissement DÉSACTIVÉ (réglage back-office). Rien à faire.")
+        return 0
+    mode = pipeline_settings.enrich_mode()   # off/auto/court/long — le palier est décidé par événement
+    ids = [int(a) for a in argv if a.isdigit()]
+    dfrom = dto = ""
+    if "--from" in argv:
+        dfrom = argv[argv.index("--from") + 1] if argv.index("--from") + 1 < len(argv) else ""
+    if "--to" in argv:
+        dto = argv[argv.index("--to") + 1] if argv.index("--to") + 1 < len(argv) else ""
+    cap = 0
+    if "--cap" in argv:
+        try:
+            cap = int(argv[argv.index("--cap") + 1])
+        except (IndexError, ValueError):
+            cap = 0
+    # Timeout dur : une requête (même longue avec recherche web) ne doit jamais
+    # pendre indéfiniment — au pire elle échoue proprement et c'est loggé.
+    client = anthropic.Anthropic(api_key=api_key, timeout=180.0)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    init_db(conn)
+    _ensure_checks_table(conn)
+
+    events = select_events(conn, ids, dfrom, dto)
+    # GARÉES, PAS OUBLIÉES. Une fiche refusée pour matière polluée sort de `select_events`
+    # (qui n'accepte que `enrich_status` vide) et ne réapparaît donc dans AUCUN bilan de
+    # run — le silence exact qui a laissé 823 fiches dormir dans `venues.py`.
+    # scripts/repair_polluted_descriptions.py rouvre celles qu'il sait réparer ; les autres
+    # (page source disparue) resteraient invisibles. On les compte à chaque run, pour que
+    # leur nombre soit sous les yeux plutôt que dans la base.
+    try:
+        garees = conn.execute(
+            "SELECT COUNT(*) FROM events_raw WHERE enrich_status='matiere_polluee'"
+        ).fetchone()[0]
+    except sqlite3.Error:
+        garees = 0
+    conn.close()
+    if garees:
+        log.warning("⚠️  %d fiche(s) en attente, matière polluée — NON rédigées et hors "
+                    "de cette file tant que leur description n'est pas réparée. "
+                    "→ .venv/bin/python scripts/repair_polluted_descriptions.py", garees)
+    if not ids and cap and len(events) > cap:
+        log.info("Plafond --cap=%d : %d événement(s) éligibles, %d traités ce run.",
+                  cap, len(events), cap)
+        events = events[:cap]
+    log.info("ids à traiter : %s", [e["id"] for e in events])
+    log.info("%d événement(s) à enrichir (mode=%s ; long→%s, court→%s ; plancher score ≥ %d)",
+             len(events), mode, pipeline_settings.model_qualite(),
+             pipeline_settings.model_eco(), MIN_SCORE)
+
+    # PARALLÉLISATION : chaque événement passe par plusieurs allers-retours réseau lents
+    # (lecture des pages officielles, appels LLM rédaction + panel + révision) — en
+    # séquentiel, un lot de 10 prenait 45-90 min. `ENRICH_WORKERS` (déf. 3, prudent pour ne
+    # pas cogner le rate-limit Anthropic ni les sites sources) traite plusieurs événements
+    # à la fois ; chaque worker a sa PROPRE connexion SQLite (WAL), donc aucune écriture ne
+    # se marche dessus. `stop_flag` reproduit l'ancien arrêt-sur-erreur-API : dès qu'un
+    # worker voit l'API en panne, les workers pas encore lancés abandonnent (ceux déjà en
+    # cours finissent proprement, leur travail n'est jamais perdu).
+    try:
+        workers = max(1, int(os.getenv("ENRICH_WORKERS", "3") or 3))
+    except ValueError:
+        workers = 3
+    stop_flag = threading.Event()
+    results: list[str] = []
+    if events:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="enrich") as ex:
+            futures = [ex.submit(_process_one_event, ev, client, mode, pipeline_settings,
+                                 stop_flag) for ev in events]
+            for fut in futures:
+                try:
+                    results.append(fut.result())
+                except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
+                    log.warning("worker en échec (exception non gérée) : %s", exc)
+                    results.append("error")
+
+    done = results.count("done")
+    # `matiere_polluee` est COMPTÉ ICI, et pas seulement posé en base. Un refus qui
+    # n'apparaît nulle part est un refus qu'on découvre trois semaines plus tard en
+    # cherchant pourquoi une fiche n'est jamais rédigée — c'est le défaut que ce dépôt
+    # collectionne. Il a sa propre ligne : ce n'est ni une erreur (rien n'a cassé) ni un
+    # rejet éditorial (la fiche est peut-être excellente), c'est une matière à réparer.
+    pollues = results.count("matiere_polluee")
+    log.info("=== Enrichissement terminé : %d/%d (%d erreur(s), %d rejeté(s) [non-événement], "
+             "%d ignoré(s) après panne API) ===",
+             done, len(events), results.count("error") + results.count("api_error"),
+             results.count("rejected"), results.count("skip"))
+    if pollues:
+        log.warning("⚠️  %d fiche(s) NON rédigée(s) : matière polluée (item Google News) et "
+                    "aucune autre source lisible. Rédiger reviendrait à inventer. "
+                    "→ .venv/bin/python scripts/repair_polluted_descriptions.py", pollues)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
