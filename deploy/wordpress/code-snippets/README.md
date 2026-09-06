@@ -24,6 +24,28 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `135-garde-fous-dates-et-sources.php` | #135 · Garde-fous dates et sources | front-end | oui | `daafdd83a310978e18eae9b41ae6151a` |
 | `136-garde-fous-panel-formes-lieux.php` | #136 · Garde-fous 2 : panel, formes, lieux | front-end | oui | `59582f3cbccf3c03c089ac740cd41f8d` |
 | `10-cs-trash.php` | #10 · CS Trash (routes `cs/v1/trash` et `cs/v1/list`) | global | oui | `d882c18b020ddb1686fb0ee171612812` |
+| `15-cs-gabarit-hub-territoire-categorie.php` | #15 · CS · Gabarit Hub territoire/catégorie | front-end | oui | `b205edeb89c8a5e359f492047bf806fa` (2026-09-06) |
+| `23-cs-gabarit-recherche.php` | #23 · CS · Gabarit Recherche | front-end | oui | `eec941a28454db1b158747ac1649c6e8` (2026-09-06) |
+| `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
+
+**Les cas #15 et #23 (2026-09-06) : le passé s'affichait.** Constat de Franck, capture de
+`/evenements/categorie/sport/` en main : 12 cartes, 9 terminées. Mesure en SQL direct
+(les requêtes WP ne comptent pas le passé, TEC le filtre — règle 2) : 141 fiches
+terminées sur 263 publiées ; la requête du gabarit Sport en rendait 13 dont 10 passées.
+Les deux gabarits n'avaient aucun plancher de date — le hub ville (#61) et la liste
+partagée (`mu-plugins/cs-agenda-list-shared.php`) en avaient un depuis le début. Ajout
+d'un `_EventEndDate >= now` (la date de FIN décide, une exposition en cours reste) sur
+la requête de base de #15 et sur les quatre requêtes événements de #23. Contrôle après
+écriture : Sport 3 cartes (toutes à venir), recherche « Nice » plus rien avant septembre.
+Sauvegardes d'avant sur le serveur : `wp-content/novamira-sandbox/backups/snippet-{15,23,26}-20260906-085950.php`.
+Le mirroir `wordpress/design-system/taxonomy-archive-template.php` (86 lignes, 07/2026)
+n'est PAS la référence : la version en ligne fait 22 ko.
+
+**Le cas #26 :** « Le fil » renommé « Nos articles » / « I nostri articoli » (H1 du
+gabarit et titre des pages 994 / 3186 ; les slugs `/le-fil/` et `/it/il-filo/` sont
+inchangés, aucun lien ne casse). L'agencement des articles (saison en cours d'abord)
+est une décision éditoriale en attente — voir la note #138 ci-dessous, la question
+annoncée comme devant « porter sur la FRAÎCHEUR » est revenue le 2026-09-06.
 
 **Le cas #10 mérite d'être lu avant de toucher à quoi que ce soit.** Le dépôt contenait
 déjà `deploy/wordpress/cs-trash.php` — et il n'y a **aucun** `mu-plugins/cs-trash.php` sur
