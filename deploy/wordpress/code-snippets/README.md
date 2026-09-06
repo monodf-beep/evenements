@@ -29,6 +29,29 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
+| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `22dca9ba46ecd2065531c85d4329a320` (2026-09-06) |
+
+**Le cas #134 (2026-09-06) : réécriture complète des règles de « À lire ».** Franck,
+capture de la Vallée d'Aoste : « je ne sais pas si on mélange des territoires ». Discussion
+en session (maquette « Le moteur d'À lire », voir conversation) tranchée ainsi : territoire
+actif d'abord (4 places), saison (`cs_guide_saison_debut`/`cs_guide_saison_fin`, Custom
+Fields facultatifs — hors saison EXCLU, pas relégué, règle 5), diversité de sujet
+(`cs_guide_cat_term`), rotation quotidienne des ex æquo (même défaut déjà corrigé sur
+« À la une »), et une place voisine réservée par proximité (Savoie↔Piémont/VdA,
+Piémont↔VdA/Savoie/Nice, VdA↔Savoie/Piémont, Nice↔Piémont) — jamais mélangée aux locaux :
+sous un bandeau « Ailleurs dans l'espace sabaudo », comme « Ça vaut le déplacement » le
+fait déjà.
+
+Un bug trouvé PAR le test avant écriture (vue « les 4 territoires » sans `_motif` — les
+fonctions internes testées en isolation via `eval()` d'un fichier déposé en sandbox,
+snippet réel non touché tant que le bug n'était pas corrigé) : corrigé, retesté propre.
+Débogage réservé aux comptes `edit_posts` : `?cs_a_lire_debug=1` sur une page — liste les
+places et LEUR MOTIF (règle 6, jamais deviner pourquoi une section montre ce qu'elle
+montre), vérifié absent pour un visiteur anonyme. Vérifié en ligne après écriture sur
+Savoie, Comté de Nice, Piémont IT et la home : bandeau présent sur les pages territoire,
+absent sur la home (« les 4 » — rien n'est « chez soi », rien à séparer). Pas de filtre par
+sujet seul : avec 6 guides au total, croiser sujet + territoire viderait la section — à
+revoir si le stock grossit.
 
 **Le cas #148 et le menu footer (2026-09-06) : « Autres villes » dans le footer.** Franck,
 capture du footer FR : les colonnes territoire n'affichent que 3-4 villes chacune, sur 17
