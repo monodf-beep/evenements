@@ -29,25 +29,32 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
-| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `22dca9ba46ecd2065531c85d4329a320` (2026-09-06) |
-| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `576c52014760075231d80ca9c0db3b01` (2026-09-06) |
+| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
+| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `24cceb7d8983990a7c5af41a7184a4ff` (2026-09-06) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
 capture de `/explore/savoie/` (via l'ancien /explore/) : la Foire de Savoie apparaissait
-deux fois. Deux causes distinctes trouvées, corrigées l'une après l'autre :
+deux fois. Deux causes distinctes, et un premier correctif trop large corrigé le même jour :
 
-1. Le budget de repli entre SECTIONS différentes (`$reuse_budget`, décision du 23/07 :
-   jusqu'à 2 répétitions tolérées sur toute la home plutôt qu'une section vide) a été
-   ramené à 0 — `venir`/`venir-bottom` avaient aussi leur propre plafond de repli (4),
-   ramené à 0 également. Une section peut désormais rester courte ou vide (message déjà
-   géré) plutôt que répéter.
-2. Persistait un second cas, plus subtil : « À la une » et « Jour » sont chacune rendues
-   par **deux widgets JetEngine distincts** (plein format + compact) partageant le MÊME
-   `_element_id` — l'allocateur dédoublonne ENTRE sections du plan, jamais entre deux
-   widgets de la même section, donc les deux montraient le même item nº1. Ajout d'un
-   registre statique partagé (`$deja_rendus`) dans le filtre
-   `jet-engine/listing/grid/posts-query-args` lui-même : un id déjà rendu, par n'importe
-   quel widget, ne se représente plus sur la même page.
+1. Persistant, réel : « À la une » et « Jour » sont chacune rendues par **deux widgets
+   JetEngine distincts** (plein format + compact) partageant le MÊME `_element_id` —
+   l'allocateur dédoublonne ENTRE sections du plan, jamais entre deux widgets de la MÊME
+   section, donc les deux montraient l'item nº1. Corrigé par un registre statique **PAR
+   SECTION** (`$deja_par_section[$eid]`) dans le filtre
+   `jet-engine/listing/grid/posts-query-args` lui-même : un id déjà rendu dans CETTE
+   section ne s'y représente plus, quel que soit le widget.
+2. Premier correctif (annulé le même jour) : j'avais aussi mis à 0 le budget de repli
+   entre SECTIONS différentes (`$reuse_budget`, décision du 23/07 : jusqu'à 2
+   répétitions tolérées sur toute la home plutôt qu'une section vide). Constaté après
+   coup : ça vidait « À la une » sur les petits territoires (Savoie : « Aucun événement
+   pour le moment ») au lieu de viser le vrai bug. Franck a précisé la règle : **jamais
+   2x dans la MÊME section, mais jusqu'à 2 fois au total sur toute la home reste
+   accepté** — c'est exactement le budget du 23/07, remis à sa valeur d'origine (2, et
+   4 pour `venir`/`venir-bottom`).
+
+Vérifié après le second correctif, section par section (regroupement des `data-post-id`
+par `_element_id` sur la page rendue) : zéro doublon DANS chaque section sur les 4
+territoires, et « À la une » n'est plus vide sur la Savoie.
 
 Vérifié après écriture (comptage des `data-post-id` sur la page rendue) : **zéro doublon**
 sur les 4 pages territoire, la home FR, la home IT et une page catégorie IT — contre 1 à
@@ -74,6 +81,31 @@ Savoie, Comté de Nice, Piémont IT et la home : bandeau présent sur les pages 
 absent sur la home (« les 4 » — rien n'est « chez soi », rien à séparer). Pas de filtre par
 sujet seul : avec 6 guides au total, croiser sujet + territoire viderait la section — à
 revoir si le stock grossit.
+
+Deuxième passe le soir même — Franck : « le à lire a été travaillé sur Savoie mais pas
+sur le reste des homepages ! […] il faut que ça soit comme sur Savoie mais adapté aux
+territoires sélectionnés ». Sur la vue « les 4 territoires » (`?as_territoire=tous`, home
+FR et IT), la première version rendait une liste plate de 5 articles étiquetés — rien de
+comparable au bandeau de la page Savoie. Choix de Franck (question posée) : **un bandeau
+par territoire**, même dessin que « Ailleurs dans l'espace sabaudo » mais à la couleur du
+territoire, les articles groupés dessous dans l'ordre de la rotation du jour, sans
+étiquette de territoire sur les cartes (le bandeau la porte). Deux cartes (premier
+article des deux premiers groupes) + lignes, comme partout. Testé en isolation via
+`eval()` (préfixe `cs_test3_`) en FR et IT, page Savoie recontrôlée inchangée (1 local +
+3 ailleurs), puis vérifié en ligne : 4 bandeaux sur `/?as_territoire=tous` et sur
+`/it/home-it/?as_territoire=tous`, bandeau « Ailleurs » toujours présent sur
+`/explore/savoie/`. Sauvegarde de l'ancien code :
+`novamira-sandbox/backups/snippet-134-20260906-201736.txt`.
+
+Troisième passe, sur capture : « on peut pas avoir d'autres choses que ces séparateurs ?
+ça fait trop de séparateurs similaires, on en a un au-dessus et en dessous de Comté de
+Nice ». Le trait noir de 2 px du bandeau doublait celui du titre « À lire », et revenait
+à chaque territoire. Supprimé : chaque territoire est marqué par son nom en couleur
+souligné d'un court tiret (28 × 3 px) de la même couleur, un simple espace entre les
+groupes. Vérifié en ligne : plus aucun `border-top:2px solid #1D1D1B` dans « À lire » (les
+deux restants sur la page sont les tuiles « Ce week-end » / « Tout l'agenda »), quatre
+tirets aux quatre couleurs. Sauvegarde :
+`novamira-sandbox/backups/snippet-134-20260906-202256.txt`.
 
 **Le cas #148 et le menu footer (2026-09-06) : « Autres villes » dans le footer.** Franck,
 capture du footer FR : les colonnes territoire n'affichent que 3-4 villes chacune, sur 17
