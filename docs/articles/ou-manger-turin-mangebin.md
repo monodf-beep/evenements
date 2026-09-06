@@ -232,3 +232,30 @@ contrôle n'en recrée pas un).
 | Case pré-cochée, opt-in déguisé | **absent** — aucun formulaire |
 | Publicité déguisée en contenu éditorial | **à trancher par un œil humain**, et c'est le seul point qui le mérite. L'article nomme 7 établissements. Aucun partenariat, aucune contrepartie, et le critère de sélection est écrit dans le texte. L'épreuve d'Enrico (« l'article aurait-il pu être écrit par le service com d'un acteur cité ? ») donne non : un service com n'écrirait pas que le label ne garantit ni le service ni le cuisinier. Reste que la décision de nommer des commerces est éditoriale. |
 | Collecte de données | **absent** |
+
+---
+
+## Publié le 2026-09-06
+
+| | FR | IT |
+|---|---|---|
+| WP | 8249 | 8250 |
+| URL | `/ou-manger-a-turin-mangebin/` | `/it/dove-mangiare-a-torino-mangebin/` |
+| Catégorie | Guides | Guide |
+| Territoire | Piémont · Province de Turin | Piemonte · Provincia di Torino |
+
+Contrôles faits APRÈS écriture, jamais sur la foi de l'appel : les deux pages répondent
+**200**, sans `noindex` ; les quatre H2 sont là ; l'appariement Polylang fonctionne dans les
+deux sens et le `hreflang` sort `fr`, `it`, `x-default` ; le hub `/ou-manger/` et
+`/it/dove-mangiare/` portent chacun le nouveau lien dans leur section Piémont, et le renvoi
+vers la Cuisine Nissarde n'a pas bougé.
+
+**Un défaut corrigé en route** : les taxonomies posées AVANT `pll_set_post_language()` ont
+laissé l'article italien dans la catégorie « Guides » et le territoire « Piémont », c'est-à-dire
+les termes FRANÇAIS. Corrigé après coup en « Guide » / « Piemonte · Provincia di Torino ».
+**Pour la prochaine fois : déclarer la langue à Polylang d'abord, les termes ensuite.**
+
+**Ce qui manque encore, et je ne l'invente pas** : les deux articles n'ont **aucune image à
+la une**. La voix commune interdit une photo sans crédit visible et sans propriétaire
+identifié ; je n'en avais pas. C'est le seul élément de la charte qui reste ouvert sur ces
+deux pages.
