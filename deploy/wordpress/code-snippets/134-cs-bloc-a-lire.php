@@ -181,7 +181,7 @@ function cs_a_lire_couleur($slug) {
 }
 
 if (!function_exists('cs_a_lire_carte')) {
-function cs_a_lire_carte($a) {
+function cs_a_lire_carte($a, $avec_nom = true) {
     $co = cs_a_lire_couleur($a['slug']);
     $img = get_the_post_thumbnail_url($a['id'], 'medium_large');
     $h = '<a href="' . esc_url(get_permalink($a['id'])) . '" style="display:block;text-decoration:none;color:#1D1D1B;margin-bottom:16px">';
@@ -190,16 +190,60 @@ function cs_a_lire_carte($a) {
     } else {
         $h .= '<div style="aspect-ratio:3/2;border-radius:3px;margin-bottom:8px;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-family:Saira Condensed,sans-serif;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px;color:' . $co . '">' . esc_html($a['nom']) . '</div>';
     }
-    $h .= '<div style="font-size:11.5px;font-weight:800;margin-bottom:2px;color:' . $co . '">' . esc_html($a['nom']) . '</div>';
+    if ($avec_nom) {
+        $h .= '<div style="font-size:11.5px;font-weight:800;margin-bottom:2px;color:' . $co . '">' . esc_html($a['nom']) . '</div>';
+    }
     $h .= '<h3 style="font-family:Saira Condensed,sans-serif;font-size:17px;line-height:1.22;margin:0;font-weight:600">' . esc_html(get_the_title($a['id'])) . '</h3></a>';
     return $h;
 }
 }
 
 if (!function_exists('cs_a_lire_ligne')) {
-function cs_a_lire_ligne($a) {
+function cs_a_lire_ligne($a, $avec_nom = true) {
     $co = cs_a_lire_couleur($a['slug']);
-    return '<li style="border-bottom:1px solid #E3DCCE"><a href="' . esc_url(get_permalink($a['id'])) . '" style="display:block;text-decoration:none;color:#1D1D1B;padding:9px 0"><div style="font-size:11.5px;font-weight:800;margin-bottom:1px;color:' . $co . '">' . esc_html($a['nom']) . '</div><b style="font-family:Saira Condensed,sans-serif;font-weight:600;font-size:14.5px;line-height:1.25;display:block">' . esc_html(get_the_title($a['id'])) . '</b></a></li>';
+    $nom = $avec_nom ? '<div style="font-size:11.5px;font-weight:800;margin-bottom:1px;color:' . $co . '">' . esc_html($a['nom']) . '</div>' : '';
+    return '<li style="border-bottom:1px solid #E3DCCE"><a href="' . esc_url(get_permalink($a['id'])) . '" style="display:block;text-decoration:none;color:#1D1D1B;padding:9px 0">' . $nom . '<b style="font-family:Saira Condensed,sans-serif;font-weight:600;font-size:14.5px;line-height:1.25;display:block">' . esc_html(get_the_title($a['id'])) . '</b></a></li>';
+}
+}
+
+if (!function_exists('cs_a_lire_bandeau')) {
+function cs_a_lire_bandeau($texte, $couleur, $premier) {
+    // Meme dessin que le bandeau « Ailleurs dans l'espace sabaudo » : un trait, un
+    // intitule en capitales espacees. Ici la couleur est celle du territoire.
+    $marge = $premier ? '0' : '18px';
+    return '<div style="margin-top:' . $marge . ';padding-top:10px;border-top:2px solid #1D1D1B">'
+        . '<div style="font-family:Saira Condensed,sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:' . $couleur . ';font-weight:700;margin-bottom:9px">' . esc_html($texte) . '</div>';
+}
+}
+
+if (!function_exists('cs_a_lire_html_tous')) {
+function cs_a_lire_html_tous($local) {
+    // 2026-09-06 (Franck) : « il faut que ce soit comme sur Savoie, mais adapte aux
+    // territoires selectionnes ». Sur la vue « les 4 territoires », rien n'est
+    // « ailleurs » : on rend donc UN bandeau PAR territoire, dans l'ordre de la rotation
+    // du jour, chaque article sous le sien -- et plus d'etiquette de territoire sur
+    // les cartes, le bandeau la porte deja. Cartes : le premier article des deux
+    // premiers groupes (2 cartes + 3 lignes, comme partout ailleurs).
+    $groupes = array();
+    foreach ($local as $a) { $groupes[$a['territoire']][] = $a; }
+    $h = '';
+    $g = 0;
+    foreach ($groupes as $terr => $articles) {
+        $co = cs_a_lire_couleur($articles[0]['slug']);
+        $h .= cs_a_lire_bandeau($articles[0]['nom'], $co, $g === 0);
+        $lignes = array();
+        foreach ($articles as $i => $a) {
+            if ($i === 0 && $g < 2) { $h .= cs_a_lire_carte($a, false); } else { $lignes[] = $a; }
+        }
+        if ($lignes) {
+            $h .= '<ul style="list-style:none;margin:0;padding:0;border-top:1px solid #E3DCCE">';
+            foreach ($lignes as $a) { $h .= cs_a_lire_ligne($a, false); }
+            $h .= '</ul>';
+        }
+        $h .= '</div>';
+        $g++;
+    }
+    return $h;
 }
 }
 
@@ -231,17 +275,22 @@ function cs_a_lire_html() {
     $choix = cs_a_lire_choisir($lang, $canon_actif);
     if (empty($choix['local']) && empty($choix['ailleurs'])) { return ''; }
 
-    $local = $choix['local'];
-    $nbc = count($local) < 4 ? min(2, count($local)) : 2;
-    $cartes = array_slice($local, 0, $nbc);
-    $lignes = array_slice($local, $nbc);
-
     $h = '';
-    foreach ($cartes as $a) { $h .= cs_a_lire_carte($a); }
-    if (count($lignes)) {
-        $h .= '<ul style="list-style:none;margin:2px 0 0;padding:0;border-top:1px solid #E3DCCE">';
-        foreach ($lignes as $a) { $h .= cs_a_lire_ligne($a); }
-        $h .= '</ul>';
+    if ($canon_actif === '') {
+        // Vue « tous les territoires » : un bandeau par territoire, même gabarit
+        // que « Ailleurs dans l'espace sabaudo » (demande de Franck, 06/09).
+        $h .= cs_a_lire_html_tous($choix['local']);
+    } else {
+        $local = $choix['local'];
+        $nbc = count($local) < 4 ? min(2, count($local)) : 2;
+        $cartes = array_slice($local, 0, $nbc);
+        $lignes = array_slice($local, $nbc);
+        foreach ($cartes as $a) { $h .= cs_a_lire_carte($a); }
+        if (count($lignes)) {
+            $h .= '<ul style="list-style:none;margin:2px 0 0;padding:0;border-top:1px solid #E3DCCE">';
+            foreach ($lignes as $a) { $h .= cs_a_lire_ligne($a); }
+            $h .= '</ul>';
+        }
     }
 
     if (!empty($choix['ailleurs'])) {

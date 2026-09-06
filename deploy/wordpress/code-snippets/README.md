@@ -29,7 +29,7 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
-| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `22dca9ba46ecd2065531c85d4329a320` (2026-09-06) |
+| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `62e3bb6ead95d795cc0db6b12d0c26f1` (2026-09-06, soir) |
 | `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `24cceb7d8983990a7c5af41a7184a4ff` (2026-09-06) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
@@ -81,6 +81,21 @@ Savoie, Comté de Nice, Piémont IT et la home : bandeau présent sur les pages 
 absent sur la home (« les 4 » — rien n'est « chez soi », rien à séparer). Pas de filtre par
 sujet seul : avec 6 guides au total, croiser sujet + territoire viderait la section — à
 revoir si le stock grossit.
+
+Deuxième passe le soir même — Franck : « le à lire a été travaillé sur Savoie mais pas
+sur le reste des homepages ! […] il faut que ça soit comme sur Savoie mais adapté aux
+territoires sélectionnés ». Sur la vue « les 4 territoires » (`?as_territoire=tous`, home
+FR et IT), la première version rendait une liste plate de 5 articles étiquetés — rien de
+comparable au bandeau de la page Savoie. Choix de Franck (question posée) : **un bandeau
+par territoire**, même dessin que « Ailleurs dans l'espace sabaudo » mais à la couleur du
+territoire, les articles groupés dessous dans l'ordre de la rotation du jour, sans
+étiquette de territoire sur les cartes (le bandeau la porte). Deux cartes (premier
+article des deux premiers groupes) + lignes, comme partout. Testé en isolation via
+`eval()` (préfixe `cs_test3_`) en FR et IT, page Savoie recontrôlée inchangée (1 local +
+3 ailleurs), puis vérifié en ligne : 4 bandeaux sur `/?as_territoire=tous` et sur
+`/it/home-it/?as_territoire=tous`, bandeau « Ailleurs » toujours présent sur
+`/explore/savoie/`. Sauvegarde de l'ancien code :
+`novamira-sandbox/backups/snippet-134-20260906-201736.txt`.
 
 **Le cas #148 et le menu footer (2026-09-06) : « Autres villes » dans le footer.** Franck,
 capture du footer FR : les colonnes territoire n'affichent que 3-4 villes chacune, sur 17
