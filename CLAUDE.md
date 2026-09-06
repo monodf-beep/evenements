@@ -229,6 +229,51 @@ titre. Détail : `docs/CHARTE_EDITORIALE.md`.
 
 ---
 
+## Rédiger un texte ICI, en session — la doctrine n'est jamais dans ma mémoire
+
+**Constat de Franck, 06/09/2026** : « c'est pénible quand je demande de la rédaction ici
+sur Claude, je dois systématiquement expliquer que c'est via Obsidian, le ton, la
+doctrine, le vocabulaire etc. » Ce que le pipeline automatique fait déjà tout seul
+(`utils/voix.py`, `utils/vocabulaire.py` lisent Obsidian à chaque exécution) doit se
+faire tout seul ICI aussi, dans une session, sans que Franck le redemande.
+
+**Avant d'écrire un mot destiné au site — article, curiosité, légende sociale, tout
+texte éditorial, PAS le pipeline lui-même qui s'en charge déjà** :
+
+1. **La voix** : `OBSIDIAN_VOIX_PATH` (voir `utils/voix.py`) — si cette conversation n'a
+   pas déjà son contenu, demander à Franck de coller la sortie de
+   `.venv/bin/python -c "from utils import voix; print(voix.load_voix())"` ;
+2. **Le vocabulaire interdit** : `OBSIDIAN_VOCAB_PATH` (voir `utils/vocabulaire.py`,
+   `docs/VOCABULAIRE_OBSIDIAN.md`) — sortie de
+   `.venv/bin/python -c "from utils import vocabulaire as v; print(v.consigne_prompt())"`,
+   puis VÉRIFIER LE TEXTE ÉCRIT avec `v.trouver(texte)`, jamais à l'œil seul ;
+3. **`docs/CHARTE_EDITORIALE.md`** — structure, temps des verbes, casse, § 6/6 bis (ton,
+   bilinguisme), § 7 (dark patterns : urgence factice, clickbait, confirmshaming,
+   publicité déguisée). Ce fichier-là est dans le dépôt, toujours accessible, aucune
+   raison de le sauter.
+
+**Ne jamais redemander « c'est où Obsidian, comment j'y accède »** — ce point est réglé
+une fois pour toutes : ce conteneur n'atteint pas le VPS par lui-même (vérifié le
+05/09 — pas de clé SSH, pas de route réseau directe), donc si le contenu n'est pas déjà
+dans la conversation, la seule question à poser à Franck est laquelle des deux commandes
+ci-dessus coller, pas une remise en cause du mécanisme.
+
+**Avant de LIVRER le texte**, s'auto-évaluer, pas seulement s'assurer qu'aucune règle
+n'est violée : les neuf marqueurs signature de la voix (incise géographique,
+phrase-bilan modeste, « d'une part… d'autre part », mention de source en passant, chute
+en douceur, bloc profil institutionnel, parenthèse pour lecteur étranger, chronologie
+comme commentaire implicite, comparaison géographique latérale) ne sont pas tous
+obligatoires, mais un texte qui n'en porte aucun ne sonne pas comme la voix de la
+maison — le dire à Franck plutôt que de laisser croire que « respecter les interdits »
+suffit à « écrire dans le ton ». Toujours proposer un brouillon à relire, jamais publier
+directement un genre de contenu qui n'est pas encore rodé (`docs/CURIOSITES.md` en est
+l'exemple).
+
+Skill dédié : `.claude/skills/redaction-agenda-sabauda/` — porte la procédure complète et
+la checklist d'auto-évaluation, à invoquer pour toute rédaction de ce genre.
+
+---
+
 ## Autonomie : réversible = seul, irréversible = jamais
 
 **Arbitrage de Franck du 2026-08-03 : le site doit se tenir à jour tout seul.** Les
