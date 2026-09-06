@@ -1,179 +1,141 @@
 # Article prêt à publier — « Où manger à Turin : les tables du réseau Mangébin »
 
-*Rédigé le 2026-09-06 selon la doctrine collée par Franck depuis Obsidian ce jour-là
-(cf. `docs/VOCABULAIRE_OBSIDIAN.md`, relevé du 06/09). Premier rayon du hub `/ou-manger/`.*
+*Rédigé le 2026-09-06, réécrit le même jour après arbitrage de Franck. Premier rayon du hub
+`/ou-manger/`. Doctrine : relevé Obsidian du 06/09, cf. `docs/VOCABULAIRE_OBSIDIAN.md`.*
 
-**Sources** : Turismo Torino e Provincia. Trois pages, relevées le **6 septembre 2026** :
-
-| Page | Ce qu'elle porte |
-|---|---|
-| `turismotorino.org/fr/…/vins-et-gastronomie/mangebin/mangebin-a-torino` | les tables de la ville (rendu JavaScript, relevé via Chrome) |
-| `…/mangebin/mangebin-horse-de-torino` | les tables de la province (rendu serveur) |
-| `turismotorino.org/it/visita/pianifica-la-tua-visita/proposte-turistiche/mangebin` | le projet, les **critères d'adhésion**, les partenaires, et la liste plate des adhérents |
+**Sources** : Turismo Torino e Provincia, trois pages relevées le **6 septembre 2026** —
+les tables de la ville (rendu JavaScript, relevé via Chrome), celles de la province (rendu
+serveur), et la page « projet » qui porte les critères d'adhésion, les partenaires et la
+liste plate des 66 adhérents. Fiches individuelles consultées pour les cinq adresses citées.
 
 **Slug proposé** : `/ou-manger-a-turin-mangebin/` — jumelle IT `/it/dove-mangiare-a-torino-mangebin/`
 
 ---
 
-## Contrôle doctrine avant publication
+## Pourquoi la liste complète n'est PAS dans l'article
 
-| Règle | Appliqué |
+Décision de Franck du 06/09, contre ma première version qui alignait les 64 adresses.
+Trois raisons, et je les note parce qu'elles valent pour tous les rayons suivants :
+
+1. **SEO.** Soixante-quatre noms sans profondeur, c'est une page d'annuaire, sur un terrain
+   où l'on affronte TripAdvisor, TheFork et Google Maps. Match perdu d'avance. Et c'est de
+   la donnée empruntée : l'office fait autorité dessus, Google n'a aucune raison de préférer
+   notre copie. Enfin l'intention derrière « où manger à Turin » n'est pas « donne-moi
+   64 adresses », c'est « aide-moi à choisir ».
+2. **Péremption sans rouvreur.** Cette liste bouge, mesuré en la relevant : Solferino déjà
+   parti, trois fiches en 404. Aucun cron ne rescrapera turismotorino. La date de relevé
+   rendait la phrase indéfiniment vraie pendant que la page devenait fausse. Renvoyer chez
+   l'office règle le problème : c'est chez eux que la liste vieillit.
+3. **Les rayons d'après.** Val di Susa, Canavese, vallées de Lanzo sont de futures
+   destinations. Les brûler ici en vrac vide les articles suivants.
+
+---
+
+## Le critère de sélection, et ce qu'il vaut
+
+Je ne peux pas juger une assiette, et je ne fabrique pas un classement que la source ne fait
+pas. Le seul critère honnête dont je dispose est **le lien avec ce que le site couvre
+déjà**. Il est vérifiable ligne à ligne :
+
+| Table retenue | Le lien, mesuré le 06/09 |
 |---|---|
-| Pas de tiret cadratin | ✅ aucun dans le corps |
-| Gras utile, 3 à 5 expressions structurantes | ✅ quatre, toutes sur des concepts |
-| Jamais de gras sur noms propres, lieux, dates, chiffres | ✅ les noms d'établissements sont en texte simple |
-| Listes autorisées pour les faits structurés | ✅ les trois listes d'adresses |
-| Pas d'encadré « En pratique » | ✅ |
-| Gentilé du territoire, jamais la nationalité | ✅ « piémontaise », jamais « italienne » |
-| Toponymes dans la langue de l'article | ✅ Turin en FR |
-| Vocabulaire interdit | ✅ ni frontière, ni transfrontalier, ni espace alpin, ni royaume de Sardaigne |
-| Rien d'inventé | ✅ les deux fiches inaccessibles sont signalées, pas comblées |
+| Albergo Ristorante San Giors | déjà nommée sur `/ou-manger/` |
+| Antiche Sere | déjà nommée sur `/ou-manger/` |
+| Ristorante del Circolo dei Lettori | dans le Circolo, qui annonce plus de cent événements par mois |
+| Borgiattino Formaggi | classé « formaggiaio » par l'office, pas « ristorante » |
+| Pepino 1884 | classé « caffè storico » par l'office |
+| Alpeggio Menzio, Usseglio | commune de l'Exposition de la Toma di Lanzo, dans notre agenda |
+| Antica Trattoria Monviso, Carmagnola | commune de la Fiera del Peperone, dans notre agenda |
+| Casa Vicina, Ivrea | Ivrea a sa page « Que faire » et un événement en cours chez nous |
+
+Contre-épreuve, faite sur le site : aucune autre commune de la liste hors Turin n'a
+d'événement chez nous. Avigliana, Bardonecchia, Oulx, Torre Pellice, Prali, Chiomonte,
+Poirino, Santena, Cumiana : zéro partout. Le critère ne retient pas huit adresses au hasard,
+il en retient huit parce que les autres ne passent pas.
 
 ---
 
 ## Titre et métadonnées
 
 **Titre** : Où manger à Turin : les tables du réseau Mangébin
-**Title SEO** : Où manger à Turin et dans la province : les 64 tables Mangébin
-**Meta description** : Turismo Torino e Provincia réunit 64 restaurants de cuisine
-piémontaise, 36 à Turin et 28 en province, sur un cahier des charges chiffré. La liste
-complète, relevée le 6 septembre 2026.
+**Title SEO** : Où manger à Turin : ce que garantit le label Mangébin
+**Meta description** : Turismo Torino e Provincia labellise 64 tables sur deux seuils
+chiffrés : 60 % de plats piémontais, 60 % de vins du Piémont. Ce que ça garantit, ce que ça
+ne garantit pas, et huit adresses.
 
 ---
 
 ## Corps de l'article
 
-Turismo Torino e Provincia anime un réseau de restaurants qui servent la cuisine
-piémontaise dans sa forme la plus reconnaissable. Il s'appelle Mangébin, sous-titré
-« Il Piemonte in tavola ». Soixante-quatre tables y figurent, trente-six à Turin et
-vingt-huit dans la province. Voici la liste, telle que l'office de tourisme la publie.
+Turismo Torino e Provincia labellise les restaurants qui servent la cuisine piémontaise
+dans sa forme la plus reconnaissable. Le réseau s'appelle Mangébin, sous-titré « Il Piemonte
+in tavola », et compte soixante-quatre tables, à Turin et dans sa province. La particularité
+n'est pas le nombre : c'est que l'adhésion se mesure.
 
-## Ce que le réseau demande à ses tables
+## Deux seuils, et ce qu'ils ne disent pas
 
 Mangébin n'est pas un guide qui note, c'est un **réseau d'adhésion**. L'office de tourisme
 métropolitain le porte avec la chambre de commerce de Turin, Ascom, Confesercenti et la
-Ville de Turin. Entrer dans le circuit suppose de tenir **un cahier des charges chiffré**,
-que l'office publie noir sur blanc :
+Ville de Turin. Entrer dans le circuit suppose de tenir un cahier des charges que l'office
+publie noir sur blanc :
 
 - au moins 60 % des plats de la carte relèvent de la tradition piémontaise, avec des
   produits du territoire ;
 - au moins 60 % des vins servis viennent du Piémont, dont au moins 10 % de la province de
   Turin.
 
-C'est peu spectaculaire et c'est tout l'intérêt : **deux seuils vérifiables** valent mieux
-qu'une promesse d'authenticité. Le réseau organise aussi des week-ends thématiques autour
-d'un plat, et se prolonge dans les événements du territoire : ses tables ont célébré le
-poivron de Carmagnola pendant la foire qui lui est consacrée.
+C'est peu spectaculaire, et c'est tout l'intérêt : **deux seuils vérifiables** valent mieux
+qu'une promesse d'authenticité. Mais ils portent sur la carte, pas sur l'assiette d'un soir
+donné. Le label dit qu'une maison a pris un engagement de sourcing ; il ne dit rien du
+service, ni du cuisinier qui est en poste ce mois-ci. Lu pour ce qu'il est, il rend service.
+Lu comme un classement, il ment.
 
-Deux adresses déjà connues des lecteurs de ce site en font partie. San Giors, à Borgo Dora
-près du marché de Porta Palazzo, et Antiche Sere, via Cenischia. Toutes deux sont des
-piole, ces **bouchons populaires turinois** nés au XIXe siècle autour des marchés, où la
-cuisine se sert dans sa version la plus directe.
+## Cinq adresses à Turin, et pourquoi celles-là
 
-## Les trente-six tables de Turin
+Nous ne classons pas non plus. Ces cinq-là sont retenues parce qu'elles sont
+**autre chose qu'un restaurant** : une forme, une maison, un lieu qui a sa vie propre.
 
-Adresses relevées le 6 septembre 2026 sur le site de l'office de tourisme.
+- Albergo Ristorante San Giors · via Borgo Dora 3/A · à Borgo Dora, près du marché de Porta
+  Palazzo, à cette adresse depuis 1904
+- Antiche Sere · via Cenischia 9/B · l'autre piola de notre sélection, cadre familial
+- Ristorante del Circolo dei Lettori · via Bogino 9 · la table du Circolo dei Lettori, qui
+  annonce plus de cent rendez-vous par mois entre livres, musique et art
+- Borgiattino Formaggi · corso Vinzaglio 29 · fromagerie depuis 1927, distinguée par les
+  Maestri del Gusto, avec planches et une trentaine de couverts sur place
+- Pepino 1884 · piazza Carignano 8 · glacier historique, inventeur du Pinguino en 1939,
+  avec restauration en salle et en terrasse
 
-- Osteria Rabezzana · via San Francesco d'Assisi 23C
-- Antica Trattoria « con Calma » · strada Comunale del Cartman 59
-- Antico Balon · piazza Emanuele Filiberto 3/A
-- Antica Bruschetteria Pautasso · piazza Emanuele Filiberto 4/H
-- Arcadia · galleria Subalpina 29, piazza Castello
-- Porto di Savona · piazza Vittorio Veneto 2
-- Casa Broglia · via Torquato Tasso 13/C
-- Al Gufo Bianco · corso Dante 129/C
-- Le Vitel Etonné · via San Francesco da Paola 4
-- Goustò Ristorante Emporium · piazza della Repubblica 4
-- Ristorante Belvedere · via Annibal Caro 12
-- Ristorante del Circolo dei Lettori · via Bogino 9
-- Guarini · via Guarini 1/B
-- Martinet · via Martinetto 4/B
-- Le Fanfaron Bistrot · via Piave 5/D
-- Barbagusto · via Belfiore 36
-- I Sapori del Piemonte · piazza della Repubblica 25
-- Albergo Ristorante San Giors · via Borgo Dora 3/A
-- Ristorante del Duomo Bicerin · via XX Settembre 79
-- Dume Trattoria Imperfetta · galleria Umberto I 10
-- Andrea Larossa · via Sabaudia 4
-- San Tommaso 10 · via San Tommaso 10
-- Trattoria Decoratori e Imbianchini · via Lanfranchi 28
-- Osteria Nuova · via XX Settembre 2/M
-- Enoteca Rossorubino · via Madama Cristina 21
-- Am Restaurant · via delle Orfane 17
-- Bugianen · via Bellezia 8/L
-- Ristorante Monferrato · via Monferrato 6/E
-- Bistrot Turin · via Po 21/B
-- Antiche Sere · via Cenischia 9/B
-- Osteria le Putrelle · via Tommaso Valperga Caluso 11
-- Ballatoio, Bistrot di Ringhiera · via Principe Amedeo 22
-- La Badessa · piazza Carlo Emanuele II 17/H
-- Osteria al Tagliere · via Corte d'Appello 6
-- Antica Trattoria del Sole · via Bardonecchia 100/C
-- Osteria 12 Arcate · adresse non publiée
+San Giors et Antiche Sere sont des piole, ces **bouchons populaires turinois** nés au
+XIX<sup>e</sup> siècle autour des marchés : vin au verre, plats mijotés, la cuisine servie
+dans sa version la plus directe. Les deux dernières ne sont d'ailleurs pas classées
+« restaurant » par l'office, mais fromager et café historique. Elles servent quand même, et
+elles sont dans le circuit : c'est justement ce qui les rend intéressantes.
 
-La dernière figure bien parmi les adhérents, mais sa fiche renvoie vers une page
-introuvable sur le site de l'office. Son adresse n'est donc pas donnée ici : nous ne la
-reconstituons pas de mémoire.
+## Hors de la ville, là où l'agenda va déjà
 
-## Vingt-huit adresses dans la province
+Le réseau monte dans les vallées et descend dans la plaine. Trois de ses tables sont dans
+des communes que nous couvrons, ce qui permet d'y accrocher une journée entière plutôt qu'un
+seul repas.
 
-Le réseau déborde largement la ville. Il monte dans les vallées de Suse et de Lanzo,
-descend vers Carmagnola et Poirino, atteint Ivrea et le Canavese.
+- Alpeggio Menzio · frazione Pian Benot, Usseglio · dans la commune de l'Exposition
+  nationale de la Toma di Lanzo, desservie depuis Torino par une navette gratuite
+- Antica Trattoria Monviso · largo Vittorio Veneto 11, Carmagnola · dans la ville de la
+  Fiera Nazionale del Peperone, dont les tables Mangébin célèbrent le poivron chaque automne
+- Casa Vicina · via Sant'Ulderico 7, Ivrea · dans une ville qui a son propre agenda chez nous
 
-- Casa Vicina · via Sant'Ulderico 7, Ivrea
-- Antica Trattoria Monviso · largo Vittorio Veneto 11, Carmagnola
-- Foresteria Massello · località Molino 4, Massello
-- La Locanda del Cont · via Tana 5, Santena
-- Ristorante L'Incontro · regione Lago Meugliano 1, Valchiusa
-- L'Fouie · frazione Rochemolles 56, Bardonecchia
-- Alpeggio Menzio · località Contissart, frazione Pian Benot, Usseglio
-- Il Viale delle Mele · via del Vescovo 38, frazione Famolasco, Bibiana
-- Salei Bistrot · frazione Ghigo 19, Prali
-- Agriturismo Costa Lourens · via Costalorenzo 5, Torre Pellice
-- Agriturismo Crè Seren · frazione San Rocco 10, Giaglione
-- Il Poggio Agrisport · strada Palazzetto 9, Poirino
-- Osteria dal Merlo · via Umberto I, Sant'Ambrogio di Torino
-- Ristorante Freidour · strada Verna 37, Cumiana
-- Geat Val Gravio · località Pianetti, San Giorio di Susa
-- La Table Dlouz Amis · via San Giusto 22, Oulx
-- Trattoria Scudo di Francia · via Principe Amedeo 30, Agliè
-- La Duja Ristorante & Vineria · via Cavour 9, Ciriè
-- Ca' Praudin · località Praudino, frazione Inverso, Valchiusa
-- Ristorante Garbin · via dell'Avanà 3, località Signou, Chiomonte
-- Ristorante Centro · via Vittorio Emanuele 8, Cercenasco
-- Fermata Alpi Graie · via Sobrile 1, Forno Alpi Graie
-- Trattoria Bel Deuit · via Superga 58, Baldissero Torinese
-- Les Montagnards · frazione Cornetti 73, Balme
-- Ristorante San Michele · via Umberto I 33, Avigliana
-- Osteria la Cadrega · piazza Vittorio Emanuele 5, Moncalieri
-- Ristorante Hotel Celestino · corso Italia 10, Piobesi Torinese
-- Quin'z Top · adresse non publiée
+## La liste complète est chez eux
 
-Là encore, une fiche renvoie vers une page introuvable, et son adresse n'est pas donnée.
+Les soixante-quatre tables sont publiées par l'office de tourisme, avec les ouvertures du
+mois et les week-ends thématiques consacrés à un plat de la tradition. C'est là qu'il faut
+la consulter, et pas ici : elle bouge, des maisons entrent et sortent, et une copie figée
+serait fausse avant l'hiver.
 
-## Deux adhérents qui ne sont pas des restaurants
-
-La liste des adhérents en compte deux que l'office classe ailleurs, parce qu'ils ne sont
-pas des tables au sens strict. Ils servent pourtant, et ils sont dans le circuit.
-
-- Borgiattino Formaggi · corso Vinzaglio 29, Torino · fromagerie depuis 1927, planches de
-  fromages et de charcuteries sur place, une trentaine de couverts
-- Pepino 1884 · piazza Carignano 8, Torino · glacier historique, restauration et apéritifs
-  en salle et en terrasse
-
-## Ce que la liste ne dit pas
-
-Les deux seuils portent sur la carte, pas sur l'assiette d'un soir donné : l'office ne note
-pas, ne classe pas, et ne promet pas une expérience. La liste bouge aussi. Des
-établissements entrent, d'autres partent, et le site ne l'annonce pas toujours au même
-rythme sur toutes ses pages : Ristorante Solferino figurait encore en vignette sur la page
-des tables de la ville alors qu'il ne paraît plus parmi les adhérents et que sa fiche a
-disparu. Il n'est donc pas dans notre liste. Celle-ci vaut pour le 6 septembre 2026.
+→ [Le réseau Mangébin sur turismotorino.org](https://turismotorino.org/fr/decouvrir/a-voir-a-faire/vins-et-gastronomie/mangebin)
 
 ## Manger, et sortir
 
-Les rendez-vous où l'on mange sont des événements à part entière. Sagre, foires
-gourmandes, marchés de producteurs, salons du goût : ils sont dans l'agenda.
+Les rendez-vous où l'on mange sont des événements à part entière. Sagre, foires gourmandes,
+marchés de producteurs, salons du goût : ils sont dans l'agenda.
 
 → [Tous les événements Gastronomie & Sagre](/evenements/categorie/gastronomie-sagre/)
 · [Que faire à Turin](/que-faire-a-turin/)
@@ -183,43 +145,41 @@ gourmandes, marchés de producteurs, salons du goût : ils sont dans l'agenda.
 
 ---
 
-## Ce qu'il reste à faire avant publication
+## Contrôle doctrine
+
+| Règle | Appliqué |
+|---|---|
+| Pas de tiret cadratin | ✅ aucun dans le corps |
+| Gras utile, 3 à 5 expressions structurantes | ✅ quatre, toutes sur des concepts |
+| Jamais de gras sur noms propres, lieux, dates, chiffres | ✅ |
+| Listes autorisées pour les faits structurés | ✅ les seuils et les deux sélections |
+| Pas d'encadré « En pratique » | ✅ |
+| Gentilé du territoire, jamais la nationalité | ✅ « piémontaise », jamais « italienne » |
+| Toponymes dans la langue de l'article | ✅ Turin en FR |
+| Vocabulaire interdit | ✅ ni frontière, ni transfrontalier, ni espace alpin, ni royaume de Sardaigne |
+| Rien d'inventé | ✅ chaque adresse citée vient d'une fiche consultée, pas d'un souvenir |
+
+## Avant publication
 
 1. **Ajouter le rayon au hub** `/ou-manger/` : la section « Piémont & Turin » renverra vers
    cet article, comme la section Comté de Nice renvoie déjà vers la Cuisine Nissarde.
-2. **Vérifier la date de relevé** au moment de publier. Si plusieurs jours ont passé, la
-   phrase « relevé le 6 septembre 2026 » reste vraie et suffit ; c'est justement pourquoi
-   elle est écrite.
-3. **Image à la une** : à choisir avec crédit, la charte l'exige.
-
-La version italienne est écrite : `docs/articles/dove-mangiare-torino-mangebin.md`.
+2. **Image à la une**, avec crédit.
+3. La version italienne est écrite : `docs/articles/dove-mangiare-torino-mangebin.md`.
 
 ## Ce qui a été mesuré, et ce qui a failli être faux
 
-Deux erreurs successives, chacune rattrapée par un recoupement et non par une relecture.
+**La liste tronquée.** Une extraction `curl` du 06/09 donnait 10 établissements hors Turin ;
+il y en a 28. La page portait un bouton « Télécharger plus » qu'un téléchargement de page ne
+peut pas actionner. D'où l'exigence du TOTAL, et pas seulement de la liste, dans le prompt de
+relevé.
 
-**Première : la liste tronquée.** Une extraction `curl` du 06/09 donnait 10 établissements
-hors Turin. Le vrai nombre est 28 : la page portait un bouton « Télécharger plus » qu'un
-téléchargement de page ne peut pas actionner. C'est la raison pour laquelle le prompt de
-relevé exigeait le TOTAL et non seulement la liste.
+**Le total lui-même.** Les deux pages « restaurants » donnaient 37 + 28 = 65. La page
+« projet » porte 66 adhérents, dont 2 que l'office classe ailleurs que « restaurant », soit
+64 restaurants. L'écart avec les 65 vignettes est Ristorante Solferino, absent des adhérents
+et dont la fiche répond 404. Ce chiffre faux serait passé pour vérifié, puisqu'il
+additionnait deux relevés COMPLETS. **Deux relevés complets d'une même source ne valent pas
+un recoupement.**
 
-**Seconde : le total lui-même.** Les deux pages « restaurants » donnaient 37 + 28 = 65.
-La page « projet », trouvée ensuite du côté italien du site, porte une liste plate de
-66 adhérents. Le rapprochement des deux, nom à nom, tombe juste :
-
-| | |
-|---|---|
-| adhérents sur la page projet | 66 |
-| dont classés ailleurs que « restaurant » | 2 (Borgiattino Formaggi, Pepino 1884) |
-| restaurants adhérents | 64 |
-| vignettes sur les deux pages « restaurants » | 65 |
-| écart | Ristorante Solferino, absent des adhérents, fiche en 404 |
-
-L'article annonçait donc 65 tables ; il y en a 64, et la soixante-cinquième est une
-vignette que le site n'a pas retirée. Sans la troisième page, ce chiffre serait paru juste
-et vérifié, puisqu'il additionnait deux relevés complets. **Deux relevés complets d'une
-même source ne valent pas un recoupement.**
-
-Le détour a aussi rapporté ce que les deux premières pages ne disaient pas : les critères
-d'adhésion chiffrés et les partenaires institutionnels, qui sont la matière la plus utile
-de l'article.
+**Un trou trouvé au passage.** Le Circolo dei Lettori annonce plus de cent rendez-vous par
+mois à Turin. Une recherche sur notre site n'en trouve aucun. À verser au dossier des
+sources à scraper.
