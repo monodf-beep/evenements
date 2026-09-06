@@ -208,11 +208,14 @@ function cs_a_lire_ligne($a, $avec_nom = true) {
 
 if (!function_exists('cs_a_lire_bandeau')) {
 function cs_a_lire_bandeau($texte, $couleur, $premier) {
-    // Meme dessin que le bandeau « Ailleurs dans l'espace sabaudo » : un trait, un
-    // intitule en capitales espacees. Ici la couleur est celle du territoire.
-    $marge = $premier ? '0' : '18px';
-    return '<div style="margin-top:' . $marge . ';padding-top:10px;border-top:2px solid #1D1D1B">'
-        . '<div style="font-family:Saira Condensed,sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:' . $couleur . ';font-weight:700;margin-bottom:9px">' . esc_html($texte) . '</div>';
+    // Pas de trait noir : Franck (06/09, capture) « ça fait trop de séparateurs
+    // similaires, on en a un au-dessus et en dessous de Comté de Nice » -- le titre
+    // « À lire » porte deja le sien. Le territoire est marque par son nom en couleur,
+    // souligne d'un court tiret de la meme couleur ; un simple espace entre les groupes.
+    $marge = $premier ? '0' : '22px';
+    return '<div style="margin-top:' . $marge . '">'
+        . '<div style="font-family:Saira Condensed,sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:' . $couleur . ';font-weight:700;margin-bottom:10px">' . esc_html($texte)
+        . '<span style="display:block;width:28px;height:3px;background:' . $couleur . ';margin-top:5px"></span></div>';
 }
 }
 

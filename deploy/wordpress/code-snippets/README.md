@@ -29,7 +29,7 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
-| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `62e3bb6ead95d795cc0db6b12d0c26f1` (2026-09-06, soir) |
+| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
 | `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `24cceb7d8983990a7c5af41a7184a4ff` (2026-09-06) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
@@ -96,6 +96,16 @@ article des deux premiers groupes) + lignes, comme partout. Testé en isolation 
 `/it/home-it/?as_territoire=tous`, bandeau « Ailleurs » toujours présent sur
 `/explore/savoie/`. Sauvegarde de l'ancien code :
 `novamira-sandbox/backups/snippet-134-20260906-201736.txt`.
+
+Troisième passe, sur capture : « on peut pas avoir d'autres choses que ces séparateurs ?
+ça fait trop de séparateurs similaires, on en a un au-dessus et en dessous de Comté de
+Nice ». Le trait noir de 2 px du bandeau doublait celui du titre « À lire », et revenait
+à chaque territoire. Supprimé : chaque territoire est marqué par son nom en couleur
+souligné d'un court tiret (28 × 3 px) de la même couleur, un simple espace entre les
+groupes. Vérifié en ligne : plus aucun `border-top:2px solid #1D1D1B` dans « À lire » (les
+deux restants sur la page sont les tuiles « Ce week-end » / « Tout l'agenda »), quatre
+tirets aux quatre couleurs. Sauvegarde :
+`novamira-sandbox/backups/snippet-134-20260906-202256.txt`.
 
 **Le cas #148 et le menu footer (2026-09-06) : « Autres villes » dans le footer.** Franck,
 capture du footer FR : les colonnes territoire n'affichent que 3-4 villes chacune, sur 17
