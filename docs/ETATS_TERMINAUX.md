@@ -41,6 +41,7 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | écart « description incohérente » (aucune colonne — l'écart est **implicite**) | `translate_events` | `repair_polluted_descriptions` | ✅ fermé le 2026-08-13, **après neuf jours de blocage** |
 | réserve Slack de WordPress (option `cs_slack_boite_du_jour`) | `cs_slack_notify` (mu-plugin `cs-slack-formulaires.php`) | `scripts.rapports_wordpress`, appelé par le digest de 11h45 et 20h ; **à défaut, WordPress lui-même après 26 h** | ✅ fermé le 2026-08-17 |
 | décision `resolue` (registre `data/decisions.jsonl`) | `scripts.decisions --resoudre` (le cerveau, ou une session) | tout nouveau `--signaler` sur la MÊME clé rouvre automatiquement — même critère que le signaleur, réouvertures comptées et affichées par `--liste` | ✅ fermé à la naissance (2026-08-25), éprouvé par `tests/test_decisions.py` |
+| meta WordPress `as_completude_refus` (fiche repassée en brouillon par le garde-fou) | `cs-completude.php`, hook `cs_completude_gate_event` | `cs_completude_rouvrir` (Code Snippet #150), même cron quotidien `cs_completude_event`, priorité 20 | ✅ **fermé le 2026-09-06** — était ouvert depuis le 2026-08-08 |
 
 **Le cas le plus instructif du tableau, parce qu'il avait l'air fermé.** `translate_events`
 écarte de la file de traduction toute fiche dont la description « parle manifestement
@@ -597,3 +598,88 @@ Donc **rien n'indique aujourd'hui que ces 311 fiches demandent un geste.** Ce pa
 décrit un chemin absent, pas une charge de travail. Avant de brancher
 `discard_uncompletable` en cron, mesurer ce que la FILE contient — et le dry-run reste la
 première commande (règle 4).
+
+---
+
+## `as_completude_refus` — le cul-de-sac trouvé le 2026-09-06
+
+Cherché autre chose (pourquoi les hubs territoire stagnent en page 5), trouvé ceci. C'est
+le septième cul-de-sac du dépôt, et le plus complet des sept : la fiche sortait non
+seulement de la file de publication, mais de **toutes** les files, y compris de celles
+censées signaler qu'il restait du travail.
+
+### Le mécanisme
+
+`cs-completude.php` pose un garde-fou : quinze minutes après une mise en ligne, il
+recontrôle la fiche et, s'il manque une source officielle ou si le corps est indigent, il
+la **repasse en brouillon** et écrit `as_completude_refus`. Le délai et l'intention sont
+bons : le site promet une source sur chaque fiche, une fiche sans source ne peut pas
+rester en ligne.
+
+Ce qui manquait, c'est la suite. Rien ne réexaminait jamais la fiche :
+
+- le cron quotidien `cs_completude_passe()` ne requête que `post_status='publish'` — la
+  fiche garée est en `draft`, elle est donc invisible pour lui ;
+- le garde-fou lui-même ne se déclenche que sur `transition_post_status` **vers** publish,
+  ce qui n'arrive plus jamais pour une fiche que personne ne republie ;
+- aucun script Python ne lit ni n'efface `as_completude_refus` (vérifié par `grep` sur
+  tout le dépôt : le seul fichier qui le mentionne est `cs-completude.php` lui-même).
+
+### Ce que ça coûtait, mesuré et non supposé
+
+Au 06/09, **quatre fiches** étaient garées avec un événement encore à venir. L'une d'elles,
+**#8088** — championnat d'Europe de canoë slalom à Ivrea, le 23 septembre — avait été
+refusée le 02/09 faute de source officielle. Or au 06/09 son `as_source_officielle_url`
+pointait sur `turismotorino.org` et son `as_verifie_le` valait **le jour même** :
+l'enrichissement avait fait son travail après le refus. La fiche était restée hors ligne
+quatre jours pour un motif qui n'existait plus, et y serait restée indéfiniment.
+
+Les trois autres (#7485, #7686, #8073) n'ont toujours pas de source : leur refus est
+fondé, et le rouvreur les laisse garées. C'est le point important — **un rouvreur n'est
+pas une amnistie.**
+
+### La réponse aux trois questions du document
+
+**Qui le rouvre ?** `cs_completude_rouvrir()`, Code Snippet #150, accroché au même cron
+quotidien `cs_completude_event` que la mesure, en priorité 20 pour passer après elle.
+Code versionné dans `deploy/wordpress/code-snippets/137-cs-completude-rouvreur.php`.
+
+**À quelle condition ?** Quand `cs_completude_controler()` — **la fonction même du
+garde-fou**, pas une règle parallèle qui pourrait diverger — ne renvoie plus aucun
+bloquant. Donc quand le garde-fou lui-même n'aurait plus de raison de dépublier : le
+va-et-vient est structurellement impossible. Et seulement pour les événements **encore à
+venir** (règle 5) : une fiche dont l'événement est passé reste garée, elle ne sert plus
+personne.
+
+**Où se voit le nombre de fiches garées ?** Option `cs_completude_rouvreur`, exposée sur
+`GET /wp-json/cultura/v1/completude-rouvreur`, à côté de la file de complétude existante.
+Le relevé compte les fiches **examinées**, pas seulement les rouvertes : « 0 rouverte sur
+12 garées » et « 0 rouverte sur 0 garée » ne disent pas la même chose (règle 6). Et
+`as_completude_rouvertures` compte les allers-retours par fiche : une fiche qui y revient
+plusieurs fois signale un désaccord entre le portillon et le pipeline, pas un succès.
+
+### Pourquoi le prochain passage donne un autre résultat
+
+L'exigence ajoutée le 2026-08-08 après le portillon de traduction : si la réponse repose
+sur un aléa, c'est une hypothèse, pas un rouvreur. Ici ce n'en est pas une, c'est une
+mesure. Le pipeline d'enrichissement renseigne `as_source_officielle_url` **après** le
+refus — #8088 le prouve, à quatre jours d'intervalle. Le contrôle relit des données qui
+ont changé, pas les mêmes.
+
+### Vérification faite le jour même
+
+Dry-run d'abord (règle 4), avec la fonction de contrôle réelle et sans aucune écriture :
+4 garées, 1 rouvrable, 3 à laisser. Puis exécution : #8088 est passée de `draft` à
+`publish`, `as_completude_refus` effacé, et la page publique répond **HTTP 200, sans
+noindex, avec sa source officielle citée**. Total des fiches publiées : 263 → 264,
+recompté en base et non déduit du retour de la fonction (règle 6).
+
+### Pourquoi un Code Snippet et pas un ajout au mu-plugin
+
+Le serveur n'a **pas de binaire `php` en ligne de commande** (vérifié : `exec()` existe,
+mais aucun `php -v` ne répond). Impossible donc de faire un `php -l` sur place. Or une
+faute de syntaxe dans un mu-plugin tue le site *et* la porte qui permettrait de le
+réparer : c'est l'incident du 8 au 10 août. Code Snippets, lui, désactive tout seul un
+snippet fatal. Le code a été contrôlé trois fois avant d'être posé : `php -l` local
+(PHP 8.4.19), `tests/test_php_syntax.py`, puis `token_get_all(..., TOKEN_PARSE)`
+côté serveur avant l'insertion — et le md5 du transfert a été comparé.
