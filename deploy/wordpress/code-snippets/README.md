@@ -27,6 +27,20 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `15-cs-gabarit-hub-territoire-categorie.php` | #15 · CS · Gabarit Hub territoire/catégorie | front-end | oui | `ce606305fbcdec57b65e8e5ae354aa4b` (2026-09-06) |
 | `23-cs-gabarit-recherche.php` | #23 · CS · Gabarit Recherche | front-end | oui | `a7fd40535f7ea92989f05484b75454e7` (2026-09-06) |
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
+| `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
+
+**Le cas #24 (2026-09-06) : proposer une SOURCE, pas seulement un événement.** Demande de
+Franck : « il faut aussi pouvoir proposer un flux RSS ou un lien d'inscription à une
+newsletter, il faut que je reçoive sur Slack ». Second formulaire sous le premier, sur
+les pages 934 (FR) et 3183 (IT) : type (RSS / newsletter / autre), adresse, organisme,
+e-mail, consentement, pot de miel, nonce propre. Chaque envoi est rangé dans l'option
+`cs_sources_proposees` (tableau : `at, type, url, org, email, lang`) et annoncé par
+`cs_slack_notify_form` — donc dans le **récapitulatif quotidien de 11h45**, pas en message
+immédiat : c'est la règle de Franck (« un seul message Slack par jour »), la même que pour
+les propositions d'événement. Testé de bout en bout par un POST réel (deux envois de test,
+retirés ensuite de l'option et de la boîte Slack du jour). Pour lire ce qui attend :
+`maybe_unserialize($wpdb->get_var("SELECT option_value FROM wp_options WHERE option_name='cs_sources_proposees'"))`.
+Rien n'ajoute encore ces sources à la veille du VPS : c'est un geste humain, après lecture.
 
 **Les cas #15 et #23 (2026-09-06) : le passé s'affichait.** Constat de Franck, capture de
 `/evenements/categorie/sport/` en main : 12 cartes, 9 terminées. Mesure en SQL direct
