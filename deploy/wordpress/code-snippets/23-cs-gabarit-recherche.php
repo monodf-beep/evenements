@@ -722,14 +722,19 @@ $quand_lbl = $is_it
           $primary_header = $loc ? sprintf($LB['a_ville'], $loc['label']) : ($cat_term ? $cat_term->name : sprintf($LB['evenements_pour'], $query));
         ?>
         <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase;border-top:1px solid #1D1D1B;padding-top:10px;margin-bottom:4px"><?php echo esc_html($primary_header); ?></div>
-        <?php foreach ($primary_q->posts as $ppost): echo cs_card_compact($ppost->ID); endforeach; ?>
+        <?php
+        // 2026-09-06 (Franck) : meme rendu que les pages categorie et les hubs -- en-tetes par
+        // jour, deja-commences a la fin sous « Ne ratez pas ». L'ordre vient de $cs_tri_ponctuels
+        // ci-dessus (start ASC, en-cours repousses) : cs_render_day_groups ne fait que le montrer.
+        echo cs_render_day_groups($primary_q, 'cs_card_compact');
+        ?>
         <?php endif; ?>
 
         <?php if ($has_secondary):
           $secondary_header = $loc ? sprintf($LB['alentours'], $loc['label']) : sprintf($LB['autres_resultats'], $query);
         ?>
         <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase;border-top:1px solid #1D1D1B;padding-top:10px;margin:18px 0 4px"><?php echo esc_html($secondary_header); ?></div>
-        <?php while ($secondary_q->have_posts()): $secondary_q->the_post(); echo cs_card_compact(get_the_ID()); endwhile; wp_reset_postdata(); ?>
+        <?php echo cs_render_day_groups($secondary_q, 'cs_card_compact'); ?>
         <?php endif; ?>
 
       <?php else: ?>

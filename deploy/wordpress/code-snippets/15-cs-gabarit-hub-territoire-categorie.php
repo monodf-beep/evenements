@@ -237,7 +237,17 @@ add_action('template_redirect', function () {
         ?>
         <p style="font-family:'Nunito Sans',sans-serif;color:#6F6B62;font-size:13.5px"><?php echo esc_html($cs_empty); ?></p>
       <?php else: ?>
-        <?php while ($q->have_posts()): $q->the_post(); echo cs_card_compact(get_the_ID()); endwhile; wp_reset_postdata(); ?>
+        <?php
+        // 2026-09-06 (Franck, capture Concerts & Musique : « j'ai l'impression qu'il n'y a pas
+        // d'ordre ») : l'ordre etait bien start ASC, mais sans en-tete de jour il ne se voit pas,
+        // et une fiche commencee en juillet (« Jusqu'au 16/10 ») ouvrait la liste devant le 06/09.
+        // Meme rendu que Ce week-end et les hubs ville (cs_render_day_groups, snippet 21) :
+        // en-tetes par jour, et les fiches deja commencees a la fin sous « Ne ratez pas »
+        // (decision Franck 2026-08-02). Reference = debut de la fenetre consultee (jour ou
+        // quand), sinon aujourd'hui.
+        $cs_ref = $cs_date_ok ? $sel_date : ($win ? $win[0] : null);
+        echo cs_render_day_groups($q, 'cs_card_compact', $cs_ref);
+        ?>
         <div style="padding:8px 0 24px;display:flex;justify-content:center;gap:8px">
           <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#1D1D1B;color:#F7F1E8;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:700">1</div>
         </div>
