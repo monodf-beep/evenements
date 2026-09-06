@@ -1,8 +1,9 @@
 # Article prêt à publier — « Où manger à Turin : les tables Mangébin »
 
 *Rédigé le 2026-09-06, troisième version. Premier rayon du hub `/ou-manger/`.
-Doctrine appliquée : voix commune Enrico (`clone-enrico-fr`) + surcharges Agenda Sabauda
-du relevé Obsidian du 06/09 (`docs/VOCABULAIRE_OBSIDIAN.md`).*
+Doctrine appliquée : voix commune Enrico (`clone-enrico-fr`), procédure et checklist du
+skill `redaction-agenda-sabauda`, et surcharges Agenda Sabauda collées par Franck depuis
+Obsidian le 06/09, dont le dépôt ne garde volontairement aucun miroir depuis le 05/09.*
 
 **Sources** : Turismo Torino e Provincia. Page « projet » du réseau (critères, partenaires,
 liste des adhérents), les deux pages « restaurants », et les fiches individuelles des sept
@@ -74,8 +75,8 @@ le label atteste un engagement d'approvisionnement, il ne renseigne ni sur le se
 le cuisinier en poste ce mois-ci. Lu pour ce qu'il est, il rend service. Lu comme un
 classement, il trompe.
 
-Le réseau organise par ailleurs des week-ends thématiques autour d'un plat de la tradition,
-et ses tables célèbrent le poivron de Carmagnola pendant la foire qui lui est consacrée.
+Le réseau organise par ailleurs des week-ends thématiques autour d'un plat de la
+tradition.
 
 ## Manger à Turin : quatre tables du réseau
 
@@ -136,7 +137,7 @@ LIRE AUSSI : [Sagre du Piémont 2026](/sagre-piemont-2026/)
 | 5W dans le premier paragraphe | ✅ office (qui), 64 tables labellisées (quoi), Turin et province (où), 6 septembre 2026 (quand), deux seuils chiffrés (comment) |
 | Keyphrase dans la première phrase, un H2, le titre, le slug, la méta | ✅ « manger à Turin » aux cinq endroits |
 | 3 à 4 chapitres H2 | ✅ quatre |
-| Chapitres de longueur variée, moins de 250 mots chacun | ✅ 187 / 173 / 106 / 107 |
+| Chapitres de longueur variée, moins de 250 mots chacun | ✅ 172 / 173 / 106 / 107 |
 | Liens dans le corps, jamais groupés en pied | ✅ cinq internes et un externe, tous tissés |
 | Un lien externe vers la source publique | ✅ turismotorino.org |
 | Clôture « LIRE AUSSI : » | ✅ |
@@ -177,3 +178,57 @@ COMPLETS. **Deux relevés complets d'une même source ne valent pas un recoupeme
 la voix commune dont elles dérivent : cinq H2, aucun 5W, tous les liens en pied de page.
 J'avais lu l'étage du dessus sans lire l'étage du dessous. L'héritage va Commun → Cultura
 Sabauda → Agenda ; une surcharge ne dispense pas de la base, elle en corrige un point.
+
+## Auto-évaluation, étape 3 du skill `redaction-agenda-sabauda`
+
+*Exécutée le 06/09 sur le texte du fichier, pas sur une version retapée. Le skill exige de
+montrer la vérification, pas de dire « c'est conforme ».*
+
+### 1. Vocabulaire, vérification MÉCANIQUE
+
+`utils.vocabulaire.trouver()` lancé sur le corps de l'article, avec `OBSIDIAN_VOCAB_PATH`
+pointé sur une note temporaire reconstituée à partir du bloc collé par Franck le 06/09
+(hors dépôt : la branche principale a supprimé les miroirs le 05/09, et cette note de
+contrôle n'en recrée pas un).
+
+- règles chargées : **8** (frontière, langues régionales, francoprovençal, patois, espace
+  alpin, transfrontalier, royaume de Sardaigne, Venise des Alpes)
+- 651 mots contrôlés
+- résultat : **0 occurrence**
+
+### 2. Vérifications mécaniques simples
+
+| Contrôle | Résultat |
+|---|---|
+| tiret cadratin | 0 |
+| `---` littéral dans le corps | 0 |
+| emoji, point d'exclamation | 0, 0 |
+| mots par chapitre | 172 / 173 / 106 / 107 |
+| voix passive | 0 |
+| contamination de l'autre langue | aucun marqueur trouvé |
+
+### 3. Marqueurs de voix, un par un
+
+| Marqueur | État, avec la citation |
+|---|---|
+| Incise géographique sur chaque lieu | **présent** — « à Borgo Dora, près du marché de Porta Palazzo » ; « à Usseglio, dans les vallées de Lanzo » ; « à Carmagnola, dans la plaine au sud de Turin » ; « à Ivrea, dans le Canavese » |
+| Phrase-bilan modeste en fin de section | **présent** — « Lu pour ce qu'il est, il rend service. Lu comme un classement, il trompe. » |
+| Parenthèse pour le lecteur étranger | **présent** — « l'Ascom et la Confesercenti, les deux organisations de commerçants de la province » |
+| Mention de la source en passant | **présent** — « un cahier des charges que l'office publie » |
+| Bloc profil institutionnel | **présent** — le premier chapitre porte le réseau et ses partenaires |
+| Connecteurs de la liste autorisée | **présent** — « par ailleurs », « pourtant » |
+| Chute en douceur | **présent** — « Le Piémont se mange aussi debout, dans ses sagre et ses foires d'automne, et celles-là ont une date. » |
+| Chronologie comme commentaire implicite | **absent** — le sujet n'a pas de série de dates |
+| Comparaison géographique latérale | **absent** — le rapprochement avec la Cuisine Nissarde n'est pas fait dans le texte |
+| Ironie douce | **non tentée** — la voix elle-même dit que c'est l'auteur humain qui l'ajoute |
+
+### 4. Dark patterns, `docs/CHARTE_EDITORIALE.md` § 7, un par un
+
+| Dark pattern | État |
+|---|---|
+| Urgence ou rareté factice | **absent** — aucun compte à rebours, aucune place limitée ; la seule mention temporelle est une date de relevé |
+| Titre-piège, clickbait | **absent** — « Où manger à Turin : les tables Mangébin » est descriptif, il annonce ce que la page contient |
+| Confirmshaming | **absent** — aucun refus n'est sollicité |
+| Case pré-cochée, opt-in déguisé | **absent** — aucun formulaire |
+| Publicité déguisée en contenu éditorial | **à trancher par un œil humain**, et c'est le seul point qui le mérite. L'article nomme 7 établissements. Aucun partenariat, aucune contrepartie, et le critère de sélection est écrit dans le texte. L'épreuve d'Enrico (« l'article aurait-il pu être écrit par le service com d'un acteur cité ? ») donne non : un service com n'écrirait pas que le label ne garantit ni le service ni le cuisinier. Reste que la décision de nommer des commerces est éditoriale. |
+| Collecte de données | **absent** |

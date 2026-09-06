@@ -2,7 +2,9 @@
 
 *Jumelle italienne de `docs/articles/ou-manger-turin-mangebin.md`, troisième version du
 2026-09-06. **Vraie version éditoriale, pas une traduction.** Doctrine appliquée : voix
-commune Enrico (`clone-enrico-fr`) + surcharges Agenda Sabauda du relevé Obsidian du 06/09.*
+commune Enrico (`clone-enrico-fr`), procédure et checklist du skill
+`redaction-agenda-sabauda`, et surcharges Agenda Sabauda collées par Franck depuis Obsidian
+le 06/09, dont le dépôt ne garde volontairement aucun miroir depuis le 05/09.*
 
 **Sources** : Turismo Torino e Provincia, page « projet »
 `/it/visita/pianifica-la-tua-visita/proposte-turistiche/mangebin`, les deux pages
@@ -67,8 +69,8 @@ carta, non la serata: l'etichetta certifica un impegno di approvvigionamento, no
 servizio.
 
 C'è poi una simmetria che vale la pena dire. L'adesione è volontaria, quindi l'etichetta
-racconta qualcosa di chi ce l'ha e **niente di chi non ce l'ha**. Una trattoria fuori dal
-circuito non è stata bocciata: quasi sempre non ha chiesto. Vale per parecchie case
+racconta qualcosa di chi ce l'ha e **niente di chi non ce l'ha**. Nessuno ha bocciato la
+trattoria che sta fuori dal circuito: quasi sempre non ha chiesto. Vale per parecchie case
 storiche che nessuno si sognerebbe di togliere da un elenco torinese.
 
 ## Mangiare a Torino: quattro tavole del circuito
@@ -127,7 +129,7 @@ LEGGI ANCHE: [Sagre in Piemonte 2026](/it/sagre-piemonte-2026/)
 | 5W dans le premier paragraphe | ✅ ente (chi), 64 tavole etichettate (cosa), Torino e provincia (dove), 6 settembre 2026 (quando), due soglie (come) |
 | Keyphrase dans la première phrase, un H2, le titre, le slug, la méta | ✅ « mangiare a Torino » aux cinq endroits |
 | 3 à 4 chapitres H2 | ✅ quatre |
-| Chapitres de longueur variée, moins de 250 mots chacun | ✅ 168 / 140 / 96 / 102 |
+| Chapitres de longueur variée, moins de 250 mots chacun | ✅ 169 / 140 / 96 / 101 |
 | Liens dans le corps, jamais groupés en pied | ✅ tissés dans la prose |
 | Un lien externe vers la source publique | ✅ page italienne de turismotorino.org |
 | Clôture par un renvoi de lecture | ✅ « LEGGI ANCHE: », équivalent italien de la formule Enrico |
@@ -162,3 +164,56 @@ Les liens internes ne sont pas devinés : relevés dans le contenu publié de
 `/it/dove-mangiare/` (post 1812), puis appelés un par un le 06/09, tous en 200. À noter pour
 les prochains rayons : la base de catégorie reste `evenements/categorie` même côté italien,
 seul le terme est traduit ; `/it/eventi/categoria/` donnerait un 404.
+
+## Auto-évaluation, étape 3 du skill `redaction-agenda-sabauda`
+
+*Exécutée le 06/09 sur le texte du fichier, pas sur une version retapée. Le skill exige de
+montrer la vérification, pas de dire « c'est conforme ».*
+
+### 1. Vocabulaire, vérification MÉCANIQUE
+
+`utils.vocabulaire.trouver()` lancé sur le corps de l'article, avec `OBSIDIAN_VOCAB_PATH`
+pointé sur une note temporaire reconstituée à partir du bloc collé par Franck le 06/09
+(hors dépôt : la branche principale a supprimé les miroirs le 05/09, et cette note de
+contrôle n'en recrée pas un).
+
+- règles chargées : **8** (frontière, langues régionales, francoprovençal, patois, espace
+  alpin, transfrontalier, royaume de Sardaigne, Venise des Alpes)
+- 590 mots contrôlés
+- résultat : **0 occurrence**
+
+### 2. Vérifications mécaniques simples
+
+| Contrôle | Résultat |
+|---|---|
+| tiret cadratin | 0 |
+| `---` littéral dans le corps | 0 |
+| emoji, point d'exclamation | 0, 0 |
+| mots par chapitre | 169 / 140 / 96 / 101 |
+| voix passive | 0 |
+| contamination de l'autre langue | aucun marqueur trouvé |
+
+### 3. Marqueurs de voix, un par un
+
+| Marqueur | État, avec la citation |
+|---|---|
+| Incise géographique sur chaque lieu | **présent** — « a Borgo Dora, accanto al mercato di Porta Palazzo » ; « a Usseglio, nelle valli di Lanzo » ; « a Carmagnola, nella pianura a sud di Torino » ; « a Ivrea, nel Canavese » |
+| Phrase-bilan modeste en fin de section | **présent** — « Nessuno ha bocciato la trattoria che sta fuori dal circuito: quasi sempre non ha chiesto. » |
+| Parenthèse pour le lecteur étranger | **présent, inversé** — « l'Ascom e la Confesercenti, le due associazioni dei commercianti della provincia » reste utile au lecteur valdôtain, qui n'a pas ces sigles chez lui |
+| Mention de la source en passant | **présent** — « un disciplinare pubblico » |
+| Bloc profil institutionnel | **présent** — premier chapitre |
+| Chute en douceur | **présent** — « Il Piemonte si mangia anche in piedi, nelle sagre e nelle fiere d'autunno, e quelle una data ce l'hanno. » |
+| Chronologie comme commentaire implicite | **absent** |
+| Comparaison géographique latérale | **absent** |
+| Ironie douce | **non tentée** |
+
+### 4. Dark patterns, `docs/CHARTE_EDITORIALE.md` § 7, un par un
+
+| Dark pattern | État |
+|---|---|
+| Urgence ou rareté factice | **absent** — aucun compte à rebours, aucune place limitée ; la seule mention temporelle est une date de relevé |
+| Titre-piège, clickbait | **à trancher** — « che cosa garantisce davvero Mangébin » joue sur la curiosité. Ce n'est pas un « vous n'allez pas croire », et la promesse est tenue dans le texte, mais le « davvero » est un jugement à valider, pas un fait acquis |
+| Confirmshaming | **absent** — aucun refus n'est sollicité |
+| Case pré-cochée, opt-in déguisé | **absent** — aucun formulaire |
+| Publicité déguisée en contenu éditorial | **à trancher par un œil humain**, et c'est le seul point qui le mérite. L'article nomme 7 établissements. Aucun partenariat, aucune contrepartie, et le critère de sélection est écrit dans le texte. L'épreuve d'Enrico (« l'article aurait-il pu être écrit par le service com d'un acteur cité ? ») donne non : un service com n'écrirait pas que le label ne garantit ni le service ni le cuisinier. Reste que la décision de nommer des commerces est éditoriale. |
+| Collecte de données | **absent** |
