@@ -28,6 +28,24 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `23-cs-gabarit-recherche.php` | #23 · CS · Gabarit Recherche | front-end | oui | `a7fd40535f7ea92989f05484b75454e7` (2026-09-06) |
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
+| `44-cs-anti-doublon-home.php` | #44 · CS . Home - allocateur centralisé (dedup fiable + langue + territoire) | global | oui | `6a68c082afa23927a365c9c0d74c49ba` (2026-09-06) |
+
+**Le cas #44 (2026-09-06) : jamais copié ici avant ce jour, alors qu'il pilote toute la home.**
+C'est le snippet qui construit, pour chaque section de la page d'accueil (weekend, jour,
+à la une, nouveautés, en évidence, à venir, déplacement, 3 catégories), un plan unique
+d'événements sans doublon — entre sections d'abord, puis (nouveauté du 06/09, décision
+Franck) plus jamais deux fois le MÊME article dans la MÊME section, avec un budget de
+2 réutilisations max sur toute la page pour ne pas vider les petits territoires. Deux
+correctifs se sont succédé et annulés le jour même : un registre de rendu global aurait
+vidé « À la une » sur desktop pour tous les territoires (les blocs mobile/desktop du
+même `_element_id` sont des ALTERNATIFS, pas des concurrents — voir le commentaire dans
+le filtre `jet-engine/listing/grid/posts-query-args` en fin de fichier). La version
+retenue et copiée ici est donc celle qui a survécu à cette correction, relevée
+directement depuis `wp_snippets` (pas retapée à la main — voir la mésaventure du 12/08
+sur #24 : une transcription manuelle d'un fichier de 27 ko a produit une empreinte
+différente au premier essai ; la bonne méthode est d'écrire le code en fichier sur le
+serveur via `novamira/execute-php` puis de le relire avec `novamira/read-file`, jamais
+de recopier un gros bloc affiché dans la conversation).
 
 **Le cas #24 (2026-09-06) : proposer une SOURCE, pas seulement un événement.** Demande de
 Franck : « il faut aussi pouvoir proposer un flux RSS ou un lien d'inscription à une

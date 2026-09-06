@@ -112,3 +112,21 @@ La priorité SEO reste « que faire ce week-end à [ville] » (`docs/INTENTIONS_
 §3). Cette série est un pari latéral, borné à cinq villes, qui rend au passage une tuile de
 la home honnête. Elle ne passe pas par le pipeline d'événements : ce sont des textes
 éditoriaux, relus par Franck avant publication comme les guides.
+
+## 7. Fait en réserve, clarifié après publication — le gâteau de Savoie
+
+Publiés le 06/09, les articles Annecy et Chambéry ne mentionnent PAS le gâteau de Savoie :
+une piste (« l'Annécien déjà trouvé dans le menu d'un restaurant à Turin ») laissait croire
+à un conflit d'origine entre les deux villes, et toutes les sources trouvées en session
+attribuaient la création du gâteau de 1358 à Chambéry (Amédée VI), pas à Annecy — sans
+réponse de Franck sur sa source, la piste a été écartée plutôt qu'affirmée à tort.
+
+**Clarification de Franck, 06/09** : ce n'est pas un conflit d'origine, ce sont deux
+variantes régionales distinctes — « le gâteau de Savoie d'Annecy est plus léger que le
+classique. Le chambérien c'est un gâteau de Savoie avec de la confiture de myrtille. »
+Cette précision n'a pas encore été vérifiée auprès d'une source officielle (office de
+tourisme, syndicat professionnel) ni utilisée dans un article : à mobiliser pour une
+prochaine révision des pièces Annecy/Chambéry, ou pour un futur article transversal de
+gastronomie savoyarde — jamais comme un fait sourcé tant qu'aucune source officielle ne
+l'a confirmé (règle §3 : blog de voyage ou dire de Franck sert à trouver la piste, pas à
+la sourcer pour publication).

@@ -198,6 +198,7 @@ for eid, wp, titre, corps in (
          f"https://a.fr/{eid}", wp, "published_sub"))
 conn.commit(); conn.close()
 
+av._articles_wp = lambda slugs, base=av.BASE_URL: ([], [])  # aucun réseau dans cette fixture
 buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
     av.main([])
