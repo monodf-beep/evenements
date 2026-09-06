@@ -24,6 +24,118 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `135-garde-fous-dates-et-sources.php` | #135 · Garde-fous dates et sources | front-end | oui | `daafdd83a310978e18eae9b41ae6151a` |
 | `136-garde-fous-panel-formes-lieux.php` | #136 · Garde-fous 2 : panel, formes, lieux | front-end | oui | `59582f3cbccf3c03c089ac740cd41f8d` |
 | `10-cs-trash.php` | #10 · CS Trash (routes `cs/v1/trash` et `cs/v1/list`) | global | oui | `d882c18b020ddb1686fb0ee171612812` |
+| `15-cs-gabarit-hub-territoire-categorie.php` | #15 · CS · Gabarit Hub territoire/catégorie | front-end | oui | `ce606305fbcdec57b65e8e5ae354aa4b` (2026-09-06) |
+| `23-cs-gabarit-recherche.php` | #23 · CS · Gabarit Recherche | front-end | oui | `a7fd40535f7ea92989f05484b75454e7` (2026-09-06) |
+| `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
+| `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
+| `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
+| `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `22dca9ba46ecd2065531c85d4329a320` (2026-09-06) |
+| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `576c52014760075231d80ca9c0db3b01` (2026-09-06) |
+
+**Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
+capture de `/explore/savoie/` (via l'ancien /explore/) : la Foire de Savoie apparaissait
+deux fois. Deux causes distinctes trouvées, corrigées l'une après l'autre :
+
+1. Le budget de repli entre SECTIONS différentes (`$reuse_budget`, décision du 23/07 :
+   jusqu'à 2 répétitions tolérées sur toute la home plutôt qu'une section vide) a été
+   ramené à 0 — `venir`/`venir-bottom` avaient aussi leur propre plafond de repli (4),
+   ramené à 0 également. Une section peut désormais rester courte ou vide (message déjà
+   géré) plutôt que répéter.
+2. Persistait un second cas, plus subtil : « À la une » et « Jour » sont chacune rendues
+   par **deux widgets JetEngine distincts** (plein format + compact) partageant le MÊME
+   `_element_id` — l'allocateur dédoublonne ENTRE sections du plan, jamais entre deux
+   widgets de la même section, donc les deux montraient le même item nº1. Ajout d'un
+   registre statique partagé (`$deja_rendus`) dans le filtre
+   `jet-engine/listing/grid/posts-query-args` lui-même : un id déjà rendu, par n'importe
+   quel widget, ne se représente plus sur la même page.
+
+Vérifié après écriture (comptage des `data-post-id` sur la page rendue) : **zéro doublon**
+sur les 4 pages territoire, la home FR, la home IT et une page catégorie IT — contre 1 à
+11 doublons par page avant les deux correctifs.
+
+**Le cas #134 (2026-09-06) : réécriture complète des règles de « À lire ».** Franck,
+capture de la Vallée d'Aoste : « je ne sais pas si on mélange des territoires ». Discussion
+en session (maquette « Le moteur d'À lire », voir conversation) tranchée ainsi : territoire
+actif d'abord (4 places), saison (`cs_guide_saison_debut`/`cs_guide_saison_fin`, Custom
+Fields facultatifs — hors saison EXCLU, pas relégué, règle 5), diversité de sujet
+(`cs_guide_cat_term`), rotation quotidienne des ex æquo (même défaut déjà corrigé sur
+« À la une »), et une place voisine réservée par proximité (Savoie↔Piémont/VdA,
+Piémont↔VdA/Savoie/Nice, VdA↔Savoie/Piémont, Nice↔Piémont) — jamais mélangée aux locaux :
+sous un bandeau « Ailleurs dans l'espace sabaudo », comme « Ça vaut le déplacement » le
+fait déjà.
+
+Un bug trouvé PAR le test avant écriture (vue « les 4 territoires » sans `_motif` — les
+fonctions internes testées en isolation via `eval()` d'un fichier déposé en sandbox,
+snippet réel non touché tant que le bug n'était pas corrigé) : corrigé, retesté propre.
+Débogage réservé aux comptes `edit_posts` : `?cs_a_lire_debug=1` sur une page — liste les
+places et LEUR MOTIF (règle 6, jamais deviner pourquoi une section montre ce qu'elle
+montre), vérifié absent pour un visiteur anonyme. Vérifié en ligne après écriture sur
+Savoie, Comté de Nice, Piémont IT et la home : bandeau présent sur les pages territoire,
+absent sur la home (« les 4 » — rien n'est « chez soi », rien à séparer). Pas de filtre par
+sujet seul : avec 6 guides au total, croiser sujet + territoire viderait la section — à
+revoir si le stock grossit.
+
+**Le cas #148 et le menu footer (2026-09-06) : « Autres villes » dans le footer.** Franck,
+capture du footer FR : les colonnes territoire n'affichent que 3-4 villes chacune, sur 17
+pages « ville » réellement publiées — en Savoie, 7 (Sallanches, Cluses, Albertville,
+Annemasse, Thonon-les-Bains, Moûtiers, Saint-Jean-de-Maurienne) n'apparaissent dans aucun
+menu. Vérifié avant d'agir : ces pages sont indexables et déjà dans le sitemap, donc ce
+n'est pas un problème d'indexation — mais elles ne sont liées que depuis le hub territoire
+(`[cs_villes_du_territoire]`, shortcode déjà existant, jamais depuis le footer, présent lui
+sur TOUTE page du site) : gain de maillage interne et de profondeur de clic, pas de
+découvrabilité.
+
+Ajout d'un ancrage `id="villes-et-zones"` sur le conteneur que rend ce shortcode (#148),
+puis un item « Autres villes » / « Altre città » sous chaque groupe territoire des menus
+`footer-territoires` (281) et `footer-territoires-it` (521), pointant vers
+`<hub-territoire>#villes-et-zones` — la liste que le shortcode affiche déjà, jamais une
+page dupliquée. Vérifié après écriture : ancre présente et liste (« Sallanches » incluse)
+sur `/que-faire-en-savoie/`, 8 nouveaux liens détectés sur les deux accueils (la home
+rend le footer deux fois, comme le reste du menu — cf. commentaire du snippet #19).
+
+**Le cas #24 (2026-09-06) : proposer une SOURCE, pas seulement un événement.** Demande de
+Franck : « il faut aussi pouvoir proposer un flux RSS ou un lien d'inscription à une
+newsletter, il faut que je reçoive sur Slack ». Second formulaire sous le premier, sur
+les pages 934 (FR) et 3183 (IT) : type (RSS / newsletter / autre), adresse, organisme,
+e-mail, consentement, pot de miel, nonce propre. Chaque envoi est rangé dans l'option
+`cs_sources_proposees` (tableau : `at, type, url, org, email, lang`) et annoncé par
+`cs_slack_notify_form` — donc dans le **récapitulatif quotidien de 11h45**, pas en message
+immédiat : c'est la règle de Franck (« un seul message Slack par jour »), la même que pour
+les propositions d'événement. Testé de bout en bout par un POST réel (deux envois de test,
+retirés ensuite de l'option et de la boîte Slack du jour). Pour lire ce qui attend :
+`maybe_unserialize($wpdb->get_var("SELECT option_value FROM wp_options WHERE option_name='cs_sources_proposees'"))`.
+Rien n'ajoute encore ces sources à la veille du VPS : c'est un geste humain, après lecture.
+
+**Les cas #15 et #23 (2026-09-06) : le passé s'affichait.** Constat de Franck, capture de
+`/evenements/categorie/sport/` en main : 12 cartes, 9 terminées. Mesure en SQL direct
+(les requêtes WP ne comptent pas le passé, TEC le filtre — règle 2) : 141 fiches
+terminées sur 263 publiées ; la requête du gabarit Sport en rendait 13 dont 10 passées.
+Les deux gabarits n'avaient aucun plancher de date — le hub ville (#61) et la liste
+partagée (`mu-plugins/cs-agenda-list-shared.php`) en avaient un depuis le début. Ajout
+d'un `_EventEndDate >= now` (la date de FIN décide, une exposition en cours reste) sur
+la requête de base de #15 et sur les quatre requêtes événements de #23. Contrôle après
+écriture : Sport 3 cartes (toutes à venir), recherche « Nice » plus rien avant septembre.
+Sauvegardes d'avant sur le serveur : `wp-content/novamira-sandbox/backups/snippet-{15,23,26}-20260906-085950.php`.
+Le mirroir `wordpress/design-system/taxonomy-archive-template.php` (86 lignes, 07/2026)
+n'est PAS la référence : la version en ligne fait 22 ko.
+
+**Même jour, second passage sur #15 et #23 : l'ordre ne se voyait pas.** Franck, capture
+de Concerts & Musique : « j'ai l'impression qu'il n'y a pas d'ordre ». L'ordre était bien
+start ASC, mais rendu à plat, sans en-tête de jour, et une fiche commencée en juillet
+(« Jusqu'au 16/10 ») ouvrait la liste devant le 06/09. Les deux gabarits passent par le
+rendu partagé `cs_render_day_groups` (#21) déjà utilisé par Ce week-end et les hubs ville :
+en-têtes par jour, et les déjà-commencés à la fin sous « Ne ratez pas » (décision Franck
+2026-08-02). Sur #23, l'ordre vient toujours de `$cs_tri_ponctuels` (03/08) — le rendu ne
+fait que le montrer. Relevé après écriture : Concerts « Aujourd'hui / Vendredi 11 septembre
+/ … / Ne ratez pas ». Sauvegardes : `snippet-15-20260906-092620.php`, `snippet-23-20260906-092651.php`.
+Vu au passage, hors périmètre : #729 et #2231 (MITO, 11/09) sont le même événement, deux
+fois en français — un doublon à fusionner côté base.
+
+**Le cas #26 :** « Le fil » renommé « Nos articles » / « I nostri articoli » (H1 du
+gabarit et titre des pages 994 / 3186 ; les slugs `/le-fil/` et `/it/il-filo/` sont
+inchangés, aucun lien ne casse). L'agencement des articles (saison en cours d'abord)
+est une décision éditoriale en attente — voir la note #138 ci-dessous, la question
+annoncée comme devant « porter sur la FRAÎCHEUR » est revenue le 2026-09-06.
 
 **Le cas #10 mérite d'être lu avant de toucher à quoi que ce soit.** Le dépôt contenait
 déjà `deploy/wordpress/cs-trash.php` — et il n'y a **aucun** `mu-plugins/cs-trash.php` sur
