@@ -4,9 +4,18 @@
  * "Agenda Sabaudo - Le Fil.dc.html" (lue le 2026-07-13) : H1, liste
  * image+titre+chapô+chevron, pagination. Réutilise le post type `post`
  * natif (pas de CPT dédié — plus simple, taxonomie catégorie déjà native).
+ *
+ * 2026-09-06 (Franck) : « /category/curiosites/ ne correspond pas au template des
+ * pages ». Les archives de CATÉGORIE d'articles (/category/<slug>/ et /it/category/…)
+ * tombaient sur l'archive par défaut de GeneratePress (colonne latérale, gabarit du
+ * thème) — le seul endroit du site rendu hors gabarit maison. Elles passent désormais
+ * par ce même rendu, filtré sur la catégorie, avec son nom en titre et un rappel
+ * « Nos articles » qui ramène à la liste complète.
  */
 add_action('template_redirect', function () {
-    if (is_admin() || (!is_page(994) && !is_page(3186))) {
+    if (is_admin()) { return; }
+    $cat = (!is_page(994) && !is_page(3186) && is_category()) ? get_queried_object() : null;
+    if (!$cat && !is_page(994) && !is_page(3186)) {
         return;
     }
 
@@ -18,19 +27,27 @@ add_action('template_redirect', function () {
     $tr = function($s) use ($LB){ return isset($LB[$s]) ? $LB[$s] : $s; };
 
     $paged = max(1, get_query_var('paged') ?: (int) ($_GET['paged'] ?? 1));
-    $q = new WP_Query([
+    $args = [
         'post_type' => 'post',
         'post_status' => 'publish',
         'posts_per_page' => 10,
         'paged' => $paged,
-    ]);
+    ];
+    if ($cat) { $args['cat'] = (int) $cat->term_id; }
+    $q = new WP_Query($args);
+
+    $titre = $cat ? $cat->name : $tr("Nos articles");
+    $retour = get_permalink($is_it ? 3186 : 994);
 
     get_header();
     ?>
     <div style="max-width:700px;margin:0 auto;padding:0 20px">
 
       <div style="padding:16px 0 8px">
-        <h1 style="margin:0;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:32px;line-height:1.05;color:#1D1D1B;letter-spacing:0.02em"><?php echo esc_html($tr("Nos articles")); ?></h1>
+        <?php if ($cat): ?>
+        <a href="<?php echo esc_url($retour); ?>" style="display:inline-block;margin-bottom:6px;text-decoration:none;font-family:'Saira Condensed',sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#6F6B62"><?php echo esc_html($tr("Nos articles")); ?> <span style="color:#DC5D45">&rsaquo;</span></a>
+        <?php endif; ?>
+        <h1 style="margin:0;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:32px;line-height:1.05;color:#1D1D1B;letter-spacing:0.02em"><?php echo esc_html($titre); ?></h1>
       </div>
 
       <?php if (!$q->have_posts()): ?>
