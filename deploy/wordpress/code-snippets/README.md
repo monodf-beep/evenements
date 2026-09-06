@@ -28,6 +28,25 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `23-cs-gabarit-recherche.php` | #23 · CS · Gabarit Recherche | front-end | oui | `a7fd40535f7ea92989f05484b75454e7` (2026-09-06) |
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
+| `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
+
+**Le cas #148 et le menu footer (2026-09-06) : « Autres villes » dans le footer.** Franck,
+capture du footer FR : les colonnes territoire n'affichent que 3-4 villes chacune, sur 17
+pages « ville » réellement publiées — en Savoie, 7 (Sallanches, Cluses, Albertville,
+Annemasse, Thonon-les-Bains, Moûtiers, Saint-Jean-de-Maurienne) n'apparaissent dans aucun
+menu. Vérifié avant d'agir : ces pages sont indexables et déjà dans le sitemap, donc ce
+n'est pas un problème d'indexation — mais elles ne sont liées que depuis le hub territoire
+(`[cs_villes_du_territoire]`, shortcode déjà existant, jamais depuis le footer, présent lui
+sur TOUTE page du site) : gain de maillage interne et de profondeur de clic, pas de
+découvrabilité.
+
+Ajout d'un ancrage `id="villes-et-zones"` sur le conteneur que rend ce shortcode (#148),
+puis un item « Autres villes » / « Altre città » sous chaque groupe territoire des menus
+`footer-territoires` (281) et `footer-territoires-it` (521), pointant vers
+`<hub-territoire>#villes-et-zones` — la liste que le shortcode affiche déjà, jamais une
+page dupliquée. Vérifié après écriture : ancre présente et liste (« Sallanches » incluse)
+sur `/que-faire-en-savoie/`, 8 nouveaux liens détectés sur les deux accueils (la home
+rend le footer deux fois, comme le reste du menu — cf. commentaire du snippet #19).
 
 **Le cas #24 (2026-09-06) : proposer une SOURCE, pas seulement un événement.** Demande de
 Franck : « il faut aussi pouvoir proposer un flux RSS ou un lien d'inscription à une
