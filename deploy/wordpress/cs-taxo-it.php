@@ -40,10 +40,10 @@ function cs_taxo_it_map() {
             'fetes-traditions'       => array('Feste & Tradizioni popolari','feste-tradizioni'),
         ),
         'territoire' => array(
-            'savoie-haute-savoie'  => array('Savoia / Alta Savoia',    'savoia-alta-savoia'),
+            'savoie'  => array('Savoia',    'savoia'),
             'piemont'              => array('Piemonte',                'piemonte'),
             'vallee-d-aoste'       => array("Valle d'Aosta",           'valle-d-aosta'),
-            'nice-alpes-maritimes' => array('Nizza / Alpi Marittime',  'nizza-alpi-marittime'),
+            'comte-de-nice' => array('Contea di Nizza',  'contea-di-nizza'),
         ),
     );
 }

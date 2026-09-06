@@ -10,10 +10,6 @@ Description: Demande de Franck 2026-07-20 ("supprimer les elements publicite") :
   la zone interieure est restee vide. Des qu'une pub est reellement servie, la zone
   n'est plus vide et l'encart reapparait automatiquement -- zero maintenance.
 
-  ⚠️ Recupere depuis wp-content/mu-plugins/ en production le 2026-08-04 : ce fichier
-  existait deja en LIVE (cree le 2026-07-20), jamais commite ici auparavant. Meme
-  derive non versionnee que cs-regie-serve.php (cf. docs/REGIE_MISE_EN_PLACE_SOCLE.md).
-
   Rollback : supprimer ce fichier (les cadres vides reapparaissent).
 */
 if (!defined('ABSPATH')) { exit; }

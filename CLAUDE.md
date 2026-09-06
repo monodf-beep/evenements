@@ -354,8 +354,21 @@ Un mu-plugin se charge AVANT tout le reste de WordPress : une faute de syntaxe y
 aussi la porte qui permettrait de la réparer. Le retour arrière a demandé du FTP, que
 Franck n'avait pas sous la main — c'est ça qui a coûté les deux jours, pas la faute
 elle-même. Et `cs-source-garde.php` n'était PAS dans le dépôt : écrit directement sur le
-serveur, sans relecture ni copie versionnée. Il reste **34 mu-plugins `cs-*` en ligne
-dans ces conditions**, dont 18 seulement ont leur double ici.
+serveur, sans relecture ni copie versionnée.
+
+> ✅ **Réglé le 2026-09-05.** Ce paragraphe annonçait « 34 mu-plugins `cs-*` en ligne, dont
+> 18 seulement ont leur double ici ». Remesuré ce jour-là : c'était **33 en ligne et DIX
+> versionnés**, l'écart s'était creusé sans que personne le recompte. Les 33 sont désormais
+> dans `deploy/wordpress/`, identiques à la production à l'octet près, donc couverts par
+> `tests/test_php_syntax.py`.
+>
+> Et le contrôle a trouvé mieux que le trou : **4 des 10 qu'on croyait à jour divergeaient
+> déjà**. Trois sur des commentaires ; le quatrième, `cs-taxo-it.php`, sur du vrai code — le
+> dépôt cherchait les termes `savoie-haute-savoie` et `nice-alpes-maritimes`, qui n'existent
+> pas. Le déployer aurait arrêté en silence les traductions italiennes de la Savoie et du
+> Comté de Nice. **`deploy/wordpress/` est donc un MIROIR, pas une source à pousser
+> aveuglément : comparer avant de déployer.** Détail et commandes de contrôle dans
+> `deploy/wordpress/MU-PLUGINS-RAPATRIES.md`.
 
 Donc : le fichier vit dans `deploy/wordpress/`, `tests/test_php_syntax.py` le passe au
 `php -l` (avec une contre-épreuve : un fichier cassé DOIT être refusé), et
