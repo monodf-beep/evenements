@@ -103,6 +103,24 @@ poser ces deux questions : la réponse doit déjà être dans la première livra
    est présent ou absent. Si un point relève d'un jugement plutôt que d'un fait vérifiable
    (un titre « catchy » qui joue sur la curiosité, par exemple), le présenter comme un
    jugement à trancher, jamais comme un fait acquis.
+5. **Si l'article existe en plusieurs langues, vérifier qu'aucune ne contamine l'autre** :
+   chercher dans le texte FR quelques mots typiquement italiens (« città », « però »,
+   « anche »…) et inversement. Un texte écrit dans deux fichiers séparés peut sembler
+   propre alors qu'une phrase de l'un s'est glissée dans l'autre au moment de la relecture.
+
+## Une faute déjà commise avec ce skill, pour ne pas la refaire
+
+Le 06/09/2026, un texte vérifié par toutes les étapes ci-dessus a quand même été livré
+à Franck avec une phrase italienne au milieu de la version française — non pas parce que
+le fichier était sale (il ne l'était pas, relu après coup), mais parce que le texte a été
+**retapé à la main** dans la réponse au lieu d'être recopié depuis le fichier relu par
+l'outil de lecture. Le contrôle mécanique avait porté sur le bon texte ; ce qui a été
+montré à Franck n'était plus tout à fait le même.
+
+**Ne jamais retaper un texte déjà vérifié.** Une fois le fichier écrit et contrôlé
+(vocabulaire, tirets, gras, longueurs), le relire avec l'outil de lecture et coller ce
+résultat tel quel dans la réponse — jamais le reconstituer de mémoire, même pour de
+courts passages. Un texte vérifié puis retapé n'est plus un texte vérifié.
 
 ## Étape 4 — livrer un brouillon, jamais publier seul
 
