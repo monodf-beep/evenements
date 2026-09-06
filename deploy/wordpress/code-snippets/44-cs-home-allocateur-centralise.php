@@ -136,14 +136,14 @@ function cs_home_build_allocation() {
 
     $claimed = [];
     $reused  = [];
-    // 2026-09-06 (Franck) : « pas 2x le meme article dans la meme partie de la home » --
-    // constate en direct sur /explore/savoie/, la Foire de Savoie dupliquee entre
-    // « En evidence » (haut) et « En evidence » (bas) via CE budget de reutilisation
-    // (decision du 23/07 : jusqu'a 2 repetitions tolerees plutot qu'une section vide).
-    // Franck a tranche l'inverse : jamais de doublon, une section peut rester courte
-    // ou vide (message « Aucune selection a afficher » deja gere plus bas dans le
-    // gabarit) -- c'est une penurie reelle, pas a masquer (regle 5/6 du depot).
-    $reuse_budget = 0;
+    // 2026-09-06 (Franck), REVU LE MEME JOUR : le premier correctif (budget a 0) etait
+    // TROP large -- il a vide « A la une » sur les petits territoires (Savoie :
+    // « Aucun evenement pour le moment ») au lieu de viser le vrai bug. Regle
+    // reformulee par Franck : JAMAIS 2x le meme article DANS LA MEME SECTION, mais
+    // JUSQU'A 2 FOIS SUR TOUTE LA HOME reste accepte (c'est exactement le budget du
+    // 23/07, remis tel quel). Le vrai bug (widgets jumeaux d'une meme section, plus
+    // bas dans ce fichier) est distinct et reste corrige.
+    $reuse_budget = 2;
 
     $take = function ($count, $mode, $eid, $max_reuse = null) use (&$claimed, &$reused, &$reuse_budget, $lang, $now, $wkStart, $wkEnd, $todayStart, $d7, $terr_tax) {
         $meta = [
@@ -333,8 +333,8 @@ function cs_home_build_allocation() {
         'nouveautes'      => $take(3, 'nouveautes', 'nouveautes'),
         'evidence'        => $take(3, 'vedette', 'evidence'),
         'evidence-bottom' => $take(3, 'vedette', 'evidence-bottom'),
-        'venir'           => $take(4, 'upcoming', 'venir', 0),
-        'venir-bottom'    => $take(4, 'upcoming', 'venir-bottom', 0),
+        'venir'           => $take(4, 'upcoming', 'venir', 4),
+        'venir-bottom'    => $take(4, 'upcoming', 'venir-bottom', 4),
         'deplacement'     => cs_home_deplacement_pick($lang, $now),
         'cat-concerts'     => cs_home_category_pick('concerts-musique', 4, $lang, $terr_tax, $now, $claimed),
         'cat-expositions'  => cs_home_category_pick('expositions-patrimoine', 4, $lang, $terr_tax, $now, $claimed),
@@ -431,9 +431,13 @@ add_filter('jet-engine/listing/grid/posts-query-args', function ($args, $render,
         // le MEME _element_id -- l'allocateur (plus haut) dedoublonne ENTRE sections, pas
         // entre deux widgets de la MEME section. Registre partage entre TOUS les appels de
         // ce filtre sur une page : un id deja rendu (n'importe ou) ne se represente plus.
-        static $deja_rendus = [];
-        $ids = array_values(array_diff($plan[$eid], $deja_rendus));
-        $deja_rendus = array_values(array_unique(array_merge($deja_rendus, $ids)));
+        // Registre PAR SECTION ($eid), pas global : deux widgets de la MEME section
+        // (plein format + compact) ne montrent jamais le meme article, mais un article
+        // deja montre dans UNE section reste eligible dans une AUTRE (c'est le budget
+        // de repli ci-dessus qui plafonne ce total-la, a 2).
+        static $deja_par_section = [];
+        $ids = array_values(array_diff($plan[$eid], $deja_par_section[$eid] ?? []));
+        $deja_par_section[$eid] = array_values(array_unique(array_merge($deja_par_section[$eid] ?? [], $ids)));
         $args['post__in'] = !empty($ids) ? $ids : [0];
         $args['orderby']  = 'post__in';
         unset($args['post__not_in']);
