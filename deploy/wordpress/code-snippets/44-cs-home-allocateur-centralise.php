@@ -435,10 +435,14 @@ add_filter('jet-engine/listing/grid/posts-query-args', function ($args, $render,
         // (plein format + compact) ne montrent jamais le meme article, mais un article
         // deja montre dans UNE section reste eligible dans une AUTRE (c'est le budget
         // de repli ci-dessus qui plafonne ce total-la, a 2).
-        static $deja_par_section = [];
-        $ids = array_values(array_diff($plan[$eid], $deja_par_section[$eid] ?? []));
-        $deja_par_section[$eid] = array_values(array_unique(array_merge($deja_par_section[$eid] ?? [], $ids)));
-        $args['post__in'] = !empty($ids) ? $ids : [0];
+        // ANNULE LE SOIR MEME (06/09) : ce registre vidait « A la une » sur DESKTOP pour tous
+        // les territoires. Mesure sur la page rendue : les deux widgets d'une section ne sont
+        // pas concurrents mais ALTERNATIFS -- le bloc .as-home (listing 1696, mobile) est
+        // masque a partir de 900px, le bloc .as-home-desktop (1695) en dessous. Rendu en
+        // premier, le mobile consommait les ids et le desktop recevait [0] -> « Aucun
+        // evenement pour le moment ». Le plan de l'allocateur garantit deja qu'un id n'est
+        // qu'une fois PAR section : chaque widget de la section recoit le plan entier.
+        $args['post__in'] = !empty($plan[$eid]) ? $plan[$eid] : [0];
         $args['orderby']  = 'post__in';
         unset($args['post__not_in']);
 
