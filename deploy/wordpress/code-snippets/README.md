@@ -26,11 +26,11 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `10-cs-trash.php` | #10 · CS Trash (routes `cs/v1/trash` et `cs/v1/list`) | global | oui | `d882c18b020ddb1686fb0ee171612812` |
 | `15-cs-gabarit-hub-territoire-categorie.php` | #15 · CS · Gabarit Hub territoire/catégorie | front-end | oui | `ce606305fbcdec57b65e8e5ae354aa4b` (2026-09-06) |
 | `23-cs-gabarit-recherche.php` | #23 · CS · Gabarit Recherche | front-end | oui | `a7fd40535f7ea92989f05484b75454e7` (2026-09-06) |
-| `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `ec3d9a91b819560e5424e370d16fd936` (2026-09-06) |
+| `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `639f5093ef22060fdc9f984d6cd2161a` (2026-09-06, soir) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
-| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `6a68c082afa23927a365c9c0d74c49ba` (2026-09-06, soir) |
+| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `5c017ab3fca0044c5fcd16544e13b794` (2026-09-06, soir) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
 capture de `/explore/savoie/` (via l'ancien /explore/) : la Foire de Savoie apparaissait
@@ -72,6 +72,18 @@ reçoit le plan entier, comme avant le 06/09. Vérifié en ligne après écritur
 widget : desktop = mobile sur Nice (727, 7495), Savoie (8150, 754), Piémont (6386), VdA
 (4113), « les 4 » FR (8096, 7495, 6386). Sauvegarde :
 `novamira-sandbox/backups/snippet-44-20260906-203543.txt`.
+
+**Quatrième passe (même soir) : le VRAI doublon, enfin mesuré.** En faisant calculer les
+plans par l'allocateur lui-même, territoire par territoire : Savoie `evidence=[1925]` et
+`evidence-bottom=[1925]` — la Foire de Savoie deux fois de suite dans la même colonne,
+exactement la capture du matin ; Nice `venir` et `venir-bottom` partageaient 909. Cause :
+les moitiés basses complètent leur manque par réemploi (`$reuse_budget` / `max_reuse`), et
+le réservoir de réemploi contenait les ids de la moitié HAUTE de la même colonne. Le
+closure `$take` accepte désormais un 5ᵉ argument `$exclure_reemploi` ; `evidence-bottom`
+reçoit les ids d'`evidence`, `venir-bottom` ceux de `venir` (le plan est construit
+séquentiellement pour pouvoir s'y référer). Remesuré après écriture : intersection vide sur
+Savoie, Nice, « les 4 » ; page Savoie rendue conforme (`evidence-bottom` vide plutôt que
+redondant). Sauvegarde : `novamira-sandbox/backups/snippet-44-20260906-211554.txt`.
 
 Et une réserve honnête sur le manque de matière : côté FR il n'y a que 76 événements à
 venir, dont 12 avec `as_une_now` > 0 (Nice 3, Savoie 3, Piémont 5, VdA 1) — et « À la
@@ -129,6 +141,18 @@ groupes. Vérifié en ligne : plus aucun `border-top:2px solid #1D1D1B` dans « 
 deux restants sur la page sont les tuiles « Ce week-end » / « Tout l'agenda »), quatre
 tirets aux quatre couleurs. Sauvegarde :
 `novamira-sandbox/backups/snippet-134-20260906-202256.txt`.
+
+**Le cas #26, archives de catégorie (2026-09-06, soir).** Franck : « /category/curiosites/
+ne correspond pas au template des pages ». Mesuré : la page était l'archive par défaut de
+GeneratePress (`body.archive.category`, colonne latérale, 5 articles) — le seul endroit du
+site rendu hors gabarit maison ; aucun snippet ne traitait `is_category()`. Quatre
+catégories d'articles existent (curiosites/curiosita 5, guides/guide-it 7, plus deux vides
+« non classé »). Le `template_redirect` du #26 prend désormais aussi les archives de
+catégorie : même liste, filtrée par `cat`, nom de la catégorie en H1, et un rappel « Nos
+articles › » vers 994/3186. Vérifié en ligne : `/category/curiosites/`, `/category/guides/`,
+`/it/category/curiosita/` sans colonne latérale, `/le-fil/` (« Nos articles ») inchangé (10
+articles, pas de rappel). Sauvegarde :
+`novamira-sandbox/backups/snippet-26-20260906-211139.txt`.
 
 **Le cas #148 et le menu footer (2026-09-06) : « Autres villes » dans le footer.** Franck,
 capture du footer FR : les colonnes territoire n'affichent que 3-4 villes chacune, sur 17
