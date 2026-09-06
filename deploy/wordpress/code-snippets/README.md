@@ -30,7 +30,7 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
-| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `24cceb7d8983990a7c5af41a7184a4ff` (2026-09-06) |
+| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `6a68c082afa23927a365c9c0d74c49ba` (2026-09-06, soir) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
 capture de `/explore/savoie/` (via l'ancien /explore/) : la Foire de Savoie apparaissait
@@ -55,6 +55,29 @@ deux fois. Deux causes distinctes, et un premier correctif trop large corrigé l
 Vérifié après le second correctif, section par section (regroupement des `data-post-id`
 par `_element_id` sur la page rendue) : zéro doublon DANS chaque section sur les 4
 territoires, et « À la une » n'est plus vide sur la Savoie.
+
+**Troisième correctif, le soir même — le registre par section est ANNULÉ.** Franck,
+captures desktop de Nice et de « les 4 » : « on a toujours pas retrouvé d'articles à la
+une ! ». Mesuré : pour un visiteur anonyme le HTML contenait bien 727 et 7495… dans le
+widget MOBILE (listing 1696, bloc `.as-home`, `display:none` à partir de 900 px). Le widget
+DESKTOP (1695, `.as-home-desktop`, masqué en dessous) rendait `jet-listing-not-found` sur
+TOUS les territoires. Les « deux widgets d'une même section » du point 1 ne sont donc pas
+concurrents mais alternatifs — jamais visibles ensemble — et le registre faisait exactement
+l'inverse de ce qu'il promettait : le mobile, rendu en premier, consommait les ids, le
+desktop recevait `[0]`. Ma vérification du point 1 comptait les `data-post-id` sans
+regarder lequel des deux blocs est affiché — un doublon mobile+desktop dans le HTML n'est
+pas un doublon à l'écran, et c'est ce que j'avais pris pour le bug. Le plan de
+l'allocateur garantit déjà qu'un id n'apparaît qu'une fois PAR section ; chaque widget
+reçoit le plan entier, comme avant le 06/09. Vérifié en ligne après écriture, widget par
+widget : desktop = mobile sur Nice (727, 7495), Savoie (8150, 754), Piémont (6386), VdA
+(4113), « les 4 » FR (8096, 7495, 6386). Sauvegarde :
+`novamira-sandbox/backups/snippet-44-20260906-203543.txt`.
+
+Et une réserve honnête sur le manque de matière : côté FR il n'y a que 76 événements à
+venir, dont 12 avec `as_une_now` > 0 (Nice 3, Savoie 3, Piémont 5, VdA 1) — et « À la
+une » est servie APRÈS « Ce week-end » (6) et « Les 7 jours » (8) sans droit de réemploi
+(`max_reuse = 0` sur cette ligne du plan). Une ou deux fiches par territoire, c'est le stock
+réel, pas un bug d'affichage.
 
 Vérifié après écriture (comptage des `data-post-id` sur la page rendue) : **zéro doublon**
 sur les 4 pages territoire, la home FR, la home IT et une page catégorie IT — contre 1 à
