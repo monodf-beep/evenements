@@ -79,3 +79,53 @@ officiel ou une citation. L'audit montre LA PHRASE ; c'est un œil qui tranche.
    ligne.
 
 Rien d'autre : les prompts renvoient à la liste, ils n'ont pas à être modifiés.
+
+---
+
+## Relevé du 2026-09-06 — collé par Franck depuis Obsidian
+
+*Ce miroir était INCOMPLET. Quatre règles ci-dessous n'existaient nulle part dans le dépôt
+(`francoprovençal`, `patois`, `langues régionales`, la tolérance ALCOTRA) ; une session qui
+s'était fiée au dépôt aurait écrit « francoprovençal » en croyant respecter la doctrine.
+Franck : « tu dois accéder à Obsidian sinon tu vas pas tout avoir ». Il avait raison.*
+
+### La liste des interdits, telle qu'Obsidian la porte au 06/09
+
+| N'emploie JAMAIS | Écrire à la place |
+|---|---|
+| « frontière » | reformuler : « au-delà des Alpes », « en Piémont » |
+| « langues régionales » | **nommer la langue** (savoyard, occitan, arpitan selon contexte) |
+| « francoprovençal » | **« savoyard »** |
+| « patois » | **nommer la langue** |
+| « espace alpin » | « espace sabaudo » |
+| « transfrontalier » | toléré pour nommer un programme réel (**Interreg ALCOTRA**) ; sinon « sabaud · entre Savoie et Piémont », en italien « sabaudo · tra Savoia e Piemonte » |
+| « royaume de Sardaigne » | « les États de Savoie » |
+| « Venise des Alpes » | nommer la ville, **sans remplacement** |
+
+### Les surcharges de forme propres à l'Agenda
+
+- **Deux longueurs selon le score.** Score ≥ 7 → article LONG (forme Cultura Sabauda,
+  evergreen développé, 3-4 chapitres H2, mise en contexte, angle). Score < 7 → article
+  COURT (1 à 3 paragraphes **rédigés**, jamais la description brute recopiée) + faits
+  structurés en liste quand ils existent.
+- **Gras utile** : 3 à 5 expressions structurantes par article, **jamais** sur les noms
+  propres, lieux, dates ou chiffres.
+- **Pas de tiret cadratin.**
+- **Pas d'encadré « En pratique »** dans le corps : Quand/Où sont natifs TEC.
+- ⚠️ **Listes AUTORISÉES et RECOMMANDÉES sur l'Agenda**, par surcharge explicite de la voix
+  commune Enrico qui les proscrit : programmation, line-up, concerts du jour, horaires,
+  tarifs.
+- Héritage : Commun → Cultura Sabauda → Agenda Sabauda (vault `agenda-sabauda`), chaque
+  étage pouvant évoluer seul.
+
+### Où cette doctrine vit réellement, et pourquoi elle se perd
+
+| Endroit | Ce qu'il en porte | État |
+|---|---|---|
+| **Obsidian, sur le VPS** | tout, et c'est la seule vérité | lu en direct par `utils/voix.py` et `utils/vocabulaire.py` |
+| `deploy/wordpress/cs-corps-lint.php` | connaît `francoprovencal`, `patois`, `langues regionales`… | ⚠️ **la fonction n'est appelée nulle part** (cf. `MESURES_2026-09-06.md` §8) |
+| `docs/voix/VOIX.md` | la voix commune, en filet | partiel |
+| **ce fichier** | le miroir | l'était trop peu — d'où ce relevé |
+
+Le garde-fou WordPress connaissait donc quatre interdits que la documentation ignorait, et
+il ne s'exécute jamais. La doctrine complète n'existait qu'à un seul endroit : Obsidian.
