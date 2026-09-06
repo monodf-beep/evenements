@@ -35,17 +35,17 @@ comme en français. Turin passe de cinq à quatre adresses.
 ## Blocco SEO
 
 - **Keyphrase** : mangiare a Torino
-- **Slug** : `dove-mangiare-a-torino-mangebin`
-- **Titolo SEO** : Dove mangiare a Torino: le 64 tavole del circuito Mangébin
-- **Meta description** : Mangébin riunisce 64 tavole dove mangiare a Torino e in provincia. Che cosa garantisce l'etichetta, che cosa non dice, sette indirizzi.
+- **Slug** : `dove-mangiare-a-torino`
+- **Titolo SEO** : Dove mangiare a Torino e in provincia: 64 tavole certificate
+- **Meta description** : Dove mangiare a Torino e in provincia: 64 tavole certificate su due soglie scritte. Che cosa garantisce l'etichetta, che cosa non dice, sette indirizzi.
 - **Alt dell'immagine** : Insegna di una piola torinese, dove mangiare a Torino la cucina piemontese
-- **Gemella FR** : `/ou-manger-a-turin-mangebin/`, da appaiare in Polylang
+- **Gemella FR** : `/ou-manger-a-turin/`, appaiata in Polylang
 
 ---
 
 ## Corpo dell'articolo
 
-# Dove mangiare a Torino: le tavole Mangébin
+# Dove mangiare a Torino: le 64 tavole certificate
 
 Sessantaquattro locali dove mangiare a Torino e in provincia portano l'etichetta Mangébin,
 che Turismo Torino e Provincia, l'ente del turismo metropolitano, assegna su due soglie
@@ -225,7 +225,7 @@ contrôle n'en recrée pas un).
 | | FR | IT |
 |---|---|---|
 | WP | 8249 | 8250 |
-| URL | `/ou-manger-a-turin-mangebin/` | `/it/dove-mangiare-a-torino-mangebin/` |
+| URL | `/ou-manger-a-turin/` | `/it/dove-mangiare-a-torino/` |
 | Catégorie | Guides | Guide |
 | Territoire | Piémont · Province de Turin | Piemonte · Provincia di Torino |
 
@@ -244,3 +244,30 @@ les termes FRANÇAIS. Corrigé après coup en « Guide » / « Piemonte · Provi
 la une**. La voix commune interdit une photo sans crédit visible et sans propriétaire
 identifié ; je n'en avais pas. C'est le seul élément de la charte qui reste ouvert sur ces
 deux pages.
+
+### Correction du 06/09 au soir : la marque sort de l'URL et des titres
+
+Franck : « on ne peut pas mettre mangebin dans l'url et explicitement ».
+
+L'argument tient, et il tient même contre le précédent de la Cuisine Nissarde, dont le slug
+porte pourtant le nom du label : **« Cuisine Nissarde » est un terme cherché, « Mangébin »
+ne l'est pas.** Le slug dépensait son poids sur une marque à volume nul, au lieu de la
+requête qui amène le lecteur.
+
+| | Avant | Après |
+|---|---|---|
+| Slug FR | `ou-manger-a-turin-mangebin` | `ou-manger-a-turin` |
+| Slug IT | `dove-mangiare-a-torino-mangebin` | `dove-mangiare-a-torino` |
+| Titre FR | Où manger à Turin : les tables Mangébin | Où manger à Turin : les 64 tables labellisées |
+| Titre IT | Dove mangiare a Torino: le tavole Mangébin | Dove mangiare a Torino: le 64 tavole certificate |
+| Titre SEO, méta | commençaient par la marque | commencent par la requête |
+| Ancre dans les hubs | « les tables Mangébin » | « les 64 tables labellisées » |
+
+**La marque reste nommée là où elle doit l'être** : dans le premier paragraphe du corps, et
+dans le lien vers la page de l'office. La charte impose d'attribuer la source ; elle
+n'impose pas de lui donner l'URL. Les deux hubs continuent d'ailleurs de nommer le réseau
+dans la phrase qui précède le lien.
+
+Les anciennes adresses ne sont pas cassées : WordPress conserve l'ancien slug
+(`_wp_old_slug`) et redirige. Vérifié sur les deux, elles arrivent bien sur les nouvelles.
+Aucun autre contenu du site ne pointait vers elles.
