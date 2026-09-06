@@ -286,3 +286,40 @@ dans la phrase qui précède le lien.
 Les anciennes adresses ne sont pas cassées : WordPress conserve l'ancien slug
 (`_wp_old_slug`) et redirige. Vérifié sur les deux, elles arrivent bien sur les nouvelles.
 Aucun autre contenu du site ne pointait vers elles.
+
+### Image à la une, posée le 06/09 au soir
+
+Dernier point ouvert du rayon, refermé.
+
+| | |
+|---|---|
+| Fichier | `Porta_Palazzo_market.jpg`, le marché alimentaire de Porta Palazzo |
+| Auteur | **Xadhoomx** |
+| Licence | **CC BY-SA 3.0**, via Wikimedia Commons |
+| Original | 2592 × 1936, servi par le site en 2560 × 1912 (webp) |
+| Pièce jointe | 8263, la même pour les deux langues, comme la Cuisine Nissarde partage la sienne |
+| Crédit | « © Xadhoomx, CC BY-SA 3.0, via Wikimedia Commons », en légende, visible sur la page |
+
+Le sujet n'est pas décoratif : Porta Palazzo est le marché autour duquel les piole sont
+nées, et San Giors, la première adresse de la sélection, est à deux pas.
+
+**Un contre-exemple qui montre la règle à l'œuvre.** Une autre photo de la même place était
+disponible et convenait mieux au cadrage, `Piazza_porta_palazzo.jpg`. Son champ auteur dit
+`sconosciuto`. La voix commune est explicite : sans propriétaire identifié, on ne propose
+pas la photo. Elle est écartée pour ça, et pour rien d'autre.
+
+**Comment elle est arrivée là, parce que ça resservira.** L'API de Wikimedia
+(`commons.wikimedia.org/w/api.php`) répond **429** depuis cette session : la limite porte
+sur l'IP partagée du proxy, pas sur nous, et réessayer n'y change rien. Deux contournements,
+tous deux légitimes :
+
+- **chercher l'image sans l'API** : la page Wikipédia du sujet et la page de description du
+  fichier sont des pages normales, elles répondent. C'est là que se lisent l'auteur, la
+  licence et les dimensions ;
+- **laisser WordPress télécharger le fichier**, avec `media_sideload_image()`. Le serveur
+  d'OVH n'est pas limité, lui, et l'image ne transite pas par la session.
+
+**Un faux problème écarté avant de le signaler** : la balise `og:image` de l'article renvoie
+l'image générique du site et non la photo. Vérifié sur la Cuisine Nissarde et sur les Sagre
+du Piémont : elles font exactement pareil. C'est le comportement du site, pas une régression
+de ces deux pages.
