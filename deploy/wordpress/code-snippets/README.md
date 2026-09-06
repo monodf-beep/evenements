@@ -30,6 +30,28 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `22dca9ba46ecd2065531c85d4329a320` (2026-09-06) |
+| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `576c52014760075231d80ca9c0db3b01` (2026-09-06) |
+
+**Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
+capture de `/explore/savoie/` (via l'ancien /explore/) : la Foire de Savoie apparaissait
+deux fois. Deux causes distinctes trouvées, corrigées l'une après l'autre :
+
+1. Le budget de repli entre SECTIONS différentes (`$reuse_budget`, décision du 23/07 :
+   jusqu'à 2 répétitions tolérées sur toute la home plutôt qu'une section vide) a été
+   ramené à 0 — `venir`/`venir-bottom` avaient aussi leur propre plafond de repli (4),
+   ramené à 0 également. Une section peut désormais rester courte ou vide (message déjà
+   géré) plutôt que répéter.
+2. Persistait un second cas, plus subtil : « À la une » et « Jour » sont chacune rendues
+   par **deux widgets JetEngine distincts** (plein format + compact) partageant le MÊME
+   `_element_id` — l'allocateur dédoublonne ENTRE sections du plan, jamais entre deux
+   widgets de la même section, donc les deux montraient le même item nº1. Ajout d'un
+   registre statique partagé (`$deja_rendus`) dans le filtre
+   `jet-engine/listing/grid/posts-query-args` lui-même : un id déjà rendu, par n'importe
+   quel widget, ne se représente plus sur la même page.
+
+Vérifié après écriture (comptage des `data-post-id` sur la page rendue) : **zéro doublon**
+sur les 4 pages territoire, la home FR, la home IT et une page catégorie IT — contre 1 à
+11 doublons par page avant les deux correctifs.
 
 **Le cas #134 (2026-09-06) : réécriture complète des règles de « À lire ».** Franck,
 capture de la Vallée d'Aoste : « je ne sais pas si on mélange des territoires ». Discussion
