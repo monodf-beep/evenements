@@ -276,3 +276,53 @@ Ordre de bataille révisé :
 | 3 | Article Vallée d'Aoste — *ristori agrituristici* | 15 événements, source officielle `lovevda.it` |
 | 4 | Article Chablais / Léman — poissons du lac | 10 événements, et SERP la plus faible : le seul qui gagne AUSSI en acquisition |
 | 5 | Article Piémont sud (Cuneese/Monregalese, section Langhe) | 7 événements ; à réévaluer si Alba est republiée |
+
+---
+
+## 7. ⚠️ CORRECTION DU 2026-09-06 — la source de la vague 1 ne tient pas
+
+Le §1 classait « Bistrots de Pays » comme la source la plus directement exploitable, et le §3
+en faisait les deux premiers articles. **Mesuré le 06/09, en dépouillant les marqueurs des
+cartes de `bistrotdepays.com` : c'est faux.**
+
+| Département | Bistrots de Pays réels |
+|---|---|
+| Savoie (73) | **1** (Tarentaise, 45.5442 / 6.7573) |
+| Haute-Savoie (74) | **1** (Chablais, 46.2591 / 6.5306) |
+| Alpes-Maritimes (06) | **6** |
+
+**Zéro dans les Bauges.** Le label existe bien en Savoie — j'avais écrit « ma réserve
+tombe » en voyant les trois pages départementales répondre — mais une page départementale
+qui répond ne dit rien du nombre d'établissements derrière. Les fiches sont dans des
+marqueurs Leaflet en JavaScript inline ; il fallait les extraire pour compter.
+
+C'est la quatrième fois de la session qu'une mesure inverse une conclusion. Le motif est
+toujours le même : j'ai pris la présence d'une page pour la présence de son contenu.
+
+### Les autres sources savoyardes, vérifiées le même jour
+
+| Source | Ce qu'elle contient réellement |
+|---|---|
+| `geoparc-chablais.com` — partenaires | **hébergements** (campings, centres de vacances), pas des tables |
+| `destination-parcs.fr` — Valeurs Parc | annuaire national, majoritairement des gîtes ; pas de filtre statique par parc, rien pour les Bauges |
+| `parcdesbauges.com` | **HTTP 403**, inaccessible depuis ici |
+
+### Conséquence sur le plan
+
+**Il n'existe pas, pour les Bauges ni pour le Chablais, de liste officielle de restaurants
+comparable à Cuisine Nissarde.** Ces deux articles ne sont donc pas de la compilation de
+label : c'est du reportage — office de tourisme, producteurs, pêcheurs professionnels du
+Léman, à recouper un par un.
+
+Ça ne les condamne pas, ça change leur coût. Et ça remet dans l'ordre :
+
+| Rang | Article | Source | État de la source |
+|---|---|---|---|
+| 1 | **Turin — Mangébin** | Turismo Torino, page officielle **en français** | ✅ solide ; liste « hors Torino » déjà récupérée (10 tables), liste turinoise à récupérer (rendue en JS) |
+| 2 | **Vallée d'Aoste — *ristori agrituristici*** | `lovevda.it`, catégorie juridique | ✅ à dépouiller |
+| 3 | **Arrière-pays nissart — Bistrots de Pays** | liste officielle | 🟡 **6 tables seulement** — tient comme section, pas comme article seul |
+| 4 | **Chablais / Léman — poissons du lac** | aucune liste officielle | 🔴 reportage |
+| 5 | **Bauges** | aucune liste officielle | 🔴 reportage, et zéro Bistrot de Pays |
+
+**Turin repasse premier**, et pour deux raisons qui convergent : c'est la seule source
+officielle solide et complète, et c'est là que pointent 39 des 129 événements du site.
