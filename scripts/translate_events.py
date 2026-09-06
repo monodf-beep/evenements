@@ -754,8 +754,8 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
             "source_name, source_type, llm_score, user_score, llm_categorie, statut, "
             "wp_post_id_as, wp_permalink_as, wp_raw_image_url_as, published_as_date, "
             "translation_of, translated_lang, article_title, enrich_data, image_credit, "
-            "enrich_status, date_source, llm_score_detail, url_officiel) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "enrich_status, date_source, llm_score_detail, url_officiel, home_score) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (tr["title"], tr["description"], ev.get("date_start"), ev.get("date_event_start"),
              ev.get("date_event_end"), ev.get("lieu"), ev.get("ville"), ev.get("territoire"),
              f"translated:{ev['id']}:{tgt}", ev.get("url_image"), ev.get("organisateur"),
@@ -790,7 +790,18 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
              # de publication_block_reason, qui remonte à l'original), preuve que l'oubli
              # était connu et compensé au lieu d'être corrigé à la source.
              # Copie et non re-résolution : c'est le même événement, la même page.
-             ev.get("url_officiel")))
+             ev.get("url_officiel"),
+             # QUATRIÈME OUBLI DE LA MÊME FAMILLE, découvert le 2026-09-06 en creusant
+             # pourquoi 36 fiches « à venir » n'avaient pas de home_score (audit_une.py) :
+             # `enrich_data` traduit (tr_enrich, ci-dessus) contient bien `home.score`
+             # (translate_article() part de `dict(data)`, seul `article` est réécrit), mais
+             # la COLONNE home_score, elle, n'a jamais figuré dans cet INSERT. Or c'est la
+             # colonne, pas le JSON, que lit `utils/une.py` (rendu = event.get("home_score"))
+             # — la fiche traduite était donc structurellement invisible à « À la une »,
+             # depuis la création de cette colonne. Copie et non recalcul, même raison que
+             # les trois oublis ci-dessus : c'est le même événement, le renoter coûterait un
+             # appel LLM pour retrouver les mêmes points.
+             ev.get("home_score")))
         # Lie les deux fiches (Polylang) via l'endpoint.
         if all([wp_url, auth[0], auth[1]]):
             _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
