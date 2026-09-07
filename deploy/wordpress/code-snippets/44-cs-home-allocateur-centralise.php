@@ -294,6 +294,7 @@ function cs_home_build_allocation() {
         }
 
         $shortfall = $count - count($ids);
+        $extra = [];
         if ($shortfall > 0 && (($max_reuse !== null) ? (int)$max_reuse : $reuse_budget) > 0 && !empty($claimed)) {
             // 2026-09-06 (soir) : les moitiés basses (evidence-bottom, venir-bottom) sont la
             // SUITE VISUELLE de leur section haute, dans la même colonne. Le réemploi y
@@ -324,7 +325,18 @@ function cs_home_build_allocation() {
             // (ex. jour=3 sur un petit territoire : on prefere 0/"No data"
             // qu'un affichage partiel qui violerait la regle "4 ou 8 uniquement").
             $keep = (int) (floor(count($ids) / $row) * $row);
+            $jetes = array_slice($ids, $keep);
             $ids = array_slice($ids, 0, $keep);
+            // 2026-09-07 (Franck : "pourquoi c'est vide ? il faut trouver la cause") : une fiche
+            // REEMPLOYEE puis JETEE par cet arrondi restait comptee comme reemployee, et le
+            // budget restait debite. Mesure sur Savoie : 'jour' reemprunte la Foire de Savoie
+            // (seule fiche >= 8 du territoire), l'arrondit a 0, et 'evidence' ne peut plus
+            // la reprendre -- section vide alors que la fiche existe. On rend les deux.
+            $rendus = array_intersect($jetes, $extra);
+            if (!empty($rendus)) {
+                $reused = array_values(array_diff($reused, $rendus));
+                if ($max_reuse === null) { $reuse_budget += count($rendus); }
+            }
         }
 
         $claimed = array_values(array_unique(array_merge($claimed, $ids)));

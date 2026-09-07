@@ -31,7 +31,7 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
 | `62-cs-header-compact-scroll.php` | #62 · CS · Header compact (scroll) | global | oui | `b899480a238c41ad673bc7b37d9f6ba2` (2026-09-07) |
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
-| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `5c017ab3fca0044c5fcd16544e13b794` (2026-09-06, soir) |
+| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `d63d864cc2fa09f7ba6fa093bad029c7` (2026-09-07) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
 capture de `/explore/savoie/` (via l'ancien /explore/) : la Foire de Savoie apparaissait
@@ -85,6 +85,21 @@ reçoit les ids d'`evidence`, `venir-bottom` ceux de `venir` (le plan est constr
 séquentiellement pour pouvoir s'y référer). Remesuré après écriture : intersection vide sur
 Savoie, Nice, « les 4 » ; page Savoie rendue conforme (`evidence-bottom` vide plutôt que
 redondant). Sauvegarde : `novamira-sandbox/backups/snippet-44-20260906-211554.txt`.
+
+**Cinquième passe (2026-09-07) — « En évidence » vide sur Savoie : la cause, mesurée.**
+Franck : « on a des événements, donc pourquoi c'est vide ? Il faut trouver la cause. »
+Entonnoir du mode `vedette` sur les 21 fiches savoyardes à venir ou en cours : 16 commencent
+dans le futur, 13 sont enrichies, **1 seule** a `as_deplacement` ≥ 8 (la Foire de Savoie,
+note 10) — et elle est déjà prise par « Ce week-end » (elle commence vendredi). Le réemploi
+devait la remontrer ; il ne le pouvait plus à cause d'un bug : « Les 7 jours » l'avait
+réempruntée (budget 2 → 1), puis JETÉE par son arrondi « 4 ou 8 fiches » (0 ligne complète),
+sans rendre ni la fiche ni le budget — elle restait comptée comme réemployée, donc interdite
+à « En évidence ». Corrigé : après l'arrondi, les fiches réemployées puis jetées sont retirées
+de `$reused` et le budget est crédité. Remesuré après écriture : `evidence=[1925]` sur Savoie,
+page rendue conforme. Deux causes de fond restent, qui ne sont pas des bugs : le seuil ≥ 8
+(décision du 17/08) ne laisse qu'une candidate sur treize en Savoie, et « En évidence » passe
+après trois sections qui se servent avant elle. Sauvegarde :
+`novamira-sandbox/backups/snippet-44-20260907-082544.txt`.
 
 Et une réserve honnête sur le manque de matière : côté FR il n'y a que 76 événements à
 venir, dont 12 avec `as_une_now` > 0 (Nice 3, Savoie 3, Piémont 5, VdA 1) — et « À la
