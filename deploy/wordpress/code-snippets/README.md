@@ -29,6 +29,7 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `26-cs-gabarit-nos-articles-listing.php` | #26 · CS · Gabarit Le Fil (listing) — page « Nos articles » | front-end | oui | `639f5093ef22060fdc9f984d6cd2161a` (2026-09-06, soir) |
 | `24-cs-gabarit-proposer-un-evenement.php` | #24 · CS · Gabarit Proposer un événement | front-end | oui | `3f7709b3b29d998cc12e6bc9d7004f5d` (2026-09-06) |
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
+| `62-cs-header-compact-scroll.php` | #62 · CS · Header compact (scroll) | global | oui | `b899480a238c41ad673bc7b37d9f6ba2` (2026-09-07) |
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
 | `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `5c017ab3fca0044c5fcd16544e13b794` (2026-09-06, soir) |
 
@@ -94,6 +95,34 @@ réel, pas un bug d'affichage.
 Vérifié après écriture (comptage des `data-post-id` sur la page rendue) : **zéro doublon**
 sur les 4 pages territoire, la home FR, la home IT et une page catégorie IT — contre 1 à
 11 doublons par page avant les deux correctifs.
+
+**Le cas #62 (2026-09-07) : « un espace en trop en haut de page » en mobile.** Franck,
+capture d'écran de la home FR sur téléphone, chevrons dessinés autour d'une bande vide
+au-dessus du logo. **Mesuré avant de conclure** (Chromium headless, viewport 412 × 915,
+sur une copie locale de la page réellement servie) : le panneau home commençait à
+**25,5 px** du haut au lieu de 0, et le logo à **41,5 px** au lieu de 16.
+
+La cause n'était ni une marge du panneau (`margin-top: 0`) ni un padding du conteneur
+(`.site` et `.as-home-root` à 0) : **six `<p>` sans contenu visible**, chacun portant sa
+marge basse par défaut (1.5 em = 25,5 px à 17 px de fonte). Le premier, placé juste avant
+`.as-home`, poussait tout le haut de la page ; un deuxième ajoutait le même décalage au
+milieu (top 3342 px), les quatre autres vivaient dans `.as-home-desktop`.
+
+**Ils ne viennent pas du contenu, ils sont fabriqués au rendu** : `wpautop` enveloppe dans
+un `<p>` les commentaires HTML isolés du contenu des pages 928/1717. La preuve tient à la
+page italienne — son `post_content` n'en contient **aucun** (`<p></p>` : 0, `<p><!--…--></p>` :
+0) et son HTML servi en montre pourtant **trois**, exactement comme la française. Nettoyer
+le contenu n'aurait donc rien tenu : la prochaine édition de la page les aurait ramenés.
+(La home FR portait en plus trois blocs `wp:paragraph` vides en fin de contenu, laissés par
+l'éditeur — même effet, autre origine.)
+
+Correctif : `.as-home-root p:empty{ display:none !important; }`, ciblé sur le conteneur de
+la home et non site-wide. `:empty` matche bien un `<p>` ne contenant qu'un commentaire (la
+spec ignore les commentaires) — **vérifié en direct, 6 sur 6**, pas supposé. Remesure sur la
+page réellement servie après écriture : panneau à **0**, logo à **16 px** (le seul padding
+voulu du masthead), zéro `<p>` vide encore affiché, et la règle est servie dans les deux
+langues. Sauvegarde d'avant :
+`novamira-sandbox/backups/snippet-62-20260907-074143.txt` (md5 `c26c99d3322c5721e9a96ec0ed6f059d`).
 
 **Le cas #134 (2026-09-06) : réécriture complète des règles de « À lire ».** Franck,
 capture de la Vallée d'Aoste : « je ne sais pas si on mélange des territoires ». Discussion
