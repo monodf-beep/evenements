@@ -336,14 +336,23 @@ def _recover_image(event: dict) -> str:
 
 def _lang(event: dict) -> str:
     """Langue Polylang de l'événement ('fr'|'it'). Forcée par event['force_lang'] si
-    présent (cas des traductions : on ne devine pas, on impose), sinon détectée sur
-    titre+description (départagée par le territoire)."""
+    présent (cas des traductions : on ne devine pas, on impose), sinon celle de
+    l'ARTICLE publié (`utils.lang.effective_lang`), à défaut du titre brut.
+
+    2026-09-07 (Franck : « la double gestion entraîne des pages en it et fr »). Jusqu'ici
+    cette fonction lisait le TITRE ET LA DESCRIPTION BRUTS de la source, alors que
+    `translate_events` décide, lui, sur l'article rédigé. Or `enrich` écrit toujours en
+    français d'abord : un événement piémontais au titre italien portait donc un article
+    FRANÇAIS publié sous l'étiquette `it` — affiché en français sur le site italien, et
+    jamais traduit puisque le pipeline le croyait déjà italien. Mesuré sur le site :
+    15 des 126 fiches publiées encore devant nous, dont 11 sans aucune jumelle française
+    (WP#8284 « Egitto. Sulle tracce degli dei », chapô en français, étiquette it).
+    Une seule source de vérité désormais, la même qu'à la traduction : l'article."""
     forced = str(event.get("force_lang") or "").strip().lower()
     if forced in ("fr", "it"):
         return forced
-    from utils.lang import detect_lang
-    return detect_lang(event.get("title", ""), event.get("description", ""),
-                       event.get("territoire", ""))
+    from utils.lang import effective_lang
+    return effective_lang(event)
 
 
 def _focal(event: dict) -> tuple[float, float]:
