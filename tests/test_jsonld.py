@@ -108,6 +108,43 @@ _check("microdata : début", m.get("date_event_start") == "2026-11-05", str(m))
 _check("microdata : lieu", m.get("lieu") == "Théâtre Charles Dullin", str(m))
 _check("microdata : ville", m.get("ville") == "Chambéry", str(m))
 
+# ── L'an 8390 (2026-09-07) : une date DÉCLARÉE n'est pas forcément une date CRÉDIBLE ──
+# Extrait réel de https://www.malrauxchambery.fr/evenement/charcot-antartica-26-27/ :
+# le thème du site formate un nombre comme un compteur de secondes. Deux fiches (WP#8189,
+# WP#8289) ont été publiées au 7 juin 8390 et ont traversé toute la chaîne jusqu'à la
+# home, parce que la lecture « implacable » des microdata les a prises au mot.
+print("\n──── fenêtre d'années plausibles (l'an 8390 de Malraux) ────")
+import datetime as _dt  # noqa: E402
+from scripts.dates import dates_from_page  # noqa: E402
+_AN = _dt.date.today().year
+MALRAUX = '''<div itemscope itemtype="https://schema.org/Event">
+<p class="text-xl mr-8 whitespace-nowrap"><span itemprop="startDate"
+content="8390-06-07T11:46:40+02:00">VE <b>25&nbsp;SEPT</b></span></p>
+<span itemprop="location">La Base</span></div>'''
+m8 = J.champs_microdata(MALRAUX)
+_check("microdata au 8390-06-07 → pas de date (le lieu reste)",
+       "date_event_start" not in m8 and m8.get("lieu") == "La Base", str(m8))
+_check("dates_from_page ne rend pas l'an 8390",
+       dates_from_page(MALRAUX) == ("", "", ""), str(dates_from_page(MALRAUX)))
+LD8390 = ('<script type="application/ld+json">{"@type":"Event","name":"X",'
+          '"startDate":"8390-06-07"}</script>')
+_check("JSON-LD au 8390 → rien non plus", J.champs(LD8390).get("date_event_start") is None,
+       str(J.champs(LD8390)))
+_check("filet regex historique : 8390 refusé aussi",
+       dates_from_page('<html>"startDate": "8390-06-07"</html>')[0] == "")
+_check("filet <time> historique : 8390 refusé aussi",
+       dates_from_page('<time datetime="8390-06-07">x</time>')[0] == "")
+# Les cas qui DOIVENT PASSER, près de la frontière (règle 3 du dépôt : une fixture qui ne
+# cherche qu'à se donner raison ne prouve rien).
+_check("l'an dernier passe (exposition en cours commencée l'année précédente)",
+       J.annee_plausible(f"{_AN - 1}-11-15"))
+_check("dans trois ans passe (festival annoncé loin)", J.annee_plausible(f"{_AN + 3}-07-01"))
+_check("il y a deux ans ne passe pas", not J.annee_plausible(f"{_AN - 2}-11-15"))
+_check("dans quatre ans ne passe pas", not J.annee_plausible(f"{_AN + 4}-07-01"))
+_check("une date déclarée dans la fenêtre est toujours lue",
+       J.champs_microdata(MICRO.replace("2026-11-05", f"{_AN + 1}-11-05"))
+        .get("date_event_start") == f"{_AN + 1}-11-05")
+
 print("\n──── types_presents : la question que le premier diagnostic n'a pas posée ────")
 _check("les @type de la page sont énumérés",
        "event" in J.types_presents(YOAST) and "organization" in J.types_presents(YOAST),

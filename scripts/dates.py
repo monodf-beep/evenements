@@ -373,16 +373,19 @@ def dates_from_page(html: str) -> tuple[str, str, str]:
         return (_c["date_event_start"],
                 _c.get("date_event_end") or _c["date_event_start"], "page")
     # 1) JSON-LD "startDate": "2026-07-05" (ou avec heure "2026-07-05T21:00")
+    #    Même fenêtre d'années plausibles que le parseur (cf. utils.jsonld.annee_plausible
+    #    et l'an 8390 de Malraux) : ces deux filets historiques la respectent aussi.
     ms = re.search(r'"startDate"\s*:\s*"(\d{4}-\d{2}-\d{2})', html)
     if ms:
         me = re.search(r'"endDate"\s*:\s*"(\d{4}-\d{2}-\d{2})', html)
         s = ms.group(1)
         e = me.group(1) if me else s
-        if _iso(*map(int, s.split("-"))):
+        if _iso(*map(int, s.split("-"))) and _jsonld.annee_plausible(s):
             return (min(s, e), max(s, e), "page")
     # 2) <time datetime="2026-07-05">
     times = re.findall(r'<time[^>]+datetime=["\'](\d{4}-\d{2}-\d{2})', html, re.I)
-    times = [t for t in times if _iso(*map(int, t.split("-")))]
+    times = [t for t in times
+             if _iso(*map(int, t.split("-"))) and _jsonld.annee_plausible(t)]
     if times:
         return (min(times), max(times), "page")
     # 3) Microdata itemprop — l'autre forme que schema.org autorise, tout aussi valable

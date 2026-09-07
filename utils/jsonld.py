@@ -131,10 +131,35 @@ def _texte(valeur) -> str:
 
 _ISO = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
+# Fenêtre d'années plausibles pour un événement déclaré par une page : de l'an dernier (une
+# exposition en cours a pu commencer l'année précédente) à trois ans devant (un festival
+# annonce rarement plus loin). Posée le 2026-09-07 après WP#8189 et WP#8289 (Malraux
+# Chambéry) publiées au 7 JUIN 8390 : le site de la source émet lui-même
+# `<span itemprop="startDate" content="8390-06-07T11:46:40+02:00">` — son thème formate un
+# nombre du genre 202609250000 comme un compteur de secondes — et nous l'avons pris au mot,
+# jusqu'à la page d'accueil. Une date déclarée reste une date DÉCLARÉE : la lire pour de
+# bon (« implacable ») n'oblige pas à croire un an 8390. Hors fenêtre, on rend vide et les
+# étages suivants (texte, LLM) prennent le relais — le texte de la page disait bien
+# « VE 25 SEPT ».
+ANNEES_AVANT = 1
+ANNEES_APRES = 3
+
+
+def annee_plausible(iso: str, ref_year: int | None = None) -> bool:
+    """Vrai si l'année d'une date ISO tient dans la fenêtre [an dernier, +3 ans]."""
+    from datetime import date as _d
+    if not iso or len(iso) < 4 or not iso[:4].isdigit():
+        return False
+    y = int(iso[:4])
+    ref = ref_year if ref_year is not None else _d.today().year
+    return ref - ANNEES_AVANT <= y <= ref + ANNEES_APRES
+
 
 def _date(valeur) -> str:
     m = _ISO.search(_texte(valeur))
-    return m.group(1) if m else ""
+    if not m or not annee_plausible(m.group(1)):
+        return ""
+    return m.group(1)
 
 
 def champs(html: str) -> dict:
