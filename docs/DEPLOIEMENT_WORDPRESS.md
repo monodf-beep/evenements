@@ -199,3 +199,25 @@ recompte après écriture : 0 terme dans une autre langue que celle de son post.
 réaffectation de termes, la liste est dans le message du commit.
 
 Retour arrière du mu-plugin : `rename(cs-taxo-it.php.bak-2026-09-08 → cs-taxo-it.php)`.
+
+## 8. 2026-09-08 (suite) — `cs-cvld-dynamique.php` et `cs-territoire-persistant.php`
+
+Trois changements déployés le même après-midi, par le canal du § 3, avec une précision de
+transport apprise ce jour-là : **ne jamais retaper un fichier de 13 ko dans l'argument d'un
+appel** — une coquille s'y est glissée (« Voir dans les altri territori ») et seul le
+contrôle md5 avant `rename()` l'a arrêtée. `create-upload-link` + `curl --data-binary`
+depuis le fichier local, puis `execute-php` (md5 attendu, sauvegarde, `token_get_all`,
+`rename`). Le `.nouveau` d'un envoi raté doit être supprimé avant le suivant
+(`overwrite:false`).
+
+- `cs-cvld-dynamique.php` : plancher `CS_CVLD_PLANCHER = 10` sur la note intrinsèque et
+  la note temps-ajustée au premier passage, note seule au second (repli) ; bouton « Et
+  ailleurs » sur `/espace-sabaudo/`. Sauvegardes `.bak-2026-09-08` (version du matin,
+  md5 `99fc262e…`) et `.bak-2026-09-08b` (plancher strict, `82c06457…`). En ligne :
+  `dc46ac66…`.
+- `cs-territoire-persistant.php` : « Tous les territoires » de la barre sur
+  `/espace-sabaudo/`. Sauvegarde `.bak-2026-09-08` (`1e9d5b07…`). En ligne : `6583e6a7…`.
+- Données, pas code : `as_home_override=excluded` sur WP#8049 (carte noire, titre italien,
+  finit le 09/09) ; `cs_guide_saison_debut/fin` = 2026-06-01 / 2026-08-31 sur le guide
+  « Festivals de l'été en Savoie 2026 » (post 2422) — le mécanisme de saison de « À lire »
+  existait depuis le 06/09, aucun des six guides ne le renseignait.

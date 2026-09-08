@@ -64,7 +64,7 @@ function cs_cvld_note_temps($id, $dep) {
 }
 
 if (!function_exists('cs_cvld_pick_one')) {
-function cs_cvld_pick_one($term_id, $lang, $exclude) {
+function cs_cvld_pick_one($term_id, $lang, $exclude, $strict = true) {
     $q = new WP_Query(array(
         'post_type' => 'tribe_events', 'post_status' => 'publish',
         'fields' => 'ids', 'lang' => $lang, 'no_found_rows' => true,
@@ -115,7 +115,12 @@ function cs_cvld_pick_one($term_id, $lang, $exclude) {
         if ($a['dep_temps'] !== $b['dep_temps']) { return $b['dep_temps'] - $a['dep_temps']; }
         return $b['sco'] - $a['sco'];
     });
-    if ($classes[0]['dep_temps'] < CS_CVLD_PLANCHER) { return 0; }   // trop loin dans le temps
+    /* Premier passage ($strict) : trop loin dans le temps = pas de carte. Second passage
+       (repli) : le plancher de NOTE reste, l'échéance peut être lointaine — 2026-09-08,
+       Franck sur le hub Piémont : « on a que 2 au lieu de 3 ». Les trois autres territoires
+       n'avaient que deux fiches proches au-dessus du plancher ; la Foire de Saint-Ours (12,
+       en janvier) vaut mieux qu'un trou, et jamais une fiche à 6. */
+    if ($strict && $classes[0]['dep_temps'] < CS_CVLD_PLANCHER) { return 0; }
     return $classes[0]['id'];
 }
 }
@@ -148,7 +153,7 @@ function cs_cvld_get_cards($lang) {
             if (count($picked) >= $limit) { break; }
             $tid = $is_it ? (int) $TERR[$k]['it_term'] : (int) $TERR[$k]['fr_term'];
             if (!$tid) { continue; }
-            $pid = cs_cvld_pick_one($tid, $lang, $used);
+            $pid = cs_cvld_pick_one($tid, $lang, $used, false);
             if ($pid) { $picked[] = $pid; $used[] = $pid; }
         }
     }
@@ -202,7 +207,10 @@ function cs_cvld_cta_cell($lang) {
     // la 4e case, ce qui remplit la rangee quand un filtre territoire ne laisse
     // que trois territoires eligibles.
     $is_it = ($lang === "it");
-    $url   = $is_it ? "https://agendasabauda.eu/it/?as_territoire=tutti" : "https://agendasabauda.eu/?as_territoire=tous";
+    // 2026-09-08 (Franck : « pourquoi j'ai pas explore-sabauda à la place de
+    // ?as_territoire=tous »). Les URLs jolies existent depuis le 06/08
+    // (cs-territoire-urls-jolies.php) ; ce bouton était resté sur l'ancienne forme.
+    $url   = $is_it ? "https://agendasabauda.eu/it/spazio-sabaudo/" : "https://agendasabauda.eu/espace-sabaudo/";
     $kick  = $is_it ? "E altrove" : "Et ailleurs";
     $lab   = $is_it ? "Vedi negli altri territori" : "Voir dans les autres territoires";
     return "<a class=\"cs-cvld-card cs-cvld-cta\" href=\"" . $url . "\">"

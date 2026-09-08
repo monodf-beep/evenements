@@ -205,7 +205,8 @@ add_action('wp_body_open', function () {
         }
         return 'https://agendasabauda.eu/explore/' . $t['fr_slug'] . '/';
     };
-    $reset_url = ($is_it ? 'https://agendasabauda.eu/it/?as_territoire=tutti' : 'https://agendasabauda.eu/?as_territoire=tous');
+    // 2026-09-08 (Franck) : URL jolie (cs-territoire-urls-jolies.php, 06/08) plutôt que ?as_territoire=tous.
+    $reset_url = ($is_it ? 'https://agendasabauda.eu/it/spazio-sabaudo/' : 'https://agendasabauda.eu/espace-sabaudo/');
 
     // Sans territoire choisi, on INVITE explicitement plutot que de decrire un etat
     // ("Vous regardez les 4 territoires" n'appelle aucune action).
@@ -319,7 +320,8 @@ add_filter('the_content', function ($content) {
     $name_for = function ($key) use ($TERR, $is_it) {
         return $is_it ? $TERR[$key]['it_name'] : $TERR[$key]['fr_name'];
     };
-    $reset_url = $is_it ? 'https://agendasabauda.eu/it/?as_territoire=tutti' : 'https://agendasabauda.eu/?as_territoire=tous';
+    // 2026-09-08 (Franck) : URL jolie (cs-territoire-urls-jolies.php, 06/08) plutôt que ?as_territoire=tous.
+    $reset_url = $is_it ? 'https://agendasabauda.eu/it/spazio-sabaudo/' : 'https://agendasabauda.eu/espace-sabaudo/';
     $all_label = $is_it ? 'Tutti i territori' : 'Tous les territoires';
 
     // --- Rangee desktop "Changer :" / "Cambia:" ---
