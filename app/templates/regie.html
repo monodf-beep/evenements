@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% set active = 'regie' %}
+{% block title %}Régie pub — Agenda Sabauda{% endblock %}
+{% block h1 %}Régie publicitaire{% endblock %}
+{% block subtitle %}<div class="sub">Poser une pub manuelle sur Agenda Sabauda, et suivre les campagnes (annonceur, bloc, dates, échéance).</div>{% endblock %}
+
+{% block content %}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:960px;">
+
+  <!-- État des blocs -->
+  <h2 style="margin:.2rem 0 .6rem;">Les 6 blocs publicitaires</h2>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.4rem;">
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+      <thead><tr style="text-align:left;background:var(--code-bg,#f6f7f9);">
+        <th style="padding:.55rem .8rem;">Bloc</th><th>Format</th><th>Gestion</th><th>Tarif (lanc.)</th><th>État</th>
+      </tr></thead>
+      <tbody>
+      {% for id, b in blocks.items() %}
+        <tr style="border-top:1px solid var(--border,#e2e4e8);">
+          <td style="padding:.55rem .8rem;"><b>{{ id }} — {{ b.nom }}</b></td>
+          <td style="font-family:ui-monospace,monospace;font-size:.82rem;">{{ b.format }}</td>
+          <td>
+            {% if b.source == 'adsense' %}<span class="muted">AdSense (auto)</span>
+            {% else %}<span style="color:#1a7f4b;font-weight:600;">Manuel ✓</span>{% endif %}
+          </td>
+          <td style="font-family:ui-monospace,monospace;font-size:.82rem;">
+            <b>{{ b.prix_lancement }} €</b>
+            <span class="muted"> → {{ b.prix_croissance }} € → {{ b.prix_base }} €</span>
+            <div class="muted text-sm">amorçage → croissance (3-8k visites/mois) → consolidé (&gt;8k)</div>
+          </td>
+          <td>
+            {% if b.cablage == 'a_faire' %}<span style="color:#dc2626;font-weight:700;">⚠ Non câblé</span>
+              <div class="muted text-sm">une campagne ne s'afficherait pas</div>
+              {% if occupied.get(id) %}<div style="color:#b45309;font-weight:600;">Vendu à {{ occupied[id].annonceur }} !</div>{% endif %}
+            {% elif occupied.get(id) %}<span style="color:#b45309;font-weight:600;">Occupé — {{ occupied[id].annonceur }}</span>
+            {% elif b.source == 'adsense' %}<span class="muted text-sm">rempli par Google</span>
+            {% else %}<span style="color:#1a7f4b;">Libre</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted text-sm" style="margin-top:-.9rem;">La colonne <b>Gestion</b> dit qui remplit le bloc <em>quand aucune campagne n'est active</em> — pas qui a le droit d'y aller. <b>N'importe quel bloc peut être vendu à un annonceur direct</b> : sa créative prend alors la place de l'AdSense le temps de la campagne (modèle « override »).</p>
+  <p class="text-sm" style="background:#fef2f2;border-left:3px solid #dc2626;padding:.55rem .75rem;border-radius:4px;margin:.5rem 0 0;">
+    ⚠️ <b>« Non câblé » veut dire invendable pour l'instant.</b> Les blocs 1, 2 et 3 vivent dans le contenu :
+    tant que leur code n'est pas entouré de <code>[cs_slot bloc="N"]…[/cs_slot]</code> dans Ad Inserter,
+    une campagne enregistrée ici restera <b>invisible sur le site</b> — l'annonceur paierait du vide.
+    Marche à suivre : <code>docs/REGIE_CABLAGE_CS_SLOT.md</code>.
+    Les blocs 4, 5 et 6 n'ont besoin de rien : <code>cs-regie.php</code> les affiche directement.
+  </p>
+
+  <!-- Démarche -->
+  <h2 style="margin:1.4rem 0 .4rem;">La démarche, pas à pas</h2>
+  <div class="card" style="padding:1rem 1.2rem;margin-bottom:1.4rem;">
+    <ol style="margin:.2rem 0;padding-left:1.2rem;line-height:1.6;">
+      <li><b>Négocier</b> avec l'annonceur : bloc, format (voir tableau), durée, tarif, <b>URL de destination</b> (idéalement avec <code>?utm_source=agendasabauda</code>).</li>
+      <li><b>Récupérer la créative</b> : une image aux bonnes dimensions du bloc.</li>
+      <li><b>Uploader l'image</b> dans WordPress (Médias → Ajouter) et <b>copier son URL</b>.</li>
+      <li><b>Enregistrer la campagne ici</b> (formulaire ci-dessous) → ça garde la trace et pose l'<b>alerte de fin</b>.</li>
+      <li><b>Poser le bloc côté site</b> :
+        <b>blocs 1, 2, 3</b> — enveloppe l'AdSense du bloc dans Ad Inserter avec <code>[cs_slot bloc="N"]…[/cs_slot]</code> (une fois, pas à refaire à chaque campagne) : la créative backoffice prend le dessus automatiquement tant que la campagne est active.
+        <b>Blocs 4, 5, 6</b> (skin, gouttières) — rien à faire : <code>cs-regie.php</code> lit directement le backoffice et affiche la créative dès qu'elle est active, aucune action Ad Inserter.
+      </li>
+      <li><b>Vérifier</b> en navigation privée (accepter/refuser le consentement, tester le lien).</li>
+      <li><b>À l'échéance</b> : revenir ici, cliquer <b>« Terminer »</b>, puis désactiver/remplacer le bloc côté site.</li>
+    </ol>
+    <p class="text-sm" style="margin:.6rem 0 0;background:#f0f7f0;border-left:3px solid #1a7f4b;padding:.5rem .7rem;border-radius:4px;">
+      📊 <b>Suivi des clics.</b> Dans la pub, ne mets <b>pas</b> l'URL de l'annonceur en direct :
+      mets le <b>lien de suivi</b> <code>/go/…</code> affiché sous chaque campagne (une fois l'URL de
+      destination renseignée). Chaque clic est compté ici — <b>tu possèdes le chiffre</b>, indépendant
+      du consentement et de Google — et s'affiche à côté de la campagne. Les blocs 1 & 2 (AdSense),
+      eux, sont comptés par Google.
+    </p>
+    <p class="muted text-sm" style="margin:.4rem 0 0;">⚠️ La version gratuite d'Ad Inserter n'a pas d'expiration automatique fiable : c'est <b>l'alerte de fin de cette page</b> (badge dans le menu) qui te rappelle de repasser désactiver le bloc à la date de fin. Détail technique : <code>docs/REGIE_ANNONCEURS.md</code>.</p>
+  </div>
+
+  <!-- Ajouter une campagne -->
+  <h2 id="ajouter" style="margin:1.4rem 0 .4rem;">Ajouter une campagne</h2>
+  <form method="post" action="/regie/add" class="card regie-form" style="padding:1rem 1.2rem;margin-bottom:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+    <label style="display:flex;flex-direction:column;gap:.25rem;">Annonceur *
+      <input name="annonceur" required maxlength="200" placeholder="Nom de l'annonceur" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;">Bloc / format *
+      <select name="bloc" class="rg-bloc" required style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+        {# Tous les blocs, pas seulement les 'manuel' : le modele « override » validé le
+           2026-07-20 autorise un annonceur direct sur N'IMPORTE quel emplacement, y
+           compris ceux remplis par AdSense le reste du temps. Le filtre precedent
+           (source == 'manuel') rendait les blocs 1 et 2 INVENDABLES — et comme le compte
+           AdSense est en « Examen requis », ces deux emplacements ne pouvaient afficher
+           strictement rien. Les blocs non cables sont marques, pas caches : on prefere
+           un avertissement lisible a un choix absent et inexplicable. #}
+        {% for id, b in blocks.items() %}
+        <option value="{{ id }}">{{ id }} — {{ b.nom }} ({{ b.format }}){% if b.cablage == 'a_faire' %} — ⚠ NON CÂBLÉ{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="rg-fmt" style="grid-column:1/3;font-size:.82rem;color:#4A4A48;"></div>
+    <label style="display:flex;flex-direction:column;gap:.25rem;">URL de destination
+      <input name="url" maxlength="500" placeholder="https://…?utm_source=agendasabauda" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;">URL de l'image (Médias WP)
+      <input name="image_url" class="rg-image" maxlength="500" placeholder="https://agendasabauda.eu/wp-content/uploads/…" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+    </label>
+    <div class="rg-dim" style="grid-column:1/3;font-size:.82rem;"></div>
+    {# Seconde créative : n'existe que pour les blocs qui en déclarent une (aujourd'hui le
+       seul habillage). Masquée par défaut, révélée en JS selon le bloc choisi — plutôt
+       qu'un champ toujours visible qui laisserait croire qu'on attend deux fichiers
+       partout. #}
+    <label class="rg-img2-wrap" style="display:none;flex-direction:column;gap:.25rem;grid-column:1/3;">
+      <span class="rg-img2-label">URL de la 2ᵉ image</span>
+      <input name="image_url_2" class="rg-image2" maxlength="500" placeholder="https://agendasabauda.eu/wp-content/uploads/…" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+      <span class="rg-img2-aide muted text-sm"></span>
+    </label>
+    <div class="rg-dim2" style="grid-column:1/3;font-size:.82rem;"></div>
+    <label style="display:flex;flex-direction:column;gap:.25rem;">Date de début
+      <input type="date" name="date_debut" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;">Date de fin
+      <input type="date" name="date_fin" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;">Tarif (€) <span class="muted text-sm">— pré-rempli selon le format</span>
+      <input name="tarif" class="rg-tarif" maxlength="50" placeholder="ex. 140" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;">Note
+      <input name="note" maxlength="1000" placeholder="contact, remarques…" style="padding:.5rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+    </label>
+    <div style="grid-column:1/3;"><button class="btn btn-ok btn-sm">💾 Enregistrer la campagne</button></div>
+  </form>
+
+  <!-- Liste des campagnes -->
+  <h2 style="margin:1.4rem 0 .4rem;">Campagnes</h2>
+  {% if campaigns %}
+    {% for c in campaigns %}
+    <div class="card" style="padding:.7rem 1rem;margin-bottom:.7rem;
+         border-left:4px solid {% if c.statut != 'active' %}#c9c4b8{% elif c.expired %}#dc2626{% elif c.days_left is not none and c.days_left <= 3 %}#f59e0b{% else %}#1a7f4b{% endif %};">
+      <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <b>{{ c.annonceur }}</b>
+          <span class="muted text-sm">· Bloc {{ c.bloc }} — {{ blocks[c.bloc].nom if c.bloc in blocks else '?' }} · {{ c.format }}</span>
+          <div class="text-sm" style="margin-top:.2rem;">
+            {% if c.date_debut %}{{ c.date_debut }}{% endif %} → {% if c.date_fin %}<b>{{ c.date_fin }}</b>{% else %}<span class="muted">sans fin</span>{% endif %}
+            {% if c.tarif %}· {{ c.tarif }} €{% endif %}
+            {% if c.url %}· <a href="{{ c.url }}" target="_blank" rel="noopener">destination ↗</a>{% endif %}
+          </div>
+          {% if c.url %}
+          <div class="text-sm" style="margin-top:.35rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+            <span class="muted">🔗 Lien de suivi (à mettre dans la pub) :</span>
+            <code style="font-size:.78rem;background:var(--code-bg,#f6f7f9);padding:.1rem .35rem;border-radius:4px;">{{ go_base }}/go/{{ c.id }}</code>
+            <button type="button" class="btn btn-sm" onclick="rgCopy('{{ go_base }}/go/{{ c.id }}',this)">📋 Copier</button>
+          </div>
+          {% else %}
+          <div class="text-sm muted" style="margin-top:.35rem;">⚠️ Renseigne l'URL de destination pour obtenir un lien de suivi.</div>
+          {% endif %}
+          {% if blocks.get(c.bloc, {}).get('flux') == 'out' %}
+          <div class="text-sm" style="margin-top:.35rem;background:#eef4ff;border-left:3px solid #2563eb;padding:.4rem .6rem;border-radius:4px;">
+            🔌 Bloc hors flux — <code>cs-regie.php</code> lit le backoffice tout seul et affiche
+            cette créative. <b>Rien à coller dans Ad Inserter</b> pour ce bloc (ça doublerait l'affichage).
+          </div>
+          {% elif c.url and c.image_url %}
+          <details class="text-sm" style="margin-top:.35rem;">
+            <summary style="cursor:pointer;color:#2563eb;">📋 Code prêt à coller dans Ad Inserter (Bloc {{ c.bloc }})</summary>
+            <pre class="rg-snippet" style="white-space:pre-wrap;background:var(--code-bg,#f6f7f9);border:1px solid var(--border,#e2e4e8);border-radius:6px;padding:.5rem;margin:.4rem 0 .3rem;font-size:.74rem;overflow-x:auto;">&lt;a href="{{ go_base }}/go/{{ c.id }}" target="_blank" rel="noopener sponsored"&gt;&lt;img src="{{ c.image_url }}" alt="Publicité" style="max-width:100%;height:auto;"&gt;&lt;/a&gt;</pre>
+            <button type="button" class="btn btn-sm" onclick="rgCopyPrev(this)">📋 Copier le code</button>
+          </details>
+          {% elif c.url %}
+          <div class="text-sm muted" style="margin-top:.3rem;">➕ Ajoute l'URL de l'image pour générer le code prêt à coller.</div>
+          {% endif %}
+          {% if c.note %}<div class="muted text-sm" style="margin-top:.2rem;">{{ c.note }}</div>{% endif %}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-weight:700;font-size:1.05rem;">👆 {{ c.clicks or 0 }} <span class="text-sm" style="font-weight:400;">clic{{ 's' if (c.clicks or 0) != 1 else '' }}</span></div>
+          {% if c.last_click %}<div class="muted text-sm" style="margin-bottom:.3rem;">dernier : {{ c.last_click }}</div>{% endif %}
+          {% if c.statut != 'active' %}<span class="muted text-sm">terminée</span>
+          {% elif c.expired %}<span style="color:#dc2626;font-weight:700;">⏰ échue ({{ -c.days_left }} j)</span>
+          {% elif c.days_left is not none and c.days_left <= 3 %}<span style="color:#b45309;font-weight:700;">fin dans {{ c.days_left }} j</span>
+          {% elif c.days_left is not none %}<span class="muted text-sm">{{ c.days_left }} j restants</span>
+          {% else %}<span style="color:#1a7f4b;">active</span>{% endif %}
+          <div style="margin-top:.4rem;display:flex;gap:.4rem;justify-content:flex-end;">
+            {% if c.statut == 'active' %}
+            <form method="post" action="/regie/end/{{ c.id }}" style="display:inline;"><button class="btn btn-sm">Terminer</button></form>
+            {% else %}
+            <form method="post" action="/regie/reactivate/{{ c.id }}" style="display:inline;"><button class="btn btn-sm">Réactiver</button></form>
+            {% endif %}
+            <form method="post" action="/regie/delete/{{ c.id }}" style="display:inline;" onsubmit="return confirm('Supprimer définitivement cette campagne ?');"><button class="btn btn-sm" style="color:#dc2626;">Suppr.</button></form>
+          </div>
+        </div>
+      </div>
+      <details style="margin-top:.55rem;">
+        <summary style="cursor:pointer;font-size:.85rem;color:#2563eb;">✏️ Éditer cette campagne</summary>
+        <form method="post" action="/regie/edit/{{ c.id }}" class="regie-form" style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Annonceur *
+            <input name="annonceur" required maxlength="200" value="{{ c.annonceur }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Bloc / format *
+            <select name="bloc" class="rg-bloc" required style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+              {# Tous les blocs, pas seulement les 'manuel' : le modele « override » validé le
+           2026-07-20 autorise un annonceur direct sur N'IMPORTE quel emplacement, y
+           compris ceux remplis par AdSense le reste du temps. Le filtre precedent
+           (source == 'manuel') rendait les blocs 1 et 2 INVENDABLES — et comme le compte
+           AdSense est en « Examen requis », ces deux emplacements ne pouvaient afficher
+           strictement rien. Les blocs non cables sont marques, pas caches : on prefere
+           un avertissement lisible a un choix absent et inexplicable. #}
+        {% for id, b in blocks.items() %}
+              <option value="{{ id }}" {{ 'selected' if id == c.bloc }}>{{ id }} — {{ b.nom }}{% if b.cablage == 'a_faire' %} — ⚠ NON CÂBLÉ{% endif %}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <div class="rg-fmt" style="grid-column:1/3;font-size:.8rem;color:#4A4A48;"></div>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">URL de destination
+            <input name="url" maxlength="500" value="{{ c.url or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">URL de l'image
+            <input name="image_url" class="rg-image" maxlength="500" value="{{ c.image_url or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <div class="rg-dim" style="grid-column:1/3;font-size:.8rem;"></div>
+          <label class="rg-img2-wrap" style="display:none;flex-direction:column;gap:.2rem;font-size:.82rem;grid-column:1/3;">
+            <span class="rg-img2-label">URL de la 2ᵉ image</span>
+            <input name="image_url_2" class="rg-image2" maxlength="500" value="{{ c.image_url_2 or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+            <span class="rg-img2-aide muted text-sm"></span>
+          </label>
+          <div class="rg-dim2" style="grid-column:1/3;font-size:.8rem;"></div>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Date de début
+            <input type="date" name="date_debut" value="{{ c.date_debut or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Date de fin
+            <input type="date" name="date_fin" value="{{ c.date_fin or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Tarif (€)
+            <input name="tarif" class="rg-tarif" maxlength="50" value="{{ c.tarif or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;">Note
+            <input name="note" maxlength="1000" value="{{ c.note or '' }}" style="padding:.45rem;border:1px solid var(--border,#e2e4e8);border-radius:6px;">
+          </label>
+          <div style="grid-column:1/3;"><button class="btn btn-ok btn-sm">💾 Enregistrer les corrections</button></div>
+        </form>
+      </details>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Aucune campagne pour l'instant — enregistre la première avec le formulaire ci-dessus.</p>
+  {% endif %}
+
+</div>
+
+<script>
+var AD_BLOCKS = {{ blocks|tojson }};
+function rgCopy(txt, btn) {
+  navigator.clipboard.writeText(txt).then(function(){
+    var old = btn.textContent; btn.textContent = '✓ Copié';
+    setTimeout(function(){ btn.textContent = old; }, 1500);
+  });
+}
+function rgCopyPrev(btn) {
+  var pre = btn.parentElement.querySelector('.rg-snippet'); if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(function(){
+    var old = btn.textContent; btn.textContent = '✓ Copié';
+    setTimeout(function(){ btn.textContent = old; }, 1500);
+  });
+}
+// Contrôle des dimensions d'une image saisie. Factorisé depuis l'ajout de la seconde
+// créative (bandeau de l'habillage) : les deux champs ont exactement le même besoin,
+// avec des dimensions attendues différentes.
+function rgCheckDim(dim, img, w, h) {
+  if (!dim) return;
+  var url = img ? img.value.trim() : '';
+  if (!url) { dim.textContent = ''; return; }
+  var test = new Image();
+  test.onload = function(){
+    var ok = (test.naturalWidth === w && test.naturalHeight === h);
+    dim.innerHTML = ok
+      ? '✓ Dimensions OK (' + test.naturalWidth + '×' + test.naturalHeight + ')'
+      : '⚠️ Attendu ' + w + '×' + h + ', reçu ' + test.naturalWidth + '×' + test.naturalHeight + ' — l\'image risque d\'être déformée';
+    dim.style.color = ok ? '#1a7f4b' : '#b45309';
+  };
+  test.onerror = function(){ dim.textContent = '(image non chargée — vérifie l\'URL)'; dim.style.color = '#6F6B62'; };
+  test.src = url;
+}
+function rgUpdate(form) {
+  var sel = form.querySelector('.rg-bloc'); if (!sel) return;
+  var b = AD_BLOCKS[sel.value]; if (!b) return;
+  var fmt = form.querySelector('.rg-fmt');
+  if (fmt) { fmt.innerHTML = 'Format attendu : <b>' + b.w + '×' + b.h + ' px</b> &nbsp;·&nbsp; '
+    + 'Tarif amorçage : <b>' + b.prix_lancement + ' €</b> '
+    + '(croissance ' + b.prix_croissance + ' € · consolidé ' + b.prix_base + ' €)'; }
+  var tarif = form.querySelector('.rg-tarif');
+  if (tarif && !tarif.value) { tarif.value = b.prix_lancement; }
+  rgCheckDim(form.querySelector('.rg-dim'), form.querySelector('.rg-image'), b.w, b.h);
+
+  // Seconde créative : le champ n'apparaît que si le bloc en déclare une. Le libellé et
+  // les dimensions attendues viennent du bloc lui-même, pour qu'ajouter plus tard une
+  // 2e créative à un autre bloc ne demande rien d'autre que de la décrire dans AD_BLOCKS.
+  var wrap = form.querySelector('.rg-img2-wrap');
+  var dim2 = form.querySelector('.rg-dim2');
+  var img2 = form.querySelector('.rg-image2');
+  if (!wrap) return;
+  var c2 = b.creative2;
+  if (!c2) {
+    wrap.style.display = 'none';
+    if (dim2) dim2.textContent = '';
+    return;
+  }
+  wrap.style.display = 'flex';
+  var lab = wrap.querySelector('.rg-img2-label');
+  if (lab) { lab.textContent = 'URL du bandeau — ' + c2.nom + ' (' + c2.w + '×' + c2.h + ')'; }
+  var aide = wrap.querySelector('.rg-img2-aide');
+  if (aide) { aide.textContent = c2.aide || ''; }
+  rgCheckDim(dim2, img2, c2.w, c2.h);
+}
+document.addEventListener('input',  function(e){ var f = e.target.closest('.regie-form'); if (f) rgUpdate(f); });
+document.addEventListener('change', function(e){ var f = e.target.closest('.regie-form'); if (f) rgUpdate(f); });
+document.querySelectorAll('.regie-form').forEach(rgUpdate);
+</script>
+{% endblock %}

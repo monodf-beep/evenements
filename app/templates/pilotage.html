@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% set active = 'pilotage' %}
+{% block title %}Pilotage — Agenda CS{% endblock %}
+{% block h1 %}Pilotage éditorial{% endblock %}
+{% block subtitle %}<div class="sub">Santé du <strong>contenu</strong> (ton vrai levier), calculée depuis la base — aucune donnée externe. Le pilotage du <strong>trafic</strong> (impressions, clics, position) vit dans Looker Studio.</div>{% endblock %}
+
+{% block content %}
+
+<!-- Conseiller : ce que FRANCK doit faire (le reste est automatique) -->
+<div class="section-title" style="margin-top:0">Franck — ce que tu dois faire <span class="muted" style="font-weight:400;font-size:.8rem">(le reste tourne tout seul)</span></div>
+{% if todo %}
+{% set levinfo = {'valider':('#b45309','#fef3c7','À VALIDER'),'sourcer':('#b3261e','#fde8e8','À SOURCER'),'completer':('#1d4ed8','#e0e7ff','À COMPLÉTER'),'lancer':('#166534','#dcfce7','À LANCER')} %}
+<div class="card" style="padding:.5rem .6rem;margin-bottom:1rem">
+  {% for a in todo %}
+  {% set c = levinfo.get(a.level, ('#475569','#eceff3','—')) %}
+  <div style="display:flex;gap:.6rem;align-items:flex-start;padding:.55rem .5rem;{% if not loop.last %}border-bottom:1px solid var(--line-2){% endif %}">
+    <span aria-hidden="true" style="font-size:1.2rem;line-height:1.3">{{ a.icon }}</span>
+    <div style="flex:1;min-width:0">
+      <span class="badge" style="background:{{ c[1] }};color:{{ c[0] }};border:1px solid {{ c[0] }}33">{{ c[2] }}</span>
+      <strong style="margin-left:.3rem">{{ a.title }}</strong>
+      <div class="muted text-sm" style="margin-top:.15rem">{{ a.detail }}</div>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="{{ a.url }}" style="flex:none;align-self:center">{{ a.cta }} →</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card card-cta" style="margin-bottom:1rem"><div><strong>Rien ne requiert ton intervention.</strong> <span class="muted">Le pipeline et les modules de la home tournent tout seuls. 👌</span></div></div>
+{% endif %}
+
+<!-- Les tuiles : chacune répond à « où on en est » et déclenche une action -->
+<div class="kpis">
+  <a class="kpi" href="/events"><div class="v">{{ m.future }}</div><div class="l">Actifs à venir</div></a>
+  <a class="kpi {{ 'hot' if m.photo_pct < 60 }}" href="/events?img=0"><div class="v">{{ m.photo_pct }}%</div><div class="l">Avec photo</div></a>
+  <a class="kpi" href="/validation"><div class="v">{{ m.route_cs }}</div><div class="l">→ Cultura Sabauda (≥ {{ m.thr }})</div></a>
+  <a class="kpi" href="/site-dedie"><div class="v">{{ m.route_as }}</div><div class="l">→ Agenda Sabauda (&lt; {{ m.thr }})</div></a>
+</div>
+
+<!-- Ce qui déclenche une action corrective -->
+<div class="alerts-inline">
+  {% if m.queue_cs %}<a href="/validation"><span aria-hidden="true">🗓️</span> {{ m.queue_cs }} à valider/publier en brouillon (Cultura Sabauda)</a>{% endif %}
+  {% if m.past_active %}<a href="/events?dated=" style="background:#fde8e8;color:#b3261e;border-color:#f5c2c2"><span aria-hidden="true">🧹</span> {{ m.past_active }} passé(s) encore actif(s) — à purger</a>{% endif %}
+  {% if not m.queue_cs and not m.past_active %}<span class="muted">Rien à corriger côté flux. 👌</span>{% endif %}
+</div>
+
+<!-- Couverture par territoire : l'équilibre de la marque (4 territoires visibles) -->
+<div class="section-title">Couverture par territoire (actifs à venir)</div>
+<div class="card">
+  {% set tmax = (terr_future.values()|max) if terr_future else 1 %}
+  {% if not terr_future %}<p class="muted">Aucun événement à venir en base.</p>{% endif %}
+  {% for terr in territories %}{% set n = terr_future.get(terr, 0) %}
+  <div class="bar-row"><span class="lbl">{{ terr }}</span>
+    <span class="track"><span class="fill" style="width: {{ (n / tmax * 100) if tmax else 0 }}%;background:var(--ok)"></span></span>
+    <span class="n">{{ n }}</span></div>
+  {% endfor %}
+  {% set other = terr_future.get('—', 0) %}
+  {% if other %}
+  <div class="bar-row"><span class="lbl muted">sans territoire</span>
+    <span class="track"><span class="fill" style="width: {{ (other / tmax * 100) if tmax else 0 }}%;background:var(--line-2)"></span></span>
+    <span class="n">{{ other }}</span></div>
+  {% endif %}
+  <p class="muted text-sm" style="margin:.6rem 0 0">Un territoire creux ≠ à équilibrer de force (qualité d'abord) — mais s'il reste vide durablement, pousser une source ou un backlink de cette zone. <em>Marque large, profondeur Savoie</em> (cf. stratégie).</p>
+</div>
+
+<!-- Aperçu des modules de la home publique : ce que chaque rubrique contient AUJOURD'HUI -->
+<div class="section-title">Modules de la home publique — remplissage automatique</div>
+<div class="card">
+  <p class="muted text-sm" style="margin:0 0 .7rem">Chaque rubrique de la home = une <strong>requête</strong> (catégorie ou dates). Voici ce qu'elle contiendrait <strong>maintenant</strong>, calculé depuis la base. <span class="badge new">AUTO</span> se remplit seul · <span class="badge re">SEMI</span> best-of proposé, tu valides · <span class="badge grey">MANUEL / EXTERNE</span> hors auto.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Rubrique</th><th>Alimentation</th><th style="text-align:right">Événements</th><th>Aperçu (top)</th></tr>
+    {% for mod in home %}
+    {% set badge = {'date':'new','cat':'new','all':'new','bestof':'re','semi':'re','manual':'grey','external':'grey'}.get(mod.feed,'grey') %}
+    {% set word = {'date':'AUTO (dates)','cat':'AUTO (catégorie)','all':'AUTO (tout)','bestof':'SEMI (best-of)','semi':'SEMI','manual':'MANUEL','external':'EXTERNE'}.get(mod.feed,'—') %}
+    <tr id="mod-{{ mod.key }}">
+      <td><strong>{{ mod.label }}</strong><br><span class="muted" style="font-size:.76rem">{{ mod.help }}</span></td>
+      <td><span class="badge {{ badge }}">{{ word }}</span></td>
+      <td style="text-align:right">{% if mod.count is not none %}<strong style="font-size:1.05rem">{{ mod.count }}</strong>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{% if mod.sample %}{% for s in mod.sample %}<div style="font-size:.78rem">· {{ s.title }} <span class="muted">({{ s.territoire }}{% if s.score is not none %}, {{ s.score }}{% endif %})</span></div>{% endfor %}{% if mod.count and mod.count > mod.sample|length %}<div class="muted" style="font-size:.72rem">…et {{ mod.count - mod.sample|length }} autres</div>{% endif %}{% else %}<span class="muted" style="font-size:.78rem">—</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  <p class="muted text-sm" style="margin:.7rem 0 0">Un compte <strong>à 0</strong> sur une rubrique AUTO = trou de sourcing sur cette catégorie/période, pas un bug. Ces mêmes requêtes deviendront les <strong>shortcodes The Events Calendar</strong> côté WordPress (spéc dans <code>utils/home_modules.py</code>).</p>
+</div>
+
+<!-- Ce que ce tableau ne mesure PAS, et pourquoi -->
+<details class="box">
+  <summary>🧭 Ce que ce tableau mesure (et ce qu'il ne mesure pas)</summary>
+  <div style="margin-top:.7rem;font-size:.9rem">
+    <p class="muted">Principe : on n'affiche <strong>que</strong> ce qui se calcule tout seul depuis la base et qui <strong>déclenche une action</strong>. Aucune saisie manuelle, aucune API qui casse.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Tuile</th><th>Action qu'elle déclenche</th></tr>
+      <tr><td>Actifs à venir</td><td>Fond de stock — si trop bas, lancer une collecte.</td></tr>
+      <tr><td>Avec photo</td><td>&lt; 60 % → problème de sourcing d'images (compléter les visuels).</td></tr>
+      <tr><td>Routage CS / AS</td><td>Dimensionne les deux flux de publication (un site par événement).</td></tr>
+      <tr><td>À valider/publier</td><td>Backlog éditorial → ouvrir le plan du week-end.</td></tr>
+      <tr><td>Passés encore actifs</td><td>&gt; 0 → purger (fiches périmées, mauvais pour l'image et le SEO).</td></tr>
+      <tr><td>Couverture territoire</td><td>Déséquilibre durable → pousser une source/backlink sur la zone creuse.</td></tr>
+    </table></div>
+    <p class="muted" style="margin-top:.6rem"><strong>Le trafic (Google) n'est pas ici</strong> : impressions, clics, position moyenne, pages indexées se lisent dans <strong>Search Console + Looker Studio</strong> (gratuit, zéro maintenance) — une fois le site en ligne. Ta seule tâche SEO hebdo : optimiser 1 page en position 11-20. Détails dans <code>docs/MARKETING_ET_PILOTAGE_AGENDA_SABAUDO.md</code>.</p>
+  </div>
+</details>
+
+{% endblock %}

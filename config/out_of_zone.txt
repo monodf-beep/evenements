@@ -1,0 +1,91 @@
+# Marqueurs HORS ZONE — villes/régions qui NE sont PAS dans nos 4 territoires.
+# Un événement est considéré hors périmètre s'il cite un de ces lieux ET aucun
+# lieu couvert (config/perimeter_keywords.txt). Sert à purger le bruit que les
+# sources larges/radar (Le Dauphiné couvre tout l'AURA, Google News le national/
+# l'Italie) ramènent avec le territoire de la config de la source.
+#
+# Accents retirés à la comparaison. Un mot/expression par ligne, # ignoré.
+# PRUDENCE : on n'inscrit ici QUE des noms non ambigus (pas « gap », « var »,
+# « orange », « vienne », « romans » seuls — collisions avec des mots courants).
+# On N'inscrit PAS Turin/le Piémont ni la Vallée d'Aoste.
+#
+# ⚠️ ARRONDISSEMENT DE GRASSE — CORRECTION DU 2026-08-03 (charte §2, arbitrage Franck
+# du 2026-08-02). L'en-tête affirmait jusqu'ici que « Nice, Cannes, Antibes, Grasse,
+# Menton sont DANS la zone ». C'est devenu FAUX pour Cannes, Antibes, Grasse et les
+# 59 autres communes de l'arrondissement de Grasse (Cagnes-sur-Mer, Vence, Mougins,
+# Valbonne, Le Cannet, Mandelieu-la-Napoule, Mouans-Sartoux, Saint-Paul-de-Vence,
+# Vallauris, Villeneuve-Loubet, Saint-Laurent-du-Var, Carros…) : le 4e territoire est
+# le COMTÉ DE NICE = l'ARRONDISSEMENT DE NICE, pas le département. Nice et Menton
+# restent dans la zone.
+#
+# Ces communes ne sont pourtant PAS inscrites ci-dessous, et ce n'est pas un oubli :
+# ce fichier est cherché dans du TEXTE LIBRE (titre + description), où leurs noms sont
+# ambigus — « Vence » est contenu dans « Provence », « Grasse » dans « grasse matinée »,
+# « Cannes » dans « cannes à pêche », « Biot » et « Opio » sont trop courts. Les
+# inscrire ici fabriquerait des faux positifs, exactement ce contre quoi la ligne
+# « PRUDENCE » ci-dessus met en garde.
+# La règle vit donc là où la comparaison est EXACTE, sur le champ `ville` :
+#   • utils.sources.est_arrondissement_grasse(ville) — liste officielle des 62 communes
+#     (config/communes_comte_de_nice.json) ;
+#   • appliquée en pré-filtre gratuit dans scripts/evaluator.py (avant l'appel LLM),
+#     en rattrapage rétroactif dans scripts/purge_out_of_zone.py, et rappelée à
+#     l'ÉTAPE 0 du prompt de l'évaluateur pour les fiches dont la `ville` est vide.
+# Le comptage se fait avec scripts/count_grasse.py (lecture seule).
+
+# ── Auvergne-Rhône-Alpes hors zone (empreinte Le Dauphiné) ──
+Lyon
+Villeurbanne
+Grenoble
+Valence
+Saint-Etienne
+Clermont-Ferrand
+Bourg-en-Bresse
+Bourgoin-Jallieu
+Voiron
+Romans-sur-Isere
+Montelimar
+Gap
+Briancon
+Sisteron
+
+# ── Provence-Alpes-Côte d'Azur hors 06 ──
+Marseille
+Avignon
+Aix-en-Provence
+Toulon
+Nimes
+Arles
+Carpentras
+Salon-de-Provence
+Draguignan
+Frejus
+Hyeres
+Digne-les-Bains
+
+# ── Grandes villes françaises ──
+Paris
+Bordeaux
+Toulouse
+Nantes
+Lille
+Strasbourg
+Rennes
+Dijon
+Montpellier
+
+# ── Italie hors Piémont ──
+Milano
+Milan
+Roma
+Genova
+Genes
+Bologna
+Bologne
+Firenze
+Florence
+Venezia
+Venise
+Napoli
+Naples
+Bergamo
+Brescia

@@ -1,0 +1,35 @@
+{
+  "run": {
+    "scope": "Audit éditorial — articles par intention de recherche, 4 territoires (12 URL d'articles, 92 fiches datées appariées sur 129)",
+    "pages_count": 12,
+    "agents_used": "crawl direct + API REST WordPress",
+    "tokens_used": 0,
+    "notes": "Seuls les DÉFAUTS DE GABARIT des articles sont versés ici. Le plan éditorial lui-même — quels articles écrire et dans quel ordre — vit dans docs/AUDIT_ARTICLES_2026-08-13.md : ce n'est pas un défaut à corriger, c'est un programme de travail, et il n'a rien à faire dans une file de correctifs."
+  },
+  "findings": [
+    {
+      "severity": "high",
+      "category": "on-page",
+      "title": "Quatre articles portent l'année dans leur URL, contre la règle du dépôt",
+      "page_url": "https://agendasabauda.eu/concerts-nice-2026/",
+      "description": "/concerts-nice-2026/, /expositions-turin-2026/, /festivals-savoie-2026/, /sagre-piemont-2026/. CATALOGUE_GEO_SEO.md écrit : « Règle URL : jamais l'année dans l'URL — la page cumule son autorité ». En janvier 2027, soit le titre est périmé, soit il faut créer une URL neuve, sans backlink ni historique, qui repart de zéro pendant que l'ancienne agonise — quatre fois par an, indéfiniment. Les deux articles sans millésime (cuisine-nissarde-tables-labellisees, fetes-vallee-aoste) sont les seuls construits pour durer.",
+      "recommendation": "Slug sans millésime (/concerts-a-nice/), année dans le <title> et le <h1> seulement, réactualisée chaque année sur la même URL. Quatre redirections 301 des anciennes vers les nouvelles — site_health_check les surveillera. Contrôle : les quatre anciennes URL répondent 301 et le sitemap ne liste plus que les nouvelles."
+    },
+    {
+      "severity": "medium",
+      "category": "schema",
+      "title": "Aucun article ne porte de schéma ItemList (0 sur 12)",
+      "page_url": "https://agendasabauda.eu/festivals-savoie-2026/",
+      "description": "Les six articles sont des listes — « les festivals de Savoie », « les sagre du Piémont ». Les 12 URL portent bien un schéma Article, mais aucune ne décrit ce qu'elle contient. ItemList est le balisage fait pour ça : chaque entrée, son rang, son lien. C'est aussi la forme qu'un modèle de langage reprend le plus volontiers quand il cite une liste.",
+      "recommendation": "Ajouter ItemList au gabarit d'article, alimenté depuis les fiches citées. Un seul correctif, valable pour tous les articles à venir. Contrôle : le test de résultats enrichis de Google reconnaît la liste."
+    },
+    {
+      "severity": "medium",
+      "category": "contenu",
+      "title": "Le territoire prioritaire est le moins doté en articles",
+      "page_url": "https://agendasabauda.eu/festivals-savoie-2026/",
+      "description": "Savoie et Haute-Savoie n'ont qu'un article, le Comté de Nice en a deux — alors qu'INTENTIONS_RECHERCHE_SEO.md désigne le cœur savoyard comme la phase 1 et le transfrontalier comme la phase 2. La phase 2 a démarré avant la phase 1. Et l'unique article savoyard, festivals-savoie-2026, repose sur UNE seule fiche de l'Agenda : il ne peut donc pas mailler vers les fiches du site ni prouver que l'Agenda est la source la mieux informée, ce qu'un article de ce type fait de mieux.",
+      "recommendation": "Deux articles savoyards prioritaires, où la matière est déjà là : les concerts (6 fiches) et les expositions (5 fiches). Détail et ordre complet dans docs/AUDIT_ARTICLES_2026-08-13.md."
+    }
+  ]
+}

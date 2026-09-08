@@ -1,0 +1,402 @@
+# Agenda Backoffice — Cultura Sabauda
+# Installer avec : crontab crontab.txt   (puis vérifier : crontab -l)
+#
+# Chemins = déploiement VPS réel : projet sous /root/evenements, interpréteur du
+# venv (.venv/bin/python). Adapter si le projet est ailleurs.
+# Heures en heure locale du serveur. Europe/Paris ATTENDU — Paris et Rome partagent le même
+# fuseau, la journée du site est donc unique malgré son bilinguisme.
+# ⚠️ Ce n'était qu'une AFFIRMATION jusqu'au 2026-08-04 : le commentaire le disait, aucun
+# script ne le vérifiait. Question de Franck ce jour-là. `scripts/watchdog_crons.py` (12h)
+# contrôle désormais le fuseau RÉEL à chaque passage et alerte s'il a bougé — en tête du
+# message, avant les retards, parce qu'un décalage d'heure invalide les retards eux-mêmes.
+# L'enjeu dépasse l'horaire : c'est l'heure du serveur qui décide de ce qui est « passé »
+# (règle 5), et deux heures d'écart font basculer les événements du jour du mauvais côté à
+# la frontière de minuit.
+
+# ══ UN OU DEUX MESSAGES PAR JOUR, PAS SEPT ════════════════════════════════════════════
+# Franck, 2026-08-13, après une matinée à sept notifications (agent 9h20, publication
+# 9h50, SEO 10h30, traduction 10h48, bilan 11h12, dates 11h30, lieux 11h35) : « J'ai trop
+# de messages par jour. Il m'en faut un ou deux, mais c'est tout. »
+#
+# Aucun n'était de trop pris séparément — c'est leur NOMBRE qui les rend illisibles. Ce
+# matin-là, le seul 🔴 qui demandait une décision (48 fiches que la base croit en ligne
+# et qui ne le sont pas) est arrivé en cinquième position, entre un rapport SEO et deux
+# contradicteurs à zéro.
+#
+# SLACK_DIGEST=1 fait que `utils/slack.notify` RANGE au lieu d'envoyer. Deux vidages
+# (11h45 et 20h) reversent tout en un message, les 🔴 en tête. Posé ICI plutôt que dans
+# chaque ligne : un script écrit demain obéit sans qu'on y pense.
+# Pour revenir à l'ancien comportement : mettre 0 (rien d'autre à toucher).
+SLACK_DIGEST=1
+
+# DÉPLOIEMENT AUTONOME 7h50 — la journée commence sur le code le plus récent.
+# Franck, 2026-08-17 : « j'aimerais que tu sois autonome et que tu n'aies pas besoin de
+# moi. Comment faire ? » Ce jour-là il a tapé `bash deploy/update.sh` deux fois, dont une
+# avec une variable dictée — et la première n'a RIEN déployé de mon travail, parce que le
+# script vise une branche et que je poussais sur une autre. Aucune de ces deux frappes
+# n'était une décision.
+# CE QUI REND LA CHOSE SÛRE : le code candidat est sorti dans un worktree jetable,
+# `tests.run_all` y tourne, et le déploiement N'A LIEU QUE si le code de sortie est 0.
+# Fixtures rouges = rien ne part, et Slack le dit en distinguant les trois cas (refusé /
+# en échec / déployé). Il ne fusionne rien : deux branches qui divergent, c'est un
+# arbitrage, il le SIGNALE et s'arrête.
+# Placé AVANT le scraping de 8h, et son message tombe dans la boîte du jour : il arrive
+# donc dans le récapitulatif de 11h45, pas en notification séparée.
+50 7 * * * cd /root/evenements && .venv/bin/python -m scripts.auto_deploiement --apply >> logs/auto_deploiement.log 2>&1
+# Scraping RSS quotidien 8h
+0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py >> logs/scraper.log 2>&1
+# Collecte des newsletters (label Gmail « Agenda ») 8h15
+15 8 * * * cd /root/evenements && .venv/bin/python scripts/gmail_collect.py >> logs/gmail.log 2>&1
+# Rattrapage de l'URL des fiches « gmail: » 8h20 (écrit, jamais planifié — audit du
+# 31/08 §2.2, activé le 04/09 avec l'accord de Franck). Un mail newsletter n'est pas
+# une vraie page web ; ce script rejoue le mail déjà collecté, retrouve le lien réel
+# (<a href>, désormais préservé par gmail_collect) et le pose sur la fiche, pour que
+# dates.py/venues.py juste après puissent lire une vraie page au lieu du placeholder
+# « gmail:{message_id}#{idx} ». Placé avant leur passage, comme prévu dans
+# deploy/cron_pipeline.sh — ce fichier-là n'est pas planifié, cette ligne-ci l'est.
+20 8 * * * cd /root/evenements && .venv/bin/python -m scripts.gmail_relink --execute >> logs/gmail_relink.log 2>&1
+# Pré-datation GRATUITE 8h25 — parsing texte seul (ni téléchargement de page, ni LLM :
+# aucun coût, aucun quota consommé). Sert UNIQUEMENT à armer la garde de dates de
+# dedupe (_dates_incompatible) sur les fiches scrapées le matin même : sans elle, la
+# garde ne protège que ce qui a déjà été daté un jour précédent, or c'est justement le
+# flux du jour qui fabrique les fusions à tort (rubriques récurrentes « COSA FARE… »,
+# « Que faire à Nice ce week-end du… », voir l'audit du 2026-08-02). --no-republish :
+# la passe 4 (traductions) reste au run complet de 8h45, on ne la double pas.
+25 8 * * * cd /root/evenements && .venv/bin/python scripts/dates.py --no-fetch --no-llm --no-republish >> logs/dates.log 2>&1
+# Déduplication multi-sources 8h30 (avant l'évaluation → évite d'évaluer des doublons)
+30 8 * * * cd /root/evenements && .venv/bin/python scripts/dedupe.py >> logs/dedupe.log 2>&1
+# Datation 8h45 : extrait la vraie date d'événement (déterministe, gratuit) → filtres par période
+45 8 * * * cd /root/evenements && .venv/bin/python scripts/dates.py >> logs/dates.log 2>&1
+# Rattrapage GRATUIT des fiches venues d'un mail (2026-08-11). gmail_collect conserve
+# désormais le corps du message : quand l'extraction a raté la date, elle est relue là,
+# près du titre de la fiche. Aucun appel Anthropic.
+# ⚠️ Ajouté ICI et pas seulement dans deploy/cron_pipeline.sh — ce fichier-là n'est PAS
+# planifié (le crontab réel appelle les scripts un par un), donc une ligne ajoutée là ne
+# tourne jamais. Trouvé le jour même, en cherchant à répondre à « comment tu vas être
+# autonome sans que je sois là ? ».
+47 8 * * * cd /root/evenements && .venv/bin/python -m scripts.dates_depuis_mail --apply >> logs/dates_mail.log 2>&1
+# Moisson officielle : UNE page lue, TOUS ses champs récoltés — date, lieu, ville, image,
+# et les infos pratiques (tarif, horaires, réservation, accès) qui remplissaient la file
+# « À vérifier ». Sans modèle. Elle n'avait jamais été planifiée depuis sa création.
+52 8 * * * cd /root/evenements && .venv/bin/python -m scripts.moisson_officielle --apply --cap 120 >> logs/moisson.log 2>&1
+# Extraction du LIEU 8h50 (après la datation, avant l'évaluation) — sa propre docstring
+# dit « Cron : après la datation » depuis toujours, mais il n'y avait JAMAIS été mis.
+# Conséquence mesurée le 2026-08-02 : la file de publication comptait 20 fiches et ZÉRO
+# complète — 19 bloquées sur « manque : Lieu » ou « Lieu, Ville », dont des événements
+# parfaitement valides (Aosta Pride, Risò, La Giettaz, Venaria Reale). Le scraper ne
+# remplit pas ces colonnes (l'adresse ne vit que dans la prose), la porte qualité les
+# exige, et rien n'allait les chercher : les fiches mouraient au dernier portillon.
+# Même forme que dates.py : JSON-LD d'abord (déterministe, gratuit), LLM en second
+# recours, borné et désactivable (VENUES_LLM=0).
+50 8 * * * cd /root/evenements && .venv/bin/python scripts/venues.py >> logs/venues.log 2>&1
+# Tri des séances de cinéma 8h55 (écrit, jamais planifié — audit du 31/08 §2.2, activé
+# le 04/09 avec l'accord de Franck : « oui je ne comprends pas pourquoi on a encore des
+# séances commerciales »). Écarte les projections courantes de salle commerciale
+# (Pathé, UGC…), garde les vrais rendez-vous cinéma culturels (festival, rétrospective,
+# hommage, plein air associatif) — tri par ORGANISATEUR, pas par score. Idempotent et
+# auto-correcteur (rétablit ce qu'un passage précédent aurait écarté à tort). Placé
+# après venues.py (a besoin du lieu pour juger l'organisateur) et avant l'évaluation.
+55 8 * * * cd /root/evenements && .venv/bin/python -m scripts.cleanup_cinema --execute >> logs/cleanup_cinema.log 2>&1
+# Évaluation LLM 9h (après scraping)
+# NB : le cron évalue TOUTE la file pending (rattrapage quotidien). Le pilotage par
+# période (« ce week-end ») se fait à la MAIN via le bouton du dashboard.
+0 9 * * * cd /root/evenements && .venv/bin/python scripts/evaluator.py >> logs/evaluator.log 2>&1
+# AGENT QUOTIDIEN (2026-08-11) — Franck : « je veux que tu sois le plus autonome
+# possible ». Il ouvre les pages des organisateurs une par une et complète ce qu'il y lit,
+# ce qu'aucun script ne sait faire : le 11/08, la file est passée de 68 à 30 par ce seul
+# geste. Il n'écrit qu'à travers completer_verifie.py (jamais en SQL), n'écarte rien
+# lui-même (arbitrage éditorial), ne touche pas au code, et poste son compte rendu.
+# À 9h15 : après la datation, la moisson et l'évaluation, donc sur ce qui RESTE.
+15 9 * * * cd /root/evenements && scripts/agent_quotidien.sh >> logs/agent_quotidien.log 2>&1
+# Lot quotidien 9h30 (après évaluation) — REMPLACE les crons séparés enrich/publish du
+# 2026-07-31 (voir docs/BACKLOG.md, "Protocole de LOT", 2026-08-01) : scripts/daily_batch.py
+# enchaîne rédaction → vérification (mêmes règles que batch_report.py : score, article,
+# panel, date exploitable) → publication (image réelle incluse) → notification Slack, et
+# NE PUBLIE QUE LES ÉVÉNEMENTS COMPLETS. Les incomplets restent en base pour le lendemain,
+# listés dans le message Slack avec la raison précise (rien de silencieux). DAILY_BATCH_SIZE
+# (.env, défaut 10) règle la taille du lot — --cap l'outrepasse ponctuellement.
+30 9 * * * cd /root/evenements && .venv/bin/python scripts/daily_batch.py >> logs/daily_batch.log 2>&1
+# DOUBLONS NÉS DU LOT DU MATIN, 9h50 — juste après la publication, sur ce qui vient
+# d'être mis en ligne. La version hebdomadaire (weekly_audits, dimanche) ne suffit pas :
+# le 2026-08-13, [4763] a été publiée à 9h50 sur un événement DÉJÀ en ligne ([4702]) et
+# rien ne l'aurait vu avant quatre jours. Le même soir, `reconcile_hors_ligne --perimes`
+# a libéré 21 fiches qui repartiront à ce lot — dont plusieurs portent le titre d'une
+# fiche encore publiée. C'est donc le moment exact où le risque se crée.
+# `--en-ligne` interroge WordPress, mais SEULEMENT les fiches des groupes suspects
+# (8 posts le 13/08, pas 198) : le contrôle coûte quelques secondes. Sans lui, il
+# compterait des doublons dont une seule page est réellement visible — la faute de
+# règle 1 que ce script a commise le jour de sa naissance.
+50 9 * * * cd /root/evenements && .venv/bin/python -m scripts.verifier_doublons_publies --en-ligne --slack >> logs/verifier_doublons.log 2>&1
+# SEO quotidien 10h30 (après le lot du jour, sur le haut du panier score ≥ 7) — republie
+# automatiquement ce qui était déjà en ligne (sinon le SEO reste invisible en base). Petit
+# cap volontaire (coût LLM par événement) — ajuste --cap dans le script si besoin.
+30 10 * * * cd /root/evenements && .venv/bin/python scripts/seo_batch.py --cap 10 >> logs/seo_batch.log 2>&1
+# Photo PAYSAGE (16:9) du haut du panier, 10h35 — écrit, jamais planifié (audit du
+# 31/08 §2.2, activé le 04/09 : Franck, « amélioration visuelle qui est quand même
+# super importante pour un article »). Un agent va chercher, chez la source
+# OFFICIELLE de l'événement, une vraie photo paysage (jamais une agence, jamais
+# inventée) pour les événements déjà publiés et bien notés (score ≥ 7) qui n'ont
+# encore que le format portrait — publisher_as sert alors le bon format par
+# emplacement. Coûte un appel IA par photo trouvée : --cap 15 le plafonne. Placé
+# après seo_batch (même public : le haut du panier déjà en ligne). À REGARDER
+# après une semaine (coût réel vu dans le digest, qualité des photos trouvées) —
+# décision de garder ou d'éteindre à reprendre alors, pas figée ici.
+35 10 * * * cd /root/evenements && .venv/bin/python -m scripts.images_wide --apply --cap 15 --min-score 7 >> logs/images_wide.log 2>&1
+# Traduction FR/IT quotidienne 10h45 — ▶️ ACTIVE. Mise en pause le 2026-08-01 au soir,
+# rallumée le 2026-08-04. L'historique ci-dessous est conservé : c'est le seul endroit où
+# la chaîne complète de l'incident est écrite, et la relire avant de toucher au cap évite
+# de refaire le raisonnement à partir de rien.
+# Motif de la pause : une fiche traduite publiée en ligne (WP#6798) portait le TITRE d'un
+# événement et le lieu/les dates d'un autre.
+#
+# ✅ CAUSE ÉLUCIDÉE LE 2026-08-04 — l'hypothèse était la bonne, et la chaîne est complète :
+#   1. `dedupe.merge_group`, AVANT le correctif du 2026-08-02, gardait la description la
+#      plus longue en caractères BRUTS. Or une description Google News RSS n'est qu'un
+#      `<a href="news.google.com/…">` dont l'URL encodée fait plusieurs centaines de
+#      caractères : la fiche radar gagnait donc systématiquement ;
+#   2. la fiche radar [2762] « Fête du lac 2026 » a ainsi ÉCRASÉ la description de [2153]
+#      « Une semaine pas plus », un spectacle à Chambéry ;
+#   3. l'évaluateur a noté 2153 sur ce texte — llm_score=10, cinq justifications parlant
+#      d'Annecy et du lac ;
+#   4. le traducteur a travaillé cette matière polluée et en a tiré le titre de la Fête du
+#      lac, tout en conservant le lieu et les dates de la pièce de théâtre.
+# LE TRADUCTEUR N'A RIEN INVENTÉ : il a fidèlement traduit une fiche déjà fausse. Le défaut
+# était en amont, exactement là où on le soupçonnait sans pouvoir le montrer.
+# Le mécanisme est corrigé depuis le 2026-08-02 (`dedupe._text_len` compare le TEXTE
+# VISIBLE, balises et URLs retirées) — donc il ne se reproduit plus.
+#
+# ▶️ RÉACTIVÉE LE 2026-08-04, décision de Franck. Les six conditions de
+# docs/GO_NOGO_TRADUCTION.md sont remplies : C1 (SEO), C2 (portillon de justesse du titre),
+# C3 (anti-retraduction), C4 (gather_material, fait le 03/08) et C6 — et surtout C5, « le
+# vrai trou » du dossier, enfin MESURÉ sur la production : 2 fiches vivantes seulement
+# portaient une description polluée. [2153] a été vidée et ré-évaluée le jour même (score
+# 10 → 1, plus aucune mention d'Annecy), [2864] n'est pas publiée donc hors du vivier. Et
+# WP#6798, la traduction fautive, est à la corbeille.
+#
+# UNE RAISON DE LE FAIRE, pas seulement l'absence d'obstacle : le vivier ITALIEN de « Ça
+# vaut le déplacement » est tombé à 4 candidates pour 2 places — le seuil de rupture annoncé
+# par le tableau du plancher. Deux fins d'événement et la section se vide. Ce vivier ne
+# contient QUE des fiches traduites : traduire davantage est le seul levier qui l'élargit.
+# Baisser le plancher n'y remettrait que les événements médiocres qu'on vient d'en retirer.
+#
+# CAP REMONTÉ DE 2 À 5 LE 2026-08-04, quelques heures après la réactivation — et le motif
+# du 2 a été RETIRÉ, pas contourné.
+#
+# Le 2 reposait sur un constat exact : le portillon C2 ne regarde que le TITRE, donc une
+# fiche dont la description d'origine serait encore polluée passait, et la seule protection
+# contre ce cas-là était l'œil humain sur les permaliens du jour. Deux se relisent, cinq ne
+# se relisent pas.
+#
+# Franck a refusé ce raisonnement le jour même : « je veux qu'il puisse juger la
+# description, et ce, partout. On ne doit pas faire des choses automatiques pour faire des
+# choses automatiques sans réfléchir. » Il avait raison — c'était faire compenser par un
+# humain un contrôle qu'on pouvait écrire, et la contradiction de WP#6798 était détectable
+# sans la moindre IA. `utils/coherence` est depuis branché EN REFUS ici, avant même l'appel
+# au modèle : une description qui ne parle pas de sa fiche n'est plus traduite du tout.
+#
+# Le plafond ne protège donc plus de la même chose. Ce qui le fixe maintenant, c'est le
+# BESOIN : la home italienne manque de matière — « Les 7 prochains jours » y est vide, et le
+# vivier de « Ça vaut le déplacement » est tombé à 4 candidates pour 2 places. Il reste
+# ~56 fiches à traduire ; à 5 par jour, une dizaine de jours.
+#
+# La relecture humaine reste utile et n'est pas abandonnée : elle passe de seule protection
+# à second regard. C'est la place qu'elle aurait toujours dû avoir.
+#
+# Se dépose à 10h45, donc AVANT le rafraîchissement du tri de 10h50 : les traductions du
+# jour reçoivent ainsi leur `as_deplacement_now` dans la foulée, au lieu d'attendre le
+# lendemain pour entrer dans la section italienne — celle-là même qu'elles servent à
+# remplir.
+# ⚠️ CHAÎNÉ AVEC LE RAFRAÎCHISSEMENT DU TRI (ci-dessous), et non plus séparé de 5 minutes.
+# Le tour des automatisations du 2026-08-04 a démenti l'ordre par horloge : la ligne
+# promettait que les traductions du jour recevraient leur `as_deplacement_now` « dans la
+# foulée » à 10h50, or la traduction a MESURABLEMENT duré 35 minutes pour 2 candidates
+# (Slack : lancée 10h45, bilan posté 11h20). À --cap 5, elle déborde largement 10h50 : le
+# rafraîchissement passait AVANT la fin, et les traductions du jour attendaient le
+# lendemain — le contraire exact de ce que le commentaire affirmait. Un `;` règle ce qu'un
+# horaire ne peut pas : le second s'exécute quand le premier a fini, quelle que soit la
+# durée. (Et un `;` sans accolades exécuterait le second même si le `cd` échoue, dans le
+# mauvais répertoire — leçon de la ligne bilan_matin du 2026-08-03, d'où le groupement.)
+#
+# CAP 5 → 10 LE 2026-08-04 AU SOIR, question de Franck (« est-ce que cinq par jour c'est
+# suffisant ? ») tranchée par l'arithmétique plutôt qu'au sentiment : le stock est de ~56
+# fiches à traduire, le lot quotidien en ajoute 3 à 5 éligibles par jour, et un cap de 5
+# ne produit que 3-4 traductions EFFECTIVES (mesuré : 3/5 puis 1/2, entre refus du
+# portillon et erreurs de troncature). Sortie ≈ entrée : le stock ne se vidait JAMAIS, il
+# oscillait — le digest du lundi l'affichait à ~56 semaine après semaine. À 10, il draine
+# en deux semaines environ, puis suit le flux.
+# ⚠️ REDESCENDRE À 5 quand le digest du lundi affiche « à traduire » proche de zéro : le
+# cap à 10 coûte le double d'appels API par jour, et une fois le stock vidé il tournerait
+# à moitié à vide. La ligne « à traduire » du digest est l'indicateur, pas une impression.
+45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 10 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
+# (Le rafraîchissement du tri « Ça vaut le déplacement » tourne DANS la ligne de 10h45
+# ci-dessus, enchaîné après la traduction — voir le commentaire de cette ligne. Son
+# journal reste logs/refresh_deplacement.log, le chien de garde ne change pas.)
+# Cerveau du matin 10h40 — demandé par Franck le 2026-08-25 (« les décisions tu dois les
+# prendre en autonomie, et les informations via les différents scripts »). Lance Claude
+# Code en NON-INTERACTIF sur config/consigne_cerveau.txt : il relit les signalements en
+# attente (digests archivés, logs du matin) et AGIT dans les limites du réversible —
+# corbeille cs/v1, changements de statut, marqueurs de résolution — via les scripts
+# existants, un par un. Il ne modifie AUCUN fichier (pas d'outil d'écriture) et escalade
+# tout le reste. Déclencheur concret : la fiche 4839 proposée à l'écartement quatre
+# matins de suite sans geste. Placé AVANT le bilan de 11h, exprès : le bilan (lecture
+# seule) relit ce que le cerveau a fait — l'acteur et le contrôleur sont deux agents
+# séparés, et le contrôleur ne sait pas écrire. Toute la mécanique des verrous est en
+# tête de scripts/cerveau.sh ; la fixture tests/test_cerveau.py garde sa liste d'outils.
+40 10 * * * cd /root/evenements && scripts/cerveau.sh >> logs/cerveau.log 2>&1
+# Bilan du matin 11h — accord de Franck le 2026-08-03. Lance Claude Code en NON-INTERACTIF
+# sur config/consigne_bilan_matin.txt et poste le résultat sur Slack. Toute la mécanique
+# (outils autorisés, verrous d'écriture, raisons de passer par un script plutôt qu'une ligne
+# de cron) est expliquée en tête de scripts/bilan_matin.sh — la relire avant d'y toucher.
+# Différence de nature avec les autres lignes de ce fichier : les autres exécutent une règle
+# écrite d'avance, celle-ci fait LIRE l'état du jour et RÉDIGER ce qui mérite l'attention.
+# C'est la seule surveillance capable de signaler ce qu'aucun seuil n'a prévu.
+# Placé à 11h : après le gros de la chaîne du matin. ⚠️ PAS « sur un état stabilisé » —
+# la formule a été retirée le 2026-08-04 : la traduction lancée à 10h45 peut durer au-delà
+# de 11h (35 min mesurées pour 2 candidates), le bilan lit donc parfois une traduction en
+# cours. C'est accepté : il rend compte de la matinée, la traduction est sa queue, et le
+# chien de garde de 12h ne regarde que l'ABSENCE de passages. L'agent n'écrit rien et ne poste rien lui-même : il produit un
+# texte, le script l'envoie (cf. sa docstring).
+# ⚠️ Le `cd` n'est PAS décoratif : cron exécute avec cwd=$HOME (/root), donc sans lui la
+# redirection relative viserait /root/logs/, qui n'existe pas — le shell échoue à ouvrir le
+# fichier et la commande ne tourne JAMAIS. Panne quotidienne et parfaitement silencieuse.
+# Vérifié le 2026-08-03 avant installation : `cd /root && sh -c ': >> logs/x'` échoue.
+0 11 * * * cd /root/evenements && scripts/bilan_matin.sh >> logs/bilan_matin.log 2>&1
+# Chien de garde 12h — LES CRONS TOURNENT-ILS ENCORE ? Ajouté le 2026-08-03, c'était le
+# manque le plus sérieux du dispositif : quatorze automatisations font vivre ce site, et
+# si le scraper échouait demain matin, RIEN ne sonnait. La santé de la home (13h) et la
+# relecture du site (14h) voient la CONSÉQUENCE plusieurs jours plus tard, jamais la cause.
+# `utils/pipeline_status` enregistrait fidèlement chaque passage depuis des mois — mais
+# rien ne lisait ce journal pour s'inquiéter d'une ABSENCE.
+# Placé à 12h : après toute la chaîne du matin (8h→10h30), avant les contrôles de l'après-
+# midi. Coût NUL — aucun appel LLM, il ne lit que des fichiers et la base. Et il se tait
+# quand tout va bien : une notification quotidienne « rien à signaler » finit par ne plus
+# être lue, et le jour où elle manque personne ne le remarque.
+# LE CONTRADICTEUR DE DATES, 11h30 — après le lot de publication de 9h30 et la traduction
+# de 10h45, donc il voit ce qui vient d'être mis en ligne. Il ne parle QUE s'il a trouvé :
+# un message quotidien qui dit « rien » n'est plus lu au bout d'une semaine, et c'est le
+# jour où il dira quelque chose qu'on le ratera.
+# Écrit le 2026-08-11, jour où il a trouvé 22 fiches PUBLIÉES annonçant des événements déjà
+# passés — dont une soirée d'avril 2022. Personne ne les avait vues en quatre mois.
+30 11 * * * cd /root/evenements && .venv/bin/python -m scripts.verifier_dates --slack >> logs/verifier_dates.log 2>&1
+# LE CONTRADICTEUR DE LIEUX, 11h35 — le pendant du précédent, sur la ville plutôt que
+# sur la date. Même doctrine : il confronte, il n'extrait pas, et il se tait quand il n'a
+# rien. Écrit le 2026-08-11 après la fiche lieu WordPress 208, `_VenueCity = Aosta` pour
+# le Forte di Bard, qui est à Bard — trois événements l'affichaient au public, et la bonne
+# réponse dormait depuis des semaines dans docs/savoir/forte-di-bard.md.
+35 11 * * * cd /root/evenements && .venv/bin/python -m scripts.verifier_lieux --slack >> logs/verifier_lieux.log 2>&1
+# VIDAGE DE LA BOÎTE DU JOUR, 11h45 — après le dernier contradicteur (11h35). C'est LE
+# message du matin : tout ce que la chaîne a produit depuis 8h, en un seul bloc, les 🔴
+# en tête. Placé avant le chien de garde de 12h, qui lui parle en direct (urgent=True) :
+# le vidage est un cron, donc si la chaîne est morte il ne part pas — le chien de garde
+# doit pouvoir aboyer quand tout le reste s'est tu.
+# ⚠️ DEPUIS LE 2026-08-17, CE VIDAGE VA AUSSI CHERCHER LES RAPPORTS DE WORDPRESS. Quatre
+# audits quotidiens écrits en Code Snippets (doctrine éditoriale, garde-fous dates/sources,
+# garde-fous panel/formes/lieux, fraîcheur des guides) et les refus de cs-completude.php
+# postaient dans #formulaire — le canal réservé au bruit des formulaires publics, que
+# personne ne lit ; le refus de la fiche #7686 y a dormi. Ils sont maintenant tenus en
+# réserve côté WordPress et rapatriés par scripts.rapports_wordpress (appelé DEPUIS
+# slack_digest, donc AUCUNE ligne de cron à ajouter ici) pour arriver dans CE message.
+# Le webhook de #agendasabauda n'a pas été recopié dans la base WordPress : il reste
+# uniquement dans le .env du VPS, un seul exemplaire à révoquer.
+# Si ce cron cesse de tourner, WordPress s'en aperçoit (aucun passage depuis 26 h) et
+# reprend la parole tout seul sur son propre webhook : les rapports réapparaissent dans
+# #formulaire au lieu de disparaître. C'est voulu — un message mal rangé se voit.
+# (Quatre lignes datées `19-20 8` ont vécu ici du 19/08 au 31/08 : les mesures de
+# rotation, sigles, vocabulaire et home envoyées sur le téléphone de Franck pendant ses
+# congés. RETIRÉES le 31/08 comme leur propre bandeau le demandait — un motif de date
+# fixe ne meurt pas, il dort onze mois puis repart. Les quatre audits restent joignables
+# à la demande, et `cerveau.sh` en porte deux dans ses outils autorisés.)
+45 11 * * * cd /root/evenements && .venv/bin/python -m scripts.slack_digest --titre "🌅 Récapitulatif du matin" >> logs/slack_digest.log 2>&1
+0 12 * * * cd /root/evenements && .venv/bin/python scripts/watchdog_crons.py --slack >> logs/watchdog.log 2>&1
+# RELEVÉ DE SANTÉ 12h05 — juste après le chien de garde, donc sur la matinée complète.
+# Franck, 2026-08-17 : « j'aimerais que tu sois autonome et que tu n'aies pas besoin de
+# moi. » Deux de mes six sollicitations de la journée n'étaient pas des décisions mais des
+# allers-retours : « le crédit API est-il rétabli ? », « quel est l'état des files ? ». Il a
+# collé des sorties de terminal. Le pipeline savait tout ça et ne l'exposait à personne.
+# Ce cron dépose l'état (révision déployée, passages des crons, files et goulot, crédit vu
+# par ses conséquences) dans une option WordPress, via la route cs/v1/sante et
+# l'authentification qui sert DÉJÀ à publier — donc aucun secret de plus à confier.
+# Une session Claude lit ce relevé sans accès au serveur : plus de copier-coller.
+# SILENCIEUX : aucune notification Slack, c'est de la donnée, pas une alerte. Et le relevé
+# ne transporte AUCUN secret — le script refuse d'envoyer s'il en détecte un.
+5 12 * * * cd /root/evenements && .venv/bin/python -m scripts.publier_sante --publier >> logs/sante.log 2>&1
+# Santé de la home 13h — alerte Slack si « À la une »/« En évidence » se vident (cf.
+# incident du 2026-07-31, découvert par hasard faute de surveillance). Zéro coût, se
+# resserre facilement si besoin de plus de fréquence.
+0 13 * * * cd /root/evenements && .venv/bin/python scripts/homepage_health.py >> logs/homepage_health.log 2>&1
+# Relecture du SITE PUBLIÉ 14h — la seule surveillance qui va LIRE une fiche en ligne et
+# comparer ce qui s'affiche à ce que dit la base (dates, titre, lieu, image de partage),
+# via le JSON-LD Event servi par TEC. Tout le reste du dépôt vérifie la base AVANT
+# publication ; les quatre incidents du 2026-08-01 avaient tous une base plausible et un
+# SITE faux, et c'est Franck qui les a vus. Rotation par curseur : le catalogue entier
+# est relu en quelques jours, en boucle — une régression silencieuse a donc une durée de
+# vie bornée (la taxonomie avait tenu dix jours). Slack seulement s'il y a à dire.
+0 14 * * * cd /root/evenements && .venv/bin/python scripts/site_audit.py >> logs/site_audit.log 2>&1
+# Signaux SEO de GABARIT 14h15 — ce que ni homepage_health (qui compte des cartes) ni
+# site_audit (qui relit des fiches une par une) ne pouvaient voir : sept signaux de SITE,
+# dont l'en-tête de cache et la présence d'une entité éditrice. Trouvés par l'audit du
+# 2026-08-12, qui a montré que le site interdit toute mise en cache jusque sur les .css.
+# ⚠️ Il n'alerte QUE sur la BASCULE d'un signal, jamais sur sa valeur : au moment où il est
+# écrit, la moitié des signaux sont déjà au rouge, et un contrôle classique crierait tous
+# les jours sur une situation connue — la faute que site_audit documente lui-même. Le
+# retour au vert est signalé aussi : c'est la seule preuve qu'un correctif a atteint le
+# site. Rien ici ne bouge tout seul, donc ce cron est en pratique un détecteur de
+# déploiement — y compris des déploiements non annoncés, et il y en a (34 mu-plugins cs-*
+# vivent sur le serveur, 16 sans copie versionnée). Zéro coût API, deux requêtes HTTP.
+15 14 * * * cd /root/evenements && .venv/bin/python scripts/gabarit_health.py >> logs/gabarit_health.log 2>&1
+# FILET DU SOIR, 20h — le second et dernier message de la journée. Il ramasse ce qui est
+# tombé après 11h45 : santé de la home (13h), relecture du site publié (14h), gabarits
+# (14h15). Sans lui, ces trois-là attendraient le lendemain matin — et un différé qui
+# dort douze heures finit par se faire oublier, ce qui est exactement le défaut qu'on
+# corrige, à l'envers.
+0 20 * * * cd /root/evenements && .venv/bin/python -m scripts.slack_digest --titre "🌆 Récapitulatif du soir" >> logs/slack_digest.log 2>&1
+# Veille sitemap/liens, dimanche 7h30 — le script existait depuis le 29/07 et son propre
+# commentaire disait « tourne chaque semaine en cron ». C'était faux : il n'a jamais été
+# relancé. Conséquence lue dans /seo le 2026-08-12 : 34 points « URL du sitemap redirige »
+# encore ouverts, tous du 29/07, alors qu'une relecture des 230 URLs n'en trouvait PLUS
+# AUCUNE. Le tableau annonçait 64 points là où il y en avait une vingtaine de réels.
+# Il sait désormais SOLDER ce qu'il ne retrouve plus (solder_disparus), et seulement sur
+# les URLs qui ont répondu pendant le run — une URL non mesurée reste ouverte. La
+# fraîcheur de la file est donc bornée à sept jours au lieu d'être infinie.
+30 7 * * 0 cd /root/evenements && .venv/bin/python scripts/site_health_check.py --apply >> logs/site_health_check.log 2>&1
+# Archivage Search Console, dimanche 7h45 — SILENCIEUX, aucune notification. À 19 clics sur
+# trois mois, un rapport hebdomadaire serait du bruit, et Franck a dit le 2026-08-13 « il
+# m'en faut un ou deux par jour, mais c'est tout ». Ce cron n'écrit qu'en base.
+# Ce qu'il fait a plus de valeur qu'une alerte : il CONSTITUE L'HISTORIQUE qui n'existe pas.
+# Deux fois en deux jours une question est restée sans réponse faute de comparatif — « le
+# creux d'événements de novembre est-il un trou de sourcing ou un délai d'annonce ? » se
+# tranche en regardant l'an dernier, donnée que personne n'avait gardée. La Search Console
+# ne conserve que seize mois et n'expose rien d'antérieur à la validation : chaque relevé
+# non pris est perdu pour toujours. Rejouer une période ne duplique pas (clé unique).
+# Tourne à vide et sans erreur tant qu'aucun identifiant n'est posé.
+45 7 * * 0 cd /root/evenements && .venv/bin/python -m scripts.gsc_report --enregistrer --apply --jours 30 >> logs/gsc_report.log 2>&1
+# Nettoyage hebdomadaire dimanche 5h — chaîne RÉVERSIBLE et DÉTERMINISTE uniquement
+# (purge hors-zone/passés/incomplétables, articles de presse publiés à tort, doublons
+# WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py
+# pour le détail et pourquoi CES scripts-là précisément sont sans risque à automatiser.
+0 5 * * 0 cd /root/evenements && .venv/bin/python scripts/weekly_audits.py >> logs/weekly_audits.log 2>&1
+# Revue adversariale du code, dimanche 6h — après le grand ménage de 5h. Ajoutée le
+# 2026-08-04 : ce jour-là, quatre agents relisant huit fichiers écrits le jour même y ont
+# trouvé QUINZE défauts, dont plusieurs dans les correctifs censés fermer ceux de la veille,
+# et trois fois la même faute de méthode — une fixture incapable de contredire son auteur.
+# Aucun n'avait été vu par celui qui les avait écrits ; tous l'ont été en quelques minutes
+# par quelqu'un d'autre. La leçon n'est pas « il faut mieux se relire », c'est que se relire
+# soi-même ne marche pas.
+# Elle N'ÉCRIT RIEN (--disallowedTools Write/Edit) : elle constate, le geste reste humain.
+# Toute la mécanique est en tête de scripts/revue_hebdo.sh — la relire avant d'y toucher.
+0 6 * * 0 cd /root/evenements && scripts/revue_hebdo.sh >> logs/revue_hebdo.log 2>&1
+# Digest hebdomadaire lundi 8h — état des automatisations + reste à faire, posté sur
+# Slack (équivalent de scripts/status_report.py, à lancer à la main pour un état à jour
+# à tout moment, y compris pour coller le résultat à une IA qui reprend le projet).
+0 8 * * 1 cd /root/evenements && .venv/bin/python scripts/weekly_digest.py >> logs/weekly_digest.log 2>&1
+# Calibrage de l'évaluateur, lundi 8h05 — juste après le récapitulatif, pour arriver
+# ensemble. Ajouté le 2026-08-03 : utils/score_memory enregistrait les corrections de
+# Franck depuis des mois et l'évaluateur les réinjectait dans son prompt, mais RIEN ne
+# vérifiait que cette boucle d'apprentissage apprenait. On mesure enfin l'écart entre sa
+# note et celle de Franck, et surtout s'il RÉTRÉCIT.
+# Hebdomadaire et pas quotidien : les corrections s'accumulent lentement, et un indicateur
+# qui bouge à peine d'un jour sur l'autre n'a rien à dire tous les matins. Coût nul (lecture
+# d'un fichier), et silencieux tant que l'écart reste sous le seuil.
+5 8 * * 1 cd /root/evenements && .venv/bin/python scripts/audit_calibrage.py --slack >> logs/calibrage.log 2>&1
+# Sauvegarde de la base 3h (copie cohérente horodatée, garde les 14 dernières) — anti perte de données
+0 3 * * * cd /root/evenements && .venv/bin/python scripts/backup_db.py >> logs/backup.log 2>&1

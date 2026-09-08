@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% set active = 'seo' %}
+{% block title %}SEO{% endblock %}
+{% block h1 %}SEO{% endblock %}
+{% block subtitle %}<div class="sub">Trouvailles des audits SEO (manuels pour l'instant) : bugs techniques, Schema.org, contenu. Un clic solde un point ou l'écarte — <b>rien n'est appliqué automatiquement</b> depuis cet écran.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:1000px;">
+
+  {% set sev_meta = {
+    'critical': {'label': 'Critique', 'emoji': '🔴'},
+    'high':     {'label': 'Élevé',    'emoji': '🟠'},
+    'medium':   {'label': 'Moyen',    'emoji': '🟡'},
+    'low':      {'label': 'Faible',   'emoji': '🔵'},
+    'info':     {'label': 'Info',     'emoji': '⚪'},
+  } %}
+
+  {% if runs %}
+  <div class="card" style="padding:.7rem 1rem;margin-bottom:1rem;">
+    <div style="font-weight:600;margin-bottom:.4rem;">Historique des audits</div>
+    <table style="width:100%;font-size:.85rem;border-collapse:collapse;">
+      <thead><tr style="text-align:left;color:#7a7266;">
+        <th style="padding:.2rem .4rem;">Date</th><th>Portée</th><th>Pages</th>
+        <th>Agents</th><th>Tokens</th><th>Notes</th>
+      </tr></thead>
+      <tbody>
+      {% for r in runs %}
+        <tr style="border-top:1px solid #ece5d8;">
+          <td style="padding:.3rem .4rem;white-space:nowrap;">{{ r.started_at }}</td>
+          <td>{{ r.scope or '—' }}</td>
+          <td>{{ r.pages_count or '—' }}</td>
+          <td>{{ r.agents_used or '—' }}</td>
+          <td>{{ '{:,}'.format(r.tokens_used) if r.tokens_used else '—' }}</td>
+          <td class="muted">{{ r.notes or '' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="muted text-sm" style="margin-bottom:.9rem;">
+    {{ total_todo }} point(s) à traiter{% if resolved_count %} · {{ resolved_count }} déjà soldé(s){% endif %}
+  </div>
+
+  {% if total_todo == 0 %}
+    <div class="card" style="padding:1.1rem 1.2rem;">Rien à traiter 🎉</div>
+  {% endif %}
+
+  {% for sev in ['critical', 'high', 'medium', 'low', 'info'] %}
+    {% set items = by_sev.get(sev, []) %}
+    {% if items %}
+    <div style="font-weight:600;margin:1.1rem 0 .5rem;">
+      {{ sev_meta[sev].emoji }} {{ sev_meta[sev].label }} <span class="muted">({{ items|length }})</span>
+    </div>
+    {% for f in items %}
+    <div class="card" style="padding:.7rem 1rem;margin-bottom:.6rem;">
+      <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-weight:600;">{{ f.title }}</div>
+          {% if f.page_url %}<div class="muted text-sm" style="margin-top:.15rem;"><a href="{{ f.page_url }}" target="_blank" rel="noopener">{{ f.page_url }}</a></div>{% endif %}
+          {% if f.description %}<div style="margin-top:.4rem;font-size:.9rem;">{{ f.description }}</div>{% endif %}
+          {% if f.recommendation %}<div style="margin-top:.4rem;font-size:.9rem;background:#eef2f8;border:1px solid #cbd8ea;border-radius:6px;padding:.4rem .6rem;"><b>Recommandation :</b> {{ f.recommendation }}</div>{% endif %}
+          <div class="muted text-sm" style="margin-top:.35rem;">
+            {% if f.category %}{{ f.category }}{% endif %}
+            {% if f.source_agent %} · trouvé par {{ f.source_agent }}{% endif %}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0;">
+          <form method="post" action="/seo" style="margin:0;">
+            <input type="hidden" name="finding_id" value="{{ f.id }}">
+            <input type="hidden" name="new_status" value="done">
+            <button type="submit" style="padding:.3rem .7rem;font-weight:600;white-space:nowrap;">✓ fait</button>
+          </form>
+          <form method="post" action="/seo" style="margin:0;">
+            <input type="hidden" name="finding_id" value="{{ f.id }}">
+            <input type="hidden" name="new_status" value="dismissed">
+            <button type="submit" class="muted" style="padding:.3rem .7rem;white-space:nowrap;">écarter</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  {% endfor %}
+
+</div>
+{% endblock %}

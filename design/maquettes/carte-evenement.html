@@ -1,0 +1,107 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aperçu maquette — Ce week-end (tokens réels)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alumni+Sans+Pinstripe&family=Saira+Condensed:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cs-bleu:#18365E; --cs-beige:#F7F1E8; --cs-noir:#1D1D1B; --cs-rouge:#DC5D45;
+    --fg-1:#1D1D1B; --fg-2:#4A4A48; --fg-3:#6F6B62;
+    --rule:#E3DCCE; --rule-strong:#C9BFAD;
+    --font-display:'Alumni Sans Pinstripe','Didot',serif;
+    --font-editorial:'Saira Condensed','Barlow Condensed','Oswald',sans-serif;
+    --font-body:'Nunito Sans','Segoe UI',system-ui,sans-serif;
+    --tracking-eyebrow:.18em; --tracking-caps:.08em;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e9e0d2;font-family:var(--font-body);color:var(--fg-1);
+       display:flex;justify-content:center;padding:28px 14px}
+  .phone{width:100%;max-width:430px;background:var(--cs-beige);
+         box-shadow:0 2px 4px rgba(29,29,27,.06),0 14px 30px -12px rgba(29,29,27,.18);overflow:hidden}
+  .masthead{padding:16px 20px 2px;font-family:var(--font-display);text-transform:uppercase;
+            letter-spacing:.05em;font-size:26px;color:var(--fg-1);line-height:1}
+  .kicker{padding:2px 20px 0;font-family:var(--font-body);font-weight:700;font-size:12px;
+          letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--fg-3)}
+  h2{font-family:var(--font-editorial);font-weight:600;font-size:30px;line-height:1.08;
+     margin:8px 20px 0;letter-spacing:0}
+  .sub{margin:2px 20px 8px;font-size:13px;color:var(--fg-3)}
+  .list{padding:2px 20px 8px}
+  .row{display:flex;gap:14px;align-items:flex-start;padding:15px 0;border-top:1px solid var(--rule)}
+  .row:first-child{border-top:none}
+  .time{flex:0 0 58px}
+  .time .d{font-family:var(--font-body);font-size:11px;font-weight:800;letter-spacing:.04em;
+           text-transform:uppercase;color:var(--fg-1)}
+  .time .h{font-family:var(--font-editorial);font-weight:600;font-size:15px;color:var(--fg-1);margin-top:2px}
+  .main{flex:1 1 auto;min-width:0}
+  .catline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+  .cat{font-family:var(--font-editorial);font-weight:600;font-size:11px;letter-spacing:var(--tracking-caps);
+       text-transform:uppercase;color:var(--fg-1)}
+  .cat.accent{color:var(--cs-rouge)}
+  .terr{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:.06em;
+        color:var(--fg-2);border:1px solid var(--rule-strong);border-radius:2px;padding:2px 7px}
+  .title{font-family:var(--font-editorial);font-weight:500;font-size:19px;line-height:1.12;margin:0;color:var(--fg-1)}
+  .place{font-size:12.5px;color:var(--fg-3);margin-top:3px}
+  .row.passe{opacity:.55}
+  .row.passe .title{text-decoration:none}
+  .foot{border-top:1px solid var(--fg-1);margin:0 20px;padding:14px 0 18px}
+  .cta{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-weight:700;
+       font-size:12px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--cs-rouge);
+       border:1px solid currentColor;border-radius:999px;padding:8px 14px;text-decoration:none;background:transparent}
+  .note{max-width:430px;color:#6b6b6b;font-size:12px;margin:14px auto 0;text-align:center;line-height:1.5}
+</style>
+
+<div class="phone">
+  <div class="masthead">Agenda Sabauda</div>
+  <div class="kicker">L'agenda transfrontalier des Alpes</div>
+  <h2>Ce week-end</h2>
+  <p class="sub">18–19 juillet · Savoie · Piémont · Vallée d'Aoste · Nice</p>
+
+  <div class="list">
+
+    <div class="row">
+      <div class="time"><div class="d">Sam. 18</div><div class="h">21h00</div></div>
+      <div class="main">
+        <div class="catline"><span class="cat accent">Concerts &amp; Musique</span><span class="terr">PIEMONTE</span></div>
+        <h3 class="title">Subsonica au Flowers Festival</h3>
+        <div class="place">Flowers Festival — Collegno</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="time"><div class="d">Sam. 18</div><div class="h">18h00</div></div>
+      <div class="main">
+        <div class="catline"><span class="cat">Fêtes &amp; Traditions</span><span class="terr">VALLÉE D'AOSTE</span></div>
+        <h3 class="title">La Foire d'Été 2026</h3>
+        <div class="place">Place Chanoux — Aoste</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="time"><div class="d">Dim. 19</div><div class="h">10h00</div></div>
+      <div class="main">
+        <div class="catline"><span class="cat">Expositions &amp; Patrimoine</span><span class="terr">SAVOIE</span></div>
+        <h3 class="title">Festival Photo de Montmélian</h3>
+        <div class="place">Musée de la vigne et du vin — Montmélian</div>
+      </div>
+    </div>
+
+    <div class="row passe">
+      <div class="time"><div class="d">Ven. 17</div><div class="h">20h30</div></div>
+      <div class="main">
+        <div class="catline"><span class="cat">Spectacle vivant</span><span class="terr">NICE</span></div>
+        <h3 class="title">Patience mon amour — passé (grisé par la typo)</h3>
+        <div class="place">Théâtre des Oiseaux — Nice</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot"><a class="cta" href="#">Tout l'agenda du week-end →</a></div>
+</div>
+
+<p class="note">Aperçu du composant <b>carte-événement</b> rendu avec tes <b>vrais tokens</b>
+(colors_and_type.css) : Alumni Sans Pinstripe (masthead), Saira Condensed = fallback réseau de
+La Semplicità Pro (titres), Nunito Sans (corps). Monochrome + rouge en accent (1 catégorie en avant),
+territoire en puce mono, statut « passé » signalé par la typo. Coins carrés, filets #E3DCCE.</p>

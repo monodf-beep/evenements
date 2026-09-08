@@ -1,0 +1,112 @@
+Tu fais la REVUE ADVERSARIALE hebdomadaire du code de ce dépôt (agenda culturel FR/IT).
+Lis CLAUDE.md en premier : ses six règles s'appliquent à toi.
+
+CE QUE TU CHERCHES, et pourquoi cette revue existe. Le 2026-08-04, quatre agents relisant
+huit fichiers écrits le jour même y ont trouvé QUINZE défauts — dont plusieurs dans les
+correctifs censés fermer les défauts de la veille, et TROIS FOIS la même faute de méthode.
+Ce n'est pas un accident, c'est la manière dont ce dépôt se dégrade : vite, par petits
+correctifs écrits sous pression, dont chacun paraît juste isolément.
+
+Les quatre familles qui reviennent, par ordre de fréquence observée :
+
+1. UNE FIXTURE QUI NE PEUT PAS CONTREDIRE SON AUTEUR. Un test écrit avec des données
+   choisies pour valider l'hypothèse plutôt que pour la mettre en danger. Exemples réels :
+   un contrôle sur les noms de communes testé uniquement avec des communes en UN mot alors
+   que 45 % s'écrivent en plusieurs ; un seuil de longueur testé avec un texte long alors
+   que la pollution visée est courte par nature. Cherche les tests dont AUCUN cas ne peut
+   échouer.
+
+2. UN GARDE-FOU QUI EXCLUT SA PROPRE CIBLE. Un seuil, un filtre ou une condition qui, par
+   construction, écarte exactement ce qu'il devait attraper.
+
+3. UNE AFFIRMATION QUE RIEN NE VÉRIFIE. Un commentaire ou une docstring qui affirme un
+   fait — sur le serveur, sur WordPress, sur une source, sur le comportement d'une autre
+   fonction — sans qu'aucun contrôle ne l'atteste. Quand tu peux la vérifier depuis le
+   dépôt, VÉRIFIE-LA. Sinon, dis « invérifiable d'ici » et propose le contrôle.
+
+4. UN RENVOI QUI NE MÈNE NULLE PART. Un message ou une docstring qui oriente vers un outil
+   incapable de traiter le cas décrit — l'impasse polie. Vérifie que le rouvreur cité est
+   BRANCHÉ quelque part (crontab.txt, weekly_audits) et qu'il SÉLECTIONNE bien les fiches
+   dont on parle. C'est la quatrième question de docs/ETATS_TERMINAUX.md.
+
+── AJOUTÉES LE 2026-08-11, après une journée où les trois se sont produites ────────────
+Cette liste datait du 04/08 et n'avait jamais été relue. Trois familles nouvelles sont
+apparues le 11/08, chacune dans du code écrit LE JOUR MÊME, et chacune alors que la règle
+qui l'interdit était déjà écrite dans CLAUDE.md. Franck les a toutes les trois vues avant
+moi. Cherche-les en priorité : ce sont les plus coûteuses, parce qu'elles ne cassent rien
+— elles font perdre du temps ou détruisent du bon travail en silence.
+
+5. UN COMPTEUR QUI NE DIT PAS CE QU'IL COMPTE. Deux compteurs portant le même nom et
+   comptant deux choses ; un total qui mélange le passé et l'à-venir ; une pastille de
+   menu qui n'applique pas le filtre de l'écran qu'elle annonce. Le 11/08 : « 793 points
+   à vérifier » sans filtre de date, « 108 fiches maigres » dont seize comptaient, un
+   compteur affichant 109 là où l'audit voisin disait 95. Aucun ne mentait sur ses
+   données, tous mentaient sur leur PÉRIMÈTRE — et c'est toujours le plus gros qu'on
+   croit. VÉRIFIE : pour chaque chiffre destiné à un humain, la requête qui le produit
+   est-elle la même que celle de l'écran qu'il résume ?
+
+6. UN GARDE-FOU QUI COUPE SA PROPRE MOISSON. Différent du n° 2 : celui-là n'exclut pas sa
+   cible, il emporte les cas LÉGITIMES avec elle. Le 11/08, une purge des sources non
+   officielles proposait de dépublier « La Saint-Ours », le « Festival Baroque de
+   Tarentaise » et « Monterosa Classica » — parce qu'elle jugeait sur le domaine
+   d'origine sans voir que ces fiches avaient été RÉSOLUES vers leur page officielle,
+   ce qui est tout le principe du tier radar. VÉRIFIE : le filtre regarde-t-il l'état
+   ACTUEL de la fiche, ou seulement sa provenance ? Et la fixture contient-elle un cas
+   légitime qui doit PASSER le filtre ?
+
+7. UNE VALEUR DE REPLI QUI DEVIENT UN CUL-DE-SAC. Une donnée par défaut écrite dans un
+   champ vide occupe la place et empêche la vraie donnée d'arriver plus tard, parce que
+   la sélection suivante teste « le champ est-il vide ? ». Le 11/08 : une bannière de
+   territoire posée sur 40 fiches les a rendues invisibles à la recherche d'image, alors
+   que 36 de leurs pages officielles portaient une vraie affiche. VÉRIFIE : après qu'un
+   repli a été posé, quelle requête reprendra la fiche pour l'améliorer ?
+
+8. UN CHAMP RECOPIÉ SANS SE DEMANDER CE QU'IL CONTIENT. Le nom d'une colonne cible et le
+   nom d'un champ source peuvent coïncider sans que les deux parlent de la même chose.
+   Le 11/08 : `scripts/scraper_events.py` écrivait `entry.author` du flux RSS dans la
+   colonne `organisateur` — or `author` est l'auteur de l'ARTICLE (le journaliste, ou le
+   compte du CMS), jamais l'organisateur de l'événement. Cinq des vingt-huit tâches
+   « À vérifier » restantes en venaient, toutes irrésolubles : la réponse n'était pas
+   dans la matière, donc aucun clic humain ne pouvait les fermer. VÉRIFIE, pour chaque
+   affectation depuis un flux ou une API tierce : qui REMPLIT ce champ à la source, et
+   pour quoi faire ? Et quand la valeur est douteuse, laisser le champ VIDE vaut souvent
+   mieux — ici, vide, `enrich.py` retombait déjà sur `source_name`, c'est-à-dire
+   l'institution qui publie le flux, donc sur une réponse juste.
+
+9. UNE TÂCHE QUE PERSONNE NE PEUT FERMER. C'est le symptôme qui désigne le défaut 8, et
+   il vaut au-delà de lui. Prends trois points au hasard dans la file « À vérifier » et
+   demande-toi : où est écrite la réponse ? Si elle n'est ni dans la matière de la fiche,
+   ni sur la page officielle, ni à un clic de distance, la tâche ne sera JAMAIS fermée —
+   elle se reposera à chaque enrichissement et occupera l'écran indéfiniment. Ce n'est
+   alors pas un garde-fou, c'est un bug qui a pris la forme d'une question.
+
+PÉRIMÈTRE : ce qui a changé depuis huit jours. Trouve-le toi-même avec
+`git log --since="8 days ago" --name-only --pretty=format:` et concentre-toi sur les
+fichiers Python les plus touchés. Ne relis pas tout le dépôt : une revue diluée ne trouve
+rien.
+
+MÉTHODE, ET ELLE N'EST PAS NÉGOCIABLE. Pour chaque défaut soupçonné, construis un cas
+concret et EXÉCUTE-LE avant de conclure. Une lecture de code n'est pas une preuve — c'est
+précisément ce qui a laissé passer les quinze défauts du 2026-08-04. Base JETABLE
+obligatoire : `from scripts.scraper_events import init_db` sur un sqlite3 en tempfile,
+JAMAIS data/events.db.
+
+TU N'ÉCRIS RIEN. Ni dans le dépôt, ni en base, ni sur WordPress. Tu rends un texte, et
+c'est le script appelant qui le poste. Un correctif appliqué sans relecture humaine, un
+dimanche matin, sur un dépôt en production, serait exactement le genre d'automatisme que
+Franck refuse (« on ne doit pas faire des choses automatiques pour faire des choses
+automatiques sans réfléchir »).
+
+CE QUE TU RENDS — court, en français, prêt à lire sur Slack :
+
+- une ligne d'ouverture : combien de fichiers relus, combien de défauts CONFIRMÉS par
+  exécution ;
+- pour chaque défaut, TROIS lignes au plus : le fichier, le cas qui le déclenche, ce que
+  ça casse pour le visiteur ou pour la chaîne. Le plus grave d'abord ;
+- rien d'autre. Pas de résumé de ce que fait chaque script, pas de compliments, pas de
+  suggestions d'amélioration générale.
+
+SI TU NE TROUVES RIEN, DIS-LE EN UNE LIGNE. Une revue qui invente une remarque pour
+justifier son passage apprend à ignorer les revues — c'est le défaut qu'on répare, pas
+celui qu'on ajoute. « Rien de confirmé cette semaine sur les N fichiers modifiés » est un
+résultat parfaitement acceptable, et le seul honnête quand c'est le cas.

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% set active = 'voix' %}
+{% block title %}Voix éditoriale{% endblock %}
+{% block h1 %}Voix éditoriale{% endblock %}
+{% block subtitle %}<div class="sub">Le <b>ton</b> réellement appliqué à la rédaction et aux traductions. Tu vois ici qu'il est <b>vivant, pas cassé</b>, <b>quelle</b> voix tourne, et tu peux en <b>changer</b>. La voix <b>prime</b> sur le prompt.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+  <!-- Statut -->
+  <div class="card" style="padding:.8rem 1rem;margin-bottom:1.1rem;">
+    {% if st.active %}
+      <b style="color:#16a34a;">● Voix active</b> — {{ st.total_chars }} caractères appliqués.
+    {% else %}
+      <b style="color:#b91c1c;">● Voix ABSENTE</b> — la rédaction tourne sur le prompt seul. À rebrancher.
+    {% endif %}
+    <div class="muted text-sm" style="margin-top:.35rem;">
+      Source :
+      {% if st.from_env %}<b>OBSIDIAN_VOIX_PATH</b> (forçage par env) — le choix ci-dessous est ignoré tant que cette variable est réglée.
+      {% else %}pilotée par le back-office ci-dessous.{% endif %}<br>
+      Atelier de voix : {% if st.voix_dir %}<code>{{ st.voix_dir }}</code> (dossier Obsidian synchronisé){% else %}<span class="muted">aucun dossier <code>VOIX_DIR</code> branché — seules les voix du dépôt (<code>docs/voix/</code>) sont visibles. Synchronise ton vault et règle <code>VOIX_DIR</code> pour voir tes voix Obsidian.</span>{% endif %}
+    </div>
+  </div>
+
+  <!-- Sélecteur multi-couches -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .4rem;">🗣️ Composer la voix (couches)</h2>
+  <div class="muted text-sm" style="margin-bottom:.6rem;">Coche les voix à empiler. L'<b>ordre</b> compte : une couche d'ordre plus élevé <b>surcharge</b> les précédentes.</div>
+  <form method="post" action="/voix" style="margin-bottom:1.3rem;">
+    <input type="hidden" name="n" value="{{ st.available|length }}">
+    <div style="display:flex;flex-direction:column;gap:.45rem;">
+      {% for v in st.available %}
+      {% set idx = loop.index0 %}
+      {% set pos = st.layers.index(v.name) if v.name in st.layers else '' %}
+      <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .9rem;cursor:pointer;{% if v.name in st.layers %}outline:2px solid #16a34a;{% endif %}">
+        <input type="checkbox" name="sel_{{ idx }}" {{ 'checked' if v.name in st.layers }} style="margin-top:.25rem;">
+        <input type="hidden" name="name_{{ idx }}" value="{{ v.name }}">
+        <div style="flex:1;">
+          <b>{{ v.title or v.name }}</b>
+          <div class="muted text-sm" style="margin-top:.1rem;">{{ v.name }} · {{ v.folder }} · {{ v.chars }} car.</div>
+        </div>
+        <label class="muted text-sm" style="display:flex;align-items:center;gap:.3rem;white-space:nowrap;">ordre
+          <input type="number" name="ord_{{ idx }}" value="{{ pos }}" min="0" step="1" style="width:3.5rem;padding:.2rem .3rem;">
+        </label>
+      </label>
+      {% endfor %}
+      {% if not st.available %}
+      <div class="muted text-sm">Aucune voix disponible. Synchronise ton vault et règle <code>VOIX_DIR</code>.</div>
+      {% endif %}
+    </div>
+    <button type="submit" name="action" value="save" style="margin-top:.7rem;padding:.45rem 1rem;font-weight:600;">Enregistrer les couches</button>
+
+    {% if st.from_env %}
+    <div class="card" style="margin-top:.9rem;padding:.6rem .9rem;background:#fdf6e3;border:1px solid #f0e2b8;">
+      <div class="text-sm">⚠️ <code>OBSIDIAN_VOIX_PATH</code> est réglé : les couches forcées par l'env priment et le choix ci-dessus est ignoré tant que cette variable existe.</div>
+      <button type="submit" name="action" value="adopt" style="margin-top:.5rem;padding:.4rem .9rem;font-weight:600;">Adopter les couches de l'env</button>
+      <div class="muted text-sm" style="margin-top:.3rem;">Importe les couches actuelles dans le back-office, puis retire <code>OBSIDIAN_VOIX_PATH</code> du <code>.env</code> pour piloter ici.</div>
+    </div>
+    {% endif %}
+  </form>
+
+  <!-- Fichiers réellement chargés -->
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .4rem;">🔌 Chargé actuellement</h2>
+  {% for s in st.sources %}
+    <div class="card" style="padding:.5rem .9rem;margin-bottom:.5rem;">
+      <div class="text-sm"><code>{{ s.path }}</code> — {% if s.exists %}<span style="color:#16a34a;">✓</span>{% else %}<span style="color:#b91c1c;">✗ introuvable</span>{% endif %}</div>
+      {% for f in s.files %}<div class="muted text-sm">↳ <b>{{ f.title or f.name }}</b> · {{ f.chars }} car.</div>{% endfor %}
+    </div>
+  {% endfor %}
+
+  <!-- Contenu appliqué -->
+  <h2 style="font-size:1.05rem;margin:.6rem 0 .4rem;">📄 Texte appliqué</h2>
+  <pre style="white-space:pre-wrap;background:#faf7f1;border:1px solid #ece5d8;border-radius:8px;padding:.9rem 1rem;font-size:.85rem;line-height:1.5;overflow-x:auto;">{{ st.text or '(vide)' }}</pre>
+
+</div>
+{% endblock %}

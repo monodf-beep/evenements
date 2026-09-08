@@ -1,0 +1,83 @@
+{
+  "_lisez_moi": "Liste NOMMÉE des temps forts THÉMATIQUES/SAISONNIERS — les seuls événements qui souffrent d'un décalage à s'afficher hors saison (un marché de Noël en plein été jure). Un événement dont le titre ou la description contient un des `mots_cles` (FR/IT, accents/casse ignorés) obtient la fenêtre `fenetre_jours` : au-delà, il reste RETENU. TOUT LE RESTE — y compris les grands festivals à billetterie (Musilac, Nice Jazz, Carnaval de Nice, Carnaval d'Ivrea, Foire de Saint-Ours, truffe d'Alba…) — N'A DÉLIBÉRÉMENT AUCUNE ENTRÉE ICI : Franck l'a précisé le 2026-08-05, ces rendez-vous n'ont pas de problème de décalage saisonnier, la réservation anticipée leur sert au contraire. Les fenêtres ci-dessous reprennent la colonne « Ouvrir à » de docs/TEMPS_FORTS.md, en jours avant le DÉBUT typique de chaque temps fort. Éditable sans toucher au code — ajuste ou retire une entrée à tout moment.",
+  "temps_forts": [
+    {
+      "nom": "Noël",
+      "mots_cles": ["noel", "marche de noel", "mercatino di natale", "natale"],
+      "fenetre_jours": 65,
+      "notes": "Confirmé par Franck le 2026-08-05. ~20 oct → 24 déc (docs/TEMPS_FORTS.md)."
+    },
+    {
+      "nom": "Halloween",
+      "mots_cles": ["halloween"],
+      "fenetre_jours": 30,
+      "notes": "Confirmé par Franck le 2026-08-05. J-30 → 31/10 (docs/TEMPS_FORTS.md)."
+    },
+    {
+      "nom": "Luci d'Artista (Turin)",
+      "mots_cles": ["luci d'artista", "luci d artista"],
+      "fenetre_jours": 30,
+      "notes": "PROPOSÉ, pas confirmé par Franck — reprend le tableau de docs/TEMPS_FORTS.md (~1er oct → fin oct/janvier). Institution turinoise, à part de Noël."
+    },
+    {
+      "nom": "Immaculée Conception (8/12)",
+      "mots_cles": ["immaculee conception", "immacolata concezione"],
+      "fenetre_jours": 49,
+      "notes": "PROPOSÉ, pas confirmé — « avec Noël » dans le tableau (~20 oct → 8 déc). Lance la saison côté italien."
+    },
+    {
+      "nom": "Épiphanie / Befana (6/1)",
+      "mots_cles": ["epiphanie", "befana"],
+      "fenetre_jours": 36,
+      "notes": "PROPOSÉ, pas confirmé — ~1er déc → 6 jan (docs/TEMPS_FORTS.md)."
+    },
+    {
+      "nom": "Pâques et Pasquetta",
+      "mots_cles": ["paques", "pasqua", "pasquetta"],
+      "fenetre_jours": 45,
+      "notes": "PROPOSÉ, pas confirmé — J-45 (docs/TEMPS_FORTS.md). Le lundi de Pâques se fête en Italie."
+    },
+    {
+      "nom": "Nuit des musées",
+      "mots_cles": ["nuit des musees", "notte dei musei"],
+      "fenetre_jours": 30,
+      "notes": "PROPOSÉ, pas confirmé — J-30, événement européen d'une nuit."
+    },
+    {
+      "nom": "Fête de la musique",
+      "mots_cles": ["fete de la musique", "festa della musica"],
+      "fenetre_jours": 30,
+      "notes": "PROPOSÉ, pas confirmé — J-30. « San Giovanni » volontairement EXCLU des mots-clés : prénom/lieu trop courant en Italie, risque de faux positifs."
+    },
+    {
+      "nom": "Ferragosto (15/8)",
+      "mots_cles": ["ferragosto"],
+      "fenetre_jours": 30,
+      "notes": "PROPOSÉ, pas confirmé — J-30. Structurant côté italien, invisible côté FR."
+    },
+    {
+      "nom": "Désalpes / transhumances",
+      "mots_cles": ["desalpe", "desalpes", "transhumance"],
+      "fenetre_jours": 30,
+      "notes": "PROPOSÉ, pas confirmé — J-30. Très alpin, très spécificité territoriale."
+    },
+    {
+      "nom": "Journées du patrimoine",
+      "mots_cles": ["journees du patrimoine", "giornate del patrimonio", "giornate europee del patrimonio"],
+      "fenetre_jours": 30,
+      "notes": "PROPOSÉ, pas confirmé — J-30. Volume potentiellement important, à surveiller si activé."
+    },
+    {
+      "nom": "Vendanges et sagre d'automne",
+      "mots_cles": ["vendanges", "vendemmia"],
+      "fenetre_jours": 30,
+      "notes": "PROPOSÉ, pas confirmé — J-30. « sagra » seul volontairement EXCLU : trop générique (des centaines de fêtes locales sans rapport avec l'automne)."
+    },
+    {
+      "nom": "Fête de la science / Nuit des étoiles",
+      "mots_cles": ["fete de la science", "festa della scienza", "nuit des etoiles", "notte delle stelle"],
+      "fenetre_jours": 21,
+      "notes": "PROPOSÉ, pas confirmé — J-21, réseau national. À RAPPROCHER du Festival dell'Innovazione e della Scienza (Settimo Torinese) trouvé le 2026-08-05."
+    }
+  ]
+}
