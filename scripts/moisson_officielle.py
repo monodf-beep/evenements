@@ -344,8 +344,11 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
     def _acceptable(u: str) -> bool:
         return bool(u) and u != _img and not is_logo_image(u) and not is_blocked_image(u, _bloques)
 
+    # Un lien de traçage (sendibm1, mailchimp…) posé comme image n'est jamais une image :
+    # c'est le pixel d'ouverture d'une newsletter (Manara à la Venaria, 08/09). Il cède
+    # quelle que soit sa provenance.
     _remplacable = (not _img or _banniere or _src in ("commons", "web", "europeana")
-                    or (_src == "page" and _ailleurs))
+                    or (_src == "page" and _ailleurs) or _est_traqueur(_img))
     if _src != "manual" and _remplacable:
         og = fetch_og_image(url)
         if _acceptable(og):
