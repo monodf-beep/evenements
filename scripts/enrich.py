@@ -750,6 +750,20 @@ _IMG_SKIP = ("logo", "sponsor", "partenaire", "partner", "icon", "favicon", "pix
              "avatar", "picto", "cookie", "/menu", "footer", "header-", "flag-", "drapeau",
              "facebook", "instagram", "twitter", "spinner", "loader")
 _IMG_RE = re.compile(r'(?i)(?:src|href)\s*=\s*["\']([^"\']+\.(?:jpe?g|png|webp))(?:\?[^"\']*)?["\']')
+# NOM DE FICHIER qui désigne la RUBRIQUE presse elle-même, pas l'événement — 2026-09-08,
+# fiche 5256 « Festival Verismo » (WP#8145) : la page /area-stampa du Teatro Regio porte
+# une photo de couverture « press-release-web.jpg » (un portable affichant PRESS RELEASE,
+# banque d'images). Lue comme page presse (dossier = chemin « area-stampa » → 15 points),
+# mesurée 1920×960 → paysage → posée en url_image ET url_image_wide, donc en grand visuel
+# de la fiche publiée. La vraie affiche (VERISMO_0.jpg, sur /programma/festival-verismo)
+# valait 3 points. Le chemin dit « rubrique presse » (bon signe : le dossier) ; le NOM du
+# fichier qui dit « rubrique presse » est le contraire : l'illustration de la rubrique.
+# Comparé au SEUL nom de fichier — un chemin /comunicato-stampa/8422/…/locandina.jpg
+# reste éligible (c'est précisément la pièce jointe d'un communiqué).
+_SECTION_FILE = ("press-release", "press_release", "pressrelease", "comunicat",
+                 "communique", "area-stampa", "area_stampa", "areastampa", "sala-stampa",
+                 "ufficio-stampa", "rassegna-stampa", "press-area", "pressarea",
+                 "newsroom", "espace-presse", "espace_presse")
 
 
 _OG_RE = re.compile(
@@ -797,6 +811,58 @@ def press_kit_status(pages: list, has_affiche: bool) -> dict:
     return {"url": press_url, "statut": "accreditation" if gated else "sans_affiche"}
 
 
+def _affiches_verifiees(vis: dict, ev: dict, client, verifier=None) -> dict:
+    """AGENT VISION sur les affiches extraites, AVANT qu'elles n'entrent en base.
+
+    2026-09-08, même incident que `_SECTION_FILE` : la chaîne principale (visuals.py)
+    fait regarder chaque candidate par l'agent vision ; l'extraction d'affiches depuis
+    les pages presse, elle, écrivait directement — et url_image_wide devient le grand
+    visuel 16:9 de la fiche publiée sans que personne ne l'ait regardé. Le filtre par
+    nom de fichier ferme CE cas ; celui-ci ferme les suivants (une photo d'habillage
+    au nom anodin). Coût : un appel vision (modèle économique, quelques millièmes) par
+    URL distincte — deux au plus, et seulement pour les fiches où une affiche a été
+    trouvée. Un refus ne gare rien : la fiche garde son image et la chaîne visuals.py
+    continue ; et l'enrichissement n'est pas une boucle quotidienne sur la même fiche
+    (règle 3 de CLAUDE.md : pas de refus qui se rejoue).
+
+    Une image qu'on ne peut pas télécharger est refusée (doctrine de l'extraction :
+    mieux vaut aucune affiche qu'une mauvaise) — contrairement à `verify_relevance`,
+    qui laisse passer sur panne technique. `verifier(url) -> bool` est injectable
+    (fixtures). Sans client : on fait confiance aux règles déterministes."""
+    if not vis or (client is None and verifier is None):
+        return vis
+    if verifier is None:
+        from scripts.images_web import _download, VERIFY_MODEL
+        from utils import image_verify
+
+        def verifier(url: str) -> bool:
+            data, mime = _download(url)
+            if not data:
+                return False
+            ok, _, _ = image_verify.verify_relevance(data, mime, ev, client, VERIFY_MODEL)
+            return bool(ok)
+    verdict: dict[str, bool] = {}
+    for cle in ("portrait", "wide"):
+        u = vis.get(cle)
+        if not u:
+            continue
+        if u not in verdict:
+            verdict[u] = verifier(u)
+        if not verdict[u]:
+            log.warning("[%s] affiche %s REFUSÉE par l'agent vision : %s",
+                        ev.get("id"), cle, u[:90])
+            vis[cle] = None
+    if vis.get("poster") and not verdict.get(vis["poster"], False):
+        vis["poster"] = None
+    if not vis.get("portrait") and not vis.get("wide"):
+        return {}
+    kit = next((u for u in (vis.get("portrait"), vis.get("wide"))
+                if u and any(k in u.lower() for k in _KIT_PATH)), None)
+    vis["poster"] = kit or vis.get("portrait") or vis.get("wide")
+    vis["from_kit"] = bool(kit)
+    return vis
+
+
 def extract_press_visuals(pages: list, title: str = "") -> dict:
     """Depuis les pages OFFICIELLES lues (dossier de presse), trouve l'AFFICHE de l'événement
     en PORTRAIT et en PAYSAGE (visuels HD). Priorise l'og:image, puis les fichiers au nom
@@ -824,6 +890,9 @@ def extract_press_visuals(pages: list, title: str = "") -> dict:
             low = (raw + " " + u).lower()
             if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
                 continue
+            nom = urlparse(u).path.rsplit("/", 1)[-1].lower()
+            if any(s in nom for s in _SECTION_FILE):
+                continue                            # illustration de la rubrique presse
             is_kit = from_kit or any(k in low for k in _KIT_PATH)
             has_name = any(h in low for h in _AFFICHE_HINT)
             # Un nom de FORMAT (120x176) est un indice, mais PAS une éligibilité à lui seul
@@ -1783,7 +1852,12 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         # l'événement en portrait ET paysage (visuels HD), qui priment sur toute autre image.
         try:
             vis = extract_press_visuals(official_pages, title=ev.get("title", ""))
-        except Exception as exc:  # noqa: BLE001 — non bloquant
+            # Regardées AVANT d'être écrites (2026-09-08, fiche 5256 : un stock « PRESS
+            # RELEASE » posé en grand visuel — voir _affiches_verifiees).
+            vis = _affiches_verifiees(vis, ev, client)
+        except Exception as exc:  # noqa: BLE001 — non bloquant (un plafond API ici
+            # laisse l'affiche de côté ; la rédaction qui suit le rencontrera à son tour
+            # et c'est elle qui arrête le lot — chemin 'api_error' de _process_one_event)
             log.warning("[%d] extraction affiches : %s", ev["id"], type(exc).__name__)
             vis = {}
         # On n'écrit une affiche que si on en TROUVE une ce run (NON destructif : ne jamais
