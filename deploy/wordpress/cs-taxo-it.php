@@ -86,29 +86,54 @@ add_action('init', function () {
 }, 40);
 
 /**
- * (B) Au push cs/v1/event : si le post est en IT, réaffecte ses catégories/territoires
- * vers leurs équivalents IT. Défensif : à défaut de traduction, on garde le terme
- * d'origine. S'exécute après cs-polylang.php (langue posée en priorité 20).
+ * (B) Au push cs/v1/event : réaffecte les catégories/territoires du post vers leurs
+ * équivalents DANS LA LANGUE DU POST — dans les deux sens. Défensif : à défaut de
+ * traduction, on garde le terme d'origine. S'exécute après cs-polylang (langue posée en
+ * priorité 20).
+ *
+ * POURQUOI LE SENS IT → FR AUSSI (2026-09-08). Jusqu'ici ce filtre rendait la main dès
+ * que le post était en français (« FR → rien à faire »). Or Polylang (PLL_CRUD_Posts::
+ * set_object_terms, action set_object_terms) CONVERTIT tout terme posé sur un post vers
+ * la langue que le post a À CE MOMENT-LÀ — vérifié sur WP#8163 (post it) : poser le terme
+ * FR 6 « Piémont » y donne 321 « Piemonte ». cs-publish pose ses termes AVANT que
+ * cs-polylang ne pose la langue. Donc une fiche poussée une première fois en `it` (titre
+ * italien, avant le correctif du 07/09 de publisher_as._lang) puis re-poussée en `fr`
+ * gardait ses termes ITALIENS : cs-publish posait « piemont », Polylang le convertissait en
+ * « piemonte » pendant que le post était encore `it`, cs-polylang passait le post en `fr`,
+ * et ce filtre-ci ne faisait rien. Mesuré le 08/09 : 26 fiches françaises sous des termes
+ * italiens (21 « Piemonte », 4 « Valle d'Aosta », 1 « Savoia », et la catégorie IT à
+ * chaque fois) — Franck les voyait étiquetées « Piemonte » à côté de « Piémont » dans la
+ * grille. Réparées à la main ce jour-là ; ce filtre est ce qui empêche le retour, et il
+ * rend le re-push réparateur pour toute fiche future.
  */
 add_filter('rest_request_after_callbacks', function ($response, $handler, $request) {
     if ($request->get_route() !== '/cs/v1/event') { return $response; }
     if (!function_exists('pll_get_post_language') || !function_exists('pll_get_term')
-        || !function_exists('pll_default_language')) { return $response; }
+        || !function_exists('pll_get_term_language')) { return $response; }
     $data = ($response instanceof WP_REST_Response) ? $response->get_data() : null;
     $pid  = (is_array($data) && !empty($data['id'])) ? (int) $data['id'] : 0;
     if (!$pid) { return $response; }
     $lang = pll_get_post_language($pid);
-    if (!$lang || $lang === pll_default_language()) { return $response; }  // FR → rien à faire
+    if (!$lang) { return $response; }   // langue inconnue → on ne devine pas
 
     foreach (array('tribe_events_cat', 'territoire') as $tax) {
         $ids = wp_get_object_terms($pid, $tax, array('fields' => 'ids'));
         if (is_wp_error($ids) || !$ids) { continue; }
         $mapped = array();
+        $changed = false;
         foreach ($ids as $tid) {
-            $tr = pll_get_term((int) $tid, $lang);         // traduction dans la langue du post
-            $mapped[] = $tr ? (int) $tr : (int) $tid;      // repli : terme d'origine
+            $tl = pll_get_term_language((int) $tid);
+            if ($tl && $tl !== $lang) {
+                $tr = pll_get_term((int) $tid, $lang);     // traduction dans la langue du post
+                if ($tr) { $changed = true; }
+                $mapped[] = $tr ? (int) $tr : (int) $tid;  // repli : terme d'origine
+            } else {
+                $mapped[] = (int) $tid;
+            }
         }
-        wp_set_object_terms($pid, array_values(array_unique($mapped)), $tax, false);
+        if ($changed) {
+            wp_set_object_terms($pid, array_values(array_unique($mapped)), $tax, false);
+        }
     }
     return $response;
 }, 30, 3);
