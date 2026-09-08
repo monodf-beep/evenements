@@ -33,6 +33,19 @@ La définition de « même événement » n'est pas réinventée ici : on appell
 `scripts/dedupe.py`, avec ses gardes années et dates. Deux définitions concurrentes de
 la ressemblance finiraient par se contredire, et c'est la plus bavarde qu'on croirait.
 
+CE QUE LA RESSEMBLANCE DE TITRES NE VOIT PAS (2026-09-08). Franck a trouvé sur le hub
+Vallée d'Aoste, côte à côte, WP#6413 « Pinocchio traverse les Alpes : quand un
+bicentenaire ravive la Vallée d'Aoste » et WP#8193 « Pinocchio fait étape au Forte di
+Bard pour les 200 ans de Carlo Collodi » — 19–20 septembre, Bard, les deux. Ce cron de
+9h50 tournait chaque matin et ne les a jamais signalées : `_groups` ne compare que les
+TITRES, et ces deux-là n'ont qu'un mot en commun là où `same_story` en veut trois. Le
+même jour, trois autres paires en ligne ont été corbeillées à la main (Risò, Salone
+Auto Torino, Orlando). D'où le troisième chemin de `_groups`, activé ICI et seulement
+ici en automatique : même lieu ou même ville, mêmes dates, et un jeton distinctif commun
+(`dedupe.coincidence_lieu_date`). Le groupe qu'il forme est marqué « par COÏNCIDENCE »
+dans la sortie, avec le mot qui l'a formé — un humain vérifie CE mot, puis tranche.
+Détail, mesures et limites : docs/DEDOUBLONNAGE.md.
+
 ⚠️ ET LA FAUTE QUE CE SCRIPT A COMMISE LE JOUR DE SA NAISSANCE. Livré le matin du
 2026-08-13, il annonçait « 4 doublons EN LIGNE » sur la seule foi du `wp_post_id_as` de
 la base. L'après-midi, `reconcile_hors_ligne` — qui INTERROGE WordPress — a montré que
@@ -62,7 +75,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from scripts.dedupe import _groups  # noqa: E402  — MÊME définition que le dédoublonnage
+from scripts.dedupe import _groups, motif_groupe, paire_de_traduction  # noqa: E402  — MÊME définition que le dédoublonnage
 from scripts.audit_substance_published import devant_nous  # noqa: E402
 # LA RÈGLE 1, QUE CE SCRIPT A VIOLÉE LE JOUR MÊME DE SA NAISSANCE (2026-08-13).
 # `_etat` interroge WordPress post par post — la SEULE façon de savoir si une page est
@@ -80,15 +93,10 @@ def _connect_ro(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def paire_de_traduction(a: dict, b: dict) -> bool:
-    """Ces deux fiches sont-elles les deux langues d'un même événement ?
-
-    Trois formes de la même liaison : a traduit b, b traduit a, ou toutes deux
-    traduisent le même original (cas des fiches jumelles créées de chaque côté).
-    Une paire pareille est NORMALE et ne doit jamais remonter — cf. l'en-tête.
-    """
-    ta, tb = int(a.get("translation_of") or 0), int(b.get("translation_of") or 0)
-    return ta == b["id"] or tb == a["id"] or (ta and ta == tb)
+# `paire_de_traduction` vivait ici jusqu'au 2026-09-08 ; elle vit désormais dans
+# scripts/dedupe.py, où la règle de coïncidence en a besoin aussi, et est importée
+# ci-dessus sous le même nom. Une seule définition de « deux langues d'un même
+# événement » : c'est la racine du journal du 08/09 (deux détecteurs, un seul juste).
 
 
 def _lien(ev: dict) -> str:
@@ -116,7 +124,12 @@ def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
     pour une source pauvre alors qu'il venait de la requête.
     """
     vivantes = [ev for ev in rows if devant_nous(ev, today)]
-    groupes = [g for g in _groups(vivantes) if len(g) > 1]
+    # coincidence=True : ici, et pas dans le cron dedupe de 8h30. La paire Pinocchio du
+    # 2026-09-08 (WP#6413 / WP#8193, mêmes dates, même ville, un seul mot commun) passait
+    # sous la ressemblance de titres ; même lieu + mêmes dates + un jeton distinctif la
+    # rattrape. Ce script ne fusionne rien, il DÉSIGNE — c'est exactement le circuit où
+    # une règle à un seul mot commun a sa place : un humain lit le motif, puis tranche.
+    groupes = [g for g in _groups(vivantes, coincidence=True) if len(g) > 1]
     suspects, ecartes = [], 0
     for g in groupes:
         # Un groupe entièrement composé de traductions les unes des autres n'est pas un
@@ -128,8 +141,12 @@ def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
             suspects.append(reste)
         else:
             ecartes += 1
+    # Compté à part : un groupe formé par UN mot commun n'a pas la même force qu'un groupe
+    # de titres jumeaux, et le lecteur doit le savoir avant d'ouvrir les pages.
+    par_coincidence = sum(1 for g in suspects if motif_groupe(g))
     return suspects, {"publiees": len(rows), "vivantes": len(vivantes),
-                      "groupes": len(groupes), "traductions": ecartes}
+                      "groupes": len(groupes), "traductions": ecartes,
+                      "coincidence": par_coincidence}
 
 
 def _article(ev: dict) -> str:
@@ -335,7 +352,10 @@ def main(argv=None) -> int:
     print(f"Base                     : {DB_PATH}")
     print(f"Publiées (toutes dates)  : {compte['publiees']}")
     print(f"…dont encore devant nous : {compte['vivantes']}  ← LE PÉRIMÈTRE EXAMINÉ")
-    print(f"Groupes de titres proches: {compte['groupes']}")
+    print(f"Groupes formés          : {compte['groupes']}  (titres proches, ou même lieu + "
+          f"mêmes dates + un jeton commun)")
+    print(f"…dont par coïncidence   : {compte['coincidence']}  — lieu + dates + jeton, "
+          f"titres trop différents pour la ressemblance ; le motif est écrit sous le groupe")
     print(f"…écartés (paires FR/IT)  : {compte['traductions']}  — normales, à LIER, "
           f"jamais à fusionner")
     if args.en_ligne:
@@ -386,6 +406,12 @@ def main(argv=None) -> int:
     a_retirer: list[int] = []
     for n, g in enumerate(suspects, 1):
         print(f"--- {n}. {len(g)} fiches en ligne sur le même événement ---")
+        # Le CRITÈRE d'appariement, quand ce n'est pas la ressemblance des titres. Un
+        # groupe tenu par un seul mot commun se lit autrement qu'un groupe de titres
+        # jumeaux : la ligne le dit, et nomme le mot, pour qu'on aille vérifier CE mot.
+        par_quoi = motif_groupe(g)
+        if par_quoi:
+            print(f"     ↔ appariées par COÏNCIDENCE, pas par le titre : {par_quoi}")
         garde, reste, motif = recommandation(g, par_id)
         ids_garde = {e["id"] for e in garde}
         ids_reste = {e["id"] for e in reste}
@@ -476,6 +502,7 @@ def _slack(args, suspects, compte, a_retirer) -> None:
         return
     from utils import slack
     lignes = [f"• {len(g)} pages : " + ", ".join(f"WP#{e['wp_post_id_as']}" for e in g)
+              + (f" — par coïncidence : {motif_groupe(g)}" if motif_groupe(g) else "")
               for g in suspects[:10]]
     corps = (f"🔴 *{len(suspects)} doublon(s) EN LIGNE, vérifié(s) sur WordPress* "
              f"(sur {compte['vivantes']} fiches publiées encore devant nous)\n"
