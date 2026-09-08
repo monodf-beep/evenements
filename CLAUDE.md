@@ -201,7 +201,11 @@ Trois corollaires opérationnels :
   transposée) : `deploy/update.sh` remet le dépôt sur `claude/quirky-davinci-jvqrnw`, donc
   du travail poussé ailleurs n'arrive pas — et sera EFFACÉ au déploiement suivant. Vérifier
   la branche que vise le script avant de dicter la commande, et la donner avec son
-  répertoire.
+  répertoire. **Et une fusion faite SUR le VPS doit être poussée avant `update.sh`**, sinon
+  le `reset --hard` la défait (08/09 au soir : deux commits fusionnés puis effacés dans la
+  même commande, sortie « HEAD is now at 411f286 » sous mes yeux). La séquence est
+  `git merge origin/<branche> && git push origin claude/quirky-davinci-jvqrnw && bash deploy/update.sh`,
+  et la ligne « HEAD is now at » doit porter le commit fusionné.
 
 **Neuf des quinze fautes du 11/08 étaient des récidives d'une règle
 déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le

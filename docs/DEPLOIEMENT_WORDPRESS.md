@@ -221,3 +221,34 @@ depuis le fichier local, puis `execute-php` (md5 attendu, sauvegarde, `token_get
   finit le 09/09) ; `cs_guide_saison_debut/fin` = 2026-06-01 / 2026-08-31 sur le guide
   « Festivals de l'été en Savoie 2026 » (post 2422) — le mécanisme de saison de « À lire »
   existait depuis le 06/09, aucun des six guides ne le renseignait.
+
+## 9. 2026-09-08 (soir) — modifier un Code Snippet EN BASE, sans casser le site
+
+Le snippet 44 (allocateur de la home, « En évidence ») vit dans la table
+`wp_snippets`, pas dans un fichier : ni `deploy/push-wordpress.sh`, ni `php -l` ne
+l'atteignent. Deux retouches y ont été faites ce soir par `novamira/execute-php`, avec la
+procédure ci-dessous — à reprendre telle quelle, parce qu'un snippet actif qui ne compile
+pas est aussi mortel qu'un mu-plugin cassé :
+
+1. lire le code (`SELECT code FROM wp_snippets WHERE id=44`) et cibler la retouche par une
+   chaîne EXACTE dont on vérifie `substr_count(...) === 1` — zéro ou deux occurrences, on
+   s'arrête sans écrire ;
+2. copier l'ancien code dans `wp-content/uploads/cs-backups/snippet-<id>-<date>.php.txt`
+   (`.txt` : le bac à sable n'écrit pas de `.php`, et un `.txt` ne s'exécute pas) ;
+3. `token_get_all('<?php ' . $nouveau, TOKEN_PARSE)` dans un `try` — une exception, on
+   s'arrête sans écrire ;
+4. `$wpdb->update`, puis `wp_cache_flush()`, puis relire et comparer les md5 ;
+5. vérifier dans une REQUÊTE SUIVANTE (le code déjà chargé ne change pas dans la requête
+   qui l'a modifié) : appeler `cs_home_build_allocation()` avec
+   `$_GET['as_territoire'] = '<slug FR du territoire>'` — le SLUG (`comte-de-nice`), pas la
+   clé canonique (`nice`), sinon le filtre territoire est ignoré en silence — et
+   `PLL()->curlang = PLL()->model->get_language('fr')`, sans quoi Polylang mélange les
+   deux langues hors du front ; le cache statique du plan est par langue et par requête,
+   donc UN territoire par appel ;
+6. puis lire la page publique elle-même (`curl` de `/explore/<slug>/`), parce que l'étape
+   5 mesure l'allocateur, pas le rendu.
+
+Ce que les deux retouches font, et comment revenir en arrière, est écrit dans les
+commentaires du snippet lui-même (datés 2026-09-08) et dans `docs/ERREURS_2026-09-08.md`
+(§ « Ce qui a été changé sur WordPress ce soir »). Les snippets n'ont toujours pas de
+double versionné ici — c'est un point ouvert, pas une règle.
