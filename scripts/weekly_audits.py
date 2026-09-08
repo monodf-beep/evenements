@@ -342,6 +342,18 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("repair_polluted_descriptions")
 
+    # Pied de flux RSS resté dans la description (2026-09-08). Le nettoyeur ne
+    # reconnaissait pas « L'article … est apparu en premier sur … », la forme française
+    # réelle ; treize fiches publiées le portaient, trois le servaient à Google comme
+    # meta description. Corriger le nettoyeur ne touche pas ce qui est déjà en base :
+    # ce passage relit, nettoie, et republie sans média ce qui est en ligne et devant
+    # nous. --apply défendable : déterministe, borné, n'écrit que si le texte change.
+    from scripts.repair_pied_rss import main as pied_rss_main
+    rc, out = _run_captured(pied_rss_main, ["--apply", "--cap", "25"], "repair_pied_rss")
+    sections.append(f"• Pied RSS retiré des descriptions (repair_pied_rss) : {_tail(out, 1)}")
+    if rc:
+        echecs.append("repair_pied_rss")
+
     # ── DEUX SCRIPTS ÉCRITS LE 2026-08-11 QUE PERSONNE NE LANÇAIT ──────────────────────
     # Franck, le soir : « est-ce qu'il y a des choses qu'on n'a pas terminées ? ». Le
     # recensement a trouvé quatre scripts nés dans la journée et branchés nulle part.
