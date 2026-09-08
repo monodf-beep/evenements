@@ -61,16 +61,209 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()[:160]
 
 
-def venue_from_page(html: str) -> tuple[str, str, str]:
-    """(lieu, ville, source) depuis le JSON-LD schema.org « location ». ('','','') si rien.
+# ── Lieu écrit sous un LIBELLÉ, sans balisage schema.org ─────────────────────────────
+#
+# MESURÉ le 2026-09-08 sur les 19 pages municipales marquées 'novenue' en production
+# (détail par site : docs/CE_QUE_DISENT_LES_SOURCES_OFFICIELLES.md, § 7). Aucune ne porte
+# un `@type: Event` ; DOUZE écrivent pourtant le lieu, et toujours de la même façon : un
+# LIBELLÉ court, seul dans sa balise, suivi de la valeur dans la balise d'après.
+#
+#   • Drupal (bct.comune.torino.it) : <h2 class="field__label">Dove</h2>
+#                                     <div class="field__item"><a>Villa Amoretti</a></div>
+#   • Design Comuni Italia (comune.biella.it, comune.casale-monferrato.al.it) :
+#                                     <h2>Luogo</h2> … <h5 class="card-title"><a>Biella Forum</a>
+#                                     <div class="card-text"><p>Viale F. Buscaglione, 2, 13900 Biella (BI)</p>
+#   • Elementor (villefranche-sur-mer.fr) : <i class="fas fa-map-marker-alt"></i>
+#                                     …<div class="elementor-widget-container">Promenade de l'Octroi</div>
+#     — l'ICÔNE d'épingle est le libellé.
+#
+# La page est découpée en BLOCS (une balise = un bloc, texte nettoyé). Un bloc dont le
+# texte entier est un libellé désigne le bloc suivant comme valeur. C'est déterministe,
+# et c'est la doctrine du § 2 du document cité : on ne lit pas la prose, on lit ce que la
+# page a elle-même ÉTIQUETÉ comme étant le lieu.
+#
+# LES DEUX PIÈGES RENCONTRÉS SUR CES MÊMES PAGES, et ce qui les ferme :
+#   1. torinoclick.it : « Sede: piazza Palazzo di Città 1 – Torino » — c'est l'adresse
+#      de l'AGENCE, dans le <footer>. Le footer est retiré avant lecture, et « Sede »
+#      n'est accepté que comme libellé SEUL DANS SA BALISE (« Sede di riferimento » sur
+#      bct), jamais en tête de phrase : « Sede: … » dans un paragraphe, c'est un siège
+#      social, pas une scène.
+#   2. Design Comuni : le sommaire de la page liste « Cos'è · A chi è rivolto · Luogo ·
+#      Date e orari … » — le premier « Luogo » du document est donc suivi de « Date e
+#      orari ». D'où _RUBRIQUES : un bloc qui est lui-même un titre de rubrique n'est
+#      jamais une valeur, et on passe à l'occurrence suivante du libellé.
+#
+# Libellés acceptés SEULS dans leur balise (deux-points facultatif) :
+_LIBELLES_SEULS = (
+    "dove", "luogo", "sede", "sede di riferimento", "indirizzo", "sede dell'evento",
+    "luogo dell'evento", "lieu", "adresse", "où", "lieu de l'événement",
+    "lieu de l'evenement", "where", "location", "venue", "address",
+)
+# Libellés acceptés aussi EN TÊTE DE PHRASE (« Lieu : Salle X ») — seulement ceux qui
+# désignent l'endroit où ça SE PASSE. « Sede », « Indirizzo », « Adresse » en tête de
+# phrase désignent trop souvent le siège de l'organisateur (cf. piège 1). Et « où » avec
+# son accent seulement : un « ou » isolé entre deux options (<b>ou</b>) n'annonce rien.
+_LIBELLES_INLINE = ("dove", "luogo", "lieu", "où", "where", "venue")
+# Titres de rubriques voisines : jamais une valeur, et signal de champ vide.
+_RUBRIQUES = {
+    "cos'è", "cos'e", "a chi è rivolto", "a chi e rivolto", "date e orari", "costi",
+    "contatti", "quando", "orari", "periodicità", "periodicita", "tipologia", "target",
+    "programma", "mappa", "ulteriori informazioni", "documenti", "argomenti",
+    "descrizione", "prenotazioni", "info", "informazioni", "condividi", "allegati",
+    "horaires", "tarifs", "tarif", "contact", "dates", "date", "quand", "prix",
+    "infos pratiques", "réservation", "reservation", "organisateur", "organisation",
+    "description", "plan", "carte", "partager", "map", "when", "price", "tickets",
+    "image", "photo", "vidéo", "video",
+}
+_PIN = "␟"        # ␟ : sentinelle posée à la place d'une icône d'épingle
+_PIN_CLASSES = re.compile(
+    r'<(?:i|span|svg|use|img)\b[^>]*(?:class|xlink:href|href|src|alt)\s*=\s*["\'][^"\']*'
+    r'(?:map-marker|fa-location|location-dot|it-pin|icon-pin|icon-location|icon-map|'
+    r'marker-alt|dashicons-location|ion-location)[^"\']*["\'][^>]*>',
+    re.I)
+_COUPE_ZONES = re.compile(
+    r"<(script|style|svg|noscript|head|footer|template)\b[^>]*>.*?</\1\s*>", re.S | re.I)
+_ADRESSE_MOTS = re.compile(
+    r"\b(via|viale|piazza|piazzale|corso|largo|strada|vicolo|p\.?za|c\.so|rue|avenue|"
+    r"av\.|place|chemin|route|boulevard|bd|allée|allee|quai|impasse|promenade|"
+    r"esplanade|lungo)\b|\b\d{5}\b", re.I)
 
-    Gère « location » en OBJET (Place : name + address.addressLocality) et en CHAÎNE.
+
+def _blocs(html: str) -> list[str]:
+    """La page en blocs de texte, dans l'ordre du document, footer/scripts retirés.
+
+    Un bloc par balise : `<h2>Dove</h2><div><a>Villa Amoretti</a></div>` donne
+    ["Dove", "Villa Amoretti"]. Les balises purement inline qui ne portent pas de sens
+    de rupture (<br>, <em>, <b>…) sont conservées comme coupures aussi — un
+    « <strong>Lieu :</strong> Salle X » devient alors ["Lieu :", "Salle X"], ce qui est
+    exactement la forme libellé/valeur qu'on cherche."""
+    h = _COUPE_ZONES.sub(" ", html or "")
+    h = _PIN_CLASSES.sub(f"<div>{_PIN}</div>", h)
+    h = re.sub(r"<!--.*?-->", " ", h, flags=re.S)
+    morceaux = re.split(r"<[^>]+>", h)
+    out: list[str] = []
+    for m in morceaux:
+        t = re.sub(r"\s+", " ", htmlmod.unescape(m)).strip()
+        if t:
+            out.append(t)
+    return out
+
+
+def _libelle(t: str) -> str:
+    """Le libellé que porte ce bloc : "seul", "inline" ou "" (pas un libellé).
+
+    L'APOSTROPHE EST NORMALISÉE avant comparaison (2026-09-08). `_LIBELLES_SEULS`
+    s'écrit avec l'apostrophe DROITE (« sede dell'evento »), mais l'italien courant —
+    et `htmlmod.unescape` sur `&rsquo;`/`&#8217;` — produit l'apostrophe TYPOGRAPHIQUE
+    (’, U+2019). Sans cette normalisation, « Sede dell’evento » (la forme réellement
+    écrite sur les pages municipales) ne matchait JAMAIS : le cas frontière qui doit
+    passer y a été pris en écrivant la fixture — la même faute que celle déjà réglée
+    pour les mots du titre (apostrophes) ailleurs dans ce dépôt, pas encore portée ici."""
+    if t == _PIN:
+        return "seul"
+    p = re.sub(r"\s*[:：]\s*$", "", t.strip().lower())
+    p = p.replace("\u2019", "'").replace("\u2018", "'").replace("\u02bc", "'")
+    if p in _LIBELLES_SEULS:
+        return "seul"
+    m = re.match(r"^([a-zà-ÿ' ]{2,25}?)\s*[:：]\s+(.{3,})$", t.strip(), re.I)
+    if m and m.group(1).strip().lower() in _LIBELLES_INLINE:
+        return "inline"
+    return ""
+
+
+def _valeur_plausible(t: str) -> bool:
+    """Un NOM de lieu : ni rubrique, ni date, ni URL, ni un autre libellé, ni un pavé."""
+    if not t or t == _PIN or len(t) < 3 or len(t) > 120:
+        return False
+    low = t.lower().rstrip(" :")
+    if low in _RUBRIQUES or _libelle(t):
+        return False
+    if re.search(r"https?://|www\.|@", t):
+        return False
+    if not re.search(r"[A-Za-zÀ-ÿ]{2}", t):
+        return False
+    if re.match(r"^\d{1,2}\s*[a-zéû]{3,10}\.?\s*\d{2,4}$", low):     # « 12 Set 2026 »
+        return False
+    if re.search(r"google maps|n'est pas défini|non disponibile|aggiungi al calendario",
+                 low):
+        return False
+    return True
+
+
+def lieu_depuis_libelles(html: str) -> tuple[str, str]:
+    """(lieu, adresse) écrits sous un libellé « Dove / Luogo / Lieu… » ; ("", "") sinon.
+
+    Parcourt TOUTES les occurrences de libellé dans l'ordre du document et rend la
+    première dont la valeur est plausible — c'est ce qui passe par-dessus le sommaire de
+    Design Comuni (piège 2). L'adresse est le bloc qui SUIT la valeur, si et seulement
+    s'il ressemble à une adresse (mot de voirie ou code postal) : elle sert à en tirer
+    la ville, jamais à remplacer le nom."""
+    blocs = _blocs(html)
+    for i, t in enumerate(blocs):
+        genre = _libelle(t)
+        if not genre:
+            continue
+        if genre == "inline":
+            valeur = re.split(r"\s*[:：]\s+", t.strip(), maxsplit=1)[1].strip()
+            if _valeur_plausible(valeur):
+                return (_clean(valeur), "")
+            continue
+        # Libellé seul : la valeur est le prochain bloc non vide, à condition qu'il ne
+        # soit pas lui-même un libellé (champ vide, on passe) ni une rubrique.
+        if i + 1 >= len(blocs):
+            continue
+        valeur = blocs[i + 1]
+        if not _valeur_plausible(valeur):
+            continue
+        adresse = ""
+        if i + 2 < len(blocs):
+            suivant = blocs[i + 2]
+            if (len(suivant) <= 160 and not _libelle(suivant)
+                    and suivant.lower().rstrip(" :") not in _RUBRIQUES
+                    and _ADRESSE_MOTS.search(suivant)):
+                adresse = _clean(suivant)
+        return (_clean(valeur), adresse)
+    return ("", "")
+
+
+# Quand la page appelle le lieu « Villa Amoretti » dans son champ et « Biblioteca civica
+# Villa Amoretti » dans son texte, la forme longue est la bonne pour un lecteur : elle dit
+# CE QUE C'EST. On ne l'adopte que si la page l'écrit telle quelle — c'est une
+# confirmation, pas une extrapolation. Mesuré sur bct : 3 pages sur 7 l'écrivent.
+_TYPES_LIEU = (r"Biblioteca civica|Biblioteca|Bibliothèque|Médiathèque|Mediateca|Teatro|"
+               r"Théâtre|Museo|Musée|Auditorium|Cinema|Cinéma|Sala|Salle|Palazzo|Castello|"
+               r"Château|Espace|Centro culturale|Centre culturel|Chiesa|Église")
+
+
+def _forme_longue(lieu: str, html: str) -> str:
+    if not lieu:
+        return lieu
+    texte = re.sub(r"\s+", " ", htmlmod.unescape(re.sub(r"<[^>]+>", " ",
+                                                          _COUPE_ZONES.sub(" ", html))))
+    m = re.search(rf"\b((?:{_TYPES_LIEU})\s+{re.escape(lieu)})(?![\w'’])", texte)
+    return _clean(m.group(1)) if m else lieu
+
+
+def venue_from_page(html: str, url: str = "") -> tuple[str, str, str]:
+    """(lieu, ville, source) depuis la page. ('','','') si rien.
+
+    Ordre, du plus sûr au moins sûr — et on s'arrête au premier qui répond :
+      1. JSON-LD schema.org « location » (objet Place ou chaîne), via utils/jsonld ;
+      2. microdata itemprop ;
+      3. le motif brut `"location"` (filet, cf. 2026-08-11) ;
+      4. depuis le 2026-09-08 : un LIBELLÉ « Dove / Luogo / Lieu / épingle » suivi de sa
+         valeur (voir `lieu_depuis_libelles`). La ville vient alors, dans cet ordre : d'une
+         commune connue nommée dans l'adresse (« 13900 Biella (BI) »), d'une commune
+         connue dans le nom du lieu, et enfin du DOMAINE quand il est celui d'une commune
+         (`utils.lieux.ville_du_domaine`) — jamais du domaine seul, sans lieu.
 
     ⚠️ ÉLARGI le 2026-08-11, comme dates.dates_from_page et pour la même raison : on
     cherchait la chaîne `"location"` dans le HTML, donc on ratait le `@graph` de Yoast,
     les tableaux, les guillemets échappés et les microdata. utils/jsonld.py parse le
     document ; la recherche de motif reste derrière, en filet.
     Ne devine JAMAIS depuis le texte libre (trop de faux positifs) — c'est le rôle du LLM.
+    `url` (optionnel) ne sert qu'à l'étape 4 ; les appelants sans URL gardent l'ancien
+    comportement.
     """
     from utils import jsonld as _jsonld
     _c = _jsonld.champs(html)
@@ -93,17 +286,26 @@ def venue_from_page(html: str) -> tuple[str, str, str]:
         strv = re.search(r'"location"\s*:\s*"([^"]{2,120})"', html[idx:idx + 200])
         if strv:
             return (_clean(strv.group(1)), "", "page")
+    lieu, adresse = lieu_depuis_libelles(html)
+    if lieu:
+        from utils import lieux as _lieux
+        ville = (_lieux.toponyme_du_lieu(adresse) if adresse else "") \
+            or _lieux.toponyme_du_lieu(lieu) \
+            or _lieux.ville_du_domaine(url)
+        return (_forme_longue(lieu, html), ville, "page_libelle")
     return ("", "", "")
 
 
 def fetch_event_venue(url: str, _capture: dict | None = None) -> tuple[str, str, str]:
-    """Télécharge la page et en extrait le lieu (JSON-LD). ('','','novenue') si rien.
+    """Télécharge la page et en extrait le lieu. ('','','novenue') si rien.
 
     `_capture` (optionnel) : même mécanique que `scripts.dates.fetch_event_dates` —
     reçoit sous la clé "text" le texte de la page réellement téléchargée (script/
     style retirés), pour le canal 3 (`signale_annulation_page`) sans second
-    téléchargement. Additif : les appelants qui l'ignorent ne changent pas de
-    comportement."""
+    téléchargement ; et sous la clé "methode" la voie qui a trouvé le lieu ("jsonld" ou
+    "libelle"), pour que le bilan du run dise ce qu'il compte (règle 6) sans ajouter une
+    valeur à `venue_source` — en base, les deux restent 'page' : c'est la page qui l'a
+    dit. Additif : les appelants qui l'ignorent ne changent pas de comportement."""
     if not url or url.startswith("gmail:") or "news.google.com" in url:
         return ("", "", "none")
     from scripts.dates import _robust_get
@@ -112,8 +314,12 @@ def fetch_event_venue(url: str, _capture: dict | None = None) -> tuple[str, str,
         return ("", "", "novenue")
     if _capture is not None:
         _capture["text"] = _sans_script(r.text)
-    lieu, ville, src = venue_from_page(r.text)
-    return (lieu, ville, "page") if src == "page" else ("", "", "novenue")
+    lieu, ville, src = venue_from_page(r.text, url=url)
+    if src.startswith("page"):
+        if _capture is not None:
+            _capture["methode"] = "libelle" if src == "page_libelle" else "jsonld"
+        return (lieu, ville, "page")
+    return ("", "", "novenue")
 
 
 def llm_venue(material: str, client, model: str) -> tuple[str, str, str]:
@@ -222,6 +428,57 @@ def ensure_columns(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# LA PAGE À LIRE : `url_officiel` d'abord, `url_source` sinon.
+#
+# MESURÉ le 2026-09-08 : ni venues.py ni dates.py ne lisaient `url_officiel`. Or
+# moisson_officielle et affiner_source y mémorisent la VRAIE page de l'événement quand
+# `url_source` est un lien de suivi de newsletter (« gmail: », traqueur) ou la racine
+# d'un site. Le lieu et la date étaient donc cherchés sur la page de rebond — et une
+# fiche « gmail: » avec une page officielle connue était exclue d'office de la sélection.
+# Même expression dans scripts/dates.py : un seul détecteur, pas deux (ERREURS_2026-09-08).
+URL_PAGE_SQL = "COALESCE(NULLIF(url_officiel,''), url_source)"
+_URL_LISIBLE_SQL = (f"{URL_PAGE_SQL} NOT LIKE 'gmail:%' "
+                    f"AND {URL_PAGE_SQL} NOT LIKE '%news.google.com%'")
+# RÈGLE 5 : une fiche dont la FIN est passée est un événement terminé, lire sa page ne
+# sert personne. Une fiche SANS date reste dans le lot (donnée manquante, pas passé).
+_DEVANT_NOUS_SQL = "(COALESCE(date_event_end,'') = '' OR date_event_end >= date('now'))"
+
+
+def selection_passe_page(conn: sqlite3.Connection, cap: int) -> list:
+    """Les fiches jamais examinées, les plus récentes d'abord, à venir ou en cours."""
+    return conn.execute(
+        f"SELECT id, title, url_source, {URL_PAGE_SQL} AS url_page, wp_post_id_as, "
+        "  annulation_detectee_at FROM events_raw "
+        "WHERE COALESCE(lieu,'') = '' AND (venue_source IS NULL OR venue_source = '') "
+        f"  AND statut != 'merged' AND {_URL_LISIBLE_SQL} AND {_DEVANT_NOUS_SQL} "
+        # Sans ORDER BY, LIMIT prenait les plus VIEILLES (même défaut que dates.py le
+        # 2026-08-11) : un plafond sans tri lit toujours le même fond de tiroir.
+        "ORDER BY id DESC LIMIT ?", (cap,)).fetchall()
+
+
+def selection_passe_llm(conn: sqlite3.Connection, cap: int) -> list:
+    """Les fiches que la passe page n'a pas situées — celles d'AUJOURD'HUI d'abord.
+
+    POURQUOI CET ORDRE (2026-09-08). La passe 1 pose 'novenue' ; le ré-armement
+    hebdomadaire repose 'none' sur tout ce qui a échoué il y a plus de sept jours. Les deux
+    tombent dans la même sélection, plafonnée à VENUES_LLM_CAP (150) et, jusqu'ici, SANS
+    ORDER BY — donc servie par numéro croissant, c'est-à-dire les plus vieilles fiches
+    d'abord. Le jour où le ré-armement libère plus de 150 fiches, celles que la passe 1
+    vient de marquer 'novenue' (les plus récentes, donc les plus hauts numéros) sont
+    derrière le plafond : elles n'atteignent pas la passe LLM le jour même, et le
+    lendemain les 'none' restantes passent encore devant. C'est l'hypothèse la plus simple
+    pour les 19 fiches municipales restées 'novenue' sans lieu — à confirmer en production
+    par `SELECT venue_source, COUNT(*) … GROUP BY 1` avant un run.
+    Le tri règle la chose sans un appel de plus : 'novenue' (frais) avant 'none' (repris),
+    puis les plus récentes ; et la règle 5 écarte ce qui est terminé."""
+    return conn.execute(
+        f"SELECT id, title, description, url_source, {URL_PAGE_SQL} AS url_page, "
+        "  wp_post_id_as, annulation_detectee_at FROM events_raw "
+        "WHERE COALESCE(lieu,'') = '' AND venue_source IN ('novenue', 'none') "
+        f"  AND statut != 'merged' AND {_URL_LISIBLE_SQL} AND {_DEVANT_NOUS_SQL} "
+        "ORDER BY (venue_source = 'novenue') DESC, id DESC LIMIT ?", (cap,)).fetchall()
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Extraction du lieu des événements (page + LLM).")
     parser.add_argument("--fetch-cap", type=int, default=FETCH_CAP,
@@ -309,19 +566,15 @@ def main(argv=None) -> int:
     from_source = apply_source_venues(conn)
     log.info("Passe source : %d lieu/ville posé(s) depuis la source", from_source)
 
-    # --- Passe 1 : page structurée (JSON-LD location), déterministe ---
-    todo = conn.execute(
-        "SELECT id, title, url_source, wp_post_id_as, annulation_detectee_at "
-        "FROM events_raw "
-        "WHERE COALESCE(lieu,'') = '' AND (venue_source IS NULL OR venue_source = '') "
-        "  AND statut != 'merged' "
-        "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
-        "LIMIT ?", (args.fetch_cap,)).fetchall()
+    # --- Passe 1 : page structurée (JSON-LD location, puis libellés), déterministe ---
+    todo = selection_passe_page(conn, args.fetch_cap)
     log.info("Passe page : %d page(s) à lire (cap %d)", len(todo), args.fetch_cap)
-    from_page = 0
+    from_page = from_libelle = 0
     for r in todo:
         capture: dict = {}
-        lieu, ville, src = fetch_event_venue(r["url_source"], _capture=capture)
+        lieu, ville, src = fetch_event_venue(r["url_page"], _capture=capture)
+        if capture.get("methode") == "libelle":
+            from_libelle += 1
         # Canal 3 : la page vient d'être RÉELLEMENT téléchargée (capture non vide) —
         # on cherche un marqueur d'annulation dessus, quel que soit le lieu trouvé :
         # le signal est un ajout, jamais un blocage du reste du traitement.
@@ -335,19 +588,14 @@ def main(argv=None) -> int:
         conn.commit()
         if src == "page":
             from_page += 1
-    log.info("Passe page : %d lieu(x) via la page", from_page)
+    log.info("Passe page : %d lieu(x) via la page, dont %d par un libellé "
+             "« Dove / Luogo / Lieu » (sans JSON-LD)", from_page, from_libelle)
 
     # --- Passe 2 : LLM (dernier recours) sur les restants ---
     from_llm = 0
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if VENUES_LLM and not args.no_llm and api_key:
-        todo = conn.execute(
-            "SELECT id, title, description, url_source, wp_post_id_as, "
-            "  annulation_detectee_at FROM events_raw "
-            "WHERE COALESCE(lieu,'') = '' AND venue_source IN ('novenue', 'none') "
-            "  AND statut != 'merged' "
-            "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
-            "LIMIT ?", (args.llm_cap,)).fetchall()
+        todo = selection_passe_llm(conn, args.llm_cap)
         log.info("Passe LLM : %d événement(s) à situer (modèle %s, cap %d)",
                  len(todo), VENUES_LLM_MODEL, args.llm_cap)
         if todo:
@@ -355,7 +603,7 @@ def main(argv=None) -> int:
             client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
             from utils.api_limite import PlafondAPI
             for r in todo:
-                page_text = fetch_page_text(r["url_source"], title=r["title"] or "")
+                page_text = fetch_page_text(r["url_page"], title=r["title"] or "")
                 material = page_text or f"{r['title']}\n{r['description'] or ''}"
                 # Canal 3 : uniquement sur du texte VENANT DE LA PAGE, jamais sur le
                 # repli titre+description qui ne relit rien.
