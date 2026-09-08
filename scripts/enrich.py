@@ -655,9 +655,45 @@ def filter_official_sources(sources: list) -> tuple[list, list]:
     return kept, dropped
 
 
+def site_officiel_du_lieu(conn, ev: dict) -> str:
+    """Le site officiel DÉJÀ RÉSOLU pour une AUTRE fiche du même lieu, ou "".
+
+    2026-09-08 (Franck : « au lieu de couper il faut trouver la solution », après le même
+    raisonnement appliqué aux images). `resolve_official_site` coûte 0,22 $ l'appel — le
+    troisième poste de dépense du pipeline — et repart de zéro à chaque fiche. Or les lieux
+    reviennent : mesuré ce jour-là sur les 272 fiches publiées, 159 lieux distincts, 57
+    lieux portent plusieurs fiches, et **98 fiches rejouent un lieu déjà connu** — le Forte
+    di Bard à lui seul en compte 26. Re-chercher le site du Forte di Bard vingt-six fois est
+    une dépense pure : la réponse est en base depuis la première.
+
+    On ne rend QUE si le lieu (nom + ville) est identique et qu'un seul domaine a été
+    mémorisé pour lui : deux domaines pour un même lieu (le Teatro Regio et le Torino Film
+    Festival qui s'y tient) veulent dire que le lieu ne suffit pas à décider — on laisse
+    alors la résolution normale trancher. Ce n'est pas un verrou : l'appelant vérifie que la
+    page parle bien de l'événement, et retombe sur la recherche web sinon."""
+    lieu = (ev.get("lieu") or "").strip()
+    ville = (ev.get("ville") or "").strip()
+    if not lieu or len(lieu) < 4:
+        return ""
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT url_officiel FROM events_raw "
+            "WHERE COALESCE(url_officiel,'') <> '' AND id <> ? "
+            "AND LOWER(TRIM(lieu)) = LOWER(?) AND LOWER(TRIM(COALESCE(ville,''))) = LOWER(?)",
+            (ev.get("id"), lieu, ville)).fetchall()
+    except Exception:  # noqa: BLE001 — jamais bloquant : au pire on paie la recherche
+        return ""
+    from urllib.parse import urlparse as _up0
+    hosts = {_strip_www(_up0(r[0]).netloc): r[0] for r in rows if r[0]}
+    hosts.pop("", None)
+    if len(hosts) != 1:
+        return ""
+    return next(iter(hosts.values()))
+
+
 def fetch_official_material(url: str, timeout: int = 8, title: str = "",
                             lieu: str = "", client=None, is_official: bool = False,
-                            trusted_source: bool = False) -> tuple:
+                            trusted_source: bool = False, piste_lieu: str = "") -> tuple:
     """SOURCE OFFICIELLE = première source (règle Franck). On lit `url` ; si ce N'EST PAS le
     site de l'organisateur, on remonte au vrai site officiel (lien sortant, sinon recherche
     web), puis on lit sa page presse/programme (programme réel + visuels HD).
@@ -688,6 +724,18 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
                 if h2 and not any(b in _up(u2).netloc.lower() for b in _NOT_OFFICIAL):
                     html, url, resolved = h2, u2, u2
                     log.info("site officiel trouvé via la source : %s", u2[:90])
+        if not resolved and piste_lieu:
+            # ÉTAGE GRATUIT (2026-09-08) : le site officiel déjà résolu pour une autre fiche
+            # du MÊME lieu. On ne le croit pas sur parole — la page doit mentionner
+            # l'événement, sinon on retombe sur la recherche payante juste en dessous.
+            h2, u2 = _fetch(piste_lieu, timeout)
+            if h2:
+                _toks = _event_tokens(title)
+                if _toks and any(t in _fold(_html_to_text(h2)[:20000]) for t in _toks):
+                    html, url, resolved = h2, u2, u2
+                    log.info("site officiel HÉRITÉ du lieu (aucune recherche web) : %s", u2[:90])
+                else:
+                    log.info("site du lieu écarté (ne mentionne pas l'événement) : %s", u2[:70])
         if not resolved:
             cand = resolve_official_site(title, lieu, client)
             if cand:
@@ -954,7 +1002,8 @@ def gather_material(conn: sqlite3.Connection, ev: dict, client=None) -> str:
         src_url, title=ev.get("title", ""),
         lieu=ev.get("lieu") or ev.get("ville") or "", client=client,
         is_official=bool(locked),
-        trusted_source=_source_trusted(ev.get("url_source", "")))
+        trusted_source=_source_trusted(ev.get("url_source", "")),
+        piste_lieu="" if locked else site_officiel_du_lieu(conn, ev))
     # ⚠️ LE VERROU `url_officiel` ÉTAIT DÉFINITIF (corrigé le 2026-08-03). Balayage :
     # aucun script du dépôt ne l'efface jamais. Or il commande une lecture DIRECTE — « plus
     # de recherche web, plus de variante de domaine aléatoire » — donc une URL mémorisée à
