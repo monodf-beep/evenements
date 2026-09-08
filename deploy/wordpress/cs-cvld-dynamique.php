@@ -18,6 +18,36 @@
  * Vallee d Aoste produit peu). Sans second passage, la rangee se retrouverait avec
  * un trou. On complete alors avec les meilleurs scores restants.
  */
+if (!function_exists('cs_cvld_note_temps')) {
+function cs_cvld_note_temps($id, $dep) {
+    /* 2026-09-08 (Franck : « au lieu de couper il faut trouver la solution », transpose ici
+       apres l'audit du figement). MEME bareme que cs_une_note() (snippet 140, section
+       "A la une"), SANS son seuil as_deplacement>=8 : applique tel quel, ce seuil aurait
+       laisse 2 candidates en Vallee d'Aoste et 1 a Nice au 08/10 -- pas le probleme mesure
+       ici (le vivier suffit, 5 a 18 fiches par territoire). Sans ce bonus, le tri ne
+       departageait QUE sur la note figee : la Foire de Saint-Ours (dep=12, fin 31/01/2027)
+       devancait sa concurrente de 3 points et tenait la case ~21 semaines d'affilee, mesure
+       par scripts/audit_deplacement.py. */
+    $today = strtotime(current_time('Y-m-d'));
+    $d1 = strtotime(substr((string) get_post_meta($id, '_EventStartDate', true), 0, 10));
+    $d2 = strtotime(substr((string) get_post_meta($id, '_EventEndDate', true), 0, 10));
+    $j1 = $d1 ? (int) floor(($d1 - $today) / 86400) : 999;
+    $j2 = $d2 ? (int) floor(($d2 - $today) / 86400) : 999;
+    $debut = 0;
+    if ($j1 >= 0) {
+        if ($j1 <= 3)       { $debut = 5; }
+        elseif ($j1 <= 7)   { $debut = 4; }
+        elseif ($j1 <= 14)  { $debut = 3; }
+        elseif ($j1 <= 30)  { $debut = 1; }
+        elseif ($j1 <= 60)  { $debut = 0; }
+        elseif ($j1 <= 120) { $debut = -3; }
+        else                { $debut = -6; }
+    }
+    $fin = ($j1 < 0 && $j2 >= 0 && $j2 <= 10) ? 3 : 0;
+    return $dep + $debut + $fin;
+}
+}
+
 if (!function_exists('cs_cvld_pick_one')) {
 function cs_cvld_pick_one($term_id, $lang, $exclude) {
     $q = new WP_Query(array(
@@ -54,15 +84,19 @@ function cs_cvld_pick_one($term_id, $lang, $exclude) {
         if ($mots < 150) { continue; }
         $dep = get_post_meta($pid, 'as_deplacement', true);
         $sco = get_post_meta($pid, 'as_score', true);
+        $dep_brut = ($dep === '' ? -1 : (int) $dep);
         $classes[] = array(
             'id'  => (int) $pid,
-            'dep' => ($dep === '' ? -1 : (int) $dep),
+            'dep' => $dep_brut,
+            /* Note temps-ajustee : departage entre deux fiches sur leur PROXIMITE, pas
+               seulement leur note figee -- cf. cs_cvld_note_temps ci-dessus. */
+            'dep_temps' => ($dep_brut < 0) ? $dep_brut : cs_cvld_note_temps($pid, $dep_brut),
             'sco' => ($sco === '' ? -1 : (int) $sco),
         );
     }
     if (empty($classes)) { return 0; }
     usort($classes, function ($a, $b) {
-        if ($a['dep'] !== $b['dep']) { return $b['dep'] - $a['dep']; }
+        if ($a['dep_temps'] !== $b['dep_temps']) { return $b['dep_temps'] - $a['dep_temps']; }
         return $b['sco'] - $a['sco'];
     });
     return $classes[0]['id'];
