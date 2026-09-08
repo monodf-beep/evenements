@@ -162,11 +162,14 @@ faire demander à OVH le déblocage d'une IP sur la foi de la deuxième. Ce qui 
 tenait en quatre commandes qu'il fallait taper à la première minute : ping, port 80,
 port 443, et un hôte de contrôle.
 
-`docs/ERREURS_2026-09-08.md` en ajoute huit, autour d'une racine nouvelle : **deux détecteurs
+`docs/ERREURS_2026-09-08.md` en ajoute seize, autour d'une racine nouvelle : **deux détecteurs
 pour la même chose, un seul juste** — quatre fautes de code dont le garde-fou existait déjà
 dans le module voisin. Et une règle de livraison : un correctif de code s'accompagne de la
 liste des fiches déjà touchées et de la commande qui les répare, sinon la question reste
-ouverte pour le lecteur du site.
+ouverte pour le lecteur du site. Et trois de l'après-midi à relire avant de livrer : **un
+commit ne part pas sur une fixture rouge** (faute 11), **un fichier ne se retape jamais
+dans l'argument d'un outil** (faute 12), **un dry-run se lit ligne par ligne** — celui
+d'`affiner_source` avait une proposition fausse sur deux (faute 13).
 
 D'où la formulation la plus utile de cette racine, celle à relire avant de répondre :
 
