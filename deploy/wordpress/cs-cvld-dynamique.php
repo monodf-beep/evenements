@@ -18,6 +18,21 @@
  * Vallee d Aoste produit peu). Sans second passage, la rangee se retrouverait avec
  * un trou. On complete alors avec les meilleurs scores restants.
  */
+/* PLANCHER DE LA SECTION (2026-09-08, Franck devant la home : « est-ce que Pinocchio ça
+   fait déplacer ? non »). La fiche affichée pour la Vallée d'Aoste valait 6/12. Le plancher
+   décidé le 04/08 est à 10/12 (utils/deplacement.py, DEPLACEMENT_MIN — c'est lui qui laisse
+   as_deplacement_now VIDE sous le plancher), mais il ne vivait qu'en Python : ce mu-plugin
+   triait sans plancher et « garantissait » une carte par territoire, même médiocre. Le bonus
+   temporel posé le matin même a aggravé le cas : une fiche proche et faible passait devant.
+   Deux exigences, donc : la note INTRINSÈQUE >= plancher (on ne montre pas une sortie
+   quelconque parce qu'elle est bientôt), ET la note TEMPS-AJUSTÉE >= plancher (la Foire de
+   Saint-Ours à 12 mais dans cinq mois vaut 6 aujourd'hui : « trop loin dans le temps »,
+   Franck, même jour). Un territoire sans fiche qui tienne les deux laisse sa case au second
+   passage — une carte d'un autre territoire plutôt qu'une carte médiocre, comme l'écrit
+   scripts/audit_deplacement.py depuis le 04/08. Même valeur que DEPLACEMENT_MIN : à changer
+   ENSEMBLE. */
+if (!defined('CS_CVLD_PLANCHER')) { define('CS_CVLD_PLANCHER', 10); }
+
 if (!function_exists('cs_cvld_note_temps')) {
 function cs_cvld_note_temps($id, $dep) {
     /* 2026-09-08 (Franck : « au lieu de couper il faut trouver la solution », transpose ici
@@ -85,6 +100,7 @@ function cs_cvld_pick_one($term_id, $lang, $exclude) {
         $dep = get_post_meta($pid, 'as_deplacement', true);
         $sco = get_post_meta($pid, 'as_score', true);
         $dep_brut = ($dep === '' ? -1 : (int) $dep);
+        if ($dep_brut < CS_CVLD_PLANCHER) { continue; }   // plancher intrinsèque
         $classes[] = array(
             'id'  => (int) $pid,
             'dep' => $dep_brut,
@@ -99,6 +115,7 @@ function cs_cvld_pick_one($term_id, $lang, $exclude) {
         if ($a['dep_temps'] !== $b['dep_temps']) { return $b['dep_temps'] - $a['dep_temps']; }
         return $b['sco'] - $a['sco'];
     });
+    if ($classes[0]['dep_temps'] < CS_CVLD_PLANCHER) { return 0; }   // trop loin dans le temps
     return $classes[0]['id'];
 }
 }
