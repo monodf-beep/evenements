@@ -25,6 +25,14 @@ critère fusionnerait avant qu'il parte en production au déploiement automatiqu
 valable telle quelle). La garde « suspicion d'annulation » n'est PAS évaluée en
 dry-run — elle écrit en base — donc l'aperçu peut montrer un groupe que le vrai passage
 retiendrait ; il ne montre jamais moins.
+
+COÏNCIDENCE lieu + dates + jeton (ajoutée le 08/09, cas Pinocchio WP#6413/WP#8193) :
+troisième chemin de `_groups`, qui rapproche deux fiches du même territoire, aux mêmes
+dates, dans la même ville ou le même lieu, dont les titres partagent au moins un mot
+distinctif — là où la ressemblance de titres ne voit rien. Par défaut ce script LISTE ces
+groupes sans les fusionner (log et --dry-run) ; `--coincidence` les fusionne ; et c'est
+`verifier_doublons_publies --en-ligne` (9h50) qui les signale sur les fiches publiées.
+Doctrine, mesure et limites : docs/DEDOUBLONNAGE.md.
 """
 from __future__ import annotations
 import argparse
@@ -226,6 +234,196 @@ def cross_lang_same(a: str, b: str) -> bool:
     return True
 
 
+# --- Appariement par COÏNCIDENCE lieu + dates + jeton distinctif (2026-09-08) ----------
+#
+# D'OÙ ÇA VIENT. Le 08/09 au soir, Franck a vu sur le hub Vallée d'Aoste, côte à côte dans
+# « L'agenda à venir », deux pages pour le même événement :
+#
+#     WP#6413  « Pinocchio traverse les Alpes : quand un bicentenaire ravive la Vallée d'Aoste »
+#     WP#8193  « Pinocchio fait étape au Forte di Bard pour les 200 ans de Carlo Collodi »
+#
+# 19–20 septembre, Bard, les deux. Mesuré sur le code tel qu'il était :
+#   · same_story (utils/sources.py:106-126) rend False — aucun « nom propre à majuscule
+#     interne » partagé, et UN seul mot significatif commun (« pinocchio ») là où il en
+#     faut trois ;
+#   · cross_lang_same (ci-dessus) rend False — un seul jeton commun là où il en faut deux,
+#     et de toute façon il n'est appelé qu'avec --cross-lang ;
+#   · _groups ne lit NI la ville NI le lieu, et la date n'y sert qu'en NÉGATIF
+#     (_dates_incompatible sépare, elle ne rapproche jamais).
+# Deux articles de presse rédigés par deux journalistes sur le même fait ne partagent
+# souvent que le NOM de la chose. La ressemblance de titre ne suffit donc pas ; ce qui
+# suffit, c'est la conjonction : même lieu, mêmes dates, et ce nom-là en commun.
+#
+# CE QUE LA RÈGLE EXIGE, cumulativement (chaque condition seule est banale) :
+#   1. même territoire (déjà imposé par _groups) ;
+#   2. mêmes dates : date_event_start ÉGALES et date_event_end ÉGALES (fin absente = début).
+#      Pas d'inclusion : une exposition de mai à septembre « contient » chaque visite
+#      guidée qu'on y donne, ce sont pourtant des fiches distinctes. Une fiche sans date
+#      n'est jamais appariée par ici (donnée manquante, règle 5) ;
+#   3. même ville (utils.lieux.canon, alias compris) OU même lieu (plié) — un lieu
+#      GÉNÉRIQUE (« salle des fêtes », utils.lieux.GENERIQUES) ne compte pas, cent
+#      communes en ont un ;
+#   4. au moins un JETON DISTINCTIF commun aux deux titres : ≥ 5 lettres, pas un nombre,
+#      hors mots-outils FR/IT, hors mots génériques du domaine (_NON_DISTINCTIFS), hors
+#      noms de lieux (_STORY_PLACES) et hors mots du lieu/ville des deux fiches — « forte »
+#      et « bard » partagés par deux événements AU Forte di Bard ne disent rien ;
+#   5. jamais une paire liée par translation_of : deux langues, pas deux doublons.
+#
+# CE QU'ELLE PRODUIT : un CANDIDAT, pas une fusion. Ce dépôt ne distingue pas « certain »
+# et « à confirmer » dans dedupe — tout ce que _groups renvoie est fusionné — et une
+# fusion à tort coûte plus qu'un statut : la matière du perdant nourrit la rédaction du
+# gagnant (docs/BACKLOG.md, « contamination de contenu »). Une règle qui repose sur UN mot
+# commun mérite un regard. Donc : par défaut, dedupe LISTE ces groupes (log et --dry-run)
+# sans les fusionner ; `--coincidence` les fusionne, pour qui a lu le dry-run. Et le
+# rouvreur automatique (règle 3) est `verifier_doublons_publies --en-ligne` (cron 9h50),
+# qui applique cette règle sur les fiches PUBLIÉES et propose la corbeille — c'est là que
+# la paire Pinocchio aurait dû remonter, et c'est là qu'elle remonte désormais.
+# Détail et limites : docs/DEDOUBLONNAGE.md.
+from utils.lieux import GENERIQUES as _LIEUX_GENERIQUES, canon as _canon_ville, \
+    est_generique as _lieu_generique, plie as _plie  # noqa: E402
+from utils.sources import _STORY_PLACES  # noqa: E402
+
+_NON_DISTINCTIFS: frozenset[str] = frozenset(_STOP | _STORY_PLACES | {
+    # Types d'événement et d'activité (FR/IT), au singulier et au pluriel : deux fiches
+    # qui partagent « mostra » ou « visite » partagent un GENRE, pas un événement.
+    "concerts", "concerti", "spectacles", "spettacoli", "mostre", "exposition",
+    "expositions", "esposizioni", "visite", "visites", "visita", "guidata", "guidate",
+    "guidee", "guidees", "guide", "teatro", "theatre", "teatrale", "museo", "musee",
+    "musees", "musei", "ville", "citta", "saison", "stagione", "evento", "eventi",
+    "evenement", "evenements", "incontro", "incontri", "rencontre", "rencontres",
+    "conferenza", "conferenze", "conference", "conferences", "atelier", "ateliers",
+    "laboratorio", "laboratori", "presentazione", "presentation", "lettura", "letture",
+    "lecture", "lectures", "proiezione", "projection", "cinema", "musica", "musique",
+    "musical", "musicale", "danza", "danse", "opera", "degustazione", "degustation",
+    "mercatino", "mercatini", "marches", "brocante", "vernissage", "inaugurazione",
+    "inauguration", "apertura", "ouverture", "chiusura", "cloture", "programma",
+    "programme", "programmazione", "programmation", "serata", "serate", "soiree",
+    "soirees", "giornate", "journees", "jours", "giorni", "giorno", "heures", "matin",
+    "mattina", "pomeriggio", "weekend", "settimana", "semaine", "gratuit",
+    "gratuito", "gratuita", "ingresso", "entree", "libero", "bambini", "enfants",
+    "famiglia", "famille", "familles", "ragazzi", "jeunes", "annonce", "annonces",
+    "annunciato", "svelati", "svelato", "devoile", "devoilee", "novita", "nouveautes",
+    # Épithètes de gabarit
+    "grande", "grandi", "grands", "grandes", "nuova", "nuovo", "nouveau", "nouvelle",
+    "nouveaux", "nouvelles", "prima", "premiere", "ultima", "ultimo", "derniere", "dernier",
+    # L'occasion n'est pas la chose : un bicentenaire donne dix événements distincts.
+    "anniversario", "anniversaire", "bicentenario", "bicentenaire", "centenario",
+    "centenaire", "annees", "edizioni", "editions",
+    # Saisons, fêtes calendaires, mois, jours (≥ 5 lettres seulement — les autres ne
+    # passent pas le plancher de longueur de toute façon)
+    "estate", "inverno", "autunno", "primavera", "automne", "hiver", "printemps",
+    "natale", "pasqua", "capodanno", "gennaio", "febbraio", "marzo", "aprile", "maggio",
+    "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
+    "janvier", "fevrier", "avril", "juillet", "septembre", "octobre", "decembre",
+    "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato", "domenica", "lundi",
+    "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+    # Mots de lieu génériques et d'administration : ils disent OÙ, jamais QUOI
+    "castello", "chateau", "palazzo", "palais", "chiesa", "eglise", "piazza", "place",
+    "salle", "forte", "villa", "parco", "giardini", "giardino", "jardin", "jardins",
+    "centro", "centre", "espace", "spazio", "auditorium", "arena", "stadio", "stade",
+    "biblioteca", "bibliotheque", "mediatheque", "comune", "commune", "regione",
+    "region", "provincia", "valle", "vallee", "cattedrale", "cathedrale", "duomo",
+    "basilica", "basilique", "abbazia", "abbaye", "santuario", "sanctuaire", "fortezza",
+    "forteresse", "borgo", "village", "paese", "quartier", "quartiere",
+} | {mot for nom in _LIEUX_GENERIQUES for mot in nom.split()})
+
+JETON_MIN_LETTRES = 5
+
+
+def _jetons_distinctifs(title: str, exclure: frozenset[str] = frozenset()) -> set[str]:
+    """Les mots d'un titre qui peuvent NOMMER un événement : ≥ 5 lettres, alphabétiques,
+    hors mots vides, hors génériques du domaine, hors `exclure` (mots du lieu/ville)."""
+    s = unicodedata.normalize("NFD", (title or "").lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return {t for t in re.findall(r"[a-z]+", s)
+            if len(t) >= JETON_MIN_LETTRES and t not in _NON_DISTINCTIFS and t not in exclure}
+
+
+def paire_de_traduction(a: dict, b: dict) -> bool:
+    """Ces deux fiches sont-elles les deux langues d'un même événement ?
+
+    Trois formes de la même liaison : a traduit b, b traduit a, ou toutes deux traduisent
+    le même original. Une paire pareille est NORMALE — deux pages Polylang — et ne doit
+    jamais être appariée. Définie ICI et importée par verifier_doublons_publies : deux
+    copies de la même question finiraient par se contredire (journal du 08/09, racine
+    « deux détecteurs pour la même chose, un seul juste »)."""
+    ta, tb = int(a.get("translation_of") or 0), int(b.get("translation_of") or 0)
+    return ta == b["id"] or tb == a["id"] or bool(ta and ta == tb)
+
+
+def _memes_dates(a: dict, b: dict) -> bool:
+    """Intervalles [début, fin] IDENTIQUES, les deux fiches datées. Pas d'inclusion (cf.
+    en-tête : une exposition contient ses visites guidées sans être leur doublon)."""
+    sa, sb = _jour(a.get("date_event_start")), _jour(b.get("date_event_start"))
+    if not sa or not sb or sa != sb:
+        return False
+    return (_jour(a.get("date_event_end")) or sa) == (_jour(b.get("date_event_end")) or sb)
+
+
+def _lieu_commun(a: dict, b: dict) -> str:
+    """« ville « bard » », « lieu « forte di bard » », ou "" si rien ne les réunit."""
+    va, vb = _canon_ville(a.get("ville") or ""), _canon_ville(b.get("ville") or "")
+    if va and va == vb:
+        return f"ville « {va} »"
+    la, lb = _plie(a.get("lieu") or ""), _plie(b.get("lieu") or "")
+    if la and la == lb and not _lieu_generique(la):
+        return f"lieu « {la} »"
+    return ""
+
+
+def coincidence_lieu_date(a: dict, b: dict) -> str:
+    """Le MOTIF de coïncidence lieu + dates + jeton (« ville « bard », 2026-09-19→2026-09-20,
+    jeton « pinocchio » »), ou "" si l'une des cinq conditions de l'en-tête manque.
+
+    Renvoie une phrase et pas un booléen parce que ce motif est DIT à l'humain qui
+    tranche (dry-run, verifier_doublons_publies, Slack) : une recommandation sans son
+    critère se lit comme une certitude."""
+    if paire_de_traduction(a, b):
+        return ""
+    if not _memes_dates(a, b):
+        return ""
+    ou = _lieu_commun(a, b)
+    if not ou:
+        return ""
+    # Les mots du lieu et de la ville des DEUX fiches ne distinguent rien : deux
+    # événements au Forte di Bard portent souvent « Forte » ou « Bard » dans leur titre.
+    exclure = frozenset(m for e in (a, b) for champ in ("lieu", "ville")
+                        for m in _plie(e.get(champ) or "").split())
+    communs = _jetons_distinctifs(a.get("title", ""), exclure) & \
+        _jetons_distinctifs(b.get("title", ""), exclure)
+    if not communs:
+        return ""
+    debut = _jour(a.get("date_event_start"))
+    fin = _jour(a.get("date_event_end")) or debut
+    quand = debut if fin == debut else f"{debut}→{fin}"
+    return f"{ou}, {quand}, jeton « {', '.join(sorted(communs))} »"
+
+
+def _memes_titres(a: dict, b: dict, cross_lang: bool = False) -> bool:
+    """Le chemin HISTORIQUE de _groups — ressemblance de titres, gardes années et dates —
+    isolé pour que motif_groupe puisse dire par quel chemin une paire s'est formée."""
+    if _dates_incompatible(a, b):
+        return False
+    ti, tj = a.get("title", ""), b.get("title", "")
+    return (same_story(ti, tj) and not _years_incompatible(ti, tj)) \
+        or (cross_lang and cross_lang_same(ti, tj))
+
+
+def motif_groupe(group: list[dict], cross_lang: bool = False) -> str:
+    """"" si le groupe tient par la ressemblance des TITRES (chemin historique) ; sinon le
+    ou les motifs de coïncidence qui l'ont formé. Sert à l'affichage : un groupe formé
+    par UN mot commun ne doit pas se présenter comme un groupe de titres jumeaux."""
+    motifs: list[str] = []
+    for i in range(len(group)):
+        for j in range(i + 1, len(group)):
+            if _memes_titres(group[i], group[j], cross_lang):
+                continue
+            m = coincidence_lieu_date(group[i], group[j])
+            if m and m not in motifs:
+                motifs.append(m)
+    return " ; ".join(motifs)
+
+
 def richness(ev: dict) -> int:
     """Score objectif de richesse d'un exemplaire (mesurable, sans LLM)."""
     s = 0
@@ -246,13 +444,19 @@ def score(ev: dict) -> tuple[int, int]:
     return (TIER_RANK.get((ev.get("source_type") or "").lower(), 1), richness(ev))
 
 
-def _groups(events: list[dict], cross_lang: bool = False) -> list[list[dict]]:
+def _groups(events: list[dict], cross_lang: bool = False,
+            coincidence: bool = False) -> list[list[dict]]:
     """Regroupe par territoire + same_story (union-find simple).
 
     cross_lang=False (défaut) : on ne dédoublonne QU'EN MÊME LANGUE. Sur un site
     bilingue, les versions FR et IT d'un même événement ne sont PAS des doublons —
     ce sont deux traductions à lier via Polylang (+ hreflang), pas à fusionner. On
-    n'active la fusion inter-langue (cross_lang_same) que si explicitement demandé."""
+    n'active la fusion inter-langue (cross_lang_same) que si explicitement demandé.
+
+    coincidence=False (défaut) : le troisième chemin — même lieu, mêmes dates, un jeton
+    distinctif commun (cf. `coincidence_lieu_date`) — n'est PAS pris. `main` l'active pour LISTER
+    des candidats sans les fusionner ; `verifier_doublons_publies` l'active pour les
+    fiches publiées, où c'est un humain qui tranche."""
     parent = list(range(len(events)))
 
     def find(i):
@@ -272,7 +476,6 @@ def _groups(events: list[dict], cross_lang: bool = False) -> list[list[dict]]:
         for a in range(len(idxs)):
             for b in range(a + 1, len(idxs)):
                 i, j = idxs[a], idxs[b]
-                ti, tj = events[i].get("title", ""), events[j].get("title", "")
                 # même histoire (titres proches) — et, SI demandé, même événement
                 # inter-langue FR/IT (désactivé par défaut : bilingue = à lier, pas
                 # à fusionner).
@@ -285,10 +488,11 @@ def _groups(events: list[dict], cross_lang: bool = False) -> list[list[dict]]:
                 # _dates_incompatible). Placée avant, elle coupe court sans dépendre de
                 # la langue ni du vocabulaire — deux périodes séparées d'un mois ne sont
                 # pas le même événement, quel que soit le degré de ressemblance des titres.
-                if _dates_incompatible(events[i], events[j]):
-                    continue
-                if (same_story(ti, tj) and not _years_incompatible(ti, tj)) \
-                        or (cross_lang and cross_lang_same(ti, tj)):
+                # Les deux gardes et les deux chemins ci-dessus vivent dans
+                # `_memes_titres` (une seule définition, réutilisée par motif_groupe).
+                # Le troisième chemin, `coincidence_lieu_date`, ne s'ajoute que sur demande.
+                if _memes_titres(events[i], events[j], cross_lang) \
+                        or (coincidence and coincidence_lieu_date(events[i], events[j])):
                     union(i, j)
 
     buckets: dict[int, list[dict]] = {}
@@ -516,6 +720,11 @@ def main(argv=None) -> int:
     parser.add_argument("--dry-run", action="store_true",
                         help="N'écrit RIEN : imprime les groupes qui seraient fusionnés "
                              "(gagnant + perdants). À lire avant tout changement de critère.")
+    parser.add_argument("--coincidence", action="store_true",
+                        help="FUSIONNER aussi les groupes formés par coïncidence lieu + dates "
+                             "+ jeton distinctif (règle du 2026-09-08, cas Pinocchio). Sans "
+                             "cette option ils sont seulement LISTÉS (log, --dry-run) : un "
+                             "seul mot commun mérite un regard avant la fusion.")
     args = parser.parse_args(argv)
 
     conn = sqlite3.connect(DB_PATH)
@@ -532,7 +741,14 @@ def main(argv=None) -> int:
 
     annulation_re = load_annulation_filter()
     merged = suspectees = 0
-    groups = _groups(rows, cross_lang=args.cross_lang)
+    groups_titres = _groups(rows, cross_lang=args.cross_lang)
+    groups_tous = _groups(rows, cross_lang=args.cross_lang, coincidence=True)
+    # Un CANDIDAT est un groupe que seule la coïncidence lieu + dates + jeton a formé (ou
+    # agrandi) : son ensemble d'ids n'est celui d'aucun groupe du chemin historique.
+    ids_titres = {frozenset(e["id"] for e in g) for g in groups_titres}
+    candidats = [g for g in groups_tous
+                 if len(g) > 1 and frozenset(e["id"] for e in g) not in ids_titres]
+    groups = groups_tous if args.coincidence else groups_titres
     dups = [g for g in groups if len(g) > 1]
     if args.dry_run:
         # Aperçu lisible par un humain : ce que le passage réel fusionnerait, et dans quel
@@ -546,9 +762,30 @@ def main(argv=None) -> int:
             for e in sorted((e for e in g if e["id"] != winner["id"]), key=lambda e: e["id"]):
                 print(f"   ↳ fusionné id={e['id']} [{e.get('statut')}] "
                       f"« {(e.get('title') or '')[:70]} » — {e.get('url_source') or '?'}")
+            motif = motif_groupe(g, args.cross_lang)
+            if motif:
+                print(f"   ↔ formé par coïncidence : {motif}")
+        if candidats and not args.coincidence:
+            print(f"\nCANDIDATS par coïncidence lieu + dates + jeton — {len(candidats)} "
+                  f"groupe(s), NON fusionnés (relancer avec --coincidence pour les fusionner) :")
+            for g in candidats:
+                print(f"   · ids {', '.join(str(e['id']) for e in sorted(g, key=lambda e: e['id']))}"
+                      f" — {motif_groupe(g, args.cross_lang)}")
+                for e in sorted(g, key=lambda e: e["id"]):
+                    print(f"       [{e['id']}] [{e.get('statut')}] « {(e.get('title') or '')[:70]} »")
         conn.close()
-        log.info("=== DRY-RUN : %d groupe(s) auraient été fusionnés, 0 écriture ===", len(dups))
+        log.info("=== DRY-RUN : %d groupe(s) auraient été fusionnés, %d candidat(s) par "
+                 "coïncidence %s, 0 écriture ===", len(dups), len(candidats),
+                 "inclus" if args.coincidence else "non fusionnés")
         return 0
+    if candidats and not args.coincidence:
+        # Listés, jamais tus : ces fiches suivent leur chemin normal (évaluation,
+        # publication) et c'est `verifier_doublons_publies --en-ligne` (9h50) qui les
+        # rattrape une fois en ligne, avec la même règle. Le log dit ce qui l'attend.
+        for g in candidats:
+            log.info("CANDIDAT par coïncidence (non fusionné sans --coincidence) : ids %s — %s",
+                     ", ".join(str(e["id"]) for e in sorted(g, key=lambda e: e["id"])),
+                     motif_groupe(g, args.cross_lang))
     for g in dups:
         signal = _porte_annulation(conn, g, annulation_re)
         if signal:
@@ -557,9 +794,14 @@ def main(argv=None) -> int:
         merged += merge_group(conn, g)
     conn.commit()
     conn.close()
+    # Le compteur de candidats est là même à zéro : un état qui sort une fiche d'une
+    # file la sort aussi de tous les bilans (règle 6) — ici la fiche n'en sort pas, mais
+    # le lecteur du log doit voir que la règle a tourné et combien de cas se sont présentés.
     log.info("=== Dédup terminée : %d groupe(s) de doublons, %d événement(s) fusionné(s), "
-             "%d suspicion(s) d'annulation (fusion retenue) ===",
-             len(dups), merged, suspectees)
+             "%d suspicion(s) d'annulation (fusion retenue), %d candidat(s) par coïncidence "
+             "lieu+dates+jeton %s ===",
+             len(dups), merged, suspectees, len(candidats),
+             "fusionnés (--coincidence)" if args.coincidence else "listés, non fusionnés")
     return 0
 
 
