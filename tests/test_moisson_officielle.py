@@ -83,6 +83,11 @@ mo._robust_get = lambda url: (
     if REDIRECTIONS.get(url, url) in PAGES else None)
 mo.fetch_og_image = lambda url, timeout=8: (
     "https://officiel.fr/affiche.jpg" if PAGES.get(url) == PAGE_RICHE else "")
+# Page d'événement SANS og:image mais avec l'affiche en pleine page (Montmélian, 08/09).
+PAGE_AFFICHE_SANS_OG = """<html><head><title>Festival</title></head><body>
+<img src="/wp-content/uploads/06.13-Festival-Photo.png" alt="affiche"></body></html>"""
+PAGES["https://officiel.fr/festival-photo/"] = PAGE_AFFICHE_SANS_OG
+mo.remote_dims = lambda u, *a, **k: (774, 1000)   # pas de réseau : l'affiche mesure 774×1000
 
 conn = sqlite3.connect(tmp)
 init_db(conn)
@@ -331,6 +336,36 @@ _check("… et rien n'est récolté de sa page de rebond",
 _check("destination PRESSE → RIEN n'est récolté, le contrat radar tient",
        (f31.get("date_event_start") or "") == "" and not (f31.get("url_image") or ""),
        str({k: f31.get(k) for k in ("date_event_start", "url_image")}))
+
+# ── 2026-09-08 : la page de l'événement fait foi pour une image de provenance non officielle
+# Une image prise ailleurs (Wikimedia) cède à l'og:image ; une image posée à la main jamais ;
+# une page sans og:image mais avec l'affiche en <img> la fournit quand la fiche est vide.
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+for eid, url, img, src in (
+    (41, "https://officiel.fr/riche", "https://upload.wikimedia.org/nuit-de-nice.jpg", "commons"),
+    (42, "https://officiel.fr/riche", "https://ailleurs.org/choix-de-franck.jpg", "manual"),
+    (43, "https://officiel.fr/festival-photo/", "", ""),
+):
+    # url_source est UNIQUE en base : on la distingue par un suffixe, url_officiel (lue
+    # d'abord par la moisson) reste la page officielle commune.
+    conn.execute("INSERT INTO events_raw (id,title,url_source,url_officiel,statut,date_event_start,lieu,"
+                 "ville,url_image,image_source,date_event_end) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                 (eid, "Fiche %d" % eid, f"{url}?fiche={eid}", url, "evaluated", "2026-11-11", "Salle", "Ville",
+                  img, src, "2026-12-01"))
+conn.commit()
+conn.close()
+mo.main(["41", "42", "43", "--apply"])
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+f41, f42, f43 = (dict(conn.execute("SELECT url_image FROM events_raw WHERE id=?", (i,)).fetchone()) for i in (41, 42, 43))
+conn.close()
+_check("une image prise AILLEURS (Wikimedia) cède à l'og:image de la page de l'événement",
+       f41["url_image"] == "https://officiel.fr/affiche.jpg", str(f41["url_image"]))
+_check("une image posée À LA MAIN n'est jamais remplacée",
+       f42["url_image"] == "https://ailleurs.org/choix-de-franck.jpg", str(f42["url_image"]))
+_check("page sans og:image : l'affiche en <img> est prise quand la fiche est vide",
+       f43["url_image"] == "https://officiel.fr/wp-content/uploads/06.13-Festival-Photo.png", str(f43["url_image"]))
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

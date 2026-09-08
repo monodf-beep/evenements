@@ -67,7 +67,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger  # noqa: E402
-from utils.images import fetch_og_image  # noqa: E402
+from utils.images import fetch_og_image, page_image_candidates, remote_dims, looks_like_banner_shape  # noqa: E402
 from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
 from utils.radar import source_officielle  # noqa: E402
 from utils import jsonld  # noqa: E402
@@ -316,16 +316,48 @@ def _recolte(ev: dict, marqueurs=None) -> dict:
     # l'accès à la vraie chose.
     # On ne remplace QUE la bannière — jamais une photo (og/page/commons), jamais une
     # image posée à la main : celles-là valent mieux que ce qu'on retrouverait.
+    # LA PAGE DE L'ÉVÉNEMENT FAIT FOI POUR L'IMAGE (2026-09-08, Franck : « je trouve qu'il y
+    # a encore trop de vignettes générées ! le script n'arrive pas à trouver dans les pages
+    # des sites officiels ? »). Mesuré le soir même sur les 18 fiches dont la source venait
+    # d'être précisée : 10 pages sur 12 portaient un og:image propre, les 2 autres affichaient
+    # l'affiche en pleine page — et la moisson n'en a repris qu'UNE. Deux raisons :
+    #   1. elle ne lisait que la balise og:image, jamais les images de la page ;
+    #   2. elle ne remplaçait qu'une image vide ou une bannière — jamais une image FAUSSE
+    #      déjà en place : une vue de Nice prise sur Wikimedia (Levitation), la photo
+    #      d'accueil du TNN (Bernard Stasi), un pixel de traçage (Manara).
+    # Désormais une image de PROVENANCE NON OFFICIELLE (bannière, Commons, recherche web,
+    # Europeana, ou photo de page prise sur un AUTRE site) cède à l'og:image de la page
+    # officielle ; à défaut d'og:image, sur une PAGE d'événement (pas une racine), à sa
+    # première image de contenu assez grande. Jamais une image posée à la main, jamais une
+    # image de provenance inconnue ni déjà prise en og : la fixture de cette moisson les
+    # protège depuis le 11/08 (« ne JAMAIS dégrader une image déjà valide », docs/IMAGES.md).
+    from urllib.parse import urlparse as _up
     _img = (ev.get("url_image") or "").strip()
-    _banniere = (ev.get("image_source") or "") == "banner"
-    if not _img or _banniere:
+    _src = (ev.get("image_source") or "")
+    _banniere = _src == "banner"
+    _hote = _up(url).netloc.lower().removeprefix("www.")
+    _hote_img = _up(_img).netloc.lower().removeprefix("www.") if _img.startswith("http") else ""
+    _ailleurs = bool(_hote_img) and _hote not in _hote_img and _hote_img not in _hote
+    _page_evt = bool(_up(url).path.strip("/"))
+    _bloques = load_blocked_image_domains()
+
+    def _acceptable(u: str) -> bool:
+        return bool(u) and u != _img and not is_logo_image(u) and not is_blocked_image(u, _bloques)
+
+    _remplacable = (not _img or _banniere or _src in ("commons", "web", "europeana")
+                    or (_src == "page" and _ailleurs))
+    if _src != "manual" and _remplacable:
         og = fetch_og_image(url)
-        # Mêmes défenses que scripts/visuals.py : un logo de site ou une image d'un
-        # domaine bloqué n'illustre pas un événement. Le domaine de la PAGE est déjà
-        # validé plus haut ; ceci vise l'image elle-même.
-        if og and og != _img and not is_logo_image(og) \
-                and not is_blocked_image(og, load_blocked_image_domains()):
+        if _acceptable(og):
             trouve["url_image"] = og
+        elif not og and _page_evt:
+            for cand in page_image_candidates(html, url)[:3]:
+                if not _acceptable(cand):
+                    continue
+                w, h = remote_dims(cand)
+                if min(w, h) >= 400 and not looks_like_banner_shape(w, h):
+                    trouve["url_image"] = cand
+                    break
     # Les infos pratiques ne sont pas dans CHAMPS : elles ne conditionnent pas la
     # publication (la porte qualité n'en demande pas), elles la RENSEIGNENT. On les
     # récolte donc même quand tout le reste est déjà rempli.
