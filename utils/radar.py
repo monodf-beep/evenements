@@ -62,6 +62,12 @@ _GENERIC_HOSTS = (
     "weezevent.", "fnac", "ticketmaster.", "digitick.", "eventbrite.", "helloasso.",
     "yurplan.", "shotgun.", "dice.fm", "tripadvisor.", "spotify.", "deezer.", "apple.",
     "agendaculturel.", "mapstr.", "waze.", "instagr.am", "bit.ly",
+    # Billetterie italienne (museireali.midaticket.com, www.midaticket.it) : même famille
+    # que billetweb / weezevent / ticketmaster ci-dessus — un guichet, pas l'organisateur.
+    # Ajouté le 2026-09-08 : la fiche 5121 (Le Grand Continent, Aoste) avait pour seule
+    # adresse la RACINE de midaticket.it, que la moisson lisait comme page officielle et
+    # dont elle aurait pris l'icône de menu pour affiche.
+    "midaticket.",
 )
 
 _radar_hosts_cache: "set | None" = None

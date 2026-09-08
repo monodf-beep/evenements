@@ -120,6 +120,21 @@ CAS_ROUTEUR = [
     ("https://customer86768.musvc3.net/e/tr?q=abc", True),
     ("https://click.marketingcloud.turismotorino.org/?qs=ABB", True),
     ("https://exemple.fr/agenda?eid=99213", True),
+    # 2026-09-08 : routeurs rencontrés en production que NI cette liste NI celle de la
+    # moisson ne connaissaient — d'où un seul détecteur, utils/traqueurs.py.
+    ("https://lql1t.r.sp1-brevo.net/mk/cl/f/sh/7nVU1aA2nfsTSei34n3IHI8n82LHmgz/GRtbcRI", True),
+    ("https://r.routage2.arenametrix.fr/mk/cl/f/sh/7nVU1aA2ng01QkkvDbkghhQDZkf6ygr/toO", True),
+    ("https://7cxp.r.a.d.sendibm1.com/mk/cl/f/sh/1t6Af4OiGsF30mRHeS55rw5QT5btFh/-4wYLk", True),
+    ("https://tr.comune.torino.it/e/tr?q=5%3d2XQZ7Z", True),      # MailUp sur le domaine du client
+    ("https://tobe.musvc3.net/e/r?q=J0%3d00JAK", True),
+    ("https://track.pstmrk.it/3s/openemm.d40.it%2Fr.html", True),
+    ("https://openemm.d40.it/r.html?uid=D.A.ur.D_4", True),
+    ("https://enteturismolmr.sequar.com/r/6pf/m/651314", True),
+    ("http://stats.departement06.fr/c6.php?ec=2&l=iYJ&e=m", True),
+    # … sans emporter le domaine du client : bct.comune.torino.it reste une source.
+    ("https://bct.comune.torino.it/eventi/lavoriamo-a-maglia", False),
+    ("https://www.comune.torino.it/eventi/dettaglio/12", False),
+    ("https://www.fondazionetorinomusei.it/it/eventi/mostra", False),
     ("https://www.albertville.fr/un-ete-a-albe-2/", False),
     ("https://event.businessfrance.fr/french-riviera-beauty/", False),
     ("https://apejs.org/la-soute", False),
