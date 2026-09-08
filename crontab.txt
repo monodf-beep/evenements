@@ -141,14 +141,17 @@ SLACK_DIGEST=1
 # après seo_batch (même public : le haut du panier déjà en ligne). À REGARDER
 # après une semaine (coût réel vu dans le digest, qualité des photos trouvées) —
 # décision de garder ou d'éteindre à reprendre alors, pas figée ici.
-# ⏸️ ÉTEINT le 2026-09-08, quatre jours après le branchement, sur mesure (audit_couts
-# --depuis 2026-09-04 + comptage en base) : 60 fiches tentées, 5 images trouvées
-# (4 paysage, 1 portrait) pour 8,91 $ — 1,80 $ l'image, 8 % de rendement, et le PREMIER
-# poste de dépense de la période (33 %), devant la rédaction elle-même. Franck : « je
-# commence à en avoir marre du prix ». Le script reste utilisable à la main
-# (`-m scripts.images_wide --apply --cap 15 --min-score 7`) ; pour le rebrancher,
-# décommenter la ligne — après avoir relu ces chiffres.
-# 35 10 * * * cd /root/evenements && .venv/bin/python -m scripts.images_wide --apply --cap 15 --min-score 7 >> logs/images_wide.log 2>&1
+# 2026-09-08, mesuré quatre jours après le branchement (audit_couts --depuis 2026-09-04
+# + comptage en base) : 60 fiches tentées, 5 images trouvées (4 paysage, 1 portrait) pour
+# 8,91 $ — 1,80 $ l'image, 8 % de rendement, PREMIER poste de dépense de la période (33 %),
+# devant la rédaction elle-même. Franck : « on doit passer par des scripts pour les
+# images ! on a la source officielle, dans l'événement de la source officielle il y a
+# l'image, on la prend ». Le script LIT donc désormais les pages officielles en base
+# (og:image, JSON-LD, <img>) et mesure l'orientation lui-même ; seul reste un contrôle
+# vision à quelques millièmes. L'agent de recherche web ne tourne que sur --web, ABSENT
+# ici, exprès. À relire dans une semaine : rendement (images trouvées / fiches tentées)
+# et coût du poste « image_multi_search », qui doit être à zéro.
+35 10 * * * cd /root/evenements && .venv/bin/python -m scripts.images_wide --apply --cap 15 --min-score 7 >> logs/images_wide.log 2>&1
 # Traduction FR/IT quotidienne 10h45 — ▶️ ACTIVE. Mise en pause le 2026-08-01 au soir,
 # rallumée le 2026-08-04. L'historique ci-dessous est conservé : c'est le seul endroit où
 # la chaîne complète de l'incident est écrite, et la relire avant de toucher au cap évite

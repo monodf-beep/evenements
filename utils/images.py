@@ -178,30 +178,7 @@ def fetch_content_image(url: str, timeout: int = 8) -> str:
     except requests.RequestException:
         return ""
 
-    candidates: list[str] = []
-    for m in re.finditer(r"<img\b[^>]*>", page, re.I):
-        tag = m.group(0)
-        src = ""
-        for attr in ("data-src", "data-lazy-src", "data-original", "src"):
-            a = re.search(rf'{attr}=["\']([^"\']+)', tag, re.I)
-            if a:
-                src = a.group(1)
-                break
-        if not src:
-            a = re.search(r'srcset=["\']([^"\']+)', tag, re.I)
-            if a:
-                src = a.group(1).split(",")[-1].strip().split(" ")[0]  # la + grande
-        src = htmlmod.unescape((src or "").strip())
-        if src.startswith("//"):
-            src = "https:" + src
-        low = src.lower()
-        if not low.startswith("http"):
-            continue
-        if not re.search(r"\.(jpg|jpeg|png|webp)(\?|#|$)", low):
-            continue
-        if is_logo_image(src) or _CHROME_IMG.search(low):
-            continue
-        candidates.append(src)
+    candidates = _img_tags(page, url)
 
     if not candidates:
         return ""
@@ -215,6 +192,126 @@ def fetch_content_image(url: str, timeout: int = 8) -> str:
         if _CONTENT_HINT.search(src):
             return src
     return candidates[0]
+
+
+def _absolu(src: str, base_url: str = "") -> str:
+    """URL d'image absolue et propre ('' si inexploitable)."""
+    src = htmlmod.unescape((src or "").strip())
+    if not src:
+        return ""
+    if src.startswith("//"):
+        return "https:" + src
+    if src.startswith("http"):
+        return src
+    if base_url and src.startswith("/"):
+        from urllib.parse import urljoin
+        return urljoin(base_url, src)
+    return ""
+
+
+def _img_tags(page: str, base_url: str = "") -> list[str]:
+    """Les <img> d'une page (y compris lazy-load data-src et la plus grande source d'un
+    srcset), sans l'habillage (logo, icône, pixel, bannière). Ordre du document."""
+    candidates: list[str] = []
+    for m in re.finditer(r"<img\b[^>]*>", page or "", re.I):
+        tag = m.group(0)
+        src = ""
+        for attr in ("data-src", "data-lazy-src", "data-original", "src"):
+            a = re.search(rf'{attr}=["\']([^"\']+)', tag, re.I)
+            if a:
+                src = a.group(1)
+                break
+        if not src:
+            a = re.search(r'srcset=["\']([^"\']+)', tag, re.I)
+            if a:
+                src = a.group(1).split(",")[-1].strip().split(" ")[0]  # la + grande
+        src = _absolu(src, base_url)
+        low = src.lower()
+        if not low.startswith("http"):
+            continue
+        if not re.search(r"\.(jpg|jpeg|png|webp)(\?|#|$)", low):
+            continue
+        if is_logo_image(src) or _CHROME_IMG.search(low):
+            continue
+        if src not in candidates:
+            candidates.append(src)
+    return candidates
+
+
+def page_image_candidates(page: str, base_url: str = "") -> list[str]:
+    """TOUTES les images plausibles d'une page officielle, par ordre de confiance, sans
+    réseau : og:image / twitter:image, puis les `image` des blocs JSON-LD (l'affiche
+    déclarée par le site lui-même), puis les <img> de contenu. Dédoublonné, habillage
+    écarté.
+
+    2026-09-08 (Franck) : « on doit passer par des scripts pour les images ! on a la
+    source officielle, dans l'événement de la source officielle il y a l'image, on la
+    prend, voilà ». Jusque-là `scripts/images_wide.py` payait un agent de recherche web
+    (0,20 $ l'appel) pour RETROUVER une page que la base connaissait déjà : 60 fiches
+    tentées, 5 images trouvées, 8,91 $ en quatre jours — 1,80 $ l'image. Cette fonction
+    est la réponse : la page est en base (`url_officiel`, `url_source`), ses images sont
+    dedans, leur orientation se mesure en les téléchargeant. Zéro appel de modèle."""
+    page = page or ""
+    out: list[str] = []
+
+    def _add(u: str) -> None:
+        u = _absolu(u, base_url)
+        if u and u.startswith("http") and u not in out \
+                and not is_logo_image(u) and not _CHROME_IMG.search(u.lower()):
+            out.append(u)
+
+    for pat in (r'<meta[^>]+property=["\']og:image(?::url)?["\'][^>]+content=["\']([^"\']+)',
+                r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
+                r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)'):
+        for m in re.finditer(pat, page, re.I):
+            _add(m.group(1))
+    try:
+        from utils import jsonld as _jsonld
+        for n in _jsonld.noeuds(page):
+            v = n.get("image")
+            for item in (v if isinstance(v, list) else [v]):
+                if isinstance(item, str):
+                    _add(item)
+                elif isinstance(item, dict):
+                    _add(item.get("url") or item.get("contentUrl") or "")
+    except Exception:  # un JSON-LD cassé ne doit pas priver des <img>
+        pass
+    for src in _img_tags(page, base_url):
+        _add(src)
+    return out
+
+
+def page_images(url: str, timeout: int = 8) -> list[str]:
+    """`page_image_candidates` sur une page officielle réellement téléchargée. [] si la
+    page est injoignable ou n'est pas une page (gmail:, radar Google News)."""
+    if not url or url.startswith("gmail:") or url.startswith("translated:") \
+            or "news.google.com" in url:
+        return []
+    try:
+        r = requests.get(url, timeout=timeout, headers=_PAGE_UA)
+        if r.status_code != 200 or not r.text:
+            return []
+        return page_image_candidates(r.text, url)
+    except requests.RequestException:
+        return []
+
+
+# Orientation d'une image d'après ses dimensions — partagée par images_wide et ses
+# fixtures : 'wide' nettement plus large que haut, 'portrait' nettement plus haut que
+# large, '' entre les deux (carré ou presque : ni l'un ni l'autre).
+WIDE_MIN_RATIO = 1.3
+PORTRAIT_MAX_RATIO = 0.9
+
+
+def orientation(w: int, h: int) -> str:
+    if not w or not h:
+        return ""
+    r = w / h
+    if r >= WIDE_MIN_RATIO:
+        return "wide"
+    if r <= PORTRAIT_MAX_RATIO:
+        return "portrait"
+    return ""
 
 
 def _clean(text: str) -> str:
