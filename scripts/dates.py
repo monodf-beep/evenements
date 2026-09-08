@@ -958,13 +958,22 @@ def main(argv=None) -> int:
         # fait qui compte — pas de date de début — en gardant hors du lot les fiches déjà
         # lues sans résultat ('nodate'), qui relèvent du ré-armement et du plafond de
         # tentatives.
+        # LA PAGE À LIRE EST `url_officiel` QUAND ELLE EXISTE (2026-09-08). Jusqu'ici la
+        # passe lisait `url_source`, qui pour une fiche née d'une newsletter est un lien
+        # de suivi (« gmail: », traqueur) ou la racine d'un site — alors que
+        # moisson_officielle / affiner_source avaient mémorisé la vraie page dans
+        # `url_officiel`. La date était cherchée sur la page de rebond, et une fiche
+        # « gmail: » dont on connaissait la page officielle était exclue d'office.
+        # Même expression que scripts/venues.py (URL_PAGE_SQL) : un seul détecteur.
         todo = conn.execute(
-            "SELECT id, title, url_source, wp_post_id_as, annulation_detectee_at, "
-            "  date_event_end FROM events_raw "
+            "SELECT id, title, url_source, "
+            "  COALESCE(NULLIF(url_officiel,''), url_source) AS url_page, "
+            "  wp_post_id_as, annulation_detectee_at, date_event_end FROM events_raw "
             "WHERE COALESCE(date_event_start,'') = '' AND statut != 'merged' "
             "  AND COALESCE(date_source,'') IN ('none', 'parsed', 'parsed_article') "
             "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
-            "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
+            "  AND COALESCE(NULLIF(url_officiel,''), url_source) NOT LIKE 'gmail:%' "
+            "  AND COALESCE(NULLIF(url_officiel,''), url_source) NOT LIKE '%news.google.com%' "
             # RÈGLE 5, QUI MANQUAIT ICI. Une fiche dont la FIN est passée est un événement
             # terminé : lire sa page ne sert personne. Une fiche SANS aucune date, elle,
             # reste dans le lot — l'absence de date n'est pas une preuve de passé, c'est
@@ -983,7 +992,7 @@ def main(argv=None) -> int:
         corrobores = 0
         for r in todo:
             capture: dict = {}
-            s, e, src = fetch_event_dates(r["url_source"], _capture=capture)
+            s, e, src = fetch_event_dates(r["url_page"], _capture=capture)
             # Rien en JSON-LD, mais on connaît déjà la FIN : on cherche sur la page une
             # plage qui se termine à cette date-là. Voir debut_depuis_page — c'est une
             # corroboration, pas une devinette.
@@ -1027,12 +1036,15 @@ def main(argv=None) -> int:
     from_llm = 0
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if DATES_LLM and not args.no_llm and api_key:
+        # Même page que la passe 2 : `url_officiel` d'abord (voir plus haut, 2026-09-08).
         todo = conn.execute(
-            "SELECT id, title, description, url_source, lieu, ville, wp_post_id_as, "
-            "  annulation_detectee_at FROM events_raw "
+            "SELECT id, title, description, url_source, "
+            "  COALESCE(NULLIF(url_officiel,''), url_source) AS url_page, "
+            "  lieu, ville, wp_post_id_as, annulation_detectee_at FROM events_raw "
             "WHERE date_source IN ('none', 'nodate') AND statut != 'merged' "
             "  AND COALESCE(translation_of,0) = 0 "     # cf. passe 1 : dates copiées, jamais re-dérivées
-            "  AND url_source NOT LIKE 'gmail:%' AND url_source NOT LIKE '%news.google.com%' "
+            "  AND COALESCE(NULLIF(url_officiel,''), url_source) NOT LIKE 'gmail:%' "
+            "  AND COALESCE(NULLIF(url_officiel,''), url_source) NOT LIKE '%news.google.com%' "
             "LIMIT ?", (args.llm_cap,)).fetchall()
         log.info("Passe LLM : %d événement(s) à dater (modèle %s, cap %d)",
                  len(todo), DATES_LLM_MODEL, args.llm_cap)
