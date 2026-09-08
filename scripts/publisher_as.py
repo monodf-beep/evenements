@@ -607,8 +607,15 @@ def _build_payload(event: dict) -> dict:
     # Extrait : la réponse directe SEO si dispo, sinon le début de la description.
     excerpt = (event.get("seo_answer") or "").strip()
     if not excerpt:
+        # Cet extrait devient la meta description quand Yoast n'en a pas d'autre : sur
+        # une fiche pas encore passée par seo_batch, c'est LUI que Google affiche. Le
+        # 2026-09-08, « Grand Bal du Comité des Fêtes » servait comme description le
+        # pied de flux RSS de la mairie. On repasse donc le nettoyeur ici, même si le
+        # scraper l'a déjà appliqué : une fiche ingérée avant un correctif du nettoyeur
+        # garde en base la version d'avant.
+        from utils.clean_text import strip_boilerplate
         raw = re.sub(r"<[^>]+>", " ", event.get("description") or "")
-        excerpt = re.sub(r"\s+", " ", raw).strip()[:200]
+        excerpt = re.sub(r"\s+", " ", strip_boilerplate(raw)).strip()[:200]
     if excerpt:
         payload["excerpt"] = excerpt
 

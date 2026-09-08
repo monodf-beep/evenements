@@ -13,7 +13,16 @@ Familles d'artefacts visées (constatées en prod) :
 from __future__ import annotations
 import re
 
-_FOOTER_MARK = re.compile(r"(?is)(the post|l'?articolo|cet article)\b")
+# « L'article … est apparu en premier sur … » est la forme RÉELLE du pied WordPress
+# français (wp-includes/feed-rss2.php, locale fr_FR) ; « Cet article » n'y figure pas.
+# Mesuré le 2026-09-08 : 13 fiches PUBLIÉES portaient encore ce pied, et sur trois
+# d'entre elles c'était la meta description servie à Google (« L'article Grand Bal du
+# Comité des Fêtes est apparu en premier sur Mairie de Villefranche-sur-Mer . »). La
+# marque « l'article » reste protégée par le verbe exigé dans les 400 caractères qui
+# suivent : « l'article 5 du règlement » en tête de texte ne coupe rien.
+# L'apostrophe est TYPOGRAPHIQUE (’, U+2019) dans le HTML réellement servi : la
+# fixture l'a montré du premier coup, la regex n'acceptait que l'apostrophe droite.
+_FOOTER_MARK = re.compile(r"(?is)(the post|l[’']?articolo|l[’']?article|cet article)\b")
 _FOOTER_VERB = re.compile(r"(?i)appeared first on|è apparso|proviene da|apparu en premier sur")
 
 # « Spacer Y –> Altezza = 6 = 24px » et variantes (tirets/flèches divers, casse libre).
