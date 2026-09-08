@@ -162,6 +162,12 @@ faire demander à OVH le déblocage d'une IP sur la foi de la deuxième. Ce qui 
 tenait en quatre commandes qu'il fallait taper à la première minute : ping, port 80,
 port 443, et un hôte de contrôle.
 
+`docs/ERREURS_2026-09-08.md` en ajoute huit, autour d'une racine nouvelle : **deux détecteurs
+pour la même chose, un seul juste** — quatre fautes de code dont le garde-fou existait déjà
+dans le module voisin. Et une règle de livraison : un correctif de code s'accompagne de la
+liste des fiches déjà touchées et de la commande qui les répare, sinon la question reste
+ouverte pour le lecteur du site.
+
 D'où la formulation la plus utile de cette racine, celle à relire avant de répondre :
 
 **Ne jamais présenter une INFÉRENCE comme un FAIT.** Les deux sont acceptables — mesurer,
