@@ -289,11 +289,14 @@ REDIRECTIONS["https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-officiel"] = \
 REDIRECTIONS["https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-presse"] = \
     "https://www.guidatorino.com/article"
 conn = sqlite3.connect(tmp)
+# Le TITRE doit être celui de la page d'arrivée (« Concert ») : depuis le 2026-09-08 la
+# destination d'un traqueur doit parler de l'événement, sinon c'est la page de repli de la
+# campagne (Sequar renvoie la même page pour n'importe quel jeton — mesuré). Voir plus bas.
 for eid, url in ((30, "https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-officiel"),
                  (31, "https://lql1t.r.a.d.sendibm1.com/mk/cl/f/vers-presse")):
     conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,"
                  "lieu,ville,url_image,date_event_end) VALUES (?,?,?, 'evaluated', "
-                 "'','','','', '2026-12-31')", (eid, f"Traqueur {eid}", url))
+                 "'','','','', '2026-12-31')", (eid, f"Concert au théâtre {eid}", url))
 conn.commit()
 conn.row_factory = sqlite3.Row
 cibles4 = {e["id"] for e in mo._a_moissonner(conn, AUJOURDHUI, 50)}
@@ -336,6 +339,186 @@ _check("… et rien n'est récolté de sa page de rebond",
 _check("destination PRESSE → RIEN n'est récolté, le contrat radar tient",
        (f31.get("date_event_start") or "") == "" and not (f31.get("url_image") or ""),
        str({k: f31.get(k) for k in ("date_event_start", "url_image")}))
+
+# ── 2026-09-08 : les REBONDS que HTTP ne voit pas, et les traqueurs SANS destination ───
+# Mesuré ce soir-là sur les fiches approuvées, à venir et incomplètes : une vingtaine
+# n'avaient pour seule adresse qu'un lien de traçage, et rien n'en avait jamais été
+# récolté. Téléchargées une à une comme le fait _robust_get : dix rendaient la MÊME page
+# qu'un jeton volontairement faux (Brevo « Page not found », MailUp « Oops! », musvc3 200
+# vide, departement06 « Lien invalide ») — des adresses mortes, fondues jusqu'ici dans
+# « sans donnée exploitable ». Et la moitié des routeurs (Brevo en marque blanche
+# arenametrix.fr / sp1-brevo.net, MailUp sur le domaine du client tr.comune.torino.it,
+# Sequar, Postmark, OpenEMM) n'étaient pas reconnus comme traqueurs du tout.
+print("\n──── rebonds non-HTTP, traqueurs morts, et la page qui ne parle pas de la fiche ────")
+PAGE_REBOND_META = ('<html><head><meta http-equiv="refresh" content="0; url={dest}">'
+                    '</head><body>Redirection…</body></html>')
+PAGE_REBOND_JS = ('<html><head><script>window.location.href = "{dest}";</script></head>'
+                  '<body></body></html>')
+PAGE_REBOND_LIEN = ('<html><body><p>Si vous n\'êtes pas redirigé, '
+                    '<a href="{dest}">cliquez ici</a>.</p></body></html>')
+PAGE_OOPS = ('<html><head><title></title></head><body><div id="msg">Oops! It looks like '
+             'something went really wrong.</div></body></html>')
+# LE CAS FRONTIÈRE QUI DOIT PASSER : une vraie page, riche, dont un script porte un
+# `location.href` (sélecteur de langue vers un site tiers) et une meta refresh SANS url
+# (rechargement toutes les 300 s). Ce n'est pas un rebond : on la moissonne ELLE.
+PAGE_RICHE_AVEC_JS = PAGE_RICHE.replace(
+    "</head>",
+    '<meta http-equiv="refresh" content="300">'
+    '<script>function lang(){ window.location.href = "https://www.guidatorino.com/x"; }'
+    '</script></head>').replace(
+    "<body>Concert</body>",
+    "<body><h1>Concert</h1><p>Le Théâtre Charles Dullin accueille ce concert le 5 décembre "
+    "à 20 h 30, dans la grande salle. Billetterie sur place et en ligne. Tarifs de 12 à 28 "
+    "euros. Ouverture des portes une heure avant le début de la représentation. Placement "
+    "numéroté. Accès par la rue Jean-Pierre Veyrat, parking à proximité.</p></body>")
+
+T_META = "https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/meta"
+T_JS = "https://tr.comune.torino.it/e/tr?q=js"
+T_LIEN = "https://enteturismolmr.sequar.com/r/6pf/m/1"
+T_PRESSE = "https://lql1t.r.sp1-brevo.net/mk/cl/f/sh/jeton/presse"
+T_MORT_404 = "https://7cxp.r.a.d.sendibm1.com/mk/cl/f/sh/jeton/mort"       # absent de PAGES → None
+T_OOPS = "https://go.fondazionetorinomusei.it/e/tr?q=oops"              # 200, même hôte
+T_REPLI = "https://enteturismolmr.sequar.com/r/6pf/m/2"                 # 301 vers la page de repli
+T_UTM = "https://track.pstmrk.it/3s/jeton-utm"
+T_CHAINE4 = "https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/c0"     # 4 sauts : trop
+T_CHAINE2 = "https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/d0"     # 2 sauts : passe
+# LE CAS QUE LE TITRE NE PEUT PAS TRANCHER : la page de repli PARLE de l'événement (la
+# liste des événements d'Asti mentionne le Palio), mais un jeton BROUILLÉ y mène aussi —
+# donc ce n'est pas notre lien qui a été résolu. Mesuré le 08/09 sur sequar.com :
+# `/r/6pf/m/999999999` arrive au même endroit que `/r/6pf/m/651314`.
+T_REPLI_MEME_TITRE = "https://enteturismolmr.sequar.com/r/6pf/m/77"
+OFFICIEL_UTM = "https://officiel.fr/riche?utm_source=lettre+de+septembre&utm_medium=email"
+
+PAGES[T_META] = PAGE_REBOND_META.format(dest="https://officiel.fr/riche")
+PAGES[T_JS] = PAGE_REBOND_JS.format(dest="https://officiel.fr/riche")
+PAGES[T_LIEN] = PAGE_REBOND_LIEN.format(dest="https://officiel.fr/riche")
+PAGES[T_PRESSE] = PAGE_REBOND_META.format(dest="https://www.guidatorino.com/article")
+PAGES[T_OOPS] = PAGE_OOPS
+REDIRECTIONS[T_REPLI] = "https://officiel.fr/riche"        # hôte officiel, mais pas la fiche
+REDIRECTIONS[T_REPLI_MEME_TITRE] = "https://officiel.fr/riche"
+REDIRECTIONS[mo._jeton_brouille(T_REPLI_MEME_TITRE)] = "https://officiel.fr/riche"   # jeton bidon : même arrivée
+REDIRECTIONS[T_UTM] = OFFICIEL_UTM
+_check("le jeton brouillé change bien le dernier groupe de caractères",
+       mo._jeton_brouille(T_REPLI_MEME_TITRE) == "https://enteturismolmr.sequar.com/r/6pf/m/00",
+       mo._jeton_brouille(T_REPLI_MEME_TITRE))
+PAGES[OFFICIEL_UTM] = PAGE_RICHE
+PAGES["https://officiel.fr/riche-js"] = PAGE_RICHE_AVEC_JS
+for i in range(4):
+    PAGES[f"https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/c{i}"] = PAGE_REBOND_META.format(
+        dest=f"https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/c{i + 1}")
+PAGES["https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/c4"] = PAGE_RICHE   # jamais atteinte
+PAGES["https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/d0"] = PAGE_REBOND_META.format(
+    dest="https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/d1")
+PAGES["https://r.routage2.arenametrix.fr/mk/cl/f/sh/jeton/d1"] = PAGE_REBOND_JS.format(
+    dest="https://officiel.fr/riche")
+
+for t in (T_META, T_JS, T_LIEN, T_PRESSE, T_MORT_404, T_OOPS, T_REPLI, T_UTM, T_CHAINE4,
+          T_CHAINE2):
+    _check(f"reconnu comme traqueur : {t.split('/')[2]}{'/' + t.split('/')[3] if '/e/' in t else ''}",
+           mo._est_traqueur(t))
+_check("… et bct.comune.torino.it (source à conserver, décision de Franck) ne l'est pas",
+       not mo._est_traqueur("https://bct.comune.torino.it/eventi/lavoriamo-a-maglia"))
+
+REBONDS = [
+    # (id, adresse, titre)
+    (50, T_META, "Concert de rentrée"),
+    (51, T_JS, "Concert de rentrée"),
+    (52, T_LIEN, "Concert de rentrée"),
+    (53, T_PRESSE, "Concert de rentrée"),
+    (54, T_MORT_404, "Julien Clerc en concert"),
+    (55, T_OOPS, "Concert au Conservatorio"),
+    (56, T_REPLI, "Palio di Asti"),
+    (57, T_UTM, "Concert de rentrée"),
+    (58, "https://officiel.fr/riche-js", "Concert"),
+    (59, T_CHAINE4, "Concert de rentrée"),
+    (60, T_CHAINE2, "Concert de rentrée"),
+    (61, T_REPLI_MEME_TITRE, "Concert de rentrée"),
+]
+conn = sqlite3.connect(tmp)
+for eid, url, titre in REBONDS:
+    conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,"
+                 "lieu,ville,url_image,date_event_end) VALUES (?,?,?, 'evaluated', "
+                 "'','','','', '2026-12-31')", (eid, titre, url))
+conn.commit()
+conn.row_factory = sqlite3.Row
+cibles5 = {e["id"] for e in mo._a_moissonner(conn, AUJOURDHUI, 50)}
+_check("tous les traqueurs sont retenus pour lecture (on juge l'arrivée, pas l'adresse)",
+       {50, 51, 52, 53, 54, 55, 56, 57, 59, 60} <= cibles5, str(sorted(cibles5)))
+conn.close()
+
+# Les traqueurs SANS destination sont comptés, avec l'identifiant de la fiche : c'est ce
+# qui manquait au bilan — vingt fiches invisibles dans « sans donnée exploitable ».
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+morts: list = []
+for eid in (54, 55, 59, 50):
+    ev = dict(conn.execute("SELECT * FROM events_raw WHERE id=?", (eid,)).fetchone())
+    mo._recolte(ev, None, morts)
+conn.close()
+_check("traqueur 404 (Brevo « Page not found ») → compté SANS destination",
+       54 in {m[0] for m in morts}, str(morts))
+_check("traqueur 200 sur son propre hôte (MailUp « Oops! ») → compté SANS destination",
+       55 in {m[0] for m in morts}, str(morts))
+_check("chaîne de 4 rebonds → arrêt à 3, compté SANS destination (pas de boucle infinie)",
+       59 in {m[0] for m in morts}, str(morts))
+_check("un rebond qui aboutit n'est PAS compté mort", 50 not in {m[0] for m in morts}, str(morts))
+
+mo.main(["--apply", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61"])
+conn = sqlite3.connect(tmp)
+conn.row_factory = sqlite3.Row
+F = {eid: dict(conn.execute("SELECT * FROM events_raw WHERE id=?", (eid,)).fetchone())
+     for eid, _u, _t in REBONDS}
+conn.close()
+
+
+def _recolte_ok(eid):
+    return (F[eid]["date_event_start"] == "2026-12-05"
+            and F[eid]["lieu"] == "Théâtre Charles Dullin")
+
+
+_check("meta refresh → site officiel : la page d'arrivée est récoltée", _recolte_ok(50),
+       str({k: F[50][k] for k in ("date_event_start", "lieu")}))
+_check("… et la vraie adresse est mémorisée",
+       F[50]["url_officiel"] == "https://officiel.fr/riche", str(F[50]["url_officiel"]))
+_check("… et l'image vient de la page d'ARRIVÉE, plus du traqueur",
+       F[50]["url_image"] == "https://officiel.fr/affiche.jpg", str(F[50]["url_image"]))
+_check("rebond JavaScript (MailUp sur le domaine du client) → récolté", _recolte_ok(51),
+       str({k: F[51][k] for k in ("date_event_start", "lieu")}))
+_check("… mémorisé — l'hôte a changé (tr.comune.torino.it → officiel.fr)",
+       F[51]["url_officiel"] == "https://officiel.fr/riche", str(F[51]["url_officiel"]))
+_check("page « cliquez ici » à lien unique → récolté", _recolte_ok(52),
+       str({k: F[52][k] for k in ("date_event_start", "lieu")}))
+_check("meta refresh vers la PRESSE → rien, et rien de mémorisé",
+       F[53]["date_event_start"] == "" and not F[53]["url_officiel"] and not F[53]["url_image"],
+       str({k: F[53][k] for k in ("date_event_start", "url_officiel", "url_image")}))
+_check("traqueur mort (404) → rien, rien de mémorisé, aucun verdict",
+       F[54]["date_event_start"] == "" and not F[54]["url_officiel"] and not F[54]["date_source"],
+       str({k: F[54][k] for k in ("date_event_start", "url_officiel", "date_source")}))
+_check("MailUp « Oops! » sur un hôte officiel (go.fondazionetorinomusei.it) → rien de mémorisé",
+       F[55]["date_event_start"] == "" and not F[55]["url_officiel"],
+       str({k: F[55][k] for k in ("date_event_start", "url_officiel")}))
+_check("page de REPLI (hôte officiel, mais pas un mot du titre « Palio di Asti ») → rien, "
+       "et surtout pas mémorisée", F[56]["date_event_start"] == "" and not F[56]["url_officiel"],
+       str({k: F[56][k] for k in ("date_event_start", "url_officiel")}))
+_check("les paramètres de campagne (?utm_…) ne sont pas mémorisés",
+       F[57]["url_officiel"] == "https://officiel.fr/riche", str(F[57]["url_officiel"]))
+_check("FRONTIÈRE : une vraie page avec `location.href` dans un script et une meta refresh "
+       "sans url est moissonnée ELLE-MÊME, pas suivie vers la presse", _recolte_ok(58),
+       str({k: F[58][k] for k in ("date_event_start", "lieu")}))
+_check("… et une page qui n'était pas un traqueur n'écrit pas d'url_officiel",
+       not F[58]["url_officiel"], str(F[58]["url_officiel"]))
+_check("chaîne de 4 rebonds → rien (borne de profondeur)",
+       F[59]["date_event_start"] == "" and not F[59]["url_officiel"],
+       str({k: F[59][k] for k in ("date_event_start", "url_officiel")}))
+_check("chaîne de 2 rebonds (meta puis JS) → récolté et mémorisé",
+       _recolte_ok(60) and F[60]["url_officiel"] == "https://officiel.fr/riche",
+       str({k: F[60][k] for k in ("date_event_start", "url_officiel")}))
+_check("page de repli qui PARLE de l'événement mais qu'un jeton brouillé atteint aussi → "
+       "rien récolté, rien mémorisé (la mesure tranche là où le titre ne peut pas)",
+       F[61]["date_event_start"] == "" and not F[61]["url_officiel"] and not F[61]["infos_pratiques"],
+       str({k: F[61][k] for k in ("date_event_start", "url_officiel", "infos_pratiques")}))
+_check("… et la même page atteinte par un lien dont le jeton COMPTE reste récoltée (cas 50)",
+       _recolte_ok(50))
 
 # ── 2026-09-08 : la page de l'événement fait foi pour une image de provenance non officielle
 # Une image prise ailleurs (Wikimedia) cède à l'og:image ; une image posée à la main jamais ;

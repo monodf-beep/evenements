@@ -250,12 +250,15 @@ _SCHEMAS_PUBLIABLES = ("https://", "http://")
 
 def _is_tracking_url(url) -> bool:
     """True si l'URL est une redirection de routeur de newsletter, jamais publiable
-    comme source officielle (docs/CONFORMITE.md §5)."""
-    url = (url or "").strip()
-    if not url:
-        return False
-    host = re.sub(r"^https?://", "", url).split("/")[0].split(":")[0].lower()
-    return bool(_TRACKING_HOSTS.search(host) or _TRACKING_PATH.search(url))
+    comme source officielle (docs/CONFORMITE.md §5).
+
+    Délègue à utils/traqueurs.py depuis le 2026-09-08 : ce fichier et
+    scripts/moisson_officielle.py portaient chacun leur liste, et elles divergeaient (celle-ci
+    ignorait sendibm1.com et emailsp.com, l'autre ignorait le chemin MailUp `/e/tr`). Les deux
+    motifs historiques ci-dessus restent définis pour mémoire et pour les importateurs ;
+    la définition qui fait foi est celle du module commun, qui les contient tous les deux."""
+    from utils.traqueurs import est_traqueur
+    return est_traqueur(url)
 
 
 def _source_publiable(event: dict, is_radar: bool) -> str:

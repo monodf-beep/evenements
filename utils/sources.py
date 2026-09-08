@@ -88,6 +88,11 @@ _LOGO_NAME_TOKENS = frozenset((
     # bloquée par domaine (elle n'est PAS servie par facebook.com/fbcdn.net).
     "facebook", "twitter", "linkedin", "youtube", "pinterest", "whatsapp",
     "telegram", "tiktok", "share", "social",
+    # Éléments d'INTERFACE servis comme og:image par un site sans image de partage propre.
+    # Vu le 2026-09-08 : la racine de midaticket.it déclare en og:image
+    # « uploads/2023/08/Arrow_Down_MD.png » — une flèche de menu, que la moisson aurait
+    # posée comme affiche du Grand Continent (fiche 5121). Noms bornés, comme le reste.
+    "arrow", "chevron", "spacer", "pixel", "blank", "bullet", "loader", "spinner",
 ))
 
 
