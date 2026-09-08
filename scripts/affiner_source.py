@@ -79,7 +79,12 @@ def page_evenement_depuis_racine(racine: str, title: str, timeout: int = 10) -> 
       • un chemin presse / actualités / dons / galerie est écarté d'office ;
       • il faut la moitié des mots restants du titre (au moins 1, au plus 2) dans le
         chemin — puis le texte de la page doit encore mentionner l'un d'eux."""
-    toks = [t for t in _event_tokens(title) if t not in _STOP_LOCAL]
+    import re as _re
+    # Ni mots-outils, ni ordinaux/millésimes (« 9eme », « 2026 », « xxe ») : un chemin ne les
+    # porte presque jamais, et les compter fait exiger deux mots là où le titre n'en a qu'un
+    # de vrai (« Festival Photo de Montmélian, 9ème édition » → photo).
+    toks = [t for t in _event_tokens(title)
+            if t not in _STOP_LOCAL and not _re.fullmatch(r"\d+[a-z]{0,4}|[xivl]+e", t)]
     if not toks:
         return ""
     host = _fold(urlparse(racine).netloc)
