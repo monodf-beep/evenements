@@ -79,7 +79,6 @@ def page_evenement_depuis_racine(racine: str, title: str, timeout: int = 10) -> 
       • un chemin presse / actualités / dons / galerie est écarté d'office ;
       • il faut la moitié des mots restants du titre (au moins 1, au plus 2) dans le
         chemin — puis le texte de la page doit encore mentionner l'un d'eux."""
-    from math import ceil
     toks = [t for t in _event_tokens(title) if t not in _STOP_LOCAL]
     if not toks:
         return ""
@@ -87,7 +86,11 @@ def page_evenement_depuis_racine(racine: str, title: str, timeout: int = 10) -> 
     non_host = [t for t in toks if t not in host]
     if not non_host:
         return ""                                     # le site EST l'événement : la racine suffit
-    needed = min(2, max(1, ceil(len(non_host) / 2)))
+    # Deux mots dès que le titre en offre deux (second dry-run, 08/09 : « Exposition des
+    # Artistes villefranchois » n'avait plus qu'un mot après les stops, et un seul mot élisait
+    # la « rencontre des associations villefranchoises »). Un seul mot ne suffit que s'il est
+    # le seul — Montmélian : « photo », le reste est dans l'hôte.
+    needed = 1 if len(non_host) == 1 else 2
     html = _get_html(racine, timeout)
     if not html:
         return ""
