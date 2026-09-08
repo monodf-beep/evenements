@@ -59,6 +59,26 @@ _PORTRAIT_MAX_RATIO = images.PORTRAIT_MAX_RATIO  # portrait : nettement plus hau
 # Nombre max d'images TÉLÉCHARGÉES par fiche depuis ses pages officielles : au-delà, on
 # est dans l'habillage du site, pas dans l'affiche.
 _MAX_PAGE_CANDIDATES = 12
+# Un PORTRAIT n'est pris sur la page officielle que si son NOM dit « affiche ». Constat de
+# Franck le 2026-09-08, le jour même de l'étage 1 : sur doujador.it, la carte de la Douja
+# d'Or (fiche 5141, WP#8274) montrait le portrait d'un sommelier (LMR_Douja-dor_Valeria-
+# Gallo_2025-031-bis-767x1024.jpg) alors que la page ouvre sur une photo paysage 1920×1280
+# — « pourquoi c'est l'image verticale qui a été choisie ? ». Parce que la carte 4:3
+# préfère url_image_portrait quand il existe (publisher_as : c'est le format de l'AFFICHE,
+# jamais recadrée), et que l'étage 1 posait en portrait la première photo verticale
+# venue. Une photo verticale n'est pas une affiche : elle sort de la grille en letterbox
+# à la place d'une photo paysage qui la remplirait. Le paysage, lui, reste libre (une
+# photo convient au grand visuel 16:9).
+_POSTER_HINT = ("affiche", "locandina", "manifesto", "poster", "visuel", "key-visual",
+                "keyvisual", "-kv", "cover", "couv", "programme", "programma", "flyer",
+                "cartel", "volantino")
+
+
+def nom_affiche(url: str) -> bool:
+    """Vrai si le NOM DE FICHIER (pas le chemin) annonce une affiche/un visuel officiel."""
+    from urllib.parse import urlparse
+    nom = urlparse(url or "").path.rsplit("/", 1)[-1].lower()
+    return any(h in nom for h in _POSTER_HINT)
 
 
 def _pages_officielles(ev: dict) -> list[str]:
@@ -115,7 +135,7 @@ def from_official_page(ev: dict, client, blocked: set[str]) -> dict:
                 ok, _, _ = verify_image(ev, subject, img_bytes, mime, client)
                 if ok:
                     wide = cand
-            elif o == "portrait" and want_portrait and not portrait:
+            elif o == "portrait" and want_portrait and not portrait and nom_affiche(cand):
                 ok, _, _ = verify_image(ev, subject, img_bytes, mime, client)
                 if ok:
                     portrait = cand
@@ -223,6 +243,43 @@ def _select(conn, args, today: str) -> list[dict]:
     return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
+def _drop_portrait(args) -> int:
+    """Efface url_image_portrait sur des ids précis et re-pousse (aucun appel de modèle).
+    Compte en base après l'écriture, pas sur la longueur de la liste (règle 6)."""
+    if not args.ids:
+        log.error("--drop-portrait demande des ids explicites.")
+        return 1
+    conn = sqlite3.connect(DB_PATH)
+    init_db(conn)
+    conn.row_factory = sqlite3.Row
+    qm = ",".join("?" * len(args.ids))
+    rows = [dict(r) for r in conn.execute(
+        f"SELECT * FROM events_raw WHERE id IN ({qm}) AND COALESCE(url_image_portrait,'') <> ''",
+        args.ids)]
+    log.info("%d fiche(s) sur %d demandée(s) portent un portrait — %s",
+             len(rows), len(args.ids), "APPLIQUE" if args.apply else "DRY-RUN")
+    pushed = 0
+    for ev in rows:
+        log.info("[%s] portrait retiré : %s — %s", ev["id"], (ev.get("url_image_portrait") or "")[:60],
+                 (ev.get("title") or "")[:55])
+        if not args.apply:
+            continue
+        conn.execute("UPDATE events_raw SET url_image_portrait=NULL WHERE id=?", (ev["id"],))
+        conn.commit()
+        ev["url_image_portrait"] = ""
+        if ev.get("wp_post_id_as"):
+            new_id, _, _ = publish_to_as(ev)
+            if new_id:
+                pushed += 1
+    restant = conn.execute(
+        f"SELECT COUNT(*) FROM events_raw WHERE id IN ({qm}) AND COALESCE(url_image_portrait,'') <> ''",
+        args.ids).fetchone()[0]
+    conn.close()
+    log.info("Portraits retirés — encore en base sur ces ids : %d · re-poussés : %d%s",
+             restant, pushed, "  (dry-run : rien écrit)" if not args.apply else "")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Multi-format : affiche officielle en portrait ET paysage (score ≥ 7).")
@@ -234,6 +291,11 @@ def main(argv=None) -> int:
                         help="(défaut) simule sans rien écrire — présent pour cohérence.")
     parser.add_argument("--force", action="store_true", help="Ignorer le cooldown.")
     parser.add_argument("--delay", type=float, default=1.0, help="Pause (s) entre événements.")
+    parser.add_argument("--drop-portrait", action="store_true",
+                        help="Pour les ids donnés : EFFACE url_image_portrait (posé à tort, "
+                             "ex. une photo verticale prise pour une affiche) et re-pousse, "
+                             "la carte reprend l'image principale. Le rouvreur de l'étage 1 "
+                             "— règle 3 de CLAUDE.md. Avec --apply ; dry-run sinon.")
     parser.add_argument("--web", action="store_true",
                         help="Si la page officielle ne donne rien, tenter l'agent de recherche "
                              "web (0,20 $ l'appel — mesuré le 08/09 : 1,80 $ l'image trouvée). "
@@ -241,6 +303,8 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
+    if args.drop_portrait:
+        return _drop_portrait(args)
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         log.error("ANTHROPIC_API_KEY non définie")

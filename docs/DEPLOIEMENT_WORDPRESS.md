@@ -166,3 +166,36 @@ Même canal qu'au § 3 (Novamira), avec deux précisions apprises ce jour-là :
    gateway` de suite sur ~5 ko de patch. Les déposer en fichier et les lire sur place. Et
    après un échec de transport, **vérifier l'état avant de retenter** — c'est ce qui a
    montré que le patch n'était pas passé, donc qu'il n'y avait rien à défaire.
+
+
+## 7. 2026-09-08 — `cs-taxo-it.php` : les termes suivent la langue du post dans les deux sens
+
+Constat de Franck : dans la grille française, des cartes étiquetées « Piemonte » à côté de
+cartes « Piémont ». Mesuré sur WordPress (Novamira, lecture seule) : **26 fiches en
+français** portaient un terme territoire ET une catégorie en italien (21 « Piemonte »,
+4 « Valle d'Aosta », 1 « Savoia ») ; aucune fiche italienne ne portait de terme français.
+
+**Cause, établie par un test réversible et non par lecture seule.** Polylang
+(`PLL_CRUD_Posts::set_object_terms`, accroché à l'action `set_object_terms`) convertit tout
+terme posé sur un post vers la langue que le post a *à cet instant* : sur WP#8163 (post
+`it`), poser le terme 6 « Piémont » donne 321 « Piemonte ». Or `cs-publish` pose ses termes
+AVANT que le snippet Polylang (priorité 20) ne pose la langue. Une fiche poussée une
+première fois en `it` (titre italien — c'était la règle de `publisher_as._lang` avant le
+07/09), puis re-poussée en `fr`, gardait donc ses termes italiens : le filtre (B) de
+`cs-taxo-it.php` rendait la main dès que le post était français.
+
+**Correctif.** (B) réaffecte désormais chaque terme vers sa traduction dans la langue du
+post, quelle que soit la langue. Déployé par le canal du § 3 : `write-file` sur
+`cs-taxo-it.php.nouveau` (extension non-PHP, donc autorisée hors bac à sable), puis un
+`execute-php` qui compare le md5 au fichier du dépôt (`f0ea2333…`), sauvegarde l'ancien
+(`cs-taxo-it.php.bak-2026-09-08`, md5 `a7e81f40…`, identique au miroir d'avant), contrôle
+la syntaxe par `token_get_all(…, TOKEN_PARSE)` et fait un `rename()` atomique. Front,
+`/it/` et l'API REST répondaient 200 après.
+
+**Réparation.** Les 26 fiches (52 affectations : territoire + catégorie) ont été
+réaffectées par `execute-php` après un dry-run listant chaque paire terme → traduction ;
+recompte après écriture : 0 terme dans une autre langue que celle de son post. Le terme
+« Piémont » compte 64 fiches (42 avant), « Piemonte » 52 (74 avant). Réversible : c'est une
+réaffectation de termes, la liste est dans le message du commit.
+
+Retour arrière du mu-plugin : `rename(cs-taxo-it.php.bak-2026-09-08 → cs-taxo-it.php)`.
