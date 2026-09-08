@@ -23,7 +23,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.enrich import _programme_links, _page_evenement  # noqa: E402
-from scripts.affiner_source import est_racine  # noqa: E402
+from scripts.affiner_source import est_racine, page_evenement_depuis_racine  # noqa: E402
+import scripts.affiner_source as _aff  # noqa: E402
 
 echecs = 0
 
@@ -70,6 +71,34 @@ _check("aucune sous-page ne mentionne le titre → '' (la racine reste, on ne de
        _page_evenement(pages[:2], "Nuit des chercheurs") == "")
 _check("titre sans mot significatif → '' (frontière : on n'élit pas n'importe quoi)",
        _page_evenement(pages, "Festival édition") == "")
+
+# ── page_evenement_depuis_racine : les faux positifs du premier dry-run (sans réseau)
+PAGES = {
+    "https://www.stresafestival.eu/": '<a href="/direttore-artistico/">Direttore artistico</a>'
+                                      '<a href="/press/">Press</a>'
+                                      '<a href="/unforgettable-music/">Unforgettable music</a>',
+    "https://www.stresafestival.eu/unforgettable-music/": "<h1>Unforgettable music</h1> Stresa Festival",
+    "https://www.stresafestival.eu/direttore-artistico/": "<h1>Direttore artistico</h1> Stresa Festival",
+    "https://www.filarmonica.it/": '<a href="/news/krylov-sostituisce-jansen-concerto-della-stagione/">News</a>'
+                                   '<a href="/stagione/">Stagione</a>',
+    "https://www.doujador.it/": '<a href="http://www.doujador.it/">Home</a><a href="/programma/">Programma</a>',
+    "https://montmelian.com/": ACCUEIL,
+    "https://montmelian.com/festival-photo-de-montmelian/": "<h1>Festival Photo de Montmélian</h1>",
+}
+_aff._get_html = lambda u, timeout=10: PAGES.get(u.rstrip("/") + "/", PAGES.get(u, ""))
+
+_check("le titre dans le domaine ne compte pas : « Stresa Festival: la seconda parte » → rien",
+       page_evenement_depuis_racine("https://www.stresafestival.eu/", "Stresa Festival: la seconda parte classica") == "")
+_check("« Unforgettable music » → la page qui porte ce nom dans son chemin",
+       page_evenement_depuis_racine("https://www.stresafestival.eu/", "Unforgettable music.")
+       == "https://www.stresafestival.eu/unforgettable-music/")
+_check("une actualité (/news/) n'est jamais la page de l'événement, même avec « concerto »",
+       page_evenement_depuis_racine("https://www.filarmonica.it/", "Concerto della Filarmonica della Scala") == "")
+_check("le site EST l'événement (Douja d'Or ↔ doujador.it) → la racine suffit",
+       page_evenement_depuis_racine("https://www.doujador.it/", "Douja d'Or") == "")
+_check("Montmélian : la page du festival, bout en bout",
+       page_evenement_depuis_racine("https://montmelian.com/", "Festival Photo de Montmélian, 9ème édition")
+       == "https://montmelian.com/festival-photo-de-montmelian/")
 
 # ── est_racine
 _check("racine avec /", est_racine("https://camera.to/"))

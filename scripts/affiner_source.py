@@ -52,25 +52,59 @@ def est_racine(url: str) -> bool:
     return not urlparse(u).path.strip("/")
 
 
+# Mots-outils que _event_tokens laisse passer (> 3 lettres) et qui ne désignent rien :
+# « Concerto della Filarmonica » ne doit pas élire une page parce qu'elle contient « della ».
+_STOP_LOCAL = frozenset((
+    "della", "delle", "dello", "degli", "nella", "nelle", "sulla", "sulle", "dalla", "alla",
+    "avec", "dans", "pour", "sans", "chez", "entre", "vers", "autour", "depuis", "jusqu",
+    "cette", "notre", "votre", "leur", "tout", "tous", "toute", "toutes", "come", "anche",
+))
+# Chemins qui ne sont JAMAIS la page d'un événement : rubrique presse, actualités, appel
+# aux dons, galerie. Le premier dry-run (08/09, 37 propositions) en avait élu une douzaine.
+_PAGE_SKIP = ("press", "presse", "stampa", "comunicat", "news", "notizie", "actualit",
+              "attualita", "blog", "soutenir", "soutien", "sostieni", "sostenere", "donazion",
+              "mecenat", "newsletter", "contact", "gallery", "galleria", "/pro/")
+
+
 def page_evenement_depuis_racine(racine: str, title: str, timeout: int = 10) -> str:
-    """Depuis la racine, la page interne qui parle de CET événement : le meilleur lien
-    portant des mots du titre, dont le TEXTE mentionne au moins un de ces mots. '' sinon
-    (on ne devine pas : la racine reste)."""
-    toks = _event_tokens(title)
+    """Depuis la racine, la page interne qui parle de CET événement. '' si rien de sûr :
+    on ne devine pas, la racine reste.
+
+    LEÇON DU PREMIER DRY-RUN (2026-09-08, 37 pages proposées, une bonne moitié fausses) :
+    quand le site EST celui de l'événement (stresafestival.eu, filarmonica.it, doujador.it),
+    les mots du titre sont dans le NOM DE DOMAINE — donc n'importe quel lien interne
+    « contenait le titre », et la page presse (+5 points dans _programme_links) ou une
+    actualité sans rapport l'emportait. Trois exigences, donc :
+      • les mots du titre comptent dans le CHEMIN de la page, jamais dans l'hôte ;
+      • un chemin presse / actualités / dons / galerie est écarté d'office ;
+      • il faut la moitié des mots restants du titre (au moins 1, au plus 2) dans le
+        chemin — puis le texte de la page doit encore mentionner l'un d'eux."""
+    from math import ceil
+    toks = [t for t in _event_tokens(title) if t not in _STOP_LOCAL]
     if not toks:
         return ""
+    host = _fold(urlparse(racine).netloc)
+    non_host = [t for t in toks if t not in host]
+    if not non_host:
+        return ""                                     # le site EST l'événement : la racine suffit
+    needed = min(2, max(1, ceil(len(non_host) / 2)))
     html = _get_html(racine, timeout)
     if not html:
         return ""
-    for link in _programme_links(html, racine, limit=3, title=title):
-        low = _fold(link)
-        if not any(t in low for t in toks):
-            continue                                  # lien « programme » sans le titre
+    for link in _programme_links(html, racine, limit=5, title=title):
+        if est_racine(link):
+            continue
+        path = _fold(urlparse(link).path)
+        if any(sk in path for sk in _PAGE_SKIP):
+            continue
+        hits = [t for t in non_host if t in path]
+        if len(hits) < needed:
+            continue
         page = _get_html(link, timeout)
         if not page:
             continue
         texte = _fold(_html_to_text(page)[:20000])
-        if any(t in texte for t in toks):
+        if any(t in texte for t in non_host):
             return link
     return ""
 

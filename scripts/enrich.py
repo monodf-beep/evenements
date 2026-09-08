@@ -490,13 +490,25 @@ def _page_evenement(pages: list, title: str) -> str:
     toks = _event_tokens(title)
     if not toks or not pages:
         return ""
+    # Même discipline que scripts/affiner_source.py (leçon de son premier dry-run, 08/09) :
+    # quand le site EST l'événement, son nom est dans le domaine et dans toutes ses pages —
+    # seuls les mots ABSENTS de l'hôte départagent, et une page presse / actualités n'est
+    # jamais la page de l'événement.
+    skip = ("press", "presse", "stampa", "comunicat", "news", "notizie", "actualit", "blog")
     best, best_hits = "", 0
     for p in pages:
         u = (p.get("url") or "").strip()
-        if not u or not urlparse(u).path.strip("/"):
+        pu = urlparse(u)
+        if not u or not pu.path.strip("/"):
             continue                                   # racine : jamais candidate ici
+        path = _fold(pu.path)
+        if any(sk in path for sk in skip):
+            continue
+        non_host = [t for t in toks if t not in _fold(pu.netloc)]
+        if not non_host:
+            continue                                   # le site est l'événement : racine
         hay = _fold((p.get("html") or "")[:60000])
-        hits = sum(1 for t in toks if t in hay)
+        hits = sum(1 for t in non_host if t in hay) + sum(1 for t in non_host if t in path)
         if hits > best_hits:
             best, best_hits = u.split("#")[0], hits
     return best
