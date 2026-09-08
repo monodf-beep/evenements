@@ -966,9 +966,13 @@ def main(argv=None) -> int:
     wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
     auth = (os.getenv("WP_AS_USER", ""), os.getenv("WP_AS_APP_PASSWORD", ""))
 
-    conn.close()
-
+    # 2026-09-08 : la connexion se fermait ICI, avant la boucle — et `marquer_refus`
+    # (plus bas, en --apply) écrivait dans une connexion fermée : `Cannot operate on a
+    # closed database`, constaté en production sur le refus de la fiche 3797. Le lot avait
+    # traduit, mais le compteur de refus n'était pas écrit, donc les refus se rejouaient à
+    # l'identique le lendemain (règle 3). La connexion se ferme désormais après le marquage.
     if args.retranslate:
+        conn.close()
         return _retranslate(args, client, voix)
 
     # PARALLÉLISATION (TRANSLATE_WORKERS, déf. 3) : chaque événement passe par 1-2 appels
@@ -1020,6 +1024,7 @@ def main(argv=None) -> int:
     if args.apply:
         for ev in refus:
             marquer_refus(conn, ev)
+    conn.close()
     log.info("=== Traduction terminée : %d traduit(s), %d ignoré(s), %d refusé(s)%s ===",
              done, skipped, len(refus), "" if args.apply else "  (simulation : rien écrit)")
     if args.apply:
