@@ -237,7 +237,13 @@ SLACK_DIGEST=1
 # ⚠️ REDESCENDRE À 5 quand le digest du lundi affiche « à traduire » proche de zéro : le
 # cap à 10 coûte le double d'appels API par jour, et une fois le stock vidé il tournerait
 # à moitié à vide. La ligne « à traduire » du digest est l'indicateur, pas une impression.
-45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 10 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
+# 2026-09-08 (Franck) : « un article doit avoir sa traduction ». Mesuré ce soir : 52 fiches
+# françaises EN LIGNE et à venir sans jumelle italienne, dont 39 exclues à vie par le seuil
+# par défaut (--min-score 6) — Savoie 18 sur 21, d'où 7 fiches éligibles côté FR contre 2
+# côté IT dans « En évidence ». Une fiche jugée publiable en français mérite son italien :
+# --min-score 1. Rattrapage : 39 traductions une fois, puis le flux. Redescendre le cap à 5
+# reste valable une fois la ligne « à traduire » du digest proche de zéro.
+45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 10 --min-score 1 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
 # (Le rafraîchissement du tri « Ça vaut le déplacement » tourne DANS la ligne de 10h45
 # ci-dessus, enchaîné après la traduction — voir le commentaire de cette ligne. Son
 # journal reste logs/refresh_deplacement.log, le chien de garde ne change pas.)

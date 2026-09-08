@@ -30,7 +30,15 @@ import re
 # un objectif de qualité — 120 mots reste maigre — mais un plancher de décence, choisi
 # pour arrêter l'indéfendable sans bloquer la moitié du flux. Réglable par
 # PUBLISH_MIN_MOTS pour pouvoir le remonter au fur et à mesure que le stock s'améliore.
-MIN_MOTS_DEFAUT = 120
+#
+# 2026-09-08 (Franck) : 120 → 40. Mesuré ce soir sur le dry-run du publieur : QUINZE fiches
+# rédigées, complètes et approuvées étaient retenues « faute de substance » à 47, 83, 86,
+# 111 mots — des brèves produites par le mode court de la rédaction (petit événement,
+# matière mince), et pas des fiches cassées. Franck : « publier les seuils 3, 4, 5 en une
+# ligne pour au moins que les gens soient informés ». Le plancher redevient ce qu'il dit
+# être — un arrêt de l'indéfendable (une phrase, un titre nu) — et la bande maigre
+# (BANDE_MAIGRE) continue de compter la traîne pour qu'elle reste sous les yeux.
+MIN_MOTS_DEFAUT = 40
 
 # Bande de surveillance : au-dessus du plancher, mais toujours maigre. On ne bloque pas,
 # on COMPTE, pour que la traîne reste sous les yeux au lieu de dormir en base.

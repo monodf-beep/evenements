@@ -41,6 +41,12 @@ def article(mots: int) -> str:
             "<h3>Programme</h3><ul><li>19h ouverture</li></ul>")
 
 
+def article_exact(mots: int) -> str:
+    """HTML dont le compte de mots est EXACTEMENT `mots` (article() ajoute chapô et
+    programme, sept mots de plus : inutilisable pour éprouver la frontière)."""
+    return "<p>" + " ".join(f"mot{i}" for i in range(mots)) + "</p>"
+
+
 echecs = 0
 
 
@@ -84,16 +90,25 @@ def retenue(ev):
     return n < plancher and not (ev.get("wp_post_id_as") or 0)
 
 
+# « Maigre » se mesure PAR RAPPORT AU PLANCHER, pas en mots absolus : le défaut est passé de
+# 120 à 40 le 2026-09-08, et une fixture écrite en « article(40) » serait devenue fausse sans
+# que le portillon ait changé. Les deux cas frontière (plancher - 1 retenu, plancher passé)
+# sont ceux qui prouvent le comparateur.
+maigre = max(1, plancher // 2)
 verifier("création maigre → RETENUE",
-         retenue({"id": 1, "_html": article(40)}) is True)
+         retenue({"id": 1, "_html": article(maigre)}) is True)
+verifier("frontière : plancher - 1 mot → RETENUE",
+         retenue({"id": 11, "_html": article_exact(plancher - 1)}) is True)
+verifier("frontière : exactement le plancher → passe",
+         retenue({"id": 12, "_html": article_exact(plancher)}) is False)
 verifier("création fournie → passe",
          retenue({"id": 2, "_html": article(400)}) is False)
 verifier("fiche maigre DÉJÀ EN LIGNE → passe (sinon on fige une version plus ancienne)",
-         retenue({"id": 3, "_html": article(40), "wp_post_id_as": 6352}) is False)
+         retenue({"id": 3, "_html": article(maigre), "wp_post_id_as": 6352}) is False)
 verifier("wp_post_id_as à 0 vaut « pas en ligne »",
-         retenue({"id": 4, "_html": article(40), "wp_post_id_as": 0}) is True)
+         retenue({"id": 4, "_html": article(maigre), "wp_post_id_as": 0}) is True)
 verifier("wp_post_id_as à None vaut « pas en ligne »",
-         retenue({"id": 5, "_html": article(40), "wp_post_id_as": None}) is True)
+         retenue({"id": 5, "_html": article(maigre), "wp_post_id_as": None}) is True)
 
 print("\n──── bande de surveillance ────")
 verifier("la bande est au-dessus du plancher",

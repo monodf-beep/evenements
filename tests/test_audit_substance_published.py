@@ -20,6 +20,11 @@ sys.path.insert(0, str(ROOT))
 
 tmp = Path(tempfile.mkdtemp()) / "fixture.db"
 os.environ["DB_PATH"] = str(tmp)
+# Le jeu de données ci-dessous (40 / 60 / 180 / 400 mots) a été construit pour un plancher de
+# 120. Le plancher PAR DÉFAUT est descendu à 40 le 2026-09-08 (utils/substance.py) ; ce que
+# cette fixture éprouve, c'est le CLASSEMENT de l'audit par rapport au plancher courant, pas
+# la valeur du défaut (couverte par test_portillon_substance). On fixe donc 120 ici.
+os.environ["PUBLISH_MIN_MOTS"] = "120"
 
 from scripts.scraper_events import init_db  # noqa: E402
 import scripts.audit_substance_published as audit  # noqa: E402
