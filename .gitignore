@@ -32,3 +32,6 @@ data/gsc-credentials.json
 *gsc-credentials*.json
 data/oauth-client.json
 data/gsc-oauth-token.json
+
+# Copies de travail isolées créées par les agents Claude Code (une par agent) : jamais versionnées.
+.claude/worktrees/

@@ -75,6 +75,15 @@ SLACK_DIGEST=1
 # tourne jamais. Trouvé le jour même, en cherchant à répondre à « comment tu vas être
 # autonome sans que je sois là ? ».
 47 8 * * * cd /root/evenements && .venv/bin/python -m scripts.dates_depuis_mail --apply >> logs/dates_mail.log 2>&1
+# Lieu, ville et IMAGE des fiches venues d'un mail (2026-09-08), juste après leur date.
+# Mesuré ce jour-là : une vingtaine des 108 fiches approuvées, à venir et incomplètes
+# viennent d'une newsletter sans aucun lien d'article (« gmail:… ») — aucune page à lire,
+# la seule matière est le mail. Le lieu et la ville sont CONFIRMÉS dans l'annonce (lieux
+# connus du registre, communes du périmètre — jamais devinés) ; l'image est celle du BLOC
+# HTML de l'annonce, jamais la première du mail. gmail_collect garde désormais le HTML
+# (table gmail_html) ; les mails plus anciens sont relus une fois dans Gmail, puis
+# mémorisés. Aucun appel Anthropic. Dry-run à la main : sans --apply.
+48 8 * * * cd /root/evenements && .venv/bin/python -m scripts.completer_depuis_mail --apply >> logs/completer_mail.log 2>&1
 # Moisson officielle : UNE page lue, TOUS ses champs récoltés — date, lieu, ville, image,
 # et les infos pratiques (tarif, horaires, réservation, accès) qui remplissaient la file
 # « À vérifier ». Sans modèle. Elle n'avait jamais été planifiée depuis sa création.
@@ -245,7 +254,13 @@ SLACK_DIGEST=1
 # ⚠️ REDESCENDRE À 5 quand le digest du lundi affiche « à traduire » proche de zéro : le
 # cap à 10 coûte le double d'appels API par jour, et une fois le stock vidé il tournerait
 # à moitié à vide. La ligne « à traduire » du digest est l'indicateur, pas une impression.
-45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 10 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
+# 2026-09-08 (Franck) : « un article doit avoir sa traduction ». Mesuré ce soir : 52 fiches
+# françaises EN LIGNE et à venir sans jumelle italienne, dont 39 exclues à vie par le seuil
+# par défaut (--min-score 6) — Savoie 18 sur 21, d'où 7 fiches éligibles côté FR contre 2
+# côté IT dans « En évidence ». Une fiche jugée publiable en français mérite son italien :
+# --min-score 1. Rattrapage : 39 traductions une fois, puis le flux. Redescendre le cap à 5
+# reste valable une fois la ligne « à traduire » du digest proche de zéro.
+45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 10 --min-score 1 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
 # (Le rafraîchissement du tri « Ça vaut le déplacement » tourne DANS la ligne de 10h45
 # ci-dessus, enchaîné après la traduction — voir le commentaire de cette ligne. Son
 # journal reste logs/refresh_deplacement.log, le chien de garde ne change pas.)

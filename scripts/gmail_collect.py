@@ -177,6 +177,24 @@ def _walk(payload: dict):
         yield from _walk(part)
 
 
+def html_du_message(msg: dict) -> str:
+    """La partie text/html du message, BRUTE — "" s'il n'y en a pas.
+
+    Ajouté le 2026-09-08. `parse_message` ne garde du HTML que le texte (liens compris,
+    images exclues) : les <img> disparaissent au strip, et avec elles la seule photo qu'une
+    fiche « gmail:… » sans lien d'article pourra jamais avoir. Ce n'est pas `parse_message`
+    qui change — son texte sert à l'extraction et aux dates — c'est une SECONDE lecture,
+    pour `scripts/completer_depuis_mail.py`, qui remonte l'image du BLOC de l'annonce
+    (utils/mail_html.py), jamais la première image du mail : l'incident des 40 fiches
+    portant le même en-tête Mailinblue (cf. parse_message) venait de là, pas du HTML."""
+    for part in _walk(msg.get("payload", {})):
+        if part.get("mimeType", "") == "text/html":
+            data = (part.get("body") or {}).get("data", "")
+            if data:
+                return _b64(data)
+    return ""
+
+
 def parse_message(msg: dict) -> dict:
     """Extrait expéditeur, objet, date et corps texte d'un message Gmail.
 
@@ -280,6 +298,47 @@ def ensure_colonne_corps(conn) -> None:
     if "mail_corps" not in cols:
         conn.execute("ALTER TABLE events_raw ADD COLUMN mail_corps TEXT")
         conn.commit()
+
+
+# Au-delà, ce n'est plus une newsletter (une lettre HTML pèse 30 à 200 Ko).
+HTML_MAX = 500_000
+
+
+def ensure_table_html(conn: sqlite3.Connection) -> None:
+    """`gmail_html` : le HTML d'un mail, UNE fois par message — pas par fiche.
+
+    Ajouté le 2026-09-08, en même temps que `html_du_message`. `mail_corps` est par fiche
+    (six ateliers de Chambéry = six copies du même texte de 6 Ko, acceptable) ; le HTML
+    fait dix à trente fois plus, et un mail porte souvent dix fiches : on le range dans une
+    table à lui, clé = message_id, comme `gmail_seen`. Sans cette mémoire, chaque passage
+    de `completer_depuis_mail` retournerait chercher le mail dans Gmail."""
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS gmail_html (
+        message_id  TEXT PRIMARY KEY,
+        html        TEXT,
+        saved_at    TEXT DEFAULT (datetime('now'))
+    )
+    """)
+    conn.commit()
+
+
+def memoriser_html(conn: sqlite3.Connection, message_id: str, html: str) -> bool:
+    """Garde le HTML d'un message (idempotent : n'écrase pas). Vrai si une ligne a été
+    écrite."""
+    if not message_id or not (html or "").strip():
+        return False
+    ensure_table_html(conn)
+    cur = conn.execute("INSERT OR IGNORE INTO gmail_html (message_id, html) VALUES (?, ?)",
+                       (message_id, html[:HTML_MAX]))
+    return bool(cur.rowcount)
+
+
+def html_memorise(conn: sqlite3.Connection, message_id: str) -> str:
+    """Le HTML gardé pour ce message, "" si on ne l'a pas (mail collecté avant le 08/09)."""
+    ensure_table_html(conn)
+    row = conn.execute("SELECT html FROM gmail_html WHERE message_id = ?",
+                       (message_id,)).fetchone()
+    return (row[0] or "") if row else ""
 
 
 def insert_events(conn: sqlite3.Connection, events: list, email: dict,
@@ -409,6 +468,12 @@ def main(argv=None) -> int:
             break
         territoire = match_territory(email.get("sender", ""), whitelist)
         n = insert_events(conn, events, email, territoire)
+        # LE HTML EST GARDÉ AVEC LES FICHES QU'IL A PRODUITES (2026-09-08), pour que leur
+        # image puisse être relue dans le bloc de leur annonce (completer_depuis_mail).
+        # Seulement quand une fiche est née : un mail sans événement n'a pas d'image à
+        # donner. Voir ensure_table_html pour le pourquoi d'une table à part.
+        if n:
+            memoriser_html(conn, mid, html_du_message(raw))
         mark_seen(conn, mid)
         conn.commit()
         total += n

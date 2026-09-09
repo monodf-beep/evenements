@@ -685,3 +685,41 @@ réparer : c'est l'incident du 8 au 10 août. Code Snippets, lui, désactive tou
 snippet fatal. Le code a été contrôlé trois fois avant d'être posé : `php -l` local
 (PHP 8.4.19), `tests/test_php_syntax.py`, puis `token_get_all(..., TOKEN_PARSE)`
 côté serveur avant l'insertion — et le md5 du transfert a été comparé.
+
+---
+
+## `completer_depuis_mail` — le cas qui, volontairement, ne pose AUCUN état (2026-09-08)
+
+`scripts/completer_depuis_mail.py` relit le mail d'origine des fiches « gmail:… » pour leur
+lieu, leur ville et leur image (cron 08:48). Une fiche que le mail ne renseigne pas **n'est
+marquée d'aucune façon** : ni statut, ni `venue_source='none'`, ni délai de carence. Elle
+reste dans la file « À compléter » et repasse ici chaque matin. Voici pourquoi ce n'est pas
+le « refus qui se rejoue sur la même entrée » que la règle 3 interdit, et où ça s'arrête.
+
+**Qui rouvre ?** Le REGISTRE, pas le script. Le lieu et la ville ne sont jamais extraits du
+mail, seulement confirmés à partir de ce qu'on tient déjà : `utils.lieux.registre()` (notes
+de savoir, `config/lieux_villes.json`), les lieux par défaut de `config/sources.txt`, les
+communes du périmètre, et les lieux de nos propres fiches approuvées. Chacun de ces
+gisements grandit indépendamment du script ; le passage suivant lit une matière identique
+avec un registre plus grand, et c'est ça qui donne un AUTRE résultat. Le jour où Franck
+tranche « MAO → Torino » dans `lieux_villes.json`, les fiches 5269 et 5271 sortent le
+lendemain matin sans qu'il tape rien d'autre.
+
+**Où ça ne tient PAS, et c'est écrit :** l'image. Le HTML d'un mail ne change jamais ; une
+candidate refusée pour ses dimensions hier le sera demain, au prix d'un téléchargement
+borné (`MAX_MESURES = 3` par fiche) à chaque passage. C'est du réseau, pas de l'API, et le
+volume est celui de la vingtaine de fiches concernées — assumé pour l'instant. Si ce
+nombre grossit, la mémoire à brancher existe déjà : `utils.tentatives.enregistrer(…,
+'url_image', 'page_fiche', 'muet')`, qui a précisément un rouvreur (`a_rouvrir`, 30 jours).
+
+**Où se voit le nombre de fiches concernées ?** Dans la sortie du script lui-même, à chaque
+passage : « N fiche(s) « gmail: » approuvées, encore devant nous, à qui il manque lieu,
+ville ou image », puis pour chaque champ « X trouvé(e)s sur Y fiche(s) qui en manquent »,
+et la liste des motifs pour le reste. Après `--apply`, le recompte est fait en base sur le
+périmètre de la pastille du back-office (`lister_a_completer._clause`), avec la part venue
+d'un mail à côté.
+
+**Une seule mémoire posée, et ce n'est pas un état :** la table `gmail_html` (le HTML d'un
+message, une ligne par `message_id`) et le remplissage de `mail_corps` quand il manquait.
+Ce sont des copies de la matière, pas des verdicts : rien ne s'en déduit sur la fiche, et
+leur absence se répare toute seule au passage suivant (relecture dans Gmail).

@@ -239,6 +239,40 @@ def toponyme_du_lieu(lieu: str) -> str:
     return trouve
 
 
+def ville_du_domaine(url: str) -> str:
+    """La commune dont le DOMAINE porte le nom (« comune.biella.it » → « Biella »). "" sinon.
+
+    Ajouté le 2026-09-08 pour scripts/venues.py : une vingtaine de pages MUNICIPALES
+    (bct.comune.torino.it, comune.biella.it, comune.casale-monferrato.al.it, ugine.com,
+    villefranche-sur-mer.fr) écrivent le lieu dans un champ « Dove »/« Luogo » sans jamais
+    écrire la ville — pour la mairie, elle va de soi. Elle est pourtant dans l'adresse du
+    site, en toutes lettres.
+
+    MÊME DOCTRINE QUE LE RESTE DU MODULE : on ne devine pas, on CONFRONTE à un fait connu.
+    Une étiquette du domaine (entre deux points, tirets pliés en espaces) doit être ÉGALE
+    au nom d'une commune de nos registres — « torinoclick » n'est pas « torino », et le
+    nom d'un office de tourisme « chambery-tourisme » ne l'est pas non plus. Les noms
+    ambigus et les étiquettes de moins de quatre lettres (« bct », « al », « it ») sont
+    écartés, comme dans `toponyme_du_lieu`.
+
+    Ce que ça ne dit PAS : que l'événement se passe dans cette commune. La mairie de
+    Turin annonce une fête à Venaria (bct.comune.torino.it, « Festa della Nascita 2026 »).
+    L'appelant ne s'en sert donc que quand la page a livré un LIEU dans un champ structuré
+    et qu'aucune adresse n'a nommé une autre commune — jamais seul."""
+    hote = re.sub(r"^[a-z][a-z0-9+.-]*://", "", (url or "").strip().lower())
+    hote = hote.split("/", 1)[0].split(":", 1)[0]
+    if not hote:
+        return ""
+    noms, ambigus = communes()
+    for etiquette in hote.split("."):
+        p = plie(etiquette)
+        if len(p) < 4 or p in ambigus:
+            continue
+        if p in noms:
+            return noms[p]
+    return ""
+
+
 def confronte(lieu: str, ville: str) -> tuple[str, str, str]:
     """(verdict, phrase lisible, ville attendue). Verdict "" = rien à dire.
 

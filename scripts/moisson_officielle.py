@@ -59,10 +59,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sqlite3
 import sys
+import unicodedata
 from datetime import date
+from html import unescape
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -70,6 +74,7 @@ from utils.logger import get_logger  # noqa: E402
 from utils.images import fetch_og_image, page_image_candidates, remote_dims, looks_like_banner_shape  # noqa: E402
 from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
 from utils.radar import source_officielle  # noqa: E402
+from utils.traqueurs import est_traqueur, sans_parametres_de_suivi  # noqa: E402
 from utils import jsonld  # noqa: E402
 from utils import infos_pratiques  # noqa: E402
 import json  # noqa: E402
@@ -125,23 +130,148 @@ def _diagnostic(html: str) -> list[str]:
 # Services de traçage de lien employés par les newsletters. Ce ne sont pas des sources :
 # ils ne publient rien, ils comptent les clics et renvoient ailleurs. Les juger sur leur
 # domaine revient à juger une enveloppe au lieu de la lettre.
-_TRAQUEURS = ("sendibm1.com", "sendibm2.com", "sendibm3.com", "musvc1.net", "musvc2.net",
-              "musvc3.net", "musvc4.net", "musvc5.net", "musvc6.net", "marketingcloud",
-              "list-manage.com", "sendgrid.net", "mailchi.mp", "hubspotlinks.com",
-              "brevo.com", "sibautomation.com", "r.a.d.sendibm1.com", "click.",
-              # emailsp.com (MailUp) trouvé au run suivant : un traqueur peut rediriger
-              # vers UN AUTRE TRAQUEUR — tobe.musvc6.net → a1d1i9.emailsp.com. Cette
-              # liste est un refus par nom, donc elle sera toujours en retard d'un
-              # service. C'est le même défaut que source_officielle, et il est ici
-              # ASSUMÉ : le coût d'un oubli se limite à une adresse inutile en base,
-              # que la passe suivante refusera d'exploiter.
-              "emailsp.com", "mailup.", "sendinblue.com", "acumbamail", "mailjet.com",
-              "sg-links.", "awstrack.me", "clicks.")
+#
+# LA LISTE A QUITTÉ CE FICHIER LE 2026-09-08. Elle vivait ici en double de
+# scripts/publisher_as._TRACKING_HOSTS, et les deux divergeaient : celle-ci ignorait le
+# motif MailUp `/e/tr` (donc tr.comune.torino.it et go.fondazionetorinomusei.it, des
+# routeurs posés sur le domaine du client), l'autre ignorait sendibm1, emailsp, awstrack.
+# Mesuré ce soir-là sur les fiches approuvées et incomplètes : une vingtaine avaient pour
+# seule adresse un lien de traçage, et la moitié des routeurs rencontrés (Brevo en marque
+# blanche, Postmark, OpenEMM, Sequar, le compteur du département 06) n'étaient reconnus
+# par AUCUNE des deux listes. Un seul détecteur désormais : utils/traqueurs.py.
+_est_traqueur = est_traqueur
+
+# Un lien de traçage ne redirige pas toujours en HTTP : certains rendent une PAGE DE
+# REBOND (meta refresh, `location.href` en JavaScript, ou une page « cliquez ici si vous
+# n'êtes pas redirigé » avec un seul lien). requests ne suit que les redirections HTTP,
+# donc `r.url` valait l'adresse de départ et la moisson concluait « traqueur mort ».
+# On suit ces rebonds, à trois conditions : profondeur bornée, jamais la même adresse deux
+# fois, et — pour le JavaScript et le lien unique, qui existent aussi sur de vraies pages
+# (sélecteur de langue, bandeau cookies) — seulement sur une page qui n'a presque rien
+# d'autre à dire. Une page riche qui contient `location.href` dans un script est une page
+# à moissonner, pas un rebond : c'est le cas frontière de la fixture.
+_PROFONDEUR_REBONDS = 3
+_REBOND_TEXTE_MAX = 400      # caractères de texte visible au-delà desquels ce n'est plus un rebond
+_META_REFRESH = re.compile(r"<meta\b[^>]*http-equiv\s*=\s*[\"']?refresh[\"']?[^>]*>", re.I)
+_JS_LOCATION = re.compile(
+    r"(?:window\.|document\.|top\.|self\.)?location(?:\.href|\.replace|\.assign)?"
+    r"\s*(?:=|\()\s*[\"']([^\"']+)[\"']", re.I)
+_HREFS = re.compile(r"<a\b[^>]+href\s*=\s*[\"']([^\"'#]+)", re.I)
 
 
-def _est_traqueur(url: str) -> bool:
-    u = (url or "").lower()
-    return any(t in u for t in _TRAQUEURS)
+def _destination_rebond(html: str, url: str) -> str:
+    """L'adresse vers laquelle une PAGE DE REBOND envoie le navigateur, '' si la page n'en
+    est pas une. Adresse absolue, résolue par rapport à `url`."""
+    h = html or ""
+    m = _META_REFRESH.search(h)
+    if m:
+        c = re.search(r"content\s*=\s*[\"']([^\"']*)", m.group(0), re.I)
+        u = re.search(r"url\s*=\s*[\"']?([^\"'>;\s]+)", c.group(1), re.I) if c else None
+        if u:
+            cible = urljoin(url, unescape(u.group(1)))
+            if cible.startswith(("http://", "https://")) and cible != url:
+                return cible
+    # Le reste ne se lit que sur une page qui n'a RIEN d'autre à dire.
+    if len(infos_pratiques._texte_visible(h)) > _REBOND_TEXTE_MAX:
+        return ""
+    m = _JS_LOCATION.search(h)
+    if m:
+        cible = urljoin(url, unescape(m.group(1)))
+        if cible.startswith(("http://", "https://")) and cible != url:
+            return cible
+    hote = urlparse(url).netloc.lower()
+    sortants = {urljoin(url, unescape(l)) for l in _HREFS.findall(h)}
+    sortants = {l for l in sortants
+                if l.startswith(("http://", "https://")) and urlparse(l).netloc.lower() != hote}
+    if len(sortants) == 1:
+        return sortants.pop()
+    return ""
+
+
+def _telecharger(url: str):
+    """(réponse, adresse finale, nombre de rebonds non-HTTP suivis). Réponse None si rien
+    n'a répondu. Les redirections HTTP sont suivies par `_robust_get` ; ici on ajoute les
+    rebonds que le protocole ne voit pas, dans la limite de `_PROFONDEUR_REBONDS`.
+    Un rebond vers une adresse qui ne répond pas laisse la page de rebond en main : c'est
+    l'appelant qui la jugera (même hôte qu'au départ → traqueur sans destination)."""
+    r = _robust_get(url)
+    courante = url
+    sauts = 0
+    vues = {url}
+    while r is not None and sauts < _PROFONDEUR_REBONDS:
+        courante = getattr(r, "url", courante) or courante
+        vues.add(courante)
+        suite = _destination_rebond(r.text, courante)
+        if not suite or suite in vues:
+            break
+        r2 = _robust_get(suite)
+        sauts += 1
+        if r2 is None:
+            break
+        r, courante = r2, suite
+    if r is not None:
+        courante = getattr(r, "url", courante) or courante
+    return r, courante, sauts
+
+
+def _plie(s: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", (s or "").lower())
+                   if not unicodedata.combining(c))
+
+
+def _parle_du_titre(html: str, titre: str, url: str = "") -> bool:
+    """La page mentionne-t-elle au moins un mot significatif du titre (≥ 4 lettres,
+    accents pliés, ABSENT du nom d'hôte) ? Vrai aussi quand le titre n'a aucun mot de ce
+    genre — on ne refuse pas sur une absence de critère.
+
+    Pourquoi ce test, et seulement à l'ARRIVÉE d'un traqueur : mesuré le 2026-09-08,
+    `enteturismolmr.sequar.com/r/6pf/m/<n'importe quoi>` redirige en 301 vers la page de
+    repli de la campagne (comune.asti.it/vivere-comune/eventi) — un hôte officiel, un
+    chemin non vide, aucun rapport avec la fiche. Sans ce test, un jeton périmé ferait
+    mémoriser la page de repli comme page officielle de l'événement, et `_url_telechargeable`
+    la lirait en premier à chaque passage : un cul-de-sac (règle 3).
+
+    Les mots déjà présents dans l'HÔTE ne comptent pas : « Palio di Asti » sur comune.asti.it,
+    c'est « asti » partout et « palio » nulle part — passé sur la page réelle le 08/09, le
+    test sans cette clause acceptait la liste des événements d'Asti. Même discipline que
+    scripts/enrich.py:_page_evenement, non importé ici parce que ce module tire anthropic."""
+    hote = _plie(urlparse(url).netloc)
+    mots = [w for w in re.findall(r"[a-z0-9]+", _plie(titre))
+            if len(w) >= 4 and not w.isdigit() and w not in hote]
+    if not mots:
+        return True
+    texte = _plie(infos_pratiques._texte_visible(html))
+    return any(w in texte for w in mots)
+
+
+def _jeton_brouille(url: str) -> str:
+    """La même adresse avec son DERNIER groupe de lettres/chiffres remplacé par des zéros
+    (ou des uns s'il n'y avait que des zéros) : un jeton qui ne peut pas être le bon."""
+    m = None
+    for m in re.finditer(r"[A-Za-z0-9]+", url):
+        pass
+    if not m or m.end() <= len("https://"):
+        return url
+    faux = ("1" if set(m.group(0)) == {"0"} else "0") * len(m.group(0))
+    return url[:m.start()] + faux + url[m.end():]
+
+
+def _page_de_repli(depart: str, finale: str) -> bool:
+    """L'arrivée dépend-elle du jeton ? Si la MÊME adresse finale répond à un jeton
+    brouillé, le routeur n'a pas résolu notre lien : il a servi la page de repli de la
+    campagne, quelle que soit la fiche.
+
+    C'est une MESURE, pas une heuristique — et elle tranche là où le titre ne peut pas :
+    vu le 08/09, la liste des événements d'Asti mentionnait bien le Palio, et la moisson y
+    a pris les horaires d'un spectacle de théâtre du 8 novembre pour une course de chevaux
+    de septembre. Une requête de plus, seulement quand un traqueur a abouti quelque part."""
+    brouille = _jeton_brouille(depart)
+    if brouille == depart:
+        return False
+    r2, finale2, _ = _telecharger(brouille)
+    if r2 is None:
+        return False
+    return sans_parametres_de_suivi(finale2) == sans_parametres_de_suivi(finale)
 
 
 def _url_telechargeable(ev: dict) -> str:
@@ -204,45 +334,84 @@ def _a_moissonner(conn, today: str, cap: int) -> list[dict]:
     return [ev for ev in rows if _url_telechargeable(ev)][:cap]
 
 
-def _recolte(ev: dict, marqueurs=None) -> dict:
+def _recolte(ev: dict, marqueurs=None, morts: list | None = None) -> dict:
     """Champs VIDES que la page permet de remplir. {} si la page est illisible.
-    `marqueurs` (Counter, optionnel) : reçoit ce que porte une page qui n'a rien donné."""
-    url = _url_telechargeable(ev)
-    r = _robust_get(url)
+    `marqueurs` (Counter, optionnel) : reçoit ce que porte une page qui n'a rien donné.
+    `morts` (liste, optionnelle) : reçoit (id, adresse) des liens de traçage SANS
+    destination — ils sortent de la récolte, ils doivent donc entrer dans le bilan."""
+    depart = _url_telechargeable(ev)
+    depart_traqueur = _est_traqueur(depart)
+    r, finale, _sauts = _telecharger(depart)
     if r is None:
         if marqueurs is not None:
             marqueurs["PAGE INJOIGNABLE"] += 1
+        if depart_traqueur and morts is not None:
+            morts.append((ev.get("id"), depart))
         return {}
     # LE DOMAINE D'ARRIVÉE FAIT FOI. Pour un lien de traçage, c'est ici — et seulement
     # ici — qu'on sait où il menait. Si la destination n'est pas une source officielle,
     # on ne récolte RIEN : ni date, ni image, ni tarif. Le contrat radar tient.
-    finale = getattr(r, "url", url) or url
-    # UN TRAQUEUR RESTE UN TRAQUEUR, MÊME À L'ARRIVÉE. Vérifié en production quinze
-    # minutes après avoir posé ce contrôle : il laissait passer 8 fiches sur 12 et allait
-    # inscrire « https://lql1t.r.a.d.sendibm1.com/… » comme page officielle de la Reggia
-    # di Venaria. Ces liens ne redirigent pas toujours en HTTP — certains rendent une page
-    # de rebond, d'autres sont périmés — donc `r.url` peut valoir l'adresse de départ.
     #
-    # Et `source_officielle` ne l'a pas arrêté parce que c'est une liste de REFUS : un
-    # domaine INCONNU est accepté. Je l'avais écrit une heure plus tôt dans la fixture,
-    # sans en tirer la conséquence ici. Le refus doit donc être EXPLICITE.
+    # UN TRAQUEUR RESTE UN TRAQUEUR, MÊME À L'ARRIVÉE. Vérifié en production quinze
+    # minutes après avoir posé ce contrôle (11/08) : il laissait passer 8 fiches sur 12 et
+    # allait inscrire « https://lql1t.r.a.d.sendibm1.com/… » comme page officielle de la
+    # Reggia di Venaria. ET L'HÔTE DOIT AVOIR CHANGÉ — invariant qui ne dépend d'aucune
+    # liste : si l'on atterrit sur le même hôte qu'au départ, aucune résolution n'a eu
+    # lieu. Ça rattrape les routeurs que utils/traqueurs.py ne connaît pas encore, tant
+    # qu'ils ne renvoient pas vers un confrère.
+    #
+    # Ces deux cas — arrivée sur un traqueur, ou sur l'hôte de départ — sont comptés À
+    # PART, avec l'identifiant de la fiche : mesuré le 2026-09-08, dix liens sur douze
+    # rendaient la même page qu'un jeton volontairement faux (Brevo « Page not found »,
+    # MailUp « Oops! », MailUp court 200 vide, departement06 « Lien invalide »). Ce ne sont
+    # pas des pages muettes, ce sont des adresses mortes ; les fondre dans « sans donnée
+    # exploitable » cachait vingt fiches que rien ne pouvait plus moissonner.
+    change_d_hote = urlparse(depart).netloc.lower() != urlparse(finale).netloc.lower()
+    if depart_traqueur and (_est_traqueur(finale) or not change_d_hote):
+        if marqueurs is not None:
+            marqueurs["TRAQUEUR SANS DESTINATION (périmé, tronqué ou rebond non résolu)"] += 1
+        if morts is not None:
+            morts.append((ev.get("id"), depart))
+        return {}
+    # `source_officielle` est une liste de REFUS : un domaine INCONNU est accepté. Le refus
+    # d'un traqueur à l'arrivée doit donc rester EXPLICITE (cas du départ non traqueur).
     if _est_traqueur(finale) or not source_officielle(finale):
         if marqueurs is not None:
             marqueurs["DESTINATION NON OFFICIELLE"] += 1
         return {}
     html = r.text
+    # LA DESTINATION D'UN TRAQUEUR DOIT PARLER DE L'ÉVÉNEMENT. Sequar renvoie la page de
+    # repli de la campagne pour n'importe quel jeton (mesuré le 08/09 : un identifiant
+    # bidon arrive sur comune.asti.it/vivere-comune/eventi, hôte officiel, chemin non vide).
+    # Une page qui ne mentionne aucun mot du titre n'est pas la page de la fiche : on n'en
+    # récolte rien et surtout on ne la mémorise pas — sinon `_url_telechargeable` la lirait
+    # en premier à chaque passage, pour toujours.
+    if depart_traqueur and not _parle_du_titre(html, ev.get("title") or "", finale):
+        if marqueurs is not None:
+            marqueurs["DESTINATION SANS RAPPORT AVEC LE TITRE (page de repli de la campagne)"] += 1
+        if morts is not None:
+            morts.append((ev.get("id"), depart))
+        return {}
+    # Et quand la page PARLE de l'événement, il reste à savoir si c'est NOTRE lien qui y a
+    # mené, ou si le routeur y envoie tout le monde : un jeton brouillé qui arrive au même
+    # endroit répond non. Une requête de plus, une page de liste évitée en url_officiel et
+    # des infos pratiques d'un autre événement évitées sur la fiche.
+    if depart_traqueur and _page_de_repli(depart, finale):
+        if marqueurs is not None:
+            marqueurs["PAGE DE REPLI DE LA CAMPAGNE (même arrivée avec un jeton brouillé)"] += 1
+        if morts is not None:
+            morts.append((ev.get("id"), depart))
+        return {}
     trouve: dict = {}
     # La vraie adresse, une fois connue, mérite d'être gardée : la prochaine passe n'aura
-    # plus à traverser le traqueur, et l'enrichissement disposera enfin d'une page.
-    # ET L'HÔTE DOIT AVOIR CHANGÉ. Invariant qui ne dépend d'aucune liste : si l'on
-    # atterrit sur le même hôte qu'au départ, aucune résolution n'a eu lieu — la page est
-    # un rebond, pas la page de l'organisateur. Ça rattrape les traqueurs que la liste
-    # ci-dessus ne connaît pas encore, tant qu'ils ne renvoient pas vers un confrère.
-    from urllib.parse import urlparse as _up
-    change_d_hote = _up(url).netloc.lower() != _up(finale).netloc.lower()
-    if (_est_traqueur(url) and not _est_traqueur(finale) and change_d_hote
-            and not (ev.get("url_officiel") or "").strip()):
-        trouve["url_officiel"] = finale
+    # plus à traverser le traqueur, et l'enrichissement disposera enfin d'une page. Sans ses
+    # paramètres de campagne (?utm_source=…), qui changent à chaque lettre.
+    if depart_traqueur and not (ev.get("url_officiel") or "").strip():
+        trouve["url_officiel"] = sans_parametres_de_suivi(finale)
+    # Tout ce qui suit — image, hôte, page d'événement — se juge sur la page où l'on EST,
+    # pas sur l'adresse du routeur : `fetch_og_image(depart)` retéléchargeait le traqueur,
+    # et ne pouvait pas traverser une page de rebond.
+    url = finale
 
     # ── 1. LES DONNÉES STRUCTURÉES, LUES POUR DE BON ────────────────────────────
     # « Implacable au niveau de la collecte des informations officielles AVANT de passer
@@ -432,13 +601,17 @@ def main(argv=None) -> int:
     # « rien tenté » envoie chercher un bug là où il n'y a que du vide.
     candidats_debut = trouves_debut = 0
     marqueurs_vides = Counter()
+    # Les liens de traçage SANS destination, toujours comptés — pas seulement en
+    # --diagnostic : un état qui sort une fiche de la récolte doit entrer dans le bilan
+    # (règle 6), sinon on le découvre des semaines plus tard. Vingt fiches, le 08/09.
+    morts: list[tuple] = []
     for ev in cibles:
         # Le cas s'est-il seulement présenté ? Compté AVANT la récolte, sur l'état de la
         # fiche : une fin connue, pas de début. C'est la seule façon de lire le zéro.
         candidat = (not (ev.get("date_event_start") or "").strip()
                     and bool((ev.get("date_event_end") or "").strip()))
         candidats_debut += candidat
-        trouve = _recolte(ev, marqueurs_vides if args.diagnostic else None)
+        trouve = _recolte(ev, marqueurs_vides if args.diagnostic else None, morts)
         trouves_debut += candidat and "date_event_start" in trouve
         lues += 1
         if not trouve:
@@ -473,7 +646,19 @@ def main(argv=None) -> int:
 
     print(f"\n{lues} page(s) lue(s), dont {vides} sans aucune donnée exploitable.")
     print(f"Début corroboré par une fin déjà connue : {candidats_debut} fiche(s) "
-          f"étaient dans ce cas, {trouves_debut} y ont gagné une date de début.\n")
+          f"étaient dans ce cas, {trouves_debut} y ont gagné une date de début.")
+    if morts:
+        # Périmètre écrit à côté du nombre : ces fiches sont COMPRISES dans « sans aucune
+        # donnée exploitable » ci-dessus. La longueur de l'adresse est affichée exprès :
+        # le 08/09, les douze adresses examinées faisaient toutes 80 caractères — une
+        # coupe, quelque part, et personne ne l'aurait vue sans la mesure.
+        print(f"\nDont {len(morts)} lien(s) de traçage SANS destination propre — jeton périmé, "
+              f"adresse tronquée, rebond non résolu, ou page de repli de la campagne. Rien à "
+              f"moissonner tant que la fiche n'a pas d'autre adresse (Site officiel au "
+              f"back-office, ou résolution par l'enrichissement) :")
+        for eid, adresse in morts:
+            print(f"  [{eid:>5}] {len(adresse):3} car.  {adresse[:90]}")
+    print()
     if args.diagnostic and marqueurs_vides:
         print("Ce que portent les pages MUETTES (une page peut compter plusieurs fois) :")
         for nom, n in marqueurs_vides.most_common():

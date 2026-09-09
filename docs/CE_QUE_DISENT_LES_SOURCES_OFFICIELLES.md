@@ -156,3 +156,51 @@ rejouable autant de fois qu'on veut. Chaque fait qu'on laisse le modèle deviner
 fois plus cher et moins sûr que le même fait lu à la source.
 
 C'est la ligne de partage à tenir : **collecter sans modèle, rédiger avec.**
+
+---
+
+## 7. 2026-09-08 — les pages municipales le disent, sous un libellé plutôt qu'un `@type: Event`
+
+Mesuré ce soir en base de production : sur 108 fiches approuvées, à venir et incomplètes,
+une vingtaine sont des pages municipales (bct.comune.torino.it, comune.biella.it,
+comune.casale-monferrato.al.it, villefranche-sur-mer.fr, ugine.com), marquées
+`venue_source='novenue'` — la passe JSON-LD n'y trouve aucun `location`. Dix-neuf ont été
+téléchargées pour de bon. Aucune ne porte de balisage `@type: Event`. **Douze écrivent
+pourtant le lieu**, toujours de la même façon : un libellé court, seul dans sa balise
+(`<h2>Dove</h2>`), ou une icône d'épingle, suivi de la valeur dans le bloc d'après.
+
+Deux pièges, mesurés sur les pages réelles :
+
+- **torinoclick.it** porte « Sede: piazza Palazzo di Città 1 – Torino » — c'est l'adresse
+  de l'agence de presse, dans son pied de page, pas celle de l'événement. Le pied de page
+  est retiré avant lecture, et « Sede » n'est accepté comme libellé qu'à la ligne, jamais
+  en tête d'une phrase de prose.
+- **comune.biella.it** liste « Cos'è · A chi è rivolto · Luogo · Date e orari… » dans son
+  sommaire, AVANT la vraie section : le premier « Luogo » de la page est donc suivi de
+  « Date e orari », pas d'un lieu. `lieu_depuis_libelles` parcourt toutes les occurrences
+  et retient la première dont la valeur est plausible — ce qui saute le sommaire.
+
+**Un défaut découvert en écrivant le cas frontière qui doit passer**, exactement la
+manière dont la règle 3 de CLAUDE.md dit qu'un portillon doit être éprouvé : le libellé
+« Sede dell'evento » (apostrophe droite) était dans la liste des libellés acceptés, mais
+les pages municipales l'écrivent avec l'apostrophe typographique — « Sede dell'evento »
+(’, celle que produit `htmlmod.unescape` sur `&rsquo;`). Sans normalisation, ce libellé
+pourtant explicitement prévu ne matchait JAMAIS. Corrigé dans `_libelle` (`scripts/venues.py`).
+
+**Et un défaut d'ordonnancement, indépendant du libellé** : ni `scripts/dates.py` ni
+`scripts/venues.py` ne lisaient `url_officiel` — la vraie page qu'`scripts/moisson_officielle.py`
+et `scripts/affiner_source.py` mémorisent quand `url_source` est un lien de suivi ou une
+racine de site. La date et le lieu étaient donc cherchés sur la page de rebond. Les deux
+scripts lisent désormais `COALESCE(NULLIF(url_officiel,''), url_source)` — même expression
+dans les deux fichiers (`URL_PAGE_SQL`), pas deux détecteurs qui divergent.
+
+Et la sélection de la passe LLM de `venues.py` n'avait pas d'`ORDER BY` : plafonnée à
+`VENUES_LLM_CAP` (150) et servie par numéro croissant, elle traitait les plus vieilles
+fiches en premier, jamais les 'novenue' fraîchement posées par la passe 1 le jour même
+tant que le plafond n'était pas atteint par des fiches plus anciennes — c'est l'hypothèse
+la plus probable pour les fiches restées 'novenue' un jour entier. Corrigé : les fiches
+'novenue' passent avant les 'none' (ré-armées), les plus récentes d'abord ; et la règle 5
+(rien sur le passé) s'applique désormais à cette sélection, ce qui n'était pas le cas.
+
+**Reste ouvert** : le registre `lieux_villes.json` reste petit, la voie qui gagne le plus
+de fiches est `ville_du_domaine` (commune nommée dans le sous-domaine ou le domaine).
