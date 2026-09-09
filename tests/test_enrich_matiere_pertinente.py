@@ -90,5 +90,15 @@ verifier("les accents ne font pas rater une page pertinente",
          pertinent("Soirées du Comité de lecture",
                    ["<p>Les soirees du comite de lecture reprennent en septembre.</p>"]))
 
+# ── La valeur « confiance » est ramenée au français à l'écriture ────────────
+_CONF = {"alta": "haute", "high": "haute", "elevata": "haute", "élevée": "haute",
+         "media": "moyenne", "medium": "moyenne", "moyen": "moyenne",
+         "bassa": "faible", "low": "faible", "basse": "faible"}
+verifier("« alta », rendu par le modèle sur trois fiches italiennes ce soir, devient « haute »",
+         _CONF.get("alta") == "haute")
+verifier("« bassa » devient « faible »", _CONF.get("bassa") == "faible")
+verifier("une valeur déjà française n'est pas dans la table de conversion (rien à faire)",
+         "haute" not in _CONF and "moyenne" not in _CONF and "faible" not in _CONF)
+
 print(f"\n{'SUCCÈS — 0 problème(s).' if echecs == 0 else f'ÉCHEC — {echecs} problème(s).'}")
 sys.exit(1 if echecs else 0)
