@@ -116,6 +116,9 @@ DIMS = {
     "https://img.example/2026/rousseau.jpg": (1500, 480),          # 3,1:1 → bandeau
     "https://img.example/mao/apertura.jpg": (1000, 700),
     "https://img.example/mao/altra.jpg": (1000, 700),
+    "https://mcusercontent.com/abc/images/photo-concert.jpg": (480, 270),   # CDN Mailchimp, 16:9 de newsletter
+    "https://img.example/2026/juste-sous.jpg": (479, 269),                 # frontière : un pixel sous les deux seuils
+    "https://img.example/2026/haute-etroite.jpg": (300, 400),              # petit côté ok, grand côté trop court
 }
 telechargements = []
 
@@ -236,6 +239,20 @@ _check("logo d'en-tête → refusé (is_logo_image)",
        "logo" in cdm._refus_statique({"src": "https://esp.example/img/header-logo.png", "largeur": "600", "hauteur": "120"}))
 _check("icône de réseau social 32×32 → refusée",
        cdm._refus_statique({"src": "https://cdn.example/social/facebook-icon.png", "largeur": "32", "hauteur": "32"}) != "")
+_check("un FICHIER image sur le CDN d'un routeur (mcusercontent.com/….jpg) n'est PAS un traqueur",
+       cdm._refus_statique({"src": "https://mcusercontent.com/abc/images/photo-concert.jpg", "largeur": "600", "hauteur": ""}) == "")
+_check("…mais un lien sans extension sur le même genre d'hôte reste un traqueur",
+       "traçage" in cdm._refus_statique({"src": "https://mcusercontent.com/abc/track/xyz", "largeur": "", "hauteur": ""}))
+url, pourquoi, refus = cdm._choisir_image(
+    [{"src": "https://mcusercontent.com/abc/images/photo-concert.jpg", "alt": "", "largeur": "", "hauteur": "", "pourquoi": "bloc"}], cdm.MIN_COTE)
+_check("480×270 (le format réel des newsletters mesuré le 09/09) → ACCEPTÉE au seuil par défaut (cas frontière qui doit passer)",
+       url.endswith("photo-concert.jpg"), str(refus))
+url, pourquoi, refus = cdm._choisir_image(
+    [{"src": "https://img.example/2026/juste-sous.jpg", "alt": "", "largeur": "", "hauteur": "", "pourquoi": "bloc"}], cdm.MIN_COTE)
+_check("479×269 → refusée : un pixel sous le seuil", url == "" and any("trop petite" in r for r in refus), str(refus))
+url, pourquoi, refus = cdm._choisir_image(
+    [{"src": "https://img.example/2026/haute-etroite.jpg", "alt": "", "largeur": "", "hauteur": "", "pourquoi": "bloc"}], cdm.MIN_COTE)
+_check("300×400 → refusée : grand côté < 480 (le petit côté seul ne suffit pas)", url == "" and any("trop étroite" in r for r in refus), str(refus))
 _check("une photo de contenu passe le filtre statique",
        cdm._refus_statique({"src": "https://img.example/2026/visite-meditative.jpg", "largeur": "600", "hauteur": ""}) == "")
 url, pourquoi, refus = cdm._choisir_image(

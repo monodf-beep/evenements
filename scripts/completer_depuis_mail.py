@@ -81,7 +81,17 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 APPROUVES = ("evaluated", "published_cs", "published_sub")
 # Petit côté minimal, en pixels : le seuil de la moisson officielle pour une image de page
 # (`moisson_officielle`, « min(w, h) >= 400 »), repris tel quel.
-MIN_COTE = 400
+#
+# 2026-09-09, premier passage en production (24 fiches, 0 image écrite) : sur 12 candidates
+# mesurées, SEPT étaient de vraies photos de l'organisateur refusées « trop petite » —
+# 480×270 (Département 06, cinq fois), 544×380 et 570×380 (Ville de Turin). Une newsletter
+# ne transporte pas des affiches en haute définition ; la carte du site fait 425 px de
+# large, un 480×270 la remplit. Une vraie photo à 480 px vaut mieux qu'une vignette
+# générée (Franck, 08/09 : « trop de vignettes générées »). Le grand visuel 16:9 sera
+# agrandi — c'est le prix, à remonter si Franck le trouve trop flou.
+MIN_COTE = 270
+# …et une LARGEUR minimale à côté : 270 de petit côté n'autorise pas un 300×270.
+MIN_GRAND_COTE = 480
 # Candidates MESURÉES (téléchargées) par fiche, au plus : au-delà, on brûle du réseau sur
 # des vignettes de pied de page.
 MAX_MESURES = 3
@@ -179,8 +189,16 @@ def _refus_statique(c: dict) -> str:
         return "pas une adresse web (cid:/data:)"
     if re.search(r"\.(gif|svg)(\?|#|$)", low):
         return "format gif/svg (animation, pictogramme ou pixel)"
+    # UN FICHIER IMAGE SUR LE CDN D'UN ROUTEUR DE MAILS N'EST PAS UN TRAQUEUR (2026-09-09).
+    # Premier passage en production : cinq refus « hôte de traçage » sur mcusercontent.com
+    # (Mailchimp) et customer*.img.musvc3.net (MailUp) — tous des visuels de l'organisateur,
+    # hébergés là où sa newsletter est fabriquée. La liste de utils/traqueurs.py vise les
+    # LIENS de clic ; une adresse qui se termine par .jpg/.png/.webp est un fichier servi,
+    # pas un rebond. Le pixel de suivi, lui, n'a pas d'extension (« /open/abc ») ou fait
+    # 1×1, et reste refusé par les deux tests qui suivent.
     from scripts.moisson_officielle import _est_traqueur
-    if _est_traqueur(src):
+    fichier_image = bool(re.search(r"\.(jpe?g|png|webp)(\?|#|$)", low))
+    if _est_traqueur(src) and not fichier_image:
         return "hôte de traçage"
     if is_logo_image(src):
         return "logo/icône d'après le nom de fichier"
@@ -217,6 +235,9 @@ def _choisir_image(candidats: list[dict], min_cote: int) -> tuple[str, str, list
             continue
         if min(w, h) < min_cote:
             refus.append(f"trop petite {w}×{h} (petit côté < {min_cote}) — {c['src'][:70]}")
+            continue
+        if max(w, h) < MIN_GRAND_COTE:
+            refus.append(f"trop étroite {w}×{h} (grand côté < {MIN_GRAND_COTE}) — {c['src'][:70]}")
             continue
         if _images.looks_like_banner_shape(w, h):
             refus.append(f"forme de bandeau ou carré {w}×{h} — {c['src'][:70]}")
