@@ -498,8 +498,11 @@ def _panel_meta(event: dict) -> dict:
     }
 
 
-def _build_payload(event: dict) -> dict:
-    """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
+def _build_payload(event: dict, skip_media: bool = False) -> dict:
+    """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw.
+
+    `skip_media=True` : la passe ne touche à AUCUNE image — ni téléversement, ni méta
+    qui pointe vers une image. Voir `as_image_original` plus bas."""
     title, content = build_post(event)
 
     # Le radar n'est jamais crédité ni lié (charte §8).
@@ -605,7 +608,22 @@ def _build_payload(event: dict) -> dict:
         # en 4:3 pour la grille ; la FICHE, elle, affiche l'affiche entière via ce champ.
         # JAMAIS un logo/pictogramme (« voir l'affiche en grand » n'aurait aucun sens) :
         # dans ce cas on laisse vide → la fiche montrera la bannière de repli seule.
-        "as_image_original":        "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
+        # ⚠️ ABSENT du payload quand skip_media (2026-09-10). Ce méta porte le GRAND
+        # visuel de la fiche. Sans ce garde-fou, une passe « texte seul » le réécrivait
+        # quand même avec l'URL de la BASE : la vignette restait celle posée à la main
+        # dans WordPress (cs-publish.php ne la touche pas sans featured_media_id), mais
+        # le grand visuel revenait à l'ancienne image — deux photos différentes sur la
+        # même fiche. Trouvé le 2026-09-10 en vérifiant, avant une republication de 165
+        # fiches, ce que `--skip-media` préserve vraiment ; Franck avait corrigé des
+        # photos à la main et c'est exactement ce que la passe aurait défait.
+        # Une clé absente n'est pas écrasée côté WordPress : la boucle des métas est
+        # gardée par `array_key_exists` (cs-publish.php l.420-424). Vérifié sur le
+        # MIROIR versionné — la route qui tourne vit dans Code Snippets (CLAUDE.md),
+        # donc à recontrôler là-bas si un jour une méta d'image disparaissait quand
+        # même sous --skip-media.
+        **({} if skip_media else {
+            "as_image_original": "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
+        }),
         # Lieu + ville en plat : la carte-événement JetEngine les lit directement
         # (le Venue TEC reste par ailleurs pour la carte/adresse).
         "as_lieu":                  (event.get("lieu") or "").strip(),
@@ -743,7 +761,7 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
         return None, "", ""
 
     auth = (wp_user, wp_pass)
-    payload = _build_payload(event)
+    payload = _build_payload(event, skip_media=skip_media)
 
     # Image à la une : on TÉLÉVERSE côté Python (fiable — le backoffice accède déjà à
     # ces images) plutôt que de laisser WordPress aller chercher l'URL lui-même (souvent
