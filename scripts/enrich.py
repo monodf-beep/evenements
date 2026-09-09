@@ -2265,6 +2265,23 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         # structurée ailleurs → cs-publish.php force sinon une fiche « journée entière »
         # (00:00-23:59) qui contredit le Schema.org Event affiché. Ordre de priorité :
         # infos_pratiques et l'encadré (factuels) avant le programme et la prose.
+        # « confiance » EN FRANÇAIS, TOUJOURS (2026-09-09). Le prompt demande
+        # haute|moyenne|faible, mais sur une fiche italienne le modèle rend volontiers sa
+        # traduction : « confiance=alta » est apparu sur trois fiches du run de ce soir.
+        # Sans conséquence sur le tri — rien ne filtre là-dessus — mais la valeur est
+        # affichée au back-office dans une classe CSS (`conf-{{ c }}`, preview.html) : une
+        # valeur inattendue donne une pastille sans style, et deux mots pour la même chose
+        # finissent toujours par se compter séparément. On normalise à l'écriture, une fois.
+        _CONF = {"alta": "haute", "high": "haute", "elevata": "haute", "élevée": "haute",
+                 "media": "moyenne", "medium": "moyenne", "moyen": "moyenne",
+                 "bassa": "faible", "low": "faible", "basse": "faible"}
+        _c = str(result.get("confiance", "") or "").strip().lower()
+        if _c in _CONF:
+            result["confiance"] = _CONF[_c]
+        elif _c and _c not in ("haute", "moyenne", "faible"):
+            log.warning("[%d] valeur de confiance inattendue (%r) — laissée telle quelle, "
+                        "la pastille du back-office sera sans style.", ev["id"], _c)
+
         art = result.get("article") or {}
         _prog = art.get("programme")
         _prog_text = " ".join(str(p) for p in _prog) if isinstance(_prog, list) else str(_prog or "")
