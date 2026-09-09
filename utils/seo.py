@@ -151,9 +151,21 @@ def event_jsonld_str(ev: dict) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
+# Langue de rédaction du SEO. Jusqu'au 2026-09-09 le prompt disait « Produis, en
+# français » en dur, et seo_batch EXCLUAIT les traductions depuis le 02/08 pour ne pas
+# pousser une méta française sur une fiche italienne (son commentaire : « on exclut
+# d'abord, on rédigera en italien ensuite »). Cinq semaines plus tard, « ensuite » n'était
+# pas arrivé : les 34 fiches italiennes devant nous n'avaient AUCUNE expression clé, d'où
+# les points GRIS de la colonne Yoast (Franck, capture du 09/09). Le prompt reçoit donc
+# la langue, et seo_batch vérifie la langue de ce qui revient avant d'écrire.
+_LANGUE_NOM = {"fr": "français", "it": "italien"}
+
 SEO_PROMPT = """Tu optimises le référencement (Yoast) d'un événement culturel pour un agenda
 en ligne bilingue (Savoie, Piémont, Vallée d'Aoste, Nice). Style sobre, factuel, jamais racoleur
 (pas de « incontournable », « magique »). Géographie nommée (ville, territoire).
+LANGUE : tout ce que tu produis (expression clé, titre, slug, méta, réponse, FAQ) est en
+{langue_nom} — c'est la langue de la fiche publiée, le lecteur et Google la lisent dans
+cette langue. Le suffixe de marque « — Agenda Sabauda » reste tel quel.
 
 Événement :
 Titre : {title}
@@ -171,7 +183,7 @@ texte »). Puis rédige TOUT autour d'elle, en respectant Yoast :
 - la réponse directe et l'intro CONTIENNENT l'expression clé ;
 - le slug CONTIENT l'expression clé (minuscules, tirets).
 
-Produis, en français, en JSON strict :
+Produis, en {langue_nom}, en JSON strict :
 {{"seo_keyphrase": "<expression clé principale, 2-4 mots>",
   "seo_title": "<titre SEO 50-60 caractères, COMMENÇANT par l'expression clé ; suffixe ' — Agenda Sabauda'>",
   "seo_slug": "<slug court contenant l'expression clé, minuscules-et-tirets, sans année si récurrent>",
@@ -186,9 +198,24 @@ Produis, en français, en JSON strict :
 Réponds UNIQUEMENT le JSON, sans texte avant/après."""
 
 
-def optimize_seo(ev: dict, client, model: str) -> dict | None:
+def langue_seo(ev: dict) -> str:
+    """Langue dans laquelle le SEO de cette fiche doit être rédigé : 'fr' ou 'it'.
+    `translated_lang` fait foi pour une traduction ; sinon la langue de l'ARTICLE publié
+    (`utils.lang.effective_lang`), la même source de vérité que la publication et la
+    traduction depuis le 2026-09-07."""
+    forced = str(ev.get("translated_lang") or "").strip().lower()
+    if forced in _LANGUE_NOM:
+        return forced
+    from utils.lang import effective_lang
+    return effective_lang(ev)
+
+
+def optimize_seo(ev: dict, client, model: str, lang: str | None = None) -> dict | None:
     """Passe LLM : title/méta/réponse directe/FAQ. Renvoie un dict validé ou None.
-    Les exceptions API (crédit, réseau) remontent à l'appelant (la route les gère)."""
+    Les exceptions API (crédit, réseau) remontent à l'appelant (la route les gère).
+    `lang` : 'fr' ou 'it' ; à défaut, déduite de la fiche (`langue_seo`). Le dict rendu
+    porte la langue demandée sous `seo_lang`, pour que l'appelant puisse la contrôler."""
+    lang = lang if lang in _LANGUE_NOM else langue_seo(ev)
 
     def _dates(ev):
         s = (ev.get("date_event_start") or "").strip()
@@ -209,6 +236,7 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
         territoire=ev.get("territoire") or "",
         dates=_dates(ev),
         description=material[:900],
+        langue_nom=_LANGUE_NOM[lang],
     )
     message = client.messages.create(
         model=model, max_tokens=1024,
@@ -244,6 +272,7 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
         "seo_answer": _clean(data.get("seo_answer")),
         "seo_tags": tags,
         "seo_faq": faq,
+        "seo_lang": lang,
     }
 
 
