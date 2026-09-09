@@ -33,10 +33,39 @@ _OK_MIME = ("image/jpeg", "image/png")
 # Chemins typiques d'une VRAIE photo de contenu (CMS) — sert à préférer une image
 # éditoriale à un élément d'habillage.
 _CONTENT_HINT = re.compile(r"/(uploads|content|media|photos?|images?|wp-content|fichiers)/", re.I)
-# Habillage à rejeter (logo, icône, sprite, pixel de tracking, avatar…).
-_CHROME_IMG = re.compile(
-    r"logo|icon|sprite|favicon|placeholder|pixel|spinner|avatar|blank|1x1|"
-    r"loader|badge|banniere|banner|header-|/theme/|/assets/(?:img/)?ui", re.I)
+# Habillage à rejeter (logo, icône, sprite, pixel de tracking, avatar…). Deux parts :
+# des DOSSIERS d'UI de thème, déjà bornés par des « / » donc sûrs en sous-chaîne ; des
+# mots de NOM DE FICHIER, comparés en tokens (comme utils.sources.is_logo_image), jamais
+# en sous-chaîne brute.
+#
+# 2026-09-08 (Franck, fiche « Musicastelle Autumn Edition ») : cette regex cherchait
+# « logo » n'importe où dans l'URL. Le og:image officiel de la page — la photo que le
+# site affiche lui-même en tête — s'appelle « 02_Cover_LogoEdizioneAutunnale.png »
+# (« Logo dell'Edizione Autunnale », pas un logo isolé) : rejeté à tort, le seul candidat
+# restant ne convenait à rien, et la fiche est retombée sur la bannière générique de
+# territoire. `is_logo_image` avait déjà résolu ce même piège par des tokens bornés
+# (commentaire d'origine : « logo » matche « Logo-Escale.png » mais pas « catalogo.jpg » ) ;
+# cette regex-ci, plus ancienne et dans un autre module, ne l'avait jamais reçu.
+_CHROME_PATH = re.compile(r"/theme/|/assets/(?:img/)?ui", re.I)
+_CHROME_NAME_TOKENS = frozenset((
+    "logo", "icon", "icons", "sprite", "favicon", "placeholder", "pixel", "spinner",
+    "avatar", "blank", "1x1", "loader", "badge", "banniere", "banner", "header",
+))
+
+
+def _is_chrome(url: str) -> bool:
+    """Vrai si l'URL trahit de l'habillage de site (pas une photo de contenu) : un
+    dossier d'UI de thème, ou un NOM DE FICHIER qui matche un des mots ci-dessus en
+    TOKEN complet (jamais en sous-chaîne — « LogoEdizioneAutunnale » n'est pas « logo »)."""
+    u = (url or "").lower()
+    if not u:
+        return False
+    if _CHROME_PATH.search(u):
+        return True
+    from urllib.parse import urlparse as _up
+    name = _up(u).path.rsplit("/", 1)[-1]
+    words = set(re.split(r"[^a-z0-9]+", name))
+    return bool(words & _CHROME_NAME_TOKENS)
 
 # Sous ce seuil (plus petit côté, en px), une image reste visiblement floue une fois
 # étirée aux formats sociaux (1080 px et +) — un og:image standard (souvent 600×315
@@ -231,7 +260,7 @@ def _img_tags(page: str, base_url: str = "") -> list[str]:
             continue
         if not re.search(r"\.(jpg|jpeg|png|webp)(\?|#|$)", low):
             continue
-        if is_logo_image(src) or _CHROME_IMG.search(low):
+        if is_logo_image(src) or _is_chrome(src):
             continue
         if src not in candidates:
             candidates.append(src)
@@ -257,7 +286,7 @@ def page_image_candidates(page: str, base_url: str = "") -> list[str]:
     def _add(u: str) -> None:
         u = _absolu(u, base_url)
         if u and u.startswith("http") and u not in out \
-                and not is_logo_image(u) and not _CHROME_IMG.search(u.lower()):
+                and not is_logo_image(u) and not _is_chrome(u):
             out.append(u)
 
     for pat in (r'<meta[^>]+property=["\']og:image(?::url)?["\'][^>]+content=["\']([^"\']+)',

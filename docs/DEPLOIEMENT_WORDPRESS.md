@@ -166,3 +166,89 @@ Même canal qu'au § 3 (Novamira), avec deux précisions apprises ce jour-là :
    gateway` de suite sur ~5 ko de patch. Les déposer en fichier et les lire sur place. Et
    après un échec de transport, **vérifier l'état avant de retenter** — c'est ce qui a
    montré que le patch n'était pas passé, donc qu'il n'y avait rien à défaire.
+
+
+## 7. 2026-09-08 — `cs-taxo-it.php` : les termes suivent la langue du post dans les deux sens
+
+Constat de Franck : dans la grille française, des cartes étiquetées « Piemonte » à côté de
+cartes « Piémont ». Mesuré sur WordPress (Novamira, lecture seule) : **26 fiches en
+français** portaient un terme territoire ET une catégorie en italien (21 « Piemonte »,
+4 « Valle d'Aosta », 1 « Savoia ») ; aucune fiche italienne ne portait de terme français.
+
+**Cause, établie par un test réversible et non par lecture seule.** Polylang
+(`PLL_CRUD_Posts::set_object_terms`, accroché à l'action `set_object_terms`) convertit tout
+terme posé sur un post vers la langue que le post a *à cet instant* : sur WP#8163 (post
+`it`), poser le terme 6 « Piémont » donne 321 « Piemonte ». Or `cs-publish` pose ses termes
+AVANT que le snippet Polylang (priorité 20) ne pose la langue. Une fiche poussée une
+première fois en `it` (titre italien — c'était la règle de `publisher_as._lang` avant le
+07/09), puis re-poussée en `fr`, gardait donc ses termes italiens : le filtre (B) de
+`cs-taxo-it.php` rendait la main dès que le post était français.
+
+**Correctif.** (B) réaffecte désormais chaque terme vers sa traduction dans la langue du
+post, quelle que soit la langue. Déployé par le canal du § 3 : `write-file` sur
+`cs-taxo-it.php.nouveau` (extension non-PHP, donc autorisée hors bac à sable), puis un
+`execute-php` qui compare le md5 au fichier du dépôt (`f0ea2333…`), sauvegarde l'ancien
+(`cs-taxo-it.php.bak-2026-09-08`, md5 `a7e81f40…`, identique au miroir d'avant), contrôle
+la syntaxe par `token_get_all(…, TOKEN_PARSE)` et fait un `rename()` atomique. Front,
+`/it/` et l'API REST répondaient 200 après.
+
+**Réparation.** Les 26 fiches (52 affectations : territoire + catégorie) ont été
+réaffectées par `execute-php` après un dry-run listant chaque paire terme → traduction ;
+recompte après écriture : 0 terme dans une autre langue que celle de son post. Le terme
+« Piémont » compte 64 fiches (42 avant), « Piemonte » 52 (74 avant). Réversible : c'est une
+réaffectation de termes, la liste est dans le message du commit.
+
+Retour arrière du mu-plugin : `rename(cs-taxo-it.php.bak-2026-09-08 → cs-taxo-it.php)`.
+
+## 8. 2026-09-08 (suite) — `cs-cvld-dynamique.php` et `cs-territoire-persistant.php`
+
+Trois changements déployés le même après-midi, par le canal du § 3, avec une précision de
+transport apprise ce jour-là : **ne jamais retaper un fichier de 13 ko dans l'argument d'un
+appel** — une coquille s'y est glissée (« Voir dans les altri territori ») et seul le
+contrôle md5 avant `rename()` l'a arrêtée. `create-upload-link` + `curl --data-binary`
+depuis le fichier local, puis `execute-php` (md5 attendu, sauvegarde, `token_get_all`,
+`rename`). Le `.nouveau` d'un envoi raté doit être supprimé avant le suivant
+(`overwrite:false`).
+
+- `cs-cvld-dynamique.php` : plancher `CS_CVLD_PLANCHER = 10` sur la note intrinsèque et
+  la note temps-ajustée au premier passage, note seule au second (repli) ; bouton « Et
+  ailleurs » sur `/espace-sabaudo/`. Sauvegardes `.bak-2026-09-08` (version du matin,
+  md5 `99fc262e…`) et `.bak-2026-09-08b` (plancher strict, `82c06457…`). En ligne :
+  `dc46ac66…`.
+- `cs-territoire-persistant.php` : « Tous les territoires » de la barre sur
+  `/espace-sabaudo/`. Sauvegarde `.bak-2026-09-08` (`1e9d5b07…`). En ligne : `6583e6a7…`.
+- Données, pas code : `as_home_override=excluded` sur WP#8049 (carte noire, titre italien,
+  finit le 09/09) ; `cs_guide_saison_debut/fin` = 2026-06-01 / 2026-08-31 sur le guide
+  « Festivals de l'été en Savoie 2026 » (post 2422) — le mécanisme de saison de « À lire »
+  existait depuis le 06/09, aucun des six guides ne le renseignait.
+
+## 9. 2026-09-08 (soir) — modifier un Code Snippet EN BASE, sans casser le site
+
+Le snippet 44 (allocateur de la home, « En évidence ») vit dans la table
+`wp_snippets`, pas dans un fichier : ni `deploy/push-wordpress.sh`, ni `php -l` ne
+l'atteignent. Deux retouches y ont été faites ce soir par `novamira/execute-php`, avec la
+procédure ci-dessous — à reprendre telle quelle, parce qu'un snippet actif qui ne compile
+pas est aussi mortel qu'un mu-plugin cassé :
+
+1. lire le code (`SELECT code FROM wp_snippets WHERE id=44`) et cibler la retouche par une
+   chaîne EXACTE dont on vérifie `substr_count(...) === 1` — zéro ou deux occurrences, on
+   s'arrête sans écrire ;
+2. copier l'ancien code dans `wp-content/uploads/cs-backups/snippet-<id>-<date>.php.txt`
+   (`.txt` : le bac à sable n'écrit pas de `.php`, et un `.txt` ne s'exécute pas) ;
+3. `token_get_all('<?php ' . $nouveau, TOKEN_PARSE)` dans un `try` — une exception, on
+   s'arrête sans écrire ;
+4. `$wpdb->update`, puis `wp_cache_flush()`, puis relire et comparer les md5 ;
+5. vérifier dans une REQUÊTE SUIVANTE (le code déjà chargé ne change pas dans la requête
+   qui l'a modifié) : appeler `cs_home_build_allocation()` avec
+   `$_GET['as_territoire'] = '<slug FR du territoire>'` — le SLUG (`comte-de-nice`), pas la
+   clé canonique (`nice`), sinon le filtre territoire est ignoré en silence — et
+   `PLL()->curlang = PLL()->model->get_language('fr')`, sans quoi Polylang mélange les
+   deux langues hors du front ; le cache statique du plan est par langue et par requête,
+   donc UN territoire par appel ;
+6. puis lire la page publique elle-même (`curl` de `/explore/<slug>/`), parce que l'étape
+   5 mesure l'allocateur, pas le rendu.
+
+Ce que les deux retouches font, et comment revenir en arrière, est écrit dans les
+commentaires du snippet lui-même (datés 2026-09-08) et dans `docs/ERREURS_2026-09-08.md`
+(§ « Ce qui a été changé sur WordPress ce soir »). Les snippets n'ont toujours pas de
+double versionné ici — c'est un point ouvert, pas une règle.

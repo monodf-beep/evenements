@@ -162,6 +162,15 @@ faire demander à OVH le déblocage d'une IP sur la foi de la deuxième. Ce qui 
 tenait en quatre commandes qu'il fallait taper à la première minute : ping, port 80,
 port 443, et un hôte de contrôle.
 
+`docs/ERREURS_2026-09-08.md` en ajoute seize, autour d'une racine nouvelle : **deux détecteurs
+pour la même chose, un seul juste** — quatre fautes de code dont le garde-fou existait déjà
+dans le module voisin. Et une règle de livraison : un correctif de code s'accompagne de la
+liste des fiches déjà touchées et de la commande qui les répare, sinon la question reste
+ouverte pour le lecteur du site. Et trois de l'après-midi à relire avant de livrer : **un
+commit ne part pas sur une fixture rouge** (faute 11), **un fichier ne se retape jamais
+dans l'argument d'un outil** (faute 12), **un dry-run se lit ligne par ligne** — celui
+d'`affiner_source` avait une proposition fausse sur deux (faute 13).
+
 D'où la formulation la plus utile de cette racine, celle à relire avant de répondre :
 
 **Ne jamais présenter une INFÉRENCE comme un FAIT.** Les deux sont acceptables — mesurer,
@@ -192,7 +201,11 @@ Trois corollaires opérationnels :
   transposée) : `deploy/update.sh` remet le dépôt sur `claude/quirky-davinci-jvqrnw`, donc
   du travail poussé ailleurs n'arrive pas — et sera EFFACÉ au déploiement suivant. Vérifier
   la branche que vise le script avant de dicter la commande, et la donner avec son
-  répertoire.
+  répertoire. **Et une fusion faite SUR le VPS doit être poussée avant `update.sh`**, sinon
+  le `reset --hard` la défait (08/09 au soir : deux commits fusionnés puis effacés dans la
+  même commande, sortie « HEAD is now at 411f286 » sous mes yeux). La séquence est
+  `git merge origin/<branche> && git push origin claude/quirky-davinci-jvqrnw && bash deploy/update.sh`,
+  et la ligne « HEAD is now at » doit porter le commit fusionné.
 
 **Neuf des quinze fautes du 11/08 étaient des récidives d'une règle
 déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le

@@ -255,6 +255,13 @@ GARDE-FOUS STRICTS :
   dark pattern (urgence factice, clickbait).
 {vocabulaire_interdit}
 - SIGLES : à leur PREMIÈRE mention, développe-les avant de les employer seuls — « Théâtre national de Nice (TNN) », puis « le TNN » ensuite (arbitrage Franck 2026-08-18 ; liste complète : config/acronymes.json). N'invente AUCUN développement pour un sigle absent de cette liste : emploie-le tel quel.
+- CE QUI NE SERT PAS AU LECTEUR (arbitrage Franck 2026-09-08, fiche « Concert de la Funky
+  Académie » : « formation professionnelle certifiée Qualiopi… le lecteur s'en fout ») : ne
+  reprends JAMAIS du communiqué ce qui parle de la STRUCTURE et non de la SOIRÉE — labels et
+  certifications (Qualiopi, ISO, agréments), statut administratif, financements, mentions
+  de tutelle, autopromotion de l'organisateur. Le lecteur décide d'y aller ou pas : tout ce
+  qui ne l'aide pas à décider est de trop, même exact. La règle complète vit dans la voix
+  éditoriale (Obsidian) ; ceci est le filet.
 - MARQUES ET PARTENAIRES (arbitrage Franck 2026-09-04, fiche « Fiera del Peperone ») : un nom
   de marque ne reste que s'il EST le sujet, ce que le visiteur vient voir (Ferrari à un salon
   auto, le restaurant qui fait la démonstration, le groupe qui joue). Un partenaire technique
@@ -378,13 +385,24 @@ _PROG_STOP = ("billet", "ticket", "cookie", "mentions", "contact", "privacy",
               "cgv", "newsletter", "login", "compte", "panier", "boutique", "impressum")
 
 
-def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
+def _programme_links(html: str, base_url: str, limit: int = 3, title: str = "") -> list[str]:
     """Depuis le HTML d'accueil, renvoie jusqu'à `limit` URLs INTERNES qui ressemblent à
-    des pages programmation/line-up (même domaine), triées par pertinence de l'ancre."""
+    des pages programmation/line-up (même domaine), triées par pertinence de l'ancre —
+    et, depuis le 2026-09-08, la page de L'ÉVÉNEMENT LUI-MÊME quand `title` est donné.
+
+    Franck, 08/09, devant montmelian.com/ posé comme source du Festival photo alors que
+    montmelian.com/festival-photo-de-montmelian/ existe : « quand on a une URL généraliste
+    nom de domaine, c'est qu'on n'a pas la source de la page qui nous donne l'événement ».
+    Mesuré le même jour : 41 des 85 fiches publiées encore devant nous avaient pour source
+    la racine d'un site. Cette fonction ne suivait que les liens « presse » et
+    « programme » ; la page de l'événement, dont l'ancre dit juste son nom, n'était jamais
+    lue — donc jamais mémorisée, et son og:image jamais vu. Un mot du titre dans le chemin
+    ou l'ancre vaut maintenant 4 points, plus qu'un indice « programme » (2)."""
     from urllib.parse import urljoin, urlparse
     base_host = urlparse(base_url).netloc.lower()
     if not base_host:
         return []
+    toks = _event_tokens(title) if title else []
     scored: dict[str, int] = {}
     for m in re.finditer(r'(?is)<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', html):
         href, anchor = m.group(1), _html_to_text(m.group(2)).lower()
@@ -402,6 +420,9 @@ def _programme_links(html: str, base_url: str, limit: int = 3) -> list[str]:
         # PRIORITÉ à la page presse : elle concentre programme + visuels HD officiels.
         if any(h in hay for h in _PRESS_HINTS):
             score += 5
+        if toks:
+            fhay = _fold(hay)
+            score += 4 * sum(1 for t in toks if t in fhay)
         if score <= 0:
             continue
         clean = absu.split("#")[0]
@@ -459,6 +480,40 @@ def _event_tokens(title: str) -> list[str]:
             if len(w) > 3 and w not in _TITLE_STOP_FOLDED]
 
 
+def _page_evenement(pages: list, title: str) -> str:
+    """Parmi les pages officielles LUES, l'URL de celle qui parle de CET événement : une
+    SOUS-PAGE (chemin non vide) dont le HTML contient le plus de mots du titre. La racine
+    du site ne l'emporte jamais sur une sous-page qui mentionne l'événement — c'est
+    précisément le défaut mesuré le 2026-09-08 (41 fiches sur 85 sourcées à la racine).
+    '' si aucune sous-page ne mentionne le titre (l'appelant retombe sur la racine)."""
+    from urllib.parse import urlparse
+    toks = _event_tokens(title)
+    if not toks or not pages:
+        return ""
+    # Même discipline que scripts/affiner_source.py (leçon de son premier dry-run, 08/09) :
+    # quand le site EST l'événement, son nom est dans le domaine et dans toutes ses pages —
+    # seuls les mots ABSENTS de l'hôte départagent, et une page presse / actualités n'est
+    # jamais la page de l'événement.
+    skip = ("press", "presse", "stampa", "comunicat", "news", "notizie", "actualit", "blog")
+    best, best_hits = "", 0
+    for p in pages:
+        u = (p.get("url") or "").strip()
+        pu = urlparse(u)
+        if not u or not pu.path.strip("/"):
+            continue                                   # racine : jamais candidate ici
+        path = _fold(pu.path)
+        if any(sk in path for sk in skip):
+            continue
+        non_host = [t for t in toks if t not in _fold(pu.netloc)]
+        if not non_host:
+            continue                                   # le site est l'événement : racine
+        hay = _fold((p.get("html") or "")[:60000])
+        hits = sum(1 for t in non_host if t in hay) + sum(1 for t in non_host if t in path)
+        if hits > best_hits:
+            best, best_hits = u.split("#")[0], hits
+    return best
+
+
 def _find_official_site(html: str, base_url: str, title: str) -> str:
     """Depuis une page (souvent un AGRÉGATEUR), trouve le lien SORTANT vers le vrai site
     OFFICIEL de l'événement : un domaine externe dont le nom recoupe le titre. Un token LONG
@@ -509,12 +564,13 @@ def _same_domain_iframes(html: str, base_url: str) -> list[str]:
     return out
 
 
-def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str) -> list[tuple]:
+def _deep_read(html: str, url: str, timeout: int, n_sub: int, tag: str,
+               title: str = "") -> list[tuple]:
     """Suit les pages presse/programme d'un site. Renvoie [(link, html, texte), …] : le HTML
     sert à en extraire les AFFICHES (visuels HD), le texte à nourrir la rédaction. Suit AUSSI
     les iframes internes de chaque sous-page (dossier de presse embarqué : /presse/…)."""
     out = []
-    for link in _programme_links(html, url, limit=n_sub):
+    for link in _programme_links(html, url, limit=n_sub, title=title):
         h = _get_html(link, timeout)
         txt = _html_to_text(h)[:5000]
         if txt:
@@ -772,7 +828,8 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
             if otext:
                 blocks.append(f"[SITE OFFICIEL DE L'ÉVÉNEMENT — {official}]\n{otext}")
                 log.info("site officiel trouvé via la source : %s", official[:90])
-            for link, lhtml, ltxt in _deep_read(ohtml, official, timeout, n_sub, "site officiel"):
+            for link, lhtml, ltxt in _deep_read(ohtml, official, timeout, n_sub, "site officiel",
+                                                title=title):
                 pages.append({"url": link, "html": lhtml})
                 blocks.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{ltxt}")
     if agg_landing:
@@ -784,7 +841,8 @@ def fetch_official_material(url: str, timeout: int = 8, title: str = "",
     if (not official or official == url) and not cur_is_agg:
         if resolved:
             pages.append({"url": url, "html": html})   # la page d'accueil officielle
-        for link, lhtml, ltxt in _deep_read(html, url, timeout, n_sub, "site officiel"):
+        for link, lhtml, ltxt in _deep_read(html, url, timeout, n_sub, "site officiel",
+                                            title=title):
             pages.append({"url": link, "html": lhtml})
             blocks.append(f"[PAGE PRESSE/PROGRAMME — {link}]\n{ltxt}")
     return "\n\n".join(blocks), pages
@@ -798,6 +856,20 @@ _IMG_SKIP = ("logo", "sponsor", "partenaire", "partner", "icon", "favicon", "pix
              "avatar", "picto", "cookie", "/menu", "footer", "header-", "flag-", "drapeau",
              "facebook", "instagram", "twitter", "spinner", "loader")
 _IMG_RE = re.compile(r'(?i)(?:src|href)\s*=\s*["\']([^"\']+\.(?:jpe?g|png|webp))(?:\?[^"\']*)?["\']')
+# NOM DE FICHIER qui désigne la RUBRIQUE presse elle-même, pas l'événement — 2026-09-08,
+# fiche 5256 « Festival Verismo » (WP#8145) : la page /area-stampa du Teatro Regio porte
+# une photo de couverture « press-release-web.jpg » (un portable affichant PRESS RELEASE,
+# banque d'images). Lue comme page presse (dossier = chemin « area-stampa » → 15 points),
+# mesurée 1920×960 → paysage → posée en url_image ET url_image_wide, donc en grand visuel
+# de la fiche publiée. La vraie affiche (VERISMO_0.jpg, sur /programma/festival-verismo)
+# valait 3 points. Le chemin dit « rubrique presse » (bon signe : le dossier) ; le NOM du
+# fichier qui dit « rubrique presse » est le contraire : l'illustration de la rubrique.
+# Comparé au SEUL nom de fichier — un chemin /comunicato-stampa/8422/…/locandina.jpg
+# reste éligible (c'est précisément la pièce jointe d'un communiqué).
+_SECTION_FILE = ("press-release", "press_release", "pressrelease", "comunicat",
+                 "communique", "area-stampa", "area_stampa", "areastampa", "sala-stampa",
+                 "ufficio-stampa", "rassegna-stampa", "press-area", "pressarea",
+                 "newsroom", "espace-presse", "espace_presse")
 
 
 _OG_RE = re.compile(
@@ -845,6 +917,58 @@ def press_kit_status(pages: list, has_affiche: bool) -> dict:
     return {"url": press_url, "statut": "accreditation" if gated else "sans_affiche"}
 
 
+def _affiches_verifiees(vis: dict, ev: dict, client, verifier=None) -> dict:
+    """AGENT VISION sur les affiches extraites, AVANT qu'elles n'entrent en base.
+
+    2026-09-08, même incident que `_SECTION_FILE` : la chaîne principale (visuals.py)
+    fait regarder chaque candidate par l'agent vision ; l'extraction d'affiches depuis
+    les pages presse, elle, écrivait directement — et url_image_wide devient le grand
+    visuel 16:9 de la fiche publiée sans que personne ne l'ait regardé. Le filtre par
+    nom de fichier ferme CE cas ; celui-ci ferme les suivants (une photo d'habillage
+    au nom anodin). Coût : un appel vision (modèle économique, quelques millièmes) par
+    URL distincte — deux au plus, et seulement pour les fiches où une affiche a été
+    trouvée. Un refus ne gare rien : la fiche garde son image et la chaîne visuals.py
+    continue ; et l'enrichissement n'est pas une boucle quotidienne sur la même fiche
+    (règle 3 de CLAUDE.md : pas de refus qui se rejoue).
+
+    Une image qu'on ne peut pas télécharger est refusée (doctrine de l'extraction :
+    mieux vaut aucune affiche qu'une mauvaise) — contrairement à `verify_relevance`,
+    qui laisse passer sur panne technique. `verifier(url) -> bool` est injectable
+    (fixtures). Sans client : on fait confiance aux règles déterministes."""
+    if not vis or (client is None and verifier is None):
+        return vis
+    if verifier is None:
+        from scripts.images_web import _download, VERIFY_MODEL
+        from utils import image_verify
+
+        def verifier(url: str) -> bool:
+            data, mime = _download(url)
+            if not data:
+                return False
+            ok, _, _ = image_verify.verify_relevance(data, mime, ev, client, VERIFY_MODEL)
+            return bool(ok)
+    verdict: dict[str, bool] = {}
+    for cle in ("portrait", "wide"):
+        u = vis.get(cle)
+        if not u:
+            continue
+        if u not in verdict:
+            verdict[u] = verifier(u)
+        if not verdict[u]:
+            log.warning("[%s] affiche %s REFUSÉE par l'agent vision : %s",
+                        ev.get("id"), cle, u[:90])
+            vis[cle] = None
+    if vis.get("poster") and not verdict.get(vis["poster"], False):
+        vis["poster"] = None
+    if not vis.get("portrait") and not vis.get("wide"):
+        return {}
+    kit = next((u for u in (vis.get("portrait"), vis.get("wide"))
+                if u and any(k in u.lower() for k in _KIT_PATH)), None)
+    vis["poster"] = kit or vis.get("portrait") or vis.get("wide")
+    vis["from_kit"] = bool(kit)
+    return vis
+
+
 def extract_press_visuals(pages: list, title: str = "") -> dict:
     """Depuis les pages OFFICIELLES lues (dossier de presse), trouve l'AFFICHE de l'événement
     en PORTRAIT et en PAYSAGE (visuels HD). Priorise l'og:image, puis les fichiers au nom
@@ -872,6 +996,9 @@ def extract_press_visuals(pages: list, title: str = "") -> dict:
             low = (raw + " " + u).lower()
             if not urlparse(u).scheme.startswith("http") or any(s in low for s in _IMG_SKIP):
                 continue
+            nom = urlparse(u).path.rsplit("/", 1)[-1].lower()
+            if any(s in nom for s in _SECTION_FILE):
+                continue                            # illustration de la rubrique presse
             is_kit = from_kit or any(k in low for k in _KIT_PATH)
             has_name = any(h in low for h in _AFFICHE_HINT)
             # Un nom de FORMAT (120x176) est un indice, mais PAS une éligibilité à lui seul
@@ -1531,7 +1658,7 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
 # `panel_rattrapage --rejuger` de rouvrir ce qui a été jugé par une version périmée, et
 # rien d'autre. Un verdict de la version COURANTE reste intouchable : le rejouer serait le
 # refus qui se rejoue à l'identique (règle 3).
-PANEL_VERSION = "2026-08-13-b"
+PANEL_VERSION = "2026-09-08"   # + « superflu » : ce qui est de trop, pas seulement ce qui manque
 
 
 def _bloc_infos_pratiques(ev: dict) -> str:
@@ -1641,8 +1768,16 @@ def reader_review(article: dict, ev: dict, client, model: str,
         f"CATÉGORIE : {ev.get('llm_categorie', '')}\n"
         + _bloc_infos_pratiques(ev) +
         f"ARTICLE :\n{corps}\n\n"
+        "CE QUI EST DE TROP compte autant que ce qui manque (Franck, 2026-09-08, devant "
+        "« formation professionnelle certifiée Qualiopi » dans un preview de concert : « le "
+        "lecteur s'en fout »). Relève dans `superflu` toute mention qui ne t'apporte RIEN "
+        "pour décider d'y aller : jargon institutionnel, labels et certifications de "
+        "l'organisateur, mentions administratives ou de financement, autopromotion de la "
+        "structure, historique de l'association sans lien avec la soirée. Liste vide si "
+        "rien à retirer.\n"
         'Réponds en JSON STRICT : {"interet": <0-5, 0=creux 5=riche>, '
         '"manques": ["<ce qui te manque VRAIMENT, selon TES attentes et le genre>"], '
+        '"superflu": ["<mention à RETIRER, citée telle quelle>"], '
         '"verdict": "ok"|"revise", "note": "<1 phrase de conseil au rédacteur>"}. '
         'verdict = "revise" seulement si l\'article est réellement creux pour TOI (interet <= 2) '
         "ou s'il lui manque une substance qui EXISTE et qu'il aurait dû donner."
@@ -1721,6 +1856,12 @@ def reader_panel(article: dict, ev: dict, client, model: str) -> dict:
     except ValueError:
         seuil = 3.0
     verdict = "revise" if (mean is not None and mean < seuil) else "ok"
+    # Une majorité de locaux qui trouvent du SUPERFLU déclenche aussi la révision : un
+    # article correct mais lesté de jargon institutionnel n'est pas « creux », il est
+    # encombré — et la réécriture est la seule qui sache retirer une phrase précise.
+    trop = sum(1 for r in reviews if r.get("superflu"))
+    if verdict == "ok" and reviews and trop * 2 >= len(reviews):
+        verdict = "revise"
     # LA PROVENANCE, ET C'EST LE GARDE-FOU DU CHANGEMENT DU 13/08. Le panel voit désormais
     # les infos pratiques de la fiche (cf. _bloc_infos_pratiques) : il ne juge donc plus
     # tout à fait la même chose qu'avant. Sans marque, les verdicts d'avant et d'après
@@ -1740,15 +1881,22 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
     nouveau result, ou l'ancien si la révision échoue. `web_domains` : la recherche de la
     révision est restreinte au SITE OFFICIEL (jamais le web ouvert)."""
     lignes = []
+    a_retirer: list[str] = []
     for r in (panel.get("reviews") or []) + (panel.get("visite_reviews") or []):
-        if r.get("verdict") != "revise":
+        if r.get("verdict") != "revise" and not r.get("superflu"):
             continue
         role = "visiteur" if r.get("role") == "visite" else "local"
-        lignes.append("- %s (%s, intérêt %s) : %s%s" % (
+        lignes.append("- %s (%s, intérêt %s) : %s%s%s" % (
             r.get("persona", "Lecteur"), role, r.get("interet"),
             r.get("note") or "—",
-            (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else ""))
+            (" — manque : " + ", ".join(r.get("manques") or [])) if r.get("manques") else "",
+            (" — DE TROP : " + ", ".join(r.get("superflu") or [])) if r.get("superflu") else ""))
+        a_retirer.extend(x for x in (r.get("superflu") or []) if isinstance(x, str))
     critique = "\n".join(lignes) or "Article jugé creux par le panel."
+    if a_retirer:
+        critique += ("\nRETIRE ces mentions, elles n'aident pas le lecteur à décider d'y "
+                     "aller (jargon institutionnel, labels, certifications, administratif) : "
+                     + " · ".join(dict.fromkeys(a_retirer)))
     web_note = ("\nTu PEUX chercher les RÉPONSES PRÉCISES à ces manques (horaires, parcours, "
                 "points d'accès, gratuité…) — la recherche est RESTREINTE AU SITE OFFICIEL de "
                 "l'événement : creuse ses pages, rien d'autre."
@@ -1832,7 +1980,12 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         # l'événement en portrait ET paysage (visuels HD), qui priment sur toute autre image.
         try:
             vis = extract_press_visuals(official_pages, title=ev.get("title", ""))
-        except Exception as exc:  # noqa: BLE001 — non bloquant
+            # Regardées AVANT d'être écrites (2026-09-08, fiche 5256 : un stock « PRESS
+            # RELEASE » posé en grand visuel — voir _affiches_verifiees).
+            vis = _affiches_verifiees(vis, ev, client)
+        except Exception as exc:  # noqa: BLE001 — non bloquant (un plafond API ici
+            # laisse l'affiche de côté ; la rédaction qui suit le rencontrera à son tour
+            # et c'est elle qui arrête le lot — chemin 'api_error' de _process_one_event)
             log.warning("[%d] extraction affiches : %s", ev["id"], type(exc).__name__)
             vis = {}
         # On n'écrit une affiche que si on en TROUVE une ce run (NON destructif : ne jamais
@@ -1874,7 +2027,12 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                 log.info("[%d] URL officielle NON mémorisée (%s : pages sans mention du titre)",
                          ev["id"], _p.netloc)
             elif _p.scheme and _p.netloc and not _agg:  # jamais mémoriser un agrégateur (G2)
-                base = f"{_p.scheme}://{_p.netloc}/"
+                # LA PAGE DE L'ÉVÉNEMENT, pas la racine (2026-09-08, cf. _page_evenement) :
+                # c'est elle que moisson_officielle et images_wide reliront, et elle que
+                # la fiche affiche comme source. La racine reste le repli.
+                base = _page_evenement(
+                    [q for q in official_pages if _up(q.get("url") or "").netloc == _p.netloc],
+                    ev.get("title", "")) or f"{_p.scheme}://{_p.netloc}/"
                 conn.execute("UPDATE events_raw SET url_officiel=? WHERE id=?", (base, ev["id"]))
                 conn.commit()
                 ev["url_officiel"] = base

@@ -21,6 +21,24 @@ visuels, sans deviner. Tout est dans `scripts/enrich.py`.*
    du titre — nice.fr et ses pages municipales ne se figent plus). Un agrégateur n'est JAMAIS
    mémorisé. → déterministe aux runs suivants.
 
+### 1 bis. La PAGE de l'événement, pas la racine du site (2026-09-08)
+
+Franck : « quand on a une URL généraliste nom de domaine, c'est qu'on n'a pas la source de
+la page qui nous donne l'événement. » Mesuré ce jour-là : **41 des 85 fiches publiées
+encore devant nous** avaient pour `url_officiel` une racine (`montmelian.com/`,
+`camera.to/`, `teatroregio.torino.it/`). Trois causes en chaîne : `resolve_official_site`
+rend la racine par construction ; `_programme_links` ne suivait que les liens « presse » et
+« programme », jamais le lien dont l'ancre dit le nom de l'événement ; et la mémorisation
+écrivait `scheme://host/` même quand une sous-page avait été lue. Conséquences : pas
+d'`og:image` (une racine n'en a souvent pas — Musicastelle), moisson et `images_wide` qui
+lisent une page d'accueil, et un lien « source » qui envoie le lecteur sur l'accueil.
+
+Depuis : un mot du titre dans le chemin ou l'ancre vaut 4 points dans `_programme_links`
+(plus qu'un indice « programme »), et `_page_evenement` mémorise la sous-page qui
+mentionne le titre — la racine n'est plus qu'un repli. Pour les fiches déjà écrites :
+`scripts/affiner_source.py` (dry-run par défaut), puis moisson et re-push. Fixture :
+`tests/test_source_page.py`.
+
 ## 2. Lire le programme
 On suit les pages **presse / programmation / line-up** (`_PROG_HINTS` + `_PRESS_HINTS`, FR+IT :
 `presse`, `press`, `stampa`, `comunicat`, `programm`…), y compris les **dossiers de presse
