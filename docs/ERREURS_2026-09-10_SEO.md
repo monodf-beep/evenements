@@ -238,3 +238,52 @@ plafonnée à 50 qui en cachait 118, un audit en mode signalement pris pour un m
 une sélection SQL lue dans sa docstring, des titres comparés à la place des pages.
 
 À chaque fois, la commande qui tranchait tenait en une ligne et existait déjà.
+
+---
+
+## Faute 9 — j'ai généralisé depuis DEUX fiches, et le chiffre m'a démenti
+
+Franck, le 10/09 : « là tu fais des cas spécifiques sur 2 événements. Mais c'est sur
+l'ensemble des événements qu'on a un mauvais SEO rouge Yoast. »
+
+Il avait raison, et c'est la faute la plus proche de la racine de tout ce fil. J'avais
+comparé une fiche verte (WP#772) et une rouge (WP#2283), tiré trois causes de cet
+échantillon de deux, écrit le correctif, et livré. Le correctif n'est pas faux — mais sa
+PORTÉE, je l'avais inventée.
+
+Mesuré ensuite sur les **146 fiches publiées et non terminées** (les deux langues,
+36 italiennes ; l'API TEC exclut le passé, donc c'est exactement le périmètre de la
+règle 5) :
+
+| critère Yoast | fiches en échec | part |
+|---|---|---|
+| texte sous 300 mots | **109 / 146** | 74 % |
+| aucun sous-titre h2/h3 | 45 / 146 | 30 % |
+| les deux à la fois | 41 / 146 | 28 % |
+| ni l'un ni l'autre (seules candidates au vert) | 33 / 146 | 23 % |
+
+Longueur : médiane **234 mots**, min 30, max 1108 — 56 fiches sous 200 mots.
+
+Et sur l'expression clé, mesurée sur les **130 pages qui ont répondu** (16 n'ont pas
+répondu dans le délai : NON MESURÉES, pas « bonnes » — un zéro ne dit pas s'il vient d'un
+échec ou d'une absence de cas) : **47 fiches sur 130, soit 36 %, n'ont même pas DEUX mots
+du début de leur titre SEO dans le corps.**
+
+C'est là que le démenti est le plus net. J'avais écrit, sur la foi de WP#2283, que l'écart
+clé/corps tenait à « une préposition », et livré `recale_cles_seo` pour ça. À l'échelle,
+il en rattrape **2 sur 47**. Les 45 autres portent une clé dont les mots ne sont tout
+simplement pas dans le texte : elles demandent un `seo_batch --redo`, donc un appel LLM.
+Un correctif gratuit annoncé comme la solution, qui couvre 4 % du problème qu'il prétend
+traiter.
+
+**Le garde-fou** : avant d'écrire un correctif tiré d'un cas, MESURER combien de cas il
+couvre. La mesure a pris six minutes (l'API REST du site, déjà utilisée dix fois dans ce
+fil) et elle a changé le classement des trois causes. Corollaire de la règle 6 : un
+correctif aussi a un périmètre, et il doit s'écrire à côté de lui.
+
+**Ce que la mesure change, concrètement** : l'ordre des travaux. La longueur (74 %) passe
+devant tout le reste, et elle ne se répare que par une ré-écriture des articles ; la clé
+absente (36 %) se répare au même moment, jamais avant — un article ré-écrit change le
+corps, donc la clé doit être choisie APRÈS lui, sinon on recrée l'écart qu'on vient de
+corriger. Le `<h2>` posé par le code (45 fiches sans sous-titre, et la clé dans un
+sous-titre pour les 146) reste le seul des trois qui ne coûte rien et n'attend rien.
