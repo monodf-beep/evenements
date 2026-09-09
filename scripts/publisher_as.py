@@ -186,6 +186,26 @@ _HUB_TERRITOIRE_NOM = {
 }
 
 
+_SOURCE_LABEL = {"fr": "Site officiel", "it": "Sito ufficiale"}
+
+
+def lien_source_officielle(url: str, lang: str) -> str:
+    """<p><a> vers la source officielle en fin de corps — '' sans URL publiable.
+
+    Décision de Franck du 2026-09-09 (tableau Yoast/doctrine, ligne 5) : Yoast signalait
+    « aucun lien externe » sur chaque fiche parce que le bouton « Source officielle » est
+    un champ TEC hors `post_content`. UN lien, la même URL que le bouton, avec le domaine
+    en clair : ce n'est pas la LISTE de sources que le 31/07 a retirée du corps
+    (scripts/publisher.py l.117), et le radar reste jamais lié — l'URL vient de
+    `_source_publiable`, le même filtre que le bouton."""
+    url = (url or "").strip()
+    if not url:
+        return ""
+    lang = lang if lang in _SOURCE_LABEL else "fr"
+    domaine = re.sub(r"^https?://(www\.)?", "", url).split("/")[0]
+    return f'<p><a href="{url}">{_SOURCE_LABEL[lang]} : {domaine}</a></p>'
+
+
 def lien_hub_territoire(territoire_slug: str, lang: str) -> str:
     """<p><a> vers la page hub du territoire, dans la langue de la fiche — '' si le
     territoire ou la langue n'est pas reconnu (aucun risque de lien cassé)."""
@@ -482,22 +502,27 @@ def _build_payload(event: dict) -> dict:
     """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
     title, content = build_post(event)
 
-    # LIEN INTERNE vers la page hub du territoire (2026-09-08, captures Yoast de
-    # Franck : « aucun lien interne dans cette page » sur WP#7490 et WP#7518). Posé
-    # ICI et pas dans `build_post` : cette fonction est PARTAGÉE avec
-    # scripts/publisher.py (culturasabauda.eu), qui n'a pas ces hubs — y coder un
-    # lien agendasabauda.eu en dur casserait l'autre cible. `build_post` reste donc
-    # générique, le lien est agencé par le publisher qui SAIT vers quel site il
-    # publie. Rien n'est ajouté si le territoire n'est pas reconnu, ni sur un
-    # article vide (pas de lien sans texte à ancrer).
-    if content:
-        hub = lien_hub_territoire(_map_territoire(event.get("territoire", "")), _lang(event))
-        if hub:
-            content = content + "\n" + hub
-
     # Le radar n'est jamais crédité ni lié (charte §8).
     is_radar = (event.get("source_type") == "radar"
                 or "(radar)" in (event.get("source_name") or ""))
+    # Une seule évaluation, réutilisée plus bas (meta + champ natif TEC) et ici pour le
+    # lien de fin de corps : les trois ne peuvent pas diverger.
+    source_url = _source_publiable(event, is_radar)
+
+    # DEUX LIENS EN FIN DE CORPS, posés ICI et pas dans `build_post` : cette fonction
+    # est PARTAGÉE avec scripts/publisher.py (culturasabauda.eu), qui n'a ni ces hubs
+    # ni ce bouton — y coder du agendasabauda.eu en dur casserait l'autre cible.
+    #  • lien EXTERNE vers la source officielle (09/09, décision de Franck : Yoast
+    #    signalait « aucun lien externe » parce que le bouton TEC est hors post_content) ;
+    #  • lien INTERNE vers la page hub du territoire (08/09 : « aucun lien interne »).
+    # Rien n'est ajouté sans URL publiable / territoire reconnu, ni sur un article
+    # vide (pas de lien sans texte à ancrer).
+    if content:
+        lang = _lang(event)
+        for lien in (lien_source_officielle(source_url, lang),
+                     lien_hub_territoire(_map_territoire(event.get("territoire", "")), lang)):
+            if lien:
+                content = content + "\n" + lien
     prix = event.get("prix", "") or ""
     # None (non mesuré) → chaîne vide côté WP : « pas mesuré » ne doit pas se confondre
     # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
@@ -507,9 +532,6 @@ def _build_payload(event: dict) -> dict:
     # le dict ferait deux calculs qui peuvent diverger si la date change entre les deux
     # (minuit), et c'est le genre d'écart qu'on ne retrouve jamais.
     une = une_now(event)
-    # Une seule évaluation, réutilisée deux fois plus bas (meta + champ natif TEC) et
-    # ici pour la date de vérification : les trois ne peuvent pas diverger.
-    source_url = _source_publiable(event, is_radar)
 
     meta = {
         "as_score":                 event.get("llm_score", ""),

@@ -31,7 +31,12 @@ langue). Relier le particulier à l'universel, sans jamais gonfler.
   lieu/l'événement EST et FAIT, jamais ce qu'il « n'est pas ».
 - Pas de **triades** systématiques (« rythme, mémoire et transmission »).
 - Pas de chutes toutes faites (« une invitation à… », « un voyage au cœur de… »).
-- Pas de connecteurs scolaires (« par ailleurs », « en effet », « force est de constater »).
+- Pas de connecteurs scolaires (« par ailleurs », « en effet », « force est de constater »,
+  « il convient de noter », « notons que »). Les connecteurs **simples** sont bienvenus
+  quand ils aident à suivre : « puis », « ensuite », « mais », « car », « donc », « enfin »,
+  « d'abord », « aussi », « surtout », « avant », « après ». (Décision de Franck du
+  2026-09-09 sur l'onglet Lisibilité de Yoast — sans viser un pourcentage : un connecteur
+  qui n'aide pas à lire est du remplissage.)
 - **Prose de journaliste, pas de sociologue.** Phrases concrètes et directes : qui, quoi, où,
   pourquoi ça compte. PROSCRIT : les constructions abstraites et la fausse profondeur — «ce
   chiffre interroge moins X que Y », « l'économie des loisirs qu'un tel afflux génère », « une
