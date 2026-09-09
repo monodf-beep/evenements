@@ -195,6 +195,36 @@ verifier("passe page : un 'llm_none' non ré-armé n'est pas repris", 6 not in _
 _pris_llm = {r["id"] for r in _v.selection_passe_llm(_conn, 50)}
 verifier("passe LLM : elle garde 'novenue' et 'none' (le relais après la page)",
          {3, 4} <= _pris_llm and 5 not in _pris_llm, str(_pris_llm))
+
+# ──────────────────────────────────────────────────────────────────────────
+# 10. `--retry` NE REJOUE PAS UN REFUS DU JOUR MÊME (2026-09-09).
+#     Mesuré en production : un second --retry lancé neuf minutes après le
+#     premier a relu 200 pages identiques pour 0 lieu. Règle 3 du dépôt.
+# ──────────────────────────────────────────────────────────────────────────
+_conn.execute("UPDATE events_raw SET venue_source='novenue', "
+              "venue_checked_at=datetime('now') WHERE id=4")
+_conn.execute("UPDATE events_raw SET venue_source='novenue', "
+              "venue_checked_at=datetime('now','-3 days') WHERE id=6")
+_conn.commit()
+_rearme = _conn.execute(
+    "SELECT id FROM events_raw WHERE venue_source IN ('llm_none','novenue') "
+    "  AND COALESCE(lieu,'') = '' AND statut != 'merged' "
+    "  AND (venue_checked_at IS NULL OR date(venue_checked_at) < date('now'))").fetchall()
+_ids = {r["id"] for r in _rearme}
+verifier("--retry : une fiche tentée IL Y A TROIS JOURS est ré-armée (le délai est bien ignoré)",
+         6 in _ids, str(_ids))
+verifier("--retry : une fiche tentée AUJOURD'HUI n'est PAS ré-armée — sa page n'a pas changé "
+         "depuis ce matin (cas frontière qui doit passer)", 4 not in _ids, str(_ids))
+
+# ──────────────────────────────────────────────────────────────────────────
+# 11. La passe source rend TROIS nombres : elle pose aussi des VILLES sur des
+#     fiches qui ont déjà leur lieu, et le total des fiches situées ne compte
+#     que les lieux. Un seul nombre pour deux choses se lit toujours mal.
+# ──────────────────────────────────────────────────────────────────────────
+_sig = _v.apply_source_venues(_conn)
+verifier("apply_source_venues rend (fiches, lieux, villes) et non un seul compteur",
+         isinstance(_sig, tuple) and len(_sig) == 3, repr(_sig))
+
 _conn.close()
 
 print(f"\n{'SUCCÈS' if echecs == 0 else 'ÉCHEC'} — {echecs} problème(s) sur "

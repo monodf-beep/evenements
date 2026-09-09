@@ -384,7 +384,7 @@ def apply_source_venues(conn: sqlite3.Connection) -> int:
     from scripts.scraper_events import load_sources
     defaults = {s["name"]: (s.get("lieu", ""), s.get("ville", ""))
                 for s in load_sources() if (s.get("lieu") or s.get("ville"))}
-    filled = 0
+    filled = lieux = villes = 0
     for name, (lieu, ville) in defaults.items():
         rows = conn.execute(
             "SELECT id, lieu, ville FROM events_raw WHERE source_name = ? "
@@ -403,8 +403,18 @@ def apply_source_venues(conn: sqlite3.Connection) -> int:
             conn.execute(f"UPDATE events_raw SET {sets} WHERE id=?",
                          [*updates.values(), r["id"]])
             filled += 1
+            if "lieu" in updates:
+                lieux += 1
+            if "ville" in updates:
+                villes += 1
         conn.commit()
-    return filled
+    # DEUX NOMBRES, PAS UN (2026-09-09, règle 6 : un compteur doit dire ce qu'il compte).
+    # Le bilan annonçait « 59 lieu/ville posé(s) » et le total de fiches SITUÉES ne bougeait
+    # pas d'une ligne — de quoi croire à une écriture perdue. Les deux disaient vrai : cette
+    # passe remplit aussi des VILLES sur des fiches qui avaient déjà leur lieu, et le total
+    # ne compte que les lieux. Un seul nombre pour deux choses finit toujours par se lire
+    # comme la plus grosse des deux.
+    return filled, lieux, villes
 
 
 # Délai avant de re-tenter une fiche dont le lieu n'a PAS été trouvé. Même convention et
@@ -559,13 +569,28 @@ def main(argv=None) -> int:
     # réserve aux fiches JAMAIS examinées. Une reprise ne doit pas prendre la place d'une
     # nouveauté. `--retry` conserve exactement ce comportement, il ignore seulement le délai.
     if args.retry:
+        # ⚠️ `--retry` IGNORE LE DÉLAI, PAS LA JOURNÉE EN COURS (2026-09-09). Mesuré en
+        # production le soir même : un premier `--retry` a posé 22 lieux, puis un second,
+        # lancé neuf minutes plus tard, a ré-armé 178 fiches que le premier venait de
+        # marquer 'novenue' — il a relu les 200 mêmes pages pendant 1 min 19 pour 0 lieu.
+        # C'est très exactement « un refus qui se rejoue sur la MÊME entrée n'est pas un
+        # rouvreur » (CLAUDE.md, règle 3) : entre les deux passages, RIEN n'avait changé
+        # ni dans la page, ni dans le code. Le forçage porte donc sur le délai de sept
+        # jours, pas sur une matière qu'on vient de lire.
         n = conn.execute(
             "UPDATE events_raw SET venue_source='none' "
             "WHERE venue_source IN ('llm_none','novenue') "
-            "  AND COALESCE(lieu,'') = '' AND statut != 'merged'").rowcount
+            "  AND COALESCE(lieu,'') = '' AND statut != 'merged' "
+            "  AND (venue_checked_at IS NULL OR date(venue_checked_at) < date('now'))"
+        ).rowcount
+        deja = conn.execute(
+            "SELECT COUNT(*) n FROM events_raw WHERE venue_source IN ('llm_none','novenue') "
+            "  AND COALESCE(lieu,'') = '' AND statut != 'merged' "
+            "  AND date(venue_checked_at) = date('now')").fetchone()["n"]
         conn.commit()
-        log.info("Retry : %d événement(s) sans lieu ré-armé(s) pour une nouvelle tentative "
-                 "(délai ignoré, --retry)", n)
+        log.info("Retry : %d événement(s) sans lieu ré-armé(s) (délai de %d jours ignoré) ; "
+                 "%d déjà tenté(s) aujourd'hui, laissé(s) tranquilles — leur page n'a pas "
+                 "changé depuis ce matin.", n, VENUE_COOLDOWN_DAYS, deja)
     else:
         n = conn.execute(
             "UPDATE events_raw SET venue_source='none' "
@@ -582,8 +607,11 @@ def main(argv=None) -> int:
                      "(dernier essai il y a plus de %d jours)", n, VENUE_COOLDOWN_DAYS)
 
     # --- Passe 0 : LIEU DE LA SOURCE (le lieu = la source pour les « officielle ») ---
-    from_source = apply_source_venues(conn)
-    log.info("Passe source : %d lieu/ville posé(s) depuis la source", from_source)
+    from_source, src_lieux, src_villes = apply_source_venues(conn)
+    log.info("Passe source : %d fiche(s) complétée(s) depuis le lieu par défaut de leur "
+             "source — %d lieu(x) et %d ville(s) posé(s) (une fiche peut recevoir les deux, "
+             "et une VILLE seule ne fait pas monter le total des fiches situées)",
+             from_source, src_lieux, src_villes)
 
     # --- Passe 1 : page structurée (JSON-LD location, puis libellés), déterministe ---
     todo = selection_passe_page(conn, args.fetch_cap)
