@@ -29,6 +29,7 @@ Variables .env dédiées (ne PAS réutiliser celles de culturasabauda.eu) :
 """
 from __future__ import annotations
 import base64
+import html
 import json
 import os
 import re
@@ -216,6 +217,30 @@ def lien_hub_territoire(territoire_slug: str, lang: str) -> str:
     nom = _HUB_TERRITOIRE_NOM[(territoire_slug, lang)]
     libelle = _HUB_LABEL[lang].format(territoire=nom)
     return f'<p><a href="{url}">{libelle}</a></p>'
+
+
+def titre_liens(keyphrase: str, lang: str) -> str:
+    """<h2> qui coiffe les deux liens de fin de corps, et qui PORTE l'expression clé.
+
+    D'OÙ ÇA VIENT — 2026-09-10, « on a peu de vert pour le SEO des événements ». Comparées
+    ce jour-là, une fiche verte (WP#772, Saint-Ours) et une rouge (WP#2283, Bue Grasso)
+    ont la même longueur à 7 mots près ; ce qui les sépare, c'est que la verte a UN
+    sous-titre et la rouge AUCUN. Yoast compte deux points là-dessus — « répartition des
+    sous-titres » et « expression clé dans un sous-titre » — et le second est rouge sur
+    presque toutes les fiches, parce que le corps rédigé par `enrich` met un « ## » quand
+    il en a envie (« au plus un ou deux si vraiment nécessaire »).
+
+    Ce titre-ci ne dépend donc pas du LLM : il est posé par le code, sur chaque fiche qui a
+    au moins un lien à coiffer, dans la langue de la fiche. Sans clé (fiche pas encore
+    passée par `seo_batch`), on pose quand même le titre générique : la structure de la
+    page ne doit pas dépendre de l'avancement du SEO.
+    """
+    lang = lang if lang in ("fr", "it") else "fr"
+    cle = html.escape((keyphrase or "").strip())
+    if not cle:
+        return "<h2>En savoir plus</h2>" if lang == "fr" else "<h2>Per saperne di più</h2>"
+    return (f"<h2>{cle} : en savoir plus</h2>" if lang == "fr"
+            else f"<h2>{cle}: per saperne di più</h2>")
 
 
 def _map_territoire(value: str) -> str:
@@ -522,10 +547,13 @@ def _build_payload(event: dict, skip_media: bool = False) -> dict:
     # vide (pas de lien sans texte à ancrer).
     if content:
         lang = _lang(event)
-        for lien in (lien_source_officielle(source_url, lang),
-                     lien_hub_territoire(_map_territoire(event.get("territoire", "")), lang)):
-            if lien:
-                content = content + "\n" + lien
+        liens = [l for l in (lien_source_officielle(source_url, lang),
+                             lien_hub_territoire(_map_territoire(event.get("territoire", "")), lang))
+                 if l]
+        if liens:
+            # Le <h2> AVANT les liens : c'est lui qui porte l'expression clé (Yoast
+            # « expression clé dans un sous-titre », rouge sur presque toutes les fiches).
+            content = "\n".join([content, titre_liens(event.get("seo_keyphrase", ""), lang)] + liens)
     prix = event.get("prix", "") or ""
     # None (non mesuré) → chaîne vide côté WP : « pas mesuré » ne doit pas se confondre
     # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
