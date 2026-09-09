@@ -144,6 +144,59 @@ verifier("ville_du_domaine('torinoclick.it') = '' (pas une commune, un média)",
 verifier("ville_du_domaine('') = ''",
          ville_du_domaine("") == "")
 
+# ──────────────────────────────────────────────────────────────────────────
+# 9. LA SÉLECTION DE LA PASSE PAGE reprend ce que le ré-armement a rouvert.
+#    Ajouté le 2026-09-09 : sans ça, l'extracteur ci-dessus ne sert QUE les
+#    fiches jamais examinées — les 19 municipales qui l'ont motivé, déjà en
+#    'novenue', ne repassaient plus que par la passe LLM (payante).
+# ──────────────────────────────────────────────────────────────────────────
+import os as _os, sqlite3 as _sq, tempfile as _tf  # noqa: E402
+_tmp = Path(_tf.mkdtemp()) / "venues-fixture.db"
+_os.environ["DB_PATH"] = str(_tmp)
+from scripts.scraper_events import init_db  # noqa: E402
+import scripts.venues as _v  # noqa: E402
+
+_conn = _sq.connect(_tmp)
+_conn.row_factory = _sq.Row
+init_db(_conn)
+_v.ensure_columns(_conn)
+# La colonne d'annulation vit dans scripts/dedupe (canal 3) : la fixture doit la créer
+# comme le fait main(), sinon la sélection échoue sur « no such column ».
+from scripts.dedupe import ensure_annulation_columns  # noqa: E402
+ensure_annulation_columns(_conn)
+_demain = "2026-12-31"
+_cas = [
+    (1, "jamais examinée (NULL)",            None,        ""),
+    (2, "jamais examinée (chaîne vide)",     "",          ""),
+    (3, "ré-armée par le cooldown ('none')", "none",      ""),
+    (4, "échec frais, pas encore ré-armée",  "novenue",   ""),
+    (5, "déjà située par la page",           "page",      "Teatro Regio"),
+    (6, "refus du modèle, pas ré-armée",     "llm_none",  ""),
+]
+for _id, _t, _src, _lieu in _cas:
+    _conn.execute(
+        "INSERT INTO events_raw (id, title, url_source, statut, venue_source, lieu, "
+        " date_event_start, date_event_end) VALUES (?,?,?,?,?,?,?,?)",
+        (_id, _t, f"https://comune.biella.it/eventi/{_id}/", "evaluated", _src, _lieu,
+         _demain, _demain))
+_conn.commit()
+_pris = {r["id"] for r in _v.selection_passe_page(_conn, 50)}
+
+verifier("passe page : une fiche jamais examinée (NULL) est prise", 1 in _pris, str(_pris))
+verifier("passe page : une fiche jamais examinée ('') est prise", 2 in _pris, str(_pris))
+verifier("passe page : une fiche RÉ-ARMÉE ('none') est reprise — le correctif du 09/09",
+         3 in _pris, str(_pris))
+verifier("passe page : un échec frais ('novenue') N'est PAS repris tout de suite — "
+         "c'est le ré-armement qui décide du rythme (cas frontière qui doit passer)",
+         4 not in _pris, str(_pris))
+verifier("passe page : une fiche DÉJÀ située n'est pas relue", 5 not in _pris, str(_pris))
+verifier("passe page : un 'llm_none' non ré-armé n'est pas repris", 6 not in _pris, str(_pris))
+
+_pris_llm = {r["id"] for r in _v.selection_passe_llm(_conn, 50)}
+verifier("passe LLM : elle garde 'novenue' et 'none' (le relais après la page)",
+         {3, 4} <= _pris_llm and 5 not in _pris_llm, str(_pris_llm))
+_conn.close()
+
 print(f"\n{'SUCCÈS' if echecs == 0 else 'ÉCHEC'} — {echecs} problème(s) sur "
       f"{echecs + sum(1 for _ in [1])} vérifications" if False else
       f"\n{'SUCCÈS — 0 problème(s).' if echecs == 0 else f'ÉCHEC — {echecs} problème(s).'}")

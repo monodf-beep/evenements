@@ -445,11 +445,30 @@ _DEVANT_NOUS_SQL = "(COALESCE(date_event_end,'') = '' OR date_event_end >= date(
 
 
 def selection_passe_page(conn: sqlite3.Connection, cap: int) -> list:
-    """Les fiches jamais examinées, les plus récentes d'abord, à venir ou en cours."""
+    """Les fiches sans lieu à retenter par la PAGE, les plus récentes d'abord.
+
+    ⚠️ 'none' EST DANS LA SÉLECTION, ET C'EST TOUT L'OBJET DE CE CORRECTIF (2026-09-09).
+    Jusqu'ici cette passe ne lisait que NULL et '' — « jamais examinée ». Or le
+    ré-armement (plus bas, et `--retry`) pose 'none' précisément pour dire « à
+    retenter » : une fiche qui a échoué UNE fois ne repassait donc JAMAIS par la passe
+    page, déterministe et gratuite ; elle n'était plus reprise que par la passe LLM,
+    payante. Cul-de-sac partiel au sens de la règle 3 du dépôt — l'état avait bien un
+    rouvreur, mais il rouvrait vers la mauvaise porte.
+
+    Mesuré le 09/09 au soir, et c'est ce qui l'a révélé : l'extracteur de libellés
+    « Dove / Luogo / Lieu » ajouté la veille pour les pages municipales n'aurait servi
+    AUCUNE des 19 fiches qui l'ont motivé (toutes en 'novenue' depuis des jours), et le
+    dry-run de publication montrait encore 30 fiches écartées, dont 14 pour un lieu
+    manquant que ces pages écrivent noir sur blanc. Un correctif déployé mais inerte sur
+    le stock : la pire des deux situations, parce qu'il se croit fait.
+
+    Le cooldown reste seul maître du RYTHME : c'est le ré-armement qui décide quand une
+    'novenue' redevient 'none'. Cette sélection ne fait que ne plus l'ignorer."""
     return conn.execute(
         f"SELECT id, title, url_source, {URL_PAGE_SQL} AS url_page, wp_post_id_as, "
         "  annulation_detectee_at FROM events_raw "
-        "WHERE COALESCE(lieu,'') = '' AND (venue_source IS NULL OR venue_source = '') "
+        "WHERE COALESCE(lieu,'') = '' "
+        "  AND (venue_source IS NULL OR venue_source IN ('', 'none')) "
         f"  AND statut != 'merged' AND {_URL_LISIBLE_SQL} AND {_DEVANT_NOUS_SQL} "
         # Sans ORDER BY, LIMIT prenait les plus VIEILLES (même défaut que dates.py le
         # 2026-08-11) : un plafond sans tri lit toujours le même fond de tiroir.
