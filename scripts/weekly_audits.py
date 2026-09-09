@@ -385,6 +385,20 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_temps_recit")
 
+    # 4) LA LONGUEUR DES PHRASES (2026-09-09). La règle « < 20 mots » est dans la voix et
+    # dans le prompt depuis le début ; rien ne la mesurait. Mesuré ce jour-là sur 143
+    # fiches en ligne : 92 % au-dessus du seuil Yoast. La consigne a été resserrée le même
+    # jour ; ce passage hebdomadaire est ce qui dira si elle a fait bouger la médiane —
+    # LECTURE SEULE, et la première ligne de sa sortie porte le compteur avec son
+    # périmètre (en ligne, devant nous).
+    from scripts.audit_lisibilite import main as lisibilite_main
+    rc, out = _run_captured(lisibilite_main, ["--cap", "5"], None)
+    premiere = next((l.strip() for l in out.splitlines() if l.startswith("═══")), _tail(out, 1))
+    mediane = next((l.strip() for l in out.splitlines() if l.startswith("Médianes")), "")
+    sections.append(f"• Lisibilité (phrases longues, passif) : {premiere} {mediane}".strip())
+    if rc:
+        echecs.append("audit_lisibilite")
+
     # 3) LES LIENS OFFICIELS MORTS. Le dernier fait qu'une fiche affirme au public :
     # « voici la page de cet événement ». Signalé le 2026-08-12 sur la fiche 909, dont le
     # lien vers opera-nice.org répondait 404 — un lecteur qui veut réserver tombe sur rien.

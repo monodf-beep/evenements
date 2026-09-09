@@ -82,7 +82,7 @@ _base()
 appels = []
 
 
-def _faux_optimize(ev, client, model):
+def _faux_optimize(ev, client, model, lang=None):
     appels.append(ev["id"])
     if ev["id"] == 2:
         raise ErreurPlafond()
@@ -116,7 +116,7 @@ _base()
 appels.clear()
 
 
-def _faux_optimize_ordinaire(ev, client, model):
+def _faux_optimize_ordinaire(ev, client, model, lang=None):
     appels.append(ev["id"])
     if ev["id"] == 2:
         raise ErreurOrdinaire()

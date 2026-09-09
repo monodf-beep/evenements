@@ -241,7 +241,10 @@ def _charte_prompt(target: str, voix: str = "") -> str:
         f"programme, line-up, lieu, horaires, tarifs, chiffres IDENTIQUES à la source. "
         f"Seule l'EXPRESSION est réécrite. Un programme / une liste se traduit LIGNE À "
         f"LIGNE, sans en perdre ni en fusionner aucune.\n\n"
-        f"REGISTRE : soutenu mais accessible, phrases claires, pas de jargon gratuit. "
+        f"REGISTRE : soutenu mais accessible, pas de jargon gratuit. Phrases COURTES : une "
+        f"idée par phrase, 20 mots au plus, jamais plus d'une subordonnée — une phrase "
+        f"source trop longue se COUPE en deux au point, sans rien perdre. Voix ACTIVE de "
+        f"préférence (« due curatori firmano la mostra », pas « la mostra è curata da »). "
         f"{boussole}\n\n")
 
 
