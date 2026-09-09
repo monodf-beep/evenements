@@ -145,6 +145,29 @@ verifier("ville_du_domaine('') = ''",
          ville_du_domaine("") == "")
 
 # ──────────────────────────────────────────────────────────────────────────
+# 8 bis. UNE RUBRIQUE VOISINE N'EST JAMAIS UN LIEU — cas RÉEL de production.
+#    La fiche 5371 (« Via Roma: inizia una nuova storia ») allait être publiée
+#    avec « Costo » pour lieu : la rubrique « Luogo » était vide, et la liste
+#    des rubriques portait « costi » sans « costo ».
+# ──────────────────────────────────────────────────────────────────────────
+LUOGO_VIDE_PUIS_COSTO = ('<article id="luogo"><h2>Luogo</h2></article>'
+                         '<article id="costi"><h2>Costo</h2><div>Ingresso libero</div></article>')
+verifier("« Luogo » vide suivi de la rubrique « Costo » ne rend RIEN (cas réel, fiche 5371)",
+         lieu_depuis_libelles(LUOGO_VIDE_PUIS_COSTO)[0] == "",
+         str(lieu_depuis_libelles(LUOGO_VIDE_PUIS_COSTO)))
+for _mot in ["Costo", "Costi", "Orario", "Orari", "Prezzo", "Tariffe", "Biglietti",
+             "Ingresso", "Durata", "Prenotazione", "Horaires", "Tarifs", "Réservation"]:
+    verifier(f"« {_mot} » est reconnu comme rubrique, jamais comme lieu",
+             lieu_depuis_libelles(f'<h2>Luogo</h2><h3>{_mot}</h3><p>quelque chose</p>')[0] == "",
+             _mot)
+# …et le cas frontière : un vrai nom de lieu qui COMMENCE par un mot de rubrique
+verifier("frontière : « Ingresso Nord del Parco » est un vrai lieu, pas la rubrique "
+         "« Ingresso » — seul un bloc ÉGAL à la rubrique est écarté",
+         lieu_depuis_libelles('<h2>Luogo</h2><div>Ingresso Nord del Parco</div>')[0]
+         == "Ingresso Nord del Parco",
+         str(lieu_depuis_libelles('<h2>Luogo</h2><div>Ingresso Nord del Parco</div>')))
+
+# ──────────────────────────────────────────────────────────────────────────
 # 9. LA SÉLECTION DE LA PASSE PAGE reprend ce que le ré-armement a rouvert.
 #    Ajouté le 2026-09-09 : sans ça, l'extracteur ci-dessus ne sert QUE les
 #    fiches jamais examinées — les 19 municipales qui l'ont motivé, déjà en

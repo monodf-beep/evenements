@@ -105,15 +105,28 @@ _LIBELLES_SEULS = (
 # son accent seulement : un « ou » isolé entre deux options (<b>ou</b>) n'annonce rien.
 _LIBELLES_INLINE = ("dove", "luogo", "lieu", "où", "where", "venue")
 # Titres de rubriques voisines : jamais une valeur, et signal de champ vide.
+# ⚠️ SINGULIER **ET** PLURIEL, LES DEUX (2026-09-09, corrigé le soir même de sa mise en
+# production). La liste portait « costi » mais pas « costo » : sur une page où la rubrique
+# « Luogo » est VIDE et suivie de « Costo », la valeur retenue était… « Costo ». Vu en
+# production sur la fiche 5371 (« Via Roma: inizia una nuova storia »), qui allait être
+# publiée avec « Costo » pour lieu. Une liste de mots interdits ne se vérifie pas en la
+# relisant — elle se vérifie en la passant sur des pages réelles, et c'est le dry-run de
+# publication qui l'a montrée, pas moi.
 _RUBRIQUES = {
-    "cos'è", "cos'e", "a chi è rivolto", "a chi e rivolto", "date e orari", "costi",
-    "contatti", "quando", "orari", "periodicità", "periodicita", "tipologia", "target",
+    "cos'è", "cos'e", "a chi è rivolto", "a chi e rivolto", "a chi si rivolge",
+    "date e orari", "costi", "costo", "prezzo", "prezzi", "tariffe", "tariffa",
+    "biglietti", "biglietto", "ingresso", "durata", "modalità", "modalita",
+    "contatti", "quando", "orari", "orario", "periodicità", "periodicita",
+    "tipologia", "target", "destinatari", "a cura di", "in collaborazione con",
     "programma", "mappa", "ulteriori informazioni", "documenti", "argomenti",
-    "descrizione", "prenotazioni", "info", "informazioni", "condividi", "allegati",
-    "horaires", "tarifs", "tarif", "contact", "dates", "date", "quand", "prix",
-    "infos pratiques", "réservation", "reservation", "organisateur", "organisation",
+    "descrizione", "prenotazioni", "prenotazione", "info", "informazioni",
+    "condividi", "allegati", "note", "avvertenze", "accessibilità", "accessibilita",
+    "horaires", "horaire", "tarifs", "tarif", "contact", "contacts", "dates", "date",
+    "quand", "prix", "billetterie", "billets", "durée", "duree", "public", "âge", "age",
+    "infos pratiques", "informations pratiques", "réservation", "reservation",
+    "organisateur", "organisation", "en partenariat avec", "accessibilité",
     "description", "plan", "carte", "partager", "map", "when", "price", "tickets",
-    "image", "photo", "vidéo", "video",
+    "opening hours", "duration", "booking", "image", "photo", "vidéo", "video",
 }
 _PIN = "␟"        # ␟ : sentinelle posée à la place d'une icône d'épingle
 _PIN_CLASSES = re.compile(

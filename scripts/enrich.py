@@ -2012,6 +2012,35 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                 log.info("[%d] affiches presse : portrait=%s paysage=%s", ev["id"],
                          bool(vis.get("portrait")), bool(vis.get("wide")))
         has_official = ("[PAGE PRESSE/PROGRAMME" in material or "[DOSSIER" in material)
+        # LA MATIÈRE OFFICIELLE DOIT PARLER DE **CET** ÉVÉNEMENT (2026-09-09).
+        #
+        # Ce test de pertinence existait déjà vingt lignes plus bas, mais il ne servait qu'à
+        # décider si l'on MÉMORISE `url_officiel`. La décision « article COMPLET, modèle
+        # cher, pas de recherche web » se contentait, elle, de la PRÉSENCE d'un bloc
+        # « [PAGE PRESSE/PROGRAMME » — sans jamais demander si ces pages parlaient du sujet.
+        # Deux détecteurs pour la même chose, un seul juste : la racine des fautes du 08/09.
+        #
+        # Mesuré sur la sortie de production du 09/09 au soir. Cinq fiches de bibliothèque de
+        # quartier (4490, 4492, 5180, 5181, 5208) ont vu le résolveur rendre la RACINE
+        # bct.comune.torino.it, puis lire trois pages de programme génériques
+        # (/programmi, /tipologia-evento/concerti-e-spettacoli). Le journal disait, dans le
+        # même run : « URL officielle NON mémorisée : pages sans mention du titre » PUIS
+        # « matière officielle → article COMPLET ». Résultat : des articles longs écrits par
+        # le modèle de qualité à partir de pages hors sujet — 219 749 tokens relus pour la
+        # seule fiche 5208 —, notés 7,4 à 8,1 par le panel, donc placés « En évidence (home) ».
+        # Un atelier tricot de quartier en vitrine, exactement le défaut « pilates à la une »
+        # du 17/08, revenu par une autre porte : le score mesure le RENDU, et un article long
+        # et bien tourné bat un vrai festival mal documenté.
+        #
+        # La pertinence est donc calculée UNE fois, ici, et sert aux deux décisions. Quand
+        # elle manque : on garde la matière lue (elle peut nourrir le contexte), mais on ne
+        # force plus la complétion maximale, et la recherche web redevient un secours
+        # légitime puisqu'on n'a, de fait, aucune matière sur cet événement.
+        official_pertinent = has_official
+        if has_official and official_pages:
+            _j = _fold(" ".join((p.get("html") or "")[:20000] for p in official_pages))
+            _t = _event_tokens(ev.get("title", ""))
+            official_pertinent = (not _t) or any(tok in _j for tok in _t)
         # MÉMORISER l'URL officielle dès qu'une résolution a payé (pages presse trouvées) :
         # les runs suivants la liront directement → déterministe, plus de recherche web ni
         # de variante de domaine aléatoire (musique-menton.fr vs festival-musique-menton.fr).
@@ -2023,9 +2052,7 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
             # (au moins un mot significatif du titre). Sinon le résolveur a rendu un site
             # générique (nice.fr et ses pages « conseil municipal » pour la Farandole) —
             # on garde la matière du run, mais on ne fige RIEN.
-            _joined = _fold(" ".join((p.get("html") or "")[:20000] for p in official_pages))
-            _toks = _event_tokens(ev.get("title", ""))
-            _relevant = (not _toks) or any(t in _joined for t in _toks)
+            _relevant = official_pertinent      # calculé plus haut, une seule fois
             if not _relevant:
                 log.info("[%d] URL officielle NON mémorisée (%s : pages sans mention du titre)",
                          ev["id"], _p.netloc)
@@ -2066,16 +2093,19 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         # SCORE AVANT : si on a la matière officielle (dossier de presse), on POUSSE l'article
         # COMPLET (complétion maximale) même si le llm_score l'aurait mis en court — on a tout
         # pour bien faire. (En mode auto seulement ; court/long forcés restent respectés.)
-        if has_official and court and mode == "auto":
+        if official_pertinent and court and mode == "auto":
             court = False
             model = os.getenv("ENRICH_LONG_MODEL", "").strip() or pipeline_settings.model_qualite()
             log.info("[%d] matière officielle → article COMPLET (complétion max)", ev["id"])
         # La source officielle fait foi : si on a déjà la matière officielle, on COUPE la
         # recherche web (redondante, lente, source de troncature) — secours seulement sinon.
-        allow_web = not has_official
-        log.info("[%d] palier=%s modèle=%s (score=%s) | matière officielle=%s → web=%s",
+        allow_web = not official_pertinent
+        log.info("[%d] palier=%s modèle=%s (score=%s) | matière officielle=%s%s → web=%s",
                  ev["id"], "court" if court else "long", model, ev.get("llm_score"),
-                 has_official, USE_WEB_SEARCH and allow_web and not court)
+                 official_pertinent,
+                 "" if official_pertinent == has_official
+                 else " (pages lues, mais aucune ne mentionne le titre)",
+                 USE_WEB_SEARCH and allow_web and not court)
         result = enrich_event(ev, material, client, model, court, allow_web=allow_web)
         if result is API_ERROR:
             # Trace visible côté back-office (sinon l'utilisateur ne voit « rien »).
@@ -2235,6 +2265,23 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         # structurée ailleurs → cs-publish.php force sinon une fiche « journée entière »
         # (00:00-23:59) qui contredit le Schema.org Event affiché. Ordre de priorité :
         # infos_pratiques et l'encadré (factuels) avant le programme et la prose.
+        # « confiance » EN FRANÇAIS, TOUJOURS (2026-09-09). Le prompt demande
+        # haute|moyenne|faible, mais sur une fiche italienne le modèle rend volontiers sa
+        # traduction : « confiance=alta » est apparu sur trois fiches du run de ce soir.
+        # Sans conséquence sur le tri — rien ne filtre là-dessus — mais la valeur est
+        # affichée au back-office dans une classe CSS (`conf-{{ c }}`, preview.html) : une
+        # valeur inattendue donne une pastille sans style, et deux mots pour la même chose
+        # finissent toujours par se compter séparément. On normalise à l'écriture, une fois.
+        _CONF = {"alta": "haute", "high": "haute", "elevata": "haute", "élevée": "haute",
+                 "media": "moyenne", "medium": "moyenne", "moyen": "moyenne",
+                 "bassa": "faible", "low": "faible", "basse": "faible"}
+        _c = str(result.get("confiance", "") or "").strip().lower()
+        if _c in _CONF:
+            result["confiance"] = _CONF[_c]
+        elif _c and _c not in ("haute", "moyenne", "faible"):
+            log.warning("[%d] valeur de confiance inattendue (%r) — laissée telle quelle, "
+                        "la pastille du back-office sera sans style.", ev["id"], _c)
+
         art = result.get("article") or {}
         _prog = art.get("programme")
         _prog_text = " ".join(str(p) for p in _prog) if isinstance(_prog, list) else str(_prog or "")
