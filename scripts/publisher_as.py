@@ -155,6 +155,49 @@ def _norm(s: str) -> str:
     return s.replace("’", "'")
 
 
+# Permaliens des 8 pages hub territoire (4 territoires × FR/IT) — vérifiés en ligne
+# le 2026-09-08 (GET /wp-json/wp/v2/pages/<id>). PAS d'auto-découverte à chaque
+# publication : ces pages ne se renomment pas au quotidien, et une requête HTTP de
+# plus par événement publié coûterait cher pour une donnée quasi figée. Si l'URL
+# d'un hub change, la corriger ICI (elle est aussi lisible depuis /wp-admin →
+# Pages → « Piémont »/« Savoie »/… → Copier le permalien).
+_HUB_TERRITOIRE_URL = {
+    ("savoie", "fr"):          "https://agendasabauda.eu/que-faire-en-savoie/",
+    ("savoie", "it"):          "https://agendasabauda.eu/it/cosa-fare-in-savoia/",
+    ("piemont", "fr"):         "https://agendasabauda.eu/que-faire-dans-le-piemont/",
+    ("piemont", "it"):         "https://agendasabauda.eu/it/cosa-fare-in-piemonte/",
+    ("vallee-d-aoste", "fr"):  "https://agendasabauda.eu/que-faire-en-vallee-d-aoste/",
+    ("vallee-d-aoste", "it"):  "https://agendasabauda.eu/it/cosa-fare-in-valle-d-aosta/",
+    ("comte-de-nice", "fr"):   "https://agendasabauda.eu/que-faire-dans-le-comte-de-nice/",
+    ("comte-de-nice", "it"):   "https://agendasabauda.eu/it/cosa-fare-nella-contea-di-nizza/",
+}
+
+# Libellé du lien, dans la langue de la fiche — pas un CTA marketing (charte §7 :
+# jamais d'urgence factice), une simple invite à poursuivre la lecture.
+_HUB_LABEL = {
+    "fr": "Voir tous les événements en {territoire}",
+    "it": "Vedi tutti gli eventi in {territoire}",
+}
+_HUB_TERRITOIRE_NOM = {
+    ("savoie", "fr"): "Savoie", ("savoie", "it"): "Savoia",
+    ("piemont", "fr"): "Piémont", ("piemont", "it"): "Piemonte",
+    ("vallee-d-aoste", "fr"): "Vallée d'Aoste", ("vallee-d-aoste", "it"): "Valle d'Aosta",
+    ("comte-de-nice", "fr"): "Comté de Nice", ("comte-de-nice", "it"): "Contea di Nizza",
+}
+
+
+def lien_hub_territoire(territoire_slug: str, lang: str) -> str:
+    """<p><a> vers la page hub du territoire, dans la langue de la fiche — '' si le
+    territoire ou la langue n'est pas reconnu (aucun risque de lien cassé)."""
+    lang = lang if lang in ("fr", "it") else "fr"
+    url = _HUB_TERRITOIRE_URL.get((territoire_slug, lang))
+    if not url:
+        return ""
+    nom = _HUB_TERRITOIRE_NOM[(territoire_slug, lang)]
+    libelle = _HUB_LABEL[lang].format(territoire=nom)
+    return f'<p><a href="{url}">{libelle}</a></p>'
+
+
 def _map_territoire(value: str) -> str:
     """Territoire interne → SLUG du terme « territoire » semé (parent des 4).
 
@@ -435,6 +478,19 @@ def _panel_meta(event: dict) -> dict:
 def _build_payload(event: dict) -> dict:
     """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
     title, content = build_post(event)
+
+    # LIEN INTERNE vers la page hub du territoire (2026-09-08, captures Yoast de
+    # Franck : « aucun lien interne dans cette page » sur WP#7490 et WP#7518). Posé
+    # ICI et pas dans `build_post` : cette fonction est PARTAGÉE avec
+    # scripts/publisher.py (culturasabauda.eu), qui n'a pas ces hubs — y coder un
+    # lien agendasabauda.eu en dur casserait l'autre cible. `build_post` reste donc
+    # générique, le lien est agencé par le publisher qui SAIT vers quel site il
+    # publie. Rien n'est ajouté si le territoire n'est pas reconnu, ni sur un
+    # article vide (pas de lien sans texte à ancrer).
+    if content:
+        hub = lien_hub_territoire(_map_territoire(event.get("territoire", "")), _lang(event))
+        if hub:
+            content = content + "\n" + hub
 
     # Le radar n'est jamais crédité ni lié (charte §8).
     is_radar = (event.get("source_type") == "radar"

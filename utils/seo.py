@@ -39,6 +39,24 @@ def _clean(text: str) -> str:
 _SUFFIXE_MARQUE = " — Agenda Sabauda"
 _TITRE_SEO_CIBLE = 60
 
+# Yoast affiche « La méta description fait plus de 156 caractères » (constaté le
+# 2026-09-08 sur les fiches WP#7490 et WP#7518, captures d'écran de Franck). Le prompt
+# ci-dessous vise 150-160 — DÉJÀ au-delà de 156 dans sa propre consigne — et
+# `optimize_seo` ne faisait que tronquer sec à 180, ce qui peut couper un mot en deux
+# ET laisse passer tout ce qui est entre 157 et 180. `_ajuste_meta_seo` applique la
+# même discipline que `_ajuste_titre_seo` : jamais de mot coupé, jamais au-delà du
+# budget réel de Yoast.
+_META_SEO_CIBLE = 156
+
+
+def _ajuste_meta_seo(meta: str) -> str:
+    """Fait rentrer `meta` dans le budget Yoast (156 car.), sans jamais couper un mot."""
+    meta = _clean(meta)
+    if len(meta) <= _META_SEO_CIBLE:
+        return meta
+    coupe = meta[:_META_SEO_CIBLE].rsplit(" ", 1)[0].rstrip(" ,.;:—-")
+    return coupe or meta[:_META_SEO_CIBLE]
+
 
 def _ajuste_titre_seo(titre: str) -> str:
     """Fait rentrer `titre` dans le budget visé, SANS jamais couper un mot en deux.
@@ -222,7 +240,7 @@ def optimize_seo(ev: dict, client, model: str) -> dict | None:
         "seo_keyphrase": keyphrase[:60],
         "seo_title": _ajuste_titre_seo(data.get("seo_title"))[:70],
         "seo_slug": slug,
-        "seo_meta": _clean(data.get("seo_meta"))[:180],
+        "seo_meta": _ajuste_meta_seo(data.get("seo_meta")),
         "seo_answer": _clean(data.get("seo_answer")),
         "seo_tags": tags,
         "seo_faq": faq,
