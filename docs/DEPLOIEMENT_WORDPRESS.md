@@ -308,14 +308,28 @@ Sitemap déclaré, avant (mesuré le 09/09) et après :
     pages          137+ →  106
     événements     189  →  131   (les terminés sortent : cs-passe-noindex)
 
-### Un trou trouvé en passant, PAS causé par ce dépôt
+### Un « trou » annoncé, puis DÉMENTI par la mesure suivante — 2026-09-10
 
-`post-sitemap.xml` déclare **0 URL**, alors que le site a **24 articles publiés**
-(guides, « où manger à Turin »…), qu'aucun ne porte `_yoast_wpseo_meta-robots-noindex`,
-et que le réglage Yoast `noindex-post` vaut `false`. Aucun des deux mu-plugins ne touche
-au type `post` — ce n'est donc pas une conséquence de cette soirée, mais la cause reste à
-établir : **ne pas conclure sans avoir lu**. Les articles du site sont, en l'état, absents
-du sitemap.
+J'ai écrit ici, et dit à Franck, que `post-sitemap.xml` déclarait **0 URL** pour
+**24 articles publiés**, et j'ai proposé d'en faire une urgence. C'était FAUX.
+
+Ce qui a tranché, en trois appels : le fournisseur Yoast rendait bien
+`get_sitemap_links('post', …)` → **24 liens** ; une lecture du même sitemap DEPUIS le
+serveur → **24 `<loc>`** ; et une relecture depuis l'extérieur → **24** aussi. Le site
+n'a jamais eu ce trou. C'est mon `curl` qui a compté zéro, une fois, et je n'ai pas
+recompté avant d'annoncer.
+
+**Ce que ça coûte, et le garde-fou.** C'est la faute-racine du dépôt à l'état pur : une
+mesure UNIQUE présentée comme un fait, et une conclusion (« tes contenus les plus
+durables sont invisibles de Google ») bâtie dessus. La règle existait déjà —
+« ne jamais présenter une INFÉRENCE comme un FAIT » — mais il en manquait un cran :
+**un zéro se recompte AVANT d'être annoncé, par un second chemin.** Un zéro est
+justement la valeur qu'un défaut de mesure produit le plus volontiers, et il ressemble
+exactement à un monde où il n'y a rien.
+
+Le reste des chiffres de ce paragraphe tient : 24 articles publiés, aucun en noindex,
+`noindex-post` à `false`. C'est la seule ligne qui comptait — « 0 URL » — qui était de
+moi et pas du site.
 
 ### Retour arrière
 

@@ -287,3 +287,56 @@ absente (36 %) se répare au même moment, jamais avant — un article ré-écri
 corps, donc la clé doit être choisie APRÈS lui, sinon on recrée l'écart qu'on vient de
 corriger. Le `<h2>` posé par le code (45 fiches sans sous-titre, et la clé dans un
 sous-titre pour les 146) reste le seul des trois qui ne coûte rien et n'attend rien.
+
+---
+
+## Faute 10 — j'ai rallongé les articles sans relever le plafond de jetons
+
+Le lot de dix a rendu **6 fiches sur 10**. Les quatre autres (922, 3795, 5034, 5345) sont
+mortes sur la même ligne :
+
+    [922] tour 1 : stop_reason=max_tokens, 16000 tokens sortie
+    [922] réponse coupée (max_tokens=16000) — augmente ENRICH_MAX_TOKENS
+    Pas de JSON pour 'Boîte Crânienne'
+
+C'est moi. Le matin même, j'avais porté le plancher de l'article de 200-300 à 300-380
+mots, et relevé `COURT_MAX_TOKENS` (1800 → 2600) pour le mode court — en écrivant noir sur
+blanc que sans ça « la réponse partirait tronquée, donc une fiche NON enrichie, au lieu
+d'une fiche courte ; c'est le repli le plus coûteux ». **J'ai écrit la leçon et je ne l'ai
+pas appliquée au mode long**, dont le plafond (`ENRICH_MAX_TOKENS`, 16 000) était resté
+tel quel. Quatre fiches sur dix, soit 40 % du premier lot, et le mode long est celui des
+fiches qui ont de la matière — donc précisément celles qui comptent.
+
+**Le garde-fou** : `ENRICH_MAX_TOKENS` passe à 24 000, avec le commentaire qui dit d'où
+vient le chiffre. Mais le vrai garde-fou n'est pas la constante, c'est ceci :
+**un changement de prompt ne se livre pas sans avoir été LANCÉ une fois.** La fixture ne
+pouvait rien voir ici — il n'y a pas d'appel API dans une fixture — et la relecture non
+plus : rien dans le diff ne dit « ce texte plus long ne tiendra pas ». Seule la sortie
+réelle le disait, et elle le disait à la troisième ligne.
+
+C'est la même racine que le reste de ce journal, dans l'autre sens : d'habitude j'annonce
+sans mesurer ; là, j'ai livré sans essayer.
+
+**Effet de bord à rattraper** : `seo_batch --redo --ids` a tourné sur les DIX, donc les
+quatre fiches non ré-écrites ont reçu une expression clé calculée sur leur ANCIEN texte.
+Il faut les repasser dans l'ordre complet une fois le plafond relevé — c'est exactement
+l'ordre que le chantier impose (`enrich` puis `seo_batch`), appliqué une seconde fois.
+
+## Faute 11 — un zéro annoncé sans avoir été recompté
+
+J'ai déclaré à Franck que `post-sitemap.xml` rendait **0 URL** pour 24 articles publiés,
+que ses guides étaient « invisibles de Google », et que c'était peut-être plus urgent que
+les 496 pages qu'on venait de désindexer.
+
+Trois mesures plus tard : le fournisseur Yoast rend 24 liens, le sitemap lu depuis le
+serveur en contient 24, et relu depuis l'extérieur, 24. **Le trou n'existait pas.** Mon
+`curl` a compté zéro une fois, et je n'ai pas recompté avant d'annoncer.
+
+Le journal disait déjà « ne jamais présenter une inférence comme un fait ». Il manquait le
+cran d'après, et c'est celui-là qui aurait servi :
+
+> **Un zéro se recompte AVANT d'être annoncé, par un SECOND chemin.** Un zéro est la
+> valeur qu'un défaut de mesure produit le plus volontiers, et il ressemble exactement à
+> un monde où il n'y a rien à trouver. Le dépôt le savait — « un zéro ne dit pas s'il
+> vient d'un échec ou d'une absence de cas » — mais l'appliquait aux compteurs du
+> pipeline, pas à mes propres commandes.

@@ -95,7 +95,16 @@ ENRICH_RETRY_DAYS = int(os.getenv("ENRICH_RETRY_DAYS", os.getenv("WEB_COOLDOWN_D
 # matière riche (panel + programme détaillé) : stop_reason=max_tokens → JSON tronqué →
 # article perdu (aucun repli partiel). 16000 laisse de la marge sans coût significatif
 # (le budget n'est consommé que si la réponse en a réellement besoin).
-MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "16000"))
+# 16000 → 24000 le 2026-09-10, le soir même où le plancher de l'article est passé de
+# 200-300 à 300-380 mots. Ce n'est pas une précaution : sur le PREMIER lot de dix,
+# QUATRE fiches sont mortes ici (922, 3795, 5034, 5345), toutes avec
+# `stop_reason=max_tokens, 16000 tokens sortie` puis « Pas de JSON ». Le plafond
+# couvre TOUT le JSON — chapô, corps, programme, encadré, FAQ, panel de lecteurs —
+# et pas seulement le corps : rallonger le corps sans le relever transforme une fiche
+# courte en fiche NON enrichie, c'est-à-dire le contraire du but. La leçon de
+# COURT_MAX_TOKENS (relevé le matin même) valait pour le mode long aussi ; je ne l'ai
+# pas vue parce que je n'avais pas lancé le lot avant de la livrer.
+MAX_TOKENS = int(os.getenv("ENRICH_MAX_TOKENS", "24000"))
 # Raisonnement étendu : COÛTEUX et LENT (runs de ~5 min, budget de tokens épuisé avant
 # le JSON → stop_reason=max_tokens). Inutile pour « chercher + rédiger en JSON ».
 # Désactivé par défaut ; ENRICH_THINKING=1 pour l'activer (articles plus fouillés, plus chers).
