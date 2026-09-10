@@ -21,7 +21,32 @@ Version: 1.0
       -------------------------------------------------------------------
       total déclaré      858 URLs
 
-  498 pages sans contenu propre, 524 refusées par Google : l'écart est mince. Le dégât
+  498 pages sans contenu propre, 524 refusées par Google : l'écart est mince.
+
+  ⚠️ CES CHIFFRES-LÀ VIENNENT DU SITEMAP, donc de ce que le site DÉCLARE. Le dry-run
+  passé sur la base juste avant le dépôt (2026-09-10, `cs_ib_est_vue_periode` et
+  `cs_ib_evenements_a_venir` appelées sur les posts réels) donne le compte EXACT de ce
+  que ce fichier retire, et il n'est pas le même :
+
+      vues « période »   192 / 306 pages publiées   (137 au sitemap : il n'en déclarait
+                                                     pas la moitié)
+      lieux              221 / 313 publiés          92 gardés, ceux qui ont au moins un
+                                                     événement à venir
+      organisateurs       83 / 83
+      ----------------------------------------------------------------------------
+      total              496 pages hors index
+
+  Les 92 lieux gardés sont les vrais lieux vivants — Forte di Bard (7 événements à
+  venir), Opéra de Nice (5), Théâtre M. Novarina (5), Fondazione Merz (4). Aucune page
+  hub n'est dans la liste des exclues : le dry-run a été LU ligne par ligne avant le
+  dépôt, pas seulement compté.
+
+  CE QUI RESTE INDEXÉ ET MÉRITE UN ARBITRAGE : les 8 pages « période × territoire »
+  (/ce-week-end/piemont/, /it/questo-weekend/valle-d-aosta/ et leurs jumelles). Leur
+  slug propre est un TERRITOIRE, pas une période — la règle ci-dessous ne les attrape
+  donc pas, et c'est délibéré : « que faire ce week-end en Piémont » est une intention
+  de recherche réelle, avec un contenu qui change chaque semaine. On ne désindexe pas
+  ce qu'on n'a pas jugé. Le dégât
   ne s'arrête pas à ces pages — un site qui déclare trois fois plus de pages vides que
   de vraies dépense son budget d'exploration à les relire, et Google en tire une
   conclusion sur TOUT le domaine. C'est la cause la plus probable des fiches qui

@@ -252,3 +252,74 @@ Ce que les deux retouches font, et comment revenir en arrière, est écrit dans 
 commentaires du snippet lui-même (datés 2026-09-08) et dans `docs/ERREURS_2026-09-08.md`
 (§ « Ce qui a été changé sur WordPress ce soir »). Les snippets n'ont toujours pas de
 double versionné ici — c'est un point ouvert, pas une règle.
+
+## 10. 2026-09-10 — `cs-passe-noindex.php` et `cs-index-budget.php` : le budget d'exploration
+
+Deux mu-plugins NEUFS (aucune version en ligne à écraser), déposés par le canal du § 3,
+procédure du § 6 : `create-upload-link` sur un `.nouveau`, `curl --data-binary` depuis le
+fichier local, `execute-php` qui compare le md5, contrôle la syntaxe par
+`token_get_all(…, TOKEN_PARSE)`, refuse si la cible existe déjà, puis `rename()` atomique.
+`php -l` local avant tout (les deux passent, `tests/test_php_syntax.py` les couvre).
+
+| fichier | md5 en ligne | taille |
+|---|---|---|
+| `cs-passe-noindex.php` | `f3f8cd1d17b0c85b2397b19c89f28cde` | 4 216 o |
+| `cs-index-budget.php`  | `b76ce6d0769c1c9a04e858e365862c45` | 11 965 o |
+
+**Le dry-run a été LU avant le second dépôt, pas seulement compté** — c'est lui qui a
+corrigé l'en-tête du fichier. Les chiffres qu'il portait venaient du SITEMAP, donc de ce
+que le site déclare ; la mesure sur la base dit autre chose :
+
+| famille | estimé au sitemap | mesuré sur la base |
+|---|---|---|
+| vues « période » | 137 | **192** sur 306 pages publiées |
+| lieux sans événement à venir | 307 (tous les lieux) | **221** sur 313, 92 gardés |
+| organisateurs | 75 | **83** |
+| total hors index | 498 | **496** |
+
+Les 92 lieux gardés sont les lieux vivants : Forte di Bard (7 événements à venir), Opéra
+de Nice (5), Théâtre M. Novarina (5), Fondazione Merz (4). Aucune page hub n'était dans la
+liste des exclues.
+
+**Arbitrage laissé ouvert, délibérément** : les 8 pages « période × territoire »
+(`/ce-week-end/piemont/`, `/it/questo-weekend/valle-d-aosta/`…) restent indexées. Leur
+slug propre est un TERRITOIRE, pas une période, donc la règle ne les attrape pas — et
+« que faire ce week-end en Piémont » est une intention de recherche réelle. On ne
+désindexe pas ce qu'on n'a pas jugé.
+
+### Contrôle après dépôt (fait, des DEUX côtés de chaque frontière)
+
+| page | attendu | obtenu |
+|---|---|---|
+| WP#8049, terminé la veille à 23h59 | `noindex, follow` | ✅ `data-cs="cs-passe-noindex"` |
+| WP#8741, se termine ce soir | rien | ✅ aucune balise |
+| `/que-faire-a-turin/ce-week-end/` | `noindex` | ✅ `data-cs="cs-index-budget"` |
+| `/que-faire-a-turin/` (hub) | rien | ✅ aucune balise |
+| `/lieu/forte-di-bard/` (7 à venir) | rien | ✅ aucune balise |
+| `/lieu/theatre-des-collines/` (0 à venir) | `noindex` | ✅ `data-cs="cs-index-budget"` |
+| `/organisateur/cristinag/` | `noindex` | ✅ |
+| accueil, `/wp-json/`, `/wp-admin/` | 200 / 200 / 302 | ✅ |
+
+Sitemap déclaré, avant (mesuré le 09/09) et après :
+
+    total          858  →  370
+    lieux          307  →   92
+    organisateurs   75  →    0   (le sitemap tribe_organizer a disparu de l'index)
+    pages          137+ →  106
+    événements     189  →  131   (les terminés sortent : cs-passe-noindex)
+
+### Un trou trouvé en passant, PAS causé par ce dépôt
+
+`post-sitemap.xml` déclare **0 URL**, alors que le site a **24 articles publiés**
+(guides, « où manger à Turin »…), qu'aucun ne porte `_yoast_wpseo_meta-robots-noindex`,
+et que le réglage Yoast `noindex-post` vaut `false`. Aucun des deux mu-plugins ne touche
+au type `post` — ce n'est donc pas une conséquence de cette soirée, mais la cause reste à
+établir : **ne pas conclure sans avoir lu**. Les articles du site sont, en l'état, absents
+du sitemap.
+
+### Retour arrière
+
+Supprimer le fichier concerné dans `wp-content/mu-plugins/`. Rien n'est écrit en base,
+aucun post n'est modifié : tout se calcule au rendu. Les lieux se rouvrent d'eux-mêmes dès
+qu'un événement à venir y pointe (règle 3), et une fiche dont la date de fin repasse dans
+l'avenir redevient indexable sans que personne n'y touche.
