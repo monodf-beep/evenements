@@ -1,0 +1,137 @@
+# Indices de TERRITOIRE par expéditeur, pour le canal Gmail.
+#
+# Le sélecteur PRIMAIRE des mails est le label Gmail « Agenda » (curation Franck) :
+# ce fichier ne sert qu'à DEVINER le territoire d'un événement à partir de
+# l'adresse d'expédition. Un expéditeur non listé → territoire vide (à classer).
+#
+# Format (un par ligne) :  motif_expediteur;territoire
+#   motif = sous-chaîne cherchée dans l'adresse « From » (domaine ESP ou propre).
+#   territoire : Savoie | Piemonte | Vallee-Aoste | Nice
+#
+# Mis à jour 2026-06-30. À compléter avec les adresses réelles relevées dans Gmail
+# (beaucoup de newsletters partent via un ESP : mailchimp, sendinblue/brevo, etc.).
+
+# ---- Piémont ----
+salonelibro.it;Piemonte
+turismotorino.org;Piemonte
+fondazionetorinomusei.it;Piemonte
+gamtorino.it;Piemonte
+circololettori.it;Piemonte
+# ajoutés le 05/09, relevés en vrai sous le label Gmail « Agenda » (45 j) — sans eux,
+# ces mails passaient avec territoire vide (comportement documenté en tête de fichier) :
+tobevents.it;Piemonte
+visitlmr.it;Piemonte
+
+# ---- Nice / Alpes-Maritimes ----
+tnn.fr;Nice
+forumsirius.fr;Nice
+# ajouté le 05/09 : le VRAI domaine d'envoi du TNN est theatredenice.org, pas tnn.fr
+# (celui-ci n'a plus été vu recevoir aucun mail) — les deux gardés, au cas où.
+theatredenice.org;Nice
+departement06.fr;Nice
+explorenicecotedazur.com;Nice
+explorenca.com;Nice
+nicecotedazur.org;Nice
+tnca.fr;Nice
+
+# ---- Savoie / Haute-Savoie ----
+bonlieu-annecy.com;Savoie
+espacemalraux-chambery.fr;Savoie
+savoie.fr;Savoie
+hautesavoie.fr;Savoie
+pays-albertville.com;Savoie
+
+# ---- Vallée d'Aoste ----
+lovevda.it;Vallee-Aoste
+fortedibard.it;Vallee-Aoste
+turismo.vda.it;Vallee-Aoste
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AJOUT 2026-07-01 — domaines des newsletters identifiées par la recherche
+# multi-agents (voir docs/NEWSLETTERS_A_SABONNER.md). Ajoutés en amont : dès que
+# tu t'abonnes + labellises « Agenda », le territoire est deviné automatiquement.
+# NB : certains partent via un ESP (Brevo/Mailchimp/Mailjet…) → si un mail n'est
+# pas classé, ajoute ici le domaine expéditeur réel vu dans le premier email.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ---- Piémont (ajout) ----
+guidatorino.com;Piemonte
+mentelocale.it;Piemonte
+torinoclick.it;Piemonte
+piemontedalvivo.it;Piemonte
+museocinema.it;Piemonte
+museoegizio.it;Piemonte
+teatroregio.torino.it;Piemonte
+ogrtorino.it;Piemonte
+mitosettembremusica.it;Piemonte
+kappafuturfestival.it;Piemonte
+collisioni.it;Piemonte
+fieradeltartufo.org;Piemonte
+enteturismolmr.it;Piemonte
+torinodanzafestival.it;Piemonte
+teatrostabiletorino.it;Piemonte
+visitpiemonte-dmo.org;Piemonte
+lavenaria.it;Piemonte
+
+# ---- Nice / Alpes-Maritimes (ajout) ----
+palaisdesfestivals.com;Nice
+cotedazurfrance.fr;Nice
+menton-riviera-merveilles.fr;Nice
+sortiracannes.com;Nice
+semec.com;Nice
+opera-nice.org;Nice
+anthea-antibes.fr;Nice
+fondation-maeght.com;Nice
+theatredegrasse.com;Nice
+forumcarros.com;Nice
+mamac-nice.org;Nice
+musee-matisse-nice.org;Nice
+ville-nice.fr;Nice
+villa-arson.fr;Nice
+nicejazzfest.fr;Nice
+jazzajuan.com;Nice
+nuitsdusud.com;Nice
+antibesjuanlespins.com;Nice
+cannes.com;Nice
+nicerendezvous.com;Nice
+
+# ---- Savoie / Haute-Savoie (ajout) ----
+malrauxchambery.fr;Savoie
+dometheatre.com;Savoie
+le-brise-glace.com;Savoie
+chateau-rouge.net;Savoie
+mal-thonon.org;Savoie
+chambery.fr;Savoie
+mairie-chambery.fr;Savoie
+# ajouté le 05/09 : la Cité des Arts envoie via un compte Mailchimp dédié
+# (mairie-chambery.fr ne reçoit jamais rien) — sous-domaine précis, pas générique.
+24929155.mailchimpapp.com;Savoie
+cinema-laturbine.fr;Savoie
+musilac.com;Savoie
+guitare-en-scene.com;Savoie
+musiquesenstock.fr;Savoie
+grandbivouac.com;Savoie
+lac-annecy.com;Savoie
+chamberymontagnes.com;Savoie
+aixlesbains-rivieradesalpes.com;Savoie
+musees.annecy.fr;Savoie
+annecy.fr;Savoie
+savoie-mont-blanc.com;Savoie
+chamonix.com;Savoie
+agendaculturel.fr;Savoie
+grandchambery.fr;Savoie
+grandannecy.fr;Savoie
+
+# ---- Vallée d'Aoste (ajout) ----
+grand-paradis.it;Vallee-Aoste
+musicastellevda.it;Vallee-Aoste
+aostaclassica.it;Vallee-Aoste
+cervinia.it;Vallee-Aoste
+courmayeurmontblanc.it;Vallee-Aoste
+aostasera.it;Vallee-Aoste
+
+# ---- Ajout vague 3 (types nouveaux : cinéma, traditions, institut culturel) ----
+institutfrancais.it;Piemonte
+cinemamassimotorino.it;Piemonte
+langhe.net;Piemonte
+seances-speciales.fr;Nice

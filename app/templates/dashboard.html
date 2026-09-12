@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% set active = 'dash' %}
+{% block title %}Aujourd'hui — Agenda CS{% endblock %}
+{% block h1 %}Aujourd'hui{% endblock %}
+{% block subtitle %}<div class="sub">Une seule question : <strong>est-ce que tu dois intervenir ?</strong> Le reste tourne tout seul. Tout part en brouillon, rien n'est publié sans toi.</div>{% endblock %}
+
+{% block content %}
+
+<!-- Prochaine action -->
+<div class="card card-cta" {% if any_running %}data-any-running="1"{% endif %}>
+  <div>
+    <div class="section-title" style="margin:0 0 .3rem;border:none;padding:0">Ta prochaine action</div>
+    {% if nav.validate %}
+      <div style="font-size:1.1rem"><strong>{{ nav.validate }}</strong> événement(s) prêt(s) à valider.</div>
+      <div class="muted text-sm">Ouvre le plan du week-end pour choisir quoi mettre en avant.</div>
+    {% elif nav.pending and nav_alert %}
+      <!-- NE PAS PROPOSER CE QUI EST IMPOSSIBLE. Le 2026-08-11, cette carte annonçait
+           « 13 événements en attente d'évaluation — lance l'évaluation » juste SOUS le
+           bandeau rouge disant que l'évaluation est en pause jusqu'au 1er septembre. Deux
+           affirmations contradictoires sur le même écran, et c'est la carte d'action qu'on
+           croit. Une prochaine action qu'on ne peut pas faire n'est pas une action. -->
+      <div style="font-size:1.1rem">L'évaluation est <strong>en pause</strong>{% if nav_alert.reset %} jusqu'au {{ nav_alert.reset }}{% endif %}.</div>
+      <div class="muted text-sm">
+        {{ nav.pending }} événement(s) attendent d'être évalués — c'est une file <strong>automatique</strong>, elle repartira seule.
+        En attendant, ce qui avance <strong>sans API</strong> :
+        {% if nav.tocomplete %}<a href="/a-completer">{{ nav.tocomplete }} à compléter</a>{% endif %}
+        {%- if nav.tocomplete and nav.audit %} · {% endif %}
+        {%- if nav.audit %}<a href="/audit-visuel">{{ nav.audit }} visuel(s) à revoir</a>{% endif %}
+        {%- if not nav.tocomplete and not nav.audit %}rien — tout est à jour de ton côté.{% endif %}
+      </div>
+    {% elif nav.pending %}
+      <div style="font-size:1.1rem"><strong>{{ nav.pending }}</strong> événement(s) en attente d'évaluation.</div>
+      <div class="muted text-sm">File automatique du pipeline — tu peux la lancer à la main en choisissant une période plus bas.</div>
+    {% else %}
+      <div style="font-size:1.1rem">Rien en attente. 👌</div>
+      <div class="muted text-sm">Lance une collecte pour récupérer de nouveaux événements.</div>
+    {% endif %}
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-primary" href="/validation?preset=next_weekend">🗓️ Plan du week-end prochain</a>
+    <a class="btn btn-ghost" href="/events">📥 Tous les événements</a>
+  </div>
+</div>
+
+<!-- À traiter : les files qui demandent une action, en un coup d'œil (badges du menu). -->
+{% set _todo = [
+  ('/validation', '🗓️', 'À valider CS', nav.validate),
+  ('/a-completer', '🛠️', 'À compléter', nav.tocomplete),
+  ('/verifier', '⚠️', 'À vérifier', nav.verifier),
+  ('/audit-visuel', '🖼️', 'Audit visuel', nav.audit),
+  ('/events?dated=undated', '📌', 'Sans date', biz.undated),
+  ('/events?img=0', '🖼', 'Sans photo', biz.retained_nophoto),
+] %}
+{% if _todo | selectattr(3) | list %}
+<div class="section-title">À traiter</div>
+<!-- CHAQUE NOMBRE DIT CE QU'IL COMPTE. Franck, 2026-08-11 : « 13 ou 7 ? ». Les deux
+     étaient justes et comptaient deux choses — la pastille du menu additionne les QUATRE
+     files humaines (à valider, à compléter, à vérifier, audit visuel), tandis que « en
+     attente d'évaluation » est une file du PIPELINE, que personne ne traite à la main.
+     Trois nombres sur le même écran, aucun ne disait son périmètre : c'est exactement ce
+     qui a fait dire « 548 tâches, c'est ingérable » le matin même. -->
+<div class="muted text-sm" style="margin:-.35rem 0 .5rem">
+  La pastille <span class="nav-badge">{{ (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) }}</span>
+  du menu additionne les quatre premières — celles qui demandent <strong>ta</strong> main.
+  « Sans date » et « sans photo » sont des files du <strong>pipeline</strong> : elles se remplissent et se vident toutes seules.
+</div>
+<div class="kpis">
+  {% for href, ic, lbl, n in _todo if n %}
+  <a class="kpi" href="{{ href }}"><div class="v">{{ n }}</div><div class="l">{{ ic }} {{ lbl }}</div></a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- « Ton quotidien » (trois liens vers Pilotage / Newsletter / Réseaux) a été RETIRÉ le
+     2026-08-11 : ces trois entrées sont déjà dans le menu de gauche, en permanence. Un
+     raccourci vers ce qui est déjà à un clic n'est pas un raccourci, c'est du bruit. -->
+
+<!-- Pipeline : REPLIÉ par défaut — tout tourne automatiquement (cron). On ne
+     l'ouvre que pour lancer une étape à la main. Évite le mur de boutons. -->
+<details class="box"{% if any_running %} open{% endif %}>
+  <summary>⚙️ Piloter le pipeline à la main <span class="muted text-sm">— d'habitude automatique (cron quotidien)</span></summary>
+{% if any_running %}<div class="flash ok" style="margin-top:.8rem">⏳ Une tâche tourne — la page se rafraîchit toute seule…</div>{% endif %}
+
+<div class="phases" style="margin-top:.8rem">
+  <!-- Phase 1 : Collecter -->
+  <section class="card phase">
+    <div class="phase-h"><span class="phase-num">1</span><h3>Collecter</h3></div>
+    <p class="hint">Récupérer les nouveaux événements des sources.</p>
+    {% for key, t in tasks.items() if t.phase == 'collect' %}
+    <div class="task">
+      <form method="POST" action="/run/{{ key }}">
+        <button class="btn btn-ghost" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{% if t.running %} ⏳{% endif %}</button>
+      </form>
+      <small>{{ t.help }}</small>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- Phase 2 : Préparer -->
+  <section class="card phase">
+    <div class="phase-h"><span class="phase-num">2</span><h3>Préparer</h3></div>
+    <p class="hint">Dédupliquer, dater, puis évaluer &amp; rédiger — sur la période choisie.</p>
+
+    <form class="period" method="GET" action="/" style="margin-bottom:.8rem">
+      <span class="plabel">📅</span>
+      <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce WE</button>
+      <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">WE prochain</button>
+      <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 j</button>
+      <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 j</button>
+      <input type="date" name="dfrom" value="{{ dfrom }}"><input type="date" name="dto" value="{{ dto }}">
+      <button class="pbtn">Plage</button>
+      {% if plabel %}<span class="muted">{{ plabel }}</span>{% endif %}
+    </form>
+
+    {% for key, t in tasks.items() if t.phase == 'prepare' %}
+    <div class="task">
+      <form method="POST" action="/run/{{ key }}">
+        {% if t.period %}<input type="hidden" name="preset" value="{{ preset }}"><input type="hidden" name="dfrom" value="{{ dfrom }}"><input type="hidden" name="dto" value="{{ dto }}">{% endif %}
+        <button class="btn btn-ghost" {% if any_running %}disabled{% endif %}>{{ t.icon }} {{ t.label }}{% if t.cost %} 💶{% endif %}{%
+          if key == 'evaluate' and scope.eval is not none %} <span class="badge grey">{{ scope.eval }}</span>{%
+          elif key == 'enrich' and scope.enrich is not none %} <span class="badge grey">{{ scope.enrich }}</span>{% endif %}{% if t.running %} ⏳{% endif %}</button>
+      </form>
+      <small>{{ t.help }}</small>
+    </div>
+    {% endfor %}
+    <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">💶 = crédits API. Un événement déjà traité n'est jamais repayé.</p>
+  </section>
+
+  <!-- Phase 3 : Valider & publier -->
+  <section class="card phase">
+    <div class="phase-h"><span class="phase-num">3</span><h3>Valider &amp; publier</h3></div>
+    <p class="hint">Choisir quoi mettre en avant, puis créer le brouillon WordPress.</p>
+    <div class="task">
+      <a class="btn btn-ghost" href="/validation?preset=next_weekend">🗓️ Plan du week-end</a>
+      <small>Les retenus + les expos encore en cours à re-valoriser.</small>
+    </div>
+    <div class="task">
+      <a class="btn btn-ghost" href="/site-dedie">🌐 Agenda Sabauda</a>
+      <small>Les événements classés pour le site de volume.</small>
+    </div>
+    <div class="task">
+      <form method="POST" action="/run/newsletter">
+        <button class="btn btn-ghost" {% if any_running %}disabled{% endif %}>📧 Newsletter (brouillon){% if tasks.newsletter and tasks.newsletter.running %} ⏳{% endif %}</button>
+      </form>
+      <small>Crée un brouillon Brevo des événements Savoie de la semaine (tu relis + envoies).</small>
+    </div>
+    <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">🔒 Tout part en <strong>brouillon</strong> WordPress — rien n'est publié sans ta validation.</p>
+  </section>
+</div>
+</details>
+
+<!-- Le bloc « Derniers lancements » a déménagé dans la CLOCHE de la barre du haut
+     (base.html), le 2026-08-11, à la demande de Franck. Il prenait un tiers de l'écran et
+     s'ouvrait de lui-même en rouge pour un échec vieux de cinq semaines. Dans la cloche,
+     il est disponible depuis TOUTES les pages et ne sonne que si l'échec est récent. -->
+
+<!-- LES COÛTS ONT DÉMÉNAGÉ le 2026-08-11. Franck : « on a encore le détail des coûts API
+     sur le tableau de bord ET en plus la page qui permet de comparer. C'est trop. »
+     Il a raison : le détail par étape, la répartition entrée/sortie et le jour par jour
+     vivent dans « État du système › Les coûts », où l'on peut choisir une période. Ici il
+     ne reste qu'un montant et un lien — parce que la question du tableau de bord n'est pas
+     « combien ça coûte » mais « dois-je intervenir ». -->
+<div class="muted text-sm" style="margin:1rem 0">
+  💶 Coûts API — semaine {{ cost.week_label }} : <strong>${{ '%.4f'|format(cost.week) }}</strong>,
+  cumul <strong>${{ '%.4f'|format(cost.total) }}</strong>.
+  <a href="/systeme?vue=couts">Détail par étape et par date →</a>
+</div>
+
+<!-- ── TOUT LE RESTE, SOUS UN SEUL REPLI ────────────────────────────────────────────
+     Franck, 2026-08-11 : « il faut que ce soit super simple pour moi, parce que moi je ne
+     vais pas l'utiliser. Normalement c'est tout automatique. Je veux juste que le tableau
+     de bord soit le plus minimal possible, avec les informations les plus importantes,
+     afin que je sache s'il faut que j'intervienne ou pas. »
+
+     Ça règle la question de ce qui reste EN HAUT : l'alerte, la prochaine action, les
+     files qui demandent sa main. Rien d'autre ne répond à « dois-je intervenir ».
+
+     Le stock, les statistiques, le calcul du score, le SEO, les sources et les
+     newsletters restent accessibles — ce sont des références utiles quand on les cherche,
+     jamais quand on ouvre la page. Ils tiennent donc sous UNE barre, pas six : dix
+     sections repliées ne valent guère mieux que dix sections ouvertes, on scrolle encore
+     pour trouver la bonne. Et l'état est retenu (data-pli) : ce qui est fermé le reste. -->
+<details class="pli" data-pli="dash-references">
+  <summary>Chiffres et références <span class="pli-resume">stock, statistiques, score, SEO, sources, newsletters</span></summary>
+  <div class="pli-corps">
+<!-- KPIs : le vocabulaire des 2 destinations est UNIFIÉ (Cultura Sabauda / Agenda Sabauda) -->
+<div class="section-title">Le stock</div>
+<div class="kpis">
+  <a class="kpi" href="/events"><div class="v">{{ total }}</div><div class="l">Collectés (actifs)</div></a>
+  <a class="kpi" href="/events?statut=pending"><div class="v">{{ status_counts.get('pending', 0) }}</div><div class="l">En attente</div></a>
+  <a class="kpi hot" href="/validation"><div class="v">{{ to_validate }}</div><div class="l">À valider (≥ 7)</div></a>
+  <a class="kpi" href="{{ wp_base }}/wp-admin/edit.php?post_status=draft" target="_blank" rel="noopener"><div class="v">{{ drafts_cs }}</div><div class="l">Brouillons CS</div></a>
+  <a class="kpi" href="{{ wp_as_base }}/wp-admin/edit.php?post_status=draft&post_type=tribe_events" target="_blank" rel="noopener"><div class="v">{{ drafts_as }}</div><div class="l">Brouillons Agenda</div></a>
+</div>
+
+
+<!-- Statistiques (repliable) -->
+<details class="box">
+  <summary>📊 Statistiques</summary>
+  <div class="cols" style="margin-top:.8rem">
+    <div>
+      <h3>Par statut</h3>
+      {% set smax = (status_counts.values()|max) if status_counts else 1 %}
+      {% for key, lbl in status_labels.items() %}{% set n = status_counts.get(key, 0) %}
+      <div class="bar-row"><span class="lbl">{{ lbl }}</span>
+        <span class="track"><span class="fill" style="width: {{ (n / smax * 100) if smax else 0 }}%"></span></span>
+        <span class="n">{{ n }}</span></div>
+      {% endfor %}
+    </div>
+    <div>
+      <h3>Par territoire</h3>
+      {% set tmax = (terr_counts.values()|max) if terr_counts else 1 %}
+      {% if not terr_counts %}<p class="muted">Aucun événement.</p>{% endif %}
+      {% for terr, n in terr_counts.items() %}
+      <div class="bar-row"><span class="lbl">{{ terr }}</span>
+        <span class="track"><span class="fill" style="width: {{ (n / tmax * 100) if tmax else 0 }}%;background:var(--ok)"></span></span>
+        <span class="n">{{ n }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+  {% if cat_counts %}
+  <h3 style="margin-top:1rem">Par catégorie (évalués)</h3>
+  {% set cmax = cat_counts[0].n %}
+  {% for row in cat_counts %}
+  <div class="bar-row"><span class="lbl" style="width:230px">{{ row.c }}</span>
+    <span class="track"><span class="fill" style="width: {{ (row.n / cmax * 100) if cmax else 0 }}%;background:var(--purple)"></span></span>
+    <span class="n">{{ row.n }}</span></div>
+  {% endfor %}
+  {% endif %}
+</details>
+
+<!-- Comment est calculé le score (repliable) -->
+<details class="box">
+  <summary>🧮 Comment est calculé le score d'importance</summary>
+  <div style="margin-top:.7rem;font-size:.9rem">
+    <p class="muted">Le score ne juge pas la « profondeur culturelle » mais l'<strong>importance</strong>
+      de l'événement — va-t-il réunir du monde, compte-t-il dans le territoire ? Somme de 5 critères (0-10) :</p>
+    <div class="table-wrap"><table>
+      <tr><th>Critère</th><th>Max</th><th>Ce qu'on regarde</th></tr>
+      <tr><td>Notoriété du lieu</td><td>3</td><td>Lieu emblématique très cité (grand stade, opéra, grand musée) vs local modeste (pondéré par la taille de la commune)</td></tr>
+      <tr><td>Organisateur &amp; moyens</td><td>2</td><td>Institution / gros opérateur / grand festival vs petit organisateur informel</td></tr>
+      <tr><td>Édition &amp; tradition</td><td>2</td><td>Rendez-vous historique, édition élevée (Xe), anniversaire</td></tr>
+      <tr><td>Rayonnement</td><td>2</td><td>International / transfrontalier FR-IT &gt; régional &gt; local</td></tr>
+      <tr><td>Spécificité territoriale</td><td>1</td><td>Identitaire, propre au territoire vs générique/franchise</td></tr>
+    </table></div>
+    <p class="muted" style="margin-top:.6rem">
+      <strong>Gate</strong> : si ce n'est pas un événement (actu, réunion, voirie, inauguration passée) → <span class="badge grey">Rejeté</span>.
+      Sinon : <strong>≥ 7</strong> → <span class="badge new">À valider</span> (candidat Cultura Sabauda) ·
+      <strong>&lt; 7</strong> → <span class="badge re">Agenda Sabauda</span> (catalogue). Le détail par critère est visible sur chaque fiche (Aperçu).</p>
+  </div>
+</details>
+
+<!-- SEO (repliable) : info de référence, pas une alerte -->
+<details class="box">
+  <summary>🔎 SEO / GEO / AEO — {{ seo.optimises }}/{{ seo.phares }} fiche(s) optimisée(s)</summary>
+  <div style="margin-top:.7rem;font-size:.9rem">
+    <p class="muted">Les outils SEO sont <strong>sur chaque fiche</strong> : ouvre un événement → « 👁 Aperçu » → section en bas.
+    Le JSON-LD schema.org/Event est <strong>gratuit</strong> (toujours affiché) ; le bouton « ✨ Optimiser SEO »
+    (title, méta, réponse directe, FAQ) est à réserver aux événements phares.</p>
+    <div class="btn-row" style="margin-top:.4rem">
+      <a class="btn btn-ghost btn-sm" href="/events?statut=published_cs">Événements Cultura Sabauda →</a>
+      <a class="btn btn-ghost btn-sm" href="/validation">À valider →</a>
+    </div>
+  </div>
+</details>
+
+<!-- Sources RSS (repliable) -->
+<details class="box" id="sources-rss">
+  <summary>Sources RSS ({{ src_total }})</summary>
+  <div style="margin-top:.8rem">
+    <div class="table-wrap"><table>
+      <tr><th>Territoire</th><th>Flux</th></tr>
+      {% for terr in territories %}<tr><td>{{ terr }}</td><td>{{ src_counts.get(terr, 0) }}</td></tr>{% endfor %}
+    </table></div>
+  </div>
+</details>
+
+<!-- Newsletters (repliable) -->
+<details class="box" id="newsletters">
+  <summary>📬 Newsletters ({{ nl_active }} actives · <span style="color:#2563eb;">{{ newsletters | selectattr('statut', 'in', ['candidat','attente']) | list | length }} à s'abonner</span>)</summary>
+  <div style="margin-top:.8rem">
+    <p class="muted text-sm" style="margin:.1rem 0 .5rem;">Workflow : <b>s'abonner</b> (lien) → <b>confirmer</b> le mail dans Gmail → appliquer le label <b>« Agenda »</b> → passer la ligne en « actif ». <span class="pill" style="background:#2563eb"></span> candidat = à faire · <span class="pill" style="background:#d97706"></span> attente = à vérifier · <span class="pill" style="background:#16a34a"></span> actif.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Source</th><th>Territoire</th><th>Statut</th></tr>
+      {% for n in newsletters %}
+      {% set color = {'actif':'#16a34a','attente':'#d97706','candidat':'#2563eb','inactif':'#9ca3af'}.get(n.statut, '#9ca3af') %}
+      <tr>
+        <td>{% if n.url %}<a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.nom }}</a>{% else %}{{ n.nom }}{% endif %}</td>
+        <td>{{ n.territoire }}</td>
+        <td style="white-space:nowrap;">
+          <span class="pill" style="background:{{ color }}"></span>{{ n.statut }}
+          {% if n.statut == 'candidat' and n.url %}
+            · <a href="{{ n.url }}" target="_blank" rel="noopener">s'abonner ↗</a>
+            <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
+              <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="attente">
+              <button type="submit" title="Marquer inscrit (à vérifier)" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .5rem;background:#e5e7eb;color:#374151;">✓ inscrit</button>
+            </form>
+          {% elif n.statut in ('attente','actif') %}
+            ·
+            <form method="post" action="/newsletters/toggle" style="display:inline;margin:0;">
+              <input type="hidden" name="domaine" value="{{ n.domaine }}"><input type="hidden" name="statut" value="{{ 'attente' if n.statut == 'actif' else 'actif' }}">
+              <button type="submit" title="Basculer vérifié / à vérifier" style="cursor:pointer;border:0;border-radius:999px;font-size:.68rem;font-weight:700;padding:.1rem .55rem;{% if n.statut == 'actif' %}background:#16a34a;color:#fff;{% else %}background:#fde68a;color:#92400e;{% endif %}">{{ 'ON · vérifié' if n.statut == 'actif' else 'OFF · à vérifier' }}</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table></div>
+  </div>
+</details>
+<script>if(location.hash==='#sources-rss'){var s=document.getElementById('sources-rss');if(s)s.open=true;}if(location.hash==='#newsletters'){var n=document.getElementById('newsletters');if(n)n.open=true;}</script>
+
+  </div>
+</details>
+
+{% endblock %}

@@ -1,0 +1,84 @@
+# Marqueurs HORS-SUJET pour les sources RADAR (presse généraliste, ex. ledauphine.com) :
+# fait-divers, actu générale, justice, circulation… jamais un événement culturel/
+# touristique. Détection POSITIVE : un titre qui matche une de ces expressions est
+# écarté du radar SAUF s'il contient aussi un marqueur culturel/touristique
+# (config/radar_cultural_exceptions.txt — garde-fou pour ne pas jeter une vraie
+# annonce qui croise accidentellement un mot de cette liste).
+#
+# Une ligne = une expression (accents ignorés, comparaison insensible à la casse,
+# bornée par mot — cf. utils.sources._compile_keywords). Pas de code à toucher.
+
+# --- Fait-divers / sécurité ---
+accident
+carambolage
+collision
+braquage
+cambriolage
+agression
+interpellation
+garde a vue
+incendie
+blesse
+blessee
+blesses
+decede
+decedee
+tue dans
+mort dans
+noye
+noyade
+disparition inquietante
+
+# --- Justice / police ---
+tribunal
+proces
+jugement
+condamnation
+comparution
+gendarmerie
+prefecture
+arrete prefectoral
+secours en montagne
+sapeurs-pompiers
+intervention des secours
+
+# --- Circulation / infrastructure ---
+circulation
+bouchon
+embouteillage
+route barree
+route fermee
+deviation
+travaux routiers
+car scolaire
+
+# --- Douanes / économie générale (hors événement) ---
+douane
+douanes
+contrefacon
+contrefaits
+saisie de
+
+# --- Éducation (résultats, hors événement) ---
+baccalaureat
+brevet des colleges
+resultats du bac
+resultats scolaires
+
+# --- Politique / institutionnel générique ---
+election
+conseil municipal
+conseil departemental
+conseil regional
+scrutin
+
+# --- Météo ---
+alerte meteo
+alerte orange
+alerte rouge
+canicule
+intemperies
+vigilance meteo
+
+# --- Santé publique générique ---
+epidemie

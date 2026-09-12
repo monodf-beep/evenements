@@ -1,0 +1,15 @@
+# Sources LARGES (couverture géographique DÉBORDANT le périmètre) — un domaine par ligne.
+#
+# Pour ces sources seulement, un événement n'est retenu que s'il CITE un lieu du
+# périmètre (config/perimeter_keywords.txt). Ça évite qu'un flux régional/presse
+# ramène des événements hors zone (ex. Le Dauphiné couvre tout l'AURA → Avignon,
+# Grenoble, Valence… ; Google News renvoie des articles adjacents).
+#
+# Les sources institutionnelles mono-lieu (une salle, un musée) NE sont PAS ici :
+# leur territoire est fiable, on ne les filtre pas. De même, les éditions LOCALES
+# géo-scopées (ex. ledauphine.com/savoie/rss) sont fiables : on ne les met pas ici,
+# sinon on jetterait à tort les brèves locales qui ne renomment pas leur commune.
+# Le filtre POSITIF hors-zone (config/out_of_zone.txt) protège du national republié.
+# Lignes # ignorées.
+
+news.google.com

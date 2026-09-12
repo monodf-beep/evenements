@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{# Beaucoup d'images sources (dossiers de presse, sites officiels) sont protégées en
+   HOTLINK : le serveur renvoie 403 si le Referer est le back-office. On n'envoie donc
+   AUCUN Referer → les images (affiches, visuels) s'affichent. À la publication, le
+   pipeline télécharge côté serveur (sans Referer) et ré-héberge sur WordPress. #}
+<meta name="referrer" content="no-referrer">
+<meta name="referrer" content="never">
+<title>{% block title %}Agenda Cultura Sabauda{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+  <div class="nav-backdrop" data-nav-close></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">CS</span>
+      <div><b>Cultura Sabauda</b><small>Agenda</small></div>
+    </div>
+    {# Menu en 4 blocs : Quotidien (les 3 écrans de Franck) toujours visibles, le reste
+       en groupes repliables. Un groupe s'ouvre seul quand on est sur une de ses pages ;
+       le résumé « À traiter » porte le TOTAL des pastilles même replié. #}
+    {% set _traiter = ['semaine', 'validation', 'tocomplete', 'triage', 'verifier', 'audit_visuel', 'events'] %}
+    {% set _analyse = ['systeme', 'couts', 'couverture', 'couverture_geo', 'sources_provinces', 'calendrier_categories', 'wireframe', 'regie', 'partenariat', 'seo'] %}
+    {% set _aide = ['process', 'pipeline', 'voix', 'personas', 'cowork', 'reglages'] %}
+    {% set _todo_total = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
+    <nav class="nav" aria-label="Navigation principale">
+      <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Aujourd'hui
+        {% if _todo_total and active!='dash' %}<span class="nav-badge">{{ _todo_total }}</span>{% endif %}</a>
+
+      <div class="nav-section">Quotidien</div>
+      <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
+      <a href="/newsletter" class="{{ 'on' if active=='newsletter' }}" {% if active=='newsletter' %}aria-current="page"{% endif %}><span aria-hidden="true">📧</span> Newsletter</a>
+      <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>
+
+      <details {% if active in _traiter %}open{% endif %}>
+        <summary><span class="chev" aria-hidden="true">›</span> À traiter
+          {% if _todo_total %}<span class="nav-badge">{{ _todo_total }}</span>{% endif %}</summary>
+        <a href="/semaine" class="{{ 'on' if active=='semaine' }}" {% if active=='semaine' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> Cette semaine</a>
+        <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
+          <span class="nav-tag nav-tag-cs" title="Publie sur culturasabauda.eu">CS</span>
+          {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
+        <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
+          <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span>
+          {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
+        <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer
+          <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span></a>
+        <a href="/verifier" class="{{ 'on' if active=='verifier' }}" {% if active=='verifier' %}aria-current="page"{% endif %}><span aria-hidden="true">⚠️</span> À vérifier
+          {% if nav.verifier %}<span class="nav-badge">{{ nav.verifier }}</span>{% endif %}</a>
+        <a href="/audit-visuel" class="{{ 'on' if active=='audit_visuel' }}" {% if active=='audit_visuel' %}aria-current="page"{% endif %}><span aria-hidden="true">🖼️</span> Audit visuel
+          {% if nav.audit %}<span class="nav-badge">{{ nav.audit }}</span>{% endif %}</a>
+        <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Tous les événements</a>
+      </details>
+
+      <details {% if active in _analyse %}open{% endif %}>
+        <summary><span class="chev" aria-hidden="true">›</span> Développer &amp; analyser
+          {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</summary>
+        <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Régie pub
+          {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</a>
+        <a href="/partenariat" class="{{ 'on' if active=='partenariat' }}" {% if active=='partenariat' %}aria-current="page"{% endif %}><span aria-hidden="true">🤝</span> Partenariat / widget</a>
+        <a href="/couts" class="{{ 'on' if active=='couts' }}" {% if active=='couts' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Coûts par date</a>
+        <a href="/systeme" class="{{ 'on' if active=='systeme' }}" {% if active=='systeme' %}aria-current="page"{% endif %}><span aria-hidden="true">📈</span> État du système</a>
+        <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
+        <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
+        <a href="/sources-provinces" class="{{ 'on' if active=='sources_provinces' }}" {% if active=='sources_provinces' %}aria-current="page"{% endif %}><span aria-hidden="true">📡</span> Sources par province</a>
+        <a href="/calendrier-categories" class="{{ 'on' if active=='calendrier_categories' }}" {% if active=='calendrier_categories' %}aria-current="page"{% endif %}><span aria-hidden="true">📅</span> Calendrier des catégories</a>
+        <a href="/wireframe-home" class="{{ 'on' if active=='wireframe' }}" {% if active=='wireframe' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Wireframe home</a>
+        <a href="/seo" class="{{ 'on' if active=='seo' }}" {% if active=='seo' %}aria-current="page"{% endif %}><span aria-hidden="true">🔍</span> SEO
+          {% if nav.seo %}<span class="nav-badge">{{ nav.seo }}</span>{% endif %}</a>
+      </details>
+
+      <details {% if active in _aide %}open{% endif %}>
+        <summary><span class="chev" aria-hidden="true">›</span> Aide &amp; réglages</summary>
+        <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
+        <a href="/pipeline" class="{{ 'on' if active=='pipeline' }}" {% if active=='pipeline' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Pipeline auto</a>
+        <a href="/voix" class="{{ 'on' if active=='voix' }}" {% if active=='voix' %}aria-current="page"{% endif %}><span aria-hidden="true">🗣️</span> Voix éditoriale</a>
+        <a href="/personas" class="{{ 'on' if active=='personas' }}" {% if active=='personas' %}aria-current="page"{% endif %}><span aria-hidden="true">👓</span> Personas lecteurs</a>
+        <a href="/cowork" class="{{ 'on' if active=='cowork' }}" {% if active=='cowork' %}aria-current="page"{% endif %}><span aria-hidden="true">🤖</span> Cowork</a>
+        <a href="/reglages" class="{{ 'on' if active=='reglages' }}" {% if active=='reglages' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Réglages / Coûts</a>
+      </details>
+    </nav>
+    <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>
+  </aside>
+
+  <main class="main">
+    <header class="mobile-bar">
+      <button class="nav-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+      <span class="mobile-brand"><span class="brand-mark" aria-hidden="true">CS</span> Agenda</span>
+    </header>
+    <div class="topbar">
+      <div>
+        <h1>{% block h1 %}{% endblock %}</h1>
+        {% block subtitle %}{% endblock %}
+      </div>
+      {% block topbar_actions %}{% endblock %}
+
+      <!-- LA CLOCHE. Le bloc « Derniers lancements » occupait un tiers du tableau de bord
+           et s'ouvrait tout seul en rouge pour un échec du 2 juillet — cinq semaines. Un
+           panneau qui alerte en permanence n'alerte plus : on apprend à ne plus le
+           regarder, et c'est le jour où il dit vrai qu'on le rate. La pastille ne se lève
+           donc QUE si un échec date de moins de 48 h ; les plus vieux restent lisibles,
+           avec leur âge écrit en toutes lettres. -->
+      {% if lancements and lancements.total %}
+      <details class="cloche" style="position:relative;flex:none;margin-left:auto">
+        <summary style="list-style:none;cursor:pointer;padding:.35rem .5rem;border-radius:8px;border:1px solid var(--line-2);background:var(--card,#fff)"
+                 title="Derniers lancements manuels">
+          <span aria-hidden="true" style="font-size:1.05rem">🔔</span>
+          {% if lancements.echecs_recents %}<span class="nav-badge" style="background:#b3261e">{{ lancements.echecs_recents }}</span>{% endif %}
+        </summary>
+        <div class="card" style="position:absolute;right:0;top:2.4rem;z-index:40;width:min(30rem,88vw);max-height:26rem;overflow:auto;padding:.5rem .6rem;box-shadow:0 8px 28px #0002">
+          <div class="muted text-sm" style="margin-bottom:.4rem">
+            {{ lancements.total }} dernier(s) lancement(s) manuel(s).
+            {% if lancements.echecs_recents %}<strong style="color:#b3261e">{{ lancements.echecs_recents }} échec récent.</strong>
+            {% elif lancements.echecs_vieux %}<em>{{ lancements.echecs_vieux }} échec(s), mais tous anciens — rien d'actif.</em>
+            {% else %}Aucun échec.{% endif %}
+          </div>
+          {% for l in lancements.liste %}
+          <div style="padding:.4rem .3rem;{% if not loop.last %}border-bottom:1px solid var(--line-2){% endif %}">
+            <div style="display:flex;gap:.4rem;align-items:baseline">
+              <span aria-hidden="true">{{ l.icon }}</span><strong class="text-sm">{{ l.label }}</strong>
+              {% if l.rate %}<span class="badge" style="background:{{ '#fde8e8' if not l.vieux else '#eceff3' }};color:{{ '#b3261e' if not l.vieux else '#475569' }}">échec</span>{% endif %}
+              <span class="muted text-sm" style="margin-left:auto">{{ l.age }}</span>
+            </div>
+            <code class="muted" style="font-size:.72rem;display:block;margin-top:.15rem;word-break:break-word">{{ l.tail }}</code>
+          </div>
+          {% endfor %}
+          <div class="muted text-sm" style="margin-top:.4rem;padding-top:.35rem;border-top:1px solid var(--line-2)">
+            Ce sont les lancements <strong>à la main</strong>. Les crons quotidiens sont ailleurs :
+            <a href="/pipeline">Pipeline auto</a>, et le chien de garde de midi alerte sur Slack.
+          </div>
+        </div>
+      </details>
+      {% endif %}
+    </div>
+
+    {% if nav_alert %}
+    <div class="alert">⛔ {{ nav_alert.kind }} — l'évaluation et l'enrichissement sont en pause.
+      {% if nav_alert.reset %}<br>Accès rétabli le <strong>{{ nav_alert.reset }}</strong>.{% endif %}
+      <br><small>{{ nav_alert.raw }}</small></div>
+    {% endif %}
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
