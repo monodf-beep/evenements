@@ -337,3 +337,48 @@ Supprimer le fichier concerné dans `wp-content/mu-plugins/`. Rien n'est écrit 
 aucun post n'est modifié : tout se calcule au rendu. Les lieux se rouvrent d'eux-mêmes dès
 qu'un événement à venir y pointe (règle 3), et une fiche dont la date de fin repasse dans
 l'avenir redevient indexable sans que personne n'y touche.
+
+## 11. 2026-09-12 — le rouvreur de complétude ne voyait qu'un brouillon sur trois
+
+**Snippet 150** (« CS - Completude : le rouvreur »), miroir versionné
+`deploy/wordpress/code-snippets/137-cs-completude-rouvreur.php`. Ancien md5
+`9af7fdf0a19e0f36f6b553b7e45d45ce`, nouveau `94518218d43222d8f6d0ee2028626f3e`.
+Sauvegarde de la version d'avant dans l'option `cs_rouvreur_sauvegarde_2026_09_12`
+(6 035 octets) — retour arrière : réécrire ce contenu dans `wp_snippets.code` pour l'id 150.
+
+**Le cul-de-sac, fermé des DEUX côtés.** Le rouvreur n'examinait que les brouillons
+portant `as_completude_refus`, c'est-à-dire ceux que le garde-fou avait lui-même
+dépubliés. Mesuré ce jour-là : **16 fiches à venir en brouillon, dont 11 sans ce marqueur
+et sans le moindre bloquant.** Publiables, et invisibles de tout le monde.
+
+L'autre côté est écrit dans `cs-publish.php` (snippet 6, l.156) : « NE PAS dépublier au
+re-push : on retire post_status pour préserver le statut existant ». Décision juste — une
+fiche retirée à la main ne doit pas revenir toute seule — mais elle a un revers : une
+fiche tombée en brouillon y RESTE, même quand `publish_batch_as` la repousse chaque
+semaine. Le publieur ne la relève pas ; le rouvreur ne la voyait pas. Règle 3, exactement,
+et un cran plus bas que là où elle avait déjà été réparée le 06/09.
+
+**Le garde-fou du garde-fou : `as_score`.** Seul le pipeline le pose. Un brouillon sans
+lui vient d'ailleurs — du formulaire public « Proposer un événement » (snippet 24) ou de
+la main de quelqu'un — et ne doit jamais être publié par un automate. Mesuré AVANT
+d'écrire la ligne : sur 44 brouillons, 2 n'avaient pas `as_score` ; aucun des onze.
+
+**Dry-run lu ligne par ligne avant d'écrire** (la nouvelle requête, sans aucune écriture) :
+16 candidats, 11 à republier, 5 à garder en brouillon avec leur motif. Puis exécution, et
+recompte en base fiche par fiche (règle 6 — on ne croit pas la liste rendue) :
+
+    garées 16 · sans marqueur 11 · rouvertes 11 · bloquées 5
+    1938, 902, 606, 2311, 6288, 6382, 6435, 6438, 7552, 7558, 7639  → toutes `publish`
+    restent en brouillon : 7686, 8626, 8669, 8682 (source_officielle) · 8707 (corps_indigent)
+    total tribe_events publiés : 293 · brouillons à venir restants : 5
+
+Trois pages tirées au hasard parmi les onze répondent 200 en public.
+
+**Le compteur ajouté, et pourquoi.** Le relevé porte désormais `sans_marqueur` à côté de
+`garees`. C'est le chiffre qui manquait : tant qu'il reste élevé, quelque chose met des
+fiches en brouillon sans le dire, et il faudra trouver quoi. Ce qui a mis ces onze-là en
+brouillon n'est PAS établi — le marqueur absent est précisément ce qui empêche de le
+savoir, et je ne le devine pas.
+
+**Ce qui reste ouvert** : les 4 fiches bloquées sur `source_officielle` et la 8707 sur
+`corps_indigent` (c'est elle qui fait exploser le plafond de jetons à l'enrichissement).
