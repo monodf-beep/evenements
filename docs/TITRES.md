@@ -90,21 +90,66 @@ interdit le nom nu ; le plafond interdit la dépêche. C'est vérifiable par un 
 moment de la rédaction, avec une relance sur dépassement (contrôle déterministe, pas
 « le LLM est stochastique »).
 
-**R3 — Le nom propre se garde dans SA langue, jamais traduit, jamais seul.** *Dopo l'8
-settembre '43* reste tel quel : c'est le nom que le lecteur retrouvera sur l'affiche et
-sur place. Mais il ne peut pas constituer le titre à lui seul.
+**R3 — Ce qui se garde dans sa langue, ce qui se traduit, ce qui sort du titre.**
+Corrigé le 15/09 après l'objection de Franck : « *Dopo l'8 settembre '43*, est-ce
+important, est-ce que ça apporte quelque chose au francophone ? Il pourrait être en
+français. Par contre *Musicastelle Autumn Edition*, c'est le nom de l'événement, sa
+marque. » La première version de cette règle mettait tout « nom propre » dans le même
+sac ; il y a trois cas, et la distinction se fait sur **ce que le nom fait pour le
+lecteur**, pas sur sa langue :
+
+- **R3a — la MARQUE se garde telle quelle.** Le nom qu'on tape pour chercher l'événement,
+  qu'on lit sur le billet et sur l'affiche : *Musicastelle Autumn Edition*, *Terra Madre
+  Salone del Gusto*, *Bra's*, *Foire de Saint-Ours*. Le traduire ferait perdre le lecteur
+  à l'entrée et perdre la requête à Google. Test : *quelqu'un cherche-t-il l'événement
+  avec ces mots-là ?* Un nom d'édition, un festival, un salon, une fête récurrente :
+  presque toujours oui.
+- **R3b — le TITRE DESCRIPTIF se traduit.** Une conférence, une projection, une lecture,
+  une exposition dont le « nom » est en fait une phrase qui dit le sujet : *Dopo l'8
+  settembre '43. Meridionali nella Resistenza* n'est pas une marque, c'est un intitulé.
+  Personne ne le tape dans Google en français, et il n'apporte rien au francophone qu'une
+  traduction n'apporterait mieux. Le H1 français le dit en français : *Les partisans du
+  Sud dans la Libération italienne : projection et débat au Polo del '900, Turin*.
+  L'intitulé original va **dans le chapô**, en italique, pour que le lecteur le reconnaisse
+  sur place. Test : *le nom est-il une phrase, ou un nom ?*
+- **R3c — l'ŒUVRE ÉTABLIE prend le titre sous lequel la langue de la fiche la connaît.**
+  *Le avventure di Pinocchio* → *Les Aventures de Pinocchio* ; *Il nome della rosa* → *Le
+  Nom de la rose*. S'il n'existe pas de titre établi dans cette langue, l'original reste
+  (R3a). Ni le rédacteur ni le détecteur n'ont à trancher seuls : c'est un fait qui se
+  vérifie.
+- **R3d — les NOMS DE PERSONNES ne sont dans le H1 que si le lecteur de la langue de la
+  fiche les connaît.** *Nina Zilli et Mannarino* portent la fiche italienne ; dans la
+  française, l'angle dit ce qu'ils sont — *deux voix de la pop italienne* — et les noms
+  passent au chapô, où le lecteur curieux les trouve. **Qui juge « connu » ? Le persona de
+  l'autre langue (P2)**, et personne d'autre : ni le rédacteur, ni un script, ni moi.
+  C'est précisément le jugement pour lequel le panel existe.
+
+**Conséquence, et elle est importante : les deux versions d'une fiche n'ont PAS le même
+titre.** Ce n'est pas une traduction, c'est deux titres écrits pour deux lecteurs qui ne
+partagent pas les mêmes référents — exactement ce que la charte §6 bis appelle
+« ré-appliquer la charte en italien, pas translittérer ». Le portillon de traduction (§7)
+doit donc juger la *cohérence* des deux titres (même événement, même lieu), jamais leur
+*ressemblance*.
+
+> FR : *Musicastelle Autumn Edition : deux voix de la pop italienne en concert à Saint-Vincent*
+> IT : *Musicastelle Autumn Edition: Nina Zilli e Mannarino in concerto a Saint-Vincent*
+
+(Le titre actuel — *Musicastelle Autumn Edition : Nina Zilli et Mannarino, week-end
+concert-hébergement les 3 et 4 octobre* — cumule R3d et R2 : les dates sont dans
+l'encadré, pas dans le titre.)
+
+Ce qui reste vrai de la première version : **un nom, quel qu'il soit, n'est jamais le
+titre à lui seul** — *Chopin*, *Musicastelle Autumn Edition* nus sont interdits.
 
 **R4 — L'angle est TOUJOURS dans la langue de la fiche.** C'est la seule partie du titre
 où l'on juge la langue. Le nom propre est un îlot autorisé ; l'angle, non.
 
-**R5 — Référent opaque pour l'autre public → l'angle le glose.** Si le nom repose sur un
-savoir que le lecteur de l'autre langue n'a pas (une date-symbole, un lieu-dit, un sigle,
-un personnage local), l'angle dit ce que c'est en huit mots :
-
-> *Dopo l'8 settembre '43 : les partisans du Sud dans la Libération italienne, à Turin*
-
-Le francophone apprend ce qu'est le 8 septembre sans qu'on le lui explique ; l'italophone
-lit son titre tel qu'il le connaît.
+**R5 — Une MARQUE opaque pour l'autre public → l'angle la glose.** Ne concerne que
+R3a : un nom qu'on garde parce qu'il sert à retrouver l'événement, mais qui ne dit rien au
+lecteur de l'autre langue (*Bra's*, *Cheese*, *Terra Madre*, un lieu-dit, un sigle).
+L'angle dit ce que c'est en huit mots — *Bra's 2026 : la fête des produits du Piémont à
+Bra* — et le lecteur n'a pas à le savoir d'avance. (Les intitulés descriptifs, eux,
+relèvent de R3b : on ne glose pas ce qu'on peut traduire.)
 
 **R6 — La ville dans l'angle quand le nom ne la porte pas.** Pour un lecteur de Nice, un
 événement au « Lingotto » n'est nulle part ; « à Turin » le place. Pas de ville quand le
@@ -123,7 +168,8 @@ Exemples réécrits selon R1-R8 :
 | aujourd'hui | proposé |
 |---|---|
 | Terra Madre Salone del Gusto quitte le Lingotto pour investir le centre historique de Turin (14) | **Terra Madre Salone del Gusto : le salon de la biodiversité au centre de Turin** (12) |
-| Dopo l'8 settembre '43. Meridionali nella Resistenza (7, opaque) | **Dopo l'8 settembre '43 : les partisans du Sud dans la Libération italienne, à Turin** (12) |
+| Dopo l'8 settembre '43. Meridionali nella Resistenza (7, opaque) | **Les partisans du Sud dans la Libération italienne : projection et débat à Turin** (12) — intitulé original au chapô (R3b) |
+| Musicastelle Autumn Edition : Nina Zilli et Mannarino, week-end concert-hébergement les 3 et 4 octobre (13) | **Musicastelle Autumn Edition : deux voix de la pop italienne en concert à Saint-Vincent** (12) — noms au chapô (R3d) |
 | Chopin (1) | **Chopin par Katherine Nikitine : récital au Foyer de l'Opéra de Nice** (11) |
 | La dernière fois qu'on a vu Bernard Stasi : le texte lauréat 2025 en mise en espace au Théâtre national de Nice (TNN) (23) | **La dernière fois qu'on a vu Bernard Stasi : lecture du texte lauréat au TNN, Nice** (13, limite) |
 | pizza show a vercelli! | **Pizza Show : les pizzaioli en démonstration à Vercelli** |
@@ -196,6 +242,11 @@ même racine : `titre_semble_intraduit` et `titre_reecrit_mauvaise_langue` déte
 langue **du titre entier**. Or un titre d'œuvre ou d'événement est un nom propre, dans la
 langue qu'il a — italien dans une fiche française, français dans une italienne — et sur
 quatre mots la détection est du bruit : « Le » y est lu comme un article français.
+
+**Ce que R3 change pour le portillon :** avec R3b et R3d, un titre FR et son titre IT
+peuvent ne partager AUCUN mot en dehors de la marque — et c'est voulu. Le portillon de
+justesse (`verdict_titre_traduit`) compare déjà à l'identité factuelle (lieu, ville,
+organisateur) et non à la ressemblance ; il tient. C'est le portillon de LANGUE qui casse.
 
 **Proposition L1 — ne juger la langue que sur l'ANGLE (après le deux-points).** Avec R1
 imposé, le titre a une structure ; la partie avant les deux-points est un îlot autorisé,
