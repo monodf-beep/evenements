@@ -65,6 +65,14 @@ add_action('template_redirect', function () {
         '/it/evenement/la-fiera-du-santuaire-di-vicoforte-rendez-vous-du-7-septembre/'
             => '/evenement/la-foire-du-sanctuaire-de-vicoforte/',
 
+        // 2026-09-15 : Pinocchio au Forte di Bard, TROIS posts publiés pour un spectacle
+        // (6413 fr, 7201 it, 8901 fr). 8901 est le doublon français : 180 mots, et il
+        // annonce « le 6 septembre » pour un spectacle des 19-20. Une page publique qui
+        // donne une date fausse ne reste pas en ligne, quels que soient ses clics —
+        // corbeillé (réversible), et son adresse suit vers la fiche qui reste.
+        '/evenement/pinocchio-en-scene-au-forte-di-bard-pour-les-200-ans-de-carlo-collodi/'
+            => '/evenement/pinocchio-traverse-les-alpes-quand-un-bicentenaire-ravive-la-vallee-daoste/',
+
         '/selections/ce-week-end/'                    => '/ce-week-end/',
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',
         '/selections/que-faire-a-annecy-ce-week-end/' => '/que-faire-a-annecy/ce-week-end/',
