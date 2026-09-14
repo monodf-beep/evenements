@@ -16,6 +16,14 @@
  * n'efface rien : ce stock-là reste, et le nettoyer n'est PAS réversible (WordPress ne
  * met pas les pièces jointes à la corbeille). D'où cet audit, à lire avant tout geste.
  *
+ * UN TITRE N'IDENTIFIE RIEN DE DURABLE ICI. L'enrichissement RÉÉCRIT les fiches : le
+ * média porte le titre qu'avait la fiche AU MOMENT du dépôt, et l'ancien titre ne
+ * survit que dans les RÉVISIONS WordPress. Rapprocher un média de sa fiche par le
+ * seul titre courant a classé 553 groupes « introuvables » le 14/09 ; en indexant
+ * aussi les 1 737 révisions, 164 groupes sont réapparus, et le plus gros bloc
+ * identifiable s'est révélé appartenir à des fiches VIVANTES ET PUBLIÉES — pas à des
+ * « fiches mortes », comme je l'avais écrit sans le mesurer (faute 20).
+ *
  * PÉRIMÈTRE, arbitré par Franck le 12/09 : les images des ÉVÉNEMENTS (`tribe_events`)
  * uniquement. Les images d'articles (curiosités, guides), de pages et de lieux sont
  * comptées à part et JAMAIS proposées à la suppression.
@@ -27,6 +35,13 @@
  * dans WordPress » aurait vidé le repli d'image en silence.
  *
  *   1. WordPress   — vignette (`_thumbnail_id`), corps d'article, métas d'image ;
+ *   1 bis. LA BASE LOCALE — `wp_raw_image_url_as`, `url_image`, `url_image_wide`,
+ *                  `url_image_portrait` de `data/events.db`. `publish_batch_as.py:422`
+ *                  y MÉMORISE une URL de notre médiathèque (la copie non recadrée que
+ *                  le module Instagram réutilise). WordPress l'ignore, donc cet audit
+ *                  aussi : il tourne ICI, pas sur le VPS. **Aucune suppression sans
+ *                  avoir croisé ce fichier avec la base locale** — la commande de
+ *                  croisement est dans docs/ERREURS_2026-09-08.md (faute 22) ;
  *   2. le dépôt    — $PROTEGES ci-dessous, recopié de config/territory_category_images.txt ;
  *   3. la prudence — tout préfixe `fallback-` / `cover-` est protégé même hors liste.
  *
