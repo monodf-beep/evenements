@@ -2222,29 +2222,13 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
                               for p in (official_pages or [])}
                 _off_hosts.add(_strip_www(_up0(ev.get("url_officiel") or "").netloc))
                 photo_off = _img_host in {h for h in _off_hosts if h}
-            affiches = ("deux" if (has_p and has_w) else
-                        "une" if (has_p or has_w) else
-                        "photo officielle" if photo_off else "aucune")
-            q = (pm or 0) / 5 * 6                    # qualité éditoriale (panel local) : 0-6
-            src = 2.5 if has_official else 0.0        # source directe fiable : +2,5
-            aff = (1.5 if (has_p and has_w)           # visuels : affiches > photo officielle
-                   else 0.75 if (has_p or has_w or photo_off) else 0.0)
-            hs = round(min(10.0, q + src + aff), 1)
-            # PLACEMENT : où cette fiche PEUT aller sur le site et en newsletter, déduit du
-            # score et des visuels. Affiche officielle OU photo du site officiel → mise en
-            # avant visuelle possible ; le HERO reste réservé au combo d'affiches.
-            has_visu = has_p or has_w or photo_off
-            if hs >= 8 and has_p and has_w:
-                place = ("À la une (hero home) · En évidence · newsletter AVEC visuel — "
-                         "combo complet")
-            elif hs >= 6 and has_visu:
-                place = ("En évidence (home) · sélections · newsletter AVEC visuel"
-                         + (" (photo du site officiel)" if (photo_off and not (has_p or has_w)) else ""))
-            elif hs >= 6:
-                place = ("sélections & listes (texte) · newsletter en brève SANS visuel — "
-                         "pas de mise en avant home sans affiche ni photo officielle")
-            else:
-                place = "catalogue / listes seulement (agenda, archives)"
+            # LA FORMULE VIT DANS utils/home_score.py depuis le 2026-09-15 (déplacée à
+            # l'identique) : scripts/rescore_home.py la rejoue sur les fiches enrichies
+            # avant qu'elle existe, sans réécrire leur article. Un seul calcul, deux
+            # appelants — jamais deux calculs.
+            from utils.home_score import calculer as _calc_home
+            _h = _calc_home(pm, bool(has_official), has_p, has_w, photo_off)
+            hs, affiches, place = _h["score"], _h["affiches"], _h["placement"]
             result["home"] = {"score": hs, "panel": pm,
                               "source_officielle": bool(has_official),
                               "affiches": affiches, "placement": place}
