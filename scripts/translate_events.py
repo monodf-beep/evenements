@@ -33,7 +33,7 @@ import sqlite3
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -823,6 +823,11 @@ def main(argv=None) -> int:
     parser.add_argument("--apply", action="store_true", help="Exécute (sinon simulation).")
     parser.add_argument("--min-score", type=int, default=6, help="Score minimum (défaut 6).")
     parser.add_argument("--cap", type=int, default=10, help="Nb max par run (défaut 10).")
+    parser.add_argument("--include-past", action="store_true",
+                        help="Inclut les événements TERMINÉS (par défaut ils sont écartés, "
+                             "règle 5). Sortie de secours si l'on veut un jour compléter "
+                             "l'archive : la file normale, elle, ne doit contenir que ce "
+                             "qui sert encore à quelqu'un.")
     parser.add_argument("--territoire", default="",
                         help="Filtre territoire (slug : %s)." % ", ".join(_TERR_KEYS))
     parser.add_argument("--model", default=DEFAULT_MODEL)
@@ -894,8 +899,30 @@ def main(argv=None) -> int:
         "AND id NOT IN (SELECT translation_of FROM events_raw "
         "               WHERE COALESCE(translation_of,0)!=0) "
         "AND COALESCE(user_score, llm_score, 0) >= ? "
+        # RÈGLE 5, AJOUTÉE LE 2026-09-14 — cette file n'avait AUCUN filtre de date.
+        #
+        # Mesuré ce jour-là sur le site : 138 fiches publiées encore devant nous, dont
+        # 110 SANS jumelle traduite (95 françaises qui attendent leur italienne). Or le
+        # cron traduit 10 fiches par jour depuis des semaines : à ce rythme la file
+        # aurait dû être vidée plusieurs fois. Elle ne l'est pas, parce qu'elle est
+        # triée par SCORE et remplie d'événements TERMINÉS — le site compte environ
+        # 155 fiches publiées passées, et une fiche passée garde son score.
+        #
+        # Traduire un événement fini ne sert personne : la fiche ne sera pas republiée,
+        # plus aucun visiteur ne la cherche, et surtout elle consomme un des dix
+        # créneaux du jour au détriment d'une fiche à venir. C'est le motif du dépôt
+        # dans sa forme la plus coûteuse : le dispositif TOURNE, le journal se remplit,
+        # et le vivier italien des événements à venir reste vide.
+        #
+        # Une fiche SANS DATE n'est pas du passé (donnée manquante, `dates.py` la
+        # remplira peut-être demain) : elle reste candidate. Idem pour les récurrentes,
+        # qui n'ont pas de date unique — `date_event_end` vide les couvre déjà ici.
+        + ("" if args.include_past else
+           "AND (COALESCE(date_event_end, date_event_start, '') = '' "
+           "     OR COALESCE(date_event_end, date_event_start) >= ?) ") +
         "ORDER BY COALESCE(user_score, llm_score, 0) DESC, id ASC",
-        (args.min_score,)).fetchall()]
+        ([args.min_score] if args.include_past
+         else [args.min_score, date.today().isoformat()])).fetchall()]
     if terr_keys:                                       # filtre territoire AVANT le plafond
         rows = [r for r in rows if any(k in _norm(r.get("territoire", "")) for k in terr_keys)]
 

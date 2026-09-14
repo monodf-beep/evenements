@@ -340,3 +340,98 @@ cran d'après, et c'est celui-là qui aurait servi :
 > un monde où il n'y a rien à trouver. Le dépôt le savait — « un zéro ne dit pas s'il
 > vient d'un échec ou d'une absence de cas » — mais l'appliquait aux compteurs du
 > pipeline, pas à mes propres commandes.
+
+---
+
+## Faute 12 — un rapport Search Console décrit TROIS MOIS, pas l'état du site
+
+Le 2026-09-15, Claude-dans-Chrome a rendu un diagnostic de cannibalisation sur la foire
+de Vicoforte : **quatre URLs** se disputant les mêmes requêtes, avec une recommandation
+précise — rediriger trois d'entre elles en 301 vers la gagnante.
+
+Interrogé WordPress avant de rédiger la moindre consigne. Sur les quatre :
+
+    2255  publish  la-foire-du-sanctuaire-de-vicoforte              ← la seule en ligne
+    7610  TRASH    la-fiera-du-santuaire-di-vicoforte-…__trashed    ← déjà corbeillée
+    (les deux autres n'existent plus du tout dans wp_posts)
+
+**La cannibalisation était déjà réglée.** Les trois 301 recommandées auraient pointé
+depuis des URLs mortes. Le rapport n'avait pas tort : il décrivait une fenêtre de trois
+mois, pendant laquelle ces pages ont bel et bien existé et reçu des impressions. C'est la
+LECTURE qui était fausse — prendre un historique pour un état.
+
+C'est exactement la règle 1 (« un identifiant ne prouve rien sur le site ») et la règle 2
+(« une liste sert à explorer, jamais à prouver ») appliquées à un outil EXTÉRIEUR. Le
+garde-fou s'étend donc :
+
+> **Tout rapport — GSC, CrawlSEO, un agent, un audit — décrit un PASSÉ. Avant d'en tirer
+> une action, demander au site ce qui existe MAINTENANT.** La question tient en une
+> requête sur `wp_posts` ; la réponse a annulé les trois quarts d'un plan d'action.
+
+Et le corollaire pour le travail à plusieurs, nouveau : **un agent qui n'a pas accès à la
+base ne peut pas valider ses propres recommandations.** Celui de Chrome l'a dit lui-même
+(« je ne peux pas le faire depuis GSC ») ; c'était le signal qu'il fallait vérifier, pas
+exécuter.
+
+## Ce que la même vérification a trouvé, et qui est RÉEL : 12 slugs italiens en français
+
+En cherchant le « bug de génération de slug » que le rapport signalait au passage,
+mesuré sur la production — **12 fiches publiées dont le slug mélange les deux langues** :
+
+    6805 [it] marche-au-fort-les-producteurs-de-la-vallee-daoste-…-2
+    7309 [it] corri-la-forten-la-course-a-pied-du-forte-di-bard-2
+    7518 [it] la-filarmonica-della-scala-en-concert-au-lingotto-de-turin-2
+    8642 [it] milo-manara-expose-ses-planches-du-nome-della-rosa-…-2
+
+Ce n'est pas un bug : c'est **écrit dans le code**, `scripts/translate_events.py` l.740-741 —
+« la fiche traduite reprend le slug de l'original », et `seo_slug` est vidé juste au-dessus.
+Le `-2` est WordPress qui dédoublonne un slug déjà pris.
+
+Le choix avait sa raison (retrouver la jumelle), mais il coûte : **l'URL italienne est
+rédigée en français**, sur un site dont la moitié du public lit l'italien. Changer les
+slugs de pages déjà publiées casse leurs adresses et demande des 301 — ce n'est pas
+réversible d'un clic, donc ça se PROPOSE, ça ne se décide pas tout seul (cf. « ce qui
+reste un arbitrage humain », CLAUDE.md).
+
+## Les 5 refus de traduction du 15/09 — au moins deux sont des faux refus
+
+    id 5106 « Le avventure di Pinocchio »                    ← titre DÉJÀ italien
+    id 3017 « Riccardo Benassi: Le ultime fabbriche rimaste… » ← titre DÉJÀ italien
+
+Le portillon dit « le titre traduit est resté en fr (cible it) ». C'est la MÊME famille
+que la fiche 3588 déjà documentée dans CLAUDE.md : le détecteur lit un NOM PROPRE ou un
+titre d'œuvre italien et croit voir du français. Le compteur `traduction_tentatives` et
+l'empreinte de matière bornent le martèlement, donc ça ne brûle pas d'appels
+indéfiniment — mais ces fiches ne seront jamais traduites tant que le détecteur ne sait
+pas qu'un titre italien dans une fiche française n'est pas une faute de traduction.
+
+**À traiter par les RÉSULTATS, pas par relecture** (leçon du 11/08) : passer le détecteur
+sur ces cinq titres et LIRE ce qu'il refuse, avant de toucher à sa logique.
+
+---
+
+## Faute 13 — un mécanisme livré pour un cas qui n'existe pas encore
+
+Le 15/09, j'ai construit l'adoption d'éditions (une URL par événement annuel, mise à
+jour d'une année sur l'autre) : colonnes, script, fixture à treize contrôles. Déployé,
+lancé : **« 0 paire examinée »**.
+
+Le zéro était juste, et prévisible : la base a commencé fin juillet 2026, la plus vieille
+fiche a deux mois, et une paire d'éditions demande dix à quatorze mois d'écart. **La
+première ne peut pas apparaître avant l'été 2027.** Une soustraction de dates l'aurait dit
+avant la première ligne de code ; c'est le dry-run qui l'a dit après la dernière.
+
+Le code n'est pas perdu — il servira à son heure, et il a forcé une lecture utile (la
+contradiction avec `cs-passe-noindex`). Mais il a été écrit dans le mauvais ordre. Le
+garde-fou, qui est la règle 6 tournée vers l'amont : **avant d'écrire un mécanisme,
+compter les cas qu'il traitera AUJOURD'HUI.** S'il n'en a aucun, écrire la date à laquelle
+il en aura, et se demander ce qui presse d'ici là — ici, c'était le noindex des fiches
+terminées, pas l'adoption.
+
+## Ce que la même soirée a bien fait, pour la symétrie
+
+Trois fois le réflexe inverse a payé : lire le relevé de Franck au lieu de re-diagnostiquer
+(la une : 17 fiches, 4 retenues, motifs écrits), mesurer avant de crier (le log de
+republication affichait le titre de la BASE, le post 6413 était intact), et compter avant
+de construire (21 fiches sans score, 19 avec panel → un recalcul pur suffit, pas une
+réécriture). Les deux dernières ont évité une fausse alerte et quarante appels LLM.

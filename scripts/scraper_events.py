@@ -247,7 +247,21 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # sur une base construite par le seul init_db, sans jamais importer
                       # app.py) — une colonne créée par un seul module devient une
                       # dépendance implicite qui casse tous les autres sur une base neuve.
-                      ("annule_le", "TEXT")):
+                      ("annule_le", "TEXT"),
+                      # ÉDITIONS ANNUELLES (docs/EDITIONS_ANNUELLES.md, 2026-09-15). Un
+                      # événement annuel garde UNE URL d'une édition à l'autre : la fiche
+                      # de l'édition N+1 ADOPTE le post WordPress de l'édition N (elle
+                      # reçoit son wp_post_id_as, la publication devient une mise à jour).
+                      #   edition_precedente : sur la NOUVELLE fiche, l'id de l'ancienne ;
+                      #   edition_suivante   : sur l'ANCIENNE, l'id de la nouvelle — la
+                      #                        trace que son post a changé de propriétaire,
+                      #                        et le chemin du retour arrière ;
+                      #   edition_adoptee_le : horodatage de l'adoption.
+                      # Déclarées ICI (même leçon qu'annule_le juste au-dessus) : trois
+                      # scripts les lisent, une base neuve doit les avoir.
+                      ("edition_precedente", "INTEGER"),
+                      ("edition_suivante", "INTEGER"),
+                      ("edition_adoptee_le", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
