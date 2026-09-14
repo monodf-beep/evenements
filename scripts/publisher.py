@@ -7,6 +7,7 @@ Sprint 2 : migrer vers CPT 'agenda' JetEngine.
 """
 from __future__ import annotations
 import base64
+import hashlib
 import html
 import json
 import mimetypes
@@ -174,6 +175,41 @@ def _resolve_term(wp_url: str, auth, taxonomy: str, name: str) -> int | None:
         return None
 
 
+def _media_existant(wp_url: str, auth, slug: str) -> "tuple[int | None, str]":
+    """Média DÉJÀ dans la médiathèque portant exactement ce slug — (id, source_url) ou
+    (None, '').
+
+    Pourquoi : `_upload_featured_media` POSTait sur `wp/v2/media` à CHAQUE publication,
+    sans jamais regarder si l'image y était déjà. Une fiche republiée (mise à jour de
+    dates, de texte, de score…) redéposait donc ses TROIS déclinaisons (carte 4:3,
+    « — fiche » 16:9, « — original ») à l'identique, et WordPress les acceptait en
+    ajoutant « -2 », « -3 »… Mesuré le 2026-09-12 sur la production : 4 158 médias dont
+    **2 016 copies en trop** réparties sur 841 titres — « Marisa Merz – La danza delle
+    ore » existait en SEIZE exemplaires, ses trois déclinaisons comprises. C'est la
+    réponse à la question de Franck « pourquoi il y a encore trop de vignettes
+    générées ? » : elles ne sont pas générées en trop, elles sont RE-DÉPOSÉES.
+
+    Le slug interrogé porte l'empreinte des octets réellement envoyés (cf. appelant), donc
+    ce n'est PAS un état terminal : si le cadrage change au back-office, ou si la source
+    publie une autre affiche, les octets changent, le slug change, et un vrai upload a
+    lieu. Un même visuel réutilisé ; un visuel différent redéposé.
+
+    Jamais bloquant : la moindre erreur réseau renvoie (None, '') → on retombe sur
+    l'upload, c'est-à-dire l'ancien comportement."""
+    try:
+        r = requests.get(f"{wp_url}/?rest_route=/wp/v2/media",
+                         params={"slug": slug, "per_page": 1,
+                                 "_fields": "id,source_url"},
+                         auth=auth, headers=_headers(auth), timeout=20)
+        r.raise_for_status()
+        items = r.json()
+        if isinstance(items, list) and items:
+            return items[0].get("id"), items[0].get("source_url") or ""
+    except (requests.RequestException, ValueError) as exc:
+        log.debug("Recherche média « %s » impossible (%s) — on téléverse.", slug, exc)
+    return None, ""
+
+
 def _media_slug(title: str, suffix: str = "") -> str:
     """Nom de fichier/titre média LISIBLE dérivé du titre de l'événement — jamais le nom
     de fichier de l'URL source (souvent un hash opaque type CDN/Wikimedia, ex.
@@ -292,6 +328,24 @@ def _upload_featured_media(wp_url: str, auth, image_url: str,
                          ratio or "4:3", image_url)
             except Exception as exc:  # jamais bloquant : on garde l'original
                 log.warning("Vignette impossible (%s) — image d'origine conservée.", exc)
+
+        # EMPREINTE des octets réellement envoyés, collée au nom de fichier : c'est elle
+        # qui permet de reconnaître un média déjà en ligne (cf. _media_existant) sans
+        # jamais figer un visuel qui a changé. Posée APRÈS la génération de la vignette,
+        # donc elle couvre aussi le recadrage (changer le point focal au back-office donne
+        # d'autres octets, donc un autre nom, donc un vrai nouvel upload).
+        empreinte = hashlib.md5(data).hexdigest()[:10]
+        stem, _, ext_final = name.rpartition(".")
+        if stem:
+            name = f"{stem}-{empreinte}.{ext_final}"
+        else:  # nom sans extension (source exotique) — on garde tout et on suffixe
+            name = f"{name}-{empreinte}"
+        slug_attendu = name.rsplit(".", 1)[0].lower()
+        deja_id, deja_url = _media_existant(wp_url, auth, slug_attendu)
+        if deja_id:
+            log.info("Média déjà en ligne (id=%s, %s) — pas de nouveau dépôt.",
+                     deja_id, slug_attendu)
+            return deja_id, deja_url
 
         # Retry sur échec TRANSITOIRE (504/502/timeout — fréquent sur l'hébergement
         # mutualisé OVH lors de l'upload d'une image). Sans retry, un aléa réseau fait
