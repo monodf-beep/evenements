@@ -32,6 +32,24 @@
  * que si le tout tient sous 60 caractères — « Que faire à Saint-Jean-de-Maurienne cette
  * semaine ? » en fait déjà 55, la lui coller dessus la ferait tronquer par Google.
  *
+ * DEUXIÈME PASSE, 15/09 au soir. Le premier jet épargnait toute page portant déjà un
+ * titre ou une description — 54 pages. L'audit des 306 a montré que ces 54 avaient TOUTES
+ * le même défaut : elles portent l'expression clé posée par `seo-cles-pages.php`, mais
+ * leur description, écrite avant, ne la contient pas. Yoast restait donc rouge dessus.
+ * Elles ont été réécrites avec le gabarit, l'ancien texte SAUVEGARDÉ dans `cs_desc_avant`
+ * et `cs_titre_avant` — un geste ne se défait pour de bon que si on garde ce qu'il
+ * remplace. Recompté après : il ne reste qu'UNE page dans ce cas sur tout le site.
+ *
+ * ET TREIZE PAGES DE VILLE disaient « Sortir à X : agenda des sorties » quand leur clé,
+ * et surtout les requêtes RÉELLES, disent « que faire à X » (« que faire à albertville
+ * aujourd'hui », « agenda menton », mesurés en Search Console). Titres alignés en gardant
+ * leur structure, la marque retirée quand l'ensemble dépassait 60 caractères. Recompté :
+ * plus aucune page du site n'a sa clé absente de son titre.
+ *
+ * Une faute de grammaire trouvée au passage : la page Chablais italienne portait la clé
+ * « cosa fare nel Chablais » alors que son titre et tout le reste du site écrivent
+ * « nello Chablais ». C'est la CLÉ qui a été corrigée, pas les textes.
+ *
  * RÉVERSIBLE, et prudent avec ce qui a été écrit à la main : on ne touche qu'aux pages
  * marquées `cs_cle_auto` (celles de `seo-cles-pages.php`), et on ne remplace un titre ou
  * une description existants que s'ils portent notre propre marqueur `cs_texte_auto`.
