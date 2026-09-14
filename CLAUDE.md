@@ -162,7 +162,7 @@ faire demander à OVH le déblocage d'une IP sur la foi de la deuxième. Ce qui 
 tenait en quatre commandes qu'il fallait taper à la première minute : ping, port 80,
 port 443, et un hôte de contrôle.
 
-`docs/ERREURS_2026-09-08.md` en ajoute dix-neuf, autour d'une racine nouvelle : **deux détecteurs
+`docs/ERREURS_2026-09-08.md` en ajoute vingt-deux, autour d'une racine nouvelle : **deux détecteurs
 pour la même chose, un seul juste** — quatre fautes de code dont le garde-fou existait déjà
 dans le module voisin. Et une règle de livraison : un correctif de code s'accompagne de la
 liste des fiches déjà touchées et de la commande qui les répare, sinon la question reste
@@ -190,6 +190,26 @@ chaque republication d'une fiche redéposait ses trois déclinaisons. Mesure du 
 **2 016 copies en trop sur 4 158 médias**, jusqu'à seize exemplaires d'une même affiche.
 Une requête de trois lignes sur `wp_posts` l'aurait donné le premier jour. Avant de
 chercher la cause d'un « trop », COMPTER ce qu'il y a.
+
+Et trois du 14/09, autour des médias (fautes 20 à 22), qui se résument à une phrase
+chacune :
+
+- **Un titre n'identifie rien de durable dans ce dépôt** — l'enrichissement RÉÉCRIT les
+  fiches. Un média nommé « Jazz Art » appartient à la fiche « Jazz Art Lympia : trois
+  concerts gratuits… », bien vivante ; l'ancien titre ne survit que dans les révisions
+  WordPress. J'ai appelé « fiches mortes » 1 666 copies dont la plus grosse part
+  appartient à des fiches PUBLIÉES, et j'ai bâti un plan de nettoyage dessus. **Mon propre
+  raccourci était devenu un fait faute d'être mesuré** ;
+- **un témoin ne prouve rien s'il n'a jamais été rouge.** J'ai annoncé avoir trouvé la
+  cause d'une mesure fausse (un tiret cadratin mal échappé), corrigé, ajouté un témoin —
+  et les quatre chiffres sont sortis IDENTIQUES. La cause était ailleurs. Avant d'annoncer
+  qu'un défaut de mesure est trouvé, exécuter le cas-témoin sur la version FAUTIVE :
+  s'il passe déjà, chercher ailleurs ;
+- **les références vivent dans TROIS mondes**, et un audit de suppression qui n'en
+  interroge qu'un mesure sa propre myopie : WordPress (vignette, contenu, méta), le dépôt
+  (`config/territory_category_images.txt` — les 48 images de secours n'y sont référencées
+  QUE là), et la base locale (`wp_raw_image_url_as`, `url_image`, `url_image_wide`,
+  `url_image_portrait`, écrites par `publish_batch_as.py`).
 
 D'où la formulation la plus utile de cette racine, celle à relire avant de répondre :
 
