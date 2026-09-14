@@ -49,10 +49,34 @@ function cs_completude_rouvrir() {
         return false;
     }
 
+    // LE MARQUEUR NE PEUT PAS ÊTRE LA CONDITION D ENTRÉE (élargi le 2026-09-12).
+    //
+    // Ce rouvreur ne regardait que les brouillons portant `as_completude_refus`, c est à
+    // dire ceux que le garde-fou avait lui-même dépubliés. Mesuré ce jour-là sur la
+    // production : SEIZE fiches à venir en brouillon, dont ONZE sans ce marqueur ET sans
+    // le moindre bloquant. Publiables, et invisibles de tout le monde.
+    //
+    // Elles étaient dans un cul-de-sac fermé des DEUX côtés, et le deuxième côté est écrit
+    // noir sur blanc dans cs-publish.php (snippet 6, l.156) : « NE PAS dépublier au
+    // re-push : on retire post_status pour préserver le statut existant ». Décision juste
+    // en soi — une fiche retirée à la main ne doit pas revenir toute seule au prochain
+    // passage du pipeline — mais elle a un revers : une fiche tombée en brouillon y RESTE,
+    // même quand publish_batch_as la repousse chaque semaine. Le publieur ne la relève
+    // pas, et le rouvreur ne la voyait pas. Règle 3, exactement.
+    //
+    // POURQUOI LE PROCHAIN PASSAGE DONNE UN AUTRE RÉSULTAT : le contrôle relit
+    // `cs_completude_controler`, donc des métas que l enrichissement, les dates et la
+    // traduction réécrivent tous les jours. Les onze de ce jour-là ne portaient AUCUN
+    // bloquant au moment de la mesure — ce n est pas une espérance, c est un compte.
+    //
+    // LE GARDE-FOU DU GARDE-FOU : `as_score`. Il n est posé que par le pipeline
+    // (cs-publish.php). Un brouillon SANS lui vient d ailleurs — du formulaire public
+    // « Proposer un événement » (snippet 24), ou de la main de quelqu un — et ne doit
+    // JAMAIS être publié par un automate. Mesuré avant d écrire cette ligne : sur les
+    // 44 brouillons du jour, 2 n avaient pas `as_score` ; aucun des onze.
     $ids = $wpdb->get_col(
         "SELECT e.ID FROM {$wpdb->posts} e
-         JOIN {$wpdb->postmeta} r  ON r.post_id  = e.ID AND r.meta_key = 'as_completude_refus'
-                                   AND r.meta_value <> ''
+         JOIN {$wpdb->postmeta} sc ON sc.post_id = e.ID AND sc.meta_key = 'as_score'
          JOIN {$wpdb->postmeta} sd ON sd.post_id = e.ID AND sd.meta_key = '_EventStartDate'
          LEFT JOIN {$wpdb->postmeta} ed ON ed.post_id = e.ID AND ed.meta_key = '_EventEndDate'
          WHERE e.post_type = 'tribe_events'
@@ -62,8 +86,10 @@ function cs_completude_rouvrir() {
 
     $rouvertes = array();
     $bloquees  = array();
+    $sans_marqueur = array();
     foreach ($ids as $id) {
         $id = (int) $id;
+        if (get_post_meta($id, 'as_completude_refus', true) === '') { $sans_marqueur[] = $id; }
         $r = cs_completude_controler($id);
         if (!empty($r['bloquants'])) {
             $bloquees[$id] = implode(',', $r['bloquants']);
@@ -79,11 +105,18 @@ function cs_completude_rouvrir() {
 
     // Règle 6 : un zéro doit dire combien de cas se sont présentés. « 0 rouverte » sur
     // 12 garées et « 0 rouverte » sur 0 garée ne veulent pas dire la même chose.
+    //
+    // `sans_marqueur` compte à part les brouillons qu AUCUN refus n explique. C est le
+    // chiffre qui manquait : tant qu il reste élevé, quelque chose met des fiches en
+    // brouillon sans le dire, et il faudra trouver quoi. Un compteur qui vaut zéro
+    // parce que la file est vide et un qui vaut zéro parce qu on ne la regarde pas se
+    // ressemblent trop pour qu on se passe de celui-ci.
     $releve = array(
-        'garees'    => count($ids),
-        'rouvertes' => $rouvertes,
-        'bloquees'  => $bloquees,
-        'le'        => current_time('mysql'),
+        'garees'        => count($ids),
+        'sans_marqueur' => count($sans_marqueur),
+        'rouvertes'     => $rouvertes,
+        'bloquees'      => $bloquees,
+        'le'            => current_time('mysql'),
     );
     update_option('cs_completude_rouvreur', $releve, false);
 

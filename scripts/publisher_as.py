@@ -29,6 +29,7 @@ Variables .env dédiées (ne PAS réutiliser celles de culturasabauda.eu) :
 """
 from __future__ import annotations
 import base64
+import html
 import json
 import os
 import re
@@ -186,6 +187,26 @@ _HUB_TERRITOIRE_NOM = {
 }
 
 
+_SOURCE_LABEL = {"fr": "Site officiel", "it": "Sito ufficiale"}
+
+
+def lien_source_officielle(url: str, lang: str) -> str:
+    """<p><a> vers la source officielle en fin de corps — '' sans URL publiable.
+
+    Décision de Franck du 2026-09-09 (tableau Yoast/doctrine, ligne 5) : Yoast signalait
+    « aucun lien externe » sur chaque fiche parce que le bouton « Source officielle » est
+    un champ TEC hors `post_content`. UN lien, la même URL que le bouton, avec le domaine
+    en clair : ce n'est pas la LISTE de sources que le 31/07 a retirée du corps
+    (scripts/publisher.py l.117), et le radar reste jamais lié — l'URL vient de
+    `_source_publiable`, le même filtre que le bouton."""
+    url = (url or "").strip()
+    if not url:
+        return ""
+    lang = lang if lang in _SOURCE_LABEL else "fr"
+    domaine = re.sub(r"^https?://(www\.)?", "", url).split("/")[0]
+    return f'<p><a href="{url}">{_SOURCE_LABEL[lang]} : {domaine}</a></p>'
+
+
 def lien_hub_territoire(territoire_slug: str, lang: str) -> str:
     """<p><a> vers la page hub du territoire, dans la langue de la fiche — '' si le
     territoire ou la langue n'est pas reconnu (aucun risque de lien cassé)."""
@@ -196,6 +217,30 @@ def lien_hub_territoire(territoire_slug: str, lang: str) -> str:
     nom = _HUB_TERRITOIRE_NOM[(territoire_slug, lang)]
     libelle = _HUB_LABEL[lang].format(territoire=nom)
     return f'<p><a href="{url}">{libelle}</a></p>'
+
+
+def titre_liens(keyphrase: str, lang: str) -> str:
+    """<h2> qui coiffe les deux liens de fin de corps, et qui PORTE l'expression clé.
+
+    D'OÙ ÇA VIENT — 2026-09-10, « on a peu de vert pour le SEO des événements ». Comparées
+    ce jour-là, une fiche verte (WP#772, Saint-Ours) et une rouge (WP#2283, Bue Grasso)
+    ont la même longueur à 7 mots près ; ce qui les sépare, c'est que la verte a UN
+    sous-titre et la rouge AUCUN. Yoast compte deux points là-dessus — « répartition des
+    sous-titres » et « expression clé dans un sous-titre » — et le second est rouge sur
+    presque toutes les fiches, parce que le corps rédigé par `enrich` met un « ## » quand
+    il en a envie (« au plus un ou deux si vraiment nécessaire »).
+
+    Ce titre-ci ne dépend donc pas du LLM : il est posé par le code, sur chaque fiche qui a
+    au moins un lien à coiffer, dans la langue de la fiche. Sans clé (fiche pas encore
+    passée par `seo_batch`), on pose quand même le titre générique : la structure de la
+    page ne doit pas dépendre de l'avancement du SEO.
+    """
+    lang = lang if lang in ("fr", "it") else "fr"
+    cle = html.escape((keyphrase or "").strip())
+    if not cle:
+        return "<h2>En savoir plus</h2>" if lang == "fr" else "<h2>Per saperne di più</h2>"
+    return (f"<h2>{cle} : en savoir plus</h2>" if lang == "fr"
+            else f"<h2>{cle}: per saperne di più</h2>")
 
 
 def _map_territoire(value: str) -> str:
@@ -478,26 +523,37 @@ def _panel_meta(event: dict) -> dict:
     }
 
 
-def _build_payload(event: dict) -> dict:
-    """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw."""
-    title, content = build_post(event)
+def _build_payload(event: dict, skip_media: bool = False) -> dict:
+    """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw.
 
-    # LIEN INTERNE vers la page hub du territoire (2026-09-08, captures Yoast de
-    # Franck : « aucun lien interne dans cette page » sur WP#7490 et WP#7518). Posé
-    # ICI et pas dans `build_post` : cette fonction est PARTAGÉE avec
-    # scripts/publisher.py (culturasabauda.eu), qui n'a pas ces hubs — y coder un
-    # lien agendasabauda.eu en dur casserait l'autre cible. `build_post` reste donc
-    # générique, le lien est agencé par le publisher qui SAIT vers quel site il
-    # publie. Rien n'est ajouté si le territoire n'est pas reconnu, ni sur un
-    # article vide (pas de lien sans texte à ancrer).
-    if content:
-        hub = lien_hub_territoire(_map_territoire(event.get("territoire", "")), _lang(event))
-        if hub:
-            content = content + "\n" + hub
+    `skip_media=True` : la passe ne touche à AUCUNE image — ni téléversement, ni méta
+    qui pointe vers une image. Voir `as_image_original` plus bas."""
+    title, content = build_post(event)
 
     # Le radar n'est jamais crédité ni lié (charte §8).
     is_radar = (event.get("source_type") == "radar"
                 or "(radar)" in (event.get("source_name") or ""))
+    # Une seule évaluation, réutilisée plus bas (meta + champ natif TEC) et ici pour le
+    # lien de fin de corps : les trois ne peuvent pas diverger.
+    source_url = _source_publiable(event, is_radar)
+
+    # DEUX LIENS EN FIN DE CORPS, posés ICI et pas dans `build_post` : cette fonction
+    # est PARTAGÉE avec scripts/publisher.py (culturasabauda.eu), qui n'a ni ces hubs
+    # ni ce bouton — y coder du agendasabauda.eu en dur casserait l'autre cible.
+    #  • lien EXTERNE vers la source officielle (09/09, décision de Franck : Yoast
+    #    signalait « aucun lien externe » parce que le bouton TEC est hors post_content) ;
+    #  • lien INTERNE vers la page hub du territoire (08/09 : « aucun lien interne »).
+    # Rien n'est ajouté sans URL publiable / territoire reconnu, ni sur un article
+    # vide (pas de lien sans texte à ancrer).
+    if content:
+        lang = _lang(event)
+        liens = [l for l in (lien_source_officielle(source_url, lang),
+                             lien_hub_territoire(_map_territoire(event.get("territoire", "")), lang))
+                 if l]
+        if liens:
+            # Le <h2> AVANT les liens : c'est lui qui porte l'expression clé (Yoast
+            # « expression clé dans un sous-titre », rouge sur presque toutes les fiches).
+            content = "\n".join([content, titre_liens(event.get("seo_keyphrase", ""), lang)] + liens)
     prix = event.get("prix", "") or ""
     # None (non mesuré) → chaîne vide côté WP : « pas mesuré » ne doit pas se confondre
     # avec un vrai 0, sinon la section classerait les non-évalués comme « sans intérêt ».
@@ -507,9 +563,6 @@ def _build_payload(event: dict) -> dict:
     # le dict ferait deux calculs qui peuvent diverger si la date change entre les deux
     # (minuit), et c'est le genre d'écart qu'on ne retrouve jamais.
     une = une_now(event)
-    # Une seule évaluation, réutilisée deux fois plus bas (meta + champ natif TEC) et
-    # ici pour la date de vérification : les trois ne peuvent pas diverger.
-    source_url = _source_publiable(event, is_radar)
 
     meta = {
         "as_score":                 event.get("llm_score", ""),
@@ -583,7 +636,22 @@ def _build_payload(event: dict) -> dict:
         # en 4:3 pour la grille ; la FICHE, elle, affiche l'affiche entière via ce champ.
         # JAMAIS un logo/pictogramme (« voir l'affiche en grand » n'aurait aucun sens) :
         # dans ce cas on laisse vide → la fiche montrera la bannière de repli seule.
-        "as_image_original":        "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
+        # ⚠️ ABSENT du payload quand skip_media (2026-09-10). Ce méta porte le GRAND
+        # visuel de la fiche. Sans ce garde-fou, une passe « texte seul » le réécrivait
+        # quand même avec l'URL de la BASE : la vignette restait celle posée à la main
+        # dans WordPress (cs-publish.php ne la touche pas sans featured_media_id), mais
+        # le grand visuel revenait à l'ancienne image — deux photos différentes sur la
+        # même fiche. Trouvé le 2026-09-10 en vérifiant, avant une republication de 165
+        # fiches, ce que `--skip-media` préserve vraiment ; Franck avait corrigé des
+        # photos à la main et c'est exactement ce que la passe aurait défait.
+        # Une clé absente n'est pas écrasée côté WordPress : la boucle des métas est
+        # gardée par `array_key_exists` (cs-publish.php l.420-424). Vérifié sur le
+        # MIROIR versionné — la route qui tourne vit dans Code Snippets (CLAUDE.md),
+        # donc à recontrôler là-bas si un jour une méta d'image disparaissait quand
+        # même sous --skip-media.
+        **({} if skip_media else {
+            "as_image_original": "" if _is_logo(event.get("url_image")) else (event.get("url_image", "") or ""),
+        }),
         # Lieu + ville en plat : la carte-événement JetEngine les lit directement
         # (le Venue TEC reste par ailleurs pour la carte/adresse).
         "as_lieu":                  (event.get("lieu") or "").strip(),
@@ -721,7 +789,7 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
         return None, "", ""
 
     auth = (wp_user, wp_pass)
-    payload = _build_payload(event)
+    payload = _build_payload(event, skip_media=skip_media)
 
     # Image à la une : on TÉLÉVERSE côté Python (fiable — le backoffice accède déjà à
     # ces images) plutôt que de laisser WordPress aller chercher l'URL lui-même (souvent

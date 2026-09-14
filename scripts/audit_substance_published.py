@@ -51,6 +51,22 @@ from scripts.publisher import build_post  # noqa: E402
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
+# SEUIL YOAST, AJOUTÉ LE 2026-09-10. Yoast classe « texte trop court » sous 300 mots, et
+# c'est de LOIN la première cause du rouge de la colonne SEO. Mesuré ce jour-là sur les
+# 146 fiches publiées et non terminées, par l'API REST du site (les deux langues) :
+#
+#   sous 300 mots        109 / 146   74 %   médiane 234 mots, 56 fiches sous 200
+#   sans sous-titre       45 / 146   30 %
+#   candidates au vert    33 / 146   23 %
+#
+# Ce panier-ci N'EST PAS un second détecteur : il réutilise `substance.mots_publies`,
+# le même compteur que les paniers 1 à 3, avec un seuil différent. Deux détecteurs pour
+# la même chose, un seul juste, c'est la racine des seize fautes du 08/09 — on ne la
+# refait pas. Ce qui change, c'est l'outil qui lit : le plancher de 40 mots protège du
+# refus AdSense, la bande maigre de 250 protège du lecteur, et 300 est ce que Yoast
+# exige. Trois seuils, trois publics, un seul compteur.
+SEUIL_YOAST = 300
+
 
 def _connect_ro(path: Path) -> sqlite3.Connection:
     """Connexion STRICTEMENT en lecture (URI `mode=ro`) : garantie par SQLite lui-même,
@@ -85,6 +101,10 @@ def main(argv=None) -> int:
                         help="Lister les ids/titres, pas seulement les compteurs.")
     parser.add_argument("--limit", type=int, default=80,
                         help="Nombre de lignes détaillées par panier (défaut 80).")
+    parser.add_argument("--seuil-yoast", type=int, default=SEUIL_YOAST,
+                        help=f"Seuil « texte trop court » de Yoast (défaut {SEUIL_YOAST}).")
+    parser.add_argument("--lot", type=int, default=10,
+                        help="Taille du lot proposé au panier 5 (défaut 10).")
     args = parser.parse_args(argv)
 
     if not DB_PATH.exists():
@@ -146,6 +166,15 @@ def main(argv=None) -> int:
         else:
             bande_maigre.append((ev, n))
     sous_plancher.sort(key=lambda t: t[1])  # les plus maigres d'abord
+
+    # PANIER 5 — sous le seuil Yoast, encore devant nous. Recouvre les paniers 1 et 2
+    # (300 > 250 > 40) : il ne s'AJOUTE pas à eux, il les CONTIENT. On ne fait donc
+    # jamais la somme des paniers — ce serait fabriquer du travail qui n'existe pas.
+    _mots = {ev["id"]: substance.mots_publies(ev, build_post) for ev in rows}
+    sous_yoast = sorted(
+        [(ev, _mots[ev["id"]]) for ev in rows
+         if devant_nous(ev, today) and _mots[ev["id"]] < args.seuil_yoast],
+        key=lambda t: t[1])
 
     jamais_enrichies = sum(1 for ev, _ in sous_plancher if not (ev.get("article_title") or "").strip())
     # RÈGLE 5 ici aussi : une fiche non rédigée dont l'événement est passé ne sera pas
@@ -271,6 +300,41 @@ def main(argv=None) -> int:
             print(f"       .venv/bin/python -m scripts.enrich {ids}")
             print(f"       puis : .venv/bin/python -m scripts.translate_events "
                   f"--retranslate {ids} --apply")
+
+    # ── PANIER 5 : le seuil de Yoast ────────────────────────────────────────────────
+    y_ok, y_trad = _actionnables(sous_yoast)
+    print(f"5. SOUS LE SEUIL YOAST (< {args.seuil_yoast} mots), ENCORE DEVANT NOUS : "
+          f"{len(sous_yoast)}")
+    print(f"   Yoast classe ces pages « texte trop court » : c'est la première cause du")
+    print(f"   rouge de la colonne SEO (mesuré le 10/09 sur le site : 109 fiches sur 146,")
+    print(f"   médiane 234 mots). Ce panier CONTIENT les paniers 1 et 2 — ne pas additionner.")
+    if sous_yoast:
+        mediane = sorted(n for _e, n in sous_yoast)[len(sous_yoast) // 2]
+        print(f"   · médiane du panier : {mediane} mots")
+    print(f"   · dont {len(y_trad)} traduction(s) qu'enrich REFUSE (voir plus bas)")
+    print(f"   · réparables directement : {len(y_ok)}")
+    print()
+    if y_ok:
+        lot = y_ok[:max(1, args.lot)]
+        ids = " ".join(str(ev["id"]) for ev, _ in lot)
+        print(f"LOT DE DÉPART — les {len(lot)} plus courtes des {len(y_ok)} réparables :")
+        for ev, n in lot:
+            print(f"   [{ev['id']:>5}] WP#{ev['wp_post_id_as']:<6} {n:>4} mot(s)  "
+                  f"{(ev.get('title') or '')[:52]}")
+        print()
+        print("   ⚠️  L'article publié sera REMPLACÉ : l'ancien texte n'est pas conservé.")
+        print("       Sauvegarder d'abord — .venv/bin/python scripts/backup_db.py")
+        print()
+        print(f"      .venv/bin/python -m scripts.enrich {ids}")
+        print(f"      .venv/bin/python -m scripts.seo_batch --redo --ids {ids}")
+        print(f"      .venv/bin/python -m scripts.publish_batch_as --ids {ids}")
+        print()
+        print("   L'ORDRE COMPTE. L'article ré-écrit change le corps, donc l'expression clé")
+        print("   doit être choisie APRÈS lui : la calculer avant recréerait l'écart clé/texte")
+        print("   qui rend 47 fiches sur 130 rouges à l'intro, à la densité et au sous-titre.")
+        print()
+        _traductions_ecartees(y_trad)
+        print()
 
     seules_ok, seules_trad = _actionnables(sans_article_seules)
     if seules_ok:

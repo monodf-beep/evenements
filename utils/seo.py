@@ -262,7 +262,9 @@ def optimize_seo(ev: dict, client, model: str, lang: str | None = None) -> dict 
            for x in faq if isinstance(x, dict) and x.get("q") and x.get("a")]
     tags = data.get("seo_tags") or []
     tags = [_clean(t) for t in tags if isinstance(t, str) and _clean(t)][:6]
-    keyphrase = _clean(data.get("seo_keyphrase"))
+    # Clé recalée sur la matière RÉELLEMENT publiée : une préposition d'écart et Yoast
+    # compte zéro occurrence (voir `recale_keyphrase`). Déterministe, aucun appel de plus.
+    keyphrase = recale_keyphrase(_clean(data.get("seo_keyphrase")), material)
     slug = slugify(data.get("seo_slug") or keyphrase or _clean(data.get("seo_title")))
     return {
         "seo_keyphrase": keyphrase[:60],
@@ -274,6 +276,87 @@ def optimize_seo(ev: dict, client, model: str, lang: str | None = None) -> dict 
         "seo_faq": faq,
         "seo_lang": lang,
     }
+
+
+# ── Recalage de l'expression clé sur le texte réellement publié ─────────────────────
+#
+# D'OÙ ÇA VIENT — 2026-09-10, capture de Franck : « on a peu de vert pour le SEO des
+# événements ». Mesuré le jour même sur deux fiches, une VERTE et une ROUGE, toutes deux
+# passées par `seo_batch` :
+#
+#   WP#772  « La Foire de Saint-Ours 2027 »      250 mots, 1 sous-titre  → vert
+#   WP#2283 « La Fiera del Bue Grasso di Carrù » 243 mots, 0 sous-titre  → rouge
+#
+# Et sur la rouge, la clé rendue par le LLM était « Fiera del Bue Grasso Carrù » quand le
+# corps écrit — le corps est rédigé AVANT le choix de la clé — dit « Fiera del Bue Grasso
+# DI Carrù ». Un seul mot de liaison d'écart, et Yoast compte zéro occurrence : clé absente
+# de l'introduction, densité nulle, clé absente des sous-titres. Trois points rouges pour
+# une préposition.
+#
+# Le prompt exigeait déjà « des mots qui apparaissent TELS QUELS » (règle 3 : un portillon
+# qui se rejoue sur la même entrée n'est pas un rouvreur — ici on ne refuse RIEN, on
+# recale, donc pas de boucle et pas d'appel API supplémentaire). Le contrôle est
+# DÉTERMINISTE : on ne fait jamais confiance au LLM pour une comparaison de chaînes.
+_MOTS_LIAISON = {
+    "de", "du", "des", "d", "la", "le", "les", "l", "a", "au", "aux", "et", "en",
+    "di", "del", "della", "dei", "degli", "delle", "il", "lo", "i", "gli", "e",
+    "al", "alla", "ai", "dell", "da", "dal", "in", "of", "the",
+}
+
+
+def _mots_replies(texte: str) -> list[tuple[str, str]]:
+    """(mot d'origine, mot replié) — minuscules, accents retirés, ponctuation ignorée."""
+    import unicodedata
+    sortie = []
+    for mot in re.findall(r"[^\W_]+", texte or "", flags=re.UNICODE):
+        plie = unicodedata.normalize("NFD", mot.lower())
+        plie = "".join(c for c in plie if unicodedata.category(c) != "Mn")
+        sortie.append((mot, plie))
+    return sortie
+
+
+def cle_dans_texte(cle: str, texte: str) -> bool:
+    """La clé apparaît-elle TELLE QUELLE (aux accents et à la casse près) dans le texte ?
+    C'est la question que Yoast pose pour l'introduction, la densité et les sous-titres."""
+    mots_cle = [p for _, p in _mots_replies(cle)]
+    mots_txt = [p for _, p in _mots_replies(texte)]
+    if not mots_cle or len(mots_cle) > len(mots_txt):
+        return False
+    n = len(mots_cle)
+    return any(mots_txt[i:i + n] == mots_cle for i in range(len(mots_txt) - n + 1))
+
+
+def recale_keyphrase(cle: str, texte: str, tolerance: int = 2) -> str:
+    """Rend la clé telle qu'elle est ÉCRITE dans le texte, quand seuls des mots de liaison
+    l'en séparent. Sinon rend la clé inchangée : on ne fabrique jamais une clé absente.
+
+    « Fiera del Bue Grasso Carrù » + un corps qui dit « Fiera del Bue Grasso di Carrù »
+    → « Fiera del Bue Grasso di Carrù ». Deux mots de liaison intercalés au plus, et
+    AUCUN mot porteur de sens : sauter un mot plein changerait le sens de la clé.
+    """
+    cle = _clean(cle)
+    if not cle or not texte or cle_dans_texte(cle, texte):
+        return cle
+    mots_cle = [p for _, p in _mots_replies(cle)]
+    tokens = _mots_replies(texte)
+    if not mots_cle:
+        return cle
+    for depart in range(len(tokens)):
+        if tokens[depart][1] != mots_cle[0]:
+            continue
+        i, k, sautes = depart + 1, 1, 0
+        while i < len(tokens) and k < len(mots_cle):
+            if tokens[i][1] == mots_cle[k]:
+                i += 1
+                k += 1
+            elif tokens[i][1] in _MOTS_LIAISON and sautes < tolerance:
+                sautes += 1
+                i += 1
+            else:
+                break
+        if k == len(mots_cle):
+            return " ".join(orig for orig, _ in tokens[depart:i])
+    return cle
 
 
 def faq_jsonld_str(faq: list[dict]) -> str:

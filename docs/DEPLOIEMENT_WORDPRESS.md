@@ -252,3 +252,133 @@ Ce que les deux retouches font, et comment revenir en arrière, est écrit dans 
 commentaires du snippet lui-même (datés 2026-09-08) et dans `docs/ERREURS_2026-09-08.md`
 (§ « Ce qui a été changé sur WordPress ce soir »). Les snippets n'ont toujours pas de
 double versionné ici — c'est un point ouvert, pas une règle.
+
+## 10. 2026-09-10 — `cs-passe-noindex.php` et `cs-index-budget.php` : le budget d'exploration
+
+Deux mu-plugins NEUFS (aucune version en ligne à écraser), déposés par le canal du § 3,
+procédure du § 6 : `create-upload-link` sur un `.nouveau`, `curl --data-binary` depuis le
+fichier local, `execute-php` qui compare le md5, contrôle la syntaxe par
+`token_get_all(…, TOKEN_PARSE)`, refuse si la cible existe déjà, puis `rename()` atomique.
+`php -l` local avant tout (les deux passent, `tests/test_php_syntax.py` les couvre).
+
+| fichier | md5 en ligne | taille |
+|---|---|---|
+| `cs-passe-noindex.php` | `f3f8cd1d17b0c85b2397b19c89f28cde` | 4 216 o |
+| `cs-index-budget.php`  | `b76ce6d0769c1c9a04e858e365862c45` | 11 965 o |
+
+**Le dry-run a été LU avant le second dépôt, pas seulement compté** — c'est lui qui a
+corrigé l'en-tête du fichier. Les chiffres qu'il portait venaient du SITEMAP, donc de ce
+que le site déclare ; la mesure sur la base dit autre chose :
+
+| famille | estimé au sitemap | mesuré sur la base |
+|---|---|---|
+| vues « période » | 137 | **192** sur 306 pages publiées |
+| lieux sans événement à venir | 307 (tous les lieux) | **221** sur 313, 92 gardés |
+| organisateurs | 75 | **83** |
+| total hors index | 498 | **496** |
+
+Les 92 lieux gardés sont les lieux vivants : Forte di Bard (7 événements à venir), Opéra
+de Nice (5), Théâtre M. Novarina (5), Fondazione Merz (4). Aucune page hub n'était dans la
+liste des exclues.
+
+**Arbitrage laissé ouvert, délibérément** : les 8 pages « période × territoire »
+(`/ce-week-end/piemont/`, `/it/questo-weekend/valle-d-aosta/`…) restent indexées. Leur
+slug propre est un TERRITOIRE, pas une période, donc la règle ne les attrape pas — et
+« que faire ce week-end en Piémont » est une intention de recherche réelle. On ne
+désindexe pas ce qu'on n'a pas jugé.
+
+### Contrôle après dépôt (fait, des DEUX côtés de chaque frontière)
+
+| page | attendu | obtenu |
+|---|---|---|
+| WP#8049, terminé la veille à 23h59 | `noindex, follow` | ✅ `data-cs="cs-passe-noindex"` |
+| WP#8741, se termine ce soir | rien | ✅ aucune balise |
+| `/que-faire-a-turin/ce-week-end/` | `noindex` | ✅ `data-cs="cs-index-budget"` |
+| `/que-faire-a-turin/` (hub) | rien | ✅ aucune balise |
+| `/lieu/forte-di-bard/` (7 à venir) | rien | ✅ aucune balise |
+| `/lieu/theatre-des-collines/` (0 à venir) | `noindex` | ✅ `data-cs="cs-index-budget"` |
+| `/organisateur/cristinag/` | `noindex` | ✅ |
+| accueil, `/wp-json/`, `/wp-admin/` | 200 / 200 / 302 | ✅ |
+
+Sitemap déclaré, avant (mesuré le 09/09) et après :
+
+    total          858  →  370
+    lieux          307  →   92
+    organisateurs   75  →    0   (le sitemap tribe_organizer a disparu de l'index)
+    pages          137+ →  106
+    événements     189  →  131   (les terminés sortent : cs-passe-noindex)
+
+### Un « trou » annoncé, puis DÉMENTI par la mesure suivante — 2026-09-10
+
+J'ai écrit ici, et dit à Franck, que `post-sitemap.xml` déclarait **0 URL** pour
+**24 articles publiés**, et j'ai proposé d'en faire une urgence. C'était FAUX.
+
+Ce qui a tranché, en trois appels : le fournisseur Yoast rendait bien
+`get_sitemap_links('post', …)` → **24 liens** ; une lecture du même sitemap DEPUIS le
+serveur → **24 `<loc>`** ; et une relecture depuis l'extérieur → **24** aussi. Le site
+n'a jamais eu ce trou. C'est mon `curl` qui a compté zéro, une fois, et je n'ai pas
+recompté avant d'annoncer.
+
+**Ce que ça coûte, et le garde-fou.** C'est la faute-racine du dépôt à l'état pur : une
+mesure UNIQUE présentée comme un fait, et une conclusion (« tes contenus les plus
+durables sont invisibles de Google ») bâtie dessus. La règle existait déjà —
+« ne jamais présenter une INFÉRENCE comme un FAIT » — mais il en manquait un cran :
+**un zéro se recompte AVANT d'être annoncé, par un second chemin.** Un zéro est
+justement la valeur qu'un défaut de mesure produit le plus volontiers, et il ressemble
+exactement à un monde où il n'y a rien.
+
+Le reste des chiffres de ce paragraphe tient : 24 articles publiés, aucun en noindex,
+`noindex-post` à `false`. C'est la seule ligne qui comptait — « 0 URL » — qui était de
+moi et pas du site.
+
+### Retour arrière
+
+Supprimer le fichier concerné dans `wp-content/mu-plugins/`. Rien n'est écrit en base,
+aucun post n'est modifié : tout se calcule au rendu. Les lieux se rouvrent d'eux-mêmes dès
+qu'un événement à venir y pointe (règle 3), et une fiche dont la date de fin repasse dans
+l'avenir redevient indexable sans que personne n'y touche.
+
+## 11. 2026-09-12 — le rouvreur de complétude ne voyait qu'un brouillon sur trois
+
+**Snippet 150** (« CS - Completude : le rouvreur »), miroir versionné
+`deploy/wordpress/code-snippets/137-cs-completude-rouvreur.php`. Ancien md5
+`9af7fdf0a19e0f36f6b553b7e45d45ce`, nouveau `94518218d43222d8f6d0ee2028626f3e`.
+Sauvegarde de la version d'avant dans l'option `cs_rouvreur_sauvegarde_2026_09_12`
+(6 035 octets) — retour arrière : réécrire ce contenu dans `wp_snippets.code` pour l'id 150.
+
+**Le cul-de-sac, fermé des DEUX côtés.** Le rouvreur n'examinait que les brouillons
+portant `as_completude_refus`, c'est-à-dire ceux que le garde-fou avait lui-même
+dépubliés. Mesuré ce jour-là : **16 fiches à venir en brouillon, dont 11 sans ce marqueur
+et sans le moindre bloquant.** Publiables, et invisibles de tout le monde.
+
+L'autre côté est écrit dans `cs-publish.php` (snippet 6, l.156) : « NE PAS dépublier au
+re-push : on retire post_status pour préserver le statut existant ». Décision juste — une
+fiche retirée à la main ne doit pas revenir toute seule — mais elle a un revers : une
+fiche tombée en brouillon y RESTE, même quand `publish_batch_as` la repousse chaque
+semaine. Le publieur ne la relève pas ; le rouvreur ne la voyait pas. Règle 3, exactement,
+et un cran plus bas que là où elle avait déjà été réparée le 06/09.
+
+**Le garde-fou du garde-fou : `as_score`.** Seul le pipeline le pose. Un brouillon sans
+lui vient d'ailleurs — du formulaire public « Proposer un événement » (snippet 24) ou de
+la main de quelqu'un — et ne doit jamais être publié par un automate. Mesuré AVANT
+d'écrire la ligne : sur 44 brouillons, 2 n'avaient pas `as_score` ; aucun des onze.
+
+**Dry-run lu ligne par ligne avant d'écrire** (la nouvelle requête, sans aucune écriture) :
+16 candidats, 11 à republier, 5 à garder en brouillon avec leur motif. Puis exécution, et
+recompte en base fiche par fiche (règle 6 — on ne croit pas la liste rendue) :
+
+    garées 16 · sans marqueur 11 · rouvertes 11 · bloquées 5
+    1938, 902, 606, 2311, 6288, 6382, 6435, 6438, 7552, 7558, 7639  → toutes `publish`
+    restent en brouillon : 7686, 8626, 8669, 8682 (source_officielle) · 8707 (corps_indigent)
+    total tribe_events publiés : 293 · brouillons à venir restants : 5
+
+Trois pages tirées au hasard parmi les onze répondent 200 en public.
+
+**Le compteur ajouté, et pourquoi.** Le relevé porte désormais `sans_marqueur` à côté de
+`garees`. C'est le chiffre qui manquait : tant qu'il reste élevé, quelque chose met des
+fiches en brouillon sans le dire, et il faudra trouver quoi. Ce qui a mis ces onze-là en
+brouillon n'est PAS établi — le marqueur absent est précisément ce qui empêche de le
+savoir, et je ne le devine pas.
+
+**Ce qui reste ouvert** : les 4 fiches bloquées sur `source_officielle` et la 8707 sur
+`corps_indigent` (c'est elle qui fait exploser le plafond de jetons à l'enrichissement).

@@ -32,7 +32,12 @@ _PROFILES = ("eco", "qualite")
 _ENRICH_MODES = ("off", "auto", "court", "long")
 _MODEL_ECO = "claude-haiku-4-5"
 _MODEL_QUAL = "claude-sonnet-5"
-COURT_MAX_TOKENS = 1800
+# 1800 → 2600 le 2026-09-10, en même temps que le plancher du mode court passait de
+# 220 à 280-320 mots (Yoast classe « texte trop court » sous 300). Ce budget couvre
+# TOUT le JSON rendu — chapô, corps, programme, encadré, FAQ — pas seulement le corps :
+# le laisser à 1800 aurait fait tronquer la réponse, donc un JSON invalide et une
+# fiche NON enrichie, au lieu d'une fiche courte. C'est le repli le plus coûteux.
+COURT_MAX_TOKENS = 2600
 SOCIAL_CAPTION_LIMIT_MAX = 10  # garde-fou dur, même si quelqu'un tape un grand nombre
 
 

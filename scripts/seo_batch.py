@@ -49,6 +49,26 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 
 def _select(conn, args, today: str):
+    # CIBLAGE PRÉCIS (2026-09-10). Sans cette porte, la seule façon de recalculer le SEO
+    # de fiches précises était `--redo --cap N`, qui reprend la file entière dans SON
+    # ordre à elle : on croit relancer les 10 qu'on vient de ré-écrire, on en relance 10
+    # autres. Le cas d'usage est né du chantier « longueur » : un article ré-écrit change
+    # le corps, donc la clé doit être re-choisie sur les mêmes ids, sinon on recrée
+    # l'écart clé/texte qu'on venait de corriger (47 fiches sur 130 le 10/09).
+    # On lève TOUS les filtres — score, date, `seo_at`, annulation — parce que l'opérateur
+    # a désigné ses fiches lui-même ; la garde de LANGUE, elle, reste (elle est dans la
+    # boucle d'écriture, pas ici) : c'est la seule dont l'oubli abîme une fiche en ligne.
+    if getattr(args, "ids", None):
+        ph = ",".join("?" * len(args.ids))
+        rows = conn.execute(
+            f"SELECT * FROM events_raw WHERE id IN ({ph})", args.ids).fetchall()
+        par_id = {r["id"]: r for r in rows}
+        manquants = [i for i in args.ids if i not in par_id]
+        if manquants:
+            # Règle 6 : un id qui n'existe pas doit se VOIR, sinon le bilan annonce
+            # « 8 traitées » sur 10 demandées sans que personne sache lesquelles.
+            log.warning("ids introuvables en base, ignorés : %s", manquants)
+        return [par_id[i] for i in args.ids if i in par_id]
     where = [
         "statut IN ('evaluated','published_cs','published_sub')",
         "duplicate_of IS NULL",
@@ -188,6 +208,11 @@ def main(argv=None) -> int:
     parser.add_argument("--min-score", type=int, default=7, help="Score minimum (défaut 7).")
     parser.add_argument("--delay", type=float, default=1.0, help="Pause (s) entre deux appels.")
     parser.add_argument("--redo", action="store_true", help="Régénérer même si déjà fait.")
+    parser.add_argument("--ids", type=int, nargs="+", default=None,
+                        help="Ne traiter QUE ces ids (dans l'ordre donné), tous filtres "
+                             "levés sauf la langue. C'est le chaînon qui manquait après "
+                             "une ré-écriture d'articles : l'expression clé doit être "
+                             "choisie APRÈS le nouveau corps, sur les MÊMES fiches.")
     parser.add_argument("--include-past", action="store_true", help="Inclure les événements passés.")
     parser.add_argument("--dry-run", action="store_true", help="Lister la sélection sans appeler le LLM.")
     parser.add_argument("--push-cap", type=int, default=_SEO_PUSH_CAP,
@@ -205,8 +230,14 @@ def main(argv=None) -> int:
     _ensure_seo_pushed_col(conn)
     a_repousser = _a_repousser(conn, today, args.push_cap)
     rows = _select(conn, args, today)
-    log.info("Sélection : %d événement(s) (cap %d, min-score %d, modèle %s)",
-             len(rows), args.cap, args.min_score, model)
+    if getattr(args, "ids", None):
+        # Périmètre à côté du nombre (règle 6) : ni cap ni score ne s'appliquent ici,
+        # le dire plutôt que d'afficher des valeurs qui ne servent à rien.
+        log.info("Sélection : %d événement(s) sur les %d ids demandés — ciblage précis, "
+                 "ni cap ni min-score, modèle %s", len(rows), len(args.ids), model)
+    else:
+        log.info("Sélection : %d événement(s) (cap %d, min-score %d, modèle %s)",
+                 len(rows), args.cap, args.min_score, model)
 
     retard = _retard(conn, today)
     if args.dry_run:

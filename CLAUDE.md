@@ -171,6 +171,17 @@ commit ne part pas sur une fixture rouge** (faute 11), **un fichier ne se retape
 dans l'argument d'un outil** (faute 12), **un dry-run se lit ligne par ligne** — celui
 d'`affiner_source` avait une proposition fausse sur deux (faute 13).
 
+`docs/ERREURS_2026-09-10_SEO.md` couvre le fil SEO du 08 au 10/09 : huit fautes, dont six
+conclusions démenties par une mesure — et cinq fois c'est Franck qui a lancé la commande
+qui me contredisait. Sa racine est une variante de celle ci-dessus : **j'ai raisonné sur
+ce que l'outil AFFICHAIT, sans vérifier ce qu'il MESURAIT.** Une fenêtre de trafic sans
+date (trois semaines de retard prises pour l'actuel), une liste plafonnée à 50 qui en
+cachait 118, un audit en mode « signalement » pris pour un mode « refus », une sélection
+SQL lue dans sa docstring — la commande de `--update` a ainsi CRÉÉ une dizaine de fiches
+quand j'annonçais une republication —, et des titres comparés à la place des pages : quinze
+doublons annoncés, un seul réel. À chaque fois, la commande qui tranchait tenait en une
+ligne et existait déjà.
+
 Et une racine de plus, la faute 19 : **chercher la cause là où le MOT de Franck la place,
 au lieu de compter.** Il a dit « trop de vignettes GÉNÉRÉES » ; j'ai fouillé la génération
 pendant des jours. Elles n'étaient pas générées en trop, elles étaient RE-DÉPOSÉES —
