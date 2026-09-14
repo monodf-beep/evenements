@@ -407,3 +407,31 @@ pas qu'un titre italien dans une fiche française n'est pas une faute de traduct
 
 **À traiter par les RÉSULTATS, pas par relecture** (leçon du 11/08) : passer le détecteur
 sur ces cinq titres et LIRE ce qu'il refuse, avant de toucher à sa logique.
+
+---
+
+## Faute 13 — un mécanisme livré pour un cas qui n'existe pas encore
+
+Le 15/09, j'ai construit l'adoption d'éditions (une URL par événement annuel, mise à
+jour d'une année sur l'autre) : colonnes, script, fixture à treize contrôles. Déployé,
+lancé : **« 0 paire examinée »**.
+
+Le zéro était juste, et prévisible : la base a commencé fin juillet 2026, la plus vieille
+fiche a deux mois, et une paire d'éditions demande dix à quatorze mois d'écart. **La
+première ne peut pas apparaître avant l'été 2027.** Une soustraction de dates l'aurait dit
+avant la première ligne de code ; c'est le dry-run qui l'a dit après la dernière.
+
+Le code n'est pas perdu — il servira à son heure, et il a forcé une lecture utile (la
+contradiction avec `cs-passe-noindex`). Mais il a été écrit dans le mauvais ordre. Le
+garde-fou, qui est la règle 6 tournée vers l'amont : **avant d'écrire un mécanisme,
+compter les cas qu'il traitera AUJOURD'HUI.** S'il n'en a aucun, écrire la date à laquelle
+il en aura, et se demander ce qui presse d'ici là — ici, c'était le noindex des fiches
+terminées, pas l'adoption.
+
+## Ce que la même soirée a bien fait, pour la symétrie
+
+Trois fois le réflexe inverse a payé : lire le relevé de Franck au lieu de re-diagnostiquer
+(la une : 17 fiches, 4 retenues, motifs écrits), mesurer avant de crier (le log de
+republication affichait le titre de la BASE, le post 6413 était intact), et compter avant
+de construire (21 fiches sans score, 19 avec panel → un recalcul pur suffit, pas une
+réécriture). Les deux dernières ont évité une fausse alerte et quarante appels LLM.
