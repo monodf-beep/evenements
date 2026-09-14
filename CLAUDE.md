@@ -246,6 +246,48 @@ portillon, le passer sur des données réelles et LIRE ce qu'il refuse.
 
 ---
 
+## Une adresse que Google connaît ne se corbeille pas : elle se REDIRIGE
+
+**Arbitrage de Franck, 2026-09-15** : « il vaut mieux faire des redirections si on a créé
+plusieurs articles identiques ou similaires ».
+
+Ce jour-là, un rapport Search Console signalait quatre URL en concurrence sur la foire de
+Vicoforte. J'ai interrogé WordPress — une seule en ligne, une à la corbeille, deux
+effacées — et j'ai conclu « rien à faire ». **La vérification était juste, la conclusion
+était fausse.** Une URL morte qui a reçu des impressions rend 404, et un 404 jette tout ce
+qu'elle avait accumulé : positions, liens entrants, historique. La 301 le reverse sur la
+fiche qui reste. Mesuré : ces deux adresses-là rendaient 404 pour 64 impressions perdues.
+
+**La règle, donc, pour tous les doublons que NOUS avons créés :**
+
+- **un doublon se redirige** en 301 vers la fiche gagnante — celle qui a les clics, pas la
+  plus récente ni la mieux écrite ;
+- **la corbeille reste pour ce qui n'aurait jamais dû être publié** : hors périmètre,
+  non-événement, fiche fabriquée par une mauvaise fusion. Pas pour une adresse que Google
+  a déjà indexée ;
+- **les deux gestes se combinent** : corbeiller le POST (il disparaît des listes) et
+  rediriger son ADRESSE (elle continue de servir).
+
+Où : `deploy/wordpress/cs-redirections-301.php`, une simple table chemin → chemin, avec
+un garde-fou contre la redirection vers soi-même (une boucle rend le site injoignable,
+au même prix que le mu-plugin cassé d'août).
+
+**Trois vérifications avant d'ajouter une ligne**, apprises en posant les deux premières :
+
+1. **l'adresse rend-elle VRAIMENT 404 ?** WordPress redirige tout seul un slug RENOMMÉ.
+   Sur les quatre URL Vicoforte, une était déjà en 301 sans que personne l'ait écrit.
+   Une ligne inutile est une ligne qui divergera un jour ;
+2. **la cible répond-elle 200 ?** Rediriger vers une page morte double le problème ;
+3. **la langue change-t-elle ?** Envoyer une adresse `/it/` vers une page française est un
+   pis-aller — mieux vaut ça qu'un 404, mais **le jour où la fiche est traduite, la ligne
+   doit pointer sur sa jumelle**. Un pis-aller qu'on oublie devient un défaut permanent.
+
+Et la leçon de méthode, qui vaut au-delà des redirections : **vérifier qu'une chose est
+morte ne dit pas quoi en faire.** J'ai pris « ces URL n'existent plus » pour « il n'y a
+rien à faire », alors que c'était précisément le motif d'agir.
+
+---
+
 ## Périmètre éditorial
 
 Quatre territoires : **Savoie / Haute-Savoie**, **Piémont**, **Vallée d'Aoste**, et le

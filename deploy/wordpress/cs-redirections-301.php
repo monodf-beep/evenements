@@ -34,6 +34,37 @@ add_action('template_redirect', function () {
         // rediriger au jugé enverrait le lecteur ailleurs que là où la carte promet de
         // l'emmener. Elles attendent l'arbitrage de Franck — creer la page, ou retirer
         // la carte du carousel.
+        // ── DOUBLONS D'ARTICLES : on REDIRIGE, on ne corbeille pas ──────────────
+        // 2026-09-15, arbitrage de Franck : « il vaut mieux faire des redirections si on
+        // a créé plusieurs articles identiques ou similaires ».
+        //
+        // CE QUE J'AVAIS FAIT DE TRAVERS. Un rapport Search Console signalait quatre URL
+        // Vicoforte en concurrence. J'ai vérifié en base — une seule en ligne, une à la
+        // corbeille, deux effacées — et j'ai conclu « rien à faire ». C'était faux à
+        // moitié : une URL MORTE qui a reçu des impressions rend 404, et un 404 jette
+        // tout ce qu'elle avait accumulé. La 301, elle, le reverse sur la page qui reste.
+        // Vérifié ce jour-là : /it/…-rendez-vous-du-7-septembre/ → 404 (63 impressions,
+        // 0 clic), /la-foire-du-sanctuaire-vicoforte/ → 404 (1 impression).
+        //
+        // La règle qui en sort, pour toutes les fois suivantes : un doublon qu'on a
+        // CRÉÉ SOI-MÊME se redirige vers la fiche gagnante. La corbeille reste pour ce
+        // qui n'aurait jamais dû être publié (hors périmètre, non-événement) ; elle
+        // n'est pas le bon geste pour une adresse que Google connaît déjà.
+        //
+        // ⚠️ PAS BESOIN D'AGIR quand WordPress le fait seul : un slug RENOMMÉ redirige
+        // tout seul en 301 (mesuré ici sur /la-grande-fiera-del-santuario-di-vicoforte-2/,
+        // qui pointe déjà sur la bonne page). N'ajouter ici que les adresses qui rendent
+        // vraiment 404 — une ligne inutile est une ligne qui divergera un jour.
+        //
+        // ⚠️ LA LIGNE /it/ CHANGE DE LANGUE, et c'est un pis-aller assumé : la fiche 2255
+        // n'a pas de jumelle italienne. Mieux vaut la bonne page dans l'autre langue
+        // qu'un 404. LE JOUR OÙ 2255 EST TRADUITE, cette ligne doit pointer sur sa
+        // jumelle — sinon on envoie durablement un lecteur italien sur du français.
+        '/evenement/la-foire-du-sanctuaire-vicoforte/'
+            => '/evenement/la-foire-du-sanctuaire-de-vicoforte/',
+        '/it/evenement/la-fiera-du-santuaire-di-vicoforte-rendez-vous-du-7-septembre/'
+            => '/evenement/la-foire-du-sanctuaire-de-vicoforte/',
+
         '/selections/ce-week-end/'                    => '/ce-week-end/',
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',
         '/selections/que-faire-a-annecy-ce-week-end/' => '/que-faire-a-annecy/ce-week-end/',
