@@ -66,6 +66,10 @@ verifier("Pinocchio (panel 4.0, source, photo du site) → 8.1 recalculé sans L
 verifier("le bloc dit qu'il est un PLANCHER (affiches non conservées)", h and "plancher" in h["affiches_note"])
 verifier("SANS panel → None, motif → enrich (on n'invente pas 6 points sur 10)",
          evaluer({"enrich_data": json.dumps({"source": {"officielle": True}}), "url_image": ""})[0] is None)
+verifier("SANS bloc source (fiche enrichie avant qu'il existe) → None : 3,25 pts d'inconnu, on n'écrit pas",
+         evaluer({"enrich_data": json.dumps({"reader_panel": {"mean": 4.0}}), "url_image": "https://fortedibard.it/x.jpg"})[0] is None)
+verifier("bloc source PRÉSENT mais vide (officielle False, pages []) → calculé, c'est une vraie mesure",
+         evaluer({"enrich_data": json.dumps({"reader_panel": {"mean": 4.0}, "source": {"officielle": False, "pages": []}}), "url_image": ""})[0] is not None)
 verifier("enrich_data illisible → None, pas d'exception",
          evaluer({"enrich_data": "{pas du json", "url_image": ""})[0] is None)
 
