@@ -81,9 +81,20 @@ Trois conséquences, toutes vérifiées dans le code :
 Déterministe partout où c'est possible : une règle qu'un script peut vérifier vaut mieux
 qu'un jugement qu'un panel doit rendre.
 
-**R1 — Schéma unique : `Nom : angle`.** Le nom de l'événement d'abord, deux-points, puis
-un angle qui dit *quoi* et, si le nom ne le dit pas, *où*. 47 titres FR sur 110 le font
-déjà ; on généralise.
+**R1 — Schéma unique : `[Genre] Nom : angle`.** Le nom de l'événement d'abord,
+deux-points, puis un angle qui dit *quoi* et, si le nom ne le dit pas, *où*. 47 titres FR
+sur 110 le font déjà ; on généralise.
+
+**Avec un mot de GENRE devant le nom quand celui-ci est dans l'autre langue** (Franck,
+15/09 : « il faut que le lecteur francophone se raccroche à du français dans les premiers
+mots »). Un seul mot, dans la langue du lecteur, qui dit ce que c'est avant le nom qu'il
+ne connaît pas : *Festival Musicastelle Autumn Edition : …*, *Foire Bra's 2026 : …*,
+*Salon Terra Madre : …*, *Fête de la Saint-Ours : …* (déjà le cas). Le francophone lit
+« Festival » avant de lire un nom qu'il ne sait pas prononcer ; la marque reste dans les
+premiers mots pour la requête et pour Yoast ; et sur la fiche italienne, c'est l'inverse
+qui s'applique — *Fiera di Saint-Ours*, *Festival Musicastelle*. Pas de mot de genre quand
+le nom est déjà dans la langue de la fiche (*Foire de Saint-Ours* n'a pas besoin de
+« Fête »), ni quand il le porte (*Shiftwork Festival*).
 
 **R2 — Longueur : 6 à 12 mots, 70 caractères au plus, angle ≤ 8 mots.** Le plancher
 interdit le nom nu ; le plafond interdit la dépêche. C'est vérifiable par un script au
@@ -131,12 +142,22 @@ partagent pas les mêmes référents — exactement ce que la charte §6 bis app
 doit donc juger la *cohérence* des deux titres (même événement, même lieu), jamais leur
 *ressemblance*.
 
-> FR : *Musicastelle Autumn Edition : deux voix de la pop italienne en concert à Saint-Vincent*
+> FR : *Festival Musicastelle Autumn Edition : deux voix de la pop italienne à Saint-Vincent*
 > IT : *Musicastelle Autumn Edition: Nina Zilli e Mannarino in concerto a Saint-Vincent*
 
 (Le titre actuel — *Musicastelle Autumn Edition : Nina Zilli et Mannarino, week-end
 concert-hébergement les 3 et 4 octobre* — cumule R3d et R2 : les dates sont dans
 l'encadré, pas dans le titre.)
+
+**R3a contre R3b — qui décide ?** Le test « nom ou phrase » est net sur les cas de
+Franck, mais *Sotto i portici del Risorgimento*, *Donne controcorrente*, *Carla With Love*
+sont entre les deux : des intitulés de programme que l'organisateur utilise comme des
+marques. **C'est le panel qui tranche** (Franck, 15/09 : « ça doit être le panel de
+personas justement ») — le persona de la langue de la fiche reçoit le nom seul et dit s'il
+le reconnaîtrait sur une affiche ou s'il a besoin qu'on lui dise ce que c'est. Et **en cas
+de doute persistant, on garde l'original avec un mot de genre et une glose** (R1 + R5) :
+un nom gardé à tort coûte un mot de plus ; un nom traduit à tort fait perdre le lecteur à
+l'entrée et perd la requête.
 
 Ce qui reste vrai de la première version : **un nom, quel qu'il soit, n'est jamais le
 titre à lui seul** — *Chopin*, *Musicastelle Autumn Edition* nus sont interdits.
@@ -167,9 +188,9 @@ Exemples réécrits selon R1-R8 :
 
 | aujourd'hui | proposé |
 |---|---|
-| Terra Madre Salone del Gusto quitte le Lingotto pour investir le centre historique de Turin (14) | **Terra Madre Salone del Gusto : le salon de la biodiversité au centre de Turin** (12) |
+| Terra Madre Salone del Gusto quitte le Lingotto pour investir le centre historique de Turin (14) | **Salon Terra Madre : la biodiversité alimentaire au centre de Turin** (10) |
 | Dopo l'8 settembre '43. Meridionali nella Resistenza (7, opaque) | **Les partisans du Sud dans la Libération italienne : projection et débat à Turin** (12) — intitulé original au chapô (R3b) |
-| Musicastelle Autumn Edition : Nina Zilli et Mannarino, week-end concert-hébergement les 3 et 4 octobre (13) | **Musicastelle Autumn Edition : deux voix de la pop italienne en concert à Saint-Vincent** (12) — noms au chapô (R3d) |
+| Musicastelle Autumn Edition : Nina Zilli et Mannarino, week-end concert-hébergement les 3 et 4 octobre (13) | **Festival Musicastelle Autumn Edition : deux voix de la pop italienne à Saint-Vincent** (12) — noms au chapô (R3d), mot de genre (R1) |
 | Chopin (1) | **Chopin par Katherine Nikitine : récital au Foyer de l'Opéra de Nice** (11) |
 | La dernière fois qu'on a vu Bernard Stasi : le texte lauréat 2025 en mise en espace au Théâtre national de Nice (TNN) (23) | **La dernière fois qu'on a vu Bernard Stasi : lecture du texte lauréat au TNN, Nice** (13, limite) |
 | pizza show a vercelli! | **Pizza Show : les pizzaioli en démonstration à Vercelli** |
