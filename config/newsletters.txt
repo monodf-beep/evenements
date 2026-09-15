@@ -95,6 +95,10 @@ Alexala (province d'Alessandria);alexala.it;Piemonte;actif;https://www.alexala.i
 Visit Cuneese (province de Cuneo);visitcuneese.it;Piemonte;actif;https://www.visitcuneese.it/newsletter
 # Gros événements ponctuels Torino (matière saisonnière prévisible, forte affluence)
 Salone del Vermouth di Torino (février);salonedelvermouth.com;Piemonte;candidat;https://salonedelvermouth.com/en/
+# Ajouté 2026-09-15 : World Press Photo Exhibition Torino (Accademia Albertina, 18/09-13/12).
+# Site officiel bloqué par un contrôle anti-bot (pas de flux RSS détectable) — Franck
+# vient de s'inscrire à la newsletter, opt-in/label Gmail à finaliser avant collecte.
+World Press Photo Exhibition Torino;worldpressphototorino.it;Piemonte;attente;https://www.worldpressphototorino.it/
 # ⚡ GAP « Intentions de recherche » 18/08 — 2e passe multi-agents, 1 agent par
 # province piémontaise. Comptes communaux avec un VRAI flux RSS+newsletter
 # (rare — la plupart des petites collectivités n'en ont aucun, cf. plus haut) :
