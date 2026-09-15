@@ -207,6 +207,27 @@ def _rearme_traductions_orphelines(conn) -> int:
     return len(orphelins)
 
 
+def bandeau_plafond(non_tentees: int) -> str:
+    """L'en-tête de bilan quand le lot s'est arrêté sur le plafond API. Fonction pure,
+    éprouvée par tests/test_traduction_orphelines.py — parce qu'un défaut de FORME ne se
+    voit pas dans le code, il se voit dans le message qui part.
+
+    MESURÉ LE 2026-09-15, en lisant logs/translate.log : du 10 au 14/09, cinq runs
+    d'affilée ont posté « 0 traduit(s) sur 10 candidat(s), 2 ignoré(s) ». Ça se lit comme
+    une matinée calme. La vraie phrase, elle, n'est jamais sortie du journal :
+    « Your credit balance is too low to access the Anthropic API ». Cinq jours de
+    traduction perdus parce que le bilan donnait le NOMBRE sans la CAUSE, alors que le
+    script la tenait.
+
+    Trois choses, donc, et dans cet ordre : que c'est bloqué, que rien n'est perdu, et le
+    geste exact qui débloque."""
+    return ("🔴 *Crédit API épuisé — traduction à l'arrêt*\n"
+            f"{non_tentees} fiche(s) non tentée(s) ce matin, et rien ne repartira tant "
+            "que le solde n'est pas rechargé : console Anthropic → *Plans & Billing*. "
+            "Aucune fiche n'a été marquée, aucune n'est perdue — elles repartent toutes "
+            "seules au run suivant.\n")
+
+
 def garees(rows: list[dict]) -> tuple[list[dict], list[dict]]:
     """(candidates encore actives, fiches garées). Fonction pure, éprouvée par
     tests/test_traduction_garage.py."""
@@ -1132,13 +1153,13 @@ def main(argv=None) -> int:
     except ValueError:
         workers = 3
     results: list[str] = []
+    plafonne = False          # défini hors du `if rows` : le bilan le lit toujours
     if rows:
         # SOUMISSION PAR PETITS TRAINS (taille = workers) et non tout d'un coup : c'est ce
         # qui permet d'ARRÊTER au premier plafond. Avec une soumission en bloc, les 10
         # workers seraient déjà lancés quand le premier verdict « plafond » revient — on
         # aurait 10 refus au lieu d'un, exactement le martèlement qu'on corrige (13 puis
         # 15 occurrences dans les journaux des 30 et 31/07).
-        plafonne = False
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="translate") as ex:
             for i in range(0, len(rows), workers):
                 if plafonne:
@@ -1179,6 +1200,9 @@ def main(argv=None) -> int:
         from utils import pipeline_status
         msg = (f"🌍 *Traduction quotidienne* — {done} traduit(s) sur {len(rows)} "
                f"candidat(s), {skipped} ignoré(s)")
+        if plafonne:
+            # La cause était connue du script et ne sortait que dans le journal.
+            msg = bandeau_plafond(len(rows) - len(results)) + msg
         if rows_garees:
             # RÈGLE 6 : un état qui sort une fiche de la file la sort aussi des bilans.
             # On le compte explicitement, sinon on le découvre des semaines plus tard.
@@ -1202,8 +1226,12 @@ def main(argv=None) -> int:
         slack.notify(msg)
         # Les refus comptent en `warn` et non en `error` : rien n'a cassé, un garde-fou a
         # tenu — mais ils demandent une décision humaine, ils ne doivent pas disparaître.
+        # Le plafond compte comme une ERREUR de run : `watchdog_crons` lit `error_count`
+        # et ne regarde que ça pour distinguer « a tourné » de « a tourné et échoué ».
+        # Sans cette ligne, cinq jours d'arrêt complet se sont enregistrés comme cinq runs
+        # parfaitement sains.
         pipeline_status.record_run("translate_events", ok=done, warn=skipped + len(refus),
-                                   error=errors, summary=msg[:1500])
+                                   error=errors + (1 if plafonne else 0), summary=msg[:1500])
     return 0
 
 
