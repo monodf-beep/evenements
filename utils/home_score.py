@@ -38,10 +38,21 @@ def calculer(panel_mean: float | None, source_officielle: bool,
     """→ {"score": 0-10, "affiches": libellé, "placement": phrase}. Formule d'enrich,
     déplacée à l'identique."""
     has_p, has_w = bool(affiche_portrait), bool(affiche_paysage)
+    # PANEL MUET → PAS DE SCORE (2026-09-15, deuxième version). Ce matin-là le panel n'a
+    # pas répondu sur deux fiches (tous les appels persona en échec → mean None), et
+    # « (pm or 0) » a compté ce silence comme un zéro : Pinocchio est passé de 8,1 à 3,2
+    # et Terra Madre de 4,8 à 0,0, en ÉCRASANT les scores de la nuit. « Pas mesuré » n'est
+    # pas « zéro » — utils.une.interet le dit depuis août, cette formule ne le disait pas.
+    # Sans panel, on rend None ; c'est à l'appelant de GARDER le score précédent.
+    if panel_mean is None:
+        affiches = ("deux" if (has_p and has_w) else "une" if (has_p or has_w)
+                    else "photo officielle" if photo_off else "aucune")
+        return {"score": None, "affiches": affiches,
+                "placement": "score non calculé : le panel n'a pas répondu"}
     affiches = ("deux" if (has_p and has_w) else
                 "une" if (has_p or has_w) else
                 "photo officielle" if photo_off else "aucune")
-    q = (panel_mean or 0) / 5 * 6
+    q = panel_mean / 5 * 6
     src = 2.5 if source_officielle else 0.0
     aff = 1.5 if (has_p and has_w) else 0.75 if (has_p or has_w or photo_off) else 0.0
     hs = round(min(10.0, q + src + aff), 1)

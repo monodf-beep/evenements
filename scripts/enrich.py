@@ -2228,12 +2228,32 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
             # appelants — jamais deux calculs.
             from utils.home_score import calculer as _calc_home
             _h = _calc_home(pm, bool(has_official), has_p, has_w, photo_off)
-            hs, affiches, place = _h["score"], _h["affiches"], _h["placement"]
-            result["home"] = {"score": hs, "panel": pm,
-                              "source_officielle": bool(has_official),
-                              "affiches": affiches, "placement": place}
-            log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
-                     ev["id"], hs, pm, has_official, affiches, place)
+            if _h["score"] is None:
+                # PANEL MUET : on ne pose pas 0, on GARDE ce que la fiche avait (15/09 :
+                # deux scores de la nuit écrasés par un panel qui n'avait pas répondu).
+                # Le bloc précédent vient de l'enrich_data d'AVANT ce passage (ev), pas
+                # de result, qui est neuf. S'il n'y avait rien, il n'y a toujours rien —
+                # et rescore_home le comptera « sans panel ».
+                try:
+                    _prev = (json.loads(ev.get("enrich_data") or "") or {}).get("home") or {}
+                except (ValueError, TypeError):
+                    _prev = {}
+                if _prev.get("score") is not None:
+                    result["home"] = dict(_prev, conserve_le=date.today().isoformat(),
+                                          note="panel muet à ce passage : score précédent conservé")
+                    log.warning("[%d] PANEL MUET — score home %.1f CONSERVÉ (aucune réponse "
+                                "de persona à ce passage ; un silence n'est pas un zéro)",
+                                ev["id"], float(_prev["score"]))
+                else:
+                    log.warning("[%d] PANEL MUET — aucun score de rendu posé (et aucun "
+                                "précédent) : la fiche restera « non calculée »", ev["id"])
+            else:
+                hs, affiches, place = _h["score"], _h["affiches"], _h["placement"]
+                result["home"] = {"score": hs, "panel": pm,
+                                  "source_officielle": bool(has_official),
+                                  "affiches": affiches, "placement": place}
+                log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
+                         ev["id"], hs, pm, has_official, affiches, place)
         verser_confrontation(result, constat)
         # SIGLES développés à leur première mention (Franck, 2026-08-18 puis 31/08 : « ça
         # doit être une consigne dans le ton de rédaction, comme le vocabulaire déjà »).
