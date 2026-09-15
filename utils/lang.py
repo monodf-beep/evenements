@@ -18,6 +18,7 @@ un titre italien vers le français. Défaut : « fr » (langue par défaut du si
 """
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 
@@ -202,6 +203,72 @@ def titre_reecrit_mauvaise_langue(titre: str, cible: str, titre_source: str = ""
     fr, it = _score(nouveaux)
     autre, decompte_cible = (fr, it) if cible == "it" else (it, fr)
     return autre >= 2 and autre > decompte_cible
+
+
+# Marge de score au-delà de laquelle un PARAGRAPHE est tenu pour écrit dans l'autre
+# langue. 5, choisie sur données réelles et non au jugé : les 1 777 paragraphes des 321
+# fiches publiées, mesurés le 2026-09-15. À 4, la règle attrapait une phrase française
+# qui énumère des titres de chansons italiennes (WP#3721 : « Parmi les chansons attendues
+# figurent Self Control, Infinito, Sei La Più Bella Del Mondo… », écart 4) ; le plus
+# FAIBLE des vrais cas est à 5. La frontière passe donc entre les deux, et la fixture
+# garde les deux côtés.
+MARGE_PARAGRAPHE = int(os.getenv("LANG_MARGE_PARAGRAPHE", "5"))
+
+# En dessous, un fragment est trop court pour que le comptage de mots-outils veuille dire
+# quelque chose : un intitulé d'horaire ou une ligne de programme n'a presque pas de mots
+# grammaticaux, et c'est eux que `_score` compte.
+LONGUEUR_MINI_PARAGRAPHE = 60
+
+
+def paragraphes_mauvaise_langue(texte: str, langue: str,
+                                marge: int | None = None) -> "list[tuple[int, str]]":
+    """Les paragraphes de `texte` écrits dans l'AUTRE langue que `langue` ('fr'|'it').
+
+    Renvoie [(écart, paragraphe), ...], le plus flagrant d'abord. Liste vide = rien à
+    signaler.
+
+    D'OÙ ÇA VIENT (2026-09-15). Franck, devant WP#8324 en ligne : « problème de traduction
+    (comment c'est encore possible !?!?) ». La fiche est italienne — URL `/it/`, territoire
+    « Piemonte », langue Polylang `it` — son titre et son premier paragraphe sont en
+    italien, et TROIS paragraphes du corps sont en français. Mesuré ensuite sur tout le
+    site : DIX fiches publiées dans ce cas, 33 paragraphes.
+
+    La cause est un trou, pas une panne : `scripts/translate_events.py` refuse une
+    traduction dont le TITRE est resté dans la mauvaise langue (trois portillons pour ça),
+    et accepte le CORPS dès qu'il est une chaîne non vide. Le fichier connaissait pourtant
+    le défaut — son commentaire dit « Haiku traduisait les champs courts mais recopiait le
+    long "corps" en français (constaté en test) » — et la parade choisie avait été de
+    changer de modèle, pas de poser un détecteur. Quand le modèle rate à son tour, rien ne
+    le voit.
+
+    POURQUOI `_score` ET PAS `detect_lang`. `detect_lang` juge une FICHE : il pèse le titre
+    ×3 et retombe sur 'fr' quand le texte est indécis. Appliqué à un paragraphe seul, sans
+    titre ni territoire, il rend 'fr' pour tout paragraphe italien un peu court — vérifié
+    le 15/09 : il classait « Dal 29 ottobre 2026… la Fondazione Merz di Torino presenta »
+    en français, et manquait les vrais paragraphes français de la même fiche. Ce n'était
+    pas un défaut de `detect_lang` mais un emploi hors de son contrat. La primitive
+    `_score`, elle, rend les deux comptes bruts et laisse l'appelant fixer sa marge.
+
+    CE QU'ELLE NE SAIT PAS FAIRE, et c'est mesuré : une phrase d'une langue qui ÉNUMÈRE des
+    titres dans l'autre (chansons, œuvres, sections d'un programme) monte en écart sans
+    changer de langue. La marge de 5 laisse passer le cas réel qui nous a servi de témoin ;
+    un cas plus long en ferait passer un. D'où une liste rendue, jamais une réécriture
+    automatique — un humain, ou un refus de publication, tranche.
+    """
+    if not texte or langue not in ("fr", "it"):
+        return []
+    marge = MARGE_PARAGRAPHE if marge is None else marge
+    trouves: list[tuple[int, str]] = []
+    for brut in re.split(r"\n\s*\n|(?<=[.!?])\n", texte):
+        p = re.sub(r"\s+", " ", brut).strip()
+        if len(p) < LONGUEUR_MINI_PARAGRAPHE:
+            continue
+        fr, it = _score(p)
+        ecart = (it - fr) if langue == "fr" else (fr - it)
+        if ecart >= marge:
+            trouves.append((ecart, p))
+    trouves.sort(key=lambda x: -x[0])
+    return trouves
 
 
 def detect_lang(title: str = "", description: str = "", territoire: str = "") -> str:

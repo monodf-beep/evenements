@@ -43,8 +43,8 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
-from utils.lang import (detect_lang, effective_lang, titre_reecrit_mauvaise_langue,
-                        titre_semble_intraduit)
+from utils.lang import (detect_lang, effective_lang, paragraphes_mauvaise_langue,
+                        titre_reecrit_mauvaise_langue, titre_semble_intraduit)
 from utils.coherence import incoherence_description
 from utils import acronymes
 from utils import vocabulaire
@@ -440,6 +440,37 @@ def translate_article(client, model, enrich_json: str, target: str,
         new_art["programme"] = [
             acronymes.developper(str(p), "it", _sigles_vus_it) if isinstance(p, str) else p
             for p in new_art["programme"]]
+    # ── PORTILLON DE LANGUE SUR LE CORPS (2026-09-15) ────────────────────────────────
+    # Franck, devant WP#8324 en ligne : « problème de traduction (comment c'est encore
+    # possible !?!?) ». Fiche italienne — URL /it/, territoire « Piemonte », langue
+    # Polylang `it` — titre et premier paragraphe en italien, TROIS paragraphes du corps
+    # en français. Mesuré ensuite sur tout le site : DIX fiches publiées dans ce cas,
+    # 33 paragraphes.
+    #
+    # Trois portillons existaient déjà, TOUS sur le titre (`titre_semble_intraduit`,
+    # `titre_reecrit_mauvaise_langue`, cohérence avec l'original) ; le corps était accepté
+    # dès qu'il était une chaîne non vide. Le défaut était pourtant CONNU — voir le
+    # commentaire de DEFAULT_MODEL en tête de ce fichier : « Haiku traduisait les champs
+    # courts mais recopiait le long "corps" en français ». La parade avait été de changer
+    # de modèle, pas de poser un détecteur : quand le modèle rate à son tour, rien ne voit.
+    #
+    # Renvoyer None laisse l'article NON traduit (les appelants font `if ea:`), donc la
+    # fiche paraît avec son titre et sa description traduits, sans corps — dégradé, mais
+    # jamais un paragraphe français sur une page italienne. La matière n'ayant pas changé,
+    # la fiche revient au prochain passage et le compteur MAX_REFUS l'arrête au bout de
+    # trois (cf. `garees` / `_rearme_traductions`).
+    _suspects = []
+    for _champ in ("chapo", "corps", "encadre"):
+        _v = new_art.get(_champ)
+        if isinstance(_v, str) and _v.strip():
+            _suspects += paragraphes_mauvaise_langue(_v, target)
+    if _suspects:
+        _suspects.sort(key=lambda x: -x[0])
+        log.error("REFUS — %d paragraphe(s) du corps sont restés dans l'autre langue "
+                  "(cible %s, écart %d) : « %s… ». Article laissé NON traduit.",
+                  len(_suspects), target, _suspects[0][0], _suspects[0][1][:90])
+        return None
+
     new_data = dict(data)
     new_data["article"] = new_art
     return json.dumps(new_data, ensure_ascii=False)
@@ -493,6 +524,22 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
                     tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
                 except (ValueError, TypeError):
                     tr_art_title = ""
+        # L'ARTICLE A ÉTÉ REFUSÉ OU A ÉCHOUÉ → ne rien écrire (2026-09-15).
+        # L'UPDATE ci-dessous pose `enrich_data=?` avec `tr_enrich`, qui vaut CHAÎNE VIDE
+        # dans ce cas : sans ce garde-fou, une re-traduction refusée EFFACE l'article du
+        # jumeau au lieu de le laisser tel quel. Trouvé en relisant ce chemin avant de
+        # faire lancer la réparation des neuf fiches au corps mélangé — le portillon de
+        # langue posé le même jour aurait donc vidé neuf fiches en ligne.
+        #
+        # Le commentaire ci-dessous promettait déjà « le jumeau existant reste EN L'ÉTAT » :
+        # c'était vrai des refus de TITRE, qui sortent avant l'écriture, et faux du seul
+        # chemin qui passe par l'article. Une promesse tenue par trois chemins sur quatre.
+        if src_enrich and not tr_enrich:
+            log.error("[jumeau %s] REFUS — l'article re-traduit n'a pas passé le contrôle "
+                      "(voir la ligne REFUS ci-dessus). Fiche laissée INTACTE : mieux vaut "
+                      "un corps mélangé qu'un corps effacé.", tw["id"])
+            return "refus"
+
         # Même portillon que dans `_translate_one` : une re-traduction repart de la même
         # matière et peut dériver de la même façon. Refuser ici ne perd rien — le jumeau
         # existant reste EN L'ÉTAT (ni base ni WP touchés) et la commande est rejouable.
