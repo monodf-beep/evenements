@@ -1436,11 +1436,25 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
                 # jamais le web ouvert.
                 _tool["allowed_domains"] = [d for d in web_domains if d][:20]
             kwargs["tools"] = [_tool]
-        if USE_THINKING and not _court:
+        # RÉFLEXION : sur claude-sonnet-5 (et opus-5), OMETTRE `thinking` ne la coupe
+        # pas — le modèle réfléchit par défaut en mode adaptatif, et ses jetons de
+        # réflexion se DÉCOMPTENT de max_tokens. Mesuré le 15/09 sur la fiche 4161 :
+        # « tour 1 : blocs thinking=1, texte 0 car. », stop_reason=max_tokens — les
+        # 24 000 jetons partis en réflexion, zéro caractère de réponse, quatre fois de
+        # suite, alors que le log affichait thinking=False. Donc on l'écrit EXPLICITEMENT :
+        #   - thinking demandé (ENRICH_THINKING=1) → adaptatif, effort « medium », pour
+        #     que la réflexion ne puisse plus avaler le budget de la réponse ;
+        #   - sinon → {"type": "disabled"}, accepté par l'API (effort par défaut ≤ high).
+        # `output_config` passe par extra_body pour ne pas dépendre de la version du SDK.
+        thinking_on = USE_THINKING and not _court
+        if thinking_on:
             kwargs["thinking"] = {"type": "adaptive"}
+            kwargs["extra_body"] = {"output_config": {"effort": "medium"}}
+        else:
+            kwargs["thinking"] = {"type": "disabled"}
         for turn in range(1, (MAX_WEB_SEARCHES + 4) if web_on else 2):
             log.info("[%d] appel API tour %d… (web=%s, thinking=%s)",
-                     ev["id"], turn, web_on, USE_THINKING)
+                     ev["id"], turn, web_on, kwargs["thinking"]["type"])
             kwargs["messages"] = messages
             with client.messages.stream(**kwargs) as stream:
                 message = stream.get_final_message()
