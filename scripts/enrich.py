@@ -2329,6 +2329,17 @@ def main(argv: list[str]) -> int:
     if alert and not _alert_expired(alert.get("message") or ""):
         log.warning("Alerte API active depuis %s (%s) — rien lancé, réessaie plus tard.",
                     alert.get("ts", "?"), (alert.get("message") or "")[:150])
+        # LE DIRE, ET PAS QU'AU JOURNAL — ajouté le 2026-09-15. Le premier déclenchement
+        # poste bien une alerte (l. 1477, « Enrichissement stoppé — problème API »), mais
+        # les jours SUIVANTS repassent par ici et se taisent : le lot rend 0 sans un mot.
+        # Mesuré côté traduction, du 10 au 14/09, cinq runs d'affilée à zéro sans que la
+        # cause sorte nulle part. Un dispositif à l'arrêt ne doit pas ressembler à une
+        # matinée calme.
+        slack.notify("🔴 *Enrichissement à l'arrêt — accès API bloqué*\n"
+                     f"Depuis {(alert.get('ts') or '?')[:16]}. Rien n'a été tenté, rien "
+                     "n'est perdu : les fiches repartent d'elles-mêmes dès que l'accès "
+                     "revient. À faire : console Anthropic → *Plans & Billing*.\n"
+                     f"> {(alert.get('message') or '')[:180]}")
         return 0
     if alert:
         log.info("Alerte API dépassée (heure de reset annoncée passée) — nouvelle tentative.")

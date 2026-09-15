@@ -163,6 +163,20 @@ verifier("et la raison est DONNÉE, pas supposée", "manque" in precision or "st
 verifier("une fiche marquée traduite AVEC jumelle en base n'est pas rouverte",
          te._rearme_traductions_orphelines(conn) == 0)
 
+# ── LE BILAN QUI SE TAIT SUR SA PROPRE CAUSE ───────────────────────────────────────
+# Du 10 au 14/09, cinq runs ont posté « 0 traduit(s) sur 10 candidat(s) » sans un mot sur
+# le crédit API épuisé — qui était pourtant écrit dans logs/translate.log à la ligne du
+# dessus. Un défaut de forme ne se voit pas dans le code : il se voit dans le message qui
+# part. D'où ces contrôles sur le TEXTE lui-même.
+bandeau = te.bandeau_plafond(7)
+verifier("le bilan porte un 🔴 — il ne peut plus se lire comme une matinée calme",
+         bandeau.startswith("🔴"), bandeau[:40])
+verifier("il nomme le geste qui débloque, pas seulement le symptôme",
+         "Plans & Billing" in bandeau)
+verifier("il dit que rien n'est perdu (sinon on croit à une perte de fiches)",
+         "aucune n'est perdue" in bandeau)
+verifier("il donne le nombre de fiches non tentées", "7 fiche(s)" in bandeau, bandeau[:80])
+
 conn.close()
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)
