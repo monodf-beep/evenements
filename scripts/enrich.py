@@ -1463,6 +1463,20 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
             out_tok = getattr(_u, "output_tokens", "?")
             log.info("[%d] tour %d : stop_reason=%s, %s tokens sortie, cache %s écrit / "
                      "%s relu", ev["id"], turn, message.stop_reason, out_tok, _cw, _cr)
+            # VENTILATION, AJOUTÉE LE 2026-09-15. Mesuré ce jour-là sur la fiche 2507 :
+            # 22 461 tokens de sortie pour un JSON de 7 508 caractères (~2 500 tokens), et
+            # sur 4161, 24 000 tokens SANS aucun JSON, recherche web éteinte. Vingt mille
+            # tokens partaient donc ailleurs que dans ce qu'on garde, et le code jetait ce
+            # reste sans le regarder. Cette ligne dit, bloc par bloc, où ils vont.
+            _types: dict = {}
+            _txt = 0
+            for _b in (message.content or []):
+                _t = getattr(_b, "type", "?")
+                _types[_t] = _types.get(_t, 0) + 1
+                if _t == "text":
+                    _txt += len(getattr(_b, "text", "") or "")
+            log.info("[%d] tour %d : blocs %s, texte %d car.", ev["id"], turn,
+                     " ".join(f"{k}={v}" for k, v in sorted(_types.items())), _txt)
             if message.stop_reason == "max_tokens":
                 log.warning("[%d] réponse coupée (max_tokens=%d) — augmente ENRICH_MAX_TOKENS",
                             ev["id"], MAX_TOKENS)
@@ -1483,6 +1497,22 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
 
     raw = _final_text(message)
     match = re.search(r"\{.*\}", raw, re.S)
+    if not match or message.stop_reason == "max_tokens":
+        # Le brut est ÉCRIT sur disque au lieu d'être jeté (15/09) : trois essais de
+        # Pinocchio à 24 000 tokens sans qu'on ait jamais lu ce que le modèle écrivait.
+        # Tête et queue suffisent pour voir le motif (une liste qui n'en finit pas, une
+        # prose hors JSON, une répétition) ; le reste ne dit rien de plus.
+        try:
+            _dump = ROOT / "logs" / f"enrich_brut_{ev['id']}.txt"
+            _dump.parent.mkdir(exist_ok=True)
+            _dump.write_text(
+                f"# fiche {ev['id']} · stop_reason={message.stop_reason} · "
+                f"{len(raw)} caractères de texte\n\n### TÊTE (3000)\n{raw[:3000]}\n\n"
+                f"### QUEUE (1500)\n{raw[-1500:]}\n", encoding="utf-8")
+            log.warning("[%d] réponse brute conservée pour lecture : %s (%d car.)",
+                        ev["id"], _dump, len(raw))
+        except OSError as exc:
+            log.warning("[%d] impossible d'écrire le brut : %s", ev["id"], exc)
     if not match:
         log.warning("Pas de JSON pour '%s'", ev.get("title", "")[:50])
         return None
