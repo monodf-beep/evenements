@@ -47,7 +47,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger            # noqa: E402
 from utils.coherence import incoherence_description  # noqa: E402
+from utils import completeness as comp           # noqa: E402
 from utils.completeness import is_recurring     # noqa: E402
+from utils import radar                          # noqa: E402
 from scripts.scraper_events import init_db      # noqa: E402
 from scripts.translate_events import MAX_REFUS  # noqa: E402
 
@@ -73,9 +75,12 @@ FAMILLES = [
      "`_rearme_traductions_orphelines` (translate_events.py) le fait désormais tout seul "
      "au run suivant. Si cette ligne n'est pas vide, c'est que le cron n'est pas repassé."),
     ("jumelle_jamais_publiee",
-     "jumelle créée en base mais jamais mise en ligne",
-     "La traduction existe, la publication WordPress a échoué. Reprise : "
-     "`.venv/bin/python -m scripts.publish_batch_as --apply --ids <ids jumelles>`"),
+     "jumelle présente en base, jamais mise en ligne",
+     "Le texte italien EXISTE déjà, écrit et payé : aucune reprise ici ne coûte d'appel "
+     "LLM. Ce qui la retient est indiqué fiche par fiche — c'est la PORTE DE PUBLICATION "
+     "qui répond (complétude, verrou radar), pas une supposition de ma part. Une porte "
+     "franchissable se règle en réparant ce qui manque ; la commande de publication est "
+     "donnée sous la liste."),
     ("jumelle_hors_ligne",
      "jumelle en ligne à un moment, plus publique aujourd'hui (corbeille ou supprimée)",
      "Vérifié par NUMÉRO sur l'API REST, pas sur une liste. Une jumelle à la corbeille se "
@@ -121,7 +126,24 @@ def classe(ev: dict, jumelles_par_origine: dict, marqueurs: set, etat_wp) -> tup
         return "jumelle_disparue", f"translated_at={ev['translated_at']}"
     if jum:
         if not (jum.get("wp_post_id_as") or 0):
-            return "jumelle_jamais_publiee", f"jumelle locale {jum['id']}, aucun wp_post_id_as"
+            # NE PAS INVENTER LA RAISON : la demander aux portes qui décident réellement.
+            # `publish_batch_as` applique la porte qualité `utils.completeness` et le verrou
+            # radar `utils.radar` — ce sont elles qu'on interroge, et pas un détecteur
+            # parallèle écrit ici, qui finirait par répondre autre chose qu'elles.
+            # (Première version de cet audit, 15/09 : j'avais écrit « la publication
+            # WordPress a échoué ». C'était une inférence présentée comme un fait.)
+            manques = comp.missing_labels(jum)
+            pourquoi = ("incomplète : manque " + ", ".join(manques)) if manques else ""
+            if not pourquoi:
+                pourquoi = radar.publication_block_reason(jum, ev) or ""
+            if not pourquoi and not (jum.get("date_event_start") or "").strip():
+                pourquoi = "aucune date de début (la sélection exige une fiche datée)"
+            if not pourquoi and (jum.get("statut") or "") not in (
+                    "evaluated", "published_cs", "published_sub"):
+                pourquoi = f"statut « {jum.get('statut') or 'vide'} », hors sélection"
+            return ("jumelle_jamais_publiee",
+                    f"jumelle {jum['id']} — " + (pourquoi or "aucune porte ne la retient, "
+                                                 "elle n'a simplement jamais été présentée"))
         if etat_wp is not None:
             etat = etat_wp(int(jum["wp_post_id_as"]))
             if etat in ("non_public", "inexistant"):
@@ -217,6 +239,22 @@ def main(argv=None) -> int:
             # Une liste tronquée annonce son total, sinon elle fabrique de fausses causes.
             print(f"      … et {len(lot) - args.limite} autre(s) — `--limite {len(lot)}` "
                   f"pour les voir toutes")
+        # LA COMMANDE PRÊTE À COLLER, avec ses ids — et relue dans le script visé avant
+        # d'être écrite ici. `publish_batch_as` n'a PAS de `--apply` : il publie par défaut
+        # et c'est `--dry-run` qui simule. Une commande dictée sans avoir lu ses options
+        # est une commande qui échoue sous les yeux de celui qui la tape.
+        if cle == "jumelle_jamais_publiee":
+            ids_jum = [str(jumelles_par_origine[ev["id"]]["id"]) for ev, _ in lot
+                       if jumelles_par_origine.get(ev["id"])]
+            if ids_jum:
+                print(f"      dry-run d'abord, et le LIRE ligne par ligne :")
+                print(f"        .venv/bin/python -m scripts.publish_batch_as --dry-run "
+                      f"--ids {' '.join(ids_jum)}")
+                print(f"      puis, la même sans --dry-run.")
+        if cle == "jumelle_hors_ligne":
+            print("      Les restaurer depuis la corbeille WordPress est réversible et "
+                  "gratuit ; une republication ne l'est qu'en apparence (elle repose les "
+                  "médias). Regarder l'état de chacune AVANT de choisir.")
     print()
     conn.close()
     return 0

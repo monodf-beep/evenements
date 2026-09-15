@@ -139,6 +139,30 @@ verifier("audit : la déliée est nommée « jumelle jamais publiée », jamais 
 verifier("audit : la paire saine ne figure dans aucune famille de manque",
          fam(saine) == "en_file", fam(saine))
 
+# ── La raison d'une jumelle jamais mise en ligne vient des PORTES, pas de moi ───────
+# Une jumelle présente en base sans `wp_post_id_as` : l'audit doit dire CE QUI la retient,
+# en interrogeant `utils.completeness` et `utils.radar` — les portes que `publish_batch_as`
+# applique réellement. La première version de l'audit affirmait « la publication WordPress
+# a échoué » : une inférence présentée comme un fait, et fausse pour les cinq fiches
+# constatées le 15/09, qui n'ont jamais été présentées à la publication.
+orphelin_pub = ins(title="Marisa Merz, La danza delle ore", url_source="https://ex.it/6",
+                   wp_post_id_as=763, llm_score=8, translated_at="2026-09-01 10:00:00")
+ins(title="Marisa Merz (it)", url_source=f"translated:{orphelin_pub}:it",
+    translation_of=orphelin_pub, translated_lang="it", wp_post_id_as=0, llm_score=8)
+jumelles = {r["translation_of"]: dict(r) for r in
+            conn.execute("SELECT * FROM events_raw WHERE COALESCE(translation_of,0)!=0")}
+marqueurs = {r[0] for r in conn.execute(
+    "SELECT url_source FROM events_raw WHERE COALESCE(url_source,'') LIKE 'translated:%'")}
+famille, precision = classe(
+    dict(conn.execute("SELECT * FROM events_raw WHERE id=?", (orphelin_pub,)).fetchone()),
+    jumelles, marqueurs, None)
+verifier("jumelle en base sans wp_post_id_as : famille « jamais publiée »",
+         famille == "jumelle_jamais_publiee", famille)
+verifier("et la raison est DONNÉE, pas supposée", "manque" in precision or "statut" in precision
+         or "date" in precision, precision)
+verifier("une fiche marquée traduite AVEC jumelle en base n'est pas rouverte",
+         te._rearme_traductions_orphelines(conn) == 0)
+
 conn.close()
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)
