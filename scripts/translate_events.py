@@ -160,6 +160,74 @@ def _rearme_traductions(conn) -> int:
     return len(rouverts)
 
 
+def _rearme_traductions_orphelines(conn) -> int:
+    """LE DEUXIÈME ROUVREUR, écrit le 2026-09-15. Il rouvre les fiches que `translated_at`
+    avait garées POUR TOUJOURS alors que leur jumelle n'existe plus.
+
+    D'OÙ ÇA VIENT — Franck : « encore des événements sans traduction ! », puis « ça doit
+    suivre un processus ». Mesuré le jour même sur le site : 202 fiches françaises
+    publiées, 117 sans jumelle italienne, dont 63 encore devant nous. Or le cron en
+    traduit 25 par jour : cette file aurait dû être vide. Elle ne l'est pas parce que
+    `translated_at` est un état TERMINAL sans rouvreur (règle 3) — il est posé au succès
+    et rien ne l'efface ensuite, sauf `scripts/repair_translation.py`, c'est-à-dire un
+    humain qui tape une commande, ce que ce dépôt ne compte pas comme une réponse.
+
+    Conséquence : dès qu'une jumelle disparaît — publication annulée, fiche défusionnée,
+    ligne supprimée — l'original n'est JAMAIS repris. Il reste seul, en français, sur un
+    site bilingue, et aucun compteur ne le dit.
+
+    LE GARDE-FOU, et c'est lui qui rend la chose sûre : on ne rouvre que si la jumelle est
+    introuvable des DEUX façons. `translation_of` ne suffit pas — `unlink_bad_translations`
+    l'efface justement sur une paire mal appariée, et la jumelle continue d'exister. Le
+    marqueur `url_source = 'translated:<id>:<lang>'` est posé à l'insertion et la colonne
+    est UNIQUE : il survit au déliage. Une fiche seulement DÉLIÉE garde donc son marqueur,
+    n'est pas rouverte, et on ne fabrique pas une troisième fiche.
+
+    Les fiches rouvertes sont NOMMÉES : une file qui grossit sans le dire est le symétrique
+    exact du défaut qu'on corrige ici."""
+    lignes = conn.execute(
+        "SELECT id, title, article_title, translated_at FROM events_raw "
+        "WHERE COALESCE(translated_at,'')<>'' AND COALESCE(translation_of,0)=0 "
+        "AND COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
+        "AND id NOT IN (SELECT translation_of FROM events_raw "
+        "               WHERE COALESCE(translation_of,0)!=0)").fetchall()
+    marqueurs = {r[0] for r in conn.execute(
+        "SELECT url_source FROM events_raw WHERE COALESCE(url_source,'') LIKE 'translated:%'")}
+    orphelins = [dict(r) for r in lignes
+                 if not any(str(m).startswith(f"translated:{r['id']}:") for m in marqueurs)]
+    if orphelins:
+        ph = ",".join("?" * len(orphelins))
+        conn.execute(f"UPDATE events_raw SET translated_at=NULL WHERE id IN ({ph})",
+                     [o["id"] for o in orphelins])
+        conn.commit()
+        log.warning("Ré-ouverture : %d fiche(s) marquées traduites dont la jumelle "
+                    "n'existe plus — elles repassent en file : %s", len(orphelins),
+                    ", ".join(f"[{o['id']}] {(o.get('article_title') or o.get('title') or '')[:34]}"
+                              for o in orphelins[:8]))
+    return len(orphelins)
+
+
+def bandeau_plafond(non_tentees: int) -> str:
+    """L'en-tête de bilan quand le lot s'est arrêté sur le plafond API. Fonction pure,
+    éprouvée par tests/test_traduction_orphelines.py — parce qu'un défaut de FORME ne se
+    voit pas dans le code, il se voit dans le message qui part.
+
+    MESURÉ LE 2026-09-15, en lisant logs/translate.log : du 10 au 14/09, cinq runs
+    d'affilée ont posté « 0 traduit(s) sur 10 candidat(s), 2 ignoré(s) ». Ça se lit comme
+    une matinée calme. La vraie phrase, elle, n'est jamais sortie du journal :
+    « Your credit balance is too low to access the Anthropic API ». Cinq jours de
+    traduction perdus parce que le bilan donnait le NOMBRE sans la CAUSE, alors que le
+    script la tenait.
+
+    Trois choses, donc, et dans cet ordre : que c'est bloqué, que rien n'est perdu, et le
+    geste exact qui débloque."""
+    return ("🔴 *Crédit API épuisé — traduction à l'arrêt*\n"
+            f"{non_tentees} fiche(s) non tentée(s) ce matin, et rien ne repartira tant "
+            "que le solde n'est pas rechargé : console Anthropic → *Plans & Billing*. "
+            "Aucune fiche n'a été marquée, aucune n'est perdue — elles repartent toutes "
+            "seules au run suivant.\n")
+
+
 def garees(rows: list[dict]) -> tuple[list[dict], list[dict]]:
     """(candidates encore actives, fiches garées). Fonction pure, éprouvée par
     tests/test_traduction_garage.py."""
@@ -382,19 +450,35 @@ def translate_article(client, model, enrich_json: str, target: str,
         f"Réponds UNIQUEMENT en JSON, avec EXACTEMENT les mêmes clés que l'entrée ci-dessous "
         f"(« programme » = liste de MÊME longueur), sans autre commentaire :\n"
         f"{json.dumps(payload, ensure_ascii=False)}")
+    # 8000, ET C'EST LARGE — vérifié, pas supposé (2026-09-15). Ce plafond a été soupçonné
+    # après un « Traduction de l'article tronquée (max_tokens) » sur ESTATE REALE, et la
+    # mesure l'a disculpé : l'article de cette fiche fait 1 523 caractères, soit ~476
+    # jetons, et la PLUS LONGUE fiche du site en fait 8 009, soit ~2 500. Aucun article ne
+    # s'approche de 8 000 jetons de SORTIE.
+    #
+    # Une troncature ici ne dit donc pas « pas assez de place » : elle dit que le modèle
+    # s'est emballé sur une matière courte. Le relancer à l'identique serait un refus qui
+    # se rejoue sur la même entrée (règle 3) ; c'est `MAX_REFUS` qui s'en charge, sur
+    # plusieurs jours et avec une matière qui a pu bouger entre-temps.
+    #
+    # Ce qui MANQUAIT, c'était de pouvoir trancher : le message ne disait ni le plafond ni
+    # la taille de la source, donc le prochain lecteur refera l'enquête. Il les dit
+    # désormais.
+    _source_tokens = len(json.dumps(payload, ensure_ascii=False)) / 3.2
+    _plafond = 8000
     try:
-        # 8000 : l'article COMPLET traduit (long corps + programme + encadré) dépasse
-        # facilement 4000 tokens ; tronquée, la réponse n'a plus d'accolade fermante et le
-        # JSON est illisible (« Expecting value » → repli description seule). On garde une
-        # marge large, et on détecte une éventuelle troncature pour ne pas publier un
-        # article amputé.
         resp = client.messages.create(
-            model=model, max_tokens=8000,
+            model=model, max_tokens=_plafond,
             messages=[{"role": "user", "content": prompt}])
         from utils import usage
         usage.record_message(model, resp, label="traduction_article")
         if getattr(resp, "stop_reason", None) == "max_tokens":
-            log.warning("Traduction de l'article tronquée (max_tokens) — article ignoré.")
+            # Dire les DEUX nombres : sans eux, le lecteur du journal ne peut pas savoir
+            # s'il manquait de la place ou si le modèle s'est emballé. C'est exactement
+            # l'enquête que j'ai refaite le 15/09 faute de les avoir.
+            log.warning("Traduction de l'article tronquée : plafond %d jetons pour une "
+                        "source estimée à %d — article ignoré, fiche laissée intacte.",
+                        _plafond, int(_source_tokens))
             return None
         txt = _extract_json(resp)
         out = json.loads(txt[txt.find("{"): txt.rfind("}") + 1], strict=False)
@@ -929,6 +1013,11 @@ def main(argv=None) -> int:
             conn.close()
             return 2
 
+    # AVANT la sélection, et pas après comme `_rearme_traductions` : une fiche dont la
+    # jumelle a disparu doit repasser DÈS CE RUN. Rouvrir après la requête, c'est un jour
+    # de retard par fiche — sur 63 fiches à venir constatées le 15/09, deux mois et demi.
+    _rearme_traductions_orphelines(conn)
+
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
         "AND COALESCE(translation_of,0)=0 AND COALESCE(translated_at,'')='' "
@@ -994,7 +1083,7 @@ def main(argv=None) -> int:
     # Filtrer ici plutôt que refuser plus bas ne relâche AUCUNE garde : le portillon de
     # `_translate_one` reste en place comme seconde ceinture. Il change seulement qui paie
     # le refus — la fiche polluée au lieu de la file entière.
-    # LE ROUVREUR D'ABORD : une fiche dont la matière a changé depuis son dernier refus
+    # LES ROUVREURS D'ABORD : une fiche dont la matière a changé depuis son dernier refus
     # redevient candidate avant même la sélection du jour.
     _rearme_traductions(conn)
     rows_avant_garage = len(rows)
@@ -1064,13 +1153,13 @@ def main(argv=None) -> int:
     except ValueError:
         workers = 3
     results: list[str] = []
+    plafonne = False          # défini hors du `if rows` : le bilan le lit toujours
     if rows:
         # SOUMISSION PAR PETITS TRAINS (taille = workers) et non tout d'un coup : c'est ce
         # qui permet d'ARRÊTER au premier plafond. Avec une soumission en bloc, les 10
         # workers seraient déjà lancés quand le premier verdict « plafond » revient — on
         # aurait 10 refus au lieu d'un, exactement le martèlement qu'on corrige (13 puis
         # 15 occurrences dans les journaux des 30 et 31/07).
-        plafonne = False
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="translate") as ex:
             for i in range(0, len(rows), workers):
                 if plafonne:
@@ -1111,6 +1200,9 @@ def main(argv=None) -> int:
         from utils import pipeline_status
         msg = (f"🌍 *Traduction quotidienne* — {done} traduit(s) sur {len(rows)} "
                f"candidat(s), {skipped} ignoré(s)")
+        if plafonne:
+            # La cause était connue du script et ne sortait que dans le journal.
+            msg = bandeau_plafond(len(rows) - len(results)) + msg
         if rows_garees:
             # RÈGLE 6 : un état qui sort une fiche de la file la sort aussi des bilans.
             # On le compte explicitement, sinon on le découvre des semaines plus tard.
@@ -1134,8 +1226,12 @@ def main(argv=None) -> int:
         slack.notify(msg)
         # Les refus comptent en `warn` et non en `error` : rien n'a cassé, un garde-fou a
         # tenu — mais ils demandent une décision humaine, ils ne doivent pas disparaître.
+        # Le plafond compte comme une ERREUR de run : `watchdog_crons` lit `error_count`
+        # et ne regarde que ça pour distinguer « a tourné » de « a tourné et échoué ».
+        # Sans cette ligne, cinq jours d'arrêt complet se sont enregistrés comme cinq runs
+        # parfaitement sains.
         pipeline_status.record_run("translate_events", ok=done, warn=skipped + len(refus),
-                                   error=errors, summary=msg[:1500])
+                                   error=errors + (1 if plafonne else 0), summary=msg[:1500])
     return 0
 
 
