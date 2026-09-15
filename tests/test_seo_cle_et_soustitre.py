@@ -80,8 +80,17 @@ h = titre_liens("Fiera del Bue Grasso di Carrù", "it")
 verifier("h2 italien : balise h2 et clé dedans",
          h.startswith("<h2>") and "Fiera del Bue Grasso di Carrù" in h, h)
 h_fr = titre_liens("Foire de Saint-Ours", "fr")
-verifier("h2 français : clé + libellé français",
-         "Foire de Saint-Ours : en savoir plus" in h_fr, h_fr)
+# 2026-09-15 — Franck : « Barbara Tutino Forte di Bard : en savoir plus, on dirait un
+# titre ». La clé EN TÊTE se lisait comme l'intitulé d'un chapitre ; elle passe derrière
+# la fonction du bloc. Elle reste présente d'un seul tenant : Yoast la trouve toujours.
+verifier("h2 français : la fonction d'abord, la clé ensuite et d'un seul tenant",
+         h_fr == "<h2>En savoir plus sur Foire de Saint-Ours</h2>", h_fr)
+verifier("h2 italien : même ordre",
+         titre_liens("Fiera del Bue Grasso", "it")
+         == "<h2>Per saperne di più su Fiera del Bue Grasso</h2>")
+verifier("la clé n'ouvre JAMAIS le titre (c'était tout le défaut)",
+         not titre_liens("Barbara Tutino Forte di Bard", "fr").startswith(
+             "<h2>Barbara Tutino"))
 verifier("langue inconnue : repli français, jamais de balise vide",
          titre_liens("Foire de Saint-Ours", "xx") == h_fr)
 verifier("sans clé (fiche pas encore passée par seo_batch) : titre générique quand même",
