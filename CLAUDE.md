@@ -415,6 +415,42 @@ déployer du CSS sur le site : le harnais ne les empêche plus, **le jugement do
 faire**. Dans le doute sur une décision ÉDITORIALE — pas technique — proposer plutôt
 qu'agir.
 
+### Hermes — second agent, périmètre ÉVÉNEMENTS uniquement
+
+**Arbitrage de Franck, 2026-09-15.** Hermes Agent (Nous Research, auto-hébergé sur le
+VPS, connecté à Slack) vient COMPLÉTER ce que le pipeline de ce dépôt fait déjà : il
+reprend la case « arbitrage humain » ci-dessus pour les FICHES — défusionner, re-classer
+un rejet, trancher un orphelin — et interagit avec Franck en direct sur Slack quand
+quelque chose cloche. Explicitement, Franck : « il serait là que pour compléter ce que
+le dépôt Git fait déjà (…) pas pour changer quoi que ce soit dans la structure du site.
+C'est uniquement sur les événements. »
+
+**Trois limites, non négociables, identiques à celles de ce fichier :**
+
+1. **La liste « jamais » (autonomie plus haut) s'applique à Hermes à l'identique.**
+   `DROP TABLE`, `force-delete` WordPress, `git reset --hard`, lecture du `.env`… Le
+   filet de rattrapage de Franck (« je le reprends sur Slack ») agit APRÈS coup — il
+   répare une re-classification, jamais une table supprimée. Rien de ce qui est
+   irréversible ne devient autonome parce que c'est Hermes qui décide plutôt qu'une
+   session Claude ;
+2. **Hors périmètre événements = hors périmètre Hermes.** CSS, déploiement, plugins,
+   infrastructure, `deploy/wordpress/`, `deploy/update.sh` — tout ce qui touche à la
+   STRUCTURE du site reste exclusivement pour Franck et les sessions Claude qui
+   suivent la procédure de `## Développement` ci-dessous (php -l, `deploy/wordpress/`
+   miroir, jamais de PHP direct). Hermes n'a rien à y faire, même pour proposer ;
+3. **Toute décision d'Hermes doit rester traçable dans CE dépôt** — sinon la règle 6
+   (« rapporter le résultat ») ne tient plus dès qu'un second agent agit sans laisser
+   de trace lisible ici. Un geste sur une fiche (statut, fusion, rejet) doit se voir
+   soit dans `data/events.db` avec une justification en base (comme le fait déjà le
+   pipeline via `llm_justification` et consorts), soit par un message Slack assez
+   complet pour reconstituer après coup ce qui a été fait et pourquoi — jamais une
+   action muette.
+
+Ce que ça change concrètement pour une session Claude qui lit ce fichier : ne pas
+présumer qu'une fiche à l'état « arbitrage humain » attend forcément Franck — elle peut
+avoir été tranchée par Hermes. Vérifier l'état réel (règle 1) plutôt que de recréer un
+arbitrage déjà fait.
+
 ---
 
 ## Développement
