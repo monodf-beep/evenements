@@ -382,19 +382,35 @@ def translate_article(client, model, enrich_json: str, target: str,
         f"Réponds UNIQUEMENT en JSON, avec EXACTEMENT les mêmes clés que l'entrée ci-dessous "
         f"(« programme » = liste de MÊME longueur), sans autre commentaire :\n"
         f"{json.dumps(payload, ensure_ascii=False)}")
+    # 8000, ET C'EST LARGE — vérifié, pas supposé (2026-09-15). Ce plafond a été soupçonné
+    # après un « Traduction de l'article tronquée (max_tokens) » sur ESTATE REALE, et la
+    # mesure l'a disculpé : l'article de cette fiche fait 1 523 caractères, soit ~476
+    # jetons, et la PLUS LONGUE fiche du site en fait 8 009, soit ~2 500. Aucun article ne
+    # s'approche de 8 000 jetons de SORTIE.
+    #
+    # Une troncature ici ne dit donc pas « pas assez de place » : elle dit que le modèle
+    # s'est emballé sur une matière courte. Le relancer à l'identique serait un refus qui
+    # se rejoue sur la même entrée (règle 3) ; c'est `MAX_REFUS` qui s'en charge, sur
+    # plusieurs jours et avec une matière qui a pu bouger entre-temps.
+    #
+    # Ce qui MANQUAIT, c'était de pouvoir trancher : le message ne disait ni le plafond ni
+    # la taille de la source, donc le prochain lecteur refera l'enquête. Il les dit
+    # désormais.
+    _source_tokens = len(json.dumps(payload, ensure_ascii=False)) / 3.2
+    _plafond = 8000
     try:
-        # 8000 : l'article COMPLET traduit (long corps + programme + encadré) dépasse
-        # facilement 4000 tokens ; tronquée, la réponse n'a plus d'accolade fermante et le
-        # JSON est illisible (« Expecting value » → repli description seule). On garde une
-        # marge large, et on détecte une éventuelle troncature pour ne pas publier un
-        # article amputé.
         resp = client.messages.create(
-            model=model, max_tokens=8000,
+            model=model, max_tokens=_plafond,
             messages=[{"role": "user", "content": prompt}])
         from utils import usage
         usage.record_message(model, resp, label="traduction_article")
         if getattr(resp, "stop_reason", None) == "max_tokens":
-            log.warning("Traduction de l'article tronquée (max_tokens) — article ignoré.")
+            # Dire les DEUX nombres : sans eux, le lecteur du journal ne peut pas savoir
+            # s'il manquait de la place ou si le modèle s'est emballé. C'est exactement
+            # l'enquête que j'ai refaite le 15/09 faute de les avoir.
+            log.warning("Traduction de l'article tronquée : plafond %d jetons pour une "
+                        "source estimée à %d — article ignoré, fiche laissée intacte.",
+                        _plafond, int(_source_tokens))
             return None
         txt = _extract_json(resp)
         out = json.loads(txt[txt.find("{"): txt.rfind("}") + 1], strict=False)
