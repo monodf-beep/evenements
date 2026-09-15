@@ -1,0 +1,33 @@
+# Route Traefik (provider FICHIER) pour exposer le backoffice Agenda en HTTPS.
+#
+# Le backoffice occupe TOUT le sous-domaine dédié agenda.culturasabauda.eu
+# (contrairement à l'Observatoire qui n'expose qu'un préfixe /admin).
+#
+# Déploiement sur le VPS :
+#   1. DNS : créer un enregistrement A  agenda.culturasabauda.eu → <IP du VPS>.
+#   2. Copier ce fichier dans le dossier dynamique surveillé par Traefik :
+#        sudo cp deploy/traefik-agenda.yml /docker/traefik/dynamic/
+#      (Traefik le charge à chaud — providers.file.watch=true, pas de redémarrage.)
+#   3. Dans .env : BACKOFFICE_USER=… + BACKOFFICE_PASSWORD=…
+#   4. Lancer/redémarrer le service :
+#        sudo systemctl restart agenda-admin
+#   5. Ouvrir https://agenda.culturasabauda.eu (login = BACKOFFICE_USER/PASSWORD).
+#
+# Sécurité : l'authentification est gérée par l'app (HTTP Basic) ; Traefik fournit
+# le HTTPS (Let's Encrypt). Le certificat est émis automatiquement au 1er accès.
+
+http:
+  routers:
+    agenda:
+      rule: "Host(`agenda.culturasabauda.eu`)"
+      entryPoints:
+        - websecure
+      service: agenda
+      tls:
+        certResolver: letsencrypt
+  services:
+    agenda:
+      loadBalancer:
+        servers:
+          # Traefik tourne en network_mode host → joint l'app sur la loopback.
+          - url: "http://127.0.0.1:8098"

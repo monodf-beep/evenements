@@ -1,0 +1,27 @@
+# Correspondance « catégorie interne (les 11) = catégorie WordPress réelle ».
+#
+# Sert à l'export vers WordPress (scripts/publisher.py) pour COLLER à la taxonomie
+# existante du site plutôt que de créer des doublons. Une ligne par catégorie :
+#   Catégorie interne = Nom exact de la catégorie WordPress
+#
+# Tant qu'une ligne est absente ou commentée, la catégorie interne est utilisée
+# telle quelle (et créée si elle n'existe pas côté WordPress).
+#
+# À REMPLIR une fois connue la taxonomie réelle de Cultura Sabauda (recon).
+# Exemples (à décommenter/ajuster) :
+# Concerts & Musique = Musique
+# Expositions & Patrimoine = Expositions
+# Gastronomie & Sagre = Gastronomie
+#
+# Les 11 catégories internes :
+#   Expositions & Patrimoine
+#   Concerts & Musique
+#   Spectacle vivant
+#   Festivals
+#   Gastronomie & Sagre
+#   Marchés & Foires
+#   Sport
+#   Cinéma
+#   Jeune public & Famille
+#   Conférences & Rencontres
+#   Fêtes & Traditions populaires

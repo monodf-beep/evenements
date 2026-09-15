@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "title": "Filtre calendrier vide sur les pages hub",
+    "description": "Le premier select de la barre de filtres (JetSmartFilters, probablement le filtre date/calendrier) s'affiche sans texte/placeholder, contrairement à Ville et Territoire. Capture fournie sur /musees/.",
+    "category": "filtre",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 2,
+    "title": "Territoire choisi sur la home non transmis aux tuiles catégorie",
+    "description": "En sélectionnant Savoie sur la home puis en cliquant une tuile catégorie (ex. Famille & Enfant), on atterrit sur le hub catégorie SANS le filtre territoire pré-appliqué (tous les territoires affichés).",
+    "category": "navigation",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 3,
+    "title": "Section « Les 7 prochains jours » vide (et dupliquée)",
+    "description": "Vide malgré des événements publiés dans la fenêtre (vérifié : WP#6355, #6352, #6322...). Le bloc (section + tuiles catégorie) apparaît EN DOUBLE sur la page territoire Savoie : 1re occurrence vide, 2e occurrence plus bas peuplée.",
+    "category": "home",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 4,
+    "title": "Tuiles catégorie dupliquées sur page territoire",
+    "description": "Les 4 tuiles (Concerts & Musique / Musées / Curiosités / En famille) apparaissent deux fois sur la page Savoie, associées chacune à une occurrence du bloc « Les 7 prochains jours » (cf. issue liée).",
+    "category": "home",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 5,
+    "title": "Formats de carte incohérents sur mobile",
+    "description": "Au moins 4 gabarits de carte différents selon la section (Nouveautés : vignette carrée+texte ; Ça vaut le déplacement : grande photo+badge+lien Y aller ; grille week-end : 2 colonnes ; 7 prochains jours : grille 3 colonnes vignettes carrées). Franck veut le format « Ça vaut le déplacement » généralisé.",
+    "category": "design",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 6,
+    "title": "Menu mobile vide — navigation bloquée",
+    "description": "Au clic sur le hamburger (☰), le panneau MENU s'ouvre (titre + croix) mais ne contient AUCUN lien — le contenu de la home transparaît derrière. Empêche toute navigation sur mobile hors de la page courante. PRIORITAIRE.",
+    "category": "navigation",
+    "status": "fixed",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T08:46:28",
+    "resolved_at": "2026-08-01T18:04:02",
+    "resolution_notes": "Menu réassigné dans Apparence > Menus, confirmé sur mobile."
+  },
+  {
+    "id": 7,
+    "title": "Header sticky au scroll : deux lignes désynchronisées",
+    "description": "Le header a 2 lignes (Menu + Changer de territoire) à l'état initial. Au scroll, elles arrivent séparément/de façon saccadée au lieu de rester ensemble comme un seul bloc sticky. Souhaité : même gabarit qu'à l'état initial, figé en haut, sans transition séparée par ligne.",
+    "category": "design",
+    "status": "open",
+    "source": "conversation",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T09:42:21",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 8,
+    "title": "JSON-LD Event sans endDate sur toutes les fiches multi-jours",
+    "description": "Le JSON-LD Event servi sur une fiche ne porte que startDate, jamais endDate — vérifié sur /evenement/festival-des-jardins-alpestres/ (base : 2026-05-30 au 2026-10-03) et sur /evenement/la-saint-ours-2026-rendez-vous-en-vallee-d-aoste/. WordPress connaît pourtant la fin : le lien « ajouter à mon agenda » de la MÊME page porte enddt=2026-10-03T21:59:59Z, et la meta description dit « jusqu'au 3 octobre ». Le JSON-LD n'est donc pas généré par The Events Calendar mais par le plugin SEO, qui émet un noeud Event minimal. Conséquence : Google affiche une date unique au lieu d'une période pour tous les festivals et expositions de plusieurs jours, soit l'essentiel du catalogue. À corriger côté gabarit WordPress (émettre endDate depuis _EventEndDate) — la base et TEC ont la bonne valeur, le pipeline n'est pas en cause.",
+    "category": "wordpress-template",
+    "status": "open",
+    "source": "site_audit",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T21:47:40",
+    "resolved_at": null,
+    "resolution_notes": ""
+  },
+  {
+    "id": 9,
+    "title": "PIÈGE DE DÉPLOIEMENT : apply-components.mjs détruirait 40 Ko de CSS de production",
+    "description": "wordpress/design-system/components.css fait 31 Ko dans le dépôt, alors que le snippet équivalent en PRODUCTION fait 70 875 caractères. Le fichier versionné est donc en retard d'environ 40 Ko sur ce qui tourne réellement. Lancer apply-components.mjs écraserait le snippet de production par la version courte du dépôt et détruirait ce CSS — sans retour arrière simple. Avant tout déploiement du design-system : récupérer le snippet de production, le comparer au fichier versionné, et réconcilier dans ce sens-là (prod -> dépôt), jamais l'inverse. Relevé le 2026-08-02 lors du diagnostic des bugs visibles (docs/DIAGNOSTIC_BUGS_SITE.md).",
+    "category": "deploiement",
+    "status": "open",
+    "source": "diagnostic_bugs_site",
+    "prompt_file": "",
+    "opened_at": "2026-08-01T23:16:15",
+    "resolved_at": null,
+    "resolution_notes": ""
+  }
+]

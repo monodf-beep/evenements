@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""Fixture : le relevé des traductions dont la langue serait DEVINÉE au lieu d'imposée.
+
+⚠️ BASE JETABLE — jamais data/events.db. Aucun réseau, aucun LLM.
+
+D'OÙ ÇA VIENT (2026-08-17). `translate_events` publie une traduction avec `force_lang` :
+la langue est imposée. `publish_batch_as --update` republie la même fiche depuis la base
+SANS ce champ — `publisher_as._lang` retombe alors sur `detect_lang`, qui devine, et qui
+départage par le TERRITOIRE quand le texte ne tranche pas. Une traduction française d'un
+événement piémontais peut donc repartir en italien.
+
+CE QUE LA FIXTURE SURVEILLE :
+  1. une traduction dont le texte est franc n'apparaît PAS dans le relevé — sinon la file
+     se remplit de fiches sur lesquelles il n'y a aucun geste à faire (règle 6) ;
+  2. une traduction dont le texte ne tranche pas ET dont le territoire tire dans l'autre
+     sens y apparaît, avec les deux langues côte à côte ;
+  3. le zéro dit son dénominateur : « aucun écart sur N examinée(s) », jamais « 0 » seul ;
+  4. et le relevé propose le geste qui RÉSOUT (`--retranslate`, qui repasse par
+     `force_lang`), pas seulement le constat.
+
+Lancer : .venv/bin/python -m tests.test_audit_langue_polylang
+"""
+import contextlib
+import io
+import os
+import sqlite3
+import sys
+import tempfile
+from datetime import date, timedelta
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+tmp = Path(tempfile.mkdtemp()) / "fixture.db"
+os.environ["DB_PATH"] = str(tmp)
+
+from scripts.scraper_events import init_db  # noqa: E402
+import scripts.audit_langue_polylang as al  # noqa: E402
+
+al.DB_PATH = tmp
+FUTUR = (date.today() + timedelta(days=20)).isoformat()
+
+# (id, titre, description, territoire, translation_of, translated_lang)
+FICHES = [
+    # 1. L'ORIGINAL italien. N'a pas de `translated_lang` : hors périmètre du relevé,
+    #    qui ne parle que des traductions.
+    (1, "Concerto della Filarmonica della Scala", "Il concerto si tiene nella sala "
+     "grande, con ingresso libero per tutti gli spettatori.", "Piemonte", None, None),
+    # 2. ⚠️ LE CAS QUI DOIT PASSER : une traduction française FRANCHE. Son texte porte
+    #    assez de marqueurs pour que la devinette tombe juste — elle n'a donc rien à
+    #    faire dans la file. Sans ce cas, la fixture ne prouverait que notre capacité à
+    #    signaler, et une file qui signale tout ne désigne plus rien.
+    (2, "Concert de la Philharmonie de la Scala", "Le concert est donné dans la grande "
+     "salle, avec une entrée libre pour tous les spectateurs.", "Piemonte", 1, "fr"),
+    # 3. LE CAS QUI DOIT SORTIR : titre-programme sans phrase, aucun marqueur de langue.
+    #    Le territoire italien départage seul et emporte la fiche du mauvais côté.
+    (3, "Brahms / Chostakovitch", "Brahms, Chostakovitch.", "Piemonte", 1, "fr"),
+    # 4. LE CAS TROUVÉ EN PRODUCTION (fiche 3509) : une traduction en ligne dont
+    #    l'ORIGINAL, lui, n'est pas publié — une fiche radar que `publish_batch_as`
+    #    écarte à chaque passage. `--retranslate` partirait donc d'une fiche que la
+    #    publication refuse : il ne faut pas la proposer, il faut le DIRE.
+    (4, "MonumenTO, Torino Capitale", "MonumenTO, Torino Capitale.", "Piemonte", 5, "fr"),
+    # 5. …et l'original en question, sans `wp_post_id_as` : jamais publié.
+    (5, "MonumenTO — dépêche radar", "Dépêche.", "Piemonte", None, None),
+]
+# La fiche 5 n'a pas de page : c'est ce qui rend le geste impossible pour la 4.
+SANS_PAGE = {5}
+# Adresses : la 3 est encore du bon côté (risque À VENIR), la 4 est DÉJÀ passée côté
+# italien — deux situations que le relevé ne doit pas confondre.
+COTE_SERVI = {3: "fr", 4: "it"}
+
+conn = sqlite3.connect(tmp)
+init_db(conn)
+for eid, titre, desc, terr, orig, lang in FICHES:
+    prefixe = COTE_SERVI.get(eid, "")
+    conn.execute(
+        "INSERT INTO events_raw (id, title, description, url_source, wp_post_id_as, "
+        "statut, date_event_start, date_event_end, territoire, duplicate_of, "
+        "translation_of, translated_lang, wp_permalink_as) "
+        "VALUES (?,?,?,?,?,?,?,?,?,NULL,?,?,?)",
+        (eid, titre, desc, f"https://a.fr/{eid}",
+         None if eid in SANS_PAGE else 900 + eid,
+         "radar" if eid in SANS_PAGE else "published_sub",
+         FUTUR, FUTUR, terr, orig, lang,
+         f"https://agendasabauda.eu/{prefixe + '/' if prefixe else ''}e/{eid}"))
+conn.commit()
+conn.close()
+
+echecs = 0
+
+
+def _check(label, cond, detail=""):
+    global echecs
+    if cond:
+        print(f"OK    {label}")
+    else:
+        echecs += 1
+        print(f"ÉCHEC {label} {detail}")
+
+
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    al.main([])
+sortie = buf.getvalue()
+
+print("──── la file ne contient que ce sur quoi il y a un geste ────")
+_check("la traduction au texte franc n'est PAS signalée (le cas qui doit passer)",
+       "Concert de la Philharmonie" not in sortie, sortie)
+_check("l'ORIGINAL n'est pas signalé non plus — il n'a pas de langue demandée",
+       "Concerto della Filarmonica" not in sortie, sortie)
+
+print("\n──── ce qui doit sortir, sort ────")
+_check("la traduction que le territoire emporte est signalée",
+       "Brahms / Chostakovitch" in sortie, sortie)
+_check("   avec la langue VOULUE et la langue DEVINÉE côte à côte",
+       "| 3 | fr | it |" in sortie, sortie[sortie.find("| Fiche"):][:500])
+# ⚠️ L'ADRESSE DONNÉE DOIT ÊTRE CELLE QUI RÉPOND. Le 2026-08-17, ce relevé affichait le
+# lien public ; Franck l'a ouvert et a vu « 404 Pagina non trovata » — la forme `?p=<id>`
+# rend 404 pour TOUT tribe_events, en ligne ou non, et CLAUDE.md le documente depuis le
+# 2026-08-02. Un relevé qui envoie vérifier au mauvais endroit est pire qu'un relevé
+# muet : il fabrique une certitude fausse.
+_check("   et l'adresse de vérification est l'API REST, pas le lien public",
+       "/wp-json/wp/v2/tribe_events/903" in sortie,
+       sortie[sortie.find("| Fiche"):][:600])
+_check("   allégée pour être lisible dans un navigateur",
+       "_fields=link,status,title" in sortie, sortie[sortie.find("| Fiche"):][:600])
+_check("   et le relevé dit POURQUOI le lien public ne vaut rien ici",
+       "répond 404 pour tout tribe_events" in sortie, sortie[:1800])
+
+print("\n──── un risque À VENIR et un fait ACCOMPLI ne se disent pas pareil ────")
+# Les deux fiches sortent pour le même motif calculé, mais l'une est encore du bon côté
+# et l'autre a déjà basculé. Les mélanger ferait lire « à surveiller » là où il faut lire
+# « un lecteur tombe dessus aujourd'hui ».
+_check("la page déjà passée côté italien est signalée comme telle",
+       "était DÉJÀ du mauvais côté" in sortie, sortie)
+_check("   et le compte distingue les deux situations",
+       "1 sur 2 n'est pas un risque À VENIR" in sortie, sortie)
+_check("la colonne « Servie » ne met en gras que ce qui contredit la langue voulue",
+       "| **it** |" in sortie and "| fr | it | fr |" in sortie,
+       sortie[sortie.find("| Fiche"):][:500])
+
+print("\n──── les nombres disent leur périmètre ────")
+_check("le total examiné est affiché à côté du total publié",
+       "EXAMINÉES ici" in sortie and "encore devant nous" in sortie, sortie[:600])
+_check("le relevé compte les 3 traductions, pas les 5 fiches",
+       "Traductions publiées   : 3" in sortie, sortie[:600])
+
+print("\n──── le geste n'est proposé que quand il existe ────")
+_check("il propose --retranslate pour l'original qui EST en ligne",
+       "--retranslate 1 --apply" in sortie, sortie[-900:])
+_check("   et dit POURQUOI ça règle le problème",
+       "IMPOSE la langue" in sortie, sortie[-900:])
+_check("⚠️ il ne le propose PAS pour l'original qui n'est pas publié",
+       "--retranslate 5" not in sortie and "1 5" not in sortie, sortie[-900:])
+_check("   il dit à la place que c'est un arbitrage, avec le statut de l'original",
+       "PAS de geste automatique" in sortie and "statut radar" in sortie,
+       sortie[-700:])
+
+print("\n──── un zéro doit dire son dénominateur ────")
+# On rejoue sur une base où il n'y a QUE le cas franc : le relevé doit alors annoncer
+# « aucun écart sur N examinée(s) », jamais un 0 nu. Un zéro sans dénominateur ressemble
+# exactement à un monde où il n'y a rien à trouver (journal du 2026-08-11).
+c = sqlite3.connect(tmp)
+c.execute("DELETE FROM events_raw WHERE id IN (3,4)")  # base JETABLE, pas data/events.db
+c.commit(); c.close()
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    al.main([])
+vide = buf.getvalue()
+_check("le zéro annonce combien de cas se sont présentés",
+       "Aucun écart sur les 1 traduction(s) examinée(s)" in vide, vide[-400:])
+
+print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
+raise SystemExit(1 if echecs else 0)

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% set active = 'personas' %}
+{% block title %}Personas lecteurs{% endblock %}
+{% block h1 %}Personas lecteurs{% endblock %}
+{% block subtitle %}<div class="sub">Le <b>panel</b> qui relit chaque article développé après rédaction. Chaque persona donne son avis (intérêt, manques) ; si la <b>majorité</b> juge l'article creux, une <b>révision</b> est demandée au rédacteur. Édite-les dans le dépôt (<code>docs/personas/</code>) ou dans Obsidian.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+  <!-- Statut -->
+  <div class="card" style="padding:.8rem 1rem;margin-bottom:1.1rem;">
+    {% if st.count %}
+      <b style="color:#16a34a;">● {{ st.count }} persona(s) au panel</b> — ils relisent les articles développés (palier long).
+    {% else %}
+      <b style="color:#b91c1c;">● Aucun persona</b> — le panel est désactivé, la rédaction n'est pas relue.
+    {% endif %}
+    <div class="muted text-sm" style="margin-top:.35rem;">
+      Source :
+      {% if st.from_env %}<b>PERSONAS_DIR</b> (dossier Obsidian) — <code>{{ st.dir }}</code>.
+      {% else %}dépôt — <code>{{ st.dir or 'docs/personas/' }}</code>. Règle <code>PERSONAS_DIR</code> pour piloter depuis Obsidian.{% endif %}<br>
+      Réglages : <code>ENRICH_READER_REVIEW=0</code> désactive le panel · <code>ENRICH_READER_PERSONAS=N</code> limite à N personas.
+    </div>
+  </div>
+
+  <!-- Liste des personas -->
+  <div style="display:flex;flex-direction:column;gap:.9rem;">
+    {% for p in st.personas %}
+      <div class="card" style="padding:.9rem 1.1rem;">
+        <div style="font-size:1.05rem;font-weight:700;margin-bottom:.3rem;">👓 {{ p.title or p.name }}</div>
+        <div class="muted text-sm" style="margin-bottom:.5rem;">{{ p.name }}</div>
+        <div style="white-space:pre-wrap;font-size:.92rem;line-height:1.5;color:var(--ink-2);">{{ p.text }}</div>
+      </div>
+    {% else %}
+      <div class="muted">Aucun persona chargé. Ajoute des fichiers <code>.md</code> dans <code>docs/personas/</code>.</div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
