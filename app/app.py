@@ -331,6 +331,74 @@ def get_db():
     return conn
 
 
+def require_api_token(f):
+    """Jeton bearer distinct du login navigateur — pour une session Claude qui vérifie
+
+    un fait précis en base sans avoir de compte backoffice. Volontairement SÉPARÉ de
+    BACKOFFICE_PASSWORD (partager un mot de passe entre humain-au-clavier et
+    automate-en-HTTPS, c'est perdre la capacité de révoquer l'un sans l'autre).
+
+    Désactivé par défaut : si CLAUDE_API_TOKEN n'est pas posé dans .env, la route
+    répond 503 plutôt que d'accepter n'importe quel jeton vide. Ajouté 2026-09-15 —
+    Franck a proposé d'auto-héberger Supabase pour donner un accès base à la session ;
+    le vrai obstacle n'était pas le moteur mais l'absence de route réseau depuis le
+    conteneur Claude. Ces deux routes évitent l'ouverture d'un port SQL en clair : la
+    surface exposée est deux lectures nommées, jamais du SQL arbitraire.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        expected = os.getenv("CLAUDE_API_TOKEN", "")
+        if not expected:
+            return jsonify(error="CLAUDE_API_TOKEN non configuré côté serveur"), 503
+        auth = request.headers.get("Authorization", "")
+        got = auth[7:] if auth.startswith("Bearer ") else ""
+        if not hmac.compare_digest(got, expected):
+            return jsonify(error="jeton invalide"), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+_API_FIELDS = (
+    "id, title, ville, territoire, date_event_start, date_event_end, statut, "
+    "wp_post_id_as, wp_permalink_as, translation_of, duplicate_of, url_officiel"
+)
+
+
+@app.route("/api/v1/lookup/<int:event_id>")
+@require_api_token
+def api_lookup(event_id):
+    """Une fiche par id — les faits bruts, jamais une conclusion sur l'état du site
+
+    (règle 1 : wp_post_id_as ne prouve rien tout seul — c'est à l'appelant d'aller
+    vérifier côté WordPress si la question porte sur la publication réelle).
+    """
+    row = get_db().execute(
+        f"SELECT {_API_FIELDS} FROM events_raw WHERE id=?", (event_id,)).fetchone()
+    if row is None:
+        return jsonify(error="introuvable"), 404
+    return jsonify(dict(row))
+
+
+@app.route("/api/v1/search")
+@require_api_token
+def api_search():
+    """Recherche par sous-chaîne de titre — AUCUN filtre passé/à-venir par défaut :
+
+    contrairement à un rapport pour Franck (règle 5), une vérification ponctuelle peut
+    légitimement porter sur une fiche déjà passée. `date_event_end` est renvoyée pour
+    que l'appelant tranche lui-même, jamais escamotée.
+    """
+    q = (request.args.get("q") or "").strip()
+    if not q:
+        return jsonify(error="paramètre q requis"), 400
+    limit = min(max(int(request.args.get("limit", 10) or 10), 1), 50)
+    rows = get_db().execute(
+        f"SELECT {_API_FIELDS} FROM events_raw WHERE title LIKE ? "
+        "ORDER BY date_event_start DESC LIMIT ?",
+        (f"%{q}%", limit)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
 def event_image(ev: dict) -> str:
     """URL de la photo de l'événement (vide si la source n'en fournit pas).
 
