@@ -35,16 +35,53 @@ def _backlog_counts(conn: sqlite3.Connection) -> dict[str, int]:
     def one(sql: str, *params) -> int:
         return conn.execute(sql, params).fetchone()[0]
 
+    # `traduction_tentatives` est ajoutée par `translate_events._ensure_cols`, donc elle
+    # existe en production — mais un rapport d'état ne doit JAMAIS tomber en panne parce
+    # qu'une colonne manque sur une base neuve : le rapport est ce qu'on lit quand ça va
+    # mal. Sans la colonne, le compteur ne compte simplement pas les fiches garées, et le
+    # libellé le dira.
+    _a_garage = any(r[1] == "traduction_tentatives"
+                    for r in conn.execute("PRAGMA table_info(events_raw)"))
+    _garees_sql = ("OR COALESCE(traduction_tentatives,0) >= 3 " if _a_garage else "")
+
     return {
         "à enrichir (score suffisant, jamais rédigé)": one(
             "SELECT COUNT(*) FROM events_raw WHERE statut IN ('evaluated','published_sub') "
             "AND (enrich_status IS NULL OR enrich_status='') AND COALESCE(translation_of,0)=0 "
             "AND duplicate_of IS NULL AND llm_score >= 1"),
-        "à traduire (en ligne, score ≥ 6, pas de jumelle)": one(
+        # LE PÉRIMÈTRE DU CRON, PAS UN AUTRE — corrigé le 2026-09-15. Ce compteur annonçait
+        # « score ≥ 6 » et n'avait AUCUN filtre de date, alors que crontab.txt lance la
+        # traduction avec `--min-score 1` et que la file, elle, écarte le passé depuis le
+        # 14/09. Il comptait donc autre chose que ce qui se fait : des fiches terminées
+        # depuis des mois, et pas les fiches à 1-5 points que le cron traduit pourtant.
+        # Deux compteurs qui portent le même nom et comptent deux choses se contrediront
+        # un jour, et c'est le plus gros qu'on croira (règle 6).
+        #
+        # Ce nombre ne dit PAS pourquoi elles ne sont pas traduites : pour ça,
+        # `.venv/bin/python -m scripts.audit_traduction_manquante`, qui range chaque fiche
+        # dans sa famille et donne la commande de reprise de chacune.
+        "à traduire (en ligne, à venir ou en cours, score ≥ 1, pas de jumelle)": one(
             "SELECT COUNT(*) FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 "
             "AND duplicate_of IS NULL AND COALESCE(translation_of,0)=0 "
-            "AND COALESCE(translated_at,'')='' AND COALESCE(user_score,llm_score,0) >= 6 "
+            "AND COALESCE(url_source,'') NOT LIKE 'translated:%' "
+            "AND COALESCE(translated_at,'')='' AND COALESCE(user_score,llm_score,0) >= 1 "
+            "AND (COALESCE(date_event_end, date_event_start, '') = '' "
+            "     OR COALESCE(date_event_end, date_event_start) >= date('now')) "
             "AND id NOT IN (SELECT translation_of FROM events_raw WHERE COALESCE(translation_of,0)!=0)"),
+        # ET CELUI-CI EST LE PLUS IMPORTANT DES DEUX : une fiche publiée en français, encore
+        # devant nous, SANS jumelle italienne et SANS être dans la file ci-dessus, est une
+        # fiche que plus rien ne reprendra. C'est le trou que Franck a vu le 15/09 (« encore
+        # des événements sans traduction ! ») : 117 fiches françaises sans jumelle, dont 63
+        # à venir, invisibles dans tous les compteurs parce qu'aucun ne les cherchait.
+        "publiées sans jumelle ET hors de la file (à expliquer, cf. audit)": one(
+            "SELECT COUNT(*) FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 "
+            "AND duplicate_of IS NULL AND COALESCE(translation_of,0)=0 "
+            "AND COALESCE(url_source,'') NOT LIKE 'translated:%' "
+            "AND (COALESCE(date_event_end, date_event_start, '') = '' "
+            "     OR COALESCE(date_event_end, date_event_start) >= date('now')) "
+            "AND id NOT IN (SELECT translation_of FROM events_raw WHERE COALESCE(translation_of,0)!=0) "
+            "AND (COALESCE(translated_at,'')<>'' OR COALESCE(user_score,llm_score,0) < 1 "
+            + _garees_sql + ")"),
         "sans SEO (retenus, score ≥ 7)": one(
             "SELECT COUNT(*) FROM events_raw WHERE statut IN ('evaluated','published_cs','published_sub') "
             "AND duplicate_of IS NULL AND COALESCE(date_event_start,'')<>'' "

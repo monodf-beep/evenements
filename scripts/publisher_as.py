@@ -234,13 +234,29 @@ def titre_liens(keyphrase: str, lang: str) -> str:
     au moins un lien à coiffer, dans la langue de la fiche. Sans clé (fiche pas encore
     passée par `seo_batch`), on pose quand même le titre générique : la structure de la
     page ne doit pas dépendre de l'avancement du SEO.
+
+    L'ORDRE A CHANGÉ LE 2026-09-15, et c'est tout ce qui a changé. Franck, devant
+    WP#7578 : « Barbara Tutino Forte di Bard : en savoir plus — on dirait un titre, c'est
+    quoi ce défaut ? ». Il avait raison, et le défaut n'était ni la balise ni le procédé :
+    c'était l'ordre des mots. Une expression clé est une CHAÎNE DE RECHERCHE — « sujet +
+    lieu », sans préposition, comme on tape dans Google. Mise EN TÊTE d'un h2, elle se lit
+    comme l'intitulé d'un chapitre consacré à « Barbara Tutino Forte di Bard », alors que
+    le bloc n'annonce que deux liens.
+
+    Mesuré ce jour-là : 73 fiches publiées sur 321 portaient ce h2, avec des clés comme
+    « Tout est calme dans les hauteurs Annemasse » (titre + ville collés) ou « Marché au
+    Fort Vallée d'Aosta ». Le procédé restait bon ; sa mise en forme trompait le lecteur.
+
+    « En savoir plus sur X » met d'abord la FONCTION du bloc, et l'expression clé reste
+    présente d'un seul tenant — Yoast la trouve toujours, le lecteur n'est plus induit en
+    erreur. Revenir en arrière : remettre `f"{cle} : en savoir plus"`.
     """
     lang = lang if lang in ("fr", "it") else "fr"
     cle = html.escape((keyphrase or "").strip())
     if not cle:
         return "<h2>En savoir plus</h2>" if lang == "fr" else "<h2>Per saperne di più</h2>"
-    return (f"<h2>{cle} : en savoir plus</h2>" if lang == "fr"
-            else f"<h2>{cle}: per saperne di più</h2>")
+    return (f"<h2>En savoir plus sur {cle}</h2>" if lang == "fr"
+            else f"<h2>Per saperne di più su {cle}</h2>")
 
 
 def _map_territoire(value: str) -> str:
