@@ -524,6 +524,22 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
                     tr_art_title = ((json.loads(ea).get("article") or {}).get("titre") or "").strip()
                 except (ValueError, TypeError):
                     tr_art_title = ""
+        # L'ARTICLE A ÉTÉ REFUSÉ OU A ÉCHOUÉ → ne rien écrire (2026-09-15).
+        # L'UPDATE ci-dessous pose `enrich_data=?` avec `tr_enrich`, qui vaut CHAÎNE VIDE
+        # dans ce cas : sans ce garde-fou, une re-traduction refusée EFFACE l'article du
+        # jumeau au lieu de le laisser tel quel. Trouvé en relisant ce chemin avant de
+        # faire lancer la réparation des neuf fiches au corps mélangé — le portillon de
+        # langue posé le même jour aurait donc vidé neuf fiches en ligne.
+        #
+        # Le commentaire ci-dessous promettait déjà « le jumeau existant reste EN L'ÉTAT » :
+        # c'était vrai des refus de TITRE, qui sortent avant l'écriture, et faux du seul
+        # chemin qui passe par l'article. Une promesse tenue par trois chemins sur quatre.
+        if src_enrich and not tr_enrich:
+            log.error("[jumeau %s] REFUS — l'article re-traduit n'a pas passé le contrôle "
+                      "(voir la ligne REFUS ci-dessus). Fiche laissée INTACTE : mieux vaut "
+                      "un corps mélangé qu'un corps effacé.", tw["id"])
+            return "refus"
+
         # Même portillon que dans `_translate_one` : une re-traduction repart de la même
         # matière et peut dériver de la même façon. Refuser ici ne perd rien — le jumeau
         # existant reste EN L'ÉTAT (ni base ni WP touchés) et la commande est rejouable.
