@@ -87,8 +87,9 @@ def main(argv=None) -> int:
 
     touchees.sort(key=lambda x: -x[2][0][0])
     for ev, langue, trouves in touchees:
-        print(f"\n[{ev['id']:>5} WP#{ev.get('wp_post_id_as') or '—':>5}] langue {langue} · "
-              f"{len(trouves)} paragraphe(s) dans l'autre langue · "
+        origine = "jumelle" if (ev.get("translation_of") or 0) else "original"
+        print(f"\n[{ev['id']:>5} WP#{ev.get('wp_post_id_as') or '—':>5}] {origine} · "
+              f"langue {langue} · {len(trouves)} paragraphe(s) dans l'autre langue · "
               f"{(ev.get('title') or '')[:52]}")
         for ecart, para in trouves[:2]:
             print(f"      +{ecart}  {para[:96]}…")
@@ -98,10 +99,38 @@ def main(argv=None) -> int:
           + ("" if args.tout else " (en ligne, encore devant nous)")
           + f" — {len(touchees)} avec un corps mélangé, {total_par} paragraphe(s), "
             f"marge {args.marge}.")
-    if touchees:
-        ids = " ".join(str(t[0]["id"]) for t in touchees)
-        print("\nPour refaire ces articles (le nouveau portillon refusera s'il rate encore) :")
-        print(f"    .venv/bin/python -m scripts.translate_events --retranslate --apply {ids}")
+    # DEUX FAMILLES, DEUX COMMANDES — corrigé le 2026-09-15 après avoir dicté la mauvaise.
+    #
+    # `--retranslate` ne traite QUE les jumelles (fiches à `translation_of` renseigné) :
+    # il repart de l'original pour refaire la traduction. Sur un ORIGINAL, il ne trouve
+    # rien et ne fait rien. Or le 14/09 cet audit a signalé neuf fiches, sept originaux et
+    # deux jumelles, et proposait `--retranslate` sur les neuf : la commande n'en couvrait
+    # que deux, sans le dire. Franck l'a lancée, deux fiches ont été réparées, sept sont
+    # restées mélangées — et le compteur affichait « 9 ».
+    #
+    # Un original au corps mélangé n'est pas un défaut de traduction : c'est l'article
+    # lui-même qui a été rédigé de travers. Ce qui le refait, c'est `scripts.enrich`.
+    jumelles = [t[0]["id"] for t in touchees if (t[0].get("translation_of") or 0)]
+    originaux = [t[0]["id"] for t in touchees if not (t[0].get("translation_of") or 0)]
+    print(f"    dont {len(originaux)} original(aux) et {len(jumelles)} jumelle(s) — "
+          f"deux familles, deux commandes, aucune ne couvre l'autre.")
+    if originaux:
+        # LA COMMANDE EXACTE, relue dans scripts/enrich.py avant d'être écrite ici :
+        # `main()` prend les ids en positionnel, n'a NI --apply NI --force (il agit
+        # toujours), et `select_events` refuse de lui-même une jumelle qu'on lui passerait
+        # par erreur. Dicter une commande sans l'avoir lue est la faute qui a produit
+        # celle d'à côté.
+        print("\nLes ORIGINAUX : c'est l'article lui-même qui est à refaire "
+              "(`--retranslate` ne les regarde même pas) :")
+        print(f"    .venv/bin/python -m scripts.enrich "
+              f"{' '.join(str(i) for i in originaux)}")
+        print("    ⚠️  si l'un d'eux a déjà une jumelle, la refaire ENSUITE "
+              "(`--retranslate`), sinon la jumelle garde l'ancien texte.")
+    if jumelles:
+        print("\nLes JUMELLES : c'est la traduction qui est à refaire (le portillon de "
+              "langue refusera si elle rate encore, et la fiche restera INTACTE) :")
+        print(f"    .venv/bin/python -m scripts.translate_events --retranslate --apply "
+              f"{' '.join(str(i) for i in jumelles)}")
     conn.close()
     return 0
 

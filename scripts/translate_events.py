@@ -160,6 +160,53 @@ def _rearme_traductions(conn) -> int:
     return len(rouverts)
 
 
+def _rearme_traductions_orphelines(conn) -> int:
+    """LE DEUXIÈME ROUVREUR, écrit le 2026-09-15. Il rouvre les fiches que `translated_at`
+    avait garées POUR TOUJOURS alors que leur jumelle n'existe plus.
+
+    D'OÙ ÇA VIENT — Franck : « encore des événements sans traduction ! », puis « ça doit
+    suivre un processus ». Mesuré le jour même sur le site : 202 fiches françaises
+    publiées, 117 sans jumelle italienne, dont 63 encore devant nous. Or le cron en
+    traduit 25 par jour : cette file aurait dû être vide. Elle ne l'est pas parce que
+    `translated_at` est un état TERMINAL sans rouvreur (règle 3) — il est posé au succès
+    et rien ne l'efface ensuite, sauf `scripts/repair_translation.py`, c'est-à-dire un
+    humain qui tape une commande, ce que ce dépôt ne compte pas comme une réponse.
+
+    Conséquence : dès qu'une jumelle disparaît — publication annulée, fiche défusionnée,
+    ligne supprimée — l'original n'est JAMAIS repris. Il reste seul, en français, sur un
+    site bilingue, et aucun compteur ne le dit.
+
+    LE GARDE-FOU, et c'est lui qui rend la chose sûre : on ne rouvre que si la jumelle est
+    introuvable des DEUX façons. `translation_of` ne suffit pas — `unlink_bad_translations`
+    l'efface justement sur une paire mal appariée, et la jumelle continue d'exister. Le
+    marqueur `url_source = 'translated:<id>:<lang>'` est posé à l'insertion et la colonne
+    est UNIQUE : il survit au déliage. Une fiche seulement DÉLIÉE garde donc son marqueur,
+    n'est pas rouverte, et on ne fabrique pas une troisième fiche.
+
+    Les fiches rouvertes sont NOMMÉES : une file qui grossit sans le dire est le symétrique
+    exact du défaut qu'on corrige ici."""
+    lignes = conn.execute(
+        "SELECT id, title, article_title, translated_at FROM events_raw "
+        "WHERE COALESCE(translated_at,'')<>'' AND COALESCE(translation_of,0)=0 "
+        "AND COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
+        "AND id NOT IN (SELECT translation_of FROM events_raw "
+        "               WHERE COALESCE(translation_of,0)!=0)").fetchall()
+    marqueurs = {r[0] for r in conn.execute(
+        "SELECT url_source FROM events_raw WHERE COALESCE(url_source,'') LIKE 'translated:%'")}
+    orphelins = [dict(r) for r in lignes
+                 if not any(str(m).startswith(f"translated:{r['id']}:") for m in marqueurs)]
+    if orphelins:
+        ph = ",".join("?" * len(orphelins))
+        conn.execute(f"UPDATE events_raw SET translated_at=NULL WHERE id IN ({ph})",
+                     [o["id"] for o in orphelins])
+        conn.commit()
+        log.warning("Ré-ouverture : %d fiche(s) marquées traduites dont la jumelle "
+                    "n'existe plus — elles repassent en file : %s", len(orphelins),
+                    ", ".join(f"[{o['id']}] {(o.get('article_title') or o.get('title') or '')[:34]}"
+                              for o in orphelins[:8]))
+    return len(orphelins)
+
+
 def garees(rows: list[dict]) -> tuple[list[dict], list[dict]]:
     """(candidates encore actives, fiches garées). Fonction pure, éprouvée par
     tests/test_traduction_garage.py."""
@@ -945,6 +992,11 @@ def main(argv=None) -> int:
             conn.close()
             return 2
 
+    # AVANT la sélection, et pas après comme `_rearme_traductions` : une fiche dont la
+    # jumelle a disparu doit repasser DÈS CE RUN. Rouvrir après la requête, c'est un jour
+    # de retard par fiche — sur 63 fiches à venir constatées le 15/09, deux mois et demi.
+    _rearme_traductions_orphelines(conn)
+
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
         "AND COALESCE(translation_of,0)=0 AND COALESCE(translated_at,'')='' "
@@ -1010,7 +1062,7 @@ def main(argv=None) -> int:
     # Filtrer ici plutôt que refuser plus bas ne relâche AUCUNE garde : le portillon de
     # `_translate_one` reste en place comme seconde ceinture. Il change seulement qui paie
     # le refus — la fiche polluée au lieu de la file entière.
-    # LE ROUVREUR D'ABORD : une fiche dont la matière a changé depuis son dernier refus
+    # LES ROUVREURS D'ABORD : une fiche dont la matière a changé depuis son dernier refus
     # redevient candidate avant même la sélection du jour.
     _rearme_traductions(conn)
     rows_avant_garage = len(rows)
