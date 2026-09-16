@@ -37,6 +37,9 @@
  * RÉVERSIBLE : ne touche que ces dix identifiants ; ne remplace jamais un texte existant
  * qui ne porte pas notre marqueur ; sauvegarde l'ancien dans cs_*_avant ;
  * `$EFFACER = true` retire ce que ce script a posé, et lui seul.
+ * DESCRIPTIONS RACCOURCIES le 16/09 au soir : Yoast ajoute la date (« Sep 6, 2026 » + 3) à la
+ * longueur mesurée, le plafond utile est 140 et non 156 (voir utils/seo.py). Les dix
+ * descriptions ci-dessous tiennent en 119 à 140 caractères ; ré-appliquées le même soir.
  */
 
 global $wpdb;
@@ -47,34 +50,34 @@ $EFFACER   = false;
 $ARTICLES = array(
     8227 => array('cle' => 'curiosités de Turin',
         'titre' => 'Six curiosités de Turin que les Turinois eux-mêmes oublient',
-        'desc'  => 'Six curiosités de Turin, de la Piazza San Carlo à Collegno : deux mille ans sous le pavé, des façades mal lues, la ville qui a fait l\'Italie.'),
+        'desc'  => 'Six curiosités de Turin, de la Piazza San Carlo à Collegno : deux mille ans sous le pavé, façades mal lues, la ville qui a fait l\'Italie.'),
     8228 => array('cle' => 'curiosità di Torino',
         'titre' => 'Sei curiosità di Torino che i torinesi stessi dimenticano',
-        'desc'  => 'Sei curiosità di Torino, da Piazza San Carlo a Collegno: duemila anni sotto il selciato, facciate lette male, la città che ha fatto l\'Italia.'),
+        'desc'  => 'Sei curiosità di Torino, da Piazza San Carlo a Collegno: duemila anni sotto il selciato, facciate lette male, la città che fece l\'Italia.'),
     8229 => array('cle' => 'curiosités de Chambéry',
         'titre' => 'Cinq curiosités de Chambéry que même les Savoyards ignorent',
-        'desc'  => 'Cinq curiosités de Chambéry, de la fontaine des Éléphants aux Charmettes : ce qui manque à la fontaine, ce que cache le plafond de la cathédrale.'),
+        'desc'  => 'Cinq curiosités de Chambéry, de la fontaine des Éléphants aux Charmettes : ce qui manque aux éléphants, ce que cache la cathédrale.'),
     8230 => array('cle' => 'curiosità di Chambéry',
         'titre' => 'Cinque curiosità di Chambéry che i savoiardi non conoscono',
-        'desc'  => 'Cosa vedere a Chambéry, dal centro barocco alla campagna di Rousseau: cinque curiosità di Chambéry, dalla fontana alla cattedrale, con le fonti.'),
+        'desc'  => 'Cosa vedere a Chambéry, dal centro barocco alla campagna di Rousseau: cinque curiosità di Chambéry, dalla fontana alla cattedrale.'),
     8231 => array('cle' => 'curiosités d\'Aoste',
         'titre' => 'Six curiosités d\'Aoste que même les Valdôtains oublient',
-        'desc'  => 'Six curiosités d\'Aoste au-delà des ruines romaines : une ville à cinq langues, une assemblée vieille de cinq siècles, un château qu\'on ne montre jamais.'),
+        'desc'  => 'Six curiosités d\'Aoste au-delà des ruines romaines : cinq langues, une assemblée de cinq siècles, un château qu\'on ne montre jamais.'),
     8232 => array('cle' => 'curiosità di Aosta',
         'titre' => 'Sei curiosità di Aosta che nemmeno i valdostani conoscono',
         'desc'  => 'Sei curiosità di Aosta oltre le rovine romane: una città a cinque lingue, un\'assemblea di cinque secoli, un castello che non si mostra mai.'),
     8233 => array('cle' => 'curiosités d\'Annecy',
         'titre' => 'Sept curiosités d\'Annecy que même les Savoyards ignorent',
-        'desc'  => 'Sept curiosités d\'Annecy au-delà du lac : deux femmes que l\'histoire a tues, un duc devenu pape, un évêque dont l\'influence traverse l\'Atlantique.'),
+        'desc'  => 'Sept curiosités d\'Annecy au-delà du lac : deux femmes que l\'histoire a tues, un duc devenu pape, une chocolaterie disparue du quai.'),
     8234 => array('cle' => 'curiosità di Annecy',
         'titre' => 'Sette curiosità di Annecy che nemmeno i savoiardi conoscono',
-        'desc'  => 'Cosa vedere ad Annecy oltre il lago: sette curiosità di Annecy, due donne taciute dalla storia, un duca diventato papa, una cioccolateria scomparsa.'),
+        'desc'  => 'Cosa vedere ad Annecy oltre il lago: sette curiosità di Annecy, due donne taciute dalla storia, un duca diventato papa.'),
     8235 => array('cle' => 'curiosités de Nice',
         'titre' => 'Trois curiosités de Nice que même les Nissarts oublient',
         'desc'  => 'Trois curiosités de Nice au-delà de la Promenade des Anglais : le siège franco-ottoman de 1543, une cuisine venue de l\'autre côté de la mer.'),
     8236 => array('cle' => 'curiosità di Nizza',
         'titre' => 'Tre curiosità di Nizza che nemmeno i nizzardi conoscono',
-        'desc'  => 'Cosa vedere a Nizza oltre la Promenade des Anglais: tre curiosità di Nizza, l\'assedio franco-ottomano del 1543, una cucina venuta dall\'altra parte del mare.'),
+        'desc'  => 'Cosa vedere a Nizza oltre la Promenade des Anglais: tre curiosità di Nizza, l\'assedio franco-ottomano del 1543, una cucina venuta dal mare.'),
 );
 
 $ecrits = 0; $effaces = 0; $respectes = 0; $absents = 0; $lignes = array();

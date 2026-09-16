@@ -61,10 +61,15 @@ global $wpdb;
 $APPLIQUER = false;
 $EFFACER   = false;
 
+// RACCOURCI le 2026-09-16 : Yoast ajoute la DATE de la page (« Juil 21, 2026 » + 3) à la
+// longueur qu'il mesure, pour tout contenu, pages comprises — lu dans son code sur le
+// serveur (description-data-provider.php). Le plafond utile est donc 140, pas 156, et
+// 58 de ces pages sortaient orange avec le gabarit précédent (102 caractères de suffixe
+// + « Que faire à Saint-Jean-de-Maurienne cette semaine » = 151). Suffixe ramené à 86 /
+// 76 : la clé la plus longue donne 135.
 $SUFFIXE = array(
-    'fr' => " : expositions, concerts, marchés et fêtes, avec les horaires et les lieux."
-          . " En français et en italien.",
-    'it' => ": mostre, concerti, mercati e feste, con orari e luoghi. In italiano e in francese.",
+    'fr' => " : expositions, concerts, marchés et fêtes, horaires et lieux. En français et en italien.",
+    'it' => ": mostre, concerti, mercati e feste, orari e luoghi. In italiano e in francese.",
 );
 $MARQUE = ' | Agenda Sabauda';
 $MAX_TITRE = 60;
