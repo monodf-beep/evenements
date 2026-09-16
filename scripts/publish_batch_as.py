@@ -82,6 +82,35 @@ def _select(conn, args, today: str):
     return conn.execute(sql, params).fetchall()
 
 
+def _heriter_source_traduction(event: dict, conn) -> None:
+    """Complète `event['url_officiel']` avec celle de l'ORIGINAL si c'est une
+    traduction dont la source propre est vide — MODIFIE `event` en place.
+
+    Incident du 16/09 : Chopin (id 5586, jumeau it de 525) et Egitto (id 5513,
+    jumeau it de 5147) republiées en DRAFT par cs-completude.php (§4, blocage
+    « source_officielle ») alors que l'ORIGINAL a une vraie source officielle
+    (opera-nice.org, enteturismolmr.sequar.com). Cause : translate_events pose
+    `url_source = 'translated:<id>:<lang>'` (pseudo-lien, jamais publiable —
+    publisher_as._source_publiable l'écarte à raison) et NE COPIE PAS
+    `url_officiel` (voir utils.radar.official_anchor, docstring).
+    radar.publication_block_reason() sait déjà accepter un `parent` pour ce cas
+    précis, mais seulement pour le RADAR (_porte_radar ci-dessous) —
+    `_source_publiable`, qui écrit `as_source_officielle_url` pour TOUTE fiche
+    publiée, n'en profitait pas. Donc ici, hors radar aussi : seulement si
+    l'ancre de l'original est une vraie adresse http(s), jamais la phrase
+    « matière officielle lue (…) » qu'official_anchor peut renvoyer — cette
+    phrase-là n'est pas une URL et casserait `_source_publiable`."""
+    tof = event.get("translation_of") or 0
+    if not tof or (radar.official_anchor(event) or "").strip():
+        return
+    parent_row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
+    if not parent_row:
+        return
+    ancre = (radar.official_anchor(dict(parent_row)) or "").strip()
+    if ancre.startswith(("http://", "https://")):
+        event["url_officiel"] = ancre
+
+
 def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict], list[tuple]]:
     """VERROU « radar = DÉTECTION seule » (config/sources.txt, en-tête du tier radar).
 
@@ -410,6 +439,7 @@ def main(argv=None) -> int:
         # sélection à des événements jamais publiés, créés sans photo (repli bannière
         # générique côté WP, pas cassé — mais pas voulu).
         skip = args.skip_media and (event.get("wp_post_id_as") or 0) > 0
+        _heriter_source_traduction(event, conn)
         wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip)
         if wp_id:
             conn.execute(
