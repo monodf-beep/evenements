@@ -46,16 +46,35 @@ _TITRE_SEO_CIBLE = 60
 # ET laisse passer tout ce qui est entre 157 et 180. `_ajuste_meta_seo` applique la
 # même discipline que `_ajuste_titre_seo` : jamais de mot coupé, jamais au-delà du
 # budget réel de Yoast.
-_META_SEO_CIBLE = 156
+#
+# ET 156 N'ÉTAIT PAS LE BUDGET RÉEL — trouvé le 2026-09-16 en lisant le code de Yoast
+# sur le serveur (src/editors/framework/seo/posts/description-data-provider.php) :
+# la longueur mesurée est `description + date + 3`, la date au format « Sep 6, 2026 »
+# (« Juil 21, 2026 » au plus long : 13), ajoutée SANS CONDITION pour tout contenu daté.
+# Le plafond utile est donc 156 − 16 = 140. Mesuré ce jour-là sur le site : 202 des 276
+# fiches événements avec description dépassaient (108 encore devant nous), 58 pages,
+# 12 articles — toutes écrites « dans le budget » de 156.
+#
+# Et la coupe préfère la fin d'une PHRASE à la fin d'un mot : « …du 17 juin au 28
+# septembre 2026. Peinture et haute » est un mot entier, mais une description tronquée
+# en plein élan se lit comme une faute. On ne recule à la phrase que si elle garde au
+# moins _META_SEO_PLANCHER caractères — sinon la coupe au mot, comme avant.
+_META_SEO_CIBLE = 140
+_META_SEO_PLANCHER = 100
 
 
 def _ajuste_meta_seo(meta: str) -> str:
-    """Fait rentrer `meta` dans le budget Yoast (156 car.), sans jamais couper un mot."""
+    """Fait rentrer `meta` dans le budget Yoast (140 car., la date comptée), sans jamais
+    couper un mot — et à la fin d'une phrase quand c'est possible."""
     meta = _clean(meta)
     if len(meta) <= _META_SEO_CIBLE:
         return meta
-    coupe = meta[:_META_SEO_CIBLE].rsplit(" ", 1)[0].rstrip(" ,.;:—-")
-    return coupe or meta[:_META_SEO_CIBLE]
+    tete = meta[:_META_SEO_CIBLE]
+    fin_phrase = max(tete.rfind(". "), tete.rfind("! "), tete.rfind("? "))
+    if fin_phrase + 1 >= _META_SEO_PLANCHER:
+        return tete[:fin_phrase + 1]
+    coupe = tete.rsplit(" ", 1)[0].rstrip(" ,.;:—-")
+    return coupe or tete
 
 
 def _ajuste_titre_seo(titre: str) -> str:
@@ -187,7 +206,7 @@ Produis, en {langue_nom}, en JSON strict :
 {{"seo_keyphrase": "<expression clé principale, 2-4 mots>",
   "seo_title": "<titre SEO 50-60 caractères, COMMENÇANT par l'expression clé ; suffixe ' — Agenda Sabauda'>",
   "seo_slug": "<slug court contenant l'expression clé, minuscules-et-tirets, sans année si récurrent>",
-  "seo_meta": "<meta description 150-160 caractères, factuelle (quoi, où, quand) et CONTENANT l'expression clé>",
+  "seo_meta": "<meta description 115-140 caractères (Yoast y ajoute la date), factuelle (quoi, où, quand) et CONTENANT l'expression clé>",
   "seo_answer": "<réponse directe de 40-60 mots (AEO), CONTENANT l'expression clé, réutilisable en chapô>",
   "seo_tags": ["<3 à 6 étiquettes : lieu, ville, artistes/thème, catégorie>"],
   "seo_faq": [
