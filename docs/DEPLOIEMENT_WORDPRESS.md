@@ -404,7 +404,15 @@ même nom existe déjà, écriture en `.nouveau` puis `rename()`. Contrôle apr�
 200, `wp/v2/posts` 200, la nouvelle route répond 401 sans identifiants. Retrait : supprimer
 le fichier ; Yoast réécrit ses notes lui-même à l'ouverture d'une fiche.
 
-Ce qui reste à établir avant de laisser le cron (12h00) tourner : que les notes du moteur
-hors navigateur sont celles de l'éditeur. Un témoin coïncide à l'unité (WP#7490, 67/90,
-fixture `tests/test_yoast_scores.py`) ; quinze autres divergent mais ont tous été réécrits
-par le pipeline après leur dernière ouverture. Une note fraîche de Franck tranche.
+**Tranché le soir même.** Un agent a ouvert deux fiches dans l'éditeur et recopié le panneau
+ligne par ligne : 8236 (Nice, texte italien) 86 / 60, 8231 (Aoste) 85 / 30. Le moteur nu
+donnait 86 / 90 et 81 / 30 — trois écarts, tous des choses que l'éditeur fait sans le
+dire : il analyse avec la locale du SITE (fr_FR) même un texte italien ; il ajoute l'image
+mise en avant au texte ; « Expression clé utilisée précédemment » est un greffon qui compte
+dans la note, et il lui faut le nombre d'autres fiches portant la même clé. La v1.1 du
+mu-plugin sert ces trois choses (`locale` = `get_locale()`, `featured_html`,
+`kw_utilisee_ailleurs`) ; déposée par le même canal, en remplaçant la v1.0 avec sauvegarde
+`cs-yoast-scores.php.bak-2026-09-16` à côté (md5 v1.1 `408d5593…`, 11 347 octets). Après
+quoi le moteur retrouve à l'unité les cinq témoins de `tests/fixtures/yoast_temoins.json`
+(8236, 8231, et trois notes stockées non périmées : 2418, 2420, 8249). Le témoin 7490 est
+retiré : sa note stockée datait d'avant sa dernière modification.

@@ -5,7 +5,7 @@ Description: Deux routes REST (cs/v1/yoast-papers, cs/v1/yoast-scores) qui perme
   VPS de calculer les scores SEO et lisibilité de Yoast avec le moteur de Yoast lui-même
   (paquet npm `yoastseo`), puis de les écrire là où la colonne « Score SEO » les lit.
 Author: Cultura Sabauda
-Version: 1.0
+Version: 1.1
 
   D'OÙ ÇA VIENT — Franck, 16/09/2026 : « pourquoi ça peut pas recalculer direct
   automatiquement Yoast ? » — puis « ok mais pour les articles, les pages, les events ».
@@ -72,9 +72,29 @@ function cs_yoast_titre_seo($post) {
 }
 
 function cs_yoast_paper($post) {
-    $id     = (int) $post->ID;
-    $locale = function_exists('pll_get_post_language') ? pll_get_post_language($id, 'locale') : '';
-    if (!$locale) { $locale = get_locale(); }
+    global $wpdb;
+    $id = (int) $post->ID;
+    // LA LOCALE DU SITE, PAS CELLE DE L'ARTICLE — vérifié le 16/09 sur le panneau collé
+    // par Franck : l'éditeur juge un texte italien avec les règles françaises (« 65 % de
+    // phrases de plus de 20 mots », seuil français ; « aucun mot de transition », il
+    // cherche les français). Servir la locale Polylang donnait 90 de lisibilité là où
+    // l'éditeur dit 60. On sert ce que l'éditeur fait, pas ce qu'il devrait faire.
+    $locale      = get_locale();
+    $post_locale = function_exists('pll_get_post_language') ? (string) pll_get_post_language($id, 'locale') : '';
+    // L'IMAGE MISE EN AVANT compte dans l'analyse (« Images : bon travail » sur un corps
+    // sans balise img) : l'éditeur l'ajoute au texte, on sert son HTML pour faire pareil.
+    $thumb        = get_post_thumbnail_id($id);
+    $featured     = $thumb ? get_the_post_thumbnail($id, 'full') : '';
+    // « Expression clé utilisée précédemment » : combien d'AUTRES contenus publiés
+    // portent la même clé (greffon previouslyUsedKeywords, barème 0 → 9, 1 → 6, 2+ → 1).
+    $kw = (string) get_post_meta($id, '_yoast_wpseo_focuskw', true);
+    $kw_ailleurs = 0;
+    if ($kw !== '') {
+        $kw_ailleurs = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta} m JOIN {$wpdb->posts} p ON p.ID = m.post_id
+              WHERE m.meta_key = '_yoast_wpseo_focuskw' AND m.meta_value = %s AND m.post_id <> %d
+                AND p.post_status = 'publish'", $kw, $id));
+    }
     $date = '';
     try { $date = YoastSEO()->helpers->date->format_translated($post->post_date, 'M j, Y'); }
     catch (\Throwable $e) { $date = date_i18n('M j, Y', strtotime($post->post_date)); }
@@ -82,7 +102,10 @@ function cs_yoast_paper($post) {
         'id'            => $id,
         'type'          => $post->post_type,
         'locale'        => $locale,
-        'keyword'       => (string) get_post_meta($id, '_yoast_wpseo_focuskw', true),
+        'post_locale'   => $post_locale,
+        'featured_html' => $featured,
+        'kw_utilisee_ailleurs' => $kw_ailleurs,
+        'keyword'       => $kw,
         'title'         => cs_yoast_titre_seo($post),
         'description'   => (string) get_post_meta($id, '_yoast_wpseo_metadesc', true),
         'slug'          => $post->post_name,
