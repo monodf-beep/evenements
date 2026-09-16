@@ -35,3 +35,7 @@ data/gsc-oauth-token.json
 
 # Copies de travail isolées créées par les agents Claude Code (une par agent) : jamais versionnées.
 .claude/worktrees/
+
+# Node (moteur Yoast, scripts/yoast_score.js) — installé sur le VPS par `npm install`
+node_modules/
+package-lock.json

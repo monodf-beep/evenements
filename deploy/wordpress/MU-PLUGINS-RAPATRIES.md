@@ -118,3 +118,6 @@ Archive ZIP créée côté serveur dans `wp-content/uploads/` sous un nom aléat
 recherche de secrets, côté serveur puis en local, avant tout commit : clés d'API, jetons, mots de
 passe, URL avec identifiants, mots de passe d'application WordPress. Aucune occurrence. Les 33
 fichiers passent `php -l` (PHP 8.4.19) et le test du dépôt.
+
+
+- `cs-yoast-scores.php` — NEUF le 16/09/2026, déposé depuis le dépôt (md5 `36e037dadeaee5b6ea6b1ca4c215591c`, 9 878 octets), jamais écrit sur le serveur à la main. Voir docs/DEPLOIEMENT_WORDPRESS.md.
