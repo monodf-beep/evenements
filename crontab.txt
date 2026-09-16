@@ -148,6 +148,12 @@ SLACK_DIGEST=1
 # zéro — même logique que le cap de traduction plus bas. C'est la ligne Slack qui décide,
 # pas une impression.
 30 10 * * * cd /root/evenements && .venv/bin/python scripts/seo_batch.py --cap 25 >> logs/seo_batch.log 2>&1
+# Scores Yoast hors éditeur (16/09) : Yoast ne note qu'à l'ouverture d'une fiche dans le
+# navigateur — 678 fiches publiées sur 694 étaient « Non disponible ». Ce passage note ce
+# qui a changé depuis la veille avec le moteur de Yoast lui-même (node, paquet yoastseo),
+# après seo_batch et translate (qui viennent de modifier des fiches). Prérequis une fois :
+# `npm install` dans /root/evenements.
+0 12 * * * cd /root/evenements && .venv/bin/python -m scripts.yoast_scores --apply --cap 300 >> logs/yoast_scores.log 2>&1
 # Photo PAYSAGE (16:9) du haut du panier, 10h35 — écrit, jamais planifié (audit du
 # 31/08 §2.2, activé le 04/09 : Franck, « amélioration visuelle qui est quand même
 # super importante pour un article »). Un agent va chercher, chez la source
