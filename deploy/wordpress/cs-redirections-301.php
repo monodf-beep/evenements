@@ -73,6 +73,15 @@ add_action('template_redirect', function () {
         '/evenement/pinocchio-en-scene-au-forte-di-bard-pour-les-200-ans-de-carlo-collodi/'
             => '/evenement/pinocchio-traverse-les-alpes-quand-un-bicentenaire-ravive-la-vallee-daoste/',
 
+        // 2026-09-16 : « Caveau » (Torino, expo Fondazione FICO), DEUX posts publiés pour
+        // le même événement, même contenu français republié tel quel sous un chemin /it/
+        // par erreur (6423 en ligne depuis fin juillet, 9266 depuis le 15/09). Repéré via
+        // une liste de pages noindex de la Search Console — 9266 est celui du garde-fou de
+        // complétude, PAS un vrai contenu italien. On garde le plus ancien (déjà indexé
+        // plus longtemps), 9266 est corbeillé (réversible), son adresse suit.
+        '/it/evenement/caveau-nasce-a-torino-un-nuovo-progetto-artistico-tra-mostre-gratuite-e-spazi-inediti-2/'
+            => '/evenement/caveau-nasce-a-torino-un-nuovo-progetto-artistico-tra-mostre-gratuite-e-spazi-inediti/',
+
         '/selections/ce-week-end/'                    => '/ce-week-end/',
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',
         '/selections/que-faire-a-annecy-ce-week-end/' => '/que-faire-a-annecy/ce-week-end/',
