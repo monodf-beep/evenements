@@ -382,3 +382,29 @@ savoir, et je ne le devine pas.
 
 **Ce qui reste ouvert** : les 4 fiches bloquées sur `source_officielle` et la 8707 sur
 `corps_indigent` (c'est elle qui fait exploser le plafond de jetons à l'enrichissement).
+
+
+## 16/09/2026 — `cs-yoast-scores.php`, un mu-plugin NEUF, et pourquoi il existe
+
+Franck : « pourquoi ça peut pas recalculer direct automatiquement Yoast ? — ok mais pour
+les articles, les pages, les events ». Mesuré : 20 articles sur 24, 305 pages sur 306,
+353 événements sur 364 sans aucune note Yoast. Yoast calcule en JavaScript dans le
+navigateur, à l'ouverture de la fiche — jamais côté serveur. Tout ce que le pipeline
+publie par API reste « Non disponible ».
+
+Deux routes REST (`cs/v1/yoast-papers`, `cs/v1/yoast-scores`) servent au VPS de quoi
+faire tourner le moteur de Yoast lui-même (paquet npm `yoastseo`, `scripts/yoast_score.js`,
+piloté par `scripts/yoast_scores.py`) puis d'écrire les notes là où la colonne les lit :
+la table `wp_yoast_indexable`, reconstruite après l'écriture des métas — écrire la méta
+seule ne rafraîchit rien (testé sur 8228 : 0, 0, puis 85 après reconstruction).
+
+Déployé par le canal du § 3 : contenu passé en base64 à `execute-php`, md5 comparé au
+fichier du dépôt (`36e037da…`), `token_get_all(…, TOKEN_PARSE)`, refus si un fichier du
+même nom existe déjà, écriture en `.nouveau` puis `rename()`. Contrôle après dépôt : front
+200, `wp/v2/posts` 200, la nouvelle route répond 401 sans identifiants. Retrait : supprimer
+le fichier ; Yoast réécrit ses notes lui-même à l'ouverture d'une fiche.
+
+Ce qui reste à établir avant de laisser le cron (12h00) tourner : que les notes du moteur
+hors navigateur sont celles de l'éditeur. Un témoin coïncide à l'unité (WP#7490, 67/90,
+fixture `tests/test_yoast_scores.py`) ; quinze autres divergent mais ont tous été réécrits
+par le pipeline après leur dernière ouverture. Une note fraîche de Franck tranche.
