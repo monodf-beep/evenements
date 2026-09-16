@@ -49,6 +49,11 @@ from utils import substance
 from scripts.perimetre import ville_hors_perimetre
 from scripts.publisher import build_post
 from scripts.publisher_as import publish_to_as, wp_site_joignable
+# Privées mais réutilisées à dessein (_heriter_source_traduction) : c'est le calcul
+# EXACT que publisher_as applique déjà à toute fiche pour sa propre source publiable —
+# le reprendre en sous-ensemble a divergé une première fois (16/09), le réutiliser tel
+# quel ne peut pas diverger une deuxième.
+from scripts.publisher_as import _source_publiable, _is_radar
 
 log = get_logger("publish_batch_as")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -83,32 +88,37 @@ def _select(conn, args, today: str):
 
 
 def _heriter_source_traduction(event: dict, conn) -> None:
-    """Complète `event['url_officiel']` avec celle de l'ORIGINAL si c'est une
-    traduction dont la source propre est vide — MODIFIE `event` en place.
+    """Complète `event['url_source']` avec la source publiable de l'ORIGINAL
+    si c'est une traduction dont la source propre est vide — MODIFIE `event`
+    en place.
 
-    Incident du 16/09 : Chopin (id 5586, jumeau it de 525) et Egitto (id 5513,
-    jumeau it de 5147) republiées en DRAFT par cs-completude.php (§4, blocage
-    « source_officielle ») alors que l'ORIGINAL a une vraie source officielle
-    (opera-nice.org, enteturismolmr.sequar.com). Cause : translate_events pose
-    `url_source = 'translated:<id>:<lang>'` (pseudo-lien, jamais publiable —
-    publisher_as._source_publiable l'écarte à raison) et NE COPIE PAS
-    `url_officiel` (voir utils.radar.official_anchor, docstring).
-    radar.publication_block_reason() sait déjà accepter un `parent` pour ce cas
-    précis, mais seulement pour le RADAR (_porte_radar ci-dessous) —
-    `_source_publiable`, qui écrit `as_source_officielle_url` pour TOUTE fiche
-    publiée, n'en profitait pas. Donc ici, hors radar aussi : seulement si
-    l'ancre de l'original est une vraie adresse http(s), jamais la phrase
-    « matière officielle lue (…) » qu'official_anchor peut renvoyer — cette
-    phrase-là n'est pas une URL et casserait `_source_publiable`."""
+    Incident du 16/09, corrigé une première fois puis RE-MESURÉ FAUX : ma
+    première version copiait `radar.official_anchor(parent)` (lit UNIQUEMENT
+    `url_officiel` + `enrich_data.source`) dans `event['url_officiel']`. Sur
+    Chopin (id 525) et Egitto (id 5147), `url_officiel` est VIDE sur l'original
+    ET sur la traduction — leur statut de source officielle vient de
+    `url_source` (tier « officielle » de sources.txt : opera-nice.org,
+    enteturismolmr.sequar.com), un champ qu'`official_anchor` ne lit pas.
+    Vérifié en production après déploiement : le refus « source non publiable
+    écartée » persistait à l'identique — la première version ne changeait
+    RIEN pour ce cas, exactement celui qu'elle visait à réparer.
+
+    Le bon calcul est celui que `publisher_as._source_publiable` fait déjà
+    pour l'original lui-même (officiel PUIS url_source, filtré tracking) — on
+    le RÉUTILISE sur l'original plutôt que d'en reprendre un sous-ensemble, et
+    on écrit le résultat dans `url_source` de la traduction (pas
+    `url_officiel`, qui a son propre filtre de domaine — `_is_official_host`
+    — que ce résultat ne passerait pas forcément)."""
     tof = event.get("translation_of") or 0
-    if not tof or (radar.official_anchor(event) or "").strip():
+    if not tof or (event.get("url_source") or "").strip().startswith(("http://", "https://")):
         return
     parent_row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
     if not parent_row:
         return
-    ancre = (radar.official_anchor(dict(parent_row)) or "").strip()
-    if ancre.startswith(("http://", "https://")):
-        event["url_officiel"] = ancre
+    parent = dict(parent_row)
+    ancre = _source_publiable(parent, _is_radar(parent))
+    if ancre:
+        event["url_source"] = ancre
 
 
 def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict], list[tuple]]:
