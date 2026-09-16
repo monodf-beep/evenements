@@ -13,8 +13,20 @@ expression clé, titre SEO et méta-description sur les dix articles —
 `deploy/wordpress/seo-articles-curiosites.php`. Recompté : 0 article sans clé, 0 sans
 description.
 
-**Ce qui n'est PAS fait, et attend la relecture de Franck :** tout ce qui suit touche au
-corps des articles. Rien n'est appliqué tant qu'il n'a pas lu.
+**Appliqué le 16/09 au soir, sur « ok je te fais confiance »** — `deploy/wordpress/curiosites-corps-2026-09-16.php`,
+73 remplacements ancrés sur les dix corps, relus en base après écriture : clé exacte dans les
+dix introductions, 5 à 8 liens externes par article, zéro Wikipédia, zéro tiret cadratin,
+zéro forme interdite, trois slugs italiens renommés (`curiosita-torino`, `curiosita-aosta`,
+`curiosita-nizza`), une révision WordPress gardée par article.
+
+Arbitrages pris au passage, en lisant les pages (voir ci-dessous pour le détail) :
+la « partie manquante retrouvée en 2014 » de la fontaine des Éléphants est RETIRÉE
+(Chambéry Montagnes : sculptés de face, jamais eu d'arrière-train) ; Sevesi 1810 et
+Sciolli 1885 retirés (non portés) ; l'affaire de bigamie de Crispi GARDÉE et sourcée par
+l'entrée Crispi de Treccani (mariage civil du 27 janvier 1878, démission) ; « dès le
+treizième siècle » retiré de la socca ; « en zone frontalière » réécrit « dans la basse
+vallée » (vocabulaire). Deux liens restent HORS liste admise, et c'est dit : la Revue de
+géographie alpine (Frichelet) et l'Academia Nissarda (porte de Turin).
 
 **Méthode.** Chaque source ci-dessous a été LUE (page ouverte, phrase citée), pas déduite
 d'un résumé de recherche. Quand la page officielle ne dit pas ce que l'article affirme, c'est
