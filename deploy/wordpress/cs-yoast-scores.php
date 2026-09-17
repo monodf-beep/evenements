@@ -5,7 +5,7 @@ Description: Deux routes REST (cs/v1/yoast-papers, cs/v1/yoast-scores) qui perme
   VPS de calculer les scores SEO et lisibilité de Yoast avec le moteur de Yoast lui-même
   (paquet npm `yoastseo`), puis de les écrire là où la colonne « Score SEO » les lit.
 Author: Cultura Sabauda
-Version: 1.2
+Version: 1.3
 
   D'OÙ ÇA VIENT — Franck, 16/09/2026 : « pourquoi ça peut pas recalculer direct
   automatiquement Yoast ? » — puis « ok mais pour les articles, les pages, les events ».
@@ -95,6 +95,15 @@ function cs_yoast_paper($post) {
               WHERE m.meta_key = '_yoast_wpseo_focuskw' AND m.meta_value = %s AND m.post_id <> %d
                 AND p.post_status = 'publish'", $kw, $id));
     }
+    // LES SHORTCODES SONT RENDUS AVANT L'ANALYSE, comme dans l'éditeur : post-edit.js de
+    // Yoast porte un filtre (wpseo_filter_shortcodes) qui remplace chaque shortcode par sa
+    // sortie avant de noter. Trouvé le 17/09 à midi : les 193 pages « Que faire à X… »
+    // restaient entre 50 et 59 après correction de leur description, parce que leur
+    // contenu n'est qu'un [cs_hub_ville …] — zéro mot pour un moteur nu (textLength -20),
+    // ~377 mots une fois rendu (la liste des événements, avec ses images et ses liens).
+    // 260 pages publiées sur 306 portent un shortcode ; aucun événement, aucun article.
+    $content = (string) $post->post_content;
+    if (strpos($content, '[') !== false) { $content = do_shortcode($content); }
     $date = '';
     try { $date = YoastSEO()->helpers->date->format_translated($post->post_date, 'M j, Y'); }
     catch (\Throwable $e) { $date = date_i18n('M j, Y', strtotime($post->post_date)); }
@@ -112,7 +121,7 @@ function cs_yoast_paper($post) {
         'permalink'     => get_permalink($id),
         'date'          => $date,
         'post_title'    => $post->post_title,
-        'content'       => $post->post_content,
+        'content'       => $content,
         'modified'      => $post->post_modified_gmt,
         'linkdex'       => (string) get_post_meta($id, '_yoast_wpseo_linkdex', true),
         'content_score' => (string) get_post_meta($id, '_yoast_wpseo_content_score', true),
