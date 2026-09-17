@@ -92,6 +92,31 @@ add_action('template_redirect', function () {
         '/evenement/evo-france-2026-nice-accueille-le-circuit-mondial-de-jeux-de-combat/'
             => '/evenement/evo-2026-a-nice-trois-jeux-inedits-et-1-000-places-supplementaires/',
 
+        // 2026-09-17 : deux paires FR/IT complètes en double sur le même sujet — un
+        // niveau au-dessus des doublons habituels (un post isolé). Tranché par clics
+        // GSC cumulés sur les DEUX pages de chaque paire (règle de Franck du 15/09 :
+        // « la fiche qui a les clics, pas la plus récente ni la mieux écrite »), lus
+        // par Claude dans Chrome sur 28 jours.
+        //
+        // Aix-les-Bains, Journées du patrimoine : paire « palaces, danse et train du
+        // Revard » (8892 fr / 9189 it) l'emporte — 20 impressions cumulées contre 0
+        // pour « les sites de l'eau » (8884 fr / 9688 it). Aucune des deux ne clique,
+        // mais l'une a au moins de la visibilité.
+        '/evenement/journees-du-patrimoine-a-aix-les-bains-les-sites-de-leau/'
+            => '/evenement/journees-du-patrimoine-2026-a-aix-les-bains-palaces-danse-et-train-du-revard/',
+        '/it/evenement/journees-du-patrimoine-a-aix-les-bains-les-sites-de-leau-2/'
+            => '/it/evenement/journees-du-patrimoine-2026-a-aix-les-bains-palaces-danse-et-train-du-revard-2/',
+
+        // EuroVolley Palavela : paire établie début septembre (8083 fr / 8126 it)
+        // l'emporte largement — 1 clic, 54 impressions cumulées, contre 0/0 pour la
+        // paire créée le 17/09 au matin (9619 fr / 9660 it), trop récente pour avoir
+        // été explorée par Google (effet de fraîcheur déjà repéré sur ce rapport GSC,
+        // pas un signal de faiblesse — mais la duplication, elle, est réelle).
+        '/evenement/eurovolley-2026-huitiemes-et-quarts-de-finale-au-palavela-de-turin-du-20-au-23-septembre/'
+            => '/evenement/eurovolley-2026-hommes-huitiemes-et-quarts-de-finale-au-palavela-de-turin/',
+        '/it/evenement/eurovolley-2026-huitiemes-et-quarts-de-finale-au-palavela-de-turin-du-20-au-23-septembre-2/'
+            => '/it/evenement/eurovolley-2026-hommes-huitiemes-et-quarts-de-finale-au-palavela-de-turin-2/',
+
         '/selections/ce-week-end/'                    => '/ce-week-end/',
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',
         '/selections/que-faire-a-annecy-ce-week-end/' => '/que-faire-a-annecy/ce-week-end/',
