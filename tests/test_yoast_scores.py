@@ -1,16 +1,26 @@
 #!/usr/bin/env python3
 """Fixture : le moteur de Yoast hors navigateur (scripts/yoast_score.js) reproduit la note
-que l'ÉDITEUR a donnée — sur une fiche réelle, pas sur un cas construit.
+que l'ÉDITEUR a donnée — sur des fiches réelles, pas sur des cas construits.
 
-LE TÉMOIN : WP#7490, « La Filarmonica della Scala en concert au Lingotto de Turin »,
-notée 67 (SEO) et 90 (lisibilité) par Yoast dans le navigateur, contenu et métas copiés
-tels quels le 16/09/2026 (tests/fixtures/yoast_temoin_7490.json). C'est la seule des
-seize fiches notées du site dont la note stockée n'était pas périmée ; le moteur doit la
-retrouver à l'unité près. S'il ne la retrouve plus, ce n'est pas la fixture qu'il faut
-ajuster, c'est le moteur (version du paquet, estimation de la largeur du titre).
+LES TÉMOINS (tests/fixtures/yoast_temoins.json, contenu et métas copiés tels quels par la
+route cs/v1/yoast-papers le 16/09/2026) :
 
-Le moteur italien doit se charger aussi, et une mauvaise clé doit faire baisser la note :
-un moteur qui rendrait la même note quelle que soit la clé ne mesurerait rien.
+  - WP#8236 (Nice) et WP#8231 (Aoste) : notes LUES DANS L'ÉDITEUR le jour même, par un
+    agent qui a ouvert les deux fiches et recopié le panneau ligne par ligne — 86 / 60 et
+    85 / 30. Ce sont les seuls témoins dont la note vient du navigateur et non d'une méta
+    stockée qui pourrait être périmée ;
+  - WP#2418, 2420, 8249 : notes stockées par l'éditeur, fiches non modifiées depuis.
+
+Le premier témoin (WP#7490, 67 / 90) a été retiré le 16/09 au soir : sa note stockée datait
+d'AVANT sa dernière modification (09/09), et le moteur rendait 71 — un témoin périmé qui
+aurait fait ajuster le moteur sur une note fausse.
+
+Trois écarts trouvés en calibrant, que ces témoins verrouillent (détail dans l'en-tête de
+scripts/yoast_score.js) : l'éditeur analyse avec la locale du SITE (fr_FR) même un texte
+italien ; il ajoute l'image mise en avant au texte analysé ; et « Expression clé utilisée
+précédemment » est un greffon qui compte dans la note. Retirer l'un des trois fait
+retomber un témoin à côté — c'est le but : si le moteur ne retrouve plus une note, ce n'est
+pas la fixture qu'il faut ajuster, c'est le moteur (version du paquet, largeur du titre).
 
 Prérequis : node ≥ 20 et `npm install` (paquet `yoastseo`). Sans eux la fixture ÉCHOUE —
 un témoin qui se déclare vert faute d'outil est un témoin qui ne prouve rien.
@@ -49,31 +59,54 @@ def noter(entrees):
     return json.loads(proc.stdout)
 
 
-temoin = json.loads((ROOT / "tests" / "fixtures" / "yoast_temoin_7490.json").read_text(encoding="utf-8"))
-attendu_seo, attendu_lis = int(temoin["linkdex"]), int(temoin["content_score"])
+temoins = json.loads((ROOT / "tests" / "fixtures" / "yoast_temoins.json").read_text(encoding="utf-8"))
+notes = {r["id"]: r for r in noter(temoins)}
 
-[r] = noter([temoin])
-verifier(f"témoin WP#7490 : SEO {attendu_seo} retrouvé à l'unité", r["seo"] == attendu_seo, f"obtenu {r['seo']}")
-verifier(f"témoin WP#7490 : lisibilité {attendu_lis} retrouvée", r["lisibilite"] == attendu_lis, f"obtenu {r['lisibilite']}")
+for t in temoins:
+    r = notes[t["id"]]
+    verifier(f"WP#{t['id']} : SEO {t['attendu_seo']} retrouvé à l'unité",
+             r["seo"] == t["attendu_seo"], f"obtenu {r['seo']}")
+    verifier(f"WP#{t['id']} : lisibilité {t['attendu_lisibilite']} retrouvée",
+             r["lisibilite"] == t["attendu_lisibilite"], f"obtenu {r['lisibilite']}")
+
+nice = next(t for t in temoins if t["id"] == 8236)
+r_nice = notes[8236]
 verifier("le détail nomme les assesseurs (pour lire un écart, pas seulement le constater)",
-         any(d["id"] == "keyphraseDensity" for d in r["seo_detail"]))
+         any(d["id"] == "keyphraseDensity" for d in r_nice["seo_detail"]))
 
-# Contre-épreuve : une clé absente du texte doit faire baisser la note SEO.
-[faux] = noter([{**temoin, "keyword": "carnaval de Venise"}])
-verifier("clé absente du texte : la note SEO baisse", faux["seo"] < r["seo"], f"{faux['seo']} vs {r['seo']}")
+# Contre-épreuves : chaque chose que le moteur prend en compte doit peser sur la note.
+[faux] = noter([{**nice, "keyword": "carnaval de Venise"}])
+verifier("clé absente du texte : la note SEO baisse", faux["seo"] < r_nice["seo"], f"{faux['seo']} vs {r_nice['seo']}")
 
-# L'italien : le moteur se charge, note dans les bornes, et la clé compte aussi.
-it = {"id": 1, "locale": "it_IT", "keyword": "curiosità di Torino",
-      "title": "Sei curiosità di Torino che i torinesi stessi dimenticano",
-      "description": "Sei curiosità di Torino, da Piazza San Carlo a Collegno: duemila anni sotto il selciato.",
-      "slug": "curiosita-torino", "permalink": "https://agendasabauda.eu/it/curiosita-torino/",
-      "date": "Sep 6, 2026", "post_title": "Sei curiosità di Torino",
-      "content": "<p>Torino nasconde sei curiosità di Torino che vanno oltre il centro barocco. "
-                 "Alcune dormono sotto il selciato da duemila anni.</p><h2>Sotto la piazza</h2>"
-                 "<p>Piazza San Carlo fa da salotto alla città dal Seicento. Nessuno si aspettava di trovare granché.</p>"}
-[ri] = noter([it])
-verifier("italien : le moteur rend une note SEO entre 0 et 100", 0 <= ri["seo"] <= 100, str(ri["seo"]))
-verifier("italien : lisibilité dans les paliers de Yoast", ri["lisibilite"] in (0, 30, 60, 90), str(ri["lisibilite"]))
+[sans_image] = noter([{**nice, "featured_html": ""}])
+verifier("sans image mise en avant : l'assesseur images ne dit plus « bon travail »",
+         any(d["id"] == "images" and d["score"] < 9 for d in sans_image["seo_detail"]),
+         str([(d["id"], d["score"]) for d in sans_image["seo_detail"] if d["id"] == "images"]))
+
+[deja] = noter([{**nice, "kw_utilisee_ailleurs": 2}])
+verifier("clé déjà utilisée sur deux autres fiches : la note SEO baisse", deja["seo"] < r_nice["seo"],
+         f"{deja['seo']} vs {r_nice['seo']}")
+
+# Cas qui doit PASSER près de la frontière : WP#8236 est un texte ITALIEN (« Tre curiosità
+# di Nizza »), que l'éditeur note 60 en lisibilité parce qu'il le juge avec les règles
+# françaises (aucun mot de transition français dedans). Jugé en italien, le même texte
+# monte à 90 : c'est la preuve que la locale servie est bien ce qui fait la note, et que
+# le moteur italien se charge. Si un jour Yoast se met à analyser dans la langue du post,
+# c'est ce témoin qui tombera le premier — et il faudra alors servir post_locale.
+[ri] = noter([{**nice, "locale": "it_IT"}])
+verifier("locale it_IT : le moteur italien se charge et rend une note SEO entre 0 et 100", 0 <= ri["seo"] <= 100, str(ri["seo"]))
+verifier("locale it_IT : lisibilité dans les paliers de Yoast", ri["lisibilite"] in (0, 30, 60, 90), str(ri["lisibilite"]))
+verifier("locale it_IT : le texte italien de Nice passe de 60 (règles françaises) à 90 (règles italiennes)",
+         ri["lisibilite"] == 90 and r_nice["lisibilite"] == 60, f"{r_nice['lisibilite']} → {ri['lisibilite']}")
+
+# Sans expression clé, pas de note SEO — et surtout pas une note négative. Premier
+# passage en vrai (17/09, 00h15) : 107 fiches sur 300 rendaient -637, refusées par la
+# route, et se seraient représentées chaque jour à l'identique. Le moteur rend null,
+# la lisibilité reste calculée.
+[sans_cle] = noter([{**nice, "keyword": ""}])
+verifier("sans expression clé : la note SEO vaut null, pas un nombre négatif", sans_cle["seo"] is None, str(sans_cle["seo"]))
+verifier("sans expression clé : la lisibilité est quand même notée",
+         sans_cle["lisibilite"] == r_nice["lisibilite"], f"{sans_cle['lisibilite']} vs {r_nice['lisibilite']}")
 
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

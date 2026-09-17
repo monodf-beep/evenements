@@ -5,7 +5,7 @@ Description: Deux routes REST (cs/v1/yoast-papers, cs/v1/yoast-scores) qui perme
   VPS de calculer les scores SEO et lisibilité de Yoast avec le moteur de Yoast lui-même
   (paquet npm `yoastseo`), puis de les écrire là où la colonne « Score SEO » les lit.
 Author: Cultura Sabauda
-Version: 1.0
+Version: 1.2
 
   D'OÙ ÇA VIENT — Franck, 16/09/2026 : « pourquoi ça peut pas recalculer direct
   automatiquement Yoast ? » — puis « ok mais pour les articles, les pages, les events ».
@@ -72,9 +72,29 @@ function cs_yoast_titre_seo($post) {
 }
 
 function cs_yoast_paper($post) {
-    $id     = (int) $post->ID;
-    $locale = function_exists('pll_get_post_language') ? pll_get_post_language($id, 'locale') : '';
-    if (!$locale) { $locale = get_locale(); }
+    global $wpdb;
+    $id = (int) $post->ID;
+    // LA LOCALE DU SITE, PAS CELLE DE L'ARTICLE — vérifié le 16/09 sur le panneau collé
+    // par Franck : l'éditeur juge un texte italien avec les règles françaises (« 65 % de
+    // phrases de plus de 20 mots », seuil français ; « aucun mot de transition », il
+    // cherche les français). Servir la locale Polylang donnait 90 de lisibilité là où
+    // l'éditeur dit 60. On sert ce que l'éditeur fait, pas ce qu'il devrait faire.
+    $locale      = get_locale();
+    $post_locale = function_exists('pll_get_post_language') ? (string) pll_get_post_language($id, 'locale') : '';
+    // L'IMAGE MISE EN AVANT compte dans l'analyse (« Images : bon travail » sur un corps
+    // sans balise img) : l'éditeur l'ajoute au texte, on sert son HTML pour faire pareil.
+    $thumb        = get_post_thumbnail_id($id);
+    $featured     = $thumb ? get_the_post_thumbnail($id, 'full') : '';
+    // « Expression clé utilisée précédemment » : combien d'AUTRES contenus publiés
+    // portent la même clé (greffon previouslyUsedKeywords, barème 0 → 9, 1 → 6, 2+ → 1).
+    $kw = (string) get_post_meta($id, '_yoast_wpseo_focuskw', true);
+    $kw_ailleurs = 0;
+    if ($kw !== '') {
+        $kw_ailleurs = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta} m JOIN {$wpdb->posts} p ON p.ID = m.post_id
+              WHERE m.meta_key = '_yoast_wpseo_focuskw' AND m.meta_value = %s AND m.post_id <> %d
+                AND p.post_status = 'publish'", $kw, $id));
+    }
     $date = '';
     try { $date = YoastSEO()->helpers->date->format_translated($post->post_date, 'M j, Y'); }
     catch (\Throwable $e) { $date = date_i18n('M j, Y', strtotime($post->post_date)); }
@@ -82,7 +102,10 @@ function cs_yoast_paper($post) {
         'id'            => $id,
         'type'          => $post->post_type,
         'locale'        => $locale,
-        'keyword'       => (string) get_post_meta($id, '_yoast_wpseo_focuskw', true),
+        'post_locale'   => $post_locale,
+        'featured_html' => $featured,
+        'kw_utilisee_ailleurs' => $kw_ailleurs,
+        'keyword'       => $kw,
         'title'         => cs_yoast_titre_seo($post),
         'description'   => (string) get_post_meta($id, '_yoast_wpseo_metadesc', true),
         'slug'          => $post->post_name,
@@ -151,6 +174,11 @@ function cs_yoast_reconstruire_indexable($id, $type) {
 
 /**
  * POST — {"scores":[{"id":8236,"seo":84,"readability":90}, …]}
+ * `seo` peut être null : fiche SANS expression clé (196 événements sur 364 le 17/09, le
+ * SEO se pose après publication). On écrit alors la lisibilité seule et on laisse la
+ * colonne SEO à « Aucune expression clé », comme l'éditeur. Sans ça, le moteur rendait
+ * -637 et cette route refusait 107 fiches sur 300 — qui se seraient représentées chaque
+ * jour, refusées à l'identique (règle 3 de CLAUDE.md).
  */
 function cs_yoast_scores(WP_REST_Request $req) {
     global $wpdb;
@@ -161,16 +189,17 @@ function cs_yoast_scores(WP_REST_Request $req) {
     $ecrits = 0; $erreurs = array();
     foreach ($b['scores'] as $s) {
         $id  = (int) ($s['id'] ?? 0);
-        $seo = (int) ($s['seo'] ?? -1);
+        $sans_cle = !isset($s['seo']) || $s['seo'] === null || $s['seo'] === '';
+        $seo = $sans_cle ? null : (int) $s['seo'];
         $lis = (int) ($s['readability'] ?? -1);
         $p   = $id ? get_post($id) : null;
         if (!$p || !in_array($p->post_type, cs_yoast_types_autorises(), true) || $p->post_status !== 'publish') {
             $erreurs[] = "$id : absent, non publié ou type non couvert"; continue;
         }
-        if ($seo < 0 || $seo > 100 || $lis < 0 || $lis > 100) {
-            $erreurs[] = "$id : notes hors de 0-100 ($seo / $lis)"; continue;
+        if (($seo !== null && ($seo < 0 || $seo > 100)) || $lis < 0 || $lis > 100) {
+            $erreurs[] = "$id : notes hors de 0-100 (" . ($seo ?? 'null') . " / $lis)"; continue;
         }
-        update_post_meta($id, '_yoast_wpseo_linkdex', (string) $seo);
+        if ($seo !== null) { update_post_meta($id, '_yoast_wpseo_linkdex', (string) $seo); }
         update_post_meta($id, '_yoast_wpseo_content_score', (string) $lis);
         update_post_meta($id, 'cs_score_at', $p->post_modified_gmt);
         update_post_meta($id, 'cs_score_par', 'node-yoastseo');
@@ -179,6 +208,10 @@ function cs_yoast_scores(WP_REST_Request $req) {
         $ecrits++;
     }
     // RECOMPTE en base après écriture (règle 6) : ce que la colonne va afficher.
+    // « sans_score » = aucune note de lisibilité (jamais passée ici ni dans l'éditeur) ;
+    // « sans_cle » = pas d'expression clé, donc pas de note SEO possible. Deux périmètres,
+    // deux compteurs — compter les sans-clé dans les sans-note les aurait fait passer
+    // pour un travail en retard alors que c'est seo_batch qui les attend.
     $recompte = array();
     foreach (cs_yoast_types_autorises() as $t) {
         $recompte[$t] = array(
@@ -188,7 +221,12 @@ function cs_yoast_scores(WP_REST_Request $req) {
                 "SELECT COUNT(*) FROM {$wpdb->posts} p
                   WHERE p.post_type=%s AND p.post_status='publish'
                     AND NOT EXISTS (SELECT 1 FROM {$wpdb->postmeta} m WHERE m.post_id=p.ID
-                                    AND m.meta_key='_yoast_wpseo_linkdex' AND m.meta_value<>'')", $t)),
+                                    AND m.meta_key='_yoast_wpseo_content_score' AND m.meta_value<>'')", $t)),
+            'sans_cle'   => (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} p
+                  WHERE p.post_type=%s AND p.post_status='publish'
+                    AND NOT EXISTS (SELECT 1 FROM {$wpdb->postmeta} m WHERE m.post_id=p.ID
+                                    AND m.meta_key='_yoast_wpseo_focuskw' AND m.meta_value<>'')", $t)),
         );
     }
     return array('ecrits' => $ecrits, 'erreurs' => $erreurs, 'recompte' => $recompte);
