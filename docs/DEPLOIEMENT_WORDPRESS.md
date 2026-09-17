@@ -435,5 +435,16 @@ porte un filtre (`wpseo_filter_shortcodes`) qui remplace chaque shortcode par sa
 avant de noter : l'éditeur, lui, voit la liste d'événements rendue (~377 mots, images,
 liens). La route sert donc `do_shortcode(post_content)` — 260 pages sur 306 sont
 concernées, aucun événement ni article. Déposée avec sauvegarde `.bak-2026-09-17-v12`
-(md5 v1.3 `4127499d…`, 13 433 octets). **À vérifier par une mesure, pas par
-raisonnement** : ouvrir la page 7771 dans l'éditeur et comparer sa note à celle du moteur.
+(md5 v1.3 `4127499d…`, 13 433 octets). Appliqué aux 306 pages le 17/09 à 12h11 : les pages de gabarit passent de 50-59 à 75-80.
+
+**Une vingtaine tombent à 44 au lieu de monter** (« aujourd'hui » et « cette semaine » de
+Chambéry, Aoste, Nice, Savoie, Albertville, Aix-les-Bains ; les pages de ville Chambéry,
+Aix, Albertville). J'ai d'abord annoncé que le moteur « ne trouvait la clé nulle part »,
+puis soupçonné les apostrophes — deux inférences, toutes deux fausses. Le texte exact de
+l'évaluation, imprimé par le moteur, dit l'inverse : « expression clé trouvée 10 fois,
+bien plus que le maximum recommandé de 4 » (2595), 27 fois pour 15 (page Chambéry). La
+liste rendue répète la ville et la période à chaque carte, et Yoast juge une page de
+liste comme un article : sur-optimisation, -50. Les jumelles « ce week-end » sortent à
+« trouvée 0 fois » (orange, 4), parce que « week-end » se coupe en deux mots. Ce n'est
+pas un défaut du moteur, c'est Yoast qui n'a pas de barème pour une page de liste. À
+confirmer dans l'éditeur sur 2595 (attendu : la même phrase, 10 fois pour 4).
