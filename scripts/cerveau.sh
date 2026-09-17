@@ -95,7 +95,14 @@ CODE=$?
 if [ $CODE -ne 0 ]; then
   # Un échec SILENCIEUX du cerveau ressemblerait à un matin sans rien à faire —
   # exactement le zéro qui ne dit pas d'où il vient. On le dit.
+  #
+  # 17/09 : ce bloc journalisait le code retour mais JAMAIS $SORTIE — or c'est là,
+  # sur stdout, que `claude -p` écrit souvent le vrai message d'erreur (ex. crédit
+  # API épuisé, vu ce jour-là dans logs/image_audit.log au même moment). Résultat :
+  # 17 jours d'affilée (01→17/09) de « code 1 » sans autre indice dans le journal,
+  # alors que la cause tenait probablement en une ligne depuis le premier jour.
   echo "claude -p a échoué (code $CODE)" >> "$JOURNAL"
+  printf '%s\n' "$SORTIE" >> "$JOURNAL"
   printf '%s\n' "⚠️ Le cerveau de 10h40 n'a pas pu tourner (claude -p, code $CODE). Voir logs/cerveau.log — les signalements du jour n'ont PAS été traités." \
     | .venv/bin/python scripts/slack_send.py
   exit $CODE
