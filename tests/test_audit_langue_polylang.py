@@ -53,9 +53,18 @@ FICHES = [
     #    signaler, et une file qui signale tout ne désigne plus rien.
     (2, "Concert de la Philharmonie de la Scala", "Le concert est donné dans la grande "
      "salle, avec une entrée libre pour tous les spectateurs.", "Piemonte", 1, "fr"),
-    # 3. LE CAS QUI DOIT SORTIR : titre-programme sans phrase, aucun marqueur de langue.
-    #    Le territoire italien départage seul et emporte la fiche du mauvais côté.
+    # 3. LE CAS QUI DOIT SORTIR : une traduction française dont l'adresse enregistrée
+    #    est du versant ITALIEN — WordPress l'a rangée du mauvais côté à sa dernière
+    #    publication. (Avant le 17/09 cette fiche sortait pour un autre motif : titre sans
+    #    marqueur, territoire italien qui départage. Ce motif n'existe plus, _lang lit
+    #    translated_lang. L'adresse, elle, reste une mesure.)
     (3, "Brahms / Chostakovitch", "Brahms, Chostakovitch.", "Piemonte", 1, "fr"),
+    # 3 bis. L'INCIDENT DU 17/09, à l'envers : une traduction ITALIENNE dont l'adresse
+    #    n'a PAS de préfixe /it/ — donc servie côté français (WP#9209). Avant, une adresse
+    #    sans préfixe passait pour « muette » et ce cas ne sortait pas.
+    (6, "Open Factories 2026: le fabbriche di Torino aprono le porte",
+     "Tre giorni prima di Terra Madre, Torino apre ai visitatori i suoi laboratori.",
+     "Piemonte", 1, "it"),
     # 4. LE CAS TROUVÉ EN PRODUCTION (fiche 3509) : une traduction en ligne dont
     #    l'ORIGINAL, lui, n'est pas publié — une fiche radar que `publish_batch_as`
     #    écarte à chaque passage. `--retranslate` partirait donc d'une fiche que la
@@ -66,9 +75,9 @@ FICHES = [
 ]
 # La fiche 5 n'a pas de page : c'est ce qui rend le geste impossible pour la 4.
 SANS_PAGE = {5}
-# Adresses : la 3 est encore du bon côté (risque À VENIR), la 4 est DÉJÀ passée côté
-# italien — deux situations que le relevé ne doit pas confondre.
-COTE_SERVI = {3: "fr", 4: "it"}
+# Adresses : 2 et 6 sans préfixe (versant français), 3 et 4 avec /it/. La 2 est voulue
+# fr → rien à dire ; la 6 est voulue it → écart ; 3 et 4 voulues fr → écart.
+COTE_SERVI = {3: "it", 4: "it"}
 
 conn = sqlite3.connect(tmp)
 init_db(conn)
@@ -111,10 +120,14 @@ _check("l'ORIGINAL n'est pas signalé non plus — il n'a pas de langue demandé
        "Concerto della Filarmonica" not in sortie, sortie)
 
 print("\n──── ce qui doit sortir, sort ────")
-_check("la traduction que le territoire emporte est signalée",
+_check("la traduction rangée du mauvais versant est signalée",
        "Brahms / Chostakovitch" in sortie, sortie)
-_check("   avec la langue VOULUE et la langue DEVINÉE côte à côte",
-       "| 3 | fr | it |" in sortie, sortie[sortie.find("| Fiche"):][:500])
+_check("   avec la langue VOULUE et la langue SERVIE côte à côte",
+       "| 3 | fr | **it** |" in sortie, sortie[sortie.find("| Fiche"):][:500])
+_check("l'incident du 17/09 : une traduction italienne servie sans préfixe /it/ sort aussi",
+       "| 6 | it | **fr** |" in sortie, sortie[sortie.find("| Fiche"):][:600])
+_check("   le compte des écarts est 3 (fiches 3, 4 et 6), pas 4 (la 2 est du bon côté)",
+       "Du mauvais versant     : 3" in sortie, sortie[:700])
 # ⚠️ L'ADRESSE DONNÉE DOIT ÊTRE CELLE QUI RÉPOND. Le 2026-08-17, ce relevé affichait le
 # lien public ; Franck l'a ouvert et a vu « 404 Pagina non trovata » — la forme `?p=<id>`
 # rend 404 pour TOUT tribe_events, en ligne ou non, et CLAUDE.md le documente depuis le
@@ -128,23 +141,15 @@ _check("   allégée pour être lisible dans un navigateur",
 _check("   et le relevé dit POURQUOI le lien public ne vaut rien ici",
        "répond 404 pour tout tribe_events" in sortie, sortie[:1800])
 
-print("\n──── un risque À VENIR et un fait ACCOMPLI ne se disent pas pareil ────")
-# Les deux fiches sortent pour le même motif calculé, mais l'une est encore du bon côté
-# et l'autre a déjà basculé. Les mélanger ferait lire « à surveiller » là où il faut lire
-# « un lecteur tombe dessus aujourd'hui ».
-_check("la page déjà passée côté italien est signalée comme telle",
-       "était DÉJÀ du mauvais côté" in sortie, sortie)
-_check("   et le compte distingue les deux situations",
-       "1 sur 2 n'est pas un risque À VENIR" in sortie, sortie)
-_check("la colonne « Servie » ne met en gras que ce qui contredit la langue voulue",
-       "| **it** |" in sortie and "| fr | it | fr |" in sortie,
-       sortie[sortie.find("| Fiche"):][:500])
+print("\n──── le témoin de code : _lang ne devine plus une traduction ────")
+_check("aucune régression signalée : _lang rend translated_lang pour les 4 traductions",
+       "RÉGRESSION DE CODE" not in sortie, sortie[:900])
 
 print("\n──── les nombres disent leur périmètre ────")
 _check("le total examiné est affiché à côté du total publié",
        "EXAMINÉES ici" in sortie and "encore devant nous" in sortie, sortie[:600])
-_check("le relevé compte les 3 traductions, pas les 5 fiches",
-       "Traductions publiées   : 3" in sortie, sortie[:600])
+_check("le relevé compte les 4 traductions, pas les 6 fiches",
+       "Traductions publiées   : 4" in sortie, sortie[:600])
 
 print("\n──── le geste n'est proposé que quand il existe ────")
 _check("il propose --retranslate pour l'original qui EST en ligne",
@@ -162,7 +167,7 @@ print("\n──── un zéro doit dire son dénominateur ────")
 # « aucun écart sur N examinée(s) », jamais un 0 nu. Un zéro sans dénominateur ressemble
 # exactement à un monde où il n'y a rien à trouver (journal du 2026-08-11).
 c = sqlite3.connect(tmp)
-c.execute("DELETE FROM events_raw WHERE id IN (3,4)")  # base JETABLE, pas data/events.db
+c.execute("DELETE FROM events_raw WHERE id IN (3,4,6)")  # base JETABLE, pas data/events.db
 c.commit(); c.close()
 buf = io.StringIO()
 with contextlib.redirect_stdout(buf):

@@ -81,5 +81,33 @@ _check("sans article, titre français → fr",
        _lang(_ev("Le panthéon égyptien s'expose à Bra", "Une exposition consacrée aux dieux "
                  "de l'Égypte ancienne, avec des pièces du musée de Turin.")) == "fr")
 
+print("\n──── l'incident du 17/09 : une traduction republiée sans force_lang ────")
+# WP#9209, jumelle italienne d'« Open Factories », republiée par seo_batch le 16/09 :
+# le titre porte deux « le » (article italien pluriel), le corps est entièrement italien.
+CHAPO_OF = ("Tre giorni prima di Terra Madre, Torino apre ai visitatori i suoi laboratori "
+            "agroalimentari. Dal 17 al 19 settembre si potranno percorrere fabbriche, "
+            "laboratori e aziende della provincia.")
+JUMELLE = _ev("Open Factories 2026: le fabbriche di Torino aprono le porte", "", CHAPO_OF, "",
+              article_title="Open Factories 2026: le fabbriche di Torino aprono le porte",
+              translation_of=4640, translated_lang="it")
+_check("jumelle (translation_of + translated_lang='it') sans force_lang → it, sans rien détecter",
+       _lang(JUMELLE) == "it")
+_check("le même titre SANS translation_of : le détecteur seul rend aussi it (« le » n'est plus français)",
+       _lang({**JUMELLE, "translation_of": None, "translated_lang": None}) == "it")
+_check("WP#9201 « Le Voiles Maralpines tornano a Villefranche-sur-Mer », corps italien → it",
+       _lang(_ev("Le Voiles Maralpines tornano a Villefranche-sur-Mer", "",
+                 "Dal 15 al 20 settembre 2026, sessanta imbarcazioni tradizionali ancorano a "
+                 "Villefranche-sur-Mer per la seconda edizione delle Voiles Maralpines.", "",
+                 article_title="Le Voiles Maralpines tornano a Villefranche-sur-Mer")) == "it")
+# Près de la frontière, et qui doit PASSER : un titre français qui ne tient au français
+# que par « le » et un nom propre reste fr grâce à son article.
+_check("« Le Marché au Fort revient à Bard » + article français → fr (retirer « le » ne francise rien de moins)",
+       _lang(_ev("Le Marché au Fort revient à Bard", "",
+                 "Les producteurs de la Vallée d'Aoste s'installent dans le bourg médiéval pour "
+                 "deux jours de dégustations et de rencontres.", "",
+                 article_title="Le Marché au Fort revient à Bard")) == "fr")
+_check("translated_lang aberrant ('xx') → on retombe sur la détection, pas sur une erreur",
+       _lang({**JUMELLE, "translated_lang": "xx"}) == "it")
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)
