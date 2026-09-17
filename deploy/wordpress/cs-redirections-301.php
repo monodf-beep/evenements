@@ -82,6 +82,16 @@ add_action('template_redirect', function () {
         '/it/evenement/caveau-nasce-a-torino-un-nuovo-progetto-artistico-tra-mostre-gratuite-e-spazi-inediti-2/'
             => '/evenement/caveau-nasce-a-torino-un-nuovo-progetto-artistico-tra-mostre-gratuite-e-spazi-inediti/',
 
+        // 2026-09-17 : « EVO 2026 » (tournoi de jeux de combat, Nice), TROIS posts pour
+        // le même événement — repéré par l'audit de doublons quotidien, mais son
+        // groupement par coïncidence (ville + dates + jetons) avait aussi attrapé à
+        // tort la paire FR/IT saine 8954↔9302 (vérifié : liée en Polylang, pas un
+        // doublon). Le seul vrai doublon était 7639 : un troisième article FR isolé,
+        // sans jumelle, publié le 17/08 sous un angle différent. Corbeillé (réversible),
+        // son adresse suit vers la fiche qui reste.
+        '/evenement/evo-france-2026-nice-accueille-le-circuit-mondial-de-jeux-de-combat/'
+            => '/evenement/evo-2026-a-nice-trois-jeux-inedits-et-1-000-places-supplementaires/',
+
         '/selections/ce-week-end/'                    => '/ce-week-end/',
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',
         '/selections/que-faire-a-annecy-ce-week-end/' => '/que-faire-a-annecy/ce-week-end/',
