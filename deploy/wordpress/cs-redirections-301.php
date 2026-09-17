@@ -103,13 +103,16 @@ add_action('template_redirect', function () {
         // pour « les sites de l'eau » (8884 fr / 9688 it). Aucune des deux ne clique,
         // mais l'une a au moins de la visibilité.
         //
-        // ⚠️ SEULE LA LIGNE FR EST ICI. 8884 (fr) est corbeillé, sa ligne marche. La
-        // ligne IT (9688) est VOLONTAIREMENT ABSENTE : ce post est contaminé — son
-        // titre ET son corps appartiennent à un autre événement (« Mobilità dolce a
-        // Aix-les-Bains », id local 5690, écrasé dessus le 17/09 à 10h54, aucune autre
-        // page pour lui sur le site). Rediriger cette adresse ferait disparaître la
-        // seule page publique de Mobilità dolce avant de l'avoir sauvée. À ajouter
-        // SEULEMENT une fois 5690 republié sous son propre post et 9688 corbeillé.
+        // ⚠️ SEULE LA LIGNE FR EST ICI, ET C'EST DÉFINITIF, PAS PROVISOIRE. Le post IT
+        // (9688) avait été contaminé le 17/09 par un autre événement (« Mobilità dolce
+        // a Aix-les-Bains », id local 5690, écrasé dessus par erreur). Réparé le même
+        // jour : 5690 republié sur CE MÊME post (l'idempotence de cs-publish.php l'a
+        // retrouvé par titre+date malgré wp_post_id_as vidé), puis son slug corrigé
+        // pour correspondre à son vrai contenu. Résultat : l'ancienne adresse
+        // « les-sites-de-leau-2 » redirige déjà TOUTE SEULE (mécanisme natif WordPress
+        // sur un slug renommé, _wp_old_slug) vers la vraie page de Mobilità dolce —
+        // ne JAMAIS ajouter ici de ligne vers Revard pour cette adresse, ça
+        // détournerait les lecteurs du bon contenu vers le mauvais.
         '/evenement/journees-du-patrimoine-a-aix-les-bains-les-sites-de-leau/'
             => '/evenement/journees-du-patrimoine-2026-a-aix-les-bains-palaces-danse-et-train-du-revard/',
 
