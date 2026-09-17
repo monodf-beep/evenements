@@ -65,10 +65,18 @@ $EFFACER   = false;
 // longueur qu'il mesure, pour tout contenu, pages comprises — lu dans son code sur le
 // serveur (description-data-provider.php). Le plafond utile est donc 140, pas 156, et
 // 58 de ces pages sortaient orange avec le gabarit précédent (102 caractères de suffixe
-// + « Que faire à Saint-Jean-de-Maurienne cette semaine » = 151). Suffixe ramené à 86 /
-// 76 : la clé la plus longue donne 135.
+// + « Que faire à Saint-Jean-de-Maurienne cette semaine » = 151). Suffixe ramené à 89 /
+// 79 : la clé la plus longue (« Que faire dans la province d'Alexandrie cette semaine »,
+// 53) donne 139. Le dry-run du 17/09 avait montré 2 pages à 142 avec « et en italien » :
+// c'est la mesure, pas l'estimation, qui a fixé le suffixe français à 86.
+//
+// APPLIQUÉ le 17/09/2026 à midi, après le dry-run : 193 pages de gabarit, 193 réécrites,
+// 45 dépassaient 140 avant, 0 après parmi elles (recompté en base : il reste 13 pages
+// au-dessus de 140, toutes écrites à la main — voir seo-desc-pages-manuelles.php). Puis renotées par
+// `scripts.yoast_scores --types page --tout --apply`, puisqu'une méta ne change pas
+// post_modified et que le cron ne les aurait pas revues.
 $SUFFIXE = array(
-    'fr' => " : expositions, concerts, marchés et fêtes, horaires et lieux. En français et en italien.",
+    'fr' => " : expositions, concerts, marchés et fêtes, horaires et lieux. En français et italien.",
     'it' => ": mostre, concerti, mercati e feste, orari e luoghi. In italiano e in francese.",
 );
 $MARQUE = ' | Agenda Sabauda';
