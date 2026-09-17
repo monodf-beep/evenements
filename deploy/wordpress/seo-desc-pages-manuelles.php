@@ -11,7 +11,14 @@
  * TERRITOIRE (Turin, Nice, Aoste, Chambéry, Chablais, province de Turin, en deux langues)
  * plus « Où manger » / « Dove Mangiare ». Les treize textes ci-dessous sont les mêmes,
  * coupés sur leur dernière proposition ; la clé reste en tête, la voix ne change pas.
- * Proposés à Franck avant application.
+ * Proposés à Franck, qui a dit « ok » le 17/09 au soir.
+ *
+ * APPLIQUÉ le 17/09/2026 à 23h, depuis la session (canal Novamira, même code que ci-dessous
+ * avec $APPLIQUER = true) : 13 écrites, 13 anciens textes sauvegardés dans `cs_desc_avant`,
+ * et recompté en base : 0 page publiée avec une description de plus de 140 caractères
+ * (il y en avait 58 le matin même). Ces pages sont à renoter à la main — une méta ne
+ * change pas post_modified, le cron ne les reverra pas :
+ *   .venv/bin/python -m scripts.yoast_scores --ids 2464 2472 2444 1811 1812 2468 2473 6118 2469 2466 2467 2443 6109 --tout --apply
  *
  * RÉVERSIBLE : l'ancien texte est sauvegardé dans `cs_desc_avant` (jamais écrasé s'il
  * existe déjà). `$RETABLIR = true` le remet en place.
