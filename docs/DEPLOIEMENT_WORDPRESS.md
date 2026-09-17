@@ -448,3 +448,16 @@ liste comme un article : sur-optimisation, -50. Les jumelles « ce week-end » s
 « trouvée 0 fois » (orange, 4), parce que « week-end » se coupe en deux mots. Ce n'est
 pas un défaut du moteur, c'est Yoast qui n'a pas de barème pour une page de liste. À
 confirmer dans l'éditeur sur 2595 (attendu : la même phrase, 10 fois pour 4).
+
+**Démenti par la capture d'écran, 17/09 à 13h.** Franck a ouvert 2595 : « Le texte contient
+0 mot », « Il n'y a pas d'image dans cette page », « aucun lien interne », densité « trouvée
+0 fois ». L'éditeur ne rend PAS les shortcodes — le filtre de post-edit.js n'était qu'une
+lecture de code, jamais mesurée. Il passe au moteur la liste des shortcodes enregistrés
+(attribut `shortcodes` du Paper) et le moteur les EFFACE. Deux versions fausses en une
+journée (v1.3 : shortcodes rendus, 75-80 ; et le « 10 fois pour 4 » ci-dessus, calculé
+sur le texte rendu, donc sur une page que l'éditeur ne voit pas). La v1.4 sert cette liste
+(31 shortcodes enregistrés) et le contenu brut ; le moteur reproduit alors la capture
+ligne par ligne, et la fixture porte 2595 comme témoin par le détail, avec sa
+contre-épreuve (sans la liste, la densité n'est plus celle de l'éditeur). Déposée avec
+sauvegarde `.bak-2026-09-17-v13` (md5 v1.4 `6693f626…`, 13 807 octets). Les 306 pages
+sont à renoter, puisque la v1.3 a écrit des notes que l'éditeur contredira.
