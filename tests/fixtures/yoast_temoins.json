@@ -88,5 +88,35 @@
   "attendu_seo": 85,
   "attendu_lisibilite": 60,
   "source": "note stockée par l'éditeur, non périmée"
+ },
+ {
+  "id": 2595,
+  "type": "page",
+  "locale": "fr_FR",
+  "featured_html": "",
+  "kw_utilisee_ailleurs": 0,
+  "keyword": "Que faire à Chambéry aujourd'hui",
+  "title": "Que faire à Chambéry aujourd'hui ? | Agenda Sabauda",
+  "description": "Que faire à Chambéry aujourd'hui : expositions, concerts, marchés et fêtes, horaires et lieux. En français et italien.",
+  "slug": "aujourdhui",
+  "permalink": "https://agendasabauda.eu/que-faire-a-chambery/aujourdhui/",
+  "date": "Juil 22, 2026",
+  "post_title": "Que faire à Chambéry aujourd'hui ?",
+  "content": "[cs_hub_ville villes=\"Chambéry\" territoire=\"savoie\" quand=\"aujourdhui\"]",
+  "shortcodes": [
+   "cs_hub_ville",
+   "cs_villes_du_territoire"
+  ],
+  "attendu_seo": null,
+  "attendu_lisibilite": null,
+  "attendu_detail": {
+   "textLength": -20,
+   "keyphraseDensity": 4,
+   "introductionKeyword": 6,
+   "images": 3,
+   "internalLinks": 3,
+   "externalLinks": 3
+  },
+  "source": "capture d'écran de l'éditeur, 17/09/2026 13h : « 0 mot », densité « trouvée 0 fois », six problèmes, deux améliorations — la note globale n'est pas affichée"
  }
 ]
