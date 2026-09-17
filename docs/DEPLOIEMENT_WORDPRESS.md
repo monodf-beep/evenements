@@ -426,3 +426,14 @@ colonne à « Aucune expression clé ». La v1.2 fait pareil : `seo` null accept
 seule écrite, `cs_score_at` posé (la fiche ne se représente que quand seo_batch la
 modifie), et le recompte sépare « sans note » de « sans clé ». Déposée par le même canal,
 sauvegarde `.bak-2026-09-17` (md5 v1.2 `7603fa28…`, 12 676 octets).
+
+**v1.3, 17/09 à midi — les shortcodes sont rendus avant l'analyse.** Après réécriture des
+descriptions des 193 pages de gabarit, leurs notes n'avaient bougé que de deux points
+(50 → 52, 57 → 59). Le détail du moteur l'a dit en une ligne : `textLength = -20`, zéro
+mot. Le contenu de ces pages n'est qu'un `[cs_hub_ville …]`. Or `post-edit.js` de Yoast
+porte un filtre (`wpseo_filter_shortcodes`) qui remplace chaque shortcode par sa sortie
+avant de noter : l'éditeur, lui, voit la liste d'événements rendue (~377 mots, images,
+liens). La route sert donc `do_shortcode(post_content)` — 260 pages sur 306 sont
+concernées, aucun événement ni article. Déposée avec sauvegarde `.bak-2026-09-17-v12`
+(md5 v1.3 `4127499d…`, 13 433 octets). **À vérifier par une mesure, pas par
+raisonnement** : ouvrir la page 7771 dans l'éditeur et comparer sa note à celle du moteur.
