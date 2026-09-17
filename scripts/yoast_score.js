@@ -11,7 +11,7 @@
 //
 // Entrée : JSON sur stdin, tableau de fiches telles que cs/v1/yoast-papers les sert
 //   {id, content, keyword, title, description, slug, permalink, locale, post_title, date,
-//    featured_html, kw_utilisee_ailleurs}
+//    featured_html, kw_utilisee_ailleurs, shortcodes}
 // Sortie : JSON sur stdout, [{id, seo, lisibilite, seo_detail, lis_detail}] — seo vaut null
 //   quand la fiche n'a pas d'expression clé (l'éditeur n'en donne pas non plus).
 //
@@ -77,6 +77,9 @@ function scorer(e) {
     locale: e.locale || "fr_FR",
     date: e.date || "",
     textTitle: e.post_title || "",
+    // Les shortcodes enregistrés sont EFFACÉS du texte par le moteur, comme dans
+    // l'éditeur (mesuré le 17/09 sur la page 2595 : « 0 mot »). La route sert la liste.
+    shortcodes: Array.isArray(e.shortcodes) ? e.shortcodes : [],
   });
   const researcher = new R(paper);
   const lis = new ContentAssessor(researcher, {});

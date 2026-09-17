@@ -426,3 +426,38 @@ colonne à « Aucune expression clé ». La v1.2 fait pareil : `seo` null accept
 seule écrite, `cs_score_at` posé (la fiche ne se représente que quand seo_batch la
 modifie), et le recompte sépare « sans note » de « sans clé ». Déposée par le même canal,
 sauvegarde `.bak-2026-09-17` (md5 v1.2 `7603fa28…`, 12 676 octets).
+
+**v1.3, 17/09 à midi — les shortcodes sont rendus avant l'analyse.** Après réécriture des
+descriptions des 193 pages de gabarit, leurs notes n'avaient bougé que de deux points
+(50 → 52, 57 → 59). Le détail du moteur l'a dit en une ligne : `textLength = -20`, zéro
+mot. Le contenu de ces pages n'est qu'un `[cs_hub_ville …]`. Or `post-edit.js` de Yoast
+porte un filtre (`wpseo_filter_shortcodes`) qui remplace chaque shortcode par sa sortie
+avant de noter : l'éditeur, lui, voit la liste d'événements rendue (~377 mots, images,
+liens). La route sert donc `do_shortcode(post_content)` — 260 pages sur 306 sont
+concernées, aucun événement ni article. Déposée avec sauvegarde `.bak-2026-09-17-v12`
+(md5 v1.3 `4127499d…`, 13 433 octets). Appliqué aux 306 pages le 17/09 à 12h11 : les pages de gabarit passent de 50-59 à 75-80.
+
+**Une vingtaine tombent à 44 au lieu de monter** (« aujourd'hui » et « cette semaine » de
+Chambéry, Aoste, Nice, Savoie, Albertville, Aix-les-Bains ; les pages de ville Chambéry,
+Aix, Albertville). J'ai d'abord annoncé que le moteur « ne trouvait la clé nulle part »,
+puis soupçonné les apostrophes — deux inférences, toutes deux fausses. Le texte exact de
+l'évaluation, imprimé par le moteur, dit l'inverse : « expression clé trouvée 10 fois,
+bien plus que le maximum recommandé de 4 » (2595), 27 fois pour 15 (page Chambéry). La
+liste rendue répète la ville et la période à chaque carte, et Yoast juge une page de
+liste comme un article : sur-optimisation, -50. Les jumelles « ce week-end » sortent à
+« trouvée 0 fois » (orange, 4), parce que « week-end » se coupe en deux mots. Ce n'est
+pas un défaut du moteur, c'est Yoast qui n'a pas de barème pour une page de liste. À
+confirmer dans l'éditeur sur 2595 (attendu : la même phrase, 10 fois pour 4).
+
+**Démenti par la capture d'écran, 17/09 à 13h.** Franck a ouvert 2595 : « Le texte contient
+0 mot », « Il n'y a pas d'image dans cette page », « aucun lien interne », densité « trouvée
+0 fois ». L'éditeur ne rend PAS les shortcodes — le filtre de post-edit.js n'était qu'une
+lecture de code, jamais mesurée. Il passe au moteur la liste des shortcodes enregistrés
+(attribut `shortcodes` du Paper) et le moteur les EFFACE. Deux versions fausses en une
+journée (v1.3 : shortcodes rendus, 75-80 ; et le « 10 fois pour 4 » ci-dessus, calculé
+sur le texte rendu, donc sur une page que l'éditeur ne voit pas). La v1.4 sert cette liste
+(31 shortcodes enregistrés) et le contenu brut ; le moteur reproduit alors la capture
+ligne par ligne, et la fixture porte 2595 comme témoin par le détail, avec sa
+contre-épreuve (sans la liste, la densité n'est plus celle de l'éditeur). Déposée avec
+sauvegarde `.bak-2026-09-17-v13` (md5 v1.4 `6693f626…`, 13 807 octets). Les 306 pages
+sont à renoter, puisque la v1.3 a écrit des notes que l'éditeur contredira.

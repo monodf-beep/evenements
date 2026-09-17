@@ -64,6 +64,14 @@ notes = {r["id"]: r for r in noter(temoins)}
 
 for t in temoins:
     r = notes[t["id"]]
+    if t.get("attendu_detail"):
+        # Témoin par le DÉTAIL : l'éditeur n'affiche pas la note globale d'une page, mais
+        # ses lignes. WP#2595 n'est qu'un shortcode ; l'éditeur le voit VIDE (« 0 mot »).
+        detail = {d["id"]: d["score"] for d in r["seo_detail"]}
+        for cle, attendu in t["attendu_detail"].items():
+            verifier(f"WP#{t['id']} : {cle} = {attendu} comme dans l'éditeur", detail.get(cle) == attendu,
+                     f"obtenu {detail.get(cle)}")
+        continue
     verifier(f"WP#{t['id']} : SEO {t['attendu_seo']} retrouvé à l'unité",
              r["seo"] == t["attendu_seo"], f"obtenu {r['seo']}")
     verifier(f"WP#{t['id']} : lisibilité {t['attendu_lisibilite']} retrouvée",
@@ -98,6 +106,13 @@ verifier("locale it_IT : le moteur italien se charge et rend une note SEO entre 
 verifier("locale it_IT : lisibilité dans les paliers de Yoast", ri["lisibilite"] in (0, 30, 60, 90), str(ri["lisibilite"]))
 verifier("locale it_IT : le texte italien de Nice passe de 60 (règles françaises) à 90 (règles italiennes)",
          ri["lisibilite"] == 90 and r_nice["lisibilite"] == 60, f"{r_nice['lisibilite']} → {ri['lisibilite']}")
+
+# Contre-épreuve du shortcode : SANS la liste, le moteur lit « [cs_hub_ville …] » comme du
+# texte et la densité passe à 9 — c'est exactement ce que faisait le moteur avant le 17/09.
+page = next(t for t in temoins if t["id"] == 2595)
+[sans_liste] = noter([{**page, "shortcodes": []}])
+verifier("shortcode non déclaré : la densité n'est plus celle de l'éditeur (contre-épreuve)",
+         {d["id"]: d["score"] for d in sans_liste["seo_detail"]}.get("keyphraseDensity") != 4)
 
 # Sans expression clé, pas de note SEO — et surtout pas une note négative. Premier
 # passage en vrai (17/09, 00h15) : 107 fiches sur 300 rendaient -637, refusées par la

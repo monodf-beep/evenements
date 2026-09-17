@@ -5,7 +5,7 @@ Description: Deux routes REST (cs/v1/yoast-papers, cs/v1/yoast-scores) qui perme
   VPS de calculer les scores SEO et lisibilité de Yoast avec le moteur de Yoast lui-même
   (paquet npm `yoastseo`), puis de les écrire là où la colonne « Score SEO » les lit.
 Author: Cultura Sabauda
-Version: 1.2
+Version: 1.4
 
   D'OÙ ÇA VIENT — Franck, 16/09/2026 : « pourquoi ça peut pas recalculer direct
   automatiquement Yoast ? » — puis « ok mais pour les articles, les pages, les events ».
@@ -95,6 +95,19 @@ function cs_yoast_paper($post) {
               WHERE m.meta_key = '_yoast_wpseo_focuskw' AND m.meta_value = %s AND m.post_id <> %d
                 AND p.post_status = 'publish'", $kw, $id));
     }
+    // LES SHORTCODES SONT RETIRÉS, PAS RENDUS — mesuré, pas déduit. La v1.3 (17/09, 12h30)
+    // les rendait avec do_shortcode, parce que post-edit.js de Yoast porte un filtre
+    // (wpseo_filter_shortcodes) censé remplacer chaque shortcode par sa sortie. Franck a
+    // ouvert la page 2595 dans l'éditeur une heure plus tard : « Le texte contient 0 mot »,
+    // « Il n'y a pas d'image dans cette page », « aucun lien interne », densité « trouvée
+    // 0 fois ». L'éditeur ne rend rien : il passe au moteur la LISTE des shortcodes
+    // enregistrés (attribut `shortcodes` du Paper) et le moteur les efface du texte. Les
+    // 193 pages de gabarit sont donc VIDES à ses yeux, et la colonne doit dire ce que
+    // l'éditeur dit. Reproduit au détail près sur 2595 en servant cette liste : six
+    // problèmes et deux améliorations, les mêmes lignes que la capture d'écran.
+    global $shortcode_tags;
+    $content = (string) $post->post_content;
+    $shortcodes = (strpos($content, '[') !== false && is_array($shortcode_tags)) ? array_keys($shortcode_tags) : array();
     $date = '';
     try { $date = YoastSEO()->helpers->date->format_translated($post->post_date, 'M j, Y'); }
     catch (\Throwable $e) { $date = date_i18n('M j, Y', strtotime($post->post_date)); }
@@ -112,7 +125,8 @@ function cs_yoast_paper($post) {
         'permalink'     => get_permalink($id),
         'date'          => $date,
         'post_title'    => $post->post_title,
-        'content'       => $post->post_content,
+        'content'       => $content,
+        'shortcodes'    => $shortcodes,
         'modified'      => $post->post_modified_gmt,
         'linkdex'       => (string) get_post_meta($id, '_yoast_wpseo_linkdex', true),
         'content_score' => (string) get_post_meta($id, '_yoast_wpseo_content_score', true),
