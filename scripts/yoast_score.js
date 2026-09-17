@@ -12,7 +12,8 @@
 // Entrée : JSON sur stdin, tableau de fiches telles que cs/v1/yoast-papers les sert
 //   {id, content, keyword, title, description, slug, permalink, locale, post_title, date,
 //    featured_html, kw_utilisee_ailleurs}
-// Sortie : JSON sur stdout, [{id, seo, lisibilite, seo_detail, lis_detail}]
+// Sortie : JSON sur stdout, [{id, seo, lisibilite, seo_detail, lis_detail}] — seo vaut null
+//   quand la fiche n'a pas d'expression clé (l'éditeur n'en donne pas non plus).
 //
 // Aucun réseau, aucune écriture : la lecture et l'écriture WordPress sont dans
 // scripts/yoast_scores.py. Lancer à la main :
@@ -78,12 +79,24 @@ function scorer(e) {
     textTitle: e.post_title || "",
   });
   const researcher = new R(paper);
+  const lis = new ContentAssessor(researcher, {});
+  lis.assess(paper);
+  // SANS EXPRESSION CLÉ, PAS DE NOTE SEO. Trouvé le 17/09 à 00h15, premier passage en
+  // vrai : 107 fiches sur 300 rendaient -637, -651… « Longueur de l'expression clé »
+  // note -999 une clé vide, et l'agrégateur fait la moyenne sans sourciller. Ce n'est
+  // pas un cas d'erreur : 196 événements publiés sur 364 n'ont pas encore de clé (le
+  // SEO se fait APRÈS la publication, par seo_batch, qui repousse ensuite les métas).
+  // L'éditeur, lui, laisse la colonne à « Aucune expression clé » — on fait pareil :
+  // seo = null, la lisibilité seule est écrite, et la fiche se représente d'elle-même
+  // quand la clé arrive (seo_batch modifie le post, cs_score_at devient périmé).
+  if (!e.keyword) {
+    return { id: e.id, seo: null, lisibilite: lis.calculateOverallScore(), seo_detail: [],
+             lis_detail: lis.getValidResults().map(r => ({ id: r.getIdentifier(), score: r.getScore() })) };
+  }
   const seo = new SeoAssessor(researcher, {});
   seo.addAssessment("usedKeywords", evaluationCleDejaUtilisee(
     Number.isInteger(e.kw_utilisee_ailleurs) ? e.kw_utilisee_ailleurs : 0, e.keyword || ""));
   seo.assess(paper);
-  const lis = new ContentAssessor(researcher, {});
-  lis.assess(paper);
   return {
     id: e.id,
     seo: new SEOScoreAggregator().aggregate(seo.results),

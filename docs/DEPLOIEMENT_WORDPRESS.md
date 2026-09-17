@@ -416,3 +416,13 @@ mu-plugin sert ces trois choses (`locale` = `get_locale()`, `featured_html`,
 quoi le moteur retrouve à l'unité les cinq témoins de `tests/fixtures/yoast_temoins.json`
 (8236, 8231, et trois notes stockées non périmées : 2418, 2420, 8249). Le témoin 7490 est
 retiré : sa note stockée datait d'avant sa dernière modification.
+
+**Premier passage en vrai (17/09, 00h15)** : 24 articles sur 24 écrits ; puis 193 fiches
+écrites sur 300 et **107 refusées** par la route pour « notes hors de 0-100 (-637 / 60) ».
+Cause, mesurée en base : 196 événements publiés sur 364 et 62 pages sur 306 n'ont pas
+d'expression clé (pour un événement, le SEO se pose APRÈS la publication, par seo_batch).
+Yoast note -999 une clé vide et l'agrégateur fait la moyenne. L'éditeur, lui, laisse la
+colonne à « Aucune expression clé ». La v1.2 fait pareil : `seo` null accepté, lisibilité
+seule écrite, `cs_score_at` posé (la fiche ne se représente que quand seo_batch la
+modifie), et le recompte sépare « sans note » de « sans clé ». Déposée par le même canal,
+sauvegarde `.bak-2026-09-17` (md5 v1.2 `7603fa28…`, 12 676 octets).

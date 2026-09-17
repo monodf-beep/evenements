@@ -118,10 +118,19 @@ def main(argv=None) -> int:
 
     notes = noter(fiches)
     par_id = {f["id"]: f for f in fiches}
+    sans_cle = [n for n in notes if n["seo"] is None]
     for n in notes:
         f = par_id.get(n["id"], {})
-        print(f"{n['id']:>6} {f.get('type', '?'):<13} SEO {n['seo']:>3}  lisibilité {n['lisibilite']:>3}"
+        seo = "—" if n["seo"] is None else n["seo"]
+        print(f"{n['id']:>6} {f.get('type', '?'):<13} SEO {seo:>3}  lisibilité {n['lisibilite']:>3}"
               f"  (avant : {f.get('linkdex') or '—'} / {f.get('content_score') or '—'})  {f.get('post_title', '')[:50]}")
+    if sans_cle:
+        # Le périmètre à côté du nombre : ces fiches-là n'ont pas de note SEO parce
+        # qu'elles n'ont pas encore d'expression clé, pas parce que le moteur a échoué.
+        # Pour un événement, la clé arrive avec seo_batch (après publication) ; la fiche
+        # se représentera ici toute seule ce jour-là.
+        print(f"\n{len(sans_cle)} fiche(s) sans expression clé : lisibilité seule, la colonne SEO "
+              f"reste « Aucune expression clé » jusqu'à ce que seo_batch en pose une.")
 
     if not args.apply:
         print(f"\nDRY-RUN — {len(notes)} note(s) calculée(s), rien d'écrit. Relancer avec --apply.")
@@ -129,14 +138,19 @@ def main(argv=None) -> int:
 
     res = ecrire(wp_url, auth, notes)
     rc = res["recompte"]
-    resume = " · ".join(f"{t} : {v['sans_score']}/{v['publiees']} sans note" for t, v in rc.items())
-    log.info("=== Scores Yoast : %d écrite(s) sur %d calculée(s), %d erreur(s). Reste %s ===",
-             res["ecrits"], len(notes), len(res["erreurs"]), resume)
+    # Deux compteurs, deux périmètres : « sans note » = jamais passées ici ni dans
+    # l'éditeur ; « sans clé » = notées en lisibilité seulement, SEO impossible tant
+    # que seo_batch n'a pas posé d'expression clé.
+    resume = " · ".join(f"{t} : {v['sans_score']}/{v['publiees']} sans note, {v['sans_cle']} sans clé"
+                        for t, v in rc.items())
+    log.info("=== Scores Yoast : %d écrite(s) sur %d calculée(s) (dont %d en lisibilité seule, sans clé), "
+             "%d erreur(s). Reste %s ===", res["ecrits"], len(notes), len(sans_cle), len(res["erreurs"]), resume)
     for e in res["erreurs"][:10]:
         log.warning("  %s", e)
     from utils import pipeline_status, slack
     msg = (f"📐 *Scores Yoast* — {res['ecrits']} fiche(s) notée(s) avec le moteur de Yoast "
-           f"(hors éditeur). Reste sans note : {resume}")
+           f"(hors éditeur), dont {len(sans_cle)} en lisibilité seule faute d'expression clé. "
+           f"Reste : {resume}")
     if res["erreurs"]:
         msg += f"\n⚠️ {len(res['erreurs'])} erreur(s) : " + " · ".join(res["erreurs"][:3])
     slack.notify(msg)
