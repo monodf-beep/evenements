@@ -22,7 +22,7 @@ $APPLIQUER = false;
 $RETABLIR  = false;
 
 $TEXTES = array(
-    2464 => "Que faire à Turin ? Concerts, expositions, spectacles, marchés et festivals : l'agenda des sorties de l'ancienne capitale des États de Savoie.",
+    2464 => "Que faire à Turin ? Concerts, expositions, marchés et festivals : l'agenda des sorties de l'ancienne capitale des États de Savoie.",
     2472 => "Que faire dans le Chablais : concerts, expositions, festivals et fêtes, de Thonon au Léman jusqu'aux Portes du Soleil. L'agenda des sorties.",
     2444 => "Cosa fare a Chambéry? Concerti, mostre, spettacoli, mercati e festival: l'agenda delle uscite dell'antica capitale dei duchi di Savoia.",
     1811 => "Où bien manger, de Turin à Nice : piole turinoises, tables valdôtaines, cuisine nissarde labellisée et fermes-auberges de Haute-Savoie.",
