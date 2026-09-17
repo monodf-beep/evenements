@@ -99,5 +99,14 @@ verifier("locale it_IT : lisibilité dans les paliers de Yoast", ri["lisibilite"
 verifier("locale it_IT : le texte italien de Nice passe de 60 (règles françaises) à 90 (règles italiennes)",
          ri["lisibilite"] == 90 and r_nice["lisibilite"] == 60, f"{r_nice['lisibilite']} → {ri['lisibilite']}")
 
+# Sans expression clé, pas de note SEO — et surtout pas une note négative. Premier
+# passage en vrai (17/09, 00h15) : 107 fiches sur 300 rendaient -637, refusées par la
+# route, et se seraient représentées chaque jour à l'identique. Le moteur rend null,
+# la lisibilité reste calculée.
+[sans_cle] = noter([{**nice, "keyword": ""}])
+verifier("sans expression clé : la note SEO vaut null, pas un nombre négatif", sans_cle["seo"] is None, str(sans_cle["seo"]))
+verifier("sans expression clé : la lisibilité est quand même notée",
+         sans_cle["lisibilite"] == r_nice["lisibilite"], f"{sans_cle['lisibilite']} vs {r_nice['lisibilite']}")
+
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

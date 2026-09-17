@@ -5,7 +5,7 @@ Description: Deux routes REST (cs/v1/yoast-papers, cs/v1/yoast-scores) qui perme
   VPS de calculer les scores SEO et lisibilité de Yoast avec le moteur de Yoast lui-même
   (paquet npm `yoastseo`), puis de les écrire là où la colonne « Score SEO » les lit.
 Author: Cultura Sabauda
-Version: 1.1
+Version: 1.2
 
   D'OÙ ÇA VIENT — Franck, 16/09/2026 : « pourquoi ça peut pas recalculer direct
   automatiquement Yoast ? » — puis « ok mais pour les articles, les pages, les events ».
@@ -174,6 +174,11 @@ function cs_yoast_reconstruire_indexable($id, $type) {
 
 /**
  * POST — {"scores":[{"id":8236,"seo":84,"readability":90}, …]}
+ * `seo` peut être null : fiche SANS expression clé (196 événements sur 364 le 17/09, le
+ * SEO se pose après publication). On écrit alors la lisibilité seule et on laisse la
+ * colonne SEO à « Aucune expression clé », comme l'éditeur. Sans ça, le moteur rendait
+ * -637 et cette route refusait 107 fiches sur 300 — qui se seraient représentées chaque
+ * jour, refusées à l'identique (règle 3 de CLAUDE.md).
  */
 function cs_yoast_scores(WP_REST_Request $req) {
     global $wpdb;
@@ -184,16 +189,17 @@ function cs_yoast_scores(WP_REST_Request $req) {
     $ecrits = 0; $erreurs = array();
     foreach ($b['scores'] as $s) {
         $id  = (int) ($s['id'] ?? 0);
-        $seo = (int) ($s['seo'] ?? -1);
+        $sans_cle = !isset($s['seo']) || $s['seo'] === null || $s['seo'] === '';
+        $seo = $sans_cle ? null : (int) $s['seo'];
         $lis = (int) ($s['readability'] ?? -1);
         $p   = $id ? get_post($id) : null;
         if (!$p || !in_array($p->post_type, cs_yoast_types_autorises(), true) || $p->post_status !== 'publish') {
             $erreurs[] = "$id : absent, non publié ou type non couvert"; continue;
         }
-        if ($seo < 0 || $seo > 100 || $lis < 0 || $lis > 100) {
-            $erreurs[] = "$id : notes hors de 0-100 ($seo / $lis)"; continue;
+        if (($seo !== null && ($seo < 0 || $seo > 100)) || $lis < 0 || $lis > 100) {
+            $erreurs[] = "$id : notes hors de 0-100 (" . ($seo ?? 'null') . " / $lis)"; continue;
         }
-        update_post_meta($id, '_yoast_wpseo_linkdex', (string) $seo);
+        if ($seo !== null) { update_post_meta($id, '_yoast_wpseo_linkdex', (string) $seo); }
         update_post_meta($id, '_yoast_wpseo_content_score', (string) $lis);
         update_post_meta($id, 'cs_score_at', $p->post_modified_gmt);
         update_post_meta($id, 'cs_score_par', 'node-yoastseo');
@@ -202,6 +208,10 @@ function cs_yoast_scores(WP_REST_Request $req) {
         $ecrits++;
     }
     // RECOMPTE en base après écriture (règle 6) : ce que la colonne va afficher.
+    // « sans_score » = aucune note de lisibilité (jamais passée ici ni dans l'éditeur) ;
+    // « sans_cle » = pas d'expression clé, donc pas de note SEO possible. Deux périmètres,
+    // deux compteurs — compter les sans-clé dans les sans-note les aurait fait passer
+    // pour un travail en retard alors que c'est seo_batch qui les attend.
     $recompte = array();
     foreach (cs_yoast_types_autorises() as $t) {
         $recompte[$t] = array(
@@ -211,7 +221,12 @@ function cs_yoast_scores(WP_REST_Request $req) {
                 "SELECT COUNT(*) FROM {$wpdb->posts} p
                   WHERE p.post_type=%s AND p.post_status='publish'
                     AND NOT EXISTS (SELECT 1 FROM {$wpdb->postmeta} m WHERE m.post_id=p.ID
-                                    AND m.meta_key='_yoast_wpseo_linkdex' AND m.meta_value<>'')", $t)),
+                                    AND m.meta_key='_yoast_wpseo_content_score' AND m.meta_value<>'')", $t)),
+            'sans_cle'   => (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} p
+                  WHERE p.post_type=%s AND p.post_status='publish'
+                    AND NOT EXISTS (SELECT 1 FROM {$wpdb->postmeta} m WHERE m.post_id=p.ID
+                                    AND m.meta_key='_yoast_wpseo_focuskw' AND m.meta_value<>'')", $t)),
         );
     }
     return array('ecrits' => $ecrits, 'erreurs' => $erreurs, 'recompte' => $recompte);
