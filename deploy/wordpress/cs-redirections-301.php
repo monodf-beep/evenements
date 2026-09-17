@@ -102,10 +102,16 @@ add_action('template_redirect', function () {
         // Revard » (8892 fr / 9189 it) l'emporte — 20 impressions cumulées contre 0
         // pour « les sites de l'eau » (8884 fr / 9688 it). Aucune des deux ne clique,
         // mais l'une a au moins de la visibilité.
+        //
+        // ⚠️ SEULE LA LIGNE FR EST ICI. 8884 (fr) est corbeillé, sa ligne marche. La
+        // ligne IT (9688) est VOLONTAIREMENT ABSENTE : ce post est contaminé — son
+        // titre ET son corps appartiennent à un autre événement (« Mobilità dolce a
+        // Aix-les-Bains », id local 5690, écrasé dessus le 17/09 à 10h54, aucune autre
+        // page pour lui sur le site). Rediriger cette adresse ferait disparaître la
+        // seule page publique de Mobilità dolce avant de l'avoir sauvée. À ajouter
+        // SEULEMENT une fois 5690 republié sous son propre post et 9688 corbeillé.
         '/evenement/journees-du-patrimoine-a-aix-les-bains-les-sites-de-leau/'
             => '/evenement/journees-du-patrimoine-2026-a-aix-les-bains-palaces-danse-et-train-du-revard/',
-        '/it/evenement/journees-du-patrimoine-a-aix-les-bains-les-sites-de-leau-2/'
-            => '/it/evenement/journees-du-patrimoine-2026-a-aix-les-bains-palaces-danse-et-train-du-revard-2/',
 
         // EuroVolley Palavela : paire établie début septembre (8083 fr / 8126 it)
         // l'emporte largement — 1 clic, 54 impressions cumulées, contre 0/0 pour la
