@@ -157,3 +157,118 @@ def test_en_tete_de_phrase_c_est_un_avertissement_pas_un_refus():
                           verifier_liens=False, corps=FIXTURE["corps"], avertissements=avert)
     assert motifs == [], f"attendu un simple avertissement, obtenu un refus : {motifs}"
     assert any("Zanetti" in a for a in avert), avert
+
+
+def test_une_panne_de_credit_est_une_panne_generale():
+    """Une panne qui vaut pour toutes les pages doit arrêter le run, pas se rejouer.
+
+    Mesuré le 19/09/2026 : le premier dry-run a brûlé DEUX appels API pour la même erreur
+    « credit balance is too low », et il en aurait brûlé un par paire sans le --cap 2."""
+    vraie = ("Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error',"
+             " 'message': 'Your credit balance is too low to access the Anthropic API.'}}")
+    assert th._est_panne_generale(Exception(vraie))
+    assert th._est_panne_generale(Exception("authentication_error: invalid x-api-key"))
+
+
+def test_une_panne_propre_a_une_page_n_arrete_pas_le_run():
+    """Contre-épreuve : sans elle, on ne saurait pas si le détecteur regarde quoi que ce
+    soit. Un dépassement de tokens ou une coupure réseau concernent UNE page — les autres
+    doivent être tentées."""
+    assert not th._est_panne_generale(Exception("stop_reason=max_tokens"))
+    assert not th._est_panne_generale(Exception("APIConnectionError: Connection reset"))
+    assert not th._est_panne_generale(Exception("overloaded_error"))
+
+
+def test_les_listes_ne_sont_pas_refusees_au_nom_de_la_charte():
+    """La charte Agenda AUTORISE les listes (surcharge explicite de la voix Enrico).
+
+    Mon premier motif de refus disait « la charte veut de la prose » : c'était faux, et
+    ce test existe pour que personne ne le réécrive. Le refus reste, mais pour la raison
+    qui vaut ICI — le shortcode rend déjà les faits structurés, et lui se met à jour."""
+    raw = FIXTURE["html"]["fr"].replace(
+        "<p>Deux spécialités tiennent aussi à Chambéry.",
+        "<ul><li>truffe</li></ul><p>Deux spécialités tiennent aussi à Chambéry.")
+    motifs = _controle(raw, "fr")
+    listes = [m for m in motifs if "liste à puces" in m]
+    assert listes, "la liste aurait dû être signalée sur CE gabarit"
+    assert "charte veut de la prose" not in listes[0]
+    assert "autorisées ailleurs" in listes[0], listes[0]
+
+
+# Les trois formes de shortcode RÉELLEMENT en ligne, relevées sur WordPress le 19/09/2026
+# (192 pages de gabarit : 84 à ville unique, 36 à liste, 72 de territoire). Elles sont
+# copiées telles quelles, pas reconstruites de mémoire.
+SHORTCODES_REELS = {
+    "ville_unique": '[cs_hub_ville villes="Chambéry" territoire="savoie" quand="weekend"]',
+    "liste_fr_it": '[cs_hub_ville villes="Aoste,Aosta" territoire="vda" quand="weekend"]',
+    "territoire_fr": '[cs_hub_ville territoire="vda" ville_label="Vallée d\'Aoste" '
+                     'prep_fr="en" prep_it="in" quand="weekend"]',
+    "territoire_it": '[cs_hub_ville territoire="vda" ville_label="Valle d\'Aosta" '
+                     'prep_fr="en" prep_it="in" quand="weekend"]',
+}
+
+
+def test_une_liste_de_villes_n_est_pas_une_ville():
+    """villes="Aoste,Aosta" désigne UNE cible écrite des deux côtés, pas une ville nommée
+    « Aoste,Aosta ». Ma première version comparait la chaîne entière : --villes Aoste ne
+    matchait jamais, et la base n'avait évidemment aucune fiche pour cette ville-là."""
+    cib = th.cible(th.atts_hub(SHORTCODES_REELS["liste_fr_it"]))
+    assert cib["villes"] == ["Aoste", "Aosta"]
+    assert cib["label"] == "Aoste"
+    assert not cib["est_territoire"]
+
+
+def test_une_page_de_territoire_n_a_pas_de_ville():
+    """72 pages sur 192 n'ont pas d'attribut villes. Se replier sur territoire="vda"
+    revenait à chercher des fiches dont la VILLE vaut « vda » : il n'y en a aucune."""
+    cib = th.cible(th.atts_hub(SHORTCODES_REELS["territoire_fr"]))
+    assert cib["est_territoire"]
+    assert cib["villes"] == []
+    assert cib["territoire"] == "vda"
+    assert cib["label"] == "Vallée d'Aoste"
+
+
+def test_les_jumelles_d_un_territoire_se_regroupent_malgre_le_libelle():
+    """« Vallée d'Aoste » et « Valle d'Aosta » sont la MÊME page en deux langues.
+
+    Regrouper sur le libellé les séparerait, chaque jumelle resterait seule, et le script
+    ne les écrirait jamais — il refuse d'écrire la moitié d'une paire."""
+    fr = th.cible(th.atts_hub(SHORTCODES_REELS["territoire_fr"]))
+    it = th.cible(th.atts_hub(SHORTCODES_REELS["territoire_it"]))
+    assert fr["label"] != it["label"]
+    assert fr["groupe"] == it["groupe"] == ("T", "vda")
+
+
+def test_une_ville_et_son_territoire_ne_se_melangent_pas():
+    """Contre-épreuve : la page « Aoste » et la page « Vallée d'Aoste » partagent
+    territoire="vda". Si le regroupement ne les distinguait pas, quatre pages tomberaient
+    dans le même panier et deux seraient écrasées."""
+    ville = th.cible(th.atts_hub(SHORTCODES_REELS["liste_fr_it"]))
+    terr = th.cible(th.atts_hub(SHORTCODES_REELS["territoire_fr"]))
+    assert ville["groupe"] != terr["groupe"]
+
+
+def test_le_dossier_interroge_les_bonnes_lignes():
+    """La requête doit viser la VILLE pour une page de ville et le TERRITOIRE pour une
+    page de territoire. On le vérifie sur une base jetable, jamais sur data/events.db."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE events_raw (id INTEGER PRIMARY KEY, ville TEXT, "
+                 "territoire TEXT, lieu TEXT, llm_categorie TEXT, wp_post_id_as INTEGER, "
+                 "date_event_start TEXT, date_event_end TEXT)")
+    conn.executemany("INSERT INTO events_raw (ville, territoire, lieu, llm_categorie, "
+                     "wp_post_id_as, date_event_end) VALUES (?,?,?,?,?,?)", [
+        ("Aosta", "vda", "Teatro Splendor", "Concerts", 1, "2099-01-01"),
+        ("Courmayeur", "vda", "Jardin de l'Ange", "Expositions", 2, "2099-01-01"),
+        ("Chambéry", "savoie", "Espace Malraux", "Concerts", 3, "2099-01-01"),
+        ("Aosta", "vda", "Teatro Splendor", "Concerts", None, "2099-01-01"),   # non publiée
+        ("Aosta", "vda", "Vieux Théâtre", "Concerts", 4, "2000-01-01"),        # passée
+    ])
+    ville = th.dossier(conn, th.cible(th.atts_hub(SHORTCODES_REELS["liste_fr_it"])))
+    assert ville["fiches_en_ligne"] == 1, ville          # ni la non publiée, ni la passée
+    assert ville["lieux"] == ["Teatro Splendor"]
+    assert ville["villes_voisines"] == ["Courmayeur"]    # le reste du territoire
+    terr = th.dossier(conn, th.cible(th.atts_hub(SHORTCODES_REELS["territoire_fr"])))
+    assert terr["fiches_en_ligne"] == 2, terr           # Aosta + Courmayeur, pas Chambéry
+    assert sorted(terr["villes_voisines"]) == ["Aosta", "Courmayeur"]
+    conn.close()
