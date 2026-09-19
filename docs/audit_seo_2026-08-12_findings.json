@@ -1,0 +1,115 @@
+{
+  "run": {
+    "scope": "Audit de gabarit (agent B) — 130 fiches événement, 104 pages, 70 organisateurs, 60 lieux sur 251",
+    "pages_count": 234,
+    "agents_used": "claude-seo v2.2.4 (méthode) + crawl direct",
+    "tokens_used": 0,
+    "notes": "Passe n°1 de l'agent B décrit dans docs/AGENT_SEO_DASHBOARD_SPEC.md §3. Rapport complet : docs/AUDIT_SEO_2026-08-12.md. Score 58/100. Tous les points ci-dessous sont des défauts de GABARIT : chacun se corrige une fois et vaut pour tout le catalogue. Aucun ne demande de retoucher une fiche à la main."
+  },
+  "findings": [
+    {
+      "severity": "critical",
+      "category": "performance",
+      "title": "Le site interdit toute mise en cache, jusque sur les fichiers CSS",
+      "page_url": "https://agendasabauda.eu/",
+      "description": "Toutes les réponses portent « cache-control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0 » et « pragma: no-cache » — y compris les .css servis par Apache. Un visiteur qui ouvre trois fiches retélécharge trois fois toutes les feuilles de style. TTFB médian mesuré le 12/08 : 1,21 s. Cette chaîne exacte est la signature du session_cache_limiter par défaut de PHP, c'est-à-dire d'un session_start() sans session_cache_limiter('public').",
+      "recommendation": "Chercher session_start() dans les mu-plugins cs-* et un « Header set Cache-Control » dans .htaccess. Contrôle de réussite : curl -D - sur une URL de CSS renvoie un max-age et plus aucun Pragma. Si rien n'est trouvé côté PHP ni .htaccess, le diagnostic est faux et l'en-tête vient de la configuration OVH."
+    },
+    {
+      "severity": "high",
+      "category": "schema",
+      "title": "Aucune entité éditrice déclarée (pas de nœud Organization)",
+      "page_url": "https://agendasabauda.eu/",
+      "description": "Le graphe JSON-LD de l'accueil contient quatre nœuds : WebPage, ImageObject, BreadcrumbList, WebSite. Ni Organization, ni publisher, ni logo, ni sameAs — le mot « Organization » n'apparaît nulle part dans le HTML. Pour un agenda dont l'autorité repose sur qui sélectionne les événements, c'est le signal E-E-A-T le plus visible qui manque, et celui qui permet à un moteur ou à un modèle de langage de rattacher une citation à un éditeur identifié.",
+      "recommendation": "Yoast → Réglages → Représentation du site → « une organisation », avec nom et logo. Deux clics, aucun code. C'est le meilleur rapport gain/effort de tout l'audit."
+    },
+    {
+      "severity": "high",
+      "category": "wordpress",
+      "title": "La fiche Vélotour du 30 août est publiée dans WordPress mais répond 404",
+      "page_url": "https://agendasabauda.eu/evenement/chambery-sites-insolites-a-bicyclette-le-velotour-passera-par-le-13e-bca-et-laerodrome-dimanche-30-aout/",
+      "description": "Événement du 30/08/2026, encore devant nous. Base : id 2964, statut published_sub, wp_post_id_as 1917, wp_deleted_at vide — la fiche n'est donc pas exclue de site_audit. API REST WordPress interrogée par numéro : le post 1917 est « status: publish », avec exactement ce slug. Et pourtant TOUTES les routes du front répondent 404, y compris ?post_type=tribe_events&p=1917. L'URL figure deux fois dans tribe_events-sitemap.xml, donc elle est soumise à Google comme valide.",
+      "recommendation": "Ouvrir l'événement en back-office et regarder la langue Polylang : un article sans langue assignée est servi 404 sur le front tout en restant « publish » côté REST. Sinon, vérifier les métas de date de The Events Calendar puis vider les permaliens. Vérifier aussi logs/site_audit.log : ce 404 aurait dû y produire une alerte « grave »."
+    },
+    {
+      "severity": "high",
+      "category": "schema",
+      "title": "Le prix et la billetterie manquent au schéma Event (66 fiches vivantes sur 67)",
+      "page_url": "https://agendasabauda.eu/evenement/cavallerizza-xmas-market-artisanat-et-creation-independante/",
+      "description": "Le schéma Event est bien posé — startDate, endDate, location, image, description, eventStatus, eventAttendanceMode présents sur les 67 fiches vivantes. Mais « offers » n'est présent que sur 1, et « performer » sur 2. offers est le champ que Google utilise pour afficher le prix et le lien de billetterie dans le résultat enrichi Événement. L'information existe déjà dans la page : la meta description de la fiche Cavallerizza se termine par « 1 € ».",
+      "recommendation": "Ajouter offers au générateur de JSON-LD quand le tarif est connu en base. ⚠️ Établir d'abord OÙ vit le code : cs-publish.php est dans Code Snippets, en base, et la version en ligne contient du code absent du dépôt. Voir docs/DEPLOIEMENT_WORDPRESS.md avant d'écrire une ligne."
+    },
+    {
+      "severity": "high",
+      "category": "schema",
+      "title": "Les pages « lieu » n'ont ni schéma Place ni meta description",
+      "page_url": "https://agendasabauda.eu/lieu/forte-di-bard/",
+      "description": "Sur 60 pages lieu relevées (échantillon de 24 % des 251) : 60 sans meta description, 60 sans hreflang, et aucune ne porte de schéma Place — seulement WebPage, WebSite, BreadcrumbList. L'adresse est pourtant affichée à l'écran, et elle est correctement balisée Place + PostalAddress DANS les fiches événement. L'information est là, elle n'est simplement pas déclarée sur la page qui porte le nom du lieu. Longueur médiane 522 mots, écart min-max de 54 mots sur 60 pages : ces pages sont du gabarit.",
+      "recommendation": "Ajouter Place + PostalAddress + geo au gabarit de la page lieu, et une meta description construite depuis le nom et la ville. Un seul correctif de gabarit vaut pour les 251."
+    },
+    {
+      "severity": "high",
+      "category": "schema",
+      "title": "Les pages « organisateur » déclarent Person, y compris pour des institutions",
+      "page_url": "https://agendasabauda.eu/organisateur/nice-jazz-club/",
+      "description": "Les 66 pages organisateur qui répondent portent un schéma Person. Or l'inventaire contient nice-jazz-club, communication, service-communication, le-service-communication, admin, cristinag. Déclarer un club de jazz comme une personne est une affirmation fausse adressée à Google ; et cinq de ces entrées ne sont pas des organisateurs mais des résidus de scraping. Aucune n'a de meta description.",
+      "recommendation": "Deux gestes distincts : côté gabarit, choisir Organization ou Person selon la nature de l'entrée ; côté données, supprimer ou fusionner les entrées qui ne désignent personne (admin, communication, service-communication). La seconde touche la base : sauvegarde puis dry-run."
+    },
+    {
+      "severity": "high",
+      "category": "i18n",
+      "title": "Une paire FR/IT existe sans être appariée dans Polylang",
+      "page_url": "https://agendasabauda.eu/evenement/a-evian-lorchestre-de-la-suisse-romande-traverse-le-leman/",
+      "description": "Les deux fiches « Orchestre de la Suisse Romande à Évian » (FR) et « ...attraversa il Lemano » (IT) décrivent le même concert du 10/10/2026 et ne portent AUCUNE balise hreflang, des deux côtés. Deux pages concurrentes sur la même requête, et un visiteur italien qui peut atterrir sur la version française. À ne pas confondre avec les 36 autres fiches vivantes sans hreflang : celles-là n'ont tout simplement pas de traduction (26 FR seules, 10 IT seules), ce qui est un choix éditorial et non un défaut.",
+      "recommendation": "Apparier les deux fiches dans Polylang (back-office, une minute). Contrôle : chacune renvoie ensuite trois balises alternate fr / it / x-default."
+    },
+    {
+      "severity": "medium",
+      "category": "contenu",
+      "title": "Une fiche d'événement passé ne dit pas au visiteur que c'est fini",
+      "page_url": "https://agendasabauda.eu/evenement/jazz-art-3/",
+      "description": "Trois fiches terminées ont été lues intégralement : aucune ne porte de mention de fin. Le h1 de celle du 13 mai annonce encore, en août : « Jazz Art Lympia : trois concerts gratuits ENCORE AU PROGRAMME ». Une fiche terminée qui remonte dans une recherche est une promesse qu'on découvre fausse. Ce n'est pas un problème de crawl — le budget de crawl ne mord pas à 613 URL — c'est un problème de visiteur.",
+      "recommendation": "Bandeau conditionnel dans le gabarit : « cet événement est passé » + lien vers ce qui se joue maintenant dans la même ville ou la même catégorie. Écrit une fois, il vaut pour les 62 fiches d'aujourd'hui et pour toutes celles qui passeront ensuite — aucune file à tenir."
+    },
+    {
+      "severity": "medium",
+      "category": "technique",
+      "title": "Le sitemap déclare fraîches des fiches qui ne le sont pas",
+      "page_url": "https://agendasabauda.eu/tribe_events-sitemap.xml",
+      "description": "lastmod vaut 2026-08 sur 124 des 130 URL du sitemap des événements, y compris sur des fiches de mai 2026 et de septembre 2025. Quelque chose touche toutes les fiches et retamponne leur date de modification. Le coût n'est pas un crawl gaspillé, c'est que Google finit par ignorer le lastmod du site — y compris sur les fiches qui changent vraiment.",
+      "recommendation": "Trouver ce qui réécrit toutes les fiches (republication en lot, mise à jour de méta). À corriger si c'est simple ; à laisser sinon, l'effet est modeste."
+    },
+    {
+      "severity": "medium",
+      "category": "on-page",
+      "title": "21 titres de fiches vivantes sur 67 dépassent 60 caractères",
+      "page_url": "https://agendasabauda.eu/",
+      "description": "Médiane 51 caractères, maximum 90. Les plus longs sont tronqués dans les résultats de recherche : « Brahms e Shostakovich aprono la stagione dei concerti sinfonici all'Opéra Nice Côte d'Azur » (90), « La Fiera di Sant'Orso 2027 riunisce l'artigianato valdostano nel centro storico di Aosta » (88).",
+      "recommendation": "Le h1 peut rester long : c'est le titre SEO, réglable séparément dans Yoast, qui doit tenir. seo_batch.py produit déjà des seo_title — vérifier pourquoi ils ne sont pas repris sur ces fiches, plutôt que de retoucher 21 titres à la main."
+    },
+    {
+      "severity": "medium",
+      "category": "on-page",
+      "title": "40 pages sur 101 n'ont pas de meta description, dont cinq de premier plan",
+      "page_url": "https://agendasabauda.eu/aujourdhui/",
+      "description": "Sans meta description, Google fabrique un extrait à partir du corps de page, souvent en piochant dans un menu. Les plus visibles : /aujourdhui/, /cette-semaine/, /tout-l-agenda/, /a-propos/, /proposer-un-evenement/. À noter en positif : les 59 pages de ville portent un bloc FAQPage complet, correctement balisé.",
+      "recommendation": "Écrire les cinq à la main dans Yoast (une demi-heure), puis un défaut de gabarit pour les autres."
+    },
+    {
+      "severity": "medium",
+      "category": "images",
+      "title": "87 % des images sont en JPEG/PNG et 59 des 81 de l'accueil se chargent d'emblée",
+      "page_url": "https://agendasabauda.eu/",
+      "description": "Relevé sur l'accueil : 235 JPEG, 33 PNG, 8 WebP, aucun AVIF. 81 images, dont 22 seulement en loading=\"lazy\". Point positif : srcset est présent sur 50 images, et les attributs alt sont bien remplis — 60 des 68 images de contenu portent un alt pertinent, aucune image du site n'a d'attribut alt manquant.",
+      "recommendation": "Activer la conversion WebP à l'import dans la médiathèque, et poser loading=\"lazy\" sur tout ce qui est sous la ligne de flottaison. Le gain se lit dans le LCP."
+    },
+    {
+      "severity": "medium",
+      "category": "donnees",
+      "title": "Doublons de lieux : un même établissement occupe quatre fiches",
+      "page_url": "https://agendasabauda.eu/lieu/forte-di-bard/",
+      "description": "Sur l'échantillon de 60 lieux, le Forte di Bard occupe /lieu/forte-di-bard/, /lieu/forte-di-bard-piazza-darmi/, /lieu/forte-di-bard-piazza-darmi-2/ (titre strictement identique à la précédente) et /lieu/piazza-darmi-forte-di-bard/. Deux autres slugs suffixés trahissent le même mécanisme. ATTENTION : le repérage par suffixe numérique n'en trouve que 3 sur 251, alors que piazza-darmi-forte-di-bard est un doublon qu'aucun suffixe ne signale — le nombre réel demande une comparaison d'adresses sur les 251, non faite dans cet audit.",
+      "recommendation": "Commencer par mesurer : comparer les adresses des 251 lieux avant de fusionner quoi que ce soit. La fusion touche des relations événement→lieu : sauvegarde, dry-run, lecture du dry-run."
+    }
+  ]
+}

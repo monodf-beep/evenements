@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% set active = 'tocomplete' %}
+{% block title %}À compléter — Agenda CS{% endblock %}
+{% block h1 %}À compléter <span class="muted" style="font-size:1rem">({{ events|length }})</span>{% endblock %}
+{% block subtitle %}<div class="sub">Événements retenus mais <strong>incomplets</strong> : ils restent ici (pas de brouillon WordPress) tant qu'il manque un champ obligatoire. L'agent « 🛠️ Auto-compléter » scrape + cherche pour les compléter et signale sur Slack ; tu peux aussi compléter à la main ci-dessous.</div>{% endblock %}
+
+{% block content %}
+
+{% if not events %}
+  <div class="card" style="padding:1.4rem;text-align:center">
+    🎉 Rien à compléter — tous les événements retenus à venir sont complets et prêts pour le brouillon.
+  </div>
+{% else %}
+
+<!-- Période : filtre la liste ET circonscrit l'auto-complétion (pour ne pas tout traiter) -->
+<form class="period" method="GET" action="/a-completer" style="margin-bottom:.7rem">
+  <span class="plabel">📅 Période :</span>
+  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
+  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
+  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
+  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
+  <span class="sep"></span>
+  du <input type="date" name="dfrom" value="{{ dfrom }}"> au <input type="date" name="dto" value="{{ dto }}">
+  <button class="pbtn">Plage perso</button>
+  {% if plabel %}<a href="/a-completer" class="muted">✕ tout</a>{% endif %}
+</form>
+
+<div class="btn-row" style="margin-bottom:1rem">
+  <form method="POST" action="/run/autocomplete" style="display:inline">
+    <input type="hidden" name="preset" value="{{ preset }}">
+    <input type="hidden" name="dfrom" value="{{ dfrom }}">
+    <input type="hidden" name="dto" value="{{ dto }}">
+    <button class="btn btn-primary btn-sm" title="Complète date/lieu/image par scraping + recherche web, pousse les complets en brouillon, signale le reste sur Slack.">🛠️ Lancer l'auto-complétion{% if plabel %} · {{ plabel }}{% endif %}</button>
+  </form>
+  <span class="muted" style="margin-left:.6rem">
+    {% if plabel %}Limité à <strong>{{ plabel }}</strong> ({{ events|length }} événement·s).{% else %}Sur TOUT le stock. Choisis une période pour te concentrer.{% endif %}</span>
+</div>
+
+{% for e in events %}
+<div class="card" id="e{{ e.id }}" style="padding:1rem;margin-bottom:.9rem">
+  <div style="display:flex;gap:1rem;align-items:flex-start">
+    {% if e._img %}
+      <img src="{{ e._img }}" alt="" style="width:120px;height:80px;object-fit:cover;border-radius:6px;flex:none">
+    {% else %}
+      <div style="width:120px;height:80px;border-radius:6px;background:#eee;display:flex;align-items:center;justify-content:center;flex:none" class="muted">sans photo</div>
+    {% endif %}
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;gap:1rem">
+        <b>{{ e.article_title or e.title }}</b>
+        <form method="POST" action="/set-score/{{ e.id }}" style="display:flex;align-items:center;gap:.25rem;white-space:nowrap;margin:0"
+              title="Ajuste le score selon ton appréciation — c'est mémorisé, l'évaluateur apprend de tes choix">
+          <input type="hidden" name="next" value="/a-completer#e{{ e.id }}">
+          <span class="muted" style="font-size:.82rem">score</span>
+          <input type="number" name="score" min="0" max="10" value="{{ e.llm_score if e.llm_score is not none else '' }}"
+                 class="field" style="width:3.1rem;padding:.15rem .3rem">
+          <button class="btn btn-ghost btn-sm" title="Enregistrer (mémorisé)">✓</button>
+        </form>
+      </div>
+      <div class="muted" style="font-size:.85rem;margin:.2rem 0">
+        {% if e.recurring %}🔁 {{ e._recurring_note }}{% else %}{{ e.date_event_start or 'date ?' }}{% if e.date_event_end and e.date_event_end != e.date_event_start %} → {{ e.date_event_end }}{% endif %}{% endif %}
+        · {{ e.lieu or 'lieu ?' }}{% if e.ville %}, {{ e.ville }}{% endif %}
+        · <a href="/preview/{{ e.id }}" target="_blank" rel="noopener">fiche #{{ e.id }} ↗</a>
+        {% if e.url_source and not e.url_source.startswith('gmail:') %}· <a href="{{ e.url_source }}" target="_blank" rel="noopener">source ↗</a>{% endif %}
+      </div>
+      <div style="margin:.35rem 0">
+        {% for m in e._missing %}<span class="chip" style="background:#fde8e8;color:#a12;border-radius:4px;padding:.1rem .45rem;margin-right:.3rem;font-size:.82rem">manque : {{ m }}</span>{% endfor %}
+      </div>
+
+      <!-- Actions : compléter à la main · marquer récurrent · écarter -->
+      <div class="btn-row" style="margin:.35rem 0;align-items:center;flex-wrap:wrap;gap:.4rem">
+        <form method="POST" action="/action/{{ e.id }}/reject" style="display:inline"
+              onsubmit="return confirm('Écarter cet événement (doublon ou hors sujet) ? Il quittera la file « À compléter ».')">
+          <input type="hidden" name="next" value="/a-completer#e{{ e.id }}">
+          <button class="btn btn-danger btn-sm">🗑 Écarter</button>
+        </form>
+        {% if 'Date' in e._missing %}
+        <!-- Sans date unique (activité permanente / réservable à l'année) : on garde
+             l'événement mais la date renvoie à la source. Il quitte « À compléter ». -->
+        <form method="POST" action="/action/{{ e.id }}/recurring"
+              style="display:flex;gap:.3rem;align-items:center;margin:0"
+              title="Événement récurrent / permanent : la date sera remplacée par une note renvoyant à la source. Il quitte « À compléter ».">
+          <input type="hidden" name="next" value="/a-completer">
+          <input type="text" name="note" class="field" style="width:15rem;padding:.15rem .35rem;font-size:.8rem"
+                 placeholder="Note (déf. : « vérifiez les dates sur {{ e.source_name or 'la source' }} »)">
+          <button class="btn btn-ghost btn-sm">🔁 Récurrent</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <!-- Complétion à la main : seuls les champs manquants sont pré-signalés -->
+      <details style="margin-top:.4rem">
+        <summary style="cursor:pointer;color:#2557a7">✍️ Compléter à la main</summary>
+        <form method="POST" action="/complete/{{ e.id }}" class="complete-grid" style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem;max-width:640px">
+          {% for key, label in fields %}
+            <label style="font-size:.82rem">{{ label }}
+              {% if key == 'territoire' %}
+                <select name="{{ key }}" class="field" style="width:100%">
+                  <option value="">— inchangé —</option>
+                  {% for t in territories %}<option value="{{ t }}" {{ 'selected' if e.territoire==t }}>{{ t }}</option>{% endfor %}
+                </select>
+              {% elif key == 'url_image' %}
+                <span style="display:flex;gap:.4rem">
+                  <input type="text" name="{{ key }}" value="{{ e[key] or '' }}" class="field" style="flex:1;min-width:0"
+                         placeholder="{{ '⚠️ manquant' if 'Image' in e._missing else '' }}">
+                  <button type="button" class="btn btn-ghost btn-sm" title="Ouvrir l'image dans un nouvel onglet"
+                          onclick="var i=this.previousElementSibling; if(i.value){window.open(i.value,'_blank','noopener');}">↗</button>
+                </span>
+              {% else %}
+                <input type="text" name="{{ key }}" value="{{ e[key] or '' }}" class="field" style="width:100%"
+                       placeholder="{{ '⚠️ manquant' if label.split(' ')[0] in e._missing else '' }}">
+              {% endif %}
+            </label>
+          {% endfor %}
+          <div style="grid-column:1/-1">
+            <button class="btn btn-primary btn-sm">💾 Enregistrer</button>
+          </div>
+        </form>
+      </details>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}
