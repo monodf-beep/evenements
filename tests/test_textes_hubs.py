@@ -272,3 +272,123 @@ def test_le_dossier_interroge_les_bonnes_lignes():
     assert terr["fiches_en_ligne"] == 2, terr           # Aosta + Courmayeur, pas Chambéry
     assert sorted(terr["villes_voisines"]) == ["Aosta", "Courmayeur"]
     conn.close()
+
+
+# La section « Anti-patterns clés » telle que la voix Obsidian la porte au 20/09/2026,
+# collée par Franck. Elle sert d'ENTRÉE au test : ce conteneur n'atteint pas Obsidian, et
+# le test doit rester stable même quand Franck édite la note.
+VOIX_ANTI = ("## Anti-patterns clés\n\nÉditorialiser frontalement · superlatifs / propagande "
+             "(« exceptionnel », « historique », « innovant ») · citations institutionnelles "
+             "vides · hedging excessif · formules d'appel au lecteur · transitions scolaires · "
+             "connecteurs interdits (« en conclusion », « force est de constater »…).\n\n"
+             "> [!warning] Dette\n")
+
+
+def _avec_voix(rendu):
+    """Remplace utils.voix.load_voix le temps d'un test, puis le remet.
+
+    Pourquoi pas monkeypatch sur sys.modules : `anti_patterns()` fait
+    `from utils import voix`, qui lit l'ATTRIBUT du paquet `utils` déjà importé et ignore
+    une entrée posée dans sys.modules. Le premier jet de ce test est donc sorti rouge sans
+    que le code soit en cause — c'est le test qui ne patchait rien."""
+    import contextlib
+    from utils import voix as _v
+
+    @contextlib.contextmanager
+    def _ctx():
+        vrai = _v.load_voix
+        _v.load_voix = rendu
+        try:
+            yield
+        finally:
+            _v.load_voix = vrai
+    return _ctx()
+
+
+def test_les_anti_patterns_se_lisent_dans_la_voix():
+    """La liste n'est PAS recopiée dans ce dépôt : elle est extraite de la note Obsidian.
+
+    C'est la leçon de config/vocabulaire_interdit.json, dont le miroir avait divergé dans
+    les deux sens avant sa suppression le 05/09/2026. Si Franck ajoute un superlatif à la
+    note, le contrôle le connaît au passage suivant, sans qu'on touche au code."""
+    with _avec_voix(lambda: VOIX_ANTI):
+        assert sorted(th.anti_patterns()) == [
+            "en conclusion", "exceptionnel", "force est de constater", "historique", "innovant"]
+
+
+def test_une_voix_sans_section_anti_patterns_ne_rend_rien():
+    """Contre-épreuve : sans elle, on ne saurait pas si l'extraction lit vraiment la
+    section, ou si elle ramasse les guillemets de n'importe où dans la note."""
+    sans_section = "# Clone Enrico\n\nUn texte sans la section, avec « un mot »."
+    with _avec_voix(lambda: sans_section):
+        assert th.anti_patterns() == []
+
+
+def test_obsidian_injoignable_ne_bloque_pas():
+    """Même arbitrage qu'utils.vocabulaire, tranché par Franck le 05/09 : une panne
+    Obsidian laisse le pipeline tourner SANS filtre plutôt que de bloquer."""
+    def boum():
+        raise RuntimeError("OBSIDIAN_VOIX_PATH introuvable")
+    with _avec_voix(boum):
+        assert th.anti_patterns() == []
+
+
+def test_une_formule_interdite_refuse_un_superlatif_avertit():
+    """Les deux sévérités, éprouvées sur le même texte.
+
+    « en conclusion » est une formule : aucun usage innocent, donc refus. « historique » en
+    a un, et il est constant — « le centre historique » — donc avertissement. Un refus
+    aveugle sur ce mot rejetterait un texte juste à CHAQUE passage et brûlerait deux appels
+    API par page pour rien."""
+    anti = ["exceptionnel", "historique", "innovant", "en conclusion", "force est de constater"]
+    raw = FIXTURE["html"]["fr"].replace(
+        "Peu de villes de Savoie en réunissent autant.",
+        "En conclusion, peu de villes de Savoie en réunissent autant.")
+    avert: list[str] = []
+    motifs = th.controles(raw, "fr", FIXTURE["cles"]["fr"], FIXTURE["dossier"], [],
+                          verifier_liens=False, corps=FIXTURE["corps"],
+                          avertissements=avert, antipatterns=anti)
+    assert any("anti-pattern" in m and "en conclusion" in m for m in motifs), motifs
+
+    raw2 = FIXTURE["html"]["fr"].replace("le centre ancien", "le centre historique")
+    avert2: list[str] = []
+    motifs2 = th.controles(raw2, "fr", FIXTURE["cles"]["fr"], FIXTURE["dossier"], [],
+                           verifier_liens=False, corps=FIXTURE["corps"],
+                           avertissements=avert2, antipatterns=anti)
+    assert motifs2 == [], f"« centre historique » ne doit PAS refuser : {motifs2}"
+    assert any("historique" in a for a in avert2), avert2
+
+
+def test_un_timeout_n_est_pas_un_lien_mort(monkeypatch):
+    """Faux refus mesuré le 20/09 : deux de nos adresses italiennes ont dépassé 20 s, le
+    contrôle les a déclarées mortes, et quatre re-tests immédiats ont rendu 200.
+
+    Ce refus-là se rejouerait à l'identique chaque jour sur la même matière (règle 3),
+    d'où la seconde tentative. Le témoin échoue une fois puis répond : l'adresse doit être
+    tenue pour vivante."""
+    import requests as _rq
+    appels = {"n": 0}
+
+    class Rep:
+        status_code = 200
+        text = "<html><body>Chambéry</body></html>"
+
+    def faux_get(url, **kw):
+        appels["n"] += 1
+        if appels["n"] == 1:
+            raise _rq.exceptions.ReadTimeout("trop lent")
+        return Rep()
+
+    monkeypatch_setattr = getattr(monkeypatch, "setattr", None)
+    if monkeypatch_setattr is None:                     # lanceur minimal sans setattr
+        vrai = th.requests.get
+        th.requests.get = faux_get
+        try:
+            code, _ = th._fetch("https://agendasabauda.eu/it/cosa-fare-in-savoia/")
+        finally:
+            th.requests.get = vrai
+    else:
+        monkeypatch_setattr(th.requests, "get", faux_get)
+        code, _ = th._fetch("https://agendasabauda.eu/it/cosa-fare-in-savoia/")
+    assert code == 200, "un timeout unique ne doit pas condamner l'adresse"
+    assert appels["n"] == 2, "la seconde tentative doit avoir lieu"
