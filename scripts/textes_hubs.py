@@ -336,8 +336,21 @@ def controles(raw: str, lang: str, cle: str, dos: dict, sources: list[str],
         ennuis.append(f"longueur : {len(mots)} mots, il en faut entre {MOTS_MIN} et {MOTS_MAX}")
     if nu.count("—"):
         ennuis.append(f"{nu.count(chr(8212))} tiret(s) cadratin — la charte les interdit")
+    # LES LISTES NE SONT PAS INTERDITES SUR L'AGENDA, et mon premier motif de refus
+    # affirmait le contraire. Surcharge explicite de la charte Agenda Sabauda, relue le
+    # 19/09/2026 : « Contrairement à la voix commune Enrico (qui proscrit les listes à
+    # puces), l'Agenda AUTORISE et RECOMMANDE les listes pour les faits structurés :
+    # programmation, line-up, concerts du jour, horaires, tarifs. »
+    #
+    # Si on les refuse ICI, c'est pour une raison propre à CE gabarit, pas au nom de la
+    # charte : les faits structurés de ces pages sont déjà rendus par le shortcode
+    # [cs_hub_ville] juste en dessous, avec leurs horaires et leurs lieux. Une liste dans
+    # le texte de tête les redirait, en moins bien et sans se mettre à jour. Le texte de
+    # tête est un cadre, la liste est la machine.
     if re.search(r"<(ul|ol|li)\b", raw):
-        ennuis.append("liste à puces : la charte veut de la prose")
+        ennuis.append("liste à puces dans le texte de tête : les faits structurés sont déjà "
+                      "rendus par le shortcode juste en dessous, et eux se mettent à jour. "
+                      "(Les listes restent autorisées ailleurs sur l'Agenda.)")
     if re.search(r"<h[13-6]\b", raw):
         ennuis.append("seuls les H2 sont admis (ni H1 ni H3)")
 
@@ -423,7 +436,10 @@ lisibilité. Reprends sa STRUCTURE et son SOUFFLE, jamais son contenu :
 
 CONTRAINTES MÉCANIQUES, toutes vérifiées après toi :
 - de {mots_min} à {mots_max} mots par langue ;
-- {h2_min} à {h2_max} sous-titres <h2>, aucun <h1>, aucun <h3>, aucune liste à puces ;
+- {h2_min} à {h2_max} sous-titres <h2>, aucun <h1>, aucun <h3> ;
+- pas de liste à puces DANS CE TEXTE : les horaires et les lieux sont déjà rendus par le
+  shortcode juste en dessous, et eux se mettent à jour tous les jours. Ce texte-ci est un
+  cadre en prose. (Les listes restent autorisées ailleurs sur l'Agenda.) ;
 - aucune phrase de plus de {phrase_max} mots. C'est la contrainte qui casse le plus
   souvent : compte-les ;
 - des connecteurs (aussi, d'ailleurs, en revanche, également, par ailleurs, ensuite,
@@ -497,9 +513,14 @@ def rediger(client, model: str, dos: dict, cles: dict, liens: list[str], essais:
                  + prompt_initial(dos, cles["fr"], cles["it"], liens)}]
     derniers: list[str] = []
     for tentative in range(1, essais + 1):
-        msg = client.messages.create(
-            model=model, max_tokens=4000, messages=messages,
-            tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 6}])
+        try:
+            msg = client.messages.create(
+                model=model, max_tokens=4000, messages=messages,
+                tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 6}])
+        except Exception as exc:                        # noqa: BLE001
+            if _est_panne_generale(exc):
+                raise PanneGenerale(str(exc)) from exc
+            raise
         txt = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
         try:
             rep = _json_de(txt)
@@ -526,6 +547,27 @@ def rediger(client, model: str, dos: dict, cles: dict, liens: list[str], essais:
 
 
 # ----------------------------------------------------------------------------- garage
+
+class PanneGenerale(Exception):
+    """Une panne qui ne dépend PAS de la page en cours : crédit épuisé, clé refusée,
+    quota. La réessayer ville après ville ne produit rien et coûte un appel à chaque fois.
+
+    Mesuré le 19/09/2026 : le premier dry-run a brûlé DEUX appels pour la même erreur
+    « credit balance is too low », et il en aurait brûlé un par paire sans le --cap 2."""
+
+
+_PANNES_GENERALES = (
+    "credit balance is too low",     # crédit épuisé
+    "invalid x-api-key",             # clé fausse
+    "authentication_error",
+    "permission_error",
+)
+
+
+def _est_panne_generale(exc: Exception) -> bool:
+    m = str(exc).lower()
+    return any(motif in m for motif in _PANNES_GENERALES)
+
 
 def garage_lire() -> dict:
     if GARAGE.exists():
@@ -678,6 +720,14 @@ def main(argv=None) -> int:
         liens = [d["permalink"] for d in duo.values()]
         try:
             rep, motifs, avert = rediger(client, model, dos, cles, liens, args.essais)
+        except PanneGenerale as exc:
+            # Le périmètre à côté du nombre (règle 6) : ce qui reste n'a pas été refusé,
+            # il n'a pas été TENTÉ. Confondre les deux ferait croire à 96 pages fautives.
+            non_tentees = len(candidates) - len(faits) - len(refus) - 1
+            erreurs.append(f"panne générale, run interrompu après {ville} ({quand}) : {exc}")
+            log.error("Panne qui vaut pour toutes les pages, on s'arrête ici plutôt que de "
+                      "la rejouer %d fois : %s", non_tentees + 1, exc)
+            break
         except Exception as exc:                        # noqa: BLE001
             erreurs.append(f"{ville} ({quand}) : {type(exc).__name__} — {exc}")
             log.error("  %s : %s", ville, exc)
@@ -738,10 +788,14 @@ def main(argv=None) -> int:
         print(f"  ⚠️  {e}")
     garage_ecrire(garees)
 
+    non_tentees = len(candidates) - len(faits) - len(refus)
+    if non_tentees > 0:
+        print(f"\n{non_tentees} paire(s) NON TENTÉE(S) — le run s'est arrêté avant elles. "
+              f"Ce n'est pas un refus : rien ne dit encore si leur texte passerait.")
     if not args.apply:
         print(f"\nDRY-RUN — {len(faits)} paire(s) prête(s), rien d'écrit sur le site. "
               f"Relancer avec --apply.")
-        return 0
+        return 0 if not erreurs else 1
 
     ecrites = 0
     for _, _, duo, rep, _ in faits:

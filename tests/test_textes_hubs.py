@@ -157,3 +157,39 @@ def test_en_tete_de_phrase_c_est_un_avertissement_pas_un_refus():
                           verifier_liens=False, corps=FIXTURE["corps"], avertissements=avert)
     assert motifs == [], f"attendu un simple avertissement, obtenu un refus : {motifs}"
     assert any("Zanetti" in a for a in avert), avert
+
+
+def test_une_panne_de_credit_est_une_panne_generale():
+    """Une panne qui vaut pour toutes les pages doit arrêter le run, pas se rejouer.
+
+    Mesuré le 19/09/2026 : le premier dry-run a brûlé DEUX appels API pour la même erreur
+    « credit balance is too low », et il en aurait brûlé un par paire sans le --cap 2."""
+    vraie = ("Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error',"
+             " 'message': 'Your credit balance is too low to access the Anthropic API.'}}")
+    assert th._est_panne_generale(Exception(vraie))
+    assert th._est_panne_generale(Exception("authentication_error: invalid x-api-key"))
+
+
+def test_une_panne_propre_a_une_page_n_arrete_pas_le_run():
+    """Contre-épreuve : sans elle, on ne saurait pas si le détecteur regarde quoi que ce
+    soit. Un dépassement de tokens ou une coupure réseau concernent UNE page — les autres
+    doivent être tentées."""
+    assert not th._est_panne_generale(Exception("stop_reason=max_tokens"))
+    assert not th._est_panne_generale(Exception("APIConnectionError: Connection reset"))
+    assert not th._est_panne_generale(Exception("overloaded_error"))
+
+
+def test_les_listes_ne_sont_pas_refusees_au_nom_de_la_charte():
+    """La charte Agenda AUTORISE les listes (surcharge explicite de la voix Enrico).
+
+    Mon premier motif de refus disait « la charte veut de la prose » : c'était faux, et
+    ce test existe pour que personne ne le réécrive. Le refus reste, mais pour la raison
+    qui vaut ICI — le shortcode rend déjà les faits structurés, et lui se met à jour."""
+    raw = FIXTURE["html"]["fr"].replace(
+        "<p>Deux spécialités tiennent aussi à Chambéry.",
+        "<ul><li>truffe</li></ul><p>Deux spécialités tiennent aussi à Chambéry.")
+    motifs = _controle(raw, "fr")
+    listes = [m for m in motifs if "liste à puces" in m]
+    assert listes, "la liste aurait dû être signalée sur CE gabarit"
+    assert "charte veut de la prose" not in listes[0]
+    assert "autorisées ailleurs" in listes[0], listes[0]
