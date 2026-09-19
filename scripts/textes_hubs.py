@@ -96,11 +96,41 @@ def atts_hub(content: str) -> dict:
     """Ville / territoire / quand LUS DANS LE SHORTCODE de la page, pas devinés du titre.
 
     Le titre est réécrit par l'éditorial ; le shortcode, lui, est ce que WordPress exécute.
-    C'est la seule source qui dit vraiment de quelle ville cette page parle."""
+    C'est la seule source qui dit vraiment de quoi cette page parle."""
     m = re.search(r"\[cs_hub_(?:ville|territoire)([^\]]*)\]", content)
     if not m:
         return {}
     return {k: v for k, v in re.findall(r'(\w+)="([^"]*)"', m.group(1))}
+
+
+def cible(atts: dict) -> dict:
+    """Ce dont la page parle, dans les TROIS formes réellement en ligne.
+
+    Mesuré sur WordPress le 19/09/2026, sur les 192 pages de gabarit, parce que mon
+    premier dry-run rendait « 0 paire » pour Aoste et que je n'ai pas voulu le deviner :
+
+      • 84 pages portent villes="Chambéry" — une seule ville ;
+      • 36 portent une LISTE : villes="Torino,Turin", villes="Aoste,Aosta". Les comparer
+        à une ville ne matche jamais, et interroger la base sur « Aoste,Aosta » ne rend
+        aucune fiche ;
+      • 72 n'ont PAS d'attribut villes du tout : ce sont les pages de TERRITOIRE, qui
+        portent ville_label="Savoie" / "Savoia" / "Piémont". Ma première version repliait
+        sur territoire="vda" et serait allée chercher des fiches dont la ville vaut
+        « vda » — c'est-à-dire aucune.
+
+    Soit 108 pages sur 192 qui auraient reçu un dossier de faits VIDE. Le script n'aurait
+    pas planté : il aurait écrit du creux, ou tout refusé, sans dire pourquoi.
+
+    Le libellé change de langue (« Savoie » / « Savoia ») mais pas la cible : le
+    regroupement des jumelles se fait donc sur les villes ou le territoire, jamais sur le
+    libellé."""
+    villes = [v.strip() for v in (atts.get("villes") or "").split(",") if v.strip()]
+    territoire = (atts.get("territoire") or "").strip()
+    label = (atts.get("ville_label") or "").strip() or (villes[0] if villes else territoire)
+    return {"villes": villes, "territoire": territoire, "label": label,
+            "est_territoire": not villes,
+            # clé de regroupement des deux jumelles, insensible à la langue
+            "groupe": ("V", tuple(sorted(villes))) if villes else ("T", territoire)}
 
 
 def texte_editorial(content: str) -> str:
@@ -118,18 +148,27 @@ def langue_de(cle: str) -> str:
 
 # --------------------------------------------------------------------- dossier de faits
 
-def dossier(conn: sqlite3.Connection, ville: str, territoire: str) -> dict:
-    """Ce que NOTRE base sait de cette ville, et rien d'autre.
+def dossier(conn: sqlite3.Connection, cib: dict) -> dict:
+    """Ce que NOTRE base sait de cette cible, et rien d'autre.
 
     Règle 5 : seuls comptent les événements à venir ou EN COURS — c'est `date_event_end`
     qui décide, jamais `date_event_start` seule — et une fiche sans date n'est pas
-    « passée », c'est une donnée manquante, donc on la garde."""
+    « passée », c'est une donnée manquante, donc on la garde.
+
+    Deux périmètres, parce qu'il y a deux sortes de pages : une page de ville interroge
+    ses villes (elles peuvent être plusieurs, « Torino,Turin » étant le même lieu écrit
+    des deux côtés), une page de territoire interroge tout le territoire."""
     aujourdhui = date.today().isoformat()
-    encore_devant = ("(date_event_end >= ? OR (date_event_end IS NULL AND "
-                     "(date_event_start IS NULL OR date_event_start >= ?)))")
-    base = (f"FROM events_raw WHERE wp_post_id_as IS NOT NULL AND ville = ? "
-            f"AND {encore_devant}")
-    args = (ville, aujourdhui, aujourdhui)
+    devant = ("(date_event_end >= ? OR (date_event_end IS NULL AND "
+              "(date_event_start IS NULL OR date_event_start >= ?)))")
+
+    if cib["est_territoire"]:
+        ou, args = "territoire = ?", (cib["territoire"],)
+    else:
+        trous = ",".join("?" * len(cib["villes"]))
+        ou, args = f"ville IN ({trous})", tuple(cib["villes"])
+    base = f"FROM events_raw WHERE wp_post_id_as IS NOT NULL AND {ou} AND {devant}"
+    args = args + (aujourdhui, aujourdhui)
 
     nb = conn.execute(f"SELECT COUNT(*) {base}", args).fetchone()[0]
     lieux = [r[0] for r in conn.execute(
@@ -138,14 +177,25 @@ def dossier(conn: sqlite3.Connection, ville: str, territoire: str) -> dict:
     cats = [r[0] for r in conn.execute(
         f"SELECT llm_categorie, COUNT(*) c {base} AND llm_categorie IS NOT NULL "
         f"GROUP BY llm_categorie ORDER BY c DESC LIMIT 6", args).fetchall()]
-    voisines = [r[0] for r in conn.execute(
-        "SELECT ville, COUNT(*) c FROM events_raw WHERE wp_post_id_as IS NOT NULL "
-        f"AND territoire = ? AND ville <> ? AND {encore_devant} "
-        "AND ville IS NOT NULL AND TRIM(ville) <> '' "
-        "GROUP BY ville ORDER BY c DESC LIMIT 6",
-        (territoire, ville, aujourdhui, aujourdhui)).fetchall()]
-    return {"ville": ville, "territoire": territoire, "fiches_en_ligne": nb,
-            "lieux": lieux, "categories": cats, "villes_voisines": voisines}
+
+    if cib["est_territoire"]:
+        # Sur une page de territoire, « les voisines » sont les villes du territoire.
+        voisines = [r[0] for r in conn.execute(
+            f"SELECT ville, COUNT(*) c {base} AND ville IS NOT NULL AND TRIM(ville) <> '' "
+            f"GROUP BY ville ORDER BY c DESC LIMIT 8", args).fetchall()]
+    else:
+        trous = ",".join("?" * len(cib["villes"]))
+        voisines = [r[0] for r in conn.execute(
+            "SELECT ville, COUNT(*) c FROM events_raw WHERE wp_post_id_as IS NOT NULL "
+            f"AND territoire = ? AND ville NOT IN ({trous}) AND {devant} "
+            "AND ville IS NOT NULL AND TRIM(ville) <> '' "
+            "GROUP BY ville ORDER BY c DESC LIMIT 6",
+            (cib["territoire"],) + tuple(cib["villes"]) + (aujourdhui, aujourdhui)).fetchall()]
+
+    return {"ville": cib["label"], "villes": cib["villes"], "territoire": cib["territoire"],
+            "page_de_territoire": cib["est_territoire"],
+            "fiches_en_ligne": nb, "lieux": lieux, "categories": cats,
+            "villes_voisines": voisines}
 
 
 def _fetch(url: str, timeout: int = 20) -> tuple[int, str]:
@@ -229,6 +279,8 @@ def noms_autorises(dos: dict, pages_citees: dict, cle: str, ancres: list[str]) -
     maj = set(BLANCHE)
     mins: set = set()
     maj |= set(_MAJ.findall(str(dos.get("ville") or ""))) | set(_MAJ.findall(str(dos.get("territoire") or "")))
+    for v in dos.get("villes") or []:
+        maj |= set(_MAJ.findall(str(v)))
     for liste in ("lieux", "villes_voisines", "categories"):
         for v in dos.get(liste) or []:
             maj |= set(_MAJ.findall(str(v)))
@@ -621,7 +673,8 @@ def inventaire(wp_url: str, auth) -> tuple[list[dict], dict]:
             continue
         p["_atts"] = atts
         p["_lang"] = lang
-        p["_ville"] = atts.get("villes") or atts.get("territoire") or ""
+        p["_cible"] = cible(atts)
+        p["_ville"] = p["_cible"]["label"]
         p["_quand"] = atts.get("quand") or ""
         p["_deja"] = bool(texte_editorial(p.get("content") or ""))
         if p["_deja"]:
@@ -673,32 +726,46 @@ def main(argv=None) -> int:
         return 2
 
     pages, ecartees = inventaire(wp_url, auth)
+    # Regroupement sur la CIBLE, pas sur le libellé : « Savoie » et « Savoia » sont la
+    # même page dans deux langues, et les regrouper par libellé les séparerait — chaque
+    # jumelle resterait seule, et le script n'écrirait jamais la moitié d'une paire.
     paires: dict[tuple, dict] = {}
     for pg in pages:
-        paires.setdefault((pg["_ville"], pg["_quand"]), {})[pg["_lang"]] = pg
+        paires.setdefault((pg["_cible"]["groupe"], pg["_quand"]), {})[pg["_lang"]] = pg
 
     garees = garage_lire()
-    candidates = []
-    for (ville, quand), duo in sorted(paires.items()):
+    candidates, orphelines = [], 0
+    for (groupe, quand), duo in sorted(paires.items(), key=lambda kv: str(kv[0])):
         if len(duo) < 2:
+            orphelines += 1
             continue                                   # une jumelle manque : on n'écrit pas la moitié
+        cib = duo["fr"]["_cible"]
+        ville = cib["label"]
         if args.ids and not any(d["id"] in args.ids for d in duo.values()):
             continue
-        if args.villes and ville not in args.villes:
-            continue
+        if args.villes:
+            # --villes Aoste doit attraper villes="Aoste,Aosta" ET ville_label="Savoie".
+            noms = {n.lower() for n in cib["villes"]} | {d["_ville"].lower() for d in duo.values()}
+            if not any(v.lower() in noms for v in args.villes):
+                continue
         deja = any(d["_deja"] for d in duo.values())
         if deja and not args.refaire:
             continue
-        cle_garage = f"{ville}|{quand}"
+        cle_garage = f"{groupe}|{quand}"
         if cle_garage in garees and not args.rejouer:
             continue
-        candidates.append((ville, quand, duo))
+        candidates.append((ville, quand, duo))  # ville = le libellé français, pour l'affichage
 
     # Le périmètre à côté du nombre (règle 6) : d'où vient ce chiffre, et ce qu'il exclut.
     log.info("%d paire(s) candidate(s) sur %d page(s) de gabarit — %d déjà écrites à la main "
              "(jamais écrasées), %d garées après refus, %d pages hors gabarit",
              len(candidates), len(pages), ecartees["deja_ecrites"], len(garees),
              ecartees["sans_shortcode"] + ecartees["sans_cle"] + ecartees["sans_langue"])
+    if orphelines:
+        # Une jumelle sans l'autre ne doit pas disparaître en silence : c'est une page qui
+        # ne sera JAMAIS écrite tant que personne ne crée sa traduction.
+        log.warning("%d page(s) sans jumelle dans l'autre langue : jamais écrites tant que "
+                    "leur traduction n'existe pas", orphelines)
     if not candidates:
         print("Rien à écrire. Ce zéro vient d'une absence de cas, pas d'un échec : "
               f"{len(pages)} pages inspectées, {ecartees['deja_ecrites']} déjà pourvues, "
@@ -715,7 +782,17 @@ def main(argv=None) -> int:
     faits, refus, erreurs, avertis = [], [], [], []
     for ville, quand, duo in candidates:
         log.info("— %s (%s) : pages %s", ville, quand, [d["id"] for d in duo.values()])
-        dos = dossier(conn, ville, duo["fr"]["_atts"].get("territoire") or "")
+        dos = dossier(conn, duo["fr"]["_cible"])
+        if not dos["fiches_en_ligne"]:
+            # Un dossier vide n'est pas une matière pauvre : c'est l'absence de matière.
+            # Écrire dessus produirait du creux, et le LLM comblerait le vide en inventant.
+            motif = [f"dossier de faits VIDE : aucune fiche publiée encore à venir pour "
+                     f"{dos['villes'] or dos['territoire']}. Rien à écrire de vérifiable."]
+            refus.append((ville, quand, motif))
+            garees[f"{duo['fr']['_cible']['groupe']}|{quand}"] = {
+                "quand": quand, "motifs": motif, "le": date.today().isoformat()}
+            log.info("  %s : dossier vide, page laissée telle quelle", ville)
+            continue
         cles = {l: duo[l]["keyword"] for l in ("fr", "it")}
         liens = [d["permalink"] for d in duo.values()]
         try:
