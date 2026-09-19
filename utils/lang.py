@@ -24,8 +24,11 @@ import unicodedata
 
 # Mots-outils/marqueurs qui TRANCHENT (présents dans une langue, absents/rares dans
 # l'autre). Volontairement disjoints : on écarte « de », « la », « in »… (communs).
+# « le » RETIRÉ le 17/09/2026 : c'est aussi l'article italien féminin pluriel (« le
+# fabbriche », « le porte », « le Voiles »). Compté ×3 dans un titre et décisif dès 2 points,
+# il a fait étiqueter `fr` deux traductions italiennes (WP#9209, 9201) à leur republication.
 _FR = frozenset((
-    "le", "les", "des", "une", "est", "été", "à", "au", "aux", "dans", "pour",
+    "les", "des", "une", "est", "été", "à", "au", "aux", "dans", "pour",
     "avec", "cette", "ce", "vous", "nous", "du", "sur", "par", "ses", "leur",
     "leurs", "plus", "très", "où", "déjà", "fête", "juillet", "août", "gratuit",
     "entrée", "jour", "tous", "toute", "aussi", "depuis", "jusqu", "chaque",

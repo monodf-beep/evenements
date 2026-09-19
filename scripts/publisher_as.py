@@ -458,6 +458,20 @@ def _lang(event: dict) -> str:
     forced = str(event.get("force_lang") or "").strip().lower()
     if forced in ("fr", "it"):
         return forced
+    # UNE TRADUCTION NE SE DEVINE PAS, ELLE SE LIT. Trouvé le 17/09 au soir : la page
+    # d'accueil FRANÇAISE affichait « Open Factories 2026: le fabbriche di Torino aprono
+    # le porte » à côté de sa jumelle française. La jumelle avait été créée `it` (force_lang)
+    # le 15/09, puis REPUBLIÉE le 16/09 par seo_batch → publish_batch_as, sans force_lang :
+    # cette fonction a re-détecté la langue sur le titre, où « le » (article italien
+    # pluriel) compte comme un mot français, et a renvoyé `fr`. Polylang a alors changé
+    # l'étiquette ET défait le lien de traduction. Deux jumelles touchées (WP#9209, 9201),
+    # les 47 autres du même lot ne devaient leur salut qu'à un titre sans « le ».
+    # `translated_lang` est écrit par translate_events à la création de la ligne : c'est
+    # la même source de vérité que `utils.seo.langue_seo`, et elle passe avant tout.
+    if event.get("translation_of"):
+        tl = str(event.get("translated_lang") or "").strip().lower()
+        if tl in ("fr", "it"):
+            return tl
     from utils.lang import effective_lang
     return effective_lang(event)
 

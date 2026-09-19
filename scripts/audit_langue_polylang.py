@@ -1,32 +1,37 @@
 #!/usr/bin/env python3
-"""Les traductions publiées portent-elles la langue qu'on leur a demandée ?
+"""Les traductions publiées sont-elles du côté du site qu'on leur a demandé ?
 
 LECTURE SEULE. Aucun appel LLM, aucune écriture, aucun réseau.
 
-D'OÙ ÇA VIENT (2026-08-17). En réparant la séparation des versants de « À la une », j'ai
-regardé comment la langue Polylang est réellement posée, et trouvé ceci :
+D'OÙ ÇA VIENT (2026-08-17). `scripts.translate_events` publie une traduction avec
+`force_lang` — la langue est IMPOSÉE. Mais `scripts.publish_batch_as --update` republiait
+les mêmes fiches SANS `force_lang`, et `publisher_as._lang` retombait sur `detect_lang`,
+qui DEVINE. Ce script mesurait alors le risque : « republier cette fiche pourrait changer
+sa langue ».
 
-  · `scripts.translate_events` publie une traduction avec `force_lang` — la langue est
-    IMPOSÉE, jamais devinée. C'est le bon chemin ;
-  · `scripts.publish_batch_as --update`, lui, republie les mêmes fiches depuis la base
-    SANS `force_lang`. `publisher_as._lang` retombe alors sur `detect_lang`, qui devine
-    à partir du titre, de la description et — en dernier recours — du TERRITOIRE.
+CE QUI S'EST PASSÉ QUAND MÊME (2026-09-17). Le risque n'était pas un risque : la page
+d'accueil FRANÇAISE affichait « Open Factories 2026: le fabbriche di Torino aprono le
+porte » à côté de sa jumelle française. La traduction (WP#9209) avait été créée `it` le
+15/09, puis republiée le 16/09 par seo_batch : le détecteur a lu « le » comme du français
+(c'est aussi l'article italien pluriel), Polylang a changé l'étiquette ET défait le lien
+de traduction. Deux jumelles sur 49. Un audit qui mesure un risque sans jamais tourner ne
+protège de rien : celui-ci n'était dans aucun cron.
 
-Le texte d'une traduction est bien traduit (titre ET description), donc la devinette
-tombe juste la plupart du temps. Mais quand le texte ne tranche pas — titre court, nom
-propre, programme sans phrase — c'est le territoire qui décide : « Piemonte » ⇒ italien.
-Une traduction FRANÇAISE d'un événement piémontais peut donc être republiée en ITALIEN,
-et se retrouver du mauvais côté du sélecteur de langue.
+DEPUIS, `publisher_as._lang` lit `translated_lang` avant de deviner quoi que ce soit — le
+risque est fermé par construction, et ce script ne le simule plus. Il mesure autre chose,
+qui aurait montré l'incident dès le 16/09 : le VERSANT où WordPress a rangé la page à sa
+dernière publication, lu dans le préfixe de `wp_permalink_as` (`/it/…` ou rien), comparé
+à la langue demandée. Ce n'est pas l'état du site aujourd'hui (règle 1 : seule l'API REST
+le dit, l'adresse est donnée pour ça), c'est la dernière réponse de WordPress — et un
+écart là veut dire qu'un lecteur du mauvais versant est déjà tombé dessus.
 
-Ce script ne prouve RIEN sur le site : il dit seulement quelles fiches sont exposées à
-l'écart. La règle 1 tient toujours — pour savoir ce que WordPress sert, il faut le lui
-demander, et la dernière colonne donne l'adresse à ouvrir pour ça.
+Il garde un témoin de code : si `_lang` rendait une autre langue que `translated_lang`
+pour une traduction, ce serait la régression du 17/09 qui revient, et il le crie.
 
-CE QU'ON EN FAIT. Une ligne ici veut dire : « republier cette fiche pourrait changer sa
-langue ». Le geste est alors `translate_events --retranslate <id de l'original>`, qui
-repasse par `force_lang`. S'il n'y a aucune ligne, le compteur dit quand même combien de
-fiches ont été examinées — un zéro qui ne dit pas son dénominateur ne prouve pas qu'il
-n'y a rien à trouver (journal du 2026-08-11).
+CE QU'ON EN FAIT. Le geste est `translate_events --retranslate <id de l'original>`, qui
+repasse par `force_lang` ET relie la paire (le lien Polylang est perdu avec l'étiquette).
+S'il n'y a aucune ligne, le compteur dit quand même combien de fiches ont été examinées
+(journal du 2026-08-11).
 
 Usage (VPS) :
     .venv/bin/python -m scripts.audit_langue_polylang
@@ -61,10 +66,15 @@ def cote_du_permalien(url: str) -> str:
     partout où cette valeur s'affiche, et l'adresse laissée en clair pour aller voir.
     """
     u = (url or "").strip().lower()
+    if not u or "?p=" in u or "post_type=" in u:
+        return ""          # forme provisoire : ne dit rien du versant
     for lang in ("it", "fr"):
         if f"/{lang}/" in u:
             return lang
-    return ""
+    # Le français est la langue par défaut de Polylang : SANS préfixe, c'est le versant
+    # français. Avant le 17/09 cette fonction rendait '' ici, et l'écart de WP#9209
+    # (voulue it, adresse sans /it/) passait pour « adresse muette ».
+    return "fr" if "//" in u else ""
 
 
 def url_de_verification(url: str, post_id) -> str:
@@ -125,71 +135,75 @@ def main(argv=None) -> int:
     # Le périmètre s'écrit À CÔTÉ du nombre, pas dans le titre d'une section (règle 6).
     perimetre = "toutes dates" if args.tout else "encore devant nous"
 
-    ecarts = []
+    ecarts, regressions, muettes = [], [], []
     for r in examinees:
         voulue = (r.get("translated_lang") or "").strip().lower()
+        # Témoin de code : depuis le 17/09, _lang LIT translated_lang. S'il rend autre
+        # chose, la republication redeviendrait une devinette — on le dit en premier.
         devinee = _lang_publiee({k: v for k, v in r.items() if k != "force_lang"})
         if devinee != voulue:
-            ecarts.append((r, voulue, devinee))
+            regressions.append((r, voulue, devinee))
+        servie = cote_du_permalien(r.get("wp_permalink_as") or "")
+        if not servie:
+            muettes.append(r)
+        elif servie != voulue:
+            ecarts.append((r, voulue, servie))
 
     print("=" * 78)
     print("Langue Polylang des traductions publiées")
     print("=" * 78)
     print(f"Traductions publiées   : {len(rows)}, toutes dates")
     print(f"EXAMINÉES ici          : {len(examinees)} ({perimetre})")
-    print(f"Exposées à un écart    : {len(ecarts)}")
+    print(f"Du mauvais versant     : {len(ecarts)} (à la dernière publication, d'après l'adresse)")
+    print(f"Adresse muette         : {len(muettes)} (forme provisoire, versant inconnu)")
     print()
 
-    if not ecarts:
-        print(f"Aucun écart sur les {len(examinees)} traduction(s) examinée(s) : une")
-        print("republication par `publish_batch_as --update` leur rendrait la même langue")
-        print("que celle demandée à la traduction. Rien à faire.")
-        return 0
+    if regressions:
+        print(f"🔴 RÉGRESSION DE CODE : pour {len(regressions)} traduction(s), publisher_as._lang")
+        print("   rend une autre langue que `translated_lang`. Une republication redeviendrait")
+        print("   une devinette (incident du 17/09/2026). Corriger _lang AVANT tout geste.")
+        for r, voulue, devinee in regressions[:10]:
+            print(f"   fiche {r['id']} : voulue {voulue}, _lang rend {devinee} — {(r.get('title') or '')[:50]}")
+        print()
 
-    print("Pour chacune, une republication SANS `force_lang` poserait l'autre langue.")
-    print("La colonne « Servie » dit de quel côté WordPress a rangé la page À LA")
-    print("PUBLICATION, d'après le préfixe de son adresse. C'est sa réponse à lui, pas")
-    print("notre devinette — mais c'est un champ de la base, écrit un jour donné.\n")
+    if not ecarts:
+        print(f"Aucun écart sur les {len(examinees)} traduction(s) examinée(s) : à leur")
+        print("dernière publication, WordPress les a toutes rangées du versant demandé.")
+        print("Rien à faire.")
+        return 1 if regressions else 0
+
+    print("Pour chacune, l'adresse enregistrée à la dernière publication est du MAUVAIS")
+    print("versant : un lecteur du sélecteur de langue tombe sur une page qu'il ne sait")
+    print("pas lire. C'est la réponse de WordPress ce jour-là, pas une devinette.\n")
     print("⚠️  Pour l'état d'AUJOURD'HUI, ouvrir l'adresse REST de la dernière colonne,")
     print("    JAMAIS le lien public : `?p=<id>` répond 404 pour tout tribe_events, en")
     print("    ligne ou non (CLAUDE.md, règle 1). Regarder `link` dans la réponse — son")
     print("    préfixe /it/, ou son absence, donne le versant réel.\n")
-    print("| Fiche | Voulue | Devinée | Servie | Titre | Vérifier (API REST) |")
-    print("|---:|---|---|---|---|---|")
-    for r, voulue, devinee in ecarts:
-        servie = cote_du_permalien(r.get("wp_permalink_as") or "")
-        # On ne met en gras QUE ce qui contredit la langue demandée : un tableau où tout
-        # crie ne désigne plus rien.
-        marque = f"**{servie}**" if servie and servie != voulue else (servie or "—")
-        print(f"| {r['id']} | {voulue} | {devinee} | {marque} | "
+    print("| Fiche | Voulue | Servie | Titre | Vérifier (API REST) |")
+    print("|---:|---|---|---|---|")
+    for r, voulue, servie in ecarts:
+        print(f"| {r['id']} | {voulue} | **{servie}** | "
               f"{(r.get('title') or '')[:34]} | "
               f"{url_de_verification(r.get('wp_permalink_as') or '', r.get('wp_post_id_as'))} |")
     print()
-
-    deja = [(r, v) for r, v, _d in ecarts
-            if cote_du_permalien(r.get("wp_permalink_as") or "") not in ("", v)]
-    if deja:
-        print(f"⚠️  {len(deja)} sur {len(ecarts)} n'est pas un risque À VENIR : l'adresse")
-        print("    enregistrée montre que la page était DÉJÀ du mauvais côté. Le sélecteur")
-        print("    de langue renvoie donc le lecteur vers une page qu'il ne sait pas lire.")
-        print()
 
     # LE GESTE, ET SEULEMENT QUAND IL EXISTE. `--retranslate` repart de l'ORIGINAL : si
     # celui-ci n'est pas publiable, la commande est un cul-de-sac. Les proposer ensemble
     # ferait une file dont une partie ne mène nulle part — précisément ce que la règle 6
     # interdit.
     faisables, bloques = [], []
-    for r, _v, _d in ecarts:
+    for r, _v, _s in ecarts:
         orig = originaux.get(r.get("translation_of")) or {}
         if orig and int(orig.get("wp_post_id_as") or 0) > 0:
             faisables.append(str(r["translation_of"]))
         else:
             bloques.append((r, orig))
     if faisables:
-        print("Le geste, si la page est du mauvais côté du sélecteur de langue :")
+        print("Le geste :")
         print(f"    .venv/bin/python -m scripts.translate_events --retranslate "
               f"{' '.join(sorted(set(faisables)))} --apply")
-        print("(il republie par `force_lang`, donc il IMPOSE la langue au lieu de la deviner.)")
+        print("(il republie par `force_lang`, donc il IMPOSE la langue, et il RELIE la paire —")
+        print(" le lien Polylang est perdu en même temps que l'étiquette.)")
         print()
     for r, orig in bloques:
         print(f"⚠️  Fiche {r['id']} : PAS de geste automatique. Son original "

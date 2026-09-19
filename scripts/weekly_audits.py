@@ -476,6 +476,19 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("audit_excluded_events")
 
+    # LE VERSANT DES TRADUCTIONS (2026-09-17). audit_langue_polylang existait depuis le
+    # 17/08 et décrivait exactement l'incident qui s'est produit un mois plus tard — une
+    # jumelle italienne affichée sur l'accueil français — mais il n'était dans aucun cron,
+    # donc il n'a rien vu. LECTURE SEULE. Sa sortie porte le compteur avec son périmètre
+    # (traductions en ligne, devant nous) et le geste quand il existe.
+    from scripts.audit_langue_polylang import main as langue_pll_main
+    rc, out = _run_captured(langue_pll_main, [], None)
+    versant = next((l.strip() for l in out.splitlines() if l.startswith("Du mauvais versant")),
+                   _tail(out, 1))
+    sections.append(f"• Traductions du mauvais versant (audit_langue_polylang) : {versant}")
+    if rc:
+        echecs.append("audit_langue_polylang")
+
     # Apprentissage Slack — LECTURE SEULE, zéro LLM (2026-08-05, demande de Franck :
     # « l'autonomie c'est l'apprentissage par soi-même »). Regroupe les messages
     # « À compléter » de la semaine par source × champ manquant : un motif qui dépasse
