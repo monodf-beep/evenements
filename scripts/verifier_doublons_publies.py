@@ -438,7 +438,31 @@ def main(argv=None) -> int:
                       f"absent(s) du groupe ci-dessus : "
                       f"{', '.join(str(e['id']) for e in caches)} — les laisser en ligne "
                       f"ferait un orphelin)")
-            a_retirer.extend(sorted(ids_reste))
+            # UN GROUPE PAR COÏNCIDENCE NE REJOINT PAS LA COMMANDE AUTOMATIQUE.
+            #
+            # Mesuré le 19/09 : le cerveau du matin a lu cette commande consolidée et
+            # aurait corbeillé TO Play (5702) et Mobilità dolce (5690) — deux VRAIS
+            # événements différents, vérifiés sur WordPress. Les deux venaient d'un
+            # groupe « par coïncidence » (lieu + dates + un jeton commun), le signal le
+            # plus faible que ce script mesure — son propre docstring dit depuis le
+            # 08/09 « un humain vérifie CE mot, puis tranche », mais la ligne ci-dessus
+            # (ancienne version) les jetait quand même dans la même commande consolidée
+            # que les groupes appariés par TITRE, sans distinction possible en collant
+            # juste la commande. Un lecteur pressé — humain ou cerveau autonome — n'a
+            # aucune raison de rouvrir le détail de CHAQUE groupe avant de coller une
+            # seule ligne prête à l'emploi.
+            #
+            # Donc : les groupes par titre alimentent toujours la commande automatique
+            # (ressemblance directe, déjà le signal le plus fort du dépôt). Les groupes
+            # par coïncidence restent affichés en détail, avec leur mot déclencheur,
+            # mais leurs ids n'entrent JAMAIS dans `a_retirer` — il faut les traiter un
+            # par un, à la main, après avoir lu ce que dit VRAIMENT chaque page.
+            if par_quoi:
+                print(f"     ⚠ PAS dans la commande automatique — coïncidence sur "
+                      f"« {par_quoi} » : vérifier le contenu réel de chaque page avant "
+                      f"tout retrait.")
+            else:
+                a_retirer.extend(sorted(ids_reste))
         elif args.en_ligne:
             print(f"     → {motif or 'aucun défaut proposé'}.")
         print()
