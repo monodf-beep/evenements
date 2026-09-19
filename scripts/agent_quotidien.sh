@@ -75,7 +75,13 @@ if [ $CODE -ne 0 ]; then
   # Un échec silencieux serait le pire cas : personne ne remarque l'absence d'un message,
   # et c'est justement ce chien de garde qui doit signaler ce qui passe inaperçu. Le
   # plafond d'API (jusqu'au 2026-09-01) fait partie des causes attendues.
+  #
+  # 19/09 : même bug que cerveau.sh/bilan_matin.sh (corrigé le 17/09, commit c7deac6) —
+  # $COMPTE_RENDU (stdout, où `claude -p` écrit souvent le vrai message d'erreur, ex.
+  # authentification ou crédit API) n'était journalisé qu'en cas de SUCCÈS. Résultat :
+  # échecs quotidiens depuis au moins le 05/09 sans aucun détail dans le journal.
   echo "claude -p a échoué (code $CODE)" >> "$JOURNAL"
+  printf '%s\n' "$COMPTE_RENDU" >> "$JOURNAL"
   RAISON="code $CODE"
   [ $CODE -eq 124 ] && RAISON="il tournait encore après 20 minutes (arrêté)"
   printf '%s\n' "⚠️ L'agent quotidien n'a pas pu tourner ($RAISON). Voir logs/agent_quotidien.log." \
