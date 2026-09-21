@@ -200,9 +200,13 @@ def cmd_sync(conn, args) -> int:
         # représente nulle part ailleurs.
         print(f"\n⚠️ {len(orphelines)} fiche(s) gelée(s) sur le site sans ligne en base "
               f"(wp_post_id_as introuvable) : {orphelines}")
-        print("   Le site les protège quand même ; le pipeline ne les touche pas. Mais "
-              "vérifier qu'aucune n'a perdu son wp_post_id_as :")
-        print("   .venv/bin/python -m scripts.audit_wp_ids_local_match")
+        print("   Le site les protège quand même ; le pipeline ne les touche pas. Pour "
+              "savoir ce qu'est devenue la fiche locale (corbeille puis relink, fusion "
+              "de doublon, adoption d'édition annuelle…), la chercher par son titre :")
+        print("   .venv/bin/python -c \"import sqlite3;c=sqlite3.connect('data/events.db');"
+              "[print(r) for r in c.execute(\\\"select id,statut,wp_post_id_as,duplicate_of,"
+              "edition_suivante,substr(title,1,50) from events_raw where title like '%MOT%'\\\")]\"")
+        print("   (remplacer MOT par un mot distinctif du titre de la fiche en ligne)")
     return 0
 
 
