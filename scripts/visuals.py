@@ -219,12 +219,25 @@ def resolve_image(ev: dict, client, blocked: set[str],
     # "aller chercher plus grand sur la page" (ce qui causait l'incident).
     content_fallback = None  # (url, credit, source, fx, fy) si trouvé mais petit
     # Étage 2 — og:image de la page officielle (jamais pour un radar : image de presse).
-    # ET JAMAIS D'UNE PAGE GÉNÉRIQUE (2026-09-21) : une page d'accueil ou une rubrique
-    # presse illustre la programmation du moment, pas CET événement — mesuré sur les 22
-    # racines servant de source à des fiches à venir, neuf og:image, zéro qui montrait
-    # l'événement (voir utils/pages.py). L'exception « le site EST l'événement » reste :
-    # la home de stresafestival.eu, elle, porte bien la bonne affiche.
-    if not _is_radar(ev) and peut_illustrer(ev.get("url_source", ""), ev.get("title", "")):
+    # DEPUIS UNE PAGE GÉNÉRIQUE (page d'accueil, rubrique presse), l'agent vision devient
+    # OBLIGATOIRE — 2026-09-21, et c'est une règle corrigée le jour même, après mesure :
+    #
+    #   • d'abord mesuré que les 22 racines servant de source à des fiches à venir
+    #     portaient neuf og:image dont AUCUNE ne montrait l'événement (fond de page admin,
+    #     affiche de saison périmée, logo, façade) → j'ai refusé ces pages tout court ;
+    #   • puis regardé les cinq fiches que ce refus visait : trois avaient une BONNE image,
+    #     dont l'affiche exacte de l'expo (villefranche-sur-mer.fr, home de la mairie) et
+    #     la chapelle des Scrovegni pour un cours sur « huit lieux qui ont changé
+    #     l'histoire de l'art » (palazzomadamatorino.it).
+    #
+    # Les deux mesures sont vraies : une page d'accueil montre la programmation DU MOMENT,
+    # donc elle est bonne pour l'événement en cours et fausse pour tous les autres. Un
+    # instantané des og:image ne pouvait pas le voir — il fallait regarder les fiches.
+    # La ligne juste n'est donc pas « jamais », c'est « pas sans que quelqu'un REGARDE » :
+    # l'agent vision compare l'image au titre, et c'est exactement le jugement qui manque.
+    # Sans client vision, on s'abstient plutôt que de parier.
+    _page_generique = not peut_illustrer(ev.get("url_source", ""), ev.get("title", ""))
+    if not _is_radar(ev) and not (_page_generique and verify_client is None):
         og = fetch_og_image(ev.get("url_source", ""))
         # Forme (déterministe, TOUJOURS active — pas besoin de l'agent vision) : un
         # og:image très plat ou très étroit est un bandeau d'habillage (souvent la même

@@ -109,13 +109,34 @@ def site_est_evenement(url: str, titre: str) -> bool:
 
 
 def peut_illustrer(url: str, titre: str) -> bool:
-    """L'image trouvée sur cette page peut-elle illustrer CET événement ? Non pour une
-    page générique — sauf si le site EST l'événement (voir le docstring du module pour
-    la mesure qui a motivé la règle).
+    """L'image trouvée sur cette page se suffit-elle à elle-même pour illustrer CET
+    événement ? Non pour une page générique — sauf si le site EST l'événement.
 
-    Un refus n'est PAS un cul-de-sac (règle 3) : l'appelant descend simplement d'un étage
-    dans la chaîne — Commons, agent web, puis la bannière territoire, qui est neutre. Une
-    bannière dit « pas de photo » ; l'affiche d'un autre spectacle, elle, ment au lecteur.
-    Et le jour où la source est précisée (`scripts/affiner_source.py` remplace la racine
-    par la page du spectacle), la même chaîne reprend l'og:image, cette fois la bonne."""
+    CE QUE « NON » VEUT DIRE, ET CE QU'IL NE VEUT PAS DIRE (corrigé le 2026-09-21, dans
+    la journée). La première version de cette fonction servait à REFUSER ces pages. En
+    regardant ensuite les cinq fiches publiées que ce refus visait, trois avaient une
+    BONNE image : l'affiche exacte de l'exposition, prise sur la page d'accueil de la
+    mairie de Villefranche-sur-Mer, et la chapelle des Scrovegni pour un cours sur
+    « huit lieux qui ont changé l'histoire de l'art », prise sur celle de Palazzo Madama.
+
+    Les deux mesures du jour sont vraies, et c'est ce qui rend le cas intéressant : un
+    INSTANTANÉ des og:image de ces racines n'en montrait aucune de bonne (fond de page
+    admin, affiche de saison périmée d'un an, logo, façade), parce qu'une page d'accueil
+    montre la programmation DU MOMENT — donc elle illustre bien l'événement en cours, et
+    mal tous les autres. Mesurer l'instant ne pouvait pas le dire ; il fallait regarder
+    les fiches.
+
+    D'où la répartition, selon que l'appelant a un JUGE ou non :
+      • `scripts/visuals.py` a l'agent vision → il lit ces pages quand même, et l'agent
+        tranche (c'est précisément son travail : « cette image montre-t-elle CET
+        événement ? ») ;
+      • `scripts/moisson_officielle.py` n'a aucune vérification vision → il s'abstient ;
+      • `scripts/images_wide.py` en a une, mais elle a validé le même jour une brochure de
+        saison comme « affiche portrait » et un plan de salle comme « affiche paysage » →
+        il s'abstient aussi, tant qu'elle n'est pas plus sûre.
+
+    Un « non » n'est donc jamais un cul-de-sac (règle 3) : l'appelant descend d'un étage —
+    Commons, agent web, puis la bannière territoire, neutre. Et le jour où la source est
+    précisée (`scripts/affiner_source.py` remplace la racine par la page du spectacle), la
+    même chaîne reprend l'og:image, cette fois la bonne."""
     return not est_page_generique(url) or site_est_evenement(url, titre)

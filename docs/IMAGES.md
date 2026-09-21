@@ -390,14 +390,42 @@ montrait l'événement**.
 | palazzomadamatorino.it | `Facciata-2011-photo-Gonella-1.jpg` | le bâtiment |
 
 Et **aucun de ces 22 sites n'était lui-même l'événement**. D'où `utils/pages.py` :
-`peut_illustrer(url, titre)` refuse l'image d'une page générique — racine ou rubrique —
-sauf si le domaine porte le nom de l'événement (`doujador.it` ↔ « Douja d'Or »). Branché
-dans les trois chemins qui lisent une page : `visuals.resolve_image` (étages 2 et 2b),
-`moisson_officielle`, et `images_wide._pages_officielles`.
+`peut_illustrer(url, titre)` dit si l'image d'une page se suffit à elle-même — non pour une
+page générique, sauf si le domaine porte le nom de l'événement (`doujador.it` ↔ « Douja
+d'Or »).
 
-**Ce n'est pas un cul-de-sac** (règle 3) : un refus fait descendre d'un étage — Commons,
-agent web, puis la bannière territoire. Une bannière dit « pas de photo » ; l'affiche d'un
-autre spectacle, elle, ment au lecteur. Et le jour où la source est précisée
+### La règle a été CORRIGÉE dans la journée : « pas sans que quelqu'un regarde »
+
+Première version : ces pages étaient refusées, point. Puis j'ai regardé les **cinq fiches
+publiées** que ce refus visait — et **trois avaient une bonne image** :
+
+| Fiche | Source | Image en ligne | Verdict |
+|---|---|---|---|
+| WP#7695 Artistes villefranchois | racine de la mairie | **l'affiche exacte** de l'expo, dates comprises | bonne |
+| WP#9126 Dentro la pittura | racine de Palazzo Madama | la chapelle des Scrovegni | bonne |
+| WP#7490 Filarmonica della Scala | racine de filarmonica.it | le visuel MiTO Settembre 2026 | acceptable |
+| WP#6438 Chitarra Jazz | racine du Conservatoire | la façade, de nuit, petite | faible |
+| WP#7558 Sotto i portici | page `/area-press/` du musée | — | à revoir |
+
+Les deux mesures sont vraies, et leur contradiction est instructive : une page d'accueil
+montre la programmation **du moment**, donc elle illustre bien l'événement en cours et mal
+tous les autres. Un **instantané** des og:image ne pouvait pas le voir — il fallait
+regarder les fiches. C'est la faute classique du journal, mesurer l'instant et conclure
+sur le flux, attrapée cette fois avant le déploiement.
+
+La règle retenue dépend donc de qui peut JUGER :
+
+- **`scripts/visuals.py`** a l'agent vision → il lit la page générique quand même, et
+  l'agent tranche (« cette image montre-t-elle CET événement ? »). Sans client vision,
+  il s'abstient plutôt que de parier ;
+- **`scripts/moisson_officielle.py`** n'a aucune vérification vision → il s'abstient ;
+- **`scripts/images_wide.py`** en a une, mais elle a validé le même jour une brochure de
+  saison comme « affiche portrait » et un plan de salle comme « affiche paysage » → il
+  s'abstient aussi, tant qu'elle n'est pas plus sûre.
+
+**Ce n'est pas un cul-de-sac** (règle 3) : une abstention fait descendre d'un étage —
+Commons, agent web, puis la bannière territoire. Une bannière dit « pas de photo » ;
+l'affiche d'un autre spectacle, elle, ment au lecteur. Et le jour où la source est précisée
 (`affiner_source`), la même chaîne reprend l'`og:image` de la bonne page.
 
 **La limite est écrite dans le code et vérifiée par la fixture** : l'exception exige que
