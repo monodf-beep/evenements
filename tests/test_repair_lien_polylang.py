@@ -266,6 +266,19 @@ prets2, bloques2 = rl.a_retraduire(sans_page)
 _check("un original SANS page n'est pas repris, il est mis de côté",
        prets2 == [] and len(bloques2) == 1, (prets2, bloques2))
 
+print("\n──── ⚠️ la même page des deux côtés : ni lien, ni retraduction ────")
+# MESURÉ LE 21/09 : le relevé a sorti `[2507→3491] WP#2190→WP#2190`. La fiche 3491 est
+# enregistrée comme traduction de 2507 et porte le numéro de la page de 2507. Or
+# `_retranslate` réécrit chaque jumeau EN PLACE, à son `wp_post_id_as` : la reprise
+# automatique aurait réécrit la page FRANÇAISE en italien, dimanche 5h, toute seule.
+avec_meme_post = dict(par_verdict)
+avec_meme_post["meme_post"] = [(_p(9, 2190), _p(19, 2190), "les deux portent WP#2190")]
+prets3, _b3 = rl.a_retraduire(avec_meme_post)
+_check("une paire qui désigne le même post n'est JAMAIS retraduite",
+       9 not in [o["id"] for o, _j, _c in prets3], prets3)
+_check("   et le verdict existe, donc elle est NOMMÉE au lieu de disparaître",
+       "meme_post" in rl.VERDICTS, sorted(rl.VERDICTS))
+
 print("\n──── le garage : trois essais, et le ré-armement ne dépend de personne ────")
 trio = [(_p(1), _p(11), "x"), (_p(2), _p(12), "x"), (_p(3), _p(13), "x")]
 # ⚠️ LE CAS QUI DOIT PASSER, pris juste sous la frontière : MAX-1 essais, on tente encore.
