@@ -186,11 +186,59 @@ te.translate_title_desc = lambda *a, **k: {
     "description": "La Sant'Orso 2026 è un evento culturale che si svolge in Vallée "
                    "d'Aoste, con prodotti tipici e tradizioni locali.",
 }
+# Le liage Polylang est monkey-patché comme le reste : depuis le 2026-09-21,
+# `_translate_one_interne` LIT le verdict de `_post_link` (il ne l'ignorait plus, voir
+# plus bas), donc un appel sans identifiants rendrait 'lien_absent' — un verdict juste,
+# mais qui n'est pas le sujet de cette contre-épreuve-ci.
+liages = []
+te._post_link = lambda url, auth, translations: (liages.append(translations) or True)
 resultat = te._translate_one_interne(
-    ev, _Args(), client=object(), api_key="factice", voix="", wp_url="",
-    auth=("", ""), img_lang={}, img_lang_lock=threading.Lock())
+    ev, _Args(), client=object(), api_key="factice", voix="",
+    wp_url="https://exemple.test", auth=("u", "p"), img_lang={},
+    img_lang_lock=threading.Lock())
 _check("résultat = 'done'", resultat == "done", f"obtenu {resultat!r}")
 _check("publish_to_as appelé une fois", len(appels_publish) == 1, str(appels_publish))
+_check("   et la paire est liée dans Polylang, dans les deux langues",
+       liages == [{"fr": 772, "it": 9999}], str(liages))
+
+# ── 3 bis. LE LIEN POLYLANG REFUSÉ — le défaut que Franck a vu le 2026-09-21 ──────────
+#
+# `_post_link` rend False sur toute erreur HTTP ou réseau, et son verdict n'était pas lu :
+# `translated_at` partait quand même, et plus aucun script ne repassait (règle 3). Mesuré
+# ce jour-là depuis l'extérieur : 107 pages publiées au versant français encore devant
+# nous, 68 seulement portaient un `hreflang="it"` vers leur jumelle. WP#8137 « Carla With
+# Love » et WP#8175, sa traduction italienne publiée une heure après, étaient toutes deux
+# publiques, du bon côté, et la page française n'annonçait aucune version italienne.
+#
+# ⚠️ ET `translated_at` DOIT RESTER ÉCRIT. C'est le point délicat : l'effacer pour « faire
+# retraduire » ferait naître une TROISIÈME page au run suivant, alors que le texte italien
+# est en ligne. Le verdict remonte pour être COMPTÉ et réparé (repair_lien_polylang), pas
+# pour relancer la traduction. Ce contrôle-ci est là pour qu'une session future ne
+# « simplifie » pas ça en remettant un effacement.
+print("\n──── le lien Polylang refusé : publié, compté, et PAS remis dans la file ────")
+conn = sqlite3.connect(tmp)
+conn.execute("UPDATE events_raw SET translated_at='' WHERE id=473")
+conn.execute("DELETE FROM events_raw WHERE COALESCE(translation_of,0)!=0")
+conn.commit()
+conn.close()
+appels_publish.clear()
+te._post_link = lambda url, auth, translations: False      # WordPress refuse / réseau coupé
+resultat = te._translate_one_interne(
+    ev, _Args(), client=object(), api_key="factice", voix="",
+    wp_url="https://exemple.test", auth=("u", "p"), img_lang={},
+    img_lang_lock=threading.Lock())
+_check("résultat = 'lien_absent' (ni 'done', ni 'error')",
+       resultat == "lien_absent", f"obtenu {resultat!r}")
+_check("la traduction a bien été publiée malgré tout", len(appels_publish) == 1,
+       str(appels_publish))
+conn = sqlite3.connect(tmp)
+apres = conn.execute("SELECT translated_at FROM events_raw WHERE id=473").fetchone()[0]
+jumelles = conn.execute("SELECT COUNT(*) FROM events_raw "
+                        "WHERE COALESCE(translation_of,0)=473").fetchone()[0]
+conn.close()
+_check("⚠️ translated_at reste ÉCRIT : pas de 3e page au run suivant", bool(apres),
+       repr(apres))
+_check("   et il n'y a qu'UNE jumelle en base", jumelles == 1, str(jumelles))
 
 # ── 4. Câblage du second portillon : titre RÉÉCRIT mais mauvaise langue → REFUS ──
 print("\n──── _translate_one_interne : le titre réécrit-mais-mauvaise-langue est REFUSÉ ────")

@@ -702,7 +702,10 @@ def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
     """Traduit UN événement de bout en bout (titre/description + article + publication WP
     + liaison Polylang), avec sa PROPRE connexion SQLite (WAL) — permet l'appel en parallèle
     sur plusieurs événements (cf. main(), ThreadPoolExecutor). Renvoie 'done' | 'skip' |
-    'error'. La réservation de `img_lang` (dédup affiche) se fait ICI, sous verrou, AVANT
+    'refus' | 'lien_absent' | 'plafond' | 'error' — 'lien_absent' veut dire que la
+    traduction est EN LIGNE mais que Polylang ne relie pas la paire : rien à retraduire,
+    le geste est `scripts/repair_lien_polylang.py` (ajouté le 21/09, voir le commentaire
+    du liage plus bas). La réservation de `img_lang` (dédup affiche) se fait ICI, sous verrou, AVANT
     tout travail — jamais après coup : sinon deux threads pourraient tous deux voir
     l'affiche « libre » avant que l'un des deux ne l'ait marquée prise."""
     from utils.api_limite import PlafondAPI
@@ -943,13 +946,47 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
              # appel LLM pour retrouver les mêmes points.
              ev.get("home_score")))
         # Lie les deux fiches (Polylang) via l'endpoint.
+        #
+        # ET ON LIT SON VERDICT — corrigé le 2026-09-21. `_post_link` rend True/False
+        # (il rend False sur toute erreur HTTP ou réseau) et personne ne le lisait :
+        # `translated_at` partait à la ligne suivante quoi qu'il arrive. Après quoi plus
+        # aucun script ne repassait — `translate_events` exclut la fiche (translated_at
+        # posé, et la jumelle EXISTE donc `_rearme_traductions_orphelines` ne se
+        # déclenche pas), `link_translations_as` exclut explicitement les paires dont
+        # `translation_of` est renseigné, et `repair_lien_traduction` répare la COLONNE
+        # en base, pas le lien WordPress. Un état terminal sans rouvreur (règle 3).
+        #
+        # MESURÉ CE JOUR-LÀ, depuis l'extérieur : sur 107 pages publiées au versant
+        # français encore devant nous, 68 seulement portaient un `hreflang="it"` vers
+        # leur jumelle. WP#8137 « Carla With Love » et WP#8175, sa traduction italienne
+        # publiée une heure après, étaient toutes deux publiques, chacune du bon versant,
+        # et la page française n'annonçait aucune version italienne.
+        #
+        # ⚠️ ET ON N'EFFACE PAS `translated_at` POUR AUTANT. C'est la fausse bonne idée :
+        # la fiche repasserait dans la file du lendemain et une TROISIÈME page naîtrait,
+        # alors que le texte italien est écrit, payé et EN LIGNE. Il ne manque qu'un
+        # lien, et c'est `scripts/repair_lien_polylang.py` qui le repose (endpoint
+        # idempotent). Le verdict remonte ici seulement pour être COMPTÉ : un défaut qui
+        # ne sort pas dans le bilan se découvre des semaines plus tard (règle 6).
+        lien_ok = False
         if all([wp_url, auth[0], auth[1]]):
-            _post_link(wp_url, auth, {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
+            lien_ok = _post_link(wp_url, auth,
+                                 {src: int(ev["wp_post_id_as"]), tgt: int(wp_id)})
+        else:
+            log.error("[%s] identifiants WordPress absents — la paire WP#%s/WP#%s est "
+                      "publiée mais NON LIÉE.", ev["id"], ev["wp_post_id_as"], wp_id)
         conn.execute("UPDATE events_raw SET translated_at=? WHERE id=?",
                      (datetime.now().isoformat(timespec="seconds"), ev["id"]))
         conn.commit()
     finally:
         conn.close()
+    if not lien_ok:
+        log.error("[%s] traduit → WP#%s (%s) mais LIEN POLYLANG NON POSÉ : les deux pages "
+                  "sont en ligne et le lecteur ne verra aucune traduction. Rien à "
+                  "retraduire — reposer le lien : "
+                  ".venv/bin/python -m scripts.repair_lien_polylang --ids %s --apply",
+                  ev["id"], wp_id, tgt, ev["id"])
+        return "lien_absent"
     log.info("[%s] traduit → WP#%s (%s), lié.", ev["id"], wp_id, tgt)
     return "done"
 
@@ -1188,6 +1225,11 @@ def main(argv=None) -> int:
                       "d'elles-mêmes ===", restantes)
 
     done, skipped, errors = results.count("done"), results.count("skip"), results.count("error")
+    # PUBLIÉE MAIS NON LIÉE — compté à part, et JAMAIS dans `done`. La traduction est en
+    # ligne, donc ce n'est pas une erreur ; le lecteur ne la voit pas, donc ce n'est pas
+    # un succès. Deux compteurs qui portent le même nom et comptent deux choses se
+    # contredisent un jour, et c'est le plus gros qu'on croira (règle 6).
+    sans_lien = [rows[i] for i, v in enumerate(results) if v == "lien_absent"]
     # `results` est rempli dans l'ORDRE de soumission des futures, donc dans l'ordre de
     # `rows` : on peut renommer les refus sans plomberie supplémentaire.
     refus = [rows[i] for i, v in enumerate(results) if v == "refus"]
@@ -1197,8 +1239,9 @@ def main(argv=None) -> int:
         for ev in refus:
             marquer_refus(conn, ev)
     conn.close()
-    log.info("=== Traduction terminée : %d traduit(s), %d ignoré(s), %d refusé(s)%s ===",
-             done, skipped, len(refus), "" if args.apply else "  (simulation : rien écrit)")
+    log.info("=== Traduction terminée : %d traduit(s) et lié(s), %d publiée(s) SANS LIEN, "
+             "%d ignoré(s), %d refusé(s)%s ===", done, len(sans_lien), skipped, len(refus),
+             "" if args.apply else "  (simulation : rien écrit)")
     if args.apply:
         # Rapport uniquement quand on a vraiment agi (une simulation quotidienne en cron
         # inonderait Slack pour rien) — cf. utils.pipeline_status pour le lot quotidien.
@@ -1229,6 +1272,19 @@ def main(argv=None) -> int:
                     f"l'original, RIEN publié : "
                     + " · ".join(f"id {e['id']} « {(e.get('title') or '')[:40]} »"
                                  for e in refus[:5]))
+        if sans_lien:
+            # LE DÉFAUT QUE FRANCK A VU LE 21/09 : « pourquoi j'ai des articles sans
+            # traduction ? ». La paire était publiée des deux côtés et Polylang ne les
+            # reliait pas — invisible dans tous les compteurs, qui demandent tous « une
+            # jumelle existe-t-elle ? » et jamais « sont-elles reliées ? ». Il sort
+            # désormais le jour même, avec son geste, qui ne coûte aucun appel LLM.
+            msg += (f"\n🔗 {len(sans_lien)} traduction(s) EN LIGNE mais NON LIÉE(S) — le "
+                    f"lecteur ne verra aucune version italienne ; rien à retraduire, le "
+                    f"texte existe. Reposer le lien : "
+                    f"`.venv/bin/python -m scripts.repair_lien_polylang --ids "
+                    + " ".join(str(e["id"]) for e in sans_lien[:8]) + " --apply` : "
+                    + " · ".join(f"id {e['id']} « {(e.get('title') or '')[:34]} »"
+                                 for e in sans_lien[:5]))
         slack.notify(msg)
         # Les refus comptent en `warn` et non en `error` : rien n'a cassé, un garde-fou a
         # tenu — mais ils demandent une décision humaine, ils ne doivent pas disparaître.
@@ -1236,7 +1292,12 @@ def main(argv=None) -> int:
         # et ne regarde que ça pour distinguer « a tourné » de « a tourné et échoué ».
         # Sans cette ligne, cinq jours d'arrêt complet se sont enregistrés comme cinq runs
         # parfaitement sains.
-        pipeline_status.record_run("translate_events", ok=done, warn=skipped + len(refus),
+        # Les paires non liées comptent en `warn` avec les refus, et pas en `ok` : la
+        # page italienne est en ligne, mais aucun lecteur n'y accède depuis la française.
+        # Les compter en succès, c'est exactement le compteur qui ferme la question au
+        # lieu de l'ouvrir (règle 6).
+        pipeline_status.record_run("translate_events", ok=done,
+                                   warn=skipped + len(refus) + len(sans_lien),
                                    error=errors + (1 if plafonne else 0), summary=msg[:1500])
     return 0
 
