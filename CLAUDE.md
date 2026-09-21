@@ -288,6 +288,14 @@ fiche qui reste. Mesuré : ces deux adresses-là rendaient 404 pour 64 impressio
 - **les deux gestes se combinent** : corbeiller le POST (il disparaît des listes) et
   rediriger son ADRESSE (elle continue de servir).
 
+**Et une adresse ne porte JAMAIS de date** — arbitrage de Franck du 2026-09-21 : « ne mets
+jamais les dates, mets dans la doctrine qu'il ne faut jamais mettre les dates ». Un
+événement annuel doit garder UNE adresse d'édition en édition (`docs/EDITIONS_ANNUELLES.md`) ;
+une URL millésimée l'interdit. Le TITRE garde son millésime, l'ADRESSE non :
+`utils.seo.slug_sans_date`, posé par `publisher_as` à la création seulement. Mesuré ce
+jour-là : 27 des 188 fiches en ligne et non terminées portaient une année ou un mois dans
+leur URL, parce qu'aucun slug n'était envoyé et que WordPress le dérivait du titre.
+
 Où : `deploy/wordpress/cs-redirections-301.php`, une simple table chemin → chemin, avec
 un garde-fou contre la redirection vers soi-même (une boucle rend le site injoignable,
 au même prix que le mu-plugin cassé d'août).

@@ -735,6 +735,21 @@ def _build_payload(event: dict, skip_media: bool = False) -> dict:
     # l'original pour la fiche traduite.
     if (event.get("slug") or "").strip():
         payload["slug"] = event["slug"].strip()
+    elif not event.get("wp_post_id_as"):
+        # ══ UNE URL NE PORTE JAMAIS DE DATE (décision de Franck, 21/09) ═══════════════
+        # Sans slug explicite, WordPress dérivait le permalien du TITRE — et un titre dit
+        # « Marché au Fort 2026 : … » ou « Du 24 au 27 septembre, Terra Madre … ». Mesuré
+        # le 21/09 : 27 des 188 fiches en ligne et non terminées portaient une année ou un
+        # mois dans leur adresse. Or un événement annuel doit garder UNE adresse d'édition
+        # en édition (docs/EDITIONS_ANNUELLES.md) : une URL millésimée l'interdit.
+        # Le titre, lui, ne change pas — le lecteur et Yoast ont besoin du millésime.
+        # Posé UNIQUEMENT à la création : une republication ne renomme aucune adresse
+        # déjà indexée (cs-publish.php ne fixe `post_name` que si `wp_post_id` est vide,
+        # mais on ne s'en remet pas à ça seul).
+        from utils.seo import slug_sans_date
+        propre = slug_sans_date(title)
+        if propre:
+            payload["slug"] = propre
 
     if (event.get("lieu") or "").strip():
         payload["venue"] = {"Venue": event["lieu"].strip(),
