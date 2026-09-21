@@ -463,3 +463,48 @@ for r in c.execute(q):
 
 Puis, sur ces ids : `.venv/bin/python -m scripts.refill_images_as <ids> --dry-run` (il
 re-résout avec la chaîne corrigée et ne re-pousse que si l'image change réellement).
+
+---
+
+## Mise à jour (21 septembre 2026, fin) — l'image partagée trahit l'habillage
+
+Le recensement des fiches à venir dont une déclinaison (`url_image_portrait` /
+`url_image_wide`) diffère de l'image principale en a rendu **28**. « Différent » ne veut
+pas dire « faux » — une affiche portrait plus une photo paysage, toutes deux officielles,
+c'est exactement ce que le multi-format vise. Ce qui tranche, c'est le **partage** :
+
+| Fiches | Image | Ce que c'est |
+|---|---|---|
+| **7** | `Cover L-eta dell-acquario-particolare.png` | bandeau de saison d'une bibliothèque |
+| 2 | `visuels-lancement-de-saison-2026-2027.png` | lancement de saison de l'Opéra de Nice |
+| 2 | `img_11.webp` | Musei Reali |
+| 2 | `2006.aerea_.RG-Palazzo-Madama.jpg` | vue aérienne du palais |
+| 2 | `Palazzo-Mazzonis-esterno-3-2.jpg` | façade du MAO |
+| 2 | `1629_701_CHY_110986_HD-1-1-.jpg` | photo de la ville de Chambéry |
+
+**Aucune des défenses posées plus tôt dans la journée ne les arrête** : ce ne sont ni des
+vignettes de PDF, ni des images d'interface, et la page lue est bien celle de l'événement.
+Le bandeau de la bibliothèque est simplement sur chacune de ses pages.
+
+Or le diagnostic était écrit depuis le début, en commentaire de
+`config/blocked_image_patterns.txt` : « une image partagée par beaucoup d'événements SANS
+RAPPORT = presque toujours de l'habillage ». Il y figurait comme requête à taper à la main
+pour alimenter le fichier de motifs ; **personne ne l'avait branché sur la chaîne**. C'est
+fait : `images_wide.deja_partagee` compte les autres fiches qui portent déjà l'image, et
+refuse au-delà de deux — avant le téléchargement et avant l'agent vision, qui valide
+volontiers un joli bandeau de saison. Les traductions ne comptent jamais (elles portent la
+même image que leur original, et c'est voulu).
+
+**Le piège du nettoyage** : quatre fiches ont une **bannière** en image principale et une
+vraie affiche en déclinaison. Y retirer la déclinaison ferait *reculer* la carte vers la
+bannière. Le recensement les signale, on les laisse.
+
+### Voir les déclinaisons — ce qui manque encore
+
+Trois fois dans la même journée, le coupable était `url_image_portrait`, et trois fois il
+a fallu la ligne de commande pour le voir : **le back-office ne montre que `url_image`**.
+L'aperçu affiche cette colonne, le formulaire modifie cette colonne — on croit regarder la
+fiche, on regarde à côté. C'est ce qui m'a fait proposer une photo de Wikimedia Commons
+pour une fiche qui avait déjà mieux en base. À faire : afficher les deux déclinaisons dans
+l'onglet Visuels, avec un bouton pour les retirer (l'équivalent de
+`images_wide --drop-portrait --drop-wide`, qui n'existe aujourd'hui qu'en ligne de commande).
