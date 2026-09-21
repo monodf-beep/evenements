@@ -26,7 +26,7 @@
        le résumé « À traiter » porte le TOTAL des pastilles même replié. #}
     {% set _traiter = ['semaine', 'validation', 'tocomplete', 'triage', 'verifier', 'audit_visuel', 'events'] %}
     {% set _analyse = ['systeme', 'couts', 'couverture', 'couverture_geo', 'sources_provinces', 'calendrier_categories', 'wireframe', 'regie', 'partenariat', 'seo'] %}
-    {% set _aide = ['process', 'pipeline', 'voix', 'personas', 'cowork', 'reglages'] %}
+    {% set _aide = ['process', 'pipeline', 'voix', 'doctrine', 'personas', 'cowork', 'reglages'] %}
     {% set _todo_total = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
     <nav class="nav" aria-label="Navigation principale">
       <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Aujourd'hui
@@ -78,6 +78,7 @@
         <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
         <a href="/pipeline" class="{{ 'on' if active=='pipeline' }}" {% if active=='pipeline' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Pipeline auto</a>
         <a href="/voix" class="{{ 'on' if active=='voix' }}" {% if active=='voix' %}aria-current="page"{% endif %}><span aria-hidden="true">🗣️</span> Voix éditoriale</a>
+        <a href="/doctrine" class="{{ 'on' if active=='doctrine' }}" {% if active=='doctrine' %}aria-current="page"{% endif %}><span aria-hidden="true">📚</span> Doctrine (pour Claude)</a>
         <a href="/personas" class="{{ 'on' if active=='personas' }}" {% if active=='personas' %}aria-current="page"{% endif %}><span aria-hidden="true">👓</span> Personas lecteurs</a>
         <a href="/cowork" class="{{ 'on' if active=='cowork' }}" {% if active=='cowork' %}aria-current="page"{% endif %}><span aria-hidden="true">🤖</span> Cowork</a>
         <a href="/reglages" class="{{ 'on' if active=='reglages' }}" {% if active=='reglages' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Réglages / Coûts</a>

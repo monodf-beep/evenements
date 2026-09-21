@@ -347,11 +347,23 @@ texte éditorial, PAS le pipeline lui-même qui s'en charge déjà** :
    publicité déguisée). Ce fichier-là est dans le dépôt, toujours accessible, aucune
    raison de le sauter.
 
-**Ne jamais redemander « c'est où Obsidian, comment j'y accède »** — ce point est réglé
-une fois pour toutes : ce conteneur n'atteint pas le VPS par lui-même (vérifié le
-05/09 — pas de clé SSH, pas de route réseau directe), donc si le contenu n'est pas déjà
-dans la conversation, la seule question à poser à Franck est laquelle des deux commandes
-ci-dessus coller, pas une remise en cause du mécanisme.
+**Depuis le 21/09, il y a une adresse et plus rien à coller** :
+`https://backoffice.agendasabauda.eu/doctrine.txt?token=<DOCTRINE_TOKEN>` rend les trois
+blocs ci-dessus, **relus à l'instant dans Obsidian**, avec la provenance de chacun et une
+alerte en tête si l'un manque (`docs/DOCTRINE_POUR_AGENTS.md`). Claude Chrome lit
+`/doctrine` sans jeton, dans le navigateur déjà connecté. Le collage ne reste qu'en
+REPLI, quand l'adresse ne répond pas.
+
+Ce paragraphe affirmait jusque-là « ce conteneur n'atteint pas le VPS par lui-même
+(vérifié le 05/09 — pas de clé SSH, pas de route réseau directe) ». **La moitié était
+fausse** : mesuré le 21/09 depuis un conteneur Claude Code, `backoffice.agendasabauda.eu`
+répond en HTTPS (302 vers `/login`, `gunicorn`, et `/embed/events.json` en 200). SSH ne
+passe pas ; HTTPS, si. Les deux n'avaient jamais été mesurées séparément, et la
+conclusion la plus large avait été retenue pour les deux — la racine du 18/08, encore.
+
+**Ne jamais redemander « c'est où Obsidian, comment j'y accède »** — ce point reste réglé
+une fois pour toutes : la seule question à poser à Franck est le jeton, ou laquelle des
+deux commandes ci-dessus coller, jamais une remise en cause du mécanisme.
 
 **Avant de LIVRER le texte**, s'auto-évaluer, pas seulement s'assurer qu'aucune règle
 n'est violée : les neuf marqueurs signature de la voix (incise géographique,

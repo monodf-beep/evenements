@@ -25,12 +25,28 @@ recréerait le même problème une couche plus haut.
 
 ## Étape 1 — aller chercher la doctrine avant d'écrire un mot
 
-Cette session (le conteneur Claude Code) n'atteint jamais le VPS de production
-directement — vérifié le 05/09/2026, aucune clé SSH, aucune route réseau. Franck est le
-seul canal. Ne jamais redemander « où est Obsidian » ou « comment j'y accède » : ce
-point est réglé une fois pour toutes. La seule question à poser, si la conversation en
-cours ne porte pas déjà ces informations (collées par Franck plus tôt dans l'échange),
-est de lui demander de coller la sortie de ces deux commandes :
+**Depuis le 21/09/2026, il y a une adresse, et elle se lit toute seule :**
+
+```
+https://backoffice.agendasabauda.eu/doctrine.txt?token=<DOCTRINE_TOKEN>
+```
+
+Elle rend la voix, le vocabulaire interdit et la charte **relus à l'instant dans
+Obsidian**, avec la provenance de chaque bloc et une alerte en tête si l'un manque (voir
+`docs/DOCTRINE_POUR_AGENTS.md`). Le jeton vit dans le `.env` du VPS ; Franck le trouve
+affiché sur `https://backoffice.agendasabauda.eu/doctrine`. S'il n'est pas dans la
+conversation, le lui demander **une fois** — c'est une chaîne à coller, pas une doctrine
+à réexpliquer.
+
+Ce qui était écrit ici jusqu'au 21/09 — « ce conteneur n'atteint jamais le VPS, aucune
+route réseau, Franck est le seul canal » — **était faux pour HTTPS** et vrai seulement
+pour SSH ; les deux n'avaient jamais été mesurées séparément. Mesure du 21/09 depuis un
+conteneur Claude Code : `https://backoffice.agendasabauda.eu/` répond (302 vers `/login`,
+serveur `gunicorn`), `/embed/events.json` rend 200 avec de vraies fiches.
+
+Si l'adresse ne répond pas (503, jeton non réglé, VPS éteint), le repli reste de demander
+à Franck de coller la sortie de ces deux commandes — mais le dire comme un repli, pas
+comme la procédure normale :
 
 ```
 .venv/bin/python -c "from utils import voix; print(voix.load_voix())"

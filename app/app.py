@@ -1270,6 +1270,90 @@ def voix_view():
     return render_template("voix.html", active="voix", st=voixmod.voix_status())
 
 
+# --------------------------------------------------------------------------- #
+# Doctrine rédactionnelle servie AUX AGENTS (Claude Chrome, Cowork, Claude Code web)
+# --------------------------------------------------------------------------- #
+# Franck, 06/09/2026 : « c'est pénible quand je demande de la rédaction ici sur Claude,
+# je dois systématiquement expliquer que c'est via Obsidian, le ton, la doctrine, le
+# vocabulaire etc. » Le pipeline lit ces notes tout seul à chaque run ; une session de
+# chat, elle, ne tourne pas sur le VPS. La consigne écrite jusqu'au 21/09 était de
+# demander à Franck de COLLER la sortie de deux commandes — c'est-à-dire lui faire
+# refaire à la main ce dont il se plaignait. Ces deux routes suppriment le collage.
+#
+# DEUX CLÉS D'ENTRÉE, parce qu'il y a deux mondes :
+#   · la SESSION du back-office — Claude Chrome pilote le navigateur de Franck, déjà
+#     connecté : /doctrine s'ouvre comme n'importe quelle page, sans jeton ;
+#   · un JETON (DOCTRINE_TOKEN dans le .env du VPS) — un conteneur Cowork ou Claude Code
+#     sur le web n'a pas ce cookie ; il lit /doctrine.txt?token=… en HTTPS.
+#     Mesuré le 21/09 depuis un conteneur Claude Code : https://backoffice.agendasabauda.eu
+#     répond (302 vers /login, gunicorn, et /embed/events.json en 200). L'affirmation
+#     « ce conteneur n'atteint pas le VPS, aucune route réseau » était vraie pour SSH et
+#     fausse pour HTTPS — elle n'avait jamais été mesurée séparément.
+#
+# Pas de jeton réglé = route FERMÉE (503), jamais ouverte par défaut : la doctrine n'est
+# pas secrète, mais une adresse publique se fait indexer, et le back-office n'a rien à
+# exposer sans clé.
+def _doctrine_token() -> str:
+    return (os.getenv("DOCTRINE_TOKEN", "") or "").strip()
+
+
+def _doctrine_autorise(req) -> tuple[bool, str]:
+    """(autorisé, motif du refus). Le motif est rendu TEL QUEL à l'appelant : un agent
+    qui reçoit « 403 » sans phrase relance trois fois puis invente une explication."""
+    if session.get("logged_in"):
+        return True, ""
+    attendu = _doctrine_token()
+    if not attendu:
+        return False, ("DOCTRINE_TOKEN n'est pas réglé dans le .env du VPS : la route "
+                       "reste fermée. Ajouter une ligne DOCTRINE_TOKEN=<longue chaîne> "
+                       "puis relancer le service (bash deploy/update.sh).")
+    fourni = (req.args.get("token") or req.headers.get("X-Doctrine-Token") or "").strip()
+    if not fourni:
+        auth = req.headers.get("Authorization", "")
+        if auth.lower().startswith("bearer "):
+            fourni = auth[7:].strip()
+    if fourni and hmac.compare_digest(fourni, attendu):
+        return True, ""
+    return False, ("Jeton absent ou incorrect — attendu en ?token=…, en en-tête "
+                   "X-Doctrine-Token, ou en Authorization: Bearer …")
+
+
+@app.route("/doctrine.txt")
+def doctrine_txt():
+    """La doctrine en texte brut, pour un agent qui rédige ailleurs qu'ici.
+
+    Code de retour PARLANT : 200 même quand un bloc manque (les alertes sont en tête du
+    texte, impossibles à rater), mais 503 quand TOUT est vide — sinon un agent recevrait
+    200 avec une page d'en-têtes et croirait tenir la doctrine. Un zéro doit dire s'il
+    vient d'un échec ou d'une absence de règles."""
+    ok, motif = _doctrine_autorise(request)
+    if not ok:
+        code = 503 if not _doctrine_token() else 403
+        return Response("⛔ " + motif + "\n", status=code,
+                        mimetype="text/plain; charset=utf-8")
+    from utils import doctrine_redaction as doctrinemod
+    st = doctrinemod.statut()
+    resp = Response(doctrinemod.doctrine_texte(st),
+                    status=503 if st["vide"] else 200,
+                    mimetype="text/plain; charset=utf-8")
+    resp.headers["Cache-Control"] = "no-store"          # une note éditée se voit tout de suite
+    resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return resp
+
+
+@app.route("/doctrine")
+@require_auth
+def doctrine_view():
+    """La même doctrine, en page — c'est celle-ci que Claude Chrome lit dans le
+    navigateur déjà connecté de Franck, et celle où il retrouve l'adresse à jeton."""
+    from utils import doctrine_redaction as doctrinemod
+    st = doctrinemod.statut()
+    jeton = _doctrine_token()
+    return render_template("doctrine.html", active="doctrine", st=st,
+                           texte=doctrinemod.doctrine_texte(st), jeton=jeton,
+                           base=PUBLIC_BASE_URL)
+
+
 @app.route("/personas")
 @require_auth
 def personas_view():

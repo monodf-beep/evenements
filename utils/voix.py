@@ -175,11 +175,20 @@ def _read_path(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
-def load_voix() -> str:
-    """Renvoie le texte NETTOYÉ de la voix éditoriale, ou "" si indisponible.
+def max_chars() -> int:
+    """Le plafond appliqué aux PROMPTS, en public : un lecteur de `voix_integrale()` doit
+    pouvoir dire de combien le pipeline, lui, sera plus court."""
+    return _max_chars()
 
-    Plusieurs chemins (séparés par « : ») sont chargés DANS L'ORDRE et concaténés :
-    voix commune d'abord, surcharge projet ensuite. Un chemin manquant est ignoré."""
+
+def voix_integrale() -> str:
+    """La voix COMPLÈTE, sans le plafond VOIX_MAX_CHARS — "" si aucune couche.
+
+    Ajouté le 2026-09-21 pour `utils/doctrine_redaction.py` : le plafond existe parce qu'un
+    prompt n'est pas extensible, raison qui ne vaut PAS pour un humain (ou un agent) à qui
+    l'on montre la doctrine. Lui servir la version tronquée rejouerait à l'identique
+    l'incident du 05/09 — 775 caractères disparus en fin de note, sans le moindre signal,
+    et la règle « Les Alpes ne sont pas une frontière » jamais appliquée."""
     layers = []
     for spec in _sources():
         try:
@@ -188,9 +197,17 @@ def load_voix() -> str:
             continue
         if txt:
             layers.append(txt)
-    if not layers:
+    return "\n\n".join(layers).strip()
+
+
+def load_voix() -> str:
+    """Renvoie le texte NETTOYÉ de la voix éditoriale, ou "" si indisponible.
+
+    Plusieurs chemins (séparés par « : ») sont chargés DANS L'ORDRE et concaténés :
+    voix commune d'abord, surcharge projet ensuite. Un chemin manquant est ignoré."""
+    texte = voix_integrale()
+    if not texte:
         return ""
-    texte = "\n\n".join(layers)
     limite = _max_chars()
     if len(texte) > limite:
         # Une troncature SILENCIEUSE de la charte est indétectable dans les textes produits :

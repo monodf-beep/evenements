@@ -85,6 +85,15 @@ def _spec() -> str:
     return os.getenv(VOCAB_ENV, "").strip()
 
 
+def note_path() -> str:
+    """Le chemin de la note Obsidian tel qu'il est réglé, "" si la variable est absente.
+
+    Public depuis le 2026-09-21 : `utils/doctrine_redaction.py` doit pouvoir écrire À CÔTÉ
+    des règles servies D'OÙ elles viennent. Une doctrine sans provenance se recopie, et
+    une copie diverge — c'est exactement ce que le 05/09 a démonté."""
+    return _spec()
+
+
 def _strip_frontmatter(text: str) -> str:
     return re.sub(r"\A\s*---\n.*?\n---\n", "", text, flags=re.S)
 
