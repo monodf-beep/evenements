@@ -60,6 +60,22 @@
 </div>
 {% endif %}
 
+{# TEXTE GELÉ (2026-09-21, docs/SEO_QUI_FAIT_QUOI.md). Le texte affiché ci-dessous vient
+   de la BASE ; sur une fiche gelée, c'est la version du pipeline, pas celle qui est en
+   ligne — le site porte une reprise à la main que le cron ne peut plus écraser. Le dire
+   ICI, sur l'écran où on lit l'article, plutôt que de laisser croire à un aperçu fidèle. #}
+{% if e.wp_gel_at %}
+<div class="card" style="background:#eef4fd;border:1px solid #2f5ea8;color:#1b365d;
+            font-family:-apple-system,sans-serif;font-size:.85rem;padding:.55rem .8rem;
+            margin:.5rem 0;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;">
+  🔒 <b>Texte repris à la main</b> le {{ e.wp_gel_at }}{% if e.wp_gel_motif %} ({{ e.wp_gel_motif }}){% endif %} —
+  le cron ne réécrit plus titre, corps ni métas Yoast (dates, lieu, catégorie et image
+  continuent). <b>L'article ci-dessous est la version de la BASE</b> ; la version en
+  ligne peut être différente.
+  {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ lire le journal de la fiche</a>{% endif %}
+</div>
+{% endif %}
+
 {% if e.llm_categorie %}<div class="eyebrow">{{ e.llm_categorie }}</div>{% endif %}
 <h1>{{ e.title }}</h1>
 <div class="meta">
