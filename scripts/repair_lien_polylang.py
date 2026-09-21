@@ -36,9 +36,11 @@ Un état terminal sans rouvreur — règle 3. Ce script est le rouvreur.
 
 CE QU'IL NE FAIT PAS, ET C'EST VOLONTAIRE :
   • il ne relie JAMAIS deux pages du même versant. Les relier ne montrerait rien au
-    lecteur (Polylang veut deux langues) et masquerait le vrai défaut. Ces paires-là sont
-    NOMMÉES et rendues à `audit_langue_polylang` puis `translate_events --retranslate`,
-    qui republie du bon côté. Le geste n'est pas le même, le compteur non plus ;
+    lecteur (Polylang veut deux langues) et masquerait le vrai défaut. Leur geste est
+    `translate_events --retranslate`, qui republie du bon côté — et depuis le 21/09 au
+    soir, `--retraduire N` le lance TOUT SEUL sur elles (Franck : « oui branche la
+    traduction auto »), plafonné, avec un garage de trois essais. Le geste n'est pas le
+    même que le liage, le compteur non plus ;
   • il n'efface pas `translated_at` pour « faire retraduire ». Ce serait la fausse bonne
     idée : la fiche repasserait dans la file et une TROISIÈME page naîtrait. Le texte
     italien existe déjà, il est en ligne, il ne manque qu'un lien ;
@@ -64,6 +66,7 @@ Usage (VPS) :
     .venv/bin/python -m scripts.repair_lien_polylang              # dry-run, on lit tout
     .venv/bin/python -m scripts.repair_lien_polylang --apply
     .venv/bin/python -m scripts.repair_lien_polylang --ids 8137   # un original précis
+    .venv/bin/python -m scripts.repair_lien_polylang --apply --retraduire 3
 """
 from __future__ import annotations
 
@@ -92,6 +95,20 @@ DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
 _UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
+
+# LE GARAGE DE LA RETRADUCTION AUTOMATIQUE. Trois tentatives, pas plus.
+#
+# C'est la leçon du 2026-08-17, écrite dans translate_events : le portillon de langue y a
+# refusé CINQ FOIS la même fiche, deux appels API par passage, toutes les nuits, pour un
+# résultat identique. Une reprise automatique SANS compteur refait exactement ça — et
+# celle-ci coûte deux appels LLM par fiche et par nuit.
+#
+# Le ré-armement ne dépend de personne : le compteur retombe à zéro dès que la paire est
+# vue SAINE (verdict `deja_lie`). Une fiche réparée qui casserait de nouveau repart donc
+# avec ses trois essais, et une fiche que la retraduction ne sait pas réparer cesse de
+# brûler des appels au bout de trois nuits — en étant NOMMÉE, jamais en disparaissant.
+MAX_RETRADUCTIONS = 3
+_COL_TENTATIVES = "retraduction_auto_tentatives"
 
 # Les verdicts, et le geste de chacun. Une paire tombe dans UN seul — sinon les nombres
 # s'additionnent en double et plus personne ne les croit (règle 6).
@@ -207,6 +224,53 @@ def _lien_live(wp_url: str, post_id: int) -> str:
     return ""
 
 
+def _ensure_col(conn) -> None:
+    """La colonne du garage, créée à la volée — même geste que partout ailleurs dans ce
+    dépôt, pour qu'une base de fixture neuve n'ait pas à la connaître."""
+    try:
+        conn.execute(f"ALTER TABLE events_raw ADD COLUMN {_COL_TENTATIVES} INTEGER DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+
+def a_retraduire(par_verdict: dict) -> tuple[list, list]:
+    """Rend (à retraduire, sans geste possible) à partir des familles déjà classées.
+
+    UNE SEULE CLASSIFICATION : on relit `par_verdict`, on ne re-mesure rien. Les deux
+    familles concernées ont le MÊME geste — `--retranslate`, qui republie par `force_lang`
+    et relie la paire — mais pas la même cause : `meme_versant` = les deux pages du même
+    côté, `jumelle_mauvaise_langue` = bon côté, texte de l'autre langue.
+
+    `--retranslate` repart de l'ORIGINAL : si celui-ci n'est pas en ligne, la commande est
+    un cul-de-sac. On le vérifie ici plutôt que de proposer une file dont une partie ne
+    mène nulle part (règle 6). Même raisonnement que `audit_langue_polylang`, dont c'est la
+    conclusion écrite."""
+    prets, bloques = [], []
+    for cle in ("meme_versant", "jumelle_mauvaise_langue"):
+        for orig, jum, _quoi in par_verdict.get(cle, []):
+            if int(orig.get("wp_post_id_as") or 0) > 0:
+                prets.append((orig, jum, cle))
+            else:
+                bloques.append((orig, jum, cle))
+    return prets, bloques
+
+
+def garage(prets: list, compteurs: dict) -> tuple[list, list]:
+    """Sépare (à tenter, garées) sur le compteur de retraductions — fonction PURE, donc
+    éprouvable en fixture, comme `translate_events.garees()` dont elle copie le motif.
+
+    Une fiche qui a déjà été retraduite MAX_RETRADUCTIONS fois sans que son versant
+    change ne sera pas réparée par une quatrième : elle cesse de consommer des appels, et
+    elle est NOMMÉE. Le ré-armement (compteur remis à zéro dès que la paire est vue saine)
+    se fait dans main(), au contact de la base."""
+    a_tenter, garees_ = [], []
+    for orig, jum, cause in prets:
+        (garees_ if compteurs.get(jum["id"], 0) >= MAX_RETRADUCTIONS
+         else a_tenter).append((orig, jum, cause))
+    return a_tenter, garees_
+
+
 def paires(conn, ids: list[int] | None, tout: bool) -> list[tuple[dict, dict]]:
     """Les paires (original, jumelle) dont les DEUX côtés portent un numéro WordPress.
 
@@ -242,6 +306,12 @@ def main(argv=None) -> int:
     p.add_argument("--ids", type=int, nargs="+", default=None,
                    help="Ne traiter que ces ids (original ou jumelle).")
     p.add_argument("--cap", type=int, default=200, help="Nb max de paires examinées.")
+    p.add_argument("--retraduire", type=int, default=0, metavar="N",
+                   help="Relance `translate_events --retranslate` sur au plus N paires du "
+                        "mauvais versant ou dont la jumelle est dans la mauvaise langue "
+                        "(0 = jamais). Coûte deux appels LLM par paire ; n'agit qu'avec "
+                        f"--apply, et jamais plus de {MAX_RETRADUCTIONS} fois sur la même "
+                        "fiche tant qu'elle n'a pas été vue saine.")
     args = p.parse_args(argv)
 
     if not DB_PATH.exists():
@@ -256,8 +326,13 @@ def main(argv=None) -> int:
         log.error("WP_AS_USER / WP_AS_APP_PASSWORD manquants — le liage est impossible.")
         return 2
 
-    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    # Connexion en ÉCRITURE seulement quand le garage doit compter ; en lecture seule
+    # sinon, pour qu'un simple relevé ne puisse rien changer par accident.
+    conn = (sqlite3.connect(DB_PATH) if args.retraduire
+            else sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True))
     conn.row_factory = sqlite3.Row
+    if args.retraduire:
+        _ensure_col(conn)
     lot = paires(conn, args.ids, args.tout)
     conn.close()
     perimetre = "toutes dates" if args.tout else "encore devant nous (règle 5)"
@@ -350,6 +425,104 @@ def main(argv=None) -> int:
             print("        recouvre pas un lien existant sur une supposition.")
     print()
 
+    # ══ LA REPRISE AUTOMATIQUE (--retraduire) ════════════════════════════════════════
+    #
+    # BRANCHÉE LE 2026-09-21, sur « oui branche la traduction auto » de Franck, après sa
+    # question : « on doit encore faire ça ? ». Non. Ces deux familles avaient un geste
+    # écrit noir sur blanc dans trois relevés — et personne pour le TAPER. C'est la règle 3
+    # mot pour mot : « un humain qui tape une commande n'est pas une réponse ».
+    #
+    # Les deux familles ont le même geste et pas la même cause, et c'est pour ça qu'elles
+    # restent deux lignes distinctes dans le tableau : `meme_versant` (les deux pages du
+    # même côté) et `jumelle_mauvaise_langue` (bon côté, texte de l'autre langue).
+    # `--retranslate` republie par `force_lang` ET relie la paire, donc il répare les deux.
+    retraduites, garees_retrad = [], []
+    if args.retraduire:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        _ensure_col(conn)
+        # LE RÉ-ARMEMENT D'ABORD, et il ne dépend de personne : une paire vue SAINE
+        # aujourd'hui repart avec ses trois essais si elle casse de nouveau demain. Sans
+        # ça, le garage serait un cul-de-sac de plus (règle 3), celui-là même que ce
+        # script a été écrit pour fermer.
+        saines = [jum["id"] for _o, jum, _q in par_verdict.get("deja_lie", [])]
+        if saines:
+            conn.execute(f"UPDATE events_raw SET {_COL_TENTATIVES}=0 WHERE id IN "
+                         f"({','.join('?' * len(saines))}) "
+                         f"AND COALESCE({_COL_TENTATIVES},0)<>0", saines)
+            conn.commit()
+        prets, bloques_orig = a_retraduire(par_verdict)
+        compteurs = {r["id"]: (r[_COL_TENTATIVES] or 0) for r in conn.execute(
+            f"SELECT id, {_COL_TENTATIVES} FROM events_raw")} if prets else {}
+        candidates, garees_retrad = garage(prets, compteurs)
+        en_trop = max(0, len(candidates) - args.retraduire)
+        candidates = candidates[:args.retraduire]
+
+        print(f"── {len(candidates):>3}  à RETRADUIRE ce passage"
+              + (f" (plafond --retraduire {args.retraduire}, {en_trop} au prochain)"
+                 if en_trop else ""))
+        for orig, jum, cause in candidates:
+            print(f"      [{orig['id']}→{jum['id']}] WP#{orig.get('wp_post_id_as')}→"
+                  f"WP#{jum.get('wp_post_id_as')} ({cause}) "
+                  f"{(orig.get('title') or '')[:44]}")
+        if garees_retrad:
+            # RÈGLE 6 : un état qui sort une fiche de la file la sort aussi des bilans.
+            print(f"── {len(garees_retrad):>3}  garées après {MAX_RETRADUCTIONS} "
+                  f"retraductions sans effet — elles ne brûlent plus d'appels, et "
+                  f"repartent dès qu'elles sont vues saines")
+            for orig, jum, cause in garees_retrad[:8]:
+                print(f"      [{orig['id']}→{jum['id']}] ({cause}) "
+                      f"{(orig.get('title') or '')[:44]}")
+            print("      → celles-là demandent un œil : la retraduction ne sait pas les")
+            print("        réparer, et s'acharner coûterait deux appels LLM par nuit.")
+        for orig, jum, cause in bloques_orig:
+            print(f"      ⚠️  [{orig['id']}→{jum['id']}] PAS de geste : l'original n'est "
+                  f"pas en ligne, `--retranslate` partirait d'une fiche que la "
+                  f"publication refuse.")
+
+        if candidates and args.apply:
+            # COMPTER AVANT D'AGIR : si le processus est interrompu au milieu (plafond
+            # API, coupure), la tentative doit rester comptée. Un compteur écrit APRÈS
+            # coup ne protège de rien, c'est le défaut corrigé dans translate_events le
+            # 2026-09-08 (marquage sur une connexion déjà fermée).
+            conn.execute(
+                f"UPDATE events_raw SET {_COL_TENTATIVES}=COALESCE({_COL_TENTATIVES},0)+1 "
+                f"WHERE id IN ({','.join('?' * len(candidates))})",
+                [j["id"] for _o, j, _c in candidates])
+            conn.commit()
+            conn.close()
+            ids_orig = sorted({str(o["id"]) for o, _j, _c in candidates})
+            log.info("Retraduction de %d paire(s) — deux appels LLM chacune : %s",
+                     len(candidates), " ".join(ids_orig))
+            # ⚠️ `ids` est POSITIONNEL dans translate_events (`parser.add_argument("ids",
+            # nargs="*")`), pas `--ids`. Écrit après l'avoir relu dans le fichier visé :
+            # une commande dictée sans avoir lu ses options est une commande qui échoue
+            # (faute 13 du journal du 08/09, sur `affiner_source`).
+            from scripts.translate_events import main as translate_main
+            translate_main(["--retranslate", "--apply", *ids_orig])
+            # RAPPORTER LE RÉSULTAT, PAS L'INTENTION (règle 6) : on redemande à WordPress
+            # de quel côté la jumelle est servie MAINTENANT. Le code de retour de la
+            # retraduction ne dit rien de ça.
+            for orig, jum, cause in candidates:
+                co = cote_du_permalien(_lien_live(wp_url, int(orig["wp_post_id_as"])))
+                cj = cote_du_permalien(_lien_live(wp_url, int(jum["wp_post_id_as"])))
+                retraduites.append((orig, jum, cause, co, cj, co != cj and bool(co) and bool(cj)))
+            reussies = [r for r in retraduites if r[5]]
+            print(f"\n   retraduites : {len(retraduites)}, dont {len(reussies)} désormais "
+                  f"servies de versants OPPOSÉS (relu sur WordPress après coup)")
+            for orig, jum, _c, co, cj, ok in retraduites:
+                print(f"      {'✅' if ok else '⚠️ '} [{orig['id']}→{jum['id']}] "
+                      f"versants {co or '?'} / {cj or '?'}"
+                      + ("" if ok else "  — toujours du même côté, le compteur a monté"))
+            print("   Leur lien sera posé au passage suivant : `--retranslate` relie la")
+            print("   paire, et si le liage a échoué la famille « lien absent » le reprendra.")
+        else:
+            if conn:
+                conn.close()
+            if candidates:
+                print("      (simulation : aucune retraduction lancée — ajouter --apply)")
+        print()
+
     # LE BILAN, en dernier : `weekly_audits` ne retient que les dernières lignes (_tail),
     # et ce script finissait sinon au milieu d'un listing (leçon de reconcile_wp_deleted,
     # 18/08). Et il PART MÊME À ZÉRO, avec le nombre d'examinées à côté : un zéro sur une
@@ -363,9 +536,20 @@ def main(argv=None) -> int:
             ligne += f" · {len(echecs)} échec(s)"
     else:
         ligne += " · simulation : rien envoyé"
-    if par_verdict.get("meme_versant"):
-        ligne += (f" · {len(par_verdict['meme_versant'])} paire(s) du même versant, "
-                  f"rendues à audit_langue_polylang")
+    a_reprendre = len(par_verdict.get("meme_versant", [])) + \
+        len(par_verdict.get("jumelle_mauvaise_langue", []))
+    if a_reprendre:
+        ligne += f" · {a_reprendre} paire(s) à retraduire (versant ou langue)"
+        if args.retraduire:
+            # RAPPORTER LE RÉSULTAT, PAS L'INTENTION : on compte les versants RELUS sur
+            # WordPress après coup, pas les commandes lancées (règle 6).
+            ligne += (f", dont {len([r for r in retraduites if r[5]])} réparée(s) ce "
+                      f"passage sur {len(retraduites)} tentée(s)")
+            if garees_retrad:
+                ligne += (f" · {len(garees_retrad)} garée(s) après "
+                          f"{MAX_RETRADUCTIONS} essais sans effet")
+        else:
+            ligne += " (reprise auto désactivée : --retraduire N)"
     print(ligne)
     for orig, jum, pourquoi in echecs:
         log.error("[%s→%s] %s", orig["id"], jum["id"], pourquoi)
