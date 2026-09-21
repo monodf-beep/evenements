@@ -282,6 +282,7 @@ def cross_lang_same(a: str, b: str) -> bool:
 from utils.lieux import GENERIQUES as _LIEUX_GENERIQUES, canon as _canon_ville, \
     communes as _communes, est_generique as _lieu_generique, plie as _plie  # noqa: E402
 from utils.sources import _STORY_PLACES  # noqa: E402
+from utils.lang import cote_du_permalien as _cote  # noqa: E402
 
 _NON_DISTINCTIFS: frozenset[str] = frozenset(_STOP | _STORY_PLACES | {
     # Types d'événement et d'activité (FR/IT), au singulier et au pluriel : deux fiches
@@ -351,6 +352,59 @@ def paire_de_traduction(a: dict, b: dict) -> bool:
     return ta == b["id"] or tb == a["id"] or bool(ta and ta == tb)
 
 
+# ══ « LIÉES PAR translation_of » NE VEUT PAS DIRE « DANS DEUX LANGUES » ══════════════
+#
+# Mesuré le 2026-09-21, après que Franck a signalé des doublons visibles sur le site que
+# le rapport de 9h50 ne voyait pas. Huit paires — Orlando, James Carter, les violoncelles
+# de l'Opéra de Nice, We Want Jazz, Mostre : Diálogos, Gaza/Merz, Sotto i portici, le
+# Castello di Ivrea — rendaient toutes `paire_de_traduction = True`, et étaient donc
+# écartées comme « paires FR/IT normales ». Or LES DEUX PAGES ÉTAIENT EN FRANÇAIS, côte à
+# côte sur le hub.
+#
+# C'est la règle 1 de CLAUDE.md transposée à la langue : **la base dit « traduction »,
+# seul WordPress dit de quel côté la page est rangée.** Le lien Polylang survit à une
+# traduction publiée du MAUVAIS versant — c'est l'incident du 17/09 (« Open Factories
+# 2026: le fabbriche di Torino aprono le porte » sur la page d'accueil française),
+# diagnostiqué dans `scripts/audit_langue_polylang`, qui n'est dans aucun cron.
+#
+# La garde consulte donc le versant en plus du lien. Deux conséquences voulues :
+#   · sur une fiche PENDING (dédoublonnage de 8h30), il n'y a pas encore de permalien :
+#     le versant est muet, la garde se comporte EXACTEMENT comme avant, et deux langues
+#     ne fusionnent jamais ;
+#   · sur une fiche PUBLIÉE (rapport de 9h50), deux pages servies du même côté cessent
+#     d'être invisibles.
+#
+# On reste muet sur le silence : un permalien resté sous sa forme provisoire (`?p=…`) ne
+# dit rien du versant, et on continue d'écarter la paire. Crier sur une donnée absente
+# remplirait la file de ce que personne ne peut vérifier (règle 6).
+
+
+def paire_de_traduction_credible(a: dict, b: dict) -> bool:
+    """`paire_de_traduction` lit la BASE ; celle-ci demande en plus de quel CÔTÉ du site
+    chaque page a été rangée. Deux pages liées mais servies du même versant ne sont pas
+    deux langues : c'est un doublon, et il doit remonter."""
+    if not paire_de_traduction(a, b):
+        return False
+    ca, cb = _cote(a.get("wp_permalink_as")), _cote(b.get("wp_permalink_as"))
+    if not ca or not cb:
+        return True          # adresse muette : on ne sait pas, on ne crie pas
+    return ca != cb
+
+
+def cote_partage(groupe: list[dict]) -> str:
+    """Le versant commun d'une paire LIÉE par translation_of mais servie d'un seul côté,
+    ou "". Sert à l'affichage ET à tenir ces groupes hors de la commande de corbeille :
+    le geste n'est pas de retirer une page, c'est de remettre la traduction du bon côté."""
+    for i, a in enumerate(groupe):
+        for b in groupe[i + 1:]:
+            if not paire_de_traduction(a, b):
+                continue
+            ca = _cote(a.get("wp_permalink_as"))
+            if ca and ca == _cote(b.get("wp_permalink_as")):
+                return ca
+    return ""
+
+
 def _memes_dates(a: dict, b: dict) -> bool:
     """Intervalles [début, fin] IDENTIQUES, les deux fiches datées. Pas d'inclusion (cf.
     en-tête : une exposition contient ses visites guidées sans être leur doublon)."""
@@ -378,7 +432,7 @@ def coincidence_lieu_date(a: dict, b: dict) -> str:
     Renvoie une phrase et pas un booléen parce que ce motif est DIT à l'humain qui
     tranche (dry-run, verifier_doublons_publies, Slack) : une recommandation sans son
     critère se lit comme une certitude."""
-    if paire_de_traduction(a, b):
+    if paire_de_traduction_credible(a, b):
         return ""
     if not _memes_dates(a, b):
         return ""
@@ -491,7 +545,7 @@ def titre_identique(a: dict, b: dict) -> str:
 
     Rend une phrase et pas un booléen, comme `coincidence_lieu_date` : le motif est DIT à
     l'humain qui lit le dry-run ou le rapport de 9h50."""
-    if paire_de_traduction(a, b):
+    if paire_de_traduction_credible(a, b):
         return ""
     if not _memes_dates(a, b):
         return ""
