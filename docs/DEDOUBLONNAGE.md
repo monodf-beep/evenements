@@ -273,3 +273,56 @@ qui doivent PASSER sont deux « Marché de Noël » dans deux communes connues (
    ([5551] publiée depuis des semaines, [5719] arrivée le 20/09) remonte désormais par là.
 3. **Deux fiches dont les dates diffèrent d'un jour** (une source annonce 10/10, l'autre
    10–11/10) ne sont pas appariées : `_memes_dates` n'admet pas l'à-peu-près.
+
+---
+
+## 2026-09-21, l'après-midi — « liée par `translation_of` » ne veut pas dire « dans deux langues »
+
+Le correctif du matin fait remonter trois paires de plus (Marché au Fort, Lo Pan Ner,
+Foire des Alpes). Mais **huit doublons visibles sur le site restaient invisibles au
+rapport** : Orlando, James Carter, les violoncelles de l'Opéra de Nice, We Want Jazz,
+Mostre : Diálogos, Gaza/Merz, Sotto i portici, le Castello di Ivrea.
+
+### La mesure, sur la base de production
+
+Les huit rendaient `paire_de_traduction = True` — donc `verifier_doublons_publies` les
+écartait comme « paires FR/IT normales ». Or **les deux pages étaient en français**, côte
+à côte sur le hub.
+
+C'est la **règle 1 de CLAUDE.md transposée à la langue** : la base dit « traduction »,
+seul WordPress dit de quel côté la page est rangée. Le lien Polylang survit à une
+traduction publiée du mauvais versant — c'est exactement l'incident du 17/09 (« Open
+Factories 2026: le fabbriche di Torino aprono le porte » sur la page d'accueil
+française), déjà diagnostiqué dans `scripts/audit_langue_polylang`… **qui n'est dans
+aucun cron.**
+
+Et le veto agissait si tôt que le groupe n'était même pas FORMÉ : mesuré sur fixture, la
+paire Orlando donnait « Groupes formés : 0 ». Corriger le seul tri en aval n'aurait rien
+changé — c'est le témoin rouge de `tests/test_doublons_meme_versant.py` qui l'a montré.
+
+### Ce qui change
+
+`dedupe.paire_de_traduction_credible` : le lien en base **plus** le versant servi
+(`utils.lang.cote_du_permalien`, déplacée là depuis l'audit Polylang — une seule
+définition pour trois modules). Elle remplace `paire_de_traduction` dans les deux gardes
+de `titre_identique` et `coincidence_lieu_date`.
+
+Deux conséquences voulues :
+
+- sur une fiche **pending** (8h30), il n'y a pas encore de permalien → versant muet → la
+  garde se comporte exactement comme avant, et deux langues ne fusionnent jamais ;
+- sur une fiche **publiée** (9h50), deux pages servies du même côté cessent d'être
+  invisibles.
+
+Un permalien resté sous sa forme provisoire (`?p=…`) ne dit rien : on continue d'écarter
+la paire plutôt que de crier sur une donnée absente (règle 6).
+
+### Et surtout : le geste n'est pas le même
+
+Ces groupes-là **n'entrent pas** dans la commande `trash_by_ids`. Corbeiller une des deux
+pages perdrait la version italienne au lieu de la remettre en place, et laisserait
+l'autre liée par Polylang à un post corbeillé. Le rapport nomme le versant partagé et
+propose les deux vrais gestes : `audit_langue_polylang` pour le relevé,
+`translate_events --retranslate <id de l'ORIGINAL>` pour la réparation.
+
+Compteur dédié, avec ce qu'il compte : « LIÉES MAIS DU MÊME CÔTÉ ».

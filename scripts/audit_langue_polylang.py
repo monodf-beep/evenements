@@ -49,32 +49,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from scripts.publisher_as import _lang as _lang_publiee
 from scripts.audit_substance_published import devant_nous
+# `cote_du_permalien` est née ici le 17/08 ; elle vit dans utils.lang depuis le
+# 21/09, parce que le dédoublonnage en a besoin aussi. Même définition, un seul
+# endroit.
+from utils.lang import cote_du_permalien  # noqa: F401
 
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-
-
-def cote_du_permalien(url: str) -> str:
-    """Le versant que WordPress a servi à la publication, lu dans l'adresse — '' si muet.
-
-    Polylang préfixe les adresses de la langue secondaire (`/it/…`). L'adresse enregistrée
-    est donc la RÉPONSE de WordPress au moment de la publication : bien plus solide qu'une
-    devinette faite depuis la base.
-
-    ⚠️ Mais ce n'est pas une preuve de l'état ACTUEL — c'est un champ de la base, écrit un
-    jour donné, et la règle 1 dit exactement ce qu'il vaut. Une republication ultérieure a
-    pu déplacer la page sans que cette colonne bouge. D'où le libellé « à la publication »
-    partout où cette valeur s'affiche, et l'adresse laissée en clair pour aller voir.
-    """
-    u = (url or "").strip().lower()
-    if not u or "?p=" in u or "post_type=" in u:
-        return ""          # forme provisoire : ne dit rien du versant
-    for lang in ("it", "fr"):
-        if f"/{lang}/" in u:
-            return lang
-    # Le français est la langue par défaut de Polylang : SANS préfixe, c'est le versant
-    # français. Avant le 17/09 cette fonction rendait '' ici, et l'écart de WP#9209
-    # (voulue it, adresse sans /it/) passait pour « adresse muette ».
-    return "fr" if "//" in u else ""
 
 
 def url_de_verification(url: str, post_id) -> str:
