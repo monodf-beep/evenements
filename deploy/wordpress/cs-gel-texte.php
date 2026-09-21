@@ -55,7 +55,7 @@ Version: 1.0
 
 if (!defined('ABSPATH')) { exit; }
 
-define('CS_GEL_VERSION', '2026-09-21b — mémoire liée à LA requête (v1.1)');
+define('CS_GEL_VERSION', '2026-09-21c — liste en SQL direct, pas WP_Query (v1.2)');
 define('CS_GEL_JOURNAL_MAX', 40);       // entrées gardées par fiche (les plus récentes)
 define('CS_GEL_META_EMPREINTE', 'as_bot_empreinte');
 define('CS_GEL_META_GEL', 'as_gel_texte');       // horodatage du gel (vide = pas gelé)
@@ -391,31 +391,49 @@ add_action('rest_api_init', function () {
     ));
 });
 
-/** GET cs/v1/gel — la file des fiches garées, avec son périmètre (CLAUDE.md règle 6). */
+/**
+ * GET cs/v1/gel — la file des fiches garées, avec son périmètre (CLAUDE.md règle 6).
+ *
+ * ⚠️ SQL DIRECT, ET SURTOUT PAS WP_Query. Mesuré le 21/09, une heure après la pose des
+ * 49 premiers gels : la version WP_Query de cette route en rendait **23 sur 51**. Cause :
+ * The Events Calendar filtre ses propres collections et en retire les événements PASSÉS
+ * (CLAUDE.md règle 2, écrite pour exactement ça). Or le premier lot gelé était justement
+ * fait d'événements passés récurrents.
+ *
+ * Ce n'était pas un compteur inexact, c'était un compteur DANGEREUX : `scripts/gel_texte.py
+ * --sync` compare cette liste à la base locale et EFFACE le marqueur de ce qui n'y figure
+ * pas. Un `--sync --apply` aurait donc dégelé 28 fiches en silence, en croyant recopier
+ * fidèlement l'état du site. Une liste qui ment sur son périmètre finit toujours par faire
+ * agir quelqu'un — ici, elle-même.
+ *
+ * `!= ''` et pas EXISTS : cs_gel_etat() traite la chaîne vide comme « pas de gel », et
+ * deux détecteurs pour la même chose finissent toujours par diverger.
+ */
 function cs_gel_route_liste(WP_REST_Request $req) {
-    $q = new WP_Query(array(
-        'post_type'      => CS_GEL_TYPE,
-        'post_status'    => 'any',
-        'posts_per_page' => 500,
-        'fields'         => 'ids',
-        // `!= ''` et pas seulement EXISTS : cs_gel_etat() traite la chaîne vide comme
-        // « pas de gel », et une liste qui compterait autrement que l'état ferait deux
-        // détecteurs pour la même chose — dont un faux (docs/ERREURS_2026-09-08.md).
-        'meta_query'     => array(array('key' => CS_GEL_META_GEL,
-                                        'value' => '', 'compare' => '!=')),
-        'no_found_rows'  => true,
-    ));
+    global $wpdb;
+    $lignes = $wpdb->get_results($wpdb->prepare(
+        "SELECT p.ID, p.post_status, m.meta_value AS depuis
+           FROM {$wpdb->postmeta} m
+           JOIN {$wpdb->posts} p ON p.ID = m.post_id
+          WHERE m.meta_key = %s AND m.meta_value <> ''
+            AND p.post_type = %s
+            AND p.post_status NOT IN ('trash', 'auto-draft')
+          ORDER BY m.meta_value DESC",
+        CS_GEL_META_GEL, CS_GEL_TYPE), ARRAY_A);
     $out = array();
-    foreach ($q->posts as $id) {
+    foreach ($lignes as $l) {
+        $id = (int) $l['ID'];
         $out[] = array(
-            'id'     => (int) $id,
+            'id'     => $id,
             'titre'  => get_the_title($id),
-            'depuis' => (string) get_post_meta($id, CS_GEL_META_GEL, true),
+            'statut' => $l['post_status'],
+            'depuis' => (string) $l['depuis'],
             'motif'  => (string) get_post_meta($id, CS_GEL_META_MOTIF, true),
             'url'    => get_permalink($id),
         );
     }
-    return array('total' => count($out), 'perimetre' => 'tribe_events, tous statuts',
+    return array('total' => count($out),
+                 'perimetre' => 'tribe_events hors corbeille, PASSÉS COMPRIS (SQL direct)',
                  'fiches' => $out);
 }
 

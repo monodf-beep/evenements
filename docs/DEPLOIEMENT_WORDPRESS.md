@@ -545,6 +545,22 @@ Les trois fiches d'essai sont à la corbeille (9937, 9945, 9950), les options te
 effacées, et le contrôle final donne **zéro fiche gelée** en production : le dispositif est
 en place et n'a gelé personne.
 
+### v1.2 — et une troisième fois, c'est la mesure qui a parlé
+
+Les 49 fiches de la session Cowork du 21/09 ont été gelées. Recompte immédiat : la route
+`GET cs/v1/gel` en rendait **23 sur 51**. Cause, mesurée en SQL : la route était écrite
+avec `WP_Query`, et The Events Calendar retire les événements **passés** de ses propres
+collections — la règle 2 de CLAUDE.md, écrite pour exactement ça. Or le premier lot gelé
+était fait d'événements passés récurrents : **26 des 49 étaient invisibles.**
+
+Ce n'était pas un compteur inexact, c'était un compteur **dangereux** : `scripts/gel_texte.py
+--sync` compare cette liste à la base locale et efface le marqueur de ce qui n'y figure pas.
+Un `--sync --apply` aurait dégelé 28 fiches en silence, en croyant recopier fidèlement
+l'état du site.
+
+v1.2 lit le `postmeta` en SQL direct, hors corbeille, passés compris. Contrôle après
+dépôt : route 49, SQL 49, les deux d'accord, dont 26 passés.
+
 **Retour arrière** : supprimer le fichier de `wp-content/mu-plugins/` (la v1.0 est gardée à
 côté sous `cs-gel-texte.php.bak-v1.0-2026-09-21`, qui n'est pas chargée : mu-plugins ne
 charge que les `*.php` du premier niveau). Les métas
