@@ -113,20 +113,29 @@ else:
     passe("aucune fiche ne décrit un cron disparu")
 
 
-# ── 3. Les angles morts sont comptés ────────────────────────────────────────
-# Volontairement PAS une interdiction : ne pas surveiller un cron peut se décider.
-# Ce qui ne se décide pas, c'est de l'ignorer.
+# ── 3. Aucun cron sans surveillance ─────────────────────────────────────────
+# ÉTAT AU 2026-09-21 : zéro. Ce contrôle valait d'abord « les deux angles morts connus
+# sont nommés » — la carte en avait trouvé deux (completer_depuis_mail et yoast_scores)
+# que la liste du chien de garde ignorait. Ils y sont entrés le jour même, et cette
+# fixture a fait ce qu'on attend d'elle : elle est passée au ROUGE sur le changement,
+# au lieu de laisser la correction se perdre.
+#
+# Elle devient donc une interdiction, ce qui est plus fort et plus simple à tenir : un
+# cron ajouté sans sa ligne dans ATTENDUS fait échouer le commit. Si un jour on décide
+# sciemment de ne pas surveiller un cron — c'est possible, un cron éteint ou purement
+# décoratif — il faut l'inscrire ICI avec sa raison, pas juste le laisser passer.
 carte = A.carte()
 angles = [n["label"] for n in carte["angles_morts"]]
-attendus = {"Lieux et images des mails", "Notes Yoast"}
-if set(angles) != attendus:
-    rate(f"la liste des crons non surveillés a changé : {sorted(angles)} "
-         f"(attendu {sorted(attendus)})")
-    print("   → si c'est volontaire, mettre cette fixture à jour ET vérifier que la page "
-          "les affiche. Si c'est un oubli, ajouter la ligne à ATTENDUS dans "
-          "scripts/watchdog_crons.py.")
+TOLERES: set[str] = set()   # aucun pour l'instant, et c'est bien
+if set(angles) - TOLERES:
+    for a in sorted(set(angles) - TOLERES):
+        rate(f"« {a} » tourne en cron mais n'est surveillé par personne")
+    print("   → ajouter sa ligne (libellé, script, fichier de log, tolérance) à ATTENDUS "
+          "dans scripts/watchdog_crons.py. Attention : le nom du log suit la REDIRECTION "
+          "du crontab, pas le nom du script.")
 else:
-    passe(f"{len(angles)} crons non surveillés, nommés et affichés en haut de la page")
+    passe(f"aucun cron sans surveillance ({len(A.scripts_surveilles())} entrées au chien "
+          f"de garde)")
 
 
 # ── 4. Les contre-épreuves : le détecteur peut-il virer au rouge ? ───────────

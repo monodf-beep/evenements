@@ -164,6 +164,27 @@ ATTENDUS = [
     ("Santé des gabarits",        "gabarit_health",  "gabarit_health.log",   30),
     ("Search Console",            "gsc_report",      "gsc_report.log",      200),
     ("Santé du site (hebdo)",     "site_health_check", "site_health_check.log", 200),
+    # ── DEUX OUBLIS TROUVÉS LE 2026-09-21 PAR LA CARTE DES AUTOMATISATIONS ───────────
+    # Ils ne viennent pas d'une relecture de cette liste — elle a déjà été relue trois
+    # fois — mais de son CROISEMENT avec `crontab.txt` : `app/automatisations.py` apparie
+    # chaque ligne du crontab à sa fiche, et /process affiche celles que personne ne
+    # surveille. Deux sont sorties du lot, et toutes deux remplissent le critère
+    # d'inclusion écrit plus haut : elles sont SILENCIEUSES quand tout va bien.
+    #
+    #   • `completer_depuis_mail` ne dit rien quand il ne trouve ni lieu ni image, ce qui
+    #     est son cas le plus fréquent — deux lieux dans la même annonce, ou une commune
+    #     qui contredit le lieu déjà posé, et il refuse d'écrire, volontairement. Son
+    #     arrêt ressemblerait donc à une série de matins sans matière ;
+    #   • `yoast_scores` n'écrit rien en base locale, il parle à WordPress. Son silence est
+    #     indiscernable de « rien n'a changé depuis le dernier passage », qui est sa
+    #     sortie normale. Il est aussi le seul cron de cette liste dont la panne peut
+    #     venir d'ailleurs que de Python : Node ou le paquet `yoastseo` manquant.
+    #
+    # ⚠️ `completer_mail.log` et non `completer_depuis_mail.log` : le nom du journal suit
+    # la REDIRECTION du crontab, pas le nom du script — le même piège que « sante.log »
+    # quelques lignes plus haut. Vérifié dans `crontab.txt`, ligne par ligne.
+    ("Lieux et images des mails", "completer_depuis_mail", "completer_mail.log",  30),
+    ("Notes Yoast",              "yoast_scores",      "yoast_scores.log",         30),
 ]
 
 
