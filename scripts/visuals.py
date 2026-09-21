@@ -37,7 +37,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils.images import (commons_search, europeana_search, fetch_og_image,
                           fetch_content_image, remote_dims, looks_like_banner_shape,
-                          MIN_DIM)
+                          looks_like_document_thumb, MIN_DIM)
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
                            load_territory_category_images, pick_banner_image)
 from utils import image_verify
@@ -140,10 +140,12 @@ def visual_query(ev: dict, client, model: str) -> str:
 
 
 def _acceptable(url: str, blocked: set[str], patterns: list) -> bool:
-    """RÈGLES déterministes : ni domaine proscrit, ni logo, ni motif parasite connu
-    (bandeau/pub/slider, voir config/blocked_image_patterns.txt)."""
+    """RÈGLES déterministes : ni domaine proscrit, ni logo, ni vignette de document
+    (couverture de brochure/programme, cf. utils.images.looks_like_document_thumb), ni
+    motif parasite connu (bandeau/pub/slider, voir config/blocked_image_patterns.txt)."""
     return bool(url) and not is_blocked_image(url, blocked) \
-        and not is_logo_image(url) and not image_verify.looks_parasitic(url, patterns)
+        and not is_logo_image(url) and not looks_like_document_thumb(url) \
+        and not image_verify.looks_parasitic(url, patterns)
 
 
 def _verified(url: str, ev: dict, verify_client, verify_model: str,

@@ -53,6 +53,47 @@ _CHROME_NAME_TOKENS = frozenset((
 ))
 
 
+# Vignette de DOCUMENT : WordPress fabrique un JPEG de la PREMIÈRE PAGE de tout PDF
+# téléversé et le nomme « <document>-pdf.jpg » (avec ses déclinaisons « -pdf-212x300.jpg »).
+# Ce n'est jamais la photo d'un événement : c'est la couverture d'une brochure de saison,
+# d'un journal de trimestre, d'un programme ou d'un plan de salle.
+#
+# Mesuré le 2026-09-21 sur la fiche 8289 (« Charcot Antartica », Malraux Chambéry), après
+# le signalement de Franck — « c'est souvent qu'on a l'image de Malraux au lieu de
+# l'événement » : la source mémorisée était https://www.malrauxchambery.fr/ressources/presse,
+# dont les QUATRE candidats images sont des vignettes de PDF (brochure 26-27, journal BIM,
+# programme Cinémalraux, plan de la grande salle). Le premier — la couverture de la brochure
+# de saison, 706×907 — est parti en ligne comme visuel du concert-récit. Aucune défense ne
+# le voyait : ce n'est ni un logo (`is_logo_image`), ni de l'habillage (`_is_chrome`), ni une
+# forme de bandeau (`looks_like_banner_shape` : ratio 1,28), et il passe MIN_DIM (706 ≥ 700).
+#
+# Le motif est le SUFFIXE du nom de fichier, pas une sous-chaîne (leçon Musicastelle du
+# 08/09 : « LogoEdizioneAutunnale » n'est pas un logo) — « pdfweb-affiche.jpg » et
+# « le-grand-pdf-journal.jpg » passent, seul « …-pdf.jpg » est écarté.
+_DOC_THUMB = re.compile(r"(?:^|[-_])pdf(?:-\d+x\d+)?$", re.I)
+
+
+def looks_like_document_thumb(url: str) -> bool:
+    """Vrai si l'URL est la vignette générée d'un DOCUMENT PDF (couverture de brochure,
+    de programme, de dossier de presse, plan de salle) — jamais la photo d'un événement."""
+    u = (url or "").lower()
+    if not u:
+        return False
+    from urllib.parse import urlparse as _up
+    name = _up(u).path.rsplit("/", 1)[-1]
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+    return bool(_DOC_THUMB.search(stem))
+
+
+def ecarte_de_page(url: str) -> bool:
+    """Les trois raisons déterministes d'écarter une image LUE SUR UNE PAGE : habillage de
+    site (logo/icône), élément d'interface de thème, vignette de document. Un seul endroit,
+    appelé par `_img_tags` ET `page_image_candidates` — la faute du 08/09 (« deux détecteurs
+    pour la même chose, un seul juste ») venait d'une règle posée dans un module et absente
+    du voisin."""
+    return is_logo_image(url) or _is_chrome(url) or looks_like_document_thumb(url)
+
+
 def _is_chrome(url: str) -> bool:
     """Vrai si l'URL trahit de l'habillage de site (pas une photo de contenu) : un
     dossier d'UI de thème, ou un NOM DE FICHIER qui matche un des mots ci-dessus en
@@ -260,7 +301,7 @@ def _img_tags(page: str, base_url: str = "") -> list[str]:
             continue
         if not re.search(r"\.(jpg|jpeg|png|webp)(\?|#|$)", low):
             continue
-        if is_logo_image(src) or _is_chrome(src):
+        if ecarte_de_page(src):
             continue
         if src not in candidates:
             candidates.append(src)
@@ -285,8 +326,7 @@ def page_image_candidates(page: str, base_url: str = "") -> list[str]:
 
     def _add(u: str) -> None:
         u = _absolu(u, base_url)
-        if u and u.startswith("http") and u not in out \
-                and not is_logo_image(u) and not _is_chrome(u):
+        if u and u.startswith("http") and u not in out and not ecarte_de_page(u):
             out.append(u)
 
     for pat in (r'<meta[^>]+property=["\']og:image(?::url)?["\'][^>]+content=["\']([^"\']+)',

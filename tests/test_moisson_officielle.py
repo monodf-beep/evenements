@@ -27,6 +27,7 @@ import os
 import sqlite3
 import sys
 import tempfile
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -243,16 +244,33 @@ print("\n──── le DÉBUT corroboré par une FIN déjà connue ───�
 # page SOURCE ne disait pas le début. La page lue ici est l'OFFICIELLE : c'est elle qui
 # écrit « du 12 juin au 20 septembre ». On n'y cherche pas une date — une page en porte
 # toujours plusieurs — mais une PLAGE QUI FINIT à la date connue.
+# DATES RELATIVES, jamais figées (2026-09-21) : ces deux fiches portaient une fin au
+# « 20 septembre 2026 » en dur. `mo.main()` lit la VRAIE date du jour (pas AUJOURDHUI, qui
+# ne sert qu'à `_a_moissonner` appelé directement) et écarte le passé — règle 5. La
+# fixture est donc passée au ROUGE toute seule le 21 septembre, sans que rien du code ne
+# change : une fixture dont la donnée périme finit par accuser le mauvais coupable.
+_FIN = date.today() + timedelta(days=45)
+_DEBUT = _FIN - timedelta(days=100)
+_AUTRE_DEBUT, _AUTRE_FIN = _FIN + timedelta(days=10), _FIN + timedelta(days=40)
+_MOIS_FR = ("", "janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+            "septembre", "octobre", "novembre", "décembre")
+
+
+def _fr(d):
+    """« 12 juin 2026 » — sans dépendre de la locale du système."""
+    return f"{d.day} {_MOIS_FR[d.month]} {d.year}"
+
+
 PAGE_PROSE = ("<html><body><p>Publié le 3 mars 2026 par la rédaction.</p>"
-              "<p>L'exposition est visible du 12 juin au 20 septembre 2026.</p>"
-              "<p>Prochainement : concert du 5 octobre 2026.</p></body></html>")
-PAGE_PROSE_AUTRE_FIN = ("<html><body><p>Rendez-vous du 1 juillet au 3 août 2026.</p>"
-                        "</body></html>")
+              f"<p>L'exposition est visible du {_fr(_DEBUT)} au {_fr(_FIN)}.</p>"
+              "<p>Prochainement : concert du 5 octobre 2027.</p></body></html>")
+PAGE_PROSE_AUTRE_FIN = (f"<html><body><p>Rendez-vous du {_fr(_AUTRE_DEBUT)} au "
+                        f"{_fr(_AUTRE_FIN)}.</p></body></html>")
 PAGES["https://officiel.fr/prose"] = PAGE_PROSE
 PAGES["https://officiel.fr/prose-sans-rapport"] = PAGE_PROSE_AUTRE_FIN
 conn = sqlite3.connect(tmp)
-for eid, url, fin in ((20, "https://officiel.fr/prose", "2026-09-20"),
-                      (21, "https://officiel.fr/prose-sans-rapport", "2026-09-20")):
+for eid, url, fin in ((20, "https://officiel.fr/prose", _FIN.isoformat()),
+                      (21, "https://officiel.fr/prose-sans-rapport", _FIN.isoformat())):
     conn.execute("INSERT INTO events_raw (id,title,url_source,statut,date_event_start,"
                  "lieu,ville,url_image,date_event_end) VALUES (?,?,?, 'evaluated', "
                  "'','','','', ?)", (eid, f"Fin seule {eid}", url, fin))
@@ -265,13 +283,13 @@ f20 = dict(conn.execute("SELECT * FROM events_raw WHERE id=20").fetchone())
 f21 = dict(conn.execute("SELECT * FROM events_raw WHERE id=21").fetchone())
 conn.close()
 _check("la plage qui finit à la date connue donne le début",
-       f20["date_event_start"] == "2026-06-12", str(f20["date_event_start"]))
+       f20["date_event_start"] == _DEBUT.isoformat(), str(f20["date_event_start"]))
 _check("… et la fin, qui a servi de preuve, n'est pas réécrite",
-       f20["date_event_end"] == "2026-09-20", str(f20["date_event_end"]))
+       f20["date_event_end"] == _FIN.isoformat(), str(f20["date_event_end"]))
 _check("une plage SANS rapport avec la fin connue ne donne rien — surtout pas sa "
        "première date", f21["date_event_start"] == "", str(f21["date_event_start"]))
 _check("… et la fiche garde sa date de fin intacte",
-       f21["date_event_end"] == "2026-09-20", str(f21["date_event_end"]))
+       f21["date_event_end"] == _FIN.isoformat(), str(f21["date_event_end"]))
 
 print("\n──── un lien de TRAÇAGE se juge sur sa destination ────")
 # Franck, 2026-08-11 : « pourquoi ça tourne pas seul pour trouver les informations

@@ -226,3 +226,84 @@ Esquisse : une route `/audit-visuel` réutilisant la logique de `image_audit.py`
 `scripts/images_wide` (renommé « multi-format ») demande à l'agent web les **deux orientations en un seul appel** (source officielle de l'événement / du lieu / de l'organisateur ; jamais d'agence), un agent vision vérifie **chacune** (vraiment portrait / vraiment paysage + pertinente), stocke celles trouvées et re-pousse. **Systématique à score ≥ 7** (`--min-score`, comme `venues_web`/`dates_web`/`images_web`) tant qu'une orientation manque ; cooldown `image_wide_at`. Vide → on retombe sur `url_image`. Dans le cron `full` (`--apply --cap 15`). Colonnes `url_image_wide` + `url_image_portrait`.
 
 **Téléchargement Wikimedia (429).** `publisher.py` : UA descriptif bot (`CulturaSabaudaBot/…`) d'abord pour Commons (un UA navigateur se fait throttler), backoff 5/10/20s, et **téléchargement source mis en cache** (les 3 déclinaisons carte/héros/original d'un même event ne frappent Wikimedia qu'une fois). `refill_images_as --throttle` (1.5s) espace les événements en lot.
+
+---
+
+## Mise à jour (21 septembre 2026) — la vignette d'un PDF n'est pas une photo
+
+Franck, capture à l'appui (fiche « Charcot Antartica », WP#8289) : « c'est souvent qu'on a
+l'image de malraux au lieu de l'événement […] il aurait sûrement fallu une image de
+Charcot Antartica ». L'image en ligne était **l'affiche de saison 26-27 de Malraux**.
+
+**Ce qui a été mesuré ce jour-là**, en rejouant le code du dépôt sur les vraies pages :
+
+1. la source mémorisée de la fiche était `malrauxchambery.fr/ressources/presse` — la page
+   « ressources presse » du théâtre, pas la page du spectacle ;
+2. `fetch_og_image` y renvoie `''` (la balise `og:image` de cette page ne contient qu'une
+   espace), donc la moisson passe au repli « première image de contenu » ;
+3. `page_image_candidates` y rend **quatre** candidats, tous des vignettes de PDF :
+   brochure de saison, journal BIM, programme Cinémalraux, plan de la grande salle ;
+4. le premier — `M-Brochure-26-27-WEB-pdf.jpg`, 706×907 — est bien l'image qui était en
+   ligne (comparaison visuelle du fichier servi par WordPress et de celui du CDN) ;
+5. **aucune défense ne pouvait la voir** : ce n'est ni un logo, ni de l'habillage de thème,
+   ni une forme de bandeau (ratio 1,28, entre `MIN_ASPECT` et `MAX_ASPECT`), et elle passe
+   `MIN_DIM` (706 ≥ 700). La moisson, elle, ne fait pas juger l'agent vision ;
+6. la page du spectacle existe et porte la bonne photo en `og:image`
+   (`charcot-Antartica-©-Anne-Bouillot-WEB.jpg`) — **la racine du site y mène en un lien**.
+
+### Ce qui change
+
+- **`utils.images.looks_like_document_thumb`** — WordPress fabrique un JPEG de la première
+  page de tout PDF téléversé et le nomme `<document>-pdf.jpg` (et ses déclinaisons
+  `-pdf-212x300.jpg`). C'est une couverture de brochure, de programme, de dossier de presse
+  ou un plan de salle : jamais la photo d'un événement. Le motif est un **suffixe** de nom
+  de fichier, jamais une sous-chaîne (leçon « LogoEdizioneAutunnale n'est pas un logo ») :
+  `pdfweb-affiche.jpg` et `le-grand-pdf-journal.jpg` passent.
+- **`utils.images.ecarte_de_page`** réunit les trois raisons déterministes d'écarter une
+  image lue sur une page (logo, habillage de thème, vignette de document) et sert aux
+  **deux** lecteurs (`_img_tags`, `page_image_candidates`) — la faute du 08/09, « deux
+  détecteurs pour la même chose, un seul juste », venait d'une règle posée d'un côté et
+  absente du voisin. Les `_acceptable` de `scripts/visuals.py` et de
+  `scripts/moisson_officielle.py` appellent le même détecteur.
+- **`affiner_source.est_source_generique`** remplace `est_racine` dans la sélection : une
+  page de **rubrique** (presse, actualités, dons, galerie — la liste `_PAGE_SKIP` qui
+  servait déjà à écarter ces chemins) n'est pas plus la page de l'événement qu'une racine,
+  et elle échappait au seul rouvreur qui existe (règle 3). La recherche repart désormais
+  **toujours de la racine du site** : une page presse ne renvoie pas vers les spectacles,
+  la page d'accueil si. Vérifié sur les deux fiches Malraux — `/ressources/presse` →
+  `/evenement/charcot-antartica-26-27/` et `/evenement/parfums-de-la-terre-26-27/`.
+
+### Ce qui n'a PAS été fait, et pourquoi
+
+Le réflexe était de brancher sur l'image le test de pertinence qui existe déjà dans
+`enrich` (« la page mentionne-t-elle un mot du titre ? »). **Mesuré : il ne filtre rien.**
+Il répond « MENTIONNE » pour la page presse de Malraux (« base », « chambéry »), pour la
+page communiqués du Torino Film Festival (« torino », « film »), pour la page « nos
+artistes » de l'Opéra de Nice (« production », « opéra », « nice »). C'est un OU sur des
+mots faibles — lieu, ville, mots courants. Le durcir (n'exiger que des mots distinctifs)
+est un chantier à part, à mesurer avant d'écrire quoi que ce soit.
+
+### Fiches déjà touchées — comment les retrouver et les réparer
+
+Le correctif ne défait rien de ce qui est en ligne. Sur le VPS :
+
+```bash
+# 1. combien de fiches publiées, encore devant nous, portent une vignette de PDF
+sqlite3 data/events.db "SELECT id, wp_post_id_as, substr(title,1,50), url_image
+  FROM events_raw WHERE wp_post_id_as IS NOT NULL AND duplicate_of IS NULL
+   AND (COALESCE(date_event_end, date_event_start,'') = ''
+        OR COALESCE(date_event_end, date_event_start) >= date('now'))
+   AND (url_image LIKE '%-pdf.jpg' OR url_image LIKE '%-pdf-%x%.jpg'
+        OR wp_raw_image_url_as LIKE '%-pdf.jpg');"
+
+# 2. la même question pour les sources génériques (dry-run, rien n'est écrit)
+.venv/bin/python -m scripts.affiner_source
+
+# 3. si le dry-run est juste — LIGNE PAR LIGNE, règle 4 :
+.venv/bin/python scripts/backup_db.py
+.venv/bin/python -m scripts.affiner_source --apply
+#    puis les deux commandes que le script imprime (moisson + publish --update)
+
+# 4. les images posées depuis une page, à re-juger avec la chaîne corrigée
+.venv/bin/python -m scripts.refill_images_as --recheck page --dry-run
+```

@@ -71,7 +71,8 @@ from urllib.parse import urljoin, urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger  # noqa: E402
-from utils.images import fetch_og_image, page_image_candidates, remote_dims, looks_like_banner_shape  # noqa: E402
+from utils.images import (fetch_og_image, page_image_candidates, remote_dims,  # noqa: E402
+                          looks_like_banner_shape, looks_like_document_thumb)
 from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
 from utils.radar import source_officielle  # noqa: E402
 from utils.traqueurs import est_traqueur, sans_parametres_de_suivi  # noqa: E402
@@ -511,7 +512,13 @@ def _recolte(ev: dict, marqueurs=None, morts: list | None = None) -> dict:
     _bloques = load_blocked_image_domains()
 
     def _acceptable(u: str) -> bool:
-        return bool(u) and u != _img and not is_logo_image(u) and not is_blocked_image(u, _bloques)
+        # La vignette d'un PDF (brochure de saison, programme, plan de salle) n'est jamais
+        # la photo de l'événement — 2026-09-21, fiche 8289 : la page /ressources/presse de
+        # Malraux n'offre QUE ça, et sa brochure 26-27 est partie en ligne comme visuel du
+        # concert « Charcot Antartica ». Même détecteur que la chaîne de résolution.
+        return (bool(u) and u != _img and not is_logo_image(u)
+                and not looks_like_document_thumb(u)
+                and not is_blocked_image(u, _bloques))
 
     # Un lien de traçage (sendibm1, mailchimp…) posé comme image n'est jamais une image :
     # c'est le pixel d'ouverture d'une newsletter (Manara à la Venaria, 08/09). Il cède
