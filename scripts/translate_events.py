@@ -313,6 +313,12 @@ def _charte_prompt(target: str, voix: str = "") -> str:
         f"idée par phrase, 20 mots au plus, jamais plus d'une subordonnée — une phrase "
         f"source trop longue se COUPE en deux au point, sans rien perdre. Voix ACTIVE de "
         f"préférence (« due curatori firmano la mostra », pas « la mostra è curata da »). "
+        f"CONNECTEURS : garde ceux de la source, ne les efface pas en traduisant, et "
+        f"rends-les par leur équivalent simple (poi, quindi, ma, perché, infine, prima, "
+        f"dopo, anche, soprattutto) — jamais par un connecteur scolaire (« d'altronde », « in effetti »). "
+        f"Mesuré le 21/09 avec le moteur de Yoast : « mots de liaison » est le premier "
+        f"motif de rouge du site, et une traduction qui les rabote ferait retomber en "
+        f"italien ce que le français vient de corriger. "
         f"{boussole}\n\n")
 
 
