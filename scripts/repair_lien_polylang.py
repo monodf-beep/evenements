@@ -117,6 +117,8 @@ VERDICTS = {
     "lien_ailleurs": "du bon versant, mais le hreflang pointe une AUTRE page",
     "jumelle_mauvaise_langue": "bon versant, mais le TEXTE de la jumelle est dans "
                                "l'autre langue — surtout PAS à lier",
+    "meme_post": "les deux fiches désignent le MÊME post WordPress — ligne abîmée en "
+                 "base, surtout pas de retraduction",
     "meme_versant": "les deux pages du même côté du site — PAS un défaut de lien",
     "versant_muet": "adresse en forme provisoire : le versant ne se lit pas",
     "hors_ligne": "un des deux numéros n'est plus public (corbeille ou supprimé)",
@@ -354,6 +356,28 @@ def main(argv=None) -> int:
         if rang % 10 == 0 or rang == len(lot):
             log.info("  … paire %d/%d en cours", rang, len(lot))
         po, pj = int(orig["wp_post_id_as"]), int(jum["wp_post_id_as"])
+        # ⚠️ LA MÊME PAGE DES DEUX CÔTÉS — écarté AVANT tout le reste, et c'est un garde-fou
+        # de sûreté, pas un simple classement.
+        #
+        # MESURÉ LE 2026-09-21 : le relevé a sorti `[2507→3491] WP#2190→WP#2190`, deux fois
+        # le même numéro. La fiche 3491 est enregistrée comme la traduction de 2507 et porte
+        # le numéro de la page de 2507 — une ligne abîmée en base, pas une traduction. (La
+        # vraie jumelle italienne de 2507 existe par ailleurs : 5223 → WP#8132.)
+        #
+        # CE QUE LA RETRADUCTION AUTOMATIQUE EN AURAIT FAIT, et je l'ai vu de justesse :
+        # `_retranslate` prend TOUS les jumeaux d'un original (`WHERE translation_of IN
+        # (...)`) et réécrit chacun EN PLACE, à son `wp_post_id_as`. Retraduire 2507 aurait
+        # donc réécrit WP#2190 — la page FRANÇAISE, celle de l'original — en italien.
+        # Dimanche 5h, sans que personne ne l'ait demandé. Le garage n'y aurait rien fait :
+        # il compte les essais, il ne juge pas la cible.
+        #
+        # Une paire pareille ne se répare ni par un lien (Polylang ne relie pas un post à
+        # lui-même) ni par une retraduction : c'est la LIGNE en base qu'il faut trancher,
+        # à la main, et le relevé le dit.
+        if po == pj:
+            par_verdict.setdefault("meme_post", []).append(
+                (orig, jum, f"les deux fiches portent WP#{po}"))
+            continue
         # Règle 1 : l'état du site se demande à l'API REST, par NUMÉRO, jamais à la base.
         eo, ej = _etat(wp_url, po), _etat(wp_url, pj)
         if eo != "public" or ej != "public":
@@ -413,6 +437,11 @@ def main(argv=None) -> int:
             print("        est `.venv/bin/python -m scripts.audit_langue_polylang` puis")
             print("        `translate_events.py --retranslate <id de l'original>`, qui republie")
             print("        du bon versant. Les relier ici ne montrerait rien au lecteur.")
+        if cle == "meme_post" and lot_v:
+            print("      → NI lien NI retraduction : les deux fiches revendiquent la même")
+            print("        page. Une retraduction réécrirait la page de l'ORIGINAL dans")
+            print("        l'autre langue. À trancher en base (quelle ligne garde le")
+            print("        numéro), puis `scripts/unlink_bad_translations.py` si besoin.")
         if cle == "jumelle_mauvaise_langue" and lot_v:
             print("      → NE PAS LIER : le lecteur italien recevrait une page française,")
             print("        certifiée traduction officielle par le lien. Le versant est juste,")

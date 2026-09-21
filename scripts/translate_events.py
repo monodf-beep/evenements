@@ -675,6 +675,31 @@ def _retranslate(args, client, voix) -> int:
     twins = [dict(r) for r in conn.execute(
         f"SELECT * FROM events_raw WHERE translation_of IN ({ph}) AND duplicate_of IS NULL",
         args.ids).fetchall()]
+    # ⚠️ NE JAMAIS RÉÉCRIRE LA PAGE DE L'ORIGINAL — garde-fou posé le 2026-09-21 au soir.
+    #
+    # MESURÉ CE JOUR-LÀ : la fiche 3491 est enregistrée comme la traduction de 2507 et
+    # porte le MÊME `wp_post_id_as` qu'elle (WP#2190) — une ligne abîmée en base, pas une
+    # traduction. Or `_retranslate_one` réécrit le jumeau EN PLACE, à son
+    # `wp_post_id_as` : retraduire 2507 aurait réécrit la page FRANÇAISE de 2507 en
+    # italien. (Sa vraie jumelle italienne existe par ailleurs : 5223 → WP#8132.)
+    #
+    # ICI ET PAS SEULEMENT DANS L'APPELANT, parce que `audit_langue_polylang` IMPRIME
+    # cette commande pour qu'un humain la tape, et parce que `repair_lien_polylang
+    # --retraduire` l'appelle tout seul depuis le cron hebdomadaire. Un garde-fou qui ne
+    # vit que chez un appelant protège cet appelant-là, pas la fonction.
+    postes_originaux = {r["id"]: (r["wp_post_id_as"] or 0) for r in conn.execute(
+        f"SELECT id, wp_post_id_as FROM events_raw WHERE id IN ({ph})", args.ids)}
+    sains = []
+    for tw in twins:
+        po = postes_originaux.get(tw.get("translation_of") or 0) or 0
+        if po and (tw.get("wp_post_id_as") or 0) == po:
+            log.error("[%s] REFUS de retraduction : ce jumeau porte le MÊME post que son "
+                      "original (WP#%s). Le retraduire réécrirait la page de l'original "
+                      "dans l'autre langue. La ligne est à trancher en base, pas à "
+                      "retraduire.", tw["id"], po)
+            continue
+        sains.append(tw)
+    twins = sains
     conn.close()
     log.info("%d jumeau(x) à re-traduire%s.", len(twins), "" if args.apply else " (simulation)")
     try:
