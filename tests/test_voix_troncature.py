@@ -28,29 +28,66 @@ sys.path.insert(0, str(ROOT))
 from utils import voix  # noqa: E402
 
 
-def test_voix_du_depot_passe_en_entier():
-    """Volet 1 — la charte versionnée doit être chargée SANS perte."""
-    brut = voix._strip_obsidian(voix._DEFAULT_VOIX.read_text(encoding="utf-8"))
+def test_rien_n_est_coupe_en_silence():
+    """Volet 1 — ce qui est CHARGÉ doit être ce qui est SERVI, sur cette machine-ci.
+
+    ⚠️ CE VOLET ACCUSAIT LE MAUVAIS COUPABLE, et ça a coûté un correctif inutile
+    (2026-09-22). Il comparait `docs/voix/VOIX.md` à `load_voix()` et, dès qu'ils
+    différaient, annonçait « la FIN de la note n'est pas appliquée… relever
+    VOIX_MAX_CHARS ». Sur le VPS, les deux différaient de 3 202 caractères et le message
+    a envoyé relever le plafond — alors que le plafond ne mordait pas du tout : les
+    COUCHES choisies au back-office y servent d'autres notes que la charte versionnée.
+    Mesuré ce jour-là sur le serveur : `voix_integrale()` rendait 3 972 caractères, et
+    `load_voix()` les rendait tous. Rien n'était tronqué.
+
+    Un compteur doit dire ce qu'il compte. La troncature, c'est l'écart entre ce que les
+    sources contiennent (`voix_integrale`, sans plafond) et ce qui est réellement livré
+    (`load_voix`, plafonné). C'est cet écart-là qu'on mesure désormais, et il vaut la
+    même chose sur toutes les machines, quelles que soient les couches configurées.
+    """
+    integrale = voix.voix_integrale()
     charge = voix.load_voix()
-    perdu = len(brut) - len(charge)
+    perdu = len(integrale) - len(charge)
     assert perdu <= 0, (
-        f"{perdu} caractères de la charte sont coupés : la FIN de docs/voix/VOIX.md "
-        f"n'est pas appliquée. Note = {len(brut)} car., plafond = {voix._max_chars()}. "
-        f"Relever VOIX_MAX_CHARS ou raccourcir la note."
+        f"{perdu} caractères sont coupés EN SILENCE : les sources de voix de cette "
+        f"machine pèsent {len(integrale)} car., le plafond est à {voix._max_chars()}. "
+        f"Relever VOIX_MAX_CHARS, ou raccourcir les notes."
+    )
+
+
+def test_la_charte_versionnee_tient_sous_le_plafond():
+    """Volet 1 bis — garantie du DÉPÔT, celle-là indépendante de toute machine.
+
+    Le volet précédent ne dit rien d'une machine qui n'aurait pas configuré de couches :
+    elle servira `docs/voix/VOIX.md`, et il faut donc que ce fichier-là tienne. C'est
+    exactement l'incident du 2026-09-05, où la note avait dépassé le plafond sans que
+    personne ne mesure.
+    """
+    brut = voix._strip_obsidian(voix._DEFAULT_VOIX.read_text(encoding="utf-8"))
+    assert len(brut) <= voix._max_chars(), (
+        f"docs/voix/VOIX.md pèse {len(brut)} car. pour un plafond de "
+        f"{voix._max_chars()} : sur une machine sans couches configurées, sa FIN ne "
+        f"serait pas appliquée. Relever VOIX_MAX_CHARS ou raccourcir la note."
     )
 
 
 def test_les_dernieres_regles_sont_bien_la():
-    """Volet 1 bis — on vérifie le RÉSULTAT, pas seulement une longueur.
+    """Volet 1 ter — on vérifie le RÉSULTAT, pas seulement une longueur.
 
     Une longueur suffisante ne prouve pas que les bonnes règles sont présentes : on
     cherche donc nommément les deux sections qui avaient disparu le 05/09.
+
+    On les cherche dans la CHARTE VERSIONNÉE chargée seule, pas dans `load_voix()` :
+    une machine dont les couches servent d'autres notes n'a aucune raison de porter ces
+    deux titres-là, et exiger leur présence reviendrait à interdire de configurer des
+    couches. C'est la même confusion que celle corrigée au volet 1.
     """
-    charge = voix.load_voix()
+    brut = voix._strip_obsidian(voix._DEFAULT_VOIX.read_text(encoding="utf-8"))
+    tronque = brut[:voix._max_chars()]
     for regle in ("Les Alpes ne sont pas une frontière", "Deux longueurs"):
-        assert regle in charge, (
-            f"la section « {regle} » est absente de la voix chargée : "
-            f"elle est tombée hors du plafond, comme le 2026-09-05."
+        assert regle in tronque, (
+            f"la section « {regle} » tomberait hors du plafond de "
+            f"{voix._max_chars()} caractères, comme le 2026-09-05."
         )
 
 
@@ -85,7 +122,8 @@ def test_contre_epreuve_une_note_trop_longue_est_signalee(
 
 
 if __name__ == "__main__":
-    test_voix_du_depot_passe_en_entier()
+    test_rien_n_est_coupe_en_silence()
+    test_la_charte_versionnee_tient_sous_le_plafond()
     test_les_dernieres_regles_sont_bien_la()
     print("OK — la voix passe en entier et ses dernières règles sont présentes.")
     print("    (la contre-épreuve demande pytest : monkeypatch/capsys)")
