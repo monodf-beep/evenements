@@ -218,6 +218,23 @@ def main(argv=None) -> int:
     print(f"\nPÉRIMÈTRE : {perimetre}")
     print(f"  {total_publies} originaux publiés en base, dont {len(originaux)} dans ce périmètre")
     print(f"  {avec_jumelle_en_ligne} ont déjà leur jumelle publiée")
+    # CE QUE CE NOMBRE NE VÉRIFIE PAS, ET IL FAUT L'ÉCRIRE À CÔTÉ DE LUI (règle 6).
+    #
+    # Le 2026-09-21, ce relevé a annoncé « 83 ont déjà leur jumelle publiée » et Franck
+    # regardait au même moment trois pages françaises sans aucune traduction. Les trois
+    # étaient dans les 83 : la jumelle EXISTAIT et était PUBLIQUE, donc la question était
+    # close ici. Mesuré depuis l'extérieur le même jour : sur 107 pages publiées au
+    # versant français encore devant nous, 68 seulement portaient un `hreflang="it"`.
+    #
+    # Ce script répond à « une jumelle existe-t-elle ? ». Il ne répond pas — et n'a jamais
+    # prétendu répondre — à « est-elle de l'autre langue ? » ni à « sont-elles reliées ? ».
+    # Deux questions, deux scripts, une seule définition du versant (utils.lang).
+    print(f"  ⚠️  ces {avec_jumelle_en_ligne} ne sont vérifiées ni sur la LANGUE de la "
+          f"jumelle ni sur le")
+    print("      lien Polylang : une jumelle du mauvais versant, ou en ligne mais non")
+    print("      liée, compte ici comme saine et n'apparaît dans AUCUNE famille.")
+    print("      `.venv/bin/python -m scripts.audit_langue_polylang`      (versant)")
+    print("      `.venv/bin/python -m scripts.repair_lien_polylang`       (lien, dry-run)")
     manquantes = sum(len(v) for v in par_famille.values())
     print(f"  {manquantes} SANS jumelle en ligne — réparties ci-dessous, une seule famille "
           f"par fiche\n")
