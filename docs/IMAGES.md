@@ -508,3 +508,44 @@ fiche, on regarde à côté. C'est ce qui m'a fait proposer une photo de Wikimed
 pour une fiche qui avait déjà mieux en base. À faire : afficher les deux déclinaisons dans
 l'onglet Visuels, avec un bouton pour les retirer (l'équivalent de
 `images_wide --drop-portrait --drop-wide`, qui n'existe aujourd'hui qu'en ligne de commande).
+
+---
+
+## Mise à jour (21 septembre 2026, soir) — une traduction montre la même image que son original
+
+Cinquième mécanisme de la journée, et le plus étendu : **14 traductions à venir portent une
+image différente de leur original**. Exemples relevés en base :
+
+| Fiche | Traduction | Original |
+|---|---|---|
+| Orlando (WP#2340) | `commons` — le **livret imprimé** du XVIIIe, deux colonnes de texte | `og` — l'affiche du spectacle |
+| Ambra Angiolini (WP#7723) | — le **rectangle blanc** `main-hover-comunicati` | `og` — le portrait |
+| Estate Reale (WP#2211) | `commons` — un buste de Lucius Verus | `og` — le visuel de l'événement |
+| GAZA, le futur a un cœur (WP#2269) | `commons` — une planche d'archéologie égyptienne | `og` — le visuel vertical |
+| Orchestre de la Suisse Romande (WP#2299) | `banner` | `og` — la photo de l'orchestre |
+
+L'enchaînement, reconstitué : `translate_events` copie bien `url_image` **à la création** de
+la traduction ; si l'original n'a alors qu'une bannière, la traduction hérite de la
+bannière, `visuals` la reprend plus tard comme « fiche à compléter » — et là `url_source`
+vaut `translated:<id>:<lang>`, **il n'y a aucune page à lire** : la chaîne saute directement
+à l'étage Commons, qui cherche sur le TITRE. D'où le livret pour Orlando, le buste pour
+Estate Reale, l'archéologie égyptienne pour Gaza. Quand l'original reçoit enfin sa vraie
+affiche, plus rien ne réaligne la traduction.
+
+`publish_batch_as._heriter_image_traduction` le fait désormais à la publication, au même
+endroit et pour la même raison que l'héritage de la SOURCE (`_heriter_source_traduction`,
+incident du 16/09). La copie ne va que vers le **haut** (`_RANG_IMAGE` : manual 5, og/page 4,
+web 3, commons/europeana/mail 2, banner 1) — une image posée à la main sur la traduction, ou
+une vraie photo quand l'original n'a qu'une bannière, n'est jamais écrasée.
+
+**Le cas inverse reste ouvert** (une fiche sur les quatorze) : « Chambéry, les trésors des
+empires de la Chine » a une photo Commons côté italien et une **bannière** côté français.
+L'héritage ne descend pas, donc les deux langues continuent de diverger. C'est le bon
+comportement par défaut, mais ça montre la limite : l'alignement se fait toujours dans le
+sens original → traduction, jamais l'inverse.
+
+Pour appliquer l'héritage aux fiches déjà en ligne :
+
+```bash
+.venv/bin/python -m scripts.publish_batch_as --ids <ids des traductions> --update
+```

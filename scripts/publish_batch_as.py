@@ -121,6 +121,56 @@ def _heriter_source_traduction(event: dict, conn) -> None:
         event["url_source"] = ancre
 
 
+# Confiance d'une image, du plus sûr au moins sûr. Sert à décider si une traduction doit
+# reprendre l'image de son original : on ne remonte JAMAIS vers du moins sûr.
+_RANG_IMAGE = {"manual": 5, "og": 4, "page": 4, "web": 3,
+               "commons": 2, "europeana": 2, "mail": 2, "banner": 1, "": 0}
+
+
+def _heriter_image_traduction(event: dict, conn) -> None:
+    """Une traduction montre la MÊME image que son original — MODIFIE `event` en place.
+
+    2026-09-21, fiche « Orlando » : la version française portait l'affiche du spectacle
+    (og:image de opera-nice.org/agenda/orlando/), l'italienne un scan du LIVRET IMPRIMÉ du
+    XVIIIe siècle trouvé sur Wikimedia Commons — deux colonnes de texte, illisibles en
+    vignette. Même événement, deux images.
+
+    L'origine n'est pas un bug isolé mais un enchaînement : `translate_events` copie bien
+    `url_image` à la CRÉATION de la traduction (l. 901) ; si l'original n'a alors qu'une
+    bannière, la traduction hérite de la bannière, `visuals` la reprend plus tard comme
+    « fiche à compléter » — et là, `url_source` vaut `translated:<id>:<lang>` : il n'y a
+    aucune page à lire, la chaîne saute donc directement à l'étage Commons. Quand
+    l'original reçoit enfin sa vraie affiche, plus rien ne réaligne la traduction.
+
+    D'où l'héritage ici, au même endroit que celui de la source (`_heriter_source_traduction`,
+    incident du 16/09) : à la publication, point de passage obligé. On ne copie que vers le
+    HAUT (`_RANG_IMAGE`) — une image posée à la main sur la traduction, ou une vraie photo
+    quand l'original n'a qu'une bannière, n'est jamais écrasée."""
+    tof = event.get("translation_of") or 0
+    if not tof:
+        return
+    parent_row = conn.execute(
+        "SELECT url_image, image_source, image_credit FROM events_raw WHERE id=?", (tof,)).fetchone()
+    if not parent_row:
+        return
+    parent = dict(parent_row)
+    img_parent = (parent.get("url_image") or "").strip()
+    if not img_parent or img_parent == (event.get("url_image") or "").strip():
+        return
+    rang_parent = _RANG_IMAGE.get((parent.get("image_source") or "").strip(), 0)
+    rang_trad = _RANG_IMAGE.get((event.get("image_source") or "").strip(), 0)
+    if rang_parent <= rang_trad:
+        return
+    log.info("[%s] image héritée de l'original %s (%s > %s) : %s", event.get("id"), tof,
+             parent.get("image_source"), event.get("image_source") or "aucune", img_parent[:70])
+    event["url_image"] = img_parent
+    event["image_source"] = parent.get("image_source") or ""
+    event["image_credit"] = parent.get("image_credit") or ""
+    conn.execute("UPDATE events_raw SET url_image=?, image_source=?, image_credit=? WHERE id=?",
+                 (event["url_image"], event["image_source"], event["image_credit"], event["id"]))
+    conn.commit()
+
+
 def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict], list[tuple]]:
     """VERROU « radar = DÉTECTION seule » (config/sources.txt, en-tête du tier radar).
 
@@ -450,6 +500,7 @@ def main(argv=None) -> int:
         # générique côté WP, pas cassé — mais pas voulu).
         skip = args.skip_media and (event.get("wp_post_id_as") or 0) > 0
         _heriter_source_traduction(event, conn)
+        _heriter_image_traduction(event, conn)
         wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip)
         if wp_id:
             conn.execute(
