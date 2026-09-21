@@ -136,6 +136,23 @@ _check(f"un moyen existe de vérifier le plancher {CIBLE[0]}.{CIBLE[1]}",
 _check(f"le dépôt expose bien des fichiers à compiler ({len(fichiers)})",
        len(fichiers) >= 150, len(fichiers))
 
+# D'ABORD LA GARANTIE TOUJOURS DISPONIBLE, et elle vaut pour elle-même : tout fichier
+# doit compiler sous L'INTERPRÉTEUR QUI VA L'EXÉCUTER. C'est le risque vivant — une
+# syntaxe plus récente que le serveur, dans un script lancé par cron, qui ne se verrait
+# qu'en production le lendemain. Elle ne dépend d'aucun binaire annexe, donc elle reste
+# verte même pendant qu'on discute du plancher.
+casses_ici = []
+for f in fichiers:
+    try:
+        ast.parse(f.read_text(encoding="utf-8"), filename=str(f))
+    except SyntaxError as exc:
+        casses_ici.append(f"{f.relative_to(ROOT)}:{exc.lineno} — {exc.msg}")
+    except OSError as exc:
+        casses_ici.append(f"{f.relative_to(ROOT)} — illisible ({exc})")
+_check(f"tous compilent sous l'interpréteur courant "
+       f"({sys.version_info.major}.{sys.version_info.minor}, celui qui les exécutera)",
+       not casses_ici, "\n      " + "\n      ".join(casses_ici[:10]))
+
 casses = []
 if _MOYEN != "aucun":
     for f in fichiers:
