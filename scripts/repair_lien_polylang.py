@@ -266,7 +266,18 @@ def main(argv=None) -> int:
 
     par_verdict: dict[str, list] = {}
     reparees, echecs = [], []
-    for orig, jum in lot:
+    # ANNONCER CHAQUE ÉTAPE. Ce script fait trois appels HTTP par paire et n'affichait
+    # RIEN avant son tableau final : sur 88 paires, plusieurs minutes de silence. Franck a
+    # interrompu le premier passage au clavier le 21/09. La règle est écrite dans
+    # CLAUDE.md — « un dispositif fait pour rendre autonome ne peut pas ressembler à une
+    # panne pendant qu'il travaille ».
+    log.info("%d paire(s) à examiner (%s) — 3 requêtes chacune, comptez ~2 s par paire.",
+             len(lot), perimetre)
+    for rang, (orig, jum) in enumerate(lot, 1):
+        # « en cours » et non « examinées » : la ligne part AVANT le travail de la paire,
+        # et un compteur qui annonce ce qu'il n'a pas encore fait est un compteur qui ment.
+        if rang % 10 == 0 or rang == len(lot):
+            log.info("  … paire %d/%d en cours", rang, len(lot))
         po, pj = int(orig["wp_post_id_as"]), int(jum["wp_post_id_as"])
         # Règle 1 : l'état du site se demande à l'API REST, par NUMÉRO, jamais à la base.
         eo, ej = _etat(wp_url, po), _etat(wp_url, pj)
