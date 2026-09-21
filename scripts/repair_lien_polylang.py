@@ -41,7 +41,13 @@ CE QU'IL NE FAIT PAS, ET C'EST VOLONTAIRE :
     qui republie du bon côté. Le geste n'est pas le même, le compteur non plus ;
   • il n'efface pas `translated_at` pour « faire retraduire ». Ce serait la fausse bonne
     idée : la fiche repasserait dans la file et une TROISIÈME page naîtrait. Le texte
-    italien existe déjà, il est en ligne, il ne manque qu'un lien.
+    italien existe déjà, il est en ligne, il ne manque qu'un lien ;
+  • il ne lie pas une jumelle du BON versant dont le TEXTE est resté dans l'autre langue
+    (ajouté le 21/09 au soir, deux heures après la première version — c'est la production
+    qui l'a montré, pas ma fixture : WP#2340 est passée du versant fr au versant it à
+    16h04 en gardant son titre français. La lier aurait certifié une page française comme
+    traduction officielle, et l'aurait rendue invisible à `audit_langue_polylang`, qui ne
+    compare que le versant à la langue demandée).
 
 LE TÉMOIN. Une paire correctement liée émet, sur la page publique de l'original,
 `<link rel="alternate" href="…" hreflang="it">` vers sa jumelle — c'est la raison d'être
@@ -76,7 +82,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger                          # noqa: E402
-from utils.lang import cote_du_permalien                     # noqa: E402
+from utils.lang import cote_du_permalien, effective_lang     # noqa: E402
 from scripts.audit_substance_published import devant_nous    # noqa: E402
 from scripts.link_translations_as import _post_link          # noqa: E402
 from scripts.reconcile_wp_deleted import _etat               # noqa: E402
@@ -92,6 +98,8 @@ _UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
 VERDICTS = {
     "lien_absent": "du bon versant, AUCUN hreflang vers la jumelle — à relier ici",
     "lien_ailleurs": "du bon versant, mais le hreflang pointe une AUTRE page",
+    "jumelle_mauvaise_langue": "bon versant, mais le TEXTE de la jumelle est dans "
+                               "l'autre langue — surtout PAS à lier",
     "meme_versant": "les deux pages du même côté du site — PAS un défaut de lien",
     "versant_muet": "adresse en forme provisoire : le versant ne se lit pas",
     "hors_ligne": "un des deux numéros n'est plus public (corbeille ou supprimé)",
@@ -125,17 +133,41 @@ def _chemin(url: str) -> str:
     return u.split("?")[0].rstrip("/")
 
 
-def verdict(cote_orig: str, cote_jum: str, alts: dict, lien_jumelle: str) -> str:
+def verdict(cote_orig: str, cote_jum: str, alts: dict, lien_jumelle: str,
+            langue_jumelle: str = "") -> str:
     """Le cœur de la décision, PURE — aucun réseau, aucune base : c'est elle qui mérite
     une fixture (tests/test_repair_lien_polylang.py), pas la plomberie HTTP autour.
 
-    `cote_orig` / `cote_jum` viennent de `utils.lang.cote_du_permalien` — la MÊME
-    définition que `audit_langue_polylang` et que le dédoublonnage. Pas de second
-    détecteur du versant : deux copies d'une même question se contredisent (21/09)."""
+    `cote_orig` / `cote_jum` viennent de `utils.lang.cote_du_permalien` et
+    `langue_jumelle` de `utils.lang.effective_lang` — les MÊMES définitions que
+    `audit_langue_polylang`, le dédoublonnage et `translate_events`. Pas de second
+    détecteur : deux copies d'une même question se contredisent (21/09)."""
     if not cote_orig or not cote_jum:
         return "versant_muet"
     if cote_orig == cote_jum:
         return "meme_versant"
+    # LE VERSANT NE DIT PAS LA LANGUE DU TEXTE — corrigé le 2026-09-21 en fin de journée,
+    # deux heures après avoir livré ce script, et c'est la production qui l'a montré.
+    #
+    # À 14h, WP#2340 (« Orlando de Haendel à l'Opéra Nice Côte d'Azur », la jumelle de
+    # WP#745) était servie du versant FRANÇAIS. À 16h04 elle avait été republiée du
+    # versant ITALIEN — avec son titre toujours en français. Le versant était devenu
+    # juste, le texte non. La première version de ce script aurait donc LIÉ la paire, et
+    # le sélecteur de langue aurait proposé aux lecteurs italiens une page française,
+    # désormais estampillée traduction officielle. Pire : `audit_langue_polylang` compare
+    # le versant servi à `translated_lang`, or les deux disent 'it' — la fiche redevenait
+    # invisible à tout le monde, avec un lien de plus pour la certifier.
+    #
+    # C'est la faute que CLAUDE.md nomme le plus souvent : conclure sur un indice de
+    # SURFACE (le préfixe /it/ de l'adresse) au lieu d'aller lire la chose (le texte).
+    # Ma fixture ne pouvait pas l'attraper : elle ne contenait que des versants.
+    #
+    # ON S'ABSTIENT, ON NE LIE PAS. Et le sens de l'erreur est choisi : si `detect_lang`
+    # se trompe sur une jumelle saine (l'incident du 17/09 prouve qu'elle peut), on refuse
+    # de lier une paire correcte — elle reste dans l'état où elle était, et elle est
+    # NOMMÉE. L'inverse cimenterait une page dans la mauvaise langue.
+    if langue_jumelle and langue_jumelle != cote_jum:
+        return "jumelle_mauvaise_langue"
     autre = cote_jum                      # le versant de la jumelle = la langue attendue
     vu = alts.get(autre) or ""
     if not vu:
@@ -247,7 +279,10 @@ def main(argv=None) -> int:
         if lo and not html:
             par_verdict.setdefault("page_injoignable", []).append((orig, jum, lo))
             continue
-        v = verdict(cote_du_permalien(lo), cote_du_permalien(lj), alternates(html), lj)
+        # `effective_lang` lit l'ARTICLE rédigé s'il existe, jamais le seul titre brut :
+        # c'est la même fonction que translate_events consulte pour DÉCIDER une traduction.
+        v = verdict(cote_du_permalien(lo), cote_du_permalien(lj), alternates(html), lj,
+                    effective_lang(jum))
         par_verdict.setdefault(v, []).append((orig, jum, f"{lo} ↔ {lj}"))
         if v != "lien_absent" or not args.apply:
             continue
@@ -262,7 +297,8 @@ def main(argv=None) -> int:
         # RELIRE, et ne pas croire le 200 : règle 6, on rapporte le résultat. Le cache est
         # cassé exprès, sinon on relit la page d'avant et on se félicite pour rien.
         alts2 = alternates(_get(lo, casse_le_cache=True))
-        if verdict(co, cote_du_permalien(lj), alts2, lj) == "deja_lie":
+        if verdict(co, cote_du_permalien(lj), alts2, lj,
+                   effective_lang(jum)) == "deja_lie":
             reparees.append((orig, jum, lj))
         else:
             echecs.append((orig, jum, "lien posé, mais la page ne l'annonce toujours pas"))
@@ -291,6 +327,12 @@ def main(argv=None) -> int:
             print("        est `.venv/bin/python -m scripts.audit_langue_polylang` puis")
             print("        `translate_events.py --retranslate <id de l'original>`, qui republie")
             print("        du bon versant. Les relier ici ne montrerait rien au lecteur.")
+        if cle == "jumelle_mauvaise_langue" and lot_v:
+            print("      → NE PAS LIER : le lecteur italien recevrait une page française,")
+            print("        certifiée traduction officielle par le lien. Le versant est juste,")
+            print("        le TEXTE non — mesuré sur WP#2340 le 21/09 à 16h04. Le geste est")
+            print("        `translate_events.py --retranslate <id de l'original> --apply`,")
+            print("        qui réécrit le texte ET relie la paire.")
         if cle == "lien_ailleurs" and lot_v:
             print("      → appariement douteux : le hreflang mène à une TROISIÈME page. À")
             print("        trancher à la main (scripts/unlink_bad_translations.py) — on ne")

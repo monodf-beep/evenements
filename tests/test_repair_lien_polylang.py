@@ -121,6 +121,48 @@ v = rl.verdict("fr", "it", rl.alternates(HTML_SAIN),
 _check("un hreflang qui mène à une TROISIÈME page → lien_ailleurs (jamais recouvert)",
        v == "lien_ailleurs", v)
 
+print("\n──── le versant est juste, le TEXTE non : on s'abstient ────")
+# TROUVÉ EN PRODUCTION LE 21/09 À 16h04, deux heures après la livraison de ce script, et
+# ma fixture ne pouvait pas l'attraper : elle ne contenait que des versants. WP#2340
+# (jumelle de WP#745) a été republiée du versant ITALIEN en gardant son titre FRANÇAIS
+# « Orlando de Haendel à l'Opéra Nice Côte d'Azur ». La première version aurait lié la
+# paire : le sélecteur de langue aurait servi une page française aux lecteurs italiens, et
+# `audit_langue_polylang` se serait taise (versant servi = langue demandée = 'it').
+from utils.lang import effective_lang  # noqa: E402
+
+JUM_ORLANDO = {   # texte RÉEL de WP#2340, recopié d'une mesure
+    "title": "Orlando de Haendel à l'Opéra Nice Côte d'Azur",
+    "description": "L'Opéra de Nice donne une nouvelle production d'Orlando, avec une "
+                   "distribution internationale.",
+    "territoire": "comte-de-nice"}
+JUM_CARLA = {     # texte RÉEL de WP#8175, la jumelle italienne SAINE
+    "title": "«Carla With Love»: Martina Arduino interpreta Carla Fracci ai Musei Reali "
+             "di Torino",
+    "description": "Lo spettacolo è in programma ai Musei Reali di Torino, con ingresso "
+                   "su prenotazione.",
+    "territoire": "piemont"}
+# Près de la frontière : un titre italien fait presque uniquement de noms propres. C'est
+# le cas où `detect_lang` a le moins de matière — et une abstention ici coûterait un lien
+# qu'il fallait poser.
+JUM_NOMS_PROPRES = {"title": "Paratissima 2026: Esterno Notte a Torino",
+                    "description": "", "territoire": "piemont"}
+
+_check("la jumelle du versant it dont le texte est FRANÇAIS n'est pas liée",
+       rl.verdict("fr", "it", {}, "https://a/x", effective_lang(JUM_ORLANDO))
+       == "jumelle_mauvaise_langue")
+_check("   même quand un hreflang correct existe déjà (le verdict passe devant)",
+       rl.verdict("fr", "it", rl.alternates(HTML_SAIN),
+                  "https://agendasabauda.eu/it/evenement/smile-lorchestra-2/",
+                  effective_lang(JUM_ORLANDO)) == "jumelle_mauvaise_langue")
+_check("⚠️ la vraie jumelle italienne, elle, reste à lier (le cas qui doit passer)",
+       rl.verdict("fr", "it", {}, "https://a/x", effective_lang(JUM_CARLA))
+       == "lien_absent")
+_check("⚠️ et un titre italien presque tout en noms propres aussi (frontière)",
+       rl.verdict("fr", "it", {}, "https://a/x", effective_lang(JUM_NOMS_PROPRES))
+       == "lien_absent")
+_check("sans mesure de langue, le script se comporte comme avant (rétrocompatible)",
+       rl.verdict("fr", "it", {}, "https://a/x", "") == "lien_absent")
+
 print("\n──── ce qu'on ne relie JAMAIS ────")
 # Les deux pages du même côté : c'est le cas Orlando (WP#745 et WP#2340, tous deux au
 # versant français le 20/07). Les relier ne montrerait rien au lecteur — Polylang veut
