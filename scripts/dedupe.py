@@ -367,28 +367,22 @@ def paire_de_traduction(a: dict, b: dict) -> bool:
 # 2026: le fabbriche di Torino aprono le porte » sur la page d'accueil française),
 # diagnostiqué dans `scripts/audit_langue_polylang`, qui n'est dans aucun cron.
 #
-# La garde consulte donc le versant en plus du lien. Deux conséquences voulues :
-#   · sur une fiche PENDING (dédoublonnage de 8h30), il n'y a pas encore de permalien :
-#     le versant est muet, la garde se comporte EXACTEMENT comme avant, et deux langues
-#     ne fusionnent jamais ;
-#   · sur une fiche PUBLIÉE (rapport de 9h50), deux pages servies du même côté cessent
-#     d'être invisibles.
+# CE QU'ON EN FAIT — ET CE QU'ON N'EN FAIT PAS. Première version de ce correctif, le
+# 21/09 : ces paires étaient RÉ-ADMISES comme groupes suspects. Lu dans la sortie réelle
+# sur la base de production, le rapport passait de 5 groupes à 29 — parce qu'il y a
+# 32 traductions du mauvais versant, et qu'elles rentraient toutes. Pire : le groupe EVO,
+# qui mêle un VRAI doublon de contenu et une traduction égarée, sortait de la commande de
+# corbeille et recevait le conseil « NE PAS corbeiller », qui était faux pour lui.
 #
-# On reste muet sur le silence : un permalien resté sous sa forme provisoire (`?p=…`) ne
-# dit rien du versant, et on continue d'écarter la paire. Crier sur une donnée absente
-# remplirait la file de ce que personne ne peut vérifier (règle 6).
-
-
-def paire_de_traduction_credible(a: dict, b: dict) -> bool:
-    """`paire_de_traduction` lit la BASE ; celle-ci demande en plus de quel CÔTÉ du site
-    chaque page a été rangée. Deux pages liées mais servies du même versant ne sont pas
-    deux langues : c'est un doublon, et il doit remonter."""
-    if not paire_de_traduction(a, b):
-        return False
-    ca, cb = _cote(a.get("wp_permalink_as")), _cote(b.get("wp_permalink_as"))
-    if not ca or not cb:
-        return True          # adresse muette : on ne sait pas, on ne crie pas
-    return ca != cb
+# Deux défauts d'un coup, et le même : une file qui reçoit ce qui a déjà sa file. Le
+# relevé de ces 32 fiches existe, avec SON geste et SA commande consolidée
+# (`scripts/audit_langue_polylang`). Les y recopier, c'est le deuxième détecteur du
+# journal du 08/09, et les trois cents « tarifs non publiés » du 11/08.
+#
+# Donc : l'appariement garde le veto sur `paire_de_traduction` (base seule), inchangé, et
+# le rapport de 9h50 se contente de COMPTER ces paires et de NOMMER le relevé qui les
+# traite. Ce qui manquait n'était pas une ligne de plus dans la file des doublons ;
+# c'était que personne ne disait qu'elles existaient.
 
 
 def cote_partage(groupe: list[dict]) -> str:
@@ -432,7 +426,7 @@ def coincidence_lieu_date(a: dict, b: dict) -> str:
     Renvoie une phrase et pas un booléen parce que ce motif est DIT à l'humain qui
     tranche (dry-run, verifier_doublons_publies, Slack) : une recommandation sans son
     critère se lit comme une certitude."""
-    if paire_de_traduction_credible(a, b):
+    if paire_de_traduction(a, b):
         return ""
     if not _memes_dates(a, b):
         return ""
@@ -545,7 +539,7 @@ def titre_identique(a: dict, b: dict) -> str:
 
     Rend une phrase et pas un booléen, comme `coincidence_lieu_date` : le motif est DIT à
     l'humain qui lit le dry-run ou le rapport de 9h50."""
-    if paire_de_traduction_credible(a, b):
+    if paire_de_traduction(a, b):
         return ""
     if not _memes_dates(a, b):
         return ""
