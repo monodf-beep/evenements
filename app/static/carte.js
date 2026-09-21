@@ -209,7 +209,8 @@
      dépôt ; sans cette conversion ils s'affichaient tels quels, accents compris. */
   const ech = (s) => String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/`([^`]+)`/g, "<code>$1</code>");
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
 
   function sec(titre, contenu) {
     return contenu ? `<div class="pan-sec"><h3>${titre}</h3>${contenu}</div>` : "";

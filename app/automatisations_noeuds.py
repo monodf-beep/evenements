@@ -957,6 +957,7 @@ _EDITORIAL = [
 
     {"id": "yoast", "label": "Notes Yoast", "icone": "📊", "flux": "editorial",
      "kind": "action", "col": 1, "row": 4, "cron_cle": "scripts.yoast_scores",
+     "script": "yoast_scores",
      "resume": "Calcule les notes SEO et lisibilité hors navigateur, avec le vrai moteur de Yoast, et les réécrit dans WordPress.",
      "detail": {
          "fait": ["Demande à WordPress la liste des contenus modifiés depuis le dernier passage.",
@@ -976,8 +977,9 @@ _EDITORIAL = [
              {"si": "Node ou le paquet Yoast est absent",
               "alors": "une erreur franche, jamais un « 0 noté » — une panne est une panne"}],
          "cout_ia": "aucun appel de modèle : c'est un moteur JavaScript local.",
-         "notes": ["⚠️ Ce cron n'est PAS surveillé par le chien de garde de midi : "
-                   "`yoast_scores` ne figure pas dans sa liste. S'il s'arrête, rien ne sonne."],
+         "notes": ["Ajouté au chien de garde le 21/09, en même temps que « Lieux et images "
+                   "des mails » : c'est la carte qui a montré que ni l'un ni l'autre "
+                   "n'était surveillé, en croisant `crontab.txt` avec la liste `ATTENDUS`."],
          "code": ["scripts/yoast_scores.py", "deploy/wordpress/cs-yoast-scores.php"]}},
 
     {"id": "republi", "label": "Republication texte seul", "icone": "♻️", "flux": "editorial",
@@ -993,6 +995,88 @@ _EDITORIAL = [
                     "les dates, le lieu, la catégorie et les métas passent, le texte non."],
          "cout_ia": "aucun",
          "code": ["scripts/publish_batch_as.py"]}},
+
+    {"id": "cowork_seo", "label": "SEO final (Cowork)", "icone": "🧑‍💻", "flux": "editorial",
+     "kind": "agent", "col": 3, "row": 0, "sous_titre": "lancé à la main",
+     "resume": "Le dernier étage : une session Claude reprend à la main le référencement des "
+               "meilleures fiches. Après elle, plus rien ne repasse.",
+     "detail": {
+         "fait": ["Reprend dans WordPress ce que le cron a posé à 10h30 : expression clé, "
+                  "titre de référencement, méta-description, chapô, intertitres.",
+                  "Ne traite que le haut du panier — le cron continue de s'occuper de tout le reste.",
+                  "Déclare son passage dans le journal de la fiche, une ligne par article "
+                  "(route `cs/v1/journal`, `qui: cowork`)."],
+         "lit": ["les fiches publiées, dans WordPress",
+                 "la doctrine éditoriale, relue à l'instant dans Obsidian (`/doctrine.txt`)"],
+         "ecrit": ["directement dans WordPress : titre, corps, extrait, et les trois métas Yoast",
+                   "RIEN en base SQLite — et c'est la limite du dispositif, voir « À savoir »"],
+         "regles": ["**Le sens de marche est unique** : création de l'article en français et "
+                    "en italien, puis le cron de référencement, puis Cowork. Jamais l'inverse. "
+                    "Arbitrage de Franck du 21/09 : « si Cowork a travaillé le SEO, on ne doit "
+                    "pas pouvoir revenir dessus avec le cron. »",
+                    "Chaque étage peut écraser ce que le précédent a posé ; aucun ne peut "
+                    "écraser le suivant.",
+                    "Le gel n'a PAS besoin d'être demandé : modifier le texte suffit, "
+                    "l'empreinte s'en charge. Le demander explicitement ne sert qu'à protéger "
+                    "une fiche jugée bonne SANS y avoir touché."],
+         "decisions": [
+             {"si": "Cowork a modifié l'un des six champs éditoriaux",
+              "alors": "la fiche est GELÉE au passage suivant du pipeline, et sort des deux "
+                       "files de référencement"},
+             {"si": "la fiche est ensuite annulée",
+              "alors": "le titre est forcé malgré le gel — seule exception, parce que le "
+                       "préfixe « ANNULÉ » est ce qu'un lecteur doit voir coûte que coûte"},
+             {"si": "la reprise date d'AVANT l'installation du gel (21/09, 17h)",
+              "alors": "aucune empreinte de référence n'existe : rien ne peut deviner qu'on "
+                       "y a touché. Ces fiches-là se protègent par leur liste d'identifiants, "
+                       "avec `scripts/gel_texte.py --wp --gel <ids> --apply`"}],
+         "terminal": {
+             "etat": "texte gelé — la fiche quitte la file de génération SEO et celle de poussée",
+             "rouvreur": "la case « Texte retravaillé à la main » de l'encadré Journal dans "
+                         "l'éditeur WordPress, ou `scripts/gel_texte.py --degel <id> --apply`. "
+                         "Le compte des fiches gelées part sur Slack tous les jours avec le "
+                         "bilan du cron de référencement."},
+         "cout_ia": "une session Claude, lancée à la main — pas un cron, donc rien ici ne "
+                    "part tout seul et rien n'est surveillé par le chien de garde.",
+         "notes": ["La page Cowork du backoffice porte aujourd'hui le prompt de "
+                   "l'AUTOCOMPLÉTION, pas celui du SEO : ce second rôle n'a pas de prompt "
+                   "rangé dans le dépôt, il ne vit que dans `docs/SEO_QUI_FAIT_QUOI.md`.",
+                   "Le dispositif ne fait PAS remonter le texte retouché dans la base : "
+                   "SQLite garde la version du pipeline, le site porte la version "
+                   "retravaillée. L'aperçu du backoffice et les audits qui jugent le texte "
+                   "publié en le lisant EN BASE raisonnent donc sur l'ancienne version pour "
+                   "ces fiches-là. C'est le chantier suivant ; en attendant, le nombre de "
+                   "fiches concernées est affiché chaque jour.",
+                   "Il ne protège pas non plus les IMAGES : une photo posée à la main se "
+                   "protège autrement."],
+         "code": ["deploy/wordpress/cs-gel-texte.php", "scripts/gel_texte.py"],
+         "doc": ["docs/SEO_QUI_FAIT_QUOI.md"]}},
+
+    {"id": "e_gel", "label": "Texte gelé", "icone": "🧊", "flux": "editorial",
+     "kind": "etat", "col": 4, "row": 0, "sous_titre": "le cron ne repasse plus",
+     "resume": "L'état qui protège une reprise humaine. Il est posé par le SITE, jamais par la base.",
+     "detail": {
+         "fait": ["Le site compare une empreinte des six champs éditoriaux à celle que le "
+                  "pipeline avait laissée. Si elle a changé, quelqu'un d'autre a écrit.",
+                  "Ce qui ne descend plus : titre, corps, extrait, titre Yoast, "
+                  "méta-description, expression clé, et l'adresse.",
+                  "Ce qui continue de descendre, et c'est voulu : dates, heure, lieu, ville, "
+                  "catégorie, territoire, langue, prix, source officielle, toutes les métas "
+                  "de classement, et l'image à la une."],
+         "regles": ["Le gel protège un TEXTE, il ne met pas la fiche à la retraite — sinon "
+                    "ce serait un cul-de-sac, et une date corrigée ne serait jamais republiée.",
+                    "`wp_gel_at` en base n'est qu'une COPIE de ce que le site répond. "
+                    "« Pas de gel » et « le mu-plugin n'est pas en ligne » ne doivent jamais "
+                    "se confondre : la seule source de vérité est le site, interrogé par "
+                    "`scripts/gel_texte.py --liste`."],
+         "terminal": {
+             "etat": "fiche gelée — hors de la file de génération SEO et de celle de poussée",
+             "rouvreur": "la case de l'encadré Journal dans l'éditeur WordPress, ou "
+                         "`scripts/gel_texte.py --degel <id> --apply`. Le compte des fiches "
+                         "garées se voit à trois endroits : le message Slack quotidien du "
+                         "cron SEO, le journal du lot de publication, et `--liste`."},
+         "cout_ia": "aucun",
+         "code": ["deploy/wordpress/cs-gel-texte.php"], "doc": ["docs/SEO_QUI_FAIT_QUOI.md"]}},
 
     {"id": "polylang", "label": "Lien FR ↔ IT", "icone": "🔗", "flux": "editorial",
      "kind": "sortie", "col": 2, "row": 2, "sous_titre": "route cs/v1/link-translations",
@@ -1218,7 +1302,9 @@ _CONTROLES = [
                       "l'âge de son journal et le signalent EN PREMIER au-delà de 30 heures",
      "resume": "Répond à une seule question : est-ce que les automatisations tournent encore ?",
      "detail": {
-         "fait": ["Tient la liste des 35 automatisations attendues, avec leur tolérance.",
+         "fait": ["Tient la liste des automatisations attendues, avec leur tolérance. Son "
+                  "propre commentaire dit pourquoi le nombre exact n'est écrit nulle part "
+                  "ailleurs : un chiffre recopié cesse d'être vrai le jour où on en ajoute un.",
                   "Croise DEUX sources : le registre des passages en base, et la date "
                   "d'écriture du journal. Il retient la plus récente.",
                   "Vérifie aussi le FUSEAU HORAIRE réel du serveur.",
@@ -1244,9 +1330,11 @@ _CONTROLES = [
          "cout_ia": "aucun",
          "slack": "Silence total si tout va bien. Sinon 🐕, en URGENT — c'est le seul message "
                   "qui court-circuite la boîte du jour, parce que le vidage est lui-même un cron.",
-         "notes": ["C'est LUI qui alimente les pastilles d'état de cette carte. Deux crons "
-                   "manquent à sa liste : la complétion depuis les mails (8h48) et les notes "
-                   "Yoast (12h00)."],
+         "notes": ["C'est LUI qui alimente les pastilles d'état de cette carte — et "
+                   "inversement, c'est la carte qui a trouvé les deux crons qui manquaient "
+                   "à sa liste le 21/09 (la complétion depuis les mails et les notes "
+                   "Yoast), en croisant `crontab.txt` avec `ATTENDUS`. Chacun voit ce que "
+                   "l'autre ne voit pas."],
          "code": ["scripts/watchdog_crons.py"]}},
 
     {"id": "publier_sante", "label": "Relevé d'état", "icone": "🩺", "flux": "controles",
@@ -1740,6 +1828,29 @@ _HUMAIN = [
                     "La route répond toujours 200 à Meta, pour éviter les renvois en boucle."],
          "cout_ia": "aucun", "code": ["app/app.py"]}},
 
+    {"id": "cowork_completer", "label": "Cowork : compléter au navigateur", "icone": "🧑‍💻",
+     "flux": "humain", "kind": "humain", "col": 2, "row": 0, "sous_titre": "page Cowork",
+     "resume": "Le dernier kilomètre : une session Claude ouvre les pages que le pipeline "
+               "n'atteint pas et remplit les champs manquants dans le backoffice.",
+     "detail": {
+         "fait": ["Travaille dans la file « À compléter », les événements les plus proches d'abord.",
+                  "Ouvre la source officielle de chaque fiche et n'y prend que ce qui est LU.",
+                  "Marque « récurrent » une activité permanente plutôt que d'inventer une date."],
+         "regles": ["À lancer APRÈS l'agent Python « Auto-compléter », qui est gratuit et "
+                    "rapide : Cowork ne traite que le résidu — pages en JavaScript, dates "
+                    "cachées, sites que le scraper n'atteint pas.",
+                    "Environ 15 événements par session, une fois par jour après la collecte.",
+                    "Règle d'or : ne jamais inventer. Mieux vaut un champ vide qu'une date "
+                    "incertaine. Dans le doute, on passe.",
+                    "Filet : une fiche complétée part en « À valider », pas en ligne."],
+         "ecrit": ["les champs de la fiche, par la même porte que la complétion à la main",
+                   "un rapport de passage horodaté (table `cowork_runs`), collé dans la page"],
+         "cout_ia": "une session Claude, lancée à la main.",
+         "notes": ["C'est ce prompt-là que la page Cowork du backoffice affiche. Le SEO final "
+                   "est un AUTRE rôle de Cowork, sans prompt rangé dans le dépôt : voir "
+                   "l'onglet « Traduction, SEO, images »."],
+         "code": ["app/app.py"], "doc": ["docs/COWORK_AUTOCOMPLETION.md"]}},
+
     {"id": "h_widget", "label": "Widget partenaire", "icone": "🧩", "flux": "humain",
      "kind": "sortie", "col": 2, "row": 3, "sous_titre": "embed/events.json",
      "resume": "Un flux public et un script autonome que des sites partenaires posent chez eux.",
@@ -1972,6 +2083,8 @@ LIENS = [
     {"de": "images_wide", "vers": "republi"},
     {"de": "refresh_depl", "vers": "republi"},
     {"de": "translate", "vers": "polylang"},
+    {"de": "seo_batch", "vers": "cowork_seo", "label": "puis Cowork — jamais l'inverse"},
+    {"de": "cowork_seo", "vers": "e_gel", "label": "l'empreinte change"},
 
     # ── Contrôles & socle ─────────────────────────────────────────────────────
     {"de": "verifier_doublons", "vers": "boite"},
@@ -1997,6 +2110,8 @@ LIENS = [
 
     # ── Ce que Franck déclenche ───────────────────────────────────────────────
     {"de": "h_slack_cmd", "vers": "h_completer", "type": "retour"},
+    {"de": "cowork_completer", "vers": "h_completer", "type": "retour",
+     "label": "remplit par la même porte"},
 
     # ── Côté site ─────────────────────────────────────────────────────────────
     {"de": "w_auth", "vers": "w_publish"},
