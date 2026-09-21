@@ -243,40 +243,55 @@ def _select(conn, args, today: str) -> list[dict]:
     return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
-def _drop_portrait(args) -> int:
-    """Efface url_image_portrait sur des ids précis et re-pousse (aucun appel de modèle).
-    Compte en base après l'écriture, pas sur la longueur de la liste (règle 6)."""
+def _drop_formats(args, champs: tuple[str, ...]) -> int:
+    """Efface les déclinaisons demandées (url_image_portrait et/ou url_image_wide) sur des
+    ids précis et re-pousse (aucun appel de modèle). Compte en base après l'écriture, pas
+    sur la longueur de la liste (règle 6).
+
+    LE PAYSAGE AUSSI, depuis le 2026-09-21. Le rouvreur n'existait que pour le portrait ;
+    or la même lecture de page pose les DEUX, et quand elle se trompe elle se trompe deux
+    fois. Mesuré ce jour-là sur les fiches 5260 et 5261 (Malraux Chambéry) : le pied de
+    page du site affiche les couvertures de ses PDF sur TOUTES ses pages, et `images_wide`
+    en avait fait le portrait (brochure de saison 26-27 → vignette de la carte, celle que
+    Franck a vue) et le paysage (plan de la grande salle → grand visuel 16:9). Une moitié
+    de rouvreur laissait le plan de salle en place."""
     if not args.ids:
-        log.error("--drop-portrait demande des ids explicites.")
+        log.error("--drop-portrait / --drop-wide demandent des ids explicites.")
         return 1
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     conn.row_factory = sqlite3.Row
     qm = ",".join("?" * len(args.ids))
+    cond = " OR ".join(f"COALESCE({c},'') <> ''" for c in champs)
     rows = [dict(r) for r in conn.execute(
-        f"SELECT * FROM events_raw WHERE id IN ({qm}) AND COALESCE(url_image_portrait,'') <> ''",
-        args.ids)]
-    log.info("%d fiche(s) sur %d demandée(s) portent un portrait — %s",
-             len(rows), len(args.ids), "APPLIQUE" if args.apply else "DRY-RUN")
+        f"SELECT * FROM events_raw WHERE id IN ({qm}) AND ({cond})", args.ids)]
+    log.info("%d fiche(s) sur %d demandée(s) portent %s — %s",
+             len(rows), len(args.ids), " ou ".join(champs),
+             "APPLIQUE" if args.apply else "DRY-RUN")
     pushed = 0
     for ev in rows:
-        log.info("[%s] portrait retiré : %s — %s", ev["id"], (ev.get("url_image_portrait") or "")[:60],
-                 (ev.get("title") or "")[:55])
+        for c in champs:
+            if (ev.get(c) or "").strip():
+                log.info("[%s] %s retiré : %s — %s", ev["id"], c, (ev.get(c) or "")[:60],
+                         (ev.get("title") or "")[:55])
         if not args.apply:
             continue
-        conn.execute("UPDATE events_raw SET url_image_portrait=NULL WHERE id=?", (ev["id"],))
+        conn.execute(f"UPDATE events_raw SET {', '.join(c + '=NULL' for c in champs)} "
+                     "WHERE id=?", (ev["id"],))
         conn.commit()
-        ev["url_image_portrait"] = ""
+        for c in champs:
+            ev[c] = ""
         if ev.get("wp_post_id_as"):
             new_id, _, _ = publish_to_as(ev)
             if new_id:
                 pushed += 1
     restant = conn.execute(
-        f"SELECT COUNT(*) FROM events_raw WHERE id IN ({qm}) AND COALESCE(url_image_portrait,'') <> ''",
+        f"SELECT COUNT(*) FROM events_raw WHERE id IN ({qm}) AND ({cond})",
         args.ids).fetchone()[0]
     conn.close()
-    log.info("Portraits retirés — encore en base sur ces ids : %d · re-poussés : %d%s",
-             restant, pushed, "  (dry-run : rien écrit)" if not args.apply else "")
+    log.info("Déclinaisons retirées (%s) — encore en base sur ces ids : %d · re-poussés : "
+             "%d%s", ", ".join(champs), restant, pushed,
+             "  (dry-run : rien écrit)" if not args.apply else "")
     return 0
 
 
@@ -296,6 +311,11 @@ def main(argv=None) -> int:
                              "ex. une photo verticale prise pour une affiche) et re-pousse, "
                              "la carte reprend l'image principale. Le rouvreur de l'étage 1 "
                              "— règle 3 de CLAUDE.md. Avec --apply ; dry-run sinon.")
+    parser.add_argument("--drop-wide", action="store_true",
+                        help="Pour les ids donnés : EFFACE url_image_wide (posé à tort, "
+                             "ex. le plan de salle du théâtre pris pour une affiche "
+                             "paysage) et re-pousse, le grand visuel reprend l'image "
+                             "principale. Se combine avec --drop-portrait.")
     parser.add_argument("--web", action="store_true",
                         help="Si la page officielle ne donne rien, tenter l'agent de recherche "
                              "web (0,20 $ l'appel — mesuré le 08/09 : 1,80 $ l'image trouvée). "
@@ -303,8 +323,10 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
-    if args.drop_portrait:
-        return _drop_portrait(args)
+    if args.drop_portrait or args.drop_wide:
+        champs = tuple(c for c, pris in (("url_image_portrait", args.drop_portrait),
+                                         ("url_image_wide", args.drop_wide)) if pris)
+        return _drop_formats(args, champs)
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         log.error("ANTHROPIC_API_KEY non définie")

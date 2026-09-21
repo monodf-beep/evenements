@@ -283,6 +283,43 @@ artistes » de l'Opéra de Nice (« production », « opéra », « nice »). C'
 mots faibles — lieu, ville, mots courants. Le durcir (n'exiger que des mots distinctifs)
 est un chantier à part, à mesurer avant d'écrire quoi que ce soit.
 
+### CORRECTION DU MÊME JOUR : le chemin n'était pas celui-là
+
+Le diagnostic ci-dessus est juste sur le **quoi** (l'image en ligne est bien la couverture
+de la brochure de saison) et faux sur le **par où**. La fiche, lue en base sur le VPS,
+dit autre chose :
+
+    url_source        : https://www.malrauxchambery.fr/evenement/charcot-antartica-26-27/
+    image_source      : og
+    url_image         : …/charcot-Antartica-©-Anne-Bouillot-WEB-…jpg     ← la BONNE photo
+    url_image_portrait: …/M-Brochure-26-27-WEB-pdf.jpg                   ← l'affiche de saison
+    url_image_wide    : …/Plan_grande_salle_malraux-pdf.jpg              ← le plan de salle
+
+La source est bonne, l'image principale est bonne. C'est **`url_image_portrait`** qui a
+fabriqué la vignette : `publisher_as` le préfère pour la carte 4:3 et les réseaux (§ multi-
+format). Et il a été posé par **`scripts/images_wide.py`** (cron de 10h35), qui cherche une
+déclinaison portrait et une paysage parmi les images de la page — or **le pied de page du
+site de Malraux affiche les couvertures de ses PDF sur TOUTES ses pages**. La seule image
+nettement verticale était la brochure ; la seule nettement horizontale, le plan de salle.
+Les deux fiches Malraux à venir portaient exactement la même paire.
+
+Le filtre `looks_like_document_thumb` agit dans `page_image_candidates`, donc sur ce
+chemin-là aussi — vérifié après déploiement : sur la page du spectacle, les quatre
+vignettes de PDF ont disparu des candidats, il reste la vraie photo. Reste un risque connu
+sur ce site : les affiches des **autres** spectacles y figurent aussi (`Apres-les-glaciers-
+poster.jpg`) ; seul l'agent vision les écarte.
+
+Deux enseignements, à relire avant la prochaine mesure :
+
+- **la première requête a rendu 0** parce qu'elle ne regardait que `url_image` et
+  `wp_raw_image_url_as`. Le périmètre était trop étroit, pas le mal inexistant — règle 6 :
+  un compteur doit dire ce qu'il compte. En regardant les trois colonnes : **4 fiches au
+  total, 2 encore devant nous** ;
+- **le rouvreur n'existait qu'à moitié.** `images_wide --drop-portrait` était là depuis le
+  08/09 ; rien n'effaçait `url_image_wide`. Or la même lecture pose les deux, et quand elle
+  se trompe elle se trompe deux fois. D'où `--drop-wide`, combinable
+  (`tests/test_drop_formats.py`).
+
 ### Fiches déjà touchées — comment les retrouver et les réparer
 
 Le correctif ne défait rien de ce qui est en ligne. Sur le VPS :
@@ -306,4 +343,14 @@ sqlite3 data/events.db "SELECT id, wp_post_id_as, substr(title,1,50), url_image
 
 # 4. les images posées depuis une page, à re-juger avec la chaîne corrigée
 .venv/bin/python -m scripts.refill_images_as --recheck page --dry-run
+
+# 5. les DÉCLINAISONS portrait/paysage fautives (la vraie cause du cas Malraux) :
+#    compter d'abord les TROIS colonnes, pas la seule url_image
+sqlite3 data/events.db "SELECT id, wp_post_id_as, substr(title,1,45)
+  FROM events_raw WHERE duplicate_of IS NULL
+   AND (COALESCE(url_image_portrait,'') LIKE '%-pdf%'
+     OR COALESCE(url_image_wide,'')     LIKE '%-pdf%'
+     OR COALESCE(url_image,'')          LIKE '%-pdf%');"
+#    puis, pour les ids encore devant nous (dry-run sans --apply) :
+.venv/bin/python -m scripts.images_wide <ids> --drop-portrait --drop-wide --apply
 ```
