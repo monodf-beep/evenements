@@ -317,12 +317,35 @@ Deux conséquences voulues :
 Un permalien resté sous sa forme provisoire (`?p=…`) ne dit rien : on continue d'écarter
 la paire plutôt que de crier sur une donnée absente (règle 6).
 
-### Et surtout : le geste n'est pas le même
+### ⚠️ La première version de ce correctif était fausse — et c'est le dry-run qui l'a dit
 
-Ces groupes-là **n'entrent pas** dans la commande `trash_by_ids`. Corbeiller une des deux
-pages perdrait la version italienne au lieu de la remettre en place, et laisserait
-l'autre liée par Polylang à un post corbeillé. Le rapport nomme le versant partagé et
-propose les deux vrais gestes : `audit_langue_polylang` pour le relevé,
-`translate_events --retranslate <id de l'ORIGINAL>` pour la réparation.
+J'avais RÉ-ADMIS ces paires comme groupes suspects. Sortie réelle sur la base de
+production : **le rapport est passé de 5 groupes à 29**, parce qu'il y a 32 traductions
+du mauvais versant et qu'elles rentraient toutes. Et le groupe EVO — qui mêle un VRAI
+doublon de contenu et une traduction égarée — **sortait de la commande de corbeille**
+avec le conseil « NE PAS corbeiller », faux pour lui.
 
-Compteur dédié, avec ce qu'il compte : « LIÉES MAIS DU MÊME CÔTÉ ».
+Deux défauts, la même racine : **une file qui reçoit ce qui a déjà sa file.** Ces 32
+fiches ont leur relevé, leur geste et leur commande consolidée
+(`scripts/audit_langue_polylang`). Les recopier ici, c'est le deuxième détecteur du
+journal du 08/09 et les trois cents « tarifs non publiés » du 11/08.
+
+### Ce qui est retenu
+
+L'appariement garde son veto sur `paire_de_traduction` (base seule) — **inchangé**. Le
+rapport de 9h50 se contente de **compter** ces traductions et de **nommer** le relevé qui
+les traite. Ce qui manquait n'était pas une ligne de plus dans la file des doublons ;
+c'était que personne ne disait qu'elles existaient.
+
+Le compteur se mesure **directement sur les fiches**, pas sur les groupes : la plupart de
+ces paires ne sont JAMAIS appariées (« Orlando » ↔ « Orlando » : `same_story` veut trois
+mots significatifs, et les règles de titre et de coïncidence refusent les traductions en
+amont). Compté depuis les groupes, il aurait affiché zéro sans que rien n'aille mieux.
+
+Et son libellé dit ce qu'il compte — « TRADUCTIONS DU MÊME CÔTÉ », des fiches, là où les
+deux compteurs voisins comptent des groupes (règle 6).
+
+**Le geste, lui, n'est pas la corbeille** : corbeiller une des deux pages perdrait la
+version italienne au lieu de la remettre en place, et laisserait l'autre liée par
+Polylang à un post corbeillé. C'est `translate_events --retranslate <id de l'ORIGINAL>`,
+qui republie par `force_lang` et relie la paire.

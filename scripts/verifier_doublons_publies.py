@@ -76,7 +76,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from scripts.dedupe import (_groups, cote_partage, motif_groupe,  # noqa: E402
-                            paire_de_traduction, paire_de_traduction_credible)
+                            paire_de_traduction)
 # MÊMES définitions que le dédoublonnage — jamais une seconde copie ici.
 from scripts.audit_substance_published import devant_nous  # noqa: E402
 # LA RÈGLE 1, QUE CE SCRIPT A VIOLÉE LE JOUR MÊME DE SA NAISSANCE (2026-08-13).
@@ -132,30 +132,44 @@ def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
     # rattrape. Ce script ne fusionne rien, il DÉSIGNE — c'est exactement le circuit où
     # une règle à un seul mot commun a sa place : un humain lit le motif, puis tranche.
     groupes = [g for g in _groups(vivantes, coincidence=True) if len(g) > 1]
-    suspects, ecartes, meme_cote = [], 0, 0
+    suspects, ecartes = [], 0
     for g in groupes:
         # Un groupe entièrement composé de traductions les unes des autres n'est pas un
         # doublon. On ne retire pas la fiche traduite du groupe : on écarte la PAIRE, car
         # un trio FR/IT + vrai doublon doit continuer de remonter.
-        # « Traduction » se mesure sur le lien EN BASE *et* sur le côté du site où chaque
-        # page a été rangée (cf. `paire_de_traduction_credible` plus haut) : huit paires
-        # liées mais publiées toutes les deux en français étaient écartées ici.
         reste = [a for i, a in enumerate(g)
-                 if not all(paire_de_traduction_credible(a, b)
-                            for j, b in enumerate(g) if j != i)]
-        # Ce que l'ancienne garde, qui ne lisait que la base, aurait écarté.
-        selon_la_base = [a for i, a in enumerate(g)
-                         if not all(paire_de_traduction(a, b)
-                                    for j, b in enumerate(g) if j != i)]
+                 if not all(paire_de_traduction(a, b) for j, b in enumerate(g) if j != i)]
         if len(reste) > 1:
             suspects.append(reste)
-            if len(selon_la_base) <= 1:
-                meme_cote += 1
         else:
             ecartes += 1
     # Compté à part : un groupe formé par UN mot commun n'a pas la même force qu'un groupe
     # de titres jumeaux, et le lecteur doit le savoir avant d'ouvrir les pages.
     par_coincidence = sum(1 for g in suspects if motif_groupe(g))
+    # ══ DEUX CARTES FRANÇAISES QUI NE SONT PAS UN DOUBLON DE CONTENU ═════════════════
+    #
+    # Une paire liée par translation_of est écartée à raison — mais si ses DEUX pages
+    # sont servies du même versant, le lecteur du hub y voit deux fiches jumelles. C'est
+    # ce que Franck a signalé le 21/09, et ce que ce rapport ne disait nulle part : il
+    # annonçait « écartées, normales » et passait à la suite.
+    #
+    # ON NE LES REMET PAS DANS LA FILE : leur geste n'est pas la corbeille (corbeiller
+    # perdrait la version italienne au lieu de la remettre en place), et leur relevé
+    # existe déjà, avec sa commande consolidée — `scripts/audit_langue_polylang`. Les y
+    # recopier ferait 29 groupes là où il y en a 5, et noierait les vrais doublons
+    # (essayé le 21/09, mesuré, annulé).
+    #
+    # ET ON NE LES COMPTE PAS DEPUIS LES GROUPES : la plupart ne sont JAMAIS appariées
+    # (« Orlando » ↔ « Orlando » : same_story exige trois mots significatifs, et les
+    # règles de titre et de coïncidence refusent les paires de traduction en amont). Le
+    # compteur se mesure donc directement sur les fiches, pas sur ce que l'appariement a
+    # bien voulu former — sinon il vaudrait zéro sans que rien n'aille mieux.
+    par_id_v = {e["id"]: e for e in vivantes}
+    meme_cote = 0
+    for ev in vivantes:
+        orig = par_id_v.get(int(ev.get("translation_of") or 0))
+        if orig is not None and cote_partage([ev, orig]):
+            meme_cote += 1
     return suspects, {"publiees": len(rows), "vivantes": len(vivantes),
                       "groupes": len(groupes), "traductions": ecartes,
                       "coincidence": par_coincidence, "meme_cote": meme_cote}
@@ -371,10 +385,16 @@ def main(argv=None) -> int:
     print(f"…écartés (paires FR/IT)  : {compte['traductions']}  — liées par "
           f"translation_of ET servies de deux côtés du site : normales, à LIER")
     if compte.get("meme_cote"):
-        print(f"…LIÉES MAIS DU MÊME CÔTÉ : {compte['meme_cote']}  ⚠ translation_of dit "
-              f"« traduction », le permalien dit la MÊME langue")
-        print(f"                             → ce ne sont pas deux langues, ce sont deux "
-              f"pages jumelles ; le geste n'est pas la corbeille")
+        # Le libellé dit ce qu'il compte : des TRADUCTIONS (des fiches), pas des groupes
+        # écartés — les deux nombres ci-dessus comptent des groupes, et deux compteurs
+        # qui portent le même mot finissent par se contredire (règle 6).
+        print(f"TRADUCTIONS DU MÊME CÔTÉ : {compte['meme_cote']}  ⚠ fiches liées par "
+              f"translation_of et servies du MÊME versant que leur original")
+        print( "                             → pas des doublons de CONTENU, mais le "
+               "lecteur les voit comme tels sur le hub.")
+        print( "                             → relevé et geste (PAS la corbeille) :")
+        print( "                               .venv/bin/python -m "
+               "scripts.audit_langue_polylang")
     if args.en_ligne:
         print(f"…écartés APRÈS SONDAGE   : {compte['retires_du_site']}  — une seule de "
               f"leurs pages est encore publique")
@@ -429,19 +449,6 @@ def main(argv=None) -> int:
         par_quoi = motif_groupe(g)
         if par_quoi:
             print(f"     ↔ appariées par COÏNCIDENCE, pas par le titre : {par_quoi}")
-        # Le défaut de LANGUE se dit avant tout le reste : il change le geste. Corbeiller
-        # une de ces deux pages perdrait la version italienne au lieu de la remettre en
-        # place — et laisserait l'autre liée par Polylang à un post corbeillé.
-        cote = cote_partage(g)
-        if cote:
-            print(f"     ⚠ LIÉES par translation_of, mais les DEUX pages sont du côté "
-                  f"« {cote} » du site.")
-            print(f"       Ce n'est pas une paire de traduction : c'est une traduction "
-                  f"publiée du mauvais versant.")
-            print(f"       NE PAS corbeiller. Le relevé et le geste sont là :")
-            print(f"         .venv/bin/python -m scripts.audit_langue_polylang")
-            print(f"         .venv/bin/python -m scripts.translate_events "
-                  f"--retranslate <id de l'ORIGINAL>")
         garde, reste, motif = recommandation(g, par_id)
         ids_garde = {e["id"] for e in garde}
         ids_reste = {e["id"] for e in reste}
@@ -491,12 +498,9 @@ def main(argv=None) -> int:
                 print(f"     ⚠ PAS dans la commande automatique — coïncidence sur "
                       f"« {par_quoi} » : vérifier le contenu réel de chaque page avant "
                       f"tout retrait.")
-            elif cote:
-                print(f"     ⚠ PAS dans la commande automatique — défaut de LANGUE, "
-                      f"pas de contenu : voir le geste ci-dessus.")
             else:
                 a_retirer.extend(sorted(ids_reste))
-        elif args.en_ligne and not cote:
+        elif args.en_ligne:
             print(f"     → {motif or 'aucun défaut proposé'}.")
         print()
 
