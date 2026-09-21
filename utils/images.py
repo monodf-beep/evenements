@@ -13,6 +13,7 @@ from __future__ import annotations
 import html as htmlmod
 import os
 import re
+import time
 
 import requests
 
@@ -455,6 +456,59 @@ def commons_search(query: str, *, min_width: int = 800, limit: int = 8,
         title = (page.get("title") or "").removeprefix("File:")
         return thumb, _credit(meta, license_short), title
     return "", "", ""
+
+
+def credit_commons(url: str, timeout: int = 10) -> str:
+    """Le crédit (auteur / Wikimedia Commons · licence) d'une image Commons, d'après son
+    URL. '' si l'URL n'est pas sur Commons ou si l'API ne répond pas.
+
+    Pourquoi, 2026-09-21 : la seule façon de poser une image À LA MAIN (le formulaire du
+    back-office, `app.app.cadrage`) écrivait `image_credit=''`. Tant que les images
+    manuelles venaient d'un site officiel, c'était sans conséquence ; le jour où l'on
+    colle une photo de Wikimedia Commons — ce que la charte §8 recommande justement,
+    faute de mieux — la fiche part EN LIGNE SANS ATTRIBUTION, alors que CC BY et CC BY-SA
+    l'exigent. Le crédit est public et l'API de Commons est ouverte (aucune clé, aucun
+    crédit d'API) : il n'y a aucune raison de le perdre.
+
+    Marche avec l'URL d'origine comme avec une miniature (`/thumb/…/1200px-Nom.jpg`) :
+    c'est le nom de fichier qui est interrogé, exactement comme le fait `commons_search`
+    pour les images qu'il propose lui-même."""
+    from urllib.parse import unquote, urlparse
+    u = (url or "").strip()
+    host = urlparse(u).netloc.lower()
+    if not u.startswith("http") or not ("wikimedia.org" in host or "wikipedia.org" in host):
+        return ""
+    chemin = urlparse(u).path
+    nom = unquote(chemin.rsplit("/", 1)[-1])
+    # Miniature : « 1200px-Torino_Palazzo_Carignano.jpg » → le fichier est sans le préfixe.
+    if "/thumb/" in chemin:
+        nom = re.sub(r"^\d+px-", "", nom)
+    if not nom:
+        return ""
+    # DEUX TENTATIVES : mesuré le 2026-09-21, l'API rend par moments une réponse qui
+    # n'est pas du JSON (le même appel échoue puis réussit à quelques secondes d'écart).
+    # Un crédit perdu sur un hoquet réseau, c'est une image publiée sans attribution.
+    pages: dict = {}
+    for essai in range(2):
+        try:
+            r = requests.get(_API, headers=_UA, timeout=timeout, params={
+                "action": "query", "format": "json", "titles": f"File:{nom}",
+                "prop": "imageinfo", "iiprop": "extmetadata"})
+            if r.status_code == 200:
+                pages = (r.json().get("query") or {}).get("pages") or {}
+                if pages:
+                    break
+        except (requests.RequestException, ValueError):
+            pass
+        if essai == 0:
+            time.sleep(2)
+    for page in pages.values():
+        info = (page.get("imageinfo") or [{}])[0]
+        meta = info.get("extmetadata") or {}
+        if not meta:
+            continue
+        return _credit(meta, _clean((meta.get("LicenseShortName") or {}).get("value", "")))
+    return ""
 
 
 # ── Europeana : musées, archives et bibliothèques européens (dont collections du

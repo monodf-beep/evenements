@@ -55,3 +55,9 @@ language-switcher
 # page, jamais une photo spécifique à l'événement. ---
 fbcdn.net
 facebook.com/tr
+
+# --- Avatars de commentateurs WordPress (Gravatar) — repérés le 2026-09-21 sur la page
+# du Torino Film Festival : « secure.gravatar.com/avatar/<hash>?s=96 ». Ni is_logo_image
+# ni _is_chrome ne les voient, parce que le mot « avatar » est dans le CHEMIN et que le
+# nom de fichier n'est qu'un hash. Ce n'est jamais la photo d'un événement. ---
+gravatar.com/avatar

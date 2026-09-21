@@ -38,6 +38,7 @@ from scripts.publisher_as import publish_to_as
 from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
+from utils import images as images_mod
 from utils import completeness as comp
 from utils import triage as triage_mod
 from utils import checks as checks_mod
@@ -4623,11 +4624,19 @@ def set_focal(event_id: int):
     image_changed = bool(new_url) and new_url != old_url
     if image_changed:
         fx, fy, mode = 0.5, 0.5, ""
+        # LE CRÉDIT SUIT L'IMAGE (2026-09-21). Cette route écrivait image_credit='' quoi
+        # qu'il arrive. Sans conséquence tant qu'on collait la photo d'un site officiel ;
+        # mais le jour où l'on colle une image de Wikimedia Commons — ce que la charte §8
+        # recommande justement faute de mieux —, la fiche part SANS ATTRIBUTION, alors que
+        # CC BY et CC BY-SA l'exigent. L'API de Commons est ouverte : le crédit se retrouve
+        # à partir de l'URL, sans clé ni crédit d'API (utils.images.credit_commons).
+        credit = images_mod.credit_commons(new_url)
         conn.execute(
-            "UPDATE events_raw SET url_image=?, image_credit='', image_source='manual', "
+            "UPDATE events_raw SET url_image=?, image_credit=?, image_source='manual', "
             "card_focal_x=?, card_focal_y=?, card_mode=? WHERE id=?",
-            (new_url, fx, fy, mode or None, event_id))
-        log.info("Image remplacée à la main id=%d : %s", event_id, new_url[:80])
+            (new_url, credit, fx, fy, mode or None, event_id))
+        log.info("Image remplacée à la main id=%d : %s%s", event_id, new_url[:80],
+                 f" (crédit : {credit})" if credit else "")
     else:
         conn.execute("UPDATE events_raw SET card_focal_x=?, card_focal_y=?, card_mode=? "
                      "WHERE id=?", (fx, fy, mode or None, event_id))
