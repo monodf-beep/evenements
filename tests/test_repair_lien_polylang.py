@@ -19,7 +19,12 @@ CE QUE LA FIXTURE SURVEILLE :
   3. deux pages du MÊME versant ne sont jamais reliées — leur geste est ailleurs ;
   4. une adresse en forme provisoire ne conclut rien (on s'abstient, on ne crie pas) ;
   5. un hreflang qui mène à une TROISIÈME page n'est pas recouvert en silence ;
-  6. le périmètre (règle 5) écarte le passé, et une fiche SANS DATE y reste.
+  6. le périmètre (règle 5) écarte le passé, et une fiche SANS DATE y reste ;
+  7. la reprise AUTOMATIQUE ne touche que les deux familles au geste `--retranslate` —
+     « lien absent » en est exclue, elle n'a besoin que d'un lien et une retraduction
+     coûterait deux appels LLM pour rien ;
+  8. le garage tente encore à MAX-1 essais et s'arrête à MAX, sans faire disparaître la
+     fiche du relevé.
 
 Lancer : .venv/bin/python -m tests.test_repair_lien_polylang
 """
@@ -229,6 +234,50 @@ _check("--ids ne garde que la paire demandée",
        sorted(j["id"] for _, j in rl.paires(conn, [1], tout=False)) == [2],
        rl.paires(conn, [1], tout=False))
 conn.close()
+
+
+print("\n──── la reprise automatique : qui est reprise, et qui ne l'est pas ────")
+# BRANCHÉE LE 21/09 sur « oui branche la traduction auto ». Deux familles ont le même
+# geste (`--retranslate`) et pas la même cause. Tout le reste doit rester dehors : une
+# retraduction coûte deux appels LLM et réécrit une page en ligne.
+def _p(i, wp=1000):
+    return {"id": i, "wp_post_id_as": wp, "title": f"Fiche {i}"}
+
+par_verdict = {
+    "meme_versant":            [(_p(1), _p(11), "x")],
+    "jumelle_mauvaise_langue": [(_p(2), _p(12), "x")],
+    "lien_absent":             [(_p(3), _p(13), "x")],   # ⚠️ ne doit PAS être retraduite
+    "deja_lie":                [(_p(4), _p(14), "x")],
+    "lien_ailleurs":           [(_p(5), _p(15), "x")],
+    "hors_ligne":              [(_p(6), _p(16), "x")],
+    "versant_muet":            [(_p(7), _p(17), "x")],
+}
+prets, bloques = rl.a_retraduire(par_verdict)
+ids_prets = sorted(o["id"] for o, _j, _c in prets)
+_check("les deux familles au même geste sont reprises", ids_prets == [1, 2], ids_prets)
+_check("⚠️ « lien absent » ne l'est PAS — il lui manque un lien, pas une traduction",
+       3 not in ids_prets, ids_prets)
+_check("   ni « déjà liée », ni « lien ailleurs », ni « hors ligne », ni « muette »",
+       all(i not in ids_prets for i in (4, 5, 6, 7)), ids_prets)
+
+# `--retranslate` repart de l'ORIGINAL : sans page, la commande est un cul-de-sac.
+sans_page = {"meme_versant": [({"id": 8, "wp_post_id_as": 0, "title": "T"}, _p(18), "x")]}
+prets2, bloques2 = rl.a_retraduire(sans_page)
+_check("un original SANS page n'est pas repris, il est mis de côté",
+       prets2 == [] and len(bloques2) == 1, (prets2, bloques2))
+
+print("\n──── le garage : trois essais, et le ré-armement ne dépend de personne ────")
+trio = [(_p(1), _p(11), "x"), (_p(2), _p(12), "x"), (_p(3), _p(13), "x")]
+# ⚠️ LE CAS QUI DOIT PASSER, pris juste sous la frontière : MAX-1 essais, on tente encore.
+# Une borne trop stricte garerait une fiche qui avait encore un essai à jouer.
+a_tenter, gar = rl.garage(trio, {11: rl.MAX_RETRADUCTIONS - 1, 12: 0,
+                                 13: rl.MAX_RETRADUCTIONS})
+_check(f"⚠️ à {rl.MAX_RETRADUCTIONS - 1} essais, la fiche est ENCORE tentée",
+       11 in [j["id"] for _o, j, _c in a_tenter], a_tenter)
+_check("   à zéro essai aussi, évidemment", 12 in [j["id"] for _o, j, _c in a_tenter])
+_check(f"à {rl.MAX_RETRADUCTIONS} essais, elle est garée — elle ne brûle plus d'appels",
+       [j["id"] for _o, j, _c in gar] == [13], gar)
+_check("   et elle reste NOMMÉE, pas effacée du relevé", len(a_tenter) + len(gar) == 3)
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)
