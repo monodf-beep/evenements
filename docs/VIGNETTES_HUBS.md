@@ -104,11 +104,40 @@ l'extension change. Toute recherche de fichier doit ignorer l'extension.
   - **page** → il retourne `cs_og_image($lang)`, l'image générique, **sans
     jamais regarder si la page a une vignette** ❌.
 
-  Les 192 pages hub sont dans le second cas. La correction tient en une
-  condition, au même endroit que celle qui existe déjà pour les fiches. **Non
-  faite** : c'est un mu-plugin, et le dépôt garde la trace de deux jours de site
-  injoignable pour une ligne de syntaxe dans un fichier de ce type. À faire avec
-  `token_get_all(TOKEN_PARSE)` et une sauvegarde, sur décision de Franck.
+  Les 192 pages hub étaient dans le second cas.
+
+  > ✅ **Corrigé le 2026-09-21**, sur décision de Franck. Une seule insertion,
+  > placée juste après `$pid = get_queried_object_id();` donc **avant** le
+  > tableau `$listes` — elle couvre ainsi les deux sorties de la branche :
+  >
+  > ```php
+  > if (has_post_thumbnail($pid)) {
+  >     $crop = cs_og_crop(get_post_thumbnail_id($pid));
+  >     if ($crop) { $img = $crop; }
+  > }
+  > ```
+  >
+  > Résultat mesuré : les six pages servent six `og:image` distinctes, des
+  > dérivés `-og1200x630.jpg` fabriqués par `cs_og_crop()` — du JPEG et non du
+  > WebP, ce que le snippet 144 documente comme le format le plus sûr pour un
+  > aperçu de partage. Les six répondent en 200 (85 à 99 ko). L'accueil garde
+  > l'image générique, ce qui est correct : il n'a pas de vignette.
+  >
+  > **Précautions prises, parce qu'un mu-plugin se charge avant tout le reste et
+  > qu'une faute y tue aussi la porte qui permettrait de la réparer** :
+  > - md5 contrôlé avant écriture (`8d259a12…`) ;
+  > - double sauvegarde : `cs-open-graph.php.bak-20260921` **sur le disque**
+  >   (restaurable par FTP même si WordPress ne répond plus) et l'option
+  >   `cs_open_graph_sauvegarde_20260921` en base ;
+  > - `token_get_all($code, TOKEN_PARSE)` sur le résultat AVANT d'écrire ;
+  > - **et le garde-fou soumis à une version volontairement cassée** — il l'a
+  >   refusée (`syntax error, unexpected token ";"`). Un témoin qui n'a jamais
+  >   été rouge ne prouve rien.
+  >
+  > Le miroir `deploy/wordpress/cs-open-graph.php` était **identique à la
+  > production avant modification** (même md5, aucune dérive) ; la même insertion
+  > lui a été appliquée et son md5 est de nouveau celui de la production :
+  > `041933a0afc9e1ddb5c7bd71e5c418c3`.
 - Les 28 pages « guide de ville » n'ont toujours aucune image.
 
 ## La commande
