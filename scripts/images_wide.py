@@ -103,7 +103,44 @@ def _pages_officielles(ev: dict) -> list[str]:
     return out
 
 
-def from_official_page(ev: dict, client, blocked: set[str]) -> dict:
+# Au-delà de ce nombre d'AUTRES fiches qui portent déjà la même image, on la refuse.
+# 2 : la troisième fiche déclenche le refus — deux fiches peuvent légitimement partager
+# une affiche (deux concerts d'un même festival), trois événements sans rapport, non.
+PARTAGE_MAX = 2
+
+
+def deja_partagee(conn, url: str, event_id) -> int:
+    """Combien d'AUTRES fiches portent déjà cette image (principale ou déclinaison).
+
+    LE DIAGNOSTIC ÉTAIT ÉCRIT DEPUIS LE DÉBUT, en commentaire de
+    config/blocked_image_patterns.txt : « une image partagée par beaucoup d'événements
+    SANS RAPPORT = presque toujours de l'habillage ». Il y était comme requête à taper à
+    la main pour trouver de nouveaux motifs à bloquer ; personne ne l'avait branché.
+
+    Mesuré le 2026-09-21 : sur les fiches publiées encore devant nous, « Cover L-eta
+    dell-acquario-particolare.png » servait de paysage à SEPT fiches sans rapport
+    (Sportello digit@le, La mossa del lettore, Donne controcorrente, Fili tra le pagine,
+    Mille storie in biblioteca, Mani in opera, Lavoriamo a maglia) — le bandeau de saison
+    d'une bibliothèque, présent sur chacune de ses pages d'événement. Aucune des défenses
+    posées ce jour-là ne l'aurait arrêté : ce n'est ni une vignette de PDF, ni une image
+    d'interface, et la page lue est bien la page de l'événement. Seul son PARTAGE la
+    trahit. Cinq autres groupes du même genre sortaient dans la même mesure (le visuel de
+    lancement de saison de l'Opéra de Nice, la vue aérienne de Palazzo Madama…).
+
+    Les traductions ne comptent pas : elles portent la même image que leur original, et
+    c'est voulu (duplicate_of, ou url_source « translated:<id>:<lang> »)."""
+    if not url:
+        return 0
+    q = ("SELECT COUNT(*) FROM events_raw WHERE id <> ? AND duplicate_of IS NULL "
+         "AND COALESCE(url_source,'') NOT LIKE 'translated:%' "
+         "AND (url_image = ? OR url_image_portrait = ? OR url_image_wide = ?)")
+    try:
+        return int(conn.execute(q, (event_id, url, url, url)).fetchone()[0])
+    except Exception:  # une base sans ces colonnes ne doit pas casser la résolution
+        return 0
+
+
+def from_official_page(ev: dict, client, blocked: set[str], conn=None) -> dict:
     """ÉTAGE 1, sans recherche web — 2026-09-08 (Franck) : « on a la source officielle,
     dans l'événement de la source officielle il y a l'image, on la prend, voilà ».
 
@@ -129,6 +166,15 @@ def from_official_page(ev: dict, client, blocked: set[str]) -> dict:
                 break
             if is_blocked_image(cand, blocked) or is_logo_image(cand):
                 continue
+            # Déjà l'image de plusieurs autres fiches → habillage du site, pas l'affiche
+            # de CET événement (voir deja_partagee). Refusé AVANT le téléchargement et
+            # avant l'agent vision : c'est gratuit, et l'agent, lui, valide volontiers un
+            # joli bandeau de saison.
+            if conn is not None:
+                n = deja_partagee(conn, cand, ev.get("id"))
+                if n >= PARTAGE_MAX:
+                    log.info("  écartée — déjà l'image de %d autres fiches : %s", n, cand[:70])
+                    continue
             vus += 1
             img_bytes, mime = _download(cand)
             if not img_bytes:
@@ -359,7 +405,7 @@ def main(argv=None) -> int:
         title = (ev.get("title") or "")[:55]
         # ÉTAGE 1 : la page officielle, lue et mesurée — déjà vérifiée (taille,
         # orientation, pertinence). ÉTAGE 2 (--web seulement) : l'agent de recherche.
-        prop = from_official_page(ev, client, blocked)
+        prop = from_official_page(ev, client, blocked, conn)
         if args.apply:
             mark_web_attempt(conn, "image_wide_at", ev["id"])  # cooldown quel que soit le résultat
         new_wide = new_portrait = ""
