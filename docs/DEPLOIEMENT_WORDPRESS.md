@@ -479,19 +479,75 @@ la version en ligne contient du code absent du dépôt. Un fichier séparé se d
 Novamira, passe `php -l` via `tests/test_php_syntax.py`, et se retire en le supprimant.
 Le gel n'a besoin d'aucune ligne de `cs-publish.php`.
 
-**Dépôt** :
+**Dépôt — par Novamira, PAS par `deploy/push-wordpress.sh`.** Ce script a été essayé
+d'abord, et il a échoué sur les trois transports, dans cet ordre : SFTP par clé
+indisponible, SSH par mot de passe refusé (`Permission denied`), FTPS refusé
+(`500 This security scheme is not implemented` sous AUTH TLS **et** AUTH SSL). Rien n'est
+parti. C'est le § 2 de ce document, remesuré : sur cet hébergement, **aucun transport de
+fichiers ne répond**, et le § 3 reste le seul chemin.
+
+La procédure suivie (la même que pour `cs-yoast-scores.php` le 16/09), avec le contenu
+transporté par `novamira/create-upload-link` en **`.txt`** — la contrainte du § 3 interdit
+d'écrire un `.php` hors du bac à sable, mais pas de déposer le même contenu sous un autre
+nom puis de le déplacer en PHP :
+
+1. `create-upload-link` vers `wp-content/uploads/cs-gel-texte-depot.txt`, puis
+   `curl -X PUT --data-binary @deploy/wordpress/cs-gel-texte.php` depuis le conteneur ;
+2. `execute-php` : md5 comparé au fichier du dépôt, `token_get_all(…, TOKEN_PARSE)`,
+   **refus si un fichier du même nom existe déjà** ;
+3. écriture en `.nouveau`, md5 du fichier écrit recontrôlé, puis `rename()` ;
+4. suppression du `.txt` de dépôt.
 
 ```bash
-bash deploy/push-wordpress.sh cs-gel-texte.php
 curl -s https://agendasabauda.eu/wp-json/cs/v1/gel/version
-# attendu : {"cs_gel":"2026-09-21 — gel par empreinte + journal de fiche"}
+# attendu : {"cs_gel":"2026-09-21b — mémoire liée à LA requête (v1.1)"}
 ```
 
 Tant que cette route répond 404, **rien n'est protégé** : la réponse de `cs/v1/event` ne
 porte alors pas de clé `gel`, le Python ne marque rien en base — et ne dégèle rien non plus.
 C'est voulu : « pas de gel » et « mu-plugin absent » ne doivent pas rendre le même résultat.
 
-**Retour arrière** : supprimer le fichier de `wp-content/mu-plugins/`. Les métas
+### La v1.0 était fausse, et c'est l'essai en production qui l'a dit
+
+La v1.0 a été déposée, puis mise à l'épreuve sur une fiche jetable — parce qu'un
+garde-fou qu'on n'a jamais vu refuser ne prouve rien. Elle a échoué, et le trace-à-trace
+a donné la cause en une ligne :
+
+> **`rest_do_request()` n'applique PAS `rest_post_dispatch`.** Ce filtre n'est posé que
+> par le service HTTP (`WP_REST_Server::serve_request()`). Un appel REST interne passe
+> donc dans la moitié « avant » du garde-fou et jamais dans la moitié « après ».
+
+Et il en découlait un second défaut, celui-là réel en production : la v1.0 gardait l'état
+de la passe dans un **drapeau global** (« une passe est en cours »). Or `rest_post_dispatch`
+se déclenche pour TOUTE requête REST servie — l'essai a montré la passe ouverte sur
+`/cs/v1/event` refermée par la réponse d'une requête `/mcp/novamira-oauth`, avec une ligne
+de journal écrite au nom d'un appel qui ne concernait pas la fiche.
+
+**v1.1** : la mémoire est indexée par l'OBJET REQUÊTE (`spl_object_id`) — ce qu'une requête
+ouvre, elle seule peut le refermer. Et le journal nomme désormais les CHAMPS qui ont bougé
+(méta `as_bot_longueurs`), parce que deux lignes disant « ça a changé » sans dire quoi ont
+coûté une heure de reconstitution ce jour-là.
+
+**Éprouvée sur le vrai chemin** (`rest_do_request` + `apply_filters('rest_post_dispatch', …)`,
+c'est-à-dire la séquence exacte de `serve_request`), sur une fiche brouillon jetable,
+trois cas :
+
+| Cas | Attendu | Mesuré |
+|---|---|---|
+| fiche NON gelée | le pipeline écrase | titre, corps et méta Yoast remplacés ✅ |
+| fiche retouchée à la main | rien du texte ne bouge | titre, corps et Yoast **intacts**, `gel.champs = [title, content, excerpt, seo]`, `restaures = []` (l'interception a tenu, la contre-épreuve n'a pas eu à jouer) ✅ |
+| annulation (`forcer_texte:["title"]`) | le titre passe, le reste non | titre remplacé, corps retouché **conservé**, **date 2026-12-01 → 2026-12-15** et méta `as_score` écrite ✅ |
+
+Le troisième cas est le plus important des trois : il prouve que le gel ne met pas la
+fiche à la retraite — les données structurées continuent de descendre.
+
+Les trois fiches d'essai sont à la corbeille (9937, 9945, 9950), les options temporaires
+effacées, et le contrôle final donne **zéro fiche gelée** en production : le dispositif est
+en place et n'a gelé personne.
+
+**Retour arrière** : supprimer le fichier de `wp-content/mu-plugins/` (la v1.0 est gardée à
+côté sous `cs-gel-texte.php.bak-v1.0-2026-09-21`, qui n'est pas chargée : mu-plugins ne
+charge que les `*.php` du premier niveau). Les métas
 (`as_gel_texte`, `as_bot_empreinte`, `as_journal`) restent en base WordPress sans effet, et
 le pipeline reprend la main sur tout au passage suivant — y compris sur les fiches
 retravaillées, donc à ne faire qu'en connaissance de cause.

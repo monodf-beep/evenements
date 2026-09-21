@@ -146,10 +146,15 @@ sans qu'aucune main n'ait touché au texte (voir plus haut).
 
 ## Déploiement
 
-1. **le mu-plugin** — `deploy/wordpress/cs-gel-texte.php` par le canal Novamira
-   (`docs/DEPLOIEMENT_WORDPRESS.md` § 3). Contrôle que la version EN LIGNE est la bonne,
-   parce qu'un fichier poussé ne prouve rien (règle 1) :
+1. **le mu-plugin** — ✅ **en ligne depuis le 21/09 à 17 h**, déposé par le canal Novamira
+   (`docs/DEPLOIEMENT_WORDPRESS.md` § 3 et la section du 21/09). `deploy/push-wordpress.sh`
+   ne marche PAS sur cet hébergement : SFTP, SSH et FTPS refusent les trois. Contrôle que
+   la version EN LIGNE est la bonne, parce qu'un fichier poussé ne prouve rien (règle 1) :
    `curl -s https://agendasabauda.eu/wp-json/cs/v1/gel/version`
+   → `{"cs_gel":"2026-09-21b — mémoire liée à LA requête (v1.1)"}`.
+   **Éprouvé en production sur une fiche jetable, trois cas** (non gelée → écrasée ;
+   retouchée → intacte ; annulation → titre forcé, corps conservé, date mise à jour).
+   La v1.0 était fausse et c'est cet essai qui l'a dit — détail dans l'autre document.
 2. **le Python** — `bash deploy/update.sh` sur le VPS. Tant que le mu-plugin n'est pas en
    ligne, la réponse de `cs/v1/event` ne porte pas de clé `gel` : la base ne marque rien
    et **ne dégèle rien non plus** (« pas de gel » et « on ne sait pas » ne rendent pas le
