@@ -278,6 +278,8 @@ lontano vicino qui li qua
 accanto basta cambia cambiano molti molte piccolo piccola piccoli piccole grande grandi
 proteggono protegge indicano indica guidava guidano credono crede ricordi ricorda
 attraversa attraversano trasforma trasformano susseguono conviene occorre bisogna
+diventa diventano torna tornano sposa sposano colonna colonne facciata facciate
+quello quella quelli quelle ci ne lo li gli vicoli sale musei mercati concerti mostre
 """.split())
 
 _MAJ = re.compile(r"[A-ZÀ-ÖØ-Þ][\w'’\-]*")
@@ -360,6 +362,15 @@ def noms_inconnus(raw: str, autorises: set, courants: set) -> tuple[list[str], l
                 if not propre or not propre[0].isupper():
                     continue
                 if _SIECLE.match(propre) or _ELISION.match(propre) or propre in autorises:
+                    continue
+                # UNE MAJUSCULE INTÉGRALE N'EST PAS UN NOM PROPRE. Mesuré le 21/09 : la
+                # clôture que la voix demande — « LIRE AUSSI : », « LEGGI ANCHE: » — était
+                # refusée sur les quatre pages, donc elle l'aurait été sur les 192. Le coût
+                # d'un faux refus généralisé dépasse de loin celui du trou que ça ouvre :
+                # un nom inventé écrit tout en capitales passerait, ce qu'aucun modèle ne
+                # fait spontanément. Les acronymes relèvent d'ailleurs d'une autre règle de
+                # la voix (« acronymes explicités »), pas de ce portillon-ci.
+                if len(propre) > 1 and propre.isupper():
                     continue
                 if i == 0:
                     if (propre.lower() not in courants
