@@ -39,12 +39,28 @@ clean_post_cache($id);
 wp_cache_delete($id, 'post_meta');
 ```
 
-> ⚠️ **Ce n'est pas durable.** Le réglage Polylang est toujours actif : un
-> enregistrement futur de la page FR depuis wp-admin repoussera l'image FR sur
-> la page IT. Deux issues, et c'est un arbitrage de Franck, pas une décision
-> technique : retirer `_thumbnail_id` de la liste de synchro (mais les
-> événements perdent alors le partage de photo entre leurs deux versions), ou
-> accepter la fragilité et prévoir une commande de réparation.
+> ✅ **Réglé le 2026-09-21.** `_thumbnail_id` a été retiré de la synchro Polylang.
+> Arbitrage de Franck : « il faut les 2 en dur pour que ça soit référencé par
+> google image » — et il a raison, « les deux en dur » et « la synchro » sont
+> contradictoires : la synchro existe précisément pour rendre les deux pages
+> identiques.
+>
+> **J'avais d'abord annoncé un coût qui n'existe pas.** J'avais écrit que les
+> événements perdraient le partage de photo entre leurs deux versions. C'était
+> une inférence. Mesuré ensuite : 225 fiches FR et 158 fiches IT, **toutes**
+> avec vignette ; 20 des 131 paires ont **déjà** des images différentes ; et
+> `publish_batch_as.py` ne saute le téléversement que pour une fiche ayant déjà
+> un identifiant WordPress, donc un nouveau jumeau italien reçoit toujours sa
+> propre image. Surtout : **couper la synchro n'efface rien** — les vignettes
+> posées restent en base, le réglage cesse seulement de propager.
+>
+> **Contrôlé en rejouant le geste qui cassait**, pas en lisant le réglage :
+> `set_post_thumbnail(2596, 9839)` — l'appel exact qui avait contaminé la page
+> italienne le matin même. Après coupure, 2599 garde `9845`. Le témoin avait
+> bien été rouge avant.
+>
+> Sauvegarde : option `cs_polylang_sync_sauvegarde_20260921` (valeur
+> `["_thumbnail_id"]`).
 
 ### 2. Le garde-fou anti-doublon par `guid` NE MARCHE PAS
 
@@ -80,11 +96,19 @@ l'extension change. Toute recherche de fichier doit ignorer l'extension.
 
 ## Ce qui reste ouvert
 
-- **`og:image` est figé pour tout le site** : `og-agenda-sabauda-fr.png` (et `-it`),
-  déposé en 2026/07. Les six pages servent bien leur vignette DANS la page
-  (3 occurrences dans le HTML, vérifié), mais un partage Facebook, LinkedIn ou
-  WhatsApp affiche toujours l'image générique — le problème du « on dirait la
-  même page », transposé au partage. À trancher séparément.
+- **`og:image` est figé pour tout le site**, et la cause est identifiée : ce
+  n'est PAS un réglage Yoast (son champ « image par défaut » est vide), c'est le
+  mu-plugin `wp-content/mu-plugins/cs-open-graph.php`, qui fabrique lui-même les
+  balises Open Graph. Il traite deux cas différemment :
+  - fiche d'événement → `if (has_post_thumbnail($id))`, il prend la vignette ✅ ;
+  - **page** → il retourne `cs_og_image($lang)`, l'image générique, **sans
+    jamais regarder si la page a une vignette** ❌.
+
+  Les 192 pages hub sont dans le second cas. La correction tient en une
+  condition, au même endroit que celle qui existe déjà pour les fiches. **Non
+  faite** : c'est un mu-plugin, et le dépôt garde la trace de deux jours de site
+  injoignable pour une ligne de syntaxe dans un fichier de ce type. À faire avec
+  `token_get_all(TOKEN_PARSE)` et une sauvegarde, sur décision de Franck.
 - Les 28 pages « guide de ville » n'ont toujours aucune image.
 
 ## La commande
