@@ -247,6 +247,42 @@ Trois corollaires opérationnels :
   `git merge origin/<branche> && git push origin claude/quirky-davinci-jvqrnw && bash deploy/update.sh`,
   et la ligne « HEAD is now at » doit porter le commit fusionné.
 
+`docs/ERREURS_2026-09-21.md` en ajoute neuf, parties d'une capture — l'affiche de saison
+de Malraux en vignette d'un concert sur l'Antarctique — et d'une racine NEUVE, qui
+s'ajoute à celles ci-dessus :
+
+**Un INSTANTANÉ ne mesure pas un FLUX.** Mesuré ce jour-là : sur les 22 pages d'accueil
+servant de source à des fiches à venir, neuf portaient un `og:image` et AUCUNE ne montrait
+l'événement (fond de page de connexion admin, affiche de saison périmée d'un an, logo,
+façade). J'en ai tiré une règle — « une page d'accueil n'illustre jamais » — et posé un
+refus sec. Puis j'ai regardé les cinq fiches publiées que ce refus visait : TROIS avaient
+une bonne image, dont l'affiche exacte de l'exposition, prise sur la page d'accueil de la
+mairie de Villefranche-sur-Mer. Les deux mesures sont vraies : une page d'accueil montre la
+programmation DU MOMENT, donc elle illustre bien l'événement en cours et mal tous les
+autres. **Quand une mesure porte sur un état à l'instant t et qu'on veut en tirer une règle
+permanente, chercher d'abord l'échantillon qui porte l'HISTOIRE** — ici, les fiches déjà
+illustrées. Attrapée avant déploiement, pour une fois.
+
+Trois corollaires de cette journée, tous vérifiés aux dépens d'une demi-heure :
+
+- **établir le QUOI ne dispense pas d'établir le PAR OÙ.** L'image fautive était prouvée
+  (comparaison des deux fichiers), le chemin annoncé était faux : ce n'était pas la moisson
+  lisant une page presse, mais `images_wide` remplissant `url_image_portrait` — que
+  `publisher_as` PRÉFÈRE à `url_image` pour la vignette. Une requête en base le donnait ;
+- **une image se juge en la REGARDANT, jamais à son nom de fichier.** Sur une trentaine de
+  vignettes réparées ce jour-là, la seule que j'ai commentée sans télécharger est la seule
+  où je me suis trompé : `Orlando_Argomento.jpg` n'est pas « l'œuvre elle-même », c'est le
+  livret imprimé du XVIIIe, deux colonnes de texte illisibles en vignette ;
+- **une mesure lancée pendant une écriture mesure l'écriture.** « 1 héritage, 13
+  divergences » pendant le lot ; 12 et 2 après. Attendre la fin, et le dire dans la
+  commande (`while pgrep -f … ; do sleep 10; done`).
+
+Et un point de méthode sur le travail à plusieurs sessions : **quand un `git merge` affiche
+`CONFLICT` sur le VPS, `git merge --abort` immédiatement.** Ce jour-là trois sessions
+fusionnaient dans `claude/quirky-davinci-jvqrnw` ; le merge a laissé les marqueurs
+`<<<<<<<` dans `publish_batch_as.py`, que les crons exécutent — le script ne compilait
+plus. La résolution se fait côté branche, jamais en production.
+
 **Neuf des quinze fautes du 11/08 étaient des récidives d'une règle
 déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le
 périmètre affiché à côté du nombre qui tiennent, parce qu'eux se déclenchent tout seuls.

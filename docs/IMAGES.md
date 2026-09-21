@@ -59,16 +59,36 @@ flowchart TD
 
 ---
 
-## 3. Les deux défenses (anti-hors-sujet)
+## 3. Les deux défenses (anti-hors-sujet) — règles déterministes, puis agent vision
 
-Tout candidat, à chaque étage, doit passer **deux filtres complémentaires** (`utils/image_verify.py`) :
+Tout candidat, à chaque étage, doit passer **deux filtres complémentaires** (`utils/image_verify.py`) — le premier s'est enrichi de quatre règles le 21/09, le second n'a pas changé :
 
 1. **Règles déterministes** (gratuites, toujours actives) :
    - domaine proscrit (`config/blocked_image_domains…`), logo/blason/icône (`is_logo_image`) ;
-   - motif d'URL parasite connu (`config/blocked_image_patterns.txt` : slider, header, banniere, pub…) — extensible **sans code** ;
-   - **forme** suspecte (`looks_like_banner_shape`) : trop plat/étroit = bandeau, trop carré = vignette CMS générique (voir seuils §5).
+   - motif d'URL parasite connu (`config/blocked_image_patterns.txt` : slider, header, banniere, pub, avatar Gravatar…) — extensible **sans code** ;
+   - **forme** suspecte (`looks_like_banner_shape`) : trop plat/étroit = bandeau, trop carré = vignette CMS générique (voir seuils §5) ;
+   - **vignette de DOCUMENT** (`looks_like_document_thumb`) : un nom en `…-pdf.jpg` est la
+     couverture d'un PDF téléversé — brochure de saison, programme, dossier de presse, plan
+     de salle —, jamais la photo d'un événement *(ajouté le 21/09)* ;
+   - **page GÉNÉRIQUE** (`utils/pages.peut_illustrer`) : une page d'accueil ou une rubrique
+     presse montre la programmation du moment, donc au mieux un AUTRE événement. Elle n'est
+     lue que par un appelant capable de faire juger l'image (voir la mise à jour du 21/09
+     pour la répartition script par script) *(21/09)* ;
+   - **image déjà partagée** (`images_wide.deja_partagee`) : au-delà de deux autres fiches
+     qui la portent, c'est l'habillage du site, pas l'affiche de cet événement — le
+     diagnostic était en commentaire de `blocked_image_patterns.txt` depuis le début, sans
+     être branché *(21/09)* ;
+   - **une traduction n'a pas d'image propre** : elle hérite de son original à la
+     publication (`publish_batch_as._heriter_image_traduction`), et jamais vers le bas —
+     sinon la chaîne, faute de page à lire, lui cherche une image sur le seul titre *(21/09)*.
 
 2. **Agent vision** (`verify_relevance`, payant, ciblé) : un LLM **regarde** l'image et dit si elle correspond VRAIMENT à l'événement. C'est le seul capable de dire « ce ruban vert est une campagne don d'organes, pas l'événement ». Il renvoie aussi le **point focal** (§6). Il refuse : bandeaux/pubs/logos/captures/affiches-tout-texte, **portrait d'une personne qui n'est pas le sujet**, photo du **bâtiment** quand le sujet est une personne/œuvre, **saison** incompatible visible, **paysage naturel générique** pour un événement urbain.
+
+Où vivent ces règles, depuis le 21/09 : dans `utils/images.ecarte_de_page` pour tout ce qui
+est LU sur une page — **un seul endroit**, appelé par les deux lecteurs (`_img_tags` et
+`page_image_candidates`) —, et dans les `_acceptable` de `visuals.py` et
+`moisson_officielle.py` pour les candidats venus d'ailleurs. C'est la réponse à la racine du
+08/09 : « deux détecteurs pour la même chose, un seul juste ».
 
 En cas de panne technique (image injoignable), on **ne bloque pas** — les règles déterministes ont déjà filtré, et la vérification se refait au moment de publier.
 
@@ -548,4 +568,46 @@ Pour appliquer l'héritage aux fiches déjà en ligne :
 
 ```bash
 .venv/bin/python -m scripts.publish_batch_as --ids <ids des traductions> --update
+```
+
+---
+
+## Récapitulatif du 21 septembre 2026 — cinq mécanismes, un seul symptôme
+
+À relire d'abord si une vignette montre autre chose que son événement. Les quatre sections
+ci-dessus racontent la journée dans l'ordre où elle s'est déroulée ; ce tableau dit où
+regarder. Le journal des fautes commises en chemin est dans `docs/ERREURS_2026-09-21.md`.
+
+| # | Ce qui trompait le pipeline | Cas fondateur | Garde-fou | Fixture |
+|---|---|---|---|---|
+| 1 | **vignette de PDF** prise pour une affiche (`…-pdf.jpg`) | brochure de saison 26-27 de Malraux, en vignette d'un concert | `images.looks_like_document_thumb` via `ecarte_de_page` | `test_vignette_document` |
+| 2 | **image d'interface** prise pour une photo | `main-hover-comunicati-2.jpg` : un rectangle blanc, image de survol d'un bouton du Torino Film Festival | tokens `hover`, `rollover`, `login`, `backend` dans `is_logo_image` ; motif `gravatar.com/avatar` | `test_images_chrome_filter` |
+| 3 | **page générique** dont l'image change au gré de la programmation | l'affiche de « Trame di donne » (mars) sur une fiche du 27 septembre | `utils/pages.peut_illustrer` — lue seulement là où l'agent vision peut juger | `test_pages_generiques`, `test_visuals_page_generique` |
+| 4 | **bandeau de site** recopié sur toutes les fiches d'un lieu | `Cover L-eta dell-acquario` : paysage de SEPT fiches de la bibliothèque de Turin | `images_wide.deja_partagee`, seuil 2 | `test_image_partagee` |
+| 5 | **traduction** cherchant sa propre image faute de page à lire | le livret imprimé du XVIIIe sur Orlando en italien | `publish_batch_as._heriter_image_traduction`, copie vers le haut seulement | `test_heriter_image_traduction` |
+
+Deux rouvreurs complétés au passage (règle 3) : `affiner_source` voit désormais les pages de
+**rubrique** en plus des racines, et **`images_wide --drop-wide`** existe à côté de
+`--drop-portrait` — qui était seul depuis le 08/09, si bien qu'un plan de salle pouvait
+rester en grand visuel 16:9 après un « nettoyage ». Les deux colonnes sont recensées dans
+`docs/ETATS_TERMINAUX.md`.
+
+**Le piège à connaître avant de toucher à une vignette** : `url_image_portrait` et
+`url_image_wide` **priment** sur `url_image` pour la carte 4:3 et le héros 16:9
+(`publisher_as`). Une fiche peut donc avoir la bonne photo dans `url_image` et montrer
+autre chose. Le back-office, lui, n'affiche et ne modifie que `url_image` — trois fois sur
+trois ce jour-là, la coupable était une colonne invisible à l'écran.
+
+**Commandes de contrôle** (aucune n'écrit) :
+
+```bash
+# les trois colonnes d'une fiche, d'un coup
+sqlite3 data/events.db "SELECT id, wp_post_id_as, image_source, url_image,
+  url_image_portrait, url_image_wide FROM events_raw WHERE id = <id>;"
+
+# les déclinaisons partagées par plusieurs fiches (= habillage de site)
+#   → voir la commande complète dans la section « l'image partagée trahit l'habillage »
+
+# les traductions dont l'image diffère de leur original
+#   → voir la section « une traduction montre la même image que son original »
 ```
