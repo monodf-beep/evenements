@@ -47,6 +47,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import images
 from utils.sources import is_blocked_image, is_logo_image, load_blocked_image_domains
+from utils.pages import peut_illustrer
 from scripts.venues import _clean
 from scripts.scraper_events import init_db, web_cooldown_sql, mark_web_attempt
 from scripts.images_web import _download, verify_image, SEARCH_MODEL
@@ -83,11 +84,21 @@ def nom_affiche(url: str) -> bool:
 
 def _pages_officielles(ev: dict) -> list[str]:
     """Les pages où l'affiche a toutes les chances d'être : la page officielle retrouvée
-    (`url_officiel`), puis la page source. Dédoublonné, sans les pseudo-URL."""
+    (`url_officiel`), puis la page source. Dédoublonné, sans les pseudo-URL.
+
+    JAMAIS une page GÉNÉRIQUE (2026-09-21, utils/pages.py). C'est ici que le cas signalé
+    par Franck s'est joué : la page du spectacle de Malraux affiche en pied de page les
+    couvertures des brochures du théâtre, seules images nettement verticale et nettement
+    horizontale — d'où une brochure de saison en portrait (donc en vignette de carte,
+    publisher_as la préfère) et un plan de salle en paysage. Les vignettes de documents
+    sont désormais écartées en amont (utils.images.looks_like_document_thumb) ; une page
+    d'accueil ou une rubrique presse, elle, n'a aucune raison d'être lue ici du tout."""
+    titre = ev.get("title") or ""
     out: list[str] = []
     for u in (ev.get("url_officiel"), ev.get("url_source")):
         u = (u or "").strip()
-        if u.startswith("http") and "news.google.com" not in u and u not in out:
+        if u.startswith("http") and "news.google.com" not in u and u not in out \
+                and peut_illustrer(u, titre):
             out.append(u)
     return out
 

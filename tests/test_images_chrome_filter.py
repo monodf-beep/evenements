@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from utils.images import _is_chrome, page_image_candidates  # noqa: E402
+from utils.sources import is_logo_image  # noqa: E402
 
 echecs = 0
 
@@ -58,6 +59,21 @@ _check("« Logo_Orizzontale.png » (token isolé, underscore) reste refusé",
 _check("dossier /theme/ reste refusé (chemin, pas nom de fichier)",
        _is_chrome("https://site.fr/wp-content/theme/hero.jpg"))
 _check("URL vide → non", not _is_chrome(""))
+
+# ── Images d'INTERFACE servies en og:image (2026-09-21, fiche WP#7666) ─────────────
+# La page « comunicati stampa » du Torino Film Festival déclare en og:image
+# « main-hover-comunicati-2.jpg » : l'image de SURVOL d'un bouton de téléchargement. Elle
+# est partie en ligne comme visuel de la fiche « Ambra Angiolini » — un rectangle blanc
+# bordé de rouge avec une flèche grise. C'est `is_logo_image` qui doit l'attraper : c'est
+# lui que `_acceptable` appelle sur l'og:image, là où `_is_chrome` ne voit que les images
+# LUES dans la page.
+_check("« main-hover-comunicati-2.jpg » est une image d'interface",
+       is_logo_image("https://www.torinofilmfest.org/tt-contenuto/uploads/2019/11/"
+                     "main-hover-comunicati-2.jpg"))
+_check("« bouton-rollover.png » aussi", is_logo_image("https://x.fr/uploads/bouton-rollover.png"))
+# Le cas qui doit PASSER, près de la frontière : le token est borné, jamais une sous-chaîne.
+_check("« hovercraft-sur-le-lac.jpg » reste une photo",
+       not is_logo_image("https://x.fr/uploads/hovercraft-sur-le-lac.jpg"))
 
 # ── Bout en bout sur la vraie page (fixture, sans réseau) ───────────────────────────
 PAGE = f'''<html><head>

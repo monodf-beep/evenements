@@ -42,6 +42,9 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils import pages
+from utils.pages import (est_racine,  # noqa: F401 — réexportées (fixtures, appelants)
+                         est_page_generique as est_source_generique)
 from scripts.scraper_events import init_db
 from scripts.enrich import _programme_links, _get_html, _html_to_text, _fold, _event_tokens
 
@@ -56,49 +59,15 @@ _STOP_LOCAL = frozenset((
     "avec", "dans", "pour", "sans", "chez", "entre", "vers", "autour", "depuis", "jusqu",
     "cette", "notre", "votre", "leur", "tout", "tous", "toute", "toutes", "come", "anche",
 ))
-# Chemins qui ne sont JAMAIS la page d'un événement : rubrique presse, actualités, appel
-# aux dons, galerie. Le premier dry-run (08/09, 37 propositions) en avait élu une douzaine.
-_PAGE_SKIP = ("press", "presse", "stampa", "comunicat", "news", "notizie", "actualit",
-              "attualita", "blog", "soutenir", "soutien", "sostieni", "sostenere", "donazion",
-              "mecenat", "newsletter", "contact", "gallery", "galleria", "/pro/")
-
-
-def est_racine(url: str) -> bool:
-    """Vrai si l'URL est la racine d'un site (chemin vide ou « / »)."""
-    u = (url or "").strip()
-    if not u.startswith("http"):
-        return False
-    return not urlparse(u).path.strip("/")
+# La définition d'une page générique vit dans utils/pages.py depuis le 2026-09-21 : la
+# chaîne d'images se posait la MÊME question sans la lire (voir le module pour la mesure).
+_PAGE_SKIP = pages.RUBRIQUES_NON_EVENEMENT
 
 
 def racine_de(url: str) -> str:
     """La racine du site d'une URL (« https://hote/ »), '' si l'URL n'en est pas une."""
     p = urlparse((url or "").strip())
     return f"{p.scheme}://{p.netloc}/" if p.scheme and p.netloc else ""
-
-
-def est_source_generique(url: str) -> bool:
-    """Vrai si l'URL ne peut PAS être la page de cet événement : la racine du site, ou une
-    page de RUBRIQUE (presse, actualités, dons, galerie… — la liste `_PAGE_SKIP`, déjà
-    utilisée plus bas pour écarter ces mêmes chemins).
-
-    Pourquoi élargir, 2026-09-21 : la fiche 8289 (« Charcot Antartica ») avait pour source
-    https://www.malrauxchambery.fr/ressources/presse. Ce n'est pas une racine — `est_racine`
-    ne la voyait donc pas, et aucun rouvreur ne s'en occupait (règle 3) — mais c'est la
-    page « ressources presse » du théâtre, dont les seules images sont les couvertures de
-    ses brochures : c'est la brochure de saison 26-27 qui est partie en ligne comme visuel
-    du concert. Or la page du spectacle existe, et la racine du site y mène en un lien
-    (mesuré le même jour : `malrauxchambery.fr/` → `/evenement/charcot-antartica-26-27/`).
-    Même cas côté italien : torinofilmfest.org/it/cartellastampa-comunicatistampa/.
-
-    Le coût d'un faux positif est borné : on ne remplace la source QUE si une autre page
-    porte les mots du titre ET les mentionne dans son texte (`page_evenement_depuis_racine`)."""
-    u = (url or "").strip()
-    if not u.startswith("http"):
-        return False
-    if est_racine(u):
-        return True
-    return any(sk in _fold(urlparse(u).path) for sk in _PAGE_SKIP)
 
 
 def page_evenement_depuis_racine(racine: str, title: str, timeout: int = 10) -> str:

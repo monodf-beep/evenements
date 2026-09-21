@@ -354,3 +354,84 @@ sqlite3 data/events.db "SELECT id, wp_post_id_as, substr(title,1,45)
 #    puis, pour les ids encore devant nous (dry-run sans --apply) :
 .venv/bin/python -m scripts.images_wide <ids> --drop-portrait --drop-wide --apply
 ```
+
+---
+
+## Mise à jour (21 septembre 2026, suite) — une page d'accueil n'illustre pas un événement
+
+Après la réparation des deux fiches Malraux, Franck : « ok avance ». Trois familles
+restaient, repérées en regardant les 73 vignettes françaises du catalogue à venir.
+
+**1. La vignette blanche** (WP#7666, « Ambra Angiolini », Torino Film Festival). Mesuré :
+la source est la page `/it/cartellastampa-comunicatistampa/`, dont l'`og:image` est
+`main-hover-comunicati-2.jpg` — l'image de **survol** d'un bouton de téléchargement. En
+ligne : un rectangle blanc bordé de rouge avec une flèche grise. `hover` et `rollover`
+rejoignent donc les mots d'interface de `is_logo_image` (`utils/sources.py`), aux côtés de
+`arrow` et `chevron` ajoutés le 08/09 pour une flèche de menu. Idem `login` / `backend` :
+la racine du musée du Risorgimento déclare aujourd'hui `backend-login-bg-01.jpg`, le fond
+de sa page de connexion admin.
+
+**2. L'affiche d'un AUTRE événement** (WP#9615, WP#8931). La fiche « Une chasse aux
+énigmes en famille au musée du Risorgimento » affichait l'affiche de « Trame di donne,
+6-7-8 mars 2026 » — un autre événement, déjà passé. Elle venait de l'`og:image` de la
+**racine** du musée.
+
+Mesure faite avant d'écrire la moindre ligne, sur les **22 pages racine** qui servent de
+source à des fiches publiées encore devant nous : **neuf portaient un og:image, aucune ne
+montrait l'événement**.
+
+| Racine | og:image | ce que c'est |
+|---|---|---|
+| museorisorgimentotorino.it | `backend-login-bg-01.jpg` | fond de la page admin |
+| mal-thonon.org | `saison-25-26.jpg` | affiche de saison, périmée d'un an |
+| conservatoriotorino.eu | `logo-conservatorio-bianco.jpg` | logo |
+| bonlieu-annecy.com | `img_facebook (1).png` | image de partage |
+| opera-nice.org | `share-opera-nice-cote-dazur.jpg` | image de partage |
+| palazzomadamatorino.it | `Facciata-2011-photo-Gonella-1.jpg` | le bâtiment |
+
+Et **aucun de ces 22 sites n'était lui-même l'événement**. D'où `utils/pages.py` :
+`peut_illustrer(url, titre)` refuse l'image d'une page générique — racine ou rubrique —
+sauf si le domaine porte le nom de l'événement (`doujador.it` ↔ « Douja d'Or »). Branché
+dans les trois chemins qui lisent une page : `visuals.resolve_image` (étages 2 et 2b),
+`moisson_officielle`, et `images_wide._pages_officielles`.
+
+**Ce n'est pas un cul-de-sac** (règle 3) : un refus fait descendre d'un étage — Commons,
+agent web, puis la bannière territoire. Une bannière dit « pas de photo » ; l'affiche d'un
+autre spectacle, elle, ment au lecteur. Et le jour où la source est précisée
+(`affiner_source`), la même chaîne reprend l'`og:image` de la bonne page.
+
+**La limite est écrite dans le code et vérifiée par la fixture** : l'exception exige que
+TOUS les mots significatifs du titre soient dans le domaine, donc un titre rédigé
+(« BeerCult 2026 à Aoste : trois jours entre bière alpine… ») n'en bénéficie pas. Un
+critère plus large — « un mot long du titre dans le domaine » — réautoriserait exactement
+ce qu'on bloque, puisque le domaine porte le nom du LIEU : « Risorgimento » dans
+museorisorgimentotorino.it, « Thonon » dans mal-thonon.org.
+
+`utils/pages.py` porte aussi la liste des rubriques, qui vivait dans `affiner_source` et
+manquait à la chaîne d'images (racine du 08/09, « deux détecteurs pour la même chose »).
+`scolaire` / `scuole` s'y ajoutent : `mal-thonon.org/scolaires` est la source de quatre
+fiches publiées à venir.
+
+### Réparer les fiches déjà illustrées depuis une page générique
+
+Le garde-fou empêche la pose ; il ne défait rien. Pour lister ce qui reste (sur le VPS) :
+
+```bash
+cd /root/evenements && .venv/bin/python -c "
+import sqlite3, sys; sys.path.insert(0, '.')
+from utils.pages import peut_illustrer
+c = sqlite3.connect('data/events.db'); c.row_factory = sqlite3.Row
+q = '''SELECT id, wp_post_id_as, title, url_source, url_officiel, image_source
+       FROM events_raw WHERE wp_post_id_as IS NOT NULL AND duplicate_of IS NULL
+        AND COALESCE(image_source,'') IN ('og','page')
+        AND (COALESCE(date_event_end, date_event_start,'') = ''
+             OR COALESCE(date_event_end, date_event_start) >= date('now'))'''
+for r in c.execute(q):
+    src = (r['url_officiel'] or r['url_source'] or '')
+    if not peut_illustrer(src, r['title'] or ''):
+        print(r['id'], 'WP#%s' % r['wp_post_id_as'], '|', (r['title'] or '')[:45], '|', src[:60])
+"
+```
+
+Puis, sur ces ids : `.venv/bin/python -m scripts.refill_images_as <ids> --dry-run` (il
+re-résout avec la chaîne corrigée et ne re-pousse que si l'image change réellement).

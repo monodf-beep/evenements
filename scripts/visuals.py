@@ -41,6 +41,7 @@ from utils.images import (commons_search, europeana_search, fetch_og_image,
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
                            load_territory_category_images, pick_banner_image)
 from utils import image_verify
+from utils.pages import peut_illustrer
 from utils.api_limite import PlafondAPI, est_plafond
 from scripts.scraper_events import init_db
 
@@ -218,7 +219,12 @@ def resolve_image(ev: dict, client, blocked: set[str],
     # "aller chercher plus grand sur la page" (ce qui causait l'incident).
     content_fallback = None  # (url, credit, source, fx, fy) si trouvé mais petit
     # Étage 2 — og:image de la page officielle (jamais pour un radar : image de presse).
-    if not _is_radar(ev):
+    # ET JAMAIS D'UNE PAGE GÉNÉRIQUE (2026-09-21) : une page d'accueil ou une rubrique
+    # presse illustre la programmation du moment, pas CET événement — mesuré sur les 22
+    # racines servant de source à des fiches à venir, neuf og:image, zéro qui montrait
+    # l'événement (voir utils/pages.py). L'exception « le site EST l'événement » reste :
+    # la home de stresafestival.eu, elle, porte bien la bonne affiche.
+    if not _is_radar(ev) and peut_illustrer(ev.get("url_source", ""), ev.get("title", "")):
         og = fetch_og_image(ev.get("url_source", ""))
         # Forme (déterministe, TOUJOURS active — pas besoin de l'agent vision) : un
         # og:image très plat ou très étroit est un bandeau d'habillage (souvent la même

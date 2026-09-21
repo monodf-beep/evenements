@@ -75,6 +75,7 @@ from utils.images import (fetch_og_image, page_image_candidates, remote_dims,  #
                           looks_like_banner_shape, looks_like_document_thumb)
 from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
 from utils.radar import source_officielle  # noqa: E402
+from utils.pages import peut_illustrer  # noqa: E402
 from utils.traqueurs import est_traqueur, sans_parametres_de_suivi  # noqa: E402
 from utils import jsonld  # noqa: E402
 from utils import infos_pratiques  # noqa: E402
@@ -525,7 +526,10 @@ def _recolte(ev: dict, marqueurs=None, morts: list | None = None) -> dict:
     # quelle que soit sa provenance.
     _remplacable = (not _img or _banniere or _src in ("commons", "web", "europeana")
                     or (_src == "page" and _ailleurs) or _est_traqueur(_img))
-    if _src != "manual" and _remplacable:
+    # La page LUE doit pouvoir illustrer l'événement : ni page d'accueil, ni rubrique
+    # presse (2026-09-21, utils/pages.py — sauf si le site EST l'événement). Sans ce
+    # test, la moisson quotidienne repose chaque matin l'habillage du site source.
+    if _src != "manual" and _remplacable and peut_illustrer(url, ev.get("title", "")):
         og = fetch_og_image(url)
         if _acceptable(og):
             trouve["url_image"] = og

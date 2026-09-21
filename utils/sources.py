@@ -93,6 +93,20 @@ _LOGO_NAME_TOKENS = frozenset((
     # « uploads/2023/08/Arrow_Down_MD.png » — une flèche de menu, que la moisson aurait
     # posée comme affiche du Grand Continent (fiche 5121). Noms bornés, comme le reste.
     "arrow", "chevron", "spacer", "pixel", "blank", "bullet", "loader", "spinner",
+    # Même famille, 2026-09-21 (fiche WP#7666, « Ambra Angiolini » au Torino Film
+    # Festival) : la page « comunicati stampa » du TFF déclare en og:image
+    # « main-hover-comunicati-2.jpg » — l'image de SURVOL d'un bouton de téléchargement.
+    # Elle est partie en ligne comme visuel de la fiche : un rectangle blanc bordé de
+    # rouge avec une flèche grise, vérifié à l'œil sur la vignette publiée. « hover » est
+    # un état d'interface CSS, jamais un sujet de photo. « rollover » est le même état
+    # sous son autre nom — ajouté par symétrie, pas rencontré.
+    "hover", "rollover",
+    # Et l'arrière-plan de la page de CONNEXION admin, mesuré le même jour : la racine de
+    # museorisorgimentotorino.it — source d'une fiche publiée — déclare aujourd'hui en
+    # og:image « backend-login-bg-01.jpg ». (En août, la même balise portait l'affiche
+    # d'une exposition de mars : l'og:image d'une racine est instable, c'est ce qui rend
+    # une page d'accueil impropre à illustrer un événement précis.)
+    "login", "backend",
 ))
 
 
