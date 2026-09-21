@@ -136,6 +136,23 @@ SLACK_DIGEST=1
 # compterait des doublons dont une seule page est réellement visible — la faute de
 # règle 1 que ce script a commise le jour de sa naissance.
 50 9 * * * cd /root/evenements && .venv/bin/python -m scripts.verifier_doublons_publies --en-ligne --slack >> logs/verifier_doublons.log 2>&1
+# LANGUE POLYLANG DES TRADUCTIONS, 9h55 — juste après les doublons, et pour la même
+# raison qu'eux : une traduction rangée du MAUVAIS versant fait deux cartes françaises
+# côte à côte sur le hub, donc elle se lit comme un doublon alors que ce n'en est pas un.
+# Le geste n'est d'ailleurs pas le même (republier du bon côté, pas corbeiller).
+#
+# BRANCHÉ LE 2026-09-21, ET C'EST TOUTE L'HISTOIRE. Ce script existe depuis le 17/08 et
+# porte dans sa propre docstring, écrite le 17/09 après l'incident « Open Factories », la
+# phrase « un audit qui mesure un risque sans jamais tourner ne protège de rien ». Il
+# n'était dans AUCUN cron. Mesuré le 21/09, le jour où Franck a envoyé une capture du
+# hub : 32 traductions du mauvais versant sur 85 encore devant nous. Personne ne l'aurait
+# su autrement — c'est exactement la règle 3 de CLAUDE.md, « un humain qui tape une
+# commande n'est pas une réponse ».
+#
+# `--slack` ne poste qu'UNE ligne (le relevé complet reste à la commande), et elle part
+# MÊME À ZÉRO, avec le nombre d'examinées à côté : un zéro sur une file vide et un zéro
+# sur une requête cassée ont la même tête. Lecture seule, aucun appel LLM, aucun crédit.
+55 9 * * * cd /root/evenements && .venv/bin/python -m scripts.audit_langue_polylang --slack >> logs/audit_langue_polylang.log 2>&1
 # SEO quotidien 10h30 (après le lot du jour) — republie automatiquement ce qui était déjà
 # en ligne (sinon le SEO reste invisible en base).
 # CAP 10 → 25 ET PÉRIMÈTRE ÉLARGI LE 2026-09-09. Jusque-là : score ≥ 7 seulement, et

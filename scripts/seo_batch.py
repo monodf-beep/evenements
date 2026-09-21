@@ -17,6 +17,13 @@ le SEO a réellement atteint le site, et tout écart avec `seo_at` remet la fich
 file. Sans ça, `seo_at IS NULL` seul les écartait pour toujours — c'est arrivé pendant la
 panne du 8 au 10 août 2026.
 
+TEXTE GELÉ = HORS FILE (2026-09-21). L'ordre de travail est « création FR + IT → cron
+SEO → reprise à la main / Cowork », et il ne va que dans ce sens : dès qu'une fiche a été
+retravaillée sur le site, ce lot ne la reprend plus (ni sélection, ni republication des
+retardataires). C'est WordPress qui le dit — `wp_gel_at`, recopié de la réponse de
+cs/v1/event par publish_batch_as (deploy/wordpress/cs-gel-texte.php). Le nombre de fiches
+ainsi garées est affiché à chaque run, jamais silencieux.
+
 ⚠️ Coût LLM : chaque événement = un appel (Haiku). Borné (--cap), seuil (--min-score,
 défaut 7, qui ne s'applique qu'aux fiches PAS ENCORE en ligne), --dry-run. Le dry-run et
 le message Slack donnent la file entière (en ligne, devant nous, sans SEO), hors cap.
@@ -68,6 +75,17 @@ def _select(conn, args, today: str):
             # Règle 6 : un id qui n'existe pas doit se VOIR, sinon le bilan annonce
             # « 8 traitées » sur 10 demandées sans que personne sache lesquelles.
             log.warning("ids introuvables en base, ignorés : %s", manquants)
+        # Le gel n'ÉCARTE pas un ciblage précis (l'opérateur a désigné ses fiches), mais
+        # il doit se VOIR : le SEO sera calculé et écrit en base, et le site refusera de
+        # l'afficher. Sans cette ligne on paie l'appel LLM sans rien comprendre au
+        # silence qui suit.
+        geles = [i for i in args.ids if i in par_id and (par_id[i]["wp_gel_at"] or "")]
+        if geles:
+            log.warning("⚠️ %d des ids demandés ont le texte GELÉ sur le site (retouche "
+                        "à la main) : %s. Leur SEO sera calculé et rangé en base, mais "
+                        "Yoast ne le recevra pas tant que le gel tient. Pour rendre la "
+                        "main : .venv/bin/python -m scripts.gel_texte --degel %s --apply",
+                        len(geles), geles, " ".join(str(i) for i in geles))
         return [par_id[i] for i in args.ids if i in par_id]
     where = [
         "statut IN ('evaluated','published_cs','published_sub')",
@@ -95,6 +113,14 @@ def _select(conn, args, today: str):
         # « ne pas optimiser une annulation ». Générer un title/méta SEO pour une fiche
         # qui ne se déplacera plus n'a aucun public — et ça coûte un appel LLM pour rien.
         "annule_le IS NULL",
+        # GELÉ EXCLU (2026-09-21). Une fiche dont le texte a été repris à la main —
+        # par Franck ou par une session Cowork — n'acceptera plus ni titre Yoast, ni
+        # méta, ni expression clé venus d'ici (deploy/wordpress/cs-gel-texte.php).
+        # L'appel LLM serait payé pour un résultat que personne ne verrait, et
+        # l'ordre de travail voulu (création → cron SEO → reprise à la main) ne va que
+        # dans un sens. Compté à part dans le message de fin (`_geles`), jamais
+        # silencieux : une file qu'on n'affiche pas se découvre des semaines plus tard.
+        "COALESCE(wp_gel_at,'') = ''",
     ]
     params: list = [args.min_score]
     if not args.redo:
@@ -121,9 +147,22 @@ def _retard(conn, today: str) -> dict:
         "WHERE statut IN ('evaluated','published_cs','published_sub') AND duplicate_of IS NULL "
         "  AND COALESCE(date_event_start,'') <> '' AND annule_le IS NULL AND seo_at IS NULL "
         "  AND COALESCE(wp_post_id_as,0) > 0 "
+        "  AND COALESCE(wp_gel_at,'') = '' "
         "  AND COALESCE(date_event_end, date_event_start) >= ? GROUP BY lang", (today,)).fetchall()
     # Indices positionnels : la seconde connexion de main() n'a pas de row_factory.
     return {r[0]: r[1] for r in rows}
+
+
+def _geles(conn, today: str) -> int:
+    """Fiches en ligne, devant nous, dont le TEXTE est gelé — donc volontairement hors
+    de toutes les files ci-dessus. Compté à part et affiché : un état qui sort une fiche
+    d'une file la sort aussi des bilans (règle 6), et c'est comme ça qu'on découvre six
+    semaines plus tard qu'un tiers du catalogue ne passe plus nulle part."""
+    return conn.execute(
+        "SELECT COUNT(*) FROM events_raw WHERE COALESCE(wp_gel_at,'') <> '' "
+        "  AND COALESCE(wp_post_id_as,0) > 0 AND duplicate_of IS NULL "
+        "  AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '9999') >= ?",
+        (today,)).fetchone()[0]
 
 
 # ── Le SEO calculé mais jamais arrivé sur le site ───────────────────────────────
@@ -183,6 +222,12 @@ _SQL_RETARD = (
     "  AND (published_as_date IS NULL OR published_as_date < seo_at) "
     "  AND COALESCE(translation_of,0) = 0 "
     "  AND annule_le IS NULL AND duplicate_of IS NULL "
+    # GELÉE ⇒ HORS DE CETTE FILE, et c'est le point le plus important du lot. Sans cette
+    # ligne, une fiche gelée serait republiée à CHAQUE run (son `seo_pushed_at` ne peut
+    # plus rattraper son `seo_at`, puisque Yoast refuse la méta), donc tous les jours,
+    # pour toujours, en tête de la file — exactement le cul-de-sac que la règle 3
+    # interdit, à ceci près qu'il tourne au lieu de dormir.
+    "  AND COALESCE(wp_gel_at,'') = '' "
     "  AND COALESCE(NULLIF(date_event_end,''), NULLIF(date_event_start,''), '9999') >= ?")
 
 
@@ -240,12 +285,15 @@ def main(argv=None) -> int:
                  len(rows), args.cap, args.min_score, model)
 
     retard = _retard(conn, today)
+    gelees = _geles(conn, today)
     if args.dry_run:
         for r in rows:
             en_ligne = f"WP#{r['wp_post_id_as']}" if r["wp_post_id_as"] else "—"
             print(f"  [{r['id']:>5} {en_ligne:>7}] score={r['llm_score']} · "
                   f"{seo_mod.langue_seo(dict(r))} · {(r['title'] or '')[:60]}")
         print(f"\n{len(rows)} événement(s) SERAIENT optimisés (dry-run — aucun appel LLM).")
+        print(f"Texte GELÉ (repris à la main, en ligne, devant nous) : {gelees} — "
+              f"écartées d'office, leur SEO ne serait pas accepté par le site.")
         print(f"File entière (en ligne, devant nous, sans SEO, hors cap) : "
               f"{sum(retard.values())} — " + ", ".join(f"{k} {v}" for k, v in sorted(retard.items())))
         for i in a_repousser:
@@ -360,6 +408,7 @@ def main(argv=None) -> int:
     # sélection — deux formulations divergent tôt ou tard, et c'est le compteur qui ment.
     reste = [r[0] for r in conn.execute(_SQL_RETARD, (today,)).fetchall()]
     retard = _retard(conn, today)
+    gelees = _geles(conn, today)
     conn.close()
 
     from utils import slack
@@ -375,6 +424,14 @@ def main(argv=None) -> int:
                 + ", ".join(f"{k} {v}" for k, v in sorted(retard.items())))
     if a_repousser:
         msg += f"\n↩️ {len(a_repousser)} SEO en retard repoussé(s) (aucun appel LLM)."
+    if gelees:
+        # Le périmètre à côté du nombre : en ligne, devant nous, texte repris à la main.
+        # Ce n'est PAS une anomalie — c'est l'ordre de travail voulu (création → cron
+        # SEO → reprise à la main). La ligne existe pour que la file se voie, et pour
+        # que personne ne cherche un jour pourquoi ces fiches ne passent plus.
+        msg += (f"\n🔒 {gelees} fiche(s) au texte gelé (reprises à la main / Cowork) — "
+                f"le cron ne repasse plus dessus, c'est voulu. Liste : "
+                f"`.venv/bin/python -m scripts.gel_texte --liste`")
     if reste:
         # Une alerte qui ne dit pas QUOI FAIRE ne sert à rien (Franck, 2026-08-09 : « soit
         # elle est compréhensible et je fais quelque chose, soit on l'enlève »). Une fiche
@@ -390,8 +447,9 @@ def main(argv=None) -> int:
     slack.notify(msg)
     pipeline_status.record_run("seo_batch", ok=ok, error=fail, summary=msg)
     log.info("=== Lot SEO : %d optimisé(s), %d échec(s), %d mauvaise langue, %d arrivé(s) "
-             "sur le site, %d encore en retard, %d en ligne sans SEO ===",
-             ok, fail, mauvaise_langue, len(arrives), len(reste), sum(retard.values()))
+             "sur le site, %d encore en retard, %d en ligne sans SEO, %d gelée(s) ===",
+             ok, fail, mauvaise_langue, len(arrives), len(reste), sum(retard.values()),
+             gelees)
     if plafonne:
         log.error("Le lot s'est arrêté sur un plafond API. Relever le plafond ou "
                   "recharger le crédit (console Anthropic), puis relancer.")

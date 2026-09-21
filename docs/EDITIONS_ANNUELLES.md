@@ -104,3 +104,52 @@ Si le nombre est petit, on adopte à la main paire par paire. S'il est grand, l'
 doit entrer dans la chaîne (après le dédoublonnage, avant la publication) — et là, la
 question de la règle 3 se pose : **qui rouvre une paire refusée à tort ?** Réponse à écrire
 avant de brancher quoi que ce soit au cron.
+
+
+---
+
+## 2026-09-21 — RÈGLE : une URL ne porte JAMAIS de date
+
+**Décision de Franck**, en voyant l'adresse d'un événement annuel : « les url doivent-elles
+comporter la date alors qu'on veut que le lien et l'événement soit mis à jour d'une année
+sur l'autre ? », puis, tranché : « **ne mets jamais les dates**, mets dans la doctrine
+qu'il ne faut jamais mettre les dates ».
+
+C'est le corollaire manquant du §1 : on ne peut pas à la fois vouloir UNE adresse qui
+traverse les éditions et la millésimer. Une URL qui dit `2026` condamne l'édition 2027 à
+en créer une autre, qui repart de zéro.
+
+### Ce qui produisait la date — mesuré, pas deviné
+
+`scripts/publisher_as.py` n'envoyait **aucun slug** pour une fiche originale : seules les
+traductions en avaient un, pour rester appariables à l'œil. Sans slug, WordPress dérive le
+permalien du **titre** — et un titre dit « Marché au Fort 2026 : … » ou « Du 24 au 27
+septembre, Terra Madre … ». Relevé le même jour par l'API WordPress : **27 des 188 fiches
+en ligne et non terminées** portaient une année ou un mois dans leur adresse.
+
+### Ce qui change, et ce qui ne change pas
+
+| | |
+|---|---|
+| **l'ADRESSE** | ne porte plus jamais ni année, ni mois, ni quantième — `utils.seo.slug_sans_date`, posé par `publisher_as` **à la création seulement** |
+| **le TITRE** | inchangé. Le lecteur et Yoast ont besoin du millésime ; c'est l'adresse qui doit survivre à l'édition, pas le titre |
+| **les fiches DÉJÀ publiées** | gardent leur adresse : `cs-publish.php` ne fixe `post_name` qu'à la création, donc une republication ne renomme rien |
+| **la consigne du prompt SEO** | « sans année si récurrent » → « **JAMAIS d'année ni de date** » (`utils/seo.py`) |
+
+`slug_sans_date` retire les années (19xx/20xx), les noms de mois FR et IT, les quantièmes
+qui TOUCHENT un mois, et les mots qui introduisaient la date (« du 24 au 27 septembre »
+part en entier). Il ne touche pas à ce qui ressemble à une date sans en être une —
+« 1 000 places », « 65e Fête de la Châtaigne », « les 24 heures du Mans ».
+
+Fixture : `tests/test_slug_sans_date.py`, verte le 21/09, avec **témoin rouge** (les cinq
+slugs réels relevés en ligne portent bien une date) et les cas frontière ci-dessus.
+
+**LIMITE CONNUE** : un titre dont le mois EST le sujet perd son mot (« Mai 68 » → « 68 »).
+Rare, et une adresse un peu pauvre coûte moins qu'une adresse périmée.
+
+### Les 27 adresses déjà en ligne
+
+Elles ne se corrigent pas toutes seules, et c'est volontaire : renommer un slug est un
+geste par fiche. **Renommer le slug dans WordPress suffit — il pose la 301 tout seul**
+(mesuré le 15/09 sur Vicoforte, `CLAUDE.md`). À faire en priorité sur les événements
+ANNUELS, qui sont ceux dont l'adresse doit durer ; les autres peuvent attendre.

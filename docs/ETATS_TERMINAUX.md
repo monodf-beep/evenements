@@ -45,6 +45,7 @@ D'où ce balayage, fait exprès plutôt qu'au hasard.
 | `seo_at IS NULL` sur une fiche EN LIGNE de score < 7 | `seo_batch` (seuil `--min-score 7`, décision du 30/07) | `seo_batch` lui-même : en ligne ⇒ sélectionnée quel que soit le score ; compteur « Encore sans SEO (en ligne, devant nous) » dans son message Slack | ✅ **fermé le 2026-09-09** — ouvert depuis le 30/07, visible sur la colonne Yoast du back-office (tout rouge) |
 | `seo_at IS NULL` sur une traduction (`translation_of`) | `seo_batch` (exclusion du 02/08, « on rédigera en italien ensuite ») | `seo_batch`, SEO rédigé dans la langue de la fiche (`utils.seo.langue_seo`), langue du résultat contrôlée avant écriture, refus comptés dans le message Slack | ✅ **fermé le 2026-09-09** — ouvert depuis le 02/08 (points GRIS sur toutes les fiches italiennes) |
 | `translated_at` sur un original dont la jumelle a DISPARU | `translate_events` (posé au succès, jamais effacé — sauf `repair_translation.py`, c'est-à-dire un humain qui tape une commande) | `translate_events._rearme_traductions_orphelines`, AVANT la sélection donc dès le run suivant ; ne rouvre que si la jumelle est introuvable des DEUX façons (`translation_of` **et** le marqueur `url_source = 'translated:<id>:<lang>'`, qui survit au déliage) ; fiches rouvertes NOMMÉES dans le journal ; compteur « publiées sans jumelle ET hors de la file » dans `status_report` | ✅ **fermé le 2026-09-15** — ouvert depuis la création de la colonne ; 117 fiches françaises publiées sans jumelle italienne au moment de la mesure, dont 63 encore devant nous |
+| `as_gel_texte` (méta WordPress) + sa copie `wp_gel_at` | `cs-gel-texte.php`, dès qu'une empreinte de texte change hors pipeline (ou à la main, `scripts.gel_texte --gel`) | la case « Texte retravaillé à la main » de l'éditeur ; `scripts.gel_texte --degel` ; `forcer_texte` pour un cas nommé (l'annulation force le titre). Compté tous les jours dans le message Slack de `seo_batch` (« 🔒 N fiche(s) au texte gelé », périmètre : en ligne, devant nous) et dans le journal de `publish_batch_as` | ✅ **fermé à la naissance (2026-09-21)**, éprouvé par `tests/test_gel_texte.py` |
 
 **Le cas le plus instructif du tableau, parce qu'il avait l'air fermé.** `translate_events`
 écarte de la file de traduction toute fiche dont la description « parle manifestement
@@ -724,3 +725,36 @@ d'un mail à côté.
 message, une ligne par `message_id`) et le remplissage de `mail_corps` quand il manquait.
 Ce sont des copies de la matière, pas des verdicts : rien ne s'en déduit sur la fiche, et
 leur absence se répare toute seule au passage suivant (relecture dans Gmail).
+
+
+---
+
+## `as_gel_texte` — le gel du texte repris à la main (2026-09-21)
+
+**Ce que ça pose.** Une fiche dont le titre, le corps, l'extrait ou les métas Yoast ont
+été retravaillés hors pipeline n'accepte plus les réécritures de `cs/v1/event`. Détail et
+raisons : `docs/SEO_QUI_FAIT_QUOI.md`.
+
+**Pourquoi ce n'est pas un cul-de-sac**, et il a fallu y répondre avant d'écrire la
+première ligne :
+
+- **le gel est PARTIEL.** Dates, lieu, catégorie, territoire, métas `as_*` et image
+  continuent de descendre. Une fiche gelée reste vivante dans toutes les files qui ne
+  parlent pas de texte — c'est le point sur lequel la version naïve (« on ne republie
+  plus cette fiche ») serait devenue exactement le défaut que ce fichier recense ;
+- **il a un rouvreur à portée de clic**, dans l'écran même où la retouche a eu lieu : la
+  case de l'encadré *Journal Agenda Sabauda*. Pas « un humain qui tape une commande
+  quelque part » — la commande existe aussi, elle n'est pas la réponse ;
+- **il se compte tous les jours**, avec son périmètre écrit à côté du nombre ;
+- **il sort proprement des files du cron SEO** : `seo_batch._select` l'écarte, mais
+  surtout `_SQL_RETARD` aussi. Sans cette seconde ligne, une fiche gelée aurait été
+  republiée à chaque run pour toujours (son `seo_pushed_at` ne peut plus rattraper son
+  `seo_at`, puisque Yoast refuse la méta) : le cul-de-sac habituel, à ceci près qu'il
+  tourne au lieu de dormir. C'est le cas que `tests/test_gel_texte.py` vérifie en premier.
+
+**Ce qui reste ouvert, et c'est écrit** : le texte retouché ne remonte PAS dans SQLite.
+Les audits qui jugent le texte publié en le lisant en base raisonnent donc sur l'ancienne
+version pour ces fiches-là. Ce n'est pas un état terminal (rien n'est bloqué), c'est un
+ÉCART — et la leçon du 2026-08-13 de ce fichier s'applique : un écart sans colonne est
+invisible à tout audit qui interroge la base. D'où le compteur quotidien, en attendant le
+reflux site → base.

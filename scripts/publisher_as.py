@@ -553,11 +553,17 @@ def _panel_meta(event: dict) -> dict:
     }
 
 
-def _build_payload(event: dict, skip_media: bool = False) -> dict:
+def _build_payload(event: dict, skip_media: bool = False,
+                   forcer_texte: "list[str] | None" = None) -> dict:
     """Construit le JSON envoyé à cs/v1/event depuis une ligne events_raw.
 
     `skip_media=True` : la passe ne touche à AUCUNE image — ni téléversement, ni méta
-    qui pointe vers une image. Voir `as_image_original` plus bas."""
+    qui pointe vers une image. Voir `as_image_original` plus bas.
+
+    `forcer_texte` : champs éditoriaux que le site doit écrire MÊME si la fiche a été
+    retouchée à la main (gel, cf. deploy/wordpress/cs-gel-texte.php). Vide = on respecte
+    le gel. Le seul usage prévu est `["title"]` pour l'annulation : le préfixe
+    « ANNULÉ — » doit atteindre le site quoi qu'il arrive (docs/EVENEMENTS_ANNULES.md)."""
     title, content = build_post(event)
 
     # Le radar n'est jamais crédité ni lié (charte §8).
@@ -735,6 +741,21 @@ def _build_payload(event: dict, skip_media: bool = False) -> dict:
     # l'original pour la fiche traduite.
     if (event.get("slug") or "").strip():
         payload["slug"] = event["slug"].strip()
+    elif not event.get("wp_post_id_as"):
+        # ══ UNE URL NE PORTE JAMAIS DE DATE (décision de Franck, 21/09) ═══════════════
+        # Sans slug explicite, WordPress dérivait le permalien du TITRE — et un titre dit
+        # « Marché au Fort 2026 : … » ou « Du 24 au 27 septembre, Terra Madre … ». Mesuré
+        # le 21/09 : 27 des 188 fiches en ligne et non terminées portaient une année ou un
+        # mois dans leur adresse. Or un événement annuel doit garder UNE adresse d'édition
+        # en édition (docs/EDITIONS_ANNUELLES.md) : une URL millésimée l'interdit.
+        # Le titre, lui, ne change pas — le lecteur et Yoast ont besoin du millésime.
+        # Posé UNIQUEMENT à la création : une republication ne renomme aucune adresse
+        # déjà indexée (cs-publish.php ne fixe `post_name` que si `wp_post_id` est vide,
+        # mais on ne s'en remet pas à ça seul).
+        from utils.seo import slug_sans_date
+        propre = slug_sans_date(title)
+        if propre:
+            payload["slug"] = propre
 
     if (event.get("lieu") or "").strip():
         payload["venue"] = {"Venue": event["lieu"].strip(),
@@ -791,12 +812,30 @@ def _build_payload(event: dict, skip_media: bool = False) -> dict:
             "focus_keyword": event.get("seo_keyphrase", "") or "",
         }
 
+    # GEL : ces champs-là passent malgré une retouche à la main. Envoyé SEULEMENT quand
+    # il y en a — une clé absente laisse cs-gel-texte.php appliquer le gel entier, et
+    # c'est le comportement par défaut voulu.
+    if forcer_texte:
+        payload["forcer_texte"] = list(forcer_texte)
+
     return payload
 
 
-def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str] | tuple[None, str, str]":
+def publish_to_as(event: dict, skip_media: bool = False,
+                  forcer_texte: "list[str] | None" = None,
+                  retour: "dict | None" = None) -> "tuple[int, str, str] | tuple[None, str, str]":
     """Publie/actualise l'événement en brouillon sur agendasabauda.eu (TEC).
     Retourne (wp_post_id, permalink, raw_image_url) ou (None, '', '') si échec.
+
+    `retour` : dictionnaire FACULTATIF que l'appelant fournit pour recevoir ce que le
+    site a répondu au-delà des trois valeurs historiques — aujourd'hui l'état du GEL
+    (`retour["gel"]` = {gele, depuis, motif, champs, forces, restaures}). Le tuple de
+    retour ne change pas : cinq appelants s'en servent, et leur ajouter un quatrième
+    élément aurait été un remaniement pour une information dont un seul a besoin.
+    Ce que le site dit du gel est la SEULE source de vérité (règle 1 : un champ en base
+    ne prouve rien sur l'état du site) ; `publish_batch_as` ne fait que le recopier.
+
+    `forcer_texte` : cf. _build_payload — champs éditoriaux écrits malgré le gel.
 
     skip_media=True → mise à jour TEXTE SEUL : on ne retéléverse AUCUNE image. Utile
     pour une passe qui ne touche que le texte (ex. conformité éditoriale) — évite de
@@ -819,7 +858,7 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
         return None, "", ""
 
     auth = (wp_user, wp_pass)
-    payload = _build_payload(event, skip_media=skip_media)
+    payload = _build_payload(event, skip_media=skip_media, forcer_texte=forcer_texte)
 
     # Image à la une : on TÉLÉVERSE côté Python (fiable — le backoffice accède déjà à
     # ces images) plutôt que de laisser WordPress aller chercher l'URL lui-même (souvent
@@ -933,6 +972,25 @@ def publish_to_as(event: dict, skip_media: bool = False) -> "tuple[int, str, str
         verb = "mis à jour" if body.get("updated") else "créé"
         log.info("Événement Agenda Sabauda %s id=%s : %s", verb, post_id,
                  (event.get("title", "") or "")[:60])
+        # GEL (cs-gel-texte.php). Absent de la réponse = le mu-plugin n'est pas en ligne
+        # sur ce site ; on ne fabrique alors AUCUNE valeur — « pas de gel » et « on ne
+        # sait pas » ne doivent pas se confondre (un zéro qui ne dit pas d'où il vient,
+        # CLAUDE.md, journal des erreurs).
+        gel = body.get("gel")
+        if isinstance(gel, dict):
+            if gel.get("gele"):
+                log.info("Fiche GELÉE (retouche à la main du %s) — champs non écrits : %s",
+                         gel.get("depuis") or "?", ", ".join(gel.get("champs") or []) or "aucun")
+            if gel.get("restaures"):
+                # L'interception n'a pas tenu et le site a dû remettre le texte : ce
+                # n'est pas une panne (la fiche est intacte), c'est un signal que le
+                # garde-fou travaille par sa seconde jambe. À regarder s'il revient.
+                log.warning("Gel : le site a dû RESTAURER %s sur la fiche %s — "
+                            "l'interception de cs-gel-texte.php n'a pas tenu.",
+                            ", ".join(gel.get("restaures") or []), post_id)
+        if retour is not None:
+            retour["gel"] = gel if isinstance(gel, dict) else None
+            retour["updated"] = bool(body.get("updated"))
         return post_id, permalink, raw_image_url
     except requests.HTTPError as exc:
         log.error("Erreur Agenda Sabauda API (%s) : %s", exc.response.status_code,

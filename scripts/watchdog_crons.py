@@ -78,6 +78,12 @@ ATTENDUS = [
     ("Rattrapage URL Gmail",      "gmail_relink",    "gmail_relink.log",     30),
     ("Dates",                     "dates",           "dates.log",            30),
     ("Dédoublonnage",             "dedupe",          "dedupe.log",           30),
+    # Ajoutée le 21/09 EN MÊME TEMPS que son cron, et pas après : ce script a passé un
+    # mois à porter, dans sa propre docstring, « un audit qui mesure un risque sans jamais
+    # tourner ne protège de rien » — sans tourner. Le surveiller ici, c'est refuser que
+    # l'histoire se répète en silence ; et son silence est AMBIGU par construction,
+    # puisqu'il ne parle que d'un écart.
+    ("Langue Polylang",           "audit_langue_polylang", "audit_langue_polylang.log", 30),
     ("Lieux",                     "venues",          "venues.log",           30),
     # Ajoutée le 04/09 avec le cron, même motif que « Rattrapage URL Gmail » ci-dessus.
     ("Tri des séances de cinéma", "cleanup_cinema",  "cleanup_cinema.log",   30),

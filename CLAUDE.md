@@ -288,6 +288,14 @@ fiche qui reste. Mesuré : ces deux adresses-là rendaient 404 pour 64 impressio
 - **les deux gestes se combinent** : corbeiller le POST (il disparaît des listes) et
   rediriger son ADRESSE (elle continue de servir).
 
+**Et une adresse ne porte JAMAIS de date** — arbitrage de Franck du 2026-09-21 : « ne mets
+jamais les dates, mets dans la doctrine qu'il ne faut jamais mettre les dates ». Un
+événement annuel doit garder UNE adresse d'édition en édition (`docs/EDITIONS_ANNUELLES.md`) ;
+une URL millésimée l'interdit. Le TITRE garde son millésime, l'ADRESSE non :
+`utils.seo.slug_sans_date`, posé par `publisher_as` à la création seulement. Mesuré ce
+jour-là : 27 des 188 fiches en ligne et non terminées portaient une année ou un mois dans
+leur URL, parce qu'aucun slug n'était envoyé et que WordPress le dérivait du titre.
+
 Où : `deploy/wordpress/cs-redirections-301.php`, une simple table chemin → chemin, avec
 un garde-fou contre la redirection vers soi-même (une boucle rend le site injoignable,
 au même prix que le mu-plugin cassé d'août).
@@ -305,6 +313,36 @@ au même prix que le mu-plugin cassé d'août).
 Et la leçon de méthode, qui vaut au-delà des redirections : **vérifier qu'une chose est
 morte ne dit pas quoi en faire.** J'ai pris « ces URL n'existent plus » pour « il n'y a
 rien à faire », alors que c'était précisément le motif d'agir.
+
+---
+
+## Le dernier qui écrit est un humain — le cron ne repasse pas derrière
+
+**Arbitrage de Franck, 2026-09-21** : « si cowork a travaillé le seo, on ne doit pas
+pouvoir revenir dessus avec le cron. Le processus : création de l'article en fr et it →
+cron seo → cowork seo. Uniquement dans ce sens. »
+
+Chaque étage peut écraser ce que le précédent a posé, **jamais l'inverse**. Une fiche
+dont le titre, le corps ou les métas Yoast ont été repris à la main est GELÉE : le
+pipeline continue d'y pousser les dates, le lieu, la catégorie, les métas `as_*` et
+l'image — il ne touche plus au texte. Le gel est posé par le SITE
+(`deploy/wordpress/cs-gel-texte.php`, empreinte des six champs éditoriaux), jamais par la
+base : `wp_gel_at` n'en est qu'une copie, et « pas de gel » ne doit jamais se confondre
+avec « le mu-plugin n'est pas en ligne » (règle 1, et le zéro qui ne dit pas d'où il
+vient). Exception unique et étroite : une annulation force le titre.
+
+Deux conséquences qui valent au-delà du SEO :
+
+- **chaque fiche tient un journal** (méta `as_journal`, encadré dans l'éditeur, route
+  `cs/v1/journal`) : qui a écrit quoi, quand. C'est ce qui manquait pour que le cron et
+  une session Cowork sachent l'un de l'autre. Il COMMENCE à son installation — il ne
+  reconstitue pas le passé, et on ne lui fait pas dire ce qu'il ne sait pas ;
+- **un garde-fou posé dans un chemin de réécriture doit avoir sa contre-épreuve APRÈS
+  coup.** Ici : le mu-plugin relit le texte une fois l'appel terminé et le remet s'il a
+  bougé. Prévenir suppose que l'interception marche ; vérifier le prouve.
+
+Protocole complet, rattrapage des fiches déjà retravaillées, et ce que le dispositif ne
+fait PAS : `docs/SEO_QUI_FAIT_QUOI.md`.
 
 ---
 
