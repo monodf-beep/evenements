@@ -124,6 +124,13 @@ _c = _sq.connect(tmp)
 _c.execute("INSERT INTO events_raw (id, title, url_source, wp_post_id_as, article_title, "
            "enrich_data, duplicate_of) VALUES (?,?,?,?,?,?, NULL)",
            (6, "Longue mais jamais rédigée", "https://a.fr/6", 995, None, ""))
+# ⚠️ AJOUTÉ LE 2026-09-21. Le commentaire ci-dessus promettait « une fiche dont la source
+# a écrit trois cents mots », et la donnée ne la rendait longue nulle part : la longueur
+# ne vient pas d'une colonne mais de `_MOTS`, où id 6 n'était pas. Elle valait donc ZÉRO
+# mot et tombait dans le panier des maigres — la fixture testait le contraire de ce
+# qu'elle annonçait, et son contrôle « listée à part » ne vérifiait qu'un titre de
+# section. Un test qui ne cherche qu'à se donner raison ne prouve rien (CLAUDE.md, règle 3).
+_MOTS[6] = 350          # au-dessus du plancher (120), et aucun corps rédigé
 _c.execute("UPDATE events_raw SET enrich_data=? WHERE id=?",
            (_json.dumps({"article": {"corps": "Un vrai article rédigé chez nous."}}), 4))
 _c.commit(); _c.close()
@@ -174,9 +181,19 @@ with _ctx.redirect_stdout(_buf):
 _ids_out = _buf.getvalue()
 _check("la fiche longue-mais-non-rédigée est listée à part",
        "AU-DESSUS du plancher" in _ids_out, _ids_out[-600:])
-_check("   et elle n'est PAS recomptée avec les maigres du panier 1",
-       "  [    1] " not in _ids_out.split("AU-DESSUS du plancher")[1],
-       _ids_out.split("AU-DESSUS du plancher")[-1][:400])
+# ⚠️ FENÊTRE CORRIGÉE LE 2026-09-21, ET C'EST LA FIXTURE QUI AVAIT TORT.
+#
+# Elle cherchait « [    1] » dans TOUT ce qui suit le titre du panier 4 — donc aussi dans
+# le panier 5, qui CONTIENT les paniers 1 et 2 par construction et le dit lui-même
+# (« ne pas additionner »). La fiche 1 y figure à bon droit ; la fixture y voyait une
+# fuite. Rouge depuis le 09/09, et bloquant le déploiement automatique avec.
+#
+# On découpe donc à la SECTION : du titre du panier 4 jusqu'à la ligne vide qui la ferme.
+_section4 = _ids_out.split("AU-DESSUS du plancher")[1].split("\n\n")[0]
+_check("   la fiche 6, longue et non rédigée, est bien DANS le panier 4",
+       "[    6]" in _section4, _section4)
+_check("   et la maigre (id 1) n'y est PAS recomptée",
+       "[    1]" not in _section4, _section4)
 
 # ── UNE TRADUCTION N'EST PAS UNE TÂCHE ───────────────────────────────────────────────
 # `enrich` REFUSE toute fiche dont `translation_of` est renseigné : il écrit en français

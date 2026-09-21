@@ -311,8 +311,28 @@ _check("   la sortie dit qu'elle tient par COÏNCIDENCE et nomme le mot",
        "par COÏNCIDENCE" in out and "pinocchio" in out, out)
 _check("   le compteur « dont par coïncidence » vaut 1, à côté de son périmètre",
        "…dont par coïncidence   : 1" in out, out[:1200])
-_check("   la commande de corbeille est proposée, entière (--statut rejected)",
-       "trash_by_ids" in out and "--statut rejected" in out, out[-900:])
+# ⚠️ CETTE ASSERTION A ÉTÉ RETOURNÉE LE 2026-09-21, ET C'EST LE CODE QUI A RAISON.
+#
+# Elle exigeait « la commande de corbeille est proposée, entière ». Elle est rouge depuis
+# le 19/09, commit abf3213 : ce jour-là, le cerveau du matin a lu la commande consolidée
+# de ce script et aurait corbeillé TO Play (5702) et Mobilità dolce (5690) — deux VRAIS
+# événements différents, vérifiés sur WordPress. Les groupes formés par COÏNCIDENCE (lieu
+# + dates + un seul jeton commun) sont donc sortis de cette commande.
+#
+# La fixture, elle, n'a pas suivi. Elle échouait PARCE QUE LE CODE ÉTAIT DEVENU PLUS
+# PRUDENT — le pire genre de rouge : il punit la correction et use la confiance dans la
+# suite. Et il coûtait cher, parce que `auto_deploiement` refuse de déployer sur un
+# `run_all` rouge : le déploiement automatique de 7h50 était bloqué.
+#
+# Ce qu'on vérifie désormais est ce que le 19/09 a voulu : le groupe reste AFFICHÉ avec
+# son motif, mais ses ids n'entrent PAS dans la commande consolidée, et la sortie dit
+# pourquoi. Le contrôle est plus fort qu'avant : il porte sur l'absence, pas la présence.
+_check("   le groupe par coïncidence est TENU HORS de la commande automatique (19/09)",
+       "PAS dans la commande automatique" in out and "pinocchio" in out, out[-1400:])
+_check("   et aucun trash_by_ids ne porte ses ids",
+       not any("trash_by_ids" in l and ("6413" in l or "8193" in l or "1 2" in l)
+               for l in out.splitlines()),
+       [l for l in out.splitlines() if "trash_by_ids" in l])
 _check("les deux spectacles (11, 12) ne remontent PAS", "[   11]" not in out and "[   12]" not in out, out)
 _check("la paire FR/IT liée (31, 32) ne remonte PAS et est comptée écartée",
        "[   31]" not in out and "écartés (paires FR/IT)  : 1" in out, out[:1500])

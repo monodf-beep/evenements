@@ -40,6 +40,24 @@ def _outil_manquant(sortie: str) -> str:
     for outil in ("pytest",):
         if f"No module named {outil}" in sortie or f"No module named '{outil}'" in sortie:
             return f"{outil} absent du venv (installation : demander à Franck)"
+    # ══ `yoastseo`, ET POURQUOI IL A SA PLACE DANS CETTE LISTE ÉTROITE ════════════════
+    #
+    # Trouvé le 2026-09-21 en cherchant pourquoi le déploiement automatique de 7h50 ne
+    # partait plus. `auto_deploiement` sort le code candidat dans un `git worktree`
+    # JETABLE et y lance ce fichier — or `node_modules/` est dans .gitignore (ligne 40)
+    # et rien n'exécute `npm install` dans le worktree. `test_yoast_scores` y échoue donc
+    # à TOUS LES COUPS, quelles que soient les fixtures par ailleurs : un rouge
+    # permanent, qui bloque le déploiement pour une raison qui n'est pas du code.
+    #
+    # C'est bien un LANCEUR de test absent, comme pytest : un paquet npm externe,
+    # installé à côté du dépôt, jamais versionné. Pas un module du projet — le
+    # commentaire ci-dessus reste la règle, et il n'est pas contourné ici.
+    #
+    # ⚠️ Là où `npm install` A été lancé, la fixture tourne et doit PASSER : on ne la
+    # neutralise pas, on reconnaît son absence d'outil. Si elle échoue avec yoastseo
+    # présent, c'est un vrai rouge et il reste rouge.
+    if "Cannot find module 'yoastseo'" in sortie:
+        return "paquet npm `yoastseo` absent (npm install dans le dépôt)"
     return ""
 
 

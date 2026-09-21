@@ -24,6 +24,7 @@ premier passage où le parseur échoue.
 Lancer : .venv/bin/python -m tests.test_dates_repasse_texte
 """
 import sqlite3
+from datetime import date as _date
 import sys
 import tempfile
 from pathlib import Path
@@ -59,6 +60,36 @@ for col in ("article_title TEXT", "translation_of INTEGER"):
     except sqlite3.OperationalError:
         pass
 
+# ══ POURQUOI CES DATES SONT CALCULÉES ET PLUS ÉCRITES EN DUR ════════════════════════
+#
+# Cette fixture était rouge depuis le 21/09, et pour la raison la plus bête : elle datait
+# ses fiches au « 20 septembre 2026 », qui était devant nous quand elle a été écrite le
+# 08/09 et qui est passé depuis. Or la passe page applique la règle 5 — une fiche dont la
+# FIN est passée est un événement terminé, on ne lit pas sa page. Le script écartait donc
+# à RAISON les fiches 3, 7 et 8, et la fixture attendait qu'il les traite.
+#
+# Ni le code ni le scénario n'avaient tort : c'est la date qui avait vieilli. Le dépôt
+# connaît déjà ce piège — « un motif de date fixe ne meurt pas, il dort onze mois puis
+# repart » (crontab.txt, les quatre lignes d'août). Le coût, lui, n'était pas théorique :
+# `auto_deploiement` refuse de déployer sur un `run_all` rouge, donc le déploiement
+# automatique de 7h50 était bloqué.
+#
+# On ancre donc tout sur l'AN PROCHAIN : n'importe quelle date de l'année suivante est
+# forcément devant nous, et un intervalle juin→septembre ne chevauche jamais deux années
+# (ce qui casserait la lecture « du 12 juin au 20 septembre <an> », où l'année n'est
+# écrite qu'une fois). La fixture ne peut plus expirer.
+_AN = _date.today().year + 1
+_FIN = _date(_AN, 9, 20)                 # « 20 septembre <an> »
+_DEBUT_CORR = _date(_AN, 7, 4)           # « 4 juillet <an> », le début corroboré
+_MOIS_FR = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+            "septembre", "octobre", "novembre", "décembre")
+
+
+def _fr(d):
+    """« 20 septembre 2027 » — la forme que lisent les pages des offices de tourisme."""
+    return f"{d.day} {_MOIS_FR[d.month - 1]} {d.year}"
+
+
 CAS = [
     # (id, titre, description, article_title, date_source, start, end)
     # 1 — LE CAS DU 11/08 : déjà déclarée « non datable », mais son titre porte la date.
@@ -68,7 +99,7 @@ CAS = [
     (2, "Communiqué de presse", "", "Cinéma de plein air : programmation du 11 au 29 août",
      "none", "", ""),
     # 3 — n'a QU'UNE date de fin, et son texte n'est plus datable : à ne pas effacer.
-    (3, "Exposition permanente", "", "", "parsed", "", "2026-09-20"),
+    (3, "Exposition permanente", "", "", "parsed", "", _FIN.isoformat()),
     # 4 — déjà datée : hors sélection, rien ne doit bouger.
     (4, "Concert du 5 mai", "", "", "page", "2026-05-05", "2026-05-05"),
     # 5 — vraiment indatable : doit rester à 'none' pour que la passe page la reprenne.
@@ -78,7 +109,7 @@ CAS = [
     # 7 — « jusqu'au… » : le texte ne donne QUE la fin. La fiche gagne quelque chose, mais
     # elle reste incomplète — et c'est exactement ce que le compteur annonçait à tort
     # comme « datée » le 2026-08-11 (64 annoncées, 10 réelles).
-    (7, "Un été à Albé, saison patrimoniale jusqu'au 20 septembre", "", "", "", "", ""),
+    (7, f"Un été à Albé, saison patrimoniale jusqu'au {_fr(_FIN)}", "", "", "", "", ""),
 ]
 for eid, titre, desc, art, src, s, e in CAS:
     conn.execute(
@@ -114,7 +145,7 @@ _check("… avec une provenance distincte, pour pouvoir y revenir",
 
 print("\n──── CE QUI NE DOIT SURTOUT PAS ARRIVER : effacer ────")
 _check("fiche 3 : la date de fin seule survit à une passe qui échoue",
-       _lire(3)[1] == "2026-09-20", str(_lire(3)))
+       _lire(3)[1] == _FIN.isoformat(), str(_lire(3)))
 _check("fiche 4 : une fiche déjà datée n'est pas touchée",
        _lire(4)[:2] == ("2026-05-05", "2026-05-05"), str(_lire(4)))
 _check("fiche 4 : sa provenance non plus", _lire(4)[2] == "page", str(_lire(4)))
@@ -133,7 +164,7 @@ _check("… et la copie porte bien les dates de l'original",
        _lire(6)[:2] == _lire(1)[:2], f"{_lire(6)} vs {_lire(1)}")
 
 print("\n──── « jusqu'au 20 septembre » : gagné une fin, TOUJOURS incomplète ────")
-_check("fiche 7 a bien reçu sa date de fin", _lire(7)[1] == "2026-09-20", str(_lire(7)))
+_check("fiche 7 a bien reçu sa date de fin", _lire(7)[1] == _FIN.isoformat(), str(_lire(7)))
 _check("… mais elle n'a PAS de date de début, et le compteur ne doit pas la dire datée",
        _lire(7)[0] == "", str(_lire(7)))
 
@@ -185,15 +216,16 @@ def _fetch_muet(url, _capture=None):
 def _fetch_corroborant(url, _capture=None):
     if _capture is not None:
         _capture["text"] = ("Saison patrimoniale · L'édition se tient "
-                            "du 4 juillet au 20 septembre 2026 · Entrée libre")
+                            f"du {_DEBUT_CORR.day} {_MOIS_FR[_DEBUT_CORR.month - 1]} "
+                            f"au {_fr(_FIN)} · Entrée libre")
     return ("", "", "nodate")
 
 
 dates_mod.fetch_event_dates = _fetch_muet
 dates_mod.main(["--no-llm", "--no-republish"])
-_check("fiche 7 : page muette, sa date de fin est INTACTE", _lire(7)[1] == "2026-09-20",
+_check("fiche 7 : page muette, sa date de fin est INTACTE", _lire(7)[1] == _FIN.isoformat(),
        str(_lire(7)))
-_check("fiche 3 : idem, la fin seule survit à la passe page", _lire(3)[1] == "2026-09-20",
+_check("fiche 3 : idem, la fin seule survit à la passe page", _lire(3)[1] == _FIN.isoformat(),
        str(_lire(3)))
 
 _check("fiche 7 : lue sans résultat, elle passe à 'nodate' (plafond de tentatives et "
@@ -205,15 +237,15 @@ _check("fiche 7 : lue sans résultat, elle passe à 'nodate' (plafond de tentati
 c = sqlite3.connect(db)
 c.execute("INSERT INTO events_raw (id, title, description, url_source, date_source, "
           "date_event_start, date_event_end) VALUES (8,'Saison patrimoniale','', "
-          "'https://exemple.fr/8','parsed','','2026-09-20')")
+          f"'https://exemple.fr/8','parsed','','{_FIN.isoformat()}')")
 c.commit()
 c.close()
 
 dates_mod.fetch_event_dates = _fetch_corroborant
 dates_mod.main(["--no-llm", "--no-republish"])
 _check("fiche 8 : le début est trouvé sur la page et corroboré par la fin",
-       _lire(8)[0] == "2026-07-04", str(_lire(8)))
-_check("… la fin connue n'a pas bougé", _lire(8)[1] == "2026-09-20", str(_lire(8)))
+       _lire(8)[0] == _DEBUT_CORR.isoformat(), str(_lire(8)))
+_check("… la fin connue n'a pas bougé", _lire(8)[1] == _FIN.isoformat(), str(_lire(8)))
 _check("… et la provenance le dit", _lire(8)[2] == "page_corroboree", str(_lire(8)))
 dates_mod.fetch_event_dates = _vrai_fetch
 
