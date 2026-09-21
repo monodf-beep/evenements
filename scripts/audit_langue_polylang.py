@@ -17,6 +17,13 @@ porte » à côté de sa jumelle française. La traduction (WP#9209) avait été
 de traduction. Deux jumelles sur 49. Un audit qui mesure un risque sans jamais tourner ne
 protège de rien : celui-ci n'était dans aucun cron.
 
+⚠️ RESTÉ VRAI QUATRE JOURS DE PLUS. Le 2026-09-21, Franck envoie une capture du hub
+Vallée d'Aoste : « problème de duplication ». Ce que ce script aurait dit tout seul :
+32 traductions du mauvais versant sur 85 encore devant nous — dont celles qui faisaient
+deux cartes françaises côte à côte. Il est planifié depuis ce jour-là (crontab.txt,
+9h55, juste après les doublons), et `--slack` en pose UNE ligne dans le bilan quotidien,
+même à zéro, avec le nombre d'examinées à côté.
+
 DEPUIS, `publisher_as._lang` lit `translated_lang` avant de deviner quoi que ce soit — le
 risque est fermé par construction, et ce script ne le simule plus. Il mesure autre chose,
 qui aurait montré l'incident dès le 16/09 : le VERSANT où WordPress a rangé la page à sa
@@ -90,6 +97,9 @@ def main(argv=None) -> int:
     p.add_argument("--tout", action="store_true",
                    help="Inclure les événements passés (par défaut : seulement ce qui "
                         "est encore devant nous, règle 5).")
+    p.add_argument("--slack", action="store_true",
+                   help="Poster UNE ligne dans le bilan quotidien (via la boîte du "
+                        "digest). Le relevé complet reste à l'écran.")
     args = p.parse_args(argv)
 
     if not DB_PATH.exists():
@@ -145,6 +155,36 @@ def main(argv=None) -> int:
         for r, voulue, devinee in regressions[:10]:
             print(f"   fiche {r['id']} : voulue {voulue}, _lang rend {devinee} — {(r.get('title') or '')[:50]}")
         print()
+
+    # ══ LE BILAN QUOTIDIEN — UNE LIGNE, JAMAIS LE TABLEAU ════════════════════════════
+    #
+    # Branché le 2026-09-21, sur « oui » de Franck. Ce script portait depuis le 17/09, dans
+    # sa propre docstring, la phrase « un audit qui mesure un risque sans jamais tourner ne
+    # protège de rien » — et il n'était dans aucun cron. Mesuré ce jour-là : 32 traductions
+    # servies du mauvais versant, découvertes parce que Franck a envoyé une capture du hub.
+    #
+    # UNE LIGNE, et pas le tableau : le digest existe parce que sept messages par jour ne
+    # se lisent plus (slack_digest, 13/08). Le relevé complet reste à l'écran, à une
+    # commande — et la ligne la nomme.
+    #
+    # ET ELLE PART MÊME À ZÉRO, avec le nombre d'examinées à côté : un « 0 » sur une file
+    # vide et un « 0 » sur une requête cassée ont exactement la même tête (journal du
+    # 11/08). C'est pour ça que le message porte les deux nombres et son périmètre.
+    if args.slack:
+        from utils import slack
+        tete = "⚠️" if ecarts else "✅"
+        lignes = [f"{tete} *Traductions du mauvais versant* : {len(ecarts)} sur "
+                  f"{len(examinees)} examinée(s) ({perimetre})."]
+        if ecarts:
+            lignes.append("Leurs deux pages sont du même côté du site : le lecteur du hub "
+                          "les voit comme des doublons, et le sélecteur de langue tombe "
+                          "sur une page qu'il ne sait pas lire.")
+            lignes.append("Relevé et geste : "
+                          "`.venv/bin/python -m scripts.audit_langue_polylang`")
+        if regressions:
+            lignes.append(f"🔴 {len(regressions)} régression(s) de code : `_lang` rend une "
+                          f"autre langue que `translated_lang`.")
+        slack.notify("\n".join(lignes))
 
     if not ecarts:
         print(f"Aucun écart sur les {len(examinees)} traduction(s) examinée(s) : à leur")
