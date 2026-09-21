@@ -162,7 +162,18 @@ verifier("mais la voix reste servie (une panne partielle n'efface pas le reste)"
 # --------------------------------------------------------------------------- #
 # 5. Filet du dépôt : la voix répond, mais ce n'est plus Obsidian
 # --------------------------------------------------------------------------- #
-os.environ["OBSIDIAN_VOIX_PATH"] = ""
+# ⚠️ METTRE LA VARIABLE À VIDE NE SUFFIT PAS, et c'est le VPS qui l'a appris (22/09).
+# Quand `OBSIDIAN_VOIX_PATH` est vide, `utils/voix.py` descend sur ses couches suivantes :
+# `VOIX_DIR`, puis `settings.voix_layers`, puis `settings.voix_active`. Sur le serveur,
+# ces couches-là existent et pointent HORS du dépôt — donc la voix ne venait pas du filet,
+# et ce contrôle échouait là-bas tout en passant ici, sur un conteneur qui n'a ni `.env`
+# ni réglages. Une fixture verte seulement là où elle ne sert à rien.
+#
+# On ne cherche pas à éteindre chaque couche une à une : on pose la couche 1, qui PRIME
+# sur tout le reste, sur le filet versionné lui-même. Le scénario devient déterministe et
+# teste exactement ce qu'il annonce — l'ÉTIQUETAGE de la provenance — quelle que soit la
+# machine.
+os.environ["OBSIDIAN_VOIX_PATH"] = str(ROOT / "docs" / "voix" / "VOIX.md")
 os.environ["OBSIDIAN_VOCAB_PATH"] = str(NOTE_VOCAB)
 st_filet = doctrine.statut()
 bloc_voix = st_filet["blocs"][0]
@@ -186,7 +197,12 @@ verifier("la charte versionnée ne masque PAS la panne",
 # --------------------------------------------------------------------------- #
 os.environ["OBSIDIAN_VOIX_PATH"] = str(NOTE_VOIX)
 os.environ["OBSIDIAN_VOCAB_PATH"] = str(NOTE_VOCAB)
-os.environ.pop("DOCTRINE_TOKEN", None)
+# ⚠️ `pop` ne tient pas : plusieurs modules rappellent `load_dotenv()` à chaque accès, ce
+# qui RÉINJECTE la variable depuis le `.env` du VPS avant que la route ne la lise. On la
+# pose donc à VIDE — `python-dotenv` n'écrase jamais une variable déjà présente, et
+# `_doctrine_token()` traite la chaîne vide comme « non réglé », ce qui est précisément le
+# cas qu'on veut éprouver. Même défaut que l'incident Slack du 2026-08-17.
+os.environ["DOCTRINE_TOKEN"] = ""
 
 from app.app import app                                   # noqa: E402
 
