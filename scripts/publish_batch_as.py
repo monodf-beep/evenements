@@ -186,6 +186,37 @@ def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict],
     return kept, blocked
 
 
+def _ranger_gel(conn, event_id: int, gel, geles: list, restaures: list) -> None:
+    """Recopie en base ce que le SITE vient de dire du gel de cette fiche.
+
+    Règle 1 : un champ en base ne prouve rien sur l'état du site. C'est donc WordPress
+    (deploy/wordpress/cs-gel-texte.php) qui détecte la retouche et la fait respecter ;
+    ces colonnes ne sont qu'une COPIE, utilisée en amont pour ne pas dépenser un appel
+    LLM sur une fiche dont le SEO ne pourra pas être poussé (scripts/seo_batch.py) et
+    pour compter la file garée.
+
+    `gel` à None = la réponse ne contenait pas la clé : le mu-plugin n'est pas en ligne.
+    On NE TOUCHE À RIEN dans ce cas — « pas de gel » et « on ne sait pas » ne doivent pas
+    rendre le même résultat, sinon un déploiement oublié dégèlerait tout en silence."""
+    if not isinstance(gel, dict):
+        return
+    if gel.get("gele"):
+        conn.execute(
+            "UPDATE events_raw SET wp_gel_at=?, wp_gel_champs=?, wp_gel_motif=? WHERE id=?",
+            (gel.get("depuis") or "", ",".join(gel.get("champs") or []),
+             gel.get("motif") or "", event_id))
+        geles.append(event_id)
+    else:
+        # Dégelée sur le site (case décochée, ou scripts/gel_texte.py --degel) : la copie
+        # locale doit suivre, sinon seo_batch continuerait d'écarter la fiche pour
+        # toujours — le cul-de-sac de la règle 3, cette fois du côté du rouvreur.
+        conn.execute("UPDATE events_raw SET wp_gel_at=NULL, wp_gel_champs=NULL, "
+                     "wp_gel_motif=NULL WHERE id=? AND wp_gel_at IS NOT NULL", (event_id,))
+    if gel.get("restaures"):
+        restaures.append(event_id)
+    conn.commit()
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Publication en lot vers Agenda Sabauda.")
     parser.add_argument("--cap", type=int, default=50, help="Nombre max d'événements par run.")
@@ -415,6 +446,8 @@ def main(argv=None) -> int:
 
     ok = fail = 0
     refuses = 0
+    geles = []      # fiches dont le SITE a dit « texte retouché à la main, non écrit »
+    restaures = []  # … et où l'interception n'a pas tenu (le site a dû remettre le texte)
     for i, r in enumerate(rows, 1):
         event = dict(r)
         # ══ GARDE-FOU ULTIME : jamais de CRÉATION sans date ══════════════════════
@@ -450,7 +483,8 @@ def main(argv=None) -> int:
         # générique côté WP, pas cassé — mais pas voulu).
         skip = args.skip_media and (event.get("wp_post_id_as") or 0) > 0
         _heriter_source_traduction(event, conn)
-        wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip)
+        retour: dict = {}
+        wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip, retour=retour)
         if wp_id:
             conn.execute(
                 # `wp_deleted_at=NULL` : la fiche vient d'être (re)mise en ligne, le
@@ -465,6 +499,7 @@ def main(argv=None) -> int:
                 (wp_id, permalink, raw_url, event["id"]))
             conn.commit()
             ok += 1
+            _ranger_gel(conn, event["id"], retour.get("gel"), geles, restaures)
         else:
             fail += 1
             log.warning("Échec pour id=%s : %s", event["id"], (event.get("title") or "")[:60])
@@ -476,6 +511,22 @@ def main(argv=None) -> int:
     conn.close()
     log.info("=== Lot Agenda Sabauda : %d publié(s), %d échec(s), %d création(s) refusée(s) "
              "faute de date ===", ok, fail, refuses)
+    if geles:
+        # RÈGLE 6 : un état qui sort une fiche d'une file la sort aussi des bilans si on
+        # ne le compte pas. Le périmètre est écrit à côté du nombre : ce sont les fiches
+        # de CE lot, pas la file entière (celle-là se lit avec `--liste` ci-dessous).
+        log.info("%d fiche(s) de ce lot ont le texte GELÉ (retouche à la main) : %s. "
+                 "Leurs dates, lieu, catégorie et métas as_* ont bien été mis à jour ; "
+                 "titre, corps, extrait et métas Yoast, non. Pour rendre la main au "
+                 "pipeline sur l'une d'elles : "
+                 ".venv/bin/python -m scripts.gel_texte --degel <id> --apply",
+                 len(geles), " ".join(str(i) for i in geles))
+    if restaures:
+        log.warning("🔴 %d fiche(s) où le site a dû RESTAURER le texte après coup (%s) : "
+                    "l'interception de cs-gel-texte.php n'a pas tenu. Le texte est "
+                    "intact (la seconde jambe du garde-fou a joué), mais c'est la "
+                    "première qu'il faut reprendre.",
+                    len(restaures), " ".join(str(i) for i in restaures))
     return 0 if fail == 0 else 1
 
 

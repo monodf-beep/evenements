@@ -61,12 +61,12 @@ def _check(label, cond, detail=""):
 # --------------------------------------------------------------------------- #
 # Faux WordPress : enregistre les appels, ne contacte JAMAIS le réseau.
 # --------------------------------------------------------------------------- #
-appels = []          # [(event_id, title, skip_media)]
+appels = []          # [(event_id, title, skip_media, forcer_texte)]
 ids_en_echec = set()  # events pour lesquels le faux WP renvoie un échec
 
 
-def fake_publish_to_as(event, skip_media=False):
-    appels.append((event["id"], event["title"], skip_media))
+def fake_publish_to_as(event, skip_media=False, forcer_texte=None, retour=None):
+    appels.append((event["id"], event["title"], skip_media, forcer_texte))
     if event["id"] in ids_en_echec:
         return None, "", ""
     return 9000 + event["id"], f"https://agendasabauda.eu/e/{event['id']}", ""
@@ -142,6 +142,12 @@ _check("republication en skip_media=True (seul le titre change)",
        all(a[2] is True for a in appels), str(appels))
 _check("le titre ENVOYÉ à WordPress porte déjà le préfixe",
        any(a[0] == 10 and a[1].startswith("ANNULÉ — ") for a in appels), str(appels))
+# GEL DU TEXTE (2026-09-21) : une fiche reprise à la main refuse les réécritures du
+# pipeline. L'annulation est la SEULE exception, et elle est étroite — le titre seul.
+# Sans ce forçage, l'unique information que le lecteur doit absolument voir serait la
+# seule à ne pas descendre sur une fiche retravaillée par Cowork.
+_check("l'annulation force le TITRE malgré un éventuel gel du texte",
+       all(a[3] == ["title"] for a in appels), str(appels))
 
 # ══════════════ 2. Idempotence : recliquer ne double pas le préfixe ══════════════
 print("\n──── 2. re-clic sur /action/10/annuler — idempotent ────")

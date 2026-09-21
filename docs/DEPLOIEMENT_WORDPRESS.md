@@ -461,3 +461,37 @@ ligne par ligne, et la fixture porte 2595 comme témoin par le détail, avec sa
 contre-épreuve (sans la liste, la densité n'est plus celle de l'éditeur). Déposée avec
 sauvegarde `.bak-2026-09-17-v13` (md5 v1.4 `6693f626…`, 13 807 octets). Les 306 pages
 sont à renoter, puisque la v1.3 a écrit des notes que l'éditeur contredira.
+
+---
+
+## 21/09/2026 — `cs-gel-texte.php` : empêcher le cron de défaire une reprise à la main
+
+**Ce qu'il fait** : intercepte `cs/v1/event` avant et après `cs-publish.php`, et neutralise
+titre / corps / extrait / métas Yoast quand la fiche a été retravaillée hors pipeline.
+Tient aussi le journal par fiche (méta `as_journal`, encadré dans l'éditeur) et quatre
+routes : `cs/v1/gel` (GET liste, POST pose), `cs/v1/degel`, `cs/v1/journal` (GET/POST),
+`cs/v1/gel/version`. Motif, doctrine et rouvreurs : `docs/SEO_QUI_FAIT_QUOI.md`.
+
+**Pourquoi un mu-plugin NEUF plutôt qu'un patch de `cs-publish.php`** — parce que
+`cs-publish.php` vit dans Code Snippets, en base (§ 1 et § 9 de ce document) : le modifier
+demande une manipulation à la main, ligne à ligne, sur le code qui met le site en ligne, et
+la version en ligne contient du code absent du dépôt. Un fichier séparé se dépose par
+Novamira, passe `php -l` via `tests/test_php_syntax.py`, et se retire en le supprimant.
+Le gel n'a besoin d'aucune ligne de `cs-publish.php`.
+
+**Dépôt** :
+
+```bash
+bash deploy/push-wordpress.sh cs-gel-texte.php
+curl -s https://agendasabauda.eu/wp-json/cs/v1/gel/version
+# attendu : {"cs_gel":"2026-09-21 — gel par empreinte + journal de fiche"}
+```
+
+Tant que cette route répond 404, **rien n'est protégé** : la réponse de `cs/v1/event` ne
+porte alors pas de clé `gel`, le Python ne marque rien en base — et ne dégèle rien non plus.
+C'est voulu : « pas de gel » et « mu-plugin absent » ne doivent pas rendre le même résultat.
+
+**Retour arrière** : supprimer le fichier de `wp-content/mu-plugins/`. Les métas
+(`as_gel_texte`, `as_bot_empreinte`, `as_journal`) restent en base WordPress sans effet, et
+le pipeline reprend la main sur tout au passage suivant — y compris sur les fiches
+retravaillées, donc à ne faire qu'en connaissance de cause.

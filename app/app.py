@@ -4441,7 +4441,14 @@ def _appliquer_annulation(conn: sqlite3.Connection, event_id: int, activer: bool
         try:
             # skip_media : seul le titre change, on ne retouche pas la photo — même
             # motif que scripts/seo_batch.py pour une republication ciblée par id.
-            wp_id, _permalink, _raw = publish_to_as(ev, skip_media=True)
+            # forcer_texte=['title'] : une annulation doit atteindre le site MÊME sur
+            # une fiche dont le texte a été repris à la main (gel, cf.
+            # deploy/wordpress/cs-gel-texte.php). C'est la seule exception au gel, et
+            # elle est étroite — le préfixe « ANNULÉ — » passe, le corps retravaillé
+            # reste. Sans ça, la seule information que le lecteur doit absolument voir
+            # serait la seule à ne pas descendre.
+            wp_id, _permalink, _raw = publish_to_as(ev, skip_media=True,
+                                                    forcer_texte=["title"])
             wp_publie = bool(wp_id)
             if not wp_publie:
                 erreur = "échec WordPress (voir logs)"
