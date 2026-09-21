@@ -182,3 +182,94 @@ def goulot(etages_: list[dict]) -> dict | None:
         if e["pct"] is not None and e["pct"] < 90 and e["reste"] > 0:
             return e
     return None
+
+
+# ── LES GARAGES — ce qui est SORTI d'une file sans être terminé ────────────────
+#
+# Les étages ci-dessus disent « combien sont passés ». Ils ne disent pas où sont les
+# autres, et c'est exactement la question qu'on se pose devant une chaîne qui ralentit :
+# non pas « combien manquent » mais « qui les retient, et qui peut les rendre ».
+#
+# Un GARAGE, c'est un état qui écarte une fiche d'une file sans qu'aucune autre ne la
+# reprenne d'elle-même — le défaut structurel que `docs/ETATS_TERMINAUX.md` recense. Ils
+# étaient décrits un par un dans la documentation et comptés NULLE PART : c'est ainsi que
+# 823 fiches ont dormi dans `venue_source='llm_none'` alors que l'option de reprise
+# existait depuis le premier jour.
+#
+# TROIS EXIGENCES, tirées des mêmes incidents :
+#   • chaque garage porte son PÉRIMÈTRE en français, à côté du nombre ;
+#   • chacun nomme QUI le rouvre — un garage sans rouvreur est un cul-de-sac, et le dire
+#     est le seul moyen qu'il ne le reste pas ;
+#   • une colonne absente de la base ne rend pas « 0 » mais None, affiché « non mesuré ».
+#     Un zéro qui vient d'une colonne manquante ressemble trait pour trait à un zéro qui
+#     vient d'un garage vide, et les deux n'appellent pas le même geste.
+_GARAGES = [
+    {"cle": "pending", "nom": "En attente d'évaluation",
+     "perimetre": "fiches collectées, pas encore notées",
+     "rouvreur": "l'évaluateur de 9h00, 100 par passage",
+     "colonnes": [], "where": "statut='pending'", "lien": "/events"},
+    {"cle": "date_garage", "nom": "Datation abandonnée",
+     "perimetre": "fiches sans date après 3 tentatives, encore devant nous",
+     "rouvreur": "automatique dès que le titre ou la description change ; sinon "
+                 "`scripts/dates.py --retry`",
+     "colonnes": ["date_tentatives", "date_source"],
+     "where": "date_source IN ('nodate','llm_none') AND COALESCE(date_event_start,'')='' "
+              "AND COALESCE(date_tentatives,0) >= 3",
+     "lien": "/a-completer"},
+    {"cle": "venue_garage", "nom": "Lieu introuvable",
+     "perimetre": "fiches sans lieu après échec de la page et du modèle, encore devant nous",
+     "rouvreur": "automatique après 7 jours ; sinon `scripts/venues.py --retry`",
+     "colonnes": ["venue_source"],
+     "where": "venue_source IN ('novenue','llm_none') AND COALESCE(lieu,'')=''",
+     "lien": "/a-completer"},
+    {"cle": "matiere_polluee", "nom": "Matière polluée",
+     "perimetre": "fiches dont la description vient d'un agrégateur — aucun article "
+                  "rédigeable, encore devant nous",
+     "rouvreur": "`scripts/repair_polluted_descriptions.py`, chaque dimanche par le grand ménage",
+     "colonnes": ["enrich_status"], "where": "enrich_status='matiere_polluee'",
+     "lien": "/events"},
+    {"cle": "enrich_erreur", "nom": "Rédaction en erreur",
+     "perimetre": "fiches dont la rédaction a échoué, encore devant nous",
+     "rouvreur": "automatique après 7 jours pour « error », dès le run suivant pour « api_error »",
+     "colonnes": ["enrich_status"], "where": "enrich_status IN ('error','api_error')",
+     "lien": "/events"},
+    {"cle": "traduction_garage", "nom": "Traduction refusée",
+     "perimetre": "fiches publiées refusées 3 fois à la traduction, encore devant nous",
+     "rouvreur": "automatique dès que l'empreinte de la matière change",
+     "colonnes": ["traduction_tentatives"],
+     "where": "COALESCE(traduction_tentatives,0) >= 3 AND COALESCE(translated_at,'')='' "
+              "AND COALESCE(wp_post_id_as,0)<>0",
+     "lien": "/events"},
+    {"cle": "gelees", "nom": "Texte gelé",
+     "perimetre": "fiches reprises à la main — hors des files de référencement, encore "
+                  "devant nous. Ce n'est PAS une anomalie : c'est le dispositif qui marche.",
+     "rouvreur": "la case « Texte retravaillé » dans l'éditeur WordPress, ou "
+                 "`scripts/gel_texte.py --degel <id> --apply`",
+     "colonnes": ["wp_gel_at"], "where": "COALESCE(wp_gel_at,'')<>''", "lien": "/seo"},
+    {"cle": "ecartes_home", "nom": "Retirées de la home à la main",
+     "perimetre": "fiches exclues de la page d'accueil par un geste humain, encore devant nous",
+     "rouvreur": "le même geste, en sens inverse, depuis l'aperçu de la fiche",
+     "colonnes": ["home_override"], "where": "home_override='excluded'", "lien": "/events"},
+]
+
+
+def garages(conn: sqlite3.Connection, auj: str | None = None) -> list[dict]:
+    """Combien de fiches sont GARÉES, et qui peut les rendre. Voir le commentaire ci-dessus.
+
+    Toujours restreint à ce qui est encore devant nous (règle 5) : une fiche garée dont
+    l'événement a eu lieu ne sera de toute façon pas republiée, et la compter fabriquerait
+    du travail au lieu d'en désigner.
+    """
+    auj = auj or date.today().isoformat()
+    cols = _colonnes(conn)
+    out = []
+    for g in _GARAGES:
+        absentes = [c for c in g["colonnes"] if c not in cols]
+        if absentes:
+            # Non mesuré ≠ zéro. On dit LAQUELLE manque, sinon le lecteur ne peut rien faire.
+            out.append({**g, "n": None,
+                        "pourquoi_none": "colonne absente de la base : " + ", ".join(absentes)})
+            continue
+        where = f"{g['where']} AND {_ACTIF} AND {_ORIGINAL} AND {_A_VENIR}"
+        out.append({**g, "n": _n(conn, where, auj), "pourquoi_none": ""})
+    return out

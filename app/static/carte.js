@@ -253,6 +253,31 @@
     if (n.resume) h.push(`<p class="pan-resume">${ech(n.resume)}</p>`);
     if (n.horaire) h.push(sec("Quand", `<p>${ech(n.horaire)}${
       n.cron ? ` <code>${ech(n.cron)}</code>` : ""}</p>`));
+    if (n.etage || n.garage) {
+      let t = "";
+      if (n.etage) {
+        const e = n.etage;
+        t += `<div class="pan-etat${n.goulot ? " pan-etat--goulot" : ""}">` +
+             `<b>${e.fait} sur ${e.total}</b>` +
+             (e.pct === null ? " — aucun cas" : ` (${e.pct} %)`) +
+             `, il en reste <b>${e.reste}</b>.<br>` +
+             `<span class="muted">Périmètre : ${ech(e.perimetre)}. ${ech(e.quoi)}.</span>` +
+             (n.goulot ? '<br><b style="color:var(--accent-ink)">C\'est le premier étage '
+                       + 'qui décroche : le goulot du jour.</b>' : "") +
+             (e.note ? `<br><span class="muted">${ech(e.note)}</span>` : "") +
+             `</div>`;
+      }
+      if (n.garage) {
+        const g = n.garage;
+        t += `<div class="pan-etat" style="margin-top:.35rem">` +
+             (g.n === null
+               ? `<b>Non mesuré</b> — ${ech(g.pourquoi_none)}.`
+               : `<b>${g.n}</b> fiche(s) garée(s) : ${ech(g.nom).toLowerCase()}.`) +
+             `<br><span class="muted">Périmètre : ${ech(g.perimetre)}</span>` +
+             `<br><span class="muted">Qui les rend : </span>${ech(g.rouvreur)}</div>`;
+      }
+      h.push(sec("Ce qui attend ici", t));
+    }
     h.push(sec("Ce qu'il fait", liste(d.fait)));
 
     const aLit = d.lit && d.lit.length, aEcrit = d.ecrit && d.ecrit.length;

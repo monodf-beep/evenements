@@ -212,7 +212,7 @@ _COLLECTE = [
          "code": ["scripts/gmail_relink.py"]}},
 
     {"id": "pending", "label": "File « pending »", "icone": "📥", "flux": "collecte",
-     "kind": "etat", "col": 3, "row": 0, "sous_titre": "en attente d'évaluation",
+     "kind": "etat", "garage_cle": "pending", "col": 3, "row": 0, "sous_titre": "en attente d'évaluation",
      "resume": "Tout ce qui est entré et n'a pas encore été noté. C'est la file que lit l'évaluateur de 9h00.",
      "detail": {
          "fait": ["Statut par défaut de toute fiche insérée, par le scraper comme par Gmail.",
@@ -343,13 +343,13 @@ _COLLECTE = [
 # ══════════════════════════════════════════════════════════════════════════════
 _TRI = [
     {"id": "e_pending", "label": "File « pending »", "icone": "📥", "flux": "tri",
-     "kind": "etat", "col": 0, "row": 1, "sous_titre": "ce qui est entré ce matin",
+     "kind": "etat", "garage_cle": "pending", "col": 0, "row": 1, "sous_titre": "ce qui est entré ce matin",
      "resume": "Le stock brut. Cinq traitements le préparent avant que l'évaluateur ne tranche.",
      "detail": {"fait": ["Voir l'onglet Collecte pour savoir comment une fiche y entre."],
                 "cout_ia": "aucun"}},
 
     {"id": "dates_1", "label": "Datation gratuite", "icone": "📅", "flux": "tri",
-     "kind": "action", "col": 1, "row": 0, "cron_cle": "scripts/dates.py --no-fetch",
+     "kind": "action", "etage_cle": "date", "col": 1, "row": 0, "cron_cle": "scripts/dates.py --no-fetch",
      "script": "dates",
      "resume": "Premier passage, sans réseau ni modèle : il lit les dates écrites dans le titre et la description.",
      "detail": {
@@ -422,7 +422,7 @@ _TRI = [
          "code": ["scripts/dedupe.py", "scripts/unmerge.py"], "doc": ["docs/DEDOUBLONNAGE.md"]}},
 
     {"id": "dates_2", "label": "Datation complète", "icone": "🗓️", "flux": "tri",
-     "kind": "action", "col": 1, "row": 2, "cron_cle": "scripts/dates.py >>", "script": "dates",
+     "kind": "action", "etage_cle": "date", "garage_cle": "date_garage", "col": 1, "row": 2, "cron_cle": "scripts/dates.py >>", "script": "dates",
      "resume": "Le passage qui paie : il télécharge les pages, interroge un modèle, et republie les traductions réalignées.",
      "detail": {
          "fait": ["Passe 1 : relit le texte (comme à 8h25).",
@@ -459,7 +459,7 @@ _TRI = [
          "code": ["scripts/dates.py"]}},
 
     {"id": "venues", "label": "Lieux", "icone": "📍", "flux": "tri",
-     "kind": "action", "col": 1, "row": 3, "cron_cle": "scripts/venues.py", "script": "venues",
+     "kind": "action", "etage_cle": "lieu", "garage_cle": "venue_garage", "col": 1, "row": 3, "cron_cle": "scripts/venues.py", "script": "venues",
      "resume": "Renseigne lieu et ville en trois passes : le lieu par défaut de la source, la page, puis un modèle.",
      "detail": {
          "fait": ["Passe 0 : applique le lieu déclaré pour la source dans `config/sources.txt`.",
@@ -526,7 +526,7 @@ _TRI = [
          "code": ["scripts/cleanup_cinema.py"]}},
 
     {"id": "evaluator", "label": "Évaluation", "icone": "⚖️", "flux": "tri",
-     "kind": "action", "col": 2, "row": 1, "cron_cle": "scripts/evaluator.py", "script": "evaluator",
+     "kind": "action", "etage_cle": "evalue", "col": 2, "row": 1, "cron_cle": "scripts/evaluator.py", "script": "evaluator",
      "resume": "Le tri principal : 100 fiches par jour, quatre refus gratuits puis une note de 0 à 10.",
      "detail": {
          "fait": ["Prend 100 fiches « pending » par passage.",
@@ -647,7 +647,7 @@ _PUBLICATION = [
                 "cout_ia": "aucun"}},
 
     {"id": "daily_batch", "label": "Lot quotidien", "icone": "📦", "flux": "publication",
-     "kind": "action", "col": 1, "row": 1, "cron_cle": "scripts/daily_batch.py",
+     "kind": "action", "garage_cle": "enrich_erreur", "col": 1, "row": 1, "cron_cle": "scripts/daily_batch.py",
      "script": "daily_batch",
      "resume": "Le chef d'orchestre de 9h30 : il fait rédiger, re-vérifie chaque fiche, puis ne fait publier que les complètes.",
      "detail": {
@@ -675,7 +675,7 @@ _PUBLICATION = [
          "code": ["scripts/daily_batch.py"]}},
 
     {"id": "enrich", "label": "Rédaction de l'article", "icone": "✍️", "flux": "publication",
-     "kind": "agent", "col": 2, "row": 0,
+     "kind": "agent", "etage_cle": "redige", "garage_cle": "matiere_polluee", "col": 2, "row": 0,
      "resume": "Un agent rassemble la matière officielle, rédige l'article, puis le fait relire par un panel de lecteurs.",
      "detail": {
          "fait": ["Rassemble la matière : description propre, doublons, page officielle, dossiers de presse.",
@@ -748,7 +748,7 @@ _PUBLICATION = [
          "code": ["scripts/publish_batch_as.py", "utils/substance.py"]}},
 
     {"id": "publish", "label": "Envoi sur WordPress", "icone": "🚀", "flux": "publication",
-     "kind": "action", "col": 4, "row": 1,
+     "kind": "action", "etage_cle": "publie", "col": 4, "row": 1,
      "resume": "Construit le contenu, téléverse les images, et poste sur la route maison cs/v1/event.",
      "detail": {
          "fait": ["Construit le corps : l'article, puis le lien vers la source officielle et "
@@ -801,7 +801,7 @@ _PUBLICATION = [
          "code": ["deploy/wordpress/cs-publish.php"]}},
 
     {"id": "e_matiere_polluee", "label": "Matière polluée", "icone": "🕳️", "flux": "publication",
-     "kind": "etat", "col": 3, "row": 3, "sous_titre": "enrich_status",
+     "kind": "etat", "garage_cle": "matiere_polluee", "col": 3, "row": 3, "sous_titre": "enrich_status",
      "resume": "La description vient d'un agrégateur : impossible d'en tirer un article. La fiche sort de la file.",
      "detail": {
          "terminal": {
@@ -822,7 +822,7 @@ _EDITORIAL = [
      "detail": {"cout_ia": "aucun"}},
 
     {"id": "seo_batch", "label": "Métas de référencement", "icone": "🔍", "flux": "editorial",
-     "kind": "action", "col": 1, "row": 0, "cron_cle": "scripts/seo_batch.py", "script": "seo_batch",
+     "kind": "action", "etage_cle": "seo", "col": 1, "row": 0, "cron_cle": "scripts/seo_batch.py", "script": "seo_batch",
      "resume": "Fait écrire titre SEO, méta-description, réponse courte et questions fréquentes, puis les pousse sur le site.",
      "detail": {
          "fait": ["Génère les métas dans la langue de la fiche.",
@@ -859,7 +859,7 @@ _EDITORIAL = [
          "doc": ["docs/SEO_QUI_FAIT_QUOI.md"]}},
 
     {"id": "images_wide", "label": "Les deux orientations", "icone": "🖼️", "flux": "editorial",
-     "kind": "action", "col": 1, "row": 1, "cron_cle": "scripts.images_wide", "script": "images_wide",
+     "kind": "action", "etage_cle": "image", "col": 1, "row": 1, "cron_cle": "scripts.images_wide", "script": "images_wide",
      "resume": "Complète le haut du panier avec l'affiche officielle en portrait ET en paysage.",
      "detail": {
          "fait": ["Relit la page officielle et y cherche jusqu'à douze images.",
@@ -891,7 +891,7 @@ _EDITORIAL = [
          "code": ["scripts/images_wide.py", "utils/images.py"], "doc": ["docs/IMAGES.md"]}},
 
     {"id": "translate", "label": "Traduction FR ↔ IT", "icone": "🇮🇹", "flux": "editorial",
-     "kind": "action", "col": 1, "row": 2, "cron_cle": "scripts/translate_events.py",
+     "kind": "action", "etage_cle": "traduit", "garage_cle": "traduction_garage", "col": 1, "row": 2, "cron_cle": "scripts/translate_events.py",
      "script": "translate_events",
      "resume": "Crée la fiche jumelle dans l'autre langue, la publie, et lie les deux par Polylang.",
      "detail": {
@@ -997,7 +997,7 @@ _EDITORIAL = [
          "code": ["scripts/publish_batch_as.py"]}},
 
     {"id": "cowork_seo", "label": "SEO final (Cowork)", "icone": "🧑‍💻", "flux": "editorial",
-     "kind": "agent", "col": 3, "row": 0, "sous_titre": "lancé à la main",
+     "kind": "agent", "garage_cle": "gelees", "col": 3, "row": 0, "sous_titre": "lancé à la main",
      "resume": "Le dernier étage : une session Claude reprend à la main le référencement des "
                "meilleures fiches. Après elle, plus rien ne repasse.",
      "detail": {
@@ -1053,7 +1053,7 @@ _EDITORIAL = [
          "doc": ["docs/SEO_QUI_FAIT_QUOI.md"]}},
 
     {"id": "e_gel", "label": "Texte gelé", "icone": "🧊", "flux": "editorial",
-     "kind": "etat", "col": 4, "row": 0, "sous_titre": "le cron ne repasse plus",
+     "kind": "etat", "garage_cle": "gelees", "col": 4, "row": 0, "sous_titre": "le cron ne repasse plus",
      "resume": "L'état qui protège une reprise humaine. Il est posé par le SITE, jamais par la base.",
      "detail": {
          "fait": ["Le site compare une empreinte des six champs éditoriaux à celle que le "
@@ -1758,7 +1758,7 @@ _HUMAIN = [
          "cout_ia": "aucun", "code": ["app/app.py", "utils/score_memory.py"]}},
 
     {"id": "h_home", "label": "Mise en avant et cadrage", "icone": "🖼️", "flux": "humain",
-     "kind": "humain", "col": 1, "row": 1, "sous_titre": "aperçu",
+     "kind": "humain", "garage_cle": "ecartes_home", "col": 1, "row": 1, "sous_titre": "aperçu",
      "resume": "Épingler ou exclure de la home, ordonner les épinglées, recadrer l'image.",
      "detail": {
          "regles": ["Épingler republie aussitôt la méta sur le site.",

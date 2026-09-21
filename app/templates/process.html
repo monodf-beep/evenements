@@ -16,6 +16,18 @@
 
 .carte-wrap { margin:-.2rem 0 0; }
 
+/* Le bandeau de charge : le goulot du jour, et le régime de la semaine. Le goulot passe
+   AVANT le régime — c'est lui qui appelle un geste. */
+.bandeau-charge { display:flex; flex-wrap:wrap; align-items:baseline; gap:.4rem 1.2rem;
+  padding:.55rem .8rem; margin:0 0 .7rem; border:1px solid var(--line-2);
+  border-radius:var(--radius); background:var(--surface); font-size:.86rem; }
+.bandeau-charge a { white-space:nowrap; }
+.bc-goulot { color:var(--ink-2); flex:1 1 24rem; }
+.bc-goulot b { color:var(--accent-ink); }
+.bc-ok { color:var(--ok-ink); font-weight:600; flex:1 1 24rem; }
+.bc-flux { color:var(--muted); font-size:.82rem; font-variant-numeric:tabular-nums; }
+.bc-flux b { color:var(--ink-2); }
+
 /* ---- Onglets (un flux = un onglet) ---- */
 .flux-tabs { display:flex; gap:.3rem; overflow-x:auto; padding:.15rem .1rem .55rem;
   scrollbar-width:thin; }
@@ -93,6 +105,17 @@
 .nd--etat       { border-left-color:var(--muted); border-style:dashed; background:var(--surface-2); }
 .nd--site       { border-left-color:var(--info); }
 .nd--attenue { opacity:.3; }
+/* LA CHARGE. Un bandeau bas, gris, qui ne prend la parole que s'il y a de la matière —
+   un nœud sans file d'attente garde exactement l'allure qu'il avait. Le GOULOT, lui, se
+   teinte : c'est le seul endroit de la carte où un nombre doit attirer l'œil, parce que
+   c'est le seul qui désigne un geste. Un étage ne peut pas mieux faire que celui qui le
+   précède : réparer le premier qui décroche en redresse souvent trois. */
+.nd-charge { display:block; margin-top:.35rem; padding-top:.3rem; border-top:1px dashed var(--line);
+  font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.nd-charge b { color:var(--ink-2); font-weight:700; }
+.nd--goulot { border-left-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft), var(--shadow-sm); }
+.nd-charge--goulot { color:var(--accent-ink); border-top-color:var(--accent); }
+.nd-charge--goulot b { color:var(--accent-ink); }
 
 /* ---- Commandes de la scène ---- */
 .scene-outils { position:absolute; right:.6rem; bottom:.6rem; display:flex; gap:.25rem;
@@ -184,6 +207,7 @@
   letter-spacing:.05em; align-self:start; padding-top:.1rem; }
 .pan-etat { border:1px solid var(--line-2); border-radius:var(--radius-sm); padding:.5rem .6rem;
   background:var(--surface-2); font-size:.85rem; }
+.pan-etat--goulot { border-color:var(--accent); background:var(--accent-soft); }
 .pan-liens a { display:inline-block; font-size:.79rem; margin:.12rem .35rem .12rem 0;
   padding:.1rem .42rem; border:1px solid var(--line-2); border-radius:var(--radius-pill);
   color:var(--ink-2); }
@@ -229,6 +253,30 @@
   </div>
   {% endif %}
 
+  {% if c.charge_lisible %}
+  <div class="bandeau-charge">
+    {% if c.charge.goulot %}
+    <span class="bc-goulot">🔴 Le goulot : <b>{{ c.charge.goulot.nom }}</b> —
+      {{ c.charge.goulot.fait }} sur {{ c.charge.goulot.total }} ({{ c.charge.goulot.pct }} %),
+      il en reste <b>{{ c.charge.goulot.reste }}</b>.
+      <span class="muted">{{ c.charge.goulot.perimetre }}.</span>
+      <a href="{{ c.charge.goulot.lien }}">voir →</a></span>
+    {% else %}
+    <span class="bc-ok">✅ Aucun étage sous 90 % — rien ne coince dans la chaîne.</span>
+    {% endif %}
+    <span class="bc-flux">Sur {{ c.charge.flux.jours }} jours :
+      <b>{{ c.charge.flux.collectes }}</b> collectées ·
+      <b>{{ c.charge.flux.ecartes }}</b> écartées ·
+      <b>{{ c.charge.flux.publies }}</b> publiées ·
+      <b>{{ c.charge.flux.sources }}</b> sources actives</span>
+  </div>
+  {% else %}
+  <div class="pan-note" style="max-width:none;margin:0 0 .7rem;">
+    <b>Les files d'attente ne sont pas affichées</b> — la base ne répond pas ici. Ce n'est
+    pas « rien n'attend », c'est « je ne peux pas le savoir ».
+  </div>
+  {% endif %}
+
   <div class="flux-tabs" role="tablist" aria-label="Les flux d'automatisation">
     {% for o in c.onglets %}
     <button role="tab" id="tab-{{ o.id }}" aria-controls="flux-{{ o.id }}"
@@ -253,7 +301,7 @@
       <div class="scene">
         <svg aria-hidden="true" width="{{ o.largeur }}" height="{{ o.hauteur }}"></svg>
         {% for n in c.noeuds if n.flux == o.id %}
-        <button class="nd nd--{{ n.kind }}" data-id="{{ n.id }}" aria-pressed="false"
+        <button class="nd nd--{{ n.kind }}{{ ' nd--goulot' if n.goulot }}" data-id="{{ n.id }}" aria-pressed="false"
                 style="left:{{ n.x }}px;top:{{ n.y }}px;">
           <span class="nd-ico" aria-hidden="true">{{ n.icone }}</span>
           <span class="nd-txt">
@@ -262,6 +310,14 @@
           </span>
           <span class="nd-dot nd-dot--{{ 'angle' if n.angle_mort else n.etat.niveau }}"
                 title="{% if n.angle_mort %}cron non surveillé par le chien de garde{% elif n.surveille %}{{ n.etat.age }}{% else %}pas de surveillance automatique{% endif %}"></span>
+          {% if n.etage or n.garage %}
+          <span class="nd-charge{{ ' nd-charge--goulot' if n.goulot }}">
+            {%- if n.etage %}<b>{{ n.etage.reste }}</b> en attente{% endif -%}
+            {%- if n.etage and n.garage %} · {% endif -%}
+            {%- if n.garage %}{% if n.garage.n is none %}garage non mesuré
+              {%- else %}<b>{{ n.garage.n }}</b> garée(s){% endif %}{% endif -%}
+          </span>
+          {% endif %}
         </button>
         {% endfor %}
       </div>
