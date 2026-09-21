@@ -112,3 +112,54 @@ rédaction, page par page.
 
 Six images servies en 200 (53 à 63 ko après conversion), six `alt` distincts,
 recomptés en base après écriture.
+
+## La hauteur d'affichage — correctif du 2026-09-21
+
+Franck, le jour même de la pose : « prend trop de hauteur de page et on a un
+bandeau blanc ». Mesuré avant de conclure, en rejouant la page servie dans
+Chromium (scripts retirés, image chargée en local, sinon on mesure une image
+cassée) :
+
+| | avant | après |
+|---|---|---|
+| image affichée | 1200 × **630** | 1200 × **460** |
+| blanc entre l'image et le fil d'Ariane | **0 px** | **0 px** |
+
+**La hauteur était bien le défaut**, et c'est le thème qui la produit :
+GeneratePress rend l'image mise en avant à sa taille native dans
+`<div class="featured-image page-header-image">`, sans marge ni padding.
+
+**Le bandeau blanc, lui, ne se reproduit pas.** L'écart entre le bas de l'image
+et le fil d'Ariane mesure zéro pixel, avant comme après. Je ne lui donne donc
+aucune cause — c'est une hypothèse ouverte, pas un diagnostic.
+
+Le correctif est un `<style>` posé par le gabarit hub lui-même (snippet 61),
+donc **limité aux 192 pages hub** — aucun CSS global :
+
+```css
+.featured-image.page-header-image{line-height:0}
+.featured-image.page-header-image img{display:block;margin:0 auto;
+  max-width:1200px;width:100%;height:auto;aspect-ratio:1200/460;
+  object-fit:cover;object-position:center}
+```
+
+**Pourquoi 460 et pas moins.** Le recadrage est centré : 460/630 conserve de
+y=85 à y=545 dans l'image source. Le plus haut des encarts (« aujourd'hui »,
+384 px, centré) occupe y=123 à y=507, languette comprise jusqu'à ~526. Il passe
+avec 19 px de marge. **Descendre sous 460 rognerait la carte** : il faudrait
+alors refabriquer les 192 images avec un encart plus petit.
+
+Sauvegarde du gabarit avant modification : option `cs_snippet61_sauvegarde_20260921c`.
+md5 `9d9275f9c87cac2eb24889a86889e0c4` → `7a68c89565155a2560671b95de2f2db7` (+256 octets).
+
+Retour arrière :
+
+```php
+global $wpdb;
+$wpdb->update($wpdb->prefix.'snippets',
+  array('code' => get_option('cs_snippet61_sauvegarde_20260921c')),
+  array('id' => 61));
+```
+
+> Dette assumée : le snippet 61 n'est toujours pas miroité à l'octet près dans
+> `deploy/wordpress/`. Elle date d'avant ce chantier, elle n'est pas réglée ici.
