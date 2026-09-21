@@ -117,12 +117,22 @@ def _resoudre(conn, ids: list[int], en_wp: bool) -> list[tuple[int | None, int]]
     return out
 
 
-def _ranger_local(conn, couples, gele: bool, motif: str) -> int:
-    """Recopie la décision dans events_raw. Ce n'est qu'un cache : il sert à ce que
-    seo_batch cesse (ou reprenne) TOUT DE SUITE, sans attendre une republication."""
+def _ranger_local(conn, couples, gele: bool, motif: str) -> "tuple[int, list[int]]":
+    """Recopie la décision dans events_raw, et REND CE QU'ELLE N'A PAS PU FAIRE.
+
+    Ce n'est qu'un cache : il sert à ce que seo_batch cesse (ou reprenne) TOUT DE SUITE,
+    sans attendre une republication.
+
+    ⚠️ La première version se contentait de `continue` sur une fiche sans ligne locale,
+    et le bilan annonçait « 48 marquée(s) » pour 49 demandées sans dire laquelle manquait
+    (constaté en production le 21/09, au premier `--sync --apply` réel). C'est exactement
+    la règle 6 : un état qui sort une fiche d'une file la sort aussi des bilans, et on le
+    découvre des semaines plus tard. Les orphelines sont donc RENDUES et NOMMÉES."""
     n = 0
-    for local, _wp_id in couples:
+    orphelines: list[int] = []
+    for local, wp_id in couples:
         if local is None:
+            orphelines.append(wp_id)
             continue
         if gele:
             conn.execute("UPDATE events_raw SET wp_gel_at=datetime('now'), "
@@ -133,7 +143,7 @@ def _ranger_local(conn, couples, gele: bool, motif: str) -> int:
                          "wp_gel_motif=NULL WHERE id=?", (local,))
         n += 1
     conn.commit()
-    return n
+    return n, orphelines
 
 
 def cmd_liste(conn, args) -> int:
@@ -175,13 +185,24 @@ def cmd_sync(conn, args) -> int:
         return 0
     couples_poser = [(conn.execute("SELECT id FROM events_raw WHERE wp_post_id_as=?",
                                    (w,)).fetchone(), w) for w in a_poser]
-    n = _ranger_local(conn, [(r[0] if r else None, w) for r, w in couples_poser],
-                      True, "recopié du site (--sync)")
-    m = _ranger_local(conn, [(locales[w], w) for w in a_lever], False, "")
+    n, orphelines = _ranger_local(conn, [(r[0] if r else None, w) for r, w in couples_poser],
+                                  True, "recopié du site (--sync)")
+    m, _ = _ranger_local(conn, [(locales[w], w) for w in a_lever], False, "")
     # RÈGLE 6 : on recompte en base plutôt que d'annoncer la longueur des listes.
     reste = conn.execute("SELECT COUNT(*) FROM events_raw "
                          "WHERE COALESCE(wp_gel_at,'') <> ''").fetchone()[0]
     print(f"\n{n} marquée(s), {m} démarquée(s) — {reste} gelée(s) en base après écriture.")
+    if orphelines:
+        # Une fiche EN LIGNE que la base ne connaît pas n'est pas une panne : le pipeline
+        # ne la touche jamais (il itère sur events_raw), donc le gel du SITE la protège
+        # déjà. Mais ça se DIT — c'est le seul indice qu'un wp_post_id_as a été perdu
+        # (corbeille puis relink, adoption d'édition annuelle…), et cet indice-là ne se
+        # représente nulle part ailleurs.
+        print(f"\n⚠️ {len(orphelines)} fiche(s) gelée(s) sur le site sans ligne en base "
+              f"(wp_post_id_as introuvable) : {orphelines}")
+        print("   Le site les protège quand même ; le pipeline ne les touche pas. Mais "
+              "vérifier qu'aucune n'a perdu son wp_post_id_as :")
+        print("   .venv/bin/python -m scripts.audit_wp_ids_local_match")
     return 0
 
 
@@ -212,7 +233,7 @@ def cmd_gel(conn, args, poser: bool) -> int:
         return 1
     # Ce que le SITE a effectivement fait, pas ce qu'on lui a demandé (règle 6).
     faits = rep.get("geles" if poser else "degeles") or []
-    _ranger_local(conn, [(l, w) for l, w in couples if w in faits], poser, args.motif)
+    _ranger_local(conn, [(l, w) for l, w in couples if w in faits], poser, args.motif)  # noqa: RUF015
     print(f"\n{len(faits)} fiche(s) {participe} sur le site : {faits}")
     if len(faits) != len(couples):
         manquants = [w for _l, w in couples if w not in faits]

@@ -171,6 +171,24 @@ _check("un texte que le site a dû RESTAURER est signalé à part", restaures ==
        f"(lu : {restaures})")
 conn.close()
 
+# ── 5 bis. Une fiche gelée que la base ne connaît pas doit être NOMMÉE ─────────
+# CONSTATÉ EN PRODUCTION le 21/09, au premier `--sync --apply` réel : « 48 marquée(s) »
+# pour 49 demandées, sans dire laquelle manquait. Une fiche en ligne sans ligne locale
+# n'est pas une panne (le pipeline itère sur events_raw, il ne la touche jamais), mais
+# c'est le seul indice qu'un wp_post_id_as s'est perdu — et un indice qui ne s'affiche
+# nulle part se découvre des semaines plus tard (règle 6).
+print("\n──── sync : ce qui n'a pas pu être marqué se dit ────")
+import scripts.gel_texte as gt                                    # noqa: E402
+conn = _base()
+n, orphelines = gt._ranger_local(conn, [(1, 8001), (None, 7777), (3, 8003)],
+                                 True, "essai")
+_check("les fiches connues sont marquées", n == 2, f"(marquées : {n})")
+_check("celle que la base ne connaît pas est RENDUE, pas avalée en silence",
+       orphelines == [7777], f"(rendu : {orphelines})")
+lu = conn.execute("SELECT wp_gel_at FROM events_raw WHERE id=1").fetchone()[0]
+_check("et le marquage des autres a bien eu lieu", bool(lu), f"(lu : {lu})")
+conn.close()
+
 # ── 6. Le payload : le gel se joue sur le SITE, jamais ici ─────────────────────
 print("\n──── payload envoyé à cs/v1/event ────")
 ev = {"id": 1, "title": "Un concert", "wp_post_id_as": 8001,
