@@ -208,3 +208,88 @@ if ($old) { $wpdb->update($wpdb->prefix . 'snippets', array('code' => $old), arr
 > documenté ici. C'est exactement le défaut que `CLAUDE.md` décrit pour
 > `cs-source-garde.php`. Le rapatrier reste à faire, et tant que ce n'est pas fait, la
 > sauvegarde en option WordPress est le seul filet.
+
+---
+
+## 8. Indexation : une page période entre dans l'index quand elle a un texte
+
+**Règle, arbitrée par Franck le 2026-09-21** : « quand elles ne portent pas de texte
+éditorial, noindex ; quand elles ont du texte éditorial, index ».
+
+### D'où vient le noindex
+
+`cs-index-budget.php` (mu-plugin) sort de l'index **et du sitemap** les pages « qui n'ont
+pas de contenu à elles » : fiches organisateur, fiches lieu sans événement à venir, et les
+**192 vues période** des hubs, décrites comme « des filtres de leur page parente ».
+
+Le motif, daté du 09/09/2026, était juste : Search Console montrait 223 pages indexées
+contre 589 hors index, dont 524 « explorée, actuellement non indexée ». Le budget
+d'exploration partait dans des pages vides. Franck : « c'est nous qui l'avons mis en
+noindex parce que Google référençait mal ».
+
+### Ce qui a changé le 21/09
+
+Le critère du fichier n'a pas bougé d'un mot. Ce qui a changé, c'est la réalité : le 09/09
+aucune vue période n'avait de texte, elles ne portaient que le shortcode. Depuis, on leur
+en écrit. `cs_ib_a_son_texte($id)` mesure le `post_content` débarrassé des shortcodes, des
+commentaires HTML et des balises, et rend vrai au-delà de **400 caractères**
+(`CS_IB_MIN_TEXTE`) — pour qu'une ébauche de deux phrases ne rouvre pas l'index.
+
+**Le texte hérité ne compte pas.** `get_post_field` rend le contenu PROPRE de la page ;
+l'héritage depuis le hub parent se fait au rendu (snippet 61). Une page qui affiche le
+texte du guide reste donc hors index — ce qui est juste, puisqu'elle n'a rien à elle.
+
+### Dry-run après dépôt, sur les pages réelles
+
+```
+vues periode publiees : 192
+  -> INDEXABLES (texte propre >= 400 car.) : 4
+  -> hors index (pas de texte propre)      : 188
+```
+
+Les quatre sont celles qu'on a écrites. C'est le contrôle que l'auteur du fichier avait
+fait avant son dépôt du 09/09, et que je n'ai fait qu'APRÈS le mien — à refaire dans le bon
+ordre la prochaine fois.
+
+### Un piège de vérification, à connaître
+
+Le site sert des pages en cache. Une lecture de la balise robots juste après un changement
+peut rendre l'état d'AVANT, et m'a fait annoncer à tort qu'une page était redevenue
+indexable. Vérifier avec un paramètre anti-cache :
+
+```
+curl -s "https://agendasabauda.eu/it/cosa-fare-a-ivrea/questo-weekend/?nocache=$(date +%s)" \
+  | grep -o '<meta name="robots"[^>]*>'
+```
+
+Le sitemap, lui, passe par un transient d'une heure (`cs_ib_sitemap_ids`) : il ne reflète
+pas le changement tout de suite, et ce n'est pas une panne.
+
+### Déploiement du 21/09
+
+- fichier : `wp-content/mu-plugins/cs-index-budget.php`
+- md5 avant `b76ce6d0769c1c9a04e858e365862c45` (11 965 o), après
+  `5aa29fccf5da52d4a6ba628b0343427a` (13 762 o)
+- sauvegarde : `cs-index-budget.php.bak-20260921`, à côté du fichier
+- procédure : contrôle de dérive, cibles uniques, `token_get_all(..., TOKEN_PARSE)`,
+  écriture dans `.nouveau`, relecture, `rename()` atomique, puis chargement du site, de
+  l'API REST **et de wp-login.php** — un mu-plugin cassé emporte aussi la porte de secours.
+
+### L'ordre de travail qui en découle
+
+Puisque l'index suit le texte, on écrit **d'abord les pages qui ont déjà du trafic**. Au
+21/09, par clics puis impressions sur 90 jours :
+
+| page | clics | impressions |
+|---|---|---|
+| `/it/cosa-fare-a-ivrea/questo-weekend/` | 7 | 30 |
+| `/it/cosa-fare-a-mentone/oggi/` | 2 | 68 |
+| `/it/cosa-fare-a-mentone/questo-weekend/` | 2 | 65 |
+| `/it/cosa-fare-a-nizza/questo-weekend/` | 1 | 29 |
+| `/que-faire-a-albertville/aujourdhui/` | 1 | 13 |
+| `/it/cosa-fare-in-valle-d-aosta/questo-weekend/` | 0 | 33 |
+| `/it/cosa-fare-ad-asti/oggi/` | 0 | 24 |
+
+Menton cumule le plus d'impressions (195 toutes pages confondues), Ivrea le plus de clics.
+Et chaque page s'écrit **par paire** : écrire `questo-weekend` oblige à écrire
+`ce-week-end`, sinon une jumelle reste sans texte et hors index.
