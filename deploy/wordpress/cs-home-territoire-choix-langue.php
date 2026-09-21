@@ -63,26 +63,45 @@ if (!function_exists('cs_choix_langue_evenements')) {
 /**
  * Les prochains evenements publies d'un territoire, dans une langue.
  *
- * Regle 5 du CLAUDE.md : c'est _EventEndDate qui decide, jamais la date de debut seule --
- * une exposition de mai a septembre compte tout l'ete. Le terme de territoire porte deja
- * la langue (piemont / piemonte sont deux termes distincts), mais on passe AUSSI 'lang' :
- * la page est servie par la home FR, donc Polylang filtrerait sinon la requete italienne
- * sur le francais et la carte de droite resterait vide.
+ * DEUX FILES, ET C'EST LA LECON DU 21/09 AU SOIR. La premiere version ne posait que le
+ * filtre de la regle 5 (CLAUDE.md) : end_date >= maintenant, tri par date de DEBUT. C'est
+ * juste au sens de la regle -- une exposition de janvier a decembre est bien en cours --
+ * mais la carte affichait alors « 1 janv. », « 10 fev. », « 9 avril » : trois expositions
+ * au long cours, et pas une seule des 33 fiches qui commencent dans les jours qui
+ * viennent. Le lecteur y lit une date perimee, pas un agenda. Vu sur la page EN LIGNE,
+ * pas dans le code : c'est la sortie reelle qui l'a montre.
  *
- * Cache : une heure. Un resultat VIDE n'est garde que 10 minutes -- si le vide vient d'une
- * panne plutot que d'une absence d'evenements, on ne le fige pas pour une heure.
+ * Donc :
+ *   (a) d'abord ce qui COMMENCE a partir d'aujourd'hui, du plus proche au plus lointain ;
+ *   (b) s'il en manque -- petit territoire, creux de saison --, on complete avec ce qui
+ *       est EN COURS, en affichant la date de FIN (« jusqu'au 11 oct. »), qui est la seule
+ *       information utile sur une exposition deja commencee. La regle 5 est donc tenue :
+ *       rien de termine, et l'en-cours compte.
+ *
+ * Mesure du 21/09 (commencent / en cours) : piemont 33/23, piemonte 25/14,
+ * vallee-d-aoste 10/4, valle-d-aosta 7/2. La file (b) ne sert donc jamais aujourd'hui ;
+ * elle existe pour le jour ou un territoire sera a sec.
+ *
+ * Le terme de territoire porte deja la langue (piemont / piemonte sont deux termes
+ * distincts), mais on passe AUSSI 'lang' : la page est servie par la home FR, donc
+ * Polylang filtrerait sinon la requete italienne sur le francais et la carte de droite
+ * resterait vide.
+ *
+ * Cache : une heure. Un resultat VIDE n'est garde que 10 minutes -- si le vide vient
+ * d'une panne plutot que d'une absence d'evenements, on ne le fige pas pour une heure.
  */
 function cs_choix_langue_evenements($terme_slug, $langue, $limite = 3) {
-    $cle = 'cs_choix_evts_' . $terme_slug;
+    $cle = 'cs_choix_evts2_' . $terme_slug;
     $cache = get_transient($cle);
     if (is_array($cache)) {
         return $cache;
     }
 
-    $q = new WP_Query(array(
+    $aujourdhui = current_time('Y-m-d') . ' 00:00:00';
+    $maintenant = current_time('mysql');
+    $base = array(
         'post_type'           => 'tribe_events',
         'post_status'         => 'publish',
-        'posts_per_page'      => $limite,
         'no_found_rows'       => true,
         'ignore_sticky_posts' => true,
         'lang'                => $langue,
@@ -91,43 +110,82 @@ function cs_choix_langue_evenements($terme_slug, $langue, $limite = 3) {
             'field'    => 'slug',
             'terms'    => $terme_slug,
         )),
-        'meta_query'          => array(
-            'fin'   => array('key' => '_EventEndDate', 'value' => current_time('mysql'), 'compare' => '>=', 'type' => 'DATETIME'),
-            'debut' => array('key' => '_EventStartDate', 'compare' => 'EXISTS'),
-        ),
-        'orderby'             => array('debut' => 'ASC'),
-    ));
+    );
 
-    $out = array();
-    foreach ($q->posts as $p) {
-        $debut = get_post_meta($p->ID, '_EventStartDate', true);
-        $out[] = array(
-            'titre' => get_the_title($p),
-            'jour'  => $debut ? substr($debut, 8, 2) : '',
-            'mois'  => $debut ? (int) substr($debut, 5, 2) : 0,
+    $lire = function ($posts, $champ) {
+        $out = array();
+        foreach ($posts as $p) {
+            $d = get_post_meta($p->ID, $champ === 'fin' ? '_EventEndDate' : '_EventStartDate', true);
+            if (!$d) {
+                continue;
+            }
+            $out[] = array(
+                'titre' => get_the_title($p),
+                'jour'  => (int) substr($d, 8, 2),
+                'mois'  => (int) substr($d, 5, 2),
+                'quand' => $champ,
+            );
+        }
+        return $out;
+    };
+
+    // (a) ce qui commence a partir d'aujourd'hui
+    $a = $base;
+    $a['posts_per_page'] = $limite;
+    $a['meta_query'] = array('debut' => array('key' => '_EventStartDate', 'value' => $aujourdhui, 'compare' => '>=', 'type' => 'DATETIME'));
+    $a['orderby'] = array('debut' => 'ASC');
+    $q = new WP_Query($a);
+    $evts = $lire($q->posts, 'debut');
+
+    // (b) complement : ce qui est deja commence mais pas fini, au plus proche de sa fin
+    if (count($evts) < $limite) {
+        $b = $base;
+        $b['posts_per_page'] = $limite - count($evts);
+        $b['meta_query'] = array(
+            'debut' => array('key' => '_EventStartDate', 'value' => $aujourdhui, 'compare' => '<', 'type' => 'DATETIME'),
+            'fin'   => array('key' => '_EventEndDate', 'value' => $maintenant, 'compare' => '>=', 'type' => 'DATETIME'),
         );
+        $b['orderby'] = array('fin' => 'ASC');
+        $q2 = new WP_Query($b);
+        $evts = array_merge($evts, $lire($q2->posts, 'fin'));
     }
     wp_reset_postdata();
 
-    set_transient($cle, $out, $out ? HOUR_IN_SECONDS : 10 * MINUTE_IN_SECONDS);
-    return $out;
+    set_transient($cle, $evts, $evts ? HOUR_IN_SECONDS : 10 * MINUTE_IN_SECONDS);
+    return $evts;
 }
 }
 
 if (!function_exists('cs_choix_langue_date')) {
 /**
- * « 21 sept. » / « 21 set. ». Table en dur plutot que date_i18n() : la page italienne est
- * servie par WordPress en francais (c'est la home FR qui l'affiche), donc la locale ne
- * donnerait pas les abreviations italiennes.
+ * « 23 sept. » quand l'evenement commence ; « jusqu'au 11 oct. » / « fino all'11 ott. »
+ * quand il est deja en cours -- sur une exposition commencee en janvier, la seule date
+ * qui renseigne est celle de la fin.
+ *
+ * Table de mois en dur plutot que date_i18n() : la page italienne est servie par un
+ * WordPress en francais (c'est la home FR qui l'affiche), donc la locale ne donnerait
+ * pas les abreviations italiennes.
+ *
+ * L'italien elide devant une voyelle : « fino all'8 », « fino all'11 » (otto, undici),
+ * « fino al 12 » ailleurs. Deux nombres concernes, la regle tient en une ligne.
  */
-function cs_choix_langue_date($jour, $mois, $langue) {
+function cs_choix_langue_date($jour, $mois, $langue, $quand = 'debut') {
     $fr = array(1 => 'janv.', 'fév.', 'mars', 'avril', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.');
     $it = array(1 => 'genn.', 'febbr.', 'mar.', 'apr.', 'magg.', 'giugno', 'luglio', 'ag.', 'set.', 'ott.', 'nov.', 'dic.');
+    $mois = (int) $mois;
+    $jour = (int) $jour;
     $t = $langue === 'it' ? $it : $fr;
-    if (empty($mois) || !isset($t[$mois])) {
+    if (!$mois || !$jour || !isset($t[$mois])) {
         return '';
     }
-    return ((int) $jour) . ' ' . $t[$mois];
+    $date = $jour . ' ' . $t[$mois];
+    if ($quand !== 'fin') {
+        return $date;
+    }
+    if ($langue === 'it') {
+        return (in_array($jour, array(8, 11), true) ? "fino all'" : 'fino al ') . $date;
+    }
+    return "jusqu'au " . $date;
 }
 }
 
@@ -143,7 +201,7 @@ function cs_choix_langue_carte($langue, $libelle_langue, $nom, $url, $cta_court,
     if ($evts) {
         $h .= '<ul class="cs-choix__liste">';
         foreach ($evts as $e) {
-            $d = cs_choix_langue_date($e['jour'], $e['mois'], $langue);
+            $d = cs_choix_langue_date($e['jour'], $e['mois'], $langue, isset($e['quand']) ? $e['quand'] : 'debut');
             $h .= '<li><b>' . esc_html($d) . '</b><span>' . esc_html($e['titre']) . '</span></li>';
         }
         $h .= '</ul>';
@@ -232,7 +290,7 @@ add_action('template_redirect', function () {
       .cs-choix__q,.cs-choix__q--it{font-size:15px}
       .cs-choix__liste{margin-top:12px;padding-top:11px}
       .cs-choix__liste li{display:flex;gap:9px;font-size:12.5px;margin-bottom:8px}
-      .cs-choix__liste b{flex:0 0 52px;font-size:11px;margin:0;padding-top:1px}
+      .cs-choix__liste b{flex:0 0 76px;font-size:11px;margin:0;padding-top:1px}
       .cs-choix__liste span{-webkit-line-clamp:2}
       .cs-choix__cta{gap:7px;font-size:13.5px;padding-top:9px;margin-top:14px}
       .cs-choix__pied{font-size:13px;margin-top:24px}
