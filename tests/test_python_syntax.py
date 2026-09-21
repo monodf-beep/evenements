@@ -9,8 +9,8 @@ imbriquées, syntaxe valide à partir de 3.12 seulement (PEP 701), introduite le
 
 Ce qui rendait la chose sérieuse, et pourquoi cette fixture existe :
 
-  • `install.sh` accepte **3.10+**. Le dépôt autorisait donc deux versions de Python sur
-    lesquelles ce fichier ne pouvait même pas être IMPORTÉ ;
+  • `install.sh` acceptait alors **3.10+**. Le dépôt autorisait donc deux versions de
+    Python sur lesquelles ce fichier ne pouvait même pas être IMPORTÉ ;
   • `slack_digest` est le SEUL canal vers Franck (vidages de 11h45 et 20h). Sa panne
     n'aurait pas ressemblé à une panne : à une journée calme. C'est le pire mode de
     défaillance de ce dépôt, celui que `consigne_bilan_matin.txt` nomme lui-même ;
@@ -38,12 +38,28 @@ attraper sa propre cible, et qui reste vert. Ici la contre-épreuve a joué son 
 était rouge pendant que le contrôle principal, lui, mentait en vert. Sans elle, rien ne
 l'aurait dit.
 
-CE QU'ON FAIT À LA PLACE : on ne SIMULE plus l'ancienne version, on la LANCE. S'il existe
-un vrai interpréteur au plancher de `install.sh`, c'est lui qui compile. À défaut, et si
-l'interpréteur courant est antérieur à 3.12, `feature_version` reste digne de foi. Dans
-tous les autres cas, la fixture ÉCHOUE en disant qu'elle ne peut pas tenir sa promesse —
-jamais elle ne passe au vert sans avoir vérifié. Une mesure impossible et une mesure
-réussie ne doivent pas rendre le même résultat.
+PUIS LE PLANCHER LUI-MÊME A BOUGÉ, le même jour et pour la même raison. Corriger la
+fixture l'avait rendue rouge en permanence sur le VPS : elle exigeait un interpréteur 3.10
+que la machine n'a pas, et qu'`apt` n'y propose même plus (Ubuntu 24.04). Tenir cette
+promesse aurait demandé un dépôt tiers en production pour faire tourner un test. Une
+compatibilité que RIEN ne vérifie est une affirmation, pas une garantie : `install.sh`
+annonce donc 3.12+ depuis le 2026-09-22, ce qui est le plancher réellement tenu. Le code
+reste compatible 3.10 — mesuré ce jour-là, 388 fichiers sans une faute — simplement plus
+personne ne le teste, donc on ne le promet plus.
+
+CE QUE LA FIXTURE FAIT AUJOURD'HUI, en deux garanties qui ne se remplacent pas :
+  1. tout compile sous L'INTERPRÉTEUR COURANT, celui qui exécutera le code. C'est le
+     risque vivant — une syntaxe plus récente que le serveur, dans un script de cron, qui
+     ne se verrait qu'en production le lendemain ;
+  2. tout compile au PLANCHER annoncé par `install.sh`, avec un vrai interpréteur : le
+     courant quand il EST le plancher (le cas du VPS), sinon un binaire `python3.12`.
+     Sans aucun des deux, elle ÉCHOUE en le disant, jamais elle ne passe au vert sans
+     avoir vérifié — une mesure impossible et une mesure réussie ne doivent pas rendre le
+     même résultat.
+
+La contre-épreuve, elle, ne repose plus sur une bizarrerie de version (au plancher 3.12,
+la f-string du 13/08 est légale) : elle éprouve ce qui reste vrai partout, à savoir que
+le détecteur sait dire NON à une faute franche, et OUI à une source correcte.
 
 Lancer : .venv/bin/python -m tests.test_python_syntax
 """
@@ -59,50 +75,47 @@ sys.path.insert(0, str(ROOT))
 # La version la plus BASSE que `install.sh` accepte. C'est elle qui doit compiler, pas
 # celle qui tourne ici — sinon la fixture passe au vert sur une machine récente et laisse
 # le piège intact pour la machine qui l'a réellement.
-CIBLE = (3, 10)
+CIBLE = (3, 12)
 
-# `feature_version` ne bride plus l'analyse des f-strings à partir de cette version.
-_PREMIERE_VERSION_MENTEUSE = (3, 12)
-
-_BINAIRE = shutil.which(f"python{CIBLE[0]}.{CIBLE[1]}")
-if _BINAIRE:
-    _MOYEN = "binaire"
-    _COMMENT = f"un vrai python{CIBLE[0]}.{CIBLE[1]} ({_BINAIRE})"
-elif sys.version_info[:2] < _PREMIERE_VERSION_MENTEUSE:
-    _MOYEN = "feature_version"
-    _COMMENT = (f"ast.feature_version, digne de foi sous "
-                f"{_PREMIERE_VERSION_MENTEUSE[0]}.{_PREMIERE_VERSION_MENTEUSE[1]} "
-                f"(ici {sys.version_info.major}.{sys.version_info.minor})")
+# LE PLANCHER EST DÉSORMAIS CELUI DE LA MACHINE DE PRODUCTION (VPS : 3.12.3), donc il se
+# vérifie avec un interpréteur qu'on a toujours sous la main — le sien, ou un binaire
+# `python3.12` là où le dépôt est relu. Plus besoin de simuler une version absente, et
+# plus de fixture rouge en permanence faute d'un paquet introuvable.
+if sys.version_info[:2] == CIBLE:
+    _MOYEN, _BINAIRE = "courant", ""
+    _COMMENT = f"l'interpréteur courant, qui EST le plancher {CIBLE[0]}.{CIBLE[1]}"
+elif shutil.which(f"python{CIBLE[0]}.{CIBLE[1]}"):
+    _BINAIRE = shutil.which(f"python{CIBLE[0]}.{CIBLE[1]}")
+    _MOYEN, _COMMENT = "binaire", f"un vrai python{CIBLE[0]}.{CIBLE[1]} ({_BINAIRE})"
 else:
-    _MOYEN = "aucun"
-    _COMMENT = (f"AUCUN moyen de vérifier : Python "
-                f"{sys.version_info.major}.{sys.version_info.minor} tourne ici, et "
-                f"feature_version n'y bride plus les f-strings")
+    _MOYEN, _BINAIRE = "aucun", ""
+    _COMMENT = (f"AUCUN moyen de vérifier le plancher : ni interpréteur courant en "
+                f"{CIBLE[0]}.{CIBLE[1]} (ici "
+                f"{sys.version_info.major}.{sys.version_info.minor}), ni binaire "
+                f"python{CIBLE[0]}.{CIBLE[1]}")
 
 
 def _compile(source: str, nom: str = "<essai>") -> str:
     """"" si la source passe au plancher, le message d'erreur sinon.
 
-    Le MOYEN est choisi une fois pour toutes ci-dessus. Il n'y a volontairement pas de
-    repli silencieux du binaire vers feature_version : se rabattre sur une mesure plus
-    faible sans le dire, c'est exactement ce qui a produit ce correctif.
+    Pas de repli silencieux vers une mesure plus faible : c'est ce repli-là — `ast`
+    et son `feature_version`, qui a cessé de brider les f-strings en 3.12 — qui avait
+    laissé ce garde-fou vert sans rien garantir pendant tout l'été.
     """
-    if _MOYEN == "binaire":
-        r = subprocess.run(
-            [_BINAIRE, "-c",
-             "import ast,sys;ast.parse(sys.stdin.read(),filename=sys.argv[1])", nom],
-            input=source, text=True, capture_output=True)
-        if r.returncode == 0:
+    if _MOYEN == "courant":
+        try:
+            ast.parse(source, filename=nom)
             return ""
-        derniere = [l for l in (r.stderr or "").strip().splitlines() if l.strip()]
-        return derniere[-1] if derniere else "refusé, sans message"
-    try:
-        ast.parse(source, filename=nom, feature_version=CIBLE[1])
+        except SyntaxError as exc:
+            return f"{exc.lineno} — {exc.msg}"
+    r = subprocess.run(
+        [_BINAIRE, "-c",
+         "import ast,sys;ast.parse(sys.stdin.read(),filename=sys.argv[1])", nom],
+        input=source, text=True, capture_output=True)
+    if r.returncode == 0:
         return ""
-    except SyntaxError as exc:
-        return f"{exc.lineno} — {exc.msg}"
-    except (ValueError, OSError) as exc:
-        return f"illisible ({exc})"
+    lignes = [l for l in (r.stderr or "").strip().splitlines() if l.strip()]
+    return lignes[-1] if lignes else "refusé, sans message"
 
 echecs = 0
 
@@ -172,19 +185,15 @@ if _MOYEN != "aucun":
 print("\n──── contre-épreuve : cette fixture sait-elle REFUSER ? ────")
 # Sans ça, elle ne prouverait que sa capacité à dire oui — le défaut du portillon du
 # 2026-08-06, passé au vert sur un design faux. On lui donne la faute RÉELLE du 13/08.
-FAUTE_REELLE = ("x = f\"{n} rapport(s) — {'envoyé' if e else 'ÉCHEC, '\n"
-                "     'suite de la chaîne'}.\"\n")
-if _MOYEN == "aucun":
-    print("      (sautée : sans moyen de vérifier, elle ne prouverait rien)")
-else:
-    _check(f"la f-string PEP 701 du 13/08 est bien refusée en "
-           f"{CIBLE[0]}.{CIBLE[1]}", bool(_compile(FAUTE_REELLE)), "acceptée à tort")
-    # …et le cas qui doit PASSER, choisi juste à côté : la même intention, écrite
-    # autrement. Sans lui, la fixture serait verte sur un moyen qui refuse TOUT.
-    _CORRIGE = ("etat = 'envoyé' if e else 'ÉCHEC'\n"
-                "x = f\"{n} rapport(s) — {etat}.\"\n")
-    _check("   tandis que la forme corrigée (variable extraite) passe",
-           not _compile(_CORRIGE), _compile(_CORRIGE))
+# La faute du 13/08 ne sert plus de contre-épreuve : au plancher 3.12, cette f-string
+# est LÉGALE. On éprouve donc ce qui reste vrai partout — le détecteur sait-il dire non ?
+FAUTE_FRANCHE = "def cassee(:\n    return 1\n"
+_check(f"une faute de syntaxe franche est bien refusée au plancher "
+       f"{CIBLE[0]}.{CIBLE[1]}", bool(_compile(FAUTE_FRANCHE)), "acceptée à tort")
+# …et le cas qui doit PASSER, sans quoi la fixture serait verte sur un moyen qui refuse
+# TOUT — le défaut du portillon du 2026-08-06.
+_SAIN = "etat = 'envoyé' if e else 'ÉCHEC'\nx = f\"{n} rapport(s) — {etat}.\"\n"
+_check("   tandis qu'une source correcte passe", not _compile(_SAIN), _compile(_SAIN))
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)
