@@ -19,7 +19,12 @@ CE QUE LA FIXTURE SURVEILLE :
   3. deux pages du MÊME versant ne sont jamais reliées — leur geste est ailleurs ;
   4. une adresse en forme provisoire ne conclut rien (on s'abstient, on ne crie pas) ;
   5. un hreflang qui mène à une TROISIÈME page n'est pas recouvert en silence ;
-  6. le périmètre (règle 5) écarte le passé, et une fiche SANS DATE y reste.
+  6. le périmètre (règle 5) écarte le passé, et une fiche SANS DATE y reste ;
+  7. la reprise AUTOMATIQUE ne touche que les deux familles au geste `--retranslate` —
+     « lien absent » en est exclue, elle n'a besoin que d'un lien et une retraduction
+     coûterait deux appels LLM pour rien ;
+  8. le garage tente encore à MAX-1 essais et s'arrête à MAX, sans faire disparaître la
+     fiche du relevé.
 
 Lancer : .venv/bin/python -m tests.test_repair_lien_polylang
 """
@@ -121,6 +126,48 @@ v = rl.verdict("fr", "it", rl.alternates(HTML_SAIN),
 _check("un hreflang qui mène à une TROISIÈME page → lien_ailleurs (jamais recouvert)",
        v == "lien_ailleurs", v)
 
+print("\n──── le versant est juste, le TEXTE non : on s'abstient ────")
+# TROUVÉ EN PRODUCTION LE 21/09 À 16h04, deux heures après la livraison de ce script, et
+# ma fixture ne pouvait pas l'attraper : elle ne contenait que des versants. WP#2340
+# (jumelle de WP#745) a été republiée du versant ITALIEN en gardant son titre FRANÇAIS
+# « Orlando de Haendel à l'Opéra Nice Côte d'Azur ». La première version aurait lié la
+# paire : le sélecteur de langue aurait servi une page française aux lecteurs italiens, et
+# `audit_langue_polylang` se serait taise (versant servi = langue demandée = 'it').
+from utils.lang import effective_lang  # noqa: E402
+
+JUM_ORLANDO = {   # texte RÉEL de WP#2340, recopié d'une mesure
+    "title": "Orlando de Haendel à l'Opéra Nice Côte d'Azur",
+    "description": "L'Opéra de Nice donne une nouvelle production d'Orlando, avec une "
+                   "distribution internationale.",
+    "territoire": "comte-de-nice"}
+JUM_CARLA = {     # texte RÉEL de WP#8175, la jumelle italienne SAINE
+    "title": "«Carla With Love»: Martina Arduino interpreta Carla Fracci ai Musei Reali "
+             "di Torino",
+    "description": "Lo spettacolo è in programma ai Musei Reali di Torino, con ingresso "
+                   "su prenotazione.",
+    "territoire": "piemont"}
+# Près de la frontière : un titre italien fait presque uniquement de noms propres. C'est
+# le cas où `detect_lang` a le moins de matière — et une abstention ici coûterait un lien
+# qu'il fallait poser.
+JUM_NOMS_PROPRES = {"title": "Paratissima 2026: Esterno Notte a Torino",
+                    "description": "", "territoire": "piemont"}
+
+_check("la jumelle du versant it dont le texte est FRANÇAIS n'est pas liée",
+       rl.verdict("fr", "it", {}, "https://a/x", effective_lang(JUM_ORLANDO))
+       == "jumelle_mauvaise_langue")
+_check("   même quand un hreflang correct existe déjà (le verdict passe devant)",
+       rl.verdict("fr", "it", rl.alternates(HTML_SAIN),
+                  "https://agendasabauda.eu/it/evenement/smile-lorchestra-2/",
+                  effective_lang(JUM_ORLANDO)) == "jumelle_mauvaise_langue")
+_check("⚠️ la vraie jumelle italienne, elle, reste à lier (le cas qui doit passer)",
+       rl.verdict("fr", "it", {}, "https://a/x", effective_lang(JUM_CARLA))
+       == "lien_absent")
+_check("⚠️ et un titre italien presque tout en noms propres aussi (frontière)",
+       rl.verdict("fr", "it", {}, "https://a/x", effective_lang(JUM_NOMS_PROPRES))
+       == "lien_absent")
+_check("sans mesure de langue, le script se comporte comme avant (rétrocompatible)",
+       rl.verdict("fr", "it", {}, "https://a/x", "") == "lien_absent")
+
 print("\n──── ce qu'on ne relie JAMAIS ────")
 # Les deux pages du même côté : c'est le cas Orlando (WP#745 et WP#2340, tous deux au
 # versant français le 20/07). Les relier ne montrerait rien au lecteur — Polylang veut
@@ -187,6 +234,63 @@ _check("--ids ne garde que la paire demandée",
        sorted(j["id"] for _, j in rl.paires(conn, [1], tout=False)) == [2],
        rl.paires(conn, [1], tout=False))
 conn.close()
+
+
+print("\n──── la reprise automatique : qui est reprise, et qui ne l'est pas ────")
+# BRANCHÉE LE 21/09 sur « oui branche la traduction auto ». Deux familles ont le même
+# geste (`--retranslate`) et pas la même cause. Tout le reste doit rester dehors : une
+# retraduction coûte deux appels LLM et réécrit une page en ligne.
+def _p(i, wp=1000):
+    return {"id": i, "wp_post_id_as": wp, "title": f"Fiche {i}"}
+
+par_verdict = {
+    "meme_versant":            [(_p(1), _p(11), "x")],
+    "jumelle_mauvaise_langue": [(_p(2), _p(12), "x")],
+    "lien_absent":             [(_p(3), _p(13), "x")],   # ⚠️ ne doit PAS être retraduite
+    "deja_lie":                [(_p(4), _p(14), "x")],
+    "lien_ailleurs":           [(_p(5), _p(15), "x")],
+    "hors_ligne":              [(_p(6), _p(16), "x")],
+    "versant_muet":            [(_p(7), _p(17), "x")],
+}
+prets, bloques = rl.a_retraduire(par_verdict)
+ids_prets = sorted(o["id"] for o, _j, _c in prets)
+_check("les deux familles au même geste sont reprises", ids_prets == [1, 2], ids_prets)
+_check("⚠️ « lien absent » ne l'est PAS — il lui manque un lien, pas une traduction",
+       3 not in ids_prets, ids_prets)
+_check("   ni « déjà liée », ni « lien ailleurs », ni « hors ligne », ni « muette »",
+       all(i not in ids_prets for i in (4, 5, 6, 7)), ids_prets)
+
+# `--retranslate` repart de l'ORIGINAL : sans page, la commande est un cul-de-sac.
+sans_page = {"meme_versant": [({"id": 8, "wp_post_id_as": 0, "title": "T"}, _p(18), "x")]}
+prets2, bloques2 = rl.a_retraduire(sans_page)
+_check("un original SANS page n'est pas repris, il est mis de côté",
+       prets2 == [] and len(bloques2) == 1, (prets2, bloques2))
+
+print("\n──── ⚠️ la même page des deux côtés : ni lien, ni retraduction ────")
+# MESURÉ LE 21/09 : le relevé a sorti `[2507→3491] WP#2190→WP#2190`. La fiche 3491 est
+# enregistrée comme traduction de 2507 et porte le numéro de la page de 2507. Or
+# `_retranslate` réécrit chaque jumeau EN PLACE, à son `wp_post_id_as` : la reprise
+# automatique aurait réécrit la page FRANÇAISE en italien, dimanche 5h, toute seule.
+avec_meme_post = dict(par_verdict)
+avec_meme_post["meme_post"] = [(_p(9, 2190), _p(19, 2190), "les deux portent WP#2190")]
+prets3, _b3 = rl.a_retraduire(avec_meme_post)
+_check("une paire qui désigne le même post n'est JAMAIS retraduite",
+       9 not in [o["id"] for o, _j, _c in prets3], prets3)
+_check("   et le verdict existe, donc elle est NOMMÉE au lieu de disparaître",
+       "meme_post" in rl.VERDICTS, sorted(rl.VERDICTS))
+
+print("\n──── le garage : trois essais, et le ré-armement ne dépend de personne ────")
+trio = [(_p(1), _p(11), "x"), (_p(2), _p(12), "x"), (_p(3), _p(13), "x")]
+# ⚠️ LE CAS QUI DOIT PASSER, pris juste sous la frontière : MAX-1 essais, on tente encore.
+# Une borne trop stricte garerait une fiche qui avait encore un essai à jouer.
+a_tenter, gar = rl.garage(trio, {11: rl.MAX_RETRADUCTIONS - 1, 12: 0,
+                                 13: rl.MAX_RETRADUCTIONS})
+_check(f"⚠️ à {rl.MAX_RETRADUCTIONS - 1} essais, la fiche est ENCORE tentée",
+       11 in [j["id"] for _o, j, _c in a_tenter], a_tenter)
+_check("   à zéro essai aussi, évidemment", 12 in [j["id"] for _o, j, _c in a_tenter])
+_check(f"à {rl.MAX_RETRADUCTIONS} essais, elle est garée — elle ne brûle plus d'appels",
+       [j["id"] for _o, j, _c in gar] == [13], gar)
+_check("   et elle reste NOMMÉE, pas effacée du relevé", len(a_tenter) + len(gar) == 3)
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)

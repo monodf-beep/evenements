@@ -236,32 +236,47 @@ reel = commandes_crontab((ROOT / "crontab.txt").read_text(encoding="utf-8"))
 verifier("crontab.txt planifie bien le déploiement autonome",
          any("scripts.auto_deploiement --apply" in c for c in reel))
 
-# ── `ecart_crontab` EXÉCUTÉE, pas seulement relue (2026-09-21) ─────────────────────
-# Le cron de 7h50 est tombé en production sur un NameError : la fonction avait été
-# renommée `commandes_crontab` et l'appel, dans `ecart_crontab`, utilisait encore
-# l'ancien nom `_commandes`. Cette fixture-ci était VERTE pendant ce temps, pour deux
-# raisons cumulées : elle n'appelait que la fonction pure, et sur une machine sans
-# binaire `crontab` la ligne fautive n'est même pas atteinte (le FileNotFoundError est
-# rattrapé avant). D'où ce cas : on SIMULE un `crontab -l` qui répond, pour que la ligne
-# s'exécute vraiment. Sur la version fautive, il lève NameError — c'est la contre-épreuve
-# qui manquait (« un témoin ne prouve rien s'il n'a jamais été rouge », 14/09).
-class _FauxRetour:
-    returncode = 0
-    stdout = "SLACK_DIGEST=1\n0 8 * * * cd /root/evenements && echo tourne\n"
+print("\n──── ecart_crontab s'exécute VRAIMENT, pas seulement sa garde ────")
+# PLANTAGE EN PRODUCTION, 2026-09-21 07h50, lu dans logs/auto_deploiement.log :
+#
+#     installe = _commandes(r.stdout if r.returncode == 0 else "")
+#     NameError: name '_commandes' is not defined
+#
+# La fonction s'appelle `commandes_crontab` ; un renommage avait manqué CE seul appel.
+# Conséquence : le cron de 7h50 mourait avant son message Slack, sur les TROIS chemins
+# (rien à déployer, refus, déploiement fait). Le plus coûteux est le refus — le jour où
+# les fixtures bloquent un déploiement, personne n'en est averti.
+#
+# POURQUOI AUCUNE FIXTURE NE L'AVAIT VU, et c'est la leçon à garder : `ecart_crontab`
+# rattrape `FileNotFoundError` quand la commande `crontab` n'existe pas — le cas d'un
+# conteneur de développement. Elle SORTAIT donc avant la ligne 217, et le test ne
+# touchait jamais le code fautif. La garde écrite pour les machines de développement est
+# exactement ce qui cachait le défaut aux tests. D'où ce cas : on simule un `crontab -l`
+# QUI RÉPOND, pour forcer le chemin de comparaison.
+import subprocess as _sp  # noqa: E402
+
+_vrai_run = _sp.run
 
 
-_vrai_run = ad.subprocess.run
-ad.subprocess.run = lambda *a, **k: _FauxRetour()
+class _Fini:
+    def __init__(self, out):
+        self.returncode, self.stdout, self.stderr = 0, out, ""
+
+
+_sp.run = lambda *a, **k: (_Fini("0 5 * * 0 une-commande-installee\n")
+                           if a and a[0][:1] == ["crontab"] else _vrai_run(*a, **k))
 try:
-    a, r_, resume = ad.ecart_crontab()
-    verifier("ecart_crontab s'exécute sans NameError quand `crontab -l` répond",
-             isinstance(a, int) and isinstance(r_, int), f"{a} {r_} {resume}")
-    verifier("… et elle voit bien les lignes du dépôt absentes du crontab simulé", a > 0,
-             f"ajouts={a} · {resume[:80]}")
+    ajouts, retraits, resume = ad.ecart_crontab()
+    verifier("ecart_crontab traverse son chemin de comparaison sans planter", True)
+    verifier("   elle voit la ligne installée hors du dépôt", retraits >= 1,
+           (ajouts, retraits, resume))
+    verifier("   et elle voit les lignes du dépôt qui manquent", ajouts >= 1,
+           (ajouts, retraits, resume))
+    verifier("   le résumé nomme au moins une ligne, jamais un nombre nu",
+           "ligne(s)" in resume and len(resume) > 20, resume)
 except NameError as exc:
-    verifier(f"ecart_crontab lève NameError : {exc}", False)
+    verifier(f"ecart_crontab traverse son chemin de comparaison sans planter — {exc}", False)
 finally:
-    ad.subprocess.run = _vrai_run
-
+    _sp.run = _vrai_run
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

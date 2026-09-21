@@ -89,8 +89,20 @@ add_action('template_redirect', function () {
         // doublon). Le seul vrai doublon était 7639 : un troisième article FR isolé,
         // sans jumelle, publié le 17/08 sous un angle différent. Corbeillé (réversible),
         // son adresse suit vers la fiche qui reste.
+        //
+        // ⚠️ RECIBLÉE LE 2026-09-21. Cette ligne envoyait sur 8954, et 8954 a été
+        // corbeillée ce jour-là : mesuré avant correction, « 301 → 404 ». Une 301 vers
+        // une page morte double le problème qu'elle prétend régler (vérification n° 2 de
+        // CLAUDE.md) — et le défaut n'était visible qu'en suivant la chaîne, pas en
+        // relisant la ligne.
+        //
+        // ET LA CONCLUSION DU 17/09 CI-DESSUS EST À MOITIÉ FAUSSE : « la paire FR/IT
+        // saine 8954↔9302 » est bien une paire liée, mais elle DOUBLE la paire
+        // 6433↔7727 sur le même événement — quatre pages pour un tournoi, la forme
+        // « Chagall » (deux paires bilingues correctes pour un seul sujet). Vérifier
+        // qu'une paire est saine ne dit pas qu'elle est unique.
         '/evenement/evo-france-2026-nice-accueille-le-circuit-mondial-de-jeux-de-combat/'
-            => '/evenement/evo-2026-a-nice-trois-jeux-inedits-et-1-000-places-supplementaires/',
+            => '/evenement/evo-france-2026-huit-tournois-de-jeux-de-combat-au-palais-des-expositions-de-nice/',
 
         // 2026-09-17 : deux paires FR/IT complètes en double sur le même sujet — un
         // niveau au-dessus des doublons habituels (un post isolé). Tranché par clics
@@ -125,6 +137,38 @@ add_action('template_redirect', function () {
             => '/evenement/eurovolley-2026-hommes-huitiemes-et-quarts-de-finale-au-palavela-de-turin/',
         '/it/evenement/eurovolley-2026-huitiemes-et-quarts-de-finale-au-palavela-de-turin-du-20-au-23-septembre-2/'
             => '/it/evenement/eurovolley-2026-hommes-huitiemes-et-quarts-de-finale-au-palavela-de-turin-2/',
+
+        // 2026-09-21 : quatre événements publiés EN DOUBLE, repérés par la capture du
+        // hub Vallée d'Aoste qu'a envoyée Franck (« problème de duplication ») et par le
+        // rapport de 9h50 une fois son trou comblé — deux titres strictement identiques
+        // ne s'appariaient pas, faute de trois mots significatifs communs.
+        //
+        // Les six pages perdantes sont corbeillées (réversible) ; leurs adresses suivent.
+        // LES TROIS VÉRIFICATIONS ONT ÉTÉ FAITES, une par une, avant d'écrire ces lignes :
+        // les six sources rendent 404 (aucune n'était déjà redirigée par le mécanisme
+        // natif du slug renommé), les cinq cibles rendent 200, et aucune ne change de
+        // langue — l'italienne va sur l'italienne.
+        //
+        // Gagnantes choisies sur l'ancienneté quand elle existe : Marché au Fort garde
+        // 6435, publiée des semaines plus tôt, qui porte l'historique ET sa jumelle
+        // italienne 6805 — pas 9533, que le score « article le plus fourni » désignait.
+        // Le choix est éditorial, il est de Franck.
+        '/evenement/marche-au-fort-2026-les-saveurs-du-val-daoste-envahissent-bard/'
+            => '/evenement/marche-au-fort-les-producteurs-de-la-vallee-daoste-sinstallent-au-forte-di-bard/',
+        '/evenement/marche-au-fort-2026-le-bourg-de-bard-fete-les-saveurs-de-la-vallee-daoste/'
+            => '/evenement/marche-au-fort-les-producteurs-de-la-vallee-daoste-sinstallent-au-forte-di-bard/',
+        '/evenement/lo-pan-ner-plus-de-soixante-fours-se-rallument-en-vallee-daoste/'
+            => '/evenement/lo-pan-ner-les-fornis-valdostains-se-reveillent/',
+        '/evenement/la-foire-des-alpes-2026-reunit-les-elevages-de-vallee-daoste-a-saint-christophe/'
+            => '/evenement/la-foire-des-alpes-animaux-et-terroir-valdotain-a-larene-croix-noire/',
+        '/evenement/evo-2026-a-nice-trois-jeux-inedits-et-1-000-places-supplementaires/'
+            => '/evenement/evo-france-2026-huit-tournois-de-jeux-de-combat-au-palais-des-expositions-de-nice/',
+        // Celle-ci portait un contenu ITALIEN servi sous un chemin français — c'est
+        // l'une des 32 traductions du mauvais versant mesurées le 21/09. Elle va donc
+        // sur la page italienne qui reste : la langue du LECTEUR est préservée, même si
+        // le chemin de départ disait le contraire.
+        '/evenement/evo-2026-a-nice-trois-jeux-inedits-et-1-000-places-supplementaires-2/'
+            => '/it/evenement/evo-france-2026-huit-tournois-de-jeux-de-combat-au-palais-des-expositions-de-nice-2/',
 
         '/selections/ce-week-end/'                    => '/ce-week-end/',
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',

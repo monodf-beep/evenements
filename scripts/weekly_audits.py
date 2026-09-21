@@ -396,8 +396,27 @@ def main(argv: list[str] | None = None) -> int:
     # rester invisible jusqu'à sept jours. C'est tenable parce que le cas NEUF sort
     # désormais le jour même dans le bilan de la traduction, avec sa commande. Si la ligne
     # ci-dessous cesse d'être à zéro semaine après semaine, il faudra une ligne de cron.
+    #
+    # ET LA REPRISE AUTOMATIQUE AVEC (`--retraduire 3`), branchée le 21/09 au soir sur
+    # « oui branche la traduction auto » de Franck, après sa question « on doit encore
+    # faire ça ? ». Non : les paires du mauvais versant et celles dont la jumelle est
+    # restée dans la mauvaise langue avaient un geste écrit dans trois relevés, et
+    # personne pour le taper. Règle 3.
+    #
+    # ET NON, ÇA NE CONTREDIT PAS L'EN-TÊTE DE CE FICHIER (« zéro jugement LLM ambigu »).
+    # Le critère y est « les scripts qui font appel à un LLM pour DÉCIDER, pas juste
+    # détecter ». Ici la DÉCISION est déterministe et sans modèle : deux permaliens du même
+    # côté, ou `effective_lang` du texte qui contredit le versant servi. Le LLM ne tranche
+    # rien, il RÉÉCRIT un texte déjà décidé — comme image_audit (étape 8), qui est dans
+    # cette liste depuis toujours pour la même raison.
+    #
+    # TROIS PAR PASSAGE, et le plafond est un choix : chaque reprise coûte deux appels LLM
+    # et RÉÉCRIT une page en ligne. Neuf paires en attente au 21/09 — elles se videront en
+    # trois dimanches, et le relevé dit à chaque fois combien restent. Un garage de trois
+    # essais empêche l'acharnement sur une fiche que la retraduction ne sait pas réparer.
     from scripts.repair_lien_polylang import main as lien_pll_main
-    rc, out = _run_captured(lien_pll_main, ["--apply"], "repair_lien_polylang")
+    rc, out = _run_captured(lien_pll_main, ["--apply", "--retraduire", "3"],
+                            "repair_lien_polylang")
     sections.append(f"• Lien Polylang des paires FR/IT : {_tail(out, 1)}")
     if rc:
         echecs.append("repair_lien_polylang")

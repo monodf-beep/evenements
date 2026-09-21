@@ -55,12 +55,13 @@ Version: 1.0
 
 if (!defined('ABSPATH')) { exit; }
 
-define('CS_GEL_VERSION', '2026-09-21 — gel par empreinte + journal de fiche');
+define('CS_GEL_VERSION', '2026-09-21c — liste en SQL direct, pas WP_Query (v1.2)');
 define('CS_GEL_JOURNAL_MAX', 40);       // entrées gardées par fiche (les plus récentes)
 define('CS_GEL_META_EMPREINTE', 'as_bot_empreinte');
 define('CS_GEL_META_GEL', 'as_gel_texte');       // horodatage du gel (vide = pas gelé)
 define('CS_GEL_META_MOTIF', 'as_gel_motif');
 define('CS_GEL_META_JOURNAL', 'as_journal');
+define('CS_GEL_META_DETAIL', 'as_bot_longueurs');   // longueur de chaque champ au dernier passage
 define('CS_GEL_TYPE', 'tribe_events');
 
 /** Les six champs que le pipeline écrit et qu'une reprise à la main doit protéger. */
@@ -75,6 +76,17 @@ function cs_gel_surface($post_id) {
         'seo_desc' => (string) get_post_meta($post_id, '_yoast_wpseo_metadesc', true),
         'seo_cle'  => (string) get_post_meta($post_id, '_yoast_wpseo_focuskw', true),
     );
+}
+
+/** Longueurs par champ, rangées à côté de l'empreinte : elles ne servent QU'à dire
+ *  lesquels ont bougé le jour où un gel se déclenche. Une empreinte dit « ça a changé »,
+ *  jamais « quoi » — et c'est « quoi » qu'on cherche à 17 h un dimanche. */
+function cs_gel_longueurs($surface) {
+    $out = array();
+    if (is_array($surface)) {
+        foreach ($surface as $k => $v) { $out[$k] = strlen((string) $v); }
+    }
+    return $out;
 }
 
 function cs_gel_empreinte($surface) {
@@ -136,14 +148,30 @@ function cs_gel_etat($post_id) {
     if ($connue === '') {
         return array('gele' => false, 'depuis' => '', 'motif' => 'jamais vue');
     }
-    $actuelle = cs_gel_empreinte(cs_gel_surface($post_id));
+    $surface = cs_gel_surface($post_id);
+    $actuelle = cs_gel_empreinte($surface);
     if ($actuelle !== '' && $actuelle !== $connue) {
         $quand = current_time('mysql');
         update_post_meta($post_id, CS_GEL_META_GEL, $quand);
         update_post_meta($post_id, CS_GEL_META_MOTIF, 'retouche détectée (empreinte)');
+        // QUELS champs ont bougé, et pas seulement « ça a bougé ». Le 21/09, deux lignes
+        // de journal sans cette précision ont coûté une heure de reconstitution : on
+        // voyait un gel, sans pouvoir dire s'il venait d'une vraie retouche ou d'un
+        // défaut de mesure. Les longueurs suffisent, le texte lui-même n'a rien à faire
+        // dans un journal borné à 300 caractères.
+        $anciennes = get_post_meta($post_id, CS_GEL_META_DETAIL, true);
+        $bouges = array();
+        if (is_array($anciennes)) {
+            foreach ($surface as $champ => $valeur) {
+                if (!isset($anciennes[$champ]) || $anciennes[$champ] !== strlen((string) $valeur)) {
+                    $bouges[] = $champ;
+                }
+            }
+        }
         cs_gel_journal_ajouter($post_id, 'gel',
             'Texte modifié hors pipeline depuis le dernier passage — gelé : le cron '
-            . 'ne réécrira plus titre, corps, extrait ni métas Yoast.');
+            . 'ne réécrira plus titre, corps, extrait ni métas Yoast.'
+            . ($bouges ? ' Champs modifiés : ' . implode(', ', $bouges) . '.' : ''));
         return array('gele' => true, 'depuis' => $quand,
                      'motif' => 'retouche détectée (empreinte)');
     }
@@ -162,18 +190,37 @@ function cs_gel_lever($post_id, $qui, $motif) {
     // L'empreinte est remise à l'état ACTUEL : sans ça, la première lecture suivante
     // verrait un écart (le texte courant n'est pas celui du dernier passage du pipeline)
     // et regèlerait aussitôt la fiche. Un dégel qui ne dégèle pas serait pire que rien.
-    update_post_meta($post_id, CS_GEL_META_EMPREINTE, cs_gel_empreinte(cs_gel_surface($post_id)));
+    $surface = cs_gel_surface($post_id);
+    update_post_meta($post_id, CS_GEL_META_EMPREINTE, cs_gel_empreinte($surface));
+    update_post_meta($post_id, CS_GEL_META_DETAIL, cs_gel_longueurs($surface));
     cs_gel_journal_ajouter($post_id, $qui,
         'Gel levé : le pipeline pourra réécrire le texte au prochain passage. ' . $motif);
 }
 
 // ── Interception de cs/v1/event ────────────────────────────────────────────────
-// Mémoire d'un appel à l'autre (pre_dispatch → post_dispatch). Une requête REST = un
-// processus PHP : une statique suffit et ne survit pas à la requête.
-function &cs_gel_memo() {
-    static $memo = array('actif' => false, 'post_id' => 0, 'gele' => false,
-                         'surface' => null, 'neutralises' => array(), 'forces' => array());
-    return $memo;
+// Mémoire d'un appel à l'autre (pre_dispatch → post_dispatch), INDEXÉE PAR L'OBJET
+// REQUÊTE et pas par un simple drapeau « une passe est en cours ».
+//
+// MESURÉ le 2026-09-21, et c'est la première version de ce fichier qui s'y est fait
+// prendre : `rest_post_dispatch` se déclenche pour TOUTE requête REST servie, y compris
+// une requête qui n'a rien à voir. Avec un drapeau global, la passe ouverte sur
+// /cs/v1/event a été refermée par la réponse d'une requête /mcp/novamira-oauth — le
+// journal de la fiche a reçu « Création par le pipeline » au nom d'un appel qui ne la
+// concernait pas, et la contre-épreuve n'a jamais tourné sur la bonne réponse.
+// La clé d'objet rend l'appariement exact : ce qui a été ouvert par une requête ne peut
+// être refermé que par ELLE.
+//
+// ⚠️ Et une chose qu'il faut savoir avant de tester ce fichier : `rest_do_request()`
+// (l'appel REST INTERNE) n'applique PAS `rest_post_dispatch` — seul le service HTTP le
+// fait, dans WP_REST_Server::serve_request(). Un test écrit avec rest_do_request seul
+// ne passe donc jamais dans la moitié « après » et donne l'illusion que le gel ne tient
+// pas. Pour reproduire fidèlement le chemin de production :
+//     $rep = rest_do_request($req);
+//     $rep = apply_filters('rest_post_dispatch', rest_ensure_response($rep),
+//                          rest_get_server(), $req);
+function &cs_gel_memos() {
+    static $memos = array();
+    return $memos;
 }
 
 add_filter('rest_pre_dispatch', 'cs_gel_avant_dispatch', 10, 3);
@@ -184,18 +231,20 @@ function cs_gel_avant_dispatch($result, $server, $request) {
     // — qui sera refusée trois lignes plus loin — aurait quand même fait écrire des
     // métas et une ligne de journal sur une fiche publique.
     if (!current_user_can('edit_posts')) { return $result; }
-    $memo = &cs_gel_memo();
-    $memo['actif'] = true;
+    $memos = &cs_gel_memos();
+    $cle = spl_object_id($request);
+    $memos[$cle] = array('post_id' => 0, 'gele' => false, 'surface' => null,
+                         'neutralises' => array(), 'forces' => array());
 
     $b = $request->get_json_params();
     if (!is_array($b)) { return $result; }
     $pid = isset($b['wp_post_id']) ? (int) $b['wp_post_id'] : 0;
     if ($pid <= 0 || get_post_type($pid) !== CS_GEL_TYPE) { return $result; }
 
-    $memo['post_id'] = $pid;
-    $memo['surface'] = cs_gel_surface($pid);
+    $memos[$cle]['post_id'] = $pid;
+    $memos[$cle]['surface'] = cs_gel_surface($pid);
     $etat = cs_gel_etat($pid);
-    $memo['gele'] = $etat['gele'];
+    $memos[$cle]['gele'] = $etat['gele'];
     if (!$etat['gele']) { return $result; }
 
     // `forcer_texte` : liste des champs que le pipeline écrit MALGRÉ le gel.
@@ -204,13 +253,13 @@ function cs_gel_avant_dispatch($result, $server, $request) {
     if ($forces === true)      { $forces = array('title', 'content', 'excerpt', 'seo'); }
     elseif (!is_array($forces)) { $forces = array(); }
     $forces = array_map('strval', $forces);
-    $memo['forces'] = $forces;
+    $memos[$cle]['forces'] = $forces;
 
     // On ne SUPPRIME pas les clés : cs-publish.php refuse un titre vide (erreur
     // no_title) et son bloc SEO ne teste que `!empty`. On les remplace par ce qui est
     // DÉJÀ en ligne — l'écriture devient un non-événement, et tout le reste du payload
     // (dates, lieu, taxonomies, métas as_*, image) continue son chemin intact.
-    $s = $memo['surface'];
+    $s = $memos[$cle]['surface'];
     $neutralises = array();
     if (!in_array('title', $forces, true) && isset($b['title'])) {
         $b['title'] = $s['title']; $neutralises[] = 'title';
@@ -225,7 +274,7 @@ function cs_gel_avant_dispatch($result, $server, $request) {
         unset($b['seo']); $neutralises[] = 'seo';
     }
     unset($b['slug']);   // jamais de renommage d'adresse sur une fiche reprise à la main
-    $memo['neutralises'] = $neutralises;
+    $memos[$cle]['neutralises'] = $neutralises;
 
     $request->set_body(wp_json_encode($b));
     return $result;
@@ -233,9 +282,14 @@ function cs_gel_avant_dispatch($result, $server, $request) {
 
 add_filter('rest_post_dispatch', 'cs_gel_apres_dispatch', 10, 3);
 function cs_gel_apres_dispatch($response, $server, $request) {
-    $memo = &cs_gel_memo();
-    if (empty($memo['actif'])) { return $response; }
-    $memo['actif'] = false;
+    // Seule la requête qui a ouvert la passe peut la refermer (cf. le commentaire de
+    // cs_gel_memos) : ce filtre-ci reçoit AUSSI les réponses de routes étrangères.
+    if (!is_object($request)) { return $response; }
+    $memos = &cs_gel_memos();
+    $cle = spl_object_id($request);
+    if (!isset($memos[$cle])) { return $response; }
+    $memo = $memos[$cle];
+    unset($memos[$cle]);
     if (!is_object($response) || $response->get_status() >= 300) { return $response; }
 
     $data = $response->get_data();
@@ -284,9 +338,12 @@ function cs_gel_apres_dispatch($response, $server, $request) {
         cs_gel_journal_ajouter($pid, 'pipeline', $quoi);
         // L'empreinte de référence reste celle du texte RETOUCHÉ : c'est lui la version
         // à protéger, pas ce que le pipeline vient de proposer.
-        update_post_meta($pid, CS_GEL_META_EMPREINTE, cs_gel_empreinte(cs_gel_surface($pid)));
+        $final = cs_gel_surface($pid);
+        update_post_meta($pid, CS_GEL_META_EMPREINTE, cs_gel_empreinte($final));
+        update_post_meta($pid, CS_GEL_META_DETAIL, cs_gel_longueurs($final));
     } else {
         update_post_meta($pid, CS_GEL_META_EMPREINTE, cs_gel_empreinte($apres));
+        update_post_meta($pid, CS_GEL_META_DETAIL, cs_gel_longueurs($apres));
         cs_gel_journal_ajouter($pid, 'pipeline',
             (empty($data['updated']) ? 'Création' : 'Mise à jour')
             . ' par le pipeline (titre, corps, extrait, métas Yoast et données structurées).');
@@ -334,31 +391,49 @@ add_action('rest_api_init', function () {
     ));
 });
 
-/** GET cs/v1/gel — la file des fiches garées, avec son périmètre (CLAUDE.md règle 6). */
+/**
+ * GET cs/v1/gel — la file des fiches garées, avec son périmètre (CLAUDE.md règle 6).
+ *
+ * ⚠️ SQL DIRECT, ET SURTOUT PAS WP_Query. Mesuré le 21/09, une heure après la pose des
+ * 49 premiers gels : la version WP_Query de cette route en rendait **23 sur 51**. Cause :
+ * The Events Calendar filtre ses propres collections et en retire les événements PASSÉS
+ * (CLAUDE.md règle 2, écrite pour exactement ça). Or le premier lot gelé était justement
+ * fait d'événements passés récurrents.
+ *
+ * Ce n'était pas un compteur inexact, c'était un compteur DANGEREUX : `scripts/gel_texte.py
+ * --sync` compare cette liste à la base locale et EFFACE le marqueur de ce qui n'y figure
+ * pas. Un `--sync --apply` aurait donc dégelé 28 fiches en silence, en croyant recopier
+ * fidèlement l'état du site. Une liste qui ment sur son périmètre finit toujours par faire
+ * agir quelqu'un — ici, elle-même.
+ *
+ * `!= ''` et pas EXISTS : cs_gel_etat() traite la chaîne vide comme « pas de gel », et
+ * deux détecteurs pour la même chose finissent toujours par diverger.
+ */
 function cs_gel_route_liste(WP_REST_Request $req) {
-    $q = new WP_Query(array(
-        'post_type'      => CS_GEL_TYPE,
-        'post_status'    => 'any',
-        'posts_per_page' => 500,
-        'fields'         => 'ids',
-        // `!= ''` et pas seulement EXISTS : cs_gel_etat() traite la chaîne vide comme
-        // « pas de gel », et une liste qui compterait autrement que l'état ferait deux
-        // détecteurs pour la même chose — dont un faux (docs/ERREURS_2026-09-08.md).
-        'meta_query'     => array(array('key' => CS_GEL_META_GEL,
-                                        'value' => '', 'compare' => '!=')),
-        'no_found_rows'  => true,
-    ));
+    global $wpdb;
+    $lignes = $wpdb->get_results($wpdb->prepare(
+        "SELECT p.ID, p.post_status, m.meta_value AS depuis
+           FROM {$wpdb->postmeta} m
+           JOIN {$wpdb->posts} p ON p.ID = m.post_id
+          WHERE m.meta_key = %s AND m.meta_value <> ''
+            AND p.post_type = %s
+            AND p.post_status NOT IN ('trash', 'auto-draft')
+          ORDER BY m.meta_value DESC",
+        CS_GEL_META_GEL, CS_GEL_TYPE), ARRAY_A);
     $out = array();
-    foreach ($q->posts as $id) {
+    foreach ($lignes as $l) {
+        $id = (int) $l['ID'];
         $out[] = array(
-            'id'     => (int) $id,
+            'id'     => $id,
             'titre'  => get_the_title($id),
-            'depuis' => (string) get_post_meta($id, CS_GEL_META_GEL, true),
+            'statut' => $l['post_status'],
+            'depuis' => (string) $l['depuis'],
             'motif'  => (string) get_post_meta($id, CS_GEL_META_MOTIF, true),
             'url'    => get_permalink($id),
         );
     }
-    return array('total' => count($out), 'perimetre' => 'tribe_events, tous statuts',
+    return array('total' => count($out),
+                 'perimetre' => 'tribe_events hors corbeille, PASSÉS COMPRIS (SQL direct)',
                  'fiches' => $out);
 }
 
