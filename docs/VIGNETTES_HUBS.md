@@ -120,10 +120,14 @@ bandeau blanc ». Mesuré avant de conclure, en rejouant la page servie dans
 Chromium (scripts retirés, image chargée en local, sinon on mesure une image
 cassée) :
 
-| | avant | après |
-|---|---|---|
-| image affichée | 1200 × **630** | 1200 × **460** |
-| blanc entre l'image et le fil d'Ariane | **0 px** | **0 px** |
+| | au départ | 1re passe | après alignement |
+|---|---|---|---|
+| image affichée | 1200 × **630** | 1200 × 460 | **900 × 345** |
+| largeur vs colonne de contenu (900 px) | déborde de 300 | déborde de 300 | **alignée** |
+| blanc entre l'image et le fil d'Ariane | **0 px** | 0 px | **0 px** |
+
+Du haut de l'image au bas du H1 : **416 px**, contre 630 px pour la seule image
+au départ.
 
 **La hauteur était bien le défaut**, et c'est le thème qui la produit :
 GeneratePress rend l'image mise en avant à sa taille native dans
@@ -143,7 +147,12 @@ donc **limité aux 192 pages hub** — aucun CSS global :
   object-fit:cover;object-position:center}
 ```
 
-**Pourquoi 460 et pas moins.** Le recadrage est centré : 460/630 conserve de
+**Largeur : 900 px, pas 1200.** Franck : « on peut réduire la largeur pour avoir
+900px c'est ça la largeur du site ? » — oui, c'est le `max-width:900px` du
+gabarit hub. L'image débordait de la colonne de 300 px. Alignée, elle tombe
+mécaniquement à 345 px de haut, le rapport de recadrage étant inchangé.
+
+**Pourquoi le rapport 1200/460 et pas moins.** Le recadrage est centré : 460/630 conserve de
 y=85 à y=545 dans l'image source. Le plus haut des encarts (« aujourd'hui »,
 384 px, centré) occupe y=123 à y=507, languette comprise jusqu'à ~526. Il passe
 avec 19 px de marge. **Descendre sous 460 rognerait la carte** : il faudrait
@@ -163,3 +172,31 @@ $wpdb->update($wpdb->prefix.'snippets',
 
 > Dette assumée : le snippet 61 n'est toujours pas miroité à l'octet près dans
 > `deploy/wordpress/`. Elle date d'avant ce chantier, elle n'est pas réglée ici.
+
+## Le bandeau de 180 px du gabarit faisait doublon
+
+Franck, à la vue de la page : « on a 2 fois l'image ». Exact : le gabarit hub
+affiche sous le H1 un bandeau de 180 px avec la photo de la ville — utile tant
+que ces pages n'avaient AUCUNE image, redondant depuis que la vignette porte la
+même photo avec l'encart par-dessus.
+
+Il est désormais **conditionnel** : il ne s'affiche que si la page n'a pas de
+vignette. Vérifié en ligne — Chambéry ne l'a plus, Annecy (pas encore traitée)
+l'a toujours. Les 186 pages restantes gardent donc leur photo jusqu'à leur tour.
+
+Le **crédit photo n'est pas conditionné** : c'est la même photo, l'attribution
+reste due.
+
+### Contrôler la syntaxe PHP sans binaire `php`
+
+Première tentative refusée par mon propre garde-fou : `exec('php -l')` a répondu
+`sh: php: command not found` — l'hébergement OVH n'expose pas le binaire. Le
+refus était bon, la raison était mauvaise. Le contrôle équivalent depuis PHP :
+
+```php
+try { token_get_all("<?php \n" . $code, TOKEN_PARSE); }
+catch (ParseError $e) { /* refuser l'ecriture */ }
+```
+
+md5 `7a68c89565155a2560671b95de2f2db7` → `5cfd753fd43b2ef1dd81b1a7cec61ba2`.
+Sauvegarde : option `cs_snippet61_sauvegarde_20260921d`.
