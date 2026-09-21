@@ -950,10 +950,15 @@ def systeme_view():
 @app.route("/process")
 @require_auth
 def process_page():
-    """Schéma pédagogique : le process complet, les agents, les boucles.
+    """LA CARTE DES AUTOMATISATIONS — tous les traitements en nœuds reliés.
 
-    Page statique (aucune requête base/API) — juste une carte du fonctionnement."""
-    return render_template("process.html", active="process")
+    Remplace l'ancien schéma linéaire, qui décrivait cinq étapes quand il en tourne
+    quarante. Le contenu des fiches vit dans `app/automatisations_noeuds.py` ; l'horaire,
+    la commande et le journal sont LUS dans `crontab.txt` à chaque affichage, et l'état
+    du dernier passage vient de `scripts/watchdog_crons.py` — un seul détecteur, pas
+    deux. Voir l'en-tête d'`app/automatisations.py` pour le raisonnement."""
+    from app import automatisations
+    return render_template("process.html", active="process", c=automatisations.carte())
 
 
 # Wireframe annoté de la home : sections RÉELLES observées sur agendasabauda.eu,
