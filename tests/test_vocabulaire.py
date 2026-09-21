@@ -71,6 +71,7 @@ vocab_path = Path(tempfile.mkdtemp()) / "Vocabulaire interdit.md"
 vocab_path.write_text(_NOTE_VOCAB, encoding="utf-8")
 os.environ["OBSIDIAN_VOCAB_PATH"] = str(vocab_path)
 
+from utils import vocabulaire                                          # noqa: E402
 from utils.vocabulaire import consigne_prompt, remplacement, trouver, interdits  # noqa: E402
 from scripts.scraper_events import init_db                            # noqa: E402
 import scripts.audit_vocabulaire as av                                # noqa: E402
@@ -212,15 +213,41 @@ _check("⚠️ il avertit qu'une occurrence peut être un titre officiel",
        "titre officiel d'une exposition" in s, s[-600:])
 
 print("\n──── ⚠️ Obsidian injoignable : silence total, pas de blocage (choix de Franck) ────")
-del os.environ["OBSIDIAN_VOCAB_PATH"]
+# ⚠️ RETIRER LA VARIABLE NE SUFFIT PAS, et c'est le VPS qui l'a appris (22/09).
+# `utils.vocabulaire._spec()` rappelle `load_dotenv(.env)` à CHAQUE accès — voulu, pour
+# qu'une note éditée soit vue au run suivant. Conséquence : sur une machine qui A un
+# `.env`, la variable qu'on vient de supprimer est RÉINJECTÉE avant la lecture, et ces
+# trois contrôles échouent. Ils étaient donc verts ici (conteneur sans `.env`) et rouges
+# sur le serveur — exactement à l'envers de ce qu'on veut d'une fixture.
+#
+# C'est le MÊME défaut que l'incident du 2026-08-17 sur le webhook Slack, où `_webhook()`
+# réinjectait `SLACK_WEBHOOK_URL` malgré la fixture qui la retirait ; `utils/slack.py`
+# s'est doté d'un garde, pas ce module-ci.
+#
+# On neutralise donc la relecture du `.env` pour la durée de cette section, au lieu de
+# faire confiance à `del`. Et on garde les DEUX scénarios, qui ne sont pas le même :
+# la variable ABSENTE (personne n'a réglé Obsidian) et le chemin PRÉSENT MAIS ILLISIBLE
+# (le vault est démonté) — c'est ce second cas que la production rencontre vraiment.
+_dotenv_reel = vocabulaire.load_dotenv
+vocabulaire.load_dotenv = lambda *a, **k: False
+os.environ.pop("OBSIDIAN_VOCAB_PATH", None)
 _check("plus aucune règle chargée", interdits() == ())
 _check("trouver() ne lève rien et ne signale plus rien",
        trouver("Vestige du royaume de Sardaigne, la Venise des Alpes.") == [])
 _check("consigne_prompt() renvoie une chaîne vide, pas une exception",
        consigne_prompt() == "")
+vocabulaire.load_dotenv = _dotenv_reel
+# Le vault démonté : la variable est réglée, la note ne répond pas. Ce cas-là résiste à
+# la relecture du `.env` (dotenv n'écrase jamais une variable déjà posée), il se teste
+# donc tel quel — et c'est la panne réelle qu'on veut couvrir.
 os.environ["OBSIDIAN_VOCAB_PATH"] = "/chemin/qui/n/existe/pas.md"
 _check("un chemin réglé mais introuvable se comporte pareil (pas d'exception)",
        interdits() == () and trouver("royaume de Sardaigne") == [])
+# CONTRE-ÉPREUVE : la section ci-dessus prouverait n'importe quoi si le module rendait
+# TOUJOURS (). On remet une note valide et on exige qu'il reparle.
+os.environ["OBSIDIAN_VOCAB_PATH"] = str(vocab_path)
+_check("   et dès que la note répond de nouveau, les règles reviennent",
+       len(interdits()) > 0)
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)

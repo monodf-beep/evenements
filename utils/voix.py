@@ -56,7 +56,26 @@ def _max_chars() -> int:
     # jamais vues, sans le moindre signal : la voix s'appliquait amputée de sa fin depuis
     # que la note a dépassé la limite. Le plafond reste utile (un prompt n'est pas
     # extensible), mais il tronque désormais À VOIX HAUTE (cf. load_voix).
-    return int(os.getenv("VOIX_MAX_CHARS", "8000"))
+    #
+    # 16000 depuis le 2026-09-22, et LA MÊME CHOSE S'EST REPRODUITE — c'est ça qui décide
+    # du nouveau chiffre, pas le besoin du jour. Relevé sur le VPS : la voix concaténée y
+    # faisait ~11 200 caractères, donc 3 202 caractères de `docs/voix/VOIX.md` étaient
+    # coupés, c'est-à-dire la FIN de la charte. Deux incidents identiques en dix-sept
+    # jours, parce que le plafond est un nombre fixe qui court après une note qui grossit :
+    # 8000 ne laissait que 1 225 caractères de marge au moment où il a été posé.
+    #
+    # POURQUOI 16000 ET PAS 12000. 12000 aurait laissé 800 caractères de marge, donc
+    # rendez-vous au prochain paragraphe ajouté. 16000 en laisse près de 5 000. Ce que ça
+    # coûte : la voix passe d'environ 2 000 à 2 800 jetons par appel qui l'injecte
+    # (enrich, translate_events, textes_hubs), sur des prompts qui montent à 24 000 jetons
+    # — quelques dizaines de milliers de jetons d'entrée par jour, négligeable devant le
+    # risque de publier avec une charte amputée de sa fin.
+    #
+    # CE QUI RESTE LE VRAI GARDE-FOU, et qui a trouvé les deux incidents : la troncature
+    # s'annonce (load_voix), et `tests/test_voix_troncature.py` échoue dès qu'elle mord.
+    # Relever ce nombre ne remplace pas cette fixture, il lui donne de l'air. Pour revenir
+    # en arrière sans toucher au code : VOIX_MAX_CHARS dans le .env du VPS.
+    return int(os.getenv("VOIX_MAX_CHARS", "16000"))
 
 
 # Voix CANONIQUE versionnée dans le dépôt : sert de source par défaut ET de garde-fou
