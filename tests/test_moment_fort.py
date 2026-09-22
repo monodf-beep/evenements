@@ -323,6 +323,25 @@ def test_rendu():
     else:
         print("  ok  voisins : seul le volet dont la page existe est montré")
 
+    # LE TITRE NOMME LES TERRITOIRES MONTRÉS, et eux seuls (Franck, 22/09 : « on nomme
+    # les territoires ! »). Les deux pages existent : les deux noms. Une seule : un seul.
+    html_deux = rendre(jeu, "fr", "savoie", tmp)
+    if "ce week-end, en Piémont et en Vallée d&#039;Aoste</h2>" not in html_deux:
+        echec("titre voisins : les deux volets montrés doivent être nommés")
+    elif "en Italie" in html_deux:
+        echec("titre voisins : « en Italie » ne doit plus apparaître")
+    else:
+        print("  ok  titre voisins : « en Piémont et en Vallée d'Aoste »")
+    if "ce week-end, en Piémont</h2>" not in html_un_voisin:
+        echec("titre voisins : un seul volet montré, un seul territoire nommé")
+    else:
+        print("  ok  contre-épreuve : un seul volet montré, le titre ne nomme que lui")
+    html_it = rendre(jeu, "it", "savoie", tmp)
+    if "questo fine settimana, in Piemonte e in Valle d&#039;Aosta</h2>" not in html_it:
+        echec("titre voisins it : attendu « in Piemonte e in Valle d'Aosta »")
+    else:
+        print("  ok  titre voisins it : « in Piemonte e in Valle d'Aosta »")
+
     shutil.rmtree(tmp, ignore_errors=True)
 
 

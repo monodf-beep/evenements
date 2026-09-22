@@ -174,8 +174,14 @@ function cs_moments_forts() {
             'ailleurs'   => array(
                 'kicker' => array('fr' => "De l'autre côté du col",
                                   'it' => "Dall'altra parte del colle"),
-                'titre'  => array('fr' => "Les journées du patrimoine, ce week-end, en Italie",
-                                  'it' => "Le giornate del patrimonio, questo fine settimana, in Italia"),
+                // On NOMME les territoires, jamais « en Italie » : le site parle de quatre
+                // territoires, pas de pays. Arbitrage de Franck, 22/09 au soir. Le %s reçoit
+                // les noms des volets RÉELLEMENT montrés (cs_mf_titre_voisins) : écrit en dur,
+                // le titre annonçait la Vallée d'Aoste même quand son volet était masqué
+                // (page absente, par exemple) — la fixture l'a attrapé.
+                'titre'  => array('fr' => "Les journées du patrimoine, ce week-end, en %s",
+                                  'it' => "Le giornate del patrimonio, questo fine settimana, in %s"),
+                'liaison'=> array('fr' => ' et en ', 'it' => ' e in '),
                 'chapo'  => array('fr' => "En France, c'était le week-end dernier. À moins de deux heures de route, ça commence seulement.",
                                   'it' => "In Francia è stato il fine settimana scorso. A meno di due ore di strada, comincia adesso."),
             ),
@@ -221,12 +227,12 @@ function cs_moments_forts() {
                     'dates' => array('19', '27', array('fr' => 'sept.', 'it' => 'set.')),
                     'titre' => array('fr' => "Plaisirs de Culture en Vallée d'Aoste",
                                      'it' => "Plaisirs de Culture in Valle d'Aosta"),
-                    'chapo' => array('fr' => "Neuf jours de châteaux, de musées et de sites ouverts, dans la seule région italienne où le programme se lit en français.",
-                                     'it' => "Nove giorni di castelli, musei e siti aperti, nella sola regione italiana dove il programma si legge in francese."),
-                    'phrase'=> array('fr' => "Plaisirs de Culture ouvre châteaux, musées et sites pendant neuf jours, en français.",
-                                     'it' => "Plaisirs de Culture apre castelli, musei e siti per nove giorni, in francese."),
-                    'pied'  => array('fr' => "Le programme régional compte une soixantaine de rendez-vous.",
-                                     'it' => "Il programma regionale conta una sessantina di appuntamenti."),
+                    'chapo' => array('fr' => "Neuf jours de châteaux, de musées et de sites ouverts, et un programme qui se lit aussi en français.",
+                                     'it' => "Nove giorni di castelli, musei e siti aperti, e un programma che si legge anche in francese."),
+                    'phrase'=> array('fr' => "Plaisirs de Culture ouvre châteaux, musées et sites pendant neuf jours, dont huit châteaux sans billet.",
+                                     'it' => "Plaisirs de Culture apre castelli, musei e siti per nove giorni, otto castelli a ingresso gratuito."),
+                    'pied'  => array('fr' => "Le programme régional compte environ soixante-dix rendez-vous.",
+                                     'it' => "Il programma regionale conta circa settanta appuntamenti."),
                     'lien'  => array('fr' => 'Le programme valdôtain', 'it' => 'Il programma valdostano'),
                     'page'  => array('fr' => 'https://agendasabauda.eu/plaisirs-de-culture-vallee-d-aoste/',
                                      'it' => 'https://agendasabauda.eu/it/plaisirs-de-culture-valle-d-aosta/'),
@@ -523,10 +529,19 @@ if (!function_exists('cs_mf_rendu_voisins')) {
  * ce qui garde la bande à la moitié de la hauteur de l'autre (mesuré : 344 px contre
  * 523 au bureau, 690 contre 951 en mobile).
  */
+function cs_mf_titre_voisins($moment, $volets, $lang) {
+    $titre = $moment['ailleurs']['titre'][$lang];
+    if (strpos($titre, '%s') === false) { return $titre; }
+    $noms = array();
+    foreach ($volets as $v) { $noms[] = $v['nom'][$lang]; }
+    $liaison = isset($moment['ailleurs']['liaison'][$lang]) ? $moment['ailleurs']['liaison'][$lang] : ', ';
+    return sprintf($titre, implode($liaison, $noms));
+}
+
 function cs_mf_rendu_voisins($moment, $volets, $lang) {
     $h  = '<div class="cs-mf__gauche">';
     $h .= '<span class="cs-mf__kicker">' . esc_html($moment['ailleurs']['kicker'][$lang]) . '</span>';
-    $h .= '<h2 class="cs-mf__titre">' . esc_html($moment['ailleurs']['titre'][$lang]) . '</h2>';
+    $h .= '<h2 class="cs-mf__titre">' . esc_html(cs_mf_titre_voisins($moment, $volets, $lang)) . '</h2>';
     $h .= '<p class="cs-mf__chapo">' . esc_html($moment['ailleurs']['chapo'][$lang]) . '</p>';
     $h .= '</div><div class="cs-mf__droite">';
     foreach ($volets as $v) {
