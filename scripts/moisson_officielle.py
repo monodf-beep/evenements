@@ -87,7 +87,13 @@ from scripts.venues import venue_from_page  # noqa: E402
 log = get_logger("moisson")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
 
-CHAMPS = ("date_event_start", "date_event_end", "lieu", "ville", "url_image")
+# ORGANISATEUR ajouté le 2026-09-22, sur mesure : 89 fiches vivantes avaient leur page
+# officielle en base et pas d'organisateur. On téléchargeait la page chaque matin et on
+# jetait le champ, faute de le viser — `jsonld.champs()` ne lisait pas `organizer`.
+# (Les 148 fiches sans page officielle DU TOUT restent le vrai goulot : celles-là,
+# aucune moisson ne peut les servir, c'est la recherche web en amont qui plafonne.)
+CHAMPS = ("date_event_start", "date_event_end", "lieu", "ville", "url_image",
+          "organisateur")
 # INFOS PRATIQUES (2026-08-11) — Franck : « il faut que le script aille chercher les
 # informations dans les ressources officielles ». Sur 81 colonnes, aucune ne stockait un
 # tarif, un horaire ou une condition d'accès : ces faits ne vivaient que dans l'article,
