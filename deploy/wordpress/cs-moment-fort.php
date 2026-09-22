@@ -201,11 +201,15 @@ function cs_moments_forts() {
                     // Libellés des colonnes de la mise « programme-jours ».
                     'jours' => array(
                         array('date' => '2026-09-26',
-                              'titre' => array('fr' => 'Samedi 26', 'it' => 'Sabato 26'),
-                              'mention' => array('fr' => 'en soirée, 1 €', 'it' => 'di sera, 1 €')),
+                              'titre' => array('fr' => 'Samedi 26', 'it' => 'Sabato 26')),
                         array('date' => '2026-09-27',
-                              'titre' => array('fr' => 'Dimanche 27', 'it' => 'Domenica 27'),
-                              'mention' => array('fr' => 'en journée', 'it' => 'di giorno')),
+                              'titre' => array('fr' => 'Dimanche 27', 'it' => 'Domenica 27')),
+                        // PAS DE MENTION SOUS LE JOUR. Il y avait « en soirée, 1 € » et « en
+                        // journée ». Franck, 22/09 au soir : « c'est confusant ». Pire, c'était
+                        // faux : la colonne du samedi liste aussi des visites de jour
+                        // (Serralunga, Cinaglio), et seules les neuf nocturnes d'État sont à
+                        // un euro — ce que le chapô dit déjà. Une mention coiffe TOUTE la
+                        // colonne : n'en poser une que si elle est vraie de chaque ligne.
                     ),
                 ),
                 array(
@@ -481,7 +485,8 @@ function cs_mf_rendu_programme($moment, $volet, $lang, $data) {
         }
         $nb_colonnes++;
         $colonnes .= '<div class="cs-mf__jour"><h3 class="cs-mf__jour-titre">' . esc_html($j['titre'][$lang])
-                   . '<em>' . esc_html($j['mention'][$lang]) . '</em></h3><ul class="cs-mf__liste">' . $li . '</ul></div>';
+                   . (!empty($j['mention'][$lang]) ? '<em>' . esc_html($j['mention'][$lang]) . '</em>' : '')
+                   . '</h3><ul class="cs-mf__liste">' . $li . '</ul></div>';
     }
     // Aucun jour déclaré (ou aucun retenu) : une seule liste, sans découpage.
     if ($colonnes === '') {
