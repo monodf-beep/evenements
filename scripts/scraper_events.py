@@ -297,7 +297,38 @@ def init_db(conn: sqlite3.Connection) -> None:
                       ("organisateur_byline", "TEXT"),             # purge_bylines
                       ("seo_pushed_at", "TEXT"),                   # seo_batch
                       ("unmerge_data", "TEXT"),                    # dedupe
-                      ("worth_trip", "INTEGER DEFAULT 0")):        # evaluator / home
+                      ("worth_trip", "INTEGER DEFAULT 0"),        # evaluator / home
+                      # Extraits de la page officielle (tarif, horaires, réservation,
+                      # accessibilité, langue), en JSON {famille: [extraits]}. Posée par
+                      # moisson_officielle via une f-string — ce qui l'a fait échapper à
+                      # la première version de tests/test_colonnes_declarees.py, dont la
+                      # recherche ne voyait que les noms LITTÉRAUX. Un détecteur qui ne
+                      # reconnaît qu'une forme d'écriture mesure sa propre myopie.
+                      ("infos_pratiques", "TEXT"),
+                      # LE RESTE DU RATTRAPAGE. Les six premières avaient été trouvées
+                      # à la main ; le détecteur, une fois passé à l'AST (il ne lisait
+                      # d'abord que les noms LITTÉRAUX, puis criait au loup sur les
+                      # boucles saines), en a révélé DIX-HUIT de plus. Chacune était
+                      # posée par le seul script qui l'écrit, et donc absente de toute
+                      # base neuve. Types relevés dans le code, pas devinés.
+                      ("annulation_detectee_at", "TEXT"),
+                      ("annulation_fiche_visee_id", "INTEGER"),
+                      ("annulation_marqueur", "TEXT"),
+                      ("annulation_source_url", "TEXT"),
+                      ("annulation_visee_etait_publiee", "INTEGER"),
+                      ("autocomplete_notified_at", "TEXT"),
+                      ("autocomplete_state_since", "TEXT"),
+                      ("date_checked_at", "TEXT"),
+                      ("date_matiere", "TEXT"),
+                      ("date_tentatives", "INTEGER DEFAULT 0"),
+                      ("deplacement_now_publie", "TEXT"),
+                      ("une_now_publie", "TEXT"),
+                      ("retraduction_auto_tentatives", "INTEGER DEFAULT 0"),
+                      ("social_caption_fr", "TEXT"),
+                      ("social_caption_it", "TEXT"),
+                      ("traduction_matiere", "TEXT"),
+                      ("traduction_tentatives", "INTEGER DEFAULT 0"),
+                      ("venue_checked_at", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

@@ -132,12 +132,24 @@ un endroit où l'on ne se trompe pas gratuitement** : une mauvaise fusion corrom
 
 **Le tableau que tu décris — « toutes les informations, et est-ce qu'il en manque » —
 existe déjà à moitié** : `utils.completeness.MANDATORY` tient six champs obligatoires
-(date, lieu, ville, territoire, catégorie, image). Ce qui manque, ce sont les champs
-*utiles mais non bloquants* — tarif, horaires, réservation, accessibilité, organisateur —
-que `infos_pratiques` sait repérer mais que **aucune colonne de la base ne stocke** (sa
-docstring : « sur 81 colonnes, AUCUNE ne stocke un tarif »). Le chantier complet est donc
-en deux temps, et le premier n'a rien à voir avec l'IA : **créer les colonnes**. Jev ne
-sert qu'ensuite, à les remplir sans inventer.
+(date, lieu, ville, territoire, catégorie, image).
+
+> ⚠️ **Correction du 22/09, même jour.** Ce paragraphe affirmait ensuite qu'« aucune
+> colonne de la base ne stocke » tarif, horaires, réservation ou accessibilité, en citant
+> la docstring d'`utils/infos_pratiques.py` (« sur 81 colonnes, AUCUNE ne stocke un
+> tarif »). **C'est faux.** Cette docstring était vraie le jour où elle a été écrite ;
+> `scripts/moisson_officielle.py` a créé la colonne `infos_pratiques` depuis, et la
+> remplit tous les matins à 8h52 — du JSON `{famille: [extraits]}`. J'ai pris un
+> COMMENTAIRE pour un FAIT au lieu d'interroger le schéma, ce qui est exactement la
+> racine du CLAUDE.md. Le chantier n'était donc pas « créer les colonnes » : la donnée
+> était là, invisible. Elle est depuis dépliée en colonnes du tableur (jeu « Infos
+> pratiques »), et `tests/test_colonnes_declarees.py` a montré au passage que **25
+> colonnes** manquaient à `init_db`, dont celle-là.
+
+Ce qui reste vrai, et qui est l'apport de Jev : ces extraits sont des PHRASES, pas des
+valeurs. « 12 € » y apparaît sans qu'on sache si c'est le plein tarif, le réduit ou le
+parking. Choisir lequel est le tarif de CET événement, parmi les extraits déjà trouvés,
+reste exactement la question `Choice` décrite au § 1.
 
 ### Rédaction, traduction, SEO
 

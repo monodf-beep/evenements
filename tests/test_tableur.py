@@ -179,6 +179,50 @@ verifier("deux fiches sur quatre ont au moins un trou (lieu/ville, et l'image)",
 verifier("aucune colonne demandée → aucune fiche trouée",
          tab.fiches_trouees(TOUTES, []) == 0)
 
+# --- Les infos pratiques, dépliées du JSON -----------------------------------------
+# CE QUE CE BLOC GARDE. Le 22/09 ce module affirmait « aucune colonne ne stocke un
+# tarif », en citant la docstring d'utils/infos_pratiques.py. Elle était vraie le jour
+# où elle a été écrite ; moisson_officielle a créé la colonne depuis et la remplit tous
+# les matins. Un COMMENTAIRE avait été pris pour un FAIT. La fixture porte donc sur la
+# donnée réelle, pas sur ce que le code dit d'elle.
+JSON_REEL = ('{"tarif": ["Plein tarif 12 \u20ac, tarif reduit 8 \u20ac"], '
+             '"horaires": ["ouvert de 10h a 18h", "fermeture le lundi"], '
+             '"langue": ["visite bilingue"]}')
+depliee = tab.deplier_infos({"id": 9, "infos_pratiques": JSON_REEL})
+verifier("le tarif est déplié tel quel, sans interprétation",
+         depliee["ip_tarif"].startswith("Plein tarif 12"), repr(depliee["ip_tarif"]))
+verifier("une famille absente donne une case VIDE, pas « gratuit »",
+         depliee["ip_reservation"] == "", repr(depliee["ip_reservation"]))
+verifier("on ne garde que le premier extrait de chaque famille",
+         depliee["ip_horaires"] == "ouvert de 10h a 18h", repr(depliee["ip_horaires"]))
+verifier("une case dépliée vide compte comme un trou",
+         tab.est_vide(depliee, "ip_reservation") and not tab.est_vide(depliee, "ip_tarif"))
+
+verifier("un JSON illisible ne fait rien planter, il laisse vide",
+         tab.deplier_infos({"infos_pratiques": "{pas du json"})["ip_tarif"] == "")
+verifier("une colonne source vide aussi",
+         tab.deplier_infos({"infos_pratiques": None})["ip_horaires"] == "")
+verifier("une ligne sans la colonne du tout aussi", tab.deplier_infos({})["ip_langue"] == "")
+verifier("un JSON qui n'est pas un objet non plus",
+         tab.deplier_infos({"infos_pratiques": "[1,2,3]"})["ip_tarif"] == "")
+
+vis_ip = tab.colonnes_visibles(["id", "title", "infos_pratiques"])
+noms_ip = [c for c, _, _ in vis_ip]
+verifier("les colonnes virtuelles apparaissent quand leur SOURCE existe",
+         "ip_tarif" in noms_ip and "ip_accessibilite" in noms_ip, str(noms_ip))
+verifier("la colonne source brute, elle, ne s'affiche PAS (c'est du JSON)",
+         "infos_pratiques" not in noms_ip, str(noms_ip))
+verifier("sans la source, aucune colonne virtuelle — sinon on croirait à un manque "
+         "de données là où c'est la colonne qui manque",
+         not any(c.startswith("ip_") for c, _, _ in tab.colonnes_visibles(["id", "title"])))
+verifier("le jeu « Infos pratiques » existe et tient debout",
+         tab.jeu("pratique", vis_ip) == ["id", "title", "ip_tarif", "ip_horaires",
+                                         "ip_reservation", "ip_accessibilite"],
+         str(tab.jeu("pratique", vis_ip)))
+verifier("un extrait long est tronqué en cellule",
+         len(tab.affiche({"ip_tarif": "x" * 200}, "ip_tarif")) < 200)
+verifier("mais pas à l'export", len(tab.exporte({"ip_tarif": "x" * 200}, "ip_tarif")) == 200)
+
 # --- Source unique des champs modifiables ------------------------------------------
 verifier("les champs modifiables sont tous au catalogue",
          set(tab.EDITABLES) <= {c for c, _, _ in tab.CATALOGUE},

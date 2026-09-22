@@ -71,6 +71,12 @@ CATALOGUE: tuple[tuple[str, str, str], ...] = (
     ("multi_lieux",        "Multi-lieux",        "Lieu"),
     ("venue_source",       "Provenance lieu",    "Lieu"),
 
+    ("ip_tarif",           "Tarif",              "Infos pratiques"),
+    ("ip_horaires",        "Horaires",           "Infos pratiques"),
+    ("ip_reservation",     "Réservation",        "Infos pratiques"),
+    ("ip_accessibilite",   "Accessibilité",      "Infos pratiques"),
+    ("ip_langue",          "Langue parlée",      "Infos pratiques"),
+
     ("llm_categorie",      "Catégorie",          "Éditorial"),
     ("llm_score",          "Score",              "Éditorial"),
     ("user_score",         "Score Franck",       "Éditorial"),
@@ -96,8 +102,8 @@ CATALOGUE: tuple[tuple[str, str, str], ...] = (
     ("translated_lang",    "Langue",             "Publication"),
 )
 
-GROUPES: tuple[str, ...] = ("Identité", "Dates", "Lieu", "Éditorial", "Images",
-                            "SEO", "Publication", "Autres")
+GROUPES: tuple[str, ...] = ("Identité", "Dates", "Lieu", "Infos pratiques",
+                            "Éditorial", "Images", "SEO", "Publication", "Autres")
 
 # Jeux de colonnes prêts à l'emploi. Le premier est le défaut.
 JEUX: dict[str, tuple[str, ...]] = {
@@ -110,29 +116,71 @@ JEUX: dict[str, tuple[str, ...]] = {
                     "translated_lang", "date_event_start", "date_event_end"),
     "seo":        ("id", "title", "seo_title", "seo_meta", "seo_keyphrase",
                    "seo_slug", "wp_post_id_as"),
+    "pratique":   ("id", "title", "date_event_start", "lieu", "ville", "ip_tarif",
+                   "ip_horaires", "ip_reservation", "ip_accessibilite", "url_officiel"),
 }
 JEU_LIBELLES: dict[str, str] = {
     "completion":  "Complétude",
     "editorial":   "Éditorial",
     "publication": "Publication",
     "seo":         "SEO",
+    "pratique":    "Infos pratiques",
     "tout":        "Tout",
 }
 
-# Informations pratiques que `utils.infos_pratiques` sait REPÉRER sur une page officielle
-# mais qu'AUCUNE colonne ne stocke (sa docstring : « sur 81 colonnes, AUCUNE ne stocke un
-# tarif »). Elles ne peuvent donc pas apparaître dans ce tableur. On l'écrit à l'écran
-# plutôt que de laisser croire que la colonne existe et qu'elle est vide.
-SANS_COLONNE: tuple[tuple[str, str], ...] = (
-    ("tarif",         "Tarif / gratuité"),
-    ("horaires",      "Horaires d'ouverture"),
-    ("reservation",   "Réservation obligatoire"),
-    ("accessibilite", "Accessibilité"),
+# ─────────────────────────────────────────────────────────────────────────────
+# LES INFOS PRATIQUES SONT DÉJÀ LÀ, et ce fichier a affirmé le contraire.
+#
+# Le 22/09, ce module annonçait « aucune colonne ne stocke un tarif », en citant la
+# docstring d'`utils/infos_pratiques.py`. Elle était vraie le jour où elle a été
+# écrite ; `scripts/moisson_officielle.py` a créé la colonne `infos_pratiques`
+# depuis, et la remplit tous les jours à 8h52. J'ai pris un COMMENTAIRE pour un
+# FAIT au lieu d'interroger le schéma — la racine du CLAUDE.md, une fois de plus.
+#
+# La colonne contient du JSON : {famille: [extraits de la page]}. Illisible dans une
+# cellule, et surtout inutilisable pour compter les trous. On la DÉPLIE donc en
+# colonnes virtuelles, une par famille, avant tout le reste : le comptage, le tri par
+# trous, le filtre « il manque X » et l'export fonctionnent alors sans rien savoir de
+# leur origine. Une valeur dépliée est un EXTRAIT de la page, jamais une
+# interprétation — c'est la promesse d'infos_pratiques et elle ne change pas ici.
+# ─────────────────────────────────────────────────────────────────────────────
+COL_INFOS = "infos_pratiques"
+
+DERIVEES: tuple[tuple[str, str, str], ...] = (
+    ("ip_tarif",         "Tarif",          "tarif"),
+    ("ip_horaires",      "Horaires",       "horaires"),
+    ("ip_reservation",   "Réservation",    "reservation"),
+    ("ip_accessibilite", "Accessibilité",  "accessibilite"),
+    ("ip_langue",        "Langue",         "langue"),
 )
+
+
+def deplier_infos(ligne: dict) -> dict:
+    """Ajoute les colonnes virtuelles `ip_*` à une ligne, depuis le JSON de la base.
+
+    Modifie et rend la ligne. Appelée une fois, à la lecture : tout le reste du module
+    voit alors des colonnes ordinaires. Un JSON illisible ne fait rien planter — il
+    laisse simplement les colonnes vides, ce qui est la vérité (on n'a rien pu lire).
+    """
+    import json
+    brut = ligne.get(COL_INFOS)
+    donnees = {}
+    if brut:
+        try:
+            lu = json.loads(brut)
+            if isinstance(lu, dict):
+                donnees = lu
+        except (ValueError, TypeError):
+            donnees = {}
+    for cle, _, famille in DERIVEES:
+        extraits = donnees.get(famille) or []
+        ligne[cle] = (extraits[0] if isinstance(extraits, list) and extraits else "")
+    return ligne
 
 # Colonnes trop longues pour une cellule : on tronque à l'affichage (jamais à l'export).
 _LONGUES = {"llm_justification", "seo_meta", "url_source", "url_officiel",
-            "url_image", "url_image_portrait", "url_image_wide", "recurring_note"}
+            "url_image", "url_image_portrait", "url_image_wide", "recurring_note"} | {
+            c for c, _, _ in DERIVEES}
 _TRONQUE = 60
 
 # Colonnes booléennes stockées en 0/1 : « oui » vaut mieux que « 1 » pour un lecteur.
@@ -148,6 +196,11 @@ def colonnes_visibles(colonnes_en_base) -> list[tuple[str, str, str]]:
     champ ajouté demain soit visible sans toucher à ce fichier.
     """
     presentes = set(colonnes_en_base)
+    # Les colonnes virtuelles existent si et seulement si leur SOURCE existe : sans la
+    # colonne `infos_pratiques` en base, il n'y a rien à déplier, et les afficher vides
+    # ferait croire à un manque de données là où c'est la colonne qui manque.
+    if COL_INFOS in presentes:
+        presentes |= {c for c, _, _ in DERIVEES}
     connues = set()
     out: list[tuple[str, str, str]] = []
     for col, libelle, groupe in CATALOGUE:
@@ -155,7 +208,7 @@ def colonnes_visibles(colonnes_en_base) -> list[tuple[str, str, str]]:
         if col in presentes:
             out.append((col, libelle, groupe))
     for col in colonnes_en_base:
-        if col not in connues:
+        if col not in connues and col != COL_INFOS:
             out.append((col, col, "Autres"))
     return out
 

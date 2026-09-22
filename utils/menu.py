@@ -60,11 +60,11 @@ PAGES: tuple[dict, ...] = (
        "Une tâche, une décision : valider une photo, relire un texte",
        mots="file travail taches a faire"),
     _p("tableur", "/tableur", "Tableur", "traiter", "🧮",
-       "Toutes les colonnes et ce qui manque, avec export",
+       "Toute la complétude, champs utiles compris, avec export",
        mots="tableau colonnes complétude trous csv excel manquant"),
 
     _p("tocomplete", "/a-completer", "À compléter", "traiter", "🛠️",
-       "Les fiches retenues à qui il manque un champ obligatoire",
+       "Ce qui EMPÊCHE de publier : un champ obligatoire manque",
        badge="tocomplete", site="as", mots="incomplet manque date lieu image"),
     _p("triage", "/triage", "Triage", "traiter", "🧭",
        "Débloquer en une case : récurrent, multi-lieux, ou à la main",

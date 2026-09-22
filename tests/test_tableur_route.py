@@ -61,6 +61,14 @@ ins(title="Visites permanentes", url_source="https://a/3", recurring=1, lieu="Mu
 ins(title="Festival itinérant", url_source="https://a/4", multi_lieux=1,
     date_event_start="2027-09-01", date_event_end="2027-09-09", territoire="Piemonte",
     llm_categorie="Festivals")
+# Une fiche qui PORTE des infos pratiques moissonnées, pour vérifier tout le chemin :
+# base → dépliage → cellule → export.
+ins(title="Visite guidée du fort", url_source="https://a/6",
+    date_event_start="2027-12-01", date_event_end="2027-12-01", lieu="Fort", ville="Bard",
+    territoire="Vallee-Aoste", llm_categorie="Expositions & Patrimoine",
+    url_image="https://i/6.jpg", llm_score=7,
+    infos_pratiques='{"tarif": ["Plein tarif 12 \u20ac, reduit 8 \u20ac"], '
+                    '"horaires": ["ouvert de 10h a 18h"]}')
 ins(title="Fête passée", url_source="https://a/5", date_event_start="2020-01-01",
     date_event_end="2020-01-02", lieu="X", ville="Y", territoire="Savoie",
     llm_categorie="Festivals", url_image="https://i/5.jpg")
@@ -137,6 +145,22 @@ verifier("les pourcentages NE BOUGENT PAS quand on clique un chiffre",
 verifier("un champ inconnu dans « vide » est ignoré, sans planter",
          client.get("/tableur?vide=nimportequoi").status_code == 200)
 
+# --- Les infos pratiques, de la base à l'écran --------------------------------------
+prat = client.get("/tableur?jeu=pratique")
+verifier("le jeu « Infos pratiques » répond", prat.status_code == 200, str(prat.status_code))
+hp = prat.get_data(as_text=True)
+verifier("le tarif moissonné s'affiche dans sa cellule", "Plein tarif 12" in hp)
+verifier("les colonnes portent leur libellé lisible", "Réservation" in hp and "Horaires" in hp)
+verifier("la colonne source brute (JSON) n'est PAS affichée",
+         '"tarif":' not in hp, "le JSON remonte tel quel dans la page")
+verifier("le bandeau désigne les infos pratiques manquantes",
+         "Réservation" in hp.split("Où ça pêche")[1][:900], "pas dans « où ça pêche »")
+vide_tarif = client.get("/tableur?jeu=pratique&vide=ip_tarif").get_data(as_text=True)
+verifier("on peut filtrer sur « il manque le tarif »",
+         "Visite guidée du fort" not in vide_tarif and "Concert au château" in vide_tarif)
+verifier("le pied de page ne prétend plus que la colonne n'existe pas",
+         "Aucune colonne de la base" not in hp)
+
 csv_ = client.get("/tableur.csv")
 verifier("le CSV répond 200", csv_.status_code == 200, str(csv_.status_code))
 txt = csv_.get_data(as_text=True)
@@ -149,6 +173,10 @@ verifier("il est proposé en téléchargement",
          "attachment" in csv_.headers.get("Content-Disposition", ""))
 verifier("il montre EXACTEMENT la même sélection que la page",
          "Fête passée" not in txt, "l'export déborde du périmètre de la page")
+csv_prat = client.get("/tableur.csv?jeu=pratique").get_data(as_text=True)
+verifier("l'export porte le tarif ENTIER, pas la version tronquée de la cellule",
+         "Plein tarif 12 €, reduit 8 €" in csv_prat, csv_prat[:120])
+
 csv_filtre = client.get("/tableur.csv?vide=url_image").get_data(as_text=True)
 verifier("et l'export suit aussi le filtre « il manque ce champ »",
          "Concert au château" not in csv_filtre and "Expo sans lieu" in csv_filtre)

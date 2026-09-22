@@ -3507,6 +3507,7 @@ def _tableur_selection():
 
     conn = get_db()
     en_base = _tableur_colonnes_base(conn)
+    colonnes_reelles = set(en_base)
     visibles = tableur_mod.colonnes_visibles(en_base)
     cols_arg = request.args.get("cols", "")
     dispo = {c for c, _, _ in visibles}
@@ -3521,7 +3522,13 @@ def _tableur_selection():
     # `multi_lieux` décident du « sans objet », les autres servent au tri.
     besoins = ["id", "recurring", "multi_lieux", "date_event_start", "date_event_end",
                "llm_score", "statut", "title"]
-    a_lire = list(dict.fromkeys([c for c in cols + besoins if c in dispo]))
+    # Les colonnes `ip_*` n'existent pas en base : elles sont DÉPLIÉES du JSON
+    # `infos_pratiques` juste après la lecture. On lit donc la source, jamais elles.
+    virtuelles = {c for c, _, _ in tableur_mod.DERIVEES}
+    a_lire = [c for c in cols + besoins if c in dispo and c not in virtuelles]
+    if any(c in virtuelles for c in cols):
+        a_lire.append(tableur_mod.COL_INFOS)
+    a_lire = [c for c in dict.fromkeys(a_lire) if c in colonnes_reelles]
 
     where, params = [], []
     if statut == "actifs":
@@ -3556,7 +3563,7 @@ def _tableur_selection():
         f"SELECT {champs} FROM events_raw WHERE {clause} LIMIT {_TABLEUR_PLAFOND}",
         params).fetchall()
     conn.close()
-    lignes = [dict(r) for r in rows]
+    lignes = [tableur_mod.deplier_infos(dict(r)) for r in rows]
 
     # Le tri par TROUS se calcule en Python (il dépend du « sans objet »), donc tous
     # les tris se font ici — un seul chemin, pas deux.
