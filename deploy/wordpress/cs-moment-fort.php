@@ -145,8 +145,15 @@ function cs_moments_forts() {
             // mesuré le 22/09, six paires `-it` existent déjà en ligne (bard / bard-it,
             // conference / conference-it). Un libellé français envoyé à une fiche italienne
             // aurait fabriqué un terme suffixé, introuvable ici.
-            'etiquette'  => array('fr' => 'journees-europeennes-du-patrimoine',
-                                  'it' => 'giornate-europee-del-patrimonio'),
+            // PLUSIEURS SLUGS PAR LANGUE, et ce n'est pas de la prudence gratuite.
+            // Mesuré en ligne le 22/09, après la première pose des étiquettes : Polylang
+            // a créé le terme italien avec un suffixe `-it` (`giornate-europee-del-
+            // patrimonio-it`) BIEN QUE le libellé italien soit distinct du français. Le
+            // suffixe est sa manière de séparer deux termes de langues différentes ; on
+            // ne peut pas le prédire, on peut seulement accepter les deux formes.
+            'etiquette'  => array('fr' => array('journees-europeennes-du-patrimoine'),
+                                  'it' => array('giornate-europee-del-patrimonio',
+                                                'giornate-europee-del-patrimonio-it')),
             'affiche_du' => '2026-09-22',
             'affiche_au' => '2026-09-27',
             'couleur'    => 'bleu',
@@ -278,7 +285,7 @@ if (!function_exists('cs_mf_evenements')) {
  * `etiquette` ABSENTE => on retombe sur date + territoire, et la strate ne doit PAS
  * être déployée sur un moment dont la fenêtre attrape n'importe quoi.
  */
-function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
+function cs_mf_evenements($moment, $volet, $lang, $max = 40) {
     $terme = isset($volet['terr'][$lang]) ? $volet['terr'][$lang] : '';
     if (!$terme) { return array('total' => 0, 'lignes' => array()); }
 
@@ -301,11 +308,12 @@ function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
         )),
         'orderby'             => array('debut' => 'ASC'),
     );
-    $etiq = '';
+    $etiq = array();
     if (!empty($moment['etiquette'])) {
-        $etiq = is_array($moment['etiquette'])
+        $e = is_array($moment['etiquette'])
             ? (isset($moment['etiquette'][$lang]) ? $moment['etiquette'][$lang] : '')
             : $moment['etiquette'];
+        $etiq = array_filter((array) $e);
     }
     if ($etiq) {
         $args['tax_query']['relation'] = 'AND';
@@ -330,6 +338,13 @@ function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
             'url'   => get_permalink($p),
             'ou'    => trim($ville . ($ville && $lieu ? ' · ' : '') . $lieu),
         );
+        // LE PLAFOND NE DOIT PAS AFFAMER UN JOUR. Il était à huit, et le tri est par
+        // date croissante : les huit premières lignes étaient toutes du samedi, si
+        // bien que le dimanche n'arrivait jamais jusqu'au découpage par jour. Constaté
+        // par Franck sur la bande en ligne le 22/09 — « où est le dimanche ? » — et
+        // mesuré ensuite sur le code déployé : lignes_par_jour = { 2026-09-26 : 8 }.
+        // Le plafond sert à borner la requête, pas à choisir ce qu'on montre : c'est
+        // le découpage par jour (quatre lignes chacun) qui décide.
         if (count($lignes) >= $max) { break; }
     }
     wp_reset_postdata();
@@ -382,9 +397,14 @@ if (!function_exists('cs_mf_rendu_programme')) {
 /**
  * Mise « programme-jours » : le lecteur est dans le territoire du volet.
  *
- * Si un jour déclaré n'a pas assez de lignes, il est MASQUÉ et le jour restant prend
- * toute la largeur. On n'écrit pas au lecteur que notre agenda est incomplet : une
- * ligne qui ne lui permet aucun geste n'est pas une information (règle 6).
+ * Un jour déclaré qui n'a AUCUNE ligne est masqué, et le jour restant prend toute la
+ * largeur. Un jour qui n'en a qu'une est montré.
+ *
+ * LE SEUIL ÉTAIT À DEUX, ET C'ÉTAIT FAUX. Constaté par Franck sur la bande en ligne le
+ * 22/09 : « où est le dimanche ? ». Le dimanche n'avait qu'une fiche publiée, il
+ * disparaissait — pendant que le bloc de dates, trois lignes plus bas, annonçait
+ * « 26 & 27 sept. ». La bande se contredisait elle-même. Une colonne maigre coûte
+ * moins cher qu'une promesse démentie dans le même cadre.
  */
 function cs_mf_rendu_programme($moment, $volet, $lang, $data) {
     $h  = '<div class="cs-mf__gauche">';
@@ -407,7 +427,7 @@ function cs_mf_rendu_programme($moment, $volet, $lang, $data) {
     foreach ($volet['jours'] as $j) {
         $duj = array();
         foreach ($restantes as $l) { if ($l['jour'] === $j['date']) { $duj[] = $l; } }
-        if (count($duj) < 2) { continue; }
+        if (!$duj) { continue; }
         $li = '';
         foreach (array_slice($duj, 0, 4) as $l) {
             $li .= '<li><a href="' . esc_url($l['url']) . '"><span class="cs-mf__lieu">' . esc_html($l['ou'])
@@ -571,6 +591,20 @@ function cs_mf_css($moment) {
    Corriger par une variable `calc(100vw - 100%)` posée sur le body NE MARCHE PAS : une
    propriété personnalisée est substituée telle quelle, donc le 100 % se résout chez
    l\'enfant, et la bande tombait à 950 px de large au format bureau. */
+/* UNE SEULE BANDE, TOUJOURS. Le marqueur « A LA UNE » figure deux fois dans le contenu
+   de la home : une pour le gabarit mobile (.as-home), une pour le gabarit bureau
+   (.as-home-desktop). Le thème les rend exclusifs à 900 px (relevé dans le CSS servi le
+   22/09 : @media (min-width:900px){.as-home{display:none}.as-home-desktop{display:block}}),
+   donc en principe une seule apparaît. Franck en a pourtant vu DEUX. On pose la même
+   règle ici, au MÊME point de rupture : si un cache ou une extension neutralise celle
+   du thème, celle-ci tient, et aucune largeur ne se retrouve sans bande.
+   LE DÉBORDEMENT, aussi : 100vw compte la gouttière de défilement, donc la bande
+   dépasse de 7,5 px de chaque côté (mesuré : scrollWidth 1273 pour une page de 1265).
+   overflow-x:clip sur le conteneur de la home coupe ce débordement sans créer de
+   conteneur de défilement, contrairement à hidden, qui casserait les éléments collés. */
+.as-home-root{overflow-x:clip}
+@media(min-width:900px){.as-home .cs-mf{display:none}}
+@media(max-width:899px){.as-home-desktop .cs-mf{display:none}}
 .cs-mf *{box-sizing:border-box}
 .cs-mf__bord{position:absolute;left:0;width:100%;height:22px;display:block;z-index:3}
 .cs-mf__bord--haut{top:-1px}
@@ -589,7 +623,14 @@ function cs_mf_css($moment) {
 .cs-mf__cta{display:inline-flex;align-items:center;gap:7px;background:var(--mf-texte);color:var(--mf-fond);text-decoration:none;
  font-size:13.5px;font-weight:800;padding:11px 16px;border-radius:4px;transform:rotate(.8deg)}
 .cs-mf__cta:hover{transform:rotate(0)}
-.cs-mf__droite{display:grid;grid-template-columns:1fr;gap:18px}
+.cs-mf__droite{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+/* `min-width:0` PARTOUT dans la chaîne. Une piste de grille `1fr` a une largeur
+   minimale AUTOMATIQUE : elle s\'élargit pour contenir son plus long enfant. Le nom de
+   lieu est en `nowrap` (« COMPLESSO MONUMENTALE DEL CASTELLO DUCALE, GIARDINO E PARCO
+   DI AGLIÉ »), donc la colonne poussait la bande hors de l\'écran au lieu d\'écrêter.
+   Invisible tant qu\'il n\'y avait qu\'une colonne, visible dès qu\'il y en a eu deux —
+   constaté par Franck le 22/09, la colonne du dimanche sortait à droite. */
+.cs-mf__jour,.cs-mf__volet,.cs-mf__liste li,.cs-mf__liste a{min-width:0}
 .cs-mf__jour-titre{margin:0 0 9px;padding-bottom:7px;border-bottom:1px solid var(--mf-filet);
  font-family:\'La Semplicita\',\'Saira Condensed\',sans-serif;font-weight:600;font-size:17px;letter-spacing:.02em;
  display:flex;align-items:baseline;justify-content:space-between;gap:8px}
@@ -618,17 +659,17 @@ function cs_mf_css($moment) {
  .cs-mf__in{grid-template-columns:minmax(0,44%) minmax(0,1fr);gap:46px;padding:54px 20px 46px}
  .cs-mf__titre{font-size:40px;max-width:16ch}
  .cs-mf__chapo{font-size:15px}
- .cs-mf--programme .cs-mf__droite{grid-template-columns:1fr 1fr;gap:22px 26px}
- .cs-mf--programme .cs-mf__droite--une{grid-template-columns:1fr}
+ .cs-mf--programme .cs-mf__droite{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px 26px}
+ .cs-mf--programme .cs-mf__droite--une{grid-template-columns:minmax(0,1fr)}
  /* Colonne unique au bureau : la liste se met sur deux colonnes en GRILLE, pas en
     `columns` — le multi-colonnes CSS laissait les lignes déborder à droite parce que
     le nom de lieu est en `nowrap` et fixait une largeur de colonne hors cadre.
     Constaté sur le rendu réel du 22/09. */
- .cs-mf--programme .cs-mf__droite--une .cs-mf__liste{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
+ .cs-mf--programme .cs-mf__droite--une .cs-mf__liste{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 26px}
  .cs-mf--programme .cs-mf__droite--une .cs-mf__liste li{min-width:0}
  .cs-mf--voisins .cs-mf__in{grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:44px;padding:46px 20px 42px}
  .cs-mf--voisins .cs-mf__titre{font-size:32px;max-width:18ch}
- .cs-mf--voisins .cs-mf__droite{grid-template-columns:1fr 1fr;gap:30px}
+ .cs-mf--voisins .cs-mf__droite{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:30px}
  /* photo « épinglée » : un tirage penché à cheval sur le bord haut */
  .cs-mf--photo-epinglee .cs-mf__photo{display:block;position:absolute;right:calc(50% - 560px + 4px);top:-30px;width:196px;
   margin:0;z-index:4;transform:rotate(-2.6deg);background:var(--mf-texte);padding:7px 7px 0;border-radius:3px;
@@ -653,6 +694,7 @@ function cs_mf_css($moment) {
  background:linear-gradient(transparent,var(--mf-fond));color:var(--mf-texte);font-size:9.5px;font-weight:700;
  letter-spacing:.09em;text-transform:uppercase}
 @media(max-width:899px){
+ .cs-mf__droite{grid-template-columns:minmax(0,1fr)}
  .cs-mf__titre{font-size:26px}
  .cs-mf__in{padding:32px 18px 28px;gap:20px}
  .cs-mf__cta{flex:1;justify-content:center}

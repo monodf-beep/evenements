@@ -17,9 +17,10 @@ donner raison ne prouve rien (CLAUDE.md, règle 3) :
   3. LE SEUIL. Sous le seuil, rien — et le commentaire doit DIRE le nombre trouvé.
      Contre-épreuve, choisie juste au-dessus de la frontière : exactement le seuil
      doit PASSER.
-  4. LE JOUR MAIGRE. Un jour qui n'a pas deux lignes disparaît, et la strate ne dit
-     PAS au lecteur que notre agenda est incomplet — une ligne au bout de laquelle il
-     n'y a aucun geste n'est pas une information (règle 6).
+  4. LE JOUR VIDE, ET LUI SEUL. Un jour déclaré sans aucune fiche disparaît ; un jour
+     qui n'en a qu'UNE reste. Le seuil était à deux, et Franck l'a vu en ligne le
+     22/09 : « où est le dimanche ? » — il n'avait qu'une fiche, il disparaissait,
+     pendant que le bloc de dates annonçait « 26 & 27 sept. » juste à côté.
 
 Lancer : .venv/bin/python -m tests.test_moment_fort
 """
@@ -248,22 +249,47 @@ def test_rendu():
     else:
         print("  ok  contre-épreuve du seuil : 3 fiches pour un seuil de 3, la strate s'affiche")
 
-    # --- 4. LE JOUR MAIGRE ---------------------------------------------------
-    # Samedi garni, dimanche à une seule ligne : le dimanche disparaît, et rien
-    # n'annonce au lecteur que l'agenda est incomplet.
+    # --- 4. LE JOUR VIDE, ET LUI SEUL ----------------------------------------
+    # Samedi garni, dimanche à UNE seule ligne : le dimanche doit rester. C'est le
+    # défaut que Franck a vu en ligne, la bande promettait deux jours et n'en montrait
+    # qu'un.
     boiteux = [f for f in jeu if f["terr"] == "piemont" and f["debut"].startswith("2026-09-26")]
     boiteux += [f for f in jeu if f["terr"] == "piemont" and f["debut"].startswith("2026-09-27")][:1]
     boiteux += [f for f in jeu if f["terr"] != "piemont"]
     html_boiteux = rendre(boiteux, "fr", "piemont", tmp)
-    if "Dimanche 27" in html_boiteux:
-        echec("jour maigre : le dimanche n'a qu'une ligne, il ne doit pas être affiché")
+    if "Dimanche 27" not in html_boiteux:
+        echec("jour à une seule fiche : le dimanche DOIT rester, la bande annonce deux jours")
     elif "Samedi 26" not in html_boiteux:
-        echec("jour maigre : le samedi, lui, doit rester")
+        echec("jour à une seule fiche : le samedi doit rester aussi")
     else:
-        print("  ok  jour maigre : le dimanche disparaît, le samedi reste")
+        print("  ok  un jour à une seule fiche reste affiché")
+
+    # LE PLAFOND NE DOIT PAS AFFAMER UN JOUR. Douze fiches le samedi, une le dimanche :
+    # si la requête est bornée trop bas et triée par date, le dimanche ne parvient
+    # jamais au découpage. C'est ce qui s'est produit en ligne le 22/09.
+    gros = []
+    for i in range(12):
+        gros.append(fiche("piemont", "2026-09-26 20:00:00", "Lieu %d" % i, "Turin", "Samedi %d" % i))
+    gros.append(fiche("piemont", "2026-09-27 10:00:00", "Margaria", "Racconigi", "Le dimanche"))
+    gros += [f for f in jeu if f["terr"] != "piemont"]
+    html_gros = rendre(gros, "fr", "piemont", tmp)
+    if "Dimanche 27" not in html_gros:
+        echec("plafond : douze fiches le samedi ne doivent pas faire disparaître le dimanche")
+    else:
+        print("  ok  plafond : le dimanche survit à douze fiches le samedi")
+
+    # CONTRE-ÉPREUVE : un jour déclaré SANS aucune fiche, lui, disparaît. Sans ce
+    # volet, supprimer le filtre entièrement passerait au vert.
+    sansdim = [f for f in jeu if f["terr"] == "piemont" and f["debut"].startswith("2026-09-26")]
+    sansdim += [f for f in jeu if f["terr"] != "piemont"]
+    html_sansdim = rendre(sansdim, "fr", "piemont", tmp)
+    if "Dimanche 27" in html_sansdim:
+        echec("jour vide : un jour sans aucune fiche ne doit pas être affiché")
+    else:
+        print("  ok  contre-épreuve : un jour sans aucune fiche disparaît")
     for mot in ("pas encore", "incomplet", "arrive"):
         if mot in html_boiteux.lower():
-            echec("jour maigre : la strate parle de notre propre retard (« %s »)" % mot)
+            echec("la strate parle de notre propre retard (« %s »)" % mot)
 
     # --- 5. LA PAGE DE DESTINATION -------------------------------------------
     # Une strate qui envoie sur un 404 est pire que pas de strate. Tant que la page
