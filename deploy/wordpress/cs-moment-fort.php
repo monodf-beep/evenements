@@ -282,6 +282,36 @@ function cs_mf_volet_du_territoire($moment, $terr_canon, $lang) {
 /* -------------------------------------------------------------------------
  * 3. LES DONNÉES — les fiches de la période, par volet.
  * ---------------------------------------------------------------------- */
+if (!function_exists('cs_mf_cle_cache')) {
+function cs_mf_cle_cache($moment, $terme, $lang) {
+    return 'cs_mf_' . $moment['slug'] . '_' . $terme . '_' . $lang;
+}
+
+/*
+ * LE CACHE SE VIDE QUAND UNE FICHE BOUGE, PAS SEULEMENT À L'HEURE. Constaté par Franck
+ * le 22/09 au soir : la bande italienne ne montrait que le samedi, alors que 19 fiches
+ * italiennes du dimanche étaient publiées et étiquetées (mesuré dans la foulée). Elles
+ * étaient arrivées pendant l'heure de cache ; la liste servie datait d'avant. Rechargée,
+ * la bande montrait bien les deux jours. Une heure de retard sur une strate qui vit
+ * six jours, c'est un sixième de sa vie à montrer autre chose que l'agenda.
+ * Deux crochets, parce qu'en REST l'étiquette est posée APRÈS save_post : le premier
+ * attrape la fiche, le second son étiquette.
+ */
+function cs_mf_vider_cache() {
+    foreach (cs_moments_forts() as $m) {
+        foreach ($m['volets'] as $v) {
+            foreach ($v['terr'] as $lang => $terme) { delete_transient(cs_mf_cle_cache($m, $terme, $lang)); }
+        }
+    }
+}
+add_action('save_post_tribe_events', 'cs_mf_vider_cache');
+add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy) {
+    if (in_array($taxonomy, array('post_tag', 'territoire'), true) && get_post_type($object_id) === 'tribe_events') {
+        cs_mf_vider_cache();
+    }
+}, 10, 4);
+}
+
 if (!function_exists('cs_mf_evenements')) {
 /**
  * Renvoie array('total' => int, 'lignes' => array).
@@ -305,7 +335,7 @@ function cs_mf_evenements($moment, $volet, $lang, $max = 40) {
     $terme = isset($volet['terr'][$lang]) ? $volet['terr'][$lang] : '';
     if (!$terme) { return array('total' => 0, 'lignes' => array()); }
 
-    $cle = 'cs_mf_' . $moment['slug'] . '_' . $terme . '_' . $lang;
+    $cle = cs_mf_cle_cache($moment, $terme, $lang);
     $cache = get_transient($cle);
     if (is_array($cache)) { return $cache; }
 

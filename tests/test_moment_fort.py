@@ -124,6 +124,7 @@ function get_transient($k) { return false; }
 function set_transient($k, $v, $t) { return true; }
 function wp_reset_postdata() {}
 function add_filter($a, $b, $c = 10) {}
+function add_action($a, $b, $c = 10, $d = 1) {}
 function is_admin() { return false; }
 function is_page($x) { return true; }
 function pll_current_language() { return $GLOBALS['cs_test_lang']; }
