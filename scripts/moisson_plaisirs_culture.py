@@ -127,27 +127,62 @@ def fragments_pdf(donnees: bytes) -> list[dict]:
     pypdf est déjà dans requirements.txt (scripts/press_kits.py s'en sert). Importé ici
     seulement : le parseur, lui, travaille sur ces fragments et n'en a pas besoin — c'est
     ce qui permet à la fixture de tourner sans pypdf.
+
+    LA POSITION D'UN FRAGMENT NE VIENT PAS TOUJOURS DE pypdf. Mesuré sur le VPS le 22/09
+    (pypdf 6.14.2) : certains fragments arrivent au visiteur avec une matrice de texte
+    IDENTITÉ, donc en (0, 0) — le folio « 9 » de la demi-page d'Issogne, et « TITOLO »,
+    « LUOGO », « PAGINA » dans l'en-tête du calendrier. pypdf les vide avec la matrice
+    mémorisée d'un bloc de texte déjà refermé. Jetés comme « artefacts », ils ont emporté
+    35 folios et tout le calendrier : 21 fiches écrites au lieu de 42.
+
+    Le remède ne suppose rien de la version de pypdf : juste AVANT chaque opérateur qui
+    dessine du texte (Tj, TJ, ', "), pypdf passe la matrice COURANTE ; on la retient, et
+    un fragment livré sans position prend celle du premier opérateur de texte exécuté
+    depuis le fragment précédent. Un fragment que pypdf a bien placé garde SA position.
+    La taille suit le même chemin : sans matrice, elle tombait à 1, la valeur qui désigne
+    les onglets de section (voir _section).
     """
     import io
     from pypdf import PdfReader
 
+    TEXTE = (b"Tj", b"TJ", b"'", b'"')
     pages = []
     for p in PdfReader(io.BytesIO(donnees)).pages:
         frags = []
+        etat = {"courant": None, "en_attente": []}
 
-        def visiteur(texte, cm, tm, fd, fs):
-            if not texte.strip():
-                return
+        def _pos(cm, tm):
             x = tm[4] * cm[0] + tm[5] * cm[2] + cm[4]
             y = tm[4] * cm[1] + tm[5] * cm[3] + cm[5]
-            if x == 0 and y == 0:            # fragment sans position : artefact de pypdf
+            return x, y, (tm[3] or 1) * (cm[3] or 1)
+
+        def avant(op, args, cm, tm):
+            if op in TEXTE:
+                etat["courant"] = _pos(cm, tm)
+
+        def apres(op, args, cm, tm):
+            # Engagé APRÈS l'opérateur : un fragment vidé PENDANT son traitement est le
+            # texte d'avant, il ne doit pas recevoir la position de celui-ci.
+            if op in TEXTE and etat["courant"] is not None:
+                etat["en_attente"].append(etat["courant"])
+                etat["courant"] = None
+
+        def visiteur(texte, cm, tm, fd, fs):
+            attente, etat["en_attente"] = etat["en_attente"], []
+            if not texte.strip():
                 return
-            taille = fs * (tm[3] or 1) * (cm[3] or 1)
+            x, y, echelle = _pos(cm, tm)
+            if x == 0 and y == 0:            # position perdue par pypdf : on reprend la nôtre
+                if not attente:
+                    return                   # aucune trace d'opérateur : vrai artefact
+                x, y, echelle = attente[0]
+            taille = fs * echelle
             police = ((fd or {}).get("/BaseFont", "") if fd else "").split("+")[-1]
             frags.append({"x": round(x, 1), "y": round(y, 1), "s": round(taille, 1),
                           "f": police, "t": texte})
 
-        p.extract_text(visitor_text=visiteur)
+        p.extract_text(visitor_operand_before=avant, visitor_operand_after=apres,
+                       visitor_text=visiteur)
         pages.append({"w": round(float(p.mediabox.width), 1), "frags": frags})
     return pages
 
@@ -366,6 +401,24 @@ def parse_brochure(pages: list[dict], annee: int = ANNEE) -> dict:
         alerte = (f"AUCUNE fiche reconnue sur {len(dps)} demi-page(s) lue(s) : la mise en "
                   "page a changé (ou ce n'est pas la brochure). Ce zéro n'est PAS une "
                   "absence de rendez-vous.")
+    # DEUX AUTRES ZÉROS QUI NE SONT PAS DES SUCCÈS. Mesuré sur le VPS le 22/09 à 23h52 :
+    # 75 fiches lues, mais 0 ligne de calendrier et 35 fiches sans folio — la contre-
+    # épreuve affichait « 0 retrouvée, 0 sans fiche, 0 écart », ce qui ressemble à un
+    # accord parfait, et 35 rendez-vous réels (Issogne, Saint-Germain…) sont partis en
+    # « couverture ou colophon ». La brochure compte UNE couverture et 89 lignes de
+    # calendrier : une contre-épreuve vide, ou plus de deux fiches sans folio, veulent
+    # dire que la lecture du PDF a changé, pas que la brochure a changé. On s'arrête.
+    elif not calendrier:
+        alerte = (f"{len(entrees)} fiche(s) lue(s) mais AUCUNE ligne de calendrier : la "
+                  "contre-épreuve n'a rien à confronter, son « 0 écart » ne prouverait rien. "
+                  "La lecture du PDF a changé (version de pypdf ?). Rien n'est écrit.")
+    else:
+        sans_folio = [e for e in entrees if e["page"] is None]
+        if len(sans_folio) > 2:
+            alerte = (f"{len(sans_folio)} fiche(s) sur {len(entrees)} SANS FOLIO : la brochure "
+                      "n'a qu'une couverture. La lecture du PDF a changé (version de pypdf ?). "
+                      "Rien n'est écrit. Premières : "
+                      + " ; ".join(e["titre"][:40] for e in sans_folio[:3]))
     return {"entrees": entrees, "demi_pages": len(dps), "calendrier": calendrier,
             "alerte": alerte}
 
@@ -593,6 +646,25 @@ def ecrire(conn: sqlite3.Connection, fiches: list[dict]) -> int:
     return pose
 
 
+def titres_a_corriger(conn, fiches: list[dict]) -> list[tuple[int, str, str]]:
+    """[(id, titre en base, titre de la brochure)] pour les fiches de CETTE source déjà en
+    base, pas encore évaluées, dont le titre diffère.
+
+    Pourquoi : le 22/09 au soir, 21 fiches sont entrées avec un titre de secours en
+    minuscules (« il cuore idroelettrico di montjovet ») parce que la lecture du PDF avait
+    perdu le calendrier, qui porte les titres en casse normale. INSERT OR IGNORE ne les
+    réécrit pas au passage suivant. Une fiche déjà évaluée n'est jamais touchée : à partir
+    de là, c'est le pipeline qui écrit, pas la brochure.
+    """
+    par_url = {f["url"]: f["titre"] for f in fiches}
+    if not par_url:
+        return []
+    rows = conn.execute(
+        "SELECT id, title, url_source FROM events_raw WHERE source_name = ? AND llm_evaluated_at IS NULL "
+        "AND url_source IN (%s)" % ",".join("?" * len(par_url)), [SOURCE_NAME, *par_url]).fetchall()
+    return [(r[0], r[1], par_url[r[2]]) for r in rows if r[1] != par_url[r[2]]]
+
+
 def _telecharge(url: str, essais: int = 4) -> bytes:
     """Trois nouvelles tentatives, chacune annoncée.
 
@@ -674,8 +746,12 @@ def main() -> int:
         "SELECT url_source FROM events_raw WHERE url_source IN (%s)" % ",".join("?" * len(fiches)),
         [f["url"] for f in fiches]).fetchall()} if fiches else set()
     neufs = [f for f in fiches if f["url"] not in deja]
+    retitrer = titres_a_corriger(conn, fiches)
 
-    print(f"\ndéjà en base : {len(deja)} · à insérer : {len(neufs)} (à partir du {args.depuis})\n")
+    print(f"\ndéjà en base : {len(deja)} · à insérer : {len(neufs)} · titres à corriger : "
+          f"{len(retitrer)} (à partir du {args.depuis})\n")
+    for id_, avant, apres in retitrer:
+        print(f"  titre #{id_} : « {avant[:50]} » → « {apres[:50]} »")
     for f in neufs:
         plage = f["date_start"] if f["date_start"] == f["date_end"] else f"{f['date_start']}→{f['date_end'][5:]}"
         print(f"  {plage:<16} {f['time_start'] or '--:--'} [{f['section'][:4]}] "
@@ -687,11 +763,15 @@ def main() -> int:
         return 0
 
     pose = ecrire(conn, neufs)
+    for id_, _, apres in retitrer:
+        conn.execute("UPDATE events_raw SET title = ? WHERE id = ?", (apres, id_))
+    conn.commit()
     # Règle 6 : on recompte en base, on n'annonce pas la longueur d'une liste.
     verif = conn.execute(
         "SELECT COUNT(*) FROM events_raw WHERE source_name = ?", (SOURCE_NAME,)).fetchone()[0]
     conn.close()
-    print(f"\n{pose} insérée(s). En base pour « {SOURCE_NAME} » : {verif} fiche(s) au total.")
+    print(f"\n{pose} insérée(s), {len(retitrer)} titre(s) corrigé(s). En base pour « {SOURCE_NAME} » : "
+          f"{verif} fiche(s) au total.")
     return 0
 
 
