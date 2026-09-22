@@ -232,6 +232,9 @@ quotidien de fiches évaluées. `audit_couts` le donne.
   conçu pour être reproductible. La bonne nouvelle : la confiance donne enfin un **seuil
   réglable** et un **chiffre à afficher**, là où une regex ne donnait qu'un booléen muet.
   Mais la question « qui sort la fiche de cette file » reste entière.
+  → **À nuancer** : le cookbook *self-consistency* décrit une **bande d'incertitude**
+  (0,30–0,70) qui constitue une file nommée, bornée et dénombrable, avec un propriétaire
+  désigné d'avance. Voir `docs/TYPESAFE_JEV_NOEUDS.md` § 4.
 - **Il ne dispense d'aucune fixture.** Un détecteur Jev se valide exactement comme les
   autres : sur des données réelles, en LISANT ce qu'il refuse, avec un cas qui doit passer
   près de la frontière.
@@ -262,6 +265,9 @@ prévue pour Claude Code. Si on va au-delà de l'essai, elle évitera de réécr
 conventions d'appel à la main.
 
 ---
+
+**Suite de ce rapport** : `docs/TYPESAFE_JEV_NOEUDS.md` passe la chaîne nœud par nœud et
+traite la question de la **complétion** — c'est là qu'est le gain le plus net.
 
 ## Sources
 
