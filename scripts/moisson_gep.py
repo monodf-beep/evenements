@@ -26,7 +26,8 @@ le programme du ministère couvre DIX-NEUF régions et la Vallée d'Aoste n'en f
 partie. Région autonome, elle gère son patrimoine elle-même et publie son propre
 rendez-vous — « Plaisirs de Culture en Vallée d'Aoste », du 19 au 27 septembre 2026,
 quatorzième édition, thème « Patrimonio a rischio ». Il lui faut donc sa propre moisson,
-depuis la source régionale. Ne pas chercher « Valle d'Aosta » ici : on ne la trouvera pas.
+depuis la source régionale : c'est `scripts/moisson_plaisirs_culture.py`. Ne pas chercher
+« Valle d'Aosta » ici : on ne la trouvera pas.
 
 USAGE
     python -m scripts.moisson_gep                 # DRY-RUN : lit, trie, affiche, n'écrit rien

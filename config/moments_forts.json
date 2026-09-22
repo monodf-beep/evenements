@@ -40,7 +40,14 @@
     "",
     "Les deux termes ne sont PAS liés entre eux comme traductions l'un de l'autre (cela",
     "demanderait pll_save_term_translations). Sans importance ici : chaque langue",
-    "interroge son propre slug. À revoir le jour où les archives d'étiquettes serviraient."
+    "interroge son propre slug. À revoir le jour où les archives d'étiquettes serviraient.",
+    "",
+    "DEUX SOURCES POUR UN MÊME MOMENT, et ce n'est pas un doublon. La Vallée d'Aoste n'est",
+    "PAS au programme du ministère (mesuré le 2026-09-22 : dix-neuf régions, pas elle) ;",
+    "région autonome, elle tient son propre volet, « Plaisirs de Culture en Vallée",
+    "d'Aoste », moissonné par scripts/moisson_plaisirs_culture.py. Le nom de source doit",
+    "rester identique à SOURCE_NAME de ce script — tests/test_moments_forts_etiquette.py",
+    "le vérifie, pour que les deux ne divergent pas en silence."
   ],
   "moments": [
     {
@@ -59,7 +66,8 @@
         "vallee-d-aoste"
       ],
       "sources": [
-        "Ministero della Cultura — GEP"
+        "Ministero della Cultura — GEP",
+        "Regione Valle d'Aosta — Plaisirs de Culture"
       ]
     }
   ]
