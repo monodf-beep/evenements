@@ -173,14 +173,26 @@ def main() -> int:
         description = e["resume"]
         if e["lieu"]:
             description = f"{e['lieu']}, {e['ville']} — {description}".strip(" —")
+        # LA DATE VA DANS LES DEUX COLONNES, ET CE N'EST PAS UNE COMMODITÉ.
+        # `date_start` est la date de PUBLICATION de la source (le scraper RSS y met
+        # `entry.published`). La date de l'ÉVÉNEMENT vit dans `date_event_start` /
+        # `date_event_end`, et c'est elle que tout le reste regarde : `publish_batch_as`
+        # exige `COALESCE(date_event_start,'') <> ''`, la règle 5 juge sur
+        # `date_event_end`. Première version de ce script (22/09) : la date n'allait que
+        # dans `date_start`. Les 52 fiches sont donc entrées SANS date d'événement, et
+        # `dates.py` n'aurait eu aucun moyen de la retrouver — les pages de détail de
+        # cultura.gov.it ne portent pas de JSON-LD (vérifié le même jour). Elles
+        # seraient restées indéfiniment invisibles à la publication.
+        #
+        # Chaque rendez-vous des GEP tient sur UNE journée : début = fin.
         cur = conn.execute("""
             INSERT OR IGNORE INTO events_raw
-                (title, description, date_start, lieu, ville, territoire, url_source,
-                 url_image, source_name, source_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (e["titre"], description, e["date_start"], e["lieu"], e["ville"],
-              TERRITOIRE.get(args.region, args.region), e["url"], e["image"],
-              SOURCE_NAME, "institutionnel"))
+                (title, description, date_start, date_event_start, date_event_end,
+                 lieu, ville, territoire, url_source, url_image, source_name, source_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (e["titre"], description, e["date_start"], e["date_start"], e["date_start"],
+              e["lieu"], e["ville"], TERRITOIRE.get(args.region, args.region),
+              e["url"], e["image"], SOURCE_NAME, "institutionnel"))
         pose += cur.rowcount
     conn.commit()
 
