@@ -181,6 +181,7 @@ function cs_moments_forts() {
             ),
             'volets'     => array(
                 array(
+                    'canon' => 'piemont',   // cle de cs_territoire_actif(), cf. cs_mf_volet_du_territoire
                     'terr'  => array('fr' => 'piemont', 'it' => 'piemonte'),
                     'debut' => '2026-09-26', 'fin' => '2026-09-27',
                     'nom'   => array('fr' => 'Piémont', 'it' => 'Piemonte'),
@@ -208,6 +209,7 @@ function cs_moments_forts() {
                     ),
                 ),
                 array(
+                    'canon' => 'vda',
                     'terr'  => array('fr' => 'vallee-d-aoste', 'it' => 'valle-d-aosta'),
                     'debut' => '2026-09-19', 'fin' => '2026-09-27',
                     'nom'   => array('fr' => "Vallée d'Aoste", 'it' => "Valle d'Aosta"),
@@ -251,11 +253,25 @@ if (!function_exists('cs_mf_volet_du_territoire')) {
  *
  * C'est ce qui décide de la mise : un volet trouvé => « programme-jours » (le lecteur
  * est chez lui) ; aucun => « voisins » (il regarde à côté). JAMAIS les deux.
+ *
+ * DEUX IDENTIFIANTS POUR UN MÊME TERRITOIRE, et ils ne se ressemblent que par hasard.
+ * `cs_territoire_actif()` rend une clé CANONIQUE — 'savoie', 'piemont', 'vda', 'nice'
+ * (cf. cs_terr_canon_data) — tandis que `terr[$lang]` porte le slug du TERME de la
+ * taxonomie, qui change de langue : 'piemont'/'piemonte', 'vallee-d-aoste'/'valle-d-aosta'.
+ * La comparaison se faisait sur le second. Mesuré en ligne le 22/09, sur les trois cas :
+ *   ?as_territoire=piemont        en fr => mise programme  (juste, PAR COÏNCIDENCE :
+ *                                          la clé canonique du Piémont s'écrit
+ *                                          exactement comme son slug français) ;
+ *   ?as_territoire=piemonte       en it => mise voisins    (faux) ;
+ *   ?as_territoire=vallee-d-aoste en fr => mise voisins    (faux).
+ * Soit un cas juste sur trois, et c'est le seul que la fixture regardait — elle se
+ * donnait raison sur la coïncidence. La comparaison porte donc désormais sur `canon`,
+ * et `terr[$lang]` reste ce pour quoi il est fait : interroger la taxonomie.
  */
-function cs_mf_volet_du_territoire($moment, $terr_slug, $lang) {
-    if (!$terr_slug) { return null; }
+function cs_mf_volet_du_territoire($moment, $terr_canon, $lang) {
+    if (!$terr_canon) { return null; }
     foreach ($moment['volets'] as $i => $v) {
-        if (isset($v['terr'][$lang]) && $v['terr'][$lang] === $terr_slug) {
+        if (!empty($v['canon']) && $v['canon'] === $terr_canon) {
             return array($i, $v);
         }
     }

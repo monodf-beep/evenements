@@ -325,10 +325,69 @@ def test_rendu():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_territoire_canonique():
+    """Le territoire actif est une CLÉ CANONIQUE, pas un slug de langue.
+
+    Trois cas mesurés en ligne le 22/09 : fr/piemont donnait la bonne mise, it/piemonte
+    et fr/vallee-d-aoste tombaient en « voisins ». La fixture d'alors ne jouait que le
+    premier — celui qui marche PAR COÏNCIDENCE, la clé canonique du Piémont s'écrivant
+    comme son slug français. Elle se donnait raison sur le seul cas où la confusion ne
+    se voit pas. Les trois sont joués ici, plus une contre-épreuve.
+    """
+    php = shutil.which("php")
+    if not php:
+        print("php absent : le volet « territoire canonique » n'est PAS joué (ce n'est pas un succès).")
+        return
+
+    tmp = Path(tempfile.mkdtemp())
+    shutil.copy(PHP_FILE, tmp / "cs-moment-fort.php")
+    (tmp / "harness.php").write_text(HARNESS, encoding="utf-8")
+
+    # Les fiches portent le slug du TERME de taxonomie, qui change de langue.
+    jeu_it = [
+        fiche("piemonte", "2026-09-26 20:00:00", "Musei Reali", "Torino", "Apertura serale"),
+        fiche("piemonte", "2026-09-26 20:00:00", "Palazzo Carignano", "Torino", "Gli Appartamenti"),
+        fiche("piemonte", "2026-09-27 10:00:00", "Libarna", "Serravalle", "La citta romana"),
+        fiche("piemonte", "2026-09-27 10:00:00", "Discoteca Olivetti", "Ivrea", "La musica della fabbrica"),
+    ]
+    html_it = rendre(jeu_it, "it", "piemont", tmp)
+    if "cs-mf--programme" not in html_it:
+        echec("it/piemont : la clé canonique doit donner la mise programme, pas « voisins »")
+    elif "Domenica 27" not in html_it:
+        echec("it/piemont : la colonne du dimanche doit être là")
+    else:
+        print("  ok  it + clé canonique « piemont » : mise programme, deux jours")
+
+    jeu_vda = [
+        fiche("vallee-d-aoste", "2026-09-20 10:00:00", "Chateau de Fenis", "Fenis", "Visite guidee"),
+        fiche("vallee-d-aoste", "2026-09-21 10:00:00", "Chateau de Sarre", "Sarre", "Les appartements"),
+        fiche("vallee-d-aoste", "2026-09-24 14:00:00", "Chateau d Issogne", "Issogne", "La cour interieure"),
+    ]
+    html_vda = rendre(jeu_vda, "fr", "vda", tmp)
+    if "cs-mf--programme" not in html_vda:
+        echec("fr/vda : la clé canonique doit donner la mise programme, pas « voisins »")
+    elif "cs-mf__jour--seul" not in html_vda:
+        echec("fr/vda : neuf jours sans découpage => une liste unique")
+    else:
+        print("  ok  fr + clé canonique « vda » : mise programme, liste unique")
+
+    # CONTRE-ÉPREUVE : un territoire SANS volet doit toujours tomber en « voisins ».
+    # Sans elle, un comparateur qui accepterait tout passerait au vert ci-dessus.
+    html_nice = rendre(jeu_it, "fr", "nice", tmp)
+    if "cs-mf--voisins" not in html_nice:
+        echec("contre-épreuve : « nice » n'a pas de volet, la mise doit être « voisins »")
+    else:
+        print("  ok  contre-épreuve : « nice » sans volet => mise voisins")
+
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 if __name__ == "__main__":
     print("— contrastes de la palette")
     test_contrastes()
     print("— rendu")
     test_rendu()
+    print("— territoire canonique")
+    test_territoire_canonique()
     print(("%d echec(s)" % echecs) if echecs else "tout est vert")
     sys.exit(1 if echecs else 0)
