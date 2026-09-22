@@ -599,14 +599,20 @@ function cs_mf_css($moment) {
     $v = '';
     foreach ($c as $k => $val) { $v .= '--mf-' . $k . ':' . $val . ';'; }
     return '<style id="cs-moment-fort">
-.cs-mf{' . $v . 'position:relative;margin:34px 0 30px;width:100vw;margin-left:calc(50% - 50vw);
+.cs-mf{' . $v . 'position:relative;margin:34px 0 30px;
  background:var(--mf-fond);color:var(--mf-texte);font-family:\'Nunito Sans\',sans-serif;overflow:hidden;isolation:isolate}
-/* `100vw` compte la gouttière de la barre de défilement (le site force overflow-y:scroll) :
-   la bande dépasse donc de 7,5 px de CHAQUE côté, symétriquement. Mesuré le 22/09 :
-   scrollWidth 375 pour une fenêtre de 390, 1273 pour 1280 — aucun défilement horizontal.
-   Corriger par une variable `calc(100vw - 100%)` posée sur le body NE MARCHE PAS : une
-   propriété personnalisée est substituée telle quelle, donc le 100 % se résout chez
-   l\'enfant, et la bande tombait à 950 px de large au format bureau. */
+/* LA BANDE TIENT DANS LA COLONNE, JAMAIS DANS LES GOUTTIÈRES. Elle a été posée en 100vw,
+   d\'un bord à l\'autre de l\'écran ; or les gouttières appartiennent à l\'habillage
+   publicitaire (cs-regie.php : fond fixe plein écran, colonne de lecture crème à la
+   largeur du conteneur). Une bande opaque les recouvrait sur toute sa hauteur. Rappel de
+   Franck le 22/09 au soir. Mesuré le même jour sur la home servie, écran de 1905 px :
+   toutes les strates tiennent de 498 à 1408 (colonne .as-home-desktop de 950 px, 20 px
+   de marge intérieure), sauf celle-ci, qui allait de -7 à 1913.
+   La bande prend donc la largeur de son parent, sans rien d\'autre. Bureau : 498-1408,
+   comme ses voisines. Mobile : son parent couvre déjà toute la colonne .as-home, donc
+   elle va bord à bord DE LA COLONNE — 0-375 sur un téléphone, 137-617 à 768 px, où la
+   colonne ne fait que 480 px. (Une marge de -20 px, essayée, la faisait déborder de 20 px
+   de chaque côté : mesuré, pas supposé.) */
 /* UNE SEULE BANDE, TOUJOURS. Le marqueur « A LA UNE » figure deux fois dans le contenu
    de la home : une pour le gabarit mobile (.as-home), une pour le gabarit bureau
    (.as-home-desktop). Le thème les rend exclusifs à 900 px (relevé dans le CSS servi le
@@ -614,14 +620,11 @@ function cs_mf_css($moment) {
    donc en principe une seule apparaît. Franck en a pourtant vu DEUX. On pose la même
    règle ici, au MÊME point de rupture : si un cache ou une extension neutralise celle
    du thème, celle-ci tient, et aucune largeur ne se retrouve sans bande.
-   LE DÉBORDEMENT, aussi : 100vw compte la gouttière de défilement, donc la bande
-   dépasse de 7,5 px de chaque côté (mesuré : scrollWidth 1273 pour une page de 1265).
-   PAS de overflow-x:clip sur .as-home-root : posé le 22/09 à 19h44, il a rogné le MENU
-   de la home, qui vit dans ce conteneur et traverse tout l\'écran. Barre blanche et barre
-   des territoires coupées net à 1200 px, signalé par Franck le soir même. Ce conteneur
-   porte des bandes pleine largeur qui ne sont pas les nôtres : on ne le coupe pas.
-   Les 7,5 px restent invisibles, parce que le thème pose body{overflow-x:hidden} (relevé
-   dans le CSS servi le 22/09), reporté sur la fenêtre : aucun défilement horizontal. */
+   PAS de overflow-x:clip sur .as-home-root : posé le 22/09 à 19h44 contre le débordement
+   du 100vw, il a rogné le MENU de la home, qui vit dans ce conteneur et traverse tout
+   l\'écran (barre blanche et barre des territoires coupées net, signalé par Franck le soir
+   même). Ce conteneur porte des bandes pleine largeur qui ne sont pas les nôtres : on ne
+   le coupe pas. Et depuis que la bande tient dans la colonne, il n\'y a plus rien à couper. */
 @media(min-width:900px){.as-home .cs-mf{display:none}}
 @media(max-width:899px){.as-home-desktop .cs-mf{display:none}}
 .cs-mf *{box-sizing:border-box}
@@ -690,7 +693,7 @@ function cs_mf_css($moment) {
  .cs-mf--voisins .cs-mf__titre{font-size:32px;max-width:18ch}
  .cs-mf--voisins .cs-mf__droite{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:30px}
  /* photo « épinglée » : un tirage penché à cheval sur le bord haut */
- .cs-mf--photo-epinglee .cs-mf__photo{display:block;position:absolute;right:calc(50% - 560px + 4px);top:-30px;width:196px;
+ .cs-mf--photo-epinglee .cs-mf__photo{display:block;position:absolute;right:calc(max(0px, 50% - 560px) + 4px);top:-30px;width:196px;
   margin:0;z-index:4;transform:rotate(-2.6deg);background:var(--mf-texte);padding:7px 7px 0;border-radius:3px;
   box-shadow:0 10px 24px rgba(0,0,0,.28)}
  .cs-mf--photo-epinglee .cs-mf__photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:2px}
@@ -699,11 +702,12 @@ function cs_mf_css($moment) {
  .cs-mf--photo-epinglee .cs-mf__droite{padding-top:92px}
  .cs-mf--photo-epinglee .cs-mf__in{padding-top:64px}
  /* photo « large » : l\'image tient toute la hauteur, les bords arrachés passent devant */
- /* La photo se mesure depuis le bord de la BANDE (27 % de 100vw), le texte depuis le bord
-    du bloc CENTRÉ de 1120 px. calc(27% + 30px) seul ignorait ce centrage : l\'écart
-    photo-texte valait 30 px jusqu\'à 1120 px de large, puis grandissait de moitié avec la
-    fenêtre (170 px à 1400, 430 px à 1920, mesuré au navigateur le 22/09). On retranche
-    donc le décalage du centrage : 30 px constants de 900 à 1920. */
+ /* La photo se mesure depuis le bord de la BANDE, le texte depuis le bord du bloc CENTRÉ
+    de 1120 px. Tant que la bande faisait 100vw, calc(27% + 30px) seul ignorait ce
+    centrage : écart photo-texte de 170 px à 1400, 430 px à 1920 (mesuré le 22/09). On
+    retranche le décalage du centrage ; il vaut zéro dès que la bande est plus étroite que
+    1120 px, ce qui est le cas dans la colonne. La formule reste juste si la bande
+    s\'élargit un jour. Même raisonnement pour la photo épinglée, calée sur ce bloc. */
  .cs-mf--photo-large .cs-mf__in{padding-left:max(0px, calc(27% + 30px - max(0px, (100% - 1120px) / 2)));grid-template-columns:minmax(0,31%) minmax(0,1fr);gap:34px}
  .cs-mf--photo-large .cs-mf__titre{font-size:33px}
  .cs-mf--photo-large .cs-mf__jour-titre{display:block;font-size:16px}
