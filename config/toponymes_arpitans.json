@@ -1,0 +1,6462 @@
+{
+  "_source": "« Comunes d'Arpitania », classeur fourni par Franck le 2026-09-22. Feuilles retenues : Sav (Savoie 73 et 74), VdA (Vallée d'Aoste), Pie (vallées arpitanes du Piémont).",
+  "_consigne": "Franck, 22/09 : « pour les noms en langue savoyarde prend la colonne M ».",
+  "_ATTENTION_colonne_M": "M ne désigne PAS la même chose selon la feuille, et le classeur ne le dit qu'en en-tête. Sav : « Nom ORB (Stich) ». VdA : « Nom ORB ». Pie : « Arpitan (grafia locâla) » — l'ORB y est en colonne K, reporté sous orb_colonne_K. La consigne a été suivie à la lettre (M partout) ; le cas du Piémont est signalé, pas tranché.",
+  "_pourquoi_une_LISTE_par_nom": "Un premier jet indexait un nom français sur UNE entrée. Trois noms existent dans deux feuilles à la fois (La Thuile, Moûtiers, Novalaise) et la dernière écrasait la première EN SILENCE : Moûtiers-en-Tarentaise (Sav, « Mouhtiérs ») était devenu « Moutier », le nom de son homonyme. D'où une liste, même quand elle n'a qu'un élément : c'est le lecteur qui choisit sur la feuille ou le code INSEE, jamais l'ordre de lecture du classeur.",
+  "_homonymes": {
+    "MOUTIERS": [
+      "Sav",
+      "Pie"
+    ],
+    "NOVALAISE": [
+      "Sav",
+      "Pie"
+    ],
+    "LA THUILE": [
+      "Sav",
+      "VdA"
+    ]
+  },
+  "_absents": "Turin, Ivrée, Asti, Menton, Nice : hors du document, et c'est normal — ces villes ne sont pas de langue arpitane. Ne pas leur inventer un nom.",
+  "_usage": "Les pages hub citent le nom savoyard dans le chapitre d'histoire (« en italien elle s'écrit X ; en savoyard, Y »). Le nom de la langue se dit « savoyard », jamais « francoprovençal » ni « patois » (utils/vocabulaire.py).",
+  "communes": {
+    "ABONDANCE": [
+      {
+        "nom_savoyard": "L'Abayie (d'Abondance)",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "L’Abayi",
+        "conflans": "L’Abayi",
+        "insee": "74001",
+        "departement": "74"
+      }
+    ],
+    "AIGUEBELETTE-LE-LAC": [
+      {
+        "nom_savoyard": "Égouabelèta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Égua Belèta",
+        "conflans": "Èga Blèta",
+        "insee": "73001",
+        "departement": "73"
+      }
+    ],
+    "AIGUEBELLE": [
+      {
+        "nom_savoyard": "Égouabèla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Égua Bela",
+        "conflans": "Éga Bola",
+        "insee": "73002",
+        "departement": "73"
+      }
+    ],
+    "AIGUEBLANCHE": [
+      {
+        "nom_savoyard": "Égouablanche",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Égua Blanche",
+        "conflans": "Èga Blantse",
+        "insee": "73003",
+        "departement": "73"
+      }
+    ],
+    "AILLON-LE-JEUNE": [
+      {
+        "nom_savoyard": "Alyon lo Jouèno",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Alyon lo Jouèno",
+        "conflans": "Alyon le Zhoèno",
+        "insee": "73004",
+        "departement": "73"
+      }
+    ],
+    "AILLON-LE-VIEUX": [
+      {
+        "nom_savoyard": "Alyon lo Viely",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Alyon lo Viely",
+        "conflans": "Alyon le Vyeu",
+        "insee": "73005",
+        "departement": "73"
+      }
+    ],
+    "AIME": [
+      {
+        "nom_savoyard": "Êma",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Êma",
+        "conflans": "Êma",
+        "insee": "73006",
+        "departement": "73"
+      }
+    ],
+    "AITON": [
+      {
+        "nom_savoyard": "Éton",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Éton",
+        "conflans": "É-ton",
+        "insee": "73007",
+        "departement": "73"
+      }
+    ],
+    "AIX-LES-BAINS": [
+      {
+        "nom_savoyard": "Èx en Savouè",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èsse en Savouè",
+        "conflans": "Èsse",
+        "insee": "73008",
+        "departement": "73"
+      }
+    ],
+    "ALA": [
+      {
+        "nom_savoyard": "Ala",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Ala di Stura",
+        "istat": "1003"
+      }
+    ],
+    "ALBENS": [
+      {
+        "nom_savoyard": "Albens",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arbin",
+        "conflans": "Arbin",
+        "insee": "73010",
+        "departement": "73"
+      }
+    ],
+    "ALBERTVILLE": [
+      {
+        "nom_savoyard": "Albèrtvela",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arbèrtvila",
+        "conflans": "Arbëvëla",
+        "insee": "73011",
+        "departement": "73"
+      }
+    ],
+    "ALBIEZ-LE-JEUNE": [
+      {
+        "nom_savoyard": "Arbiê-Lo-Joueno",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arbié",
+        "conflans": "Arbié",
+        "insee": "73012",
+        "departement": "73"
+      }
+    ],
+    "ALBIEZ-MONTROND": [
+      {
+        "nom_savoyard": "Arbiê-Montriond",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arbié",
+        "conflans": "Arbié lo Vyeuye",
+        "insee": "73013",
+        "departement": "73"
+      }
+    ],
+    "ALBY-SUR-CHERAN": [
+      {
+        "nom_savoyard": "Albi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arbié",
+        "conflans": "Arbi",
+        "insee": "74002",
+        "departement": "74"
+      }
+    ],
+    "ALEX": [
+      {
+        "nom_savoyard": "Alé",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Alé",
+        "conflans": "Alé",
+        "insee": "74003",
+        "departement": "74"
+      }
+    ],
+    "ALLEIN": [
+      {
+        "nom_savoyard": "Alen",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Alen",
+        "istat": "007001"
+      }
+    ],
+    "ALLEVES": [
+      {
+        "nom_savoyard": "Alèves",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Alèves",
+        "conflans": "Alève",
+        "insee": "74004",
+        "departement": "74"
+      }
+    ],
+    "ALLINGES": [
+      {
+        "nom_savoyard": "Alinjos",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Alinjos",
+        "conflans": "Alinzho",
+        "insee": "74005",
+        "departement": "74"
+      }
+    ],
+    "ALLONDAZ": [
+      {
+        "nom_savoyard": "Alonda",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Alonda",
+        "conflans": "Alonda",
+        "insee": "73014",
+        "departement": "73"
+      }
+    ],
+    "ALLONZIER-LA-CAILLE": [
+      {
+        "nom_savoyard": "Alonzi-la-Calye",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Alonzi-la-Calye",
+        "conflans": "Alonzi",
+        "insee": "74006",
+        "departement": "74"
+      }
+    ],
+    "AMANCY": [
+      {
+        "nom_savoyard": "Amanci",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Amanci",
+        "conflans": "Amanfi",
+        "insee": "74007",
+        "departement": "74"
+      }
+    ],
+    "AMBILLY": [
+      {
+        "nom_savoyard": "Ambilyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Ambilyi",
+        "conflans": "Amblyi",
+        "insee": "74008",
+        "departement": "74"
+      }
+    ],
+    "ANDILLY": [
+      {
+        "nom_savoyard": "Andilyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Andilyi",
+        "conflans": "Andlyi",
+        "insee": "74009",
+        "departement": "74"
+      }
+    ],
+    "ANNECY": [
+      {
+        "nom_savoyard": "Èneci",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èneci",
+        "conflans": "En’si",
+        "insee": "74010",
+        "departement": "74"
+      }
+    ],
+    "ANNECY-LE-VIEUX": [
+      {
+        "nom_savoyard": "Èneci lo Viely",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èneci lo Viely",
+        "conflans": "En’si lo Vyu",
+        "insee": "74011",
+        "departement": "74"
+      }
+    ],
+    "ANNEMASSE": [
+      {
+        "nom_savoyard": "Anamâce",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Almâce",
+        "conflans": "Almâsse",
+        "insee": "74012",
+        "departement": "74"
+      }
+    ],
+    "ANTEY SAINT ANDRÉ": [
+      {
+        "nom_savoyard": "Antè",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Antè",
+        "istat": "007002"
+      }
+    ],
+    "ANTHY-SUR-LEMAN": [
+      {
+        "nom_savoyard": "Anti",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Anti",
+        "conflans": "Anti",
+        "insee": "74013",
+        "departement": "74"
+      }
+    ],
+    "AOSTE": [
+      {
+        "nom_savoyard": "Aouhta",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Ohta",
+        "istat": "007003"
+      }
+    ],
+    "APREMONT": [
+      {
+        "nom_savoyard": "Âhpromont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Âhpro Mont",
+        "conflans": "Ôpra-Mont",
+        "insee": "73017",
+        "departement": "73"
+      }
+    ],
+    "ARACHES-LA-FRASSE": [
+      {
+        "nom_savoyard": "Arraches la Frasse",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arâches la Frace",
+        "conflans": "Arâshe",
+        "insee": "74014",
+        "departement": "74"
+      }
+    ],
+    "ARBIN": [
+      {
+        "nom_savoyard": "Albin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arbin",
+        "conflans": "Arbin",
+        "insee": "73018",
+        "departement": "73"
+      }
+    ],
+    "ARBUSIGNY": [
+      {
+        "nom_savoyard": "Albusigni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arbozinyi",
+        "conflans": "Arboznyi",
+        "insee": "74015",
+        "departement": "74"
+      }
+    ],
+    "ARCHAMPS": [
+      {
+        "nom_savoyard": "Archans",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Archans",
+        "conflans": "Arshan",
+        "insee": "74016",
+        "departement": "74"
+      }
+    ],
+    "ARENTHON": [
+      {
+        "nom_savoyard": "Arenton",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arènton",
+        "conflans": "Aranton",
+        "insee": "74018",
+        "departement": "74"
+      }
+    ],
+    "ARGENTINE": [
+      {
+        "nom_savoyard": "Argentena",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Argentina",
+        "conflans": "Arzhantena",
+        "insee": "73019",
+        "departement": "73"
+      }
+    ],
+    "ARGONAY": [
+      {
+        "nom_savoyard": "Argonê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Argonê",
+        "conflans": "Argonê",
+        "insee": "74019",
+        "departement": "74"
+      }
+    ],
+    "ARITH": [
+      {
+        "nom_savoyard": "Ariô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Ariôt",
+        "conflans": "Areu",
+        "insee": "73020",
+        "departement": "73"
+      }
+    ],
+    "ARMOY": [
+      {
+        "nom_savoyard": "Armoué",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Armoué",
+        "conflans": "Armwé",
+        "insee": "74020",
+        "departement": "74"
+      }
+    ],
+    "ARNAD": [
+      {
+        "nom_savoyard": "Arnas",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Arnâs",
+        "istat": "007004"
+      }
+    ],
+    "ARTHAZ-PONT-NOTRE-DAME": [
+      {
+        "nom_savoyard": "Arta-Pont Nouhtra Dama",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Artâ Pont Nohtra Dama",
+        "conflans": "Artâ",
+        "insee": "74021",
+        "departement": "74"
+      }
+    ],
+    "ARVIER": [
+      {
+        "nom_savoyard": "Arviér",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Arviér",
+        "istat": "007005"
+      }
+    ],
+    "ARVILLARD": [
+      {
+        "nom_savoyard": "Arvelârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Arvilârd",
+        "conflans": "Arvelâ",
+        "insee": "73021",
+        "departement": "73"
+      }
+    ],
+    "ATTIGNAT-ONCIN": [
+      {
+        "nom_savoyard": "Atignas-Oncin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Atinyias – Oncin",
+        "conflans": "Atinya – Onshin",
+        "insee": "73022",
+        "departement": "73"
+      }
+    ],
+    "AUSSOIS": [
+      {
+        "nom_savoyard": "Ohely",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Oê",
+        "conflans": "Oê",
+        "insee": "73023",
+        "departement": "73"
+      }
+    ],
+    "AVIERNOZ": [
+      {
+        "nom_savoyard": "Aviérno",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Aviérno",
+        "conflans": "Avyèrno",
+        "insee": "74022",
+        "departement": "74"
+      }
+    ],
+    "AVISE": [
+      {
+        "nom_savoyard": "Avesiô",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Avìzo",
+        "istat": "007006"
+      }
+    ],
+    "AVRESSIEUX": [
+      {
+        "nom_savoyard": "Avèrciô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Avèrsiôs",
+        "conflans": "Avarchô",
+        "insee": "73025",
+        "departement": "73"
+      }
+    ],
+    "AVRIEUX": [
+      {
+        "nom_savoyard": "Avriô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Avriô",
+        "conflans": "Avrou",
+        "insee": "73026",
+        "departement": "73"
+      }
+    ],
+    "AYAS": [
+      {
+        "nom_savoyard": "Ayâs",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Ayâs",
+        "istat": "007007"
+      }
+    ],
+    "AYMAVILLE": [
+      {
+        "nom_savoyard": "Les Amaveles",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Les Amavìles",
+        "istat": "007008"
+      }
+    ],
+    "AYN": [
+      {
+        "nom_savoyard": "Ayin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Ayin",
+        "conflans": "Ayin",
+        "insee": "73027",
+        "departement": "73"
+      }
+    ],
+    "AYSE": [
+      {
+        "nom_savoyard": "Ayise",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Ayise",
+        "conflans": "Aÿze",
+        "insee": "74024",
+        "departement": "74"
+      }
+    ],
+    "BALLAISON": [
+      {
+        "nom_savoyard": "Balèson",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Balèson",
+        "conflans": "Balèson",
+        "insee": "74025",
+        "departement": "74"
+      }
+    ],
+    "BARBERAZ": [
+      {
+        "nom_savoyard": "Barbéro",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Barbéro",
+        "conflans": "Barbéro",
+        "insee": "73029",
+        "departement": "73"
+      }
+    ],
+    "BARBY": [
+      {
+        "nom_savoyard": "Barbi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Barbi",
+        "conflans": "Barbi",
+        "insee": "73030",
+        "departement": "73"
+      }
+    ],
+    "BARD": [
+      {
+        "nom_savoyard": "Bard",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Bard",
+        "istat": "007009"
+      }
+    ],
+    "BARMES": [
+      {
+        "nom_savoyard": "Bârmes",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Balme",
+        "istat": "1007"
+      }
+    ],
+    "BASSENS": [
+      {
+        "nom_savoyard": "Bassins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bassins",
+        "conflans": "Bassin",
+        "insee": "73031",
+        "departement": "73"
+      }
+    ],
+    "BASSY": [
+      {
+        "nom_savoyard": "Bassi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bassi",
+        "conflans": "Bassi",
+        "insee": "74029",
+        "departement": "74"
+      }
+    ],
+    "BEAUFORT": [
+      {
+        "nom_savoyard": "Biôfôrt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Belfôrt",
+        "conflans": "Byofor",
+        "insee": "73034",
+        "departement": "73"
+      }
+    ],
+    "BEAUMONT": [
+      {
+        "nom_savoyard": "Biômont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bél Mont",
+        "conflans": "Bomon",
+        "insee": "74031",
+        "departement": "74"
+      }
+    ],
+    "BELLECOMBE-EN-BAUGES": [
+      {
+        "nom_savoyard": "Bèlacomba en Buges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bèla Comba en Boges",
+        "conflans": "Bèla Comba",
+        "insee": "73036",
+        "departement": "73"
+      }
+    ],
+    "BELLENTRE": [
+      {
+        "nom_savoyard": "Belentro",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Belintro",
+        "conflans": "Belintro",
+        "insee": "73038",
+        "departement": "73"
+      }
+    ],
+    "BELLEVAUX": [
+      {
+        "nom_savoyard": "Bèlevâls",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bèla Vâl",
+        "conflans": "Balavô",
+        "insee": "74032",
+        "departement": "74"
+      }
+    ],
+    "BELMONT-TRAMONET": [
+      {
+        "nom_savoyard": "Bèlmont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bèrmont",
+        "conflans": "Bèrmont",
+        "insee": "73039",
+        "departement": "73"
+      }
+    ],
+    "BERNEX": [
+      {
+        "nom_savoyard": "Bèrnê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bèrnê",
+        "conflans": "Barnê",
+        "insee": "74033",
+        "departement": "74"
+      }
+    ],
+    "BERSEL": [
+      {
+        "nom_savoyard": "Bërsoel",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Bruzolo",
+        "istat": "1019"
+      }
+    ],
+    "BESSANS": [
+      {
+        "nom_savoyard": "Bèssans",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bèssans",
+        "conflans": "Bèssan",
+        "insee": "73040",
+        "departement": "73"
+      }
+    ],
+    "BETTON-BETTONET": [
+      {
+        "nom_savoyard": "Beton",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Beton",
+        "conflans": "Beton",
+        "insee": "73041",
+        "departement": "73"
+      }
+    ],
+    "BILLIEME": [
+      {
+        "nom_savoyard": "Bilyèma",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bilyéma",
+        "conflans": "Blyèma",
+        "insee": "73042",
+        "departement": "73"
+      }
+    ],
+    "BIONAZ": [
+      {
+        "nom_savoyard": "Biôna",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Biôna",
+        "istat": "007010"
+      }
+    ],
+    "BLOYE": [
+      {
+        "nom_savoyard": "Bllôye",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Blèyi",
+        "conflans": "Blèyi",
+        "insee": "74035",
+        "departement": "74"
+      }
+    ],
+    "BLUFFY": [
+      {
+        "nom_savoyard": "Bllofi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Blofi",
+        "conflans": "Blofi",
+        "insee": "74036",
+        "departement": "74"
+      }
+    ],
+    "BOGEVE": [
+      {
+        "nom_savoyard": "Bogéva",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bogéva",
+        "conflans": "Bozhiva",
+        "insee": "74038",
+        "departement": "74"
+      }
+    ],
+    "BONNE": [
+      {
+        "nom_savoyard": "Bona",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bona",
+        "conflans": "Banna",
+        "insee": "74040",
+        "departement": "74"
+      }
+    ],
+    "BONNEVAL": [
+      {
+        "nom_savoyard": "Bônavâl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bona Vâl",
+        "conflans": "Bna Vâ",
+        "insee": "73046",
+        "departement": "73"
+      }
+    ],
+    "BONNEVAL-SUR-ARC": [
+      {
+        "nom_savoyard": "Bônavâl-sus-Arc",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bona Vâl sur Arc",
+        "conflans": "Bona Vâl",
+        "insee": "73047",
+        "departement": "73"
+      }
+    ],
+    "BONNEVAUX": [
+      {
+        "nom_savoyard": "Bônavâls",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bona Vâl",
+        "conflans": "Bouna Vô",
+        "insee": "74041",
+        "departement": "74"
+      }
+    ],
+    "BONNEVILLE": [
+      {
+        "nom_savoyard": "Bônavela",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bona Vila",
+        "conflans": "Bona Vèla",
+        "insee": "74042",
+        "departement": "74"
+      }
+    ],
+    "BONS-EN-CHABLAIS": [
+      {
+        "nom_savoyard": "Bons en Chabllê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bons en Chabllê",
+        "conflans": "Bon en Tsablê",
+        "insee": "74043",
+        "departement": "74"
+      }
+    ],
+    "BONVILLARD": [
+      {
+        "nom_savoyard": "Bonvelârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bon Vilârd",
+        "conflans": "Bonvelâr",
+        "insee": "73048",
+        "departement": "73"
+      }
+    ],
+    "BONVILLARET": [
+      {
+        "nom_savoyard": "Bonvelarèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bon Vilarèt",
+        "conflans": "Bonvlarê",
+        "insee": "73049",
+        "departement": "73"
+      }
+    ],
+    "BOSSEY": [
+      {
+        "nom_savoyard": "Bossê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bossê",
+        "conflans": "Bossê",
+        "insee": "74044",
+        "departement": "74"
+      }
+    ],
+    "BOURDEAU": [
+      {
+        "nom_savoyard": "Bourdél",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bordiô",
+        "conflans": "Bordiô",
+        "insee": "73050",
+        "departement": "73"
+      }
+    ],
+    "BOURG-SAINT-MAURICE": [
+      {
+        "nom_savoyard": "Lo Bôrg Sent Môris",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Bôrg Sènt Morice",
+        "conflans": "Bokh",
+        "insee": "73054",
+        "departement": "73"
+      }
+    ],
+    "BOURGET-EN-HUILE": [
+      {
+        "nom_savoyard": "Borgèt-en-Uelye",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Borgèt en Ûlye",
+        "conflans": "L’Borzhê an Ûlye",
+        "insee": "73052",
+        "departement": "73"
+      }
+    ],
+    "BOURGNEUF": [
+      {
+        "nom_savoyard": "Bôrgnôf",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bôrg Nove",
+        "conflans": "Bôr Nouve",
+        "insee": "73053",
+        "departement": "73"
+      }
+    ],
+    "BOURGON": [
+      {
+        "nom_savoyard": "Burgùn",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Borgone Susa",
+        "istat": "1013"
+      }
+    ],
+    "BOUSSY": [
+      {
+        "nom_savoyard": "Bossi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Boci",
+        "conflans": "Beufi",
+        "insee": "74046",
+        "departement": "74"
+      }
+    ],
+    "BOZEL": [
+      {
+        "nom_savoyard": "Bosèl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bozèl",
+        "conflans": "Bozê",
+        "insee": "73055",
+        "departement": "73"
+      }
+    ],
+    "BOËGE": [
+      {
+        "nom_savoyard": "Bouège",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bouège",
+        "conflans": "Boèzhe",
+        "insee": "74037",
+        "departement": "74"
+      }
+    ],
+    "BRAMANS": [
+      {
+        "nom_savoyard": "Bramans",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bramans",
+        "conflans": "Braman",
+        "insee": "73056",
+        "departement": "73"
+      }
+    ],
+    "BRENTHONNE": [
+      {
+        "nom_savoyard": "Brentona",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Brentona",
+        "conflans": "Brentëna",
+        "insee": "74048",
+        "departement": "74"
+      }
+    ],
+    "BRIDES-LES-BAINS": [
+      {
+        "nom_savoyard": "Briôda los Bans",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Briôda los Bans",
+        "conflans": "Borda",
+        "insee": "73057",
+        "departement": "73"
+      }
+    ],
+    "BRISON-SAINT-INNOCENT": [
+      {
+        "nom_savoyard": "Brison",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Brison",
+        "conflans": "Brizon",
+        "insee": "73059",
+        "departement": "73"
+      }
+    ],
+    "BRISSOGNE": [
+      {
+        "nom_savoyard": "Brissogne (Brissonye)",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Brissonye",
+        "istat": "007011"
+      }
+    ],
+    "BRIZON": [
+      {
+        "nom_savoyard": "Brison",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Brison",
+        "conflans": "Beurzon",
+        "insee": "74049",
+        "departement": "74"
+      }
+    ],
+    "BRUSSON": [
+      {
+        "nom_savoyard": "Bruchon",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Bruchon",
+        "istat": "007012"
+      }
+    ],
+    "BURDIGNIN": [
+      {
+        "nom_savoyard": "Bordignins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Bordinyin",
+        "conflans": "Bordenyin",
+        "insee": "74050",
+        "departement": "74"
+      }
+    ],
+    "BUSSOLIN": [
+      {
+        "nom_savoyard": "Busoulin",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Bussoleno",
+        "istat": "1032"
+      }
+    ],
+    "CARÈME": [
+      {
+        "nom_savoyard": "Karéma",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Carema",
+        "istat": "1040"
+      }
+    ],
+    "CERCIER": [
+      {
+        "nom_savoyard": "Cèrci",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cèrcér",
+        "conflans": "Sarsi",
+        "insee": "74051",
+        "departement": "74"
+      }
+    ],
+    "CERNEX": [
+      {
+        "nom_savoyard": "Cèrnes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cèrnê",
+        "conflans": "Sarnê",
+        "insee": "74052",
+        "departement": "74"
+      }
+    ],
+    "CERVENS": [
+      {
+        "nom_savoyard": "Cièrvin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cièrvin",
+        "conflans": "Farvin",
+        "insee": "74053",
+        "departement": "74"
+      }
+    ],
+    "CESSENS": [
+      {
+        "nom_savoyard": "Cèssins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cèsséns",
+        "conflans": "Sèssin",
+        "insee": "73062",
+        "departement": "73"
+      }
+    ],
+    "CEVINS": [
+      {
+        "nom_savoyard": "La Roche de Cevins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Roche",
+        "conflans": "La Rotse",
+        "insee": "73063",
+        "departement": "73"
+      }
+    ],
+    "CHAINAZ-LES-FRASSES": [
+      {
+        "nom_savoyard": "Chèna-Les Frasses",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chènâ",
+        "conflans": "Shènâ",
+        "insee": "74054",
+        "departement": "74"
+      }
+    ],
+    "CHALAMBERT": [
+      {
+        "nom_savoyard": "Tchialambèrt",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Chialamberto",
+        "istat": "1055"
+      }
+    ],
+    "CHALLAND SAINT ENSELME": [
+      {
+        "nom_savoyard": "Chalan Sent Ensèlme",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Chaland Sènt Ensèlmo",
+        "istat": "007013"
+      }
+    ],
+    "CHALLAND SAINT VICTOR": [
+      {
+        "nom_savoyard": "Chalan Sent Victor",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Chaland Sènt Vitor",
+        "istat": "007014"
+      }
+    ],
+    "CHALLES-LES-EAUX": [
+      {
+        "nom_savoyard": "Chales Les Égoues",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chales",
+        "conflans": "Shale",
+        "insee": "73064",
+        "departement": "73"
+      }
+    ],
+    "CHALLONGES": [
+      {
+        "nom_savoyard": "Chalonges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chalonges",
+        "conflans": "Shalonzhe",
+        "insee": "74055",
+        "departement": "74"
+      }
+    ],
+    "CHAMBAVE": [
+      {
+        "nom_savoyard": "Chambâva",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Chambâva",
+        "istat": "007015"
+      }
+    ],
+    "CHAMBERY": [
+      {
+        "nom_savoyard": "Chambèri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chambèri",
+        "conflans": "Shambèri",
+        "insee": "73065",
+        "departement": "73"
+      }
+    ],
+    "CHAMOIS": [
+      {
+        "nom_savoyard": "Chamouès",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Chamouès",
+        "istat": "007016"
+      }
+    ],
+    "CHAMONIX-MONT-BLANC": [
+      {
+        "nom_savoyard": "Chamoni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chamoni",
+        "conflans": "Shamouni",
+        "insee": "74056",
+        "departement": "74"
+      }
+    ],
+    "CHAMOUSSET": [
+      {
+        "nom_savoyard": "Chamoussèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chamossèt",
+        "conflans": "Shameshê",
+        "insee": "73068",
+        "departement": "73"
+      }
+    ],
+    "CHAMOUX-SUR-GELON": [
+      {
+        "nom_savoyard": "Chamôs-sur-Gelon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chamôs",
+        "conflans": "Shamou",
+        "insee": "73069",
+        "departement": "73"
+      }
+    ],
+    "CHAMP-LAURENT": [
+      {
+        "nom_savoyard": "Champ-Lôrent",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Champ Lorènt",
+        "conflans": "Shan Lorê",
+        "insee": "73072",
+        "departement": "73"
+      }
+    ],
+    "CHAMPAGNEUX": [
+      {
+        "nom_savoyard": "Champagnô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Champanyôs",
+        "conflans": "Shampanyô",
+        "insee": "73070",
+        "departement": "73"
+      }
+    ],
+    "CHAMPAGNY-EN-VANOISE": [
+      {
+        "nom_savoyard": "Champagni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Champanyi",
+        "conflans": "Shampanyi",
+        "insee": "73071",
+        "departement": "73"
+      }
+    ],
+    "CHAMPANGES": [
+      {
+        "nom_savoyard": "Champanges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Champanges",
+        "conflans": "Shèpèzhe",
+        "insee": "74057",
+        "departement": "74"
+      }
+    ],
+    "CHAMPDEPRAZ": [
+      {
+        "nom_savoyard": "Champ de Prât",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Champ de Prât",
+        "istat": "007017"
+      }
+    ],
+    "CHAMPORCHER": [
+      {
+        "nom_savoyard": "Champ Porchiér",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Champ Porchiér",
+        "istat": "007018"
+      }
+    ],
+    "CHANAZ": [
+      {
+        "nom_savoyard": "Chana",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chana",
+        "conflans": "Shanâ",
+        "insee": "73073",
+        "departement": "73"
+      }
+    ],
+    "CHANOUX": [
+      {
+        "nom_savoyard": "Tsanuch",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Chianocco",
+        "istat": "1057"
+      }
+    ],
+    "CHANTOIRE": [
+      {
+        "nom_savoyard": "Centuèiri",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Cantoira",
+        "istat": "1072"
+      }
+    ],
+    "CHAPEIRY": [
+      {
+        "nom_savoyard": "Chapêri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chapèri",
+        "conflans": "Shapéri",
+        "insee": "74061",
+        "departement": "74"
+      }
+    ],
+    "CHARVENSOD": [
+      {
+        "nom_savoyard": "Charvensoz",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Charvensod",
+        "istat": "007019"
+      }
+    ],
+    "CHARVONNEX": [
+      {
+        "nom_savoyard": "Charvonê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Charvonê",
+        "conflans": "Sharvonê",
+        "insee": "74062",
+        "departement": "74"
+      }
+    ],
+    "CHATEAUNEUF": [
+      {
+        "nom_savoyard": "Chahtélnôf",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chahtél Nov’",
+        "conflans": "Shotê Noa",
+        "insee": "73079",
+        "departement": "73"
+      }
+    ],
+    "CHATEL": [
+      {
+        "nom_savoyard": "Chatél",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chatél",
+        "conflans": "Shatê",
+        "insee": "74063",
+        "departement": "74"
+      }
+    ],
+    "CHATILLON": [
+      {
+        "nom_savoyard": "Chahtelyon",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Chahtelyon",
+        "istat": "007020"
+      }
+    ],
+    "CHATILLON-SUR-CLUSES": [
+      {
+        "nom_savoyard": "Chahtélyon sur Clusa",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chahtelyon",
+        "conflans": "Shatlyon",
+        "insee": "74064",
+        "departement": "74"
+      }
+    ],
+    "CHAUMONT": [
+      {
+        "nom_savoyard": "Chômont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chârp Mont",
+        "conflans": "Shomon",
+        "insee": "74065",
+        "departement": "74"
+      }
+    ],
+    "CHAVANNAZ": [
+      {
+        "nom_savoyard": "Chavana",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chavana",
+        "conflans": "Shavana",
+        "insee": "74066",
+        "departement": "74"
+      }
+    ],
+    "CHAVANOD": [
+      {
+        "nom_savoyard": "Chavanôd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chavanôd",
+        "conflans": "Shananu",
+        "insee": "74067",
+        "departement": "74"
+      }
+    ],
+    "CHENE-EN-SEMINE": [
+      {
+        "nom_savoyard": "Chèno-en-semina",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chèno",
+        "conflans": "Shéno",
+        "insee": "74068",
+        "departement": "74"
+      }
+    ],
+    "CHENEX": [
+      {
+        "nom_savoyard": "Chèney",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chènê",
+        "conflans": "Shénê",
+        "insee": "74069",
+        "departement": "74"
+      }
+    ],
+    "CHENS-SUR-LEMAN": [
+      {
+        "nom_savoyard": "Chans",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chèns",
+        "conflans": "Shan",
+        "insee": "74070",
+        "departement": "74"
+      }
+    ],
+    "CHESSENAZ": [
+      {
+        "nom_savoyard": "Chèssana",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chèsna",
+        "conflans": "Shesna",
+        "insee": "74071",
+        "departement": "74"
+      }
+    ],
+    "CHEVALINE": [
+      {
+        "nom_savoyard": "Chevâlina",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chevalina",
+        "conflans": "Shvalnâ",
+        "insee": "74072",
+        "departement": "74"
+      }
+    ],
+    "CHEVENOZ": [
+      {
+        "nom_savoyard": "Chevèno",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chevèno",
+        "conflans": "Shvèno",
+        "insee": "74073",
+        "departement": "74"
+      }
+    ],
+    "CHEVRIER": [
+      {
+        "nom_savoyard": "Chevri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chevrér",
+        "conflans": "Shevri",
+        "insee": "74074",
+        "departement": "74"
+      }
+    ],
+    "CHIGNIN": [
+      {
+        "nom_savoyard": "Chegnin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chinyin",
+        "conflans": "Shenyin",
+        "insee": "73084",
+        "departement": "73"
+      }
+    ],
+    "CHILLY": [
+      {
+        "nom_savoyard": "Chilyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chilyi",
+        "conflans": "Shlyi",
+        "insee": "74075",
+        "departement": "74"
+      }
+    ],
+    "CHINDRIEUX": [
+      {
+        "nom_savoyard": "Chindriô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chindriôs",
+        "conflans": "Shindrô",
+        "insee": "73085",
+        "departement": "73"
+      }
+    ],
+    "CHOISY": [
+      {
+        "nom_savoyard": "Chouèsi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chòzyi",
+        "conflans": "Shwèzi",
+        "insee": "74076",
+        "departement": "74"
+      }
+    ],
+    "CLARAFOND-ARCINE": [
+      {
+        "nom_savoyard": "Cllârafont – Arcino",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cllâra Font – Arcino",
+        "conflans": "Clyarafon",
+        "insee": "74077",
+        "departement": "74"
+      }
+    ],
+    "CLERMONT": [
+      {
+        "nom_savoyard": "Cllârmont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cllâr Mont",
+        "conflans": "Clyarmon",
+        "insee": "74078",
+        "departement": "74"
+      }
+    ],
+    "CLERY": [
+      {
+        "nom_savoyard": "Cllâriê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cllèriê",
+        "conflans": "Clyèrié",
+        "insee": "73086",
+        "departement": "73"
+      }
+    ],
+    "CLUSES": [
+      {
+        "nom_savoyard": "Cllusa",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cllûsa",
+        "conflans": "Clyuza",
+        "insee": "74081",
+        "departement": "74"
+      }
+    ],
+    "COASSEUL": [
+      {
+        "nom_savoyard": "Cuasöl",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Coassolo Torinese",
+        "istat": "1075"
+      }
+    ],
+    "COERY": [
+      {
+        "nom_savoyard": "Koeri",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Corio",
+        "istat": "1088"
+      }
+    ],
+    "COGNE": [
+      {
+        "nom_savoyard": "Cogne (Conye)",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Conye",
+        "istat": "007021"
+      }
+    ],
+    "COGNIN": [
+      {
+        "nom_savoyard": "Cognen",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Conyin",
+        "conflans": "Conyin",
+        "insee": "73087",
+        "departement": "73"
+      }
+    ],
+    "COHENNOZ": [
+      {
+        "nom_savoyard": "Lo Couèno",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Cuèno",
+        "conflans": "Le Kwéno",
+        "insee": "73088",
+        "departement": "73"
+      }
+    ],
+    "COISE-SAINT-JEAN-PIED-GAUTHIER": [
+      {
+        "nom_savoyard": "Couèse",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Còze",
+        "conflans": "Kwéze",
+        "insee": "73089",
+        "departement": "73"
+      }
+    ],
+    "COLLONGES-SOUS-SALEVE": [
+      {
+        "nom_savoyard": "Colonges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Colonges",
+        "conflans": "Colonzhe",
+        "insee": "74082",
+        "departement": "74"
+      }
+    ],
+    "COMBLOUX": [
+      {
+        "nom_savoyard": "Comblôs",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Comblôs",
+        "conflans": "Combleu",
+        "insee": "74083",
+        "departement": "74"
+      }
+    ],
+    "CONDOUE": [
+      {
+        "nom_savoyard": "Kundòve",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Condove",
+        "istat": "1081"
+      }
+    ],
+    "CONJUX": [
+      {
+        "nom_savoyard": "Conjô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Conjô",
+        "conflans": "Conzhu",
+        "insee": "73091",
+        "departement": "73"
+      }
+    ],
+    "CONS-SAINTE-COLOMBE": [
+      {
+        "nom_savoyard": "Cons – Senta Colomba",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cons – Senta Colomba",
+        "conflans": "Cons",
+        "insee": "74084",
+        "departement": "74"
+      }
+    ],
+    "CONTAMINE-SARZIN": [
+      {
+        "nom_savoyard": "Contamina",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Contamina",
+        "conflans": "Contamnâ",
+        "insee": "74086",
+        "departement": "74"
+      }
+    ],
+    "CONTAMINE-SUR-ARVE": [
+      {
+        "nom_savoyard": "Contamina sur Arva",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Contamina sur Arva",
+        "conflans": "Contamnâ",
+        "insee": "74087",
+        "departement": "74"
+      }
+    ],
+    "COPPONEX": [
+      {
+        "nom_savoyard": "Coponê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Coponê",
+        "conflans": "Coponê",
+        "insee": "74088",
+        "departement": "74"
+      }
+    ],
+    "CORBEL": [
+      {
+        "nom_savoyard": "Corbél",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Corbél",
+        "conflans": "Corbê",
+        "insee": "73092",
+        "departement": "73"
+      }
+    ],
+    "CORDON": [
+      {
+        "nom_savoyard": "Cordon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cordon",
+        "conflans": "Cordon",
+        "insee": "74089",
+        "departement": "74"
+      }
+    ],
+    "CORNIER": [
+      {
+        "nom_savoyard": "Corniér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Corniér",
+        "conflans": "Corni",
+        "insee": "74090",
+        "departement": "74"
+      }
+    ],
+    "COURMAYEUR": [
+      {
+        "nom_savoyard": "Cort-Mayor (lârge)\nCort-Màyoer (sarrâ)",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Cromayòr",
+        "istat": "007022"
+      }
+    ],
+    "COUVASE": [
+      {
+        "nom_savoyard": "Couvase",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Coazze",
+        "istat": "1076"
+      }
+    ],
+    "CRAN-GEVRIER": [
+      {
+        "nom_savoyard": "Cran – Gevri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cran – Gevri",
+        "conflans": "Cran – Zhevri",
+        "insee": "74093",
+        "departement": "74"
+      }
+    ],
+    "CRANVES-SALES": [
+      {
+        "nom_savoyard": "Cranves – Sales",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cranves – Sales",
+        "conflans": "Cranzhe",
+        "insee": "74094",
+        "departement": "74"
+      }
+    ],
+    "CREMPIGNY-BONNEGUÊTE": [
+      {
+        "nom_savoyard": "Crempigni – Bônagouéta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Crempinyi – Bon’ Agouèta",
+        "conflans": "Crimpnyi – Bonaguèta",
+        "insee": "74095",
+        "departement": "74"
+      }
+    ],
+    "CREST-VOLAND": [
+      {
+        "nom_savoyard": "Crêht – Voland",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Crêht – Voland",
+        "conflans": "Crê – Valan",
+        "insee": "73094",
+        "departement": "73"
+      }
+    ],
+    "CRUET": [
+      {
+        "nom_savoyard": "Cruèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cruèt",
+        "conflans": "Cruê",
+        "insee": "73096",
+        "departement": "73"
+      }
+    ],
+    "CRUSEILLES": [
+      {
+        "nom_savoyard": "Cruzilyes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cruzilyes",
+        "conflans": "Corzlyê",
+        "insee": "74096",
+        "departement": "74"
+      }
+    ],
+    "CURIENNE": [
+      {
+        "nom_savoyard": "Corvèna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Crovèna",
+        "conflans": "Croèna",
+        "insee": "73097",
+        "departement": "73"
+      }
+    ],
+    "CUSY": [
+      {
+        "nom_savoyard": "Cusi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cusi",
+        "conflans": "Cozi",
+        "insee": "74097",
+        "departement": "74"
+      }
+    ],
+    "CUVAT": [
+      {
+        "nom_savoyard": "Cuvat",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cuvat",
+        "conflans": "Kva",
+        "insee": "74098",
+        "departement": "74"
+      }
+    ],
+    "CÉRISOLES": [
+      {
+        "nom_savoyard": "Sérisoles",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Ceresole Reale",
+        "istat": "1054"
+      }
+    ],
+    "CÉRÈS": [
+      {
+        "nom_savoyard": "Séres",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Ceres",
+        "istat": "1044"
+      }
+    ],
+    "DEMI-QUARTIER": [
+      {
+        "nom_savoyard": "Demi-Quartiér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dèmi-Quartiér",
+        "conflans": "Dèmi Carti",
+        "insee": "74099",
+        "departement": "74"
+      }
+    ],
+    "DESINGY": [
+      {
+        "nom_savoyard": "Decingi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dezingi",
+        "conflans": "Dzinzhi",
+        "insee": "74100",
+        "departement": "74"
+      }
+    ],
+    "DINGY-EN-VUACHE": [
+      {
+        "nom_savoyard": "Dingi en Gouache",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dingi en Gouache",
+        "conflans": "Dinzhi",
+        "insee": "74101",
+        "departement": "74"
+      }
+    ],
+    "DINGY-SAINT-CLAIR": [
+      {
+        "nom_savoyard": "Dingi – Sent Cllâr",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dingi – Sènt Cllâr",
+        "conflans": "Dinzhi",
+        "insee": "74102",
+        "departement": "74"
+      }
+    ],
+    "DOMANCY": [
+      {
+        "nom_savoyard": "Domanci",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Domanci",
+        "conflans": "Domanfi",
+        "insee": "74103",
+        "departement": "74"
+      }
+    ],
+    "DOMESSIN": [
+      {
+        "nom_savoyard": "Domêssin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Domecin",
+        "conflans": "Domfin",
+        "insee": "73100",
+        "departement": "73"
+      }
+    ],
+    "DONNAS": [
+      {
+        "nom_savoyard": "Dounâs",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Donâs",
+        "istat": "007023"
+      }
+    ],
+    "DOUCY-EN-BAUGES": [
+      {
+        "nom_savoyard": "Doci en Buges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Doci en Boges",
+        "conflans": "Deussi",
+        "insee": "73101",
+        "departement": "73"
+      }
+    ],
+    "DOUES": [
+      {
+        "nom_savoyard": "Doves",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Dôves",
+        "istat": "007024"
+      }
+    ],
+    "DOUSSARD": [
+      {
+        "nom_savoyard": "Dôssârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dôssârd",
+        "conflans": "Deussâr",
+        "insee": "74104",
+        "departement": "74"
+      }
+    ],
+    "DOUVAINE": [
+      {
+        "nom_savoyard": "Dovana",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dovana",
+        "conflans": "Dovanna",
+        "insee": "74105",
+        "departement": "74"
+      }
+    ],
+    "DRAILLANT": [
+      {
+        "nom_savoyard": "Dragllins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dragllins",
+        "conflans": "Dralyan",
+        "insee": "74106",
+        "departement": "74"
+      }
+    ],
+    "DROISY": [
+      {
+        "nom_savoyard": "Drouèsi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Drouèsi",
+        "conflans": "Drouèzi",
+        "insee": "74107",
+        "departement": "74"
+      }
+    ],
+    "DRUMETTAZ-CLARAFOND": [
+      {
+        "nom_savoyard": "Drumèta – Cllârafont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Drumèta – Cllârafont",
+        "conflans": "Dremèta",
+        "insee": "73103",
+        "departement": "73"
+      }
+    ],
+    "DUINGT": [
+      {
+        "nom_savoyard": "Duin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Duin",
+        "conflans": "Dwin",
+        "insee": "74108",
+        "departement": "74"
+      }
+    ],
+    "DULLIN": [
+      {
+        "nom_savoyard": "Dolin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dolin",
+        "conflans": "Dolin",
+        "insee": "73104",
+        "departement": "73"
+      }
+    ],
+    "DÉTRIER": [
+      {
+        "nom_savoyard": "Dehtrê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Dehtrê",
+        "conflans": "Détrê",
+        "insee": "73099",
+        "departement": "73"
+      }
+    ],
+    "ECOLE": [
+      {
+        "nom_savoyard": "Éhcoula",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èhcóla",
+        "conflans": "Écoule",
+        "insee": "73106",
+        "departement": "73"
+      }
+    ],
+    "ELOISE": [
+      {
+        "nom_savoyard": "Èlouize",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èlouize",
+        "conflans": "Élwéze",
+        "insee": "74109",
+        "departement": "74"
+      }
+    ],
+    "EMARESE": [
+      {
+        "nom_savoyard": "Emarèsa",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Èmarèsa",
+        "istat": "007025"
+      }
+    ],
+    "ENTREMONT": [
+      {
+        "nom_savoyard": "Entremont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Entremont",
+        "conflans": "Entre Man",
+        "insee": "74110",
+        "departement": "74"
+      }
+    ],
+    "ENTREMONT-LE-VIEUX": [
+      {
+        "nom_savoyard": "Entremont Lo Viely",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Entremont lo Viely",
+        "conflans": "Entre Mon",
+        "insee": "73107",
+        "departement": "73"
+      }
+    ],
+    "ENTREVERNES": [
+      {
+        "nom_savoyard": "Entrevèrnes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Entrevèrnes",
+        "conflans": "Entrevèrne",
+        "insee": "74111",
+        "departement": "74"
+      }
+    ],
+    "EPAGNY": [
+      {
+        "nom_savoyard": "Éhpagni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Éhpanyi",
+        "conflans": "Èpanyi",
+        "insee": "74112",
+        "departement": "74"
+      }
+    ],
+    "EPERSY": [
+      {
+        "nom_savoyard": "Éhparzi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Éhparzi",
+        "conflans": "Èparzi",
+        "insee": "73108",
+        "departement": "73"
+      }
+    ],
+    "EPIERRE": [
+      {
+        "nom_savoyard": "Épiérra",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Épiérra",
+        "conflans": "Épyére",
+        "insee": "73109",
+        "departement": "73"
+      }
+    ],
+    "ESSERT-ROMAND": [
+      {
+        "nom_savoyard": "Éssèrt Romand",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èssèrt Romand",
+        "conflans": "Éssar Man",
+        "insee": "74114",
+        "departement": "74"
+      }
+    ],
+    "ESSERTS-BLAY": [
+      {
+        "nom_savoyard": "Essèrt – Blê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Errèrt – Bllès",
+        "conflans": "Blê",
+        "insee": "73110",
+        "departement": "73"
+      }
+    ],
+    "ETABLE": [
+      {
+        "nom_savoyard": "Èhtâbla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èhtâbla",
+        "conflans": "Étôbla",
+        "insee": "73111",
+        "departement": "73"
+      }
+    ],
+    "ETAUX": [
+      {
+        "nom_savoyard": "Étô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Étô",
+        "conflans": "Étô",
+        "insee": "74116",
+        "departement": "74"
+      }
+    ],
+    "ETERCY": [
+      {
+        "nom_savoyard": "Èhtèrci",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èhtèrci",
+        "conflans": "Étarfi",
+        "insee": "74117",
+        "departement": "74"
+      }
+    ],
+    "ETREMBIERES": [
+      {
+        "nom_savoyard": "Éhtrambiéres",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Éhtrambiéres",
+        "conflans": "Étranbîre",
+        "insee": "74118",
+        "departement": "74"
+      }
+    ],
+    "ETROUBLE": [
+      {
+        "nom_savoyard": "Éhtroble",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Èhtroble",
+        "istat": "007026"
+      }
+    ],
+    "EVIAN-LES-BAINS": [
+      {
+        "nom_savoyard": "Èvian",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èvian",
+        "conflans": "Èvian",
+        "insee": "74119",
+        "departement": "74"
+      }
+    ],
+    "EVIRES": [
+      {
+        "nom_savoyard": "Èvires",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èvîres",
+        "conflans": "Èvîre",
+        "insee": "74120",
+        "departement": "74"
+      }
+    ],
+    "EXCENEVEX": [
+      {
+        "nom_savoyard": "Èxcenevé",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èssèrts Novéls",
+        "conflans": "Éshe Nevê",
+        "insee": "74121",
+        "departement": "74"
+      }
+    ],
+    "FAUCIGNY": [
+      {
+        "nom_savoyard": "Fôcigni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Farcinyi",
+        "conflans": "Feufnyi",
+        "insee": "74122",
+        "departement": "74"
+      }
+    ],
+    "FAVERGES": [
+      {
+        "nom_savoyard": "Favèrges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Favèrges",
+        "conflans": "Favarzhe",
+        "insee": "74123",
+        "departement": "74"
+      }
+    ],
+    "FEIGÈRES": [
+      {
+        "nom_savoyard": "Fêgères",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Fègére",
+        "conflans": "Fèzhire",
+        "insee": "74124",
+        "departement": "74"
+      }
+    ],
+    "FEISSONS-SUR-ISERE": [
+      {
+        "nom_savoyard": "Fêsson",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Fèssion",
+        "conflans": "Fèysson",
+        "insee": "73112",
+        "departement": "73"
+      }
+    ],
+    "FEISSONS-SUR-SALINS": [
+      {
+        "nom_savoyard": "Fêsson",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Fèssion",
+        "conflans": "Fèchon",
+        "insee": "73113",
+        "departement": "73"
+      }
+    ],
+    "FENIS": [
+      {
+        "nom_savoyard": "Fenisc",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Fènis",
+        "istat": "007027"
+      }
+    ],
+    "FESSY": [
+      {
+        "nom_savoyard": "Fèssi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Fèssi",
+        "conflans": "Fèssi",
+        "insee": "74126",
+        "departement": "74"
+      }
+    ],
+    "FETERNES": [
+      {
+        "nom_savoyard": "Féhterna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Fèhtèrna",
+        "conflans": "Fétèrna",
+        "insee": "74127",
+        "departement": "74"
+      }
+    ],
+    "FILLINGES": [
+      {
+        "nom_savoyard": "Filinjos",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Filinjos",
+        "conflans": "Flinzho",
+        "insee": "74128",
+        "departement": "74"
+      }
+    ],
+    "FLUMET": [
+      {
+        "nom_savoyard": "Flumèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Flumê",
+        "conflans": "Flemê",
+        "insee": "73114",
+        "departement": "73"
+      }
+    ],
+    "FONTAINE-LE-PUITS": [
+      {
+        "nom_savoyard": "Fontana",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Fontana",
+        "conflans": "Fontana",
+        "insee": "73115",
+        "departement": "73"
+      }
+    ],
+    "FONTAINEMORE": [
+      {
+        "nom_savoyard": "Fontanamora",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Fontana Mora",
+        "istat": "007028"
+      }
+    ],
+    "FONTCOUVERTE-LA-TOUSSUIRE": [
+      {
+        "nom_savoyard": "Fontcuvèrta – la Tôchuére",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Font Cuvèrta – la Tôchuére",
+        "conflans": "Fan Cuèrta",
+        "insee": "73116",
+        "departement": "73"
+      }
+    ],
+    "FOURNEAUX": [
+      {
+        "nom_savoyard": "Fornéls",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Fornéls",
+        "conflans": "Fornyô",
+        "insee": "73117",
+        "departement": "73"
+      }
+    ],
+    "FRANCIN": [
+      {
+        "nom_savoyard": "Francin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Francin",
+        "conflans": "Francin",
+        "insee": "73118",
+        "departement": "73"
+      }
+    ],
+    "FRANCLENS": [
+      {
+        "nom_savoyard": "Francllins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Francllins",
+        "conflans": "Franclyin",
+        "insee": "74130",
+        "departement": "74"
+      }
+    ],
+    "FRANGY": [
+      {
+        "nom_savoyard": "Frangi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Frengi",
+        "conflans": "Frinzhi",
+        "insee": "74131",
+        "departement": "74"
+      }
+    ],
+    "FRASSINET": [
+      {
+        "nom_savoyard": "Frasinei",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Frassinetto",
+        "istat": "1089"
+      }
+    ],
+    "FRENEY": [
+      {
+        "nom_savoyard": "Lo Frèney",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Frènê",
+        "conflans": "Lo Frènê",
+        "insee": "73119",
+        "departement": "73"
+      }
+    ],
+    "FRONTENEX": [
+      {
+        "nom_savoyard": "Frontenas",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Frontenâ",
+        "conflans": "Frontnâ",
+        "insee": "73121",
+        "departement": "73"
+      }
+    ],
+    "FRÉTERIVE": [
+      {
+        "nom_savoyard": "Fréhtariva",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Frèhta Riva",
+        "conflans": "Frèta Riva",
+        "insee": "73120",
+        "departement": "73"
+      }
+    ],
+    "GABY": [
+      {
+        "nom_savoyard": "Lo Gabiér",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Lo Gâbiér\nGåbi",
+        "istat": "007029"
+      }
+    ],
+    "GAILLARD": [
+      {
+        "nom_savoyard": "Galyârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Galyârd",
+        "conflans": "Guèlyâr",
+        "insee": "74133",
+        "departement": "74"
+      }
+    ],
+    "GERBAIX": [
+      {
+        "nom_savoyard": "Gèrbê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Gèrbê",
+        "conflans": "Zharbê",
+        "insee": "73122",
+        "departement": "73"
+      }
+    ],
+    "GIEZ": [
+      {
+        "nom_savoyard": "Gié",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Gés",
+        "conflans": "Zhi",
+        "insee": "74135",
+        "departement": "74"
+      }
+    ],
+    "GIGNOD": [
+      {
+        "nom_savoyard": "Gégnoz",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Gìnyôd",
+        "istat": "007030"
+      }
+    ],
+    "GRANIER": [
+      {
+        "nom_savoyard": "Graniér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Granyer",
+        "conflans": "Granyé",
+        "insee": "73126",
+        "departement": "73"
+      }
+    ],
+    "GRAVIÈRE": [
+      {
+        "nom_savoyard": "Gravere",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Gravere",
+        "istat": "1093"
+      }
+    ],
+    "GRESIN": [
+      {
+        "nom_savoyard": "Grèsin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Grazin",
+        "conflans": "Grazin",
+        "insee": "73127",
+        "departement": "73"
+      }
+    ],
+    "GRESSAN": [
+      {
+        "nom_savoyard": "Grèssan",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Grèssan",
+        "istat": "007031"
+      }
+    ],
+    "GRESSONEY LA TRINITÉ": [
+      {
+        "nom_savoyard": "Grèssonèt la Trinitât",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Grèssonèt La Trinitât",
+        "istat": "007032"
+      }
+    ],
+    "GRESSONEY SAINT JEAN": [
+      {
+        "nom_savoyard": "Grèssonèt Sent Jian",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Grèssonèt Sènt Jian",
+        "istat": "007033"
+      }
+    ],
+    "GRESY-SUR-AIX": [
+      {
+        "nom_savoyard": "Grèsi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Grazi",
+        "conflans": "Grayzi",
+        "insee": "73128",
+        "departement": "73"
+      }
+    ],
+    "GRESY-SUR-ISERE": [
+      {
+        "nom_savoyard": "Grèsi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Grazi",
+        "conflans": "Grazi",
+        "insee": "73129",
+        "departement": "73"
+      }
+    ],
+    "GRIGNON": [
+      {
+        "nom_savoyard": "Grignon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Grinyon",
+        "conflans": "Grenyon",
+        "insee": "73130",
+        "departement": "73"
+      }
+    ],
+    "GROISY": [
+      {
+        "nom_savoyard": "Grouèsi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Gròzi",
+        "conflans": "Grwèzi",
+        "insee": "74137",
+        "departement": "74"
+      }
+    ],
+    "GROSCAVAL": [
+      {
+        "nom_savoyard": "Gruskavà",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Groscavallo",
+        "istat": "1094"
+      }
+    ],
+    "GRUFFY": [
+      {
+        "nom_savoyard": "Grofi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Grofi",
+        "conflans": "Grofi",
+        "insee": "74138",
+        "departement": "74"
+      }
+    ],
+    "HABERE-LULLIN": [
+      {
+        "nom_savoyard": "Abêre d’Avâl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Abêre d’Avâl",
+        "conflans": "Abère d’Avô",
+        "insee": "74139",
+        "departement": "74"
+      }
+    ],
+    "HABERE-POCHE": [
+      {
+        "nom_savoyard": "Abêre d’Amont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Abêre d’Amont",
+        "conflans": "Abère d’Amô",
+        "insee": "74140",
+        "departement": "74"
+      }
+    ],
+    "HAUTECOUR": [
+      {
+        "nom_savoyard": "Hiôtacort",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Hiôta Cort",
+        "conflans": "‘Ta Cort",
+        "insee": "73131",
+        "departement": "73"
+      }
+    ],
+    "HAUTELUCE": [
+      {
+        "nom_savoyard": "Hiôtaluce",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Hiôta Luce",
+        "conflans": "Òtlòce",
+        "insee": "73132",
+        "departement": "73"
+      }
+    ],
+    "HAUTEVILLE": [
+      {
+        "nom_savoyard": "Hiôtavela",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Hiârta Vila",
+        "conflans": "Òtavila",
+        "insee": "73133",
+        "departement": "73"
+      }
+    ],
+    "HAUTEVILLE-SUR-FIER": [
+      {
+        "nom_savoyard": "Hiôtavela",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Hiôta Vila",
+        "conflans": "Òtavèla",
+        "insee": "74141",
+        "departement": "74"
+      }
+    ],
+    "HERMILLON": [
+      {
+        "nom_savoyard": "Armelyon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èrmìlyon",
+        "conflans": "Armèlyon",
+        "insee": "73135",
+        "departement": "73"
+      }
+    ],
+    "HERY-SUR-ALBY": [
+      {
+        "nom_savoyard": "Ari",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Èri",
+        "conflans": "Èri",
+        "insee": "74142",
+        "departement": "74"
+      }
+    ],
+    "HONE": [
+      {
+        "nom_savoyard": "Hiona",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Viona",
+        "istat": "007034"
+      }
+    ],
+    "INTROD": [
+      {
+        "nom_savoyard": "Introz",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Intrôd",
+        "istat": "007035"
+      }
+    ],
+    "ISSIME": [
+      {
+        "nom_savoyard": "Isima",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Égue Cima",
+        "istat": "007036"
+      }
+    ],
+    "ISSOGNE": [
+      {
+        "nom_savoyard": "Issogne",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Issonye",
+        "istat": "007037"
+      }
+    ],
+    "JACOB-BELLECOMBETTE": [
+      {
+        "nom_savoyard": "Jacob Bèlacomèta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Jâco",
+        "conflans": "Zhoko",
+        "insee": "73137",
+        "departement": "73"
+      }
+    ],
+    "JAILLONS": [
+      {
+        "nom_savoyard": "Dzalioun",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Giaglione",
+        "istat": "1113"
+      }
+    ],
+    "JARRIER": [
+      {
+        "nom_savoyard": "Jariê / Jariér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Gèrriê",
+        "conflans": "Zharyé",
+        "insee": "73138",
+        "departement": "73"
+      }
+    ],
+    "JARSY": [
+      {
+        "nom_savoyard": "Gèrsi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Gèrzi",
+        "conflans": "Jarzi",
+        "insee": "73139",
+        "departement": "73"
+      }
+    ],
+    "JAVEIN": [
+      {
+        "nom_savoyard": "Dzavën",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Giaveno",
+        "istat": "1114"
+      }
+    ],
+    "JONZIER-EPAGNY": [
+      {
+        "nom_savoyard": "Jonvi-Éhpagni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Jonzi – Éhpanyi",
+        "conflans": "Zhonvi – Épanyi",
+        "insee": "74144",
+        "departement": "74"
+      }
+    ],
+    "JOVENÇAN": [
+      {
+        "nom_savoyard": "Juvenssan",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Jovençan",
+        "istat": "007038"
+      }
+    ],
+    "JUVIGNY": [
+      {
+        "nom_savoyard": "Juvigni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Juvinyi",
+        "conflans": "Zheuvnyi",
+        "insee": "74145",
+        "departement": "74"
+      }
+    ],
+    "LA BALME": [
+      {
+        "nom_savoyard": "La Bârma",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Bârma",
+        "conflans": "La Bârma",
+        "insee": "73028",
+        "departement": "73"
+      }
+    ],
+    "LA BALME-DE-SILLINGY": [
+      {
+        "nom_savoyard": "La Bârma de Silingi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Bârma de Cilyingi",
+        "conflans": "La Bârma de Flyinzhi",
+        "insee": "74026",
+        "departement": "74"
+      }
+    ],
+    "LA BALME-DE-THUY": [
+      {
+        "nom_savoyard": "La Bârma de Tui",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Bârma de Tuî",
+        "conflans": "La Bârma de Tuî",
+        "insee": "74027",
+        "departement": "74"
+      }
+    ],
+    "LA BATHIE": [
+      {
+        "nom_savoyard": "La Bâhte",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Bâhtye",
+        "conflans": "La Botye",
+        "insee": "73032",
+        "departement": "73"
+      }
+    ],
+    "LA BAUCHE": [
+      {
+        "nom_savoyard": "La Boche",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Boche",
+        "conflans": "La Boush’",
+        "insee": "73033",
+        "departement": "73"
+      }
+    ],
+    "LA BAUME": [
+      {
+        "nom_savoyard": "La Bâlma",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Bârma",
+        "conflans": "La Boma",
+        "insee": "74030",
+        "departement": "74"
+      }
+    ],
+    "LA BIOLLE": [
+      {
+        "nom_savoyard": "La Biôla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Biola",
+        "conflans": "La Biôla",
+        "insee": "73043",
+        "departement": "73"
+      }
+    ],
+    "LA CHAMBRE": [
+      {
+        "nom_savoyard": "La Chambra",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chambra",
+        "conflans": "La Shanbra",
+        "insee": "73067",
+        "departement": "73"
+      }
+    ],
+    "LA CHAPELLE": [
+      {
+        "nom_savoyard": "La Chapèla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chapèla",
+        "conflans": "La Shapèla",
+        "insee": "73074",
+        "departement": "73"
+      }
+    ],
+    "LA CHAPELLE-BLANCHE": [
+      {
+        "nom_savoyard": "La Chapèla Blanche",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chapèla Blanche",
+        "conflans": "La Shapèla Blenshe",
+        "insee": "73075",
+        "departement": "73"
+      }
+    ],
+    "LA CHAPELLE-D'ABONDANCE": [
+      {
+        "nom_savoyard": "La Chapèla d'Abondance",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chapala",
+        "conflans": "La Shapala",
+        "insee": "74058",
+        "departement": "74"
+      }
+    ],
+    "LA CHAPELLE-DU-MONT-DU-CHAT": [
+      {
+        "nom_savoyard": "La Chapèla du Mont du Chat",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chapèla",
+        "conflans": "La Shapèla",
+        "insee": "73076",
+        "departement": "73"
+      }
+    ],
+    "LA CHAPELLE-RAMBAUD": [
+      {
+        "nom_savoyard": "La Chapèla Rambél",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chapala",
+        "conflans": "La Shapala",
+        "insee": "74059",
+        "departement": "74"
+      }
+    ],
+    "LA CHAPELLE-SAINT-MARTIN": [
+      {
+        "nom_savoyard": "La Chapèla Sant-Martin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chapèla",
+        "conflans": "La Shapèla",
+        "insee": "73078",
+        "departement": "73"
+      }
+    ],
+    "LA CHAPELLE-SAINT-MAURICE": [
+      {
+        "nom_savoyard": "La Chapèla Sant-Môrice",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chapala",
+        "conflans": "",
+        "insee": "74060",
+        "departement": "74"
+      }
+    ],
+    "LA CHAVANNE": [
+      {
+        "nom_savoyard": "La Chavana",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Chavana",
+        "conflans": "La Shavana",
+        "insee": "73082",
+        "departement": "73"
+      }
+    ],
+    "LA CLUSAZ": [
+      {
+        "nom_savoyard": "La Cllûsa",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Cllûsa",
+        "conflans": "La Clyuza",
+        "insee": "74080",
+        "departement": "74"
+      }
+    ],
+    "LA CLUSE": [
+      {
+        "nom_savoyard": "Kiusa",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Chiusa di San Michele",
+        "istat": "1073"
+      }
+    ],
+    "LA COMPÔTE": [
+      {
+        "nom_savoyard": "La Compouhta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Compohta",
+        "conflans": "La Compouta",
+        "insee": "73090",
+        "departement": "73"
+      }
+    ],
+    "LA COTE-D'AIME": [
+      {
+        "nom_savoyard": "La Couhta d'Éma",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Cohta d’Éma",
+        "conflans": "La Couha d’Éma",
+        "insee": "73093",
+        "departement": "73"
+      }
+    ],
+    "LA COTE-D'ARBROZ": [
+      {
+        "nom_savoyard": "La Couhta d'Ârbros",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Cohta d’Arbros",
+        "conflans": "La Couta d’Abro",
+        "insee": "74091",
+        "departement": "74"
+      }
+    ],
+    "LA CROIX-DE-LA-ROCHETTE": [
+      {
+        "nom_savoyard": "La Crouèx de la Rochèta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Rochèta",
+        "conflans": "La Rosheta",
+        "insee": "73095",
+        "departement": "73"
+      }
+    ],
+    "LA FORCLAZ": [
+      {
+        "nom_savoyard": "La Fôrclla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Fôrclla",
+        "conflans": "La Forclya",
+        "insee": "74129",
+        "departement": "74"
+      }
+    ],
+    "LA GIETTAZ": [
+      {
+        "nom_savoyard": "L'Agièta / La Giéhta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Gièhta",
+        "conflans": "La Zyéta",
+        "insee": "73123",
+        "departement": "73"
+      }
+    ],
+    "LA LECHERE": [
+      {
+        "nom_savoyard": "La Lèchiére",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Lechére",
+        "conflans": "La Létsîre",
+        "insee": "73187",
+        "departement": "73"
+      }
+    ],
+    "LA MADELEINE": [
+      {
+        "nom_savoyard": "La Madelèna",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "La Madalèna",
+        "istat": "007039"
+      }
+    ],
+    "LA MOTTE-EN-BAUGES": [
+      {
+        "nom_savoyard": "La Mota en Buges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Mota",
+        "conflans": "La Mota",
+        "insee": "73178",
+        "departement": "73"
+      }
+    ],
+    "LA MOTTE-SERVOLEX": [
+      {
+        "nom_savoyard": "La Mota Servolèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Mota",
+        "conflans": "La Mwota",
+        "insee": "73179",
+        "departement": "73"
+      }
+    ],
+    "LA MURAZ": [
+      {
+        "nom_savoyard": "La Mûra",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Mûra",
+        "conflans": "La Mûra",
+        "insee": "74193",
+        "departement": "74"
+      }
+    ],
+    "LA PERRIERE": [
+      {
+        "nom_savoyard": "La Piérriére",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Pèrrére",
+        "conflans": "La pèrîre",
+        "insee": "73198",
+        "departement": "73"
+      }
+    ],
+    "LA RAVOIRE": [
+      {
+        "nom_savoyard": "La Ravoyéra",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Ravòrya",
+        "conflans": "La Ravwèra",
+        "insee": "73213",
+        "departement": "73"
+      }
+    ],
+    "LA RIVIERE-ENVERSE": [
+      {
+        "nom_savoyard": "La Reviére-Envèrs",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Revére",
+        "conflans": "La Rvîre",
+        "insee": "74223",
+        "departement": "74"
+      }
+    ],
+    "LA ROCHE-SUR-FORON": [
+      {
+        "nom_savoyard": "La Roche sur Foron",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Roche",
+        "conflans": "La Roshe",
+        "insee": "74224",
+        "departement": "74"
+      }
+    ],
+    "LA ROCHETTE": [
+      {
+        "nom_savoyard": "La Rochèta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Rochèta",
+        "conflans": "La Rosheta",
+        "insee": "73215",
+        "departement": "73"
+      }
+    ],
+    "LA SALLE": [
+      {
+        "nom_savoyard": "La Sâla",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "La Sâla",
+        "istat": "007040"
+      }
+    ],
+    "LA TABLE": [
+      {
+        "nom_savoyard": "La Tâbla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Tâbla",
+        "conflans": "La Tâbla",
+        "insee": "73289",
+        "departement": "73"
+      }
+    ],
+    "LA THUILE": [
+      {
+        "nom_savoyard": "La Tiolye",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Tulye",
+        "conflans": "La Teulye",
+        "insee": "73294",
+        "departement": "73"
+      },
+      {
+        "nom_savoyard": "La Tuélye",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "La Tuìlye",
+        "istat": "007041"
+      }
+    ],
+    "LA TOUR": [
+      {
+        "nom_savoyard": "La Tor",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Tôr",
+        "conflans": "La Tôr",
+        "insee": "74284",
+        "departement": "74"
+      }
+    ],
+    "LA TRINITE": [
+      {
+        "nom_savoyard": "La Trinitât",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Tèrnita",
+        "conflans": "La Tarntâ",
+        "insee": "73302",
+        "departement": "73"
+      }
+    ],
+    "LA VERNAZ": [
+      {
+        "nom_savoyard": "La Vèrna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Vèrna",
+        "conflans": "La Vèrna",
+        "insee": "74295",
+        "departement": "74"
+      }
+    ],
+    "LANDRY": [
+      {
+        "nom_savoyard": "Landri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Landri",
+        "conflans": "Landri",
+        "insee": "73142",
+        "departement": "73"
+      }
+    ],
+    "LANS-L’HERMITAGE": [
+      {
+        "nom_savoyard": "Lans",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Lanzo Torinese",
+        "istat": "1115"
+      }
+    ],
+    "LANSLEBOURG-MONT-CENIS": [
+      {
+        "nom_savoyard": "Lens-(lo-)Bôrg",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lens Bôrg",
+        "conflans": "Lin Bork",
+        "insee": "73143",
+        "departement": "73"
+      }
+    ],
+    "LANSLEVILLARD": [
+      {
+        "nom_savoyard": "(Lens)-lo-Velârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Vìlâr",
+        "conflans": "Lo Vlâr",
+        "insee": "73144",
+        "departement": "73"
+      }
+    ],
+    "LARRINGES": [
+      {
+        "nom_savoyard": "Larrinjos",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Larrinjo",
+        "conflans": "Larinzho",
+        "insee": "74146",
+        "departement": "74"
+      }
+    ],
+    "LATHUILE": [
+      {
+        "nom_savoyard": "La Tiola",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Tuila",
+        "conflans": "La Tuila",
+        "insee": "74147",
+        "departement": "74"
+      }
+    ],
+    "LE BIOT": [
+      {
+        "nom_savoyard": "Lo Biôl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Biot",
+        "conflans": "L’Byo",
+        "insee": "74034",
+        "departement": "74"
+      }
+    ],
+    "LE BOIS": [
+      {
+        "nom_savoyard": "Lo Bouesc",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Boyc",
+        "conflans": "L’Bwê",
+        "insee": "73045",
+        "departement": "73"
+      }
+    ],
+    "LE BOUCHET": [
+      {
+        "nom_savoyard": "Lo Bouchèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Bochèt",
+        "conflans": "L’Boushê",
+        "insee": "74045",
+        "departement": "74"
+      }
+    ],
+    "LE BOURGET-DU-LAC": [
+      {
+        "nom_savoyard": "Lo Borgèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Borgèt",
+        "conflans": "Le Borzhê",
+        "insee": "73051",
+        "departement": "73"
+      }
+    ],
+    "LE CHATEL": [
+      {
+        "nom_savoyard": "Lo Chatél",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Chahtél",
+        "conflans": "Lo Shashê",
+        "insee": "73080",
+        "departement": "73"
+      }
+    ],
+    "LE CHATELARD": [
+      {
+        "nom_savoyard": "Lo Chahtelârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Chatelârd",
+        "conflans": "Lo Shotèlor",
+        "insee": "73081",
+        "departement": "73"
+      }
+    ],
+    "LE GRAND-BORNAND": [
+      {
+        "nom_savoyard": "Lo Grand Bornand",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Grand Bornand",
+        "conflans": "Bornan",
+        "insee": "74136",
+        "departement": "74"
+      }
+    ],
+    "LE NOYER": [
+      {
+        "nom_savoyard": "Lo Noyér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Noyér",
+        "conflans": "Le Noyêr",
+        "insee": "73192",
+        "departement": "73"
+      }
+    ],
+    "LE PETIT-BORNAND-LES-GLIERES": [
+      {
+        "nom_savoyard": "Lo Petiôd Bornand les Glliéres",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Petiôd Bornand",
+        "conflans": "Le Ptyou Bornan",
+        "insee": "74212",
+        "departement": "74"
+      }
+    ],
+    "LE PONT-DE-BEAUVOISIN": [
+      {
+        "nom_savoyard": "Pont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pont",
+        "conflans": "Pon",
+        "insee": "73204",
+        "departement": "73"
+      }
+    ],
+    "LE PONTET": [
+      {
+        "nom_savoyard": "Lo Pontèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Pontèt",
+        "conflans": "Le Pontê",
+        "insee": "73205",
+        "departement": "73"
+      }
+    ],
+    "LE REPOSOIR": [
+      {
+        "nom_savoyard": "Lo Reposior",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Reposior",
+        "conflans": "Rpojeu",
+        "insee": "74221",
+        "departement": "74"
+      }
+    ],
+    "LE SAPPEY": [
+      {
+        "nom_savoyard": "Lo Sapey",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Sapê",
+        "conflans": "L’Sapê",
+        "insee": "74259",
+        "departement": "74"
+      }
+    ],
+    "LE VERNEIL": [
+      {
+        "nom_savoyard": "Lo Vèrney",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Vèrnél",
+        "conflans": "Le Varnê",
+        "insee": "73311",
+        "departement": "73"
+      }
+    ],
+    "LEMIE": [
+      {
+        "nom_savoyard": "Leimia",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Lemie",
+        "istat": "1117"
+      }
+    ],
+    "LEPIN-LE-LAC": [
+      {
+        "nom_savoyard": "Lo Pin lo Lèc",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Pin",
+        "conflans": "Le Pin",
+        "insee": "73145",
+        "departement": "73"
+      }
+    ],
+    "LES ALLUES": [
+      {
+        "nom_savoyard": "Los Aloués",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Los Alués",
+        "conflans": "Louz Alwê",
+        "insee": "73015",
+        "departement": "73"
+      }
+    ],
+    "LES CHAPELLES": [
+      {
+        "nom_savoyard": "Les Chapèles",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Chapèles",
+        "conflans": "Lé Tsapéle",
+        "insee": "73077",
+        "departement": "73"
+      }
+    ],
+    "LES CHAVANNES-EN-MAURIENNE": [
+      {
+        "nom_savoyard": "Les Chavanes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Chavanes",
+        "conflans": "Lè Shavane",
+        "insee": "73083",
+        "departement": "73"
+      }
+    ],
+    "LES CLEFS": [
+      {
+        "nom_savoyard": "Les Clèyes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Cllês",
+        "conflans": "Lé Clyê",
+        "insee": "74079",
+        "departement": "74"
+      }
+    ],
+    "LES CONTAMINES-MONTJOIE": [
+      {
+        "nom_savoyard": "Les Contamines Montjoué",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Contamines – Montjoy",
+        "conflans": "Lé Kontamnê – Monzhwê",
+        "insee": "74085",
+        "departement": "74"
+      }
+    ],
+    "LES DESERTS": [
+      {
+        "nom_savoyard": "Los Dèsèrts",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Los Dèsèrts",
+        "conflans": "Lou Dézèr",
+        "insee": "73098",
+        "departement": "73"
+      }
+    ],
+    "LES ECHELLES": [
+      {
+        "nom_savoyard": "Les Échèles",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Èchéles",
+        "conflans": "Léz Éshéle",
+        "insee": "73105",
+        "departement": "73"
+      }
+    ],
+    "LES GETS": [
+      {
+        "nom_savoyard": "Los Jéhts",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Los Jèhts",
+        "conflans": "Lou Zhê",
+        "insee": "74134",
+        "departement": "74"
+      }
+    ],
+    "LES HOUCHES": [
+      {
+        "nom_savoyard": "Les Houches",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Hôches",
+        "conflans": "Léz Eushe",
+        "insee": "74143",
+        "departement": "74"
+      }
+    ],
+    "LES MARCHES": [
+      {
+        "nom_savoyard": "Les Marches",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Mârches",
+        "conflans": "Lé Mârshe",
+        "insee": "73151",
+        "departement": "73"
+      }
+    ],
+    "LES MOLLETTES": [
+      {
+        "nom_savoyard": "Les Molètes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Molètes",
+        "conflans": "Lé Molète",
+        "insee": "73159",
+        "departement": "73"
+      }
+    ],
+    "LES OLLIERES": [
+      {
+        "nom_savoyard": "Les Oliéres",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Oléres",
+        "conflans": "Lez Olîre",
+        "insee": "74204",
+        "departement": "74"
+      }
+    ],
+    "LES VILLARDS-SUR-THONES": [
+      {
+        "nom_savoyard": "Los Velârds",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Los Vilârds",
+        "conflans": "Lou Vlâr",
+        "insee": "74302",
+        "departement": "74"
+      }
+    ],
+    "LESCHAUX": [
+      {
+        "nom_savoyard": "Les Chôs",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Charps",
+        "conflans": "Lé Sho",
+        "insee": "74148",
+        "departement": "74"
+      }
+    ],
+    "LESCHERAINES": [
+      {
+        "nom_savoyard": "Lécherêna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Cherênes",
+        "conflans": "Lé Shrèna",
+        "insee": "73146",
+        "departement": "73"
+      }
+    ],
+    "LILLIANES": [
+      {
+        "nom_savoyard": "Lilianes",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Lilianes",
+        "istat": "007042"
+      }
+    ],
+    "LOCANA": [
+      {
+        "nom_savoyard": "Lukënna",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Locana",
+        "istat": "1118"
+      }
+    ],
+    "LOISIEUX": [
+      {
+        "nom_savoyard": "Lasiô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lasiô",
+        "conflans": "Lajeu",
+        "insee": "73147",
+        "departement": "73"
+      }
+    ],
+    "LOISIN": [
+      {
+        "nom_savoyard": "Louèsins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lòzin",
+        "conflans": "Lwèzin",
+        "insee": "74150",
+        "departement": "74"
+      }
+    ],
+    "LORNAY": [
+      {
+        "nom_savoyard": "L'Ornèt (L'Ornê)",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lornê",
+        "conflans": "L’Ournê",
+        "insee": "74151",
+        "departement": "74"
+      }
+    ],
+    "LOVAGNY": [
+      {
+        "nom_savoyard": "Luvagni (Lovanyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lòvanyi",
+        "conflans": "Lovanyi",
+        "insee": "74152",
+        "departement": "74"
+      }
+    ],
+    "LUCINGES": [
+      {
+        "nom_savoyard": "Loçinjos",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lucinjos",
+        "conflans": "Lefinzho",
+        "insee": "74153",
+        "departement": "74"
+      }
+    ],
+    "LUGRIN": [
+      {
+        "nom_savoyard": "Lugrin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lugrin",
+        "conflans": "Lgrin",
+        "insee": "74154",
+        "departement": "74"
+      }
+    ],
+    "LULLIN": [
+      {
+        "nom_savoyard": "Lulyin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lulyin",
+        "conflans": "Lyin",
+        "insee": "74155",
+        "departement": "74"
+      }
+    ],
+    "LULLY": [
+      {
+        "nom_savoyard": "Lulyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lulyi",
+        "conflans": "Lyî",
+        "insee": "74156",
+        "departement": "74"
+      }
+    ],
+    "LYAUD": [
+      {
+        "nom_savoyard": "Lo Lyôd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Lyârd",
+        "conflans": "Le Lyô",
+        "insee": "74157",
+        "departement": "74"
+      }
+    ],
+    "L’ALPETTE": [
+      {
+        "nom_savoyard": "La Alpete",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "L'Alpèta",
+        "nom_italien": "Alpette",
+        "istat": "1006"
+      }
+    ],
+    "L’INGRIE": [
+      {
+        "nom_savoyard": "L’Éngri",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Ingria",
+        "istat": "1108"
+      }
+    ],
+    "MACHILLY": [
+      {
+        "nom_savoyard": "Maciélyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Machilyi",
+        "conflans": "Machlyi",
+        "insee": "74158",
+        "departement": "74"
+      }
+    ],
+    "MACOT-LA-PLAGNE": [
+      {
+        "nom_savoyard": "Macôt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Macôt",
+        "conflans": "Macôt",
+        "insee": "73150",
+        "departement": "73"
+      }
+    ],
+    "MAGLAND": [
+      {
+        "nom_savoyard": "Magllans",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Maglland",
+        "conflans": "Magyan",
+        "insee": "74159",
+        "departement": "74"
+      }
+    ],
+    "MANIGOD": [
+      {
+        "nom_savoyard": "Manigod",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Manigôd",
+        "conflans": "Manegou",
+        "insee": "74160",
+        "departement": "74"
+      }
+    ],
+    "MARCELLAZ": [
+      {
+        "nom_savoyard": "Marcèla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marcela",
+        "conflans": "Marslâ",
+        "insee": "74162",
+        "departement": "74"
+      }
+    ],
+    "MARCELLAZ-ALBANAIS": [
+      {
+        "nom_savoyard": "Marsola Albanês",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marcela",
+        "conflans": "Marslâ",
+        "insee": "74161",
+        "departement": "74"
+      }
+    ],
+    "MARCIEUX": [
+      {
+        "nom_savoyard": "Marciô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marciôs",
+        "conflans": "Marcheu",
+        "insee": "73152",
+        "departement": "73"
+      }
+    ],
+    "MARIGNIER": [
+      {
+        "nom_savoyard": "Marini",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marinyér",
+        "conflans": "Marni",
+        "insee": "74164",
+        "departement": "74"
+      }
+    ],
+    "MARIGNY-SAINT-MARCEL": [
+      {
+        "nom_savoyard": "Marini",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marinyi",
+        "conflans": "Marnyi",
+        "insee": "74165",
+        "departement": "74"
+      }
+    ],
+    "MARIN": [
+      {
+        "nom_savoyard": "Marin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marin",
+        "conflans": "Marin",
+        "insee": "74166",
+        "departement": "74"
+      }
+    ],
+    "MARLENS": [
+      {
+        "nom_savoyard": "Marlins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marlin",
+        "conflans": "Marilin",
+        "insee": "74167",
+        "departement": "74"
+      }
+    ],
+    "MARLIOZ": [
+      {
+        "nom_savoyard": "Margllo",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Margllo",
+        "conflans": "Marlyo",
+        "insee": "74168",
+        "departement": "74"
+      }
+    ],
+    "MARNAZ": [
+      {
+        "nom_savoyard": "Marna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marna",
+        "conflans": "Marna",
+        "insee": "74169",
+        "departement": "74"
+      }
+    ],
+    "MARTHOD": [
+      {
+        "nom_savoyard": "Martôd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Martôd",
+        "conflans": "Martou",
+        "insee": "73153",
+        "departement": "73"
+      }
+    ],
+    "MASSINGY": [
+      {
+        "nom_savoyard": "Massingi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Massingi",
+        "conflans": "Massèzhi",
+        "insee": "74170",
+        "departement": "74"
+      }
+    ],
+    "MASSONGY": [
+      {
+        "nom_savoyard": "Massongi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Marsongi",
+        "conflans": "Marsanzhi",
+        "insee": "74171",
+        "departement": "74"
+      }
+    ],
+    "MATTIE": [
+      {
+        "nom_savoyard": "Màtie",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Mattie",
+        "istat": "1121"
+      }
+    ],
+    "MAXILLY-SUR-LEMAN": [
+      {
+        "nom_savoyard": "Macilyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Massilyi",
+        "conflans": "Maslyi",
+        "insee": "74172",
+        "departement": "74"
+      }
+    ],
+    "MEGEVE": [
+      {
+        "nom_savoyard": "Megéva",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Megéva",
+        "conflans": "Mezdjîva",
+        "insee": "74173",
+        "departement": "74"
+      }
+    ],
+    "MEGEVETTE": [
+      {
+        "nom_savoyard": "Megevèta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Megevèta",
+        "conflans": "Mezhèta",
+        "insee": "74174",
+        "departement": "74"
+      }
+    ],
+    "MEILLERIE": [
+      {
+        "nom_savoyard": "Mèléria",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mèlèria",
+        "conflans": "Mèlèrya",
+        "insee": "74175",
+        "departement": "74"
+      }
+    ],
+    "MENTHON-SAINT-BERNARD": [
+      {
+        "nom_savoyard": "Menton",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Menton",
+        "conflans": "Menton",
+        "insee": "74176",
+        "departement": "74"
+      }
+    ],
+    "MENTHONNEX-EN-BORNES": [
+      {
+        "nom_savoyard": "Mentonê-en-Bornes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mentonê-en-Bornes",
+        "conflans": "Montnê an Beurne",
+        "insee": "74177",
+        "departement": "74"
+      }
+    ],
+    "MENTHONNEX-SOUS-CLERMONT": [
+      {
+        "nom_savoyard": "Mentonê-dessous-Cllârmont",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mentonê-jo-Cllarmont",
+        "conflans": "Mentna dzo Clyarmon",
+        "insee": "74178",
+        "departement": "74"
+      }
+    ],
+    "MERY": [
+      {
+        "nom_savoyard": "Mayric",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mayric",
+        "conflans": "Maÿri",
+        "insee": "73155",
+        "departement": "73"
+      }
+    ],
+    "MESIGNY": [
+      {
+        "nom_savoyard": "Mèsigni (Mèsinyi)",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mesinyi",
+        "conflans": "Mèznyi",
+        "insee": "74179",
+        "departement": "74"
+      }
+    ],
+    "MESSERY": [
+      {
+        "nom_savoyard": "Mèsseri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mèsseri",
+        "conflans": "Mèsri",
+        "insee": "74180",
+        "departement": "74"
+      }
+    ],
+    "METZ-TESSY": [
+      {
+        "nom_savoyard": "Maè-Tèssi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mês – Tèssi",
+        "conflans": "Mês – Tèssi",
+        "insee": "74181",
+        "departement": "74"
+      }
+    ],
+    "MEYRIEUX-TROUET": [
+      {
+        "nom_savoyard": "Mariô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mèriôs",
+        "conflans": "Maryeu",
+        "insee": "73156",
+        "departement": "73"
+      }
+    ],
+    "MEYTHET": [
+      {
+        "nom_savoyard": "Mètèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mètê",
+        "conflans": "Métê",
+        "insee": "74182",
+        "departement": "74"
+      }
+    ],
+    "MIEUSSY": [
+      {
+        "nom_savoyard": "Myôci",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Miòci",
+        "conflans": "Mieufi",
+        "insee": "74183",
+        "departement": "74"
+      }
+    ],
+    "MINZIER": [
+      {
+        "nom_savoyard": "Menzi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Minzér",
+        "conflans": "Minzi",
+        "insee": "74184",
+        "departement": "74"
+      }
+    ],
+    "MODANE": [
+      {
+        "nom_savoyard": "Modâna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Amordâna",
+        "conflans": "Amoudanna",
+        "insee": "73157",
+        "departement": "73"
+      }
+    ],
+    "MOGNARD": [
+      {
+        "nom_savoyard": "Mognârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Monyârd",
+        "conflans": "Monyâ",
+        "insee": "73158",
+        "departement": "73"
+      }
+    ],
+    "MONNETIER-MORNEX": [
+      {
+        "nom_savoyard": "Monéhtiér-Mornê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mornê",
+        "conflans": "Mornê",
+        "insee": "74185",
+        "departement": "74"
+      }
+    ],
+    "MONT-CENIS": [
+      {
+        "nom_savoyard": "Frere Cenisio",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Moncenisio",
+        "istat": "1147"
+      }
+    ],
+    "MONT-SAXONNEX": [
+      {
+        "nom_savoyard": "Lo Mont Saxonèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Mont",
+        "conflans": "L’Mon",
+        "insee": "74189",
+        "departement": "74"
+      }
+    ],
+    "MONTAGNOLE": [
+      {
+        "nom_savoyard": "Montagnôla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Montanyóla",
+        "conflans": "Montanyoula",
+        "insee": "73160",
+        "departement": "73"
+      }
+    ],
+    "MONTAGNY": [
+      {
+        "nom_savoyard": "Montagni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Montanyi",
+        "conflans": "Montènyi",
+        "insee": "73161",
+        "departement": "73"
+      }
+    ],
+    "MONTAGNY-LES-LANCHES": [
+      {
+        "nom_savoyard": "Montagni-Les-Lanches",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Montanyi les Lanches",
+        "conflans": "Montanyi lé Lanshe",
+        "insee": "74186",
+        "departement": "74"
+      }
+    ],
+    "MONTAILLEUR": [
+      {
+        "nom_savoyard": "Montalyor",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Montalyor",
+        "conflans": "Montayeu",
+        "insee": "73162",
+        "departement": "73"
+      }
+    ],
+    "MONTAIMONT": [
+      {
+        "nom_savoyard": "Mont Émon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Èmont",
+        "conflans": "Mont Émon",
+        "insee": "73163",
+        "departement": "73"
+      }
+    ],
+    "MONTCEL": [
+      {
+        "nom_savoyard": "Montcél Moncèl?",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Cél",
+        "conflans": "",
+        "insee": "73164",
+        "departement": "73"
+      }
+    ],
+    "MONTENDRY": [
+      {
+        "nom_savoyard": "Mont Andri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont André",
+        "conflans": "Mont Édri",
+        "insee": "73166",
+        "departement": "73"
+      }
+    ],
+    "MONTGELLAFREY": [
+      {
+        "nom_savoyard": "Mont Gèlafrèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Gelafrèt",
+        "conflans": "Mon Zlafrèt",
+        "insee": "73167",
+        "departement": "73"
+      }
+    ],
+    "MONTGILBERT": [
+      {
+        "nom_savoyard": "Mont-Geriô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont ??",
+        "conflans": "Mon Zhereu",
+        "insee": "73168",
+        "departement": "73"
+      }
+    ],
+    "MONTGIROD": [
+      {
+        "nom_savoyard": "Mont Girôd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Girôd",
+        "conflans": "Mon Tsou",
+        "insee": "73169",
+        "departement": "73"
+      }
+    ],
+    "MONTHION": [
+      {
+        "nom_savoyard": "Montion",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Montyon",
+        "conflans": "Montyon",
+        "insee": "73170",
+        "departement": "73"
+      }
+    ],
+    "MONTJOVET": [
+      {
+        "nom_savoyard": "Montjovèt",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Mont Jovèt",
+        "istat": "007043"
+      }
+    ],
+    "MONTMIN": [
+      {
+        "nom_savoyard": "Montmen",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Min",
+        "conflans": "Mont Min",
+        "insee": "74187",
+        "departement": "74"
+      }
+    ],
+    "MONTMÉLIAN": [
+      {
+        "nom_savoyard": "Montmèlyan",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Mèlyan",
+        "conflans": "Mon Mélyan",
+        "insee": "73171",
+        "departement": "73"
+      }
+    ],
+    "MONTPANTIER": [
+      {
+        "nom_savoyard": "Mumpantia",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Mompantero",
+        "istat": "1149"
+      }
+    ],
+    "MONTRICHER-ALBANNE": [
+      {
+        "nom_savoyard": "Mont Richél - Arbâna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Richél – L’Arbâna",
+        "conflans": "Mon rshèl – L’Arbanno",
+        "insee": "73173",
+        "departement": "73"
+      }
+    ],
+    "MONTRIOND": [
+      {
+        "nom_savoyard": "Mont Riond",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Ryond",
+        "conflans": "Meu Rian",
+        "insee": "74188",
+        "departement": "74"
+      }
+    ],
+    "MONTSAPEY": [
+      {
+        "nom_savoyard": "Mont Sapat",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Sapê",
+        "conflans": "Monsapây",
+        "insee": "73175",
+        "departement": "73"
+      }
+    ],
+    "MONTVALEZAN": [
+      {
+        "nom_savoyard": "Mont-Valèsent",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont ‘Lèzan",
+        "conflans": "Mon Lèzan",
+        "insee": "73176",
+        "departement": "73"
+      }
+    ],
+    "MONTVERNIER": [
+      {
+        "nom_savoyard": "Mont Vèrnox",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mont Vèrniòs",
+        "conflans": "Mont Varneu",
+        "insee": "73177",
+        "departement": "73"
+      }
+    ],
+    "MORGEX": [
+      {
+        "nom_savoyard": "Morgé",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Morgê",
+        "istat": "007044"
+      }
+    ],
+    "MORILLON": [
+      {
+        "nom_savoyard": "Morelyon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Morilyon",
+        "conflans": "Morlyan",
+        "insee": "74190",
+        "departement": "74"
+      }
+    ],
+    "MORZINE": [
+      {
+        "nom_savoyard": "Morzéna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Morzina",
+        "conflans": "Morznâ",
+        "insee": "74191",
+        "departement": "74"
+      }
+    ],
+    "MOTZ": [
+      {
+        "nom_savoyard": "(vèrs) Môjo",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Môts",
+        "conflans": "Mu",
+        "insee": "73180",
+        "departement": "73"
+      }
+    ],
+    "MOUTIERS": [
+      {
+        "nom_savoyard": "Mouhtiérs",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mohtérs",
+        "conflans": "Moutchér",
+        "insee": "73181",
+        "departement": "73"
+      },
+      {
+        "nom_savoyard": "Moutier",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Monastero di Lanzo",
+        "istat": "1134"
+      }
+    ],
+    "MOUXY": [
+      {
+        "nom_savoyard": "Môssi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mòci",
+        "conflans": "Meussi",
+        "insee": "73182",
+        "departement": "73"
+      }
+    ],
+    "MOYE": [
+      {
+        "nom_savoyard": "Molyiér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Molyé",
+        "conflans": "Moyi",
+        "insee": "74192",
+        "departement": "74"
+      }
+    ],
+    "MURES": [
+      {
+        "nom_savoyard": "Mures",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mûres",
+        "conflans": "Mure",
+        "insee": "74194",
+        "departement": "74"
+      }
+    ],
+    "MUSIEGES": [
+      {
+        "nom_savoyard": "Musèjô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mosèjos",
+        "conflans": "Morèzho",
+        "insee": "74195",
+        "departement": "74"
+      }
+    ],
+    "MYANS": [
+      {
+        "nom_savoyard": "Mians",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Mians",
+        "conflans": "Mian",
+        "insee": "73183",
+        "departement": "73"
+      }
+    ],
+    "MÉANS": [
+      {
+        "nom_savoyard": "Meana",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Meana di Susa",
+        "istat": "1128"
+      }
+    ],
+    "MÉSENY": [
+      {
+        "nom_savoyard": "Misinì",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Mezzenile",
+        "istat": "1131"
+      }
+    ],
+    "NANCY-SUR-CLUSES": [
+      {
+        "nom_savoyard": "Nançi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Nanci",
+        "conflans": "Nanfi",
+        "insee": "74196",
+        "departement": "74"
+      }
+    ],
+    "NANGY": [
+      {
+        "nom_savoyard": "Nangi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Nangi",
+        "conflans": "Nanzhi",
+        "insee": "74197",
+        "departement": "74"
+      }
+    ],
+    "NAVES-PARMELAN": [
+      {
+        "nom_savoyard": "Naves-Parmelan",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Nâves",
+        "conflans": "Nâve",
+        "insee": "74198",
+        "departement": "74"
+      }
+    ],
+    "NERNIER": [
+      {
+        "nom_savoyard": "Nèrni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Nèrni",
+        "conflans": "Narni",
+        "insee": "74199",
+        "departement": "74"
+      }
+    ],
+    "NEYDENS": [
+      {
+        "nom_savoyard": "Nêdins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Nèdin",
+        "conflans": "Nèdin",
+        "insee": "74201",
+        "departement": "74"
+      }
+    ],
+    "NOASCA": [
+      {
+        "nom_savoyard": "Nuachi",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Noasca",
+        "istat": "1152"
+      }
+    ],
+    "NOM FRANCÊS": [
+      {
+        "nom_savoyard": "Arpitan (grafia locâla)",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "Nom ORB",
+        "nom_italien": "Nom Etalien",
+        "istat": "Codes ISTAT"
+      }
+    ],
+    "NONGLARD": [
+      {
+        "nom_savoyard": "Nongllâ",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "N’Onglâ",
+        "conflans": "Nonglyâ",
+        "insee": "74202",
+        "departement": "74"
+      }
+    ],
+    "NOTRE-DAME-DE-BELLECOMBE": [
+      {
+        "nom_savoyard": "Nouhtra-Dama de Bèlacomba",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Nohtra Dama de Bèla Comba",
+        "conflans": "Bèla Comba",
+        "insee": "73186",
+        "departement": "73"
+      }
+    ],
+    "NOTRE-DAME-DES-MILLIERES": [
+      {
+        "nom_savoyard": "Nouhtra Dama des Milyiéres",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Les Milyères",
+        "conflans": "Lè Mlyerê",
+        "insee": "73188",
+        "departement": "73"
+      }
+    ],
+    "NOTRE-DAME-DU-CRUET": [
+      {
+        "nom_savoyard": "Senta-Maria-de-Crox",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Cruèt",
+        "conflans": "Le Cruèt",
+        "insee": "73189",
+        "departement": "73"
+      }
+    ],
+    "NOTRE-DAME-DU-PRE": [
+      {
+        "nom_savoyard": "Nouhtra-Dama-du-Prât",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Prâ",
+        "conflans": "Lo Prâ",
+        "insee": "73190",
+        "departement": "73"
+      }
+    ],
+    "NOVALAISE": [
+      {
+        "nom_savoyard": "Novalèsa",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Novalèsa",
+        "conflans": "Novalaze",
+        "insee": "73191",
+        "departement": "73"
+      },
+      {
+        "nom_savoyard": "Nonalésa",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Novalesa",
+        "istat": "1154"
+      }
+    ],
+    "NOVEL": [
+      {
+        "nom_savoyard": "Novél",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Nòvél",
+        "conflans": "Novê",
+        "insee": "74203",
+        "departement": "74"
+      }
+    ],
+    "NUS": [
+      {
+        "nom_savoyard": "Nus",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Nus",
+        "istat": "007045"
+      }
+    ],
+    "OLLOMONT": [
+      {
+        "nom_savoyard": "Olomont",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Olomont",
+        "istat": "007046"
+      }
+    ],
+    "ONNION": [
+      {
+        "nom_savoyard": "Ognon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Onyon",
+        "conflans": "Onyon",
+        "insee": "74205",
+        "departement": "74"
+      }
+    ],
+    "ORCIER": [
+      {
+        "nom_savoyard": "Orsiér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Òrsér",
+        "conflans": "Orsî",
+        "insee": "74206",
+        "departement": "74"
+      }
+    ],
+    "ORELLE": [
+      {
+        "nom_savoyard": "Orèla",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Orèla",
+        "conflans": "Ozhèlo",
+        "insee": "73194",
+        "departement": "73"
+      }
+    ],
+    "OYACE": [
+      {
+        "nom_savoyard": "Oyace",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Oyace",
+        "istat": "007047"
+      }
+    ],
+    "PALLUD": [
+      {
+        "nom_savoyard": "Palud",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Palud",
+        "conflans": "Paleu",
+        "insee": "73196",
+        "departement": "73"
+      }
+    ],
+    "PASSY": [
+      {
+        "nom_savoyard": "Paçi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Passi",
+        "conflans": "Pachi",
+        "insee": "74208",
+        "departement": "74"
+      }
+    ],
+    "PEILLONNEX": [
+      {
+        "nom_savoyard": "Pèlyonê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pèyenê",
+        "conflans": "Pèjené",
+        "insee": "74209",
+        "departement": "74"
+      }
+    ],
+    "PEISEY-NANCROIX": [
+      {
+        "nom_savoyard": "Pésê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pezê",
+        "conflans": "Péjèy",
+        "insee": "73197",
+        "departement": "73"
+      }
+    ],
+    "PERLOZ": [
+      {
+        "nom_savoyard": "Pèrlo",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Pèrlo",
+        "istat": "007048"
+      }
+    ],
+    "PERRIGNIER": [
+      {
+        "nom_savoyard": "Pèrigni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pèrrinyi",
+        "conflans": "Parni",
+        "insee": "74210",
+        "departement": "74"
+      }
+    ],
+    "PERS-JUSSY": [
+      {
+        "nom_savoyard": "Pêrs-Jussi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pêrs – Jussi",
+        "conflans": "Pè – Dyèssi",
+        "insee": "74211",
+        "departement": "74"
+      }
+    ],
+    "PESSINET": [
+      {
+        "nom_savoyard": "Pisinài",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Pessinetto",
+        "istat": "1155"
+      }
+    ],
+    "PLANAISE": [
+      {
+        "nom_savoyard": "Planêse",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Planêse",
+        "conflans": "Planaÿze",
+        "insee": "73200",
+        "departement": "73"
+      }
+    ],
+    "PLANAY": [
+      {
+        "nom_savoyard": "Lo Planèt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Planê",
+        "conflans": "L’Planê",
+        "insee": "73201",
+        "departement": "73"
+      }
+    ],
+    "PLANCHERINE": [
+      {
+        "nom_savoyard": "Plancherina",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Plan Charina",
+        "conflans": "Pla Starnâ",
+        "insee": "73202",
+        "departement": "73"
+      }
+    ],
+    "POISY": [
+      {
+        "nom_savoyard": "Pouèsi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pòzi",
+        "conflans": "Pwèzi",
+        "insee": "74213",
+        "departement": "74"
+      }
+    ],
+    "POLLEIN": [
+      {
+        "nom_savoyard": "Pollin",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Polén",
+        "istat": "007049"
+      }
+    ],
+    "PONT": [
+      {
+        "nom_savoyard": "Pont",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Pont Canavese",
+        "istat": "1157"
+      }
+    ],
+    "PONT SAINT MARTIN": [
+      {
+        "nom_savoyard": "Pont Sent Martin",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Pont Sènt Martin",
+        "istat": "007052"
+      }
+    ],
+    "PONTAMAFREY-MONTPASCAL": [
+      {
+        "nom_savoyard": "Pont Amafrèt - Mont Pahcal",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pont Mafrê – Mont Pahcâl",
+        "conflans": "Pon Mafrê – Mon Pacâ",
+        "insee": "73203",
+        "departement": "73"
+      }
+    ],
+    "PONTBOSET": [
+      {
+        "nom_savoyard": "Pontbossèt",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Pont Bossèt",
+        "istat": "007050"
+      }
+    ],
+    "PONTEY": [
+      {
+        "nom_savoyard": "Pontèly",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Pontèly",
+        "istat": "007051"
+      }
+    ],
+    "PRALOGNAN-LA-VANOISE": [
+      {
+        "nom_savoyard": "Prâtlognan",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Prât Lonyant",
+        "conflans": "Prâ Lonyan",
+        "insee": "73206",
+        "departement": "73"
+      }
+    ],
+    "PRAZ-SUR-ARLY": [
+      {
+        "nom_savoyard": "Lo Prât",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Prât",
+        "conflans": "Le Prâ",
+        "insee": "74215",
+        "departement": "74"
+      }
+    ],
+    "PRESLE": [
+      {
+        "nom_savoyard": "Préle",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Prêle",
+        "conflans": "Prêle",
+        "insee": "73207",
+        "departement": "73"
+      }
+    ],
+    "PRINGY": [
+      {
+        "nom_savoyard": "Pringi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pringi",
+        "conflans": "Prinzhi",
+        "insee": "74217",
+        "departement": "74"
+      }
+    ],
+    "PRÉ SAINT DIDIER": [
+      {
+        "nom_savoyard": "Prât Sent lo (Di)diér",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Prât Sènt Didiér",
+        "istat": "007053"
+      }
+    ],
+    "PRÉSILLY": [
+      {
+        "nom_savoyard": "Prêsilyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Presilyi",
+        "conflans": "Prezlyi",
+        "insee": "74216",
+        "departement": "74"
+      }
+    ],
+    "PUBLIER": [
+      {
+        "nom_savoyard": "Pobliér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Publér",
+        "conflans": "Peubli",
+        "insee": "74218",
+        "departement": "74"
+      }
+    ],
+    "PUGNY-CHATENOD": [
+      {
+        "nom_savoyard": "Pugni-Châhtenô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Punyi",
+        "conflans": "Pounyi",
+        "insee": "73208",
+        "departement": "73"
+      }
+    ],
+    "PUYGROS": [
+      {
+        "nom_savoyard": "Puégrôs",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Pué Grôs",
+        "conflans": "Pi Grou",
+        "insee": "73210",
+        "departement": "73"
+      }
+    ],
+    "QUART": [
+      {
+        "nom_savoyard": "Quârt",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Quârt",
+        "istat": "007054"
+      }
+    ],
+    "QUEIGE": [
+      {
+        "nom_savoyard": "Quiêge",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Quêge",
+        "conflans": "Kyèze",
+        "insee": "73211",
+        "departement": "73"
+      }
+    ],
+    "QUINTAL": [
+      {
+        "nom_savoyard": "Quinta",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Quintâl",
+        "conflans": "Kintâ",
+        "insee": "74219",
+        "departement": "74"
+      }
+    ],
+    "RANDENS": [
+      {
+        "nom_savoyard": "Randins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Randin",
+        "conflans": "Randin",
+        "insee": "73212",
+        "departement": "73"
+      }
+    ],
+    "REIGNIER-ESERY": [
+      {
+        "nom_savoyard": "Regni-Asiri",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Renyér",
+        "conflans": "Rnyî",
+        "insee": "74220",
+        "departement": "74"
+      }
+    ],
+    "REYVROZ": [
+      {
+        "nom_savoyard": "Révro",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Rêvro",
+        "conflans": "Rêvro",
+        "insee": "74222",
+        "departement": "74"
+      }
+    ],
+    "RHÊMES NOTRE DAME": [
+      {
+        "nom_savoyard": "Nouhtra Dama de Rêma",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Nohtra Dama de Rêma",
+        "istat": "007055"
+      }
+    ],
+    "RHÊMES SAINT GEORGES": [
+      {
+        "nom_savoyard": "Sent George de Rêma",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Jorjo de Rêma",
+        "istat": "007056"
+      }
+    ],
+    "RIBOURDON": [
+      {
+        "nom_savoyard": "Riburdon",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Ribordone",
+        "istat": "1165"
+      }
+    ],
+    "ROCHEFORT": [
+      {
+        "nom_savoyard": "Rochefôrt",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Roche Fôrt",
+        "conflans": "Rosh’ Fô",
+        "insee": "73214",
+        "departement": "73"
+      }
+    ],
+    "ROISAN": [
+      {
+        "nom_savoyard": "Rêsan",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Rêsan",
+        "istat": "007057"
+      }
+    ],
+    "RONC": [
+      {
+        "nom_savoyard": "Ronc",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Ronco Canavese",
+        "istat": "1169"
+      }
+    ],
+    "ROTHERENS": [
+      {
+        "nom_savoyard": "Roterins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Roterin",
+        "conflans": "Rotrin",
+        "insee": "73217",
+        "departement": "73"
+      }
+    ],
+    "RUBIANE": [
+      {
+        "nom_savoyard": "Rubiana",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Rubiana",
+        "istat": "1188"
+      }
+    ],
+    "RUFFIEUX": [
+      {
+        "nom_savoyard": "Rufiô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Rufiôs",
+        "conflans": "Rfyô",
+        "insee": "73218",
+        "departement": "73"
+      }
+    ],
+    "RUMILLY": [
+      {
+        "nom_savoyard": "Remèlyi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Rumilyi",
+        "conflans": "Rmèlyi",
+        "insee": "74225",
+        "departement": "74"
+      }
+    ],
+    "SAINT CHRISTOPHE": [
+      {
+        "nom_savoyard": "Sent-Créhtôblo",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Créhtôblo",
+        "istat": "007058"
+      }
+    ],
+    "SAINT DENIS": [
+      {
+        "nom_savoyard": "Sent-Denis",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Denis",
+        "istat": "007059"
+      }
+    ],
+    "SAINT MARCEL": [
+      {
+        "nom_savoyard": "Sent-Marcèl",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Marcél",
+        "istat": "007060"
+      }
+    ],
+    "SAINT NICOLAS": [
+      {
+        "nom_savoyard": "Sent-Nicolas",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Nicolâs",
+        "istat": "007061"
+      }
+    ],
+    "SAINT OYEN": [
+      {
+        "nom_savoyard": "Sent-Oyen",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Oyén",
+        "istat": "007062"
+      }
+    ],
+    "SAINT PIERRE": [
+      {
+        "nom_savoyard": "Sent-Piérro",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Piérro",
+        "istat": "007063"
+      }
+    ],
+    "SAINT RHÉMY EN BOSSE": [
+      {
+        "nom_savoyard": "Sent-Rèmi en Bursa",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Remi en Borsa",
+        "istat": "007064"
+      }
+    ],
+    "SAINT VINCENT": [
+      {
+        "nom_savoyard": "Sent-Vincent",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sènt Vincent",
+        "istat": "007065"
+      }
+    ],
+    "SAINT-ALBAN-DES-VILLARDS": [
+      {
+        "nom_savoyard": "Sent-Alban-dus-Velârds",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Alban",
+        "conflans": "Sin t-alban dou vlâr",
+        "insee": "73221",
+        "departement": "73"
+      }
+    ],
+    "SAINT-COLOMBAN-DES-VILLARDS": [
+      {
+        "nom_savoyard": "Sent-Colomban-dus-Velârds",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sént Colomban – Lo Vilârd",
+        "conflans": "Sin kolonban dou Vlâr",
+        "insee": "73230",
+        "departement": "73"
+      }
+    ],
+    "SAINT-DIDIER": [
+      {
+        "nom_savoyard": "Sen Didé",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "San Didero",
+        "istat": "1199"
+      }
+    ],
+    "SAINT-ETIENNE-DE-CUINES": [
+      {
+        "nom_savoyard": "Sent-Ètièno-de-Cuina",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt ‘Tièno de Cuina",
+        "conflans": "Sin Tchéno du Cuine",
+        "insee": "73231",
+        "departement": "73"
+      }
+    ],
+    "SAINT-GENIX-SUR-GUIERS": [
+      {
+        "nom_savoyard": "Sant Genès / Genix",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt ‘Ni",
+        "conflans": "San Ni",
+        "insee": "73236",
+        "departement": "73"
+      }
+    ],
+    "SAINT-GERMAIN": [
+      {
+        "nom_savoyard": "Sen German",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Germagnano",
+        "istat": "1210"
+      }
+    ],
+    "SAINT-GERMAIN-SUR-RHONE": [
+      {
+        "nom_savoyard": "Sent German",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Gèrmén",
+        "conflans": "San Zharmin",
+        "insee": "74235",
+        "departement": "74"
+      }
+    ],
+    "SAINT-GIROD": [
+      {
+        "nom_savoyard": "Sant Gerôd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Girôd",
+        "conflans": "San Zhrou",
+        "insee": "73239",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JEAN-D'ARVES": [
+      {
+        "nom_savoyard": "Sent-Jian-d'Arva",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Jian d’Arva",
+        "conflans": "Sin Dyan",
+        "insee": "73242",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JEAN-DE-BELLEVILLE": [
+      {
+        "nom_savoyard": "Sent Jian",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Jian",
+        "conflans": "Sin Dzan",
+        "insee": "73244",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JEAN-DE-CHEVELU": [
+      {
+        "nom_savoyard": "Chevelu",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chevelu",
+        "conflans": "Shdèlu",
+        "insee": "73245",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JEAN-DE-COUZ": [
+      {
+        "nom_savoyard": "Sent Jian",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Jian",
+        "conflans": "Sin Jan",
+        "insee": "73246",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JEAN-DE-LA-PORTE": [
+      {
+        "nom_savoyard": "Sent Jian",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Jian",
+        "conflans": "San Djan",
+        "insee": "73247",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JEAN-DE-MAURIENNE": [
+      {
+        "nom_savoyard": "Sent-Jian-de-Môrièna",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Jian",
+        "conflans": "Sin Dyan",
+        "insee": "73248",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JEAN-DE-SIXT": [
+      {
+        "nom_savoyard": "Six",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Six",
+        "conflans": "Si",
+        "insee": "74239",
+        "departement": "74"
+      }
+    ],
+    "SAINT-JEAN-DE-THOLOME": [
+      {
+        "nom_savoyard": "Sent Jian",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Jian",
+        "conflans": "San Dyan",
+        "insee": "74240",
+        "departement": "74"
+      }
+    ],
+    "SAINT-JEOIRE-PRIEURE": [
+      {
+        "nom_savoyard": "Sant Jouère",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Jòryo",
+        "conflans": "Sè Zhwère",
+        "insee": "73249",
+        "departement": "73"
+      }
+    ],
+    "SAINT-JOIRE DE SUSE": [
+      {
+        "nom_savoyard": "San Goeri",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "San Giorio di Susa",
+        "istat": "1212"
+      }
+    ],
+    "SAINT-JULIEN-EN-GENEVOIS": [
+      {
+        "nom_savoyard": "Sent Jelien",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Julyén",
+        "conflans": "San Zhlyin",
+        "insee": "74243",
+        "departement": "74"
+      }
+    ],
+    "SAINT-MARCEL": [
+      {
+        "nom_savoyard": "Sent Marcél",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Marcél",
+        "conflans": "",
+        "insee": "73253",
+        "departement": "73"
+      }
+    ],
+    "SAINT-MARTIN-DE-BELLEVILLE": [
+      {
+        "nom_savoyard": "Sent Martin de Bélavela",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Martin de Belavila",
+        "conflans": "Sin Martiyn",
+        "insee": "73257",
+        "departement": "73"
+      }
+    ],
+    "SAINT-MARTIN-DE-LA-PORTE": [
+      {
+        "nom_savoyard": "Sent Martin (la Porta)",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Martin",
+        "conflans": "Sin Martïn",
+        "insee": "73258",
+        "departement": "73"
+      }
+    ],
+    "SAINT-MARTIN-SUR-LA-CHAMBRE": [
+      {
+        "nom_savoyard": "Sent-Martin-sus-la-Chambra",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Martin",
+        "conflans": "Sin Martïn",
+        "insee": "73259",
+        "departement": "73"
+      }
+    ],
+    "SAINT-MAURICE-DE-ROTHERENS": [
+      {
+        "nom_savoyard": "Sant M(ô/œ)ris",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Mòris",
+        "conflans": "Man Meuri",
+        "insee": "73260",
+        "departement": "73"
+      }
+    ],
+    "SAINT-NICOLAS-LA-CHAPELLE": [
+      {
+        "nom_savoyard": "Sant Nicolas",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Nicolê",
+        "conflans": "San Nkolê",
+        "insee": "73262",
+        "departement": "73"
+      }
+    ],
+    "SAINT-OYEN": [
+      {
+        "nom_savoyard": "Sent Oyen",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Oen",
+        "conflans": "Sint Oin",
+        "insee": "73266",
+        "departement": "73"
+      }
+    ],
+    "SAINT-PANCRACE": [
+      {
+        "nom_savoyard": "Sent-Pê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Pê",
+        "conflans": "Sin Pê",
+        "insee": "73267",
+        "departement": "73"
+      }
+    ],
+    "SAINT-PAUL": [
+      {
+        "nom_savoyard": "Sent Pôl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Pôl",
+        "conflans": "San Pou",
+        "insee": "73269",
+        "departement": "73"
+      }
+    ],
+    "SAINT-REMY-DE-MAURIENNE": [
+      {
+        "nom_savoyard": "Sent Remi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Remi",
+        "conflans": "Sin Rmi",
+        "insee": "73278",
+        "departement": "73"
+      }
+    ],
+    "SAINT-SORLIN-D'ARVES": [
+      {
+        "nom_savoyard": "Sent-Sorlin-d'Arva",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt Sorlin",
+        "conflans": "Sïn Sorlïn",
+        "insee": "73280",
+        "departement": "73"
+      }
+    ],
+    "SAINTE-FOY-TARENTAISE": [
+      {
+        "nom_savoyard": "Senta Fê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènta Fê",
+        "conflans": "Sinta Fé",
+        "insee": "73232",
+        "departement": "73"
+      }
+    ],
+    "SAINTE-MARIE-DE-CUINES": [
+      {
+        "nom_savoyard": "Senta-Maria-de-Cuina",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènt’ Marie de Cuina",
+        "conflans": "Sint’ Mari",
+        "insee": "73255",
+        "departement": "73"
+      }
+    ],
+    "SALES": [
+      {
+        "nom_savoyard": "Sâles",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sâles",
+        "conflans": "Sâle",
+        "insee": "74255",
+        "departement": "74"
+      }
+    ],
+    "SALINS-LES-THERMES": [
+      {
+        "nom_savoyard": "Salin",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Salin",
+        "conflans": "Salin",
+        "insee": "73284",
+        "departement": "73"
+      }
+    ],
+    "SALLANCHES": [
+      {
+        "nom_savoyard": "Salanches",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Salanches",
+        "conflans": "Salanshe",
+        "insee": "74256",
+        "departement": "74"
+      }
+    ],
+    "SALLENÔVES": [
+      {
+        "nom_savoyard": "Salanôva",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sala Nova",
+        "conflans": "Sala Nuva",
+        "insee": "74257",
+        "departement": "74"
+      }
+    ],
+    "SAMOENS": [
+      {
+        "nom_savoyard": "Sèpt-Mons",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sèpt-Mons",
+        "conflans": "Samwan",
+        "insee": "74258",
+        "departement": "74"
+      }
+    ],
+    "SARRE": [
+      {
+        "nom_savoyard": "Sarro",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Sarro",
+        "istat": "007066"
+      }
+    ],
+    "SAVIGNY": [
+      {
+        "nom_savoyard": "Savigni",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Savinyi",
+        "conflans": "Savnyi",
+        "insee": "74260",
+        "departement": "74"
+      }
+    ],
+    "SAXEL": [
+      {
+        "nom_savoyard": "Sacé",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sacé",
+        "conflans": "Sassé",
+        "insee": "74261",
+        "departement": "74"
+      }
+    ],
+    "SCIENTRIER": [
+      {
+        "nom_savoyard": "Chantriér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Chantrér",
+        "conflans": "Shantri",
+        "insee": "74262",
+        "departement": "74"
+      }
+    ],
+    "SCIEZ-SUR-LEMAN": [
+      {
+        "nom_savoyard": "Sic",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sic",
+        "conflans": "Si",
+        "insee": "74263",
+        "departement": "74"
+      }
+    ],
+    "SCIONZIER": [
+      {
+        "nom_savoyard": "Scionzi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Scionzi",
+        "conflans": "Chonvi",
+        "insee": "74264",
+        "departement": "74"
+      }
+    ],
+    "SEEZ": [
+      {
+        "nom_savoyard": "Siéx",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sés",
+        "conflans": "Sé",
+        "insee": "73285",
+        "departement": "73"
+      }
+    ],
+    "SERRAVAL": [
+      {
+        "nom_savoyard": "Séravâl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sèrra Vâl",
+        "conflans": "Séra Vâ",
+        "insee": "74265",
+        "departement": "74"
+      }
+    ],
+    "SERRIERES-EN-CHAUTAGNE": [
+      {
+        "nom_savoyard": "Sérriéres",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sèrréres",
+        "conflans": "",
+        "insee": "73286",
+        "departement": "73"
+      }
+    ],
+    "SERVOZ": [
+      {
+        "nom_savoyard": "Sèrvo",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sèrvo",
+        "conflans": "Saro",
+        "insee": "74266",
+        "departement": "74"
+      }
+    ],
+    "SEVRIER": [
+      {
+        "nom_savoyard": "Severi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Severi",
+        "conflans": "Sevri",
+        "insee": "74267",
+        "departement": "74"
+      }
+    ],
+    "SEYNOD": [
+      {
+        "nom_savoyard": "Sênu",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sènôd",
+        "conflans": "Sénu",
+        "insee": "74268",
+        "departement": "74"
+      }
+    ],
+    "SEYSSEL": [
+      {
+        "nom_savoyard": "Sacé",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sacé",
+        "conflans": "Sèssé",
+        "insee": "74269",
+        "departement": "74"
+      }
+    ],
+    "SEYTHENEX": [
+      {
+        "nom_savoyard": "Sètenê",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sètenê",
+        "conflans": "Sètné",
+        "insee": "74270",
+        "departement": "74"
+      }
+    ],
+    "SEYTROUX": [
+      {
+        "nom_savoyard": "Sètro",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Sètrôs",
+        "conflans": "Sètrou",
+        "insee": "74271",
+        "departement": "74"
+      }
+    ],
+    "SILLINGY": [
+      {
+        "nom_savoyard": "Silyingi",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Cilyingi",
+        "conflans": "Flyinzhi",
+        "insee": "74272",
+        "departement": "74"
+      }
+    ],
+    "SIXT-FER-A-CHEVAL": [
+      {
+        "nom_savoyard": "Sixt-Fèr a Chevâl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Ci",
+        "conflans": "Hi",
+        "insee": "74273",
+        "departement": "74"
+      }
+    ],
+    "SOLLIERES-SARDIERES": [
+      {
+        "nom_savoyard": "Solières-",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Soléres – Cèrdéres",
+        "conflans": "Solère – Sardére",
+        "insee": "73287",
+        "departement": "73"
+      }
+    ],
+    "SPARON": [
+      {
+        "nom_savoyard": "Sparon",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Sparone",
+        "istat": "1224"
+      }
+    ],
+    "SUSE": [
+      {
+        "nom_savoyard": "Souiza",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "Siusa",
+        "nom_italien": "Susa",
+        "istat": "1229"
+      }
+    ],
+    "TALLOIRES": [
+      {
+        "nom_savoyard": "Talouères",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Talòryes",
+        "conflans": "Talwère",
+        "insee": "74275",
+        "departement": "74"
+      }
+    ],
+    "TANINGES": [
+      {
+        "nom_savoyard": "Taninges",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tanyinjo",
+        "conflans": "Tanyinzhe",
+        "insee": "74276",
+        "departement": "74"
+      }
+    ],
+    "TERMIGNON": [
+      {
+        "nom_savoyard": "Tramegnon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tramìnyon",
+        "conflans": "Tramyoun",
+        "insee": "73290",
+        "departement": "73"
+      }
+    ],
+    "THENESOL": [
+      {
+        "nom_savoyard": "Tenasiô",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tenasiô",
+        "conflans": "Tnajeu",
+        "insee": "73292",
+        "departement": "73"
+      }
+    ],
+    "THOLLON-LES-MEMISES": [
+      {
+        "nom_savoyard": "Tolon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tolon",
+        "conflans": "Tolon",
+        "insee": "74279",
+        "departement": "74"
+      }
+    ],
+    "THONES": [
+      {
+        "nom_savoyard": "Tôno",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tônos",
+        "conflans": "Touno",
+        "insee": "74280",
+        "departement": "74"
+      }
+    ],
+    "THONON-LES-BAINS": [
+      {
+        "nom_savoyard": "Tonon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tonon",
+        "conflans": "Tonon",
+        "insee": "74281",
+        "departement": "74"
+      }
+    ],
+    "THORENS-GLIERES": [
+      {
+        "nom_savoyard": "Torins",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Torins",
+        "conflans": "Torin",
+        "insee": "74282",
+        "departement": "74"
+      }
+    ],
+    "TIGNES": [
+      {
+        "nom_savoyard": "Tignes",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tinyes",
+        "conflans": "Tinye",
+        "insee": "73296",
+        "departement": "73"
+      }
+    ],
+    "TORGNON": [
+      {
+        "nom_savoyard": "Tôrgnon",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Tornyon",
+        "istat": "007067"
+      }
+    ],
+    "TOURNON": [
+      {
+        "nom_savoyard": "Tournon",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Tornon",
+        "conflans": "Tornon",
+        "insee": "73297",
+        "departement": "73"
+      }
+    ],
+    "TRAVES": [
+      {
+        "nom_savoyard": "Tràves",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Traves",
+        "istat": "1239"
+      }
+    ],
+    "UGINE": [
+      {
+        "nom_savoyard": "Ugena",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Ugina",
+        "conflans": "Uznâ",
+        "insee": "73303",
+        "departement": "73"
+      }
+    ],
+    "USSEL": [
+      {
+        "nom_savoyard": "Usei",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Usseglio",
+        "istat": "1245"
+      }
+    ],
+    "VAL-D'ISERE": [
+      {
+        "nom_savoyard": "Lavâl",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "La Vâl",
+        "conflans": "La Vâl",
+        "insee": "73304",
+        "departement": "73"
+      }
+    ],
+    "VALGRISENCHE": [
+      {
+        "nom_savoyard": "Vâlgrisenche",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Vâl Grisenche",
+        "istat": "007068"
+      }
+    ],
+    "VALJOIE": [
+      {
+        "nom_savoyard": "Voudjiň",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Valgioie",
+        "istat": "1255"
+      }
+    ],
+    "VALLOIRE": [
+      {
+        "nom_savoyard": "Varruère",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Valòrye",
+        "conflans": "Varwère",
+        "insee": "73306",
+        "departement": "73"
+      }
+    ],
+    "VALMEINIER": [
+      {
+        "nom_savoyard": "Varmeniér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Varmenyél",
+        "conflans": "Vèrmenyeul",
+        "insee": "73307",
+        "departement": "73"
+      }
+    ],
+    "VALPELLINE": [
+      {
+        "nom_savoyard": "Vâl Plana ?",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Vâl Pelina",
+        "istat": "007069"
+      }
+    ],
+    "VALPRÉ": [
+      {
+        "nom_savoyard": "Vâlprà",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "Vâl Prât",
+        "nom_italien": "Valprato Soana",
+        "istat": "1256"
+      }
+    ],
+    "VALSAVARENCHE": [
+      {
+        "nom_savoyard": "Vâlsavarenche",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Vâl Savarenche",
+        "istat": "007070"
+      }
+    ],
+    "VALTOURNENCHE": [
+      {
+        "nom_savoyard": "Vâltornenche",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Vâl Tornenche",
+        "istat": "007071"
+      }
+    ],
+    "VERRAYES": [
+      {
+        "nom_savoyard": "Vèrreyes",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Verreyes",
+        "istat": "007072"
+      }
+    ],
+    "VERRENS-ARVEY": [
+      {
+        "nom_savoyard": "Vèrrens",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Vèrrens",
+        "conflans": "Varê",
+        "insee": "73312",
+        "departement": "73"
+      }
+    ],
+    "VERRÈS": [
+      {
+        "nom_savoyard": "Vèrrés",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Vèrrés",
+        "istat": "007073"
+      }
+    ],
+    "VIEU": [
+      {
+        "nom_savoyard": "Vjy",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Viù",
+        "istat": "1276"
+      }
+    ],
+    "VILLARD": [
+      {
+        "nom_savoyard": "Lo Velârd",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Lo Vilâr",
+        "conflans": "Le Vlyâr",
+        "insee": "74301",
+        "departement": "74"
+      }
+    ],
+    "VILLARD FOUCHARD": [
+      {
+        "nom_savoyard": "Vilar Fuciard",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Villar Focchiardo",
+        "istat": "1270"
+      }
+    ],
+    "VILLARD-LEGER": [
+      {
+        "nom_savoyard": "Velârd Legiér",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Vilârd Lèrgér",
+        "conflans": "Vlâr Lezhé",
+        "insee": "73315",
+        "departement": "73"
+      }
+    ],
+    "VILLAREMBERT": [
+      {
+        "nom_savoyard": "Velârd Rembert",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Vilâr Rèmbèrt",
+        "conflans": "Vla Rimbèrte",
+        "insee": "73318",
+        "departement": "73"
+      }
+    ],
+    "VILLARGONDRAN": [
+      {
+        "nom_savoyard": "Velârd Gondran",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Vilârd Gondrèn",
+        "conflans": "Vlâ Gondrène",
+        "insee": "73320",
+        "departement": "73"
+      }
+    ],
+    "VILLENEUVE": [
+      {
+        "nom_savoyard": "Velanôva",
+        "colonne": "M · Nom ORB",
+        "feuille": "VdA",
+        "orc": "Vìla Nova",
+        "istat": "007074"
+      }
+    ],
+    "VIVIERS-DU-LAC": [
+      {
+        "nom_savoyard": "Les Viviérs",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Le Vivér",
+        "conflans": "Le Vevyê",
+        "insee": "73328",
+        "departement": "73"
+      }
+    ],
+    "VÉNAUS": [
+      {
+        "nom_savoyard": "Veno",
+        "colonne": "M · Arpitan (grafia locâla)",
+        "feuille": "Pie",
+        "orb_colonne_K": "",
+        "nom_italien": "Venaus",
+        "istat": "1267"
+      }
+    ],
+    "YVOIRE": [
+      {
+        "nom_savoyard": "Ivêre",
+        "colonne": "M · Nom ORB (Stich)",
+        "feuille": "Sav",
+        "orc": "Ivêre",
+        "conflans": "Évère",
+        "insee": "74315",
+        "departement": "74"
+      }
+    ]
+  }
+}
