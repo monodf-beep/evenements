@@ -440,3 +440,67 @@ details.pli > summary:hover { background: var(--line-2); border-radius: .5rem; }
 details.pli > .pli-corps { padding: 0 .75rem .7rem; }
 details.pli > summary .pli-resume { margin-left: auto; font-weight: 400; font-size: .78rem;
                                     color: #64748b; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NAVIGATION — refonte du 2026-09-22 (Franck : « rends le back-office le plus
+   simple possible »). Trois écrans épinglés, le reste replié, et une palette
+   « Aller à… » qui rend la longueur du menu indifférente.
+   Le parti pris est celui d'un TABLEAU DE BORD D'INSTRUMENT : rien de décoratif,
+   de la densité maîtrisée, et une hiérarchie qui se lit sans lire.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Lien d'évitement : la première chose qu'attend une navigation au clavier. */
+.skip { position:absolute; left:-9999px; top:0; z-index:200; background:var(--brand);
+  color:#fff; padding:.6rem 1rem; border-radius:0 0 var(--radius) 0; font-weight:600; }
+.skip:focus { left:0; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+
+/* Bouton « Aller à… » — masqué sans JS (il n'irait nulle part), révélé par app.js. */
+.nav-go { display:none; }
+.js .nav-go { display:flex; align-items:center; gap:.45rem; width:100%; margin:.5rem 0 .2rem;
+  padding:.45rem .7rem; border:1px solid rgba(255,255,255,.14); border-radius:8px;
+  background:rgba(255,255,255,.05); color:#9aa7b8; font:inherit; font-size:.84rem;
+  cursor:pointer; text-align:left; transition:background .12s, color .12s; }
+.js .nav-go:hover { background:rgba(255,255,255,.1); color:#fff; }
+.nav-go kbd { margin-left:auto; font:inherit; font-size:.7rem; padding:.05rem .3rem;
+  border:1px solid rgba(255,255,255,.18); border-radius:4px; color:#7f8b9c; }
+
+/* Les trois épinglées : plus hautes, plus lisibles, séparées du reste. */
+.nav a.nav-main { padding:.6rem .7rem; font-weight:600; }
+.nav a.nav-main + details { margin-top:.5rem; }
+.nav .nav-ico { width:1.25rem; flex:0 0 1.25rem; text-align:center; }
+.nav .nav-lib { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.nav details { margin-top:.1rem; }
+.nav details > a { padding-left:1.35rem; }
+
+/* ---- Palette « Aller à… » ---- */
+.palette[hidden] { display:none; }
+.palette { position:fixed; inset:0; z-index:150; display:flex; justify-content:center;
+  align-items:flex-start; padding:10vh 1rem 1rem; }
+.palette-voile { position:absolute; inset:0; background:rgba(15,36,64,.55);
+  backdrop-filter:blur(2px); }
+.palette-boite { position:relative; width:min(38rem,100%); max-height:74vh; display:flex;
+  flex-direction:column; background:var(--surface); border-radius:var(--radius-lg);
+  box-shadow:0 18px 50px rgba(15,36,64,.35); overflow:hidden; }
+.palette-q { border:0; border-bottom:1px solid var(--line); padding:.9rem 1.1rem;
+  font:inherit; font-size:1.02rem; color:var(--ink); background:var(--surface-2); }
+.palette-q:focus { outline:none; border-bottom-color:var(--brand); }
+.palette-liste { list-style:none; margin:0; padding:.3rem; overflow:auto; }
+.palette-liste li[hidden] { display:none; }
+.palette-liste a { display:flex; align-items:center; gap:.7rem; padding:.5rem .7rem;
+  border-radius:var(--radius-sm); color:var(--ink); text-decoration:none; }
+.palette-liste li.sel a, .palette-liste a:hover { background:var(--brand-soft); }
+.palette-liste li.sel a { box-shadow:inset 3px 0 0 var(--brand); }
+.palette-ico { width:1.4rem; flex:0 0 1.4rem; text-align:center; font-size:1.05rem; }
+.palette-txt { display:flex; flex-direction:column; min-width:0; }
+.palette-txt b { font-size:.92rem; font-weight:600; }
+.palette-txt small { color:var(--muted); font-size:.78rem; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.palette-grp { margin-left:auto; flex:0 0 auto; font-size:.68rem; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--muted); padding-left:.6rem; }
+.palette-vide { padding:1.2rem; text-align:center; color:var(--muted); margin:0; }
+
+@media (prefers-reduced-motion:reduce) {
+  .js .nav-go, .nav details summary .chev { transition:none; }
+}

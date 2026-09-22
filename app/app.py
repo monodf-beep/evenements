@@ -42,6 +42,7 @@ from utils import images as images_mod
 from utils import completeness as comp
 from utils import triage as triage_mod
 from utils import tableur as tableur_mod
+from utils import menu as menu_mod
 from utils import checks as checks_mod
 from utils import organizers
 from utils import semaine as semaine_mod
@@ -430,7 +431,13 @@ def journal_lancements(limite: int = 12) -> dict:
 
 @app.context_processor
 def inject_globals():
-    """Compteurs de navigation + alerte, disponibles dans TOUTES les pages (base.html)."""
+    """Compteurs de navigation + carte du menu, disponibles dans TOUTES les pages.
+
+    La CARTE vient de `utils.menu`, seul endroit qui sache quelles pages existent et où
+    elles vivent — `tests/test_menu.py` la confronte aux routes réelles. Le gabarit ne
+    tient donc plus sa propre liste : c'est ce qui laissait « Coûts par date » au menu
+    des semaines après que la page eut été fusionnée dans « État du système ».
+    """
     pending = validate = tocomplete = 0
     try:
         conn = get_db()
@@ -502,6 +509,7 @@ def inject_globals():
     return {"nav": {"pending": pending, "validate": validate,
                     "tocomplete": tocomplete, "regie": regie, "verifier": verifier,
                     "audit": audit, "seo": seo},
+            "menu": menu_mod,
             "nav_alert": friendly_alert(),
             # La cloche : les derniers lancements manuels, repliés hors du tableau de bord.
             # Calculée ici pour être disponible sur TOUTES les pages — un échec survenu

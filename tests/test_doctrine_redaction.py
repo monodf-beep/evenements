@@ -248,9 +248,11 @@ html = r.data.decode("utf-8")
 verifier("elle donne l'adresse à jeton, prête à coller",
          "/doctrine.txt?token=jeton-de-fixture-0123456789" in html)
 verifier("elle montre le texte exact servi à l'agent", "hauteur de lecteur" in html)
-verifier("le lien de nav existe dans base.html",
-         '/doctrine"' in (ROOT / "app" / "templates" / "base.html").read_text(
-             encoding="utf-8"))
+# Depuis la refonte du 22/09 le menu est rendu depuis `utils.menu`, plus écrit en dur
+# dans base.html : c'est la carte qui fait foi, et test_menu.py la confronte aux routes.
+from utils import menu as _menu  # noqa: E402
+verifier("la page Doctrine figure à la carte du menu",
+         "/doctrine" in {p["url"] for p in _menu.PAGES})
 
 # Vault démonté ET session valide : la page prévient, la route rend 503
 os.environ["OBSIDIAN_VOIX_PATH"] = str(VAULT / "vault-demonte.md")
