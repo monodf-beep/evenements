@@ -66,10 +66,13 @@ function get_the_post_thumbnail_url($p, $t) { return 'https://exemple.test/i.web
 class WP_Query {
     public $posts = array();
     public function __construct($args) {
-        $etiq = $args['tax_query'][0]['terms'];
+        // `terms` est une LISTE de slugs depuis le 22/09 (Polylang suffixe le terme
+        // italien) : le harnais doit la lire comme telle, sinon il teste autre chose
+        // que ce que le site exécute.
+        $etiq = (array) $args['tax_query'][0]['terms'];
         $borne = $args['meta_query']['fin']['value'];
         foreach ($GLOBALS['cs_f'] as $i => $f) {
-            if ($f['etiq'] !== $etiq) { continue; }
+            if (!in_array($f['etiq'], $etiq, true)) { continue; }
             if ($f['lang'] !== $GLOBALS['cs_lang']) { continue; }
             if ($f['fin'] < $borne) { continue; }
             $o = new stdClass(); $o->ID = $i; $this->posts[] = $o;
@@ -210,6 +213,29 @@ def main():
         echec("après l'édition : le commentaire doit le dire")
     else:
         print("  ok  contre-épreuve : fenêtre close, « L'édition est passée »")
+
+    # --- 5. PLUSIEURS SLUGS POUR UNE MÊME ÉTIQUETTE --------------------------
+    # Mesuré en ligne le 22/09 : Polylang a créé le terme italien avec un suffixe
+    # `-it`, et la page italienne affichait ZÉRO fiche pendant que la française en
+    # montrait vingt-trois. Le raccourci accepte donc une liste.
+    suff = [f("giornate-europee-del-patrimonio-it", "2026-09-26", "2026-09-26",
+              "Musei Reali di sera", lang="it")]
+    deux = {"etiquette": "giornate-europee-del-patrimonio, giornate-europee-del-patrimonio-it",
+            "vide": "", "total": "%d"}
+    h2 = rendre(suff, "it", deux, tmp)
+    if "cs-ml__carte" not in h2:
+        echec("deux slugs : la fiche portant le slug suffixé doit être trouvée")
+    else:
+        print("  ok  deux slugs déclarés : la fiche au slug suffixé est trouvée")
+
+    # CONTRE-ÉPREUVE : avec le SEUL slug non suffixé, elle ne doit PAS l'être — sans
+    # ça, le volet ci-dessus passerait même si le filtre ne filtrait rien.
+    un = dict(deux); un["etiquette"] = "giornate-europee-del-patrimonio"
+    h3 = rendre(suff, "it", un, tmp)
+    if "cs-ml__carte" in h3:
+        echec("contre-épreuve : avec le seul slug non suffixé, rien ne doit sortir")
+    else:
+        print("  ok  contre-épreuve : un seul slug déclaré, la fiche suffixée est ignorée")
 
     shutil.rmtree(tmp, ignore_errors=True)
 

@@ -145,8 +145,15 @@ function cs_moments_forts() {
             // mesuré le 22/09, six paires `-it` existent déjà en ligne (bard / bard-it,
             // conference / conference-it). Un libellé français envoyé à une fiche italienne
             // aurait fabriqué un terme suffixé, introuvable ici.
-            'etiquette'  => array('fr' => 'journees-europeennes-du-patrimoine',
-                                  'it' => 'giornate-europee-del-patrimonio'),
+            // PLUSIEURS SLUGS PAR LANGUE, et ce n'est pas de la prudence gratuite.
+            // Mesuré en ligne le 22/09, après la première pose des étiquettes : Polylang
+            // a créé le terme italien avec un suffixe `-it` (`giornate-europee-del-
+            // patrimonio-it`) BIEN QUE le libellé italien soit distinct du français. Le
+            // suffixe est sa manière de séparer deux termes de langues différentes ; on
+            // ne peut pas le prédire, on peut seulement accepter les deux formes.
+            'etiquette'  => array('fr' => array('journees-europeennes-du-patrimoine'),
+                                  'it' => array('giornate-europee-del-patrimonio',
+                                                'giornate-europee-del-patrimonio-it')),
             'affiche_du' => '2026-09-22',
             'affiche_au' => '2026-09-27',
             'couleur'    => 'bleu',
@@ -301,11 +308,12 @@ function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
         )),
         'orderby'             => array('debut' => 'ASC'),
     );
-    $etiq = '';
+    $etiq = array();
     if (!empty($moment['etiquette'])) {
-        $etiq = is_array($moment['etiquette'])
+        $e = is_array($moment['etiquette'])
             ? (isset($moment['etiquette'][$lang]) ? $moment['etiquette'][$lang] : '')
             : $moment['etiquette'];
+        $etiq = array_filter((array) $e);
     }
     if ($etiq) {
         $args['tax_query']['relation'] = 'AND';

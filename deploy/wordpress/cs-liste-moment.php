@@ -50,7 +50,12 @@ if (!function_exists('cs_moment_liste_fiches')) {
  * deux jours ça ne change rien ; pour Noël ou un festival d'été, si.
  */
 function cs_moment_liste_fiches($etiquette, $lang, $max = 60) {
-    $cle = 'cs_ml_' . md5($etiquette . '|' . $lang);
+    // `etiquette` peut nommer PLUSIEURS slugs, séparés par des virgules. Mesuré en
+    // ligne le 22/09 : Polylang crée le terme italien avec un suffixe `-it` même quand
+    // le libellé italien est distinct du français. On ne prédit pas le suffixe, on
+    // accepte les deux formes.
+    $slugs = array_values(array_filter(array_map('trim', explode(',', (string) $etiquette))));
+    $cle = 'cs_ml_' . md5(implode('|', $slugs) . '|' . $lang);
     $cache = get_transient($cle);
     if (is_array($cache)) { return $cache; }
 
@@ -61,7 +66,7 @@ function cs_moment_liste_fiches($etiquette, $lang, $max = 60) {
         'ignore_sticky_posts' => true,
         'lang'                => $lang,
         'tax_query'           => array(array(
-            'taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => $etiquette,
+            'taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => $slugs,
         )),
         'meta_query'          => array('fin' => array(
             'key'     => '_EventEndDate',
