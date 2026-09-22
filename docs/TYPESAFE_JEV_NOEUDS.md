@@ -1,5 +1,10 @@
 # Jev, nœud par nœud — et la question de la complétion
 
+> ⛔ **REMPLACÉ par `docs/TYPESAFE_JEV_CHAINE.md`** (22/09, même jour). Ce passage-ci
+> cherchait ce que Jev pouvait REMPLACER ; la bonne question est ce qu'on ne fait PAS
+> faute de pouvoir se le payer. Conservé pour ce qu'il dit du dépôt, pas pour ses
+> verdicts.
+>
 > ⚠️ **À lire avec le verdict en deux temps de `docs/TYPESAFE_JEV.md`.** Comme
 > SUBSTITUTION à la facture, non : 91 % est hors de portée par construction. Mais la
 > substitution n'était pas la question — c'est la MOISSON qui est le sujet, et ce

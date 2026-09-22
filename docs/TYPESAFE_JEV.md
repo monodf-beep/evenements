@@ -343,8 +343,10 @@ conventions d'appel à la main.
 
 ---
 
-**Suite de ce rapport** : `docs/TYPESAFE_JEV_NOEUDS.md` passe la chaîne nœud par nœud et
-traite la question de la **complétion** — c'est là qu'est le gain le plus net.
+**Suite de ce rapport** : `docs/TYPESAFE_JEV_CHAINE.md` passe TOUTE la chaîne nœud par
+nœud sur le bon axe — ce qu'on ne fait pas faute de pouvoir se le payer — et répond aux
+trois questions de Franck : le panel de personas, les informations manquantes du site, et
+le score d'une home. (`docs/TYPESAFE_JEV_NOEUDS.md` est son brouillon, remplacé.)
 
 ## Sources
 
