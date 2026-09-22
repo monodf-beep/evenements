@@ -282,18 +282,6 @@ function cs_mf_volet_du_territoire($moment, $terr_canon, $lang) {
 /* -------------------------------------------------------------------------
  * 3. LES DONNÉES — les fiches de la période, par volet.
  * ---------------------------------------------------------------------- */
-if (!function_exists('cs_mf_cle_evenements')) {
-/**
- * La clé du transient des fiches d'un volet. UNE définition, lue par
- * `cs_mf_evenements` qui l'écrit et par `cs_mf_cles_cache` qui la vide : deux copies
- * du même format finiraient par diverger, et la purge viderait une clé que personne
- * n'écrit (deux détecteurs pour la même chose, ERREURS 2026-09-08).
- */
-function cs_mf_cle_evenements($moment, $terme, $lang) {
-    return 'cs_mf_' . $moment['slug'] . '_' . $terme . '_' . $lang;
-}
-}
-
 if (!function_exists('cs_mf_evenements')) {
 /**
  * Renvoie array('total' => int, 'lignes' => array).
@@ -317,7 +305,7 @@ function cs_mf_evenements($moment, $volet, $lang, $max = 40) {
     $terme = isset($volet['terr'][$lang]) ? $volet['terr'][$lang] : '';
     if (!$terme) { return array('total' => 0, 'lignes' => array()); }
 
-    $cle = cs_mf_cle_evenements($moment, $terme, $lang);
+    $cle = 'cs_mf_' . $moment['slug'] . '_' . $terme . '_' . $lang;
     $cache = get_transient($cle);
     if (is_array($cache)) { return $cache; }
 
@@ -397,30 +385,6 @@ function cs_mf_fleche() {
 }
 }
 
-if (!function_exists('cs_mf_insecable')) {
-/**
- * Texte échappé dont chaque mot composé (« RENDEZ-VOUS », « WEEK-END ») ne se coupe
- * pas sur son trait d'union.
- *
- * Vu sur la maquette de la bande contenue, le 22/09 : dans la colonne étroite de la
- * photo large, le surtitre tombait en « WEEK- / END ». Deux remèdes possibles, et on
- * garde le plus sûr :
- *   - remplacer le trait par un trait d'union insécable (U+2011) change le CARACTÈRE,
- *     et Nunito Sans ne le porte pas forcément : le navigateur irait le chercher dans
- *     une autre police, avec un tiret d'une autre forme, au milieu d'un surtitre ;
- *   - envelopper le mot dans un `white-space:nowrap` garde le caractère d'origine
- *     (copier-coller, recherche, lecteur d'écran inchangés) et laisse la phrase se
- *     couper normalement ENTRE les mots.
- * Rien à faire pour l'italien (« L'appuntamento del fine settimana » n'a pas de trait) :
- * la fonction ne touche qu'aux mots qui en portent un. Et le mot le plus long ainsi
- * protégé, « RENDEZ-VOUS » en 10 px espacé, tient largement dans les 354 px utiles
- * d'un écran de 390.
- */
-function cs_mf_insecable($texte) {
-    return preg_replace('/[^\s-]+(?:-[^\s-]+)+/u', '<span class="cs-mf__insecable">$0</span>', esc_html($texte));
-}
-}
-
 if (!function_exists('cs_mf_bords')) {
 /** Les deux bords arrachés. Remplis de la couleur de la PAGE, pas de la bande. */
 function cs_mf_bords($ou) {
@@ -460,7 +424,7 @@ if (!function_exists('cs_mf_rendu_programme')) {
  */
 function cs_mf_rendu_programme($moment, $volet, $lang, $data) {
     $h  = '<div class="cs-mf__gauche">';
-    $h .= '<span class="cs-mf__kicker">' . cs_mf_insecable($moment['chez_soi']['kicker'][$lang]) . '</span>';
+    $h .= '<span class="cs-mf__kicker">' . esc_html($moment['chez_soi']['kicker'][$lang]) . '</span>';
     $h .= '<h2 class="cs-mf__titre">' . esc_html($volet['titre'][$lang]) . '</h2>';
     $h .= '<p class="cs-mf__chapo">' . esc_html($volet['chapo'][$lang]) . '</p>';
     $h .= '<div class="cs-mf__bas">';
@@ -521,7 +485,7 @@ if (!function_exists('cs_mf_rendu_voisins')) {
  */
 function cs_mf_rendu_voisins($moment, $volets, $lang) {
     $h  = '<div class="cs-mf__gauche">';
-    $h .= '<span class="cs-mf__kicker">' . cs_mf_insecable($moment['ailleurs']['kicker'][$lang]) . '</span>';
+    $h .= '<span class="cs-mf__kicker">' . esc_html($moment['ailleurs']['kicker'][$lang]) . '</span>';
     $h .= '<h2 class="cs-mf__titre">' . esc_html($moment['ailleurs']['titre'][$lang]) . '</h2>';
     $h .= '<p class="cs-mf__chapo">' . esc_html($moment['ailleurs']['chapo'][$lang]) . '</p>';
     $h .= '</div><div class="cs-mf__droite">';
@@ -635,47 +599,34 @@ function cs_mf_css($moment) {
     $v = '';
     foreach ($c as $k => $val) { $v .= '--mf-' . $k . ':' . $val . ';'; }
     return '<style id="cs-moment-fort">
-.cs-mf{' . $v . 'position:relative;margin:34px 0 30px;border-radius:5px;
+.cs-mf{' . $v . 'position:relative;margin:34px 0 30px;width:100vw;margin-left:calc(50% - 50vw);
  background:var(--mf-fond);color:var(--mf-texte);font-family:\'Nunito Sans\',sans-serif;overflow:hidden;isolation:isolate}
-/* LA BANDE TIENT DANS LA COLONNE DE CONTENU, elle ne sort plus en pleine largeur.
-   Demande de Franck, 22/09 au soir : garder les gouttières libres pour de la publicité.
-   Elle faisait 100vw, recentrée par une marge négative ; elle prend désormais la
-   largeur de son parent, soit 950 px mesurés pour une fenêtre de 1280, et ses coins
-   sont arrondis : elle est posée DANS la page, comme les cartes. */
-/* LE CLIP RESTE, car la bande ne causait PAS seule le débordement. Règle posée le
-   22/09 contre un débordement de 8 px (scrollWidth 1273 pour une page de 1265) mis sur
-   le compte du 100vw de la bande. Remesuré le 22/09 au soir avec de vraies barres de
-   défilement, sur la home capturée en ligne :
-     home SANS bande (ni ce CSS ni la section)  1273 pour 1265, la page défile de 8 px ;
-     bande contenue, SANS clip                  1273 pour 1265, défile de 8 px ;
-     bande contenue, AVEC clip                  1265 pour 1265, aucun défilement.
-   Les fautifs sont deux barres DU THÈME, .as-home-desktop__nav et .as-terr-bar, tirées
-   en 100vw par des marges de -165 px : elles vont de -7 à 1273. Retirer le clip avec le
-   100vw aurait donc rendu le défilement horizontal aux jours de bande. Il reste, et il
-   reste insuffisant : posé ici, il ne part que les jours où la bande est rendue, et la
-   home défile de 8 px tous les autres jours. Sa vraie place est le CSS du thème.
-   Pourquoi clip et pas hidden : clip coupe le dépassement sans créer de conteneur de
-   défilement, hidden casserait les éléments collés en haut de page. */
-.as-home-root{overflow-x:clip}
+/* `100vw` compte la gouttière de la barre de défilement (le site force overflow-y:scroll) :
+   la bande dépasse donc de 7,5 px de CHAQUE côté, symétriquement. Mesuré le 22/09 :
+   scrollWidth 375 pour une fenêtre de 390, 1273 pour 1280 — aucun défilement horizontal.
+   Corriger par une variable `calc(100vw - 100%)` posée sur le body NE MARCHE PAS : une
+   propriété personnalisée est substituée telle quelle, donc le 100 % se résout chez
+   l\'enfant, et la bande tombait à 950 px de large au format bureau. */
 /* UNE SEULE BANDE, TOUJOURS. Le marqueur « A LA UNE » figure deux fois dans le contenu
    de la home : une pour le gabarit mobile (.as-home), une pour le gabarit bureau
    (.as-home-desktop). Le thème les rend exclusifs à 900 px (relevé dans le CSS servi le
    22/09 : @media (min-width:900px){.as-home{display:none}.as-home-desktop{display:block}}),
    donc en principe une seule apparaît. Franck en a pourtant vu DEUX. On pose la même
    règle ici, au MÊME point de rupture : si un cache ou une extension neutralise celle
-   du thème, celle-ci tient, et aucune largeur ne se retrouve sans bande. */
+   du thème, celle-ci tient, et aucune largeur ne se retrouve sans bande.
+   LE DÉBORDEMENT, aussi : 100vw compte la gouttière de défilement, donc la bande
+   dépasse de 7,5 px de chaque côté (mesuré : scrollWidth 1273 pour une page de 1265).
+   overflow-x:clip sur le conteneur de la home coupe ce débordement sans créer de
+   conteneur de défilement, contrairement à hidden, qui casserait les éléments collés. */
+.as-home-root{overflow-x:clip}
 @media(min-width:900px){.as-home .cs-mf{display:none}}
 @media(max-width:899px){.as-home-desktop .cs-mf{display:none}}
 .cs-mf *{box-sizing:border-box}
 .cs-mf__bord{position:absolute;left:0;width:100%;height:22px;display:block;z-index:3}
 .cs-mf__bord--haut{top:-1px}
 .cs-mf__bord--bas{bottom:-1px}
-.cs-mf__in{padding:40px 20px 34px;display:grid;grid-template-columns:1fr;gap:26px}
+.cs-mf__in{max-width:1120px;margin:0 auto;padding:40px 20px 34px;display:grid;grid-template-columns:1fr;gap:26px}
 .cs-mf__kicker{display:block;font-size:10px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--mf-accent);margin-bottom:9px}
-/* Un mot composé du surtitre ne se coupe jamais sur son trait : dans la colonne
-   étroite de la photo large, LE RENDEZ-VOUS DU WEEK-END tombait en WEEK- / END (vu sur
-   la maquette contenue du 22/09). Voir cs_mf_insecable. */
-.cs-mf__insecable{white-space:nowrap}
 .cs-mf__titre{font-family:\'La Semplicita\',\'Saira Condensed\',sans-serif;font-weight:600;font-size:26px;line-height:1.03;
  letter-spacing:.01em;color:var(--mf-texte);margin:0 0 11px}
 .cs-mf__chapo{margin:0 0 18px;font-size:14px;line-height:1.55;color:var(--mf-attenue);max-width:44ch}
@@ -736,7 +687,7 @@ function cs_mf_css($moment) {
  .cs-mf--voisins .cs-mf__titre{font-size:32px;max-width:18ch}
  .cs-mf--voisins .cs-mf__droite{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:30px}
  /* photo « épinglée » : un tirage penché à cheval sur le bord haut */
- .cs-mf--photo-epinglee .cs-mf__photo{display:block;position:absolute;right:26px;top:-30px;width:196px;
+ .cs-mf--photo-epinglee .cs-mf__photo{display:block;position:absolute;right:calc(50% - 560px + 4px);top:-30px;width:196px;
   margin:0;z-index:4;transform:rotate(-2.6deg);background:var(--mf-texte);padding:7px 7px 0;border-radius:3px;
   box-shadow:0 10px 24px rgba(0,0,0,.28)}
  .cs-mf--photo-epinglee .cs-mf__photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:2px}
@@ -744,19 +695,16 @@ function cs_mf_css($moment) {
   color:#1D1D1B;padding:5px 2px 6px;text-align:center}
  .cs-mf--photo-epinglee .cs-mf__droite{padding-top:92px}
  .cs-mf--photo-epinglee .cs-mf__in{padding-top:64px}
- /* photo « large » : l\'image tient toute la hauteur, les bords arrachés passent devant.
-    Proportions de la bande CONTENUE (maquette validée par Franck le 22/09, 950 px) :
-    photo 31 %, texte 34 % du reste, titre 29 px sur toute sa colonne. Les anciens
-    27 % et 33 px étaient calculés pour une bande de 1 265 px. */
- .cs-mf--photo-large .cs-mf__in{padding-left:calc(31% + 26px);grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:26px}
- .cs-mf--photo-large .cs-mf__titre{font-size:29px;max-width:none}
+ /* photo « large » : l\'image tient toute la hauteur, les bords arrachés passent devant */
+ .cs-mf--photo-large .cs-mf__in{padding-left:calc(27% + 30px);grid-template-columns:minmax(0,31%) minmax(0,1fr);gap:34px}
+ .cs-mf--photo-large .cs-mf__titre{font-size:33px}
  .cs-mf--photo-large .cs-mf__jour-titre{display:block;font-size:16px}
  .cs-mf--photo-large .cs-mf__jour-titre em{display:block;margin-top:3px}
  .cs-mf--photo-large .cs-mf__quoi{font-size:13px}
  .cs-mf--photo-large .cs-mf__lieu{font-size:10px;letter-spacing:.04em}
  .cs-mf--voisins.cs-mf--photo-large .cs-mf__in{grid-template-columns:minmax(0,36%) minmax(0,1fr)}
 }
-.cs-mf--photo-large .cs-mf__photo{display:block;position:absolute;left:0;top:0;bottom:0;width:31%;margin:0;padding:0;z-index:1}
+.cs-mf--photo-large .cs-mf__photo{display:block;position:absolute;left:0;top:0;bottom:0;width:27%;margin:0;padding:0;z-index:1}
 .cs-mf--photo-large .cs-mf__photo img{width:100%;height:100%;object-fit:cover;display:block}
 .cs-mf--photo-large .cs-mf__photo figcaption{position:absolute;left:0;right:0;bottom:0;padding:26px 14px 12px;
  background:linear-gradient(transparent,var(--mf-fond));color:var(--mf-texte);font-size:9.5px;font-weight:700;
@@ -818,114 +766,3 @@ add_filter('the_content', function ($content) {
     }
     return str_replace('<!-- A LA UNE -->', cs_mf_css($moment) . $strate . '<!-- A LA UNE -->', $content);
 }, 22);
-
-/* -------------------------------------------------------------------------
- * 6. LA PURGE — une fiche qui change vide les caches qui la montrent.
- * ---------------------------------------------------------------------- */
-/*
- * POURQUOI. La strate garde ses fiches une heure en transient, la liste des pages
- * dédiées un quart d'heure. Mesuré le 22/09 au soir : douze fiches du dimanche
- * publiées, la colonne du dimanche est restée à UNE ligne jusqu'à l'expiration du
- * cache. Un cache qui ne sait pas qu'il est périmé montre une bande fausse pendant
- * une heure, justement le week-end où elle compte.
- *
- * QUOI. Toutes les clés CONNUES, sans chercher à savoir laquelle la fiche touche :
- * il y en a huit pour les journées du patrimoine (quatre volets × langues pour la
- * strate, quatre pour les pages dédiées), et une purge de trop coûte une requête de
- * plus au prochain affichage, rien d'autre. Deviner la bonne clé à partir des
- * étiquettes ou du territoire d'une fiche serait une seconde copie de la logique de
- * sélection, qui divergerait un jour de la première.
- *
- * COMMENT. `delete_transient()` clé par clé, jamais une requête `DELETE … LIKE
- * '_transient_cs_mf_%'` : le SQL direct de suppression est interdit dans ce dépôt
- * (CLAUDE.md, « irréversible = jamais »), et `delete_transient` passe aussi par le
- * cache objet quand il y en a un, ce qu'une requête SQL ne ferait pas.
- *
- * QUAND. Les crochets MARQUENT, la purge a lieu UNE fois, en fin de requête
- * (`shutdown`), donc APRÈS la dernière écriture de la requête, quel qu'en soit
- * l'ordre. Une seule publication déclenche plusieurs de ces crochets (save_post,
- * transition_post_status, set_object_terms pour chaque taxonomie) : purger à chacun
- * multiplierait les passes pour rien. Et si, comme on le suppose d'après le code de
- * The Events Calendar (hypothèse, pas vérifiée sur la version en ligne), les dates
- * s'écrivent après `wp_insert_post`, une purge immédiate laisserait une fenêtre où une
- * visite reconstruit le cache sans elles, pour une heure.
- */
-if (!function_exists('cs_mf_cles_cache')) {
-/**
- * Les clés de transient que la strate ET les pages dédiées peuvent avoir écrites,
- * pour tous les moments déclarés, en fr et en it.
- *
- * Côté pages dédiées, la clé vient de `cs_moment_liste_cle` (cs-liste-moment.php),
- * qui trie les slugs : on la reconstruit à partir des étiquettes de la configuration,
- * pour l'ensemble déclaré ET pour chaque slug seul — une page peut n'en citer qu'un.
- * Fichier absent (raccourci non déployé) : pas de liste en cache, rien à vider.
- */
-function cs_mf_cles_cache() {
-    $cles = array();
-    foreach (cs_moments_forts() as $m) {
-        foreach ($m['volets'] as $v) {
-            foreach ((array) $v['terr'] as $lang => $terme) {
-                if ($terme) { $cles[] = cs_mf_cle_evenements($m, $terme, $lang); }
-            }
-        }
-        if (function_exists('cs_moment_liste_cle') && !empty($m['etiquette']) && is_array($m['etiquette'])) {
-            foreach ($m['etiquette'] as $lang => $slugs) {
-                $slugs = array_values(array_filter((array) $slugs));
-                if (!$slugs) { continue; }
-                $cles[] = cs_moment_liste_cle($slugs, $lang);
-                if (count($slugs) > 1) {
-                    foreach ($slugs as $s) { $cles[] = cs_moment_liste_cle(array($s), $lang); }
-                }
-            }
-        }
-    }
-    return array_values(array_unique($cles));
-}
-}
-
-if (!function_exists('cs_mf_purger_caches')) {
-/** Vide toutes les clés connues. Rend le nombre de clés visées (règle 6). */
-function cs_mf_purger_caches() {
-    $cles = cs_mf_cles_cache();
-    foreach ($cles as $cle) { delete_transient($cle); }
-    return count($cles);
-}
-}
-
-if (!function_exists('cs_mf_marquer_purge')) {
-/**
- * Programme la purge en fin de requête si `$post` (objet ou ID) est une fiche
- * d'événement. Tout autre type — page, article, révision, média — ne vide rien :
- * une révision a le type `revision`, donc l'autosauvegarde de l'éditeur ne purge pas.
- */
-function cs_mf_marquer_purge($post) {
-    $type = is_object($post) && isset($post->post_type) ? $post->post_type : get_post_type($post);
-    if ($type !== 'tribe_events') { return false; }
-    static $programmee = false;
-    if (!$programmee) {
-        $programmee = true;
-        add_action('shutdown', 'cs_mf_purger_caches');
-    }
-    return true;
-}
-}
-
-// Enregistrement (création, mise à jour, y compris par l'API REST).
-add_action('save_post', function ($post_id, $post = null) {
-    cs_mf_marquer_purge($post ? $post : $post_id);
-}, 20, 2);
-// Changement de statut : publication, dépublication, corbeille, sortie de corbeille.
-add_action('transition_post_status', function ($nouveau, $ancien, $post) {
-    cs_mf_marquer_purge($post);
-}, 20, 3);
-// Suppression définitive (le post existe encore à ce moment-là).
-add_action('before_delete_post', function ($post_id) {
-    cs_mf_marquer_purge($post_id);
-}, 20, 1);
-// Étiquettes : ce sont elles qui font entrer une fiche dans un moment fort. Le
-// territoire aussi, puisque la strate filtre dessus ; les autres taxonomies ne
-// changent rien à ce qui est montré.
-add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy) {
-    if ($taxonomy !== 'post_tag' && $taxonomy !== 'territoire') { return; }
-    cs_mf_marquer_purge($object_id);
-}, 20, 4);

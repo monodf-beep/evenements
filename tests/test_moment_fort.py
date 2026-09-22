@@ -5,7 +5,7 @@ POURQUOI CETTE FIXTURE EXISTE. La strate est un GABARIT : on y posera Noël, Pâ
 les festivals d'été sans rouvrir le code. Ce qui se règle sans relecture doit donc se
 vérifier tout seul, sinon la première configuration fausse partira en production.
 
-Sept volets, et chacun porte sa CONTRE-ÉPREUVE — un test qui ne cherche qu'à se
+Quatre volets, et chacun porte sa CONTRE-ÉPREUVE — un test qui ne cherche qu'à se
 donner raison ne prouve rien (CLAUDE.md, règle 3) :
 
   1. CONTRASTES. Toute paire fond / couleur de la palette doit passer AA (4,5:1).
@@ -21,13 +21,6 @@ donner raison ne prouve rien (CLAUDE.md, règle 3) :
      qui n'en a qu'UNE reste. Le seuil était à deux, et Franck l'a vu en ligne le
      22/09 : « où est le dimanche ? » — il n'avait qu'une fiche, il disparaissait,
      pendant que le bloc de dates annonçait « 26 & 27 sept. » juste à côté.
-  5. LE SURTITRE ne se coupe pas au trait d'union d'un mot composé. Contre-épreuve :
-     un surtitre sans trait sort intact.
-  6. LA BANDE CONTENUE : plus de 100vw, et le clip de la home maintenu (il couvre
-     aussi deux barres du thème). Contre-épreuve : l'ancien CSS est refusé.
-  7. LA PURGE : une fiche d'événement qui change vide exactement les clés que les
-     lecteurs écrivent. Contre-épreuve : une page, une autre taxonomie, ou une requête
-     pas encore terminée ne vident rien.
 
 Lancer : .venv/bin/python -m tests.test_moment_fort
 """
@@ -131,7 +124,6 @@ function get_transient($k) { return false; }
 function set_transient($k, $v, $t) { return true; }
 function wp_reset_postdata() {}
 function add_filter($a, $b, $c = 10) {}
-function add_action($a, $b, $c = 10, $d = 1) {}
 function is_admin() { return false; }
 function is_page($x) { return true; }
 function pll_current_language() { return $GLOBALS['cs_test_lang']; }
@@ -390,247 +382,6 @@ def test_territoire_canonique():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-def test_surtitre_insecable():
-    """Le surtitre ne se coupe pas sur le trait d'union d'un mot composé.
-
-    Vu sur la maquette de la bande contenue (22/09) : « LE RENDEZ-VOUS DU WEEK-END »
-    tombait en « WEEK- / END » dans la colonne étroite. Le mot composé est enveloppé
-    d'un `white-space:nowrap`. Contre-épreuve : le surtitre italien, qui n'a pas de
-    trait, doit sortir INTACT — une fonction qui envelopperait chaque mot passerait
-    sinon au vert, et la phrase ne pourrait plus se couper du tout.
-    """
-    php = shutil.which("php")
-    if not php:
-        print("php absent : le volet « surtitre » n'est PAS joué (ce n'est pas un succès).")
-        return
-    tmp = Path(tempfile.mkdtemp())
-    shutil.copy(PHP_FILE, tmp / "cs-moment-fort.php")
-    (tmp / "harness.php").write_text(HARNESS, encoding="utf-8")
-    jeu = [fiche("piemont", "2026-09-26 20:00:00", "Lieu %d" % i, "Turin", "Titre %d" % i) for i in range(3)]
-    jeu_it = [fiche("piemonte", "2026-09-26 20:00:00", "Lieu %d" % i, "Torino", "Titolo %d" % i) for i in range(3)]
-
-    html = rendre(jeu, "fr", "piemont", tmp)
-    k = re.search(r'<span class="cs-mf__kicker">(.*?)</span>(?=<h2)', html, re.S)
-    attendu = ('Le <span class="cs-mf__insecable">rendez-vous</span> du '
-               '<span class="cs-mf__insecable">week-end</span>')
-    if not k:
-        echec("surtitre : introuvable dans le rendu fr")
-    elif k.group(1) != attendu:
-        echec("surtitre fr : %r, attendu %r" % (k.group(1), attendu))
-    else:
-        print("  ok  surtitre fr : « rendez-vous » et « week-end » ne se coupent pas")
-    if ".cs-mf__insecable{white-space:nowrap}" not in PHP_FILE.read_text(encoding="utf-8"):
-        echec("surtitre : la règle CSS .cs-mf__insecable{white-space:nowrap} manque")
-
-    # CONTRE-ÉPREUVE : sans trait d'union, rien n'est enveloppé.
-    html_it = rendre(jeu_it, "it", "piemont", tmp)
-    k = re.search(r'<span class="cs-mf__kicker">(.*?)</span>(?=<h2)', html_it, re.S)
-    if not k:
-        echec("surtitre : introuvable dans le rendu it")
-    elif k.group(1) != "L&#039;appuntamento del fine settimana":
-        echec("surtitre it : %r, il devait sortir intact" % k.group(1))
-    else:
-        print("  ok  contre-épreuve : surtitre it sans trait d'union, sorti intact")
-    shutil.rmtree(tmp, ignore_errors=True)
-
-
-def test_bande_contenue():
-    """La bande tient dans la colonne : plus de `100vw` — mais le clip de la home reste.
-
-    Demande de Franck du 22/09 (gouttières libres pour de la publicité). Ce volet ne
-    remplace pas la capture — il empêche seulement le retour silencieux de la pleine
-    largeur. Contre-épreuve : le même contrôle, appliqué à l'ANCIEN CSS, doit le refuser.
-
-    LE CLIP EST EXIGÉ, pas seulement toléré. On a failli le retirer avec le 100vw, sur la
-    foi du commentaire qui l'attribuait à la bande. Mesuré le 22/09 au soir : sans lui,
-    la home défile de 8 px à 1280, bande ou pas — deux barres du thème sont en 100vw.
-    """
-    texte = PHP_FILE.read_text(encoding="utf-8")
-    debut = texte.index("return '<style id=\"cs-moment-fort\">")
-    css = texte[debut:texte.index("</style>';", debut)]
-    # Les commentaires CSS racontent l'histoire du 100vw : on ne contrôle que les règles.
-    regles = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-
-    def refuse(r):
-        return [m for m in ("100vw", "calc(50% - 50vw)") if m in r]
-
-    trouves = refuse(regles)
-    if trouves:
-        echec("bande contenue : le CSS porte encore %s" % ", ".join(trouves))
-    else:
-        print("  ok  bande contenue : ni 100vw, ni marge négative")
-    if ".as-home-root{overflow-x:clip}" not in regles:
-        echec("clip retiré : la home défilerait de 8 px (barres du thème en 100vw)")
-    else:
-        print("  ok  le clip de la home est toujours là (il couvre aussi les barres du thème)")
-    ancien = ".cs-mf{position:relative;width:100vw;margin-left:calc(50% - 50vw)}"
-    if len(refuse(ancien)) != 2:
-        echec("contre-épreuve : le contrôle ne reconnaît pas l'ancien CSS pleine largeur")
-    else:
-        print("  ok  contre-épreuve : l'ancien CSS pleine largeur est bien refusé")
-
-
-PURGE_HARNESS = r"""<?php
-define('ABSPATH', 1);
-define('HOUR_IN_SECONDS', 3600);
-define('MINUTE_IN_SECONDS', 60);
-
-$GLOBALS['h'] = array();          // crochets enregistrés
-$GLOBALS['ecrites'] = array();    // clés que les LECTEURS écrivent
-$GLOBALS['purgees'] = array();    // clés que la purge vide
-$GLOBALS['types'] = array(10 => 'tribe_events', 20 => 'page', 30 => 'post');
-
-function add_action($tag, $cb, $prio = 10, $n = 1) { $GLOBALS['h'][$tag][] = array($cb, $n); }
-function add_filter($tag, $cb, $prio = 10, $n = 1) {}
-function add_shortcode($tag, $cb) {}
-function do_action($tag) {
-    $args = array_slice(func_get_args(), 1);
-    if (empty($GLOBALS['h'][$tag])) { return; }
-    foreach ($GLOBALS['h'][$tag] as $c) { call_user_func_array($c[0], array_slice($args, 0, $c[1])); }
-}
-function get_post_type($p) { $id = is_object($p) ? $p->ID : (int) $p; return isset($GLOBALS['types'][$id]) ? $GLOBALS['types'][$id] : false; }
-function delete_transient($k) { $GLOBALS['purgees'][] = $k; return true; }
-function get_transient($k) { return false; }
-function set_transient($k, $v, $t) { $GLOBALS['ecrites'][] = $k; return true; }
-function current_time($f) { return $f === 'Y-m-d' ? '2026-09-24' : '2026-09-24 10:00:00'; }
-function esc_html($s) { return htmlspecialchars($s, ENT_QUOTES); }
-function wp_reset_postdata() {}
-class WP_Query { public $posts = array(); public function __construct($a) {} }
-function post($id) { $o = new stdClass(); $o->ID = $id; $o->post_type = $GLOBALS['types'][$id]; return $o; }
-function sortie() {
-    echo json_encode(array('ecrites' => array_values(array_unique($GLOBALS['ecrites'])),
-                           'purgees' => $GLOBALS['purgees']));
-}
-
-// Même ordre de chargement que WordPress : les mu-plugins par ordre alphabétique.
-require __DIR__ . '/cs-liste-moment.php';
-require __DIR__ . '/cs-moment-fort.php';
-
-// Les clés RÉELLEMENT écrites par les deux lecteurs, avec le raccourci tel qu'il est
-// écrit dans les pages (et l'italien dans les DEUX ordres : la clé ne doit pas en dépendre).
-foreach (cs_moments_forts() as $m) {
-    foreach ($m['volets'] as $v) { foreach ($v['terr'] as $lang => $t) { cs_mf_evenements($m, $v, $lang); } }
-}
-cs_moment_liste_fiches('journees-europeennes-du-patrimoine', 'fr');
-cs_moment_liste_fiches('giornate-europee-del-patrimonio, giornate-europee-del-patrimonio-it', 'it');
-cs_moment_liste_fiches('giornate-europee-del-patrimonio-it,giornate-europee-del-patrimonio', 'it');
-cs_moment_liste_fiches('giornate-europee-del-patrimonio', 'it');
-
-switch ($argv[1]) {
-    case 'enregistrement':
-        // Plusieurs crochets pour une même fiche : la purge ne doit passer qu'UNE fois.
-        do_action('save_post', 10, post(10), true);
-        do_action('transition_post_status', 'publish', 'publish', post(10));
-        do_action('set_object_terms', 10, array('x'), array(1), 'post_tag', false, array());
-        break;
-    case 'corbeille':   do_action('transition_post_status', 'trash', 'publish', post(10)); break;
-    case 'suppression': do_action('before_delete_post', 10, post(10)); break;
-    case 'etiquettes':  do_action('set_object_terms', 10, array('x'), array(1), 'post_tag', false, array()); break;
-    case 'page':
-        do_action('save_post', 20, post(20), true);
-        do_action('transition_post_status', 'publish', 'draft', post(20));
-        do_action('set_object_terms', 30, array('x'), array(1), 'post_tag', false, array());
-        break;
-    case 'autre_taxo':  do_action('set_object_terms', 10, array('x'), array(1), 'tribe_events_cat', false, array()); break;
-    case 'sans_shutdown':
-        do_action('save_post', 10, post(10), true);
-        sortie();
-        exit;
-}
-do_action('shutdown');
-sortie();
-"""
-
-
-def test_purge():
-    """Une fiche qui change vide les caches de la strate et des pages dédiées.
-
-    Mesuré le 22/09 au soir : douze fiches du dimanche publiées, la colonne du dimanche
-    est restée à une ligne jusqu'à l'expiration du cache (une heure).
-
-    Ce qui est vérifié : les clés VIDÉES sont exactement celles que les deux lecteurs
-    ÉCRIVENT — relevées en appelant les vrais lecteurs, pas recopiées — et elles sont
-    aussi comparées à une liste calculée ici, indépendamment du PHP.
-    Contre-épreuves : une page, un article, une autre taxonomie ne vident RIEN ; et rien
-    n'est vidé avant la fin de la requête.
-    """
-    import hashlib
-    import json
-    php = shutil.which("php")
-    if not php:
-        print("php absent : le volet « purge » n'est PAS joué (ce n'est pas un succès).")
-        return
-    tmp = Path(tempfile.mkdtemp())
-    shutil.copy(PHP_FILE, tmp / "cs-moment-fort.php")
-    shutil.copy(ROOT / "deploy" / "wordpress" / "cs-liste-moment.php", tmp / "cs-liste-moment.php")
-    (tmp / "purge.php").write_text(PURGE_HARNESS, encoding="utf-8")
-
-    def jouer(cas):
-        r = subprocess.run([php, str(tmp / "purge.php"), cas], capture_output=True, text=True)
-        if r.returncode != 0 or not r.stdout.strip().startswith("{"):
-            echec("harnais de purge (%s) : %s" % (cas, (r.stderr or r.stdout)[:400]))
-            return None
-        return json.loads(r.stdout)
-
-    def ml(*slugs_lang):
-        return "cs_ml_" + hashlib.md5("|".join(slugs_lang).encode()).hexdigest()
-
-    # Calculées ICI, sans le PHP : le format des clés tel qu'il doit être.
-    attendues = {
-        "cs_mf_patrimoine_piemont_fr", "cs_mf_patrimoine_piemonte_it",
-        "cs_mf_patrimoine_vallee-d-aoste_fr", "cs_mf_patrimoine_valle-d-aosta_it",
-        ml("journees-europeennes-du-patrimoine", "fr"),
-        ml("giornate-europee-del-patrimonio", "giornate-europee-del-patrimonio-it", "it"),
-        ml("giornate-europee-del-patrimonio", "it"),
-        ml("giornate-europee-del-patrimonio-it", "it"),
-    }
-
-    for cas in ("enregistrement", "corbeille", "suppression", "etiquettes"):
-        r = jouer(cas)
-        if r is None:
-            continue
-        purgees, ecrites = r["purgees"], set(r["ecrites"])
-        oubliees = ecrites - set(purgees)
-        if oubliees:
-            echec("%s : clés écrites par les lecteurs mais PAS vidées : %s" % (cas, sorted(oubliees)))
-        elif set(purgees) != attendues:
-            echec("%s : clés vidées %s, attendues %s" % (cas, sorted(purgees), sorted(attendues)))
-        elif len(purgees) != len(set(purgees)):
-            echec("%s : la purge est passée plusieurs fois (%d suppressions pour %d clés)"
-                  % (cas, len(purgees), len(set(purgees))))
-        else:
-            print("  ok  %-14s : %d clés vidées, dont les %d écrites par les lecteurs"
-                  % (cas, len(purgees), len(ecrites)))
-
-    # La clé de la liste italienne ne dépend pas de l'ordre des slugs dans la page :
-    # les deux ordres doivent avoir écrit la MÊME clé (une seule, pas deux).
-    r = jouer("enregistrement")
-    if r is not None:
-        trie = ml("giornate-europee-del-patrimonio", "giornate-europee-del-patrimonio-it", "it")
-        inverse = ml("giornate-europee-del-patrimonio-it", "giornate-europee-del-patrimonio", "it")
-        vues = [k for k in r["ecrites"] if k in (trie, inverse)]
-        if vues != [trie]:
-            echec("clé de liste : les deux ordres de slugs donnent %s, attendu la seule clé triée" % vues)
-        else:
-            print("  ok  clé de liste : les deux ordres de slugs donnent la même clé")
-
-    # CONTRE-ÉPREUVES : rien ne doit être vidé.
-    for cas, pourquoi in (("page", "une page et un article enregistrés"),
-                          ("autre_taxo", "une fiche dont seule la catégorie change"),
-                          ("sans_shutdown", "une fiche enregistrée, AVANT la fin de la requête")):
-        r = jouer(cas)
-        if r is None:
-            continue
-        if r["purgees"]:
-            echec("contre-épreuve (%s) : %d clé(s) vidée(s), il n'en fallait aucune"
-                  % (pourquoi, len(r["purgees"])))
-        elif not r["ecrites"]:
-            echec("contre-épreuve (%s) : les lecteurs n'ont rien écrit, le test ne prouve rien" % pourquoi)
-        else:
-            print("  ok  contre-épreuve : %s => rien de vidé" % pourquoi)
-    shutil.rmtree(tmp, ignore_errors=True)
-
-
 if __name__ == "__main__":
     print("— contrastes de la palette")
     test_contrastes()
@@ -638,11 +389,5 @@ if __name__ == "__main__":
     test_rendu()
     print("— territoire canonique")
     test_territoire_canonique()
-    print("— surtitre insécable")
-    test_surtitre_insecable()
-    print("— bande contenue dans la colonne")
-    test_bande_contenue()
-    print("— purge des caches")
-    test_purge()
     print(("%d echec(s)" % echecs) if echecs else "tout est vert")
     sys.exit(1 if echecs else 0)
