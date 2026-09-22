@@ -212,7 +212,7 @@ Gabarit **déterministe, gratuit, bilingue FR/IT**, sans invention (que des cham
 - accroche (`seo_answer` → titre), **📅 date** (`format_date` gère « jusqu'au … » pour un long événement déjà en cours), **📍 lieu · @organisateur** (handle **seulement s'il est confirmé** à la main, `utils/organizers`), CTA, **3 hashtags ciblés** (ville/catégorie/territoire prioritaires sur marque/mot large) ;
 - **crédit image** (`image_credit_line`) ajouté en fin **seulement** pour une source licenciable (`og`/`page`/`commons`/`europeana`/`web`) — **jamais** pour une bannière maison.
 
-Un second mode **`caption_ai()`** réécrit la légende via LLM (voix `utils.voix` + ton Enrico Nos Alpes + anti-signes-IA). **Appel PAYANT, à la demande** (bouton `/reseaux/rewrite`), mis en cache dans `social_caption_<lang>`. Une réécriture auto plafonnée existe (`_auto_rewrite_captions`) si le réglage `social_caption_auto` est activé.
+Un second mode **`caption_ai()`** réécrit la légende via LLM (voix `utils.voix` + ton de référence + anti-signes-IA). **Appel PAYANT, à la demande** (bouton `/reseaux/rewrite`), mis en cache dans `social_caption_<lang>`. Une réécriture auto plafonnée existe (`_auto_rewrite_captions`) si le réglage `social_caption_auto` est activé.
 
 ### 4.4 Cross-post et mode manuel
 

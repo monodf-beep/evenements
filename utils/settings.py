@@ -7,7 +7,7 @@ Boutons, avec conséquences expliquées côté UI :
                 | « auto »  (le SCORE décide : ≥7 → long, sinon court — RECOMMANDÉ)
                 | « court » (force l'article concis, sans recherche web — Agenda Sabauda)
                 | « long »  (force l'article complet + recherche web — Cultura Sabauda, cher)
-  • social_caption_auto  : réécriture LLM des légendes réseaux (voix Enrico) — off par
+  • social_caption_auto  : réécriture LLM des légendes réseaux (voix de référence) — off par
     défaut (bouton manuel « 🪄 Réécrire » dans /reseaux). Si ON, /reseaux réécrit tout
     seul les meilleurs événements de chaque territoire n'ayant pas encore de légende
     IA, plafonné à social_caption_limit PAR TERRITOIRE PAR LANGUE — jamais 100
