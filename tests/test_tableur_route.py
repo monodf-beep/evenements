@@ -117,6 +117,28 @@ verifier("le mode saisie répond", saisie.status_code == 200, str(saisie.status_
 verifier("et il poste sur /complete, la route de saisie qui existait déjà",
          'action="/complete/' in saisie.get_data(as_text=True))
 
+# --- Le bandeau « où ça pêche » et le filtre qu'il pose -----------------------------
+verifier("le bandeau annonce combien de fiches ont un trou", "Où ça pêche" in h)
+verifier("et il propose au moins un chiffre cliquable", 'class="tb-chip' in h)
+verifier("le chiffre mène au filtre « il manque ce champ »", "&vide=" in h)
+
+import re as _re
+taux_avant = _re.findall(r"\((\d+)/(\d+)\)", h)
+filtre = client.get("/tableur?vide=url_image")
+verifier("le filtre « il manque l'image » répond", filtre.status_code == 200,
+         str(filtre.status_code))
+hf = filtre.get_data(as_text=True)
+verifier("il ne montre QUE les fiches sans image",
+         "Concert au château" not in hf and "Expo sans lieu" in hf)
+verifier("et il dit sur quoi il filtre", "enlever ce filtre" in hf)
+# LE PIÈGE : calculé sur les lignes déjà filtrées, le taux de cette colonne tomberait à
+# 0 % et le bandeau ne dirait plus rien. Il doit rester celui du périmètre entier.
+verifier("les pourcentages NE BOUGENT PAS quand on clique un chiffre",
+         _re.findall(r"\((\d+)/(\d+)\)", hf) == taux_avant,
+         "le diagnostic se recalcule sur sa propre sélection")
+verifier("un champ inconnu dans « vide » est ignoré, sans planter",
+         client.get("/tableur?vide=nimportequoi").status_code == 200)
+
 csv_ = client.get("/tableur.csv")
 verifier("le CSV répond 200", csv_.status_code == 200, str(csv_.status_code))
 txt = csv_.get_data(as_text=True)
@@ -129,6 +151,9 @@ verifier("il est proposé en téléchargement",
          "attachment" in csv_.headers.get("Content-Disposition", ""))
 verifier("il montre EXACTEMENT la même sélection que la page",
          "Fête passée" not in txt, "l'export déborde du périmètre de la page")
+csv_filtre = client.get("/tableur.csv?vide=url_image").get_data(as_text=True)
+verifier("et l'export suit aussi le filtre « il manque ce champ »",
+         "Concert au château" not in csv_filtre and "Expo sans lieu" in csv_filtre)
 
 # La saisie écrit-elle, et n'efface-t-elle rien ?
 r = client.post("/complete/2", data={"lieu": "Musée des Beaux-Arts", "next": "/tableur"})

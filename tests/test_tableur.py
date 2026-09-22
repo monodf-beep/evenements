@@ -147,6 +147,38 @@ verifier("et son absence aussi", tab.affiche(ORDINAIRE, "multi_lieux") == "")
 verifier("l'export d'un vide est une chaîne vide, pas « None »",
          tab.exporte(TROUEE, "ville") == "")
 
+# --- « Où ça pêche » : le classement désigne-t-il le bon tas ? ----------------------
+# Trois colonnes fabriquées pour opposer les deux classements possibles. « rare » est la
+# plus vide en POURCENTAGE (0 % sur 1 cas), « gros » est le plus gros TAS (40 manques).
+FAUX_TAUX = {
+    "gros":   (60, 100),   # 40 manques, 60 % rempli
+    "moyen":  (80, 100),   # 20 manques, 80 % rempli
+    "rare":   (0, 1),      #  1 manque,   0 % rempli  ← piège du classement par %
+    "plein":  (100, 100),  #  0 manque
+    "aucun":  (0, 0),      # aucun cas présenté
+}
+classement = tab.ou_ca_peche(FAUX_TAUX)
+noms_peche = [c for c, _, _, _ in classement]
+verifier("le plus gros tas vient en tête, pas la colonne à 0 %",
+         noms_peche[0] == "gros", str(noms_peche))
+verifier("« rare » figure quand même, mais en dernier",
+         noms_peche[-1] == "rare", str(noms_peche))
+verifier("une colonne PLEINE n'est pas signalée", "plein" not in noms_peche, str(noms_peche))
+verifier("une colonne sans aucun cas présenté non plus — le zéro muet",
+         "aucun" not in noms_peche, str(noms_peche))
+verifier("le chiffre rendu est le nombre de MANQUES",
+         classement[0][1] == 40, str(classement[0]))
+verifier("et il porte son dénominateur", classement[0][2] == 100, str(classement[0]))
+verifier("on n'en rend que quelques-uns", len(tab.ou_ca_peche(FAUX_TAUX, combien=2)) == 2)
+verifier("aucun manque nulle part → liste vide, pas une alerte creuse",
+         tab.ou_ca_peche({"a": (5, 5)}) == [])
+
+# --- Fiches trouées -----------------------------------------------------------------
+verifier("deux fiches sur quatre ont au moins un trou (lieu/ville, et l'image)",
+         tab.fiches_trouees(TOUTES, COLS) == 2, str(tab.fiches_trouees(TOUTES, COLS)))
+verifier("aucune colonne demandée → aucune fiche trouée",
+         tab.fiches_trouees(TOUTES, []) == 0)
+
 # --- Source unique des champs modifiables ------------------------------------------
 verifier("les champs modifiables sont tous au catalogue",
          set(tab.EDITABLES) <= {c for c, _, _ in tab.CATALOGUE},

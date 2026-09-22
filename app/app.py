@@ -3450,6 +3450,7 @@ def _tableur_selection():
     statut = request.args.get("statut", "actifs")
     territoire = request.args.get("territoire", "")
     q = request.args.get("q", "").strip()
+    vide = request.args.get("vide", "")
     vivant = request.args.get("vivant", "1") != "0"
     tri = request.args.get("tri", "date")
     preset = request.args.get("preset", "")
@@ -3526,8 +3527,16 @@ def _tableur_selection():
         jeu=jeu_nom, statut=statut, territoire=territoire, q=q, vivant=vivant, tri=tri,
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel, total=total,
         tronque=total > _TABLEUR_PLAFOND, plafond=_TABLEUR_PLAFOND, today=today,
+        vide=vide if vide in dispo else "",
     )
-    return lignes, cols, visibles, ctx
+    # « Il manque X » : on RESTREINT l'affichage sans toucher au diagnostic. Les deux
+    # jeux sont rendus séparément parce que le taux doit rester celui du filtre entier —
+    # calculé sur les lignes déjà restreintes, il vaudrait 0 % et ne dirait plus rien.
+    montrees = lignes
+    if ctx["vide"]:
+        montrees = [l for l in lignes
+                    if tableur_mod.est_vide(l, vide) and not tableur_mod.sans_objet(l, vide)]
+    return lignes, montrees, cols, visibles, ctx
 
 
 def _tableur_perimetre(ctx) -> str:
@@ -3547,20 +3556,23 @@ def _tableur_perimetre(ctx) -> str:
 @app.route("/tableur")
 @require_auth
 def tableur():
-    lignes, cols, visibles, ctx = _tableur_selection()
+    lignes, montrees, cols, visibles, ctx = _tableur_selection()
     page = max(1, int(request.args.get("page", 1) or 1))
-    pages = max(1, (len(lignes) + _TABLEUR_PAR_PAGE - 1) // _TABLEUR_PAR_PAGE)
+    pages = max(1, (len(montrees) + _TABLEUR_PAR_PAGE - 1) // _TABLEUR_PAR_PAGE)
     page = min(page, pages)
     debut = (page - 1) * _TABLEUR_PAR_PAGE
-    vue = lignes[debut:debut + _TABLEUR_PAR_PAGE]
+    vue = montrees[debut:debut + _TABLEUR_PAR_PAGE]
     # Le taux porte sur TOUT le filtre, pas sur la page affichée — sinon il changerait
     # en tournant les pages, ce qui est exactement le compteur qui ment sur son périmètre.
     taux = tableur_mod.taux(lignes, cols)
+    peche = tableur_mod.ou_ca_peche(taux)
+    trouees = tableur_mod.fiches_trouees(lignes, cols)
     libelles = {c: lib for c, lib, _ in visibles}
     groupes = {c: g for c, _, g in visibles}
     return render_template(
         "tableur.html", lignes=vue, cols=cols, visibles=visibles, libelles=libelles,
         groupes=groupes, taux=taux, tab=tableur_mod, ctx=ctx,
+        peche=peche, trouees=trouees, montrees=len(montrees),
         perimetre=_tableur_perimetre(ctx), retenues=len(lignes),
         page=page, pages=pages, par_page=_TABLEUR_PAR_PAGE,
         territories=TERRITORIES, status_labels=STATUS_LABELS,
@@ -3579,7 +3591,7 @@ def tableur_csv():
     """
     import csv
     import io
-    lignes, cols, visibles, ctx = _tableur_selection()
+    _, lignes, cols, visibles, ctx = _tableur_selection()
     libelles = {c: lib for c, lib, _ in visibles}
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")

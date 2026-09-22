@@ -24,6 +24,18 @@
   .tb-groupe{font-size:.68rem;color:#6b7684;text-transform:uppercase;letter-spacing:.03em}
   .tb-perim{font-size:.82rem;color:#4a5568;margin:.2rem 0 .7rem}
   .tb-note{font-size:.8rem;color:#6b7684;margin-top:.8rem;line-height:1.5}
+  .tb-peche{background:#fff;border:1px solid #d7dde6;border-radius:8px;padding:.55rem .75rem;margin:.2rem 0 .7rem}
+  .tb-peche h3{margin:0 0 .4rem;font-size:.85rem;font-weight:600;color:#1f2937}
+  .tb-peche h3 small{font-weight:400;color:#6b7684}
+  .tb-chip{display:inline-flex;align-items:baseline;gap:.35rem;margin:0 .35rem .3rem 0;
+    padding:.2rem .55rem;border:1px solid #e5b4ae;background:#fdf3f2;border-radius:999px;
+    text-decoration:none;color:#7f1d1d;font-size:.82rem}
+  .tb-chip:hover{background:#fbe6e4}
+  .tb-chip.on{background:#7f1d1d;color:#fff;border-color:#7f1d1d}
+  .tb-chip b{font-size:.95rem}
+  .tb-chip span{color:#9a5b57;font-size:.75rem}
+  .tb-chip.on span{color:#f3d3d0}
+  .tb-rien{font-size:.82rem;color:#2e7d32}
   table.tb input.tb-in{font:inherit;width:100%;min-width:7rem;border:1px solid #cbd5e1;
     border-radius:4px;padding:.15rem .3rem;background:#fffdf5}
 </style>
@@ -40,6 +52,7 @@
 <!-- Filtres -->
 <form class="btn-row" method="GET" action="/tableur" style="margin-bottom:.5rem">
   <input type="hidden" name="jeu" value="{{ ctx.jeu }}">
+  <input type="hidden" name="vide" value="{{ ctx.vide }}">
   <select name="statut" class="field" aria-label="Filtrer par statut">
     <option value="actifs" {{ 'selected' if ctx.statut=='actifs' }}>Retenus et publiés</option>
     <option value="all" {{ 'selected' if ctx.statut=='all' }}>Tous statuts</option>
@@ -64,7 +77,7 @@
   <input type="text" name="q" value="{{ ctx.q }}" placeholder="Rechercher dans le titre…" class="field" style="min-width:200px" aria-label="Rechercher dans le titre">
   <button class="btn btn-primary btn-sm">Filtrer</button>
   <span class="sep"></span>
-  <a class="pbtn" href="/tableur.csv?jeu={{ ctx.jeu }}&statut={{ ctx.statut }}&territoire={{ ctx.territoire }}&q={{ ctx.q }}&vivant={{ '1' if ctx.vivant else '0' }}&tri={{ ctx.tri }}&preset={{ ctx.preset }}&dfrom={{ ctx.dfrom }}&dto={{ ctx.dto }}"
+  <a class="pbtn" href="/tableur.csv?jeu={{ ctx.jeu }}&statut={{ ctx.statut }}&territoire={{ ctx.territoire }}&q={{ ctx.q }}&vivant={{ '1' if ctx.vivant else '0' }}&tri={{ ctx.tri }}&preset={{ ctx.preset }}&dfrom={{ ctx.dfrom }}&dto={{ ctx.dto }}&vide={{ ctx.vide }}"
      title="Le même tableau, ouvrable dans Excel ou LibreOffice">⬇ Export CSV</a>
   <a class="pbtn {{ 'on' if edit }}" href="{{ base }}&jeu={{ ctx.jeu }}&edit={{ '0' if edit else '1' }}"
      title="Rend modifiables les colonnes qu'on peut saisir à la main">✏️ {{ 'Quitter la saisie' if edit else 'Saisir' }}</a>
@@ -74,6 +87,36 @@
   <strong>{{ retenues }}</strong> fiche{{ 's' if retenues > 1 }} — périmètre : {{ perimetre }}.
   {% if ctx.tronque %}<strong style="color:#b3261e">Liste tronquée à {{ ctx.plafond }} sur {{ ctx.total }} : affine le filtre.</strong>{% endif %}
 </div>
+
+<div class="tb-peche">
+  <h3>Où ça pêche
+    <small>— {{ trouees }} fiche{{ 's' if trouees > 1 }} sur {{ retenues }}
+      {{ 'ont' if trouees > 1 else 'a' }} au moins une case manquante,
+      parmi les colonnes affichées</small></h3>
+  {% if peche %}
+    {% for col, manquantes, concernees, pct in peche %}
+    <a class="tb-chip {{ 'on' if ctx.vide == col }}"
+       href="{{ base }}&jeu={{ ctx.jeu }}{% if ctx.vide != col %}&vide={{ col }}{% endif %}"
+       title="{{ 'Enlever le filtre' if ctx.vide == col else 'Ne montrer que les fiches où ce champ manque' }}">
+      <b>{{ manquantes }}</b> {{ libelles.get(col, col) }}
+      <span>{{ pct|round|int }} % rempli sur {{ concernees }}</span></a>
+    {% endfor %}
+    <div class="muted" style="font-size:.75rem;margin-top:.2rem">
+      Classé par NOMBRE de manques, pas par pourcentage : la question au bout du chiffre
+      est « par où je commence ». Clique un chiffre pour ne voir que ces fiches-là.</div>
+  {% else %}
+    <div class="tb-rien">✓ Aucune case manquante sur ces colonnes, pour ce périmètre.</div>
+  {% endif %}
+</div>
+
+{% if ctx.vide %}
+<div class="tb-perim" style="background:#fdf3f2;border:1px solid #e5b4ae;border-radius:6px;padding:.4rem .6rem">
+  Filtré sur les fiches où <strong>{{ libelles.get(ctx.vide, ctx.vide) }}</strong> manque :
+  <strong>{{ montrees }}</strong> fiche{{ 's' if montrees > 1 }}.
+  Les pourcentages ci-dessus restent ceux du périmètre entier.
+  <a href="{{ base }}&jeu={{ ctx.jeu }}">✕ enlever ce filtre</a>
+</div>
+{% endif %}
 
 {% if edit %}
 <div class="tb-perim" style="background:#fffbea;border:1px solid #f0e2b6;border-radius:6px;padding:.4rem .6rem">
@@ -147,7 +190,7 @@
 {% endif %}
 
 <div class="pager">
-  {% set pbase = base ~ '&jeu=' ~ ctx.jeu ~ ('&edit=1' if edit else '') ~ '&page=' %}
+  {% set pbase = base ~ '&jeu=' ~ ctx.jeu ~ ('&edit=1' if edit else '') ~ ('&vide=' ~ ctx.vide if ctx.vide else '') ~ '&page=' %}
   {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="{{ pbase }}{{ page-1 }}">← précédent</a>{% endif %}
   <span class="muted">page {{ page }} / {{ pages }} — {{ par_page }} fiches par page</span>
   {% if page < pages %}<a class="btn btn-ghost btn-sm" href="{{ pbase }}{{ page+1 }}">suivant →</a>{% endif %}
