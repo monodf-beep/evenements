@@ -34,8 +34,10 @@ ITALIENS = [
     ("però", r"\bperò\b", re.I),
     ("anche", r"\banche\b", re.I),
     ("questo", r"\bquesto\b", re.I),
-    ("della", r"\bdella\b", re.I),
-    ("degli", r"\bdegli\b", re.I),
+    # suivis d'une majuscule, ils font partie d'un toponyme : « piazza della
+    # Repubblica ». Sans re.I, pour que la classe [a-z] veuille dire quelque chose.
+    ("della + minuscule", r"\bdella [a-z\u00e0-\u00ff]", 0),
+    ("degli + minuscule", r"\bdegli [a-z\u00e0-\u00ff]", 0),
     ("sono", r"\bsono\b", re.I),
     ("perché", r"\bperché\b", re.I),
 ]
