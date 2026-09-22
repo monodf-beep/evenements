@@ -1,5 +1,13 @@
 # Jev, nœud par nœud — et la question de la complétion
 
+> ⛔ **Dossier refermé le 2026-09-22 après mesure** — voir le verdict en tête de
+> `docs/TYPESAFE_JEV.md`. 91 % de la facture est hors de portée de Jev par construction ;
+> l'économie plausible est de ~11 $/mois sur 157 $. Le passage nœud par nœud ci-dessous
+> reste juste et utile pour ce qu'il dit du DÉPÔT (où sont les détecteurs fragiles, ce
+> que la complétion demande vraiment), mais sa conclusion outillée ne tient plus.
+
+
+
 Suite de `docs/TYPESAFE_JEV.md` (22/09). Franck, le même jour : « regarde tous les nœuds
 du processus et dis si ça peut être intéressant ou pas. J'ai l'impression que ça peut être
 vraiment intéressant, surtout pour la partie complétion — que notre site puisse être le

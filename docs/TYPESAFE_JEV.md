@@ -1,5 +1,48 @@
 # TypeSafe / Jev — ce que c'est, et où ça sert ICI
 
+> ## ⛔ VERDICT DU 2026-09-22, APRÈS MESURE : on n'y va pas.
+>
+> Ce rapport posait trois mesures avant toute décision, et disait : « si l'évaluation ne
+> pèse rien, ce rapport se referme ici ». `scripts/audit_couts --jours 30` a répondu, et
+> c'est la réponse qui referme.
+>
+> **157,44 $ sur 30 jours, pour 320 fiches mises en ligne — 0,49 $ la fiche.** Et la
+> répartition tue le dossier :
+>
+> | | coût | part |
+> |---|---|---|
+> | Hors de portée de Jev **par construction** (génération de texte, recherche web, vision) | **143,46 $** | **91,1 %** |
+> | Atteignable par de la décision typée | 12,33 $ | 7,8 % |
+> | `datation` — écartée, les comparaisons de dates sont un point faible annoncé de Jev | 1,65 $ | 1,0 % |
+>
+> Les deux premiers postes à eux seuls font 71 % de la facture : **l'enrichissement
+> (77,84 $, rédaction) et la recherche de page officielle (34,76 $, recherche web)**. Jev
+> ne sait faire ni l'un ni l'autre. Ce n'est pas une question de réglage : il ne génère
+> pas de texte et ne navigue pas.
+>
+> Économie plausible en remplaçant TOUT ce qui est atteignable : **environ 11 $ par
+> mois**, soit 7 % de la facture. Le coût par fiche passerait de 0,492 $ à 0,457 $.
+>
+> **Onze dollars par mois ne paient pas une clé d'API de plus, une dépendance de plus, un
+> mode de panne de plus, un test multilingue jamais fait — et un risque sur l'évaluateur,
+> c'est-à-dire sur le nœud qui décide ce qui entre sur le site, dans un dépôt sans
+> environnement de test.**
+>
+> Ce qui reste vrai du rapport ci-dessous, et qui ne dépend pas de TypeSafe : les
+> détecteurs à expressions régulières sont fragiles (`temps_recit`, `eventness`,
+> `triage`), et la file d'audit mélange encore ce qu'un humain peut faire et ce qu'il ne
+> peut pas. Ces deux chantiers valent par eux-mêmes ; ils n'avaient pas besoin d'un
+> modèle pour être posés.
+>
+> **Et la mesure désigne le vrai sujet, qu'aucun de ces deux rapports ne regardait :**
+> `site_officiel_recherche` coûte **0,25 $ l'appel**, 139 appels en 30 jours — pendant
+> que **212 fiches vivantes n'ont toujours pas de page officielle**. On paie un quart de
+> dollar par recherche et le stock ne descend pas. Le taux de succès de ce poste n'a
+> jamais été mesuré. C'est là qu'il faut regarder, pas du côté d'un modèle à
+> 0,042 $ le million de jetons.
+
+
+
 Rapport demandé par Franck le 2026-09-22 : « comprendre la documentation de cet outil,
 chercher les cas d'usage, dire sur quoi on peut le mettre pour être plus performant et
 moins cher ».
