@@ -43,6 +43,7 @@ from utils import completeness as comp
 from utils import triage as triage_mod
 from utils import tableur as tableur_mod
 from utils import menu as menu_mod
+from utils import frequentation as freq_mod
 from utils import checks as checks_mod
 from utils import organizers
 from utils import semaine as semaine_mod
@@ -295,6 +296,39 @@ def require_auth(f):
             return redirect(url_for("login", next=request.path))
         return f(*args, **kwargs)
     return decorated
+
+
+_MENU_URLS = frozenset(p["url"] for p in menu_mod.PAGES)
+
+
+@app.after_request
+def _compter_page(reponse):
+    """Compte les pages du MENU réellement ouvertes — pour savoir quoi supprimer.
+
+    Franck, 22/09 : « s'il y a des choses qui ne servent plus, on les enlève ». Le
+    journal nginx ne répond pas à ça : celui qu'on a lu ce jour-là ne contenait aucune
+    page du back-office et presque rien d'autre que des sondes `/.env` et `/wp-login.php`.
+    Un compteur posé ICI ne voit que des sessions authentifiées, donc que Franck.
+
+    QUATRE CONDITIONS, et chacune écarte un faux positif : GET (pas une action), 200
+    (pas une erreur ni une redirection), HTML (pas un export CSV), et connecté (pas un
+    robot sur /login). Voir utils/frequentation.py pour ce que ça n'enregistre PAS.
+
+    Fail-safe : une mesure ne casse jamais la page qu'elle mesure.
+    """
+    try:
+        if (request.method == "GET" and reponse.status_code == 200
+                and session.get("logged_in")
+                and request.path in _MENU_URLS
+                and "text/html" in (reponse.content_type or "")):
+            conn = get_db()
+            try:
+                freq_mod.note(conn, request.path)
+            finally:
+                conn.close()
+    except Exception:
+        pass
+    return reponse
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -941,13 +975,18 @@ def systeme_view():
     plafond d'API est atteint, ce qui est justement le moment où l'on veut savoir ce qui
     est bloqué."""
     from utils import etat_systeme as es
-    vue = "couts" if request.args.get("vue") == "couts" else "chaine"
+    vue = request.args.get("vue", "")
+    vue = vue if vue in ("couts", "pages") else "chaine"
     conn = get_db()
     try:
         auj = date.today().isoformat()
         etgs = es.etages(conn, auj) if vue == "chaine" else []
+        # Onglet « Pages » : ce qui s'ouvre encore, et depuis quand on mesure.
+        pages_vues = freq_mod.par_page(conn, list(menu_mod.PAGES)) if vue == "pages" else []
+        pages_depuis = freq_mod.depuis(conn) if vue == "pages" else ""
         return render_template(
             "systeme.html", active="systeme", vue=vue, etages=etgs,
+            pages_vues=pages_vues, pages_depuis=pages_depuis,
             flux=es.flux(conn, auj) if vue == "chaine" else None,
             goulot=es.goulot(etgs) if vue == "chaine" else None,
             couts=_couts_contexte() if vue == "couts" else None,
