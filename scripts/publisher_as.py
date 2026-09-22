@@ -52,6 +52,7 @@ from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_do
 # Score « ça vaut le déplacement » dérivé des critères d'importance de l'évaluateur.
 from utils.deplacement import deplacement_score, deplacement_now
 from utils.une import une_now
+from utils.moments_forts import etiquettes as etiquettes_moments
 # Ancre officielle : la MÊME fonction que celle du verrou de publication, pour que
 # « on a le droit de publier » et « voici la source » ne puissent pas diverger.
 from utils import radar
@@ -797,12 +798,26 @@ def _build_payload(event: dict, skip_media: bool = False,
     if excerpt:
         payload["excerpt"] = excerpt
 
-    # Étiquettes : VOLONTAIREMENT AUCUNE. Les tags auto (LLM libre) créaient du bruit
-    # (doublons de catégorie/territoire, dates, combos jetables) = mauvais SEO. On
-    # enverra `tags` seulement plus tard, depuis un VOCABULAIRE CONTRÔLÉ lié aux
-    # sections du site. On envoie une liste VIDE pour que l'endpoint nettoie les tags
-    # existants (les 69 déjà publiés) au prochain --update.
-    payload["tags"] = []
+    # Étiquettes : LE VOCABULAIRE CONTRÔLÉ ANNONCÉ ICI DEPUIS LE DÉBUT, posé le 22/09.
+    # Les tags auto (LLM libre) créaient du bruit (doublons de catégorie/territoire,
+    # dates, combos jetables) = mauvais SEO, et ce champ envoyait donc une liste VIDE
+    # pour que l'endpoint nettoie les tags existants. Ce nettoyage ne change pas : une
+    # fiche qui n'appartient à aucun moment fort reçoit toujours `[]`.
+    #
+    # Ce qui s'ajoute : les événements-parapluie (journées du patrimoine, Noël, un
+    # carnaval) ont besoin d'un marqueur pour que la strate de home et la page dédiée
+    # listent LEURS fiches et pas celles du week-end. Mesuré le 22/09 sur le rendu
+    # réel : sans marqueur, une sélection par date + territoire ramenait BeerCult, le
+    # Biella Sport Festival et une exposition Kusama sous un titre « patrimoine ».
+    #
+    # Les règles sont dans config/moments_forts.json, jamais dans un modèle. Le
+    # territoire passe par _map_territoire pour qu'il n'y ait qu'UN détecteur.
+    payload["tags"] = etiquettes_moments(
+        _map_territoire(event.get("territoire", "")),
+        event.get("date_event_start", "") or "",
+        event.get("source_name", "") or "",
+        _lang(event),
+    )
 
     # SEO Yoast (uniquement si l'événement a été traité par l'étape SEO).
     if event.get("seo_at"):

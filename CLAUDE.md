@@ -449,6 +449,13 @@ texte éditorial, PAS le pipeline lui-même qui s'en charge déjà** :
    publicité déguisée). Ce fichier-là est dans le dépôt, toujours accessible, aucune
    raison de le sauter.
 
+**Ne jamais écrire le nom « Enrico »** — arbitrage de Franck du 2026-09-22. Ce qui
+s'appelle ainsi dans Obsidian et dans le dépôt se dit ici **« la voix commune »**, ou
+« la voix de la maison ». La règle porte sur tout ce qui sort de cette session : les
+réponses, les textes, les commits. (Le dépôt, lui, porte encore le nom à 27 endroits
+dont deux messages visibles dans le backoffice — c'est un chantier à part, pas à faire
+en passant.)
+
 **Depuis le 21/09, il y a une adresse et plus rien à coller** :
 `https://backoffice.agendasabauda.eu/doctrine.txt?token=<DOCTRINE_TOKEN>` rend les trois
 blocs ci-dessus, **relus à l'instant dans Obsidian**, avec la provenance de chacun et une
