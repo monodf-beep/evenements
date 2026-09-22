@@ -208,6 +208,55 @@ Ce que fait Chambéry, et ce qu'on reproduit ville par ville :
 
 ---
 
+## 10 bis. Le chapitre distinctif doit CHANGER d'une fenêtre à l'autre (2026-09-22)
+
+Mesuré sur Annecy, le 22/09, à la demande de Franck qui s'inquiétait du contenu
+dupliqué pour Google : entre les 3 fenêtres d'une même ville, **17 à 24 % du texte
+était copié mot pour mot** — pas juste « mêmes faits, autre formulation », des
+phrases entières identiques (« La ville d'Annecy gère les deux, et un billet
+commun les relie. Le même site publie leurs horaires, qui changent avec la
+saison. » dans les 3 pages).
+
+**Ce n'est pas la règle 5 qui était fausse.** Chaque page de période garde bien
+son chapitre distinctif — Franck l'a déjà tranché une fois (voir l'encadré ⚠️ de
+la règle 5). Le bug, c'est que les 3 chapitres distinctifs d'UNE MÊME ville
+reprenaient LE MÊME fait (le décret Rattazzi, le même Palais de l'Isle) au lieu
+d'en prendre chacun un différent. La règle 9 le prévoyait déjà implicitement
+(« C'est lui qui fait que la page n'est pas une copie ») mais ne le disait pas
+assez fort pour survivre à l'exécution.
+
+**Donc, à partir de maintenant, pour une même ville :**
+
+- **le chapitre distinctif d'aujourd'hui, de ce week-end et de cette semaine
+  portent chacun un fait DIFFÉRENT** — trois anecdotes, trois pans d'histoire,
+  trois personnages, pas le même repris trois fois. S'il n'y a qu'un seul fait
+  vraiment marquant en réserve, chercher un deuxième et un troisième plutôt que
+  de le réutiliser ;
+- **le guide de ville** (`/que-faire-a-X/`, sans `quand=` dans le shortcode)
+  reste, comme le dit la règle 1, l'endroit qui présente la ville dans son
+  ensemble — et il en a souvent besoin : mesuré le même jour, celui d'Annecy ne
+  portait que deux phrases avant tout enrichissement. L'enrichir ne dispense
+  PAS les pages de période de garder leur propre chapitre (règle 5) ;
+- **contrôle avant publication** : mesurer le chevauchement en n-grammes de 6-8
+  mots entre les 3 fenêtres d'une même ville (script improvisé le 22/09, pas
+  encore versionné). Au-delà de 10-15 % de mots concernés, chercher quel
+  paragraphe recopie plutôt que de reformuler.
+
+**Et un vocabulaire à éviter, découvert le même jour en différenciant les
+fenêtres par un « angle » mal choisi** : Franck, sur un premier essai qui
+proposait « aujourd'hui = visite spontanée du centre, week-end = ce qui vaut le
+détour dans les communes autour, semaine = ce qui dure » — *« c'est pas parler
+uniquement aux touristes comme ça ? »* Juste : ce vocabulaire (« vaut le
+détour », « mérite une visite », « pour les visiteurs », combien de temps ça
+« vaut ») s'adresse à quelqu'un qui planifie un séjour, pas à l'audience
+première du site — des gens de la région qui regardent ce qui se passe près de
+chez eux. La même différenciation (centre-ville aujourd'hui / communes voisines
+le week-end, quand LEURS marchés et fêtes tombent / ce qui dure toute la
+semaine) se formule comme un FAIT sur le calendrier local, jamais comme un
+conseil de voyage.
+
+---
+
 ## 10. Le SEO : ce que la prose peut faire, et ce qu'elle ne peut pas
 
 **Ce que Search Console dit, sur 90 jours, des pages hub elles-mêmes :**
