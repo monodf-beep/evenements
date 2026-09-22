@@ -238,3 +238,36 @@ def exporte(ligne: dict, col: str) -> str:
     """Valeur pour le CSV : brute et entière. Un export tronqué n'est pas un export."""
     v = ligne.get(col)
     return "" if v is None else str(v)
+
+
+def fiches_trouees(lignes: list[dict], colonnes: list[str]) -> int:
+    """Combien de fiches ont AU MOINS une case manquante parmi les colonnes affichées."""
+    return sum(1 for l in lignes if trous(l, colonnes))
+
+
+def ou_ca_peche(taux_par_colonne: dict[str, tuple[int, int]],
+                combien: int = 4) -> list[tuple[str, int, int, float]]:
+    """Les colonnes où il manque le plus de choses. (colonne, manquantes, concernées, %).
+
+    Franck, 2026-09-22 : « mets juste des petits chiffres au début en disant où ça pêche ».
+
+    CLASSÉ PAR NOMBRE DE MANQUES, pas par pourcentage. Les deux sont défendables et ils
+    ne désignent pas la même chose : un pourcentage met en tête une colonne vide à 0 %
+    sur un seul cas concerné, un décompte met en tête le plus gros tas. C'est le tas
+    qu'on veut — la question au bout du chiffre est « par où je commence », pas « quelle
+    colonne est la plus vide dans l'absolu ».
+
+    DEUX EXCLUSIONS, et chacune évite un faux signalement :
+      • une colonne PLEINE n'est pas un problème, donc elle ne figure pas ;
+      • une colonne dont AUCUN cas ne s'est présenté non plus — un zéro ne dit pas s'il
+        vient d'un échec ou d'une absence de cas, et on ne bâtit pas une alerte dessus.
+    """
+    out = []
+    for col, (remplies, concernees) in taux_par_colonne.items():
+        if not concernees:
+            continue
+        manquantes = concernees - remplies
+        if manquantes > 0:
+            out.append((col, manquantes, concernees, 100.0 * remplies / concernees))
+    out.sort(key=lambda t: (-t[1], t[3]))
+    return out[:combien]
