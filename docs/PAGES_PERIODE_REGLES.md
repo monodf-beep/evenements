@@ -37,14 +37,25 @@ doivent pas être des copies ».
 Autrement dit, on ne cherche pas 192 récits. On cherche **un gabarit de phrases et une
 liste de lieux par ville**.
 
-## 3. Pas d'histoire, pas d'érudition
+## 3. L'histoire a sa place, mais sans appareil de notes
 
-Le décret Rattazzi n'a rien à faire sur une page « aujourd'hui ». Ni la fondation de la
-ville, ni les comtes, ni les toponymes anciens. Ce sont de bonnes matières — **pour le
-guide**.
+> ⚠️ **Cette règle disait d'abord l'inverse, et c'était une erreur de ma part.** J'avais
+> écrit « pas d'histoire, pas d'érudition » et supprimé tout le chapitre historique
+> d'Annecy. Franck : *« Je ne t'ai pas demandé d'enlever le chapitre historique. Je t'ai
+> juste demandé de ne pas mettre l'URL sur Rattazzi. Et tu peux dire qui était
+> Rattazzi. »* J'avais transformé un reproche sur un LIEN en une interdiction de SUJET.
 
-Test : si le paragraphe serait encore vrai dans dix ans et ne parle pas de ce qu'on peut
-faire cette semaine, il est au mauvais endroit.
+Un chapitre d'histoire a sa place : il distingue la page, il donne au lecteur une raison
+de rester, et c'est la matière du site. Ce qui n'a pas sa place, c'est **l'appareil de
+notes** : le lien qui prouve, la référence d'archive, le numéro de décret.
+
+La bonne façon de traiter un fait historique ici : **le dire en clair et nommer les
+gens**. « Urbano Rattazzi, ministre de l'Intérieur des États de Savoie, découpe le
+royaume en provinces » vaut mieux qu'un lien vers le portail des archives. Le lecteur
+apprend quelque chose au lieu d'être renvoyé ailleurs.
+
+Le fact-checking reste dû : la source se vérifie avant d'écrire, elle ne se cite pas
+dans le texte.
 
 ## 4. Les liens externes : une adresse que le lecteur VOUDRAIT ouvrir
 
