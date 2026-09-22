@@ -236,5 +236,50 @@ try:
 except SystemExit as exc:
     _check("scripts/completer_verifie : aucune fiche en double", False, str(exc))
 
+print("\n──── aucun nom de personne réelle dans le dépôt ────")
+# D'OÙ ÇA VIENT (2026-09-22, demande de Franck). Le dépôt se servait du nom d'un
+# journaliste réel comme raccourci pour sa voix éditoriale : 29 fois, dans le code, les
+# gabarits, la documentation, et jusque dans un prompt envoyé au modèle. Retiré le jour
+# même, remplacé par « voix de référence ».
+#
+# POURQUOI UN TEST ET PAS UNE LIGNE DE DOCTRINE. Le retrait a été mesuré une heure après
+# sur la branche déployée : le nom y était DÉJÀ revenu, par une autre session qui avait
+# branché avant. Et trois branches actives le portaient encore, onze fichiers chacune.
+# La prose ne les arrêtera pas ; elles ne l'auront pas lue. Ce contrôle, si : il vire au
+# rouge à la fusion, avant le déploiement.
+#
+# Ce qu'il ne peut PAS atteindre, et qu'il ne faut pas lui faire dire : l'historique git,
+# qui garde le nom dans les commits passés — l'en purger demanderait de réécrire
+# l'historique et de forcer la poussée, ce que CLAUDE.md interdit.
+# ⚠️ LE NOM N'EST PAS ÉCRIT EN CLAIR ICI, et ce n'est pas de la coquetterie : la
+# première version l'était, et ce contrôle s'est attrapé LUI-MÊME au premier passage.
+# Un fichier qui interdit un mot ne peut pas le contenir. On l'écrit donc à l'envers,
+# avec le commentaire qui dit pourquoi — sinon la prochaine session le « corrigera ».
+_NOMS_PROSCRITS = tuple("".join(reversed(x)) for x in ("ocirne",))
+_IGNORE = ("__pycache__", ".git", "node_modules", ".venv", "data/backups")
+
+_porteurs = []
+for _p in sorted(ROOT.rglob("*")):
+    if not _p.is_file() or any(x in str(_p) for x in _IGNORE):
+        continue
+    try:
+        _txt = _p.read_text(encoding="utf-8").lower()
+    except (UnicodeDecodeError, OSError):
+        continue
+    for _nom in _NOMS_PROSCRITS:
+        if _nom in _txt:
+            _porteurs.append(f"{_p.relative_to(ROOT)} (« {_nom} »)")
+            break
+
+_check("aucun fichier ne porte le nom d'une personne réelle", not _porteurs,
+       "\n      " + "\n      ".join(_porteurs[:10])
+       + "\n      → remplacer par « voix de référence », le terme retenu le 22/09.")
+# CONTRE-ÉPREUVE : sans elle, ce contrôle serait vert sur une liste de noms vide, ou sur
+# une recherche qui ne trouve jamais rien. On lui donne un texte qui DOIT être attrapé.
+_cas_temoin = f"un texte qui cite {_NOMS_PROSCRITS[0].capitalize()} au passage"
+_check("   et la recherche sait attraper un nom quand il y en a un",
+       any(n in _cas_temoin.lower() for n in _NOMS_PROSCRITS),
+       "la recherche ne trouve rien, même sur un cas fabriqué")
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

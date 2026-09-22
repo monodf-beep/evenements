@@ -319,7 +319,7 @@ def test_les_anti_patterns_se_lisent_dans_la_voix():
 def test_une_voix_sans_section_anti_patterns_ne_rend_rien():
     """Contre-épreuve : sans elle, on ne saurait pas si l'extraction lit vraiment la
     section, ou si elle ramasse les guillemets de n'importe où dans la note."""
-    sans_section = "# Clone Enrico\n\nUn texte sans la section, avec « un mot »."
+    sans_section = "# Clone de la voix de référence\n\nUn texte sans la section, avec « un mot »."
     with _avec_voix(lambda: sans_section):
         assert th.anti_patterns() == []
 
