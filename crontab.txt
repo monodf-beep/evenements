@@ -466,11 +466,3 @@ SLACK_DIGEST=1
 5 8 * * 1 cd /root/evenements && .venv/bin/python scripts/audit_calibrage.py --slack >> logs/calibrage.log 2>&1
 # Sauvegarde de la base 3h (copie cohérente horodatée, garde les 14 dernières) — anti perte de données
 0 3 * * * cd /root/evenements && .venv/bin/python scripts/backup_db.py >> logs/backup.log 2>&1
-
-# Miroir de la doctrine Obsidian dans WordPress (voix + vocabulaire interdit).
-# Pourquoi : une session Claude n'a AUCUNE route vers le VPS (ni SSH ni réseau,
-# vérifié le 05/09), donc Franck devait coller la doctrine à la main à chaque
-# rédaction. Le VPS la pousse, la session la lit par Novamira. Aucune copie dans
-# le dépôt git : Obsidian reste la seule source, WordPress n'en tient qu'un reflet.
-# Le script REFUSE de publier une doctrine vide ou tronquée.
-15 4 * * * cd /root/evenements && .venv/bin/python scripts/publier_doctrine.py >> logs/doctrine.log 2>&1

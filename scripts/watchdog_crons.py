@@ -185,14 +185,6 @@ ATTENDUS = [
     # quelques lignes plus haut. Vérifié dans `crontab.txt`, ligne par ligne.
     ("Lieux et images des mails", "completer_depuis_mail", "completer_mail.log",  30),
     ("Notes Yoast",              "yoast_scores",      "yoast_scores.log",         30),
-    # Ajoutée le 2026-09-22 avec son cron. Son silence est AMBIGU par construction :
-    # ce script ne parle pas quand tout va bien, et la doctrine bouge rarement, donc
-    # une page miroir inchangée depuis une semaine ressemble à une doctrine stable
-    # autant qu'à un script mort. Sans cette ligne, une session écrirait sur un
-    # reflet périmé en croyant lire Obsidian.
-    # ⚠️ `doctrine.log` suit la REDIRECTION du crontab, pas le nom du script
-    # (publier_doctrine.py) — le même piège que `completer_mail.log` ci-dessus.
-    ("Miroir de la doctrine",    "publier_doctrine",  "doctrine.log",             30),
 ]
 
 
