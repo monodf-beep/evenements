@@ -285,7 +285,7 @@ if (!function_exists('cs_mf_evenements')) {
  * `etiquette` ABSENTE => on retombe sur date + territoire, et la strate ne doit PAS
  * être déployée sur un moment dont la fenêtre attrape n'importe quoi.
  */
-function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
+function cs_mf_evenements($moment, $volet, $lang, $max = 40) {
     $terme = isset($volet['terr'][$lang]) ? $volet['terr'][$lang] : '';
     if (!$terme) { return array('total' => 0, 'lignes' => array()); }
 
@@ -338,6 +338,13 @@ function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
             'url'   => get_permalink($p),
             'ou'    => trim($ville . ($ville && $lieu ? ' · ' : '') . $lieu),
         );
+        // LE PLAFOND NE DOIT PAS AFFAMER UN JOUR. Il était à huit, et le tri est par
+        // date croissante : les huit premières lignes étaient toutes du samedi, si
+        // bien que le dimanche n'arrivait jamais jusqu'au découpage par jour. Constaté
+        // par Franck sur la bande en ligne le 22/09 — « où est le dimanche ? » — et
+        // mesuré ensuite sur le code déployé : lignes_par_jour = { 2026-09-26 : 8 }.
+        // Le plafond sert à borner la requête, pas à choisir ce qu'on montre : c'est
+        // le découpage par jour (quatre lignes chacun) qui décide.
         if (count($lignes) >= $max) { break; }
     }
     wp_reset_postdata();
@@ -390,9 +397,14 @@ if (!function_exists('cs_mf_rendu_programme')) {
 /**
  * Mise « programme-jours » : le lecteur est dans le territoire du volet.
  *
- * Si un jour déclaré n'a pas assez de lignes, il est MASQUÉ et le jour restant prend
- * toute la largeur. On n'écrit pas au lecteur que notre agenda est incomplet : une
- * ligne qui ne lui permet aucun geste n'est pas une information (règle 6).
+ * Un jour déclaré qui n'a AUCUNE ligne est masqué, et le jour restant prend toute la
+ * largeur. Un jour qui n'en a qu'une est montré.
+ *
+ * LE SEUIL ÉTAIT À DEUX, ET C'ÉTAIT FAUX. Constaté par Franck sur la bande en ligne le
+ * 22/09 : « où est le dimanche ? ». Le dimanche n'avait qu'une fiche publiée, il
+ * disparaissait — pendant que le bloc de dates, trois lignes plus bas, annonçait
+ * « 26 & 27 sept. ». La bande se contredisait elle-même. Une colonne maigre coûte
+ * moins cher qu'une promesse démentie dans le même cadre.
  */
 function cs_mf_rendu_programme($moment, $volet, $lang, $data) {
     $h  = '<div class="cs-mf__gauche">';
@@ -415,7 +427,7 @@ function cs_mf_rendu_programme($moment, $volet, $lang, $data) {
     foreach ($volet['jours'] as $j) {
         $duj = array();
         foreach ($restantes as $l) { if ($l['jour'] === $j['date']) { $duj[] = $l; } }
-        if (count($duj) < 2) { continue; }
+        if (!$duj) { continue; }
         $li = '';
         foreach (array_slice($duj, 0, 4) as $l) {
             $li .= '<li><a href="' . esc_url($l['url']) . '"><span class="cs-mf__lieu">' . esc_html($l['ou'])
