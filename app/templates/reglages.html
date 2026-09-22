@@ -48,14 +48,14 @@
   </div>
 
   <!-- Réécriture légendes réseaux -->
-  <h2 style="font-size:1.05rem;margin:.4rem 0 .3rem;">📣 Légendes réseaux <span class="muted" style="font-weight:400;font-size:.85rem;">(bouton 🪄 Réécrire dans /reseaux, voix Enrico Nos Alpes)</span></h2>
+  <h2 style="font-size:1.05rem;margin:.4rem 0 .3rem;">📣 Légendes réseaux <span class="muted" style="font-weight:400;font-size:.85rem;">(bouton 🪄 Réécrire dans /reseaux, voix de référence)</span></h2>
   <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.3rem;">
     <label class="card" style="display:flex;gap:.7rem;align-items:flex-start;padding:.7rem .9rem;cursor:pointer;{% if not st.social_caption_auto %}outline:2px solid #16a34a;{% endif %}">
       <input type="checkbox" name="social_caption_auto" value="1" {{ 'checked' if st.social_caption_auto }} style="margin-top:.25rem;">
       <div><b>Automatiser</b> <span style="font-size:.72rem;font-weight:700;color:#16a34a;background:#e9f6ee;border-radius:999px;padding:.05rem .45rem;">off = gratuit</span>
         <div class="muted text-sm" style="margin-top:.15rem;">
           <b>Décoché (par défaut)</b> : la légende gratuite auto-générée s'affiche dans /reseaux, la réécriture IA ne part QUE si tu cliques toi-même « 🪄 Réécrire » — coût nul tant que tu ne cliques pas.<br>
-          <b>Coché</b> : à chaque ouverture de /reseaux, le back-office réécrit tout seul (voix Enrico) les meilleurs événements de chaque territoire × langue qui n'ont pas encore de légende IA en cache — plafonné ci-dessous, jamais plus. Coût = quelques centimes par légende générée, une seule fois par événement (mise en cache).
+          <b>Coché</b> : à chaque ouverture de /reseaux, le back-office réécrit tout seul (voix de référence) les meilleurs événements de chaque territoire × langue qui n'ont pas encore de légende IA en cache — plafonné ci-dessous, jamais plus. Coût = quelques centimes par légende générée, une seule fois par événement (mise en cache).
         </div>
       </div>
     </label>

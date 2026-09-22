@@ -14,6 +14,7 @@
 {% block head %}{% endblock %}
 </head>
 <body>
+<a class="skip" href="#contenu">Aller au contenu</a>
 <div class="app-shell">
   <div class="nav-backdrop" data-nav-close></div>
   <aside class="sidebar" id="sidebar">
@@ -21,73 +22,53 @@
       <span class="brand-mark" aria-hidden="true">CS</span>
       <div><b>Cultura Sabauda</b><small>Agenda</small></div>
     </div>
-    {# Menu en 4 blocs : Quotidien (les 3 écrans de Franck) toujours visibles, le reste
-       en groupes repliables. Un groupe s'ouvre seul quand on est sur une de ses pages ;
-       le résumé « À traiter » porte le TOTAL des pastilles même replié. #}
-    {% set _traiter = ['semaine', 'validation', 'tocomplete', 'triage', 'verifier', 'audit_visuel', 'events'] %}
-    {% set _analyse = ['systeme', 'couts', 'couverture', 'couverture_geo', 'sources_provinces', 'calendrier_categories', 'wireframe', 'regie', 'partenariat', 'seo'] %}
-    {% set _aide = ['process', 'pipeline', 'voix', 'doctrine', 'personas', 'cowork', 'reglages'] %}
-    {% set _todo_total = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
+    {# LE MENU VIENT DE `utils.menu`, pas d'ici. Un gabarit qui tient sa propre liste
+       finit par mentir : « Coûts par date » y est resté des semaines après que la page
+       eut été fusionnée dans « État du système ». tests/test_menu.py confronte la carte
+       aux routes réelles, dans les deux sens.
+
+       TROIS ÉCRANS au premier niveau (ce que Franck ouvre tous les jours), le reste
+       replié. Un groupe s'ouvre seul quand on est dans une de ses pages. #}
+    {% set _groupe_actif = menu.groupe_de(active|default('')) %}
+    {% set _todo = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
+
+    <button type="button" class="nav-go" data-palette-open
+            aria-label="Aller à une page — raccourci Contrôle K">
+      <span aria-hidden="true">⌕</span> Aller à…<kbd>⌘K</kbd></button>
+
     <nav class="nav" aria-label="Navigation principale">
-      <a href="/" class="{{ 'on' if active=='dash' }}" {% if active=='dash' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Aujourd'hui
-        {% if _todo_total and active!='dash' %}<span class="nav-badge">{{ _todo_total }}</span>{% endif %}</a>
+      {% for p in menu.epinglees() %}
+      <a href="{{ p.url }}" class="nav-main {{ 'on' if active == p.actif }}"
+         {% if active == p.actif %}aria-current="page"{% endif %}
+         title="{{ p.resume }}"><span class="nav-ico" aria-hidden="true">{{ p.icone }}</span>
+        <span class="nav-lib">{{ p.libelle }}</span>
+        {% if p.badge == 'todo' and _todo and active != p.actif %}<span class="nav-badge">{{ _todo }}</span>{% endif %}</a>
+      {% endfor %}
 
-      <div class="nav-section">Quotidien</div>
-      <a href="/pilotage" class="{{ 'on' if active=='pilotage' }}" {% if active=='pilotage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Pilotage</a>
-      <a href="/newsletter" class="{{ 'on' if active=='newsletter' }}" {% if active=='newsletter' %}aria-current="page"{% endif %}><span aria-hidden="true">📧</span> Newsletter</a>
-      <a href="/reseaux" class="{{ 'on' if active=='reseaux' }}" {% if active=='reseaux' %}aria-current="page"{% endif %}><span aria-hidden="true">📣</span> Réseaux</a>
-
-      <details {% if active in _traiter %}open{% endif %}>
-        <summary><span class="chev" aria-hidden="true">›</span> À traiter
-          {% if _todo_total %}<span class="nav-badge">{{ _todo_total }}</span>{% endif %}</summary>
-        <a href="/semaine" class="{{ 'on' if active=='semaine' }}" {% if active=='semaine' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> Cette semaine</a>
-        <a href="/validation" class="{{ 'on' if active=='validation' }}" {% if active=='validation' %}aria-current="page"{% endif %}><span aria-hidden="true">🗓️</span> À valider
-          <span class="nav-tag nav-tag-cs" title="Publie sur culturasabauda.eu">CS</span>
-          {% if nav.validate %}<span class="nav-badge">{{ nav.validate }}</span>{% endif %}</a>
-        <a href="/a-completer" class="{{ 'on' if active=='tocomplete' }}" {% if active=='tocomplete' %}aria-current="page"{% endif %}><span aria-hidden="true">🛠️</span> À compléter
-          <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span>
-          {% if nav.tocomplete %}<span class="nav-badge">{{ nav.tocomplete }}</span>{% endif %}</a>
-        <a href="/triage" class="{{ 'on' if active=='triage' }}" {% if active=='triage' %}aria-current="page"{% endif %}><span aria-hidden="true">🧭</span> Triage / débloquer
-          <span class="nav-tag nav-tag-as" title="Publie sur agendasabauda.eu">AS</span></a>
-        <a href="/verifier" class="{{ 'on' if active=='verifier' }}" {% if active=='verifier' %}aria-current="page"{% endif %}><span aria-hidden="true">⚠️</span> À vérifier
-          {% if nav.verifier %}<span class="nav-badge">{{ nav.verifier }}</span>{% endif %}</a>
-        <a href="/audit-visuel" class="{{ 'on' if active=='audit_visuel' }}" {% if active=='audit_visuel' %}aria-current="page"{% endif %}><span aria-hidden="true">🖼️</span> Audit visuel
-          {% if nav.audit %}<span class="nav-badge">{{ nav.audit }}</span>{% endif %}</a>
-        <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Tous les événements</a>
-      </details>
-
-      <details {% if active in _analyse %}open{% endif %}>
-        <summary><span class="chev" aria-hidden="true">›</span> Développer &amp; analyser
-          {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</summary>
-        <a href="/regie" class="{{ 'on' if active=='regie' }}" {% if active=='regie' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Régie pub
-          {% if nav.regie %}<span class="nav-badge">{{ nav.regie }}</span>{% endif %}</a>
-        <a href="/partenariat" class="{{ 'on' if active=='partenariat' }}" {% if active=='partenariat' %}aria-current="page"{% endif %}><span aria-hidden="true">🤝</span> Partenariat / widget</a>
-        <a href="/couts" class="{{ 'on' if active=='couts' }}" {% if active=='couts' %}aria-current="page"{% endif %}><span aria-hidden="true">💶</span> Coûts par date</a>
-        <a href="/systeme" class="{{ 'on' if active=='systeme' }}" {% if active=='systeme' %}aria-current="page"{% endif %}><span aria-hidden="true">📈</span> État du système</a>
-        <a href="/couverture" class="{{ 'on' if active=='couverture' }}" {% if active=='couverture' %}aria-current="page"{% endif %}><span aria-hidden="true">📊</span> Couverture</a>
-        <a href="/couverture-geo" class="{{ 'on' if active=='couverture_geo' }}" {% if active=='couverture_geo' %}aria-current="page"{% endif %}><span aria-hidden="true">🗺️</span> Couverture géo</a>
-        <a href="/sources-provinces" class="{{ 'on' if active=='sources_provinces' }}" {% if active=='sources_provinces' %}aria-current="page"{% endif %}><span aria-hidden="true">📡</span> Sources par province</a>
-        <a href="/calendrier-categories" class="{{ 'on' if active=='calendrier_categories' }}" {% if active=='calendrier_categories' %}aria-current="page"{% endif %}><span aria-hidden="true">📅</span> Calendrier des catégories</a>
-        <a href="/wireframe-home" class="{{ 'on' if active=='wireframe' }}" {% if active=='wireframe' %}aria-current="page"{% endif %}><span aria-hidden="true">🏠</span> Wireframe home</a>
-        <a href="/seo" class="{{ 'on' if active=='seo' }}" {% if active=='seo' %}aria-current="page"{% endif %}><span aria-hidden="true">🔍</span> SEO
-          {% if nav.seo %}<span class="nav-badge">{{ nav.seo }}</span>{% endif %}</a>
-      </details>
-
-      <details {% if active in _aide %}open{% endif %}>
-        <summary><span class="chev" aria-hidden="true">›</span> Aide &amp; réglages</summary>
-        <a href="/process" class="{{ 'on' if active=='process' }}" {% if active=='process' %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Fonctionnement</a>
-        <a href="/pipeline" class="{{ 'on' if active=='pipeline' }}" {% if active=='pipeline' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Pipeline auto</a>
-        <a href="/voix" class="{{ 'on' if active=='voix' }}" {% if active=='voix' %}aria-current="page"{% endif %}><span aria-hidden="true">🗣️</span> Voix éditoriale</a>
-        <a href="/doctrine" class="{{ 'on' if active=='doctrine' }}" {% if active=='doctrine' %}aria-current="page"{% endif %}><span aria-hidden="true">📚</span> Doctrine (pour Claude)</a>
-        <a href="/personas" class="{{ 'on' if active=='personas' }}" {% if active=='personas' %}aria-current="page"{% endif %}><span aria-hidden="true">👓</span> Personas lecteurs</a>
-        <a href="/cowork" class="{{ 'on' if active=='cowork' }}" {% if active=='cowork' %}aria-current="page"{% endif %}><span aria-hidden="true">🤖</span> Cowork</a>
-        <a href="/reglages" class="{{ 'on' if active=='reglages' }}" {% if active=='reglages' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙️</span> Réglages / Coûts</a>
-      </details>
+      {% for cle, libelle, resume, pages in menu.groupes_avec_pages() %}
+        {# Le total du groupe, même replié : un groupe fermé ne doit pas cacher
+           qu'il contient du travail en attente. #}
+        {% set _tot = namespace(v=0) %}
+        {% for p in pages %}{% if p.badge %}{% set _tot.v = _tot.v + (nav[p.badge] or 0) %}{% endif %}{% endfor %}
+        <details {% if _groupe_actif == cle %}open{% endif %}>
+          <summary title="{{ resume }}"><span class="chev" aria-hidden="true">›</span> {{ libelle }}
+            {% if _tot.v %}<span class="nav-badge">{{ _tot.v }}</span>{% endif %}</summary>
+          {% for p in pages %}
+          <a href="{{ p.url }}" class="{{ 'on' if active == p.actif }}"
+             {% if active == p.actif %}aria-current="page"{% endif %}
+             title="{{ p.resume }}"><span class="nav-ico" aria-hidden="true">{{ p.icone }}</span>
+            <span class="nav-lib">{{ p.libelle }}</span>
+            {% if p.site %}<span class="nav-tag nav-tag-{{ p.site }}"
+              title="{{ 'Publie sur culturasabauda.eu' if p.site == 'cs' else 'Publie sur agendasabauda.eu' }}">{{ p.site | upper }}</span>{% endif %}
+            {% if p.badge and nav[p.badge] %}<span class="nav-badge">{{ nav[p.badge] }}</span>{% endif %}</a>
+          {% endfor %}
+        </details>
+      {% endfor %}
     </nav>
     <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>
   </aside>
 
-  <main class="main">
+  <main class="main" id="contenu" tabindex="-1">
     <header class="mobile-bar">
       <button class="nav-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="sidebar" aria-expanded="false">☰</button>
       <span class="mobile-brand"><span class="brand-mark" aria-hidden="true">CS</span> Agenda</span>
@@ -152,5 +133,31 @@
   </main>
 </div>
 <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+
+{# PALETTE « Aller à… » (⌘K / Ctrl+K, ou la touche « / »). Avec 28 pages, c'est elle qui
+   rend la longueur du menu indifférente : on tape trois lettres, on appuie sur Entrée.
+   Elle est un ENRICHISSEMENT — sans JavaScript le menu marche exactement comme avant,
+   et le bouton qui l'ouvre reste un lien vers rien, donc il est masqué par défaut et
+   révélé par le script (cf. app.js). #}
+<div class="palette" id="palette" hidden>
+  <div class="palette-voile" data-palette-close></div>
+  <div class="palette-boite" role="dialog" aria-modal="true" aria-labelledby="palette-titre">
+    <h2 id="palette-titre" class="sr-only">Aller à une page</h2>
+    <input type="search" id="palette-q" class="palette-q" autocomplete="off"
+           placeholder="Taper le nom d'une page…" aria-controls="palette-liste"
+           aria-describedby="palette-aide">
+    <p id="palette-aide" class="sr-only">Flèches haut et bas pour parcourir, Entrée pour ouvrir, Échap pour fermer.</p>
+    <ul class="palette-liste" id="palette-liste" role="listbox" aria-label="Pages">
+      {% for e in menu.index_recherche() %}
+      <li role="option" aria-selected="false" data-cible="{{ e.cible }}">
+        <a href="{{ e.url }}" tabindex="-1">
+          <span class="palette-ico" aria-hidden="true">{{ e.icone }}</span>
+          <span class="palette-txt"><b>{{ e.libelle }}</b><small>{{ e.resume }}</small></span>
+          <span class="palette-grp">{{ e.groupe }}</span></a></li>
+      {% endfor %}
+    </ul>
+    <p class="palette-vide" hidden>Aucune page ne correspond.</p>
+  </div>
+</div>
 </body>
 </html>

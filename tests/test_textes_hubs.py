@@ -180,7 +180,7 @@ def test_une_panne_propre_a_une_page_n_arrete_pas_le_run():
 
 
 def test_les_listes_ne_sont_pas_refusees_au_nom_de_la_charte():
-    """La charte Agenda AUTORISE les listes (surcharge explicite de la voix Enrico).
+    """La charte Agenda AUTORISE les listes (surcharge explicite de la voix de référence).
 
     Mon premier motif de refus disait « la charte veut de la prose » : c'était faux, et
     ce test existe pour que personne ne le réécrive. Le refus reste, mais pour la raison
@@ -319,7 +319,7 @@ def test_les_anti_patterns_se_lisent_dans_la_voix():
 def test_une_voix_sans_section_anti_patterns_ne_rend_rien():
     """Contre-épreuve : sans elle, on ne saurait pas si l'extraction lit vraiment la
     section, ou si elle ramasse les guillemets de n'importe où dans la note."""
-    sans_section = "# Clone Enrico\n\nUn texte sans la section, avec « un mot »."
+    sans_section = "# Clone de la voix de référence\n\nUn texte sans la section, avec « un mot »."
     with _avec_voix(lambda: sans_section):
         assert th.anti_patterns() == []
 

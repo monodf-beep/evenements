@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 /* ============================================================================
    Agenda Sabauda / Cultura Sabauda — système de design du back-office
    Un seul fichier, partagé par toutes les pages (base.html).
@@ -6,55 +7,139 @@
    texte coloré → fond « -soft » + variante « -ink ».
    ========================================================================== */
 :root {
-  /* ---- Marque ---- */
-  --brand:        #1f3a63;   /* marine principale */
-  --brand-ink:    #17304f;   /* marine foncée : texte/hover sur fond clair */
-  --brand-strong: #0f2440;   /* marine très foncée : sidebar, boutons dark */
-  --brand-soft:   #eef2f8;   /* fond teinté marine (barres, surbrillance) */
+  /* ═════════════════════════════════════════════════════════════════════════
+     JETONS — portés du design system de CrawlSEO (github.com/crawlseo/crawlseo,
+     app/globals.css), qui est shadcn/ui. Franck, 22/09 : « utilise le design kit
+     de CrawlSEO et applique-le à tout le back-office ».
+
+     CE QUI EST REPRIS : la STRUCTURE — des rôles sémantiques (background,
+     foreground, card, muted, border, input, ring, primary, destructive, signal)
+     au lieu de couleurs nommées ; l'échelle de rayons 6/10/14/18/24 ; et surtout
+     l'échelle d'ombres, qui porte un LISERÉ d'1px dans l'ombre elle-même
+     (`0 0 0 1px …, 0 1px 2px …`) au lieu d'une bordure. C'est ce détail qui fait
+     l'allure : les surfaces se détachent sans trait dur.
+
+     CE QUI N'EST PAS REPRIS : leur lavande (#7c3aed). C'est leur identité, pas la
+     nôtre. `--primary` reste le marine de Cultura Sabauda et `--destructive` son
+     rouge. On prend un système, on n'emprunte pas une marque.
+
+     Leur produit est sombre par défaut ; leur kit porte aussi un thème CLAIR,
+     c'est celui-ci. La barre latérale reste marine foncée — c'est la marque, et
+     leur mode sombre fait de même.
+
+     LES ANCIENS NOMS SURVIVENT en alias plus bas : vingt-huit gabarits et une
+     centaine de styles en ligne les utilisent. Les renommer d'un coup, c'était
+     casser le back-office pour un gain cosmétique.
+     ═════════════════════════════════════════════════════════════════════════ */
+
+  /* ---- Rôles (structure shadcn) ---- */
+  --background:  #f4f4f5;
+  --foreground:  #18181b;
+  --card:        #ffffff;
+  --card-foreground: #18181b;
+  --popover:     #ffffff;
+  /* ⚠️ COLLISION DE NOMS, corrigée le 22/09 après l'avoir vue à l'écran. Chez shadcn
+     `--muted` est un FOND et le texte gris est `--muted-foreground` ; dans ce dépôt
+     `--muted` était la COULEUR DU TEXTE gris depuis toujours, employée 23 fois en CSS
+     et 30 fois dans les gabarits. Les avoir échangés a repeint la moitié des libellés
+     en gris quasi blanc — invisible. Même piège sur `--accent`, qui était le ROUGE de
+     marque ici et devient un fond teinté chez eux : les pastilles étaient grises.
+     L'ancien nom garde son sens, le rôle shadcn prend un nom à lui. C'est tout l'objet
+     de la couche d'alias : porter un système sans renommer cent usages d'un coup. */
+  --muted:       #71717a;   /* TEXTE gris (sens historique de ce dépôt) */
+  --muted-bg:    #ececef;   /* le `muted` de shadcn : une SURFACE */
+  --muted-foreground: #71717a;
+  --border:      #e4e4e7;
+  --input:       #e4e4e7;
+
+  /* ---- Marque Cultura Sabauda, à la place de leur lavande ---- */
+  --primary:            #1f3a63;
+  --primary-hover:      #17304f;
+  --primary-foreground: #ffffff;
+  --accent:             #c8102e;                 /* ROUGE de marque (sens historique) */
+  --accent-subtle:      rgba(31, 58, 99, .10);   /* le `accent` de shadcn : un fond */
+  --accent-foreground:  #17304f;
+  --ring:               #1f3a63;
+
+  --destructive: #c0233b;
+  --signal:      #059669;
+  --warning:     #d97706;
+  --info:        #2563eb;
+
+  /* ---- Rail (barre latérale) : marine foncée, comme leur mode sombre ---- */
+  --sidebar:            #0f2440;
+  --sidebar-foreground: #c2ccd9;
+  --sidebar-muted:      #8b96a8;
+  --sidebar-accent:     rgba(255, 255, 255, .08);
+  --sidebar-border:     rgba(255, 255, 255, .08);
+
+  /* ---- Rayons et ombres : l'échelle de CrawlSEO ---- */
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+  --radius-xl: 18px; --radius-2xl: 24px;
+  --radius: 10px; --radius-pill: 999px;
+  --shadow-1: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-2: 0 0 0 1px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.06);
+  --shadow-3: 0 0 0 1px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.08);
+  --shadow-4: 0 0 0 1px rgba(0,0,0,.05), 0 16px 40px rgba(0,0,0,.10);
+
+  /* ---- Typographie : la leur (Inter + IBM Plex Mono pour les chiffres) ---- */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ═══ ALIAS DE COMPATIBILITÉ — les anciens noms, redirigés vers les rôles.
+     Ne rien ajouter ici : tout nouveau style passe par les rôles ci-dessus. ═══ */
+  --brand:        var(--primary);
+  --brand-ink:    var(--primary-hover);
+  --brand-strong: var(--sidebar);
+  --brand-soft:   #eef2f8;
   --brand-border: #d3ddec;
-
-  --accent:      #c8102e;    /* rouge de marque (signature, compteurs, hot) */
-  --accent-ink:  #a20d25;
-  --accent-soft: #fdecef;
-
-  /* ---- Neutres froids ---- */
-  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#fafbfc;
-  --ink:#16202e; --ink-2:#384456; --muted:#5c6675;
-  --line:#e4e8ee; --line-2:#cfd6df;
-
-  /* ---- Sémantiques (fond plein AA / texte-sur-clair / fond clair) ---- */
-  --ok:#15803d;     --ok-ink:#116932;     --ok-soft:#e7f6ec;
-  --warn:#b45309;   --warn-ink:#8a3f07;   --warn-soft:#fdf0dc;
-  --danger:#c0233b; --danger-ink:#991b28; --danger-soft:#fdecef;
-  --info:#1f6feb;   --info-ink:#1a5fd0;   --info-soft:#e8f1fe;
-  --purple:#6d28d9; --purple-ink:#5b21b6; --purple-soft:#f0eafc;
-
-  --radius:10px; --radius-sm:7px; --radius-lg:14px; --radius-pill:999px;
-  --shadow-sm:0 1px 2px rgba(15,36,64,.06);
-  --shadow:0 1px 3px rgba(15,36,64,.08), 0 1px 2px rgba(15,36,64,.05);
-  --shadow-md:0 4px 12px rgba(15,36,64,.10);
-  --sidebar:240px;
+  --accent-ink:   #a20d25;
+  --accent-soft:  #fdecef;
+  --bg:      var(--background);
+  --surface: var(--card);
+  --surface-2: #fafafa;
+  --ink:   var(--foreground);
+  --ink-2: #3f3f46;
+  --line:   var(--border);
+  --line-2: #d4d4d8;
+  --ok:#059669;     --ok-ink:#047857;     --ok-soft:#ecfdf5;
+  --warn:#d97706;   --warn-ink:#b45309;   --warn-soft:#fffbeb;
+  --danger:#c0233b; --danger-ink:#991b1b; --danger-soft:#fef2f2;
+  --purple:#6d28d9; --purple-ink:#5b21b6; --purple-soft:#f5f3ff;
+  --shadow-sm: var(--shadow-1);
+  --shadow:    var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --sidebar-width:240px;
 }
 * { box-sizing:border-box; }
 html,body { margin:0; }
-body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+/* Les polices du kit. En @import plutôt qu'en <link> : un seul fichier à déployer,
+   et le back-office reste lisible en repli système si la requête échoue. */
+body { font-family:var(--font-sans);
+  font-size:14px; line-height:1.55; letter-spacing:-.01em;
   color:var(--ink); background:var(--bg); font-size:15px; line-height:1.5; }
 a { color:var(--brand-ink); text-decoration:none; }
 a:hover { text-decoration:underline; }
 /* Serif = titres de CONTENU + chiffres KPI. L'UI (labels, th) reste en sans. */
-h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; font-weight:700; line-height:1.2; }
+/* Le serif habillait joliment mais ralentit la lecture d'un outil qu'on parcourt
+   cinquante fois par jour. Les titres passent en sans, resserrés — convention du kit. */
+h1,h2,h3 { font-family:var(--font-sans); font-weight:650; line-height:1.25;
+  letter-spacing:-.02em; color:var(--foreground); }
+.font-data, .num { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
 .muted { color:var(--muted); }
 .text-sm { font-size:.85rem; } .text-xs { font-size:.76rem; }
 
 /* Navigation clavier visible partout (a11y) */
 a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
-.st:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+/* Un anneau, pas un contour épais : lisible au clavier sans casser la grille. */
+.st:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible,
+button:focus-visible, a:focus-visible, textarea:focus-visible {
   outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
 
 /* ---------- Shell : sidebar + main ---------- */
 /* minmax(0,1fr) : sans ça, une table large (min-width:auto) élargit la colonne
    au-delà de l'écran et fait déborder toute la page horizontalement sur mobile. */
-.app-shell { display:grid; grid-template-columns:var(--sidebar) minmax(0,1fr); min-height:100vh; }
+.app-shell { display:grid; grid-template-columns:var(--sidebar-width) minmax(0,1fr); min-height:100vh; }
 .sidebar { background:var(--brand-strong); color:#c2ccd9; display:flex; flex-direction:column;
   position:sticky; top:0; height:100vh; padding:1.1rem .8rem; }
 .brand { display:flex; align-items:center; gap:.6rem; padding:.2rem .4rem 1rem; }
@@ -105,7 +190,10 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 .topbar .sub { color:var(--muted); font-size:.9rem; }
 
 /* ---------- Cartes ---------- */
-.card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+/* Le liseré vient de l'ombre (`0 0 0 1px`), pas d'une bordure : c'est ce qui fait
+   que les surfaces se détachent sans trait dur. Signature du kit. */
+.card { background:var(--card); border:0; border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-1);
   box-shadow:var(--shadow-sm); padding:1.1rem 1.2rem; margin-bottom:1.1rem; }
 .card > h2:first-child, .card > h3:first-child { margin-top:0; }
 .card h2 { font-size:1.05rem; margin:0 0 .7rem; }
@@ -121,11 +209,14 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 
 /* ---------- KPIs ---------- */
 .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.8rem; margin-bottom:1.1rem; }
-.kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+.kpi { background:var(--card); border:0; border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-1);
   padding:.9rem 1rem; box-shadow:var(--shadow-sm); color:inherit; display:block;
   transition:border-color .12s, box-shadow .12s; }
-.kpi:hover { border-color:var(--brand); box-shadow:var(--shadow-md); text-decoration:none; }
-.kpi .v { font-size:1.8rem; font-weight:800; font-family:Georgia,serif; line-height:1;
+.kpi:hover { box-shadow:var(--shadow-2); transform:translateY(-1px); text-decoration:none; }
+.kpi { transition:box-shadow .14s, transform .14s; }
+.kpi .v { font-size:1.75rem; font-weight:650; font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums; letter-spacing:-.03em; line-height:1;
   font-variant-numeric:tabular-nums; }
 .kpi .l { font-size:.8rem; color:var(--muted); margin-top:.3rem; }
 .kpi.hot { border-color:var(--accent); }
@@ -133,18 +224,21 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 .kpi.hot .l { color:var(--accent-ink); font-weight:600; }
 
 /* ---------- Boutons : UNE action primaire par écran, le reste sobre ---------- */
-.btn { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .9rem;
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  padding:.42rem .8rem; font-weight:500; font-size:.86rem;
+  border-radius:var(--radius-md); transition:background .14s, box-shadow .14s;
   border-radius:var(--radius-sm); border:1px solid transparent; font-size:.88rem; font-weight:600;
   cursor:pointer; text-decoration:none; background:#eceff3; color:var(--ink-2);
   transition:background .12s, border-color .12s; }
-.btn:hover { text-decoration:none; background:#e2e6ec; }
+.btn:hover { text-decoration:none; background:var(--muted-bg); }
 .btn:disabled { opacity:.5; cursor:default; pointer-events:none; }
-.btn-primary { background:var(--brand); color:#fff; }
-.btn-primary:hover { background:var(--brand-ink); }
+.btn-primary { background:var(--primary); color:var(--primary-foreground);
+  box-shadow:var(--shadow-1); }
+.btn-primary:hover { background:var(--primary-hover); }
 .btn-dark { background:var(--brand-strong); color:#fff; }
 .btn-dark:hover { background:#0a1c33; }
 .btn-ghost { background:#fff; border-color:var(--line-2); color:var(--ink-2); }
-.btn-ghost:hover { background:var(--surface-2); border-color:var(--muted); }
+.btn-ghost:hover { background:var(--surface-2); border-color:var(--line-2); }
 .btn-ok { background:var(--ok); color:#fff; }       .btn-ok:hover { background:var(--ok-ink); }
 .btn-danger { background:var(--danger); color:#fff; } .btn-danger:hover { background:var(--danger-ink); }
 .btn-purple { background:var(--purple); color:#fff; } .btn-purple:hover { background:var(--purple-ink); }
@@ -440,3 +534,167 @@ details.pli > summary:hover { background: var(--line-2); border-radius: .5rem; }
 details.pli > .pli-corps { padding: 0 .75rem .7rem; }
 details.pli > summary .pli-resume { margin-left: auto; font-weight: 400; font-size: .78rem;
                                     color: #64748b; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NAVIGATION — refonte du 2026-09-22 (Franck : « rends le back-office le plus
+   simple possible »). Trois écrans épinglés, le reste replié, et une palette
+   « Aller à… » qui rend la longueur du menu indifférente.
+   Le parti pris est celui d'un TABLEAU DE BORD D'INSTRUMENT : rien de décoratif,
+   de la densité maîtrisée, et une hiérarchie qui se lit sans lire.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Lien d'évitement : la première chose qu'attend une navigation au clavier. */
+.skip { position:absolute; left:-9999px; top:0; z-index:200; background:var(--brand);
+  color:#fff; padding:.6rem 1rem; border-radius:0 0 var(--radius) 0; font-weight:600; }
+.skip:focus { left:0; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+
+/* Bouton « Aller à… » — masqué sans JS (il n'irait nulle part), révélé par app.js. */
+.nav-go { display:none; }
+.js .nav-go { display:flex; align-items:center; gap:.45rem; width:100%; margin:.5rem 0 .2rem;
+  padding:.45rem .7rem; border:1px solid rgba(255,255,255,.14); border-radius:8px;
+  background:rgba(255,255,255,.05); color:#9aa7b8; font:inherit; font-size:.84rem;
+  cursor:pointer; text-align:left; transition:background .12s, color .12s; }
+.js .nav-go:hover { background:rgba(255,255,255,.1); color:#fff; }
+.nav-go kbd { margin-left:auto; font:inherit; font-size:.7rem; padding:.05rem .3rem;
+  border:1px solid rgba(255,255,255,.18); border-radius:4px; color:#7f8b9c; }
+
+/* Les trois épinglées : plus hautes, plus lisibles, séparées du reste. */
+.nav a.nav-main { padding:.6rem .7rem; font-weight:600; }
+.nav a.nav-main + details { margin-top:.5rem; }
+.nav .nav-ico { width:1.25rem; flex:0 0 1.25rem; text-align:center; }
+.nav .nav-lib { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.nav details { margin-top:.1rem; }
+.nav details > a { padding-left:1.35rem; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LE TABLEUR — refonte du 2026-09-22 (Franck, sur capture : « pas très visible
+   au niveau UX/UI »). Trois défauts mesurés sur cette capture :
+     • la colonne « Fiche » faisait 150 px → les titres tenaient sur SIX lignes,
+       chaque rangée montait à 130 px de haut, et l'écran portait quatre fiches ;
+     • l'en-tête répétait le groupe sous chaque colonne (« LIEU · LIEU ») ;
+     • la rangée de taux mangeait une ligne entière et étirait ses barres sur
+       toute la largeur restante du tableau.
+   Le parti pris reste celui d'un TABLEAU DE BORD D'INSTRUMENT : densité tenue,
+   chiffres alignés, rien de décoratif. Ce qui se lit vite, c'est ce qui manque.
+   ══════════════════════════════════════════════════════════════════════════ */
+.tb-wrap { overflow:auto; max-height:72vh; border:1px solid var(--line-2);
+  border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow-sm); }
+/* `width:100%` étirait la DERNIÈRE colonne jusqu'au bord, où elle se faisait couper
+   en plein mot. `max-content` laisse chaque colonne à sa taille utile ; `min-width`
+   garde le tableau plein quand il y a peu de colonnes. */
+table.tb { border-collapse:separate; border-spacing:0;
+  width:max-content; min-width:100%; font-size:.82rem; line-height:1.35; }
+table.tb th, table.tb td { padding:.34rem .6rem; border-bottom:1px solid var(--line);
+  border-right:1px solid var(--line); text-align:left; vertical-align:top; }
+table.tb tbody tr:nth-child(even) td { background:var(--surface-2); }
+table.tb tbody tr:hover td { background:var(--brand-soft); }
+
+/* --- En-tête à deux étages --- */
+table.tb thead th { position:sticky; background:#eef2f8; z-index:3; white-space:nowrap; }
+table.tb thead tr.tb-groupes th { top:0; height:1.5rem; font-size:.63rem; font-weight:700;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--brand-ink);
+  border-bottom:1px solid var(--brand-border); text-align:center; }
+table.tb thead tr.tb-titres th { top:1.5rem; z-index:2; background:#f8fafc;
+  min-width:7.5rem; border-bottom:1px solid var(--line-2); }
+.tb-lib { display:block; font-weight:600; color:var(--ink); }
+.tb-taux { display:block; font-size:.7rem; font-weight:400; color:var(--muted);
+  font-variant-numeric:tabular-nums; }
+.tb-taux em { font-style:normal; margin-left:.3rem; opacity:.75; }
+.tb-bar { display:block; height:3px; border-radius:2px; background:var(--line-2);
+  margin-top:3px; }
+.tb-bar > i { display:block; height:100%; border-radius:2px; background:var(--ok); }
+.tb-bar.moyen > i { background:var(--warn); }
+.tb-bar.bas   > i { background:var(--danger); }
+
+/* --- La colonne figée : LE défaut principal de la première version --- */
+table.tb .tb-fig { position:sticky; left:0; z-index:1; background:var(--surface);
+  width:24rem; min-width:22rem; max-width:26rem; white-space:normal;
+  border-right:1px solid var(--line-2);
+  /* L'ombre dit que le tableau CONTINUE à droite : sans elle, une colonne coupée au
+     bord ressemble à une colonne cassée. */
+  box-shadow:6px 0 6px -6px rgba(15,36,64,.18); }
+table.tb tbody tr:nth-child(even) .tb-fig { background:var(--surface-2); }
+table.tb tbody tr:hover .tb-fig { background:var(--brand-soft); }
+table.tb thead .tb-fig { z-index:4; }
+table.tb thead tr.tb-groupes .tb-fig { background:#eef2f8; }
+table.tb thead tr.tb-titres .tb-fig { background:#f8fafc; }
+table.tb thead .tb-fig small { display:block; font-weight:400; font-size:.7rem;
+  color:var(--muted); }
+/* Le titre tient sur DEUX lignes au plus : au-delà, une seule fiche mangeait
+   l'écran. L'intitulé complet reste dans l'infobulle et sur la fiche. */
+.tb-titre { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden; font-weight:600; color:var(--brand-ink); text-decoration:none; }
+.tb-titre:hover { text-decoration:underline; }
+.tb-meta { display:block; margin-top:.15rem; font-size:.7rem; color:var(--muted);
+  font-variant-numeric:tabular-nums; }
+.tb-trous { margin-left:.35rem; padding:.02rem .35rem; border-radius:var(--radius-pill);
+  background:var(--danger-soft); color:var(--danger-ink); font-size:.68rem;
+  font-weight:700; }
+
+/* --- Cellules --- */
+/* Une cellule ne prend jamais plus que sa part : un extrait de tarif de 60 signes
+   poussait « Horaires » hors de l'écran. Le texte entier reste en infobulle. */
+table.tb tbody td { max-width:16rem; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; font-variant-numeric:tabular-nums; }
+.tb-vide { display:inline-block; color:var(--danger); font-size:.7rem; }
+.tb-so { color:var(--muted); font-style:italic; font-size:.72rem; }
+table.tb input.tb-in { font:inherit; font-size:.8rem; width:100%; min-width:8rem;
+  border:1px solid var(--line-2); border-radius:var(--radius-sm); padding:.1rem .3rem;
+  background:#fffdf5; }
+table.tb td.tb-saisie { overflow:visible; }
+
+/* --- Le bandeau « Où ça pêche » --- */
+.tb-perim { font-size:.84rem; color:var(--ink-2); margin:.2rem 0 .7rem; }
+.tb-note { font-size:.8rem; color:var(--muted); margin-top:.9rem; line-height:1.55;
+  max-width:62rem; }
+.tb-peche { background:var(--surface); border:1px solid var(--line-2);
+  border-radius:var(--radius); padding:.6rem .8rem; margin:.2rem 0 .8rem;
+  box-shadow:var(--shadow-sm); }
+.tb-peche h3 { margin:0 0 .45rem; font-size:.86rem; font-weight:700; color:var(--ink); }
+.tb-peche h3 small { font-weight:400; color:var(--muted); }
+.tb-chip { display:inline-flex; align-items:baseline; gap:.4rem; margin:0 .4rem .35rem 0;
+  padding:.24rem .6rem; border:1px solid var(--danger); border-radius:var(--radius-pill);
+  background:var(--danger-soft); color:var(--danger-ink); text-decoration:none;
+  font-size:.82rem; transition:background .12s; }
+.tb-chip:hover { background:#fbdcdf; text-decoration:none; }
+.tb-chip.on { background:var(--danger-ink); color:#fff; border-color:var(--danger-ink); }
+.tb-chip b { font-size:1rem; font-variant-numeric:tabular-nums; }
+.tb-chip span { font-size:.73rem; opacity:.8; }
+.tb-rien { font-size:.84rem; color:var(--ok-ink); }
+
+@media (max-width: 900px) {
+  table.tb .tb-fig { position:static; width:auto; min-width:12rem; }
+}
+
+/* ---- Palette « Aller à… » ---- */
+.palette[hidden] { display:none; }
+.palette { position:fixed; inset:0; z-index:150; display:flex; justify-content:center;
+  align-items:flex-start; padding:10vh 1rem 1rem; }
+.palette-voile { position:absolute; inset:0; background:rgba(15,36,64,.55);
+  backdrop-filter:blur(2px); }
+.palette-boite { position:relative; width:min(38rem,100%); max-height:74vh; display:flex;
+  flex-direction:column; background:var(--surface); border-radius:var(--radius-lg);
+  box-shadow:0 18px 50px rgba(15,36,64,.35); overflow:hidden; }
+.palette-q { border:0; border-bottom:1px solid var(--line); padding:.9rem 1.1rem;
+  font:inherit; font-size:1.02rem; color:var(--ink); background:var(--surface-2); }
+.palette-q:focus { outline:none; border-bottom-color:var(--brand); }
+.palette-liste { list-style:none; margin:0; padding:.3rem; overflow:auto; }
+.palette-liste li[hidden] { display:none; }
+.palette-liste a { display:flex; align-items:center; gap:.7rem; padding:.5rem .7rem;
+  border-radius:var(--radius-sm); color:var(--ink); text-decoration:none; }
+.palette-liste li.sel a, .palette-liste a:hover { background:var(--brand-soft); }
+.palette-liste li.sel a { box-shadow:inset 3px 0 0 var(--brand); }
+.palette-ico { width:1.4rem; flex:0 0 1.4rem; text-align:center; font-size:1.05rem; }
+.palette-txt { display:flex; flex-direction:column; min-width:0; }
+.palette-txt b { font-size:.92rem; font-weight:600; }
+.palette-txt small { color:var(--muted); font-size:.78rem; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.palette-grp { margin-left:auto; flex:0 0 auto; font-size:.68rem; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--muted); padding-left:.6rem; }
+.palette-vide { padding:1.2rem; text-align:center; color:var(--muted); margin:0; }
+
+@media (prefers-reduced-motion:reduce) {
+  .js .nav-go, .nav details summary .chev { transition:none; }
+}

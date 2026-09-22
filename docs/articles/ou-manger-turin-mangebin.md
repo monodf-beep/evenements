@@ -1,7 +1,7 @@
 # Article prêt à publier — « Où manger à Turin : les tables Mangébin »
 
 *Rédigé le 2026-09-06, troisième version. Premier rayon du hub `/ou-manger/`.
-Doctrine appliquée : voix commune Enrico (`clone-enrico-fr`), procédure et checklist du
+Doctrine appliquée : voix commune de référence (le skill de rédaction), procédure et checklist du
 skill `redaction-agenda-sabauda`, et surcharges Agenda Sabauda collées par Franck depuis
 Obsidian le 06/09, dont le dépôt ne garde volontairement aucun miroir depuis le 05/09.*
 
@@ -11,12 +11,12 @@ adresses citées. Relevé du **6 septembre 2026**.
 
 ---
 
-## Ce que la relecture Enrico a corrigé
+## Ce que la relecture de la voix de référence a corrigé
 
 Version 2 violait quatre règles dures de la voix commune. Noté ici parce que ça vaut pour
 tous les rayons suivants :
 
-| Règle Enrico | V2 | V3 |
+| Règle de la voix de référence | V2 | V3 |
 |---|---|---|
 | 3 à 4 chapitres H2 maximum | 5 | 4 |
 | 5W dans le premier paragraphe | absents | qui, quoi, où, quand, comment |
@@ -26,9 +26,9 @@ tous les rayons suivants :
 | Méta-description de 120 à 156 caractères | 186 | contrôlée |
 | Pas de tiret cadratin | ✓ | ✓ |
 
-Les surcharges Agenda qui tiennent CONTRE Enrico, et qu'il ne faut pas « corriger » :
+Les surcharges Agenda qui tiennent CONTRE la voix de référence, et qu'il ne faut pas « corriger » :
 les **listes à puces sont autorisées** pour les faits structurés (seuils, adresses), et le
-**gras utile** de 3 à 5 expressions est exigé. Enrico proscrit les deux ; l'étage Agenda
+**gras utile** de 3 à 5 expressions est exigé. La voix de référence proscrit les deux ; l'étage Agenda
 les rétablit, par surcharge explicite.
 
 **Retrait décidé par Franck** : Ristorante del Circolo dei Lettori sort de la sélection.
@@ -159,7 +159,7 @@ LIRE AUSSI : [Sagre du Piémont 2026](/sagre-piemont-2026/)
 1. Ajouter le rayon au hub `/ou-manger/` : la section « Piémont & Turin » renverra vers cet
    article, comme la section Comté de Nice renvoie déjà vers la Cuisine Nissarde.
 2. Image à la une, avec crédit et propriétaire identifié. Sans propriétaire connu, pas de
-   photo : c'est une règle Enrico, pas une préférence.
+   photo : c'est une règle de la voix de référence, pas une préférence.
 
 ## Ce qui a été mesuré, et ce qui a failli être faux
 
@@ -230,7 +230,7 @@ contrôle n'en recrée pas un).
 | Titre-piège, clickbait | **absent** — « Où manger à Turin : les tables Mangébin » est descriptif, il annonce ce que la page contient |
 | Confirmshaming | **absent** — aucun refus n'est sollicité |
 | Case pré-cochée, opt-in déguisé | **absent** — aucun formulaire |
-| Publicité déguisée en contenu éditorial | **à trancher par un œil humain**, et c'est le seul point qui le mérite. L'article nomme 7 établissements. Aucun partenariat, aucune contrepartie, et le critère de sélection est écrit dans le texte. L'épreuve d'Enrico (« l'article aurait-il pu être écrit par le service com d'un acteur cité ? ») donne non : un service com n'écrirait pas que le label ne garantit ni le service ni le cuisinier. Reste que la décision de nommer des commerces est éditoriale. |
+| Publicité déguisée en contenu éditorial | **à trancher par un œil humain**, et c'est le seul point qui le mérite. L'article nomme 7 établissements. Aucun partenariat, aucune contrepartie, et le critère de sélection est écrit dans le texte. L'épreuve de la voix de référence (« l'article aurait-il pu être écrit par le service com d'un acteur cité ? ») donne non : un service com n'écrirait pas que le label ne garantit ni le service ni le cuisinier. Reste que la décision de nommer des commerces est éditoriale. |
 | Collecte de données | **absent** |
 
 ---

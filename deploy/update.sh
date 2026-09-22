@@ -17,6 +17,11 @@ cd "$(dirname "$0")/.."
 echo "→ Récupération de origin/$BRANCH…"
 git fetch origin "$BRANCH"
 git checkout "$BRANCH"
+# RIEN NE S'EFFACE EN SILENCE (2026-09-22). Le `reset --hard` ci-dessous détruit tout
+# commit local jamais poussé. Ce garde-fou s'arrête AVANT et dit quoi taper — voir
+# deploy/verifier_avant_reset.sh pour l'incident des 26 commits qui l'a motivé.
+bash "$(dirname "$0")/verifier_avant_reset.sh" "$BRANCH"
+
 # LA CONFIG DE L'OPÉRATEUR SURVIT AU DÉPLOIEMENT (2026-08-11). `git reset --hard` annule
 # toute modification locale d'un fichier SUIVI — et .claude/settings.json en est un. Franck
 # avait installé ses permissions d'autonomie à 18h30 ; le déploiement de 18h45 les a

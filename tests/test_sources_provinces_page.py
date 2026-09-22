@@ -49,9 +49,12 @@ with app.test_request_context():
 
     html = render_template("sources_provinces.html", active="sources_provinces", **data)
     verifier("le rendu produit une vraie page (pas vide)", len(html) > 2000, len(html))
-    verifier("le lien de nav pointe vers la bonne route",
-             '/sources-provinces' in (ROOT / "app" / "templates" / "base.html")
-             .read_text(encoding="utf-8"))
+    # Le menu n'est plus écrit en dur dans base.html : il est rendu depuis la carte
+    # `utils.menu` (refonte du 22/09). On vérifie donc la CARTE, et c'est plus fort —
+    # tests/test_menu.py garantit en plus que chaque entrée pointe sur une route réelle.
+    from utils import menu as _menu
+    verifier("la page figure bien à la carte du menu",
+             "/sources-provinces" in {p["url"] for p in _menu.PAGES})
     verifier("le manque réel (Novara) apparaît dans la page rendue", "Novara" in html)
     verifier("les zéros sont mis en évidence visuellement (fond rouge)",
              "#fdeaea" in html)

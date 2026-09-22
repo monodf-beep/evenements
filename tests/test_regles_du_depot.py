@@ -35,6 +35,7 @@ celle par laquelle je passe le plus souvent.
 Lancer : .venv/bin/python -m tests.test_regles_du_depot
 """
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -235,6 +236,75 @@ try:
     _check("scripts/completer_verifie : aucune fiche en double", True)
 except SystemExit as exc:
     _check("scripts/completer_verifie : aucune fiche en double", False, str(exc))
+
+print("\n──── aucun nom de personne réelle dans le dépôt ────")
+# D'OÙ ÇA VIENT (2026-09-22, demande de Franck). Le dépôt se servait du nom d'un
+# journaliste réel comme raccourci pour sa voix éditoriale : 29 fois, dans le code, les
+# gabarits, la documentation, et jusque dans un prompt envoyé au modèle. Retiré le jour
+# même, remplacé par « voix de référence ».
+#
+# POURQUOI UN TEST ET PAS UNE LIGNE DE DOCTRINE. Le retrait a été mesuré une heure après
+# sur la branche déployée : le nom y était DÉJÀ revenu, par une autre session qui avait
+# branché avant. Et trois branches actives le portaient encore, onze fichiers chacune.
+# La prose ne les arrêtera pas ; elles ne l'auront pas lue. Ce contrôle, si : il vire au
+# rouge à la fusion, avant le déploiement.
+#
+# Ce qu'il ne peut PAS atteindre, et qu'il ne faut pas lui faire dire : l'historique git,
+# qui garde le nom dans les commits passés — l'en purger demanderait de réécrire
+# l'historique et de forcer la poussée, ce que CLAUDE.md interdit.
+# ⚠️ LE NOM N'EST PAS ÉCRIT EN CLAIR ICI, et ce n'est pas de la coquetterie : la
+# première version l'était, et ce contrôle s'est attrapé LUI-MÊME au premier passage.
+# Un fichier qui interdit un mot ne peut pas le contenir. On l'écrit donc à l'envers,
+# avec le commentaire qui dit pourquoi — sinon la prochaine session le « corrigera ».
+_NOMS_PROSCRITS = tuple("".join(reversed(x)) for x in ("ocirne",))
+
+# ⚠️ ON N'INSPECTE QUE LES FICHIERS SUIVIS PAR GIT, et la première version ne le faisait
+# pas. Lancée sur le VPS, elle a crié sur quatre fichiers de `logs/` — qui sont dans le
+# `.gitignore`, donc absents de GitHub, donc hors du sujet. Pire : ces journaux portent
+# des DONNÉES D'ÉVÉNEMENTS, et le nom proscrit ci-dessous est un prénom italien courant,
+# sur un catalogue qui couvre le Piémont et la Vallée d'Aoste. Un organisateur, un artiste
+# ou un lieu peut légitimement s'appeler ainsi. (Le nom n'est pas réécrit ici non plus :
+# ce fichier serait de nouveau attrapé par son propre contrôle.)
+#
+# C'était donc « un garde-fou qui coupe sa propre moisson » : il confondait le nom employé
+# comme ÉTIQUETTE de voix éditoriale, qu'on retire, avec le même nom apparaissant comme
+# DONNÉE, qu'on n'a aucune raison de toucher. `git ls-files` trace la bonne frontière :
+# ce qui est sur GitHub, et rien d'autre.
+try:
+    _suivis = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True,
+                             text=True, check=True).stdout.split("\0")
+except (OSError, subprocess.CalledProcessError):
+    _suivis = []
+
+_porteurs = []
+for _rel in _suivis:
+    if not _rel:
+        continue
+    _p = ROOT / _rel
+    try:
+        _txt = _p.read_text(encoding="utf-8").lower()
+    except (UnicodeDecodeError, OSError):
+        continue
+    for _nom in _NOMS_PROSCRITS:
+        if _nom in _txt:
+            _porteurs.append(f"{_rel} (« {_nom} »)")
+            break
+
+# Un ensemble vide passerait au vert sans rien vérifier — le « zéro sans dénominateur ».
+_check(f"la liste des fichiers suivis est bien lue ({len(_suivis)} entrées)",
+       len(_suivis) >= 100, len(_suivis))
+_check("aucun fichier suivi ne porte le nom d'une personne réelle", not _porteurs,
+       "\n      " + "\n      ".join(_porteurs[:10])
+       + "\n      → si c'est une ÉTIQUETTE de voix éditoriale : remplacer par « voix de"
+         " référence », le terme retenu le 22/09."
+         "\n      → si c'est une DONNÉE d'événement (prénom italien courant) : ce n'est"
+         " pas une faute, inscrire le fichier en exception ici.")
+# CONTRE-ÉPREUVE : sans elle, ce contrôle serait vert sur une liste de noms vide, ou sur
+# une recherche qui ne trouve jamais rien. On lui donne un texte qui DOIT être attrapé.
+_cas_temoin = f"un texte qui cite {_NOMS_PROSCRITS[0].capitalize()} au passage"
+_check("   et la recherche sait attraper un nom quand il y en a un",
+       any(n in _cas_temoin.lower() for n in _NOMS_PROSCRITS),
+       "la recherche ne trouve rien, même sur un cas fabriqué")
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

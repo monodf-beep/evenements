@@ -256,7 +256,7 @@ def load_voix() -> str:
 def _title_of(text: str) -> str:
     """Titre lisible d'une note : 1er titre markdown (# ...) nettoyé, sinon 1re ligne non
     vide. On IGNORE les lignes de citation Obsidian (commençant par « > ») et les lignes
-    vides, pour éviter les titres du type « > Voix de Enrico... »."""
+    vides, pour éviter les titres du type « > Voix de référence... »."""
     fallback = ""
     for line in (text or "").splitlines():
         line = line.strip()
