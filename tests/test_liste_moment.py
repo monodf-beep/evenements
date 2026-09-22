@@ -58,6 +58,7 @@ function esc_url($s) { return $s; }
 function get_transient($k) { return false; }
 function set_transient($k, $v, $t) { return true; }
 function wp_reset_postdata() {}
+function sanitize_title($s) { return strtolower(trim($s)); }
 function shortcode_atts($pairs, $atts, $sc = '') { return array_merge($pairs, (array) $atts); }
 function add_shortcode($tag, $cb) { $GLOBALS['cs_sc'][$tag] = $cb; }
 function pll_current_language() { return $GLOBALS['cs_lang']; }
@@ -75,6 +76,9 @@ class WP_Query {
             if (!in_array($f['etiq'], $etiq, true)) { continue; }
             if ($f['lang'] !== $GLOBALS['cs_lang']) { continue; }
             if ($f['fin'] < $borne) { continue; }
+            // Filtre territoire (2e clause, facultative) : lu comme le site le lit.
+            if (isset($args['tax_query'][1]['taxonomy']) && $args['tax_query'][1]['taxonomy'] === 'territoire'
+                && $f['terr'] !== $args['tax_query'][1]['terms']) { continue; }
             $o = new stdClass(); $o->ID = $i; $this->posts[] = $o;
         }
         usort($this->posts, function ($a, $b) {
@@ -112,9 +116,10 @@ def rendre(fiches, lang, atts, tmp):
     return r.stdout
 
 
-def f(etiq, debut, fin, titre, lang="fr", ville="Turin", lieu="Musei Reali", gratuit=False):
+def f(etiq, debut, fin, titre, lang="fr", ville="Turin", lieu="Musei Reali", gratuit=False,
+      terr="piemont"):
     return dict(etiq=etiq, debut=debut + " 10:00:00", fin=fin + " 23:59:59",
-                titre=titre, lang=lang, ville=ville, lieu=lieu, gratuit=gratuit)
+                titre=titre, lang=lang, ville=ville, lieu=lieu, gratuit=gratuit, terr=terr)
 
 
 def main():
@@ -236,6 +241,27 @@ def main():
         echec("contre-épreuve : avec le seul slug non suffixé, rien ne doit sortir")
     else:
         print("  ok  contre-épreuve : un seul slug déclaré, la fiche suffixée est ignorée")
+
+    # TERRITOIRE. Une même étiquette couvre le Piémont et la Vallée d'Aoste : la page
+    # valdôtaine ne doit montrer QUE les fiches valdôtaines (22/09 : 35 fiches
+    # étiquetées, toutes piémontaises — sans filtre, la page VdA les aurait listées).
+    E = "journees-europeennes-du-patrimoine"
+    mixte = [f(E, "2026-09-26", "2026-09-26", "Nocturne a Turin"),
+             f(E, "2026-09-24", "2026-09-24", "Fontaine d Issogne", ville="Issogne",
+               lieu="Chateau", terr="vallee-d-aoste")]
+    base = {"etiquette": E, "debut": "2026-09-19", "fin": "2026-09-27"}
+    hv = rendre(mixte, "fr", dict(base, territoire="vallee-d-aoste"), tmp)
+    if "Issogne" not in hv or "Turin" in hv:
+        echec("territoire : la page VdA doit montrer Issogne et PAS Turin")
+    else:
+        print("  ok  territoire=vallee-d-aoste : seule la fiche valdôtaine sort")
+    # CONTRE-ÉPREUVE : sans l'attribut, les deux sortent (comportement des pages Piémont
+    # déjà en ligne, qui n'ont pas d'attribut territoire : il ne doit pas changer).
+    hs = rendre(mixte, "fr", base, tmp)
+    if "Issogne" not in hs or "Turin" not in hs:
+        echec("contre-épreuve : sans territoire, les deux fiches doivent sortir")
+    else:
+        print("  ok  contre-épreuve : sans attribut territoire, rien n'est filtré")
 
     shutil.rmtree(tmp, ignore_errors=True)
 
