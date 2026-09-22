@@ -125,6 +125,27 @@ function cs_cvld_pick_one($term_id, $lang, $exclude, $strict = true) {
 }
 }
 
+if (!function_exists('cs_cvld_date')) {
+/* 2026-09-22 (Franck, capture de /it/scopri/savoia/) : la carte « Matisse - Yves Saint
+   Laurent » affichait « 17 Giu » alors que l'exposition court jusqu'au 28/09 -- la section
+   ne lisait que _EventStartDate. Pour un evenement DEJA COMMENCE, la seule date qui
+   renseigne est la fin (CLAUDE.md regle 5 : c'est date_event_end qui decide). Le libelle
+   vient de cs_choix_langue_date() (cs-home-territoire-choix-langue.php), qui fait deja ce
+   travail avec l'elision italienne : un seul formateur, pas deux qui divergeront. S'il
+   manque, repli sur la date de debut comme avant plutot qu'une case vide. */
+function cs_cvld_date($pid, $start, $lang) {
+    if (!$start) { return ''; }
+    $d1 = substr((string) $start, 0, 10);
+    $d2 = substr((string) get_post_meta($pid, '_EventEndDate', true), 0, 10);
+    $today = current_time('Y-m-d');
+    if ($d2 && $d1 < $today && $d2 >= $today && function_exists('cs_choix_langue_date')) {
+        $fin = cs_choix_langue_date(substr($d2, 8, 2), substr($d2, 5, 2), $lang === 'it' ? 'it' : 'fr', 'fin');
+        if ($fin !== '') { return ucfirst($fin); }
+    }
+    return date_i18n('j M', strtotime($start));
+}
+}
+
 if (!function_exists('cs_cvld_get_cards')) {
 function cs_cvld_get_cards($lang) {
     if (!function_exists('cs_terr_canon_data')) { return array(); }
@@ -168,7 +189,7 @@ function cs_cvld_get_cards($lang) {
             'thumb' => esc_url(get_the_post_thumbnail_url($pid, 'medium_large')),
             'terr'  => ($terms && !is_wp_error($terms)) ? esc_html($terms[0]->name) : '',
             'pill'  => ($terms && !is_wp_error($terms)) ? cs_pill_class($terms[0]->name) : '',
-            'date'  => $start ? esc_html(date_i18n('j M', strtotime($start))) : '',
+            'date'  => esc_html(cs_cvld_date($pid, $start, $lang)),
             'lieu'  => esc_html(get_post_meta($pid, '_cs_commune', true)),
         );
     }
