@@ -1,15 +1,21 @@
-# Écrire une page « Que faire à X aujourd'hui / ce week-end / cette semaine »
+# Le template « Que faire à X aujourd'hui / ce week-end / cette semaine »
 
-Règles posées le **2026-09-22**, après la rédaction de Chambéry puis d'Annecy, et
-sur trois reproches de Franck sur la page d'Annecy :
+**Modèle faisant foi : Chambéry.** Arbitrage de Franck, 2026-09-22 :
+*« https://agendasabauda.eu/que-faire-a-chambery/aujourdhui/ doit être un template
+pour les autres ! »* Ce document décrit ce template, pour l'appliquer aux
+**192 pages hub** (64 villes × 3 périodes, en deux langues).
+
+Règles posées le **2026-09-22**, sur quatre reproches de Franck dans la journée :
 
 > « les liens externes ne sont pas tout le temps utiles, par exemple le lien pour le
-> décret Rattazzi, on s'en fout » · « "Les concerts, eux, ne se rattrapent pas" : pas du
-> tout utile » · « dans ces pages, il faut être très générique ».
+> décret Rattazzi, on s'en fout » · « "Les concerts, eux, ne se rattrapent pas" : pas
+> du tout utile » · « "Les horaires commandent la journée…" c'est super bateau, toutes
+> les villes c'est pareil » · **« on n'est pas le site officiel. S'il change, c'est pas
+> à nous la responsabilité. Donc pas de chiffres, pas de choses périssables. »**
 
-Il a ajouté la vraie question : *« si tu es générique, tu ne vas peut-être pas ressortir,
-alors que ces pages sont quand même vachement importantes »*. Elle est traitée en
-dernière partie, avec des chiffres.
+Et la question qu'il a posée lui-même, traitée en dernière partie avec des chiffres :
+*« si tu es générique, tu ne vas peut-être pas ressortir, alors que ces pages sont
+quand même vachement importantes »*.
 
 ---
 
@@ -17,27 +23,59 @@ dernière partie, avec des chiffres.
 
 Un visiteur arrive de Google avec une question précise : **qu'est-ce qu'il y a à X
 aujourd'hui ?** La page doit y répondre en trois secondes. Le texte n'est pas là pour
-raconter la ville : il est là pour dire au lecteur **ce qu'il va trouver dessous, et où
-ça se passe**.
+raconter la ville : il est là pour dire au lecteur **ce qu'il va trouver dessous, et
+où ça se passe**.
 
 La ville se raconte dans le **guide** (`/que-faire-a-annecy/`), qui est fait pour ça.
 Les pages de période, non.
 
-## 2. Générique dans la FORME, précis dans les NOMS PROPRES
+## 2. Rien de PÉRISSABLE — on nomme, et on renvoie
+
+**C'est la règle la plus importante, et celle qui coûte le plus cher quand on l'oublie.**
+Ces pages sont écrites une fois et restent en ligne des années. Un tarif, un horaire ou
+un jour de fermeture recopié dedans devient faux sans que personne le sache — et il
+devient faux sur 192 pages à la fois, qu'aucun humain ne relira.
+
+Donc :
+
+- **jamais un prix**, un horaire d'ouverture, un jour de fermeture, une gratuité datée,
+  une consigne d'exploitation (« dernière entrée 45 minutes avant ») ;
+- **on nomme le lieu et on renvoie à SON site**, qui est responsable de ses propres
+  horaires : « un billet commun les relie » + le lien, jamais « il coûte 8 € ».
+
+**La frontière n'est pas « chiffre ou pas chiffre ».** Une date d'histoire ne périme
+jamais, et c'est justement elle qui distingue une page des 191 autres. Chambéry en
+porte quatre — le 10 décembre 1838, 1834, de 1502 à 1578, le XIXe siècle — et pas un
+seul chiffre périssable. Ce qui périme, c'est ce qui décrit **l'exploitation** d'un
+lieu, pas son histoire.
+
+> ⚠️ **Écrit le matin où je l'ai violée.** Franck avait rejeté une phrase creuse ; j'ai
+> cru bien faire en la remplaçant par des faits vérifiés à la source (tarifs, horaires,
+> jour de fermeture des musées d'Annecy), et j'ai publié les six pages. Sa réponse :
+> « on n'est pas le site officiel ». **Remplacer du vide par du périssable, ce n'est pas
+> corriger, c'est déplacer la dette** — et la déplacer vers quelque chose qu'on ne saura
+> plus vérifier.
+
+Contrôle mécanique : `scripts/verif_texte_hub.perissable`, avec sa contre-épreuve dans
+`tests/test_texte_hub_perissable.py` — dont les cas qui doivent PASSER sont les dates
+d'histoire de Chambéry.
+
+## 3. Générique dans la FORME, précis dans les NOMS PROPRES
 
 C'est la règle qui résout la tension entre « très générique » et « 192 pages qui ne
-doivent pas être des copies ».
+doivent pas être des copies ». Franck, le 22/09 : *« il faut être générique, mais tout
+en proposant quand même un mini contenu, pour que au niveau SEO ce soit intéressant. »*
 
-- **les tournures peuvent se répéter** d'une ville à l'autre. « Les musées ouvrent le
-  matin, les salles en fin d'après-midi » vaut pour Annecy comme pour Albertville, et
-  ce n'est pas un défaut : c'est vrai ;
-- **les noms propres doivent différer** : la salle, le musée, le marché, le quartier.
-  C'est ce qui distingue une page d'une autre, pour le lecteur comme pour Google.
+- **les tournures peuvent se répéter** d'une ville à l'autre : « la scène nationale
+  porte le théâtre et la danse », « le marché prend les rues du centre ». Un gabarit de
+  phrases, c'est voulu ;
+- **les noms propres doivent différer**, et ce sont EUX le contenu : la salle, le musée,
+  le marché, le quartier, la rivière, les communes voisines.
 
 Autrement dit, on ne cherche pas 192 récits. On cherche **un gabarit de phrases et une
 liste de lieux par ville**.
 
-## 3. L'histoire a sa place, mais sans appareil de notes
+## 4. L'histoire a sa place, mais sans appareil de notes
 
 > ⚠️ **Cette règle disait d'abord l'inverse, et c'était une erreur de ma part.** J'avais
 > écrit « pas d'histoire, pas d'érudition » et supprimé tout le chapitre historique
@@ -55,52 +93,89 @@ royaume en provinces » vaut mieux qu'un lien vers le portail des archives. Le l
 apprend quelque chose au lieu d'être renvoyé ailleurs.
 
 Le fact-checking reste dû : la source se vérifie avant d'écrire, elle ne se cite pas
-dans le texte.
+dans le texte. Et quand une affirmation vient d'un tiers, Chambéry montre la tournure
+à employer : **« selon l'office de tourisme »**, dans le fil de la phrase.
 
-## 4. Les liens externes : une adresse que le lecteur VOUDRAIT ouvrir
+## 5. Les liens externes : une adresse que le lecteur VOUDRAIT ouvrir
 
 Un lien externe se justifie s'il mène quelque part d'utile **au visiteur qui prépare sa
-sortie** : la salle, le musée, l'office de tourisme, la page des marchés de la mairie.
+sortie** : la salle, le musée, l'office de tourisme. C'est aussi lui qui porte le
+périssable à notre place (règle 2).
 
 **Jamais un lien qui sert à prouver une affirmation.** Si un fait a besoin d'une source
 pour être crédible sur une page d'agenda, c'est qu'il n'a pas sa place sur cette page.
-C'est la différence entre un lien utile et une note de bas de page déguisée.
 
 Ordre de grandeur : **deux à quatre liens externes**, tous vers des lieux ou des
-institutions. Vérifier qu'ils répondent en 200 avant de publier — la règle du dépôt vaut
-ici comme ailleurs.
+institutions.
 
-## 5. Pas de phrases-commentaires
+> ⚠️ **Un 200 ne prouve pas qu'une page existe.** Le lien « les marchés hebdomadaires »
+> d'`annecy.fr` figurait dans les SIX pages d'Annecy et rendait 200 — parce que le site
+> de la mairie est une application JavaScript qui répond 200 à tout, y compris à ses
+> propres 404. Mesuré le 22/09 : son API rend `"Page non trouvée"`, et le sitemap de la
+> mairie ne contient aucune page marchés. **Pour un site en JavaScript, contrôler l'API
+> ou le titre rendu, jamais le seul code HTTP.** C'est la règle 1 du CLAUDE.md dans un
+> autre costume.
 
-« Les concerts, eux, ne se rattrapent pas. » n'apprend rien à personne. C'est une
-remarque de rédacteur, pas une information.
+## 6. Pas de phrases-commentaires
 
-**Le test, mécanique :** une phrase qui reste vraie si on remplace le nom de la ville par
-n'importe quel autre **et** qui n'apporte aucun nom, aucun horaire, aucun lieu, saute.
-Une phrase générique qui porte une information (« les musées ouvrent le matin ») reste ;
-une phrase générique qui ne porte qu'un ton part.
+« Les concerts, eux, ne se rattrapent pas. » n'apprend rien à personne.
 
-## 6. La forme, mesurée sur le modèle de Chambéry
+> ⚠️ **Le test qui figurait ici était faux, et il avait explicitement béni la phrase que
+> Franck a rejetée.** Il disait : *« une phrase générique qui porte une information
+> ("les musées ouvrent le matin") reste ; une phrase générique qui ne porte qu'un ton
+> part. »* Or « les musées ouvrent le matin, les salles en fin d'après-midi » est vrai
+> des 192 villes : ça ressemble à une information, ça n'en est pas une.
+
+**Le bon test, mécanique : une phrase doit pouvoir être FAUSSE ailleurs.**
+
+Si elle reste vraie en remplaçant le nom de la ville par n'importe quel autre, elle
+n'apprend rien au lecteur d'Annecy — quelle que soit sa tournure affirmative. Elle part,
+ou elle gagne un nom propre.
+
+Corollaire, appris le même jour : **une phrase qui ne survit au test que grâce à un
+chiffre périssable ne survit pas** (règle 2). Le remplacement acceptable est un NOM
+PROPRE, pas un tarif.
+
+## 7. La forme, mesurée sur le modèle de Chambéry
 
 | | valeur |
 |---|---|
-| mots | 380 à 480 |
+| mots | 330 à 450 |
 | chapitres `<h2>` | 4 |
 | expressions en gras | 4 à 5, jamais sur un nom propre, un lieu, une date ou un chiffre |
 | phrase la plus longue | sous 20 mots |
 | clé exacte | 3 fois, dont une dans le premier `<h2>` |
 | `<!--more-->` | après le chapeau, qui passe AU-DESSUS de la liste des événements |
 | liens internes | vers les deux pages sœurs, plus « LIRE AUSSI » vers le guide et le territoire |
+| données périssables | **zéro** |
 
 Et un piège mortel, payé le 22/09 : **le shortcode `[cs_hub_ville …]` doit rester en fin
 de contenu.** C'est lui qui affiche la liste des événements. Les 66 octets d'une page
-vierge ne sont pas du vide : ils sont cette ligne.
+vierge ne sont pas du vide : ils sont cette ligne. Je l'ai supprimé des six pages
+d'Annecy, qui sont restées quarante minutes en ligne sans aucun événement.
 
 Contrôle mécanique avant publication : `scripts/verif_texte_hub.py`.
 
+## 8. Le gabarit, chapitre par chapitre
+
+Ce que fait Chambéry, et ce qu'on reproduit ville par ville :
+
+1. **chapeau** (3 phrases) : la clé exacte, ce que la page réunit, « la liste se refait
+   chaque matin, au rythme des fiches publiées ». Puis `<!--more-->` ;
+2. **`<h2>` n° 1** : la clé exacte + deux repères de la ville (« du Thiou aux quais »,
+   « de la fontaine des Éléphants aux arcades »). Dessous : les salles nommées, les
+   musées nommés, le marché, avec leurs liens ;
+3. **`<h2>` n° 2** : le chapitre distinctif — histoire, architecture, une légende
+   démentie, une spécialité. C'est lui qui fait que la page n'est pas une copie ;
+4. **`<h2>` n° 3** : l'alentour — le lac, les massifs, les communes voisines, ce qui
+   revient chaque année (un festival, une foire) ;
+5. **`<h2>` n° 4** : « Le reste de la semaine » — les deux pages sœurs en lien, puis la
+   ligne « LIRE AUSSI : le guide de la ville · le territoire » ;
+6. **le shortcode**, seul, en dernier.
+
 ---
 
-## 7. Le SEO : ce que la prose peut faire, et ce qu'elle ne peut pas
+## 9. Le SEO : ce que la prose peut faire, et ce qu'elle ne peut pas
 
 **Ce que Search Console dit, sur 90 jours, des pages hub elles-mêmes :**
 
