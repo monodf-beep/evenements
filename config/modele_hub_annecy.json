@@ -92,5 +92,7 @@
     "page": 2657
    }
   }
- }
+ },
+ "_PIEGE_MORTEL": "LE CONTENU D'ORIGINE D'UNE PAGE HUB *EST* LE SHORTCODE. Les 66 à 69 octets qu'on lit avant d'écrire ne sont pas du vide : c'est [cs_hub_ville villes=\"…\" territoire=\"…\" quand=\"…\"], et c'est lui qui affiche la liste des événements. Remplacer tout le post_content l'efface, et la page perd son agenda — constaté le 22/09 sur les six pages d'Annecy, en ligne sans aucun événement pendant une quarantaine de minutes.\n\nLe texte éditorial se met AVANT, le shortcode reste EN DERNIER, séparé par une ligne vide. C'est la forme de Chambéry, qui fait référence.\n\nConséquence visible : sans shortcode, le gabarit ne s'exécute pas du tout, donc le H2 « À propos de X » disparaît aussi. C'est ce décalage de structure qui a mis la puce à l'oreille de Franck, pas l'absence du listing.\n\nLa forme exacte a été relue sur une ville NON touchée (Aix-les-Bains) plutôt que reconstruite de mémoire, et les paramètres de chaque page viennent de ses propres métas cs_hub_quand et cs_hub_territoire. Identique en FR et en IT.",
+ "_a_corriger_dans_le_gabarit": "Le gabarit écrit « À propos de Annecy » : il concatène « À propos de » et le libellé sans gérer l'élision. Invisible sur Chambéry, visible sur Annecy, Aix-les-Bains, Aoste, Asti, Ivrea. Non corrigé le 22/09 — c'est une ligne du snippet 61, à faire quand Franck le dit."
 }
