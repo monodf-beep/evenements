@@ -75,7 +75,40 @@ en proposant quand même un mini contenu, pour que au niveau SEO ce soit intére
 Autrement dit, on ne cherche pas 192 récits. On cherche **un gabarit de phrases et une
 liste de lieux par ville**.
 
-## 4. L'histoire a sa place, mais sans appareil de notes
+## 4. Peu de noms propres, mais choisis — et jamais un organe d'État
+
+Franck, sur la première version d'Aix-les-Bains, phrase par phrase : *« trop de nom de
+place de nom de théâtre »*. La règle 3 dit juste « les noms propres doivent différer » —
+elle ne dit pas combien. Le premier jet d'Aix en citait onze en quatre paragraphes :
+trois théâtres, deux ports, une place, un arc, un hôtel de ville, une préfecture, un
+département, un lac hors du territoire. Aucun n'était faux. Ensemble, ils rendaient la
+page illisible — une liste déguisée en prose, exactement ce que la règle 3 essaie
+d'éviter par la forme sans l'interdire par le fond.
+
+**La correction : choisir, pas tout garder.** Un lieu culturel par paragraphe, pas trois.
+Le nom qui reste doit porter un détail (« à l'italienne, en velours rouge »), pas
+seulement exister dans la phrase. Un fait sans détail qui l'accroche à la mémoire est un
+candidat à la coupe, même vrai, même vérifié.
+
+**Et jamais un organe d'État comme source ou comme acteur de la phrase.** Sur la même
+relecture : *« ne pas parler d'organe administratif : préfecture »*. « La préfecture de
+la Savoie consacre une question entière à démentir la formule » a disparu du texte — pas
+parce que le fait était faux, mais parce que nommer l'administration qui le dit ne sert à
+rien au lecteur et alourdit la phrase d'un acteur de plus. Ça ne contredit pas la règle 5
+ci-dessous sur « selon l'office de tourisme » : un office de tourisme est un organisme de
+promotion, pas un échelon de l'État — la distinction porte sur préfecture, département,
+mairie-comme-source, pas sur toute attribution à un tiers.
+
+**Et une comparaison reste DANS l'espace sabaudo.** Le premier jet d'Aix sortait du
+territoire pour dire que le lac du Bourget n'était pas le plus grand de France (comparé
+au lac d'Hourtin, en Gironde) — un fait vrai, mais qui oblige à nommer un lieu hors
+périmètre pour le démontrer. Franck : *« on va dire que c'est l'un des plus grands lacs
+de l'espace sabauda, on reste dans cet espace là. »* La version qui reste : « un des plus
+grands lacs naturels de l'espace sabaudo », vérifiable sans quitter les quatre
+territoires. Une affirmation qui n'a besoin que de comparaisons internes est toujours
+préférable à une qui en demande une externe.
+
+## 5. L'histoire a sa place, mais sans appareil de notes
 
 > ⚠️ **Cette règle disait d'abord l'inverse, et c'était une erreur de ma part.** J'avais
 > écrit « pas d'histoire, pas d'érudition » et supprimé tout le chapitre historique
@@ -96,7 +129,7 @@ Le fact-checking reste dû : la source se vérifie avant d'écrire, elle ne se c
 dans le texte. Et quand une affirmation vient d'un tiers, Chambéry montre la tournure
 à employer : **« selon l'office de tourisme »**, dans le fil de la phrase.
 
-## 5. Les liens externes : une adresse que le lecteur VOUDRAIT ouvrir
+## 6. Les liens externes : une adresse que le lecteur VOUDRAIT ouvrir
 
 Un lien externe se justifie s'il mène quelque part d'utile **au visiteur qui prépare sa
 sortie** : la salle, le musée, l'office de tourisme. C'est aussi lui qui porte le
@@ -116,7 +149,7 @@ institutions.
 > ou le titre rendu, jamais le seul code HTTP.** C'est la règle 1 du CLAUDE.md dans un
 > autre costume.
 
-## 6. Pas de phrases-commentaires
+## 7. Pas de phrases-commentaires
 
 « Les concerts, eux, ne se rattrapent pas. » n'apprend rien à personne.
 
@@ -136,7 +169,7 @@ Corollaire, appris le même jour : **une phrase qui ne survit au test que grâce
 chiffre périssable ne survit pas** (règle 2). Le remplacement acceptable est un NOM
 PROPRE, pas un tarif.
 
-## 7. La forme, mesurée sur le modèle de Chambéry
+## 8. La forme, mesurée sur le modèle de Chambéry
 
 | | valeur |
 |---|---|
@@ -156,7 +189,7 @@ d'Annecy, qui sont restées quarante minutes en ligne sans aucun événement.
 
 Contrôle mécanique avant publication : `scripts/verif_texte_hub.py`.
 
-## 8. Le gabarit, chapitre par chapitre
+## 9. Le gabarit, chapitre par chapitre
 
 Ce que fait Chambéry, et ce qu'on reproduit ville par ville :
 
@@ -175,7 +208,7 @@ Ce que fait Chambéry, et ce qu'on reproduit ville par ville :
 
 ---
 
-## 9. Le SEO : ce que la prose peut faire, et ce qu'elle ne peut pas
+## 10. Le SEO : ce que la prose peut faire, et ce qu'elle ne peut pas
 
 **Ce que Search Console dit, sur 90 jours, des pages hub elles-mêmes :**
 
