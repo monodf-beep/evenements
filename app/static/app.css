@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 /* ============================================================================
    Agenda Sabauda / Cultura Sabauda — système de design du back-office
    Un seul fichier, partagé par toutes les pages (base.html).
@@ -6,55 +7,139 @@
    texte coloré → fond « -soft » + variante « -ink ».
    ========================================================================== */
 :root {
-  /* ---- Marque ---- */
-  --brand:        #1f3a63;   /* marine principale */
-  --brand-ink:    #17304f;   /* marine foncée : texte/hover sur fond clair */
-  --brand-strong: #0f2440;   /* marine très foncée : sidebar, boutons dark */
-  --brand-soft:   #eef2f8;   /* fond teinté marine (barres, surbrillance) */
+  /* ═════════════════════════════════════════════════════════════════════════
+     JETONS — portés du design system de CrawlSEO (github.com/crawlseo/crawlseo,
+     app/globals.css), qui est shadcn/ui. Franck, 22/09 : « utilise le design kit
+     de CrawlSEO et applique-le à tout le back-office ».
+
+     CE QUI EST REPRIS : la STRUCTURE — des rôles sémantiques (background,
+     foreground, card, muted, border, input, ring, primary, destructive, signal)
+     au lieu de couleurs nommées ; l'échelle de rayons 6/10/14/18/24 ; et surtout
+     l'échelle d'ombres, qui porte un LISERÉ d'1px dans l'ombre elle-même
+     (`0 0 0 1px …, 0 1px 2px …`) au lieu d'une bordure. C'est ce détail qui fait
+     l'allure : les surfaces se détachent sans trait dur.
+
+     CE QUI N'EST PAS REPRIS : leur lavande (#7c3aed). C'est leur identité, pas la
+     nôtre. `--primary` reste le marine de Cultura Sabauda et `--destructive` son
+     rouge. On prend un système, on n'emprunte pas une marque.
+
+     Leur produit est sombre par défaut ; leur kit porte aussi un thème CLAIR,
+     c'est celui-ci. La barre latérale reste marine foncée — c'est la marque, et
+     leur mode sombre fait de même.
+
+     LES ANCIENS NOMS SURVIVENT en alias plus bas : vingt-huit gabarits et une
+     centaine de styles en ligne les utilisent. Les renommer d'un coup, c'était
+     casser le back-office pour un gain cosmétique.
+     ═════════════════════════════════════════════════════════════════════════ */
+
+  /* ---- Rôles (structure shadcn) ---- */
+  --background:  #f4f4f5;
+  --foreground:  #18181b;
+  --card:        #ffffff;
+  --card-foreground: #18181b;
+  --popover:     #ffffff;
+  /* ⚠️ COLLISION DE NOMS, corrigée le 22/09 après l'avoir vue à l'écran. Chez shadcn
+     `--muted` est un FOND et le texte gris est `--muted-foreground` ; dans ce dépôt
+     `--muted` était la COULEUR DU TEXTE gris depuis toujours, employée 23 fois en CSS
+     et 30 fois dans les gabarits. Les avoir échangés a repeint la moitié des libellés
+     en gris quasi blanc — invisible. Même piège sur `--accent`, qui était le ROUGE de
+     marque ici et devient un fond teinté chez eux : les pastilles étaient grises.
+     L'ancien nom garde son sens, le rôle shadcn prend un nom à lui. C'est tout l'objet
+     de la couche d'alias : porter un système sans renommer cent usages d'un coup. */
+  --muted:       #71717a;   /* TEXTE gris (sens historique de ce dépôt) */
+  --muted-bg:    #ececef;   /* le `muted` de shadcn : une SURFACE */
+  --muted-foreground: #71717a;
+  --border:      #e4e4e7;
+  --input:       #e4e4e7;
+
+  /* ---- Marque Cultura Sabauda, à la place de leur lavande ---- */
+  --primary:            #1f3a63;
+  --primary-hover:      #17304f;
+  --primary-foreground: #ffffff;
+  --accent:             #c8102e;                 /* ROUGE de marque (sens historique) */
+  --accent-subtle:      rgba(31, 58, 99, .10);   /* le `accent` de shadcn : un fond */
+  --accent-foreground:  #17304f;
+  --ring:               #1f3a63;
+
+  --destructive: #c0233b;
+  --signal:      #059669;
+  --warning:     #d97706;
+  --info:        #2563eb;
+
+  /* ---- Rail (barre latérale) : marine foncée, comme leur mode sombre ---- */
+  --sidebar:            #0f2440;
+  --sidebar-foreground: #c2ccd9;
+  --sidebar-muted:      #8b96a8;
+  --sidebar-accent:     rgba(255, 255, 255, .08);
+  --sidebar-border:     rgba(255, 255, 255, .08);
+
+  /* ---- Rayons et ombres : l'échelle de CrawlSEO ---- */
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+  --radius-xl: 18px; --radius-2xl: 24px;
+  --radius: 10px; --radius-pill: 999px;
+  --shadow-1: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-2: 0 0 0 1px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.06);
+  --shadow-3: 0 0 0 1px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.08);
+  --shadow-4: 0 0 0 1px rgba(0,0,0,.05), 0 16px 40px rgba(0,0,0,.10);
+
+  /* ---- Typographie : la leur (Inter + IBM Plex Mono pour les chiffres) ---- */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ═══ ALIAS DE COMPATIBILITÉ — les anciens noms, redirigés vers les rôles.
+     Ne rien ajouter ici : tout nouveau style passe par les rôles ci-dessus. ═══ */
+  --brand:        var(--primary);
+  --brand-ink:    var(--primary-hover);
+  --brand-strong: var(--sidebar);
+  --brand-soft:   #eef2f8;
   --brand-border: #d3ddec;
-
-  --accent:      #c8102e;    /* rouge de marque (signature, compteurs, hot) */
-  --accent-ink:  #a20d25;
-  --accent-soft: #fdecef;
-
-  /* ---- Neutres froids ---- */
-  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#fafbfc;
-  --ink:#16202e; --ink-2:#384456; --muted:#5c6675;
-  --line:#e4e8ee; --line-2:#cfd6df;
-
-  /* ---- Sémantiques (fond plein AA / texte-sur-clair / fond clair) ---- */
-  --ok:#15803d;     --ok-ink:#116932;     --ok-soft:#e7f6ec;
-  --warn:#b45309;   --warn-ink:#8a3f07;   --warn-soft:#fdf0dc;
-  --danger:#c0233b; --danger-ink:#991b28; --danger-soft:#fdecef;
-  --info:#1f6feb;   --info-ink:#1a5fd0;   --info-soft:#e8f1fe;
-  --purple:#6d28d9; --purple-ink:#5b21b6; --purple-soft:#f0eafc;
-
-  --radius:10px; --radius-sm:7px; --radius-lg:14px; --radius-pill:999px;
-  --shadow-sm:0 1px 2px rgba(15,36,64,.06);
-  --shadow:0 1px 3px rgba(15,36,64,.08), 0 1px 2px rgba(15,36,64,.05);
-  --shadow-md:0 4px 12px rgba(15,36,64,.10);
-  --sidebar:240px;
+  --accent-ink:   #a20d25;
+  --accent-soft:  #fdecef;
+  --bg:      var(--background);
+  --surface: var(--card);
+  --surface-2: #fafafa;
+  --ink:   var(--foreground);
+  --ink-2: #3f3f46;
+  --line:   var(--border);
+  --line-2: #d4d4d8;
+  --ok:#059669;     --ok-ink:#047857;     --ok-soft:#ecfdf5;
+  --warn:#d97706;   --warn-ink:#b45309;   --warn-soft:#fffbeb;
+  --danger:#c0233b; --danger-ink:#991b1b; --danger-soft:#fef2f2;
+  --purple:#6d28d9; --purple-ink:#5b21b6; --purple-soft:#f5f3ff;
+  --shadow-sm: var(--shadow-1);
+  --shadow:    var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --sidebar-width:240px;
 }
 * { box-sizing:border-box; }
 html,body { margin:0; }
-body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+/* Les polices du kit. En @import plutôt qu'en <link> : un seul fichier à déployer,
+   et le back-office reste lisible en repli système si la requête échoue. */
+body { font-family:var(--font-sans);
+  font-size:14px; line-height:1.55; letter-spacing:-.01em;
   color:var(--ink); background:var(--bg); font-size:15px; line-height:1.5; }
 a { color:var(--brand-ink); text-decoration:none; }
 a:hover { text-decoration:underline; }
 /* Serif = titres de CONTENU + chiffres KPI. L'UI (labels, th) reste en sans. */
-h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; font-weight:700; line-height:1.2; }
+/* Le serif habillait joliment mais ralentit la lecture d'un outil qu'on parcourt
+   cinquante fois par jour. Les titres passent en sans, resserrés — convention du kit. */
+h1,h2,h3 { font-family:var(--font-sans); font-weight:650; line-height:1.25;
+  letter-spacing:-.02em; color:var(--foreground); }
+.font-data, .num { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
 .muted { color:var(--muted); }
 .text-sm { font-size:.85rem; } .text-xs { font-size:.76rem; }
 
 /* Navigation clavier visible partout (a11y) */
 a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
-.st:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+/* Un anneau, pas un contour épais : lisible au clavier sans casser la grille. */
+.st:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible,
+button:focus-visible, a:focus-visible, textarea:focus-visible {
   outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
 
 /* ---------- Shell : sidebar + main ---------- */
 /* minmax(0,1fr) : sans ça, une table large (min-width:auto) élargit la colonne
    au-delà de l'écran et fait déborder toute la page horizontalement sur mobile. */
-.app-shell { display:grid; grid-template-columns:var(--sidebar) minmax(0,1fr); min-height:100vh; }
+.app-shell { display:grid; grid-template-columns:var(--sidebar-width) minmax(0,1fr); min-height:100vh; }
 .sidebar { background:var(--brand-strong); color:#c2ccd9; display:flex; flex-direction:column;
   position:sticky; top:0; height:100vh; padding:1.1rem .8rem; }
 .brand { display:flex; align-items:center; gap:.6rem; padding:.2rem .4rem 1rem; }
@@ -105,7 +190,10 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 .topbar .sub { color:var(--muted); font-size:.9rem; }
 
 /* ---------- Cartes ---------- */
-.card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+/* Le liseré vient de l'ombre (`0 0 0 1px`), pas d'une bordure : c'est ce qui fait
+   que les surfaces se détachent sans trait dur. Signature du kit. */
+.card { background:var(--card); border:0; border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-1);
   box-shadow:var(--shadow-sm); padding:1.1rem 1.2rem; margin-bottom:1.1rem; }
 .card > h2:first-child, .card > h3:first-child { margin-top:0; }
 .card h2 { font-size:1.05rem; margin:0 0 .7rem; }
@@ -121,11 +209,14 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 
 /* ---------- KPIs ---------- */
 .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.8rem; margin-bottom:1.1rem; }
-.kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+.kpi { background:var(--card); border:0; border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-1);
   padding:.9rem 1rem; box-shadow:var(--shadow-sm); color:inherit; display:block;
   transition:border-color .12s, box-shadow .12s; }
-.kpi:hover { border-color:var(--brand); box-shadow:var(--shadow-md); text-decoration:none; }
-.kpi .v { font-size:1.8rem; font-weight:800; font-family:Georgia,serif; line-height:1;
+.kpi:hover { box-shadow:var(--shadow-2); transform:translateY(-1px); text-decoration:none; }
+.kpi { transition:box-shadow .14s, transform .14s; }
+.kpi .v { font-size:1.75rem; font-weight:650; font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums; letter-spacing:-.03em; line-height:1;
   font-variant-numeric:tabular-nums; }
 .kpi .l { font-size:.8rem; color:var(--muted); margin-top:.3rem; }
 .kpi.hot { border-color:var(--accent); }
@@ -133,18 +224,21 @@ a:focus-visible, button:focus-visible, .btn:focus-visible, .pbtn:focus-visible,
 .kpi.hot .l { color:var(--accent-ink); font-weight:600; }
 
 /* ---------- Boutons : UNE action primaire par écran, le reste sobre ---------- */
-.btn { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .9rem;
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  padding:.42rem .8rem; font-weight:500; font-size:.86rem;
+  border-radius:var(--radius-md); transition:background .14s, box-shadow .14s;
   border-radius:var(--radius-sm); border:1px solid transparent; font-size:.88rem; font-weight:600;
   cursor:pointer; text-decoration:none; background:#eceff3; color:var(--ink-2);
   transition:background .12s, border-color .12s; }
-.btn:hover { text-decoration:none; background:#e2e6ec; }
+.btn:hover { text-decoration:none; background:var(--muted-bg); }
 .btn:disabled { opacity:.5; cursor:default; pointer-events:none; }
-.btn-primary { background:var(--brand); color:#fff; }
-.btn-primary:hover { background:var(--brand-ink); }
+.btn-primary { background:var(--primary); color:var(--primary-foreground);
+  box-shadow:var(--shadow-1); }
+.btn-primary:hover { background:var(--primary-hover); }
 .btn-dark { background:var(--brand-strong); color:#fff; }
 .btn-dark:hover { background:#0a1c33; }
 .btn-ghost { background:#fff; border-color:var(--line-2); color:var(--ink-2); }
-.btn-ghost:hover { background:var(--surface-2); border-color:var(--muted); }
+.btn-ghost:hover { background:var(--surface-2); border-color:var(--line-2); }
 .btn-ok { background:var(--ok); color:#fff; }       .btn-ok:hover { background:var(--ok-ink); }
 .btn-danger { background:var(--danger); color:#fff; } .btn-danger:hover { background:var(--danger-ink); }
 .btn-purple { background:var(--purple); color:#fff; } .btn-purple:hover { background:var(--purple-ink); }
