@@ -181,6 +181,26 @@ def main() -> int:
                 f"{nom} → 0 fiche ET une alerte qui le dit",
                 f"{nom} : {len(rv['entrees'])} fiche(s), alerte={rv['alerte']!r}")
 
+    # Le 22/09 au soir, sur le VPS : 75 fiches, 0 ligne de calendrier, 35 fiches sans folio,
+    # et une contre-épreuve qui affichait « 0 écart ». Les deux zéros doivent ARRÊTER.
+    from scripts.moisson_plaisirs_culture import demi_pages, _est_calendrier
+    cal_pdf = {dp["page_pdf"] for dp in demi_pages(pages) if _est_calendrier(dp)}
+    sans_cal = [p for n, p in enumerate(pages, 1) if n not in cal_pdf]
+    rv = parse_brochure(sans_cal)
+    verifie(rv["entrees"] and not rv["calendrier"] and rv["alerte"] and "AUCUNE ligne de calendrier" in rv["alerte"],
+            f"calendrier illisible ({len(cal_pdf)} page(s) retirée(s)) → fiches lues MAIS alerte, rien d'écrit",
+            f"calendrier illisible : alerte={rv['alerte']!r}")
+    sans_folios = [dict(p, frags=[f for f in p["frags"] if not (f["y"] < 30 and f["t"].strip().isdigit())])
+                   for p in pages]
+    rv = parse_brochure(sans_folios)
+    verifie(rv["alerte"] and "SANS FOLIO" in rv["alerte"],
+            "folios illisibles → alerte, rien d'écrit",
+            f"folios illisibles : alerte={rv['alerte']!r}")
+    rv = parse_brochure(pages)
+    verifie(rv["alerte"] is None,
+            "contre-épreuve : la brochure intacte ne déclenche aucune alerte",
+            f"contre-épreuve : alerte inattendue {rv['alerte']!r}")
+
     print("— l'écriture, sur base jetable")
     with tempfile.TemporaryDirectory() as d:
         conn = sqlite3.connect(Path(d) / "jetable.db")

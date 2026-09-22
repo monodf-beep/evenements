@@ -366,6 +366,24 @@ def parse_brochure(pages: list[dict], annee: int = ANNEE) -> dict:
         alerte = (f"AUCUNE fiche reconnue sur {len(dps)} demi-page(s) lue(s) : la mise en "
                   "page a changé (ou ce n'est pas la brochure). Ce zéro n'est PAS une "
                   "absence de rendez-vous.")
+    # DEUX AUTRES ZÉROS QUI NE SONT PAS DES SUCCÈS. Mesuré sur le VPS le 22/09 à 23h52 :
+    # 75 fiches lues, mais 0 ligne de calendrier et 35 fiches sans folio — la contre-
+    # épreuve affichait « 0 retrouvée, 0 sans fiche, 0 écart », ce qui ressemble à un
+    # accord parfait, et 35 rendez-vous réels (Issogne, Saint-Germain…) sont partis en
+    # « couverture ou colophon ». La brochure compte UNE couverture et 89 lignes de
+    # calendrier : une contre-épreuve vide, ou plus de deux fiches sans folio, veulent
+    # dire que la lecture du PDF a changé, pas que la brochure a changé. On s'arrête.
+    elif not calendrier:
+        alerte = (f"{len(entrees)} fiche(s) lue(s) mais AUCUNE ligne de calendrier : la "
+                  "contre-épreuve n'a rien à confronter, son « 0 écart » ne prouverait rien. "
+                  "La lecture du PDF a changé (version de pypdf ?). Rien n'est écrit.")
+    else:
+        sans_folio = [e for e in entrees if e["page"] is None]
+        if len(sans_folio) > 2:
+            alerte = (f"{len(sans_folio)} fiche(s) sur {len(entrees)} SANS FOLIO : la brochure "
+                      "n'a qu'une couverture. La lecture du PDF a changé (version de pypdf ?). "
+                      "Rien n'est écrit. Premières : "
+                      + " ; ".join(e["titre"][:40] for e in sans_folio[:3]))
     return {"entrees": entrees, "demi_pages": len(dps), "calendrier": calendrier,
             "alerte": alerte}
 
