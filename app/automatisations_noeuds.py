@@ -1119,6 +1119,35 @@ _CONTROLES = [
          "slack": "🚀 déployé · ⛔ refusé · ⚠️ en échec · 🌡️ environnement malade · 📅 crontab réinstallé",
          "code": ["scripts/auto_deploiement.py", "deploy/update.sh"]}},
 
+    {"id": "publier_doctrine", "label": "Miroir de la doctrine Obsidian", "icone": "📖",
+     "flux": "controles", "kind": "action", "col": 3, "row": 6,
+     "cron_cle": "scripts/publier_doctrine.py", "script": "publier_doctrine",
+     "resume": "Dépose chaque nuit la voix et le vocabulaire interdit d'Obsidian dans une "
+               "page WordPress privée, pour qu'une session Claude puisse les lire seule.",
+     "detail": {
+         "fait": ["Lit le coffre Obsidian (`utils/voix.py`, `utils/vocabulaire.py`), "
+                  "qui n'est accessible QUE depuis le VPS.",
+                  "Écrit une page WordPress privée, puis la RELIT pour confirmer le dépôt.",
+                  "Refuse de publier si la voix ou le vocabulaire sont vides ou tronqués."],
+         "ecrit": ["une page WordPress privée, slug `doctrine-obsidian-miroir`",
+                   "logs/doctrine.log"],
+         "regles": ["AUCUNE copie de la doctrine dans le dépôt git : Obsidian reste la "
+                    "seule source, WordPress n'en tient qu'un reflet daté. Deux copies "
+                    "d'une doctrine divergent, et c'est la mauvaise qu'on croit.",
+                    "Un miroir vide serait PIRE que pas de miroir : il ressemble à une "
+                    "doctrine qui n'a rien à dire, et une session écrirait sans garde-fou "
+                    "en croyant en avoir un. D'où les seuils de vraisemblance.",
+                    "Pas de dry-run par défaut, contrairement aux scripts destructifs : "
+                    "il n'écrit que sur SA page miroir."],
+         "pourquoi": ["Une session Claude tourne dans un conteneur SANS route vers le VPS "
+                      "— ni clé SSH ni réseau, vérifié le 05/09 — et WordPress est sur une "
+                      "AUTRE machine. Aucun des deux chemins ne mène au coffre.",
+                      "Constat de Franck du 06/09 : « je dois systématiquement expliquer "
+                      "que c'est via Obsidian, le ton, la doctrine, le vocabulaire etc. »"],
+         "cout_ia": "aucun",
+         "slack": "aucun message : le silence vaut succès, l'échec sort en code de retour",
+         "code": ["scripts/publier_doctrine.py"]}},
+
     {"id": "backup_db", "label": "Sauvegarde de la base", "icone": "💾", "flux": "controles",
      "kind": "action", "col": 3, "row": 5, "cron_cle": "scripts/backup_db.py", "script": "backup_db",
      "resume": "Copie cohérente de la base à 3h du matin, avec rotation sur 14 exemplaires.",
