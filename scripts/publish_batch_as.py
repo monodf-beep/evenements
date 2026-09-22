@@ -71,6 +71,27 @@ def _select(conn, args, today: str):
         "statut IN ('evaluated','published_cs','published_sub')",
         "duplicate_of IS NULL",
         "COALESCE(date_event_start,'') <> ''",                 # daté
+        # PAS DE PUBLICATION SANS UN MOT RÉDIGÉ (22/09/2026).
+        #
+        # La charte §3 le dit depuis toujours : « score < 7 = vrai événement →
+        # catalogue, JAMAIS la description brute ». Le code ne le vérifiait nulle part.
+        # `publisher.build_post` donne la priorité à l'article enrichi mais RETOMBE sur
+        # le titre + la description bruts quand `enrich_data` est vide, et cette
+        # sélection-ci ne regardait pas `enrich_data` : une fiche évaluée et datée
+        # partait donc en ligne avec le texte de sa source, tel quel.
+        #
+        # Ce n'était pas théorique. Mesuré le 22/09 sur la base de production :
+        # 271 fiches publiées en trente jours, dont 17 SANS enrichissement (6,3 %), et
+        # 6 d'entre elles encore à venir. Le déclencheur : 52 fiches italiennes des
+        # Giornate Europee del Patrimonio venaient d'entrer d'un coup — le texte du
+        # ministère, en italien, serait parti sur le versant français.
+        #
+        # CE VERROU RETARDE, IL NE GARE PAS (règle 3 : qui rouvre ?). Une fiche retenue
+        # ici garde `statut='evaluated'`, et `enrich.py` sélectionne exactement ce
+        # statut avec ENRICH_MIN_SCORE=1 : le cron du lendemain la rédige, et elle part
+        # au passage suivant. Le compteur ci-dessous rend l'attente VISIBLE, parce
+        # qu'un état qui sort une fiche d'une file la sort aussi de tous les bilans.
+        "COALESCE(enrich_data,'') <> ''",
     ]
     params: list = []
     if not args.include_past:
@@ -84,7 +105,20 @@ def _select(conn, args, today: str):
     sql = (f"SELECT * FROM events_raw WHERE {' AND '.join(where)} "
            f"ORDER BY date_event_start ASC LIMIT ?")
     params.append(args.cap)
-    return conn.execute(sql, params).fetchall()
+    rows = conn.execute(sql, params).fetchall()
+
+    # Ce que le verrou d'enrichissement a retenu : mêmes conditions, sauf celle-là.
+    # Sans ce compte, une file qui gonfle ne se verrait nulle part.
+    sans = [w for w in where if not w.startswith("COALESCE(enrich_data")]
+    retenues = conn.execute(
+        f"SELECT COUNT(*) FROM events_raw WHERE {' AND '.join(sans)}",
+        params[:-1]).fetchone()[0] - conn.execute(
+        f"SELECT COUNT(*) FROM events_raw WHERE {' AND '.join(where)}",
+        params[:-1]).fetchone()[0]
+    if retenues:
+        log.info("En attente de rédaction : %d fiche(s) éligibles mais sans enrich_data "
+                 "(elles partiront après le passage d'enrich.py).", retenues)
+    return rows
 
 
 def _heriter_source_traduction(event: dict, conn) -> None:
