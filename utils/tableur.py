@@ -65,11 +65,11 @@ CATALOGUE: tuple[tuple[str, str, str], ...] = (
     ("recurring",          "Récurrent",          "Dates"),
     ("recurring_note",     "Note récurrence",    "Dates"),
 
-    ("lieu",               "Lieu",               "Lieu"),
-    ("ville",              "Ville",              "Lieu"),
-    ("territoire",         "Territoire",         "Lieu"),
-    ("multi_lieux",        "Multi-lieux",        "Lieu"),
-    ("venue_source",       "Provenance lieu",    "Lieu"),
+    ("lieu",               "Lieu",               "Localisation"),
+    ("ville",              "Ville",              "Localisation"),
+    ("territoire",         "Territoire",         "Localisation"),
+    ("multi_lieux",        "Multi-lieux",        "Localisation"),
+    ("venue_source",       "Provenance lieu",    "Localisation"),
 
     ("ip_tarif",           "Tarif",              "Infos pratiques"),
     ("ip_horaires",        "Horaires",           "Infos pratiques"),
@@ -102,7 +102,7 @@ CATALOGUE: tuple[tuple[str, str, str], ...] = (
     ("translated_lang",    "Langue",             "Publication"),
 )
 
-GROUPES: tuple[str, ...] = ("Identité", "Dates", "Lieu", "Infos pratiques",
+GROUPES: tuple[str, ...] = ("Identité", "Dates", "Localisation", "Infos pratiques",
                             "Éditorial", "Images", "SEO", "Publication", "Autres")
 
 # Jeux de colonnes prêts à l'emploi. Le premier est le défaut.
@@ -324,3 +324,27 @@ def ou_ca_peche(taux_par_colonne: dict[str, tuple[int, int]],
             out.append((col, manquantes, concernees, 100.0 * remplies / concernees))
     out.sort(key=lambda t: (-t[1], t[3]))
     return out[:combien]
+
+
+def entetes_groupes(colonnes: list[str],
+                    groupe_par_colonne: dict[str, str]) -> list[tuple[str, int]]:
+    """(groupe, nombre de colonnes) pour un en-tête à deux étages.
+
+    Franck, 22/09, en découvrant le tableur en vrai : « pas très visible au niveau
+    UX/UI ». La première version répétait le nom du groupe SOUS chaque colonne, ce qui
+    donnait « LIEU · LIEU » et « DÉBUT · DATES » — du bruit à chaque cellule d'en-tête,
+    sur toute la largeur.
+
+    Un en-tête d'admin se lit à deux étages : le groupe une fois, à cheval sur ses
+    colonnes ; l'intitulé en dessous. On rend donc les SÉQUENCES consécutives, jamais
+    un regroupement global : l'ordre des colonnes est celui que l'opérateur a choisi,
+    et le réordonner pour faire de beaux blocs lui prendrait son tableau des mains.
+    """
+    out: list[tuple[str, int]] = []
+    for col in colonnes:
+        g = groupe_par_colonne.get(col, "")
+        if out and out[-1][0] == g:
+            out[-1] = (g, out[-1][1] + 1)
+        else:
+            out.append((g, 1))
+    return out
