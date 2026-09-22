@@ -29,6 +29,10 @@ import tempfile
 from pathlib import Path
 
 from utils.moments_forts import charger, etiquettes, slug
+# Le nom est IMPORTÉ du script, pas retapé : c'est lui qui l'écrit en base, et une
+# apostrophe typographique d'un côté et droite de l'autre suffirait à ne plus rien
+# étiqueter, en silence.
+from scripts.moisson_plaisirs_culture import SOURCE_NAME as PLAISIRS
 
 ROOT = Path(__file__).resolve().parent.parent
 GEP = "Ministero della Cultura — GEP"
@@ -81,6 +85,23 @@ def test_regles():
     verifie([fr], etiquettes("piemont", mo["debut"], GEP, "fr", m), "borne basse (%s)" % mo["debut"])
     verifie([fr], etiquettes("piemont", mo["fin"], GEP, "fr", m), "borne haute (%s)" % mo["fin"])
     verifie([fr], etiquettes("vallee-d-aoste", "2026-09-26", GEP, "fr", m), "second territoire")
+
+    # 1 bis. LE VOLET VALDÔTAIN (22/09/2026) : la Vallée d'Aoste n'est pas au programme
+    #    du ministère, elle a sa propre source. Une fiche du 20/09 moissonnée par
+    #    scripts/moisson_plaisirs_culture.py doit recevoir l'étiquette, en français et en
+    #    italien — et la même fiche venue d'une AUTRE source, non (contre-épreuve : c'est
+    #    bien la source qui décide, pas le couple territoire + dates).
+    if PLAISIRS not in (mo.get("sources") or []):
+        echec("« %s » (SOURCE_NAME de moisson_plaisirs_culture) absent des sources du "
+              "moment : ses fiches ne seraient jamais étiquetées" % PLAISIRS)
+    verifie([fr], etiquettes("vallee-d-aoste", "2026-09-20", PLAISIRS, "fr", m),
+            "Vallée d'Aoste, 20/09, Plaisirs de Culture")
+    verifie([it], etiquettes("vallee-d-aoste", "2026-09-20", PLAISIRS, "it", m),
+            "Vallée d'Aoste, 20/09, Plaisirs de Culture, fiche italienne")
+    verifie([], etiquettes("vallee-d-aoste", "2026-09-20", "Forte di Bard - Eventi", "fr", m),
+            "Vallée d'Aoste, 20/09, AUTRE source")
+    verifie([], etiquettes("vallee-d-aoste", "2026-09-28", PLAISIRS, "fr", m),
+            "Plaisirs de Culture, le lendemain de la fenêtre")
 
     # 2. LA SOURCE — le cas BeerCult, mesuré en ligne.
     verifie([], etiquettes("piemont", "2026-09-26", "beercult.it", "fr", m),
