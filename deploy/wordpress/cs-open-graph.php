@@ -158,6 +158,15 @@ function cs_og_data() {
     // --- Pages listes connues (gabarits PHP) ---
     if (is_page()) {
         $pid = get_queried_object_id();
+        // Une page qui a sa propre vignette la partage : c'est elle qui distingue
+        // /que-faire-a-chambery/aujourdhui/ de .../ce-week-end/ dans un fil de
+        // discussion. Avant le 2026-09-21 cette branche renvoyait toujours l'image
+        // generique du site : six pages hub, deux images de partage pour six. Meme
+        // regle que pour les fiches, 55 lignes plus haut.
+        if (has_post_thumbnail($pid)) {
+            $crop = cs_og_crop(get_post_thumbnail_id($pid));
+            if ($crop) { $img = $crop; }
+        }
         $listes = [
             929  => ['fr', "Que faire aujourd'hui ?", "Les événements du jour dans les quatre territoires alpins."],
             931  => ['fr', "Que faire cette semaine ?", "Tous les événements de la semaine dans les quatre territoires alpins."],

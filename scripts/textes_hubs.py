@@ -82,6 +82,12 @@ BLANCHE = {
     # cette liste. Le dire plutôt que de laisser croire les deux côtés équivalents.
     "Sindone", "Belle", "Arti", "Duchi", "Ducato", "Sabaudo", "Ottocento", "Novecento",
     "Settecento", "Lione", "Sindaco", "Comune",
+    # Ajoutés le 20/09 : « Annibale » (Hannibal) et « Grenoble » (que la source française
+    # n'écrit qu'en adjectif, « grenoblois »). Cette liste s'allonge à chaque page
+    # italienne, et c'est le SIGNAL qu'elle n'est pas la bonne réponse à long terme : la
+    # vraie serait une source en italien par ville, ou une table de correspondance des
+    # noms propres. En attendant, elle est courte, versionnée, et on sait pourquoi.
+    "Annibale", "Grenoble",
 }
 
 
@@ -198,17 +204,34 @@ def dossier(conn: sqlite3.Connection, cib: dict) -> dict:
             "villes_voisines": voisines}
 
 
-def _fetch(url: str, timeout: int = 20) -> tuple[int, str]:
-    """Appelle une adresse et rend (code, texte nu). Une adresse qu'on n'a pas appelée
-    n'est pas une adresse vérifiée — leçon du 19/09/2026, où un lien noté « 200 » la
-    veille rendait 404 le lendemain, le site ayant changé d'arborescence."""
-    try:
-        r = requests.get(url, timeout=timeout, allow_redirects=True,
-                         headers={"User-Agent": "Mozilla/5.0 (compatible; AgendaSabauda)"})
-    except requests.RequestException as exc:
-        return 0, f"injoignable ({type(exc).__name__})"
-    corps = re.sub(r"<script.*?</script>|<style.*?</style>", " ", r.text, flags=re.S)
-    return r.status_code, texte_nu(corps)
+def _fetch(url: str, timeout: int = 30) -> tuple[int, str]:
+    """Appelle une adresse et rend (code, texte nu).
+
+    Une adresse qu'on n'a pas appelée n'est pas une adresse vérifiée — leçon du
+    19/09/2026, où un lien noté « 200 » la veille rendait 404 le lendemain, le site ayant
+    changé d'arborescence.
+
+    UN TIMEOUT N'EST PAS UN LIEN MORT, et cette distinction a coûté un faux refus le
+    20/09 : deux de nos propres adresses italiennes ont dépassé les 20 secondes, le
+    contrôle les a déclarées injoignables, et un re-test immédiat a rendu 200 quatre fois
+    de suite. Notre WordPress est sur un mutualisé OVH : il a des minutes lentes.
+
+    Pourquoi ça compte au-delà d'une seconde perdue : ce refus-là se rejouerait à
+    l'identique au passage suivant, sur la même matière, et brûlerait deux appels API
+    chaque jour sans que rien ne change. C'est le portillon que CLAUDE.md décrit à la
+    règle 3. D'où une SECONDE tentative, plus patiente : seule une panne qui se répète
+    condamne l'adresse, et le motif dit alors qu'on a essayé deux fois."""
+    dernier = ""
+    for essai, patience in enumerate((timeout, timeout * 2), start=1):
+        try:
+            r = requests.get(url, timeout=patience, allow_redirects=True,
+                             headers={"User-Agent": "Mozilla/5.0 (compatible; AgendaSabauda)"})
+        except requests.RequestException as exc:
+            dernier = type(exc).__name__
+            continue
+        corps = re.sub(r"<script.*?</script>|<style.*?</style>", " ", r.text, flags=re.S)
+        return r.status_code, texte_nu(corps)
+    return 0, f"injoignable après 2 tentatives ({dernier})"
 
 
 # LES OUVREURS DE PHRASE, liste FERMÉE et versionnée.
@@ -252,6 +275,11 @@ molto poco nulla nessuno nessuna
 essere sono era erano sara saranno ha hanno aveva avevano avra avranno fa fanno
 resta restano viene vengono passa passano trova trovano porta portano tiene tengono
 lontano vicino qui li qua
+accanto basta cambia cambiano molti molte piccolo piccola piccoli piccole grande grandi
+proteggono protegge indicano indica guidava guidano credono crede ricordi ricorda
+attraversa attraversano trasforma trasformano susseguono conviene occorre bisogna
+diventa diventano torna tornano sposa sposano colonna colonne facciata facciate
+quello quella quelli quelle ci ne lo li gli vicoli sale musei mercati concerti mostre
 """.split())
 
 _MAJ = re.compile(r"[A-ZÀ-ÖØ-Þ][\w'’\-]*")
@@ -335,6 +363,15 @@ def noms_inconnus(raw: str, autorises: set, courants: set) -> tuple[list[str], l
                     continue
                 if _SIECLE.match(propre) or _ELISION.match(propre) or propre in autorises:
                     continue
+                # UNE MAJUSCULE INTÉGRALE N'EST PAS UN NOM PROPRE. Mesuré le 21/09 : la
+                # clôture que la voix demande — « LIRE AUSSI : », « LEGGI ANCHE: » — était
+                # refusée sur les quatre pages, donc elle l'aurait été sur les 192. Le coût
+                # d'un faux refus généralisé dépasse de loin celui du trou que ça ouvre :
+                # un nom inventé écrit tout en capitales passerait, ce qu'aucun modèle ne
+                # fait spontanément. Les acronymes relèvent d'ailleurs d'une autre règle de
+                # la voix (« acronymes explicités »), pas de ce portillon-ci.
+                if len(propre) > 1 and propre.isupper():
+                    continue
                 if i == 0:
                     if (propre.lower() not in courants
                             and _sans_accents(propre.lower()) not in OUVREURS):
@@ -342,6 +379,28 @@ def noms_inconnus(raw: str, autorises: set, courants: set) -> tuple[list[str], l
                 else:
                     refus.append(propre)
     return sorted(set(refus)), sorted(set(ouvertures))
+
+
+def anti_patterns() -> list[str]:
+    """Les expressions que la voix nomme comme anti-patterns, LUES DANS LA VOIX.
+
+    AUCUNE COPIE DANS CE DÉPÔT. La section « ## Anti-patterns clés » de la note Obsidian
+    est la seule source, comme pour le vocabulaire interdit : si Franck y ajoute un
+    superlatif, le contrôle le connaît au passage suivant sans qu'on touche au code. C'est
+    la leçon de `config/vocabulaire_interdit.json`, dont le miroir avait divergé dans les
+    deux sens avant d'être supprimé le 05/09/2026.
+
+    Même arbitrage qu'`utils.vocabulaire` pour la panne : Obsidian injoignable rend une
+    liste vide et le pipeline continue, plutôt que de bloquer."""
+    try:
+        from utils import voix
+        texte = voix.load_voix()
+    except Exception:                                   # noqa: BLE001 — jamais bloquant
+        return []
+    m = re.search(r"##\s*Anti-patterns[^\n]*\n(.*?)(?=\n#|\Z)", texte, re.S)
+    if not m:
+        return []
+    return [x.strip() for x in re.findall(r"«\s*([^»]+?)\s*»", m.group(1)) if x.strip()]
 
 
 # ------------------------------------------------------------------------- contrôles
@@ -370,7 +429,8 @@ def lire_adresses(raw: str, sources: list[str]) -> tuple[list[str], dict]:
 
 def controles(raw: str, lang: str, cle: str, dos: dict, sources: list[str],
               verifier_liens: bool = True, corps: dict | None = None,
-              avertissements: list | None = None) -> list[str]:
+              avertissements: list | None = None,
+              antipatterns: list | None = None) -> list[str]:
     """Retourne la liste NOMMÉE de ce qui cloche. Vide = le texte passe.
 
     Chaque motif est écrit pour être relu par le modèle au passage suivant : il doit
@@ -383,6 +443,27 @@ def controles(raw: str, lang: str, cle: str, dos: dict, sources: list[str],
 
     for expr, phrase in vocabulaire.trouver(nu):
         ennuis.append(f"vocabulaire interdit « {expr} » dans : {phrase[:120]}")
+
+    # LES ANTI-PATTERNS DE LA VOIX, avec DEUX sévérités, et la raison est mesurable.
+    #
+    # La liste mêle deux natures. « en conclusion » et « force est de constater » sont des
+    # formules : elles n'ont aucun usage innocent dans notre prose, donc elles refusent.
+    # « historique » en a un, et il est constant : « le centre historique », « les places
+    # historiques ». Mon propre texte sur Chambéry l'emploie ainsi. Un refus aveugle
+    # rejetterait donc un texte juste à chaque passage, et brûlerait deux appels API par
+    # page pour rien — c'est exactement le portillon faux du 06/08 que CLAUDE.md décrit.
+    #
+    # Le partage retenu : une expression de PLUSIEURS mots refuse, un mot seul avertit.
+    # Grossier, mais vérifiable, et il penche du bon côté : un faux refus coûte un essai,
+    # un superlatif qui passe se lit sur le site. La limite est écrite ici plutôt que
+    # promise, et un humain tranche les avertissements en deux secondes.
+    for expr in (anti_patterns() if antipatterns is None else antipatterns):
+        for m in re.finditer(re.escape(expr), nu, re.I):
+            bout = nu[max(0, m.start() - 60):m.end() + 60]
+            if " " in expr.strip():
+                ennuis.append(f"anti-pattern de la voix « {expr} » dans : …{bout}…")
+            elif avertissements is not None:
+                avertissements.append(f"[{lang}] superlatif « {expr} » à relire : …{bout}…")
 
     if not MOTS_MIN <= len(mots) <= MOTS_MAX:
         ennuis.append(f"longueur : {len(mots)} mots, il en faut entre {MOTS_MIN} et {MOTS_MAX}")
