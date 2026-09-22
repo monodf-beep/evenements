@@ -716,6 +716,17 @@ function cs_mf_css($moment) {
 .cs-mf__lien{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--mf-texte);
  text-decoration:none;border-bottom:1.5px solid var(--mf-filet);padding-bottom:2px}
 .cs-mf__lien:hover{border-bottom-color:var(--mf-texte)}
+/* LE SURVOL NE DOIT PAS EFFACER LE LIEN. Le theme porte une regle globale
+   a:hover, a:focus, a:active{color:var(--bleu-sabauda)} ; or le bleu sabauda est
+   justement le fond de la bande (#18365E). Specificite 0,1,1 contre 0,1,0 pour
+   .cs-mf__lien : au survol, le texte du lien passait bleu sur bleu et disparaissait,
+   fleche comprise (elle suit currentColor). Signale par Franck le 22/09 au soir, capture
+   de la bande italienne a l appui. On redonne a chaque lien de la bande SA couleur dans
+   les trois etats, avec une specificite qui passe devant celle du theme, et pour toutes
+   les palettes : sur rouge ou vert, le bleu du theme serait lisible mais hors palette. */
+.cs-mf a.cs-mf__lien:hover,.cs-mf a.cs-mf__lien:focus,.cs-mf a.cs-mf__lien:active{color:var(--mf-texte)}
+.cs-mf a.cs-mf__cta:hover,.cs-mf a.cs-mf__cta:focus,.cs-mf a.cs-mf__cta:active{color:var(--mf-fond)}
+.cs-mf .cs-mf__liste a:hover,.cs-mf .cs-mf__liste a:focus,.cs-mf .cs-mf__liste a:active{color:inherit}
 .cs-mf__photo{display:none}
 @media(min-width:900px){
  .cs-mf__in{grid-template-columns:minmax(0,44%) minmax(0,1fr);gap:46px;padding:54px 20px 46px}

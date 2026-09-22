@@ -48,6 +48,7 @@ from utils.lang import (detect_lang, effective_lang, paragraphes_mauvaise_langue
 from utils.coherence import incoherence_description
 from utils import acronymes
 from utils import vocabulaire
+from utils import verrou
 from scripts.scraper_events import init_db
 from scripts.publisher_as import (publish_to_as, wp_original_est_en_ligne,
                                   wp_site_joignable)
@@ -1038,6 +1039,34 @@ def main(argv=None) -> int:
                              "traduite en place avec les règles courantes : article complet, voix, "
                              "toponymes) au lieu de créer une nouvelle traduction.")
     args = parser.parse_args(argv)
+
+    # ── UN SEUL --apply À LA FOIS (2026-09-22) ──────────────────────────────────────────
+    # Ce soir-là, deux `--apply` ont tourné EN MÊME TEMPS (PID 54609 et 57330). Chacun a
+    # calculé sa file au démarrage, les deux files se recouvraient, et chaque fiche commune
+    # a été traduite deux fois : 11 fiches italiennes en double publiées (WP#11010 à
+    # 22:23:55, WP#11011 à 22:23:56, une seule liée par Polylang), corbeillées à la main.
+    # `img_lang_lock`, plus bas, protège les THREADS d'un même run ; rien ne protégeait deux
+    # PROCESSUS. Et le cron de 10:45 lance ce script : un lancement manuel à ce moment-là
+    # recrée l'accident.
+    #
+    # Pris ICI, avant la sonde réseau et surtout avant la SÉLECTION : c'est la sélection
+    # qui crée le recouvrement. Un verrou posé après elle laisserait deux runs calculer la
+    # même file puis publier l'un après l'autre les mêmes fiches.
+    #
+    # `--retranslate` est couvert aussi : il réécrit des fiches en ligne, et deux runs
+    # concurrents se disputeraient la même. La simulation, elle, reste libre — elle ne
+    # publie ni ne marque rien (utils/verrou.exclusif_si).
+    #
+    # flock et non un fichier PID : le noyau relâche le verrou quand le processus meurt,
+    # même au SIGKILL — aucun état garé qu'un humain devrait effacer (règle 3).
+    # `_verrou` doit rester référencé jusqu'au `return` : c'est lui qui tient la place.
+    _verrou = verrou.exclusif_si(args.apply, ROOT / "data" / "translate_events.lock")
+    if _verrou is not None and not _verrou.obtenu:
+        log.error("Une traduction --apply tourne DÉJÀ (%s) — celle-ci s'arrête sans rien "
+                  "traduire ni publier, pour ne pas créer de doublons. Verrou : %s. "
+                  "Attendre la fin de l'autre (ps -p <pid>) puis relancer.",
+                  _verrou.detenteur or "détenteur inconnu", _verrou.chemin)
+        return verrou.CODE_DEJA_EN_COURS
 
     # ── SONDE AVANT DÉPENSE (2026-08-18) ────────────────────────────────────────────────
     # `wp_original_est_en_ligne` refuse toute fiche quand le site est injoignable — bon

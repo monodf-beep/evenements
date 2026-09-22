@@ -383,11 +383,35 @@ def test_territoire_canonique():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+
+def test_survol_lisible():
+    """Le survol ne rend aucun lien de la bande invisible.
+
+    Le thème pose a:hover, a:focus, a:active{color:var(--bleu-sabauda)}, et le bleu
+    sabauda est le fond de la bande. Mesuré le 22/09 au navigateur : lien au repos
+    rgb(247,241,232), au survol rgb(24,54,94) = #18365E, la couleur du fond. Le CSS de
+    la bande doit donc redonner leur couleur aux trois liens dans les trois états, avec
+    une spécificité supérieure à 0,1,1.
+    """
+    src = PHP_FILE.read_text(encoding="utf-8")
+    attendus = [
+        ".cs-mf a.cs-mf__lien:hover,.cs-mf a.cs-mf__lien:focus,.cs-mf a.cs-mf__lien:active{color:var(--mf-texte)}",
+        ".cs-mf a.cs-mf__cta:hover,.cs-mf a.cs-mf__cta:focus,.cs-mf a.cs-mf__cta:active{color:var(--mf-fond)}",
+        ".cs-mf .cs-mf__liste a:hover,.cs-mf .cs-mf__liste a:focus,.cs-mf .cs-mf__liste a:active{color:inherit}",
+    ]
+    for r in attendus:
+        if r not in src:
+            echec("survol : règle absente, un lien redeviendrait bleu sur bleu : " + r[:60])
+        else:
+            print("  ok  survol : " + r.split("{")[0].split(",")[0])
+
 if __name__ == "__main__":
     print("— contrastes de la palette")
     test_contrastes()
     print("— rendu")
     test_rendu()
+    print("— survol lisible")
+    test_survol_lisible()
     print("— territoire canonique")
     test_territoire_canonique()
     print(("%d echec(s)" % echecs) if echecs else "tout est vert")
