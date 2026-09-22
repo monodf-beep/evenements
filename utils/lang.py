@@ -274,6 +274,37 @@ def paragraphes_mauvaise_langue(texte: str, langue: str,
     return trouves
 
 
+# ── LE VERSANT D'UNE PAGE PUBLIÉE ────────────────────────────────────────────────────
+# Écrite le 2026-08-17 dans `scripts/audit_langue_polylang`, déplacée ici le 21/09 parce
+# que trois modules en ont besoin — l'audit, le dédoublonnage et le rapport de doublons —
+# et que deux copies d'une même question finissent toujours par se contredire (journal du
+# 08/09, « deux détecteurs pour la même chose, un seul juste »).
+
+
+def cote_du_permalien(url: str) -> str:
+    """Le versant que WordPress a servi à la publication, lu dans l'adresse — '' si muet.
+
+    Polylang préfixe les adresses de la langue secondaire (`/it/…`). L'adresse enregistrée
+    est donc la RÉPONSE de WordPress au moment de la publication : bien plus solide qu'une
+    devinette faite depuis la base.
+
+    ⚠️ Mais ce n'est pas une preuve de l'état ACTUEL — c'est un champ de la base, écrit un
+    jour donné, et la règle 1 dit exactement ce qu'il vaut. Une republication ultérieure a
+    pu déplacer la page sans que cette colonne bouge. D'où le libellé « à la publication »
+    partout où cette valeur s'affiche, et l'adresse laissée en clair pour aller voir.
+    """
+    u = (url or "").strip().lower()
+    if not u or "?p=" in u or "post_type=" in u:
+        return ""          # forme provisoire : ne dit rien du versant
+    for lang in ("it", "fr"):
+        if f"/{lang}/" in u:
+            return lang
+    # Le français est la langue par défaut de Polylang : SANS préfixe, c'est le versant
+    # français. Avant le 17/09 cette fonction rendait '' ici, et l'écart de WP#9209
+    # (voulue it, adresse sans /it/) passait pour « adresse muette ».
+    return "fr" if "//" in u else ""
+
+
 def detect_lang(title: str = "", description: str = "", territoire: str = "") -> str:
     """Renvoie 'fr' ou 'it'. Le TITRE (pesé ×3) prime : un titre nettement dans une
     langue l'emporte, même si la description bruite. À égalité, on regarde titre+desc,

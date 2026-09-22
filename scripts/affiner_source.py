@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""De la RACINE du site à la PAGE de l'événement — le rouvreur des sources « nom de domaine ».
+"""D'une source GÉNÉRIQUE à la PAGE de l'événement — le rouvreur des sources trop larges.
 
 Franck, 2026-09-08, devant montmelian.com/ posé comme source du Festival photo alors que
 montmelian.com/festival-photo-de-montmelian/ existe : « quand on a une URL généraliste
@@ -17,8 +17,13 @@ mémorisée, cherche le lien interne qui parle de l'événement, vérifie que la
 mentionne bien le titre, et remplace `url_officiel`. DRY-RUN par défaut.
 
 Périmètre (règle 5) : fiches publiées, encore devant nous (fin >= aujourd'hui, ou sans
-date), dont `url_officiel` est une racine (chemin vide). Après `--apply`, la moisson et le
-re-push restent à faire — le script imprime les deux commandes avec les ids.
+date), dont `url_officiel` est GÉNÉRIQUE — racine (chemin vide) ou page de rubrique
+(presse, actualités, dons, galerie : `est_source_generique`, élargi le 2026-09-21 après la
+fiche 8289 « Charcot Antartica », sourcée sur /ressources/presse et illustrée par la
+couverture de brochure qui s'y trouvait). La recherche repart toujours de la RACINE du
+site : une page presse ne renvoie pas vers les spectacles, la page d'accueil si. Après
+`--apply`, la moisson et le re-push restent à faire — le script imprime les deux commandes
+avec les ids.
 
 Exemples :
   .venv/bin/python -m scripts.affiner_source                 # liste ce qui changerait
@@ -37,19 +42,14 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
+from utils import pages
+from utils.pages import (est_racine,  # noqa: F401 — réexportées (fixtures, appelants)
+                         est_page_generique as est_source_generique)
 from scripts.scraper_events import init_db
 from scripts.enrich import _programme_links, _get_html, _html_to_text, _fold, _event_tokens
 
 log = get_logger("affiner_source")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
-
-
-def est_racine(url: str) -> bool:
-    """Vrai si l'URL est la racine d'un site (chemin vide ou « / »)."""
-    u = (url or "").strip()
-    if not u.startswith("http"):
-        return False
-    return not urlparse(u).path.strip("/")
 
 
 # Mots-outils que _event_tokens laisse passer (> 3 lettres) et qui ne désignent rien :
@@ -59,11 +59,15 @@ _STOP_LOCAL = frozenset((
     "avec", "dans", "pour", "sans", "chez", "entre", "vers", "autour", "depuis", "jusqu",
     "cette", "notre", "votre", "leur", "tout", "tous", "toute", "toutes", "come", "anche",
 ))
-# Chemins qui ne sont JAMAIS la page d'un événement : rubrique presse, actualités, appel
-# aux dons, galerie. Le premier dry-run (08/09, 37 propositions) en avait élu une douzaine.
-_PAGE_SKIP = ("press", "presse", "stampa", "comunicat", "news", "notizie", "actualit",
-              "attualita", "blog", "soutenir", "soutien", "sostieni", "sostenere", "donazion",
-              "mecenat", "newsletter", "contact", "gallery", "galleria", "/pro/")
+# La définition d'une page générique vit dans utils/pages.py depuis le 2026-09-21 : la
+# chaîne d'images se posait la MÊME question sans la lire (voir le module pour la mesure).
+_PAGE_SKIP = pages.RUBRIQUES_NON_EVENEMENT
+
+
+def racine_de(url: str) -> str:
+    """La racine du site d'une URL (« https://hote/ »), '' si l'URL n'en est pas une."""
+    p = urlparse((url or "").strip())
+    return f"{p.scheme}://{p.netloc}/" if p.scheme and p.netloc else ""
 
 
 def page_evenement_depuis_racine(racine: str, title: str, timeout: int = 10) -> str:
@@ -118,7 +122,9 @@ def page_evenement_depuis_racine(racine: str, title: str, timeout: int = 10) -> 
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Remplace une source « racine » par la page de l'événement.")
+    parser = argparse.ArgumentParser(
+        description="Remplace une source générique (racine ou page de rubrique) par la "
+                    "page de l'événement.")
     parser.add_argument("ids", nargs="*", type=int, help="Ids précis (défaut : sélection auto).")
     parser.add_argument("--apply", action="store_true", help="Écrire (sinon DRY-RUN).")
     parser.add_argument("--cap", type=int, default=60, help="Nb max de fiches (défaut 60).")
@@ -138,17 +144,25 @@ def main(argv=None) -> int:
             "AND (COALESCE(date_event_end, date_event_start, '') = '' "
             "     OR COALESCE(date_event_end, date_event_start) >= ?) "
             "ORDER BY id DESC", (today,)).fetchall()
-    cibles = [dict(r) for r in rows if est_racine(r["url_officiel"])][:args.cap]
-    log.info("%d fiche(s) publiées encore devant nous avec une source RACINE (sur %d lues) — %s",
+    cibles = [dict(r) for r in rows if est_source_generique(r["url_officiel"])][:args.cap]
+    log.info("%d fiche(s) publiées encore devant nous avec une source GÉNÉRIQUE — racine "
+             "ou page de rubrique (sur %d lues) — %s",
              len(cibles), len(rows), "APPLIQUE" if args.apply else "DRY-RUN")
 
     trouvees, ecrites = [], 0
     for ev in cibles:
-        page = page_evenement_depuis_racine(ev["url_officiel"], ev.get("title") or "")
+        # Toujours repartir de la RACINE : une page de rubrique (presse, actualités) ne
+        # renvoie pas vers les spectacles, la page d'accueil si (mesuré sur Malraux, 21/09).
+        depart = racine_de(ev["url_officiel"])
+        page = page_evenement_depuis_racine(depart, ev.get("title") or "")
+        if page and page.rstrip("/") == (ev["url_officiel"] or "").rstrip("/"):
+            continue                                   # rien de neuf : c'est déjà la source
         if not page:
-            log.info("[%s] rien de mieux que la racine — %s", ev["id"], (ev.get("title") or "")[:55])
+            log.info("[%s] rien de mieux que la source actuelle — %s",
+                     ev["id"], (ev.get("title") or "")[:55])
             continue
-        log.info("[%s] %s → %s — %s", ev["id"], ev["url_officiel"], page, (ev.get("title") or "")[:45])
+        log.info("[%s] %s → %s — %s", ev["id"], ev["url_officiel"], page,
+                 (ev.get("title") or "")[:45])
         trouvees.append(ev["id"])
         if args.apply:
             conn.execute("UPDATE events_raw SET url_officiel=? WHERE id=?", (page, ev["id"]))
@@ -159,9 +173,10 @@ def main(argv=None) -> int:
         "SELECT url_officiel FROM events_raw WHERE wp_post_id_as IS NOT NULL AND duplicate_of IS NULL "
         "AND (COALESCE(date_event_end, date_event_start, '') = '' "
         "     OR COALESCE(date_event_end, date_event_start) >= ?)", (today,))
-        if est_racine(r["url_officiel"]))
+        if est_source_generique(r["url_officiel"]))
     conn.close()
-    log.info("Pages trouvées : %d · écrites : %d · sources racine restantes (publiées, à venir) : %d%s",
+    log.info("Pages trouvées : %d · écrites : %d · sources GÉNÉRIQUES restantes "
+             "(publiées, à venir) : %d%s",
              len(trouvees), ecrites, restant, "  (dry-run : rien écrit)" if not args.apply else "")
     if trouvees and args.apply:
         ids = " ".join(str(i) for i in trouvees)

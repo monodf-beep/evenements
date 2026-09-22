@@ -37,10 +37,11 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils.images import (commons_search, europeana_search, fetch_og_image,
                           fetch_content_image, remote_dims, looks_like_banner_shape,
-                          MIN_DIM)
+                          looks_like_document_thumb, MIN_DIM)
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
                            load_territory_category_images, pick_banner_image)
 from utils import image_verify
+from utils.pages import peut_illustrer
 from utils.api_limite import PlafondAPI, est_plafond
 from scripts.scraper_events import init_db
 
@@ -140,10 +141,12 @@ def visual_query(ev: dict, client, model: str) -> str:
 
 
 def _acceptable(url: str, blocked: set[str], patterns: list) -> bool:
-    """RÈGLES déterministes : ni domaine proscrit, ni logo, ni motif parasite connu
-    (bandeau/pub/slider, voir config/blocked_image_patterns.txt)."""
+    """RÈGLES déterministes : ni domaine proscrit, ni logo, ni vignette de document
+    (couverture de brochure/programme, cf. utils.images.looks_like_document_thumb), ni
+    motif parasite connu (bandeau/pub/slider, voir config/blocked_image_patterns.txt)."""
     return bool(url) and not is_blocked_image(url, blocked) \
-        and not is_logo_image(url) and not image_verify.looks_parasitic(url, patterns)
+        and not is_logo_image(url) and not looks_like_document_thumb(url) \
+        and not image_verify.looks_parasitic(url, patterns)
 
 
 def _verified(url: str, ev: dict, verify_client, verify_model: str,
@@ -216,7 +219,25 @@ def resolve_image(ev: dict, client, blocked: set[str],
     # "aller chercher plus grand sur la page" (ce qui causait l'incident).
     content_fallback = None  # (url, credit, source, fx, fy) si trouvé mais petit
     # Étage 2 — og:image de la page officielle (jamais pour un radar : image de presse).
-    if not _is_radar(ev):
+    # DEPUIS UNE PAGE GÉNÉRIQUE (page d'accueil, rubrique presse), l'agent vision devient
+    # OBLIGATOIRE — 2026-09-21, et c'est une règle corrigée le jour même, après mesure :
+    #
+    #   • d'abord mesuré que les 22 racines servant de source à des fiches à venir
+    #     portaient neuf og:image dont AUCUNE ne montrait l'événement (fond de page admin,
+    #     affiche de saison périmée, logo, façade) → j'ai refusé ces pages tout court ;
+    #   • puis regardé les cinq fiches que ce refus visait : trois avaient une BONNE image,
+    #     dont l'affiche exacte de l'expo (villefranche-sur-mer.fr, home de la mairie) et
+    #     la chapelle des Scrovegni pour un cours sur « huit lieux qui ont changé
+    #     l'histoire de l'art » (palazzomadamatorino.it).
+    #
+    # Les deux mesures sont vraies : une page d'accueil montre la programmation DU MOMENT,
+    # donc elle est bonne pour l'événement en cours et fausse pour tous les autres. Un
+    # instantané des og:image ne pouvait pas le voir — il fallait regarder les fiches.
+    # La ligne juste n'est donc pas « jamais », c'est « pas sans que quelqu'un REGARDE » :
+    # l'agent vision compare l'image au titre, et c'est exactement le jugement qui manque.
+    # Sans client vision, on s'abstient plutôt que de parier.
+    _page_generique = not peut_illustrer(ev.get("url_source", ""), ev.get("title", ""))
+    if not _is_radar(ev) and not (_page_generique and verify_client is None):
         og = fetch_og_image(ev.get("url_source", ""))
         # Forme (déterministe, TOUJOURS active — pas besoin de l'agent vision) : un
         # og:image très plat ou très étroit est un bandeau d'habillage (souvent la même

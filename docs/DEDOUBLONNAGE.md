@@ -183,3 +183,169 @@ cd ~/evenements && .venv/bin/python scripts/dedupe.py --dry-run --rescan
 `--statut rejected` n'est pas un ornement : sans lui, `trash_by_ids` refuse, et il a raison —
 une fiche `published_sub` corbeillée sans statut est le profil exact que `publish_batch_as`
 republie le lendemain.
+
+---
+
+## 2026-09-21 — le trou le plus bête : deux titres IDENTIQUES ne s'appariaient pas
+
+### Ce que Franck a vu
+
+Deux captures du hub Vallée d'Aoste, avec trois mots : « problème de duplication ».
+Trois cartes **Marché au Fort** aux mêmes dates à Bard (WP#6435, 9523, 9533), deux
+**Lo Pan Ner** (WP#9371, 9373).
+
+### La mesure
+
+Sur les titres TELS QU'ILS SONT EN BASE — pas les titres réécrits par l'enrichissement :
+
+```
+same_story("Marché au Fort 2026", "Marché au Fort 2026")  →  False
+same_story("Lo Pan Ner",          "Lo Pan Ner")           →  False
+_groups([5608, 5612], cross_lang=True, coincidence=True)  →  deux groupes séparés
+```
+
+Deux titres **strictement identiques** ne s'appariaient pas. `same_story` exige ≥ 3 mots
+significatifs (≥ 4 lettres) communs : « Marché au Fort 2026 » n'en offre que deux
+({marche, fort}), « Lo Pan Ner » aucun. Le seuil a été écrit pour comparer deux titres
+RÉDIGÉS d'une dizaine de mots ; il ne dit rien du cas où les deux titres *sont* le même.
+
+Et la coïncidence du 08/09 ne rattrapait pas : elle veut un jeton de ≥ 5 lettres **hors
+mots du lieu** — or ces fiches portent le nom de l'événement DANS leur champ `lieu`
+(« Borgo medievale di Bard / Marché au Fort »). L'exclusion écrite pour « Forte di Bard »
+a effacé le seul mot distinctif qui restait.
+
+Ce que ça a coûté : le lot du 19/09 a publié, **dans le même message Slack, deux lignes
+l'une sous l'autre** — `[5608] Marché au Fort 2026 — WP#9523` et `[5612] Marché au Fort
+2026 — WP#9533`. Idem `[5609]/[5613] La Foire des Alpes 2026` et `[5464]/[5465] Lo Pan
+Ner`. Six fiches, trois événements, aucun avertissement nulle part.
+
+### La règle ajoutée — `dedupe.titre_identique`
+
+Cinq conditions, toutes exigées :
+
+| condition | comment |
+|---|---|
+| pas une paire de traduction | `paire_de_traduction` |
+| **mêmes dates** | `_memes_dates` (les deux fiches datées, pas d'inclusion) |
+| **titres pliés identiques** | `_titre_plie` : minuscules, accents retirés, ponctuation écrasée — « We want Jazz 2026 » = « We Want Jazz 2026 » (WP#9704/9757), « Mostre: Diálogos. » = « Mostre: Diálogos » (WP#9709/9762) |
+| **au moins un mot porteur** | `_mots_porteurs` : hors mots-outils et génériques, SANS plancher de longueur (c'est le plancher de 5 lettres qui a laissé passer « Lo Pan Ner »), **plus le millésime** — « La Foire des Alpes 2026 » n'est faite QUE de mots génériques |
+| **pas deux communes connues et différentes** | `_villes_separent`, via `utils.lieux.communes()` |
+
+`_villes_separent` est la seule garde contre la seule famille de faux positifs que
+« titre identique + mêmes dates » laisse passer : un « Marché de Noël » le même week-end
+à Annecy et à Chambéry. On interroge le **registre des communes** plutôt qu'une liste de
+titres interdits — une liste noire est toujours en retard d'un mot, le registre non. Et
+une ville absente du registre ne sépare rien : « Vallée d'Aoste » et « Valle d'Aosta
+(vari comuni) » ne sont pas deux communes, ce sont deux façons d'écrire « partout ».
+
+### Pourquoi elle FUSIONNE (8h30) au lieu d'être un candidat
+
+Contrairement à la coïncidence du 08/09, cette règle rejoint le chemin des TITRES, donc
+le cron de 8h30 la fusionne. Motif : **elle est strictement plus exigeante que ce qui
+fusionne déjà**. `same_story` fusionne sur 3 mots communs sur dix, sans regarder ni les
+dates ni la ville ; ici il faut le titre entier, les mêmes dates, et pas deux communes
+différentes. Refuser de fusionner un titre identique pendant qu'on fusionne un tiers de
+titre serait l'incohérence, pas l'inverse. La fusion reste réversible
+(`statut='merged'`, `unmerge_data`, `scripts/unmerge.py`) et ne perd aucune matière.
+
+Elle n'ajoute **aucun état terminal**, donc rien à rouvrir (règle 3). Les fiches déjà
+publiées en double remontent par `verifier_doublons_publies --en-ligne` (9h50), qui
+appelle le même `_groups`.
+
+### La fixture — `tests/test_dedupe_titre_identique.py` (verte le 21/09)
+
+Elle porte un **témoin rouge** en §1 (`same_story(t, t) is False` sur quatre titres
+réels) : sans lui, on ne saurait pas que la règle a jamais eu quelque chose à réparer.
+Les cinq paires réelles sont appariées par `_groups()` sans option ; les cas frontière
+qui doivent PASSER sont deux « Marché de Noël » dans deux communes connues (non), le même
+« Marché de Noël » deux fois dans la même commune (oui), « Visite guidée » et
+« Concerto » (non, aucun mot porteur), dates différentes (non), une fiche sans date
+(non), une traduction liée (jamais).
+
+### Les limites, mesurées
+
+1. **Le troisième Marché au Fort (WP#6435) n'est pas rattrapé** : son titre en base est
+   « Al Marché au Fort l'enogastronomia della Valle d'Aosta in vetrina », différent. Il
+   reste l'affaire du chemin des titres — qui ne le voit pas non plus, parce que les
+   mots communs (« marché », « fort ») sont exclus comme mots du lieu.
+2. **Le cron de 8h30 ne compare toujours pas le flux du matin au stock publié**
+   (limite n° 4 du 08/09, inchangée). Mais le 9h50 couvre : la paire We Want Jazz
+   ([5551] publiée depuis des semaines, [5719] arrivée le 20/09) remonte désormais par là.
+3. **Deux fiches dont les dates diffèrent d'un jour** (une source annonce 10/10, l'autre
+   10–11/10) ne sont pas appariées : `_memes_dates` n'admet pas l'à-peu-près.
+
+---
+
+## 2026-09-21, l'après-midi — « liée par `translation_of` » ne veut pas dire « dans deux langues »
+
+Le correctif du matin fait remonter trois paires de plus (Marché au Fort, Lo Pan Ner,
+Foire des Alpes). Mais **huit doublons visibles sur le site restaient invisibles au
+rapport** : Orlando, James Carter, les violoncelles de l'Opéra de Nice, We Want Jazz,
+Mostre : Diálogos, Gaza/Merz, Sotto i portici, le Castello di Ivrea.
+
+### La mesure, sur la base de production
+
+Les huit rendaient `paire_de_traduction = True` — donc `verifier_doublons_publies` les
+écartait comme « paires FR/IT normales ». Or **les deux pages étaient en français**, côte
+à côte sur le hub.
+
+C'est la **règle 1 de CLAUDE.md transposée à la langue** : la base dit « traduction »,
+seul WordPress dit de quel côté la page est rangée. Le lien Polylang survit à une
+traduction publiée du mauvais versant — c'est exactement l'incident du 17/09 (« Open
+Factories 2026: le fabbriche di Torino aprono le porte » sur la page d'accueil
+française), déjà diagnostiqué dans `scripts/audit_langue_polylang`… **qui n'est dans
+aucun cron.**
+
+Et le veto agissait si tôt que le groupe n'était même pas FORMÉ : mesuré sur fixture, la
+paire Orlando donnait « Groupes formés : 0 ». Corriger le seul tri en aval n'aurait rien
+changé — c'est le témoin rouge de `tests/test_doublons_meme_versant.py` qui l'a montré.
+
+### Ce qui change
+
+`dedupe.paire_de_traduction_credible` : le lien en base **plus** le versant servi
+(`utils.lang.cote_du_permalien`, déplacée là depuis l'audit Polylang — une seule
+définition pour trois modules). Elle remplace `paire_de_traduction` dans les deux gardes
+de `titre_identique` et `coincidence_lieu_date`.
+
+Deux conséquences voulues :
+
+- sur une fiche **pending** (8h30), il n'y a pas encore de permalien → versant muet → la
+  garde se comporte exactement comme avant, et deux langues ne fusionnent jamais ;
+- sur une fiche **publiée** (9h50), deux pages servies du même côté cessent d'être
+  invisibles.
+
+Un permalien resté sous sa forme provisoire (`?p=…`) ne dit rien : on continue d'écarter
+la paire plutôt que de crier sur une donnée absente (règle 6).
+
+### ⚠️ La première version de ce correctif était fausse — et c'est le dry-run qui l'a dit
+
+J'avais RÉ-ADMIS ces paires comme groupes suspects. Sortie réelle sur la base de
+production : **le rapport est passé de 5 groupes à 29**, parce qu'il y a 32 traductions
+du mauvais versant et qu'elles rentraient toutes. Et le groupe EVO — qui mêle un VRAI
+doublon de contenu et une traduction égarée — **sortait de la commande de corbeille**
+avec le conseil « NE PAS corbeiller », faux pour lui.
+
+Deux défauts, la même racine : **une file qui reçoit ce qui a déjà sa file.** Ces 32
+fiches ont leur relevé, leur geste et leur commande consolidée
+(`scripts/audit_langue_polylang`). Les recopier ici, c'est le deuxième détecteur du
+journal du 08/09 et les trois cents « tarifs non publiés » du 11/08.
+
+### Ce qui est retenu
+
+L'appariement garde son veto sur `paire_de_traduction` (base seule) — **inchangé**. Le
+rapport de 9h50 se contente de **compter** ces traductions et de **nommer** le relevé qui
+les traite. Ce qui manquait n'était pas une ligne de plus dans la file des doublons ;
+c'était que personne ne disait qu'elles existaient.
+
+Le compteur se mesure **directement sur les fiches**, pas sur les groupes : la plupart de
+ces paires ne sont JAMAIS appariées (« Orlando » ↔ « Orlando » : `same_story` veut trois
+mots significatifs, et les règles de titre et de coïncidence refusent les traductions en
+amont). Compté depuis les groupes, il aurait affiché zéro sans que rien n'aille mieux.
+
+Et son libellé dit ce qu'il compte — « TRADUCTIONS DU MÊME CÔTÉ », des fiches, là où les
+deux compteurs voisins comptent des groupes (règle 6).
+
+**Le geste, lui, n'est pas la corbeille** : corbeiller une des deux pages perdrait la
+version italienne au lieu de la remettre en place, et laisserait l'autre liée par
+Polylang à un post corbeillé. C'est `translate_events --retranslate <id de l'ORIGINAL>`,
+qui republie par `force_lang` et relie la paire.

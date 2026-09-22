@@ -49,6 +49,11 @@ from utils import substance
 from scripts.perimetre import ville_hors_perimetre
 from scripts.publisher import build_post
 from scripts.publisher_as import publish_to_as, wp_site_joignable
+# Privées mais réutilisées à dessein (_heriter_source_traduction) : c'est le calcul
+# EXACT que publisher_as applique déjà à toute fiche pour sa propre source publiable —
+# le reprendre en sous-ensemble a divergé une première fois (16/09), le réutiliser tel
+# quel ne peut pas diverger une deuxième.
+from scripts.publisher_as import _source_publiable, _is_radar
 
 log = get_logger("publish_batch_as")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -80,6 +85,90 @@ def _select(conn, args, today: str):
            f"ORDER BY date_event_start ASC LIMIT ?")
     params.append(args.cap)
     return conn.execute(sql, params).fetchall()
+
+
+def _heriter_source_traduction(event: dict, conn) -> None:
+    """Complète `event['url_source']` avec la source publiable de l'ORIGINAL
+    si c'est une traduction dont la source propre est vide — MODIFIE `event`
+    en place.
+
+    Incident du 16/09, corrigé une première fois puis RE-MESURÉ FAUX : ma
+    première version copiait `radar.official_anchor(parent)` (lit UNIQUEMENT
+    `url_officiel` + `enrich_data.source`) dans `event['url_officiel']`. Sur
+    Chopin (id 525) et Egitto (id 5147), `url_officiel` est VIDE sur l'original
+    ET sur la traduction — leur statut de source officielle vient de
+    `url_source` (tier « officielle » de sources.txt : opera-nice.org,
+    enteturismolmr.sequar.com), un champ qu'`official_anchor` ne lit pas.
+    Vérifié en production après déploiement : le refus « source non publiable
+    écartée » persistait à l'identique — la première version ne changeait
+    RIEN pour ce cas, exactement celui qu'elle visait à réparer.
+
+    Le bon calcul est celui que `publisher_as._source_publiable` fait déjà
+    pour l'original lui-même (officiel PUIS url_source, filtré tracking) — on
+    le RÉUTILISE sur l'original plutôt que d'en reprendre un sous-ensemble, et
+    on écrit le résultat dans `url_source` de la traduction (pas
+    `url_officiel`, qui a son propre filtre de domaine — `_is_official_host`
+    — que ce résultat ne passerait pas forcément)."""
+    tof = event.get("translation_of") or 0
+    if not tof or (event.get("url_source") or "").strip().startswith(("http://", "https://")):
+        return
+    parent_row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
+    if not parent_row:
+        return
+    parent = dict(parent_row)
+    ancre = _source_publiable(parent, _is_radar(parent))
+    if ancre:
+        event["url_source"] = ancre
+
+
+# Confiance d'une image, du plus sûr au moins sûr. Sert à décider si une traduction doit
+# reprendre l'image de son original : on ne remonte JAMAIS vers du moins sûr.
+_RANG_IMAGE = {"manual": 5, "og": 4, "page": 4, "web": 3,
+               "commons": 2, "europeana": 2, "mail": 2, "banner": 1, "": 0}
+
+
+def _heriter_image_traduction(event: dict, conn) -> None:
+    """Une traduction montre la MÊME image que son original — MODIFIE `event` en place.
+
+    2026-09-21, fiche « Orlando » : la version française portait l'affiche du spectacle
+    (og:image de opera-nice.org/agenda/orlando/), l'italienne un scan du LIVRET IMPRIMÉ du
+    XVIIIe siècle trouvé sur Wikimedia Commons — deux colonnes de texte, illisibles en
+    vignette. Même événement, deux images.
+
+    L'origine n'est pas un bug isolé mais un enchaînement : `translate_events` copie bien
+    `url_image` à la CRÉATION de la traduction (l. 901) ; si l'original n'a alors qu'une
+    bannière, la traduction hérite de la bannière, `visuals` la reprend plus tard comme
+    « fiche à compléter » — et là, `url_source` vaut `translated:<id>:<lang>` : il n'y a
+    aucune page à lire, la chaîne saute donc directement à l'étage Commons. Quand
+    l'original reçoit enfin sa vraie affiche, plus rien ne réaligne la traduction.
+
+    D'où l'héritage ici, au même endroit que celui de la source (`_heriter_source_traduction`,
+    incident du 16/09) : à la publication, point de passage obligé. On ne copie que vers le
+    HAUT (`_RANG_IMAGE`) — une image posée à la main sur la traduction, ou une vraie photo
+    quand l'original n'a qu'une bannière, n'est jamais écrasée."""
+    tof = event.get("translation_of") or 0
+    if not tof:
+        return
+    parent_row = conn.execute(
+        "SELECT url_image, image_source, image_credit FROM events_raw WHERE id=?", (tof,)).fetchone()
+    if not parent_row:
+        return
+    parent = dict(parent_row)
+    img_parent = (parent.get("url_image") or "").strip()
+    if not img_parent or img_parent == (event.get("url_image") or "").strip():
+        return
+    rang_parent = _RANG_IMAGE.get((parent.get("image_source") or "").strip(), 0)
+    rang_trad = _RANG_IMAGE.get((event.get("image_source") or "").strip(), 0)
+    if rang_parent <= rang_trad:
+        return
+    log.info("[%s] image héritée de l'original %s (%s > %s) : %s", event.get("id"), tof,
+             parent.get("image_source"), event.get("image_source") or "aucune", img_parent[:70])
+    event["url_image"] = img_parent
+    event["image_source"] = parent.get("image_source") or ""
+    event["image_credit"] = parent.get("image_credit") or ""
+    conn.execute("UPDATE events_raw SET url_image=?, image_source=?, image_credit=? WHERE id=?",
+                 (event["url_image"], event["image_source"], event["image_credit"], event["id"]))
+    conn.commit()
 
 
 def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict], list[tuple]]:
@@ -145,6 +234,37 @@ def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict],
             reason = None
         (blocked if reason else kept).append((ev, reason) if reason else ev)
     return kept, blocked
+
+
+def _ranger_gel(conn, event_id: int, gel, geles: list, restaures: list) -> None:
+    """Recopie en base ce que le SITE vient de dire du gel de cette fiche.
+
+    Règle 1 : un champ en base ne prouve rien sur l'état du site. C'est donc WordPress
+    (deploy/wordpress/cs-gel-texte.php) qui détecte la retouche et la fait respecter ;
+    ces colonnes ne sont qu'une COPIE, utilisée en amont pour ne pas dépenser un appel
+    LLM sur une fiche dont le SEO ne pourra pas être poussé (scripts/seo_batch.py) et
+    pour compter la file garée.
+
+    `gel` à None = la réponse ne contenait pas la clé : le mu-plugin n'est pas en ligne.
+    On NE TOUCHE À RIEN dans ce cas — « pas de gel » et « on ne sait pas » ne doivent pas
+    rendre le même résultat, sinon un déploiement oublié dégèlerait tout en silence."""
+    if not isinstance(gel, dict):
+        return
+    if gel.get("gele"):
+        conn.execute(
+            "UPDATE events_raw SET wp_gel_at=?, wp_gel_champs=?, wp_gel_motif=? WHERE id=?",
+            (gel.get("depuis") or "", ",".join(gel.get("champs") or []),
+             gel.get("motif") or "", event_id))
+        geles.append(event_id)
+    else:
+        # Dégelée sur le site (case décochée, ou scripts/gel_texte.py --degel) : la copie
+        # locale doit suivre, sinon seo_batch continuerait d'écarter la fiche pour
+        # toujours — le cul-de-sac de la règle 3, cette fois du côté du rouvreur.
+        conn.execute("UPDATE events_raw SET wp_gel_at=NULL, wp_gel_champs=NULL, "
+                     "wp_gel_motif=NULL WHERE id=? AND wp_gel_at IS NOT NULL", (event_id,))
+    if gel.get("restaures"):
+        restaures.append(event_id)
+    conn.commit()
 
 
 def main(argv=None) -> int:
@@ -376,6 +496,8 @@ def main(argv=None) -> int:
 
     ok = fail = 0
     refuses = 0
+    geles = []      # fiches dont le SITE a dit « texte retouché à la main, non écrit »
+    restaures = []  # … et où l'interception n'a pas tenu (le site a dû remettre le texte)
     for i, r in enumerate(rows, 1):
         event = dict(r)
         # ══ GARDE-FOU ULTIME : jamais de CRÉATION sans date ══════════════════════
@@ -410,7 +532,10 @@ def main(argv=None) -> int:
         # sélection à des événements jamais publiés, créés sans photo (repli bannière
         # générique côté WP, pas cassé — mais pas voulu).
         skip = args.skip_media and (event.get("wp_post_id_as") or 0) > 0
-        wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip)
+        _heriter_source_traduction(event, conn)
+        _heriter_image_traduction(event, conn)
+        retour: dict = {}
+        wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip, retour=retour)
         if wp_id:
             conn.execute(
                 # `wp_deleted_at=NULL` : la fiche vient d'être (re)mise en ligne, le
@@ -425,6 +550,7 @@ def main(argv=None) -> int:
                 (wp_id, permalink, raw_url, event["id"]))
             conn.commit()
             ok += 1
+            _ranger_gel(conn, event["id"], retour.get("gel"), geles, restaures)
         else:
             fail += 1
             log.warning("Échec pour id=%s : %s", event["id"], (event.get("title") or "")[:60])
@@ -436,6 +562,22 @@ def main(argv=None) -> int:
     conn.close()
     log.info("=== Lot Agenda Sabauda : %d publié(s), %d échec(s), %d création(s) refusée(s) "
              "faute de date ===", ok, fail, refuses)
+    if geles:
+        # RÈGLE 6 : un état qui sort une fiche d'une file la sort aussi des bilans si on
+        # ne le compte pas. Le périmètre est écrit à côté du nombre : ce sont les fiches
+        # de CE lot, pas la file entière (celle-là se lit avec `--liste` ci-dessous).
+        log.info("%d fiche(s) de ce lot ont le texte GELÉ (retouche à la main) : %s. "
+                 "Leurs dates, lieu, catégorie et métas as_* ont bien été mis à jour ; "
+                 "titre, corps, extrait et métas Yoast, non. Pour rendre la main au "
+                 "pipeline sur l'une d'elles : "
+                 ".venv/bin/python -m scripts.gel_texte --degel <id> --apply",
+                 len(geles), " ".join(str(i) for i in geles))
+    if restaures:
+        log.warning("🔴 %d fiche(s) où le site a dû RESTAURER le texte après coup (%s) : "
+                    "l'interception de cs-gel-texte.php n'a pas tenu. Le texte est "
+                    "intact (la seconde jambe du garde-fou a joué), mais c'est la "
+                    "première qu'il faut reprendre.",
+                    len(restaures), " ".join(str(i) for i in restaures))
     return 0 if fail == 0 else 1
 
 

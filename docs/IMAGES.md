@@ -59,16 +59,36 @@ flowchart TD
 
 ---
 
-## 3. Les deux défenses (anti-hors-sujet)
+## 3. Les deux défenses (anti-hors-sujet) — règles déterministes, puis agent vision
 
-Tout candidat, à chaque étage, doit passer **deux filtres complémentaires** (`utils/image_verify.py`) :
+Tout candidat, à chaque étage, doit passer **deux filtres complémentaires** (`utils/image_verify.py`) — le premier s'est enrichi de quatre règles le 21/09, le second n'a pas changé :
 
 1. **Règles déterministes** (gratuites, toujours actives) :
    - domaine proscrit (`config/blocked_image_domains…`), logo/blason/icône (`is_logo_image`) ;
-   - motif d'URL parasite connu (`config/blocked_image_patterns.txt` : slider, header, banniere, pub…) — extensible **sans code** ;
-   - **forme** suspecte (`looks_like_banner_shape`) : trop plat/étroit = bandeau, trop carré = vignette CMS générique (voir seuils §5).
+   - motif d'URL parasite connu (`config/blocked_image_patterns.txt` : slider, header, banniere, pub, avatar Gravatar…) — extensible **sans code** ;
+   - **forme** suspecte (`looks_like_banner_shape`) : trop plat/étroit = bandeau, trop carré = vignette CMS générique (voir seuils §5) ;
+   - **vignette de DOCUMENT** (`looks_like_document_thumb`) : un nom en `…-pdf.jpg` est la
+     couverture d'un PDF téléversé — brochure de saison, programme, dossier de presse, plan
+     de salle —, jamais la photo d'un événement *(ajouté le 21/09)* ;
+   - **page GÉNÉRIQUE** (`utils/pages.peut_illustrer`) : une page d'accueil ou une rubrique
+     presse montre la programmation du moment, donc au mieux un AUTRE événement. Elle n'est
+     lue que par un appelant capable de faire juger l'image (voir la mise à jour du 21/09
+     pour la répartition script par script) *(21/09)* ;
+   - **image déjà partagée** (`images_wide.deja_partagee`) : au-delà de deux autres fiches
+     qui la portent, c'est l'habillage du site, pas l'affiche de cet événement — le
+     diagnostic était en commentaire de `blocked_image_patterns.txt` depuis le début, sans
+     être branché *(21/09)* ;
+   - **une traduction n'a pas d'image propre** : elle hérite de son original à la
+     publication (`publish_batch_as._heriter_image_traduction`), et jamais vers le bas —
+     sinon la chaîne, faute de page à lire, lui cherche une image sur le seul titre *(21/09)*.
 
 2. **Agent vision** (`verify_relevance`, payant, ciblé) : un LLM **regarde** l'image et dit si elle correspond VRAIMENT à l'événement. C'est le seul capable de dire « ce ruban vert est une campagne don d'organes, pas l'événement ». Il renvoie aussi le **point focal** (§6). Il refuse : bandeaux/pubs/logos/captures/affiches-tout-texte, **portrait d'une personne qui n'est pas le sujet**, photo du **bâtiment** quand le sujet est une personne/œuvre, **saison** incompatible visible, **paysage naturel générique** pour un événement urbain.
+
+Où vivent ces règles, depuis le 21/09 : dans `utils/images.ecarte_de_page` pour tout ce qui
+est LU sur une page — **un seul endroit**, appelé par les deux lecteurs (`_img_tags` et
+`page_image_candidates`) —, et dans les `_acceptable` de `visuals.py` et
+`moisson_officielle.py` pour les candidats venus d'ailleurs. C'est la réponse à la racine du
+08/09 : « deux détecteurs pour la même chose, un seul juste ».
 
 En cas de panne technique (image injoignable), on **ne bloque pas** — les règles déterministes ont déjà filtré, et la vérification se refait au moment de publier.
 
@@ -226,3 +246,368 @@ Esquisse : une route `/audit-visuel` réutilisant la logique de `image_audit.py`
 `scripts/images_wide` (renommé « multi-format ») demande à l'agent web les **deux orientations en un seul appel** (source officielle de l'événement / du lieu / de l'organisateur ; jamais d'agence), un agent vision vérifie **chacune** (vraiment portrait / vraiment paysage + pertinente), stocke celles trouvées et re-pousse. **Systématique à score ≥ 7** (`--min-score`, comme `venues_web`/`dates_web`/`images_web`) tant qu'une orientation manque ; cooldown `image_wide_at`. Vide → on retombe sur `url_image`. Dans le cron `full` (`--apply --cap 15`). Colonnes `url_image_wide` + `url_image_portrait`.
 
 **Téléchargement Wikimedia (429).** `publisher.py` : UA descriptif bot (`CulturaSabaudaBot/…`) d'abord pour Commons (un UA navigateur se fait throttler), backoff 5/10/20s, et **téléchargement source mis en cache** (les 3 déclinaisons carte/héros/original d'un même event ne frappent Wikimedia qu'une fois). `refill_images_as --throttle` (1.5s) espace les événements en lot.
+
+---
+
+## Mise à jour (21 septembre 2026) — la vignette d'un PDF n'est pas une photo
+
+Franck, capture à l'appui (fiche « Charcot Antartica », WP#8289) : « c'est souvent qu'on a
+l'image de malraux au lieu de l'événement […] il aurait sûrement fallu une image de
+Charcot Antartica ». L'image en ligne était **l'affiche de saison 26-27 de Malraux**.
+
+**Ce qui a été mesuré ce jour-là**, en rejouant le code du dépôt sur les vraies pages :
+
+1. la source mémorisée de la fiche était `malrauxchambery.fr/ressources/presse` — la page
+   « ressources presse » du théâtre, pas la page du spectacle ;
+2. `fetch_og_image` y renvoie `''` (la balise `og:image` de cette page ne contient qu'une
+   espace), donc la moisson passe au repli « première image de contenu » ;
+3. `page_image_candidates` y rend **quatre** candidats, tous des vignettes de PDF :
+   brochure de saison, journal BIM, programme Cinémalraux, plan de la grande salle ;
+4. le premier — `M-Brochure-26-27-WEB-pdf.jpg`, 706×907 — est bien l'image qui était en
+   ligne (comparaison visuelle du fichier servi par WordPress et de celui du CDN) ;
+5. **aucune défense ne pouvait la voir** : ce n'est ni un logo, ni de l'habillage de thème,
+   ni une forme de bandeau (ratio 1,28, entre `MIN_ASPECT` et `MAX_ASPECT`), et elle passe
+   `MIN_DIM` (706 ≥ 700). La moisson, elle, ne fait pas juger l'agent vision ;
+6. la page du spectacle existe et porte la bonne photo en `og:image`
+   (`charcot-Antartica-©-Anne-Bouillot-WEB.jpg`) — **la racine du site y mène en un lien**.
+
+### Ce qui change
+
+- **`utils.images.looks_like_document_thumb`** — WordPress fabrique un JPEG de la première
+  page de tout PDF téléversé et le nomme `<document>-pdf.jpg` (et ses déclinaisons
+  `-pdf-212x300.jpg`). C'est une couverture de brochure, de programme, de dossier de presse
+  ou un plan de salle : jamais la photo d'un événement. Le motif est un **suffixe** de nom
+  de fichier, jamais une sous-chaîne (leçon « LogoEdizioneAutunnale n'est pas un logo ») :
+  `pdfweb-affiche.jpg` et `le-grand-pdf-journal.jpg` passent.
+- **`utils.images.ecarte_de_page`** réunit les trois raisons déterministes d'écarter une
+  image lue sur une page (logo, habillage de thème, vignette de document) et sert aux
+  **deux** lecteurs (`_img_tags`, `page_image_candidates`) — la faute du 08/09, « deux
+  détecteurs pour la même chose, un seul juste », venait d'une règle posée d'un côté et
+  absente du voisin. Les `_acceptable` de `scripts/visuals.py` et de
+  `scripts/moisson_officielle.py` appellent le même détecteur.
+- **`affiner_source.est_source_generique`** remplace `est_racine` dans la sélection : une
+  page de **rubrique** (presse, actualités, dons, galerie — la liste `_PAGE_SKIP` qui
+  servait déjà à écarter ces chemins) n'est pas plus la page de l'événement qu'une racine,
+  et elle échappait au seul rouvreur qui existe (règle 3). La recherche repart désormais
+  **toujours de la racine du site** : une page presse ne renvoie pas vers les spectacles,
+  la page d'accueil si. Vérifié sur les deux fiches Malraux — `/ressources/presse` →
+  `/evenement/charcot-antartica-26-27/` et `/evenement/parfums-de-la-terre-26-27/`.
+
+### Ce qui n'a PAS été fait, et pourquoi
+
+Le réflexe était de brancher sur l'image le test de pertinence qui existe déjà dans
+`enrich` (« la page mentionne-t-elle un mot du titre ? »). **Mesuré : il ne filtre rien.**
+Il répond « MENTIONNE » pour la page presse de Malraux (« base », « chambéry »), pour la
+page communiqués du Torino Film Festival (« torino », « film »), pour la page « nos
+artistes » de l'Opéra de Nice (« production », « opéra », « nice »). C'est un OU sur des
+mots faibles — lieu, ville, mots courants. Le durcir (n'exiger que des mots distinctifs)
+est un chantier à part, à mesurer avant d'écrire quoi que ce soit.
+
+### CORRECTION DU MÊME JOUR : le chemin n'était pas celui-là
+
+Le diagnostic ci-dessus est juste sur le **quoi** (l'image en ligne est bien la couverture
+de la brochure de saison) et faux sur le **par où**. La fiche, lue en base sur le VPS,
+dit autre chose :
+
+    url_source        : https://www.malrauxchambery.fr/evenement/charcot-antartica-26-27/
+    image_source      : og
+    url_image         : …/charcot-Antartica-©-Anne-Bouillot-WEB-…jpg     ← la BONNE photo
+    url_image_portrait: …/M-Brochure-26-27-WEB-pdf.jpg                   ← l'affiche de saison
+    url_image_wide    : …/Plan_grande_salle_malraux-pdf.jpg              ← le plan de salle
+
+La source est bonne, l'image principale est bonne. C'est **`url_image_portrait`** qui a
+fabriqué la vignette : `publisher_as` le préfère pour la carte 4:3 et les réseaux (§ multi-
+format). Et il a été posé par **`scripts/images_wide.py`** (cron de 10h35), qui cherche une
+déclinaison portrait et une paysage parmi les images de la page — or **le pied de page du
+site de Malraux affiche les couvertures de ses PDF sur TOUTES ses pages**. La seule image
+nettement verticale était la brochure ; la seule nettement horizontale, le plan de salle.
+Les deux fiches Malraux à venir portaient exactement la même paire.
+
+Le filtre `looks_like_document_thumb` agit dans `page_image_candidates`, donc sur ce
+chemin-là aussi — vérifié après déploiement : sur la page du spectacle, les quatre
+vignettes de PDF ont disparu des candidats, il reste la vraie photo. Reste un risque connu
+sur ce site : les affiches des **autres** spectacles y figurent aussi (`Apres-les-glaciers-
+poster.jpg`) ; seul l'agent vision les écarte.
+
+Deux enseignements, à relire avant la prochaine mesure :
+
+- **la première requête a rendu 0** parce qu'elle ne regardait que `url_image` et
+  `wp_raw_image_url_as`. Le périmètre était trop étroit, pas le mal inexistant — règle 6 :
+  un compteur doit dire ce qu'il compte. En regardant les trois colonnes : **4 fiches au
+  total, 2 encore devant nous** ;
+- **le rouvreur n'existait qu'à moitié.** `images_wide --drop-portrait` était là depuis le
+  08/09 ; rien n'effaçait `url_image_wide`. Or la même lecture pose les deux, et quand elle
+  se trompe elle se trompe deux fois. D'où `--drop-wide`, combinable
+  (`tests/test_drop_formats.py`).
+
+### Fiches déjà touchées — comment les retrouver et les réparer
+
+Le correctif ne défait rien de ce qui est en ligne. Sur le VPS :
+
+```bash
+# 1. combien de fiches publiées, encore devant nous, portent une vignette de PDF
+sqlite3 data/events.db "SELECT id, wp_post_id_as, substr(title,1,50), url_image
+  FROM events_raw WHERE wp_post_id_as IS NOT NULL AND duplicate_of IS NULL
+   AND (COALESCE(date_event_end, date_event_start,'') = ''
+        OR COALESCE(date_event_end, date_event_start) >= date('now'))
+   AND (url_image LIKE '%-pdf.jpg' OR url_image LIKE '%-pdf-%x%.jpg'
+        OR wp_raw_image_url_as LIKE '%-pdf.jpg');"
+
+# 2. la même question pour les sources génériques (dry-run, rien n'est écrit)
+.venv/bin/python -m scripts.affiner_source
+
+# 3. si le dry-run est juste — LIGNE PAR LIGNE, règle 4 :
+.venv/bin/python scripts/backup_db.py
+.venv/bin/python -m scripts.affiner_source --apply
+#    puis les deux commandes que le script imprime (moisson + publish --update)
+
+# 4. les images posées depuis une page, à re-juger avec la chaîne corrigée
+.venv/bin/python -m scripts.refill_images_as --recheck page --dry-run
+
+# 5. les DÉCLINAISONS portrait/paysage fautives (la vraie cause du cas Malraux) :
+#    compter d'abord les TROIS colonnes, pas la seule url_image
+sqlite3 data/events.db "SELECT id, wp_post_id_as, substr(title,1,45)
+  FROM events_raw WHERE duplicate_of IS NULL
+   AND (COALESCE(url_image_portrait,'') LIKE '%-pdf%'
+     OR COALESCE(url_image_wide,'')     LIKE '%-pdf%'
+     OR COALESCE(url_image,'')          LIKE '%-pdf%');"
+#    puis, pour les ids encore devant nous (dry-run sans --apply) :
+.venv/bin/python -m scripts.images_wide <ids> --drop-portrait --drop-wide --apply
+```
+
+---
+
+## Mise à jour (21 septembre 2026, suite) — une page d'accueil n'illustre pas un événement
+
+Après la réparation des deux fiches Malraux, Franck : « ok avance ». Trois familles
+restaient, repérées en regardant les 73 vignettes françaises du catalogue à venir.
+
+**1. La vignette blanche** (WP#7666, « Ambra Angiolini », Torino Film Festival). Mesuré :
+la source est la page `/it/cartellastampa-comunicatistampa/`, dont l'`og:image` est
+`main-hover-comunicati-2.jpg` — l'image de **survol** d'un bouton de téléchargement. En
+ligne : un rectangle blanc bordé de rouge avec une flèche grise. `hover` et `rollover`
+rejoignent donc les mots d'interface de `is_logo_image` (`utils/sources.py`), aux côtés de
+`arrow` et `chevron` ajoutés le 08/09 pour une flèche de menu. Idem `login` / `backend` :
+la racine du musée du Risorgimento déclare aujourd'hui `backend-login-bg-01.jpg`, le fond
+de sa page de connexion admin.
+
+**2. L'affiche d'un AUTRE événement** (WP#9615, WP#8931). La fiche « Une chasse aux
+énigmes en famille au musée du Risorgimento » affichait l'affiche de « Trame di donne,
+6-7-8 mars 2026 » — un autre événement, déjà passé. Elle venait de l'`og:image` de la
+**racine** du musée.
+
+Mesure faite avant d'écrire la moindre ligne, sur les **22 pages racine** qui servent de
+source à des fiches publiées encore devant nous : **neuf portaient un og:image, aucune ne
+montrait l'événement**.
+
+| Racine | og:image | ce que c'est |
+|---|---|---|
+| museorisorgimentotorino.it | `backend-login-bg-01.jpg` | fond de la page admin |
+| mal-thonon.org | `saison-25-26.jpg` | affiche de saison, périmée d'un an |
+| conservatoriotorino.eu | `logo-conservatorio-bianco.jpg` | logo |
+| bonlieu-annecy.com | `img_facebook (1).png` | image de partage |
+| opera-nice.org | `share-opera-nice-cote-dazur.jpg` | image de partage |
+| palazzomadamatorino.it | `Facciata-2011-photo-Gonella-1.jpg` | le bâtiment |
+
+Et **aucun de ces 22 sites n'était lui-même l'événement**. D'où `utils/pages.py` :
+`peut_illustrer(url, titre)` dit si l'image d'une page se suffit à elle-même — non pour une
+page générique, sauf si le domaine porte le nom de l'événement (`doujador.it` ↔ « Douja
+d'Or »).
+
+### La règle a été CORRIGÉE dans la journée : « pas sans que quelqu'un regarde »
+
+Première version : ces pages étaient refusées, point. Puis j'ai regardé les **cinq fiches
+publiées** que ce refus visait — et **trois avaient une bonne image** :
+
+| Fiche | Source | Image en ligne | Verdict |
+|---|---|---|---|
+| WP#7695 Artistes villefranchois | racine de la mairie | **l'affiche exacte** de l'expo, dates comprises | bonne |
+| WP#9126 Dentro la pittura | racine de Palazzo Madama | la chapelle des Scrovegni | bonne |
+| WP#7490 Filarmonica della Scala | racine de filarmonica.it | le visuel MiTO Settembre 2026 | acceptable |
+| WP#6438 Chitarra Jazz | racine du Conservatoire | la façade, de nuit, petite | faible |
+| WP#7558 Sotto i portici | page `/area-press/` du musée | — | à revoir |
+
+Les deux mesures sont vraies, et leur contradiction est instructive : une page d'accueil
+montre la programmation **du moment**, donc elle illustre bien l'événement en cours et mal
+tous les autres. Un **instantané** des og:image ne pouvait pas le voir — il fallait
+regarder les fiches. C'est la faute classique du journal, mesurer l'instant et conclure
+sur le flux, attrapée cette fois avant le déploiement.
+
+La règle retenue dépend donc de qui peut JUGER :
+
+- **`scripts/visuals.py`** a l'agent vision → il lit la page générique quand même, et
+  l'agent tranche (« cette image montre-t-elle CET événement ? »). Sans client vision,
+  il s'abstient plutôt que de parier ;
+- **`scripts/moisson_officielle.py`** n'a aucune vérification vision → il s'abstient ;
+- **`scripts/images_wide.py`** en a une, mais elle a validé le même jour une brochure de
+  saison comme « affiche portrait » et un plan de salle comme « affiche paysage » → il
+  s'abstient aussi, tant qu'elle n'est pas plus sûre.
+
+**Ce n'est pas un cul-de-sac** (règle 3) : une abstention fait descendre d'un étage —
+Commons, agent web, puis la bannière territoire. Une bannière dit « pas de photo » ;
+l'affiche d'un autre spectacle, elle, ment au lecteur. Et le jour où la source est précisée
+(`affiner_source`), la même chaîne reprend l'`og:image` de la bonne page.
+
+**La limite est écrite dans le code et vérifiée par la fixture** : l'exception exige que
+TOUS les mots significatifs du titre soient dans le domaine, donc un titre rédigé
+(« BeerCult 2026 à Aoste : trois jours entre bière alpine… ») n'en bénéficie pas. Un
+critère plus large — « un mot long du titre dans le domaine » — réautoriserait exactement
+ce qu'on bloque, puisque le domaine porte le nom du LIEU : « Risorgimento » dans
+museorisorgimentotorino.it, « Thonon » dans mal-thonon.org.
+
+`utils/pages.py` porte aussi la liste des rubriques, qui vivait dans `affiner_source` et
+manquait à la chaîne d'images (racine du 08/09, « deux détecteurs pour la même chose »).
+`scolaire` / `scuole` s'y ajoutent : `mal-thonon.org/scolaires` est la source de quatre
+fiches publiées à venir.
+
+### Réparer les fiches déjà illustrées depuis une page générique
+
+Le garde-fou empêche la pose ; il ne défait rien. Pour lister ce qui reste (sur le VPS) :
+
+```bash
+cd /root/evenements && .venv/bin/python -c "
+import sqlite3, sys; sys.path.insert(0, '.')
+from utils.pages import peut_illustrer
+c = sqlite3.connect('data/events.db'); c.row_factory = sqlite3.Row
+q = '''SELECT id, wp_post_id_as, title, url_source, url_officiel, image_source
+       FROM events_raw WHERE wp_post_id_as IS NOT NULL AND duplicate_of IS NULL
+        AND COALESCE(image_source,'') IN ('og','page')
+        AND (COALESCE(date_event_end, date_event_start,'') = ''
+             OR COALESCE(date_event_end, date_event_start) >= date('now'))'''
+for r in c.execute(q):
+    src = (r['url_officiel'] or r['url_source'] or '')
+    if not peut_illustrer(src, r['title'] or ''):
+        print(r['id'], 'WP#%s' % r['wp_post_id_as'], '|', (r['title'] or '')[:45], '|', src[:60])
+"
+```
+
+Puis, sur ces ids : `.venv/bin/python -m scripts.refill_images_as <ids> --dry-run` (il
+re-résout avec la chaîne corrigée et ne re-pousse que si l'image change réellement).
+
+---
+
+## Mise à jour (21 septembre 2026, fin) — l'image partagée trahit l'habillage
+
+Le recensement des fiches à venir dont une déclinaison (`url_image_portrait` /
+`url_image_wide`) diffère de l'image principale en a rendu **28**. « Différent » ne veut
+pas dire « faux » — une affiche portrait plus une photo paysage, toutes deux officielles,
+c'est exactement ce que le multi-format vise. Ce qui tranche, c'est le **partage** :
+
+| Fiches | Image | Ce que c'est |
+|---|---|---|
+| **7** | `Cover L-eta dell-acquario-particolare.png` | bandeau de saison d'une bibliothèque |
+| 2 | `visuels-lancement-de-saison-2026-2027.png` | lancement de saison de l'Opéra de Nice |
+| 2 | `img_11.webp` | Musei Reali |
+| 2 | `2006.aerea_.RG-Palazzo-Madama.jpg` | vue aérienne du palais |
+| 2 | `Palazzo-Mazzonis-esterno-3-2.jpg` | façade du MAO |
+| 2 | `1629_701_CHY_110986_HD-1-1-.jpg` | photo de la ville de Chambéry |
+
+**Aucune des défenses posées plus tôt dans la journée ne les arrête** : ce ne sont ni des
+vignettes de PDF, ni des images d'interface, et la page lue est bien celle de l'événement.
+Le bandeau de la bibliothèque est simplement sur chacune de ses pages.
+
+Or le diagnostic était écrit depuis le début, en commentaire de
+`config/blocked_image_patterns.txt` : « une image partagée par beaucoup d'événements SANS
+RAPPORT = presque toujours de l'habillage ». Il y figurait comme requête à taper à la main
+pour alimenter le fichier de motifs ; **personne ne l'avait branché sur la chaîne**. C'est
+fait : `images_wide.deja_partagee` compte les autres fiches qui portent déjà l'image, et
+refuse au-delà de deux — avant le téléchargement et avant l'agent vision, qui valide
+volontiers un joli bandeau de saison. Les traductions ne comptent jamais (elles portent la
+même image que leur original, et c'est voulu).
+
+**Le piège du nettoyage** : quatre fiches ont une **bannière** en image principale et une
+vraie affiche en déclinaison. Y retirer la déclinaison ferait *reculer* la carte vers la
+bannière. Le recensement les signale, on les laisse.
+
+### Voir les déclinaisons — ce qui manque encore
+
+Trois fois dans la même journée, le coupable était `url_image_portrait`, et trois fois il
+a fallu la ligne de commande pour le voir : **le back-office ne montre que `url_image`**.
+L'aperçu affiche cette colonne, le formulaire modifie cette colonne — on croit regarder la
+fiche, on regarde à côté. C'est ce qui m'a fait proposer une photo de Wikimedia Commons
+pour une fiche qui avait déjà mieux en base. À faire : afficher les deux déclinaisons dans
+l'onglet Visuels, avec un bouton pour les retirer (l'équivalent de
+`images_wide --drop-portrait --drop-wide`, qui n'existe aujourd'hui qu'en ligne de commande).
+
+---
+
+## Mise à jour (21 septembre 2026, soir) — une traduction montre la même image que son original
+
+Cinquième mécanisme de la journée, et le plus étendu : **14 traductions à venir portent une
+image différente de leur original**. Exemples relevés en base :
+
+| Fiche | Traduction | Original |
+|---|---|---|
+| Orlando (WP#2340) | `commons` — le **livret imprimé** du XVIIIe, deux colonnes de texte | `og` — l'affiche du spectacle |
+| Ambra Angiolini (WP#7723) | — le **rectangle blanc** `main-hover-comunicati` | `og` — le portrait |
+| Estate Reale (WP#2211) | `commons` — un buste de Lucius Verus | `og` — le visuel de l'événement |
+| GAZA, le futur a un cœur (WP#2269) | `commons` — une planche d'archéologie égyptienne | `og` — le visuel vertical |
+| Orchestre de la Suisse Romande (WP#2299) | `banner` | `og` — la photo de l'orchestre |
+
+L'enchaînement, reconstitué : `translate_events` copie bien `url_image` **à la création** de
+la traduction ; si l'original n'a alors qu'une bannière, la traduction hérite de la
+bannière, `visuals` la reprend plus tard comme « fiche à compléter » — et là `url_source`
+vaut `translated:<id>:<lang>`, **il n'y a aucune page à lire** : la chaîne saute directement
+à l'étage Commons, qui cherche sur le TITRE. D'où le livret pour Orlando, le buste pour
+Estate Reale, l'archéologie égyptienne pour Gaza. Quand l'original reçoit enfin sa vraie
+affiche, plus rien ne réaligne la traduction.
+
+`publish_batch_as._heriter_image_traduction` le fait désormais à la publication, au même
+endroit et pour la même raison que l'héritage de la SOURCE (`_heriter_source_traduction`,
+incident du 16/09). La copie ne va que vers le **haut** (`_RANG_IMAGE` : manual 5, og/page 4,
+web 3, commons/europeana/mail 2, banner 1) — une image posée à la main sur la traduction, ou
+une vraie photo quand l'original n'a qu'une bannière, n'est jamais écrasée.
+
+**Le cas inverse reste ouvert** (une fiche sur les quatorze) : « Chambéry, les trésors des
+empires de la Chine » a une photo Commons côté italien et une **bannière** côté français.
+L'héritage ne descend pas, donc les deux langues continuent de diverger. C'est le bon
+comportement par défaut, mais ça montre la limite : l'alignement se fait toujours dans le
+sens original → traduction, jamais l'inverse.
+
+Pour appliquer l'héritage aux fiches déjà en ligne :
+
+```bash
+.venv/bin/python -m scripts.publish_batch_as --ids <ids des traductions> --update
+```
+
+---
+
+## Récapitulatif du 21 septembre 2026 — cinq mécanismes, un seul symptôme
+
+À relire d'abord si une vignette montre autre chose que son événement. Les quatre sections
+ci-dessus racontent la journée dans l'ordre où elle s'est déroulée ; ce tableau dit où
+regarder. Le journal des fautes commises en chemin est dans `docs/ERREURS_2026-09-21.md`.
+
+| # | Ce qui trompait le pipeline | Cas fondateur | Garde-fou | Fixture |
+|---|---|---|---|---|
+| 1 | **vignette de PDF** prise pour une affiche (`…-pdf.jpg`) | brochure de saison 26-27 de Malraux, en vignette d'un concert | `images.looks_like_document_thumb` via `ecarte_de_page` | `test_vignette_document` |
+| 2 | **image d'interface** prise pour une photo | `main-hover-comunicati-2.jpg` : un rectangle blanc, image de survol d'un bouton du Torino Film Festival | tokens `hover`, `rollover`, `login`, `backend` dans `is_logo_image` ; motif `gravatar.com/avatar` | `test_images_chrome_filter` |
+| 3 | **page générique** dont l'image change au gré de la programmation | l'affiche de « Trame di donne » (mars) sur une fiche du 27 septembre | `utils/pages.peut_illustrer` — lue seulement là où l'agent vision peut juger | `test_pages_generiques`, `test_visuals_page_generique` |
+| 4 | **bandeau de site** recopié sur toutes les fiches d'un lieu | `Cover L-eta dell-acquario` : paysage de SEPT fiches de la bibliothèque de Turin | `images_wide.deja_partagee`, seuil 2 | `test_image_partagee` |
+| 5 | **traduction** cherchant sa propre image faute de page à lire | le livret imprimé du XVIIIe sur Orlando en italien | `publish_batch_as._heriter_image_traduction`, copie vers le haut seulement | `test_heriter_image_traduction` |
+
+Deux rouvreurs complétés au passage (règle 3) : `affiner_source` voit désormais les pages de
+**rubrique** en plus des racines, et **`images_wide --drop-wide`** existe à côté de
+`--drop-portrait` — qui était seul depuis le 08/09, si bien qu'un plan de salle pouvait
+rester en grand visuel 16:9 après un « nettoyage ». Les deux colonnes sont recensées dans
+`docs/ETATS_TERMINAUX.md`.
+
+**Le piège à connaître avant de toucher à une vignette** : `url_image_portrait` et
+`url_image_wide` **priment** sur `url_image` pour la carte 4:3 et le héros 16:9
+(`publisher_as`). Une fiche peut donc avoir la bonne photo dans `url_image` et montrer
+autre chose. Le back-office, lui, n'affiche et ne modifie que `url_image` — trois fois sur
+trois ce jour-là, la coupable était une colonne invisible à l'écran.
+
+**Commandes de contrôle** (aucune n'écrit) :
+
+```bash
+# les trois colonnes d'une fiche, d'un coup
+sqlite3 data/events.db "SELECT id, wp_post_id_as, image_source, url_image,
+  url_image_portrait, url_image_wide FROM events_raw WHERE id = <id>;"
+
+# les déclinaisons partagées par plusieurs fiches (= habillage de site)
+#   → voir la commande complète dans la section « l'image partagée trahit l'habillage »
+
+# les traductions dont l'image diffère de leur original
+#   → voir la section « une traduction montre la même image que son original »
+```

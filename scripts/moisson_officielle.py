@@ -71,9 +71,11 @@ from urllib.parse import urljoin, urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger  # noqa: E402
-from utils.images import fetch_og_image, page_image_candidates, remote_dims, looks_like_banner_shape  # noqa: E402
+from utils.images import (fetch_og_image, page_image_candidates, remote_dims,  # noqa: E402
+                          looks_like_banner_shape, looks_like_document_thumb)
 from utils.sources import is_logo_image, is_blocked_image, load_blocked_image_domains  # noqa: E402
 from utils.radar import source_officielle  # noqa: E402
+from utils.pages import peut_illustrer  # noqa: E402
 from utils.traqueurs import est_traqueur, sans_parametres_de_suivi  # noqa: E402
 from utils import jsonld  # noqa: E402
 from utils import infos_pratiques  # noqa: E402
@@ -511,14 +513,23 @@ def _recolte(ev: dict, marqueurs=None, morts: list | None = None) -> dict:
     _bloques = load_blocked_image_domains()
 
     def _acceptable(u: str) -> bool:
-        return bool(u) and u != _img and not is_logo_image(u) and not is_blocked_image(u, _bloques)
+        # La vignette d'un PDF (brochure de saison, programme, plan de salle) n'est jamais
+        # la photo de l'événement — 2026-09-21, fiche 8289 : la page /ressources/presse de
+        # Malraux n'offre QUE ça, et sa brochure 26-27 est partie en ligne comme visuel du
+        # concert « Charcot Antartica ». Même détecteur que la chaîne de résolution.
+        return (bool(u) and u != _img and not is_logo_image(u)
+                and not looks_like_document_thumb(u)
+                and not is_blocked_image(u, _bloques))
 
     # Un lien de traçage (sendibm1, mailchimp…) posé comme image n'est jamais une image :
     # c'est le pixel d'ouverture d'une newsletter (Manara à la Venaria, 08/09). Il cède
     # quelle que soit sa provenance.
     _remplacable = (not _img or _banniere or _src in ("commons", "web", "europeana")
                     or (_src == "page" and _ailleurs) or _est_traqueur(_img))
-    if _src != "manual" and _remplacable:
+    # La page LUE doit pouvoir illustrer l'événement : ni page d'accueil, ni rubrique
+    # presse (2026-09-21, utils/pages.py — sauf si le site EST l'événement). Sans ce
+    # test, la moisson quotidienne repose chaque matin l'habillage du site source.
+    if _src != "manual" and _remplacable and peut_illustrer(url, ev.get("title", "")):
         og = fetch_og_image(url)
         if _acceptable(og):
             trouve["url_image"] = og

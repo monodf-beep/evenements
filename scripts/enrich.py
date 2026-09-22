@@ -310,7 +310,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "article": {{
     "titre": "<titre informatif et incarné, pas racoleur>",
     "chapo": "<1-2 phrases : l'essentiel (quoi/quand/lieu en bref) + l'angle. C'est la SEULE fois où ces faits de base sont énoncés en phrase complète — le corps ne les reformule PAS>",
-    "corps": "<le lecteur a DÉJÀ LU le chapô : ne réécris PAS quoi/quand/où sous une autre forme (interdiction stricte d'une phrase-jumelle du chapô, même reformulée — ex. chapô 'le festival se poursuit jusqu'au 7 août' PUIS corps 'le festival se joue jusqu'au 7 août' est un DOUBLON À BANNIR). Le corps ENCHAÎNE directement sur du NOUVEAU : la PROGRAMMATION de cette édition (line-up, temps forts, horaires, nouveautés) — c'est la matière principale, pas un rappel. Termine au plus par UNE phrase de mise en perspective (jamais une reformulation des dates/lieu). On reste sur CET événement : AUCUN contexte historique/économique du lieu ou du territoire, AUCUNE montée vers l'universel, RIEN sur ce qui se passe ailleurs (ça, c'est Cultura Sabauda, pas ici). LONGUEUR : 300-380 mots (150→200 le 09/09, puis plancher porté à 300 le 10/09 : sous 300 mots Yoast classe la page « texte trop court », et c'est la cause la plus répandue du rouge sur la colonne SEO — mesuré sur deux fiches en ligne, 243 et 250 mots). Densité, pas délayage : plus de matière (programmation, horaires, temps forts, nouveautés), jamais des phrases pour faire du volume ; au plus un ou deux sous-titres '## ' si vraiment nécessaire. Phrases COURTES : UNE idée par phrase, 20 mots au plus, JAMAIS plus d'une subordonnée — une phrase qui enchaîne « qui…, avec…, suivie de… » se COUPE en deux ou trois phrases au point (mesuré le 09/09 sur 143 fiches en ligne : 22 mots par phrase en médiane, c'est trop). Voix ACTIVE : « deux commissaires portent l'exposition », pas « l'exposition est portée par ». Les connecteurs SIMPLES sont bienvenus quand ils aident à suivre (puis, ensuite, mais, car, donc, enfin, d'abord, aussi, surtout, avant, après) ; les connecteurs SCOLAIRES restent proscrits (« par ailleurs », « en effet », « force est de constater », « il convient de noter »). N'en mets pas pour en mettre : un connecteur qui n'aide pas à lire est du remplissage. Phrases CONCRÈTES, de JOURNALISTE : on dit ce qui se passe, jamais ce que « ça raconte » (pas de « X n'est pas neutre », pas de fausse profondeur). GRAS UTILE : 3 à 5 expressions structurantes (tête d'affiche, temps fort, nouveauté), JAMAIS sur noms propres, lieux, dates ou chiffres. PAS de tiret cadratin (— ou –) : virgule, parenthèse, deux-points, point. Français soigné, aucun anglicisme (« programmes », pas « programs »), et AUCUN mot laissé dans une autre langue (un terme du billet comme « poltrona » se traduit : fauteuil/place — jamais recopié tel quel). N'écris PAS l'encadré pratique dans le corps — ni les dates/lieu/tarif, NI L'ACCÈS (parking, navette, réservation restaurant, contact accessibilité) : tout ça va dans « encadre », le site l'affiche nativement, le répéter en prose ferait doublon>",
+    "corps": "<le lecteur a DÉJÀ LU le chapô : ne réécris PAS quoi/quand/où sous une autre forme (interdiction stricte d'une phrase-jumelle du chapô, même reformulée — ex. chapô 'le festival se poursuit jusqu'au 7 août' PUIS corps 'le festival se joue jusqu'au 7 août' est un DOUBLON À BANNIR). Le corps ENCHAÎNE directement sur du NOUVEAU : la PROGRAMMATION de cette édition (line-up, temps forts, horaires, nouveautés) — c'est la matière principale, pas un rappel. Termine au plus par UNE phrase de mise en perspective (jamais une reformulation des dates/lieu). On reste sur CET événement : AUCUN contexte historique/économique du lieu ou du territoire, AUCUNE montée vers l'universel, RIEN sur ce qui se passe ailleurs (ça, c'est Cultura Sabauda, pas ici). LONGUEUR : 300-380 mots (150→200 le 09/09, puis plancher porté à 300 le 10/09 : sous 300 mots Yoast classe la page « texte trop court », et c'est la cause la plus répandue du rouge sur la colonne SEO — mesuré sur deux fiches en ligne, 243 et 250 mots). Densité, pas délayage : plus de matière (programmation, horaires, temps forts, nouveautés), jamais des phrases pour faire du volume ; au plus un ou deux sous-titres '## ' si vraiment nécessaire. Phrases COURTES : UNE idée par phrase, 20 mots au plus, JAMAIS plus d'une subordonnée — une phrase qui enchaîne « qui…, avec…, suivie de… » se COUPE en deux ou trois phrases au point (mesuré le 09/09 sur 143 fiches en ligne : 22 mots par phrase en médiane, c'est trop). Voix ACTIVE : « deux commissaires portent l'exposition », pas « l'exposition est portée par ». Les connecteurs SIMPLES sont bienvenus quand ils aident à suivre (puis, ensuite, mais, car, donc, enfin, d'abord, aussi, surtout, avant, après) : vise environ UNE PHRASE SUR QUATRE, pas une sur trois — mesuré le 21/09 avec le moteur de Yoast, « mots de liaison » est le premier motif de rouge du site (235 fiches sur 389), parce que la consigne précédente disait « n'en mets pas pour en mettre » et que le modèle l'a lue comme une interdiction. Une sur quatre tient l'entre-deux voulu par Franck le 21/09 : assez pour que le texte se suive, pas assez pour qu'il sente la dissertation. Les connecteurs SCOLAIRES restent proscrits (« par ailleurs », « en effet », « force est de constater », « il convient de noter ») : le quota ne les rouvre PAS, il se remplit avec les simples ci-dessus. Un connecteur qui n'aide pas à lire reste du remplissage : mieux vaut trois phrases liées et une nue que quatre phrases appareillées de force. Phrases CONCRÈTES, de JOURNALISTE : on dit ce qui se passe, jamais ce que « ça raconte » (pas de « X n'est pas neutre », pas de fausse profondeur). GRAS UTILE : 3 à 5 expressions structurantes (tête d'affiche, temps fort, nouveauté), JAMAIS sur noms propres, lieux, dates ou chiffres. PAS de tiret cadratin (— ou –) : virgule, parenthèse, deux-points, point. Français soigné, aucun anglicisme (« programmes », pas « programs »), et AUCUN mot laissé dans une autre langue (un terme du billet comme « poltrona » se traduit : fauteuil/place — jamais recopié tel quel). N'écris PAS l'encadré pratique dans le corps — ni les dates/lieu/tarif, NI L'ACCÈS (parking, navette, réservation restaurant, contact accessibilité) : tout ça va dans « encadre », le site l'affiche nativement, le répéter en prose ferait doublon>",
     "programme": ["<UNE entrée par ligne de programme : jour/heure + intitulé (concert, séance, temps fort…). LISTE, jamais de la prose. Vide [] si l'événement n'a pas de programme/line-up dans la matière>"],
     "encadre": "<encadré pratique, TOUT ce qui est logistique (jamais dans le corps) : dates, lieu, tarif/gratuité (le détail des places s'il y en a plusieurs), accès (parking, navette, transports), réservation/contact (restaurant, accessibilité), lien officiel. Français, rien laissé dans une autre langue>"
   }}
@@ -1436,11 +1436,25 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
                 # jamais le web ouvert.
                 _tool["allowed_domains"] = [d for d in web_domains if d][:20]
             kwargs["tools"] = [_tool]
-        if USE_THINKING and not _court:
+        # RÉFLEXION : sur claude-sonnet-5 (et opus-5), OMETTRE `thinking` ne la coupe
+        # pas — le modèle réfléchit par défaut en mode adaptatif, et ses jetons de
+        # réflexion se DÉCOMPTENT de max_tokens. Mesuré le 15/09 sur la fiche 4161 :
+        # « tour 1 : blocs thinking=1, texte 0 car. », stop_reason=max_tokens — les
+        # 24 000 jetons partis en réflexion, zéro caractère de réponse, quatre fois de
+        # suite, alors que le log affichait thinking=False. Donc on l'écrit EXPLICITEMENT :
+        #   - thinking demandé (ENRICH_THINKING=1) → adaptatif, effort « medium », pour
+        #     que la réflexion ne puisse plus avaler le budget de la réponse ;
+        #   - sinon → {"type": "disabled"}, accepté par l'API (effort par défaut ≤ high).
+        # `output_config` passe par extra_body pour ne pas dépendre de la version du SDK.
+        thinking_on = USE_THINKING and not _court
+        if thinking_on:
             kwargs["thinking"] = {"type": "adaptive"}
+            kwargs["extra_body"] = {"output_config": {"effort": "medium"}}
+        else:
+            kwargs["thinking"] = {"type": "disabled"}
         for turn in range(1, (MAX_WEB_SEARCHES + 4) if web_on else 2):
             log.info("[%d] appel API tour %d… (web=%s, thinking=%s)",
-                     ev["id"], turn, web_on, USE_THINKING)
+                     ev["id"], turn, web_on, kwargs["thinking"]["type"])
             kwargs["messages"] = messages
             with client.messages.stream(**kwargs) as stream:
                 message = stream.get_final_message()
@@ -1463,6 +1477,20 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
             out_tok = getattr(_u, "output_tokens", "?")
             log.info("[%d] tour %d : stop_reason=%s, %s tokens sortie, cache %s écrit / "
                      "%s relu", ev["id"], turn, message.stop_reason, out_tok, _cw, _cr)
+            # VENTILATION, AJOUTÉE LE 2026-09-15. Mesuré ce jour-là sur la fiche 2507 :
+            # 22 461 tokens de sortie pour un JSON de 7 508 caractères (~2 500 tokens), et
+            # sur 4161, 24 000 tokens SANS aucun JSON, recherche web éteinte. Vingt mille
+            # tokens partaient donc ailleurs que dans ce qu'on garde, et le code jetait ce
+            # reste sans le regarder. Cette ligne dit, bloc par bloc, où ils vont.
+            _types: dict = {}
+            _txt = 0
+            for _b in (message.content or []):
+                _t = getattr(_b, "type", "?")
+                _types[_t] = _types.get(_t, 0) + 1
+                if _t == "text":
+                    _txt += len(getattr(_b, "text", "") or "")
+            log.info("[%d] tour %d : blocs %s, texte %d car.", ev["id"], turn,
+                     " ".join(f"{k}={v}" for k, v in sorted(_types.items())), _txt)
             if message.stop_reason == "max_tokens":
                 log.warning("[%d] réponse coupée (max_tokens=%d) — augmente ENRICH_MAX_TOKENS",
                             ev["id"], MAX_TOKENS)
@@ -1483,6 +1511,22 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
 
     raw = _final_text(message)
     match = re.search(r"\{.*\}", raw, re.S)
+    if not match or message.stop_reason == "max_tokens":
+        # Le brut est ÉCRIT sur disque au lieu d'être jeté (15/09) : trois essais de
+        # Pinocchio à 24 000 tokens sans qu'on ait jamais lu ce que le modèle écrivait.
+        # Tête et queue suffisent pour voir le motif (une liste qui n'en finit pas, une
+        # prose hors JSON, une répétition) ; le reste ne dit rien de plus.
+        try:
+            _dump = ROOT / "logs" / f"enrich_brut_{ev['id']}.txt"
+            _dump.parent.mkdir(exist_ok=True)
+            _dump.write_text(
+                f"# fiche {ev['id']} · stop_reason={message.stop_reason} · "
+                f"{len(raw)} caractères de texte\n\n### TÊTE (3000)\n{raw[:3000]}\n\n"
+                f"### QUEUE (1500)\n{raw[-1500:]}\n", encoding="utf-8")
+            log.warning("[%d] réponse brute conservée pour lecture : %s (%d car.)",
+                        ev["id"], _dump, len(raw))
+        except OSError as exc:
+            log.warning("[%d] impossible d'écrire le brut : %s", ev["id"], exc)
     if not match:
         log.warning("Pas de JSON pour '%s'", ev.get("title", "")[:50])
         return None
@@ -2228,12 +2272,32 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
             # appelants — jamais deux calculs.
             from utils.home_score import calculer as _calc_home
             _h = _calc_home(pm, bool(has_official), has_p, has_w, photo_off)
-            hs, affiches, place = _h["score"], _h["affiches"], _h["placement"]
-            result["home"] = {"score": hs, "panel": pm,
-                              "source_officielle": bool(has_official),
-                              "affiches": affiches, "placement": place}
-            log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
-                     ev["id"], hs, pm, has_official, affiches, place)
+            if _h["score"] is None:
+                # PANEL MUET : on ne pose pas 0, on GARDE ce que la fiche avait (15/09 :
+                # deux scores de la nuit écrasés par un panel qui n'avait pas répondu).
+                # Le bloc précédent vient de l'enrich_data d'AVANT ce passage (ev), pas
+                # de result, qui est neuf. S'il n'y avait rien, il n'y a toujours rien —
+                # et rescore_home le comptera « sans panel ».
+                try:
+                    _prev = (json.loads(ev.get("enrich_data") or "") or {}).get("home") or {}
+                except (ValueError, TypeError):
+                    _prev = {}
+                if _prev.get("score") is not None:
+                    result["home"] = dict(_prev, conserve_le=date.today().isoformat(),
+                                          note="panel muet à ce passage : score précédent conservé")
+                    log.warning("[%d] PANEL MUET — score home %.1f CONSERVÉ (aucune réponse "
+                                "de persona à ce passage ; un silence n'est pas un zéro)",
+                                ev["id"], float(_prev["score"]))
+                else:
+                    log.warning("[%d] PANEL MUET — aucun score de rendu posé (et aucun "
+                                "précédent) : la fiche restera « non calculée »", ev["id"])
+            else:
+                hs, affiches, place = _h["score"], _h["affiches"], _h["placement"]
+                result["home"] = {"score": hs, "panel": pm,
+                                  "source_officielle": bool(has_official),
+                                  "affiches": affiches, "placement": place}
+                log.info("[%d] score home=%.1f (panel=%s, source=%s, affiches=%s) | placement: %s",
+                         ev["id"], hs, pm, has_official, affiches, place)
         verser_confrontation(result, constat)
         # SIGLES développés à leur première mention (Franck, 2026-08-18 puis 31/08 : « ça
         # doit être une consigne dans le ton de rédaction, comme le vocabulaire déjà »).

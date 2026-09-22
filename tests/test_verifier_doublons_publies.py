@@ -69,6 +69,23 @@ for eid, titre, wp, d, f, trad, terr in FICHES:
         "INSERT INTO events_raw (id, title, url_source, wp_post_id_as, date_event_start, "
         "date_event_end, translation_of, territoire, duplicate_of) VALUES (?,?,?,?,?,?,?,?, NULL)",
         (eid, titre, f"https://a.it/{eid}", wp, d, f, trad, terr))
+
+# 5. LE FAUX POSITIF DU 19/09 (Mobilità dolce / TO Play) : DEUX ÉVÉNEMENTS RÉELS
+# DIFFÉRENTS, même ville, mêmes dates, un seul mot de titre en commun — apparié par
+# COÏNCIDENCE, pas par ressemblance de titre. Doit être VU (le motif s'affiche) mais son
+# id ne doit JAMAIS atterrir dans la commande consolidée `a_retirer`.
+conn.execute(
+    "INSERT INTO events_raw (id, title, url_source, wp_post_id_as, date_event_start, "
+    "date_event_end, translation_of, territoire, ville, duplicate_of) "
+    "VALUES (?,?,?,?,?,?,?,?,?, NULL)",
+    (50, "Mostra storica del patrimonio locale a Bra", "https://a.it/50", 9001,
+     FUTUR, FUTUR, None, "piemont", "Bra"))
+conn.execute(
+    "INSERT INTO events_raw (id, title, url_source, wp_post_id_as, date_event_start, "
+    "date_event_end, translation_of, territoire, ville, duplicate_of) "
+    "VALUES (?,?,?,?,?,?,?,?,?, NULL)",
+    (51, "Passeggiata storica nel centro di Bra", "https://a.it/51", 9002,
+     FUTUR, FUTUR, None, "piemont", "Bra"))
 conn.commit()
 conn.close()
 
@@ -275,6 +292,28 @@ _check("   les pages retirées du site sont dites telles quelles, pas effacées 
        "non_public sur le site" in sonde or "écartés APRÈS SONDAGE   : 2" in sonde,
        sonde[:1400])
 
+# ── 6 bis. LE FAUX POSITIF DU 19/09 : COÏNCIDENCE ≠ COMMANDE AUTOMATIQUE ─────────────
+# Cerveau du matin, 19/09 : la commande consolidée aurait corbeillé 5702 (TO Play) et
+# 5690 (Mobilità dolce), deux vrais événements différents, appariés par un groupe « par
+# coïncidence » (lieu + dates + un mot). C'est exactement le cas 50/51 de la fixture.
+print("\n──── 6 bis. coïncidence ≠ commande automatique (cerveau du 19/09) ────")
+_buf = _io.StringIO()
+with _ctx.redirect_stdout(_buf):
+    vd.main(["--en-ligne"])
+avec_coincidence = _buf.getvalue()
+_check("le groupe 50/51 est bien FORMÉ et montré (par coïncidence, mot « storica »)",
+       "50" in avec_coincidence and "51" in avec_coincidence
+       and "COÏNCIDENCE" in avec_coincidence, avec_coincidence[:200])
+_check("   son id N'entre PAS dans la commande automatique de retrait",
+       not any(f"trash_by_ids" in ligne and (" 50 " in f" {ligne} " or " 51 " in f" {ligne} ")
+               for ligne in avec_coincidence.splitlines()),
+       [l for l in avec_coincidence.splitlines() if "trash_by_ids" in l])
+_check("   la ligne dit explicitement pourquoi (vérifier le contenu réel)",
+       "PAS dans la commande automatique" in avec_coincidence, avec_coincidence[:2000])
+_check("   le vrai doublon (11, retiré au profit de 10) reste bien DANS la commande",
+       any("trash_by_ids" in l and " 11 " in f" {l} " for l in avec_coincidence.splitlines()),
+       [l for l in avec_coincidence.splitlines() if "trash_by_ids" in l])
+
 # ── 7. LE CHEMIN --slack, ÉCRIT LE MATIN ET JAMAIS PARCOURU ──────────────────────────
 # Il appelait `slack.post`, qui n'existe pas : le point d'entrée d'utils/slack.py
 # s'appelle `notify`. Relu, commité, et jamais exécuté de la journée — jusqu'à ce que ce
@@ -309,7 +348,7 @@ print("\n──── 8. le zéro qui se lit ────")
 # On vide la base des paires : il ne doit plus rien rester à signaler, et la sortie doit
 # permettre de distinguer « rien trouvé » de « rien examiné ».
 c = sqlite3.connect(tmp)
-c.execute("UPDATE events_raw SET wp_post_id_as=NULL WHERE id IN (11, 31, 4194, 4195)")
+c.execute("UPDATE events_raw SET wp_post_id_as=NULL WHERE id IN (11, 31, 4194, 4195, 51)")
 c.commit(); c.close()
 _buf = _io.StringIO()
 with _ctx.redirect_stdout(_buf):

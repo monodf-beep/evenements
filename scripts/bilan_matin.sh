@@ -62,7 +62,12 @@ CODE=$?
 if [ $CODE -ne 0 ]; then
   # Un échec SILENCIEUX est le pire cas : personne ne remarque l'absence d'un
   # message quotidien. On prévient sur Slack que le bilan n'a pas pu être produit.
+  #
+  # 17/09 : même bug que cerveau.sh — $BILAN (stdout, où `claude -p` écrit souvent
+  # le vrai message d'erreur) n'était journalisé qu'en cas de SUCCÈS. 17 jours de
+  # « code 1 » sans détail dans logs/bilan_matin.log.
   echo "claude -p a échoué (code $CODE)" >> "$JOURNAL"
+  printf '%s\n' "$BILAN" >> "$JOURNAL"
   printf '%s\n' "⚠️ Le bilan de 11h n'a pas pu être produit (claude -p, code $CODE). Voir logs/bilan_matin.log." \
     | .venv/bin/python scripts/slack_send.py
   exit $CODE

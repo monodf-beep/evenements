@@ -227,6 +227,22 @@ des règles de **script**, et seuls R3, R5 et R6 — le jugement sur un référe
 panel. Un panel qu'on charge de vérifier une longueur est un panel qu'on paie pour
 compter des mots.
 
+## 5 bis. Ce que la charte Obsidian (voix commune) dit déjà, et qui s'aligne
+
+Franck a collé le 15/09 les « règles dures » de la voix commune : **« 1er paragraphe = 5W +
+mots-clés du titre » (règle n°1 absolue)**, H2 seulement, ≥ 1 lien externe, chaque
+personne = nom + fonction + territoire, chaque lieu situé, pas de voix passive ; et sur
+l'Agenda, la surcharge « listes AUTORISÉES pour les faits structurés ».
+
+Trois points s'emboîtent avec ce document sans rien y changer :
+- « mots-clés du titre dans le 1er paragraphe » **est** le critère Yoast « clé dans
+  l'introduction » (S1/S2) : la charte l'exigeait déjà, le pipeline ne le vérifiait pas ;
+- « chaque personne = nom + fonction » **est** R3d : *Nina Zilli et Mannarino* nus
+  violent la voix commune avant de violer Yoast ;
+- « chaque lieu situé » **est** R6.
+Le titre n'est pas un cas à part de la charte : il est le premier endroit où elle
+s'applique, et le seul où elle n'était pas écrite.
+
 ## 6. SEO : UNE clé, présente partout, choisie d'abord
 
 Yoast vérifie la clé dans le `<title>`, la méta, le slug, l'intro, les sous-titres,

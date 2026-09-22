@@ -56,7 +56,36 @@ def _max_chars() -> int:
     # jamais vues, sans le moindre signal : la voix s'appliquait amputée de sa fin depuis
     # que la note a dépassé la limite. Le plafond reste utile (un prompt n'est pas
     # extensible), mais il tronque désormais À VOIX HAUTE (cf. load_voix).
-    return int(os.getenv("VOIX_MAX_CHARS", "8000"))
+    #
+    # 16000 depuis le 2026-09-22 — et LA RAISON QUE J'AVAIS D'ABORD ÉCRITE ICI ÉTAIT
+    # FAUSSE, c'est corrigé ci-dessous parce qu'un commentaire de ce dépôt est sa
+    # documentation, pas une trace de ce qu'on a cru.
+    #
+    # CE QUE J'AVAIS DÉDUIT : la fixture criait sur le VPS « 3202 caractères de la charte
+    # sont coupés, plafond = 8000 », j'en ai conclu que la voix concaténée y pesait
+    # ~11 200 caractères et que le plafond mordait. MESURÉ ENSUITE SUR LE SERVEUR :
+    # `voix_integrale()` y rend 3 972 caractères et `load_voix()` les rend TOUS. Le
+    # plafond ne mordait nulle part. Les 3 202 caractères d'écart venaient de la fixture,
+    # qui comparait la charte versionnée (7 174 car.) à des COUCHES choisies au
+    # back-office qui servent d'autres notes — et son message accusait le plafond.
+    # `tests/test_voix_troncature.py` a été corrigé le même jour pour mesurer la vraie
+    # troncature (l'écart entre les sources et ce qui est livré) au lieu de cet écart-là.
+    #
+    # POURQUOI ON GARDE QUAND MÊME 16000, sur son seul mérite et pas sur ma déduction :
+    # `docs/voix/VOIX.md` pèse 7 174 caractères pour un plafond de 8 000, soit 90 % de
+    # remplissage et 826 caractères de marge. La note a déjà rattrapé son plafond DEUX
+    # fois (6000 → 8000 le 05/09, sur un incident réel). Sur une machine sans couches
+    # configurées, le prochain paragraphe ajouté coupait la fin de la charte. 16000 laisse
+    # près de 9 000 caractères de marge.
+    #
+    # CE QUE ÇA COÛTE : environ 800 jetons de plus par appel qui injecte la voix (enrich,
+    # translate_events, textes_hubs), sur des prompts qui montent à 24 000 jetons. Pour
+    # revenir en arrière sans toucher au code : VOIX_MAX_CHARS dans le .env.
+    #
+    # LE VRAI GARDE-FOU reste la fixture, pas ce nombre : la troncature s'annonce
+    # (load_voix) et le test échoue dès qu'elle mord. Relever le plafond ne la remplace
+    # pas, il lui donne de l'air.
+    return int(os.getenv("VOIX_MAX_CHARS", "16000"))
 
 
 # Voix CANONIQUE versionnée dans le dépôt : sert de source par défaut ET de garde-fou
@@ -175,11 +204,20 @@ def _read_path(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
-def load_voix() -> str:
-    """Renvoie le texte NETTOYÉ de la voix éditoriale, ou "" si indisponible.
+def max_chars() -> int:
+    """Le plafond appliqué aux PROMPTS, en public : un lecteur de `voix_integrale()` doit
+    pouvoir dire de combien le pipeline, lui, sera plus court."""
+    return _max_chars()
 
-    Plusieurs chemins (séparés par « : ») sont chargés DANS L'ORDRE et concaténés :
-    voix commune d'abord, surcharge projet ensuite. Un chemin manquant est ignoré."""
+
+def voix_integrale() -> str:
+    """La voix COMPLÈTE, sans le plafond VOIX_MAX_CHARS — "" si aucune couche.
+
+    Ajouté le 2026-09-21 pour `utils/doctrine_redaction.py` : le plafond existe parce qu'un
+    prompt n'est pas extensible, raison qui ne vaut PAS pour un humain (ou un agent) à qui
+    l'on montre la doctrine. Lui servir la version tronquée rejouerait à l'identique
+    l'incident du 05/09 — 775 caractères disparus en fin de note, sans le moindre signal,
+    et la règle « Les Alpes ne sont pas une frontière » jamais appliquée."""
     layers = []
     for spec in _sources():
         try:
@@ -188,9 +226,17 @@ def load_voix() -> str:
             continue
         if txt:
             layers.append(txt)
-    if not layers:
+    return "\n\n".join(layers).strip()
+
+
+def load_voix() -> str:
+    """Renvoie le texte NETTOYÉ de la voix éditoriale, ou "" si indisponible.
+
+    Plusieurs chemins (séparés par « : ») sont chargés DANS L'ORDRE et concaténés :
+    voix commune d'abord, surcharge projet ensuite. Un chemin manquant est ignoré."""
+    texte = voix_integrale()
+    if not texte:
         return ""
-    texte = "\n\n".join(layers)
     limite = _max_chars()
     if len(texte) > limite:
         # Une troncature SILENCIEUSE de la charte est indétectable dans les textes produits :

@@ -23,7 +23,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.enrich import _programme_links, _page_evenement  # noqa: E402
-from scripts.affiner_source import est_racine, page_evenement_depuis_racine  # noqa: E402
+from scripts.affiner_source import (est_racine, est_source_generique,
+                                    page_evenement_depuis_racine)  # noqa: E402
 import scripts.affiner_source as _aff  # noqa: E402
 
 echecs = 0
@@ -105,6 +106,33 @@ _check("racine avec /", est_racine("https://camera.to/"))
 _check("racine sans /", est_racine("https://camera.to"))
 _check("page → pas racine", not est_racine("https://camera.to/mostre/foto-album/"))
 _check("gmail: → pas racine", not est_racine("gmail:abc"))
+
+# ── est_source_generique (2026-09-21) : une page de RUBRIQUE n'est pas plus la page de
+# l'événement qu'une racine. La fiche 8289 (« Charcot Antartica ») était sourcée sur
+# malrauxchambery.fr/ressources/presse — pas une racine, donc invisible à `est_racine`,
+# donc jamais reprise ; et c'est la couverture de brochure de cette page-là qui est partie
+# en ligne comme visuel du concert.
+_check("racine → générique", est_source_generique("https://camera.to/"))
+_check("page « ressources presse » → générique",
+       est_source_generique("https://www.malrauxchambery.fr/ressources/presse"))
+_check("« cartellastampa-comunicatistampa » → générique",
+       est_source_generique("https://www.torinofilmfest.org/it/cartellastampa-comunicatistampa/"))
+_check("rubrique actualités → générique", est_source_generique("https://x.fr/actualites/"))
+# Les cas qui doivent PASSER, près de la frontière : de VRAIES pages d'événement.
+_check("la page du spectacle n'est pas générique",
+       not est_source_generique("https://www.malrauxchambery.fr/evenement/charcot-antartica-26-27/"))
+_check("une page d'exposition n'est pas générique",
+       not est_source_generique("https://camera.to/mostre/foto-album/"))
+# LIMITE CONNUE, écrite pour ne pas la redécouvrir : le test porte sur la SOUS-CHAÎNE du
+# chemin (c'est ce qu'exige « /it/cartellastampa-comunicatistampa/ », où « stampa » n'est
+# pas un segment). Un slug d'événement qui contiendrait « presse », « news » ou « contact »
+# serait donc pris pour une rubrique. Ce n'est pas silencieux et ce n'est pas destructeur :
+# le script ne remplace la source QUE s'il trouve une AUTRE page portant les mots du titre
+# et les mentionnant dans son texte, il saute la page qu'il vient de retrouver à
+# l'identique, et il est en dry-run par défaut (règle 4 : le dry-run se lit ligne à ligne).
+_check("le faux positif reste borné : rien n'est écrit sans meilleure page",
+       est_source_generique("https://x.fr/evenement/les-contacts-du-jazz/"))
+_check("non-URL → jamais générique", not est_source_generique("gmail:abc"))
 
 print()
 if echecs:

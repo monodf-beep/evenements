@@ -261,7 +261,26 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # scripts les lisent, une base neuve doit les avoir.
                       ("edition_precedente", "INTEGER"),
                       ("edition_suivante", "INTEGER"),
-                      ("edition_adoptee_le", "TEXT")):
+                      ("edition_adoptee_le", "TEXT"),
+                      # GEL DU TEXTE (2026-09-21, Franck : « si cowork a travaillé le
+                      # seo, on ne doit pas pouvoir revenir dessus avec le cron »).
+                      # RECOPIE de ce que le SITE répond (deploy/wordpress/cs-gel-texte.php,
+                      # clé `gel` de cs/v1/event) — jamais une décision prise ici : c'est
+                      # WordPress qui détecte la retouche (empreinte des six champs
+                      # éditoriaux) et qui la fait respecter. Ces colonnes-ci ne servent
+                      # qu'à ÉVITER LE TRAVAIL INUTILE en amont (seo_batch ne dépense plus
+                      # d'appel LLM pour une fiche dont il ne pourra rien pousser) et à
+                      # COMPTER la file garée (règle 6). Vidées dès que le site répond
+                      # que la fiche n'est plus gelée.
+                      #   wp_gel_at     : horodatage du gel, tel que le site le donne ;
+                      #   wp_gel_champs : champs non écrits au dernier passage ;
+                      #   wp_gel_motif  : d'où vient le gel (empreinte / à la main / Cowork).
+                      # Déclarées ICI, pas dans le seul script qui les écrit — même leçon
+                      # qu'annule_le et wp_deleted_at plus haut : une colonne créée par un
+                      # seul module casse tous les autres sur une base neuve.
+                      ("wp_gel_at", "TEXT"),
+                      ("wp_gel_champs", "TEXT"),
+                      ("wp_gel_motif", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

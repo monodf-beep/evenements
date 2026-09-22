@@ -374,6 +374,53 @@ def main(argv: list[str] | None = None) -> int:
     if rc:
         echecs.append("repair_lien_traduction")
 
+    # 1 bis) LE LIEN POLYLANG, QUI N'EST PAS LA MÊME CHOSE. Le script ci-dessus répare la
+    # COLONNE `translation_of` en base ; celui-ci repose le lien côté WORDPRESS, qui est ce
+    # que le lecteur voit. Deux réparations voisines et distinctes : la première rend la
+    # paire visible aux garde-fous, la seconde rend la traduction visible au public.
+    #
+    # AJOUTÉ LE 2026-09-21, sur la question de Franck « pourquoi j'ai des articles sans
+    # traduction ? ». Mesuré depuis l'extérieur ce jour-là : 107 pages publiées au versant
+    # français encore devant nous, 68 seulement portaient un `hreflang="it"`. La cause
+    # était dans `translate_events`, qui appelait `_post_link` sans jamais lire son verdict
+    # puis posait `translated_at` — un état terminal sans rouvreur (règle 3). Le verdict se
+    # lit désormais le jour même ; ce passage-ci rattrape ce qui s'est accumulé avant, et
+    # ce qu'un incident réseau ajoutera encore.
+    #
+    # --apply est défendable : l'endpoint `cs/v1/link-translations` est idempotent, le
+    # script ne touche QUE les paires de versants opposés dont la page n'annonce aucune
+    # traduction, il ne relie jamais deux pages du même côté (leur geste est
+    # `--retranslate`), et il RELIT la page après coup pour rapporter le résultat.
+    #
+    # Hebdomadaire et non quotidien, en toute franchise : une paire cassée peut donc
+    # rester invisible jusqu'à sept jours. C'est tenable parce que le cas NEUF sort
+    # désormais le jour même dans le bilan de la traduction, avec sa commande. Si la ligne
+    # ci-dessous cesse d'être à zéro semaine après semaine, il faudra une ligne de cron.
+    #
+    # ET LA REPRISE AUTOMATIQUE AVEC (`--retraduire 3`), branchée le 21/09 au soir sur
+    # « oui branche la traduction auto » de Franck, après sa question « on doit encore
+    # faire ça ? ». Non : les paires du mauvais versant et celles dont la jumelle est
+    # restée dans la mauvaise langue avaient un geste écrit dans trois relevés, et
+    # personne pour le taper. Règle 3.
+    #
+    # ET NON, ÇA NE CONTREDIT PAS L'EN-TÊTE DE CE FICHIER (« zéro jugement LLM ambigu »).
+    # Le critère y est « les scripts qui font appel à un LLM pour DÉCIDER, pas juste
+    # détecter ». Ici la DÉCISION est déterministe et sans modèle : deux permaliens du même
+    # côté, ou `effective_lang` du texte qui contredit le versant servi. Le LLM ne tranche
+    # rien, il RÉÉCRIT un texte déjà décidé — comme image_audit (étape 8), qui est dans
+    # cette liste depuis toujours pour la même raison.
+    #
+    # TROIS PAR PASSAGE, et le plafond est un choix : chaque reprise coûte deux appels LLM
+    # et RÉÉCRIT une page en ligne. Neuf paires en attente au 21/09 — elles se videront en
+    # trois dimanches, et le relevé dit à chaque fois combien restent. Un garage de trois
+    # essais empêche l'acharnement sur une fiche que la retraduction ne sait pas réparer.
+    from scripts.repair_lien_polylang import main as lien_pll_main
+    rc, out = _run_captured(lien_pll_main, ["--apply", "--retraduire", "3"],
+                            "repair_lien_polylang")
+    sections.append(f"• Lien Polylang des paires FR/IT : {_tail(out, 1)}")
+    if rc:
+        echecs.append("repair_lien_polylang")
+
     # 2) LES ARTICLES QUI PARLENT AU PASSÉ. Franck, 2026-08-11 : « il faut toujours parler
     # au futur puisqu'on propose des événements qui se passent dans le futur ; là c'est
     # plutôt du journalisme, on dit ce qui s'est fait ». LECTURE SEULE, volontairement :

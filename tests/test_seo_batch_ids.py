@@ -47,14 +47,18 @@ conn.row_factory = sqlite3.Row
 conn.execute("""CREATE TABLE events_raw(
     id INTEGER PRIMARY KEY, title TEXT, statut TEXT, duplicate_of INTEGER,
     date_event_start TEXT, date_event_end TEXT, llm_score INTEGER,
-    wp_post_id_as INTEGER, seo_at TEXT, seo_pushed_at TEXT, annule_le TEXT)""")
-conn.executemany("INSERT INTO events_raw VALUES(?,?,?,?,?,?,?,?,?,?,?)", [
-    # id, titre,      statut,     dup, début,        fin,          score, wp,  seo_at,  pushed, annulé
-    (1, "à venir, en ligne, SEO fait", "evaluated", None, "2026-12-01", "2026-12-02", 8, 500, "2026-09-01", "2026-09-01", None),
-    (2, "à venir, hors ligne, sans SEO", "evaluated", None, "2026-12-05", "2026-12-05", 9, None, None, None, None),
-    (3, "PASSÉE",                    "evaluated", None, "2025-01-01", "2025-01-02", 9, 501, None, None, None),
-    (4, "score faible, hors ligne",  "evaluated", None, "2026-12-09", "2026-12-09", 2, None, None, None, None),
-    (5, "ANNULÉE",                   "evaluated", None, "2026-12-10", "2026-12-10", 9, 502, None, None, "2026-09-01"),
+    wp_post_id_as INTEGER, seo_at TEXT, seo_pushed_at TEXT, annule_le TEXT,
+    wp_gel_at TEXT)""")
+conn.executemany("INSERT INTO events_raw VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", [
+    # id, titre,      statut,     dup, début,        fin,          score, wp,  seo_at,  pushed, annulé, gel
+    (1, "à venir, en ligne, SEO fait", "evaluated", None, "2026-12-01", "2026-12-02", 8, 500, "2026-09-01", "2026-09-01", None, None),
+    (2, "à venir, hors ligne, sans SEO", "evaluated", None, "2026-12-05", "2026-12-05", 9, None, None, None, None, None),
+    (3, "PASSÉE",                    "evaluated", None, "2025-01-01", "2025-01-02", 9, 501, None, None, None, None),
+    (4, "score faible, hors ligne",  "evaluated", None, "2026-12-09", "2026-12-09", 2, None, None, None, None, None),
+    (5, "ANNULÉE",                   "evaluated", None, "2026-12-10", "2026-12-10", 9, 502, None, None, "2026-09-01", None),
+    # 6 — TEXTE GELÉ (repris à la main / Cowork, 2026-09-21) : écartée de la file
+    # ordinaire, mais toujours joignable par --ids, qui est un ciblage d'opérateur.
+    (6, "GELÉE",                     "evaluated", None, "2026-12-11", "2026-12-11", 9, 503, None, None, None, "2026-09-21"),
 ])
 conn.commit()
 
@@ -72,6 +76,11 @@ verifier("sans --ids : la file normale ne retient que le 2 (à venir, sans SEO, 
 verifier("sans --ids : la fiche PASSÉE reste écartée", 3 not in ordinaire)
 verifier("sans --ids : la fiche ANNULÉE reste écartée", 5 not in ordinaire)
 verifier("sans --ids : la fiche déjà pourvue d'un seo_at reste écartée", 1 not in ordinaire)
+verifier("sans --ids : la fiche au TEXTE GELÉ est écartée (le cron ne repasse pas "
+         "sur une reprise à la main)", 6 not in ordinaire)
+cible = [r["id"] for r in _select(conn, args(ids=[6]), TODAY)]
+verifier("avec --ids : le gel n'empêche PAS le ciblage d'un opérateur (il est seulement "
+         "signalé dans le journal)", cible == [6], str(cible))
 
 # ── Le ciblage : tous les filtres levés, l'ordre demandé respecté ──────────────────
 cible = [r["id"] for r in _select(conn, args(ids=[3, 1, 5]), TODAY)]

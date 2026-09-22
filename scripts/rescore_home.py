@@ -59,6 +59,18 @@ def evaluer(ev: dict) -> tuple[dict | None, str]:
     pm = (data.get("reader_panel") or {}).get("mean")
     if pm is None:
         return None, "sans panel — la qualité éditoriale pèse 6 points, on ne l'invente pas → enrich"
+    # SANS BLOC `source`, ON NE CALCULE PAS NON PLUS (ajouté le 15/09, après le premier
+    # dry-run en production). Les 19 fiches calculables sortaient TOUTES « source non ·
+    # aucune » : enrichies avant que le bloc source existe, elles n'ont ni l'information
+    # « matière officielle lue » (+2,5) ni la liste des pages officielles qui permet de
+    # reconnaître une photo du site (+0,75). Deux entrées sur trois manquent : ce n'est
+    # plus un plancher à 1,5 point près, c'est 3,25 points d'inconnu sur 10. Écrire 4,8
+    # pour Pinocchio (dont le doublon 8193, enrichi avec le bloc, valait 8,1) figerait la
+    # fiche sous le seuil avec un chiffre qui a l'air mesuré — NULL dit « non calculé »,
+    # 4,8 dirait « calculé, mauvais ». Un compteur doit dire ce qu'il compte (règle 6).
+    if "source" not in data:
+        return None, ("sans bloc source — enrichie avant que la source et la photo "
+                      "officielle soient tracées : 3,25 points d'inconnu → enrich")
     src = data.get("source") or {}
     officielle = bool(src.get("officielle"))
     hotes = list(src.get("pages") or [])
@@ -113,9 +125,9 @@ def main(argv=None) -> int:
     print(f"\n  → {au_dessus} fiche(s) passeraient le seuil de rendu (6) — PLANCHER, affiches non comptées.")
     if sans:
         ids = " ".join(str(ev["id"]) for ev, _, _ in sans)
-        print(f"\n  SANS PANEL ({len(sans)}) — non calculées, à ré-enrichir (réécrit l'article) :")
+        print(f"\n  NON CALCULABLES ({len(sans)}) — à ré-enrichir (réécrit l'article) :")
         for ev, _, motif in sans:
-            print(f"    [{ev['id']:>5}] {(ev.get('title') or '')[:50]}")
+            print(f"    [{ev['id']:>5}] {(ev.get('title') or '')[:44]:<44} {motif.split(' — ')[0]}")
         print(f"    .venv/bin/python -m scripts.enrich {ids}")
 
     if not args.apply:

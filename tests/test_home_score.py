@@ -45,8 +45,14 @@ verifier("panel 2.5 + source, SANS visuel → 5.5 : sous le seuil",
 verifier("deux affiches + panel 5 + source → 10, plafonné", calculer(5.0, True, True, True, False)["score"] == 10.0)
 verifier("hero réservé au combo d'affiches : 8+ avec une seule affiche n'est PAS hero",
          "hero" not in calculer(5.0, True, True, False, False)["placement"])
-verifier("panel None compte 0 dans la formule (mais rescore refuse AVANT, voir plus bas)",
-         calculer(None, True, False, False, False)["score"] == 2.5)
+# LE CAS DU 15/09 AU MATIN : panel muet. Avant, « (pm or 0) » rendait 2,5 ici — et 3,2 sur
+# Pinocchio avec sa photo officielle, en ÉCRASANT le 8,1 de la nuit. Un silence n'est pas
+# un zéro : la formule rend None, et l'appelant garde le score précédent.
+h0 = calculer(None, True, False, False, True)
+verifier("panel None → score None, jamais un chiffre", h0["score"] is None, str(h0))
+verifier("… et le placement le dit en clair", "panel" in h0["placement"])
+verifier("panel 0.0 (vraie note nulle) reste calculé : 0/5*6 + 2,5 = 2,5",
+         calculer(0.0, True, False, False, False)["score"] == 2.5)
 
 # ── Photo officielle : domaines, www ignoré, URL nue acceptée ─────────────────────
 verifier("photo sur le domaine officiel (www ignoré) → officielle",
@@ -66,6 +72,10 @@ verifier("Pinocchio (panel 4.0, source, photo du site) → 8.1 recalculé sans L
 verifier("le bloc dit qu'il est un PLANCHER (affiches non conservées)", h and "plancher" in h["affiches_note"])
 verifier("SANS panel → None, motif → enrich (on n'invente pas 6 points sur 10)",
          evaluer({"enrich_data": json.dumps({"source": {"officielle": True}}), "url_image": ""})[0] is None)
+verifier("SANS bloc source (fiche enrichie avant qu'il existe) → None : 3,25 pts d'inconnu, on n'écrit pas",
+         evaluer({"enrich_data": json.dumps({"reader_panel": {"mean": 4.0}}), "url_image": "https://fortedibard.it/x.jpg"})[0] is None)
+verifier("bloc source PRÉSENT mais vide (officielle False, pages []) → calculé, c'est une vraie mesure",
+         evaluer({"enrich_data": json.dumps({"reader_panel": {"mean": 4.0}, "source": {"officielle": False, "pages": []}}), "url_image": ""})[0] is not None)
 verifier("enrich_data illisible → None, pas d'exception",
          evaluer({"enrich_data": "{pas du json", "url_image": ""})[0] is None)
 

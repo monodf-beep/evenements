@@ -214,7 +214,7 @@ def ecart_crontab() -> tuple[int, int, str]:
     except (FileNotFoundError, OSError) as exc:
         log.warning("Commande `crontab` indisponible (%s) — écart NON mesuré.", exc)
         return 0, 0, "crontab indisponible sur cette machine, écart non mesuré"
-    installe = _commandes(r.stdout if r.returncode == 0 else "")
+    installe = commandes_crontab(r.stdout if r.returncode == 0 else "")
     ajouts = sorted(voulu - installe)
     retraits = sorted(installe - voulu)
     resume = ""

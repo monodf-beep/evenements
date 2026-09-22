@@ -189,6 +189,17 @@ https://seances-speciales.fr/feed/;Nice;Les Écrans du Sud - art & essai PACA;in
 https://www.conservatoriotorino.eu/eventi/feed/;Piemonte;Conservatorio G. Verdi Torino - Eventi;officielle;Conservatorio Giuseppe Verdi;Torino
 https://bct.comune.torino.it/rss.xml;Piemonte;Biblioteche Civiche Torinesi;institution;;Torino
 https://www.consaosta.it/feed/;Vallee-Aoste;Conservatoire de Musique de la Vallée d'Aoste;officielle;Conservatoire de la Vallée d'Aoste;Aoste
+# AJOUTÉES LE 2026-09-15 (Franck : « il faut trouver d'autres sources », après le constat
+# d'une une valdôtaine à deux cartes). Sondage de 27 candidats ce jour-là ; DEUX flux
+# vivants seulement — la Vallée d'Aoste publie peu en RSS : lovevda.it, la Région, la
+# Saison Culturelle et les communes sont des pages HTML sans flux (lovevda n'expose qu'une
+# carte statique des aires touristiques en RSS). Fiera di Sant'Orso : flux figé en 2015.
+# Aosta Classica, Celtica : 404. Comune di Aosta : flux retiré (410).
+https://www.sapegno.it/feed/;Vallee-Aoste;Fondation Sapegno (Morgex);institution;Tour de l'Archet;Morgex
+# Casino-resort : le flux mêle concerts (jazz, Bach Festival) et promotions maison ;
+# l'évaluation éditoriale filtrera, des rejets sont attendus. Lieu vide : Palais/CVADome
+# et Grand Hôtel Billia alternent.
+https://www.billia.it/feed/;Vallee-Aoste;Saint-Vincent Resort & Casino (CVADome);officielle;;Saint-Vincent
 # -- Université & transfrontalier --
 https://www.univ-smb.fr/agenda/feed/;Savoie;Université Savoie Mont Blanc - Agenda;institution
 https://www.interreg-alcotra.eu/rss.xml;Savoie;Interreg ALCOTRA (transfrontalier);institution

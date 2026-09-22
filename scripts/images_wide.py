@@ -47,6 +47,7 @@ sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import images
 from utils.sources import is_blocked_image, is_logo_image, load_blocked_image_domains
+from utils.pages import peut_illustrer
 from scripts.venues import _clean
 from scripts.scraper_events import init_db, web_cooldown_sql, mark_web_attempt
 from scripts.images_web import _download, verify_image, SEARCH_MODEL
@@ -83,16 +84,63 @@ def nom_affiche(url: str) -> bool:
 
 def _pages_officielles(ev: dict) -> list[str]:
     """Les pages où l'affiche a toutes les chances d'être : la page officielle retrouvée
-    (`url_officiel`), puis la page source. Dédoublonné, sans les pseudo-URL."""
+    (`url_officiel`), puis la page source. Dédoublonné, sans les pseudo-URL.
+
+    JAMAIS une page GÉNÉRIQUE (2026-09-21, utils/pages.py). C'est ici que le cas signalé
+    par Franck s'est joué : la page du spectacle de Malraux affiche en pied de page les
+    couvertures des brochures du théâtre, seules images nettement verticale et nettement
+    horizontale — d'où une brochure de saison en portrait (donc en vignette de carte,
+    publisher_as la préfère) et un plan de salle en paysage. Les vignettes de documents
+    sont désormais écartées en amont (utils.images.looks_like_document_thumb) ; une page
+    d'accueil ou une rubrique presse, elle, n'a aucune raison d'être lue ici du tout."""
+    titre = ev.get("title") or ""
     out: list[str] = []
     for u in (ev.get("url_officiel"), ev.get("url_source")):
         u = (u or "").strip()
-        if u.startswith("http") and "news.google.com" not in u and u not in out:
+        if u.startswith("http") and "news.google.com" not in u and u not in out \
+                and peut_illustrer(u, titre):
             out.append(u)
     return out
 
 
-def from_official_page(ev: dict, client, blocked: set[str]) -> dict:
+# Au-delà de ce nombre d'AUTRES fiches qui portent déjà la même image, on la refuse.
+# 2 : la troisième fiche déclenche le refus — deux fiches peuvent légitimement partager
+# une affiche (deux concerts d'un même festival), trois événements sans rapport, non.
+PARTAGE_MAX = 2
+
+
+def deja_partagee(conn, url: str, event_id) -> int:
+    """Combien d'AUTRES fiches portent déjà cette image (principale ou déclinaison).
+
+    LE DIAGNOSTIC ÉTAIT ÉCRIT DEPUIS LE DÉBUT, en commentaire de
+    config/blocked_image_patterns.txt : « une image partagée par beaucoup d'événements
+    SANS RAPPORT = presque toujours de l'habillage ». Il y était comme requête à taper à
+    la main pour trouver de nouveaux motifs à bloquer ; personne ne l'avait branché.
+
+    Mesuré le 2026-09-21 : sur les fiches publiées encore devant nous, « Cover L-eta
+    dell-acquario-particolare.png » servait de paysage à SEPT fiches sans rapport
+    (Sportello digit@le, La mossa del lettore, Donne controcorrente, Fili tra le pagine,
+    Mille storie in biblioteca, Mani in opera, Lavoriamo a maglia) — le bandeau de saison
+    d'une bibliothèque, présent sur chacune de ses pages d'événement. Aucune des défenses
+    posées ce jour-là ne l'aurait arrêté : ce n'est ni une vignette de PDF, ni une image
+    d'interface, et la page lue est bien la page de l'événement. Seul son PARTAGE la
+    trahit. Cinq autres groupes du même genre sortaient dans la même mesure (le visuel de
+    lancement de saison de l'Opéra de Nice, la vue aérienne de Palazzo Madama…).
+
+    Les traductions ne comptent pas : elles portent la même image que leur original, et
+    c'est voulu (duplicate_of, ou url_source « translated:<id>:<lang> »)."""
+    if not url:
+        return 0
+    q = ("SELECT COUNT(*) FROM events_raw WHERE id <> ? AND duplicate_of IS NULL "
+         "AND COALESCE(url_source,'') NOT LIKE 'translated:%' "
+         "AND (url_image = ? OR url_image_portrait = ? OR url_image_wide = ?)")
+    try:
+        return int(conn.execute(q, (event_id, url, url, url)).fetchone()[0])
+    except Exception:  # une base sans ces colonnes ne doit pas casser la résolution
+        return 0
+
+
+def from_official_page(ev: dict, client, blocked: set[str], conn=None) -> dict:
     """ÉTAGE 1, sans recherche web — 2026-09-08 (Franck) : « on a la source officielle,
     dans l'événement de la source officielle il y a l'image, on la prend, voilà ».
 
@@ -118,6 +166,15 @@ def from_official_page(ev: dict, client, blocked: set[str]) -> dict:
                 break
             if is_blocked_image(cand, blocked) or is_logo_image(cand):
                 continue
+            # Déjà l'image de plusieurs autres fiches → habillage du site, pas l'affiche
+            # de CET événement (voir deja_partagee). Refusé AVANT le téléchargement et
+            # avant l'agent vision : c'est gratuit, et l'agent, lui, valide volontiers un
+            # joli bandeau de saison.
+            if conn is not None:
+                n = deja_partagee(conn, cand, ev.get("id"))
+                if n >= PARTAGE_MAX:
+                    log.info("  écartée — déjà l'image de %d autres fiches : %s", n, cand[:70])
+                    continue
             vus += 1
             img_bytes, mime = _download(cand)
             if not img_bytes:
@@ -243,40 +300,55 @@ def _select(conn, args, today: str) -> list[dict]:
     return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
-def _drop_portrait(args) -> int:
-    """Efface url_image_portrait sur des ids précis et re-pousse (aucun appel de modèle).
-    Compte en base après l'écriture, pas sur la longueur de la liste (règle 6)."""
+def _drop_formats(args, champs: tuple[str, ...]) -> int:
+    """Efface les déclinaisons demandées (url_image_portrait et/ou url_image_wide) sur des
+    ids précis et re-pousse (aucun appel de modèle). Compte en base après l'écriture, pas
+    sur la longueur de la liste (règle 6).
+
+    LE PAYSAGE AUSSI, depuis le 2026-09-21. Le rouvreur n'existait que pour le portrait ;
+    or la même lecture de page pose les DEUX, et quand elle se trompe elle se trompe deux
+    fois. Mesuré ce jour-là sur les fiches 5260 et 5261 (Malraux Chambéry) : le pied de
+    page du site affiche les couvertures de ses PDF sur TOUTES ses pages, et `images_wide`
+    en avait fait le portrait (brochure de saison 26-27 → vignette de la carte, celle que
+    Franck a vue) et le paysage (plan de la grande salle → grand visuel 16:9). Une moitié
+    de rouvreur laissait le plan de salle en place."""
     if not args.ids:
-        log.error("--drop-portrait demande des ids explicites.")
+        log.error("--drop-portrait / --drop-wide demandent des ids explicites.")
         return 1
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     conn.row_factory = sqlite3.Row
     qm = ",".join("?" * len(args.ids))
+    cond = " OR ".join(f"COALESCE({c},'') <> ''" for c in champs)
     rows = [dict(r) for r in conn.execute(
-        f"SELECT * FROM events_raw WHERE id IN ({qm}) AND COALESCE(url_image_portrait,'') <> ''",
-        args.ids)]
-    log.info("%d fiche(s) sur %d demandée(s) portent un portrait — %s",
-             len(rows), len(args.ids), "APPLIQUE" if args.apply else "DRY-RUN")
+        f"SELECT * FROM events_raw WHERE id IN ({qm}) AND ({cond})", args.ids)]
+    log.info("%d fiche(s) sur %d demandée(s) portent %s — %s",
+             len(rows), len(args.ids), " ou ".join(champs),
+             "APPLIQUE" if args.apply else "DRY-RUN")
     pushed = 0
     for ev in rows:
-        log.info("[%s] portrait retiré : %s — %s", ev["id"], (ev.get("url_image_portrait") or "")[:60],
-                 (ev.get("title") or "")[:55])
+        for c in champs:
+            if (ev.get(c) or "").strip():
+                log.info("[%s] %s retiré : %s — %s", ev["id"], c, (ev.get(c) or "")[:60],
+                         (ev.get("title") or "")[:55])
         if not args.apply:
             continue
-        conn.execute("UPDATE events_raw SET url_image_portrait=NULL WHERE id=?", (ev["id"],))
+        conn.execute(f"UPDATE events_raw SET {', '.join(c + '=NULL' for c in champs)} "
+                     "WHERE id=?", (ev["id"],))
         conn.commit()
-        ev["url_image_portrait"] = ""
+        for c in champs:
+            ev[c] = ""
         if ev.get("wp_post_id_as"):
             new_id, _, _ = publish_to_as(ev)
             if new_id:
                 pushed += 1
     restant = conn.execute(
-        f"SELECT COUNT(*) FROM events_raw WHERE id IN ({qm}) AND COALESCE(url_image_portrait,'') <> ''",
+        f"SELECT COUNT(*) FROM events_raw WHERE id IN ({qm}) AND ({cond})",
         args.ids).fetchone()[0]
     conn.close()
-    log.info("Portraits retirés — encore en base sur ces ids : %d · re-poussés : %d%s",
-             restant, pushed, "  (dry-run : rien écrit)" if not args.apply else "")
+    log.info("Déclinaisons retirées (%s) — encore en base sur ces ids : %d · re-poussés : "
+             "%d%s", ", ".join(champs), restant, pushed,
+             "  (dry-run : rien écrit)" if not args.apply else "")
     return 0
 
 
@@ -296,6 +368,11 @@ def main(argv=None) -> int:
                              "ex. une photo verticale prise pour une affiche) et re-pousse, "
                              "la carte reprend l'image principale. Le rouvreur de l'étage 1 "
                              "— règle 3 de CLAUDE.md. Avec --apply ; dry-run sinon.")
+    parser.add_argument("--drop-wide", action="store_true",
+                        help="Pour les ids donnés : EFFACE url_image_wide (posé à tort, "
+                             "ex. le plan de salle du théâtre pris pour une affiche "
+                             "paysage) et re-pousse, le grand visuel reprend l'image "
+                             "principale. Se combine avec --drop-portrait.")
     parser.add_argument("--web", action="store_true",
                         help="Si la page officielle ne donne rien, tenter l'agent de recherche "
                              "web (0,20 $ l'appel — mesuré le 08/09 : 1,80 $ l'image trouvée). "
@@ -303,8 +380,10 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     load_dotenv(ROOT / ".env")
-    if args.drop_portrait:
-        return _drop_portrait(args)
+    if args.drop_portrait or args.drop_wide:
+        champs = tuple(c for c, pris in (("url_image_portrait", args.drop_portrait),
+                                         ("url_image_wide", args.drop_wide)) if pris)
+        return _drop_formats(args, champs)
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         log.error("ANTHROPIC_API_KEY non définie")
@@ -326,7 +405,7 @@ def main(argv=None) -> int:
         title = (ev.get("title") or "")[:55]
         # ÉTAGE 1 : la page officielle, lue et mesurée — déjà vérifiée (taille,
         # orientation, pertinence). ÉTAGE 2 (--web seulement) : l'agent de recherche.
-        prop = from_official_page(ev, client, blocked)
+        prop = from_official_page(ev, client, blocked, conn)
         if args.apply:
             mark_web_attempt(conn, "image_wide_at", ev["id"])  # cooldown quel que soit le résultat
         new_wide = new_portrait = ""

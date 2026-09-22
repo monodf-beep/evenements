@@ -38,6 +38,7 @@ from scripts.publisher_as import publish_to_as
 from scripts.scraper_events import load_sources, init_db
 from utils.logger import get_logger
 from utils import usage
+from utils import images as images_mod
 from utils import completeness as comp
 from utils import triage as triage_mod
 from utils import checks as checks_mod
@@ -949,10 +950,15 @@ def systeme_view():
 @app.route("/process")
 @require_auth
 def process_page():
-    """Schéma pédagogique : le process complet, les agents, les boucles.
+    """LA CARTE DES AUTOMATISATIONS — tous les traitements en nœuds reliés.
 
-    Page statique (aucune requête base/API) — juste une carte du fonctionnement."""
-    return render_template("process.html", active="process")
+    Remplace l'ancien schéma linéaire, qui décrivait cinq étapes quand il en tourne
+    quarante. Le contenu des fiches vit dans `app/automatisations_noeuds.py` ; l'horaire,
+    la commande et le journal sont LUS dans `crontab.txt` à chaque affichage, et l'état
+    du dernier passage vient de `scripts/watchdog_crons.py` — un seul détecteur, pas
+    deux. Voir l'en-tête d'`app/automatisations.py` pour le raisonnement."""
+    from app import automatisations
+    return render_template("process.html", active="process", c=automatisations.carte())
 
 
 # Wireframe annoté de la home : sections RÉELLES observées sur agendasabauda.eu,
@@ -1268,6 +1274,90 @@ def voix_view():
             flash("Couches de voix enregistrées — appliquées au prochain run.", "ok")
         return redirect(url_for("voix_view"))
     return render_template("voix.html", active="voix", st=voixmod.voix_status())
+
+
+# --------------------------------------------------------------------------- #
+# Doctrine rédactionnelle servie AUX AGENTS (Claude Chrome, Cowork, Claude Code web)
+# --------------------------------------------------------------------------- #
+# Franck, 06/09/2026 : « c'est pénible quand je demande de la rédaction ici sur Claude,
+# je dois systématiquement expliquer que c'est via Obsidian, le ton, la doctrine, le
+# vocabulaire etc. » Le pipeline lit ces notes tout seul à chaque run ; une session de
+# chat, elle, ne tourne pas sur le VPS. La consigne écrite jusqu'au 21/09 était de
+# demander à Franck de COLLER la sortie de deux commandes — c'est-à-dire lui faire
+# refaire à la main ce dont il se plaignait. Ces deux routes suppriment le collage.
+#
+# DEUX CLÉS D'ENTRÉE, parce qu'il y a deux mondes :
+#   · la SESSION du back-office — Claude Chrome pilote le navigateur de Franck, déjà
+#     connecté : /doctrine s'ouvre comme n'importe quelle page, sans jeton ;
+#   · un JETON (DOCTRINE_TOKEN dans le .env du VPS) — un conteneur Cowork ou Claude Code
+#     sur le web n'a pas ce cookie ; il lit /doctrine.txt?token=… en HTTPS.
+#     Mesuré le 21/09 depuis un conteneur Claude Code : https://backoffice.agendasabauda.eu
+#     répond (302 vers /login, gunicorn, et /embed/events.json en 200). L'affirmation
+#     « ce conteneur n'atteint pas le VPS, aucune route réseau » était vraie pour SSH et
+#     fausse pour HTTPS — elle n'avait jamais été mesurée séparément.
+#
+# Pas de jeton réglé = route FERMÉE (503), jamais ouverte par défaut : la doctrine n'est
+# pas secrète, mais une adresse publique se fait indexer, et le back-office n'a rien à
+# exposer sans clé.
+def _doctrine_token() -> str:
+    return (os.getenv("DOCTRINE_TOKEN", "") or "").strip()
+
+
+def _doctrine_autorise(req) -> tuple[bool, str]:
+    """(autorisé, motif du refus). Le motif est rendu TEL QUEL à l'appelant : un agent
+    qui reçoit « 403 » sans phrase relance trois fois puis invente une explication."""
+    if session.get("logged_in"):
+        return True, ""
+    attendu = _doctrine_token()
+    if not attendu:
+        return False, ("DOCTRINE_TOKEN n'est pas réglé dans le .env du VPS : la route "
+                       "reste fermée. Ajouter une ligne DOCTRINE_TOKEN=<longue chaîne> "
+                       "puis relancer le service (bash deploy/update.sh).")
+    fourni = (req.args.get("token") or req.headers.get("X-Doctrine-Token") or "").strip()
+    if not fourni:
+        auth = req.headers.get("Authorization", "")
+        if auth.lower().startswith("bearer "):
+            fourni = auth[7:].strip()
+    if fourni and hmac.compare_digest(fourni, attendu):
+        return True, ""
+    return False, ("Jeton absent ou incorrect — attendu en ?token=…, en en-tête "
+                   "X-Doctrine-Token, ou en Authorization: Bearer …")
+
+
+@app.route("/doctrine.txt")
+def doctrine_txt():
+    """La doctrine en texte brut, pour un agent qui rédige ailleurs qu'ici.
+
+    Code de retour PARLANT : 200 même quand un bloc manque (les alertes sont en tête du
+    texte, impossibles à rater), mais 503 quand TOUT est vide — sinon un agent recevrait
+    200 avec une page d'en-têtes et croirait tenir la doctrine. Un zéro doit dire s'il
+    vient d'un échec ou d'une absence de règles."""
+    ok, motif = _doctrine_autorise(request)
+    if not ok:
+        code = 503 if not _doctrine_token() else 403
+        return Response("⛔ " + motif + "\n", status=code,
+                        mimetype="text/plain; charset=utf-8")
+    from utils import doctrine_redaction as doctrinemod
+    st = doctrinemod.statut()
+    resp = Response(doctrinemod.doctrine_texte(st),
+                    status=503 if st["vide"] else 200,
+                    mimetype="text/plain; charset=utf-8")
+    resp.headers["Cache-Control"] = "no-store"          # une note éditée se voit tout de suite
+    resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return resp
+
+
+@app.route("/doctrine")
+@require_auth
+def doctrine_view():
+    """La même doctrine, en page — c'est celle-ci que Claude Chrome lit dans le
+    navigateur déjà connecté de Franck, et celle où il retrouve l'adresse à jeton."""
+    from utils import doctrine_redaction as doctrinemod
+    st = doctrinemod.statut()
+    jeton = _doctrine_token()
+    return render_template("doctrine.html", active="doctrine", st=st,
+                           texte=doctrinemod.doctrine_texte(st), jeton=jeton,
+                           base=PUBLIC_BASE_URL)
 
 
 @app.route("/personas")
@@ -4356,7 +4446,14 @@ def _appliquer_annulation(conn: sqlite3.Connection, event_id: int, activer: bool
         try:
             # skip_media : seul le titre change, on ne retouche pas la photo — même
             # motif que scripts/seo_batch.py pour une republication ciblée par id.
-            wp_id, _permalink, _raw = publish_to_as(ev, skip_media=True)
+            # forcer_texte=['title'] : une annulation doit atteindre le site MÊME sur
+            # une fiche dont le texte a été repris à la main (gel, cf.
+            # deploy/wordpress/cs-gel-texte.php). C'est la seule exception au gel, et
+            # elle est étroite — le préfixe « ANNULÉ — » passe, le corps retravaillé
+            # reste. Sans ça, la seule information que le lecteur doit absolument voir
+            # serait la seule à ne pas descendre.
+            wp_id, _permalink, _raw = publish_to_as(ev, skip_media=True,
+                                                    forcer_texte=["title"])
             wp_publie = bool(wp_id)
             if not wp_publie:
                 erreur = "échec WordPress (voir logs)"
@@ -4539,11 +4636,19 @@ def set_focal(event_id: int):
     image_changed = bool(new_url) and new_url != old_url
     if image_changed:
         fx, fy, mode = 0.5, 0.5, ""
+        # LE CRÉDIT SUIT L'IMAGE (2026-09-21). Cette route écrivait image_credit='' quoi
+        # qu'il arrive. Sans conséquence tant qu'on collait la photo d'un site officiel ;
+        # mais le jour où l'on colle une image de Wikimedia Commons — ce que la charte §8
+        # recommande justement faute de mieux —, la fiche part SANS ATTRIBUTION, alors que
+        # CC BY et CC BY-SA l'exigent. L'API de Commons est ouverte : le crédit se retrouve
+        # à partir de l'URL, sans clé ni crédit d'API (utils.images.credit_commons).
+        credit = images_mod.credit_commons(new_url)
         conn.execute(
-            "UPDATE events_raw SET url_image=?, image_credit='', image_source='manual', "
+            "UPDATE events_raw SET url_image=?, image_credit=?, image_source='manual', "
             "card_focal_x=?, card_focal_y=?, card_mode=? WHERE id=?",
-            (new_url, fx, fy, mode or None, event_id))
-        log.info("Image remplacée à la main id=%d : %s", event_id, new_url[:80])
+            (new_url, credit, fx, fy, mode or None, event_id))
+        log.info("Image remplacée à la main id=%d : %s%s", event_id, new_url[:80],
+                 f" (crédit : {credit})" if credit else "")
     else:
         conn.execute("UPDATE events_raw SET card_focal_x=?, card_focal_y=?, card_mode=? "
                      "WHERE id=?", (fx, fy, mode or None, event_id))

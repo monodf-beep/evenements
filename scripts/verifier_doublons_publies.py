@@ -75,7 +75,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from scripts.dedupe import _groups, motif_groupe, paire_de_traduction  # noqa: E402  — MÊME définition que le dédoublonnage
+from scripts.dedupe import (_groups, cote_partage, motif_groupe,  # noqa: E402
+                            paire_de_traduction)
+# MÊMES définitions que le dédoublonnage — jamais une seconde copie ici.
 from scripts.audit_substance_published import devant_nous  # noqa: E402
 # LA RÈGLE 1, QUE CE SCRIPT A VIOLÉE LE JOUR MÊME DE SA NAISSANCE (2026-08-13).
 # `_etat` interroge WordPress post par post — la SEULE façon de savoir si une page est
@@ -144,9 +146,33 @@ def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
     # Compté à part : un groupe formé par UN mot commun n'a pas la même force qu'un groupe
     # de titres jumeaux, et le lecteur doit le savoir avant d'ouvrir les pages.
     par_coincidence = sum(1 for g in suspects if motif_groupe(g))
+    # ══ DEUX CARTES FRANÇAISES QUI NE SONT PAS UN DOUBLON DE CONTENU ═════════════════
+    #
+    # Une paire liée par translation_of est écartée à raison — mais si ses DEUX pages
+    # sont servies du même versant, le lecteur du hub y voit deux fiches jumelles. C'est
+    # ce que Franck a signalé le 21/09, et ce que ce rapport ne disait nulle part : il
+    # annonçait « écartées, normales » et passait à la suite.
+    #
+    # ON NE LES REMET PAS DANS LA FILE : leur geste n'est pas la corbeille (corbeiller
+    # perdrait la version italienne au lieu de la remettre en place), et leur relevé
+    # existe déjà, avec sa commande consolidée — `scripts/audit_langue_polylang`. Les y
+    # recopier ferait 29 groupes là où il y en a 5, et noierait les vrais doublons
+    # (essayé le 21/09, mesuré, annulé).
+    #
+    # ET ON NE LES COMPTE PAS DEPUIS LES GROUPES : la plupart ne sont JAMAIS appariées
+    # (« Orlando » ↔ « Orlando » : same_story exige trois mots significatifs, et les
+    # règles de titre et de coïncidence refusent les paires de traduction en amont). Le
+    # compteur se mesure donc directement sur les fiches, pas sur ce que l'appariement a
+    # bien voulu former — sinon il vaudrait zéro sans que rien n'aille mieux.
+    par_id_v = {e["id"]: e for e in vivantes}
+    meme_cote = 0
+    for ev in vivantes:
+        orig = par_id_v.get(int(ev.get("translation_of") or 0))
+        if orig is not None and cote_partage([ev, orig]):
+            meme_cote += 1
     return suspects, {"publiees": len(rows), "vivantes": len(vivantes),
                       "groupes": len(groupes), "traductions": ecartes,
-                      "coincidence": par_coincidence}
+                      "coincidence": par_coincidence, "meme_cote": meme_cote}
 
 
 def _article(ev: dict) -> str:
@@ -356,8 +382,19 @@ def main(argv=None) -> int:
           f"mêmes dates + un jeton commun)")
     print(f"…dont par coïncidence   : {compte['coincidence']}  — lieu + dates + jeton, "
           f"titres trop différents pour la ressemblance ; le motif est écrit sous le groupe")
-    print(f"…écartés (paires FR/IT)  : {compte['traductions']}  — normales, à LIER, "
-          f"jamais à fusionner")
+    print(f"…écartés (paires FR/IT)  : {compte['traductions']}  — liées par "
+          f"translation_of ET servies de deux côtés du site : normales, à LIER")
+    if compte.get("meme_cote"):
+        # Le libellé dit ce qu'il compte : des TRADUCTIONS (des fiches), pas des groupes
+        # écartés — les deux nombres ci-dessus comptent des groupes, et deux compteurs
+        # qui portent le même mot finissent par se contredire (règle 6).
+        print(f"TRADUCTIONS DU MÊME CÔTÉ : {compte['meme_cote']}  ⚠ fiches liées par "
+              f"translation_of et servies du MÊME versant que leur original")
+        print( "                             → pas des doublons de CONTENU, mais le "
+               "lecteur les voit comme tels sur le hub.")
+        print( "                             → relevé et geste (PAS la corbeille) :")
+        print( "                               .venv/bin/python -m "
+               "scripts.audit_langue_polylang")
     if args.en_ligne:
         print(f"…écartés APRÈS SONDAGE   : {compte['retires_du_site']}  — une seule de "
               f"leurs pages est encore publique")
@@ -438,7 +475,31 @@ def main(argv=None) -> int:
                       f"absent(s) du groupe ci-dessus : "
                       f"{', '.join(str(e['id']) for e in caches)} — les laisser en ligne "
                       f"ferait un orphelin)")
-            a_retirer.extend(sorted(ids_reste))
+            # UN GROUPE PAR COÏNCIDENCE NE REJOINT PAS LA COMMANDE AUTOMATIQUE.
+            #
+            # Mesuré le 19/09 : le cerveau du matin a lu cette commande consolidée et
+            # aurait corbeillé TO Play (5702) et Mobilità dolce (5690) — deux VRAIS
+            # événements différents, vérifiés sur WordPress. Les deux venaient d'un
+            # groupe « par coïncidence » (lieu + dates + un jeton commun), le signal le
+            # plus faible que ce script mesure — son propre docstring dit depuis le
+            # 08/09 « un humain vérifie CE mot, puis tranche », mais la ligne ci-dessus
+            # (ancienne version) les jetait quand même dans la même commande consolidée
+            # que les groupes appariés par TITRE, sans distinction possible en collant
+            # juste la commande. Un lecteur pressé — humain ou cerveau autonome — n'a
+            # aucune raison de rouvrir le détail de CHAQUE groupe avant de coller une
+            # seule ligne prête à l'emploi.
+            #
+            # Donc : les groupes par titre alimentent toujours la commande automatique
+            # (ressemblance directe, déjà le signal le plus fort du dépôt). Les groupes
+            # par coïncidence restent affichés en détail, avec leur mot déclencheur,
+            # mais leurs ids n'entrent JAMAIS dans `a_retirer` — il faut les traiter un
+            # par un, à la main, après avoir lu ce que dit VRAIMENT chaque page.
+            if par_quoi:
+                print(f"     ⚠ PAS dans la commande automatique — coïncidence sur "
+                      f"« {par_quoi} » : vérifier le contenu réel de chaque page avant "
+                      f"tout retrait.")
+            else:
+                a_retirer.extend(sorted(ids_reste))
         elif args.en_ligne:
             print(f"     → {motif or 'aucun défaut proposé'}.")
         print()

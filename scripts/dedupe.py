@@ -280,8 +280,9 @@ def cross_lang_same(a: str, b: str) -> bool:
 # la paire Pinocchio aurait dû remonter, et c'est là qu'elle remonte désormais.
 # Détail et limites : docs/DEDOUBLONNAGE.md.
 from utils.lieux import GENERIQUES as _LIEUX_GENERIQUES, canon as _canon_ville, \
-    est_generique as _lieu_generique, plie as _plie  # noqa: E402
+    communes as _communes, est_generique as _lieu_generique, plie as _plie  # noqa: E402
 from utils.sources import _STORY_PLACES  # noqa: E402
+from utils.lang import cote_du_permalien as _cote  # noqa: E402
 
 _NON_DISTINCTIFS: frozenset[str] = frozenset(_STOP | _STORY_PLACES | {
     # Types d'événement et d'activité (FR/IT), au singulier et au pluriel : deux fiches
@@ -351,6 +352,53 @@ def paire_de_traduction(a: dict, b: dict) -> bool:
     return ta == b["id"] or tb == a["id"] or bool(ta and ta == tb)
 
 
+# ══ « LIÉES PAR translation_of » NE VEUT PAS DIRE « DANS DEUX LANGUES » ══════════════
+#
+# Mesuré le 2026-09-21, après que Franck a signalé des doublons visibles sur le site que
+# le rapport de 9h50 ne voyait pas. Huit paires — Orlando, James Carter, les violoncelles
+# de l'Opéra de Nice, We Want Jazz, Mostre : Diálogos, Gaza/Merz, Sotto i portici, le
+# Castello di Ivrea — rendaient toutes `paire_de_traduction = True`, et étaient donc
+# écartées comme « paires FR/IT normales ». Or LES DEUX PAGES ÉTAIENT EN FRANÇAIS, côte à
+# côte sur le hub.
+#
+# C'est la règle 1 de CLAUDE.md transposée à la langue : **la base dit « traduction »,
+# seul WordPress dit de quel côté la page est rangée.** Le lien Polylang survit à une
+# traduction publiée du MAUVAIS versant — c'est l'incident du 17/09 (« Open Factories
+# 2026: le fabbriche di Torino aprono le porte » sur la page d'accueil française),
+# diagnostiqué dans `scripts/audit_langue_polylang`, qui n'est dans aucun cron.
+#
+# CE QU'ON EN FAIT — ET CE QU'ON N'EN FAIT PAS. Première version de ce correctif, le
+# 21/09 : ces paires étaient RÉ-ADMISES comme groupes suspects. Lu dans la sortie réelle
+# sur la base de production, le rapport passait de 5 groupes à 29 — parce qu'il y a
+# 32 traductions du mauvais versant, et qu'elles rentraient toutes. Pire : le groupe EVO,
+# qui mêle un VRAI doublon de contenu et une traduction égarée, sortait de la commande de
+# corbeille et recevait le conseil « NE PAS corbeiller », qui était faux pour lui.
+#
+# Deux défauts d'un coup, et le même : une file qui reçoit ce qui a déjà sa file. Le
+# relevé de ces 32 fiches existe, avec SON geste et SA commande consolidée
+# (`scripts/audit_langue_polylang`). Les y recopier, c'est le deuxième détecteur du
+# journal du 08/09, et les trois cents « tarifs non publiés » du 11/08.
+#
+# Donc : l'appariement garde le veto sur `paire_de_traduction` (base seule), inchangé, et
+# le rapport de 9h50 se contente de COMPTER ces paires et de NOMMER le relevé qui les
+# traite. Ce qui manquait n'était pas une ligne de plus dans la file des doublons ;
+# c'était que personne ne disait qu'elles existaient.
+
+
+def cote_partage(groupe: list[dict]) -> str:
+    """Le versant commun d'une paire LIÉE par translation_of mais servie d'un seul côté,
+    ou "". Sert à l'affichage ET à tenir ces groupes hors de la commande de corbeille :
+    le geste n'est pas de retirer une page, c'est de remettre la traduction du bon côté."""
+    for i, a in enumerate(groupe):
+        for b in groupe[i + 1:]:
+            if not paire_de_traduction(a, b):
+                continue
+            ca = _cote(a.get("wp_permalink_as"))
+            if ca and ca == _cote(b.get("wp_permalink_as")):
+                return ca
+    return ""
+
+
 def _memes_dates(a: dict, b: dict) -> bool:
     """Intervalles [début, fin] IDENTIQUES, les deux fiches datées. Pas d'inclusion (cf.
     en-tête : une exposition contient ses visites guidées sans être leur doublon)."""
@@ -399,11 +447,124 @@ def coincidence_lieu_date(a: dict, b: dict) -> str:
     return f"{ou}, {quand}, jeton « {', '.join(sorted(communs))} »"
 
 
+# ══ TITRES IDENTIQUES — le trou mesuré le 2026-09-21 ═════════════════════════════════
+#
+# Franck, capture du hub Vallée d'Aoste : « problème de duplication ». Trois cartes
+# « Marché au Fort » aux mêmes dates à Bard, deux « Lo Pan Ner ». Mesuré le jour même, sur
+# les titres TELS QU'ILS SONT EN BASE :
+#
+#     same_story("Marché au Fort 2026", "Marché au Fort 2026")  →  False
+#     same_story("Lo Pan Ner",          "Lo Pan Ner")           →  False
+#
+# Deux titres STRICTEMENT IDENTIQUES ne s'apparient pas. `same_story` exige ≥ 3 mots
+# significatifs (≥ 4 lettres) communs : « Marché au Fort 2026 » n'en offre que deux
+# ({marche, fort}), « Lo Pan Ner » aucun. Ce seuil a été écrit pour comparer deux titres
+# RÉDIGÉS d'une dizaine de mots ; il ne dit rien du cas où les deux titres SONT le même.
+#
+# Et la coïncidence du 08/09 ne rattrape pas : elle veut un jeton de ≥ 5 lettres HORS
+# mots du lieu — or ces fiches-là portent le nom de l'événement DANS leur champ `lieu`
+# (« Borgo medievale di Bard / Marché au Fort »). L'exclusion écrite pour « Forte di
+# Bard » a effacé le seul mot distinctif qui restait. Mesuré : `_groups` rend DEUX
+# groupes même appelé avec cross_lang=True ET coincidence=True.
+#
+# Ce que ça a coûté en production : le lot du 19/09 a publié, dans le même message Slack,
+# deux lignes l'une sous l'autre — « [5608] Marché au Fort 2026 — WP#9523 » et « [5612]
+# Marché au Fort 2026 — WP#9533 ». Idem [5609]/[5613] « La Foire des Alpes 2026 » et
+# [5464]/[5465] « Lo Pan Ner ». Six fiches, trois événements, aucun avertissement.
+#
+# POURQUOI CETTE RÈGLE REJOINT LE CHEMIN DES TITRES (donc FUSIONNE dès 8h30) et pas les
+# candidats de coïncidence : elle est strictement PLUS exigeante que ce qui fusionne déjà.
+# `same_story` fusionne sur 3 mots communs sur dix, sans regarder ni les dates ni la
+# ville ; ici il faut le titre ENTIER, les mêmes dates, et pas deux communes connues et
+# différentes. Refuser de fusionner un titre identique pendant qu'on fusionne un tiers de
+# titre serait l'incohérence, pas l'inverse. La fusion reste réversible (statut='merged',
+# `unmerge_data`, scripts/unmerge.py) et ne perd aucune matière.
+#
+# QUI ROUVRE (règle 3) : rien à rouvrir — la règle n'ajoute aucun état terminal. Les
+# fiches déjà PUBLIÉES en double, elles, remontent le matin même par
+# `verifier_doublons_publies --en-ligne` (9h50), qui appelle le même `_groups`.
+
+
+def _titre_plie(titre: str) -> str:
+    """Le titre réduit à ce qui le NOMME : minuscules, accents retirés, ponctuation et
+    espaces écrasés. Deux paires RÉELLES, en ligne le 21/09, ne diffèrent que par là :
+    « We want Jazz 2026 » / « We Want Jazz 2026 » (WP#9704 / WP#9757) et
+    « Mostre: Diálogos. » / « Mostre: Diálogos » (WP#9709 / WP#9762)."""
+    s = unicodedata.normalize("NFD", (titre or "").lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return " ".join(re.findall(r"[a-z0-9]+", s))
+
+
+def _mots_porteurs(titre_plie: str) -> set[str]:
+    """Ce qui, dans le titre, dit QUOI plutôt que de quel genre : les mots hors mots-outils
+    et hors génériques du domaine (`_NON_DISTINCTIFS`), SANS plancher de longueur — c'est
+    le plancher de cinq lettres de `_jetons_distinctifs` qui a laissé passer « Lo Pan
+    Ner » —, plus le MILLÉSIME s'il y en a un.
+
+    Le millésime a été ajouté en lisant la fixture rouge : « La Foire des Alpes 2026 »
+    (paire réelle [5609]/[5613], en ligne le 21/09) n'est faite QUE de mots génériques —
+    « foire » est un type d'événement, « alpes » un lieu — et se faisait refuser. Or un
+    titre qui porte une année nomme une ÉDITION ; ce n'est plus un genre.
+
+    Un titre sans rien de tout ça — « Visite guidée », « Concerto », « Mostra » — ne
+    désigne pas un événement mais un GENRE. Deux fiches peuvent le porter aux mêmes dates
+    dans la même ville sans être la même : c'est la seule chose qu'un titre identique ne
+    prouve pas."""
+    mots = {m for m in titre_plie.split() if m.isalpha() and m not in _NON_DISTINCTIFS}
+    return mots | {m for m in titre_plie.split() if re.fullmatch(r"(?:19|20)\d\d", m)}
+
+
+def _villes_separent(a: dict, b: dict) -> bool:
+    """Deux COMMUNES connues et DIFFÉRENTES : ce n'est pas le même événement, même sous un
+    titre identique. C'est l'unique famille de faux positifs que « titre identique + mêmes
+    dates » laisse passer — un « Marché de Noël » le même week-end à Annecy et à Chambéry.
+
+    On interroge le registre des communes (`utils.lieux.communes`) plutôt qu'une liste de
+    titres interdits : une liste noire est toujours en retard d'un mot, le registre non.
+    Et une ville ABSENTE du registre ne sépare rien : « Vallée d'Aoste » et « Valle
+    d'Aosta (vari comuni) » — les deux fiches Lo Pan Ner — ne sont pas deux communes, ce
+    sont deux façons d'écrire « partout dans la région »."""
+    noms, _ = _communes()
+    va, vb = _plie(a.get("ville") or ""), _plie(b.get("ville") or "")
+    if va not in noms or vb not in noms:
+        return False
+    return _canon_ville(a.get("ville") or "") != _canon_ville(b.get("ville") or "")
+
+
+def titre_identique(a: dict, b: dict) -> str:
+    """Le MOTIF (« titre identique « lo pan ner », 2026-10-17→2026-10-18 »), ou "" si
+    l'une des cinq conditions manque : pas une paire de traduction, mêmes dates (les deux
+    fiches datées, pas d'inclusion), titres pliés égaux et non vides, au moins un mot
+    porteur dans le titre, et pas deux communes connues et différentes.
+
+    Rend une phrase et pas un booléen, comme `coincidence_lieu_date` : le motif est DIT à
+    l'humain qui lit le dry-run ou le rapport de 9h50."""
+    if paire_de_traduction(a, b):
+        return ""
+    if not _memes_dates(a, b):
+        return ""
+    ta, tb = _titre_plie(a.get("title", "")), _titre_plie(b.get("title", ""))
+    if not ta or ta != tb:
+        return ""
+    if not _mots_porteurs(ta):
+        return ""
+    if _villes_separent(a, b):
+        return ""
+    debut = _jour(a.get("date_event_start"))
+    fin = _jour(a.get("date_event_end")) or debut
+    quand = debut if fin == debut else f"{debut}→{fin}"
+    return f"titre identique « {ta} », {quand}"
+
+
 def _memes_titres(a: dict, b: dict, cross_lang: bool = False) -> bool:
     """Le chemin HISTORIQUE de _groups — ressemblance de titres, gardes années et dates —
     isolé pour que motif_groupe puisse dire par quel chemin une paire s'est formée."""
     if _dates_incompatible(a, b):
         return False
+    # Titre identique + mêmes dates : plus exigeant que same_story, donc ici et pas dans
+    # les candidats de coïncidence (cf. le bloc au-dessus de `titre_identique`).
+    if titre_identique(a, b):
+        return True
     ti, tj = a.get("title", ""), b.get("title", "")
     return (same_story(ti, tj) and not _years_incompatible(ti, tj)) \
         or (cross_lang and cross_lang_same(ti, tj))

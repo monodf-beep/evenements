@@ -91,6 +91,99 @@ def ecrire(wp_url: str, auth, notes: list[dict]) -> dict:
     return total
 
 
+# --------------------------------------------------------------------------- #
+# POURQUOI c'est rouge — le détail était calculé puis JETÉ
+# --------------------------------------------------------------------------- #
+# Franck, 21/09/2026 : « apparemment ce qu'on fait ne résout pas tout le temps le SEO ».
+# En allant lire : `scripts/yoast_score.js` produit depuis toujours `seo_detail` et
+# `lis_detail` — le score de CHAQUE critère de Yoast, fiche par fiche — et `ecrire()`
+# n'envoyait que deux nombres agrégés. Le détail était donc calculé tous les jours à midi
+# sur 300 fiches, puis jeté. Conséquence : personne ne pouvait dire QUEL critère était
+# rouge sur combien de fiches, et la seule méthode qui restait était de rouvrir les
+# articles un par un. C'est le défaut du 18/08 (« le chiffre attendu depuis le matin était
+# calculé puis jeté par un [:2000] »), reproduit ici pendant des semaines.
+#
+# LE SEUIL EST À NOUS, PAS À YOAST. Yoast rend un score par critère ; l'appeler « mauvais »
+# en dessous de 5 est une convention de ce dépôt, pas une règle du moteur. Elle se déplace
+# (--seuil) et se contrôle : la note MOYENNE est affichée à côté du compte, donc un seuil
+# mal placé se voit tout de suite au lieu de fabriquer un classement faux.
+SEUIL_MAUVAIS = 5
+
+# Libellés en français pour les critères vus en production. Un identifiant inconnu n'est
+# JAMAIS masqué : il s'affiche tel quel. Une liste de correspondance incomplète qui
+# cacherait les critères qu'elle ne connaît pas serait exactement la file tronquée du
+# 18/08 — celle qui fabrique de fausses causes.
+LIBELLES = {
+    "subheadingsTooLongText": "texte trop long sans sous-titre (H2)",
+    "textLength": "texte trop court",
+    "sentenceLengthInText": "phrases trop longues",
+    "passiveVoice": "voix passive",
+    "textParagraphTooLong": "paragraphes trop longs",
+    "transitionWords": "mots de liaison",
+    "sentenceBeginnings": "débuts de phrase répétitifs",
+    "fleschReadingEase": "difficulté de lecture",
+    "keyphraseInTitle": "expression clé absente du titre",
+    "keyphraseInIntroduction": "expression clé absente du chapô",
+    "keyphraseDensity": "densité de l'expression clé",
+    "metaDescriptionLength": "longueur de la méta-description",
+    "metaDescriptionKeyword": "expression clé absente de la méta-description",
+    "titleWidth": "longueur du titre SEO",
+    "textImages": "images",
+    "internalLinks": "liens internes",
+    "externalLinks": "liens externes",
+    "subheadingsKeyword": "expression clé absente des sous-titres",
+}
+
+
+def causes(notes: list[dict], seuil: int = SEUIL_MAUVAIS) -> list[dict]:
+    """Classement des critères qui coincent, du plus répandu au moins répandu.
+
+    Chaque entrée : critere, libelle, famille (SEO/lisibilité), mauvais, concernees,
+    moyenne. `concernees` est le PÉRIMÈTRE : Yoast n'applique pas tous ses critères à
+    toutes les fiches (`getValidResults`), donc « 187 mauvais » ne veut rien dire sans
+    « sur 190 fiches où le critère s'applique ». Deux critères comptés sur deux
+    populations différentes se contrediraient un jour, et c'est le plus gros qu'on
+    croirait (règle 6)."""
+    par_critere: dict = {}
+    for n in notes:
+        for famille, clef in (("SEO", "seo_detail"), ("lisibilité", "lis_detail")):
+            for r in (n.get(clef) or []):
+                cid = r.get("id") or "?"
+                e = par_critere.setdefault((famille, cid),
+                                           {"critere": cid, "famille": famille,
+                                            "libelle": LIBELLES.get(cid, cid),
+                                            "mauvais": 0, "concernees": 0, "_somme": 0})
+                score = r.get("score") or 0
+                e["concernees"] += 1
+                e["_somme"] += score
+                if score <= seuil:
+                    e["mauvais"] += 1
+    out = []
+    for e in par_critere.values():
+        e["moyenne"] = round(e["_somme"] / e["concernees"], 1) if e["concernees"] else 0
+        del e["_somme"]
+        if e["mauvais"]:                       # un critère vert partout n'est pas une cause
+            out.append(e)
+    out.sort(key=lambda e: (-e["mauvais"], e["moyenne"], e["critere"]))
+    return out
+
+
+def afficher_causes(notes: list[dict], seuil: int = SEUIL_MAUVAIS) -> list[dict]:
+    """Imprime le classement et le renvoie (pour Slack). Dit combien de fiches l'ont
+    nourri : un classement sans sa population ne se relit pas trois semaines plus tard."""
+    rangs = causes(notes, seuil)
+    print(f"\n=== POURQUOI c'est rouge — {len(notes)} fiche(s) notée(s), "
+          f"critère « mauvais » = note ≤ {seuil} ===")
+    if not rangs:
+        print("  Aucun critère sous le seuil. Si la colonne Yoast est rouge malgré ça, "
+              "c'est le seuil qui est mal placé : relancer avec --seuil 7.")
+        return rangs
+    for e in rangs:
+        print(f"  {e['mauvais']:>4}/{e['concernees']:<4} {e['famille']:<11} "
+              f"{e['libelle']}  (note moyenne {e['moyenne']}, critère {e['critere']})")
+    return rangs
+
+
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -99,6 +192,9 @@ def main(argv=None) -> int:
     p.add_argument("--cap", type=int, default=200, help="Fiches par run (max 500).")
     p.add_argument("--ids", nargs="*", type=int, default=[])
     p.add_argument("--tout", action="store_true", help="Ignore cs_score_at : renote même l'inchangé.")
+    p.add_argument("--seuil", type=int, default=SEUIL_MAUVAIS,
+                   help=f"Note en dessous de laquelle un critère compte comme mauvais "
+                        f"(défaut {SEUIL_MAUVAIS}). Le seuil est une convention de ce dépôt.")
     args = p.parse_args(argv)
 
     wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
@@ -132,6 +228,8 @@ def main(argv=None) -> int:
         print(f"\n{len(sans_cle)} fiche(s) sans expression clé : lisibilité seule, la colonne SEO "
               f"reste « Aucune expression clé » jusqu'à ce que seo_batch en pose une.")
 
+    rangs = afficher_causes(notes, args.seuil)
+
     if not args.apply:
         print(f"\nDRY-RUN — {len(notes)} note(s) calculée(s), rien d'écrit. Relancer avec --apply.")
         return 0
@@ -151,6 +249,11 @@ def main(argv=None) -> int:
     msg = (f"📐 *Scores Yoast* — {res['ecrits']} fiche(s) notée(s) avec le moteur de Yoast "
            f"(hors éditeur), dont {len(sans_cle)} en lisibilité seule faute d'expression clé. "
            f"Reste : {resume}")
+    if rangs:
+        # Les trois causes en tête, avec leur périmètre : c'est ce qui désigne le
+        # correctif à faire UNE fois (prompt, gabarit), au lieu de N réécritures à la main.
+        msg += "\n🔎 Ce qui coince : " + " · ".join(
+            f"{e['libelle']} ({e['mauvais']}/{e['concernees']})" for e in rangs[:3])
     if res["erreurs"]:
         msg += f"\n⚠️ {len(res['erreurs'])} erreur(s) : " + " · ".join(res["erreurs"][:3])
     slack.notify(msg)

@@ -247,6 +247,42 @@ Trois corollaires opérationnels :
   `git merge origin/<branche> && git push origin claude/quirky-davinci-jvqrnw && bash deploy/update.sh`,
   et la ligne « HEAD is now at » doit porter le commit fusionné.
 
+`docs/ERREURS_2026-09-21.md` en ajoute neuf, parties d'une capture — l'affiche de saison
+de Malraux en vignette d'un concert sur l'Antarctique — et d'une racine NEUVE, qui
+s'ajoute à celles ci-dessus :
+
+**Un INSTANTANÉ ne mesure pas un FLUX.** Mesuré ce jour-là : sur les 22 pages d'accueil
+servant de source à des fiches à venir, neuf portaient un `og:image` et AUCUNE ne montrait
+l'événement (fond de page de connexion admin, affiche de saison périmée d'un an, logo,
+façade). J'en ai tiré une règle — « une page d'accueil n'illustre jamais » — et posé un
+refus sec. Puis j'ai regardé les cinq fiches publiées que ce refus visait : TROIS avaient
+une bonne image, dont l'affiche exacte de l'exposition, prise sur la page d'accueil de la
+mairie de Villefranche-sur-Mer. Les deux mesures sont vraies : une page d'accueil montre la
+programmation DU MOMENT, donc elle illustre bien l'événement en cours et mal tous les
+autres. **Quand une mesure porte sur un état à l'instant t et qu'on veut en tirer une règle
+permanente, chercher d'abord l'échantillon qui porte l'HISTOIRE** — ici, les fiches déjà
+illustrées. Attrapée avant déploiement, pour une fois.
+
+Trois corollaires de cette journée, tous vérifiés aux dépens d'une demi-heure :
+
+- **établir le QUOI ne dispense pas d'établir le PAR OÙ.** L'image fautive était prouvée
+  (comparaison des deux fichiers), le chemin annoncé était faux : ce n'était pas la moisson
+  lisant une page presse, mais `images_wide` remplissant `url_image_portrait` — que
+  `publisher_as` PRÉFÈRE à `url_image` pour la vignette. Une requête en base le donnait ;
+- **une image se juge en la REGARDANT, jamais à son nom de fichier.** Sur une trentaine de
+  vignettes réparées ce jour-là, la seule que j'ai commentée sans télécharger est la seule
+  où je me suis trompé : `Orlando_Argomento.jpg` n'est pas « l'œuvre elle-même », c'est le
+  livret imprimé du XVIIIe, deux colonnes de texte illisibles en vignette ;
+- **une mesure lancée pendant une écriture mesure l'écriture.** « 1 héritage, 13
+  divergences » pendant le lot ; 12 et 2 après. Attendre la fin, et le dire dans la
+  commande (`while pgrep -f … ; do sleep 10; done`).
+
+Et un point de méthode sur le travail à plusieurs sessions : **quand un `git merge` affiche
+`CONFLICT` sur le VPS, `git merge --abort` immédiatement.** Ce jour-là trois sessions
+fusionnaient dans `claude/quirky-davinci-jvqrnw` ; le merge a laissé les marqueurs
+`<<<<<<<` dans `publish_batch_as.py`, que les crons exécutent — le script ne compilait
+plus. La résolution se fait côté branche, jamais en production.
+
 **Neuf des quinze fautes du 11/08 étaient des récidives d'une règle
 déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le
 périmètre affiché à côté du nombre qui tiennent, parce qu'eux se déclenchent tout seuls.
@@ -288,6 +324,14 @@ fiche qui reste. Mesuré : ces deux adresses-là rendaient 404 pour 64 impressio
 - **les deux gestes se combinent** : corbeiller le POST (il disparaît des listes) et
   rediriger son ADRESSE (elle continue de servir).
 
+**Et une adresse ne porte JAMAIS de date** — arbitrage de Franck du 2026-09-21 : « ne mets
+jamais les dates, mets dans la doctrine qu'il ne faut jamais mettre les dates ». Un
+événement annuel doit garder UNE adresse d'édition en édition (`docs/EDITIONS_ANNUELLES.md`) ;
+une URL millésimée l'interdit. Le TITRE garde son millésime, l'ADRESSE non :
+`utils.seo.slug_sans_date`, posé par `publisher_as` à la création seulement. Mesuré ce
+jour-là : 27 des 188 fiches en ligne et non terminées portaient une année ou un mois dans
+leur URL, parce qu'aucun slug n'était envoyé et que WordPress le dérivait du titre.
+
 Où : `deploy/wordpress/cs-redirections-301.php`, une simple table chemin → chemin, avec
 un garde-fou contre la redirection vers soi-même (une boucle rend le site injoignable,
 au même prix que le mu-plugin cassé d'août).
@@ -305,6 +349,36 @@ au même prix que le mu-plugin cassé d'août).
 Et la leçon de méthode, qui vaut au-delà des redirections : **vérifier qu'une chose est
 morte ne dit pas quoi en faire.** J'ai pris « ces URL n'existent plus » pour « il n'y a
 rien à faire », alors que c'était précisément le motif d'agir.
+
+---
+
+## Le dernier qui écrit est un humain — le cron ne repasse pas derrière
+
+**Arbitrage de Franck, 2026-09-21** : « si cowork a travaillé le seo, on ne doit pas
+pouvoir revenir dessus avec le cron. Le processus : création de l'article en fr et it →
+cron seo → cowork seo. Uniquement dans ce sens. »
+
+Chaque étage peut écraser ce que le précédent a posé, **jamais l'inverse**. Une fiche
+dont le titre, le corps ou les métas Yoast ont été repris à la main est GELÉE : le
+pipeline continue d'y pousser les dates, le lieu, la catégorie, les métas `as_*` et
+l'image — il ne touche plus au texte. Le gel est posé par le SITE
+(`deploy/wordpress/cs-gel-texte.php`, empreinte des six champs éditoriaux), jamais par la
+base : `wp_gel_at` n'en est qu'une copie, et « pas de gel » ne doit jamais se confondre
+avec « le mu-plugin n'est pas en ligne » (règle 1, et le zéro qui ne dit pas d'où il
+vient). Exception unique et étroite : une annulation force le titre.
+
+Deux conséquences qui valent au-delà du SEO :
+
+- **chaque fiche tient un journal** (méta `as_journal`, encadré dans l'éditeur, route
+  `cs/v1/journal`) : qui a écrit quoi, quand. C'est ce qui manquait pour que le cron et
+  une session Cowork sachent l'un de l'autre. Il COMMENCE à son installation — il ne
+  reconstitue pas le passé, et on ne lui fait pas dire ce qu'il ne sait pas ;
+- **un garde-fou posé dans un chemin de réécriture doit avoir sa contre-épreuve APRÈS
+  coup.** Ici : le mu-plugin relit le texte une fois l'appel terminé et le remet s'il a
+  bougé. Prévenir suppose que l'interception marche ; vérifier le prouve.
+
+Protocole complet, rattrapage des fiches déjà retravaillées, et ce que le dispositif ne
+fait PAS : `docs/SEO_QUI_FAIT_QUOI.md`.
 
 ---
 
@@ -347,11 +421,23 @@ texte éditorial, PAS le pipeline lui-même qui s'en charge déjà** :
    publicité déguisée). Ce fichier-là est dans le dépôt, toujours accessible, aucune
    raison de le sauter.
 
-**Ne jamais redemander « c'est où Obsidian, comment j'y accède »** — ce point est réglé
-une fois pour toutes : ce conteneur n'atteint pas le VPS par lui-même (vérifié le
-05/09 — pas de clé SSH, pas de route réseau directe), donc si le contenu n'est pas déjà
-dans la conversation, la seule question à poser à Franck est laquelle des deux commandes
-ci-dessus coller, pas une remise en cause du mécanisme.
+**Depuis le 21/09, il y a une adresse et plus rien à coller** :
+`https://backoffice.agendasabauda.eu/doctrine.txt?token=<DOCTRINE_TOKEN>` rend les trois
+blocs ci-dessus, **relus à l'instant dans Obsidian**, avec la provenance de chacun et une
+alerte en tête si l'un manque (`docs/DOCTRINE_POUR_AGENTS.md`). Claude Chrome lit
+`/doctrine` sans jeton, dans le navigateur déjà connecté. Le collage ne reste qu'en
+REPLI, quand l'adresse ne répond pas.
+
+Ce paragraphe affirmait jusque-là « ce conteneur n'atteint pas le VPS par lui-même
+(vérifié le 05/09 — pas de clé SSH, pas de route réseau directe) ». **La moitié était
+fausse** : mesuré le 21/09 depuis un conteneur Claude Code, `backoffice.agendasabauda.eu`
+répond en HTTPS (302 vers `/login`, `gunicorn`, et `/embed/events.json` en 200). SSH ne
+passe pas ; HTTPS, si. Les deux n'avaient jamais été mesurées séparément, et la
+conclusion la plus large avait été retenue pour les deux — la racine du 18/08, encore.
+
+**Ne jamais redemander « c'est où Obsidian, comment j'y accède »** — ce point reste réglé
+une fois pour toutes : la seule question à poser à Franck est le jeton, ou laquelle des
+deux commandes ci-dessus coller, jamais une remise en cause du mécanisme.
 
 **Avant de LIVRER le texte**, s'auto-évaluer, pas seulement s'assurer qu'aucune règle
 n'est violée : les neuf marqueurs signature de la voix (incise géographique,

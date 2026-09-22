@@ -111,6 +111,123 @@ def slugify(text: str) -> str:
     return t[:70]
 
 
+# ══ UNE URL NE PORTE JAMAIS DE DATE ══════════════════════════════════════════════════
+#
+# DÉCISION DE FRANCK, 2026-09-21, en voyant une adresse d'événement annuel : « ne mets
+# jamais les dates, mets dans la doctrine qu'il ne faut jamais mettre les dates ». Elle
+# prolonge sa décision des 08-09/09 (docs/EDITIONS_ANNUELLES.md) : un événement annuel
+# garde UNE adresse, mise à jour d'édition en édition, pour capitaliser les backlinks.
+# Une URL millésimée rend ça impossible — l'édition suivante ne peut que créer une
+# nouvelle adresse, qui repart de zéro.
+#
+# CE QUI PRODUISAIT LA DATE, mesuré le 21/09 et pas deviné : `publisher_as` n'envoyait
+# AUCUN slug pour une fiche originale (seules les traductions en avaient un, pour rester
+# appariables à l'œil). Sans slug, WordPress dérive le permalien du TITRE — et un titre
+# dit « Marché au Fort 2026 : … » ou « Du 24 au 27 septembre, Terra Madre … ». Relevé le
+# même jour sur le site : 27 des 188 fiches en ligne et non terminées portent une année
+# ou un mois dans leur adresse.
+#
+# CE QU'ON NE CHANGE PAS : le TITRE. Le lecteur et Yoast ont besoin du millésime ; c'est
+# l'ADRESSE qui doit survivre à l'édition. Et les fiches DÉJÀ publiées gardent la leur :
+# cs-publish.php ne pose `post_name` qu'à la création (`empty($b['wp_post_id'])`), donc
+# une republication ne renomme rien. Les 27 adresses existantes se corrigent à la main,
+# une par une, en renommant le slug dans WordPress — qui pose la 301 tout seul (mesuré
+# le 15/09 sur Vicoforte).
+
+_MOIS_SLUG = frozenset({
+    "janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre",
+    "octobre", "novembre", "decembre",
+    "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+    "settembre", "ottobre", "dicembre",
+})
+# Les mots qui INTRODUISENT une date et n'ont plus rien à dire une fois qu'elle est
+# partie : « du 24 au 27 septembre », « dès le 25 septembre », « jusqu'en juin 2027 »,
+# « dal 3 al 6 dicembre ». On ne les retire QUE s'ils touchent la date retirée.
+_AMORCES_DATE = frozenset({
+    "du", "dal", "dall", "au", "al", "le", "la", "les", "il", "des", "dei", "delle",
+    "en", "in", "a", "entre", "tra", "jusqu", "jusquen", "fino", "dopo", "apres",
+    "depuis", "da", "il", "lo", "der", "on", "from", "to",
+})
+
+
+def _slug_entier(texte: str) -> str:
+    """Comme `slugify`, mais SANS le plafond de 70 caractères — pour pouvoir filtrer la
+    date avant de couper."""
+    import unicodedata
+    t = unicodedata.normalize("NFD", (texte or "").lower())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9]+", "-", t).strip("-")
+
+
+def _coupe_slug(slug: str, maxi: int = 70) -> str:
+    """Coupe à `maxi` caractères SUR UN TIRET : une adresse ne se termine ni au milieu
+    d'un mot ni par un tiret orphelin."""
+    if len(slug) > maxi:
+        slug = slug[:maxi].rsplit("-", 1)[0] or slug[:maxi]
+    # Une adresse ne se termine pas sur un mot-outil laissé en l'air par la coupe
+    # (« …-ouvre-sa-saison-au »). Lu dans le dry-run du 21/09.
+    mots = slug.strip("-").split("-")
+    while len(mots) > 1 and mots[-1] in _AMORCES_DATE:
+        mots.pop()
+    return "-".join(mots)
+
+
+def slug_sans_date(texte: str) -> str:
+    """Le slug du titre, débarrassé de tout millésime et de toute date.
+
+    « marche-au-fort-2026-les-saveurs-du-val-daoste-envahissent-bard »
+      → « marche-au-fort-les-saveurs-du-val-daoste-envahissent-bard »
+    « du-24-au-27-septembre-terra-madre-salone-del-gusto-apporte-la-biodiversite »
+      → « terra-madre-salone-del-gusto-apporte-la-biodiversite »
+
+    Retire : les années (19xx / 20xx), les noms de mois FR et IT, les quantièmes (1-31)
+    qui touchent un mois retiré, et les mots qui introduisaient la date. Si tout part —
+    un titre qui n'était QUE sa date — on rend le slug entier plutôt qu'une adresse vide.
+
+    LIMITE CONNUE : un titre dont le mois EST le sujet perd son mot (« Mai 68 » → « 68 »).
+    Rare, et le coût d'une URL un peu pauvre est moindre que celui d'une URL périmée."""
+    # Les apostrophes disparaissent au lieu de devenir des tirets : c'est ce que fait
+    # `sanitize_title` de WordPress, et donc ce à quoi ressemblent toutes les adresses
+    # déjà en ligne (« …-du-val-daoste-… »). Une adresse qui détonne se repère.
+    sans_apostrophe = re.sub(r"['’]", "", texte or "")
+    # On filtre AVANT de couper : `slugify` plafonne à 70 caractères, et couper d'abord
+    # laissait « …-biodiver » et des tirets orphelins en fin d'adresse. Lu dans le
+    # dry-run du 21/09, sur les titres réels — pas deviné.
+    base = _slug_entier(sans_apostrophe)
+    if not base:
+        return base
+    mots = base.split("-")
+    garde = [True] * len(mots)
+
+    def _est_annee(m):
+        return len(m) == 4 and m.isdigit() and m[:2] in ("19", "20")
+
+    def _est_quantieme(m):
+        return m.isdigit() and 1 <= len(m) <= 2 and 1 <= int(m) <= 31
+
+    for i, m in enumerate(mots):
+        if _est_annee(m) or m in _MOIS_SLUG:
+            garde[i] = False
+    # Un quantième ne se retire que s'il TOUCHE un mois retiré : « 1-000-places » n'est
+    # pas une date, et « 65e Fête de la Châtaigne » non plus.
+    for i, m in enumerate(mots):
+        if garde[i] and _est_quantieme(m) and (
+                (i + 1 < len(mots) and mots[i + 1] in _MOIS_SLUG)
+                or (i and mots[i - 1] in _MOIS_SLUG)):
+            garde[i] = False
+    # Puis on remonte vers la gauche tant que le mot précédent n'est qu'une amorce de
+    # date ou un autre quantième : « du 24 au 27 septembre » part en entier.
+    for i in range(len(mots) - 1, -1, -1):
+        if garde[i] or i == 0:
+            continue
+        j = i - 1
+        while j >= 0 and garde[j] and (mots[j] in _AMORCES_DATE or _est_quantieme(mots[j])):
+            garde[j] = False
+            j -= 1
+    reste = [m for m, k in zip(mots, garde) if k]
+    return _coupe_slug("-".join(reste) if len(reste) >= 2 else base)
+
+
 def build_event_jsonld(ev: dict) -> dict | None:
     """Construit le JSON-LD schema.org/Event depuis les champs de la base.
     Déterministe, sans LLM. Renvoie None si l'événement n'a pas le minimum
@@ -205,7 +322,7 @@ texte »). Puis rédige TOUT autour d'elle, en respectant Yoast :
 Produis, en {langue_nom}, en JSON strict :
 {{"seo_keyphrase": "<expression clé principale, 2-4 mots>",
   "seo_title": "<titre SEO 50-60 caractères, COMMENÇANT par l'expression clé ; suffixe ' — Agenda Sabauda'>",
-  "seo_slug": "<slug court contenant l'expression clé, minuscules-et-tirets, sans année si récurrent>",
+  "seo_slug": "<slug court contenant l'expression clé, minuscules-et-tirets, JAMAIS d'année ni de date>",
   "seo_meta": "<meta description 115-140 caractères (Yoast y ajoute la date), factuelle (quoi, où, quand) et CONTENANT l'expression clé>",
   "seo_answer": "<réponse directe de 40-60 mots (AEO), CONTENANT l'expression clé, réutilisable en chapô>",
   "seo_tags": ["<3 à 6 étiquettes : lieu, ville, artistes/thème, catégorie>"],

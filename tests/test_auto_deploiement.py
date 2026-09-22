@@ -236,5 +236,47 @@ reel = commandes_crontab((ROOT / "crontab.txt").read_text(encoding="utf-8"))
 verifier("crontab.txt planifie bien le déploiement autonome",
          any("scripts.auto_deploiement --apply" in c for c in reel))
 
+print("\n──── ecart_crontab s'exécute VRAIMENT, pas seulement sa garde ────")
+# PLANTAGE EN PRODUCTION, 2026-09-21 07h50, lu dans logs/auto_deploiement.log :
+#
+#     installe = _commandes(r.stdout if r.returncode == 0 else "")
+#     NameError: name '_commandes' is not defined
+#
+# La fonction s'appelle `commandes_crontab` ; un renommage avait manqué CE seul appel.
+# Conséquence : le cron de 7h50 mourait avant son message Slack, sur les TROIS chemins
+# (rien à déployer, refus, déploiement fait). Le plus coûteux est le refus — le jour où
+# les fixtures bloquent un déploiement, personne n'en est averti.
+#
+# POURQUOI AUCUNE FIXTURE NE L'AVAIT VU, et c'est la leçon à garder : `ecart_crontab`
+# rattrape `FileNotFoundError` quand la commande `crontab` n'existe pas — le cas d'un
+# conteneur de développement. Elle SORTAIT donc avant la ligne 217, et le test ne
+# touchait jamais le code fautif. La garde écrite pour les machines de développement est
+# exactement ce qui cachait le défaut aux tests. D'où ce cas : on simule un `crontab -l`
+# QUI RÉPOND, pour forcer le chemin de comparaison.
+import subprocess as _sp  # noqa: E402
+
+_vrai_run = _sp.run
+
+
+class _Fini:
+    def __init__(self, out):
+        self.returncode, self.stdout, self.stderr = 0, out, ""
+
+
+_sp.run = lambda *a, **k: (_Fini("0 5 * * 0 une-commande-installee\n")
+                           if a and a[0][:1] == ["crontab"] else _vrai_run(*a, **k))
+try:
+    ajouts, retraits, resume = ad.ecart_crontab()
+    verifier("ecart_crontab traverse son chemin de comparaison sans planter", True)
+    verifier("   elle voit la ligne installée hors du dépôt", retraits >= 1,
+           (ajouts, retraits, resume))
+    verifier("   et elle voit les lignes du dépôt qui manquent", ajouts >= 1,
+           (ajouts, retraits, resume))
+    verifier("   le résumé nomme au moins une ligne, jamais un nombre nu",
+           "ligne(s)" in resume and len(resume) > 20, resume)
+except NameError as exc:
+    verifier(f"ecart_crontab traverse son chemin de comparaison sans planter — {exc}", False)
+finally:
+    _sp.run = _vrai_run
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)

@@ -176,5 +176,44 @@ vide = buf.getvalue()
 _check("le zéro annonce combien de cas se sont présentés",
        "Aucun écart sur les 1 traduction(s) examinée(s)" in vide, vide[-400:])
 
+print("\n──── --slack : UNE ligne dans le bilan quotidien, et elle part même à zéro ────")
+# BRANCHÉ LE 2026-09-21. Ce script portait depuis le 17/09 la phrase « un audit qui mesure
+# un risque sans jamais tourner ne protège de rien » — et il n'était dans aucun cron. Le
+# 21/09, mesuré : 32 traductions du mauvais versant, découvertes seulement parce que Franck
+# a envoyé une capture du hub. La ligne de cron est désormais dans crontab.txt (9h55).
+_envois = []
+import utils.slack as _slk  # noqa: E402
+_slk.notify = lambda texte, blocks=None, urgent=False: _envois.append(texte) or True
+
+# (a) sur la base RÉDUITE de l'étape précédente : zéro écart, le message part quand même.
+with contextlib.redirect_stdout(io.StringIO()):
+    al.main(["--slack"])
+_check("à zéro écart, UN message part quand même", len(_envois) == 1, _envois)
+_check("   et il porte les DEUX nombres, pas un 0 nu",
+       "0 sur 1 examinée(s)" in _envois[0], _envois)
+_check("   et son périmètre est écrit à côté",
+       "encore devant nous" in _envois[0], _envois)
+_check("   et il ne propose aucun geste quand il n'y a rien à faire",
+       "audit_langue_polylang`" not in _envois[0], _envois)
+
+# (b) le cas franc remis : le message doit compter l'écart ET nommer le relevé.
+c = sqlite3.connect(tmp)
+c.execute("INSERT INTO events_raw (id, title, url_source, territoire, statut, "
+          "wp_post_id_as, wp_permalink_as, translation_of, translated_lang, "
+          "date_event_start, date_event_end) VALUES "
+          "(7,'Open Factories 2026','https://src/7','piemont','published_sub',9209,"
+          "'https://agendasabauda.eu/evenement/open-factories-2026/',1,'it',?,?)",
+          (FUTUR, FUTUR))
+c.commit(); c.close()
+_envois.clear()
+with contextlib.redirect_stdout(io.StringIO()):
+    al.main(["--slack"])
+_check("avec un écart, le message le compte", len(_envois) == 1
+       and "1 sur 2 examinée(s)" in _envois[0], _envois)
+_check("   il dit POURQUOI ça se voit (le lecteur croit à un doublon)",
+       "doublons" in _envois[0], _envois)
+_check("   et il nomme le relevé complet, sans recopier le tableau",
+       "scripts.audit_langue_polylang" in _envois[0] and "|" not in _envois[0], _envois)
+
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)
