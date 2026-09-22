@@ -139,6 +139,14 @@ function cs_moments_forts() {
     return array(
         array(
             'slug'       => 'patrimoine',   // SANS millésime : la même strate revient chaque année.
+            // L'ÉTIQUETTE, par langue. Posée par le pipeline depuis config/moments_forts.json
+            // (utils/moments_forts.py), jamais par un modèle. Deux slugs et non un seul
+            // parce que `post_tag` est une taxonomie TRADUITE par Polylang sur ce site :
+            // mesuré le 22/09, six paires `-it` existent déjà en ligne (bard / bard-it,
+            // conference / conference-it). Un libellé français envoyé à une fiche italienne
+            // aurait fabriqué un terme suffixé, introuvable ici.
+            'etiquette'  => array('fr' => 'journees-europeennes-du-patrimoine',
+                                  'it' => 'giornate-europee-del-patrimonio'),
             'affiche_du' => '2026-09-22',
             'affiche_au' => '2026-09-27',
             'couleur'    => 'bleu',
@@ -255,21 +263,20 @@ if (!function_exists('cs_mf_evenements')) {
 /**
  * Renvoie array('total' => int, 'lignes' => array).
  *
- * ⚠️ SÉLECTION PAR DATE + TERRITOIRE, ET C'EST UN DÉFAUT CONNU. Mesuré le 22/09 :
- * 41 fiches en ligne les 26-27 septembre sur ces deux territoires, dont BeerCult,
- * le Biella Sport Festival et une exposition Kusama — rien à voir avec le patrimoine.
- * La strate promet « patrimoine » et montrerait une fête de la bière.
+ * TROIS FILTRES : territoire, fenêtre de dates, ÉTIQUETTE. Le troisième est le seul
+ * qui sépare vraiment un événement-parapluie du reste du week-end. Mesuré le 22/09
+ * sans lui : 41 fiches en ligne les 26-27 septembre sur ces deux territoires, dont
+ * BeerCult, le Biella Sport Festival et une exposition Kusama — une strate qui promet
+ * « patrimoine » et montre une fête de la bière.
  *
- * LE VRAI MARQUEUR N'EXISTE PAS ENCORE. L'URL de source ne sert à rien (mesuré : la
- * fiche 10403 a gardé `cultura.gov.it`, la 10456 a reçu `museireali.beniculturali.it`,
- * parce que l'enrichissement remplace la source par le site officiel), et les
- * étiquettes sont effacées à chaque publication — `scripts/publisher_as.py` envoie
- * `payload["tags"] = []` volontairement. Il faut donc que le PIPELINE pose une
- * étiquette depuis un vocabulaire contrôlé (ce que le commentaire de publisher_as
- * annonce déjà), et ce filtre-ci lira `$moment['etiquette']` quand elle existera.
+ * POURQUOI PAS UN AUTRE MARQUEUR. L'URL de source ne tient pas : l'enrichissement la
+ * remplace par le site officiel (fiche 10403 a gardé `cultura.gov.it`, la 10456 a reçu
+ * `museireali.beniculturali.it`). L'étiquette, elle, est posée à CHAQUE publication par
+ * `scripts/publisher_as.py` depuis `config/moments_forts.json` : elle survit aux
+ * `--update`, et elle suit la traduction, qui recopie territoire, source et dates.
  *
- * En attendant, `etiquette` absente => on reste sur date + territoire, et la strate
- * ne doit PAS être déployée sur un moment dont la fenêtre attrape n'importe quoi.
+ * `etiquette` ABSENTE => on retombe sur date + territoire, et la strate ne doit PAS
+ * être déployée sur un moment dont la fenêtre attrape n'importe quoi.
  */
 function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
     $terme = isset($volet['terr'][$lang]) ? $volet['terr'][$lang] : '';
@@ -294,9 +301,15 @@ function cs_mf_evenements($moment, $volet, $lang, $max = 8) {
         )),
         'orderby'             => array('debut' => 'ASC'),
     );
+    $etiq = '';
     if (!empty($moment['etiquette'])) {
+        $etiq = is_array($moment['etiquette'])
+            ? (isset($moment['etiquette'][$lang]) ? $moment['etiquette'][$lang] : '')
+            : $moment['etiquette'];
+    }
+    if ($etiq) {
         $args['tax_query']['relation'] = 'AND';
-        $args['tax_query'][] = array('taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => $moment['etiquette']);
+        $args['tax_query'][] = array('taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => $etiq);
     }
     $q = new WP_Query($args);
 
