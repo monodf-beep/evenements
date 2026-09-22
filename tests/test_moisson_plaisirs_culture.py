@@ -201,6 +201,47 @@ def main() -> int:
             "contre-épreuve : la brochure intacte ne déclenche aucune alerte",
             f"contre-épreuve : alerte inattendue {rv['alerte']!r}")
 
+    print("— position perdue par pypdf (6.14.2, VPS, 22/09)")
+    # pypdf 6.14.2 livre certains fragments avec une matrice IDENTITÉ (x = y = 0) mais
+    # passe la bonne matrice à visitor_operand_before. On rejoue cette séquence avec un
+    # faux module pypdf : le folio « 9 » doit sortir à SA place, en corps 8.
+    import types
+    I = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+
+    class _Page:
+        mediabox = types.SimpleNamespace(width=652.0)
+
+        def extract_text(self, visitor_operand_before=None, visitor_operand_after=None, visitor_text=None):
+            fd = {"/BaseFont": "ABCDEF+Roboto-Medium"}
+            for t, tm, livre in (("8", [8.0, 0, 0, 8.0, 35.4, 21.3], [8.0, 0, 0, 8.0, 35.4, 21.3]),
+                                 (" 9", [8.0, 0, 0, 8.0, 612.0, 21.3], I)):
+                if visitor_operand_before:              # facultatifs, comme dans pypdf
+                    visitor_operand_before(b"Tj", [t], I, tm)
+                if visitor_operand_after:
+                    visitor_operand_after(b"Tj", [t], I, tm)
+                visitor_text(t, I, livre, fd, 1.0)
+            visitor_text("fantome", I, I, fd, 1.0)      # aucun opérateur : vrai artefact
+
+    faux = types.ModuleType("pypdf")
+    faux.PdfReader = lambda flux: types.SimpleNamespace(pages=[_Page()])
+    vrai_pypdf = sys.modules.get("pypdf")
+    sys.modules["pypdf"] = faux
+    try:
+        from scripts.moisson_plaisirs_culture import fragments_pdf
+        frs = fragments_pdf(b"%PDF")[0]["frags"]
+    finally:
+        if vrai_pypdf is None:
+            sys.modules.pop("pypdf", None)
+        else:
+            sys.modules["pypdf"] = vrai_pypdf
+    neuf = [f for f in frs if f["t"].strip() == "9"]
+    verifie(neuf and neuf[0]["x"] == 612.0 and neuf[0]["y"] == 21.3 and neuf[0]["s"] == 8.0,
+            "fragment livré en (0, 0) : repris à la position de son opérateur (612 ; 21,3 ; corps 8)",
+            f"folio perdu ou mal placé : {neuf}")
+    verifie(not any(f["t"] == "fantome" for f in frs),
+            "contre-épreuve : un fragment sans aucun opérateur reste écarté",
+            "un fragment sans opérateur a reçu une position")
+
     print("— l'écriture, sur base jetable")
     with tempfile.TemporaryDirectory() as d:
         conn = sqlite3.connect(Path(d) / "jetable.db")
@@ -217,6 +258,20 @@ def main() -> int:
         verifie(row == (TERRITOIRE, "2026-09-23", "2026-09-23", "2026-09-26", "13:00", "Issogne",
                         row[6], "institutionnel") and row[6],
                 f"ligne écrite : {row[:6]}", f"ligne écrite inattendue : {row}")
+        # TITRES : une fiche entrée avec un titre de secours (22/09 au soir) est retitrée
+        # tant qu'elle n'a pas été évaluée ; une fiche évaluée n'est jamais touchée.
+        from scripts.moisson_plaisirs_culture import titres_a_corriger
+        vrai = conn.execute("SELECT id, title FROM events_raw WHERE title LIKE 'Le lunette%'").fetchone()
+        conn.execute("UPDATE events_raw SET title = lower(title) WHERE id = ?", (vrai[0],))
+        autre = conn.execute("SELECT id FROM events_raw WHERE id != ? LIMIT 1", (vrai[0],)).fetchone()[0]
+        conn.execute("UPDATE events_raw SET title = lower(title), llm_evaluated_at = '2026-09-23' WHERE id = ?", (autre,))
+        rt = titres_a_corriger(conn, garder)
+        verifie([x[0] for x in rt] == [vrai[0]] and rt[0][2] == vrai[1],
+                "titre de secours : la fiche non évaluée est retitrée d'après la brochure",
+                f"titres à corriger inattendus : {rt}")
+        verifie(autre not in [x[0] for x in rt],
+                "contre-épreuve : une fiche déjà évaluée n'est pas retitrée",
+                "une fiche évaluée allait être retitrée")
         # de bout en bout : la ligne écrite reçoit l'étiquette du moment fort
         terr = _map_territoire(row[0])
         verifie(terr == "vallee-d-aoste"
