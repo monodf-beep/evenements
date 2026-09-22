@@ -6,6 +6,19 @@
 
 {% block content %}
 
+{# LA RÉPARTITION DES RÔLES, tranchée le 2026-09-22. Cette file et le tableur portaient
+   la même question et deux chiffres différents — deux compteurs sur la même population
+   finissent par diverger, et c'est le plus gros qu'on croit (règle 6). Chacun a donc son
+   périmètre, écrit à l'écran plutôt que deviné :
+     • ICI      : ce qui BLOQUE la publication — un champ obligatoire manque ;
+     • TABLEUR  : toute la complétude, champs utiles compris (tarif, horaires…). #}
+<div class="card" style="padding:.55rem .8rem;margin-bottom:.9rem;font-size:.86rem">
+  Cette file ne contient que ce qui <strong>empêche de publier</strong> : date, lieu,
+  ville, territoire, catégorie ou image manquants.
+  Pour le reste de la complétude — tarif, horaires, réservation, accessibilité —
+  c'est le <a href="/tableur?jeu=pratique&amp;tri=trous">tableur</a> qui montre où ça pêche.
+</div>
+
 {% if not events %}
   <div class="card" style="padding:1.4rem;text-align:center">
     🎉 Rien à compléter — tous les événements retenus à venir sont complets et prêts pour le brouillon.

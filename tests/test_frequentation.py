@@ -37,7 +37,6 @@ from scripts.scraper_events import init_db  # noqa: E402
 
 conn = sqlite3.connect(TMP)
 init_db(conn)
-conn.execute("ALTER TABLE events_raw ADD COLUMN multi_lieux INTEGER DEFAULT 0")
 conn.commit()
 conn.close()
 

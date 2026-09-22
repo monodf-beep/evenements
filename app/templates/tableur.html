@@ -203,11 +203,16 @@
   soit elle ne la publie pas. « Sans objet » est le troisième cas — un récurrent n'a pas
   de date, un festival itinérant n'a pas de lieu — et il ne compte jamais comme un trou.
   <br>
-  <strong>Ce que ce tableur ne peut pas encore montrer.</strong> Aucune colonne de la base
-  ne stocke
-  {% for _, lbl in tab.SANS_COLONNE %}<strong>{{ lbl|lower }}</strong>{{ ', ' if not loop.last }}{% endfor %}.
-  <code>utils/infos_pratiques.py</code> sait les repérer sur une page officielle, mais il
-  n'y a nulle part où les écrire — c'est un chantier de base, pas d'affichage
-  (<code>docs/TYPESAFE_JEV_NOEUDS.md</code> § 1).
+  <strong>Ce tableur n'est pas la file « À compléter ».</strong> Il montre TOUTE la
+  complétude, champs utiles compris. Ce qui <em>empêche de publier</em> — date, lieu,
+  ville, territoire, catégorie, image — a sa propre file avec ses actions :
+  <a href="/a-completer">À compléter</a>. Deux compteurs sur la même population
+  finiraient par diverger ; chacun dit donc ici son périmètre.
+  <br>
+  <strong>Les infos pratiques.</strong> Tarif, horaires, réservation, accessibilité et
+  langue viennent du groupe <em>Infos pratiques</em> (jeu de colonnes du même nom) : ce
+  sont des <strong>extraits de la page officielle</strong>, relevés chaque matin par la
+  moisson, jamais une interprétation. Une case vide veut dire que la page ne le dit pas,
+  ou qu'elle n'a pas encore été lue — pas que l'événement est gratuit.
 </div>
 {% endblock %}
