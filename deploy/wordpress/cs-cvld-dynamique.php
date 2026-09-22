@@ -142,6 +142,14 @@ function cs_cvld_date($pid, $start, $lang) {
         $fin = cs_choix_langue_date(substr($d2, 8, 2), substr($d2, 5, 2), $lang === 'it' ? 'it' : 'fr', 'fin');
         if ($fin !== '') { return ucfirst($fin); }
     }
+    /* Meme table pour la date de DEBUT (Franck, meme jour, apres la premiere livraison).
+       date_i18n('j M') rendait « 26 Sep », « 3 Oct » -- mois ANGLAIS, mesure le 22/09 sur
+       l'accueil FRANCAIS -- a cote de « Fino al 28 set. » : deux formateurs sur une meme
+       rangee, dont un faux. */
+    if (function_exists('cs_choix_langue_date')) {
+        $debut = cs_choix_langue_date(substr($d1, 8, 2), substr($d1, 5, 2), $lang === 'it' ? 'it' : 'fr');
+        if ($debut !== '') { return $debut; }
+    }
     return date_i18n('j M', strtotime($start));
 }
 }

@@ -109,8 +109,23 @@ function cs_og_data() {
         $ville = $venue_id ? get_post_meta($venue_id, '_VenueCity', true) : '';
         $start = get_post_meta($id, '_EventStartDate', true);
         $quand = $start ? date_i18n('j F Y', strtotime($start)) : '';
+        $quand_txt = $quand ? ($it ? "Il $quand" : "Le $quand") : '';
+        /* 2026-09-22 (Franck, exposition Matisse – Yves Saint Laurent) : le partage d'une
+           exposition commencee en juin disait « Le 17 juin 2026 » alors qu'elle court
+           jusqu'au 28/09 -- une date passee, la seule qu'on donnait. Pour un evenement
+           DEJA COMMENCE et pas termine, c'est la fin qui renseigne (CLAUDE.md regle 5),
+           comme sur les cartes (cs_event_date_short, cs_cvld_date). Italien : « fino
+           all'8 », « fino all'11 », « fino al 28 » ailleurs, meme regle que
+           cs_choix_langue_date(). */
+        $fin = substr((string) get_post_meta($id, '_EventEndDate', true), 0, 10);
+        $auj = current_time('Y-m-d');
+        if ($start && $fin && substr($start, 0, 10) < $auj && $fin >= $auj) {
+            $j = (int) substr($fin, 8, 2);
+            $quand_txt = ($it ? (in_array($j, array(8, 11), true) ? "Fino all'" : 'Fino al ') : "Jusqu'au ")
+                . date_i18n('j F Y', strtotime($fin));
+        }
         $ou = trim($lieu . ($ville ? ', ' . $ville : ''));
-        $desc = trim(($quand ? ($it ? "Il $quand" : "Le $quand") : '') . ($ou ? ' · ' . $ou : ''));
+        $desc = trim($quand_txt . ($ou ? ' · ' . $ou : ''));
         if ($desc === '') { $desc = $baseline; }
         if (has_post_thumbnail($id)) {
             $crop = cs_og_crop(get_post_thumbnail_id($id));
