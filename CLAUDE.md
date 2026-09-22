@@ -283,6 +283,34 @@ fusionnaient dans `claude/quirky-davinci-jvqrnw` ; le merge a laissé les marque
 `<<<<<<<` dans `publish_batch_as.py`, que les crons exécutent — le script ne compilait
 plus. La résolution se fait côté branche, jamais en production.
 
+`docs/ERREURS_2026-09-22.md` en ajoute six, dont **quatre sont la même** : prendre pour
+un fait ce qui n'était qu'un indice de surface — la racine ci-dessus, resservie quatre
+fois en une journée. La plus coûteuse mérite d'être ici, parce qu'elle vise une force de
+ce dépôt : **une docstring dit ce qui était vrai À SA DATE, pas ce qui est vrai.** J'ai
+écrit trois fois, dont une dans un document commité, qu'« aucune colonne ne stocke un
+tarif » — en citant la docstring d'`utils/infos_pratiques.py`. Elle était juste le jour
+de son écriture ; `moisson_officielle` a créé la colonne `infos_pratiques` depuis, et la
+remplit tous les matins. Un `PRAGMA table_info` de trois secondes tranchait. Les
+commentaires de ce dépôt sont sa vraie documentation — raison de plus pour les citer
+comme une source DATÉE, jamais comme un état.
+
+Trois autres de ce jour, chacune avec son mécanisme :
+
+- **un détecteur neuf se passe d'abord sur ses propres cas limites.** Celui des colonnes
+  non déclarées, écrit le matin, ne lisait que les noms littéraux : il a laissé filer
+  `infos_pratiques` le jour même. Corrigé pour les variables, il criait au loup sur onze
+  boucles saines. Passé à l'AST, il est monté de 6 colonnes manquantes à **25**. Un
+  détecteur borgne ne rate pas seulement des cas : il rend un chiffre rassurant et faux ;
+- **un `&&` dans une commande de diagnostic donnée à quelqu'un d'autre avale la suite.**
+  Un `grep` sans résultat, et le `ls` qui suivait n'a jamais tourné : Franck a collé un
+  écran vide. Séparer par `;` — un diagnostic n'a pas de dépendance entre ses étapes.
+  Même famille que le « sans `tail` » du 18/08 ;
+- **`deploy/update.sh` a effacé 26 commits** jamais poussés, et l'avertissement « have
+  diverged » était à l'écran sans rien bloquer. **C'était une récidive du 08/09.**
+  `deploy/verifier_avant_reset.sh` s'arrête désormais avant le `reset --hard`. Sa fixture
+  est exigeante dans les deux sens : un garde-fou de déploiement qui refuse à tort est
+  pire que pas de garde-fou, parce qu'on le contournera pour de bon.
+
 **Neuf des quinze fautes du 11/08 étaient des récidives d'une règle
 déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le
 périmètre affiché à côté du nombre qui tiennent, parce qu'eux se déclenchent tout seuls.
