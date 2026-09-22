@@ -41,6 +41,28 @@ Description: `[cs_moment_liste etiquette="…"]` pose, dans une page, la liste d
 */
 if (!defined('ABSPATH')) { exit; }
 
+if (!function_exists('cs_moment_liste_cle')) {
+/**
+ * La clé du transient d'une liste : l'ENSEMBLE des slugs, triés, plus la langue.
+ *
+ * POURQUOI TRIÉS. La clé était calculée sur les slugs DANS L'ORDRE où la page les
+ * écrit (« giornate-europee-del-patrimonio, giornate-europee-del-patrimonio-it »). Or
+ * cette clé doit être reconstruite AILLEURS — `cs_mf_cles_cache`, dans
+ * cs-moment-fort.php, la vide quand une fiche change, à partir des étiquettes de la
+ * configuration des moments. Une clé qui dépend de l'ordre de frappe dans une page ne
+ * se reconstruit pas : il suffirait d'inverser les deux slugs dans le raccourci pour
+ * que la purge vide une clé morte et que la page garde sa liste périmée un quart
+ * d'heure. Triée, la clé ne dépend plus que de ce que la page DEMANDE, pas de la façon
+ * dont elle l'écrit. (Les transients posés sous l'ancienne clé expirent d'eux-mêmes,
+ * quinze minutes au plus.)
+ */
+function cs_moment_liste_cle($slugs, $lang) {
+    $slugs = array_values(array_unique(array_filter(array_map('trim', (array) $slugs))));
+    sort($slugs, SORT_STRING);
+    return 'cs_ml_' . md5(implode('|', $slugs) . '|' . $lang);
+}
+}
+
 if (!function_exists('cs_moment_liste_fiches')) {
 /**
  * Les fiches ENCORE DEVANT NOUS portant l'étiquette, dans la langue courante.
@@ -55,7 +77,7 @@ function cs_moment_liste_fiches($etiquette, $lang, $max = 60) {
     // le libellé italien est distinct du français. On ne prédit pas le suffixe, on
     // accepte les deux formes.
     $slugs = array_values(array_filter(array_map('trim', explode(',', (string) $etiquette))));
-    $cle = 'cs_ml_' . md5(implode('|', $slugs) . '|' . $lang);
+    $cle = cs_moment_liste_cle($slugs, $lang);
     $cache = get_transient($cle);
     if (is_array($cache)) { return $cache; }
 
