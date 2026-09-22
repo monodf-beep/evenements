@@ -104,8 +104,11 @@ verifier("les quatre fiches encore devant nous sont là", h.count("/preview/") >
          str(h.count("/preview/")))
 verifier("« sans objet » distingue le champ qui ne s'applique pas",
          h.count("sans objet") >= 3, str(h.count("sans objet")))
+# Depuis la refonte du 22/09 le taux vit DANS la cellule d'en-tête (« 82 % <em>2/3</em> »)
+# au lieu d'une rangée à part. Le fond ne change pas : un pourcentage ne part jamais sans
+# son dénominateur.
 verifier("un taux affiche son dénominateur, jamais un pourcentage seul",
-         "(3/4)" in h or "(2/3)" in h, "aucun couple (remplies/concernées)")
+         "<em>3/4</em>" in h or "<em>2/3</em>" in h, "aucun couple remplies/concernées")
 
 verifier("le passé revient quand on le demande explicitement",
          "Fête passée" in client.get("/tableur?vivant=0").get_data(as_text=True))
@@ -144,6 +147,24 @@ verifier("les pourcentages NE BOUGENT PAS quand on clique un chiffre",
          "le diagnostic se recalcule sur sa propre sélection")
 verifier("un champ inconnu dans « vide » est ignoré, sans planter",
          client.get("/tableur?vide=nimportequoi").status_code == 200)
+
+# --- L'en-tête ne bégaie plus (Franck, sur capture : « pas très visible ») ----------
+verifier("le groupe est annoncé une fois, à cheval sur ses colonnes",
+         'scope="colgroup"' in h and 'colspan=' in h)
+# « Lieu » ne doit apparaître qu'UNE fois : comme intitulé de colonne. Le groupe s'appelle
+# « Localisation » depuis le 22/09 — un groupe qui porte le nom d'une de ses colonnes se
+# lit « LIEU / Lieu » à l'en-tête à deux étages, ce que cette fixture a attrapé.
+verifier("le groupe ne porte pas le nom d'une de ses colonnes",
+         h.count(">Lieu<") <= 1, f'« Lieu » apparaît {h.count(">Lieu<")} fois')
+verifier("le groupe des lieux s'appelle « Localisation »", ">Localisation<" in h)
+verifier("le taux vit dans la cellule d'en-tête, plus dans une rangée à part",
+         'class="tb-taux"' in h and 'class="tb-taux-row"' not in h)
+verifier("le titre d'une fiche est borné à deux lignes, pas étalé sur six",
+         'class="tb-titre"' in h)
+verifier("le titre entier reste accessible en infobulle",
+         'class="tb-titre" href="/preview/' in h and 'title="' in h)
+verifier("les styles du tableur ne sont plus en dur dans le gabarit",
+         "<style>" not in h, "un <style> par page finit par diverger du back-office")
 
 # --- Les infos pratiques, de la base à l'écran --------------------------------------
 prat = client.get("/tableur?jeu=pratique")

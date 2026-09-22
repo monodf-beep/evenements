@@ -223,6 +223,28 @@ verifier("un extrait long est tronqué en cellule",
          len(tab.affiche({"ip_tarif": "x" * 200}, "ip_tarif")) < 200)
 verifier("mais pas à l'export", len(tab.exporte({"ip_tarif": "x" * 200}, "ip_tarif")) == 200)
 
+# --- L'en-tête à deux étages (refonte du 22/09) -------------------------------------
+# CE QU'IL GARDE : la première version répétait le nom du groupe SOUS chaque colonne, ce
+# qui donnait « LIEU · LIEU » et « DÉBUT · DATES » en travers de tout l'écran. Franck l'a
+# vu sur une capture avant moi.
+G = {"date_event_start": "Dates", "date_event_end": "Dates",
+     "lieu": "Localisation", "ville": "Localisation", "ip_tarif": "Infos pratiques"}
+verifier("les colonnes voisines d'un même groupe fusionnent en un seul en-tête",
+         tab.entetes_groupes(["date_event_start", "date_event_end", "lieu", "ville"], G)
+         == [("Dates", 2), ("Localisation", 2)],
+         str(tab.entetes_groupes(["date_event_start", "date_event_end", "lieu", "ville"], G)))
+verifier("la somme des portées couvre exactement les colonnes",
+         sum(n for _, n in tab.entetes_groupes(list(G), G)) == len(G))
+# Le cas qui doit PASSER, près de la frontière : deux colonnes du même groupe SÉPARÉES
+# par une autre ne se fusionnent pas. L'ordre appartient à l'opérateur ; le réordonner
+# pour faire de beaux blocs lui prendrait son tableau des mains.
+verifier("deux colonnes du même groupe, mais séparées, restent séparées",
+         tab.entetes_groupes(["lieu", "date_event_start", "ville"], G)
+         == [("Localisation", 1), ("Dates", 1), ("Localisation", 1)])
+verifier("une colonne sans groupe connu ne casse rien",
+         tab.entetes_groupes(["inconnue"], G) == [("", 1)])
+verifier("aucune colonne → aucun en-tête", tab.entetes_groupes([], G) == [])
+
 # --- Source unique des champs modifiables ------------------------------------------
 verifier("les champs modifiables sont tous au catalogue",
          set(tab.EDITABLES) <= {c for c, _, _ in tab.CATALOGUE},
