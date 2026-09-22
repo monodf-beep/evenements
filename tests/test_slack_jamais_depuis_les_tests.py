@@ -31,6 +31,22 @@ production : le canari de cette fixture est parti pour de vrai huit matins de su
 correctif est donc ICI, comme le fait déjà `tests/test_slack_digest.py` : rediriger
 `slack._ARCHIVE`/`slack._DIFFERES` vers un dossier jetable AVANT d'appeler `notify`.
 
+TROISIÈME TOUR, 2026-09-22 — cette fixture était ROUGE sur le VPS et VERTE partout
+ailleurs, ce qui aurait dû mettre la puce à l'oreille plus tôt. Elle exigeait que la
+vraie boîte du jour N'EXISTE PAS. Or `SLACK_DIGEST=1` est posé en tête du VRAI crontab :
+la production y range ses messages différés tous les jours, bien avant que la fixture ne
+tourne. La fixture accusait donc le décor.
+
+Reproduit à la main pour en être sûr plutôt que de le supposer : en recréant le fichier
+de la vraie boîte AVANT de lancer la fixture, l'assertion tombe — et le contenu du
+fichier est INCHANGÉ après coup. La protection tenait ; c'est la MESURE qui était
+fausse. Ce qu'il faut vérifier n'est pas que la vraie boîte est absente, mais qu'elle
+n'a pas BOUGÉ.
+
+Leçon, déjà écrite dans le journal du dépôt et re-payée ici : un compteur doit dire ce
+qu'il compte. « La boîte n'existe pas » et « la fixture n'a rien écrit dans la boîte »
+sont deux choses différentes, et seule la seconde intéresse quelqu'un.
+
 Lancer : .venv/bin/python -m tests.test_slack_jamais_depuis_les_tests
 """
 import os
@@ -45,7 +61,20 @@ from utils import slack  # noqa: E402
 
 # La VRAIE boîte du jour, capturée AVANT redirection — c'est elle qu'on veut prouver
 # intacte après coup, pas celle (jetable) sur laquelle les tests vont écrire.
+#
+# On relève son ÉTAT, pas sa présence : sur le VPS, `SLACK_DIGEST=1` tourne dans le vrai
+# crontab et la production y range ses messages différés chaque jour. Exiger l'absence du
+# fichier rendait cette fixture rouge en production et verte ailleurs — pendant que la
+# protection, elle, tenait (voir TROISIÈME TOUR ci-dessus).
 _VRAIE_BOITE_DU_JOUR = slack._fichier_du_jour()
+
+
+def _etat(chemin):
+    """Empreinte d'un fichier qui peut ne pas exister. None = absent."""
+    return chemin.read_bytes() if chemin.exists() else None
+
+
+_ETAT_AVANT = _etat(_VRAIE_BOITE_DU_JOUR)
 
 # Dossier JETABLE, comme tests/test_slack_digest.py : notify() écrit sur disque
 # (l'archive, et la boîte du jour si SLACK_DIGEST=1) même quand le webhook est coupé.
@@ -96,8 +125,23 @@ os.environ["SLACK_DIGEST"] = "1"
 envoye_digest = slack.notify("🚨 chaîne morte — CECI EST UNE FIXTURE (digest), rien ne doit partir")
 verifier("notify range le message dans la boîte JETABLE (comportement normal, isolé)",
          envoye_digest is True, str(envoye_digest))
-verifier("   et la VRAIE boîte du jour, elle, ne reçoit RIEN — c'est elle qui compte",
-         not _VRAIE_BOITE_DU_JOUR.exists(), str(_VRAIE_BOITE_DU_JOUR))
+verifier("   et la VRAIE boîte du jour est INCHANGÉE — c'est elle qui compte",
+         _etat(_VRAIE_BOITE_DU_JOUR) == _ETAT_AVANT,
+         "{} a changé pendant la fixture".format(_VRAIE_BOITE_DU_JOUR))
+
+# Contre-épreuve du détecteur lui-même : un témoin qui n'a jamais été rouge ne prouve
+# rien. On vérifie sur un fichier jetable que `_etat` distingue bien les trois états
+# qui nous intéressent — absent, présent, modifié. Sans ça, un `_etat` qui rendrait
+# toujours None passerait au vert en ne protégeant plus personne.
+_cobaye = Path(tempfile.mkdtemp()) / "boite.jsonl"
+_absent = _etat(_cobaye)
+_cobaye.write_text('{"texte":"un"}\n', encoding="utf-8")
+_present = _etat(_cobaye)
+_cobaye.write_text('{"texte":"un"}\n{"texte":"deux"}\n', encoding="utf-8")
+_modifie = _etat(_cobaye)
+verifier("   (contre-épreuve) le détecteur distingue absent / présent / modifié",
+         _absent is None and _present is not None and _present != _modifie,
+         "{!r} {!r} {!r}".format(_absent, _present, _modifie))
 os.environ.pop("SLACK_DIGEST", None)
 
 # L'archive locale, elle, doit garder la trace : un message non parti est justement
