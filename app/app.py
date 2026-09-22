@@ -152,7 +152,7 @@ _conn.execute("""
         error TEXT
     )
 """)
-# Légende Instagram réécrite par LLM (voix Enrico Nos Alpes + anti-signes-IA), mise en
+# Légende Instagram réécrite par LLM (voix de référence + anti-signes-IA), mise en
 # cache : générée à la demande (bouton, payant), jamais recalculée à chaque page vue.
 for _col in ("social_caption_fr", "social_caption_it"):
     try:
@@ -3694,12 +3694,12 @@ def reseaux():
 
     n_auto = _auto_rewrite_captions(by_terr)
     if n_auto:
-        flash(f"🪄 {n_auto} légende(s) réécrite(s) automatiquement (voix Enrico) 💶.", "ok")
+        flash(f"🪄 {n_auto} légende(s) réécrite(s) automatiquement (voix de référence) 💶.", "ok")
 
     def _pack(e, langs):
         e = dict(e)
         e["_img"] = event_image(e)
-        # Légende réécrite (Enrico + humanisée) si déjà générée pour cet événement,
+        # Légende réécrite (voix de référence + humanisée) si déjà générée pour cet événement,
         # sinon la version gratuite auto-générée (cf. utils.social.caption_ai / caption).
         e["_caps"] = {lg: e.get(f"social_caption_{lg}") or social_mod.caption(e, lg)
                      for lg in langs}
@@ -3727,7 +3727,7 @@ def reseaux():
 @app.route("/reseaux/rewrite/<int:event_id>", methods=["POST"])
 @require_auth
 def reseaux_rewrite(event_id: int):
-    """Réécrit la légende via LLM (voix Enrico Nos Alpes + anti-signes-IA, cf.
+    """Réécrit la légende via LLM (voix de référence + anti-signes-IA, cf.
     utils.social.caption_ai) pour UN événement, À LA DEMANDE — coût maîtrisé, jamais
     automatique. Le résultat est mis en cache (events_raw.social_caption_<lang>)."""
     import anthropic
@@ -3765,7 +3765,7 @@ def reseaux_rewrite(event_id: int):
                 (text, event_id))
     conn.commit()
     conn.close()
-    flash(f"✨ « {title} » — légende réécrite ({lang.upper()}, voix Enrico) 💶.", "ok")
+    flash(f"✨ « {title} » — légende réécrite ({lang.upper()}, voix de référence) 💶.", "ok")
     return redirect(url_for("reseaux") + f"#e{event_id}")
 
 

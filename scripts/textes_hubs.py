@@ -390,7 +390,7 @@ def controles(raw: str, lang: str, cle: str, dos: dict, sources: list[str],
         ennuis.append(f"{nu.count(chr(8212))} tiret(s) cadratin — la charte les interdit")
     # LES LISTES NE SONT PAS INTERDITES SUR L'AGENDA, et mon premier motif de refus
     # affirmait le contraire. Surcharge explicite de la charte Agenda Sabauda, relue le
-    # 19/09/2026 : « Contrairement à la voix commune Enrico (qui proscrit les listes à
+    # 19/09/2026 : « Contrairement à la voix commune de référence (qui proscrit les listes à
     # puces), l'Agenda AUTORISE et RECOMMANDE les listes pour les faits structurés :
     # programmation, line-up, concerts du jour, horaires, tarifs. »
     #
