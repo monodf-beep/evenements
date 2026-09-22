@@ -280,7 +280,24 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # seul module casse tous les autres sur une base neuve.
                       ("wp_gel_at", "TEXT"),
                       ("wp_gel_champs", "TEXT"),
-                      ("wp_gel_motif", "TEXT")):
+                      ("wp_gel_motif", "TEXT"),
+                      # RATTRAPAGE DU 2026-09-22. La leçon ci-dessus était écrite ;
+                      # six colonnes y avaient quand même échappé, chacune créée par
+                      # un ALTER TABLE isolé dans le seul script qui l'écrit. Trouvé
+                      # en montant une fixture du back-office : `multi_lieux` manquait
+                      # à une base neuve alors qu'`app.py` l'interroge SANS CONDITION
+                      # (incomplete_clause), donc /a-completer plantait dessus. Rien
+                      # n'était cassé en production — le cron de 8h48 pose la colonne
+                      # depuis longtemps — mais toute fixture partait d'une base que
+                      # la production n'a pas. Les ALTER d'origine restent en place et
+                      # deviennent de simples no-op ; c'est ICI que ça fait foi, et
+                      # tests/test_colonnes_declarees.py le vérifie désormais tout seul.
+                      ("multi_lieux", "INTEGER DEFAULT 0"),        # completer_depuis_mail
+                      ("mail_corps", "TEXT"),                      # gmail_collect
+                      ("organisateur_byline", "TEXT"),             # purge_bylines
+                      ("seo_pushed_at", "TEXT"),                   # seo_batch
+                      ("unmerge_data", "TEXT"),                    # dedupe
+                      ("worth_trip", "INTEGER DEFAULT 0")):        # evaluator / home
         try:
             conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:

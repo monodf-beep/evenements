@@ -17,10 +17,9 @@ CE QU'ELLE EXIGE, et pourquoi :
     promesse de /complete (« on n'efface rien par mégarde ») ; la vérifier ici évite de
     découvrir l'inverse sur une fiche en ligne.
 
-BASE JETABLE, jamais data/events.db (CLAUDE.md). À noter : `init_db` ne crée PAS la
-colonne `multi_lieux` — seule une migration ad-hoc de `scripts/completer_depuis_mail.py`
-la pose. La fixture la crée donc elle-même, sinon elle testerait une base que la
-production n'a pas.
+BASE JETABLE, jamais data/events.db (CLAUDE.md). Cette fixture a d'ailleurs révélé que `init_db` ne créait
+PAS `multi_lieux` — elle devait la poser elle-même pour tourner. Corrigé le 22/09 (voir
+`tests/test_colonnes_declarees.py`), le contournement a donc disparu d'ici.
 
 Lancer : .venv/bin/python -m tests.test_tableur_route
 """
@@ -41,7 +40,6 @@ from scripts.scraper_events import init_db  # noqa: E402
 
 conn = sqlite3.connect(TMP)
 init_db(conn)
-conn.execute("ALTER TABLE events_raw ADD COLUMN multi_lieux INTEGER DEFAULT 0")
 
 
 def ins(**kw):
