@@ -29,8 +29,25 @@ INTERDITS = [
     ("royaume de Sardaigne", "les États de Savoie"),
     ("Venise des Alpes", "nommer la ville, sans remplacement"),
 ]
-ITALIENS = ["città", "però", "anche", "questo", "della", "degli", "sono", "perché"]
-FRANCAIS = ["cette", "aujourd'hui", "semaine ", "week-end", "ville d", "les "]
+ITALIENS = [
+    ("città", r"\bcittà", re.I),
+    ("però", r"\bperò\b", re.I),
+    ("anche", r"\banche\b", re.I),
+    ("questo", r"\bquesto\b", re.I),
+    ("della", r"\bdella\b", re.I),
+    ("degli", r"\bdegli\b", re.I),
+    ("sono", r"\bsono\b", re.I),
+    ("perché", r"\bperché\b", re.I),
+]
+FRANCAIS = [
+    ("cette", r"\bcette\b", re.I),
+    ("aujourd'hui", r"\baujourd'hui\b", re.I),
+    ("semaine", r"\bsemaine\b", re.I),
+    ("week-end", r"\bweek-end\b", re.I),
+    ("ville de", r"\bville d", re.I),
+    # sans re.I : « les Charmettes » est un nom propre, « les musei » une faute.
+    ("les + minuscule", r"\bles [a-zà-ÿ]", 0),
+]
 
 
 # --- Le PÉRISSABLE -----------------------------------------------------------
@@ -129,7 +146,7 @@ def controler(chemin, cle, langue, mots_vises):
           not trouves)
 
     autre = ITALIENS if langue == "fr" else FRANCAIS
-    contamine = [m for m in autre if re.search(r"\b" + re.escape(m), texte, re.I)]
+    contamine = [lib for lib, motif, dr in autre if re.search(motif, texte, dr)]
     ligne("contamination de l'autre langue",
           "aucune" if not contamine else contamine, not contamine)
 
