@@ -20,9 +20,16 @@ Description: `[cs_moment_liste etiquette="…"]` pose, dans une page, la liste d
   la fait exister hors saison, donc qui lui permet d'accumuler quoi que ce soit d'une
   édition à l'autre.
 
-  D'OÙ LE COMPORTEMENT HORS SAISON : liste vide => une phrase qui dit que l'édition est
-  passée et quand revient la suivante, jamais une page blanche ni un silence. Le texte
-  de cette phrase se règle par attribut, parce qu'il est éditorial.
+  D'OÙ LE COMPORTEMENT LISTE VIDE : une phrase, jamais une page blanche ni un silence.
+
+  ⚠️ ET DEUX PHRASES, PAS UNE. Constaté EN LIGNE le 22/09, quelques minutes après la
+  première pose : la page annonçait « l'édition 2026 s'est tenue les 26 et 27 septembre »
+  alors que l'événement avait lieu quatre jours plus tard. La liste était vide, mais pas
+  parce que la saison était passée — parce que l'étiquette n'était pas encore posée sur
+  les fiches. Une liste vide a DEUX causes et elles ne se disent pas pareil. Le raccourci
+  compare donc la date du jour à la fenêtre déclarée (`debut` / `fin`) et choisit entre
+  `avant` et `apres`. Sans fenêtre, il retombe sur `vide`, qui doit alors être vrai dans
+  les deux cas.
 
   GRAMMAIRE DES CARTES : celles du site, pas de nouvelles. Les classes `cs-card-*`
   portent déjà la vignette en 4/3, le sur-titre, le titre et la commune (relevé dans le
@@ -153,14 +160,22 @@ function cs_moment_liste_css() {
 /**
  * `[cs_moment_liste etiquette="…" vide="…" total="%d rendez-vous"]`
  *
- * `etiquette` : le SLUG du terme post_tag, dans la langue de la page. Il est posé par le
- * pipeline (config/moments_forts.json), jamais à la main.
- * `vide`      : la phrase à afficher hors saison. Éditoriale, donc réglable ici.
- * `total`     : le libellé du compte, avec %d. Vide = pas de compte affiché.
+ * `etiquette`     : le SLUG du terme post_tag, dans la langue de la page. Il est posé par
+ *                   le pipeline (config/moments_forts.json), jamais à la main.
+ * `debut` / `fin`  : la fenêtre de l'édition, en Y-m-d. Elle ne filtre RIEN : elle sert
+ *                   uniquement à choisir la phrase quand la liste est vide.
+ * `avant` / `apres`: les deux phrases, éditoriales. Une liste vide avant l'événement ne
+ *                   se dit pas comme une liste vide après.
+ * `vide`           : le repli quand aucune fenêtre n'est déclarée.
+ * `total`          : le libellé du compte, avec %d. Vide = pas de compte affiché.
  */
 add_shortcode('cs_moment_liste', function ($atts) {
     $a = shortcode_atts(array(
         'etiquette' => '',
+        'debut'     => '',
+        'fin'       => '',
+        'avant'     => '',
+        'apres'     => '',
         'vide'      => '',
         'total'     => '',
     ), $atts, 'cs_moment_liste');
@@ -174,10 +189,25 @@ add_shortcode('cs_moment_liste', function ($atts) {
     if (!$fiches) {
         // Le zéro dit d'où il vient, et la page reste lisible : elle est vide onze mois
         // sur douze, et c'est justement dans ces mois-là que Google la relit.
-        $mot = $a['vide'] ? '<p class="cs-ml__vide">' . esc_html($a['vide']) . '</p>' : '';
+        $aujourdhui = current_time('Y-m-d');
+        $quand = 'sans fenêtre';
+        $texte = $a['vide'];
+        if ($a['fin'] && $aujourdhui > $a['fin']) {
+            $quand = 'après';
+            if ($a['apres']) { $texte = $a['apres']; }
+        } elseif ($a['debut'] && $aujourdhui < $a['debut']) {
+            $quand = 'avant';
+            if ($a['avant']) { $texte = $a['avant']; }
+        } elseif ($a['debut'] && $a['fin']) {
+            // Pendant la fenêtre et rien à montrer : ni « ça arrive » ni « c'était » ne
+            // sont vrais. On dit ce qui est, et le commentaire porte la cause technique.
+            $quand = 'pendant';
+            if ($a['avant']) { $texte = $a['avant']; }
+        }
+        $mot = $texte ? '<p class="cs-ml__vide">' . esc_html($texte) . '</p>' : '';
         return cs_moment_liste_css() . '<div class="cs-ml">' . $mot
              . '<!-- cs-moment-liste : aucune fiche à venir pour « ' . esc_html($a['etiquette'])
-             . ' » [' . esc_html($lang) . '] -->' . '</div>';
+             . ' » [' . esc_html($lang) . '] — ' . esc_html($quand) . ' la fenêtre -->' . '</div>';
     }
 
     $h = cs_moment_liste_css() . '<div class="cs-ml">';

@@ -15,7 +15,10 @@ Trois volets, chacun avec sa contre-épreuve :
   2. LA BORNE. Elle porte sur la date de FIN, pas de début : une exposition commencée
      en mai et ouverte aujourd'hui compte (règle 5 du CLAUDE.md). Contre-épreuve :
      une fiche terminée hier ne compte pas.
-  3. LE COMPTEUR. Il annonce les fiches DE L'AGENDA encore à venir, et son libellé
+  3. LES DEUX CAUSES D'UNE LISTE VIDE. Avant l'édition, la page ne doit PAS dire
+     qu'elle est passée. Constaté en ligne le 22/09 : elle annonçait « l'édition 2026
+     s'est tenue les 26 et 27 septembre » quatre jours avant l'événement.
+  4. LE COMPTEUR. Il annonce les fiches DE L'AGENDA encore à venir, et son libellé
      est fourni par la page — deux compteurs qui portent le même nom se contrediront
      un jour (règle 6).
 
@@ -182,6 +185,31 @@ def main():
         echec("étiquette absente : rien de visible ne doit sortir")
     else:
         print("  ok  étiquette absente : un commentaire, rien de plus")
+
+    # --- 3. LES DEUX CAUSES D'UNE LISTE VIDE --------------------------------
+    # Le harnais est au 24 septembre ; la fenêtre déclarée est le 26-27.
+    fen = dict(atts)
+    fen.update({"debut": "2026-09-26", "fin": "2026-09-27",
+                "avant": "Le programme arrive.", "apres": "L edition est passee."})
+    av = rendre([], "fr", fen, tmp)
+    if "L edition est passee." in av:
+        echec("avant l'édition : la page ne doit pas dire qu'elle est passée")
+    elif "Le programme arrive." not in av:
+        echec("avant l'édition : la phrase « avant » doit s'afficher")
+    elif "avant la fenêtre" not in av:
+        echec("avant l'édition : le commentaire doit situer la date par rapport à la fenêtre")
+    else:
+        print("  ok  avant l'édition : « Le programme arrive. », pas « passée »")
+
+    # CONTRE-ÉPREUVE : une fenêtre déjà close doit, elle, donner la phrase « après ».
+    close = dict(fen); close.update({"debut": "2026-08-01", "fin": "2026-08-02"})
+    ap = rendre([], "fr", close, tmp)
+    if "L edition est passee." not in ap:
+        echec("après l'édition : la phrase « après » doit s'afficher")
+    elif "après la fenêtre" not in ap:
+        echec("après l'édition : le commentaire doit le dire")
+    else:
+        print("  ok  contre-épreuve : fenêtre close, « L'édition est passée »")
 
     shutil.rmtree(tmp, ignore_errors=True)
 
