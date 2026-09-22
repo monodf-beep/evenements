@@ -1,10 +1,11 @@
 # Jev, nœud par nœud — et la question de la complétion
 
-> ⛔ **Dossier refermé le 2026-09-22 après mesure** — voir le verdict en tête de
-> `docs/TYPESAFE_JEV.md`. 91 % de la facture est hors de portée de Jev par construction ;
-> l'économie plausible est de ~11 $/mois sur 157 $. Le passage nœud par nœud ci-dessous
-> reste juste et utile pour ce qu'il dit du DÉPÔT (où sont les détecteurs fragiles, ce
-> que la complétion demande vraiment), mais sa conclusion outillée ne tient plus.
+> ⚠️ **À lire avec le verdict en deux temps de `docs/TYPESAFE_JEV.md`.** Comme
+> SUBSTITUTION à la facture, non : 91 % est hors de portée par construction. Mais la
+> substitution n'était pas la question — c'est la MOISSON qui est le sujet, et ce
+> passage nœud par nœud ne la regardait pas assez : il classait `scraper_events.py` en
+> « CODE, format connu », ce qui est vrai des 92 flux RSS et passe à côté de tout ce
+> qu'on ne moissonne pas FAUTE de flux.
 
 
 

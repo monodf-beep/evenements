@@ -1,45 +1,79 @@
 # TypeSafe / Jev — ce que c'est, et où ça sert ICI
 
-> ## ⛔ VERDICT DU 2026-09-22, APRÈS MESURE : on n'y va pas.
+> ## VERDICT DU 2026-09-22, EN DEUX TEMPS — et le second corrige le premier
 >
-> Ce rapport posait trois mesures avant toute décision, et disait : « si l'évaluation ne
-> pèse rien, ce rapport se referme ici ». `scripts/audit_couts --jours 30` a répondu, et
-> c'est la réponse qui referme.
+> ### 1. Comme SUBSTITUTION à la facture actuelle : non, et c'est net
 >
-> **157,44 $ sur 30 jours, pour 320 fiches mises en ligne — 0,49 $ la fiche.** Et la
-> répartition tue le dossier :
+> `audit_couts --jours 30` : **157,44 $ sur 30 jours pour 320 fiches, 0,49 $ la fiche.**
 >
 > | | coût | part |
 > |---|---|---|
-> | Hors de portée de Jev **par construction** (génération de texte, recherche web, vision) | **143,46 $** | **91,1 %** |
+> | Hors de portée de Jev par construction (rédaction, recherche web, vision) | **143,46 $** | **91,1 %** |
 > | Atteignable par de la décision typée | 12,33 $ | 7,8 % |
-> | `datation` — écartée, les comparaisons de dates sont un point faible annoncé de Jev | 1,65 $ | 1,0 % |
+> | `datation` — écartée, point faible annoncé du modèle | 1,65 $ | 1,0 % |
 >
-> Les deux premiers postes à eux seuls font 71 % de la facture : **l'enrichissement
-> (77,84 $, rédaction) et la recherche de page officielle (34,76 $, recherche web)**. Jev
-> ne sait faire ni l'un ni l'autre. Ce n'est pas une question de réglage : il ne génère
-> pas de texte et ne navigue pas.
+> Économie plausible en remplaçant tout l'atteignable : **~11 $/mois**, 7 % de la
+> facture. Ça ne paie pas une dépendance de plus.
 >
-> Économie plausible en remplaçant TOUT ce qui est atteignable : **environ 11 $ par
-> mois**, soit 7 % de la facture. Le coût par fiche passerait de 0,492 $ à 0,457 $.
+> ### 2. Mais la substitution n'était PAS la question — correction de Franck
 >
-> **Onze dollars par mois ne paient pas une clé d'API de plus, une dépendance de plus, un
-> mode de panne de plus, un test multilingue jamais fait — et un risque sur l'évaluateur,
-> c'est-à-dire sur le nœud qui décide ce qui entre sur le site, dans un dépôt sans
-> environnement de test.**
+> « C'est pas là-dedans qu'on attend typesafe.ai. C'est sur du scraping, c'est de faire
+> en sorte que les données soient identifiées. Tu es parti sur du LLM, alors que Jev,
+> c'est pas du LLM. »
 >
-> Ce qui reste vrai du rapport ci-dessous, et qui ne dépend pas de TypeSafe : les
-> détecteurs à expressions régulières sont fragiles (`temps_recit`, `eventness`,
-> `triage`), et la file d'audit mélange encore ce qu'un humain peut faire et ce qu'il ne
-> peut pas. Ces deux chantiers valent par eux-mêmes ; ils n'avaient pas besoin d'un
-> modèle pour être posés.
+> Il a raison, et l'erreur est de cadrage. J'ai répondu à « que peut-il REMPLACER ? »
+> quand la question est « **que ne fait-on pas du tout parce que ce serait trop cher ?** »
+> Les 91 % restent exacts comme chiffre de substitution, et sans objet pour cette
+> question-là.
 >
-> **Et la mesure désigne le vrai sujet, qu'aucun de ces deux rapports ne regardait :**
-> `site_officiel_recherche` coûte **0,25 $ l'appel**, 139 appels en 30 jours — pendant
-> que **212 fiches vivantes n'ont toujours pas de page officielle**. On paie un quart de
-> dollar par recherche et le stock ne descend pas. Le taux de succès de ce poste n'a
-> jamais été mesuré. C'est là qu'il faut regarder, pas du côté d'un modèle à
-> 0,042 $ le million de jetons.
+> **LA MESURE QUI COMPTE, faite le même jour : `config/sources.txt` déclare 92 sources.
+> LES 92 SONT DES FLUX RSS.** `scraper_events.py` l'annonce dès sa première ligne —
+> « collecte depuis les sources RSS ». **Un lieu sans flux est invisible pour ce dépôt.**
+> Ce n'est pas un réglage, c'est une limite structurelle, et elle se voit dans la
+> couverture :
+>
+> | zone | sources |
+> |---|---|
+> | Novara | **0** |
+> | Asti | **1** |
+> | Vercelli | 1 |
+> | Biella · Verbano-Cusio-Ossola | 2 |
+> | Alessandria | 3 |
+> | Haute-Savoie (tout le département) | **5** |
+>
+> Pourquoi si peu ? Parce qu'il faut un flux. Les sites en JavaScript, les Wix, la
+> plupart des *comuni* italiens n'en publient pas. On ne les rate pas par négligence :
+> on ne sait pas les lire.
+>
+> **Ce que coûterait de lire 100 pages d'agenda par jour** (≈ 5 000 jetons de texte
+> visible chacune, soit 15 M jetons/mois) :
+>
+> | | par mois |
+> |---|---|
+> | **Jev** (0,042 $/Mtok, sortie gratuite) | **0,63 $** |
+> | Haiku | 30,00 $ |
+> | Sonnet | 90,00 $ |
+> | Le modèle qualité, au tarif réel constaté (0,2455 $/appel) | **736,50 $** |
+>
+> Voilà l'argument, en chiffres : **soixante-trois centimes par mois contre sept cent
+> trente-six dollars.** Ce n'est pas une économie de 7 %, c'est une capacité qu'on n'a
+> pas et qu'on ne peut pas s'offrir autrement. Les cookbooks qui portent ce motif
+> existent déjà — `semantic_find` (218 lignes indexées en UNE requête, `Choice` sur
+> l'identifiant de ligne) et `pre_parsed_value_extraction` (une regex ramène tous les
+> candidats, `Choice` désigne le bon, avec une option « aucun »).
+>
+> ### Ce qui reste vrai, et ce qui reste à mesurer
+>
+> Jev ne génère toujours pas de texte, ne navigue pas, n'est pas multimodal : la
+> rédaction, la traduction, les images et la recherche web restent au LLM, et c'est bien
+> 91 % de la facture ACTUELLE. Le dossier ne se rouvre pas sur ces postes-là.
+>
+> Il se rouvre sur la MOISSON, et il y manque encore les deux mêmes mesures qu'au
+> premier jour : **est-ce qu'il lit le français et l'italien** (la documentation n'en dit
+> toujours rien), et **est-ce qu'il tient sur une page d'agenda réelle** — longue,
+> bruyante, avec trente blocs dont cinq sont des événements. La page des limites connues
+> range justement « contexte volumineux » parmi ses points faibles. Ces deux réponses
+> tiennent dans un banc d'essai hors ligne sur dix pages sans flux.
 
 
 
