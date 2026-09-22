@@ -54,6 +54,7 @@
         <a href="/audit-visuel" class="{{ 'on' if active=='audit_visuel' }}" {% if active=='audit_visuel' %}aria-current="page"{% endif %}><span aria-hidden="true">🖼️</span> Audit visuel
           {% if nav.audit %}<span class="nav-badge">{{ nav.audit }}</span>{% endif %}</a>
         <a href="/events" class="{{ 'on' if active=='events' }}" {% if active=='events' %}aria-current="page"{% endif %}><span aria-hidden="true">📥</span> Tous les événements</a>
+        <a href="/tableur" class="{{ 'on' if active=='tableur' }}" {% if active=='tableur' %}aria-current="page"{% endif %}><span aria-hidden="true">🧮</span> Tableur</a>
       </details>
 
       <details {% if active in _analyse %}open{% endif %}>
