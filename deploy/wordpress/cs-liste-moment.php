@@ -49,13 +49,20 @@ if (!function_exists('cs_moment_liste_fiches')) {
  * de mai à septembre compte tout l'été (règle 5 du CLAUDE.md). Pour un moment fort de
  * deux jours ça ne change rien ; pour Noël ou un festival d'été, si.
  */
-function cs_moment_liste_fiches($etiquette, $lang, $max = 60) {
+function cs_moment_liste_fiches($etiquette, $lang, $max = 60, $territoire = '') {
     // `etiquette` peut nommer PLUSIEURS slugs, séparés par des virgules. Mesuré en
     // ligne le 22/09 : Polylang crée le terme italien avec un suffixe `-it` même quand
     // le libellé italien est distinct du français. On ne prédit pas le suffixe, on
     // accepte les deux formes.
     $slugs = array_values(array_filter(array_map('trim', explode(',', (string) $etiquette))));
-    $cle = 'cs_ml_' . md5(implode('|', $slugs) . '|' . $lang);
+    // TERRITOIRE, facultatif. Un moment fort peut couvrir plusieurs territoires sous UNE
+    // étiquette : les Journées du patrimoine portent la même en Piémont et en Vallée
+    // d'Aoste. Sans ce filtre, la page valdôtaine aurait listé les 35 fiches piémontaises
+    // (mesuré le 22/09 : 35 fiches étiquetées, toutes en Piémont). Le slug est celui du
+    // TERME de la taxonomie `territoire`, donc dans la langue de la page
+    // (vallee-d-aoste / valle-d-aosta). Absent : la clé de cache reste celle d'avant.
+    $territoire = sanitize_title((string) $territoire);
+    $cle = 'cs_ml_' . md5(implode('|', $slugs) . '|' . $lang . ($territoire ? '|' . $territoire : ''));
     $cache = get_transient($cle);
     if (is_array($cache)) { return $cache; }
 
@@ -65,9 +72,11 @@ function cs_moment_liste_fiches($etiquette, $lang, $max = 60) {
         'posts_per_page'      => $max,
         'ignore_sticky_posts' => true,
         'lang'                => $lang,
-        'tax_query'           => array(array(
-            'taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => $slugs,
-        )),
+        'tax_query'           => $territoire
+            ? array('relation' => 'AND',
+                    array('taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => $slugs),
+                    array('taxonomy' => 'territoire', 'field' => 'slug', 'terms' => $territoire))
+            : array(array('taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => $slugs)),
         'meta_query'          => array('fin' => array(
             'key'     => '_EventEndDate',
             'value'   => current_time('Y-m-d') . ' 00:00:00',
@@ -183,13 +192,14 @@ add_shortcode('cs_moment_liste', function ($atts) {
         'apres'     => '',
         'vide'      => '',
         'total'     => '',
+        'territoire' => '',
     ), $atts, 'cs_moment_liste');
 
     if (!$a['etiquette']) {
         return '<!-- cs-moment-liste : pas d\'étiquette déclarée -->';
     }
     $lang = function_exists('pll_current_language') ? pll_current_language() : 'fr';
-    $fiches = cs_moment_liste_fiches($a['etiquette'], $lang);
+    $fiches = cs_moment_liste_fiches($a['etiquette'], $lang, 60, $a['territoire']);
 
     if (!$fiches) {
         // Le zéro dit d'où il vient, et la page reste lisible : elle est vide onze mois
