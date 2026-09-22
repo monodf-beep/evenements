@@ -464,6 +464,41 @@ function cs_mf_rendu_voisins($moment, $volets, $lang) {
 }
 }
 
+if (!function_exists('cs_mf_page_existe')) {
+/**
+ * La page de destination existe-t-elle VRAIMENT ?
+ *
+ * POURQUOI CE GARDE-FOU. Une strate qui envoie sur un 404 est pire que pas de strate :
+ * elle promet un programme et rend une page d'erreur, à la une de la home, le jour où
+ * l'événement a lieu. Et la séquence qui y mène est facile — le mu-plugin déployé avant
+ * que les pages dédiées soient écrites, puis l'étiquette posée sur les fiches, et la
+ * bande s'allume toute seule sur une adresse vide.
+ *
+ * C'est la règle 3 du CLAUDE.md prise à l'envers : au lieu d'un état qui gare une fiche
+ * sans personne pour la rouvrir, un état qui se ROUVRE tout seul. Le jour où la page est
+ * publiée, la strate apparaît sans que personne touche à ce fichier.
+ *
+ * Une adresse d'un AUTRE domaine n'est pas vérifiable ici et passe : on ne bloque que ce
+ * qu'on sait juger. Cache court : une page qu'on vient de publier doit s'allumer vite.
+ */
+function cs_mf_page_existe($url) {
+    $url = trim((string) $url);
+    if ($url === '') { return false; }
+    $hote = parse_url($url, PHP_URL_HOST);
+    $nous = parse_url(home_url('/'), PHP_URL_HOST);
+    if ($hote && $nous && strtolower($hote) !== strtolower($nous)) {
+        return true;   // hors du site : non vérifiable, donc non bloquant
+    }
+    $cle = 'cs_mf_page_' . md5($url);
+    $cache = get_transient($cle);
+    if ($cache !== false) { return $cache === '1'; }
+    $id = url_to_postid($url);
+    $ok = ($id > 0 && get_post_status($id) === 'publish');
+    set_transient($cle, $ok ? '1' : '0', $ok ? HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS);
+    return $ok;
+}
+}
+
 if (!function_exists('cs_mf_html')) {
 /** La strate, ou un commentaire qui DIT pourquoi elle ne s'affiche pas. */
 function cs_mf_html($moment, $lang, $terr_slug) {
@@ -472,6 +507,10 @@ function cs_mf_html($moment, $lang, $terr_slug) {
 
     if ($trouve) {
         list($i, $volet) = $trouve;
+        if (!cs_mf_page_existe(isset($volet['page'][$lang]) ? $volet['page'][$lang] : '')) {
+            return '<!-- cs-moment-fort : ' . esc_html($moment['slug']) . '/' . esc_html($terr_slug)
+                 . ' [' . esc_html($lang) . '] la page de destination n\'existe pas encore — strate masquée -->';
+        }
         $data = cs_mf_evenements($moment, $volet, $lang);
         if ($data['total'] < $seuil) {
             return '<!-- cs-moment-fort : ' . esc_html($moment['slug']) . '/' . esc_html($terr_slug)
@@ -483,13 +522,23 @@ function cs_mf_html($moment, $lang, $terr_slug) {
     } else {
         // Garde-fou 4 : une seule strate, à deux colonnes au plus — jamais deux bandes.
         $voisins = array();
+        $traduits = 0;   // volets qui EXISTENT dans cette langue, page mise à part
         foreach ($moment['volets'] as $v) {
-            if (isset($v['nom'][$lang]) && isset($v['page'][$lang])) { $voisins[] = $v; }
+            if (!isset($v['nom'][$lang]) || !isset($v['page'][$lang])) { continue; }
+            $traduits++;
+            // Un volet dont la page n'existe pas encore n'est pas montré : mieux vaut
+            // une bande à une colonne qu'un lien vers un 404.
+            if (!cs_mf_page_existe($v['page'][$lang])) { continue; }
+            $voisins[] = $v;
             if (count($voisins) >= 2) { break; }
         }
         if (!$voisins) {
-            return '<!-- cs-moment-fort : ' . esc_html($moment['slug']) . ' — aucun volet pour la langue '
-                 . esc_html($lang) . ' -->';
+            // Le zéro doit dire d'où il vient, et les deux causes ne se corrigent pas
+            // de la même façon : traduire la configuration, ou publier la page.
+            $cause = $traduits
+                ? 'aucune page de destination publiée (' . $traduits . ' volet(s) traduits)'
+                : 'aucun volet pour la langue ' . $lang;
+            return '<!-- cs-moment-fort : ' . esc_html($moment['slug']) . ' — ' . esc_html($cause) . ' -->';
         }
         $mise = 'voisins';
         $corps = cs_mf_rendu_voisins($moment, $voisins, $lang);

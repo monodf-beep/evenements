@@ -113,6 +113,7 @@ define('MINUTE_IN_SECONDS', 60);
 $GLOBALS['cs_test_fiches'] = json_decode(file_get_contents($argv[1]), true);
 $GLOBALS['cs_test_lang']   = $argv[2];
 $GLOBALS['cs_test_terr']   = $argv[3];
+$GLOBALS['cs_test_pages']  = isset($argv[4]) ? $argv[4] : 'toutes';
 
 function current_time($f) { return $f === 'Y-m-d' ? '2026-09-24' : '2026-09-24 10:00:00'; }
 function esc_html($s) { return htmlspecialchars($s, ENT_QUOTES); }
@@ -126,6 +127,14 @@ function is_admin() { return false; }
 function is_page($x) { return true; }
 function pll_current_language() { return $GLOBALS['cs_test_lang']; }
 function cs_territoire_actif() { return $GLOBALS['cs_test_terr']; }
+function home_url($p = '/') { return 'https://agendasabauda.eu' . $p; }
+// Les pages existantes sont passées en 4e argument : « toutes » ou une liste d'URL.
+function url_to_postid($url) {
+    $p = $GLOBALS['cs_test_pages'];
+    if ($p === 'toutes') { return 1; }
+    return in_array($url, explode('|', $p), true) ? 1 : 0;
+}
+function get_post_status($id) { return 'publish'; }
 
 class WP_Query {
     public $posts = array();
@@ -157,11 +166,11 @@ echo cs_mf_html($m, $GLOBALS['cs_test_lang'], $GLOBALS['cs_test_terr']);
 """
 
 
-def rendre(fiches, lang, terr, tmp):
+def rendre(fiches, lang, terr, tmp, pages="toutes"):
     import json
     f_json = tmp / "fiches.json"
     f_json.write_text(json.dumps(fiches), encoding="utf-8")
-    r = subprocess.run([shutil.which("php"), str(tmp / "harness.php"), str(f_json), lang, terr],
+    r = subprocess.run([shutil.which("php"), str(tmp / "harness.php"), str(f_json), lang, terr, pages],
                        capture_output=True, text=True)
     if r.returncode != 0:
         echec("le harnais PHP a échoué : " + (r.stderr or "")[:400])
@@ -255,6 +264,37 @@ def test_rendu():
     for mot in ("pas encore", "incomplet", "arrive"):
         if mot in html_boiteux.lower():
             echec("jour maigre : la strate parle de notre propre retard (« %s »)" % mot)
+
+    # --- 5. LA PAGE DE DESTINATION -------------------------------------------
+    # Une strate qui envoie sur un 404 est pire que pas de strate. Tant que la page
+    # dédiée n'est pas publiée, la bande se tait ; le jour où elle l'est, la bande
+    # s'allume sans que personne touche au code.
+    html_sans_page = rendre(jeu, "fr", "piemont", tmp, pages="aucune")
+    if "<section" in html_sans_page:
+        echec("page absente : la strate ne doit pas s'afficher vers un 404")
+    elif "n'existe pas encore" not in html_sans_page:
+        echec("page absente : le commentaire doit dire pourquoi la strate se tait")
+    else:
+        print("  ok  page de destination absente : strate masquée, et le commentaire le dit")
+
+    # CONTRE-ÉPREUVE : la MÊME page, déclarée existante, doit faire apparaître la strate.
+    # Sans ce volet, un `url_to_postid` cassé masquerait tout en silence et le test
+    # passerait au vert.
+    url_piemont = "https://agendasabauda.eu/journees-europeennes-du-patrimoine-piemont/"
+    html_avec_page = rendre(jeu, "fr", "piemont", tmp, pages=url_piemont)
+    if "<section" not in html_avec_page:
+        echec("contre-épreuve : la page existe, la strate DOIT s'afficher")
+    else:
+        print("  ok  contre-épreuve : la page existe, la strate s'affiche")
+
+    # Et côté voisins : un seul volet joignable => une seule colonne, pas de lien mort.
+    html_un_voisin = rendre(jeu, "fr", "savoie", tmp, pages=url_piemont)
+    if "Vallée d&#039;Aoste" in html_un_voisin:
+        echec("voisins : un volet dont la page n'existe pas ne doit pas être montré")
+    elif "Piémont" not in html_un_voisin:
+        echec("voisins : le volet joignable doit rester")
+    else:
+        print("  ok  voisins : seul le volet dont la page existe est montré")
 
     shutil.rmtree(tmp, ignore_errors=True)
 
