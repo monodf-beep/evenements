@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import html
 import mimetypes
 import pathlib
 import random
@@ -157,10 +158,64 @@ GEOMETRIE = {
 
 LIBELLES = {
     "fr": {"aujourdhui": "Aujourd'hui", "weekend": "Ce week-end",
-           "semaine": "Cette semaine", "a": "à"},
+           "semaine": "Cette semaine"},
     "it": {"aujourdhui": "Oggi", "weekend": "Questo weekend",
-           "semaine": "Questa settimana", "a": "a"},
+           "semaine": "Questa settimana"},
 }
+
+# --- La préposition ---------------------------------------------------------
+# « à Annecy » marche, « à Savoie » ne marche pas. Les 192 pages hub ne portent
+# pas que des villes : 36 visent un TERRITOIRE et 48 une PROVINCE (relevé du
+# 2026-09-22). Table EXPLICITE plutôt que règle devinée — une règle
+# grammaticale automatique se trompe sur « le Monferrato » comme sur « la Côte
+# d'Azur », et une faute de français dans une image est indélébile : elle part
+# dans Google Images et dans tous les partages.
+PREPOSITIONS = {
+    # territoires
+    "Savoie":          {"fr": "en Savoie",              "it": "in Savoia"},
+    "Savoia":          {"fr": "en Savoie",              "it": "in Savoia"},
+    "Piémont":         {"fr": "en Piémont",             "it": "in Piemonte"},
+    "Piemonte":        {"fr": "en Piémont",             "it": "in Piemonte"},
+    "Vallée d'Aoste":  {"fr": "en Vallée d'Aoste",      "it": "in Valle d'Aosta"},
+    "Valle d'Aosta":   {"fr": "en Vallée d'Aoste",      "it": "in Valle d'Aosta"},
+    "Comté de Nice":   {"fr": "dans le Comté de Nice",  "it": "nella Contea di Nizza"},
+    "Contea di Nizza": {"fr": "dans le Comté de Nice",  "it": "nella Contea di Nizza"},
+    "la Côte d'Azur":  {"fr": "sur la Côte d'Azur",     "it": "in Costa Azzurra"},
+    "Costa Azzurra":   {"fr": "sur la Côte d'Azur",     "it": "in Costa Azzurra"},
+    "le Monferrato":   {"fr": "dans le Monferrato",     "it": "nel Monferrato"},
+    "Monferrato":      {"fr": "dans le Monferrato",     "it": "nel Monferrato"},
+}
+
+
+def lieu(label: str, langue: str) -> str:
+    """Rend « à Annecy », « ad Annecy », « en Savoie »… — la mention complète.
+
+    Deux pièges, tous deux constatés sur le site lui-même :
+      - les libellés arrivent encodés en HTML depuis le shortcode
+        (« la province d'Asti » s'y écrit « la province d&#039;Asti ») ;
+      - l'italien veut le *d* euphonique devant un mot commençant par *a* :
+        les titres du site disent déjà « Cosa fare AD Annecy ». La règle
+        moderne le limite à la voyelle IDENTIQUE, donc « ad Aosta » mais
+        « a Ivrea » — c'est ce que fait le code ci-dessous.
+    """
+    label = html.unescape(label).strip()
+    if label in PREPOSITIONS:
+        return PREPOSITIONS[label][langue]
+    bas = label.lower()
+    if bas.startswith("la province") or bas.startswith("provincia"):
+        # Chaque langue a SON libellé en base : « la province de Turin » côté FR,
+        # « provincia di Torino » côté IT. On ne colle donc jamais une préposition
+        # italienne sur un libellé français (« in la province de Turin »).
+        if bas.startswith("provincia"):
+            return "in " + label
+        if langue == "fr":
+            return "dans " + label
+        raise ValueError(
+            "libellé français « {} » avec langue=it : la page italienne doit "
+            "porter son propre libellé (« provincia di … »)".format(label))
+    if langue == "it":
+        return ("ad " if label[:1].lower() == "a" else "a ") + label
+    return "à " + label
 
 FENETRES = tuple(GEOMETRIE)
 LANGUES = tuple(LIBELLES)
@@ -201,6 +256,7 @@ def construire_html(photo_uri: str, fenetre: str, ville: str, langue: str) -> st
     vue, picto = PICTOS[fenetre]
     logo_uri = _data_uri(LOGO.read_bytes(), "image/png")
     polices = POLICES.read_text(encoding="utf-8")
+    mention = lieu(ville, langue)
     return """<!doctype html><html lang="{langue}"><head><meta charset="utf-8"><style>
 {polices}
 *{{box-sizing:border-box}}
@@ -240,7 +296,7 @@ html,body{{margin:0;padding:0;background:#fff}}
     <div class="dedans">
       <svg class="pic" viewBox="{vue}">{picto_svg}</svg>
       <div class="titre">{titre}</div>
-      <div class="ville">{a} {ville}</div>
+      <div class="ville">{mention}</div>
     </div>
     <div class="languette"><img src="{logo}" alt="Agenda Sabauda"></div>
   </div>
@@ -249,7 +305,7 @@ html,body{{margin:0;padding:0;background:#fff}}
         eL=cqw(geo["L"]), eH=cqw(geo["H"]), tilt=geo["tilt"],
         picto=cqw(geo["picto"]), vbL=geo["vbL"], vbH=geo["vbH"],
         cadre=CADRES[fenetre], vue=vue, picto_svg=picto,
-        titre=mots[fenetre], a=mots["a"], ville=ville,
+        titre=mots[fenetre], mention=mention,
         photo=photo_uri, logo=logo_uri,
         bleu=BLEU, beige=BEIGE, noir=NOIR)
 
@@ -320,7 +376,7 @@ def nom_fichier(ville: str, fenetre: str, langue: str) -> str:
     """Le nom de fichier EST un critère de classement Google Images — c'est
     l'un des rares leviers réels sur une vignette, alors autant qu'il parle."""
     base = re.sub(r"[^a-z0-9]+", "-",
-                  ville.lower()
+                  html.unescape(ville).lower()
                   .replace("é", "e").replace("è", "e").replace("ê", "e")
                   .replace("à", "a").replace("â", "a").replace("ô", "o")
                   .replace("î", "i").replace("ï", "i").replace("ç", "c")
@@ -336,9 +392,10 @@ def nom_fichier(ville: str, fenetre: str, langue: str) -> str:
 def texte_alt(ville: str, fenetre: str, langue: str) -> str:
     """L'attribut alt, lui, compte vraiment pour Google Images."""
     mots = LIBELLES[langue]
+    mention = lieu(ville, langue)
     if langue == "it":
-        return "Cosa fare a {} {}".format(ville, mots[fenetre].lower())
-    return "Que faire à {} {}".format(ville, mots[fenetre].lower())
+        return "Cosa fare {} {}".format(mention, mots[fenetre].lower())
+    return "Que faire {} {}".format(mention, mots[fenetre].lower())
 
 
 def main(argv=None) -> int:
