@@ -577,6 +577,9 @@ def main(argv=None) -> int:
                    help="Sur les pages qui ne donnent RIEN, dire quels marqueurs elles "
                         "portent — pour savoir si la donnée est absente ou seulement "
                         "écrite dans une forme qu'on ne lit pas encore.")
+    p.add_argument("--no-republish", action="store_true",
+                   help="Ne PAS repousser vers WordPress les fiches déjà en ligne qui "
+                        "viennent de gagner une vraie image (par défaut on les repousse).")
     p.add_argument("ids", nargs="*", type=int, help="Se limiter à ces fiches.")
     args = p.parse_args(argv)
 
@@ -622,6 +625,9 @@ def main(argv=None) -> int:
     # --diagnostic : un état qui sort une fiche de la récolte doit entrer dans le bilan
     # (règle 6), sinon on le découvre des semaines plus tard. Vingt fiches, le 08/09.
     morts: list[tuple] = []
+    # Fiches DÉJÀ EN LIGNE qui gagnent une vraie image ce run — voir la republication
+    # en fin de run.
+    images_en_ligne: list[int] = []
     for ev in cibles:
         # Le cas s'est-il seulement présenté ? Compté AVANT la récolte, sur l'état de la
         # fiche : une fin connue, pas de début. C'est la seule façon de lire le zéro.
@@ -659,6 +665,9 @@ def main(argv=None) -> int:
                 # marquée « banner » et serait reprise indéfiniment.
                 conn.execute("UPDATE events_raw SET image_source='og' WHERE id=?",
                              (ev["id"],))
+                if (int(ev.get("wp_post_id_as") or 0) > 0
+                        and not (ev.get("wp_deleted_at") or "").strip()):
+                    images_en_ligne.append(ev["id"])
             conn.commit()
 
     print(f"\n{lues} page(s) lue(s), dont {vides} sans aucune donnée exploitable.")
@@ -701,7 +710,53 @@ def main(argv=None) -> int:
         "     NULLIF(date_event_start,''), '9999') >= ?) "
         f"AND ({_MANQUE})",
         (today,)).fetchone()[0]
+
+    # REPUBLICATION DES IMAGES GAGNÉES (22/09/2026). Jusqu'ici la moisson n'écrivait
+    # qu'en BASE : une fiche publiée avec l'image de secours qui trouvait ici sa vraie
+    # affiche la gardait en base, et le site continuait d'afficher la bannière. Personne
+    # ne repoussait — docs/IMAGES.md disait « puis publish --update », à la main
+    # (règle 3 : un humain qui tape une commande n'est pas un rouvreur). Constaté sur la
+    # page des Giornate Europee del Patrimonio : 10 cartes sur 32 en image de secours,
+    # dont 9 publiées le soir même par la moisson GEP.
+    #
+    # Les TRADUCTIONS suivent : elles n'ont pas de page propre et ne sont jamais
+    # moissonnées (translation_of exclu plus haut), mais `publish_batch_as` leur fait
+    # hériter l'image de l'original (_heriter_image_traduction) — à condition de passer
+    # par lui.
+    #
+    # PAS DE PLAFOND ICI, et c'est voulu. Celui de la passe 4 de scripts/dates.py marche
+    # parce que sa condition PERSISTE (la date reste désalignée tant qu'on n'a pas
+    # repoussé). Ici non : au run suivant l'image n'est plus une bannière en base, la
+    # fiche ne serait plus sélectionnée, et ce qui dépasse le plafond resterait en
+    # bannière sur le site pour toujours. Le lot est déjà borné par --cap (pages lues).
+    # Un échec d'envoi, lui, n'est pas rattrapé automatiquement : il est IMPRIMÉ avec
+    # les ids et la commande qui les repousse.
+    a_repousser: list[int] = []
+    if images_en_ligne:
+        ph = ",".join("?" * len(images_en_ligne))
+        trads: dict = {}
+        for tid, tof in conn.execute(
+                f"SELECT id, translation_of FROM events_raw WHERE translation_of IN ({ph}) "
+                "AND COALESCE(wp_post_id_as,0) > 0 AND COALESCE(wp_deleted_at,'') = '' "
+                "AND duplicate_of IS NULL AND statut != 'merged'", images_en_ligne):
+            trads.setdefault(tof, []).append(tid)
+        for eid in images_en_ligne:  # original, puis ses traductions
+            a_repousser += [eid, *[t for t in trads.get(eid, []) if t not in a_repousser]]
     conn.close()
+    if a_repousser and not args.no_republish:
+        print(f"\nRepublication : {len(images_en_ligne)} fiche(s) en ligne ont gagné une "
+              f"image, {len(a_repousser) - len(images_en_ligne)} traduction(s) les suivent "
+              f"— {len(a_repousser)} envoyée(s) vers WordPress.")
+        try:
+            from scripts.publish_batch_as import main as publish_main
+            publish_main(["--ids", *[str(i) for i in a_repousser]])
+        except Exception as exc:  # noqa: BLE001 — l'image reste acquise en base
+            print(f"  ⚠ republication échouée ({exc}) — images en base, PAS sur le site. "
+                  f"À relancer : .venv/bin/python scripts/publish_batch_as.py --ids "
+                  f"{' '.join(map(str, a_repousser))}")
+    elif a_repousser:
+        print(f"\n{len(a_repousser)} fiche(s) en ligne à repousser (republication "
+              f"désactivée, rien envoyé) : {a_repousser}")
     # LIBELLÉ PRÉCIS, sinon deux compteurs se contredisent (2026-08-11, vu le soir même) :
     # ce nombre inclut les fiches dont l'image n'est qu'une BANNIÈRE, ce que
     # scripts/audit_incomplets.py ne compte pas — lui s'en tient aux champs vides de la
