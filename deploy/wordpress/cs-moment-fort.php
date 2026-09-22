@@ -292,12 +292,17 @@ function cs_mf_cle_cache($moment, $terme, $lang) {
 }
 
 /*
- * LE CACHE SE VIDE QUAND UNE FICHE BOUGE, PAS SEULEMENT À L'HEURE. Constaté par Franck
- * le 22/09 au soir : la bande italienne ne montrait que le samedi, alors que 19 fiches
- * italiennes du dimanche étaient publiées et étiquetées (mesuré dans la foulée). Elles
- * étaient arrivées pendant l'heure de cache ; la liste servie datait d'avant. Rechargée,
- * la bande montrait bien les deux jours. Une heure de retard sur une strate qui vit
- * six jours, c'est un sixième de sa vie à montrer autre chose que l'agenda.
+ * LE CACHE SE VIDE QUAND UNE FICHE BOUGE, PAS SEULEMENT À L'HEURE. Une heure de retard
+ * sur une strate qui vit six jours, c'est un sixième de sa vie à montrer autre chose
+ * que l'agenda.
+ *
+ * RECTIFICATION, même soir. Ce commentaire affirmait d'abord que le cache expliquait la
+ * bande italienne sans dimanche (Franck, 22/09). C'était une INFÉRENCE écrite comme un
+ * fait. Ma mesure comptait comme « étiquetée » toute fiche portant le terme du moment
+ * dans N'IMPORTE QUELLE langue ; or 22 fiches italiennes portaient le terme FRANÇAIS,
+ * invisible à une requête lang=it. Cause mesurée et corrigée par cs-etiquette-langue.php
+ * (22h43), avant que je voie la colonne Domenica apparaître. Le vidage reste, pour ce
+ * qu'il fait vraiment : supprimer l'heure de retard.
  * Deux crochets, parce qu'en REST l'étiquette est posée APRÈS save_post : le premier
  * attrape la fiche, le second son étiquette.
  */
