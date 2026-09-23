@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 import threading
@@ -392,6 +393,76 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
         return None
 
 
+_SEP_PARAGRAPHE = re.compile(r"(\n\s*\n|(?<=[.!?])\n)")
+
+
+def _paragraphes_restes(art: dict, target: str) -> list:
+    """Paragraphes de chapô / corps / encadré restés dans l'autre langue que `target`."""
+    out = []
+    for champ in ("chapo", "corps", "encadre"):
+        v = art.get(champ)
+        if isinstance(v, str) and v.strip():
+            out += paragraphes_mauvaise_langue(v, target)
+    return out
+
+
+def _retraduire_paragraphes(client, model, art: dict, suspects: list, target: str,
+                            voix: str = "") -> dict | None:
+    """Retraduit les SEULS paragraphes de `suspects` et les remet à leur place dans une
+    copie de `art`. Même découpage que `utils.lang.paragraphes_mauvaise_langue`, pour
+    retrouver chaque paragraphe là où il a été signalé. None si l'appel échoue ou si la
+    réponse n'a pas autant d'entrées qu'envoyées — l'appelant refuse alors comme avant."""
+    vises = {p for _, p in suspects}
+    # (champ, index du morceau) de chaque paragraphe visé, dans l'ordre de lecture.
+    morceaux: dict[str, list[str]] = {}
+    places: list[tuple[str, int]] = []
+    for champ in ("chapo", "corps", "encadre"):
+        v = art.get(champ)
+        if not (isinstance(v, str) and v.strip()):
+            continue
+        parts = _SEP_PARAGRAPHE.split(v)
+        morceaux[champ] = parts
+        for i in range(0, len(parts), 2):          # indices pairs : le texte ; impairs : séparateurs
+            if re.sub(r"\s+", " ", parts[i]).strip() in vises:
+                places.append((champ, i))
+    if not places:
+        return None
+    textes = [morceaux[c][i].strip() for c, i in places]
+    tgt = _LANG_NAME[target]
+    prompt = (
+        _charte_prompt(target, voix) +
+        f"Voici des paragraphes d'un article, restés dans la mauvaise langue. Traduis "
+        f"CHACUN intégralement en {tgt}. Garde tels quels les noms propres (personnes, "
+        f"œuvres, NOM OFFICIEL de l'événement) et les marqueurs markdown (**, *, ##). "
+        f"Réponds UNIQUEMENT par une liste JSON de chaînes, EXACTEMENT {len(textes)} "
+        f"entrée(s), dans le même ordre :\n{json.dumps(textes, ensure_ascii=False)}")
+    try:
+        resp = client.messages.create(model=model, max_tokens=4000,
+                                      messages=[{"role": "user", "content": prompt}])
+        from utils import usage
+        usage.record_message(model, resp, label="traduction_paragraphes")
+        txt = _extract_json(resp)
+        out = json.loads(txt[txt.find("["): txt.rfind("]") + 1], strict=False)
+    except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
+        log.warning("Seconde passe (paragraphes) échouée : %s", exc)
+        return None
+    if not (isinstance(out, list) and len(out) == len(textes)
+            and all(isinstance(x, str) and x.strip() for x in out)):
+        log.warning("Seconde passe : %s entrée(s) rendue(s) pour %d envoyée(s) — ignorée.",
+                    len(out) if isinstance(out, list) else "?", len(textes))
+        return None
+    for (champ, i), neuf in zip(places, out):
+        morceaux[champ][i] = neuf.strip()
+    corrige = dict(art)
+    for champ, parts in morceaux.items():
+        corrige[champ] = "".join(parts)
+    log.info("Seconde passe : %d paragraphe(s) retraduit(s) à part.", len(textes))
+    return corrige
+
+
 def translate_article(client, model, enrich_json: str, target: str,
                       voix: str = "") -> str | None:
     """Traduit la STRUCTURE `enrich_data` (l'article éditorial « escalier ») vers `target`
@@ -550,11 +621,24 @@ def translate_article(client, model, enrich_json: str, target: str,
     # jamais un paragraphe français sur une page italienne. La matière n'ayant pas changé,
     # la fiche revient au prochain passage et le compteur MAX_REFUS l'arrête au bout de
     # trois (cf. `garees` / `_rearme_traductions`).
-    _suspects = []
-    for _champ in ("chapo", "corps", "encadre"):
-        _v = new_art.get(_champ)
-        if isinstance(_v, str) and _v.strip():
-            _suspects += paragraphes_mauvaise_langue(_v, target)
+    _suspects = _paragraphes_restes(new_art, target)
+    if _suspects:
+        # SECONDE PASSE, CIBLÉE (23/09/2026). Sept jumelles de Plaisirs de Culture ont
+        # été refusées ici, toutes pour la même raison : des phrases françaises entières
+        # (« Cette initiative s'inscrit dans la quatorzième édition… ») recopiées au milieu
+        # d'un corps italien. Rejouer l'appel complet serait un refus qui se rejoue sur la
+        # MÊME entrée (règle 3). Ce qui change ici, c'est l'ENTRÉE : on n'envoie plus que
+        # les paragraphes restés en français, sans le long corps que le modèle recopie
+        # (défaut déjà décrit à DEFAULT_MODEL). C'est une hypothèse, pas une certitude :
+        # le journal dit « seconde passe : N paragraphe(s) », et le portillon ci-dessous
+        # reste le juge — s'il en reste un seul, refus comme avant.
+        _corrige = _retraduire_paragraphes(client, model, new_art, _suspects, target, voix)
+        if _corrige is not None:
+            new_art = _corrige
+            _suspects = _paragraphes_restes(new_art, target)
+            log.info("Seconde passe : %s", "tous les paragraphes sont traduits"
+                     if not _suspects else f"{len(_suspects)} paragraphe(s) encore dans "
+                                           f"l'autre langue")
     if _suspects:
         _suspects.sort(key=lambda x: -x[0])
         log.error("REFUS — %d paragraphe(s) du corps sont restés dans l'autre langue "
