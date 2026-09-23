@@ -26,5 +26,61 @@
     "le": "2026-08-12",
     "titre": "Charlie Winston",
     "date_alors": "2026-09-22 → 2026-09-22"
+  },
+  "5889": {
+    "empreinte": "2568f1bd5622ab2d",
+    "motif": "Vérifié le 2026-09-23 sur comune.biella.it/eventi/musica-e-moda-2/ (page officielle, MAJ 21/09/2026) : « dal 25 Settembre 2026 al 25 Settembre 2026 », « Il programma di venerdì 25 settembre », 16:00–20:00. Notre date est bonne ; le 26 septembre cité dans le texte est un AUTRE soir de la même quinzaine biellaise.",
+    "le": "2026-09-23",
+    "titre": "Musica e moda",
+    "date_alors": "2026-09-25 → 2026-09-25"
+  },
+  "5920": {
+    "empreinte": "ac604a862abf8e66",
+    "motif": "Vérifié le 2026-09-23 sur torinoclick.it (l'article source, 15/09/2026) : la phrase suivante du même article tranche — « Antopia sarà inoltre visitabile su prenotazione durante il Festival del Paesaggio Fluviale, dal 25 al 27 settembre ». Le 17 septembre est la date de l'INAUGURATION, pas celle de la visite publique : notre 25→27/09 est bonne.",
+    "le": "2026-09-23",
+    "titre": "Da generazione a generazione, a Mirafiori la memoria diventa arte",
+    "date_alors": "2026-09-25 → 2026-09-27"
+  },
+  "5223": {
+    "empreinte": "6ffa5ddebf2be3f3",
+    "motif": "Vérifié le 2026-09-23 sur le site officiel 2026.terramadresalonedelgusto.com : « 24—27 Settembre nel centro di Torino ». Notre 24→27/09/2026 est bon ; c'est le communiqué de TorinoClick qui écrit « da venerdì 24 a lunedì 27 » alors que ces dates tombent un jeudi et un dimanche — le jour de semaine est FAUX DANS LA SOURCE, pas chez nous.",
+    "le": "2026-09-23",
+    "titre": "Dal 24 al 27 settembre Terra Madre Salone del Gusto porta la biodiversità nel ce",
+    "date_alors": "2026-09-24 → 2026-09-27"
+  },
+  "5072": {
+    "empreinte": "42f0518df335c2c9",
+    "motif": "Vérifié le 2026-09-23 sur turismotorino.org (url_officiel de la fiche, page de l'événement) : « Dal 23/09/2026 al 26/09/2026 », « Stadio della Canoa Via Dora Baltea 1d, Ivrea ». Notre 23→26/09 est bon ; le 27/09 du texte est la borne de Terra Madre, annoncée dans la même newsletter.",
+    "le": "2026-09-23",
+    "titre": "Championnat Européen de Canoë Slalom et Kayak Cross",
+    "date_alors": "2026-09-23 → 2026-09-26"
+  },
+  "5786": {
+    "empreinte": "d6f192d645b4e47f",
+    "motif": "Vérifié le 2026-09-23 sur tnn.fr/fr/les-rendez-vous/conversation-intime (url_officiel) : « LUN 12 OCT… 19H30 » et « Le 12 octobre 2026, Conversation intime reçoit Jean-François Sivadier ! ». Notre 12/10/2026 est bon ; le « 14 au 16 octobre » du texte est Ivanov, un autre spectacle annoncé dans la même lettre.",
+    "le": "2026-09-23",
+    "titre": "Conversation intime avec Jean-François Sivadier",
+    "date_alors": "2026-10-12 → 2026-10-12"
+  },
+  "5551": {
+    "empreinte": "0f66001d43e3cfb8",
+    "motif": "Vérifié le 2026-09-23 sur billia.it/we-want-jazz-2026 : « Sette appuntamenti gratuiti, da febbraio a ottobre 2026 » et « Venerdi 20 febbraio, ore 21.00 ». Les CINQ jours de semaine de la page collent à 2026 et aucun à 2027 (20/02/2027 est un samedi), et le lien de réservation porte « wwj26 ». Notre 2026 est bon.",
+    "le": "2026-09-23",
+    "titre": "We want Jazz 2026",
+    "date_alors": "2026-02-20 → 2026-10-31"
+  },
+  "5719": {
+    "empreinte": "767e0eaba577f740",
+    "motif": "Vérifié le 2026-09-23 sur billia.it/we-want-jazz-2026 : « Sette appuntamenti gratuiti, da febbraio a ottobre 2026 » et « Venerdi 20 febbraio, ore 21.00 ». Les CINQ jours de semaine de la page collent à 2026 et aucun à 2027 (20/02/2027 est un samedi), et le lien de réservation porte « wwj26 ». Notre 2026 est bon.",
+    "le": "2026-09-23",
+    "titre": "We Want Jazz 2026",
+    "date_alors": "2026-02-20 → 2026-10-31"
+  },
+  "5593": {
+    "empreinte": "a2bba96cd409dffc",
+    "motif": "Vérifié le 2026-09-23 sur bct.comune.torino.it/eventi-attivita/fili-tra-le-pagine-0 (page officielle) : « Periodicità : A settimane alterne, tutti i martedì, fino al 29 settembre 2026 » et « Prossimi appuntamenti: martedì 1, 15 e 29 settembre ». Notre 10/02 → 29/09/2026 est bon ; le 22/09 est la borne de la balise « da-a », que la périodicité prolonge.",
+    "le": "2026-09-23",
+    "titre": "Fili tra le pagine",
+    "date_alors": "2026-02-10 → 2026-09-29"
   }
 }
