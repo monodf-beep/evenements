@@ -1184,6 +1184,31 @@ _CONTROLES = [
                   "écart de versant.",
          "code": ["scripts/audit_langue_polylang.py"]}},
 
+    {"id": "audit_langue_texte", "label": "Langue des textes publiés", "icone": "🔤",
+     "flux": "controles", "kind": "action", "col": 2, "row": 2,
+     "cron_cle": "scripts.audit_langue_texte", "script": "audit_langue_texte",
+     "resume": "Relit le texte EN LIGNE de chaque fiche et vérifie qu'il est dans la langue "
+               "de sa page.",
+     "detail": {
+         "fait": ["Lit chaque fiche encore devant nous par son numéro (API REST publique) et "
+                  "compare la langue du texte au versant de la page (/it/ ou non)."],
+         "ecrit": ["rien — lecture seule"],
+         "regles": ["Complète « Langue Polylang », qui ne relit jamais le texte : le 23/09, "
+                    "cinq paires retouchées à la main avaient leurs textes inversés, gelées, "
+                    "invisibles des deux côtés.",
+                    "Un texte trop court ou mêlé ne reçoit pas de verdict : compté, jamais "
+                    "signalé comme écart."],
+         "decisions": [
+             {"si": "la fiche n'est pas gelée",
+              "alors": "translate_events --retranslate <original> la réécrit"},
+             {"si": "la fiche est gelée (retouche humaine)",
+              "alors": "le texte est à remettre à sa place à la main — le 23/09, échange des "
+                       "textes entre les deux jumelles"}],
+         "cout_ia": "aucun",
+         "slack": "Une ligne, même à zéro, avec le nombre de pages lues et de pages sans "
+                  "verdict à côté.",
+         "code": ["scripts/audit_langue_texte.py", "utils/lang.py"]}},
+
     {"id": "verifier_dates", "label": "Contradicteur de dates", "icone": "🕵️", "flux": "controles",
      "kind": "action", "col": 0, "row": 2, "cron_cle": "scripts.verifier_dates",
      "script": "verifier_dates",

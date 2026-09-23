@@ -311,6 +311,15 @@ Trois autres de ce jour, chacune avec son mécanisme :
   est exigeante dans les deux sens : un garde-fou de déploiement qui refuse à tort est
   pire que pas de garde-fou, parce qu'on le contournera pour de bon.
 
+`docs/ERREURS_2026-09-23.md` en ajoute onze, autour des Journées du patrimoine, dont une
+à retenir parce qu'elle vise les correctifs eux-mêmes : **un correctif de lecture se
+teste sur ce qu'il laisse PASSER, pas seulement sur ce qu'il sauve.** Celui du matin,
+écrit pour rattraper des réponses de rédaction suivies d'un texte en trop, a marqué
+« rédigée » une fiche SANS article — le soir, le texte brut italien de la brochure était
+en ligne sous l'étiquette française. Et une autre, qui vaut pour les audits : **l'absence
+d'un lien ne prouve pas l'absence de la page** — Montrottier « sans version française »
+en avait une, simplement non reliée.
+
 **Neuf des quinze fautes du 11/08 étaient des récidives d'une règle
 déjà écrite ici.** Écrire la règle ne suffit donc pas ; c'est la fixture, le dry-run et le
 périmètre affiché à côté du nombre qui tiennent, parce qu'eux se déclenchent tout seuls.

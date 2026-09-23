@@ -328,6 +328,28 @@ def detect_lang(title: str = "", description: str = "", territoire: str = "") ->
     return "it" if it > fr else "fr"
 
 
+def langue_du_texte(texte: str, mini: int = 15, rapport: float = 2.0) -> str:
+    """'fr' | 'it' | '' — la langue d'un TEXTE PUBLIÉ entier (page, pas fiche en base).
+
+    Posée le 24/09/2026 pour `scripts.audit_langue_texte`. Pas `detect_lang` : lui juge une
+    fiche, pèse le titre ×3 et retombe sur 'fr' quand il hésite — un texte indécis y
+    deviendrait français, et l'audit crierait sur toutes les pages courtes. Ici on se tait
+    ('') quand il n'y a pas assez de mots-outils (`mini`) ou pas d'avance nette (`rapport`) :
+    un audit qui signale une page doit pouvoir le justifier, et un doute n'est pas un écart.
+
+    Réglages repris de la requête qui a trouvé, le 23/09, les cinq textes retouchés à la
+    main dans la mauvaise langue (15 mots-outils au moins, deux fois plus d'une langue que
+    de l'autre) : sur 423 fiches, elle en a laissé 25 sans verdict et aucun faux positif."""
+    fr, it = _score(texte or "")
+    if fr + it < mini:
+        return ""
+    if fr >= it * rapport:
+        return "fr"
+    if it >= fr * rapport:
+        return "it"
+    return ""
+
+
 # Avance en mots-outils au-delà de laquelle le CORPS d'un article tranche seul (voir
 # effective_lang). 4 : un corps de 500 caractères en porte une vingtaine dans sa langue ;
 # les noms propres de l'autre langue (« Plaisirs de Culture », « Museo regionale di… »)

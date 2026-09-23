@@ -84,6 +84,8 @@ ATTENDUS = [
     # l'histoire se répète en silence ; et son silence est AMBIGU par construction,
     # puisqu'il ne parle que d'un écart.
     ("Langue Polylang",           "audit_langue_polylang", "audit_langue_polylang.log", 30),
+    # Ajoutée le 24/09 avec son cron, même motif : elle ne parle que d'un écart.
+    ("Langue des textes publiés", "audit_langue_texte", "audit_langue_texte.log", 30),
     ("Lieux",                     "venues",          "venues.log",           30),
     # Ajoutée le 04/09 avec le cron, même motif que « Rattrapage URL Gmail » ci-dessus.
     ("Tri des séances de cinéma", "cleanup_cinema",  "cleanup_cinema.log",   30),
