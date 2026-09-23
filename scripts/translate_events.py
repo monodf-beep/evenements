@@ -651,6 +651,15 @@ def translate_article(client, model, enrich_json: str, target: str,
     return json.dumps(new_data, ensure_ascii=False)
 
 
+def cibler_ids(rows: list, ids: list) -> tuple[list, list]:
+    """Restreint la file du jour aux ids demandés, dans l'ordre de la file ; rend aussi
+    les ids demandés qui n'y sont PAS (à dire, jamais à taire)."""
+    voulus = set(ids)
+    gardes = [r for r in rows if r["id"] in voulus]
+    trouves = {r["id"] for r in gardes}
+    return gardes, [i for i in ids if i not in trouves]
+
+
 def cible_retraduction(orig: dict, tw: dict) -> str:
     """La langue dans laquelle ré-écrire le jumeau : l'INVERSE de la langue actuelle de
     l'original, lue sur son article (effective_lang) — pas celle mémorisée à la création.
@@ -1183,8 +1192,9 @@ def main(argv=None) -> int:
                         help="Filtre territoire (slug : %s)." % ", ".join(_TERR_KEYS))
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("ids", nargs="*", type=int,
-                        help="Ids d'événements ORIGINAUX dont on RE-TRADUIT le jumeau existant "
-                             "(avec --retranslate) — sert au re-travail rétroactif.")
+                        help="Ids d'événements ORIGINAUX. Avec --retranslate : on RE-TRADUIT leur "
+                             "jumeau existant. Sans : on ne traduit QUE ces fiches (première "
+                             "traduction), sans plancher de score.")
     parser.add_argument("--retranslate", action="store_true",
                         help="RE-TRADUIT le jumeau EXISTANT des ids donnés (met à jour la fiche "
                              "traduite en place avec les règles courantes : article complet, voix, "
@@ -1265,6 +1275,15 @@ def main(argv=None) -> int:
     # de retard par fiche — sur 63 fiches à venir constatées le 15/09, deux mois et demi.
     _rearme_traductions_orphelines(conn)
 
+    # IDS DÉSIGNÉS (23/09/2026) : sans --retranslate, les ids donnés restreignent la file
+    # à ces fiches, et le plancher de score ne s'applique pas — les avoir nommées EST la
+    # décision. Mesuré ce soir-là : deux fiches piémontaises des Giornate (WP#10411 Alto
+    # Forte di Gavi, WP#10964 Musei Reali) notées 5 n'avaient aucune version italienne, et
+    # ne pouvaient en recevoir aucune : le plancher par défaut est 6, et les ids n'étaient
+    # lus qu'en mode --retranslate. Toutes les autres gardes (en ligne, pas déjà traduit,
+    # pas une traduction, pas terminé) restent en place.
+    cibles = [] if args.retranslate else list(args.ids or [])
+    plancher = 0 if cibles else args.min_score
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
         "AND COALESCE(translation_of,0)=0 AND COALESCE(translated_at,'')='' "
@@ -1304,8 +1323,14 @@ def main(argv=None) -> int:
            "AND (COALESCE(date_event_end, date_event_start, '') = '' "
            "     OR COALESCE(date_event_end, date_event_start) >= ?) ") +
         "ORDER BY COALESCE(user_score, llm_score, 0) DESC, id ASC",
-        ([args.min_score] if args.include_past
-         else [args.min_score, date.today().isoformat()])).fetchall()]
+        ([plancher] if args.include_past
+         else [plancher, date.today().isoformat()])).fetchall()]
+    if cibles:
+        rows, absents = cibler_ids(rows, cibles)
+        for i in absents:
+            log.warning("[%s] demandé mais pas candidat à une PREMIÈRE traduction (déjà "
+                        "traduit, lui-même une traduction, pas en ligne ou terminé) — "
+                        "pour réécrire une jumelle existante : --retranslate %s", i, i)
     if terr_keys:                                       # filtre territoire AVANT le plafond
         rows = [r for r in rows if any(k in _norm(r.get("territoire", "")) for k in terr_keys)]
 
