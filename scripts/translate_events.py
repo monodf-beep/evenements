@@ -723,6 +723,52 @@ def _retranslate(args, client, voix) -> int:
     return 0
 
 
+def _est_visuel_de_secours(img: str, source) -> bool:
+    return (source or "") == "banner" or "/fallback-" in (img or "")
+
+
+def index_affiches(rows: list[dict]) -> dict:
+    """Les affiches qui IDENTIFIENT un événement, rangées par langue — plus, sous la clé
+    `_partagees`, celles qui n'identifient rien.
+
+    LE DÉFAUT CORRIGÉ LE 2026-09-23. Le dédoublonnage « même affiche = même événement
+    bilingue » prenait TOUTE image pour une identité. Or deux familles d'images sont
+    partagées par construction : les 48 visuels de secours du site (une par territoire et
+    catégorie), et l'affiche d'un festival posée sur chacun de ses rendez-vous (celle de
+    Plaisirs de Culture sur 19 fiches). Une fiche française en visuel de secours voyait
+    donc « sa jumelle italienne déjà présente » dès qu'une AUTRE fiche italienne portait
+    le même visuel — et renvoyait `skip`, sans rien marquer : le même refus rejoué chaque
+    jour sur la même entrée (règle 3). Mesuré ce jour-là : 81 fiches à venir sur 381
+    publiées sans jumelle ; sur Plaisirs de Culture, 33 fiches, pas une seule traduite.
+
+    Une image n'identifie un événement que si, dans sa langue, UNE SEULE fiche la porte,
+    et si ce n'est pas un visuel de secours. La vraie paire (une fiche française et sa
+    jumelle italienne native, même affiche) reste reconnue : une fiche par langue."""
+    from collections import Counter
+    compte = Counter()
+    partagees = set()
+    for r in rows:
+        img = r.get("url_image") or ""
+        if not img:
+            continue
+        if _est_visuel_de_secours(img, r.get("image_source")):
+            partagees.add(img)
+            continue
+        compte[(effective_lang(r), img)] += 1
+    partagees |= {img for (_l, img), n in compte.items() if n > 1}
+    index: dict = {"fr": set(), "it": set(), "_partagees": partagees}
+    for (lang, img), n in compte.items():
+        if img not in partagees:
+            index.setdefault(lang, set()).add(img)
+    return index
+
+
+def image_identifiante(img: str, source, index: dict) -> bool:
+    """Vrai si cette image peut servir à reconnaître une jumelle (voir index_affiches)."""
+    return bool(img) and not _est_visuel_de_secours(img, source) \
+        and img not in index.get("_partagees", set())
+
+
 def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
                    auth: tuple, img_lang: dict, img_lang_lock: threading.Lock) -> str:
     """Traduit UN événement de bout en bout (titre/description + article + publication WP
@@ -784,7 +830,7 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
     src = effective_lang(ev)
     tgt = _target(src)
     img = ev.get("url_image") or ""
-    if img:
+    if img and image_identifiante(img, ev.get("image_source"), img_lang):
         with img_lang_lock:
             if img in img_lang.get(tgt, set()):
                 log.info("[%s] jumelle %s déjà présente (même affiche) — ignoré : %s",
@@ -1095,11 +1141,10 @@ def main(argv=None) -> int:
     # effective_lang, PAS detect_lang sur le seul titre : sinon un événement au titre
     # italien mais à l'article déjà français se classe lui-même en « it » et se retrouve
     # à bloquer SA PROPRE traduction (sa propre image « existe déjà » côté it — lui).
-    img_lang: dict[str, set] = {"fr": set(), "it": set()}
-    for r in conn.execute("SELECT title, description, territoire, url_image, article_title, "
-                          "enrich_data FROM events_raw WHERE COALESCE(url_image,'')<>'' "
-                          "AND COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL"):
-        img_lang[effective_lang(dict(r))].add(r["url_image"])
+    img_lang = index_affiches([dict(r) for r in conn.execute(
+        "SELECT title, description, territoire, url_image, image_source, article_title, "
+        "enrich_data FROM events_raw WHERE COALESCE(url_image,'')<>'' "
+        "AND COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL")])
 
     terr_keys = None
     if args.territoire:
