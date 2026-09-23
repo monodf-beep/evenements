@@ -1555,17 +1555,38 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         return None
 
 
+def est_une_fiche(objet) -> bool:
+    """Un résultat de rédaction n'est une fiche que s'il porte un ARTICLE non vide.
+
+    23/09/2026 au soir : 5956 (Introd) et 5969 (Castello Gamba) étaient en base
+    `enrich_status='enriched'` avec un `enrich_data` SANS clé `article`. Le site affichait
+    donc le texte brut de la brochure, en italien, sous l'étiquette française — et la
+    traduction refusait leur jumelle faute d'article à traduire. 'enriched' les sortait de
+    la file de rédaction : un cul-de-sac (règle 3) que rien ne rouvrait. Un objet sans
+    article est désormais un ÉCHEC de rédaction ('error'), que la file reprend d'elle-même
+    après son délai."""
+    return (isinstance(objet, dict) and isinstance(objet.get("article"), dict)
+            and bool(objet["article"]))
+
+
 def premier_objet_json(texte: str):
-    """Le premier objet JSON COMPLET du texte, ce qui le suit ignoré ; None s'il n'y en a
-    pas. Seul un dict est rendu : une liste ou un nombre n'est pas une fiche."""
-    debut = (texte or "").find("{")
-    if debut < 0:
-        return None
-    try:
-        objet, _fin = json.JSONDecoder().raw_decode(texte[debut:])
-    except json.JSONDecodeError:
-        return None
-    return objet if isinstance(objet, dict) else None
+    """Le premier objet JSON COMPLET du texte qui est une FICHE (`est_une_fiche`), ce qui
+    le suit ignoré ; None s'il n'y en a pas. Chaque accolade ouvrante est essayée tour à
+    tour : un petit objet écrit AVANT la fiche (un exemple, une note entre accolades) ne
+    doit pas être pris pour elle — c'est ce qu'aurait fait la version du 23/09 au matin,
+    qui rendait le tout premier objet quel qu'il soit."""
+    texte = texte or ""
+    dec = json.JSONDecoder()
+    debut = texte.find("{")
+    while debut >= 0:
+        try:
+            objet, _fin = dec.raw_decode(texte[debut:])
+        except json.JSONDecodeError:
+            objet = None
+        if est_une_fiche(objet):
+            return objet
+        debut = texte.find("{", debut + 1)
+    return None
 
 
 _CHECKS_DDL = """
@@ -2009,7 +2030,8 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
              "doit APPRENDRE quelque chose de réel.")
     revised = enrich_event(ev, material, client, model, court, extra_task=extra,
                            allow_web=allow_web, web_domains=web_domains)
-    return revised if (revised and revised is not API_ERROR) else result
+    # Une révision sans article ne remplace jamais un brouillon qui en a un (cf. est_une_fiche).
+    return revised if (revised and revised is not API_ERROR and est_une_fiche(revised)) else result
 
 
 def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -> str:
@@ -2213,6 +2235,11 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
             log.warning("[%d] erreur API — marqué 'api_error'", ev["id"])
             stop_flag.set()
             return "api_error"
+        if result is not None and not est_une_fiche(result):
+            log.warning("[%d] réponse sans article (clés : %s) — comptée comme un échec de "
+                        "rédaction, pas comme une fiche rédigée.", ev["id"],
+                        ", ".join(sorted(result)) if isinstance(result, dict) else type(result).__name__)
+            result = None
         if result is None:
             conn.execute(
                 "UPDATE events_raw SET enrich_status='error', "

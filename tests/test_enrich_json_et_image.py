@@ -29,12 +29,24 @@ def _check(label, cond, detail=""):
         print(f"ÉCHEC {label} {detail}")
 
 
-ART = '{"titre": "Tissus d\'histoire", "article": "Un texte {avec} accolades", "n": 1}'
+ART = '{"titre": "Tissus d\'histoire", "article": {"corps": "Un texte {avec} accolades"}, "n": 1}'
 _check("objet suivi d'un second objet : le premier est retenu",
        premier_objet_json(ART + '\n{"note": "vérifier"}') == {
-           "titre": "Tissus d'histoire", "article": "Un texte {avec} accolades", "n": 1})
+           "titre": "Tissus d'histoire", "article": {"corps": "Un texte {avec} accolades"}, "n": 1})
 _check("objet suivi de prose à accolades : retenu",
        (premier_objet_json("Voici :\n" + ART + "\nRemarque {sic}.") or {}).get("n") == 1)
+# 23/09 au soir : 5956 et 5969 marquées 'enriched' SANS article. Un petit objet écrit
+# avant la fiche ne doit pas être pris pour elle, et un objet sans article n'est pas une fiche.
+_check("un petit objet AVANT la fiche est sauté, la fiche est retenue",
+       (premier_objet_json('Exemple : {"note": 1}\n' + ART + "\nfin {x}") or {}).get("n") == 1)
+_check("FRONTIÈRE : un objet complet SANS article n'est pas une fiche (None)",
+       premier_objet_json('{"titre": "x", "sources": []} et {suite}') is None)
+_check("FRONTIÈRE : un article VIDE n'est pas une fiche",
+       premier_objet_json('{"titre": "x", "article": {}} {y}') is None)
+from scripts.enrich import est_une_fiche  # noqa: E402
+_check("est_une_fiche : article non vide → oui", est_une_fiche({"article": {"chapo": "a"}}))
+_check("est_une_fiche : pas d'article → non (sera compté 'error', donc repris)",
+       not est_une_fiche({"titre": "x"}))
 _check("FRONTIÈRE : un objet TRONQUÉ n'est pas rattrapé (None, la fiche reste à rédiger)",
        premier_objet_json('{"titre": "x", "article": "coupé') is None)
 _check("FRONTIÈRE : une liste n'est pas une fiche", premier_objet_json("[1, 2]") is None)
