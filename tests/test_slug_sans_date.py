@@ -154,6 +154,7 @@ JOURS_CAS = [
     ("Domenica 28 settembre, apertura straordinaria a Novara",
      "apertura-straordinaria-a-novara"),
     ("Ce samedi, Novare ouvre ses archives", "novare-ouvre-ses-archives"),
+    ("Portes ouvertes le samedi 26 septembre au château", "portes-ouvertes-au-chateau"),
     ("Concert ce week-end à Turin", "concert-a-turin"),
     ("Fête du village ce soir", "fete-du-village"),
 ]
@@ -171,6 +172,9 @@ DOIT_PASSER = [
     ("Il Sabato del villaggio a Cuneo", "il-sabato-del-villaggio-a-cuneo"),
     ("Les samedis du jazz à Annecy", "les-samedis-du-jazz-a-annecy"),
     ("Marché bio chaque samedi à Chambéry", "marche-bio-chaque-samedi-a-chambery"),
+    ("Alla biblioteca Cesare Pavese un mercoledì su due per prendere confidenza con lo SPID",
+     "alla-biblioteca-cesare-pavese-un-mercoledi-su-due-per-prendere"),     # WP#9766
+    ("Le marché paysan ouvert le samedi à Aoste", "le-marche-paysan-ouvert-le-samedi-a-aoste"),
 ]
 for titre, attendu in DOIT_PASSER:
     obtenu = slug_sans_date(titre)
