@@ -567,6 +567,24 @@ def translate_article(client, model, enrich_json: str, target: str,
     return json.dumps(new_data, ensure_ascii=False)
 
 
+def cible_retraduction(orig: dict, tw: dict) -> str:
+    """La langue dans laquelle ré-écrire le jumeau : l'INVERSE de la langue actuelle de
+    l'original, lue sur son article (effective_lang) — pas celle mémorisée à la création.
+
+    23/09/2026, Plaisirs de Culture : des fiches publiées en italien (texte brut de la
+    brochure) avaient reçu une jumelle FRANÇAISE (translated_lang='fr'). La rédaction a
+    ensuite réécrit les originaux, en français comme toujours. `--retranslate` a relu
+    translated_lang='fr' et a ré-écrit les jumelles… en français : une vingtaine
+    d'événements avec DEUX fiches françaises, et plus aucune italienne. La langue
+    mémorisée disait ce qui était vrai au moment de la création, pas ce qui l'est."""
+    src = effective_lang(orig)
+    if src in ("fr", "it"):
+        return _target(src)
+    return ((tw.get("translated_lang") or "").strip()
+            or _target(detect_lang(orig.get("title", ""), orig.get("description", ""),
+                                   orig.get("territoire", ""))))
+
+
 def _retranslate_one(tw: dict, args, client, voix) -> str:
     """RE-TRADUIT un jumeau EXISTANT (voir `_retranslate`), avec sa PROPRE connexion SQLite
     (WAL) — permet l'appel en parallèle sur plusieurs jumeaux (cf. `_retranslate`,
@@ -578,8 +596,11 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
         if not orig:
             return "skip"
         orig = dict(orig)
-        tgt = (tw.get("translated_lang") or _target(detect_lang(
-            orig.get("title", ""), orig.get("description", ""), orig.get("territoire", "")))).strip()
+        tgt = cible_retraduction(orig, tw)
+        if tgt != (tw.get("translated_lang") or "").strip():
+            log.warning("[jumeau %s] langue cible corrigée : %s → %s (l'original est "
+                        "aujourd'hui en %s)", tw["id"], tw.get("translated_lang") or "?",
+                        tgt, _target(tgt))
         log.info("[orig %s → jumeau %s] re-traduction %s : %s", orig["id"], tw["id"], tgt,
                  (orig.get("title") or "")[:50])
         if not args.apply:
@@ -642,8 +663,8 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
             return "refus"
         conn.execute(
             "UPDATE events_raw SET title=?, description=?, article_title=?, enrich_data=?, "
-            "translated_at=datetime('now') WHERE id=?",
-            (tr["title"], tr["description"], tr_art_title, tr_enrich, tw["id"]))
+            "translated_lang=?, translated_at=datetime('now') WHERE id=?",
+            (tr["title"], tr["description"], tr_art_title, tr_enrich, tgt, tw["id"]))
         conn.commit()
         # Met à jour la fiche WP traduite EXISTANTE (garde wp_post_id_as → update, pas de doublon).
         # skip_media=True : incident réel du 2026-08-06 — cet appel repoussait `url_image`
