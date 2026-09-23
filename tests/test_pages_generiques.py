@@ -123,8 +123,13 @@ _check("FRONTIÈRE : la même page SANS ancre reste illustrable (elle n'est pas 
 _check("FRONTIÈRE : une ancre de section (#billetterie) ne retire rien",
        not ancre_dans_une_liste("https://theatre.fr/spectacle-x/#billetterie")
        and peut_illustrer("https://theatre.fr/spectacle-x/#billetterie", "Spectacle X"))
-_check("FRONTIÈRE : une ancre de trois mots (#informations-pratiques-acces) non plus",
-       not ancre_dans_une_liste("https://theatre.fr/spectacle-x/#informations-pratiques-acces"))
+for court in ("artigiani-del-guscio", "tissus-d-histoire", "memorie-d-archivio"):
+    # Les trois ancres courtes que le seuil de quatre mots laissait passer (23/09) :
+    # la première a reçu logo2025.webp en vignette.
+    _check(f"ancre courte #{court} : n'illustre pas non plus",
+           ancre_dans_une_liste(PDC + "#" + court))
+_check("FRONTIÈRE : une ancre d'un seul mot (#programme) ne retire rien",
+       not ancre_dans_une_liste("https://festival.fr/edition-2026/#programme"))
 _check("FRONTIÈRE : un « # » vide ne compte pas", not ancre_dans_une_liste("https://x.fr/page#"))
 _check("une ancre ne rachète pas une page qui porte le nom de l'événement",
        not peut_illustrer("https://doujador.it/#programma-della-douja-d-or-2026", "Douja d'Or"))

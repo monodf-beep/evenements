@@ -110,7 +110,7 @@ def site_est_evenement(url: str, titre: str) -> bool:
 
 def ancre_dans_une_liste(url: str) -> bool:
     """Vrai si l'URL désigne UN ÉLÉMENT d'une page partagée par plusieurs événements :
-    une ancre `#…` qui est un slug d'au moins quatre mots.
+    une ancre `#…` qui est un slug d'au moins DEUX mots.
 
     MESURÉ le 2026-09-23 (Franck, capture de /plaisirs-de-culture-vallee-d-aoste/ : « ça
     va pas c'est que les mêmes images »). Les fiches de Plaisirs de Culture pointent toutes
@@ -121,16 +121,23 @@ def ancre_dans_une_liste(url: str) -> bool:
     fiches publiées portaient les mêmes octets (empreinte e8f6ea8e2e), et les 36 suivantes
     attendaient leur tour pour la recevoir aussi.
 
-    POURQUOI QUATRE MOTS, ET PAS UNE COMPARAISON AVEC LE TITRE. Le titre en base est
+    POURQUOI DEUX MOTS (corrigé le même jour, après un lot déjà passé). La première
+    version en demandait quatre, choisis au jugé : `#artigiani-del-guscio`, `#tissus-d-
+    histoire` et `#memorie-d-archivio` n'en ont que trois, et la première a reçu en
+    vignette `logo2025.webp` pris sur la page-programme. Mesuré ensuite sur le site : les
+    33 fiches publiées dont l'adresse porte une ancre sont TOUTES des fiches de cette
+    page-programme — un seuil bas ne coûtait rien, le seuil haut a coûté une vignette.
+
+    POURQUOI PAS UNE COMPARAISON AVEC LE TITRE. Le titre en base est
     RÉDIGÉ, en français : « Aoste se régénère entre restauration historique et avenir
     urbain » contre l'ancre `aosta-si-rigenera-tra-restauro-storico-e-futuro-urbano` —
-    aucun mot commun. Un slug de quatre mots et plus est le nom d'un élément dans une
-    liste ; une ancre de section (`#billetterie`, `#informations-pratiques`) en a un ou
-    deux, et la page reste celle de l'événement. Limite connue : `#acheter-vos-billets-ici`
-    serait pris pour un élément de liste — l'appelant descend alors d'un étage (Commons,
-    agent web, bannière), il ne se bloque pas."""
+    aucun mot commun. Un slug de plusieurs mots est le nom d'un élément dans une liste ;
+    une ancre de section d'un seul mot (`#billetterie`, `#programme`) laisse la page
+    être celle de l'événement. Limite connue : `#informations-pratiques` serait pris pour
+    un élément de liste — l'appelant descend alors d'un étage (Commons, agent web,
+    bannière), il ne se bloque pas."""
     frag = urlparse((url or "").strip()).fragment
-    return len([m for m in re.split(r"[-_]+", frag) if m]) >= 4
+    return len([m for m in re.split(r"[-_]+", frag) if m]) >= 2
 
 
 def peut_illustrer(url: str, titre: str) -> bool:

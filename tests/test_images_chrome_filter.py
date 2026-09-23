@@ -85,6 +85,13 @@ c = page_image_candidates(PAGE, "https://www.musicastellevda.it/musicastelle-aut
 _check("le og:image officiel est bien le premier candidat, plus jamais écarté",
        bool(c) and c[0] == f"{D}/02_Cover_LogoEdizioneAutunnale.png", str(c))
 
+# 23/09/2026 : chiffres collés au mot — logo2025.webp (valledaostaheritage.com) passait.
+_check("logo2025.webp est un logo", is_logo_image(
+    "https://valledaostaheritage.com/wp-content/uploads/2025/07/logo2025.webp"))
+_check("FRONTIÈRE : « biologo » et un millésime seul restent des photos",
+       not is_logo_image("https://x.it/biologo-alpino.jpg")
+       and not is_logo_image("https://x.it/castello-2024.jpg"))
+
 print()
 if echecs:
     print(f"{echecs} ÉCHEC(S)")
