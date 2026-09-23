@@ -121,6 +121,16 @@ def _select(conn, args, today: str):
     return rows
 
 
+def retenir_creations_brutes(rows: list) -> tuple:
+    """(à publier, retenues) : une CRÉATION sans texte rédigé est retenue — voir le verrou
+    de rédaction dans main(). Une fiche déjà en ligne, ou une traduction, passe."""
+    def brute(ev):
+        return (not int(ev.get("wp_post_id_as") or 0)
+                and not int(ev.get("translation_of") or 0)
+                and not (ev.get("enrich_data") or "").strip())
+    return [ev for ev in rows if not brute(ev)], [ev for ev in rows if brute(ev)]
+
+
 def _heriter_source_traduction(event: dict, conn) -> None:
     """Complète `event['url_source']` avec la source publiable de l'ORIGINAL
     si c'est une traduction dont la source propre est vide — MODIFIE `event`
@@ -324,6 +334,9 @@ def main(argv=None) -> int:
                              "dont aucune page officielle n'a été résolue. Par défaut elles "
                              "sont RETENUES (jamais supprimées) : le radar sert à DÉTECTER, "
                              "pas à publier (config/sources.txt, tier radar).")
+    parser.add_argument("--allow-brut", action="store_true",
+                        help="Publier MÊME une création sans texte rédigé (enrich_data vide) "
+                             "— y compris par --ids. Par défaut elle est RETENUE, pas rejetée.")
     parser.add_argument("--allow-early", action="store_true",
                         help="Publier MÊME les événements hors de leur fenêtre de "
                              "publication (docs/TEMPS_FORTS.md). Par défaut, un "
@@ -403,6 +416,29 @@ def main(argv=None) -> int:
         log.warning("%d fiche(s) retenue(s) par règle éditoriale. Pour les SORTIR de la "
                     "file (statut rejected) : .venv/bin/python -m "
                     "scripts.audit_excluded_events --apply", len(exclus))
+
+    # VERROU DE RÉDACTION, AUSSI POUR --ids (2026-09-23). Le verrou « pas de publication
+    # sans un mot rédigé » posé le 22/09 dans _select ne tient que pour la sélection
+    # automatique : _select rend les --ids tels quels. Le lendemain, 37 fiches de Plaisirs
+    # de Culture sont parties en ligne par ce chemin entre 12h54 et 13h42, avec le texte
+    # BRUT de la brochure (« AOSTA, Via Piave 6 — … Date: 23/09, 26/09. Orario: 17.00.
+    # INFO: … ») — WP#11814 « Una rilettura dei monumenti cittadini », signalée par
+    # Franck. Leurs jumelles ont ensuite traduit ce texte brut.
+    #
+    # NE BLOQUE QUE LES CRÉATIONS, comme le portillon de substance ci-dessous : une fiche
+    # déjà en ligne doit pouvoir repartir, c'est le seul moyen de la réparer. Les
+    # traductions ont leur propre texte (translate_events). Rien n'est écrit : la fiche
+    # garde son statut, enrich.py la rédige, et elle part au passage suivant (règle 3).
+    # --allow-brut pour le dire quand c'est voulu.
+    if not args.allow_brut:
+        rows, bruts = retenir_creations_brutes(rows)
+        if bruts:
+            ids_bruts = {ev.get("id") for ev in bruts}
+            log.warning("%d création(s) RETENUE(S) : pas encore rédigée(s) (enrich_data "
+                        "vide) — %s. Les rédiger : .venv/bin/python scripts/enrich.py %s ; "
+                        "ou --allow-brut pour publier le texte de la source tel quel.",
+                        len(bruts), sorted(ids_bruts),
+                        " ".join(str(i) for i in sorted(ids_bruts)))
 
     # PORTILLON DE SUBSTANCE (2026-08-05, le soir du refus AdSense « contenu à faible
     # valeur informative »). 59 fiches publiées portaient moins de cent mots à elles.
