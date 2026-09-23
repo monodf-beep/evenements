@@ -429,6 +429,15 @@ def _recover_image(event: dict) -> str:
     src = (event.get("url_source") or "").strip()
     if not src or _is_radar(event):
         return ""
+    # TROISIÈME LECTEUR D'IMAGE DE PAGE, et le seul qui ne demandait pas à utils.pages
+    # s'il en avait le droit (23/09/2026). Les fiches de Plaisirs de Culture pointent
+    # toutes sur la même page-programme, chacune avec son ancre ; visuals et la moisson
+    # s'en abstenaient, pas ce repli-ci. Il y a pris le même graphisme pour 22 fiches,
+    # que la vignette a rendu en aplats noirs (transparence perdue, utils.card_image).
+    # Pas de juge vision ici : on s'abstient comme moisson_officielle.
+    from utils.pages import peut_illustrer
+    if not peut_illustrer(src, event.get("title", "") or ""):
+        return ""
     try:
         from utils.images import fetch_content_image
         found = (fetch_content_image(src) or "").strip()
