@@ -108,6 +108,31 @@ def site_est_evenement(url: str, titre: str) -> bool:
     return bool(toks) and all(t in host for t in toks)
 
 
+def ancre_dans_une_liste(url: str) -> bool:
+    """Vrai si l'URL désigne UN ÉLÉMENT d'une page partagée par plusieurs événements :
+    une ancre `#…` qui est un slug d'au moins quatre mots.
+
+    MESURÉ le 2026-09-23 (Franck, capture de /plaisirs-de-culture-vallee-d-aoste/ : « ça
+    va pas c'est que les mêmes images »). Les fiches de Plaisirs de Culture pointent toutes
+    sur LA MÊME page du programme, chacune avec son ancre :
+    `valledaostaheritage.com/events/plaisirs-de-culture-2026/#oltre-l-affresco-le-sorprese-
+    nel-restauro-del-castello-di-issogne`. Une ancre ne change pas le document servi :
+    l'og:image est celle de la page entière, l'affiche du festival. Les quatre premières
+    fiches publiées portaient les mêmes octets (empreinte e8f6ea8e2e), et les 36 suivantes
+    attendaient leur tour pour la recevoir aussi.
+
+    POURQUOI QUATRE MOTS, ET PAS UNE COMPARAISON AVEC LE TITRE. Le titre en base est
+    RÉDIGÉ, en français : « Aoste se régénère entre restauration historique et avenir
+    urbain » contre l'ancre `aosta-si-rigenera-tra-restauro-storico-e-futuro-urbano` —
+    aucun mot commun. Un slug de quatre mots et plus est le nom d'un élément dans une
+    liste ; une ancre de section (`#billetterie`, `#informations-pratiques`) en a un ou
+    deux, et la page reste celle de l'événement. Limite connue : `#acheter-vos-billets-ici`
+    serait pris pour un élément de liste — l'appelant descend alors d'un étage (Commons,
+    agent web, bannière), il ne se bloque pas."""
+    frag = urlparse((url or "").strip()).fragment
+    return len([m for m in re.split(r"[-_]+", frag) if m]) >= 4
+
+
 def peut_illustrer(url: str, titre: str) -> bool:
     """L'image trouvée sur cette page se suffit-elle à elle-même pour illustrer CET
     événement ? Non pour une page générique — sauf si le site EST l'événement.
@@ -139,4 +164,9 @@ def peut_illustrer(url: str, titre: str) -> bool:
     Commons, agent web, puis la bannière territoire, neutre. Et le jour où la source est
     précisée (`scripts/affiner_source.py` remplace la racine par la page du spectacle), la
     même chaîne reprend l'og:image, cette fois la bonne."""
+    if ancre_dans_une_liste(url):
+        # L'og:image d'une page-programme est celle du programme, jamais celle de
+        # l'élément pointé — pas même pour un juge vision, qui l'a validée le 23/09 (c'est
+        # bien l'affiche du festival dont l'événement fait partie).
+        return False
     return not est_page_generique(url) or site_est_evenement(url, titre)

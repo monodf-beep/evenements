@@ -78,5 +78,14 @@ print("\n──── le site EST l'événement : sa racine reste une page d'év
 url, _, src, _, _ = _resoudre("https://beercult.it/", "BeerCult 2026", None)
 _check("og:image retenue sans agent vision", src == "og", f"{src!r}")
 
+print("\n──── une ancre dans une page-programme (23/09, Plaisirs de Culture) ────")
+PDC = "https://valledaostaheritage.com/events/plaisirs-de-culture-2026/"
+url, _, src, _, _ = _resoudre(PDC + "#oltre-l-affresco-le-sorprese-nel-restauro-del-castello-di-issogne",
+                              "Oltre l'affresco : les coulisses du restauro", verify_client=object())
+_check("même AVEC un agent vision qui dit oui, l'affiche du programme n'est pas retenue",
+       src == "" and url == "", f"{src!r} {url!r}")
+url, _, src, _, _ = _resoudre("https://theatre.fr/spectacle-x/#billetterie", "Spectacle X", None)
+_check("FRONTIÈRE : une ancre de section garde l'og:image de sa page", src == "og", f"{src!r}")
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)
