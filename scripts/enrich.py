@@ -57,6 +57,7 @@ from utils import slack
 from utils import acronymes
 from utils.eventness import non_event_reason
 from utils.images import fetch_og_image
+from utils.sources import is_logo_image
 from scripts.dates import extract_time
 from scripts.scraper_events import init_db
 
@@ -1533,8 +1534,38 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
     try:
         return json.loads(match.group())
     except json.JSONDecodeError as exc:
-        log.warning("JSON invalide pour '%s' : %s", ev.get("title", "")[:50], exc)
+        # « Extra data » (23/09/2026) : 4 fiches sur 23 d'un même lot perdues ainsi. La
+        # capture `\{.*\}` va de la PREMIÈRE accolade à la DERNIÈRE : le moindre texte
+        # à accolades écrit par le modèle APRÈS son objet fait échouer le tout, alors que
+        # l'objet lui-même est complet. On relit donc le premier objet entier, et on garde
+        # le brut sur disque pour savoir ce que le modèle ajoute.
+        objet = premier_objet_json(raw) if "Extra data" in str(exc) else None
+        try:
+            _dump = ROOT / "logs" / f"enrich_brut_{ev['id']}.txt"
+            _dump.parent.mkdir(exist_ok=True)
+            _dump.write_text(f"# fiche {ev['id']} · {exc}\n\n{raw}", encoding="utf-8")
+        except OSError:
+            _dump = None
+        if objet is not None:
+            log.warning("[%s] JSON suivi d'un texte en trop — premier objet retenu (brut : %s)",
+                        ev.get("id"), _dump)
+            return objet
+        log.warning("JSON invalide pour '%s' : %s (brut : %s)",
+                    ev.get("title", "")[:50], exc, _dump)
         return None
+
+
+def premier_objet_json(texte: str):
+    """Le premier objet JSON COMPLET du texte, ce qui le suit ignoré ; None s'il n'y en a
+    pas. Seul un dict est rendu : une liste ou un nombre n'est pas une fiche."""
+    debut = (texte or "").find("{")
+    if debut < 0:
+        return None
+    try:
+        objet, _fin = json.JSONDecoder().raw_decode(texte[debut:])
+    except json.JSONDecodeError:
+        return None
+    return objet if isinstance(objet, dict) else None
 
 
 _CHECKS_DDL = """
@@ -2014,9 +2045,16 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         from urllib.parse import urlparse as _up0
         _src_host = _up0(ev.get("url_source", "") or "").netloc.lower()
         _src_agg = any(b in _src_host for b in _NOT_OFFICIAL)
-        if not (ev.get("url_image") or "").strip() and not _src_agg:
+        # utils.pages d'abord (23/09/2026) : ce lecteur-ci était le QUATRIÈME à prendre
+        # l'image d'une page sans demander s'il en avait le droit. Il a reposé l'affiche
+        # de Plaisirs de Culture, prise sur la page-programme partagée, sur « Viaggio alla
+        # scoperta della cultura Walser » le jour même où les trois autres l'avaient
+        # appris. Pas de juge vision ici : on s'abstient, comme moisson_officielle.
+        from utils.pages import peut_illustrer as _peut_illustrer
+        if (not (ev.get("url_image") or "").strip() and not _src_agg
+                and _peut_illustrer(ev.get("url_source", "") or "", ev.get("title", "") or "")):
             og = fetch_og_image(ev.get("url_source", ""))
-            if og:
+            if og and not is_logo_image(og):
                 conn.execute("UPDATE events_raw SET url_image=? WHERE id=?", (og, ev["id"]))
                 conn.commit()
                 ev["url_image"] = og
