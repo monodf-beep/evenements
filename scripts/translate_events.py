@@ -370,8 +370,17 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
             usage.record_message(model, resp, label="traduction_titre")
             if getattr(resp, "stop_reason", None) != "max_tokens":
                 break
-            log.warning("Traduction titre/description tronquée (max_tokens=%d, essai %d/2).",
-                       budget, tentative)
+            # CE QUE LE MODÈLE ÉCRIVAIT (24/09/2026). Cinq titres par jour débordent 4 000
+            # jetons pour une entrée de 2 000 caractères au plus (~700 jetons de sortie
+            # attendus) : ce n'est pas un manque de place, c'est une sortie qui s'emballe —
+            # et le second essai à 7 000 la rattrape chaque fois, en payant deux appels.
+            # Sans la tête et la queue de la sortie, impossible de dire laquelle des pistes
+            # est la bonne (JSON répété, description recopiée en boucle, commentaire).
+            _brut = "".join(getattr(b, "text", "") for b in (resp.content or []))
+            log.warning("Traduction titre/description tronquée (max_tokens=%d, essai %d/2) — "
+                        "entrée %d car., sortie %d car. · début « %s » · fin « %s »",
+                        budget, tentative, len(title or "") + len(desc or ""), len(_brut),
+                        _brut[:160].replace("\n", " "), _brut[-160:].replace("\n", " "))
         else:
             return None  # les deux essais ont tronqué : on renonce pour aujourd'hui
         txt = _extract_json(resp)
