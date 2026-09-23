@@ -49,11 +49,9 @@ from utils import substance
 from scripts.perimetre import ville_hors_perimetre
 from scripts.publisher import build_post
 from scripts.publisher_as import publish_to_as, wp_site_joignable
-# Privées mais réutilisées à dessein (_heriter_source_traduction) : c'est le calcul
-# EXACT que publisher_as applique déjà à toute fiche pour sa propre source publiable —
-# le reprendre en sous-ensemble a divergé une première fois (16/09), le réutiliser tel
-# quel ne peut pas diverger une deuxième.
-from scripts.publisher_as import _source_publiable, _is_radar
+# L'héritage de la source d'une traduction vit dans publisher_as depuis le 24/09 (tous
+# les appelants de publish_to_as en ont besoin) ; importé ici pour l'appel explicite.
+from scripts.publisher_as import heriter_source_traduction
 
 log = get_logger("publish_batch_as")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -153,16 +151,10 @@ def _heriter_source_traduction(event: dict, conn) -> None:
     on écrit le résultat dans `url_source` de la traduction (pas
     `url_officiel`, qui a son propre filtre de domaine — `_is_official_host`
     — que ce résultat ne passerait pas forcément)."""
-    tof = event.get("translation_of") or 0
-    if not tof or (event.get("url_source") or "").strip().startswith(("http://", "https://")):
-        return
-    parent_row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
-    if not parent_row:
-        return
-    parent = dict(parent_row)
-    ancre = _source_publiable(parent, _is_radar(parent))
-    if ancre:
-        event["url_source"] = ancre
+    # Le calcul vit désormais dans publisher_as (24/09) : publish_to_as l'applique à
+    # TOUS ses appelants — refresh_deplacement effaçait la source à 10h55. Délégué ici
+    # plutôt que dupliqué, pour qu'il n'y ait qu'un seul calcul (journal du 08/09).
+    heriter_source_traduction(event, conn)
 
 
 # Confiance d'une image, du plus sûr au moins sûr. Sert à décider si une traduction doit

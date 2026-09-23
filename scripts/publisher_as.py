@@ -417,6 +417,55 @@ def _is_radar(event: dict) -> bool:
             or "(radar)" in (event.get("source_name") or ""))
 
 
+def heriter_source_traduction(event: dict, conn=None) -> None:
+    """Une traduction sans source propre prend la source publiable de son ORIGINAL —
+    MODIFIE `event` en place (`url_source`).
+
+    ICI, et plus seulement dans `publish_batch_as` (24/09/2026). Mesuré ce jour-là en
+    préparant l'indexation des pages italiennes des Giornate : 21 jumelles italiennes à
+    venir étaient en `noindex` et hors sitemap (cs-completude : « source_officielle »),
+    alors que leurs jumelles françaises portaient la page cultura.gov.it. Le journal de
+    chaque fiche désignait le passage fautif : « Passage du pipeline » entre 10h52 et
+    10h55 le 23/09, c'est-à-dire `refresh_deplacement`, lancé à la suite de la traduction
+    de 10h45. Il appelle `publish_to_as` directement, sans l'héritage que
+    `publish_batch_as` fait avant d'appeler : pour une traduction, `url_source` vaut
+    `translated:<id>:<lang>`, `_source_publiable` rend "" — et la méta
+    `as_source_officielle_url` était RÉÉCRITE À VIDE. La passe de minuit (publish_batch_as)
+    la remettait, celle de 10h55 l'effaçait : trois des sept fiches mesurées avaient
+    retrouvé leur source, quatre non, selon laquelle des deux était passée en dernier.
+
+    Quatorze appelants de `publish_to_as` ; un seul héritait. Le mettre au point de
+    passage obligé est la seule façon qu'un quinzième n'oublie pas.
+
+    `conn` facultative : sans elle, lecture seule de la base (mode=ro). Une base
+    illisible ne bloque pas la publication — elle laisse la fiche telle quelle, comme
+    avant ce correctif, et le dit."""
+    tof = event.get("translation_of") or 0
+    if not tof or (event.get("url_source") or "").strip().startswith(_SCHEMAS_PUBLIABLES):
+        return
+    propre = conn is None
+    try:
+        if propre:
+            import sqlite3
+            db = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
+            conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
+    except Exception as e:  # noqa: BLE001 — une base absente ne doit pas bloquer la publication
+        log.warning("source de l'original %s illisible pour la traduction %s : %s",
+                    tof, event.get("id"), e)
+        return
+    finally:
+        if propre and conn is not None:
+            conn.close()
+    if not row:
+        return
+    parent = dict(row)
+    ancre = _source_publiable(parent, _is_radar(parent))
+    if ancre:
+        event["url_source"] = ancre
+
+
 def _recover_image(event: dict) -> str:
     """Tente d'extraire une VRAIE affiche depuis la PAGE SOURCE de l'événement.
 
@@ -882,6 +931,11 @@ def publish_to_as(event: dict, skip_media: bool = False,
         return None, "", ""
 
     auth = (wp_user, wp_pass)
+    # Sur une COPIE : l'appelant garde l'événement tel qu'il l'a lu (certains le
+    # réécrivent en base ensuite — `url_source` y reste le marqueur `translated:`, qui
+    # est UNIQUE et sert d'ancre à la paire).
+    event = dict(event)
+    heriter_source_traduction(event)
     payload = _build_payload(event, skip_media=skip_media, forcer_texte=forcer_texte)
 
     # Image à la une : on TÉLÉVERSE côté Python (fiable — le backoffice accède déjà à
