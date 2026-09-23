@@ -1532,7 +1532,21 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         log.warning("Pas de JSON pour '%s'", ev.get("title", "")[:50])
         return None
     try:
-        return json.loads(match.group())
+        objet = json.loads(match.group())
+        if not est_une_fiche(objet):
+            # 23/09 au soir : 5822 et 5828 ont rendu un JSON VALIDE sans clé « article »
+            # (seulement angle, contexte, infos pratiques, sources…). Sans le brut, impossible
+            # de dire si le modèle a omis l'article, l'a écrit ailleurs ou s'est arrêté —
+            # et la file les reprendra à l'identique. On le garde pour pouvoir trancher.
+            try:
+                _dump = ROOT / "logs" / f"enrich_brut_{ev['id']}.txt"
+                _dump.parent.mkdir(exist_ok=True)
+                _dump.write_text(f"# fiche {ev['id']} · JSON valide SANS article · "
+                                 f"stop_reason={message.stop_reason}\n\n{raw}", encoding="utf-8")
+                log.warning("[%s] JSON sans article — brut conservé : %s", ev.get("id"), _dump)
+            except OSError:
+                pass
+        return objet
     except json.JSONDecodeError as exc:
         # « Extra data » (23/09/2026) : 4 fiches sur 23 d'un même lot perdues ainsi. La
         # capture `\{.*\}` va de la PREMIÈRE accolade à la DERNIÈRE : le moindre texte
