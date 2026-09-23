@@ -1394,8 +1394,12 @@ def main(argv=None) -> int:
         # Leçon générale, écrite dans docs/ETATS_TERMINAUX.md : nommer un rouvreur ne
         # ferme rien tant qu'on n'a pas vérifié qu'il sélectionne sur le MÊME critère.
     rows = rows[:args.cap]
-    log.info("%d événement(s) candidat(s) (score ≥ %d, en ligne, non traduits%s)",
-             len(rows), args.min_score,
+    # Le périmètre écrit à côté du nombre DOIT être celui qui a servi (règle 6) : le
+    # 24/09 à 0h10, ce message annonçait « score ≥ 6 » pour trois fiches notées 5 et 8,
+    # choisies par leurs ids sans plancher.
+    log.info("%d événement(s) candidat(s) (%s, en ligne, non traduits%s)",
+             len(rows), f"ids demandés : {' '.join(map(str, cibles))}, sans plancher de score"
+             if cibles else f"score ≥ {args.min_score}",
              ", territoire=" + args.territoire if args.territoire else "")
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
