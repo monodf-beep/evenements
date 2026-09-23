@@ -106,8 +106,17 @@ def main(argv=None) -> int:
         "     OR substr(COALESCE(date_event_end, date_event_start),1,10) >= ?)", (auj,))]
     conn.close()
 
+    # ANNONCER, PUIS DONNER DES NOUVELLES (24/09/2026). Premier lancement à la main par
+    # Franck : trois minutes d'écran vide, un Ctrl+C, puis « ne fait jamais rien ». Il
+    # travaillait — 402 pages lues une à une — mais ne le disait qu'à la fin. Même défaut
+    # que le « sans `| tail` » du 18/08 : un outil fait pour rendre autonome ne doit
+    # jamais ressembler à une panne pendant qu'il travaille.
+    print(f"{len(ids)} fiche(s) encore devant nous à relire sur le site, une par une "
+          f"(environ {max(1, round(len(ids) * 0.45 / 60))} min)…", flush=True)
     ecarts, muets, illisibles = [], 0, 0
-    for pid in ids:
+    for n, pid in enumerate(ids, 1):
+        if n % 50 == 0:
+            print(f"  … {n}/{len(ids)} lues, {len(ecarts)} écart(s) pour l'instant", flush=True)
         page = lire(wp_url, pid)
         time.sleep(args.delai)
         if not page:
