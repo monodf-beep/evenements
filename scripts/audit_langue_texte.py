@@ -66,14 +66,24 @@ def verdict(page: dict) -> tuple[str, str, str]:
     return versant, langue, ("ok" if versant == langue else "ecart")
 
 
-def lire(wp_url: str, post_id: int):
+def lire(wp_url: str, post_id: int, essais: int = 2):
+    """La page par son numéro, ou None. UN second essai : au premier passage réel (24/09,
+    402 fiches), 13 lectures ont échoué ; relancées dans la minute, toutes ont répondu 200.
+    Un échec de réseau passager n'est pas un état du site — il ne doit pas grossir le
+    compteur des illisibles au point de cacher une vraie absence."""
     import requests
-    try:
-        r = requests.get(f"{wp_url}/wp-json/wp/v2/tribe_events/{post_id}",
-                         params={"_fields": "id,link,content,title"}, headers=UA, timeout=20)
-    except requests.RequestException:
-        return None
-    return r.json() if r.status_code == 200 else None
+    for _ in range(essais):
+        try:
+            r = requests.get(f"{wp_url}/wp-json/wp/v2/tribe_events/{post_id}",
+                             params={"_fields": "id,link,content,title"}, headers=UA,
+                             timeout=20)
+        except requests.RequestException:
+            continue
+        if r.status_code == 200:
+            return r.json()
+        if r.status_code in (401, 403, 404):
+            return None      # corbeille, brouillon, supprimé : une réponse, pas une panne
+    return None
 
 
 def main(argv=None) -> int:
