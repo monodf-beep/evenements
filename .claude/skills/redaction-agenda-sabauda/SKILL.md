@@ -119,7 +119,12 @@ poser ces deux questions : la réponse doit déjà être dans la première livra
    est présent ou absent. Si un point relève d'un jugement plutôt que d'un fait vérifiable
    (un titre « catchy » qui joue sur la curiosité, par exemple), le présenter comme un
    jugement à trancher, jamais comme un fait acquis.
-5. **Si l'article existe en plusieurs langues, vérifier qu'aucune ne contamine l'autre** :
+5. **Le titre commence dans la langue du lecteur** (charte § 4, arbitrage de Franck du
+   24/09/2026) : lire les trois ou quatre premiers mots du titre français comme un
+   lecteur qui ne sait pas l'italien. S'ils sont italiens et que le nom n'est pas
+   vraiment connu du public francophone, réécrire : titre descriptif en français, nom
+   officiel après les deux-points, entre guillemets. Même contrôle pour le titre italien.
+6. **Si l'article existe en plusieurs langues, vérifier qu'aucune ne contamine l'autre** :
    chercher dans le texte FR quelques mots typiquement italiens (« città », « però »,
    « anche »…) et inversement. Un texte écrit dans deux fichiers séparés peut sembler
    propre alors qu'une phrase de l'un s'est glissée dans l'autre au moment de la relecture.
