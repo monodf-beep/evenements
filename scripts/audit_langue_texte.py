@@ -66,6 +66,14 @@ def verdict(page: dict) -> tuple[str, str, str]:
     return versant, langue, ("ok" if versant == langue else "ecart")
 
 
+# Réponse de WordPress « cette page n'est pas publique » (401/403/404) — à distinguer d'un
+# échec de réseau (None). Le 24/09, le premier passage sur le VPS comptait « 12
+# illisibles » : ce n'était pas le réseau, c'étaient des brouillons et des fiches mises à
+# la corbeille le soir même, que la base croit encore devant nous. Deux choses, deux
+# compteurs (règle 6).
+NON_PUBLIQUE = {"_non_publique": True}
+
+
 def lire(wp_url: str, post_id: int, essais: int = 2):
     """La page par son numéro, ou None. UN second essai : au premier passage réel (24/09,
     402 fiches), 13 lectures ont échoué ; relancées dans la minute, toutes ont répondu 200.
@@ -82,7 +90,7 @@ def lire(wp_url: str, post_id: int, essais: int = 2):
         if r.status_code == 200:
             return r.json()
         if r.status_code in (401, 403, 404):
-            return None      # corbeille, brouillon, supprimé : une réponse, pas une panne
+            return NON_PUBLIQUE   # corbeille, brouillon, supprimé : une réponse, pas une panne
     return None
 
 
@@ -113,14 +121,17 @@ def main(argv=None) -> int:
     # jamais ressembler à une panne pendant qu'il travaille.
     print(f"{len(ids)} fiche(s) encore devant nous à relire sur le site, une par une "
           f"(environ {max(1, round(len(ids) * 0.45 / 60))} min)…", flush=True)
-    ecarts, muets, illisibles = [], 0, 0
+    ecarts, muets, illisibles, non_publiques = [], 0, 0, []
     for n, pid in enumerate(ids, 1):
         if n % 50 == 0:
             print(f"  … {n}/{len(ids)} lues, {len(ecarts)} écart(s) pour l'instant", flush=True)
         page = lire(wp_url, pid)
         time.sleep(args.delai)
+        if page is NON_PUBLIQUE:
+            non_publiques.append(pid)
+            continue
         if not page:
-            illisibles += 1          # corbeille, brouillon, réseau : pas un écart, compté
+            illisibles += 1          # le réseau n'a pas répondu, deux fois : compté à part
             continue
         versant, langue, v = verdict(page)
         if v == "muet":
@@ -129,10 +140,13 @@ def main(argv=None) -> int:
             titre = html.unescape(((page.get("title") or {}).get("rendered") or ""))[:60]
             ecarts.append((pid, versant, langue, titre, page.get("link") or ""))
 
-    lues = len(ids) - illisibles
+    lues = len(ids) - illisibles - len(non_publiques)
     perimetre = f"fiches en base encore devant nous, lues sur le site le {auj}"
-    print(f"Examinées : {len(ids)} ({perimetre}) — lues : {lues}, illisibles : {illisibles}, "
-          f"sans verdict (texte trop court ou mêlé) : {muets}")
+    print(f"Examinées : {len(ids)} ({perimetre}) — lues : {lues}, non publiques sur le site "
+          f"(brouillon, corbeille) : {len(non_publiques)}, sans réponse du réseau : "
+          f"{illisibles}, sans verdict (texte trop court ou mêlé) : {muets}")
+    if non_publiques:
+        print("  Non publiques : " + " ".join(f"WP#{i}" for i in non_publiques))
     print(f"Texte dans l'autre langue que sa page : {len(ecarts)}")
     for pid, versant, langue, titre, link in ecarts:
         print(f"  WP#{pid} page {versant}, texte {langue} — {titre}\n      {link}")
@@ -140,7 +154,8 @@ def main(argv=None) -> int:
         from utils import slack
         tete = "⚠️" if ecarts else "✅"
         ligne = (f"{tete} *Textes dans la mauvaise langue* : {len(ecarts)} sur {lues} page(s) "
-                 f"lue(s) ({muets} sans verdict, {illisibles} illisible(s) ; à venir).")
+                 f"lue(s) ({muets} sans verdict ; {len(non_publiques)} non publique(s), "
+                 f"{illisibles} sans réponse ; à venir).")
         if ecarts:
             ligne += ("\n" + ", ".join(f"WP#{e[0]}" for e in ecarts[:12])
                       + (f" … (+{len(ecarts) - 12})" if len(ecarts) > 12 else "")
