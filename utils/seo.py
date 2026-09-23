@@ -147,7 +147,33 @@ _AMORCES_DATE = frozenset({
     "du", "dal", "dall", "au", "al", "le", "la", "les", "il", "des", "dei", "delle",
     "en", "in", "a", "entre", "tra", "jusqu", "jusquen", "fino", "dopo", "apres",
     "depuis", "da", "il", "lo", "der", "on", "from", "to",
+    # « samedi ET dimanche », « sabato E domenica » : la conjonction part avec ses jours.
+    # Et le démonstratif d'un repère relatif : « CE samedi », « QUESTO sabato ».
+    "et", "e", "ou", "o", "ce", "cet", "cette", "questo", "questa",
 })
+# Les JOURS DE LA SEMAINE (ajouté le 23/09). Le filtre du 21/09 ne connaissait que les
+# années, les mois et les quantièmes : WP#10428, créée le 22/09 avec le filtre en place,
+# est sortie « …-actes-anciens-a-decouvrir-samedi ». Un « samedi » dans une adresse est
+# pire qu'un millésime — il est faux dès le dimanche. Au SINGULIER seulement : « les
+# samedis du jazz » dit une habitude, pas une date. (« lunedì » → « lunedi » après NFD.)
+_JOURS_SLUG = frozenset({
+    "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+    "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato", "domenica",
+})
+# Un jour garde sa place derrière ces mots : « chaque samedi », « ogni domenica » disent
+# une récurrence, qui ne se périme pas.
+_AVANT_JOUR_DURABLE = frozenset({"chaque", "ogni", "tous", "tutti", "tutte"})
+# … et devant ceux-là, c'est un NOM PROPRE : « Il Sabato del villaggio » (Leopardi).
+_APRES_JOUR_NOM = frozenset({"de", "des", "du", "di", "del", "della", "dei", "delle"})
+# Les repères RELATIFS au jour de publication, en entier seulement : « ce soir » part,
+# « en soirée » reste ; « cette semaine » part, « une semaine d'ateliers » reste. Et
+# rien de nu comme « demain » ou « oggi » : mesuré le 23/09 sur les 348 fiches à venir,
+# « Piante ieri, oggi e domani » est un TITRE, pas un repère.
+_RELATIFS_SLUG = (
+    ("ce", "soir"), ("ce", "week", "end"), ("ce", "weekend"), ("cette", "semaine"),
+    ("stasera",), ("questa", "sera"), ("questo", "weekend"), ("questo", "week", "end"),
+    ("questo", "fine", "settimana"), ("questa", "settimana"),
+)
 
 
 def _slug_entier(texte: str) -> str:
@@ -180,8 +206,10 @@ def slug_sans_date(texte: str) -> str:
     « du-24-au-27-septembre-terra-madre-salone-del-gusto-apporte-la-biodiversite »
       → « terra-madre-salone-del-gusto-apporte-la-biodiversite »
 
-    Retire : les années (19xx / 20xx), les noms de mois FR et IT, les quantièmes (1-31)
-    qui touchent un mois retiré, et les mots qui introduisaient la date. Si tout part —
+    Retire : les années (19xx / 20xx), les noms de mois FR et IT, les jours de la semaine
+    au singulier (« …-a-decouvrir-samedi », 23/09), les repères relatifs entiers (« ce
+    soir », « ce week-end »), les quantièmes (1-31) qui touchent un mois ou un jour
+    retiré, et les mots qui introduisaient la date. Si tout part —
     un titre qui n'était QUE sa date — on rend le slug entier plutôt qu'une adresse vide.
 
     LIMITE CONNUE : un titre dont le mois EST le sujet perd son mot (« Mai 68 » → « 68 »).
@@ -208,12 +236,25 @@ def slug_sans_date(texte: str) -> str:
     for i, m in enumerate(mots):
         if _est_annee(m) or m in _MOIS_SLUG:
             garde[i] = False
-    # Un quantième ne se retire que s'il TOUCHE un mois retiré : « 1-000-places » n'est
-    # pas une date, et « 65e Fête de la Châtaigne » non plus.
+    jours = set()
     for i, m in enumerate(mots):
-        if garde[i] and _est_quantieme(m) and (
-                (i + 1 < len(mots) and mots[i + 1] in _MOIS_SLUG)
-                or (i and mots[i - 1] in _MOIS_SLUG)):
+        if (m in _JOURS_SLUG
+                and not (i and mots[i - 1] in _AVANT_JOUR_DURABLE)
+                and not (i + 1 < len(mots) and mots[i + 1] in _APRES_JOUR_NOM)):
+            garde[i] = False
+            jours.add(i)
+    for seq in _RELATIFS_SLUG:
+        n = len(seq)
+        for i in range(len(mots) - n + 1):
+            if tuple(mots[i:i + n]) == seq:
+                for k in range(i, i + n):
+                    garde[k] = False
+    # Un quantième ne se retire que s'il TOUCHE un mois ou un jour retiré :
+    # « 1-000-places » n'est pas une date, et « 65e Fête de la Châtaigne » non plus.
+    # « samedi 26 » en est une, même sans son mois.
+    reperes = {i for i, m in enumerate(mots) if m in _MOIS_SLUG} | jours
+    for i, m in enumerate(mots):
+        if garde[i] and _est_quantieme(m) and ({i - 1, i + 1} & reperes):
             garde[i] = False
     # Puis on remonte vers la gauche tant que le mot précédent n'est qu'une amorce de
     # date ou un autre quantième : « du 24 au 27 septembre » part en entier.
