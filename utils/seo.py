@@ -160,9 +160,12 @@ _JOURS_SLUG = frozenset({
     "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
     "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato", "domenica",
 })
-# Un jour garde sa place derrière ces mots : « chaque samedi », « ogni domenica » disent
-# une récurrence, qui ne se périme pas.
-_AVANT_JOUR_DURABLE = frozenset({"chaque", "ogni", "tous", "tutti", "tutte"})
+# Un jour garde sa place derrière ces mots : « chaque samedi », « ogni domenica », « un
+# mercoledì su due » (WP#9766, lu dans l'inventaire du 23/09), « ouvert le samedi »,
+# « il sabato mattina » disent une récurrence, qui ne se périme pas. Sauf si un
+# quantième suit : « le samedi 26 » est une date.
+_AVANT_JOUR_DURABLE = frozenset({"chaque", "ogni", "tous", "tutti", "tutte",
+                                 "un", "une", "uno", "le", "il", "la"})
 # … et devant ceux-là, c'est un NOM PROPRE : « Il Sabato del villaggio » (Leopardi).
 _APRES_JOUR_NOM = frozenset({"de", "des", "du", "di", "del", "della", "dei", "delle"})
 # Les repères RELATIFS au jour de publication, en entier seulement : « ce soir » part,
@@ -238,8 +241,9 @@ def slug_sans_date(texte: str) -> str:
             garde[i] = False
     jours = set()
     for i, m in enumerate(mots):
+        suivi_dun_quantieme = i + 1 < len(mots) and _est_quantieme(mots[i + 1])
         if (m in _JOURS_SLUG
-                and not (i and mots[i - 1] in _AVANT_JOUR_DURABLE)
+                and not (i and mots[i - 1] in _AVANT_JOUR_DURABLE and not suivi_dun_quantieme)
                 and not (i + 1 < len(mots) and mots[i + 1] in _APRES_JOUR_NOM)):
             garde[i] = False
             jours.add(i)
