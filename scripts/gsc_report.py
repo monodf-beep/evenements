@@ -339,6 +339,75 @@ def _tableau(titre: str, lignes: list[dict], cle: str = "keys", largeur: int = 6
               f"{l.get('position',0):>6.1f}")
 
 
+def _type_de_page(url: str, base: str) -> str:
+    """Famille d'une URL, pour dire OÙ le trafic bouge. Lu dans l'adresse, pas deviné."""
+    chemin = url.replace(base, "").split("?")[0]
+    if chemin in ("", "/", "/it/", "/it/home-it/"):
+        return "accueil"
+    if chemin.startswith("/it/evenement/"):
+        return "fiches IT"
+    if chemin.startswith("/evenement/"):
+        return "fiches FR"
+    if chemin.count("/") <= 2 and not chemin.startswith("/it/"):
+        return "articles et pages FR"
+    return "autres (IT, hubs, listes)"
+
+
+def _tendance(service, propriete: str, base: str, jours: int) -> int:
+    """LA question « pourquoi le trafic ne monte pas ? » (Franck, 24/09/2026).
+
+    Ce jour-là, la seule courbe disponible (CrawlSEO) s'arrêtait au 06/09 : dix-huit jours
+    de retard, le piège déjà payé le 08/09 (journal SEO, faute 1). La Search Console, elle,
+    répond ici en direct. Deux lectures, parce qu'un total ne dit pas CE qui stagne :
+      1. la courbe par semaine (clics, impressions, position moyenne pondérée) ;
+      2. les 14 derniers jours contre les 14 précédents, par famille de page, avec le
+         nombre de pages AFFICHÉES au moins une fois — si ce nombre baisse, c'est l'index
+         ou le stock d'événements ; s'il tient mais que la position recule, c'est le
+         classement ; si les impressions tiennent mais pas les clics, c'est l'attrait.
+    Lecture seule : rien n'est écrit, ni en base ni sur le site."""
+    debut, fin = _fenetre(max(jours, 56))
+    print(f"\nFenêtre : du {debut} au {fin} (arrêtée il y a {RETARD_JOURS} jours)")
+    lignes = _interroge(service, propriete, debut, fin, ["date"], 1000)
+    semaines: dict[str, list[float]] = {}
+    for l in lignes:
+        d = date.fromisoformat(l["keys"][0])
+        lundi = (d - timedelta(days=d.weekday())).isoformat()
+        w = semaines.setdefault(lundi, [0, 0, 0.0, 0])
+        w[0] += l["clicks"]; w[1] += l["impressions"]
+        w[2] += l["position"] * l["impressions"]; w[3] += 1
+    print("\n=== Par semaine (lundi) ===")
+    print(f"   {'semaine':<12} {'jours':>5} {'clics':>6} {'impr.':>7} {'CTR':>6} {'pos.':>6}")
+    for lundi in sorted(semaines):
+        c, i, pp, n = semaines[lundi]
+        print(f"   {lundi:<12} {n:>5} {c:>6.0f} {i:>7.0f} "
+              f"{(c / i * 100 if i else 0):>5.1f}% {(pp / i if i else 0):>6.1f}")
+    print("   (une semaine à moins de 7 jours est incomplète : ne pas la comparer telle quelle)")
+
+    f = date.fromisoformat(fin)
+    fen = {"14 derniers j": ((f - timedelta(days=13)).isoformat(), fin),
+           "14 précédents": ((f - timedelta(days=27)).isoformat(),
+                             (f - timedelta(days=14)).isoformat())}
+    parts: dict[str, dict[str, list[float]]] = {}
+    for nom, (d1, d2) in fen.items():
+        for l in _interroge(service, propriete, d1, d2, ["page"], 5000):
+            t = _type_de_page(l["keys"][0], base)
+            v = parts.setdefault(t, {}).setdefault(nom, [0, 0, 0.0, 0])
+            v[0] += l["clicks"]; v[1] += l["impressions"]
+            v[2] += l["position"] * l["impressions"]; v[3] += 1
+    print(f"\n=== 14 derniers jours ({fen['14 derniers j'][0]} → {fin}) contre les 14 "
+          f"précédents, par famille ===")
+    print(f"   {'famille':<28} {'':>14} {'pages vues':>10} {'clics':>6} {'impr.':>7} {'pos.':>6}")
+    for t in sorted(parts):
+        for nom in fen:
+            c, i, pp, n = parts[t].get(nom, [0, 0, 0.0, 0])
+            print(f"   {t:<28} {nom:>14} {n:>10} {c:>6.0f} {i:>7.0f} "
+                  f"{(pp / i if i else 0):>6.1f}")
+    print("\n   « pages vues » = pages affichées AU MOINS UNE FOIS dans Google sur la période,")
+    print("   pas des visites. Une page absente n'est pas forcément désindexée : elle a pu")
+    print("   ne correspondre à aucune recherche.\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Lit la Search Console (lecture seule) : requêtes, pages, articles.")
@@ -357,6 +426,9 @@ def main(argv: list[str] | None = None) -> int:
                         default=str(ROOT / "data" / "oauth-client.json"),
                         help="Fichier d'ID client OAuth. Défaut : data/oauth-client.json — "
                              "y déposer le JSON téléchargé depuis Google Cloud suffit.")
+    parser.add_argument("--tendance", action="store_true",
+                        help="Évolution semaine par semaine, et 14 derniers jours contre les 14 "
+                             "précédents par type de page (lecture seule).")
     parser.add_argument("--enregistrer", action="store_true",
                         help="Archive le relevé en base (table gsc_perf) pour constituer "
                              "l'historique. Silencieux : n'envoie rien sur Slack.")
@@ -416,6 +488,8 @@ def main(argv: list[str] | None = None) -> int:
           f"a ce retard de publication)")
 
     try:
+        if args.tendance:
+            return _tendance(service, propriete, base, args.jours)
         if args.enregistrer:
             pages = _interroge(service, propriete, debut, fin, ["page"], 5000)
             requetes = _interroge(service, propriete, debut, fin, ["query"], 5000)
