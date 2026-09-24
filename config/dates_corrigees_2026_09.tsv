@@ -1,0 +1,3 @@
+# Dates corrigées à la main — id_wordpress<TAB>début<TAB>fin<TAB>début faux attendu en base<TAB>source (phrase lue)
+6453	2026-03-27	2026-06-21	2027-03-27	Texte publié, FR et IT : « Le concours à primes Pizza Show s est tenu à Verceil et dans les environs du 27 mars au 21 juin 2026 » ; titre « le concours 2026 des pizzerias ». Année 2027 posée par dates._year (grâce de 60 jours).
+10155	2026-05-15	2026-05-15	2027-05-15	Fiche collectée en septembre 2026 : « se rend au Salone Internazionale del Libro di Torino le 15 mai » ; le Salone 2026 s est tenu à la mi-mai, le programme 2027 n existait pas à la collecte. Année 2027 posée par dates._year.
