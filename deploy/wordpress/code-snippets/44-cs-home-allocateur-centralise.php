@@ -22,9 +22,9 @@
  * Deterministe, independant de l'ordre de rendu et du mecanisme interne de
  * JetEngine.
  *
- * Sections (priorite de reservation) : weekend (ce week-end, Fri-Dim) ->
- * jour (= "7 prochains jours", evenements DEMARRANT dans les 7 jours) ->
- * ala-une -> nouveautes (plus recemment ajoutes) -> evidence / evidence-bottom
+ * Sections (priorite de reservation, revue 2026-09-08) : ala-une -> weekend (ce week-end,
+ * Fri-Dim) -> jour (= "7 prochains jours", evenements DEMARRANT dans les 7 jours)
+ * -> nouveautes (plus recemment ajoutes) -> evidence / evidence-bottom
  * -> venir / venir-bottom (a venir, par date de debut). Un evenement n'apparait
  * dans une 2e section qu'en dernier recours, jamais dans une 3e.
  *
@@ -168,9 +168,17 @@ function cs_home_build_allocation() {
             // masque pas.
             $meta['n0'] = ['key' => '_EventStartDate', 'value' => $todayStart, 'compare' => '>=', 'type' => 'DATETIME'];
             $meta['n1'] = ['key' => '_EventStartDate', 'value' => $d7, 'compare' => '<=', 'type' => 'DATETIME'];
-        } elseif ($mode === 'upcoming' || $mode === 'nouveautes' || $mode === 'vedette') {
+        } elseif ($mode === 'upcoming' || $mode === 'nouveautes') {
             $meta['u1'] = ['key' => '_EventStartDate', 'value' => $now, 'compare' => '>=', 'type' => 'DATETIME'];
         }
+        // 2026-09-08 (Franck : « toujours des soucis en evidence », hub Savoie a 1 carte sur 3) :
+        // 'vedette' n'exige PLUS que l'evenement n'ait pas commence. Regle 5 du depot : une
+        // exposition ou une saison EN COURS compte tout le temps qu'elle dure, c'est la date de
+        // FIN qui decide (deja dans $meta['up']). Mesure avant : Savoie FR n'avait qu'UNE fiche
+        // eligible (1925) ; le Spectacle equestre de Montrottier (795, dep=9, jusqu'au 31/10)
+        // etait ecarte pour avoir commence en avril. Nice perdait Matisse - Yves Saint Laurent
+        // (jusqu'au 28/09), le Piemont neuf fiches. Revenir en arriere : remettre 'vedette'
+        // dans le elseif ci-dessus.
         // 2026-07-31 (Franck) : exclusion etendue a TOUTES les sections de la home (pas
         // seulement les 3 "vedette") -- un evenement "Exclu de la home" disparait
         // desormais partout, pas seulement de A la une \/ En evidence \/ En evidence bas.
@@ -189,7 +197,14 @@ function cs_home_build_allocation() {
             // une note basse remontait quand meme en dernier recours (cas du
             // cours de pilates, note 6, premier sur la home Savoie). La section
             // peut devenir vide, c'est voulu.
-            $meta['une'] = ['key' => 'as_deplacement', 'value' => 8, 'compare' => '>=', 'type' => 'NUMERIC'];
+            // 2026-09-08 (Franck) : seuil abaisse de 8 a 7 pour « En evidence », sur TOUTES les
+            // homes (home + hubs, FR/IT : meme allocateur). Mesure du soir sur le hub Savoie :
+            // 21 fiches publiees a venir, DEUX a 8 ou plus (deja dans la moitie haute), CINQ a 7
+            // (Nuit des chercheurs, jardins alpestres, Festival Photo de Montmelian, James
+            // Carter, OSR a Evian) -- la moitie basse affichait « Aucun evenement pour le moment ».
+            // Franck : « 1 et pour l'ensemble des homepages ». « A la une » (mode une_now) garde son
+            // propre critere, as_une_now, inchange. Revenir en arriere : remettre 8.
+            $meta['une'] = ['key' => 'as_deplacement', 'value' => 7, 'compare' => '>=', 'type' => 'NUMERIC'];
         }
         if ($mode === 'une_now') {
             // 2026-08-18 : PAS de borne sur la date de DEBUT pour ce mode. La clause
@@ -284,6 +299,31 @@ function cs_home_build_allocation() {
                 if ($a['ongoing'] !== $b['ongoing']) { return $a['ongoing'] <=> $b['ongoing']; }
                 return strcmp($a['start'], $b['start']);
             });
+            // 2026-09-09 (Franck, capture du hub Piemont) : « trop d'evenements "jusqu'au"
+            // pour ce week-end ». MESURE avant de conclure : le PLAN etait deja juste --
+            // 2287, 729, 8621 (ponctuels) en tete, puis 578, 7701, 7548 (en cours depuis
+            // janvier, avril, mai). C'est l'AFFICHAGE qui l'inversait : The Events Calendar
+            // reordonne les grilles par date de debut, donc une expo commencee en janvier
+            // passe toujours devant un concert de vendredi. Exactement le defaut deja
+            // constate sur 'jour' le 2026-08-03, dont la lecon etait : sur ces sections,
+            // corriger la SELECTION, jamais l'ordre. Elle n'avait pas ete portee ici.
+            //
+            // Les en-cours ne remplissent donc plus que ce que les ponctuels laissent
+            // INCOMPLET, au multiple de ligne pres (3) : 3 ponctuels ce week-end = 3 cartes
+            // et zero « jusqu'au » ; 1 ponctuel = 1 + 2 en-cours ; 0 ponctuel = une ligne
+            // d'en-cours plutot qu'une section vide (le depot refuse de masquer une penurie,
+            // il refuse aussi d'en fabriquer une). Revenir en arriere : reprendre la ligne
+            // "array_slice(array_column($ranked,'id'), 0, $count)" pour les deux modes.
+            // 2026-09-09, LE MEME JOUR, APRES MESURE : le plafonnement des en-cours pose
+            // quelques heures plus tot est ANNULE. Franck : « je ne suis pas d'accord, je
+            // veux 6 ». Il avait raison, et ma correction visait a cote : le vrai defaut
+            // n'etait pas COMBIEN d'expositions entrent, mais qu'elles s'affichent EN TETE.
+            // Mesure faite depuis : une WP_Query tribe_events rend
+            // « ORDER BY tec_occurrences.start_date ASC » quoi qu'on demande -- The Events
+            // Calendar ecrase "orderby => post__in". D'ou le filtre 'posts_orderby' ajoute
+            // en fin de fichier, qui impose FIELD(ID, <plan>) : l'ordre du plan fait enfin
+            // foi a l'affichage, donc les ponctuels passent devant SANS qu'on ait a
+            // sacrifier des cartes. Le classement ongoing ci-dessus suffit.
             $ids = array_slice(array_column($ranked, 'id'), 0, $count);
         } else {
             $args = $base;
@@ -344,12 +384,42 @@ function cs_home_build_allocation() {
     };
 
     $plan = [];
+    // 2026-09-08 (Franck : « pourquoi on a que 2 a la une ? », hub Savoie) : « A la une » est
+    // servie EN PREMIER. Elle s'affiche en tete de page mais etait servie troisieme, apres
+    // Ce week-end et 7 prochains jours, et elle n'emprunte jamais (max_reuse 0) : mesure sur
+    // Savoie FR, trois fiches eligibles (as_une_now > 0), les jardins alpestres deja pris par
+    // Ce week-end, donc deux cartes sur trois. Franck a choisi, entre trois options, de faire
+    // choisir la une avant le week-end : l'ordre de service suit desormais l'ordre visuel.
+    // Le week-end prend ce qui reste. Revenir en arriere : redescendre cette ligne sous 'jour'.
+    // 2026-09-24 (Franck, capture mobile : trois cartes sur une grille de deux, un trou) :
+    // « soit 2 soit 4 evenements suivant le stock ». La une demande de nouveau QUATRE fiches ;
+    // le CSS du snippet 77 en montre 3 sur ordinateur (inchange) et, sur mobile, cache la
+    // derniere quand le nombre est impair : 4 -> 4, 3 -> 2, 2 -> 2, 1 -> 1. Mesure dans un
+    // navigateur sur la page en ligne avant d ecrire. Cout accepte : la 4e fiche, reservee
+    // ici, ne sert plus a une autre section sur ordinateur. Revenir en arriere : remettre 3.
+    $plan['ala-une']         = $take(4, 'une_now', 'ala-une', 0);
     $plan['weekend']         = $take(6, 'weekend', 'weekend');
     $plan['jour']            = $take(8, 'next7', 'jour');
-    $plan['ala-une']         = $take(3, 'une_now', 'ala-une', 0);
     $plan['nouveautes']      = $take(3, 'nouveautes', 'nouveautes');
-    $plan['evidence']        = $take(3, 'vedette', 'evidence');
-    $plan['evidence-bottom'] = $take(3, 'vedette', 'evidence-bottom', null, $plan['evidence']);
+    // 2026-09-08 (Franck, hub Nice : « En evidence » vide deux fois, hub Savoie : 1 carte sur 3).
+    // Mesure : le Comte de Nice avait QUATRE fiches eligibles (dep >= 8, redigees : Voiles
+    // Maralpines, Citadelle de Villefranche, EVO France, Matisse - YSL), toutes deja prises par
+    // Ce week-end, 7 prochains jours ou Nouveautes, et le budget global de reemploi (2) deja
+    // depense par 'jour'. La section arrivait donc les mains vides alors que le contenu existait.
+    // Comme 'venir' et 'venir-bottom' (allocation dediee de 4 depuis le 23/07), les deux moities
+    // d'« En evidence » recoivent leur PROPRE allocation de reemploi (2 chacune), sans toucher au
+    // budget global. Un id ne peut toujours pas servir trois fois ($reused). Revenir en arriere :
+    // remettre le 4e argument a null (evidence) et null (evidence-bottom).
+    // 2026-09-09 (Franck, hub Nice : « j'ai 2 fois le meme article x 2 ») : le budget de
+    // reemploi DEDIE donne la veille a ces deux moities est retire. Mesure du plan de Nice
+    // ce soir : HUIT ids repetes, dont 727 (Brahms) et 7495 (Citadelle) dans « A la une » ET
+    // « En evidence (bas) » -- soit exactement les deux articles vus deux fois. Deux budgets
+    // dedies de 2 s'ajoutaient au budget global de 2 : la home pouvait repeter six fois.
+    // On revient au budget GLOBAL partage (null), et surtout : les ids deja pris par
+    // « A la une » sont exclus du reemploi des deux « En evidence » -- ce sont les vitrines
+    // voisines, un meme article dans les deux est un doublon que le lecteur voit.
+    $plan['evidence']        = $take(3, 'vedette', 'evidence', null, $plan['ala-une']);
+    $plan['evidence-bottom'] = $take(3, 'vedette', 'evidence-bottom', null, array_merge($plan['ala-une'], $plan['evidence']));
     $plan['venir']           = $take(4, 'upcoming', 'venir', 4);
     $plan['venir-bottom']    = $take(4, 'upcoming', 'venir-bottom', 4, $plan['venir']);
     $plan['deplacement']     = cs_home_deplacement_pick($lang, $now);
@@ -460,6 +530,11 @@ add_filter('jet-engine/listing/grid/posts-query-args', function ($args, $render,
         // qu'une fois PAR section : chaque widget de la section recoit le plan entier.
         $args['post__in'] = !empty($plan[$eid]) ? $plan[$eid] : [0];
         $args['orderby']  = 'post__in';
+        // 2026-09-09 : marqueur lu par le filtre 'posts_orderby' en fin de fichier.
+        // "orderby => post__in" NE SUFFIT PAS sur un tribe_events : mesure faite ce jour-la,
+        // la requete sort « ORDER BY tec_occurrences.start_date ASC ». C'est ce qui remontait
+        // les expositions longue duree en tete de « Ce week-end » (capture de Franck).
+        $args['cs_ordre_plan'] = $eid;
         unset($args['post__not_in']);
 
         // 2026-08-03 : sur les sections DATEES, l ordre du plan fait foi.
@@ -478,3 +553,24 @@ add_filter('jet-engine/listing/grid/posts-query-args', function ($args, $render,
     }
     return $args;
 }, 10, 3);
+
+// L'ORDRE DU PLAN FAIT FOI (2026-09-09). The Events Calendar impose son propre ORDER BY sur
+// les requetes tribe_events et ecrase "orderby => post__in" : verifie en direct ce jour-la,
+// une requete demandant [7532,6259,14,804,7495,727] rendait [6259,14,804,727,7532,7495],
+// c'est-a-dire par date de debut croissante. Consequence visible : « Ce week-end » ouvrait
+// sur trois expositions commencees en juin, avant les concerts du vendredi. Le classement
+// « ongoing en second rideau » existait pourtant dans l'allocateur depuis le 02/08 -- il
+// etait simplement annule a l'affichage, et deux corrections successives (03/08 sur la
+// selection de 'jour', 09/09 sur celle de 'weekend') avaient contourne la cause au lieu de
+// la traiter. Priorite 9999 : apres tout le monde, TEC compris.
+// Revenir en arriere : supprimer ce filtre ; l'ordre redevient la date de debut.
+add_filter('posts_orderby', function ($orderby, $query) {
+    $eid = $query->get('cs_ordre_plan');
+    if (!$eid || !function_exists('cs_home_build_allocation')) { return $orderby; }
+    $plan = cs_home_build_allocation();
+    if (empty($plan[$eid]) || !is_array($plan[$eid])) { return $orderby; }
+    $ids = array_values(array_filter(array_map('intval', $plan[$eid])));
+    if (empty($ids)) { return $orderby; }
+    global $wpdb;
+    return 'FIELD(' . $wpdb->posts . '.ID, ' . implode(',', $ids) . ')';
+}, 9999, 2);
