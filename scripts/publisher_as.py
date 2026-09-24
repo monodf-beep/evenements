@@ -412,6 +412,21 @@ def _source_publiable(event: dict, is_radar: bool) -> str:
     return url
 
 
+def _extrait_depuis_article(content: str, limite: int = 200) -> str:
+    """Le premier paragraphe substantiel du corps rendu par `build_post` (le chapeau quand
+    il y en a un), en texte brut, coupé à `limite` caractères sur une fin de mot. "" si le
+    corps n'a pas de paragraphe d'au moins 60 caractères. Voir l'extrait dans _build_payload."""
+    for bloc in re.findall(r"(?is)<p[^>]*>(.*?)</p>", content or ""):
+        texte = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", bloc))).strip()
+        if len(texte) < 60:
+            continue
+        if len(texte) <= limite:
+            return texte
+        coupe = texte[:limite].rsplit(" ", 1)[0].rstrip(" ,;:—-")
+        return coupe + "…"
+    return ""
+
+
 def _is_radar(event: dict) -> bool:
     return (event.get("source_type") == "radar"
             or "(radar)" in (event.get("source_name") or ""))
@@ -841,8 +856,20 @@ def _build_payload(event: dict, skip_media: bool = False,
         except Exception:  # noqa: BLE001 — le registre est un CONFORT, jamais un prérequis
             pass
 
-    # Extrait : la réponse directe SEO si dispo, sinon le début de la description.
+    # Extrait : la réponse directe SEO si dispo, sinon le CHAPEAU DE L'ARTICLE publié,
+    # et la description brute seulement quand il n'y a pas d'article.
+    #
+    # L'ARTICLE AVANT LA DESCRIPTION (24/09/2026). Franck, capture du flux RSS : la page
+    # française de Palazzo Carignano résumée par « Palazzo Carignano, Torino — In
+    # occasione delle Giornate europee del patrimonio… ». La description est le texte
+    # BRUT de la source, dans SA langue ; l'article, lui, est rédigé ou traduit dans la
+    # langue de la page. Mesuré ce jour-là sur les 403 fiches à venir : 94 extraits dans
+    # l'autre langue que leur page, presque tous des descriptions de brochure italiennes
+    # sur des pages françaises (Plaisirs de Culture, Giornate). Le chapeau est déjà un
+    # résumé, écrit pour ça.
     excerpt = (event.get("seo_answer") or "").strip()
+    if not excerpt:
+        excerpt = _extrait_depuis_article(content)
     if not excerpt:
         # Cet extrait devient la meta description quand Yoast n'en a pas d'autre : sur
         # une fiche pas encore passée par seo_batch, c'est LUI que Google affiche. Le
