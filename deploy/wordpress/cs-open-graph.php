@@ -22,8 +22,15 @@ if (!defined('ABSPATH')) { exit; }
 
 if (!function_exists('cs_og_image')) {
 function cs_og_image($lang) {
-    $base = 'https://agendasabauda.eu/wp-content/uploads/2026/07/';
-    return $base . ($lang === 'it' ? 'og-agenda-sabauda-it.png' : 'og-agenda-sabauda-fr.png');
+    // 24/09/2026 (Franck, capture WhatsApp) : l'image de juillet coupait le logo en
+    // « genda Sabaud » — WhatsApp ne garde que le CARRÉ central (~630 px) d'une image
+    // 1200×630, et le logo en occupait 740. La nouvelle place tout l'essentiel dans ce
+    // carré : logo sur deux lignes (La Semplicita Bold), accroche, quatre monuments.
+    // NOUVEAU nom de fichier, pas un écrasement : les messageries gardent l'aperçu d'une
+    // URL en cache. Copies versionnées : assets/brand/. Retour arrière : les fichiers de
+    // juillet sont toujours dans uploads/2026/07/.
+    $base = 'https://agendasabauda.eu/wp-content/uploads/2026/09/';
+    return $base . ($lang === 'it' ? 'og-agenda-sabauda-it-2026-09.png' : 'og-agenda-sabauda-fr-2026-09.png');
 }
 }
 
