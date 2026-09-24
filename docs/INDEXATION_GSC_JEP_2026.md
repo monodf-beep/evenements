@@ -1,6 +1,6 @@
 # Indexation Google des fiches des Journées du patrimoine — septembre 2026
 
-Demandé par Franck le 24/09/2026 : « il faut indexer les nouveaux événements aussi… dans google search console via cowork ».
+Demandé par Franck le 24/09/2026 : « il faut indexer les nouveaux événements aussi… dans google search console via cowork », puis, le même jour : « faut demander plutôt les pages en italien pour ceux du Piémont qui aimeraient aller aux Journées européennes du patrimoine ».
 
 ## Ce qui est permis, et pourquoi pas plus
 
@@ -8,13 +8,44 @@ Demandé par Franck le 24/09/2026 : « il faut indexer les nouveaux événements
 - **Bing et les moteurs IndexNow** sont déjà prévenus à chaque publication par le snippet « CS - IndexNow » (Code Snippets n° 116, actif depuis le 30/07).
 - **Google** : renvoi du sitemap (couvre tout) + demande manuelle d'indexation, **environ 10 par jour et par propriété** — d'où le tri ci-dessous.
 
-## Vérifié avant de soumettre (24/09, 1h50)
+## Pourquoi l'italien, et pas le français, pour le Piémont
 
-Les 82 fiches créées depuis le 23/09 : toutes en **200**, **canonique = elle-même**, **aucun noindex**, **présentes dans `tribe_events-sitemap.xml`** (378 adresses). 72 sont encore à venir après le 24/09 ; elles sont listées ici.
+Le public des Giornate piémontaises cherche en italien, sur google.it, des mots italiens
+(« Giornate europee del patrimonio Torino », « apertura serale Racconigi »). La page
+française de la même fiche a peu de chances de lui être montrée (c'est une
+hypothèse raisonnable, pas une mesure : la Search Console le dira par langue dans
+quelques semaines). Les dix demandes quotidiennes vont
+donc aux pages **italiennes** des événements du Piémont, dans l'ordre de leur date ; les
+pages françaises de la Vallée d'Aoste (plan précédent) passent au second rang.
 
-Les pages **italiennes** ne consomment pas de demande manuelle : Google les découvre par le hreflang de leur jumelle française et par le sitemap. Priorité aux pages françaises, dans l'ordre de la date de l'événement.
+## Vérifié avant de soumettre (24/09, vers 0h15)
 
-## Consigne pour la session Cowork (à coller telle quelle, une fois par jour, avec la liste du jour)
+**Première mesure : 7 des 30 pages italiennes étaient en `noindex` et hors sitemap**
+(10572, 10539, 10990, 10615, 10620, 11003, 11010). Motif : cs-completude, « source
+officielle absente ». Les jumelles françaises portaient pourtant la page cultura.gov.it.
+Cause : `refresh_deplacement` (10h55) republiait les traductions avec une source vide. Il
+appelle `publish_to_as` directement, et seul `publish_batch_as` héritait la source de
+l'original. La passe de minuit la remettait, celle de 10h55 l'effaçait. **Corrigé dans le
+dépôt** (commit ff534b7 : l'héritage vit dans `publish_to_as`, pour tous les appelants).
+
+**Réparé sur le site le 24/09** : 29 fiches à venir ont repris la source de leur jumelle
+(sauvegarde : option `cs_source_jumelle_avant_20260924`, une ligne au journal de chaque
+fiche). Leur complétude a été recalculée, et 22 sont sorties de la liste « hors index ».
+Quatre fiches n'ont de source d'aucun côté (WP#14, 2215, 3709, 8284) : elles n'ont pas été
+touchées. Dix jumelles italiennes des Plaisirs de Culture (120xx) avaient aussi perdu leur
+source ; elles n'étaient pas encore exclues de l'index, elles l'auraient été à la passe
+suivante.
+
+**Remesuré ensuite, de l'extérieur, sur les 30 pages** : 30 en **200**, 30 en **`index`**,
+30 avec **canonique = elle-même**, 30 présentes dans `tribe_events-sitemap.xml`. Cinq
+lectures avaient d'abord dépassé 40 s ; relancées une à une, elles ont toutes répondu en
+2 s.
+
+À savoir : l'ADRESSE des pages italiennes reprend le slug français de l'original. C'est
+voulu depuis la création des traductions (« URL commune à la paire »). Google l'accepte ;
+c'est le titre et le texte qui portent la langue.
+
+## Consigne pour la session Cowork (à coller telle quelle, une fois par jour, avec la liste du jour — les adresses sont en /it/, c'est voulu)
 
 ```
 Dans Google Search Console, propriété agendasabauda.eu :
@@ -29,7 +60,49 @@ Dans Google Search Console, propriété agendasabauda.eu :
 4. Rendre un tableau : adresse | état avant (sur Google / pas sur Google + motif affiché) | action.
 ```
 
-## Jour 1 — 24/09 (événements du 25 et 26)
+## Jour 1 — 24/09 (événements du 26)
+
+- https://agendasabauda.eu/it/evenement/musees-royaux-de-turin-ouverture-en-soiree-et-appartement-de-2/  — Musei Reali di Torino : apertura serale e appartamento di Margherita di Savoia (WP#10527)
+- https://agendasabauda.eu/it/evenement/palazzo-carignano-les-appartements-des-princes-ouverts-en-soiree-2/  — Palazzo Carignano : Appartamenti dei Principi aperti in serata (WP#10525)
+- https://agendasabauda.eu/it/evenement/reouverture-du-forte-di-gavi-avec-deux-expositions-fammi-un-quadro-2/  — Riapertura del Forte di Gavi con due mostre (WP#10570)
+- https://agendasabauda.eu/it/evenement/coucher-de-soleil-a-lalto-forte-une-visite-exceptionnelle-a-gavi-2/  — Tramonto all’Alto Forte : visita guidata straordinaria a Gavi (WP#12361)
+- https://agendasabauda.eu/it/evenement/visite-nocturne-au-forte-di-gavi-hommage-a-emily-dickinson-et-2/  — Visita serale al Forte di Gavi : omaggio a Emily Dickinson (WP#10572)
+- https://agendasabauda.eu/it/evenement/racconigi-ouvre-en-soiree-son-premier-etage-noble-pour-voir-specchi-2/  — Racconigi apre in serata il primo piano nobile (Specchi del Giappone) (WP#10538)
+- https://agendasabauda.eu/it/evenement/a-racconigi-une-matinee-dans-le-jardin-secret-des-principini-2/  — Racconigi : una mattina nel giardino segreto dei Principini (WP#10536)
+- https://agendasabauda.eu/it/evenement/vitae-il-sentimento-della-natura-ouverture-nocturne-au-chateau-daglie-2/  — Vitae. Il sentimento della Natura : apertura serale ad Agliè (WP#10526)
+- https://agendasabauda.eu/it/evenement/journees-europeennes-du-patrimoine-a-labbaye-de-vezzolano-2/  — Giornate europee del patrimonio all’Abbazia di Vezzolano (WP#10535)
+- https://agendasabauda.eu/it/evenement/industria-la-ville-romaine-se-raconte-avec-les-archeologues-2/  — Industria : la città romana raccontata dagli archeologi (WP#10575)
+
+## Jour 2 — 25/09 (événements du 26)
+
+- https://agendasabauda.eu/it/evenement/aperitivo-in-vigna-un-verre-au-coucher-du-soleil-dans-la-vigne-de-2/  — Aperitivo in Vigna a Villa della Regina (WP#10539)
+- https://agendasabauda.eu/it/evenement/nutrire-il-benessere-un-chef-spatial-et-un-medecin-nutritionniste-2/  — Nutrire il benessere : uno chef spaziale a Villa della Regina (WP#11672)
+- https://agendasabauda.eu/it/evenement/passeggiata-botanica-a-villa-della-regina-la-vigne-du-xviie-siecle-2/  — Passeggiata botanica a Villa della Regina (WP#11674)
+- https://agendasabauda.eu/it/evenement/tra-acqua-terra-e-memoria-leri-e-lucedio-le-patrimoine-qui-renait-2/  — Tra acqua, terra e memoria : Leri e Lucedio (WP#11673)
+- https://agendasabauda.eu/it/evenement/une-visite-guidee-retrace-lhistoire-du-chateau-de-serralunga-dalba-2/  — Visita guidata al castello di Serralunga d’Alba (WP#10990)
+- https://agendasabauda.eu/it/evenement/novare-ouvre-ses-archives-sceaux-et-actes-anciens-a-decouvrir-2/  — Archivio sicuro, documenti protetti (Novara) (WP#10651)
+- https://agendasabauda.eu/it/evenement/giornate-europee-del-patrimonio-a-larchivio-di-stato-di-asti-2/  — Giornate europee del patrimonio all’Archivio di Stato di Asti (WP#10568)
+- https://agendasabauda.eu/it/evenement/cappella-di-san-sebastiano-les-fresques-inedites-de-caprauna-ouvertes-2/  — Cappella di San Sebastiano : affreschi inediti di Caprauna (WP#10612)
+- https://agendasabauda.eu/it/evenement/les-trains-racontent-leurs-histoires-une-apres-midi-en-famille-2/  — I treni raccontano le loro storie (Savigliano) (WP#10615)
+- https://agendasabauda.eu/it/evenement/a-lu-luigi-onetti-1876-retrouve-ses-tresors-le-museo-se-renove-2/  — A Lu, Luigi Onetti ritrova i suoi tesori (WP#10620)
+
+## Jour 3 — 26/09 (événements du 27)
+
+- https://agendasabauda.eu/it/evenement/facce-da-medaglia-frappez-votre-propre-medaille-aux-musei-reali-2/  — Facce da Medaglia ai Musei Reali (WP#11001)
+- https://agendasabauda.eu/it/evenement/au-palazzo-avec-carlo-alberto-activites-pour-familles-aux-musei-reali-2/  — A Palazzo con Carlo Alberto : attività per famiglie (WP#12357)
+- https://agendasabauda.eu/it/evenement/chasse-au-tresor-a-la-margaria-de-racconigi-les-enfants-sur-2/  — Caccia al tesoro alla Margaria di Racconigi (WP#12362)
+- https://agendasabauda.eu/it/evenement/reincanto-aux-giovani-cantori-di-torino-2/  — Reincanto : i Giovani Cantori di Torino a Villa della Regina (WP#10994)
+- https://agendasabauda.eu/it/evenement/a-la-decouverte-daugusta-bagiennorum-2/  — Alla scoperta di Augusta Bagiennorum (WP#10996)
+- https://agendasabauda.eu/it/evenement/visite-guidee-au-castello-biandrate-de-foglizzo-et-au-musee-des-balais-2/  — Castello Biandrate di Foglizzo e museo delle scope (WP#11003)
+- https://agendasabauda.eu/it/evenement/archivio-di-stato-di-alessandria-ouvre-ses-portes-2/  — L’Archivio di Stato di Alessandria apre le porte (WP#10989)
+- https://agendasabauda.eu/it/evenement/archeologie-en-piemont-conference-sur-les-collections-etrusques-et-2/  — Archeologia in Piemonte : conferenza al Castello di Agliè (WP#10988)
+- https://agendasabauda.eu/it/evenement/messi-sullavviso-bandits-et-rebelles-des-archives-du-vercellais-1700-2/  — Messi sull’avviso : banditi e ribelli negli archivi del Vercellese (WP#11010)
+- https://agendasabauda.eu/it/evenement/un-nouveau-site-archeo-minier-ouvre-a-bioglio-dans-loasi-zegna-2/  — A Bioglio un nuovo sito archeo-minerario nell’Oasi Zegna (WP#11012)
+
+## Second rang — pages françaises de la Vallée d'Aoste (si le quota du jour n'est pas épuisé)
+
+Plan d'origine, vérifié le 24/09 à 1h50 (200, canonique, sans noindex, dans le sitemap).
+À ne prendre qu'après la liste italienne du jour.
 
 - https://agendasabauda.eu/evenement/oltre-laffresco-les-coulisses-du-restauro-du-chateau-dissogne/  — Les coulisses de la restauration du château d’Issogne (2026-09-23 → 2026-09-25)
 - https://agendasabauda.eu/evenement/memorie-darchivio/  — Mémoires d’archives à Issogne : deux siècles de Vallée d’Aoste par les (2026-09-25 → 2026-09-25)
@@ -42,8 +115,6 @@ Dans Google Search Console, propriété agendasabauda.eu :
 - https://agendasabauda.eu/evenement/i-segreti-della-maison-de-thomas-trois-siecles-de-savoir-faire-alpin/  — Les secrets de la Maison de Thomas : trois siècles de savoir-faire alp (2026-09-26 → 2026-09-26)
 - https://agendasabauda.eu/evenement/dallautoma-al-telefono-il-genio-di-innocenzo-manzetti/  — De l’automate au téléphone : le génie d’Innocenzo Manzetti (2026-09-26 → 2026-09-26)
 
-## Jour 2 — 25/09 (événements du 26)
-
 - https://agendasabauda.eu/evenement/microdanze-trois-pieces-de-danse-contemporaine-dans-les-vestiges-de/  — MicroDanze : trois pièces de danse contemporaine dans les vestiges de  (2026-09-26 → 2026-09-26)
 - https://agendasabauda.eu/evenement/nutrire-il-benessere-un-chef-spatial-et-un-medecin-nutritionniste/  — Un chef spatial et un médecin nutritionniste à la Villa della Regina (2026-09-26 → 2026-09-26)
 - https://agendasabauda.eu/evenement/passeggiata-botanica-a-villa-della-regina-la-vigne-du-xviie-siecle/  — Promenade botanique à la Villa della Regina : la vigne du XVIIe siècle (2026-09-26 → 2026-09-26)
@@ -55,8 +126,6 @@ Dans Google Search Console, propriété agendasabauda.eu :
 - https://agendasabauda.eu/evenement/il-castello-di-saint-germain-unicona-della-valle-daosta-medievale/  — Château de Saint-Germain : fouilles ouvertes au public lors des Journé (2026-09-26 → 2026-09-26)
 - https://agendasabauda.eu/evenement/cercami-tra-il-bianco-della-neve/  — Un atelier d’illustration naturaliste au château de Saint-Pierre (2026-09-26 → 2026-09-26)
 
-## Jour 3 — 26/09 (événements du 26-27)
-
 - https://agendasabauda.eu/evenement/il-volo-della-colomba-franco-perrotti-au-ciel-anthropise-courmayeur/  — Franco Perrotti à l’église vaudoise de Courmayeur : « Il volo della co (2026-09-26 → 2026-09-27)
 - https://agendasabauda.eu/evenement/dalla-terra-alla-cura-les-plantes-qui-soignent-au-jardin-des-anciens/  — Les plantes qui soignent au Jardin des Anciens Remèdes de Jovençan (2026-09-26 → 2026-09-27)
 - https://agendasabauda.eu/evenement/impara-larte-della-tessitura/  — Apprendre le tissage du chanvre à Donnas et Champorcher (2026-09-26 → 2026-09-27)
@@ -67,48 +136,3 @@ Dans Google Search Console, propriété agendasabauda.eu :
 - https://agendasabauda.eu/evenement/dal-segno-al-gioco/  — Les enfants enquêtent sur les croix sculptées au MAV de Fénis (2026-09-27 → 2026-09-27)
 - https://agendasabauda.eu/evenement/la-chiave-della-rinascita-di-un-tesoro-del-1462/  — Gignod : la renaissance d’un grenier de 1462 (2026-09-23 → 2026-09-27)
 - https://agendasabauda.eu/evenement/piccoli-custodi-delle-erbe-di-ieri/  — Un mini-herbier à créer pour les enfants à la Maison des Anciens Remèd (2026-09-26 → 2026-09-26)
-
-## Le reste (sitemap seulement, sauf quota disponible)
-
-- https://agendasabauda.eu/it/evenement/oltre-laffresco-les-coulisses-du-restauro-du-chateau-dissogne-2/ [it] (2026-09-23 → 2026-09-25)
-- https://agendasabauda.eu/it/evenement/storie-di-terra-di-pietra-e-di-uomini-2/ [it] (2026-09-23 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/le-lunette-del-castello-di-issogne-2/ [it] (2026-09-23 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/una-rilettura-dei-monumenti-cittadini-2/ [it] (2026-09-23 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/la-chiave-della-rinascita-di-un-tesoro-del-1462-2/ [it] (2026-09-23 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/deux-expositions-de-barbara-tutino-a-cogne-et-au-forte-di-bard-2/ [it] (2026-08-08 → 2026-10-11)
-- https://agendasabauda.eu/it/evenement/dialogos-artisanat-et-images-de-devotion-exposition-itinerante-2/ [it] (2026-09-15 → 2027-02-07)
-- https://agendasabauda.eu/it/evenement/architettura-ad-alta-quota-evoluzione-storica-del-bivacco-2/ [it] (2026-09-25 → 2026-09-25)
-- https://agendasabauda.eu/it/evenement/memorie-darchivio-2/ [it] (2026-09-25 → 2026-09-25)
-- https://agendasabauda.eu/it/evenement/a-turin-la-recherche-sort-des-laboratoires-pour-investir-le-parc-2/ [it] (2026-09-25 → 2026-09-26)
-- https://agendasabauda.eu/evenement/alla-scoperta-del-complesso-dei-balivi/ [fr] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/evenement/il-presbiterio-di-sarre-ritrova-il-suo-splendore-2/ [fr] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/nutrire-il-benessere-un-chef-spatial-et-un-medecin-nutritionniste-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/tra-acqua-terra-e-memoria-leri-e-lucedio-le-patrimoine-qui-renait-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/passeggiata-botanica-a-villa-della-regina-la-vigne-du-xviie-siecle-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/il-presbiterio-di-sarre-ritrova-il-suo-splendore/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/il-castello-di-saint-germain-unicona-della-valle-daosta-medievale-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/alla-scoperta-del-complesso-dei-balivi-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/chatel-argent-e-il-valore-culturale-delle-rovine-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/dallautoma-al-telefono-il-genio-di-innocenzo-manzetti-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/cercami-tra-il-bianco-della-neve-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/tissus-dhistoire-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/cappella-di-san-giuseppe-dix-ans-de-restauration-sachevent-a-gressoney-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/larte-del-legno-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/piccoli-custodi-delle-erbe-di-ieri-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/i-segreti-della-maison-de-thomas-trois-siecles-de-savoir-faire-alpin-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/coucher-de-soleil-a-lalto-forte-une-visite-exceptionnelle-a-gavi-2/ [it] (2026-09-26 → 2026-09-26)
-- https://agendasabauda.eu/it/evenement/le-chateau-dussel-rouvre-ses-tours-aux-dessins-de-francesco-corni-2/ [it] (2026-09-26 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/viaggio-alla-scoperta-della-cultura-walser-2/ [it] (2026-09-26 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/dai-segnali-di-fuoco-alle-onde-elettromagnetiche-storia-e-futuro-2/ [it] (2026-09-26 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/il-volo-della-colomba-franco-perrotti-au-ciel-anthropise-courmayeur-2/ [it] (2026-09-26 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/impara-larte-della-tessitura-2/ [it] (2026-09-26 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/dalla-terra-alla-cura-les-plantes-qui-soignent-au-jardin-des-anciens-2/ [it] (2026-09-26 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/parfum-de-deveteya-2/ [it] (2026-09-26 → 2026-09-27)
-- https://agendasabauda.eu/evenement/piante-ieri-oggi-e-domani/ [fr] (2026-09-27 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/il-cuore-idroelettrico-di-montjovet-2/ [it] (2026-09-27 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/il-castello-di-introd-e-larmonia-della-trasformazione-continua-2/ [it] (2026-09-27 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/dal-segno-al-gioco-2/ [it] (2026-09-27 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/piante-ieri-oggi-e-domani-2/ [it] (2026-09-27 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/au-palazzo-avec-carlo-alberto-activites-pour-familles-aux-musei-reali-2/ [it] (2026-09-27 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/chasse-au-tresor-a-la-margaria-de-racconigi-les-enfants-sur-2/ [it] (2026-09-27 → 2026-09-27)
-- https://agendasabauda.eu/it/evenement/torna-in-valle-daosta-il-grand-continent-summit-valledaostaglocal-it-2/ [it] (2026-12-03 → 2026-12-06)
