@@ -1,0 +1,64 @@
+# SYNCED FROM observatoire-business-sabaudo — ne pas diverger (extraction future cultura-core)
+# Images de SUBSTITUTION par territoire × CATÉGORIE (plus pertinentes qu'une simple
+# bannière de marque générique — cf. config/territory_images.txt, qui reste le repli
+# ultime si la catégorie est absente/inconnue).
+#
+# Utilisées quand un article n'a pas d'image réutilisable ET que Commons/og:image
+# n'a rien donné de mieux.
+#
+# Format : territoire;catégorie;url   (territoire : Savoie | Piemonte | Vallee-Aoste | Nice
+#          catégorie : les 11 catégories internes de scripts/evaluator.py, + Curiosités)
+#
+# Hébergées sur agendasabauda.eu (media library WP), pas Brevo — set de juillet 2026.
+
+Savoie;Cinéma;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-cinema.png
+Savoie;Concerts & Musique;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-concerts-musique.png
+Savoie;Conférences & Rencontres;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-conferences-rencontres.png
+Savoie;Curiosités;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-curiosites.png
+Savoie;Expositions & Patrimoine;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-expositions-patrimoine.png
+Savoie;Festivals;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-festivals.png
+Savoie;Fêtes & Traditions populaires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-fetes-traditions.png
+Savoie;Gastronomie & Sagre;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-gastronomie-sagre.png
+Savoie;Jeune public & Famille;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-jeune-public-famille.png
+Savoie;Marchés & Foires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-marches-foires.png
+Savoie;Spectacle vivant;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-spectacle-vivant.png
+Savoie;Sport;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-savoie-sport.png
+
+Piemonte;Cinéma;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-cinema.png
+Piemonte;Concerts & Musique;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-concerts-musique.png
+Piemonte;Conférences & Rencontres;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-conferences-rencontres.png
+Piemonte;Curiosités;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-curiosites.png
+Piemonte;Expositions & Patrimoine;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-expositions-patrimoine.png
+Piemonte;Festivals;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-festivals.png
+Piemonte;Fêtes & Traditions populaires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-fetes-traditions.png
+Piemonte;Gastronomie & Sagre;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-gastronomie-sagre.png
+Piemonte;Jeune public & Famille;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-jeune-public-famille.png
+Piemonte;Marchés & Foires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-marches-foires.png
+Piemonte;Spectacle vivant;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-spectacle-vivant.png
+Piemonte;Sport;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont-sport.png
+
+Vallee-Aoste;Cinéma;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-cinema.png
+Vallee-Aoste;Concerts & Musique;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-concerts-musique.png
+Vallee-Aoste;Conférences & Rencontres;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-conferences-rencontres.png
+Vallee-Aoste;Curiosités;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-curiosites.png
+Vallee-Aoste;Expositions & Patrimoine;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-expositions-patrimoine.png
+Vallee-Aoste;Festivals;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-festivals.png
+Vallee-Aoste;Fêtes & Traditions populaires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-fetes-traditions.png
+Vallee-Aoste;Gastronomie & Sagre;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-gastronomie-sagre.png
+Vallee-Aoste;Jeune public & Famille;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-jeune-public-famille.png
+Vallee-Aoste;Marchés & Foires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-marches-foires.png
+Vallee-Aoste;Spectacle vivant;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-spectacle-vivant.png
+Vallee-Aoste;Sport;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-vallee-d-aoste-sport.png
+
+Nice;Cinéma;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-cinema.png
+Nice;Concerts & Musique;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-concerts-musique.png
+Nice;Conférences & Rencontres;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-conferences-rencontres.png
+Nice;Curiosités;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-curiosites.png
+Nice;Expositions & Patrimoine;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-expositions-patrimoine.png
+Nice;Festivals;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-festivals.png
+Nice;Fêtes & Traditions populaires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-fetes-traditions.png
+Nice;Gastronomie & Sagre;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-gastronomie-sagre.png
+Nice;Jeune public & Famille;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-jeune-public-famille.png
+Nice;Marchés & Foires;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-marches-foires.png
+Nice;Spectacle vivant;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-spectacle-vivant.png
+Nice;Sport;https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-comte-de-nice-sport.png

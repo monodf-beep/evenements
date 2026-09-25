@@ -1,0 +1,74 @@
+{
+  "_lisez_moi": [
+    "Les ÉTIQUETTES des moments forts : quelles fiches appartiennent à un événement-parapluie.",
+    "",
+    "POURQUOI CE FICHIER EXISTE. La strate « moment fort » (deploy/wordpress/cs-moment-fort.php)",
+    "et sa page dédiée doivent lister les fiches D'UN événement, pas celles d'un week-end.",
+    "Mesuré le 2026-09-22 : une sélection par date + territoire ramenait BeerCult, le Biella",
+    "Sport Festival et une exposition Kusama dans une strate qui promet « patrimoine ».",
+    "",
+    "POURQUOI PAS UN AUTRE MARQUEUR. L'URL de source ne tient pas : l'enrichissement la",
+    "remplace par le site officiel (fiche 10403 a gardé cultura.gov.it, la 10456 a reçu",
+    "museireali.beniculturali.it). Et publisher_as envoyait `tags = []` à chaque publication,",
+    "donc une étiquette posée à la main disparaissait au prochain --update. C'est le",
+    "vocabulaire contrôlé que le commentaire de publisher_as annonçait depuis le début.",
+    "",
+    "CE QUI EST VÉRIFIÉ, et dans cet ordre : territoire, puis fenêtre de dates, puis source.",
+    "Une fiche doit satisfaire TOUTES les conditions déclarées. Une condition absente du",
+    "moment n'est pas vérifiée — un moment sans `sources` s'appuie donc sur la seule",
+    "paire territoire + dates, ce qui n'est sûr que pour un moment qui occupe vraiment",
+    "tout son territoire à ses dates (Noël, un carnaval). Pour un moment qui partage son",
+    "week-end avec le reste de l'agenda, DÉCLARER une source.",
+    "",
+    "LA FENÊTRE PORTE SUR date_event_start : la fiche commence pendant le moment. Une",
+    "exposition ouverte depuis juin et encore visible ce week-end n'appartient pas aux",
+    "journées du patrimoine, et ne doit donc pas être attrapée.",
+    "",
+    "L'ÉTIQUETTE NE PORTE PAS D'ANNÉE (docs/EDITIONS_ANNUELLES.md) : la même revient",
+    "d'édition en édition, et la page dédiée garde son adresse. Seules les DATES changent.",
+    "",
+    "ATTENTION AUX TRADUCTIONS : scripts/translate_events.py recopie `territoire`,",
+    "`source_name` et les dates dans la fiche italienne (l.920-940). Une règle fondée sur",
+    "ces trois colonnes attrape donc la jumelle sans rien de plus — vérifié dans le code.",
+    "",
+    "UNE ÉTIQUETTE PAR LANGUE, et ce n'est pas un choix de style. Mesuré le 2026-09-22 sur",
+    "les étiquettes en ligne : `post_tag` est une taxonomie TRADUITE par Polylang sur ce",
+    "site — six paires existent déjà (bard / bard-it, conference / conference-it,",
+    "massimo-recalcati / massimo-recalcati-it). Envoyer le même libellé français aux deux",
+    "fiches aurait donc fabriqué un terme italien au slug suffixé `-it`, que le mu-plugin",
+    "n'aurait pas trouvé. On déclare donc le nom ET le slug dans chaque langue.",
+    "",
+    "Les deux termes ne sont PAS liés entre eux comme traductions l'un de l'autre (cela",
+    "demanderait pll_save_term_translations). Sans importance ici : chaque langue",
+    "interroge son propre slug. À revoir le jour où les archives d'étiquettes serviraient.",
+    "",
+    "DEUX SOURCES POUR UN MÊME MOMENT, et ce n'est pas un doublon. La Vallée d'Aoste n'est",
+    "PAS au programme du ministère (mesuré le 2026-09-22 : dix-neuf régions, pas elle) ;",
+    "région autonome, elle tient son propre volet, « Plaisirs de Culture en Vallée",
+    "d'Aoste », moissonné par scripts/moisson_plaisirs_culture.py. Le nom de source doit",
+    "rester identique à SOURCE_NAME de ce script — tests/test_moments_forts_etiquette.py",
+    "le vérifie, pour que les deux ne divergent pas en silence."
+  ],
+  "moments": [
+    {
+      "etiquette": {
+        "fr": "Journées européennes du patrimoine",
+        "it": "Giornate Europee del Patrimonio"
+      },
+      "slug": {
+        "fr": "journees-europeennes-du-patrimoine",
+        "it": "giornate-europee-del-patrimonio"
+      },
+      "debut": "2026-09-19",
+      "fin": "2026-09-27",
+      "territoires": [
+        "piemont",
+        "vallee-d-aoste"
+      ],
+      "sources": [
+        "Ministero della Cultura — GEP",
+        "Regione Valle d'Aosta — Plaisirs de Culture"
+      ]
+    }
+  ]
+}

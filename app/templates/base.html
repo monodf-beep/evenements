@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{# Beaucoup d'images sources (dossiers de presse, sites officiels) sont protégées en
+   HOTLINK : le serveur renvoie 403 si le Referer est le back-office. On n'envoie donc
+   AUCUN Referer → les images (affiches, visuels) s'affichent. À la publication, le
+   pipeline télécharge côté serveur (sans Referer) et ré-héberge sur WordPress. #}
+<meta name="referrer" content="no-referrer">
+<meta name="referrer" content="never">
+<title>{% block title %}Agenda Cultura Sabauda{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<a class="skip" href="#contenu">Aller au contenu</a>
+<div class="app-shell">
+  <div class="nav-backdrop" data-nav-close></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">CS</span>
+      <div><b>Cultura Sabauda</b><small>Agenda</small></div>
+    </div>
+    {# LE MENU VIENT DE `utils.menu`, pas d'ici. Un gabarit qui tient sa propre liste
+       finit par mentir : « Coûts par date » y est resté des semaines après que la page
+       eut été fusionnée dans « État du système ». tests/test_menu.py confronte la carte
+       aux routes réelles, dans les deux sens.
+
+       TROIS ÉCRANS au premier niveau (ce que Franck ouvre tous les jours), le reste
+       replié. Un groupe s'ouvre seul quand on est dans une de ses pages. #}
+    {% set _groupe_actif = menu.groupe_de(active|default('')) %}
+    {% set _todo = (nav.validate or 0) + (nav.tocomplete or 0) + (nav.verifier or 0) + (nav.audit or 0) %}
+
+    <button type="button" class="nav-go" data-palette-open
+            aria-label="Aller à une page — raccourci Contrôle K">
+      <span aria-hidden="true">⌕</span> Aller à…<kbd>⌘K</kbd></button>
+
+    <nav class="nav" aria-label="Navigation principale">
+      {% for p in menu.epinglees() %}
+      <a href="{{ p.url }}" class="nav-main {{ 'on' if active == p.actif }}"
+         {% if active == p.actif %}aria-current="page"{% endif %}
+         title="{{ p.resume }}"><span class="nav-ico" aria-hidden="true">{{ p.icone }}</span>
+        <span class="nav-lib">{{ p.libelle }}</span>
+        {% if p.badge == 'todo' and _todo and active != p.actif %}<span class="nav-badge">{{ _todo }}</span>{% endif %}</a>
+      {% endfor %}
+
+      {% for cle, libelle, resume, pages in menu.groupes_avec_pages() %}
+        {# Le total du groupe, même replié : un groupe fermé ne doit pas cacher
+           qu'il contient du travail en attente. #}
+        {% set _tot = namespace(v=0) %}
+        {% for p in pages %}{% if p.badge %}{% set _tot.v = _tot.v + (nav[p.badge] or 0) %}{% endif %}{% endfor %}
+        <details {% if _groupe_actif == cle %}open{% endif %}>
+          <summary title="{{ resume }}"><span class="chev" aria-hidden="true">›</span> {{ libelle }}
+            {% if _tot.v %}<span class="nav-badge">{{ _tot.v }}</span>{% endif %}</summary>
+          {% for p in pages %}
+          <a href="{{ p.url }}" class="{{ 'on' if active == p.actif }}"
+             {% if active == p.actif %}aria-current="page"{% endif %}
+             title="{{ p.resume }}"><span class="nav-ico" aria-hidden="true">{{ p.icone }}</span>
+            <span class="nav-lib">{{ p.libelle }}</span>
+            {% if p.site %}<span class="nav-tag nav-tag-{{ p.site }}"
+              title="{{ 'Publie sur culturasabauda.eu' if p.site == 'cs' else 'Publie sur agendasabauda.eu' }}">{{ p.site | upper }}</span>{% endif %}
+            {% if p.badge and nav[p.badge] %}<span class="nav-badge">{{ nav[p.badge] }}</span>{% endif %}</a>
+          {% endfor %}
+        </details>
+      {% endfor %}
+    </nav>
+    <div class="nav-foot"><a href="/logout">↩ Déconnexion</a></div>
+  </aside>
+
+  <main class="main" id="contenu" tabindex="-1">
+    <header class="mobile-bar">
+      <button class="nav-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+      <span class="mobile-brand"><span class="brand-mark" aria-hidden="true">CS</span> Agenda</span>
+    </header>
+    <div class="topbar">
+      <div>
+        <h1>{% block h1 %}{% endblock %}</h1>
+        {% block subtitle %}{% endblock %}
+      </div>
+      {% block topbar_actions %}{% endblock %}
+
+      <!-- LA CLOCHE. Le bloc « Derniers lancements » occupait un tiers du tableau de bord
+           et s'ouvrait tout seul en rouge pour un échec du 2 juillet — cinq semaines. Un
+           panneau qui alerte en permanence n'alerte plus : on apprend à ne plus le
+           regarder, et c'est le jour où il dit vrai qu'on le rate. La pastille ne se lève
+           donc QUE si un échec date de moins de 48 h ; les plus vieux restent lisibles,
+           avec leur âge écrit en toutes lettres. -->
+      {% if lancements and lancements.total %}
+      <details class="cloche" style="position:relative;flex:none;margin-left:auto">
+        <summary style="list-style:none;cursor:pointer;padding:.35rem .5rem;border-radius:8px;border:1px solid var(--line-2);background:var(--card,#fff)"
+                 title="Derniers lancements manuels">
+          <span aria-hidden="true" style="font-size:1.05rem">🔔</span>
+          {% if lancements.echecs_recents %}<span class="nav-badge" style="background:#b3261e">{{ lancements.echecs_recents }}</span>{% endif %}
+        </summary>
+        <div class="card" style="position:absolute;right:0;top:2.4rem;z-index:40;width:min(30rem,88vw);max-height:26rem;overflow:auto;padding:.5rem .6rem;box-shadow:0 8px 28px #0002">
+          <div class="muted text-sm" style="margin-bottom:.4rem">
+            {{ lancements.total }} dernier(s) lancement(s) manuel(s).
+            {% if lancements.echecs_recents %}<strong style="color:#b3261e">{{ lancements.echecs_recents }} échec récent.</strong>
+            {% elif lancements.echecs_vieux %}<em>{{ lancements.echecs_vieux }} échec(s), mais tous anciens — rien d'actif.</em>
+            {% else %}Aucun échec.{% endif %}
+          </div>
+          {% for l in lancements.liste %}
+          <div style="padding:.4rem .3rem;{% if not loop.last %}border-bottom:1px solid var(--line-2){% endif %}">
+            <div style="display:flex;gap:.4rem;align-items:baseline">
+              <span aria-hidden="true">{{ l.icon }}</span><strong class="text-sm">{{ l.label }}</strong>
+              {% if l.rate %}<span class="badge" style="background:{{ '#fde8e8' if not l.vieux else '#eceff3' }};color:{{ '#b3261e' if not l.vieux else '#475569' }}">échec</span>{% endif %}
+              <span class="muted text-sm" style="margin-left:auto">{{ l.age }}</span>
+            </div>
+            <code class="muted" style="font-size:.72rem;display:block;margin-top:.15rem;word-break:break-word">{{ l.tail }}</code>
+          </div>
+          {% endfor %}
+          <div class="muted text-sm" style="margin-top:.4rem;padding-top:.35rem;border-top:1px solid var(--line-2)">
+            Ce sont les lancements <strong>à la main</strong>. Les crons quotidiens sont ailleurs :
+            <a href="/pipeline">Pipeline auto</a>, et le chien de garde de midi alerte sur Slack.
+          </div>
+        </div>
+      </details>
+      {% endif %}
+    </div>
+
+    {% if nav_alert %}
+    <div class="alert">⛔ {{ nav_alert.kind }} — l'évaluation et l'enrichissement sont en pause.
+      {% if nav_alert.reset %}<br>Accès rétabli le <strong>{{ nav_alert.reset }}</strong>.{% endif %}
+      <br><small>{{ nav_alert.raw }}</small></div>
+    {% endif %}
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+
+{# PALETTE « Aller à… » (⌘K / Ctrl+K, ou la touche « / »). Avec 28 pages, c'est elle qui
+   rend la longueur du menu indifférente : on tape trois lettres, on appuie sur Entrée.
+   Elle est un ENRICHISSEMENT — sans JavaScript le menu marche exactement comme avant,
+   et le bouton qui l'ouvre reste un lien vers rien, donc il est masqué par défaut et
+   révélé par le script (cf. app.js). #}
+<div class="palette" id="palette" hidden>
+  <div class="palette-voile" data-palette-close></div>
+  <div class="palette-boite" role="dialog" aria-modal="true" aria-labelledby="palette-titre">
+    <h2 id="palette-titre" class="sr-only">Aller à une page</h2>
+    <input type="search" id="palette-q" class="palette-q" autocomplete="off"
+           placeholder="Taper le nom d'une page…" aria-controls="palette-liste"
+           aria-describedby="palette-aide">
+    <p id="palette-aide" class="sr-only">Flèches haut et bas pour parcourir, Entrée pour ouvrir, Échap pour fermer.</p>
+    <ul class="palette-liste" id="palette-liste" role="listbox" aria-label="Pages">
+      {% for e in menu.index_recherche() %}
+      <li role="option" aria-selected="false" data-cible="{{ e.cible }}">
+        <a href="{{ e.url }}" tabindex="-1">
+          <span class="palette-ico" aria-hidden="true">{{ e.icone }}</span>
+          <span class="palette-txt"><b>{{ e.libelle }}</b><small>{{ e.resume }}</small></span>
+          <span class="palette-grp">{{ e.groupe }}</span></a></li>
+      {% endfor %}
+    </ul>
+    <p class="palette-vide" hidden>Aucune page ne correspond.</p>
+  </div>
+</div>
+</body>
+</html>

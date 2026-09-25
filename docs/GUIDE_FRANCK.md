@@ -1,0 +1,316 @@
+# Ce que tu dois savoir pour tenir l'agenda
+
+Écrit le 2026-08-11 au soir, à ta demande. Ce document ne s'adresse qu'à toi : il dit ce
+qui tourne tout seul, ce que tu tapes toi-même, comment lire ce que ça répond, et ce qui
+est vrai en ce moment. Tout le reste de `docs/` s'adresse à la machine ou à moi.
+
+**Une règle avant toutes les autres : rien de ce qui est décrit ici ne casse quoi que ce
+soit.** Les commandes destructives demandent `--apply`, et ce qu'elles font se défait
+(corbeille WordPress, changement de statut). Ce qui ne se défait pas est bloqué au niveau
+du harnais, pas de ta vigilance.
+
+---
+
+## 1. Ce qui se fait sans toi
+
+Vingt-deux tâches automatiques par jour (`crontab.txt`). Tu n'as rien à lancer le matin.
+Les heures qui comptent :
+
+| heure | ce qui se passe |
+|---|---|
+| 3h00 | **sauvegarde de la base** — le filet, tous les jours |
+| 8h00 → 8h52 | collecte : flux RSS, boîte mail, dédoublonnage, dates, lieux |
+| 9h00 | évaluation (note d'importance de chaque événement) |
+| 9h15 | **l'agent quotidien** — il ouvre les pages une par une et complète ce qu'il peut |
+| 9h30 | rédaction + publication du lot du jour |
+| 10h45 | traductions italiennes |
+| **11h00** | **bilan du matin sur Slack** — c'est ton point de contrôle |
+| 11h30 | **le contradicteur de dates** — la source dit-elle la même date que nous ? |
+| 11h35 | **le contradicteur de lieux** — la ville qu'on affiche est-elle la bonne ? |
+| 12h00 | chien de garde : il te prévient si un cron n'a pas tourné |
+| dimanche 5h/6h | audits hebdomadaires + revue, dont **le contradicteur de liens** |
+
+Si tu ne reçois rien sur Slack à 11h, quelque chose est cassé. C'est le seul signal qui
+compte vraiment.
+
+**Les trois contradicteurs se taisent quand ils n'ont rien**, et c'est voulu : un message
+quotidien qui dit « rien à signaler » n'est plus lu au bout d'une semaine, et c'est le jour
+où il dirait quelque chose qu'on le raterait. Leur silence n'est donc pas une panne — c'est
+le chien de garde de 12h qui surveille qu'ils ont bien tourné.
+
+Ils ne coûtent rien : aucun appel d'IA, ils ne font que confronter ce qu'on a écrit à ce
+qu'on tient déjà. C'est le contradicteur de dates qui a trouvé, le 11 août, vingt-deux
+fiches en ligne annonçant des événements déjà passés — dont une soirée d'avril 2022
+affichée pour avril 2027.
+
+### Le calendrier des catégories (ajouté le 05/09)
+
+Tu l'as demandé devant la tuile « Cinéma » encore affichée en septembre : « il faut un
+calendrier où à partir de telle date on valorise telle catégorie, d'autres s'enlèvent à
+partir d'une date ». Il est dans le back-office, menu **Développer & analyser →
+Calendrier des catégories**. La page dit, pour le jour regardé (tu peux en choisir un
+autre) :
+
+- les six tuiles que le calendrier choisirait pour « Explorer d'autres catégories », et
+  l'**écart** avec ce qui est réellement dans la home aujourd'hui ;
+- l'état des onze catégories (de saison / retirée), avec le nombre de fiches publiées
+  encore devant nous — le nombre ne fait que retirer, c'est la saison qui ordonne ;
+- **à partir de quelle date** ça change, sur 120 jours ;
+- l'année entière en une barre par catégorie, et les fenêtres avec leurs justifications.
+
+Les fenêtres vivent dans `config/calendrier_categories.json` : c'est là qu'on corrige
+une date ou un arbitrage (Cinéma = plein air seulement, Festivals = l'été), pas dans le
+code. **La home ne suit pas encore ce calendrier toute seule** : ses six tuiles sont
+écrites en dur dans les pages WordPress 928 (FR) et 1717 (IT). Tant que ce n'est pas
+branché, l'écart affiché par la page se corrige à la main.
+
+---
+
+## 2. Les commandes que tu tapes toi-même
+
+Toujours dans cet ordre : `cd /root/evenements` d'abord (tu y es déjà en général).
+
+### Mettre à jour le serveur — **une seule commande, jamais plusieurs**
+
+```bash
+bash deploy/update.sh
+```
+
+Elle fait tout : récupérer le code, installer ce qu'il faut, redémarrer le back-office.
+Elle conserve tes réglages locaux et te le dit. **Ne tape jamais `git pull` / `pip install`
+/ `systemctl` à la main** — ce script existe pour ça, et si je te dicte la suite longue un
+jour, rappelle-le-moi.
+
+### Vérifier que nos dates ne mentent pas
+
+```bash
+.venv/bin/python -m scripts.verifier_dates              # tout ce qui est devant nous
+.venv/bin/python -m scripts.verifier_dates --en-ligne   # seulement ce que le public lit
+```
+
+Il compare **notre** date à ce que dit **la source**, et ne signale que trois choses
+franches. Il ne touche à rien. C'est celui qui a trouvé les dix-sept fiches périmées du
+11 août.
+
+### Compléter, corriger, écarter
+
+```bash
+.venv/bin/python -m scripts.lister_a_completer          # ce qui manque, avec l'adresse à ouvrir
+.venv/bin/python -m scripts.completer_verifie           # simulation
+.venv/bin/python -m scripts.completer_verifie --apply   # écrit
+```
+
+### Retirer des fiches du site
+
+```bash
+.venv/bin/python -m scripts.trash_by_ids 123 456 --statut rejected --motif "..."
+# puis la même chose avec --apply si la sortie est conforme
+```
+
+Corbeille WordPress + rejet en base. **Les deux se défont d'un clic.** Le `--statut
+rejected` est obligatoire quand la fiche est encore retenue : sans lui, elle part à la
+corbeille le soir et revient en ligne le lendemain à 9h30.
+
+### Avant une opération de masse
+
+```bash
+.venv/bin/python scripts/backup_db.py
+```
+
+---
+
+## 3. Comment lire ce que ça te répond
+
+Trois habitudes suffisent, et elles viennent toutes d'erreurs réelles.
+
+**① Le nombre sans son périmètre ne veut rien dire.** « 793 points à vérifier » et « 28
+points à vérifier » décrivaient le même écran le même jour : l'un comptait le passé, l'autre
+non. Tout compteur écrit maintenant ce qu'il compte à côté de lui. S'il ne le fait pas,
+c'est un bug — dis-le-moi.
+
+**② Un zéro doit dire d'où il vient.** « Aucune anomalie » et « ma requête était vide » se
+ressemblent trait pour trait. C'est pour ça que les audits affichent toujours combien de
+fiches ils ont examinées, et leur entonnoir de sélection. Si tu vois un zéro sans
+dénominateur, ne le crois pas.
+
+**③ Un signalement sans sa phrase ne se juge pas.** Chaque ligne d'alerte doit citer le
+texte de la source. C'est ce qui a permis, le 11 août, de voir en dix secondes que deux
+signalements sur dix-neuf étaient faux — et l'un d'eux parce que **la source officielle
+elle-même s'était trompée**.
+
+Corollaire : **lis la phrase avant d'appliquer.** Les scripts proposent, ils ne décident
+pas.
+
+### Combien de messages Slack, et quand
+
+**Deux par jour, et c'est tout** — depuis le 13 août 2026, où sept sont tombés en deux
+heures et où le seul qui demandait une décision est arrivé en cinquième position.
+
+| | |
+|---|---|
+| **11 h 45** | tout ce que la chaîne a produit depuis 8 h, en un bloc |
+| **20 h 00** | ce qui est tombé l'après-midi (santé de la home, relecture du site) |
+
+Les 🔴 **remontent en tête** du message, et l'en-tête dit combien il y en a. Le reste
+suit dans l'ordre où c'est arrivé, chaque rapport précédé de son heure et du script qui
+parle.
+
+**Une seule chose passe encore en direct : le chien de garde**, qui dit que la chaîne
+s'est arrêtée. C'est voulu — le regroupement est lui-même une tâche planifiée, donc si
+tout est mort, le récapitulatif ne part pas non plus. Lui doit pouvoir aboyer quand tout
+le reste s'est tu.
+
+Rien n'est perdu en route : si l'envoi échoue, le contenu reste en attente et repart au
+regroupement suivant. Pour voir ce qui attend sans rien envoyer :
+
+```bash
+.venv/bin/python -m scripts.slack_digest --voir
+```
+
+---
+
+## 4. Les quatre files du back-office, et ce qu'elles ne sont pas
+
+| file | la question posée | le geste |
+|---|---|---|
+| **À traiter** | est-ce que ça a sa place dans l'agenda ? | valider ou écarter |
+| **À compléter** | il **manque** une donnée obligatoire (date, lieu, ville, image…) | trouver la valeur et la poser |
+| **À vérifier** | une donnée est **là** mais on doute qu'elle soit juste | ouvrir la source, corriger l'article |
+| **Audit visuel** | l'image ne va pas (cadrage, affiche coupée) | recadrer ou remplacer |
+
+**« À compléter » est un trou, « À vérifier » est un doute.** Un trou empêche la
+publication ; un doute concerne souvent une fiche déjà en ligne, donc déjà lue. C'est pour
+ça que les deux ne sont pas fusionnées : neuf trous et neuf doutes ne demandent ni le même
+travail ni la même urgence.
+
+**Une file ne doit contenir que ce sur quoi tu peux agir.** Si tu y vois une question à
+laquelle personne ne peut répondre — « accueil PMR ? », « langue de la médiation ? » sur une
+source qui ne le publie pas — ce n'est pas une tâche, c'est du bruit, et il faut la retirer.
+Signale-le-moi : une file de trois cents silences cache les deux vraies questions.
+
+---
+
+## 5. Ce qui est vrai ce soir (11 août 2026, 20h30)
+
+**Les chiffres des files ne sont PAS recopiés ici** — ils bougeraient dans l'heure, et deux
+compteurs qui portent le même nom et disent deux choses est la faute qu'on a passé la
+journée à démonter. Pour l'état du jour, une commande :
+
+```bash
+.venv/bin/python -m scripts.lister_a_completer      # ce qui manque
+.venv/bin/python -m scripts.verifier_dates          # ce que la source contredit
+.venv/bin/python -m scripts.verifier_lieux          # la ville qu'on affiche
+.venv/bin/python -m scripts.verifier_liens          # les liens qui ne mènent plus nulle part
+.venv/bin/python -m scripts.verifier_doublons_publies  # deux pages sur le même événement
+```
+
+Aucune des cinq n'écrit quoi que ce soit : elles lisent et elles montrent.
+
+La dernière est celle qui vous demandera un choix : elle repère deux pages en ligne qui
+racontent le même événement, mais elle ne décide pas laquelle garder. Elle écarte
+d'elle-même les paires français/italien, qui sont normales — deux langues, deux pages.
+
+Ce qui, en revanche, ne changera plus — les faits de la journée :
+
+| | |
+|---|---|
+| fiches en base | 4 741, dont 1 910 doublons fusionnés |
+| dates publiées **confirmées par leur propre source** | 101 |
+| dates publiées dont la source ne dit rien | 86 — voir §6 |
+| fiches retirées du site le 11 août | **21**, toutes réversibles |
+| faux organisateurs nettoyés le 11 août | 187 |
+
+**Les dix-huit retirées annonçaient des événements déjà passés** — dont une soirée de
+soutien à l'Ukraine d'avril 2022, en ligne pour avril 2027. Le mécanisme : quand le texte
+d'une source ne porte pas d'année et que le jour est déjà écoulé, la chaîne bascule à
+l'année suivante. L'événement devient « à venir », traverse toutes les portes, et se publie.
+
+Ce qui les a démasquées : **le jour de la semaine**. « sabato 7 maggio » ne colle qu'à une
+année sur sept. C'est une donnée gratuite, écrite par quelqu'un qui savait de quoi il
+parlait, et personne ne la lisait.
+
+---
+
+## 6. Ce qui reste ouvert, par ordre d'importance
+
+**a) Le flux Paratissima republie ses archives.** Neuf de ses fiches étaient des annonces
+de 2021-2023 remises en ligne comme à venir. Les corriger ce soir ne l'empêche pas de
+recommencer : la règle du jour de la semaine doit descendre **au niveau de la collecte**,
+pas seulement après publication.
+
+**b) Les cinq signalements qui vont revenir tous les jours.** Terra Madre et les autres sont
+vérifiés et bons ; ils réapparaîtront à chaque passage à l'identique. Une liste qui affiche
+toujours les mêmes lignes connues apprend à ne plus la lire — et le jour où une sixième
+arrive, personne ne la voit. Il manque une mémoire « vérifié, classé sans suite ».
+
+**c) Les 86 muettes.** Quatre fiches publiées sur dix portent une date qu'aucun texte en
+notre possession ne corrobore : elle vient de la page ou du modèle, et on n'en garde aucune
+trace. Garder la phrase source au moment de la datation ferait monter ce chiffre
+mécaniquement.
+
+**d) Ce qui attendait le plafond d'API** — ⚠️ **il est levé depuis le 12 août au soir**,
+tu as rechargé les crédits et l'appel de contrôle répond. La rédaction et le panel de
+lecteurs remarchent ; ce qui suit redevient donc traitable tout de suite : le titre de la
+fiche Saint-Ours, qui annonce « 2026 » pour un événement de 2027, et six articles en ligne
+qui nomment un faux organisateur (une journaliste prise pour l'organisatrice).
+
+---
+
+## 6 bis. Déployer, et savoir ce qui est vraiment en ligne
+
+**Le VPS, c'est une commande.** Elle fait tout : récupérer le code, les dépendances, le
+redémarrage du service.
+
+```bash
+cd /root/evenements && bash deploy/update.sh
+```
+
+**WordPress, c'est autre chose, et on l'a appris à la dure le 12 août.** Le code qui publie
+les fiches (`cs-publish.php`) n'est PAS un fichier sur le serveur : il est collé dans
+**Code Snippets**, en base. Aucun envoi de fichier — ni FTP, ni SFTP — ne peut le mettre à
+jour. On a passé une matinée à réparer quatre transports pour livrer un fichier que
+WordPress n'exécute pas.
+
+Le canal qui marche est **Novamira**. Et pour savoir ce qui tourne réellement, sans rien
+supposer :
+
+```bash
+curl -s https://agendasabauda.eu/wp-json/cs/v1/version
+```
+
+Cette adresse répond ce que la version EN LIGNE dit d'elle-même. Tant qu'elle renvoie une
+erreur 404, le correctif n'est pas passé — quoi qu'en dise un script qui affiche
+« déployé ». Le détail est dans `docs/DEPLOIEMENT_WORDPRESS.md`.
+
+---
+
+## 7. Quand quelque chose ne va pas
+
+| symptôme | où regarder |
+|---|---|
+| pas de bilan Slack à 11h | `logs/bilan_matin.log`, puis `logs/` du cron concerné |
+| une fiche a disparu du site | elle est probablement à la **corbeille** WordPress, pas supprimée |
+| un chiffre te paraît faux | il l'est peut-être : demande-moi son périmètre |
+| un script s'arrête en erreur | colle-moi la sortie complète, c'est ce qui marche le mieux |
+| tu ne sais plus si c'est réversible | si c'est décrit dans ce guide, ça l'est |
+
+**Le meilleur outil de diagnostic de ce projet, c'est toi qui colles une sortie de
+terminal.** Sur les vingt-et-une erreurs relevées le 11 août, tu en as attrapé sept — pas
+en lisant du code, en regardant des chiffres qui ne collaient pas entre eux.
+
+---
+
+## 8. Ce que je ne ferai jamais sans te demander
+
+Effacer (`rm -rf`, `DELETE`, `DROP`), forcer un push git, supprimer définitivement un post
+WordPress, lire le `.env`, installer quoi que ce soit sur le serveur, ou élargir mes
+propres droits.
+
+Ce que je fais seul, parce que ça se défait : corbeille, changement de statut, publication,
+traduction, enrichissement, dates, lieux, `git commit` et `git push` sur la branche de
+travail.
+
+**Et ce qui reste ton arbitrage même si rien ne me bloque techniquement** : défusionner
+deux fiches, re-classer une fiche que tu as rejetée toi-même, trancher un cas éditorial
+limite, déployer du CSS. Dans le doute sur une décision **éditoriale**, je propose au lieu
+d'agir.

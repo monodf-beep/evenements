@@ -1,0 +1,33 @@
+{
+ "_source": "Les huit province réelles du Piémont (découpage administratif italien). Demande de Franck le 2026-08-31.",
+ "_pourquoi": "Le territoire éditorial « Piemonte » regroupe TOUT le Piémont depuis le début — masque exactement le déséquilibre déjà mesuré le 18/08 (audit_deplacement, GAP « intentions de recherche ») : Torino sur-couverte, six autres provinces à 0-1 événement.",
+ "_comparaison": "Comparé sans accents, sans casse et sans ponctuation, comme config/communes_comte_de_nice.json.",
+ "Torino": [
+  "Torino", "Rivoli", "Collegno", "Venaria Reale", "Moncalieri", "Pinerolo", "Chieri",
+  "Ivrea", "Settimo Torinese", "Chivasso", "Nichelino", "Grugliasco", "Avigliana",
+  "Rivalta di Torino", "Susa", "Bardonecchia", "Sestriere", "Sauze d'Oulx"
+ ],
+ "Cuneo": [
+  "Cuneo", "Alba", "Bra", "Mondovì", "Saluzzo", "Fossano", "Savigliano", "Barolo",
+  "La Morra", "Neive", "Cherasco", "Dogliani"
+ ],
+ "Alessandria": [
+  "Alessandria", "Casale Monferrato", "Acqui Terme", "Novi Ligure", "Ovada",
+  "Tortona", "Valenza"
+ ],
+ "Asti": [
+  "Asti", "Canelli", "Costigliole d'Asti", "San Damiano d'Asti"
+ ],
+ "Biella": [
+  "Biella", "Cossato", "Candelo", "Trivero", "Oropa"
+ ],
+ "Novara": [
+  "Novara", "Borgomanero", "Arona"
+ ],
+ "Verbano-Cusio-Ossola": [
+  "Verbania", "Domodossola", "Stresa", "Omegna", "Baveno", "Cannobio"
+ ],
+ "Vercelli": [
+  "Vercelli", "Varallo", "Borgosesia"
+ ]
+}

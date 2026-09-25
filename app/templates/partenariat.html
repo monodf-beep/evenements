@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% set active = 'partenariat' %}
+{% block title %}Partenariat — widget embeddable{% endblock %}
+{% block h1 %}Partenariat & widget{% endblock %}
+{% block subtitle %}<div class="sub">Un bloc « prochains événements » que les partenaires (offices de tourisme, mairies, blogs…) collent chez eux. Chaque intégration renvoie vers l’Agenda — visibilité de la marque <b>et</b> liens retour.</div>{% endblock %}
+
+{% block content %}
+{%- set attrs = [] -%}
+{%- if sel_terr %}{% set _ = attrs.append(('territoire', sel_terr)) %}{% endif -%}
+{%- if ville %}{% set _ = attrs.append(('ville', ville)) %}{% endif -%}
+{%- if lang %}{% set _ = attrs.append(('lang', lang)) %}{% endif -%}
+{%- set _ = attrs.append(('limit', limit)) -%}
+{%- if accent and accent != '#7a5b3a' %}{% set _ = attrs.append(('accent', accent)) %}{% endif -%}
+{%- if title and title != 'Agenda Sabauda' %}{% set _ = attrs.append(('title', title)) %}{% endif -%}
+{%- set script_code -%}
+&lt;script src="{{ base }}/embed/widget.js"
+{%- for k, v in attrs %}
+        data-{{ k }}="{{ v }}"{% endfor %}&gt;&lt;/script&gt;
+{%- endset -%}
+{%- set iframe_code -%}
+&lt;iframe src="{{ base }}/embed/widget{{ '?' ~ query if query }}"
+        width="100%" height="520" style="border:0;max-width:640px"
+        loading="lazy" title="{{ title }}"&gt;&lt;/iframe&gt;
+{%- endset -%}
+
+<div style="max-width:1000px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+
+  <!-- Configurateur -->
+  <form method="get" action="/partenariat" class="card" style="padding:.9rem 1rem;margin-bottom:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;align-items:end;">
+    <label style="display:flex;flex-direction:column;gap:.25rem;font-size:.82rem;">Territoire
+      <select name="t" class="input">
+        <option value="">Tous les territoires</option>
+        {% for t in territs %}<option value="{{ t.slug }}" {{ 'selected' if t.slug == sel_terr }}>{{ t.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;font-size:.82rem;">Ville (option)
+      <input type="text" name="ville" value="{{ ville }}" placeholder="ex. Annecy" class="input">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;font-size:.82rem;">Langue
+      <select name="lang" class="input">
+        <option value="" {{ 'selected' if not lang }}>Toutes</option>
+        <option value="fr" {{ 'selected' if lang == 'fr' }}>Français</option>
+        <option value="it" {{ 'selected' if lang == 'it' }}>Italien</option>
+      </select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;font-size:.82rem;">Nombre
+      <input type="number" name="limit" value="{{ limit }}" min="1" max="20" class="input">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;font-size:.82rem;">Titre
+      <input type="text" name="title" value="{{ title }}" class="input">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:.25rem;font-size:.82rem;">Couleur
+      <input type="color" name="accent" value="{{ accent }}" class="input" style="height:2.2rem;padding:.1rem;">
+    </label>
+    <button class="btn btn-ok btn-sm" type="submit">Mettre à jour l’aperçu</button>
+  </form>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;" class="pt-grid">
+    <!-- Aperçu -->
+    <div>
+      <h2 style="margin:.2rem 0 .5rem;font-size:1.05rem;">👁️ Aperçu en direct</h2>
+      <div class="card" style="padding:.4rem;">
+        <iframe src="/embed/widget{{ '?' ~ query if query }}" width="100%" height="520" style="border:0;border-radius:8px;" title="Aperçu du widget"></iframe>
+      </div>
+      <p class="muted text-sm" style="margin-top:.4rem;">Exactement ce que verra le visiteur du partenaire. Les liens ouvrent la fiche sur agendasabauda.eu.</p>
+    </div>
+
+    <!-- Codes à coller -->
+    <div>
+      <h2 style="margin:.2rem 0 .5rem;font-size:1.05rem;">📋 Code à coller</h2>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.2rem 0;">
+        <b class="text-sm">Option 1 — script (s’intègre dans la page)</b>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="cp('code-script', this)">Copier</button>
+      </div>
+      <pre id="code-script" class="card" style="padding:.7rem;overflow:auto;font-size:.78rem;white-space:pre-wrap;word-break:break-all;">{{ script_code }}</pre>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.8rem 0 .2rem;">
+        <b class="text-sm">Option 2 — iframe (totalement isolé)</b>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="cp('code-iframe', this)">Copier</button>
+      </div>
+      <pre id="code-iframe" class="card" style="padding:.7rem;overflow:auto;font-size:.78rem;white-space:pre-wrap;word-break:break-all;">{{ iframe_code }}</pre>
+
+      <p class="muted text-sm" style="margin-top:.6rem;line-height:1.5;">
+        <b>Script</b> : le bloc hérite de la largeur de son emplacement, styles isolés (Shadow DOM). Recommandé pour la plupart des partenaires.<br>
+        <b>Iframe</b> : page autonome, aucun risque de conflit CSS. À privilégier si le partenaire a un site rigide.
+      </p>
+    </div>
+  </div>
+
+  <!-- Page « Travailler avec nous » -->
+  <div class="card" style="padding:.9rem 1rem;margin-top:1.2rem;">
+    <h2 style="margin:0 0 .4rem;font-size:1.05rem;">🤝 Page « Travailler avec nous »</h2>
+    <p class="text-sm" style="line-height:1.6;margin:.2rem 0;">
+      Le texte prêt à coller sur la page publique (présentation + code du widget + conditions) est dans
+      <code>docs/PARTENARIAT_WIDGET.md</code>. Idée : une page <b>/travailler-avec-nous</b> (ou <b>/partenaires</b>)
+      qui explique l’intérêt (agenda gratuit, mis à jour tout seul, à leur image) et propose le widget ci-dessus,
+      plus un contact pour les annonceurs (renvoi vers la régie).
+    </p>
+    <p class="muted text-sm" style="margin:.2rem 0 0;">
+      Flux technique : <code>{{ base }}/embed/events.json</code> (public, CORS, cache 10 min) —
+      c’est la source unique des deux intégrations.
+    </p>
+  </div>
+</div>
+
+<style>@media (max-width:820px){ .pt-grid{ grid-template-columns:1fr !important; } }</style>
+<script>
+function cp(id, btn){
+  var el = document.getElementById(id);
+  var txt = el.innerText || el.textContent;
+  var done = function(){ var o = btn.textContent; btn.textContent = '✓ Copié'; setTimeout(function(){ btn.textContent = o; }, 1500); };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done, function(){}); }
+  else { var r = document.createRange(); r.selectNode(el); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); try{ document.execCommand('copy'); done(); }catch(e){} s.removeAllRanges(); }
+}
+</script>
+{% endblock %}

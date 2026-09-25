@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% set active = 'tableur' %}
+{% block title %}Tableur — Agenda CS{% endblock %}
+{% block h1 %}Tableur <span class="muted" style="font-size:1rem">({{ retenues }} fiches)</span>{% endblock %}
+{% block subtitle %}<div class="sub">Toutes les colonnes, et ce qui manque dans chacune.</div>{% endblock %}
+
+{% block content %}
+{# Les styles du tableur vivent dans app.css (bloc « LE TABLEUR ») : un
+   <style> par gabarit finit par diverger du reste du back-office. #}
+
+<!-- Jeux de colonnes -->
+<div class="btn-row" style="margin-bottom:.5rem">
+  <span class="muted" style="font-size:.85rem">Colonnes :</span>
+  {% set base = '/tableur?statut=' ~ ctx.statut ~ '&territoire=' ~ ctx.territoire ~ '&q=' ~ ctx.q ~ '&vivant=' ~ ('1' if ctx.vivant else '0') ~ '&tri=' ~ ctx.tri ~ '&preset=' ~ ctx.preset ~ '&dfrom=' ~ ctx.dfrom ~ '&dto=' ~ ctx.dto %}
+  {% for key, lbl in tab.JEU_LIBELLES.items() %}
+    <a href="{{ base }}&jeu={{ key }}" class="pbtn {{ 'on' if ctx.jeu == key }}">{{ lbl }}</a>
+  {% endfor %}
+</div>
+
+<!-- Filtres -->
+<form class="btn-row" method="GET" action="/tableur" style="margin-bottom:.5rem">
+  <input type="hidden" name="jeu" value="{{ ctx.jeu }}">
+  <input type="hidden" name="vide" value="{{ ctx.vide }}">
+  <select name="statut" class="field" aria-label="Filtrer par statut">
+    <option value="actifs" {{ 'selected' if ctx.statut=='actifs' }}>Retenus et publiés</option>
+    <option value="all" {{ 'selected' if ctx.statut=='all' }}>Tous statuts</option>
+    {% for key, lbl in status_labels.items() %}
+    <option value="{{ key }}" {{ 'selected' if ctx.statut==key }}>{{ lbl }}</option>
+    {% endfor %}
+  </select>
+  <select name="territoire" class="field" aria-label="Filtrer par territoire">
+    <option value="">Tous territoires</option>
+    {% for t in territories %}<option value="{{ t }}" {{ 'selected' if ctx.territoire==t }}>{{ t }}</option>{% endfor %}
+  </select>
+  <select name="vivant" class="field" aria-label="Période de référence">
+    <option value="1" {{ 'selected' if ctx.vivant }}>À venir, en cours, récurrents</option>
+    <option value="0" {{ 'selected' if not ctx.vivant }}>Toutes périodes (passé compris)</option>
+  </select>
+  <select name="tri" class="field" aria-label="Trier">
+    <option value="date" {{ 'selected' if ctx.tri=='date' }}>Tri : date</option>
+    <option value="trous" {{ 'selected' if ctx.tri=='trous' }}>Tri : les plus vides d'abord</option>
+    <option value="score" {{ 'selected' if ctx.tri=='score' }}>Tri : score ↓</option>
+    <option value="id" {{ 'selected' if ctx.tri=='id' }}>Tri : les plus récentes</option>
+  </select>
+  <input type="text" name="q" value="{{ ctx.q }}" placeholder="Rechercher dans le titre…" class="field" style="min-width:200px" aria-label="Rechercher dans le titre">
+  <button class="btn btn-primary btn-sm">Filtrer</button>
+  <span class="sep"></span>
+  <a class="pbtn" href="/tableur.csv?jeu={{ ctx.jeu }}&statut={{ ctx.statut }}&territoire={{ ctx.territoire }}&q={{ ctx.q }}&vivant={{ '1' if ctx.vivant else '0' }}&tri={{ ctx.tri }}&preset={{ ctx.preset }}&dfrom={{ ctx.dfrom }}&dto={{ ctx.dto }}&vide={{ ctx.vide }}"
+     title="Le même tableau, ouvrable dans Excel ou LibreOffice">⬇ Export CSV</a>
+  <a class="pbtn {{ 'on' if edit }}" href="{{ base }}&jeu={{ ctx.jeu }}&edit={{ '0' if edit else '1' }}"
+     title="Rend modifiables les colonnes qu'on peut saisir à la main">✏️ {{ 'Quitter la saisie' if edit else 'Saisir' }}</a>
+</form>
+
+<div class="tb-perim">
+  <strong>{{ retenues }}</strong> fiche{{ 's' if retenues > 1 }} — périmètre : {{ perimetre }}.
+  {% if ctx.tronque %}<strong style="color:#b3261e">Liste tronquée à {{ ctx.plafond }} sur {{ ctx.total }} : affine le filtre.</strong>{% endif %}
+</div>
+
+<div class="tb-peche">
+  <h3>Où ça pêche
+    <small>— {{ trouees }} fiche{{ 's' if trouees > 1 }} sur {{ retenues }}
+      {{ 'ont' if trouees > 1 else 'a' }} au moins une case manquante,
+      parmi les colonnes affichées</small></h3>
+  {% if peche %}
+    {% for col, manquantes, concernees, pct in peche %}
+    <a class="tb-chip {{ 'on' if ctx.vide == col }}"
+       href="{{ base }}&jeu={{ ctx.jeu }}{% if ctx.vide != col %}&vide={{ col }}{% endif %}"
+       title="{{ 'Enlever le filtre' if ctx.vide == col else 'Ne montrer que les fiches où ce champ manque' }}">
+      <b>{{ manquantes }}</b> {{ libelles.get(col, col) }}
+      <span>{{ pct|round|int }} % rempli sur {{ concernees }}</span></a>
+    {% endfor %}
+    <div class="muted" style="font-size:.75rem;margin-top:.2rem">
+      Classé par NOMBRE de manques, pas par pourcentage : la question au bout du chiffre
+      est « par où je commence ». Clique un chiffre pour ne voir que ces fiches-là.</div>
+  {% else %}
+    <div class="tb-rien">✓ Aucune case manquante sur ces colonnes, pour ce périmètre.</div>
+  {% endif %}
+</div>
+
+{% if ctx.vide %}
+<div class="tb-perim" style="background:#fdf3f2;border:1px solid #e5b4ae;border-radius:6px;padding:.4rem .6rem">
+  Filtré sur les fiches où <strong>{{ libelles.get(ctx.vide, ctx.vide) }}</strong> manque :
+  <strong>{{ montrees }}</strong> fiche{{ 's' if montrees > 1 }}.
+  Les pourcentages ci-dessus restent ceux du périmètre entier.
+  <a href="{{ base }}&jeu={{ ctx.jeu }}">✕ enlever ce filtre</a>
+</div>
+{% endif %}
+
+{% if edit %}
+<div class="tb-perim" style="background:#fffbea;border:1px solid #f0e2b6;border-radius:6px;padding:.4rem .6rem">
+  ✏️ Saisie active sur les colonnes en jaune. <strong>Une case laissée vide n'efface rien</strong> —
+  le formulaire n'écrit que ce qui est rempli. Enregistre ligne par ligne avec 💾.
+</div>
+{% endif %}
+
+{% set cols_visibles = cols | reject('in', ['id', 'title']) | list %}
+{% if not lignes %}
+  <div class="card empty">Aucune fiche pour ce filtre.</div>
+{% else %}
+<div class="tb-wrap">
+<table class="tb">
+  <thead>
+    {# EN-TÊTE À DEUX ÉTAGES. La première version répétait le nom du groupe sous chaque
+       colonne : « LIEU · LIEU », « DÉBUT · DATES ». Le groupe se dit UNE fois, à cheval
+       sur ses colonnes ; l'intitulé et le taux tiennent dessous, dans la même cellule —
+       ce qui supprime aussi la rangée de taux, qui mangeait une ligne entière et
+       étirait ses barres sur toute la largeur du tableau. #}
+    <tr class="tb-groupes">
+      <th class="tb-fig" scope="col"><span class="sr-only">Fiche</span></th>
+      {% for groupe, combien in tab.entetes_groupes(cols_visibles, groupes) %}
+      <th colspan="{{ combien }}" scope="colgroup">{{ groupe }}</th>
+      {% endfor %}
+      {% if edit %}<th scope="col"><span class="sr-only">Enregistrer</span></th>{% endif %}
+    </tr>
+    <tr class="tb-titres">
+      <th class="tb-fig" scope="col">Fiche
+        <small>{{ retenues }} lignes</small></th>
+      {% for c in cols_visibles %}
+      {% set r, t = taux.get(c, (0, 0)) %}
+      {% set pct = (100 * r / t) if t else 0 %}
+      <th scope="col">
+        <span class="tb-lib">{{ libelles.get(c, c) }}</span>
+        <span class="tb-taux" title="{{ r }} remplies sur {{ t }} concernées — {{ perimetre }}">
+          {{ tab.pourcent(r, t) }}<em>{{ r }}/{{ t }}</em></span>
+        <span class="tb-bar {{ 'bas' if pct < 50 else ('moyen' if pct < 85 else '') }}"
+              aria-hidden="true"><i style="width:{{ pct|round|int }}%"></i></span>
+      </th>
+      {% endfor %}
+      {% if edit %}<th scope="col">Enregistrer</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for l in lignes %}
+  <tr>
+    <td class="tb-fig">
+      <a class="tb-titre" href="/preview/{{ l.id }}" target="_blank" rel="noopener"
+         title="{{ l.title }}">{{ l.title or '(sans titre)' }}</a>
+      <span class="tb-meta">#{{ l.id }}
+        {% set nb = tab.trous(l, cols) %}
+        {% if nb %}<b class="tb-trous" title="Cases manquantes parmi les colonnes affichées">{{ nb }} trou{{ 's' if nb > 1 }}</b>{% endif %}
+      </span>
+    </td>
+    {% for c in cols_visibles %}
+    {% set v = tab.affiche(l, c) %}
+    <td{% if c in editables and edit %} class="tb-saisie"{% endif %}>
+      {% if tab.sans_objet(l, c) %}<span class="tb-so">sans objet</span>
+      {% elif edit and c in editables %}
+        <input class="tb-in" form="tbf{{ l.id }}" name="{{ c }}" value="{{ l.get(c) or '' }}"
+               placeholder="—" aria-label="{{ libelles.get(c, c) }} de la fiche {{ l.id }}">
+      {% elif v %}<span title="{{ l.get(c) }}">{{ v }}</span>
+      {% else %}<span class="tb-vide" title="Manquant" aria-label="Manquant">●</span>{% endif %}
+    </td>
+    {% endfor %}
+    {% if edit %}<td><button class="btn btn-ok btn-sm" form="tbf{{ l.id }}" title="Enregistrer cette ligne">💾</button></td>{% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if edit %}
+  {# Les formulaires vivent HORS du tableau (un <form> entre <tr> est invalide) et sont
+     rattachés aux champs par l'attribut form=. Ils postent sur /complete, la route de
+     saisie manuelle qui existe déjà — elle n'écrit que les champs non vides. #}
+  {% for l in lignes %}
+  <form id="tbf{{ l.id }}" method="POST" action="/complete/{{ l.id }}" hidden>
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+  </form>
+  {% endfor %}
+{% endif %}
+
+<div class="pager">
+  {% set pbase = base ~ '&jeu=' ~ ctx.jeu ~ ('&edit=1' if edit else '') ~ ('&vide=' ~ ctx.vide if ctx.vide else '') ~ '&page=' %}
+  {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="{{ pbase }}{{ page-1 }}">← précédent</a>{% endif %}
+  <span class="muted">page {{ page }} / {{ pages }} — {{ par_page }} fiches par page</span>
+  {% if page < pages %}<a class="btn btn-ghost btn-sm" href="{{ pbase }}{{ page+1 }}">suivant →</a>{% endif %}
+</div>
+{% endif %}
+
+<div class="tb-note">
+  <strong>Comment lire une case vide.</strong> Un point rouge dit que la colonne est vide,
+  pas qu'il y a une faute : soit la source publie l'information et personne ne l'a lue,
+  soit elle ne la publie pas. « Sans objet » est le troisième cas — un récurrent n'a pas
+  de date, un festival itinérant n'a pas de lieu — et il ne compte jamais comme un trou.
+  <br>
+  <strong>Ce tableur n'est pas la file « À compléter ».</strong> Il montre TOUTE la
+  complétude, champs utiles compris. Ce qui <em>empêche de publier</em> — date, lieu,
+  ville, territoire, catégorie, image — a sa propre file avec ses actions :
+  <a href="/a-completer">À compléter</a>. Deux compteurs sur la même population
+  finiraient par diverger ; chacun dit donc ici son périmètre.
+  <br>
+  <strong>Les infos pratiques.</strong> Tarif, horaires, réservation, accessibilité et
+  langue viennent du groupe <em>Infos pratiques</em> (jeu de colonnes du même nom) : ce
+  sont des <strong>extraits de la page officielle</strong>, relevés chaque matin par la
+  moisson, jamais une interprétation. Une case vide veut dire que la page ne le dit pas,
+  ou qu'elle n'a pas encore été lue — pas que l'événement est gratuit.
+</div>
+{% endblock %}
