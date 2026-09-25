@@ -82,5 +82,47 @@
     "le": "2026-09-23",
     "titre": "Fili tra le pagine",
     "date_alors": "2026-02-10 → 2026-09-29"
+  },
+  "5965": {
+    "empreinte": "f6cd59732b9e19d1",
+    "motif": "Calendrier ET brochure officiels Plaisirs de Culture 2026 (valledaostaheritage.com, PDF VDA-HERITAGE-...-calendario.pdf p.4 et brochure p.14) : « 14.00 - 18.00 | Alla scoperta del Complesso dei Balivi | AOSTA Torre dei Balivi » sous l'en-tete SABATO 26 SETTEMBRE. Le « 23 settembre » du texte source est la date limite de RESERVATION (« Prenotazione obbligatoria entro il 23 settembre »), pas la date de l'evenement. Notre 2026-09-26 est juste.",
+    "le": "2026-09-25",
+    "titre": "Alla scoperta del Complesso dei Balivi",
+    "date_alors": "2026-09-26 → 2026-09-26"
+  },
+  "6034": {
+    "empreinte": "49e1d61f74fc44a8",
+    "motif": "Calendrier ET brochure officiels Plaisirs de Culture 2026 (valledaostaheritage.com, PDF VDA-HERITAGE-...-calendario.pdf p.4 et brochure p.14) : « 14.00 - 18.00 | Alla scoperta del Complesso dei Balivi | AOSTA Torre dei Balivi » sous l'en-tete SABATO 26 SETTEMBRE. Le « 23 settembre » du texte source est la date limite de RESERVATION (« Prenotazione obbligatoria entro il 23 settembre »), pas la date de l'evenement. Notre 2026-09-26 est juste.",
+    "le": "2026-09-25",
+    "titre": "Alla scoperta del Complesso dei Balivi",
+    "date_alors": "2026-09-26 → 2026-09-26"
+  },
+  "5952": {
+    "empreinte": "2768583ea6805f40",
+    "motif": "Brochure officielle Plaisirs de Culture 2026 (valledaostaheritage.com, VDA-HERITAGE-...-brochure.pdf p.25), rubrique BAMBINI E FAMIGLIE sous l'en-tete SABATO 26 SETTEMBRE : « 14.30, 16.30 | SAINT-VINCENT, Via Emile Chanoux 45, Sede Ex Municipio | L'ARTE DEL LEGNO ». Le « venerdi 25 settembre » du texte source est la date limite de reservation (« Prenotazione obbligatoria entro le 12.00 di venerdi 25 settembre »). Notre 2026-09-26 est juste.",
+    "le": "2026-09-25",
+    "titre": "L'arte del legno",
+    "date_alors": "2026-09-26 → 2026-09-26"
+  },
+  "6052": {
+    "empreinte": "2aaeda4da46dc619",
+    "motif": "Calendrier officiel Plaisirs de Culture 2026 (PDF calendario p.4, et brochure p.17 sommaire) : « 15.00 - 17.00 | Tissus d'histoire | SARRE Chiesa parrocchiale di Saint-Maurice » sous l'en-tete SABATO 26 SETTEMBRE. Le texte source ecrit « Domenica 26 settembre 2026, dalle 15 alle 17 » : l'horaire et le quantieme concordent, c'est le JOUR DE SEMAINE qui est faux dans la source (le 26/09/2026 est un samedi). Notre 2026-09-26 est juste.",
+    "le": "2026-09-25",
+    "titre": "Tessuti di storia",
+    "date_alors": "2026-09-26 → 2026-09-26"
+  },
+  "6079": {
+    "empreinte": "295bfd4b32e5f3b8",
+    "motif": "torinoclick.it (page source) : « Dal 23 al 26 settembre Parco Dora si trasforma nella casa di On The Road » et « Sabato 26 settembre On The Road aprira invece le sue porte a tutta la citta ». Le « 25 settembre » repere par l'audit est la fin des trois journees reservees aux SCOLAIRES (« Dal 23 al 25 settembre il festival sara riservato alle scuole »), pas la fin du festival. Nos bornes 2026-09-23 -> 2026-09-26 sont justes.",
+    "le": "2026-09-25",
+    "titre": "On the Road, al Parco Dora fino a sabato tra sport, arte e educazione per miglia",
+    "date_alors": "2026-09-23 → 2026-09-26"
+  },
+  "6115": {
+    "empreinte": "ed7bf819b95586fb",
+    "motif": "torinoclick.it (page source) : « Dal 23 al 26 settembre Parco Dora si trasforma nella casa di On The Road » et « Sabato 26 settembre On The Road aprira invece le sue porte a tutta la citta ». Le « 25 settembre » repere par l'audit est la fin des trois journees reservees aux SCOLAIRES (« Dal 23 al 25 settembre il festival sara riservato alle scuole »), pas la fin du festival. Nos bornes 2026-09-23 -> 2026-09-26 sont justes.",
+    "le": "2026-09-25",
+    "titre": "On the Road, al Parco Dora di Torino fino a sabato 26 settembre tra sport, arte ",
+    "date_alors": "2026-09-23 → 2026-09-26"
   }
 }
