@@ -19,13 +19,19 @@ Décidé par Franck le 24/09/2026, après l'encadré vu sur guidatorino.com.
   (page Google du site ; elle existe, mesuré le 24/09 : 200, « agendasabauda.eu | Google »).
 - Sources préférées : `https://google.com/preferences/source?q=agendasabauda.eu`
 
-## Ce qui attend un humain
+## L'encadré sous les articles et les fiches
 
-- **Le texte de l'encadré** sous les articles (`deploy/wordpress/cs-encadre-suivre.php`,
-  installé, inactif) : à rédiger selon la doctrine, relu par Franck, puis posé dans les
-  options `cs_encadre_suivre_texte_fr` / `_it` avec les marqueurs `{discover:libellé}` et
-  `{sources:libellé}`, et `cs_encadre_suivre_actif` = 1. Aperçu sur un article :
-  `?cs_encadre_suivre=1`.
+`deploy/wordpress/cs-encadre-suivre.php`, **actif depuis le 25/09** (texte rédigé selon la
+doctrine, validé par Franck). Le texte vit dans les options `cs_encadre_suivre_texte_fr` /
+`_it`, avec les marqueurs `{discover:libellé}` et `{sources:libellé}` ; le corriger ne
+demande pas de toucher au code. Retour arrière : `cs_encadre_suivre_actif` = 0.
+
+Vérifié en ligne le 25/09 : un encadré, dans la bonne langue, sur les guides FR/IT et sur
+les fiches FR/IT (sous l'encadré de maillage des Journées du patrimoine quand il y en a
+un) ; aucun dans le flux RSS ni sur l'accueil.
+
+Non vérifié : que la fonction « sources préférées » de Google soit ouverte en France
+(guidatorino.com l'emploie en Italie).
 
 ## Mesurer
 
