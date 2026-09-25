@@ -115,7 +115,14 @@ function cs_og_data() {
         $lieu = $venue_id ? get_the_title($venue_id) : '';
         $ville = $venue_id ? get_post_meta($venue_id, '_VenueCity', true) : '';
         $start = get_post_meta($id, '_EventStartDate', true);
-        $quand = $start ? date_i18n('j F Y', strtotime($start)) : '';
+        // 25/09 : l'italien sortait « Il 27 Settembre 2026 ». Charte § 6 bis : mois en
+        // minuscule en italien. La chaîne ne contient que le jour, le mois et l'année,
+        // la mettre entièrement en minuscules ne touche que le mois.
+        $date_og = function ($ts) use ($it) {
+            $d = date_i18n('j F Y', $ts);
+            return $it ? mb_strtolower($d, 'UTF-8') : $d;
+        };
+        $quand = $start ? $date_og(strtotime($start)) : '';
         $quand_txt = $quand ? ($it ? "Il $quand" : "Le $quand") : '';
         /* 2026-09-22 (Franck, exposition Matisse – Yves Saint Laurent) : le partage d'une
            exposition commencee en juin disait « Le 17 juin 2026 » alors qu'elle court
@@ -129,7 +136,7 @@ function cs_og_data() {
         if ($start && $fin && substr($start, 0, 10) < $auj && $fin >= $auj) {
             $j = (int) substr($fin, 8, 2);
             $quand_txt = ($it ? (in_array($j, array(8, 11), true) ? "Fino all'" : 'Fino al ') : "Jusqu'au ")
-                . date_i18n('j F Y', strtotime($fin));
+                . $date_og(strtotime($fin));
         }
         $ou = trim($lieu . ($ville ? ', ' . $ville : ''));
         $desc = trim($quand_txt . ($ou ? ' · ' . $ou : ''));
