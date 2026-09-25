@@ -154,6 +154,30 @@ function cs_og_data() {
         return [$titre, $desc, $img, 'article'];
     }
 
+    // --- Article / guide (type 'post') ---
+    // 25/09/2026 (Franck, capture WhatsApp du guide italien des Giornate) : aucun cas
+    // pour les articles, qui tombaient sur le repli final -- titre « Agenda Sabauda »,
+    // baseline et image de marque, soit la MEME carte que l'accueil pour les 28 articles
+    // du site. Or tous ont une vignette et une description redigee (mesure du 25/09 :
+    // 28/28 et 28/28). Titre = titre de l'article ; description = celle ecrite pour Yoast
+    // (reseaux sociaux, puis meta description, travail de Cowork), puis l'extrait.
+    if (is_singular('post')) {
+        $id = get_queried_object_id();
+        $titre = html_entity_decode(get_the_title($id), ENT_QUOTES, 'UTF-8');
+        $desc = '';
+        foreach (['_yoast_wpseo_opengraph-description', '_yoast_wpseo_metadesc'] as $cle) {
+            $desc = trim((string) get_post_meta($id, $cle, true));
+            if ($desc !== '') { break; }
+        }
+        if ($desc === '') { $desc = trim(wp_strip_all_tags((string) get_post_field('post_excerpt', $id))); }
+        if ($desc === '') { $desc = $baseline; }
+        if (has_post_thumbnail($id)) {
+            $crop = cs_og_crop(get_post_thumbnail_id($id));
+            if ($crop) { $img = $crop; }
+        }
+        return [$titre, $desc, $img, 'article'];
+    }
+
     // --- Archives : territoire, categorie, type de lieu ---
     if (is_tax(['territoire', 'tribe_events_cat', 'type_de_lieu'])) {
         $term = get_queried_object();
@@ -200,10 +224,21 @@ function cs_og_data() {
         if (isset($listes[$pid])) {
             return [$listes[$pid][1], $listes[$pid][2], $img, 'website'];
         }
-        // Autres pages (editoriales) : titre reel + extrait redige s'il existe
+        // Autres pages (editoriales, hubs) : titre SEO redige s'il existe, sans le nom du
+        // site (og:site_name le porte deja), sinon titre de la page ; description redigee
+        // pour Yoast, puis extrait. 25/09 : les hubs partageaient « Piémont » et la
+        // baseline alors qu'ils ont « Que faire dans le Piémont : agenda des sorties » et
+        // une meta description ecrite.
         $titre = html_entity_decode(get_the_title($pid), ENT_QUOTES, 'UTF-8');
-        $ex = get_post_field('post_excerpt', $pid);
-        $desc = $ex !== '' ? wp_strip_all_tags($ex) : $baseline;
+        $seo = trim((string) get_post_meta($pid, '_yoast_wpseo_title', true));
+        if ($seo !== '' && strpos($seo, '%%') === false) {
+            $titre = trim(preg_replace('/\s*[|\-]\s*Agenda Sabauda\s*$/u', '', $seo));
+        }
+        $desc = trim((string) get_post_meta($pid, '_yoast_wpseo_metadesc', true));
+        if ($desc === '' || strpos($desc, '%%') !== false) {
+            $ex = get_post_field('post_excerpt', $pid);
+            $desc = $ex !== '' ? wp_strip_all_tags($ex) : $baseline;
+        }
         if (is_front_page() || $pid === 928 || $pid === 1717) {
             $titre = $it ? "Agenda Sabauda : cosa fare, dove mangiare" : "Agenda Sabauda : quoi faire, où manger";
             $desc = $baseline;
