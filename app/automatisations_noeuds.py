@@ -143,6 +143,31 @@ _COLLECTE = [
          "cout_ia": "aucun à ce stade",
          "code": ["config/whitelist_gmail.txt"], "doc": ["docs/PIPELINE_COLLECTE.md"]}},
 
+    {"id": "ajouter_par_lien", "label": "Liens signalés", "icone": "🔗", "flux": "collecte",
+     "kind": "action", "col": 1, "row": 5, "cron_cle": "scripts.ajouter_par_lien",
+     "script": "ajouter_par_lien",
+     "resume": "Fait entrer les événements que Franck signale par un lien, une fois leur page "
+               "officielle trouvée en session.",
+     "detail": {
+         "fait": ["Lit config/liens_signales.tsv, rempli par une session Claude qui a lu le "
+                  "lien signalé (post Instagram, affiche…) et trouvé la page de l'organisateur.",
+                  "Lit la page officielle et l'insère en « pending », avec le nom de "
+                  "l'événement donné dans la ligne."],
+         "lit": ["config/liens_signales.tsv", "la page officielle (texte)"],
+         "ecrit": ["events_raw : titre, description, territoire, url_source = url_officiel "
+                   "(la page officielle), source_name « signalement : <lien> » — statut « pending »"],
+         "regles": ["Un réseau social ou un titre de presse n'est jamais accepté comme page "
+                    "officielle : la ligne arrête tout.",
+                    "Aucun passe-droit éditorial : la fiche franchit l'évaluateur comme les "
+                    "autres. Seule priorité : elle passe en tête de la file de rédaction."],
+         "decisions": [
+             {"si": "la page est déjà en base (même adresse, à http/www/barre près)",
+              "alors": "rien d'inséré, la fiche existante est nommée"},
+             {"si": "la page ne répond pas", "alors": "rien d'inséré, retentée le lendemain"}],
+         "cout_ia": "aucun — 100 % déterministe",
+         "notes": ["Suivi : `.venv/bin/python -m scripts.ajouter_par_lien --etat`."],
+         "code": ["scripts/ajouter_par_lien.py", "config/liens_signales.tsv"]}},
+
     {"id": "gmail_collect", "label": "Relève Gmail", "icone": "📬", "flux": "collecte",
      "kind": "action", "col": 1, "row": 1, "cron_cle": "scripts/gmail_collect.py",
      "script": "gmail_collect",
@@ -2067,6 +2092,7 @@ LIENS = [
     {"de": "src_gmail", "vers": "gmail_collect"},
     {"de": "gmail_collect", "vers": "gmail_relink", "label": "adresse en bouchon"},
     {"de": "gmail_collect", "vers": "pending"},
+    {"de": "ajouter_par_lien", "vers": "pending", "label": "signalements"},
     {"de": "gmail_relink", "vers": "pending", "type": "retour", "label": "re-datation"},
     {"de": "src_pages", "vers": "moisson"},
     {"de": "moisson", "vers": "file_completer", "type": "retour"},

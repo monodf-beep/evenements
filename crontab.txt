@@ -45,6 +45,9 @@ SLACK_DIGEST=1
 50 7 * * * cd /root/evenements && .venv/bin/python -m scripts.auto_deploiement --apply >> logs/auto_deploiement.log 2>&1
 # Scraping RSS quotidien 8h
 0 8 * * * cd /root/evenements && .venv/bin/python scripts/scraper_events.py >> logs/scraper.log 2>&1
+# Événements SIGNALÉS par un lien (config/liens_signales.tsv, rempli en session) 8h10 —
+# avant dates 8h25 et dedupe 8h30, pour qu'ils suivent la chaîne du jour même.
+10 8 * * * cd /root/evenements && .venv/bin/python -m scripts.ajouter_par_lien --apply >> logs/ajouter_par_lien.log 2>&1
 # Collecte des newsletters (label Gmail « Agenda ») 8h15
 15 8 * * * cd /root/evenements && .venv/bin/python scripts/gmail_collect.py >> logs/gmail.log 2>&1
 # Rattrapage de l'URL des fiches « gmail: » 8h20 (écrit, jamais planifié — audit du

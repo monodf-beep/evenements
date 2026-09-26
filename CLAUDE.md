@@ -435,6 +435,27 @@ titre. Détail : `docs/CHARTE_EDITORIALE.md`.
 
 ---
 
+## Un lien d'événement donné en session → sa source, puis la chaîne
+
+Franck colle un lien (post Instagram, affiche, message) : **le lien n'est jamais la
+source.** Procédure, née le 26/09 avec la Fiera del Marrone (`scripts/ajouter_par_lien.py`) :
+
+1. lire le lien (Instagram rend sa légende dans `og:description`, même sans compte) ;
+2. trouver la page de l'ORGANISATEUR et la LIRE : même édition, mêmes dates. Un agrégateur
+   (sagretoday, sagr.it…) n'est pas une source, même si `radar.source_officielle` le laisse
+   passer ;
+3. chercher une fiche existante sur le site (`wp-json/wp/v2/search`, en FR et en IT) — et
+   dire que la base, elle, n'a pas été interrogée depuis la session : c'est le script qui
+   s'en charge au passage (« déjà en base ») ;
+4. ajouter la ligne à `config/liens_signales.tsv` (nom de l'événement, territoire, ce qui a
+   été lu en commentaire), puis la faire arriver sur `claude/quirky-davinci-jvqrnw` : une
+   ligne poussée ailleurs n'est jamais lue.
+
+On n'écrit PAS l'article en session : la chaîne le rédige dans la voix de la maison, le
+traduit et le publie. Écrire à la main, c'est se passer de tout ça pour une seule fiche.
+
+---
+
 ## Rédiger un texte ICI, en session — la doctrine n'est jamais dans ma mémoire
 
 **Constat de Franck, 06/09/2026** : « c'est pénible quand je demande de la rédaction ici

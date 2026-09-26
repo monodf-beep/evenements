@@ -1770,7 +1770,12 @@ def select_events(conn: sqlite3.Connection, ids: list[int],
         params += [dto, dfrom]
     return conn.execute(
         f"SELECT * FROM events_raw WHERE {' AND '.join(where)} "
-        "ORDER BY llm_score DESC, scrape_date DESC LIMIT ?",
+        # Un SIGNALEMENT passe devant (2026-09-26, scripts/ajouter_par_lien.py) : un
+        # humain a demandé cette fiche-là. Trié au seul score, un événement noté 6 pouvait
+        # attendre des jours derrière le lot quotidien de 10. Aucun passe-droit au-delà :
+        # il a franchi l'évaluateur et les mêmes gardes que les autres.
+        "ORDER BY (source_name LIKE 'signalement :%') DESC, llm_score DESC, "
+        "scrape_date DESC LIMIT ?",
         (*params, BATCH_SIZE)).fetchall()
 
 

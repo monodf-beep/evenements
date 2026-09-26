@@ -100,6 +100,22 @@ franches. Il ne touche à rien. C'est celui qui a trouvé les dix-sept fiches p�
 .venv/bin/python -m scripts.completer_verifie --apply   # écrit
 ```
 
+### Signaler un événement par un lien (ajouté le 26/09)
+
+Tu colles le lien dans une session Claude — un post Instagram, une affiche, un message.
+La session lit le lien, cherche la page de l'organisateur, vérifie qu'elle parle bien de
+cette édition, regarde si le site a déjà une fiche, et ajoute une ligne à
+`config/liens_signales.tsv`. Le lendemain matin à 8h10, la fiche entre dans la chaîne
+ordinaire : dates, lieu, évaluation, rédaction dans la voix de la maison, publication,
+traduction. Elle passe en tête de la file de rédaction ; l'évaluateur peut quand même la
+refuser (hors périmètre, pas un événement).
+
+Pour savoir où en est chaque lien que tu as donné :
+
+```bash
+.venv/bin/python -m scripts.ajouter_par_lien --etat
+```
+
 ### Retirer des fiches du site
 
 ```bash
