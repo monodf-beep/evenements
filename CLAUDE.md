@@ -424,9 +424,9 @@ texte éditorial, PAS le pipeline lui-même qui s'en charge déjà** :
 **Ne jamais écrire le nom « Enrico »** — arbitrage de Franck du 2026-09-22. Ce qui
 s'appelle ainsi dans Obsidian et dans le dépôt se dit ici **« la voix commune »**, ou
 « la voix de la maison ». La règle porte sur tout ce qui sort de cette session : les
-réponses, les textes, les commits. (Le dépôt a été nettoyé le 2026-09-28 : messages du backoffice, invite des légendes,
-commentaires, docs. Il ne reste que l'identifiant du skill `clone-enrico-fr`, qu'on ne
-renomme pas — le changer casserait les renvois — et cette règle elle-même.)
+réponses, les textes, les commits. (Le dépôt, lui, porte encore le nom à 27 endroits
+dont deux messages visibles dans le backoffice — c'est un chantier à part, pas à faire
+en passant.)
 
 **Depuis le 21/09, il y a une adresse et plus rien à coller** :
 `https://backoffice.agendasabauda.eu/doctrine.txt?token=<DOCTRINE_TOKEN>` rend les trois
