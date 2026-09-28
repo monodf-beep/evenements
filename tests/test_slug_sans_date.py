@@ -134,6 +134,58 @@ _check("un titre qui n'est QUE sa date rend quand même une adresse",
        slug_sans_date("Le 17 décembre 2026"))
 
 # ════════════════════════════════════════════════════════════════════════════════════════
+# 3 bis. LES JOURS DE LA SEMAINE ET LES REPÈRES RELATIFS (23/09)
+# ════════════════════════════════════════════════════════════════════════════════════════
+# Franck, 23/09 : « comment on peut avoir une url comme […]-a-decouvrir-samedi alors
+# qu'on a spécifié qu'il ne fallait pas de date ». WP#10428 créée le 22/09, filtre en
+# place : il ne connaissait pas les jours. Témoin rouge d'abord, sur l'adresse réelle.
+print("\n──── 3 bis. jours de la semaine et repères relatifs ────")
+JOURS = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+         "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato", "domenica")
+_check("témoin rouge : l'adresse en ligne de WP#10428 porte bien un jour",
+       any(m in JOURS for m in
+           "novare-ouvre-ses-archives-sceaux-et-actes-anciens-a-decouvrir-samedi".split("-")))
+JOURS_CAS = [
+    ("Novare ouvre ses archives : sceaux et actes anciens à découvrir samedi",
+     "novare-ouvre-ses-archives-sceaux-et-actes-anciens-a-decouvrir"),
+    ("Journées du patrimoine : portes ouvertes samedi et dimanche",
+     "journees-du-patrimoine-portes-ouvertes"),
+    ("Marché de Noël : rendez-vous dimanche 14 décembre", "marche-de-noel-rendez-vous"),
+    ("Domenica 28 settembre, apertura straordinaria a Novara",
+     "apertura-straordinaria-a-novara"),
+    ("Ce samedi, Novare ouvre ses archives", "novare-ouvre-ses-archives"),
+    ("Portes ouvertes le samedi 26 septembre au château", "portes-ouvertes-au-chateau"),
+    ("Concert ce week-end à Turin", "concert-a-turin"),
+    ("Fête du village ce soir", "fete-du-village"),
+]
+for titre, attendu in JOURS_CAS:
+    obtenu = slug_sans_date(titre)
+    _check(f"« {titre[:52]} »", obtenu == attendu,
+           f"\n        obtenu   : {obtenu}\n        attendu  : {attendu}")
+# ⚠️ Ce qui DOIT PASSER, pris près de la frontière — et pour moitié relevé tel quel
+# sur les 348 fiches à venir en ligne le 23/09.
+DOIT_PASSER = [
+    ("Piante ieri, oggi e domani", "piante-ieri-oggi-e-domani"),            # WP#11804
+    ("Festimom, une semaine d'ateliers de films", "festimom-une-semaine-dateliers-de-films"),
+    ("Racconigi ouvre en soirée son premier étage noble",                   # WP#10437
+     "racconigi-ouvre-en-soiree-son-premier-etage-noble"),
+    ("Il Sabato del villaggio a Cuneo", "il-sabato-del-villaggio-a-cuneo"),
+    ("Les samedis du jazz à Annecy", "les-samedis-du-jazz-a-annecy"),
+    ("Marché bio chaque samedi à Chambéry", "marche-bio-chaque-samedi-a-chambery"),
+    ("Alla biblioteca Cesare Pavese un mercoledì su due per prendere confidenza con lo SPID",
+     "alla-biblioteca-cesare-pavese-un-mercoledi-su-due-per-prendere"),     # WP#9766
+    ("Le marché paysan ouvert le samedi à Aoste", "le-marche-paysan-ouvert-le-samedi-a-aoste"),
+]
+for titre, attendu in DOIT_PASSER:
+    obtenu = slug_sans_date(titre)
+    _check(f"reste intact : « {titre[:48]} »", obtenu == attendu, obtenu)
+# Et la coupe ne laisse plus de conjonction en l'air (« …-basket-e-volley-e », 23/09).
+_check("pas de « -e » orphelin : « Biella Sport Festival, basket e volley a settembre… »",
+       slug_sans_date("Biella Sport Festival, basket e volley a settembre e ottobre")
+       == "biella-sport-festival-basket-e-volley",
+       slug_sans_date("Biella Sport Festival, basket e volley a settembre e ottobre"))
+
+# ════════════════════════════════════════════════════════════════════════════════════════
 # 4. LA FORME DE L'ADRESSE — les deux défauts lus dans le premier dry-run
 # ════════════════════════════════════════════════════════════════════════════════════════
 print("\n──── 4. la forme : ni coupe au milieu d'un mot, ni tiret orphelin ────")

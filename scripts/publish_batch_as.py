@@ -49,11 +49,9 @@ from utils import substance
 from scripts.perimetre import ville_hors_perimetre
 from scripts.publisher import build_post
 from scripts.publisher_as import publish_to_as, wp_site_joignable
-# Privées mais réutilisées à dessein (_heriter_source_traduction) : c'est le calcul
-# EXACT que publisher_as applique déjà à toute fiche pour sa propre source publiable —
-# le reprendre en sous-ensemble a divergé une première fois (16/09), le réutiliser tel
-# quel ne peut pas diverger une deuxième.
-from scripts.publisher_as import _source_publiable, _is_radar
+# L'héritage de la source d'une traduction vit dans publisher_as depuis le 24/09 (tous
+# les appelants de publish_to_as en ont besoin) ; importé ici pour l'appel explicite.
+from scripts.publisher_as import heriter_source_traduction
 
 log = get_logger("publish_batch_as")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -121,6 +119,16 @@ def _select(conn, args, today: str):
     return rows
 
 
+def retenir_creations_brutes(rows: list) -> tuple:
+    """(à publier, retenues) : une CRÉATION sans texte rédigé est retenue — voir le verrou
+    de rédaction dans main(). Une fiche déjà en ligne, ou une traduction, passe."""
+    def brute(ev):
+        return (not int(ev.get("wp_post_id_as") or 0)
+                and not int(ev.get("translation_of") or 0)
+                and not (ev.get("enrich_data") or "").strip())
+    return [ev for ev in rows if not brute(ev)], [ev for ev in rows if brute(ev)]
+
+
 def _heriter_source_traduction(event: dict, conn) -> None:
     """Complète `event['url_source']` avec la source publiable de l'ORIGINAL
     si c'est une traduction dont la source propre est vide — MODIFIE `event`
@@ -143,16 +151,10 @@ def _heriter_source_traduction(event: dict, conn) -> None:
     on écrit le résultat dans `url_source` de la traduction (pas
     `url_officiel`, qui a son propre filtre de domaine — `_is_official_host`
     — que ce résultat ne passerait pas forcément)."""
-    tof = event.get("translation_of") or 0
-    if not tof or (event.get("url_source") or "").strip().startswith(("http://", "https://")):
-        return
-    parent_row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
-    if not parent_row:
-        return
-    parent = dict(parent_row)
-    ancre = _source_publiable(parent, _is_radar(parent))
-    if ancre:
-        event["url_source"] = ancre
+    # Le calcul vit désormais dans publisher_as (24/09) : publish_to_as l'applique à
+    # TOUS ses appelants — refresh_deplacement effaçait la source à 10h55. Délégué ici
+    # plutôt que dupliqué, pour qu'il n'y ait qu'un seul calcul (journal du 08/09).
+    heriter_source_traduction(event, conn)
 
 
 # Confiance d'une image, du plus sûr au moins sûr. Sert à décider si une traduction doit
@@ -324,6 +326,9 @@ def main(argv=None) -> int:
                              "dont aucune page officielle n'a été résolue. Par défaut elles "
                              "sont RETENUES (jamais supprimées) : le radar sert à DÉTECTER, "
                              "pas à publier (config/sources.txt, tier radar).")
+    parser.add_argument("--allow-brut", action="store_true",
+                        help="Publier MÊME une création sans texte rédigé (enrich_data vide) "
+                             "— y compris par --ids. Par défaut elle est RETENUE, pas rejetée.")
     parser.add_argument("--allow-early", action="store_true",
                         help="Publier MÊME les événements hors de leur fenêtre de "
                              "publication (docs/TEMPS_FORTS.md). Par défaut, un "
@@ -403,6 +408,29 @@ def main(argv=None) -> int:
         log.warning("%d fiche(s) retenue(s) par règle éditoriale. Pour les SORTIR de la "
                     "file (statut rejected) : .venv/bin/python -m "
                     "scripts.audit_excluded_events --apply", len(exclus))
+
+    # VERROU DE RÉDACTION, AUSSI POUR --ids (2026-09-23). Le verrou « pas de publication
+    # sans un mot rédigé » posé le 22/09 dans _select ne tient que pour la sélection
+    # automatique : _select rend les --ids tels quels. Le lendemain, 37 fiches de Plaisirs
+    # de Culture sont parties en ligne par ce chemin entre 12h54 et 13h42, avec le texte
+    # BRUT de la brochure (« AOSTA, Via Piave 6 — … Date: 23/09, 26/09. Orario: 17.00.
+    # INFO: … ») — WP#11814 « Una rilettura dei monumenti cittadini », signalée par
+    # Franck. Leurs jumelles ont ensuite traduit ce texte brut.
+    #
+    # NE BLOQUE QUE LES CRÉATIONS, comme le portillon de substance ci-dessous : une fiche
+    # déjà en ligne doit pouvoir repartir, c'est le seul moyen de la réparer. Les
+    # traductions ont leur propre texte (translate_events). Rien n'est écrit : la fiche
+    # garde son statut, enrich.py la rédige, et elle part au passage suivant (règle 3).
+    # --allow-brut pour le dire quand c'est voulu.
+    if not args.allow_brut:
+        rows, bruts = retenir_creations_brutes(rows)
+        if bruts:
+            ids_bruts = {ev.get("id") for ev in bruts}
+            log.warning("%d création(s) RETENUE(S) : pas encore rédigée(s) (enrich_data "
+                        "vide) — %s. Les rédiger : .venv/bin/python scripts/enrich.py %s ; "
+                        "ou --allow-brut pour publier le texte de la source tel quel.",
+                        len(bruts), sorted(ids_bruts),
+                        " ".join(str(i) for i in sorted(ids_bruts)))
 
     # PORTILLON DE SUBSTANCE (2026-08-05, le soir du refus AdSense « contenu à faible
     # valeur informative »). 59 fiches publiées portaient moins de cent mots à elles.

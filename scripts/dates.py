@@ -194,6 +194,26 @@ def _iso(y: int, m: int, d: int) -> str | None:
         return None
 
 
+# Au-delà de cet horizon, une année DEVINÉE par bascule ne date pas la fiche (24/09/2026).
+# `_year()` fait basculer à l'année suivante toute date nue passée de plus de 60 jours :
+# c'est juste pour « le 5 janvier » lu en septembre (107 jours devant), faux pour « il 15
+# maggio » lu en septembre — la Fondation Sapegno au Salone del Libro 2026, publiée pour le
+# 15 mai 2027 (237 jours devant), et donc « à venir » pendant huit mois. Une bascule ne
+# peut viser qu'entre 0 et ~305 jours devant ; 180 sépare les deux familles. Une date de
+# l'année EN COURS lue loin d'avance (« 15 décembre » lu en janvier) ne bascule pas et
+# n'est pas concernée.
+_HORIZON_BASCULE = 180
+
+
+def _bascule_lointaine(iso: str, annee_ecrite: bool, ref: date) -> bool:
+    """Vrai si l'année de `iso` a été DEVINÉE (absente du texte), qu'elle a basculé à
+    l'année suivante, et que la date tombe à plus de `_HORIZON_BASCULE` jours."""
+    if annee_ecrite or not iso:
+        return False
+    d = date.fromisoformat(iso)
+    return d.year > ref.year and (d - ref).days > _HORIZON_BASCULE
+
+
 def _year(day: int, month: int, ref: date) -> int:
     """Année sous-entendue (année absente du texte). On suppose un événement « à venir » :
     on garde l'année courante tant que la date n'est pas trop dans le passé (grâce de
@@ -207,7 +227,8 @@ def _year(day: int, month: int, ref: date) -> int:
 
 
 def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
-    """(date_start_iso, date_end_iso, source). source = 'parsed' | 'jour_incoherent' | 'none'.
+    """(date_start_iso, date_end_iso, source). source = 'parsed' | 'jour_incoherent' |
+    'annee_devinee_lointaine' (voir `_HORIZON_BASCULE`) | 'none'.
 
     ⚠️ LE PORTILLON DU JOUR DE SEMAINE, posé le 2026-08-11 au soir. Franck : « implacable
     au niveau de la collecte AVANT de passer par les LLM », et le même soir : « je ne veux
@@ -256,6 +277,8 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         y = int(yr) if yr else _year(min(d1, d2), mon, ref)
         s, e = _iso(y, mon, d1), _iso(y, mon, d2)
         if s and e:
+            if _bascule_lointaine(min(s, e), bool(yr), ref):
+                return ("", "", "annee_devinee_lointaine")
             return _sous_reserve_du_jour(min(s, e), max(s, e), text)
 
     # 3) Plage inter-mois « du 30 juin au 3 juillet [2026] » / « dal 30 giugno al 3 luglio »
@@ -280,6 +303,8 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
             yy2 = yy1 if mon2 >= mon1 else yy1 + 1
         s, e = _iso(yy1, mon1, d1), _iso(yy2, mon2, d2)
         if s and e:
+            if _bascule_lointaine(min(s, e), bool(y1 or y2), ref):
+                return ("", "", "annee_devinee_lointaine")
             return _sous_reserve_du_jour(min(s, e), max(s, e), text)
 
     # 4) Fin seule « jusqu'au 30 août » / « fino al 30 agosto » → en cours jusqu'à…
@@ -290,6 +315,8 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         y = int(yr) if yr else _year(d2, mon, ref)
         e = _iso(y, mon, d2)
         if e:
+            if _bascule_lointaine(e, bool(yr), ref):
+                return ("", "", "annee_devinee_lointaine")
             return _sous_reserve_du_jour("", e, text)  # début inconnu = en cours
 
     # 5) Date simple « [le] 5 juillet [2026] » / « 5 luglio »
@@ -299,6 +326,8 @@ def parse_dates(text: str, ref: date | None = None) -> tuple[str, str, str]:
         y = int(yr) if yr else _year(d1, mon, ref)
         s = _iso(y, mon, d1)
         if s:
+            if _bascule_lointaine(s, bool(yr), ref):
+                return ("", "", "annee_devinee_lointaine")
             return _sous_reserve_du_jour(s, s, text)
 
     # 6) Numérique jj/mm/aaaa ou jj.mm.aaaa (format européen)
@@ -882,7 +911,7 @@ def main(argv=None) -> int:
         "  AND COALESCE(translation_of,0) = 0"
     ).fetchall()
     log.info("Passe texte : %d événement(s) sans date de début à relire", len(rows))
-    parsed = parsed_article = fin_seule = jour_incoherent = 0
+    parsed = parsed_article = fin_seule = jour_incoherent = bascule_lointaine = 0
     for r in rows:
         s, e, src = parse_dates(f"{r['title']}\n{r['description'] or ''}")
         titre_art = (r["article_title"] or "") if "article_title" in r.keys() else ""
@@ -897,6 +926,8 @@ def main(argv=None) -> int:
         # dans le plan de travail de l'agent : rien n'est perdu, mais il faut le savoir.
         if src == "jour_incoherent":
             jour_incoherent += 1
+        if src == "annee_devinee_lointaine":
+            bascule_lointaine += 1
         # ON N'EFFACE JAMAIS, ET ON NE RÉÉCRIT PAS CE QU'ON SAIT DÉJÀ. Une fiche peut
         # n'avoir qu'une date de FIN (« jusqu'au 20 septembre ») : la toute première
         # version réécrivait les deux colonnes à chaque passage, ce qui aurait effacé
@@ -946,6 +977,11 @@ def main(argv=None) -> int:
                  "opposées et indiscernables ici (annonce ancienne projetée dans le futur, "
                  "ou source qui se trompe de jour) : elles restent dans « À compléter » "
                  "pour qu'une lecture tranche", jour_incoherent)
+    if bascule_lointaine:
+        log.info("Passe texte : %d fiche(s) NON datées volontairement — date sans année "
+                 "qui, devinée, tomberait à plus de %d jours l'an prochain (annonce passée "
+                 "probable : Salone del Libro de mai lu en septembre). La page, puis "
+                 "« À compléter », trancheront", bascule_lointaine, _HORIZON_BASCULE)
 
     # --- Passe 2 : page de l'événement (JSON-LD/<time>), pour les restants ---
     from_page = 0

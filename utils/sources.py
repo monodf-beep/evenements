@@ -159,6 +159,11 @@ def is_logo_image(url: str) -> bool:
         return True
     name = path.rsplit("/", 1)[-1]     # nom de fichier seul
     words = set(re.split(r"[^a-z0-9]+", name))
+    # Les chiffres collés ne protègent pas un logo (23/09/2026) : `logo2025.webp`, pris sur
+    # valledaostaheritage.com, se découpait en {logo2025, webp} et partait en vignette
+    # — 22 fiches de Plaisirs de Culture, en aplats noirs. On découpe AUSSI aux frontières
+    # lettres/chiffres ; « biologo » reste un seul mot, lui.
+    words |= set(re.split(r"[^a-z]+", name))
     if words & _LOGO_NAME_TOKENS:
         return True
     # Dossiers d'UI de thème (icônes d'interface) — signal net et rare.

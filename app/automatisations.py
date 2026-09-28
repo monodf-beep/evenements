@@ -187,6 +187,41 @@ def _age_humain(heures: float | None) -> str:
     return f"il y a {int(heures // 24)} j"
 
 
+# ───────────────────────────────────────────────── la charge de la chaîne ──
+
+def charge() -> dict:
+    """Ce qui ATTEND devant chaque nœud, et où ça coince — lu par `utils.etat_systeme`.
+
+    Demande de Franck : « comme en supply chain, connaître ce qui est en attente, où ça
+    coince ». Le module `utils/etat_systeme.py` calcule déjà les huit étages, le premier
+    qui décroche (le goulot) et le régime de sept jours ; `garages()` y a été ajouté pour
+    compter ce qui est SORTI d'une file sans être terminé. On branche, on ne recalcule
+    pas : un second compteur de fiches à publier finirait par contredire le premier, et
+    c'est le plus gros des deux qu'on croirait.
+
+    Rend {} quand la base ne répond pas. Comme pour l'état des passages, l'absence de
+    mesure s'affiche « non mesuré » et jamais « zéro ».
+    """
+    import os
+    import sqlite3
+    chemin = os.getenv("DB_PATH", str(ROOT / "data" / "events.db"))
+    try:
+        conn = sqlite3.connect(f"file:{chemin}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        from utils import etat_systeme as etat
+        etages = etat.etages(conn)
+        out = {
+            "etages": {e["cle"]: e for e in etages},
+            "garages": {g["cle"]: g for g in etat.garages(conn)},
+            "goulot": etat.goulot(etages),
+            "flux": etat.flux(conn),
+        }
+        conn.close()
+        return out
+    except Exception:
+        return {}
+
+
 # ─────────────────────────────────────────────────────────── appariement ──
 
 def apparier(noeuds: list[dict] | None = None,
@@ -237,6 +272,7 @@ def carte() -> dict:
     noeuds, orphelines = apparier()
     etats = etat_par_script()
     veilles = scripts_surveilles()
+    ch = charge()
     par_id = {}
     for n in noeuds:
         n["x"] = MARGE + n.get("col", 0) * COL_PX
@@ -250,6 +286,13 @@ def carte() -> dict:
         # Un cron QUI TOURNE mais que le chien de garde ignore : c'est le trou le plus
         # coûteux du dépôt (« un mécanisme qui s'arrête sans que personne en soit
         # averti »). On le signale sur la carte au lieu de le laisser se découvrir.
+        # La charge : ce qui attend DEVANT ce nœud (son étage) et ce qui est garé
+        # DERRIÈRE lui (l'état terminal qu'il pose). Les deux répondent à des questions
+        # différentes — « combien reste-t-il à faire » et « combien sont bloquées ».
+        n["etage"] = (ch.get("etages") or {}).get(n.get("etage_cle") or "")
+        n["garage"] = (ch.get("garages") or {}).get(n.get("garage_cle") or "")
+        n["goulot"] = bool(ch.get("goulot")
+                           and n.get("etage_cle") == ch["goulot"]["cle"])
         n["angle_mort"] = (bool(n.get("cron_cle"))
                            and (n.get("script") or "") not in veilles
                            and not n.get("surveille_par"))
@@ -285,6 +328,8 @@ def carte() -> dict:
         "etat_lisible": bool(etats),
         "nb_crons": len(lignes_crontab()),
         "angles_morts": [n for n in noeuds if n.get("angle_mort")],
+        "charge": ch,
+        "charge_lisible": bool(ch),
         "compte": {
             "retard": sum(1 for n in noeuds if n["etat"]["niveau"] == "retard"),
             "erreur": sum(1 for n in noeuds if n["etat"]["niveau"] == "erreur"),

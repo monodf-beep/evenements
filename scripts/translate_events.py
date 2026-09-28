@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 import threading
@@ -53,6 +54,7 @@ from scripts.scraper_events import init_db
 from scripts.publisher_as import (publish_to_as, wp_original_est_en_ligne,
                                   wp_site_joignable)
 from scripts.link_translations_as import _post_link
+from scripts.gel_texte import postes_geles
 # Portillon de justesse du titre traduit (C2 de docs/GO_NOGO_TRADUCTION.md). Défini dans
 # batch_report parce que c'est là que vit la doctrine des contrôles de justesse et la
 # seule définition du dépôt de « racine commune » — deux copies divergeraient.
@@ -300,6 +302,11 @@ def _charte_prompt(target: str, voix: str = "") -> str:
         f"(initiale + noms propres, selon la langue). {casse_lang} "
         f"Préserve les vrais sigles/acronymes (FIAF, MAO, ONU) et la casse voulue d'une "
         f"marque (iMac, PSG).\n\n"
+        f"LE TITRE COMMENCE DANS LA LANGUE DU LECTEUR (charte §4, arbitrage du 24/09/2026) : "
+        f"un lecteur qui ne lit que le {tgt} doit comprendre de quoi il s'agit dès les "
+        f"premiers mots. Le nom officiel d'un événement dans l'AUTRE langue ne vient en tête "
+        f"que s'il est vraiment connu ; sinon titre descriptif en {tgt}, et le nom officiel, "
+        f"s'il aide, APRÈS les deux-points, entre guillemets.\n\n"
         f"SUPERLATIFS CREUX INTERDITS en {tgt} : {superl}. Reste factuel et incarné.\n\n"
         f"VOCABULAIRE INTERDIT en {tgt} :\n{vocabulaire.consigne_prompt(target)}\n\n"
         f"DARK PATTERNS INTERDITS en {tgt} (le lecteur d'abord, jamais le clic) : {darkp}.\n\n"
@@ -369,8 +376,17 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
             usage.record_message(model, resp, label="traduction_titre")
             if getattr(resp, "stop_reason", None) != "max_tokens":
                 break
-            log.warning("Traduction titre/description tronquée (max_tokens=%d, essai %d/2).",
-                       budget, tentative)
+            # CE QUE LE MODÈLE ÉCRIVAIT (24/09/2026). Cinq titres par jour débordent 4 000
+            # jetons pour une entrée de 2 000 caractères au plus (~700 jetons de sortie
+            # attendus) : ce n'est pas un manque de place, c'est une sortie qui s'emballe —
+            # et le second essai à 7 000 la rattrape chaque fois, en payant deux appels.
+            # Sans la tête et la queue de la sortie, impossible de dire laquelle des pistes
+            # est la bonne (JSON répété, description recopiée en boucle, commentaire).
+            _brut = "".join(getattr(b, "text", "") for b in (resp.content or []))
+            log.warning("Traduction titre/description tronquée (max_tokens=%d, essai %d/2) — "
+                        "entrée %d car., sortie %d car. · début « %s » · fin « %s »",
+                        budget, tentative, len(title or "") + len(desc or ""), len(_brut),
+                        _brut[:160].replace("\n", " "), _brut[-160:].replace("\n", " "))
         else:
             return None  # les deux essais ont tronqué : on renonce pour aujourd'hui
         txt = _extract_json(resp)
@@ -390,6 +406,76 @@ def translate_title_desc(client, model, title: str, desc: str, target: str,
             raise PlafondAPI(str(exc)) from exc
         log.warning("Traduction échouée : %s", exc)
         return None
+
+
+_SEP_PARAGRAPHE = re.compile(r"(\n\s*\n|(?<=[.!?])\n)")
+
+
+def _paragraphes_restes(art: dict, target: str) -> list:
+    """Paragraphes de chapô / corps / encadré restés dans l'autre langue que `target`."""
+    out = []
+    for champ in ("chapo", "corps", "encadre"):
+        v = art.get(champ)
+        if isinstance(v, str) and v.strip():
+            out += paragraphes_mauvaise_langue(v, target)
+    return out
+
+
+def _retraduire_paragraphes(client, model, art: dict, suspects: list, target: str,
+                            voix: str = "") -> dict | None:
+    """Retraduit les SEULS paragraphes de `suspects` et les remet à leur place dans une
+    copie de `art`. Même découpage que `utils.lang.paragraphes_mauvaise_langue`, pour
+    retrouver chaque paragraphe là où il a été signalé. None si l'appel échoue ou si la
+    réponse n'a pas autant d'entrées qu'envoyées — l'appelant refuse alors comme avant."""
+    vises = {p for _, p in suspects}
+    # (champ, index du morceau) de chaque paragraphe visé, dans l'ordre de lecture.
+    morceaux: dict[str, list[str]] = {}
+    places: list[tuple[str, int]] = []
+    for champ in ("chapo", "corps", "encadre"):
+        v = art.get(champ)
+        if not (isinstance(v, str) and v.strip()):
+            continue
+        parts = _SEP_PARAGRAPHE.split(v)
+        morceaux[champ] = parts
+        for i in range(0, len(parts), 2):          # indices pairs : le texte ; impairs : séparateurs
+            if re.sub(r"\s+", " ", parts[i]).strip() in vises:
+                places.append((champ, i))
+    if not places:
+        return None
+    textes = [morceaux[c][i].strip() for c, i in places]
+    tgt = _LANG_NAME[target]
+    prompt = (
+        _charte_prompt(target, voix) +
+        f"Voici des paragraphes d'un article, restés dans la mauvaise langue. Traduis "
+        f"CHACUN intégralement en {tgt}. Garde tels quels les noms propres (personnes, "
+        f"œuvres, NOM OFFICIEL de l'événement) et les marqueurs markdown (**, *, ##). "
+        f"Réponds UNIQUEMENT par une liste JSON de chaînes, EXACTEMENT {len(textes)} "
+        f"entrée(s), dans le même ordre :\n{json.dumps(textes, ensure_ascii=False)}")
+    try:
+        resp = client.messages.create(model=model, max_tokens=4000,
+                                      messages=[{"role": "user", "content": prompt}])
+        from utils import usage
+        usage.record_message(model, resp, label="traduction_paragraphes")
+        txt = _extract_json(resp)
+        out = json.loads(txt[txt.find("["): txt.rfind("]") + 1], strict=False)
+    except (anthropic.APIError, ValueError, KeyError, TypeError) as exc:
+        from utils.api_limite import PlafondAPI, est_plafond
+        if est_plafond(exc):
+            raise PlafondAPI(str(exc)) from exc
+        log.warning("Seconde passe (paragraphes) échouée : %s", exc)
+        return None
+    if not (isinstance(out, list) and len(out) == len(textes)
+            and all(isinstance(x, str) and x.strip() for x in out)):
+        log.warning("Seconde passe : %s entrée(s) rendue(s) pour %d envoyée(s) — ignorée.",
+                    len(out) if isinstance(out, list) else "?", len(textes))
+        return None
+    for (champ, i), neuf in zip(places, out):
+        morceaux[champ][i] = neuf.strip()
+    corrige = dict(art)
+    for champ, parts in morceaux.items():
+        corrige[champ] = "".join(parts)
+    log.info("Seconde passe : %d paragraphe(s) retraduit(s) à part.", len(textes))
+    return corrige
 
 
 def translate_article(client, model, enrich_json: str, target: str,
@@ -550,11 +636,24 @@ def translate_article(client, model, enrich_json: str, target: str,
     # jamais un paragraphe français sur une page italienne. La matière n'ayant pas changé,
     # la fiche revient au prochain passage et le compteur MAX_REFUS l'arrête au bout de
     # trois (cf. `garees` / `_rearme_traductions`).
-    _suspects = []
-    for _champ in ("chapo", "corps", "encadre"):
-        _v = new_art.get(_champ)
-        if isinstance(_v, str) and _v.strip():
-            _suspects += paragraphes_mauvaise_langue(_v, target)
+    _suspects = _paragraphes_restes(new_art, target)
+    if _suspects:
+        # SECONDE PASSE, CIBLÉE (23/09/2026). Sept jumelles de Plaisirs de Culture ont
+        # été refusées ici, toutes pour la même raison : des phrases françaises entières
+        # (« Cette initiative s'inscrit dans la quatorzième édition… ») recopiées au milieu
+        # d'un corps italien. Rejouer l'appel complet serait un refus qui se rejoue sur la
+        # MÊME entrée (règle 3). Ce qui change ici, c'est l'ENTRÉE : on n'envoie plus que
+        # les paragraphes restés en français, sans le long corps que le modèle recopie
+        # (défaut déjà décrit à DEFAULT_MODEL). C'est une hypothèse, pas une certitude :
+        # le journal dit « seconde passe : N paragraphe(s) », et le portillon ci-dessous
+        # reste le juge — s'il en reste un seul, refus comme avant.
+        _corrige = _retraduire_paragraphes(client, model, new_art, _suspects, target, voix)
+        if _corrige is not None:
+            new_art = _corrige
+            _suspects = _paragraphes_restes(new_art, target)
+            log.info("Seconde passe : %s", "tous les paragraphes sont traduits"
+                     if not _suspects else f"{len(_suspects)} paragraphe(s) encore dans "
+                                           f"l'autre langue")
     if _suspects:
         _suspects.sort(key=lambda x: -x[0])
         log.error("REFUS — %d paragraphe(s) du corps sont restés dans l'autre langue "
@@ -565,6 +664,33 @@ def translate_article(client, model, enrich_json: str, target: str,
     new_data = dict(data)
     new_data["article"] = new_art
     return json.dumps(new_data, ensure_ascii=False)
+
+
+def cibler_ids(rows: list, ids: list) -> tuple[list, list]:
+    """Restreint la file du jour aux ids demandés, dans l'ordre de la file ; rend aussi
+    les ids demandés qui n'y sont PAS (à dire, jamais à taire)."""
+    voulus = set(ids)
+    gardes = [r for r in rows if r["id"] in voulus]
+    trouves = {r["id"] for r in gardes}
+    return gardes, [i for i in ids if i not in trouves]
+
+
+def cible_retraduction(orig: dict, tw: dict) -> str:
+    """La langue dans laquelle ré-écrire le jumeau : l'INVERSE de la langue actuelle de
+    l'original, lue sur son article (effective_lang) — pas celle mémorisée à la création.
+
+    23/09/2026, Plaisirs de Culture : des fiches publiées en italien (texte brut de la
+    brochure) avaient reçu une jumelle FRANÇAISE (translated_lang='fr'). La rédaction a
+    ensuite réécrit les originaux, en français comme toujours. `--retranslate` a relu
+    translated_lang='fr' et a ré-écrit les jumelles… en français : une vingtaine
+    d'événements avec DEUX fiches françaises, et plus aucune italienne. La langue
+    mémorisée disait ce qui était vrai au moment de la création, pas ce qui l'est."""
+    src = effective_lang(orig)
+    if src in ("fr", "it"):
+        return _target(src)
+    return ((tw.get("translated_lang") or "").strip()
+            or _target(detect_lang(orig.get("title", ""), orig.get("description", ""),
+                                   orig.get("territoire", ""))))
 
 
 def _retranslate_one(tw: dict, args, client, voix) -> str:
@@ -578,8 +704,11 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
         if not orig:
             return "skip"
         orig = dict(orig)
-        tgt = (tw.get("translated_lang") or _target(detect_lang(
-            orig.get("title", ""), orig.get("description", ""), orig.get("territoire", "")))).strip()
+        tgt = cible_retraduction(orig, tw)
+        if tgt != (tw.get("translated_lang") or "").strip():
+            log.warning("[jumeau %s] langue cible corrigée : %s → %s (l'original est "
+                        "aujourd'hui en %s)", tw["id"], tw.get("translated_lang") or "?",
+                        tgt, _target(tgt))
         log.info("[orig %s → jumeau %s] re-traduction %s : %s", orig["id"], tw["id"], tgt,
                  (orig.get("title") or "")[:50])
         if not args.apply:
@@ -642,8 +771,8 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
             return "refus"
         conn.execute(
             "UPDATE events_raw SET title=?, description=?, article_title=?, enrich_data=?, "
-            "translated_at=datetime('now') WHERE id=?",
-            (tr["title"], tr["description"], tr_art_title, tr_enrich, tw["id"]))
+            "translated_lang=?, translated_at=datetime('now') WHERE id=?",
+            (tr["title"], tr["description"], tr_art_title, tr_enrich, tgt, tw["id"]))
         conn.commit()
         # Met à jour la fiche WP traduite EXISTANTE (garde wp_post_id_as → update, pas de doublon).
         # skip_media=True : incident réel du 2026-08-06 — cet appel repoussait `url_image`
@@ -654,14 +783,39 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
         upd = dict(tw)
         upd.update({"title": tr["title"], "description": tr["description"],
                     "article_title": tr_art_title, "enrich_data": tr_enrich, "force_lang": tgt})
-        publish_to_as(upd, skip_media=True)
+        # CONTRE-ÉPREUVE APRÈS COUP (CLAUDE.md : « un garde-fou posé dans un chemin de
+        # réécriture doit avoir sa contre-épreuve APRÈS coup »). Le portillon de
+        # `_retranslate` lit la liste des gelés AVANT ; ici on lit ce que le site a
+        # RÉELLEMENT fait de notre écriture. Les deux sont nécessaires : la liste peut
+        # être muette (401, mu-plugin absent) ou la fiche avoir été gelée entre-temps.
+        #
+        # MESURÉ LE 28/09 : les jumeaux 3547 (WP#2340) et 4146 (WP#3807) ont été
+        # « re-traduits ✅ » alors que le site répondait « Fiche GELÉE — champs non
+        # écrits : title, content, excerpt, seo ». Les deux pages sont restées EN
+        # FRANÇAIS côté italien, et la base, elle, portait le texte italien : le succès
+        # annoncé était l'intention, pas le résultat (règle 6).
+        reponse: dict = {}
+        publish_to_as(upd, skip_media=True, retour=reponse)
+        gel = reponse.get("gel") or {}
+        bloques = [c for c in (gel.get("champs") or [])
+                   if c in ("title", "content", "excerpt", "seo")]
+        if gel.get("gele") and bloques:
+            log.error("[jumeau %s] TEXTE NON PUBLIÉ — la fiche WP#%s est GELÉE (depuis %s) "
+                      "et le site a refusé : %s. La base porte désormais la traduction, la "
+                      "page NON : elles divergent. Pour trancher : "
+                      ".venv/bin/python -m scripts.gel_texte --degel %s --apply  puis  "
+                      ".venv/bin/python -m scripts.publish_batch_as --update --ids %s "
+                      "(0 appel API — le texte est déjà en base).",
+                      tw["id"], tw.get("wp_post_id_as"), gel.get("depuis") or "?",
+                      ", ".join(bloques), tw["id"], tw["id"])
+            return "gele"
         log.info("[jumeau %s] re-traduit (%s) : %s", tw["id"], tgt, tr["title"][:50])
         return "done"
     finally:
         conn.close()
 
 
-def _retranslate(args, client, voix) -> int:
+def _retranslate(args, client, voix, retour: "dict | None" = None) -> int:
     """RE-TRADUIT le jumeau EXISTANT des ids ORIGINAUX donnés : régénère titre + description
     + article (enrich_data) depuis l'original avec les règles courantes et MET À JOUR la fiche
     traduite en place (garde son id, son wp_post_id_as → update WP, sa liaison Polylang).
@@ -702,6 +856,46 @@ def _retranslate(args, client, voix) -> int:
         sains.append(tw)
     twins = sains
     conn.close()
+
+    # ⚠️ NE JAMAIS RE-TRADUIRE UNE FICHE DONT LE SITE A GELÉ LE TEXTE — 28/09/2026.
+    #
+    # CE QUI S'EST PASSÉ. Les jumeaux 3547 et 4146 ont été re-traduits deux fois de suite
+    # avec un ✅ à chaque passage : le contrôle final ne regardait que le VERSANT, qui
+    # était déjà bon. Le site, lui, répondait « Fiche GELÉE — champs non écrits : title,
+    # content, excerpt, seo » et gardait ses deux pages FRANÇAISES côté italien. Quatre
+    # appels API brûlés par passage, et `repair_lien_polylang --retraduire` tourne chaque
+    # semaine : c'est exactement le refus qui se rejoue sur la MÊME entrée que la règle 3
+    # de CLAUDE.md interdit.
+    #
+    # POURQUOI CE REFUS-CI N'EST PAS CELUI-LÀ. Il ne rejoue rien : il coûte UN GET et zéro
+    # appel LLM, il nomme son rouvreur (`gel_texte --degel <id> --apply`, qui rend la main
+    # au pipeline), et le nombre de fiches garées se lit d'un côté dans `gel_texte --liste`
+    # (avec son périmètre) et de l'autre dans le bilan ci-dessous, qui les compte à part.
+    #
+    # Et le gel se lit sur le SITE, jamais sur `wp_gel_at` : cette colonne n'est qu'une
+    # copie, entretenue par une republication ou par `gel_texte --sync` (règle 1).
+    geles = postes_geles()
+    n_geles = 0
+    if geles is None:
+        log.warning("Gel : le site n'a pas répondu (cs/v1/gel) — on ne sait donc PAS quelles "
+                    "fiches sont gelées, et on continue. La contre-épreuve d'après écriture "
+                    "rattrapera : elle lit la réponse de chaque publication.")
+    else:
+        ouverts = []
+        for tw in twins:
+            if int(tw.get("wp_post_id_as") or 0) in geles:
+                n_geles += 1
+                log.error("[%s] REFUS de retraduction : le texte de WP#%s est GELÉ sur le "
+                          "site — la re-traduction serait écrite en base et REFUSÉE par la "
+                          "page. Aucun appel API dépensé. Le rouvreur : "
+                          ".venv/bin/python -m scripts.gel_texte --degel %s --apply",
+                          tw["id"], tw.get("wp_post_id_as"), tw["id"])
+                if retour is not None:
+                    retour[int(tw["id"])] = "gele"
+                continue
+            ouverts.append(tw)
+        twins = ouverts
+
     log.info("%d jumeau(x) à re-traduire%s.", len(twins), "" if args.apply else " (simulation)")
     try:
         workers = max(1, int(os.getenv("TRANSLATE_WORKERS", "3") or 3))
@@ -710,17 +904,76 @@ def _retranslate(args, client, voix) -> int:
     results: list[str] = []
     if twins:
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="retranslate") as ex:
-            futures = [ex.submit(_retranslate_one, tw, args, client, voix) for tw in twins]
-            for fut in futures:
+            futures = {ex.submit(_retranslate_one, tw, args, client, voix): tw for tw in twins}
+            for fut, tw in futures.items():
                 try:
-                    results.append(fut.result())
+                    sort = fut.result()
                 except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
                     log.warning("worker en échec (exception non gérée) : %s", exc)
-                    results.append("error")
+                    sort = "error"
+                results.append(sort)
+                if retour is not None:
+                    retour[int(tw["id"])] = sort
     done = results.count("done")
-    log.info("Re-traduction terminée — %d jumeau(x) mis à jour, %d refusé(s)%s.", done,
-             results.count("refus"), "" if args.apply else "  (simulation : rien écrit)")
+    # RÈGLE 6 : un état qui sort une fiche de la file la sort aussi des bilans si personne
+    # ne le compte. Les gelées sont donc dites, qu'elles aient été écartées avant les
+    # appels API (portillon) ou après l'écriture (contre-épreuve) — et un zéro dit d'où il
+    # vient : « site muet » n'est pas « aucune gelée ».
+    n_geles += results.count("gele")
+    log.info("Re-traduction terminée — %d jumeau(x) mis à jour, %d refusé(s), "
+             "%d écarté(s) pour TEXTE GELÉ (%s)%s.", done, results.count("refus"), n_geles,
+             "liste du site" if geles is not None else "site muet : compte partiel",
+             "" if args.apply else "  (simulation : rien écrit)")
+    if n_geles:
+        log.info("Les gelées se lisent avec leur périmètre : "
+                 ".venv/bin/python -m scripts.gel_texte --liste")
     return 0
+
+
+def _est_visuel_de_secours(img: str, source) -> bool:
+    return (source or "") == "banner" or "/fallback-" in (img or "")
+
+
+def index_affiches(rows: list[dict]) -> dict:
+    """Les affiches qui IDENTIFIENT un événement, rangées par langue — plus, sous la clé
+    `_partagees`, celles qui n'identifient rien.
+
+    LE DÉFAUT CORRIGÉ LE 2026-09-23. Le dédoublonnage « même affiche = même événement
+    bilingue » prenait TOUTE image pour une identité. Or deux familles d'images sont
+    partagées par construction : les 48 visuels de secours du site (une par territoire et
+    catégorie), et l'affiche d'un festival posée sur chacun de ses rendez-vous (celle de
+    Plaisirs de Culture sur 19 fiches). Une fiche française en visuel de secours voyait
+    donc « sa jumelle italienne déjà présente » dès qu'une AUTRE fiche italienne portait
+    le même visuel — et renvoyait `skip`, sans rien marquer : le même refus rejoué chaque
+    jour sur la même entrée (règle 3). Mesuré ce jour-là : 81 fiches à venir sur 381
+    publiées sans jumelle ; sur Plaisirs de Culture, 33 fiches, pas une seule traduite.
+
+    Une image n'identifie un événement que si, dans sa langue, UNE SEULE fiche la porte,
+    et si ce n'est pas un visuel de secours. La vraie paire (une fiche française et sa
+    jumelle italienne native, même affiche) reste reconnue : une fiche par langue."""
+    from collections import Counter
+    compte = Counter()
+    partagees = set()
+    for r in rows:
+        img = r.get("url_image") or ""
+        if not img:
+            continue
+        if _est_visuel_de_secours(img, r.get("image_source")):
+            partagees.add(img)
+            continue
+        compte[(effective_lang(r), img)] += 1
+    partagees |= {img for (_l, img), n in compte.items() if n > 1}
+    index: dict = {"fr": set(), "it": set(), "_partagees": partagees}
+    for (lang, img), n in compte.items():
+        if img not in partagees:
+            index.setdefault(lang, set()).add(img)
+    return index
+
+
+def image_identifiante(img: str, source, index: dict) -> bool:
+    """Vrai si cette image peut servir à reconnaître une jumelle (voir index_affiches)."""
+    return bool(img) and not _est_visuel_de_secours(img, source) \
+        and img not in index.get("_partagees", set())
 
 
 def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
@@ -784,7 +1037,7 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
     src = effective_lang(ev)
     tgt = _target(src)
     img = ev.get("url_image") or ""
-    if img:
+    if img and image_identifiante(img, ev.get("image_source"), img_lang):
         with img_lang_lock:
             if img in img_lang.get(tgt, set()):
                 log.info("[%s] jumelle %s déjà présente (même affiche) — ignoré : %s",
@@ -1017,7 +1270,13 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
     return "done"
 
 
-def main(argv=None) -> int:
+def main(argv=None, retour: "dict | None" = None) -> int:
+    """`retour` : dictionnaire FACULTATIF que l'appelant fournit pour recevoir le SORT de
+    chaque jumeau en mode --retranslate — {id du jumeau: 'done'|'refus'|'gele'|'skip'}.
+    Même forme que `publish_to_as(..., retour=…)`, et pour la même raison : un seul
+    appelant en a besoin (`repair_lien_polylang`, dont le ✅ portait sur le VERSANT, déjà
+    bon avant la commande, et annonçait donc un succès que rien ne pouvait démentir —
+    28/09/2026). Le code de retour, lui, ne change pas."""
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Traduit les événements à bon score (FR↔IT).")
     parser.add_argument("--apply", action="store_true", help="Exécute (sinon simulation).")
@@ -1032,8 +1291,9 @@ def main(argv=None) -> int:
                         help="Filtre territoire (slug : %s)." % ", ".join(_TERR_KEYS))
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("ids", nargs="*", type=int,
-                        help="Ids d'événements ORIGINAUX dont on RE-TRADUIT le jumeau existant "
-                             "(avec --retranslate) — sert au re-travail rétroactif.")
+                        help="Ids d'événements ORIGINAUX. Avec --retranslate : on RE-TRADUIT leur "
+                             "jumeau existant. Sans : on ne traduit QUE ces fiches (première "
+                             "traduction), sans plancher de score.")
     parser.add_argument("--retranslate", action="store_true",
                         help="RE-TRADUIT le jumeau EXISTANT des ids donnés (met à jour la fiche "
                              "traduite en place avec les règles courantes : article complet, voix, "
@@ -1095,11 +1355,10 @@ def main(argv=None) -> int:
     # effective_lang, PAS detect_lang sur le seul titre : sinon un événement au titre
     # italien mais à l'article déjà français se classe lui-même en « it » et se retrouve
     # à bloquer SA PROPRE traduction (sa propre image « existe déjà » côté it — lui).
-    img_lang: dict[str, set] = {"fr": set(), "it": set()}
-    for r in conn.execute("SELECT title, description, territoire, url_image, article_title, "
-                          "enrich_data FROM events_raw WHERE COALESCE(url_image,'')<>'' "
-                          "AND COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL"):
-        img_lang[effective_lang(dict(r))].add(r["url_image"])
+    img_lang = index_affiches([dict(r) for r in conn.execute(
+        "SELECT title, description, territoire, url_image, image_source, article_title, "
+        "enrich_data FROM events_raw WHERE COALESCE(url_image,'')<>'' "
+        "AND COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL")])
 
     terr_keys = None
     if args.territoire:
@@ -1115,6 +1374,15 @@ def main(argv=None) -> int:
     # de retard par fiche — sur 63 fiches à venir constatées le 15/09, deux mois et demi.
     _rearme_traductions_orphelines(conn)
 
+    # IDS DÉSIGNÉS (23/09/2026) : sans --retranslate, les ids donnés restreignent la file
+    # à ces fiches, et le plancher de score ne s'applique pas — les avoir nommées EST la
+    # décision. Mesuré ce soir-là : deux fiches piémontaises des Giornate (WP#10411 Alto
+    # Forte di Gavi, WP#10964 Musei Reali) notées 5 n'avaient aucune version italienne, et
+    # ne pouvaient en recevoir aucune : le plancher par défaut est 6, et les ids n'étaient
+    # lus qu'en mode --retranslate. Toutes les autres gardes (en ligne, pas déjà traduit,
+    # pas une traduction, pas terminé) restent en place.
+    cibles = [] if args.retranslate else list(args.ids or [])
+    plancher = 0 if cibles else args.min_score
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM events_raw WHERE COALESCE(wp_post_id_as,0)>0 AND duplicate_of IS NULL "
         "AND COALESCE(translation_of,0)=0 AND COALESCE(translated_at,'')='' "
@@ -1154,8 +1422,14 @@ def main(argv=None) -> int:
            "AND (COALESCE(date_event_end, date_event_start, '') = '' "
            "     OR COALESCE(date_event_end, date_event_start) >= ?) ") +
         "ORDER BY COALESCE(user_score, llm_score, 0) DESC, id ASC",
-        ([args.min_score] if args.include_past
-         else [args.min_score, date.today().isoformat()])).fetchall()]
+        ([plancher] if args.include_past
+         else [plancher, date.today().isoformat()])).fetchall()]
+    if cibles:
+        rows, absents = cibler_ids(rows, cibles)
+        for i in absents:
+            log.warning("[%s] demandé mais pas candidat à une PREMIÈRE traduction (déjà "
+                        "traduit, lui-même une traduction, pas en ligne ou terminé) — "
+                        "pour réécrire une jumelle existante : --retranslate %s", i, i)
     if terr_keys:                                       # filtre territoire AVANT le plafond
         rows = [r for r in rows if any(k in _norm(r.get("territoire", "")) for k in terr_keys)]
 
@@ -1219,8 +1493,12 @@ def main(argv=None) -> int:
         # Leçon générale, écrite dans docs/ETATS_TERMINAUX.md : nommer un rouvreur ne
         # ferme rien tant qu'on n'a pas vérifié qu'il sélectionne sur le MÊME critère.
     rows = rows[:args.cap]
-    log.info("%d événement(s) candidat(s) (score ≥ %d, en ligne, non traduits%s)",
-             len(rows), args.min_score,
+    # Le périmètre écrit à côté du nombre DOIT être celui qui a servi (règle 6) : le
+    # 24/09 à 0h10, ce message annonçait « score ≥ 6 » pour trois fiches notées 5 et 8,
+    # choisies par leurs ids sans plancher.
+    log.info("%d événement(s) candidat(s) (%s, en ligne, non traduits%s)",
+             len(rows), f"ids demandés : {' '.join(map(str, cibles))}, sans plancher de score"
+             if cibles else f"score ≥ {args.min_score}",
              ", territoire=" + args.territoire if args.territoire else "")
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -1236,7 +1514,7 @@ def main(argv=None) -> int:
     # l'identique le lendemain (règle 3). La connexion se ferme désormais après le marquage.
     if args.retranslate:
         conn.close()
-        return _retranslate(args, client, voix)
+        return _retranslate(args, client, voix, retour=retour)
 
     # PARALLÉLISATION (TRANSLATE_WORKERS, déf. 3) : chaque événement passe par 1-2 appels
     # LLM (titre/description + article complet) + une publication WP — en séquentiel, un

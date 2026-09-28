@@ -18,6 +18,18 @@ add_action('template_redirect', function () {
         '/territoire/nice-alpes-maritimes/'    => '/territoire/comte-de-nice/',
         '/it/territoire/nizza-alpi-marittime/' => '/it/territoire/contea-di-nizza/',
 
+        // 2026-09-24 : Biella, « La Musica incontra la Moda » (24-26/09), DEUX paires FR/IT
+        // pour le même festival — 10194 fr / 10594 it (page comune « musica-e-moda-2 »,
+        // datée du seul 25/09, mais dont le texte dit lui-même « pendant trois jours ») et
+        // 10199 fr / 10647 it (page comune « biella-accende-il-centro », 24-26/09, textes
+        // remis dans la bonne langue le 23/09 au soir). Gardée : la seconde, aux BONNES
+        // dates. Aux clics, rien à départager : les quatre fiches datent du 22/09.
+        // 10194/10594 partent à la corbeille (trash_wp_ids, réversible).
+        '/evenement/musica-e-moda-trois-jours-entre-archives-grunge-et-defile-a-biella/'
+            => '/evenement/biella-accende-il-centro-moda-musica-e-incontri-per-tre-giorni/',
+        '/it/evenement/musica-e-moda-trois-jours-entre-archives-grunge-et-defile-a-biella-2/'
+            => '/it/evenement/biella-accende-il-centro-moda-musica-e-incontri-per-tre-giorni-2/',
+
         // LES COQUILLES DU TYPE « SELECTIONS » (2026-09-12, Franck : « /selections/
         // ce-week-end/ devrait laisser la place a /ce-week-end/ »). Le carousel de la
         // home lie cinq cartes vers ce type de contenu ; or MESURE faite ce jour-la :
@@ -102,7 +114,7 @@ add_action('template_redirect', function () {
         // « Chagall » (deux paires bilingues correctes pour un seul sujet). Vérifier
         // qu'une paire est saine ne dit pas qu'elle est unique.
         '/evenement/evo-france-2026-nice-accueille-le-circuit-mondial-de-jeux-de-combat/'
-            => '/evenement/evo-france-2026-huit-tournois-de-jeux-de-combat-au-palais-des-expositions-de-nice/',
+            => '/evenement/evo-france-huit-tournois-de-jeux-de-combat-au-palais-des-expositions/',
 
         // 2026-09-17 : deux paires FR/IT complètes en double sur le même sujet — un
         // niveau au-dessus des doublons habituels (un post isolé). Tranché par clics
@@ -162,13 +174,39 @@ add_action('template_redirect', function () {
         '/evenement/la-foire-des-alpes-2026-reunit-les-elevages-de-vallee-daoste-a-saint-christophe/'
             => '/evenement/la-foire-des-alpes-animaux-et-terroir-valdotain-a-larene-croix-noire/',
         '/evenement/evo-2026-a-nice-trois-jeux-inedits-et-1-000-places-supplementaires/'
-            => '/evenement/evo-france-2026-huit-tournois-de-jeux-de-combat-au-palais-des-expositions-de-nice/',
+            => '/evenement/evo-france-huit-tournois-de-jeux-de-combat-au-palais-des-expositions/',
         // Celle-ci portait un contenu ITALIEN servi sous un chemin français — c'est
         // l'une des 32 traductions du mauvais versant mesurées le 21/09. Elle va donc
         // sur la page italienne qui reste : la langue du LECTEUR est préservée, même si
         // le chemin de départ disait le contraire.
         '/evenement/evo-2026-a-nice-trois-jeux-inedits-et-1-000-places-supplementaires-2/'
-            => '/it/evenement/evo-france-2026-huit-tournois-de-jeux-de-combat-au-palais-des-expositions-de-nice-2/',
+            => '/it/evenement/evo-france-huit-tournois-de-jeux-de-combat-au-palais-des-expositions-2/',
+
+        // 2026-09-23 : les TROIS lignes EVO ci-dessus sont RECIBLÉES. Ce jour-là, 27
+        // adresses encore à venir perdent leur millésime (règle « une adresse ne porte
+        // jamais de date », Franck 21/09), dont la paire EVO 6433/7727 : leur ancienne
+        // adresse ne vit plus que par la redirection native du slug renommé. Laissées
+        // telles quelles, ces lignes auraient fait deux sauts (301 → 301 → 200).
+        // À RETENIR : renommer une fiche oblige à relire les CIBLES de ce fichier.
+        //
+        // 2026-09-23 : Terra Madre Salone del Gusto (Turin, 24-27/09), DEUX paires FR/IT
+        // complètes pour le même salon — 2190 fr / 8132 it (source torinoclick « dal 24
+        // al 27 settembre », en ligne depuis le 20/07) et 9388 fr / 9503 it (autre
+        // article torinoclick, publié le 15/09). Mêmes dates, même ville, même salon.
+        // Tranché aux clics GSC sur 90 jours : 2190 a 2 clics et 105 impressions, 9388
+        // n'apparaît pas dans le rapport. 9388/9503 partent à la corbeille (réversible,
+        // via trash_by_ids --statut rejected côté VPS), leurs adresses suivent — la
+        // COURANTE et l'ANCIENNE (millésimée, renommée le même jour) : une fois le post
+        // corbeillé, la redirection native de l'ancien slug n'a plus de cible vivante.
+        // L'italienne va sur l'italienne.
+        '/evenement/terra-madre-salone-del-gusto-la-biodiversite-investit-le-centre-de/'
+            => '/evenement/terra-madre-salone-del-gusto-apporte-la-biodiversite-au-centre/',
+        '/evenement/terra-madre-salone-del-gusto-2026-la-biodiversite-investit-le-centre-de-turin/'
+            => '/evenement/terra-madre-salone-del-gusto-apporte-la-biodiversite-au-centre/',
+        '/it/evenement/terra-madre-salone-del-gusto-la-biodiversite-investit-le-centre-de-2/'
+            => '/it/evenement/terra-madre-salone-del-gusto-apporte-la-biodiversite-au-centre-2/',
+        '/it/evenement/terra-madre-salone-del-gusto-2026-la-biodiversite-investit-le-centre-de-turin-2/'
+            => '/it/evenement/terra-madre-salone-del-gusto-apporte-la-biodiversite-au-centre-2/',
 
         '/selections/ce-week-end/'                    => '/ce-week-end/',
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',

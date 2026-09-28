@@ -116,6 +116,16 @@ RÉDACTION** (comment on traite un sujet) et un atout pour choisir les mises en 
 ## 4. Structure d'un article événement
 
 1. **Titre** — informatif et incarné, pas racoleur (voir §7 anti-dark-pattern).
+   **Un titre français commence en français** (arbitrage de Franck, 24/09/2026 : « ça
+   commence trop par de l'italien. Si le titre de l'événement est super connu ok, mais
+   sinon c'est une barrière pour les lecteurs uniquement francophones »). Le nom officiel
+   italien ne vient en tête que s'il est connu du public francophone (Salone del Libro,
+   Terra Madre) ; sinon il passe après les deux-points, entre guillemets, ou dans le
+   chapô. Mesuré ce jour-là : 46 titres français sur 215 encore à venir ouvraient sur de
+   l'italien (« Una rilettura dei monumenti cittadini », « Cercami tra il bianco della
+   neve »…) ; 45 ont été repris (sauvegarde : option WordPress
+   `cs_titres_fr_italien_avant_20260924`). Même règle, symétrique, pour un titre italien
+   qui ouvrirait sur du français peu connu.
 2. **Chapô** (1-2 phrases) — l'essentiel + l'angle (l'escalier).
 3. **Contexte géographique** — lieu précis, **ville, province/département, territoire**.
 4. **Corps** — le savoir transmis, le regard ; relie au territoire et au-delà.

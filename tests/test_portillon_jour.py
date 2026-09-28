@@ -61,8 +61,26 @@ _check("italien juste → daté (il 15 agosto 2026 è un sabato)",
 
 print("\n──── 2. les deux causes opposées, toutes deux refusées ────")
 # 1069 Paratissima : annonce de 2022 que _year() projetait en 2027.
+#
+# ⚠️ CE QUI A CHANGÉ LE 24/09/2026, et pourquoi cette assertion a deux étages. Un SECOND
+# refus a été posé depuis — `annee_devinee_lointaine` : une année DEVINÉE qui bascule à
+# plus de 180 jours ne date plus la fiche (cf. _HORIZON_BASCULE dans scripts/dates.py).
+# Lue le 11/08, « sabato 7 maggio » est projetée au 07/05/2027, à 269 jours : c'est donc
+# ce refus-ci qui tire le premier, et la fixture est devenue rouge sans qu'aucun
+# comportement se soit dégradé. CE QUI COMPTE EST INCHANGÉ — la fiche n'est PAS datée —
+# et c'est ce qu'on vérifie d'abord ; le MOTIF, lui, peut être l'un ou l'autre.
+#
+# Mais on ne se contente pas de ça, sinon le portillon du JOUR ne serait plus couvert du
+# tout, masqué par son voisin : le cas strict est rejoué juste après, à une référence qui
+# tient DANS la fenêtre des 180 jours, là où seul le jour peut refuser.
+_ancienne = parse_dates("ti bastera venire a trovarci sabato 7 maggio dalle 16", REF)
 _check("annonce ancienne (« sabato 7 maggio » = 2022) → NON datée",
-       parse_dates("ti bastera venire a trovarci sabato 7 maggio dalle 16", REF)[2]
+       _ancienne[:2] == ("", "") and _ancienne[2] in ("jour_incoherent",
+                                                      "annee_devinee_lointaine"),
+       _ancienne)
+_check("   et le portillon du JOUR refuse bien SEUL quand l'autre ne peut pas tirer "
+       "(réf. proche : 6 jours devant, pas 269)",
+       parse_dates("venire a trovarci sabato 7 maggio dalle 16", date(2026, 5, 1))[2]
        == "jour_incoherent")
 # Terra Madre : la Ville de Turin s'est trompée de jour, l'édition est bien en 2026.
 _check("source qui se trompe de jour → NON datée non plus",

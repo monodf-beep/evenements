@@ -41,6 +41,9 @@ from utils import usage
 from utils import images as images_mod
 from utils import completeness as comp
 from utils import triage as triage_mod
+from utils import tableur as tableur_mod
+from utils import menu as menu_mod
+from utils import frequentation as freq_mod
 from utils import checks as checks_mod
 from utils import organizers
 from utils import semaine as semaine_mod
@@ -152,7 +155,7 @@ _conn.execute("""
         error TEXT
     )
 """)
-# Légende Instagram réécrite par LLM (voix Enrico Nos Alpes + anti-signes-IA), mise en
+# Légende Instagram réécrite par LLM (voix de référence + anti-signes-IA), mise en
 # cache : générée à la demande (bouton, payant), jamais recalculée à chaque page vue.
 for _col in ("social_caption_fr", "social_caption_it"):
     try:
@@ -295,6 +298,39 @@ def require_auth(f):
     return decorated
 
 
+_MENU_URLS = frozenset(p["url"] for p in menu_mod.PAGES)
+
+
+@app.after_request
+def _compter_page(reponse):
+    """Compte les pages du MENU réellement ouvertes — pour savoir quoi supprimer.
+
+    Franck, 22/09 : « s'il y a des choses qui ne servent plus, on les enlève ». Le
+    journal nginx ne répond pas à ça : celui qu'on a lu ce jour-là ne contenait aucune
+    page du back-office et presque rien d'autre que des sondes `/.env` et `/wp-login.php`.
+    Un compteur posé ICI ne voit que des sessions authentifiées, donc que Franck.
+
+    QUATRE CONDITIONS, et chacune écarte un faux positif : GET (pas une action), 200
+    (pas une erreur ni une redirection), HTML (pas un export CSV), et connecté (pas un
+    robot sur /login). Voir utils/frequentation.py pour ce que ça n'enregistre PAS.
+
+    Fail-safe : une mesure ne casse jamais la page qu'elle mesure.
+    """
+    try:
+        if (request.method == "GET" and reponse.status_code == 200
+                and session.get("logged_in")
+                and request.path in _MENU_URLS
+                and "text/html" in (reponse.content_type or "")):
+            conn = get_db()
+            try:
+                freq_mod.note(conn, request.path)
+            finally:
+                conn.close()
+    except Exception:
+        pass
+    return reponse
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if session.get("logged_in"):
@@ -429,7 +465,13 @@ def journal_lancements(limite: int = 12) -> dict:
 
 @app.context_processor
 def inject_globals():
-    """Compteurs de navigation + alerte, disponibles dans TOUTES les pages (base.html)."""
+    """Compteurs de navigation + carte du menu, disponibles dans TOUTES les pages.
+
+    La CARTE vient de `utils.menu`, seul endroit qui sache quelles pages existent et où
+    elles vivent — `tests/test_menu.py` la confronte aux routes réelles. Le gabarit ne
+    tient donc plus sa propre liste : c'est ce qui laissait « Coûts par date » au menu
+    des semaines après que la page eut été fusionnée dans « État du système ».
+    """
     pending = validate = tocomplete = 0
     try:
         conn = get_db()
@@ -501,6 +543,7 @@ def inject_globals():
     return {"nav": {"pending": pending, "validate": validate,
                     "tocomplete": tocomplete, "regie": regie, "verifier": verifier,
                     "audit": audit, "seo": seo},
+            "menu": menu_mod,
             "nav_alert": friendly_alert(),
             # La cloche : les derniers lancements manuels, repliés hors du tableau de bord.
             # Calculée ici pour être disponible sur TOUTES les pages — un échec survenu
@@ -932,13 +975,18 @@ def systeme_view():
     plafond d'API est atteint, ce qui est justement le moment où l'on veut savoir ce qui
     est bloqué."""
     from utils import etat_systeme as es
-    vue = "couts" if request.args.get("vue") == "couts" else "chaine"
+    vue = request.args.get("vue", "")
+    vue = vue if vue in ("couts", "pages") else "chaine"
     conn = get_db()
     try:
         auj = date.today().isoformat()
         etgs = es.etages(conn, auj) if vue == "chaine" else []
+        # Onglet « Pages » : ce qui s'ouvre encore, et depuis quand on mesure.
+        pages_vues = freq_mod.par_page(conn, list(menu_mod.PAGES)) if vue == "pages" else []
+        pages_depuis = freq_mod.depuis(conn) if vue == "pages" else ""
         return render_template(
             "systeme.html", active="systeme", vue=vue, etages=etgs,
+            pages_vues=pages_vues, pages_depuis=pages_depuis,
             flux=es.flux(conn, auj) if vue == "chaine" else None,
             goulot=es.goulot(etgs) if vue == "chaine" else None,
             couts=_couts_contexte() if vue == "couts" else None,
@@ -3162,11 +3210,10 @@ def seo_optimize(event_id: int):
 
 # Champs qu'on autorise à compléter/corriger À LA MAIN depuis l'aperçu (liste blanche
 # stricte : les clés viennent d'ici, jamais de l'utilisateur → pas d'injection SQL).
-_MANUAL_FIELDS = ("date_event_start", "date_event_end", "lieu", "ville",
-                  "territoire", "llm_categorie", "url_officiel",
-                  # Affiches manuelles : pour les sites JS/gated où l'extraction auto échoue
-                  # (dossier de presse derrière accréditation, visuel rendu en JavaScript).
-                  "url_image", "url_image_portrait", "url_image_wide")
+# Champs modifiables à la main. La liste vit dans `utils.tableur` : le tableur et ce
+# formulaire doivent accepter EXACTEMENT les mêmes champs, et deux listes pour la même
+# chose divergent (racine de quatre fautes du 08/09, cf. docs/ERREURS_2026-09-08.md).
+_MANUAL_FIELDS = tableur_mod.EDITABLES
 
 
 @app.route("/complete/<int:event_id>", methods=["POST"])
@@ -3417,6 +3464,199 @@ def a_completer():
         territories=TERRITORIES, today=today, active="tocomplete",
         preset=preset, dfrom=dfrom, dto=dto, plabel=plabel,
         presets=PERIOD_PRESETS, alert=friendly_alert())
+
+
+# --------------------------------------------------------------------------- #
+# LE TABLEUR — Franck, 2026-09-22 : « il faut un vrai tableur dans le backoffice ».
+#
+# /events montre huit colonnes fixes et sert à AGIR sur une fiche. Ici on regarde
+# l'ensemble : les colonnes qu'on veut, le taux de remplissage de chacune, et les
+# trous. Deux sorties, UN SEUL sélecteur (`_tableur_selection`) : la page HTML et
+# l'export CSV ne doivent jamais montrer deux choses différentes.
+#
+# PÉRIMÈTRE PAR DÉFAUT (règle 5 du CLAUDE.md) : à venir, en cours, récurrents. Une
+# fiche SANS date n'est pas classée en passé — c'est une donnée manquante, et c'est
+# précisément le genre de fiche que ce tableur existe pour montrer.
+# --------------------------------------------------------------------------- #
+_TABLEUR_PLAFOND = 3000       # au-delà, on tronque ET on le dit (liste tronquée → total)
+_TABLEUR_PAR_PAGE = 100
+
+
+def _tableur_colonnes_base(conn) -> list:
+    """Colonnes RÉELLES de events_raw. Le catalogue ne fait pas foi, la base fait foi."""
+    return [r[1] for r in conn.execute("PRAGMA table_info(events_raw)").fetchall()]
+
+
+def _tableur_selection():
+    """Lit les filtres, interroge la base, rend (lignes, colonnes, contexte).
+
+    Appelé par la page ET par l'export : un seul endroit décide de ce qui est montré.
+    """
+    today = date.today().isoformat()
+    jeu_nom = request.args.get("jeu", "completion")
+    statut = request.args.get("statut", "actifs")
+    territoire = request.args.get("territoire", "")
+    q = request.args.get("q", "").strip()
+    vide = request.args.get("vide", "")
+    vivant = request.args.get("vivant", "1") != "0"
+    tri = request.args.get("tri", "date")
+    preset = request.args.get("preset", "")
+    dfrom = request.args.get("dfrom", "")
+    dto = request.args.get("dto", "")
+    pfrom, pto, plabel = period_bounds(preset, dfrom, dto)
+
+    conn = get_db()
+    en_base = _tableur_colonnes_base(conn)
+    colonnes_reelles = set(en_base)
+    visibles = tableur_mod.colonnes_visibles(en_base)
+    cols_arg = request.args.get("cols", "")
+    dispo = {c for c, _, _ in visibles}
+    if cols_arg:
+        cols = [c for c in cols_arg.split(",") if c in dispo]
+    else:
+        cols = tableur_mod.jeu(jeu_nom, visibles)
+    if not cols:
+        cols = tableur_mod.jeu("completion", visibles)
+
+    # On ne lit que ce qu'on affiche, PLUS ce dont le calcul a besoin : `recurring` et
+    # `multi_lieux` décident du « sans objet », les autres servent au tri.
+    besoins = ["id", "recurring", "multi_lieux", "date_event_start", "date_event_end",
+               "llm_score", "statut", "title"]
+    # Les colonnes `ip_*` n'existent pas en base : elles sont DÉPLIÉES du JSON
+    # `infos_pratiques` juste après la lecture. On lit donc la source, jamais elles.
+    virtuelles = {c for c, _, _ in tableur_mod.DERIVEES}
+    a_lire = [c for c in cols + besoins if c in dispo and c not in virtuelles]
+    if any(c in virtuelles for c in cols):
+        a_lire.append(tableur_mod.COL_INFOS)
+    a_lire = [c for c in dict.fromkeys(a_lire) if c in colonnes_reelles]
+
+    where, params = [], []
+    if statut == "actifs":
+        where.append("statut IN ('evaluated','published_cs','published_sub')")
+    elif statut and statut != "all":
+        where.append("statut = ?")
+        params.append(statut)
+    if statut != "all":
+        where.append("duplicate_of IS NULL")
+    if vivant:
+        # À venir OU en cours (c'est la FIN qui décide) OU récurrent OU sans date.
+        where.append("(COALESCE(recurring,0)=1"
+                     " OR (COALESCE(date_event_start,'')='' AND COALESCE(date_event_end,'')='')"
+                     " OR COALESCE(NULLIF(date_event_end,''), date_event_start, '') >= ?)")
+        params.append(today)
+    if territoire:
+        where.append("territoire = ?")
+        params.append(territoire)
+    if q:
+        where.append("(title LIKE ? OR COALESCE(article_title,'') LIKE ?)")
+        params += [f"%{q}%", f"%{q}%"]
+    if pfrom and pto:
+        oc, op = overlap_clause(pfrom, pto)
+        where.append(oc)
+        params += op
+
+    clause = " AND ".join(where) if where else "1=1"
+    total = conn.execute(f"SELECT COUNT(*) FROM events_raw WHERE {clause}",
+                         params).fetchone()[0]
+    champs = ", ".join(a_lire)
+    rows = conn.execute(
+        f"SELECT {champs} FROM events_raw WHERE {clause} LIMIT {_TABLEUR_PLAFOND}",
+        params).fetchall()
+    conn.close()
+    lignes = [tableur_mod.deplier_infos(dict(r)) for r in rows]
+
+    # Le tri par TROUS se calcule en Python (il dépend du « sans objet »), donc tous
+    # les tris se font ici — un seul chemin, pas deux.
+    if tri == "trous":
+        lignes.sort(key=lambda l: -tableur_mod.trous(l, cols))
+    elif tri == "score":
+        lignes.sort(key=lambda l: -(l.get("llm_score") or 0))
+    elif tri == "id":
+        lignes.sort(key=lambda l: -(l.get("id") or 0))
+    else:
+        lignes.sort(key=lambda l: (l.get("date_event_start") or "9999-12-31",
+                                   l.get("id") or 0))
+
+    ctx = dict(
+        jeu=jeu_nom, statut=statut, territoire=territoire, q=q, vivant=vivant, tri=tri,
+        preset=preset, dfrom=dfrom, dto=dto, plabel=plabel, total=total,
+        tronque=total > _TABLEUR_PLAFOND, plafond=_TABLEUR_PLAFOND, today=today,
+        vide=vide if vide in dispo else "",
+    )
+    # « Il manque X » : on RESTREINT l'affichage sans toucher au diagnostic. Les deux
+    # jeux sont rendus séparément parce que le taux doit rester celui du filtre entier —
+    # calculé sur les lignes déjà restreintes, il vaudrait 0 % et ne dirait plus rien.
+    montrees = lignes
+    if ctx["vide"]:
+        montrees = [l for l in lignes
+                    if tableur_mod.est_vide(l, vide) and not tableur_mod.sans_objet(l, vide)]
+    return lignes, montrees, cols, visibles, ctx
+
+
+def _tableur_perimetre(ctx) -> str:
+    """La phrase qui accompagne les chiffres. Règle 6 : un compteur dit ce qu'il compte."""
+    bouts = ["à venir, en cours ou récurrents" if ctx["vivant"] else "toutes périodes"]
+    bouts.append({"actifs": "retenus ou publiés", "all": "tous statuts"}
+                 .get(ctx["statut"], f"statut « {ctx['statut']} »"))
+    if ctx["territoire"]:
+        bouts.append(ctx["territoire"])
+    if ctx["plabel"]:
+        bouts.append(ctx["plabel"])
+    if ctx["q"]:
+        bouts.append(f"titre contenant « {ctx['q']} »")
+    return " · ".join(bouts)
+
+
+@app.route("/tableur")
+@require_auth
+def tableur():
+    lignes, montrees, cols, visibles, ctx = _tableur_selection()
+    page = max(1, int(request.args.get("page", 1) or 1))
+    pages = max(1, (len(montrees) + _TABLEUR_PAR_PAGE - 1) // _TABLEUR_PAR_PAGE)
+    page = min(page, pages)
+    debut = (page - 1) * _TABLEUR_PAR_PAGE
+    vue = montrees[debut:debut + _TABLEUR_PAR_PAGE]
+    # Le taux porte sur TOUT le filtre, pas sur la page affichée — sinon il changerait
+    # en tournant les pages, ce qui est exactement le compteur qui ment sur son périmètre.
+    taux = tableur_mod.taux(lignes, cols)
+    peche = tableur_mod.ou_ca_peche(taux)
+    trouees = tableur_mod.fiches_trouees(lignes, cols)
+    libelles = {c: lib for c, lib, _ in visibles}
+    groupes = {c: g for c, _, g in visibles}
+    return render_template(
+        "tableur.html", lignes=vue, cols=cols, visibles=visibles, libelles=libelles,
+        groupes=groupes, taux=taux, tab=tableur_mod, ctx=ctx,
+        peche=peche, trouees=trouees, montrees=len(montrees),
+        perimetre=_tableur_perimetre(ctx), retenues=len(lignes),
+        page=page, pages=pages, par_page=_TABLEUR_PAR_PAGE,
+        territories=TERRITORIES, status_labels=STATUS_LABELS,
+        presets=PERIOD_PRESETS, editables=set(tableur_mod.EDITABLES),
+        edit=request.args.get("edit") == "1",
+        active="tableur", alert=friendly_alert())
+
+
+@app.route("/tableur.csv")
+@require_auth
+def tableur_csv():
+    """Le même tableau, en CSV — pour l'ouvrir dans un vrai tableur.
+
+    BOM UTF-8 en tête : sans lui, Excel lit « Chambéry » en « ChambÃ©ry ». Valeurs
+    ENTIÈRES (pas la troncature d'affichage) : un export tronqué n'est pas un export.
+    """
+    import csv
+    import io
+    _, lignes, cols, visibles, ctx = _tableur_selection()
+    libelles = {c: lib for c, lib, _ in visibles}
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow([libelles.get(c, c) for c in cols])
+    for l in lignes:
+        w.writerow([tableur_mod.exporte(l, c) for c in cols])
+    nom = f"agenda-sabauda-{date.today().isoformat()}.csv"
+    return Response(
+        "\ufeff" + buf.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{nom}"'})
 
 
 # --------------------------------------------------------------------------- #
@@ -3694,12 +3934,12 @@ def reseaux():
 
     n_auto = _auto_rewrite_captions(by_terr)
     if n_auto:
-        flash(f"🪄 {n_auto} légende(s) réécrite(s) automatiquement (voix Enrico) 💶.", "ok")
+        flash(f"🪄 {n_auto} légende(s) réécrite(s) automatiquement (voix de référence) 💶.", "ok")
 
     def _pack(e, langs):
         e = dict(e)
         e["_img"] = event_image(e)
-        # Légende réécrite (Enrico + humanisée) si déjà générée pour cet événement,
+        # Légende réécrite (voix de référence + humanisée) si déjà générée pour cet événement,
         # sinon la version gratuite auto-générée (cf. utils.social.caption_ai / caption).
         e["_caps"] = {lg: e.get(f"social_caption_{lg}") or social_mod.caption(e, lg)
                      for lg in langs}
@@ -3727,7 +3967,7 @@ def reseaux():
 @app.route("/reseaux/rewrite/<int:event_id>", methods=["POST"])
 @require_auth
 def reseaux_rewrite(event_id: int):
-    """Réécrit la légende via LLM (voix Enrico Nos Alpes + anti-signes-IA, cf.
+    """Réécrit la légende via LLM (voix de référence + anti-signes-IA, cf.
     utils.social.caption_ai) pour UN événement, À LA DEMANDE — coût maîtrisé, jamais
     automatique. Le résultat est mis en cache (events_raw.social_caption_<lang>)."""
     import anthropic
@@ -3765,7 +4005,7 @@ def reseaux_rewrite(event_id: int):
                 (text, event_id))
     conn.commit()
     conn.close()
-    flash(f"✨ « {title} » — légende réécrite ({lang.upper()}, voix Enrico) 💶.", "ok")
+    flash(f"✨ « {title} » — légende réécrite ({lang.upper()}, voix de référence) 💶.", "ok")
     return redirect(url_for("reseaux") + f"#e{event_id}")
 
 

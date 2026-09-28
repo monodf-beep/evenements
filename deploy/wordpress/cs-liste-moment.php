@@ -87,6 +87,7 @@ function cs_moment_liste_fiches($etiquette, $lang, $max = 60, $territoire = '') 
     ));
 
     $out = array();
+    $auj = current_time('Y-m-d');
     foreach ($q->posts as $p) {
         $debut = get_post_meta($p->ID, '_EventStartDate', true);
         $out[] = array(
@@ -94,13 +95,23 @@ function cs_moment_liste_fiches($etiquette, $lang, $max = 60, $territoire = '') 
             'titre' => get_the_title($p),
             'url'   => get_permalink($p),
             'image' => get_the_post_thumbnail_url($p, 'medium_large'),
-            'jour'  => substr($debut, 0, 10),
+            // Rangée sous le jour où l'on peut y aller : un rendez-vous déjà commencé
+            // va sous AUJOURD'HUI, pas sous un jour passé.
+            'jour'  => max(substr($debut, 0, 10), $auj),
+            'fin'   => substr((string) get_post_meta($p->ID, '_EventEndDate', true), 0, 10),
             'lieu'  => get_post_meta($p->ID, 'as_lieu', true),
             'ville' => get_post_meta($p->ID, 'as_ville', true),
             'tarif' => get_post_meta($p->ID, 'as_gratuit', true) ? 'Gratuit' : '',
         );
     }
     wp_reset_postdata();
+    /* 2026-09-23 (Franck, capture de /plaisirs-de-culture-vallee-d-aoste/) : « Jeudi 24 »
+       s'affichait AVANT « Mercredi 23 ». La requête trie par date de FIN, la page groupe
+       par jour de DÉBUT : une fiche du 23 au 25 passait après une fiche du 24 au 24, et
+       un même jour pouvait revenir deux fois. On trie donc sur ce qu'on groupe. */
+    usort($out, function ($a, $b) {
+        return strcmp($a['jour'], $b['jour']) ?: strcmp($a['fin'], $b['fin']);
+    });
     set_transient($cle, $out, $out ? 15 * MINUTE_IN_SECONDS : 5 * MINUTE_IN_SECONDS);
     return $out;
 }

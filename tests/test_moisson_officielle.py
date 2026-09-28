@@ -568,5 +568,60 @@ _check("une image posée À LA MAIN n'est jamais remplacée",
 _check("page sans og:image : l'affiche en <img> est prise quand la fiche est vide",
        f43["url_image"] == "https://officiel.fr/wp-content/uploads/06.13-Festival-Photo.png", str(f43["url_image"]))
 
+# ── 2026-09-22 : une fiche DÉJÀ EN LIGNE qui gagne son image est repoussée, sa traduction
+# avec. Avant : l'image restait en base, le site gardait la bannière (page GEP, 10 cartes
+# sur 32). Cas qui doivent NE PAS partir, choisis près de la frontière : une fiche en ligne
+# dont la page ne donne rien, une fiche en ligne corbeillée, une traduction corbeillée, une
+# fiche pas encore publiée (la publication normale s'en charge).
+import scripts.publish_batch_as as pba  # noqa: E402
+ENVOIS: list = []
+pba.main = lambda argv=None: ENVOIS.append(list(argv or []))
+BANNIERE = "https://agendasabauda.eu/wp-content/uploads/2026/07/fallback-piemont.png"
+conn = sqlite3.connect(tmp)
+# (id, url, wp_post_id_as, wp_deleted_at, translation_of)
+for eid, url, wp, supprime, tof in (
+    (70, "https://officiel.fr/riche", 9070, "", 0),        # en ligne, gagne son image
+    (71, "translated:70:it", 9071, "", 70),                # sa traduction en ligne
+    (72, "translated:70:en", 9072, "2026-09-01", 70),      # traduction corbeillée
+    (73, "https://officiel.fr/muette", 9073, "", 0),       # en ligne, page muette
+    (74, "https://officiel.fr/riche", 9074, "2026-09-01", 0),  # corbeillée
+    (75, "https://officiel.fr/riche", 0, "", 0),           # pas encore publiée
+):
+    conn.execute("INSERT INTO events_raw (id,title,url_source,url_officiel,statut,date_event_start,"
+                 "lieu,ville,url_image,image_source,date_event_end,wp_post_id_as,wp_deleted_at,"
+                 "translation_of) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                 (eid, "Fiche %d" % eid, f"{url}?fiche={eid}",
+                  "" if url.startswith("translated:") else url,
+                  "published_cs" if wp else "evaluated", "2026-11-11", "Salle", "Ville",
+                  BANNIERE, "banner", "2026-12-01", wp or None, supprime, tof))
+conn.commit()
+conn.close()
+
+mo.main(["70", "73", "74", "75"])
+_check("simulation : rien n'est repoussé", ENVOIS == [], str(ENVOIS))
+
+mo.main(["70", "73", "74", "75", "--apply", "--no-republish"])
+_check("--no-republish : rien n'est repoussé", ENVOIS == [], str(ENVOIS))
+
+conn = sqlite3.connect(tmp)
+conn.execute("UPDATE events_raw SET url_image=?, image_source='banner' WHERE id IN (70,74,75)",
+             (BANNIERE,))
+conn.commit()
+conn.close()
+mo.main(["70", "73", "74", "75", "--apply"])
+envoyes = [int(i) for i in ENVOIS[0][1:]] if ENVOIS else []
+_check("un seul lot, par --ids, avec le média (pas de --skip-media)",
+       len(ENVOIS) == 1 and ENVOIS[0][0] == "--ids" and "--skip-media" not in ENVOIS[0],
+       str(ENVOIS))
+_check("la fiche en ligne qui gagne son image est repoussée", 70 in envoyes, str(envoyes))
+_check("… et sa traduction en ligne la suit (héritage à la publication)", 71 in envoyes,
+       str(envoyes))
+_check("FRONTIÈRE : la traduction corbeillée ne repart pas", 72 not in envoyes, str(envoyes))
+_check("FRONTIÈRE : la fiche en ligne dont la page ne donne rien ne repart pas",
+       73 not in envoyes, str(envoyes))
+_check("FRONTIÈRE : la fiche corbeillée ne repart pas", 74 not in envoyes, str(envoyes))
+_check("FRONTIÈRE : la fiche pas encore publiée ne repart pas (la publication s'en charge)",
+       75 not in envoyes, str(envoyes))
+
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

@@ -41,7 +41,7 @@ from utils.images import (commons_search, europeana_search, fetch_og_image,
 from utils.sources import (is_blocked_image, is_logo_image, load_blocked_image_domains,
                            load_territory_category_images, pick_banner_image)
 from utils import image_verify
-from utils.pages import peut_illustrer
+from utils.pages import ancre_dans_une_liste, peut_illustrer
 from utils.api_limite import PlafondAPI, est_plafond
 from scripts.scraper_events import init_db
 
@@ -237,7 +237,11 @@ def resolve_image(ev: dict, client, blocked: set[str],
     # l'agent vision compare l'image au titre, et c'est exactement le jugement qui manque.
     # Sans client vision, on s'abstient plutôt que de parier.
     _page_generique = not peut_illustrer(ev.get("url_source", ""), ev.get("title", ""))
-    if not _is_radar(ev) and not (_page_generique and verify_client is None):
+    # Une ancre dans une page-programme ne se rattrape PAS par l'agent vision : l'affiche
+    # du festival « correspond » à chacun de ses rendez-vous, il l'a acceptée pour les
+    # quatre premières fiches de Plaisirs de Culture (23/09, utils.pages).
+    _ancre = ancre_dans_une_liste(ev.get("url_source", ""))
+    if not _is_radar(ev) and not _ancre and not (_page_generique and verify_client is None):
         og = fetch_og_image(ev.get("url_source", ""))
         # Forme (déterministe, TOUJOURS active — pas besoin de l'agent vision) : un
         # og:image très plat ou très étroit est un bandeau d'habillage (souvent la même

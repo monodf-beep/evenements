@@ -204,7 +204,65 @@ def champs(html: str) -> dict:
     img = _texte(src.get("image"))
     if img.startswith(("http://", "https://")):
         out["url_image"] = img
+    orga = _organisateur(src)
+    if orga:
+        out["organisateur"] = orga
     return out
+
+
+# ⚠️ RENDEMENT MESURÉ, ET IL EST FAIBLE. Passé sur six vraies pages d'événement de nos
+# sources officielles (Malraux Chambéry, Albertville, Castello di Rivoli), le 22/09 :
+# AUCUNE ne déclare d'`organizer` exploitable — une seule en déclare un, vide. Ce lecteur
+# est donc juste et sans risque, mais il ne remplira pas les 89 fiches qui l'ont motivé.
+# Le dire ici plutôt que de laisser croire le contraire à la prochaine session.
+#
+# LA PISTE QUI RESTE, non mesurée donc non écrite : pour une source de tier « officielle »
+# (le théâtre qui annonce sa propre saison), l'organisateur EST la source, et
+# config/sources.txt porte déjà son nom. Ça vaut pour un théâtre ou un musée ; beaucoup
+# moins pour une mairie, qui relaie autant qu'elle organise. À mesurer avant d'écrire.
+#
+# Ce qu'on refuse de prendre pour un organisateur. Mesuré le 2026-09-22 : 89 fiches
+# vivantes avaient leur page officielle en base SANS organisateur, alors que schema.org
+# déclare `organizer` — on téléchargeait la page tous les matins et on jetait le champ.
+#
+# MAIS beaucoup de pages y mettent l'ÉDITEUR DU SITE, le thème ou le CMS, pas
+# l'organisateur de l'événement. Écrire « WordPress » comme organisateur sur 89 fiches
+# publiées serait pire que la case vide : une case vide se voit, une case fausse se
+# croit. Et le dépôt a déjà ce précédent — « l'organisateur annoncé semble être la
+# journaliste, pas l'organisatrice » (CLAUDE.md, règle 6).
+_ORGA_REFUS = {
+    "wordpress", "wordpress.org", "wordpress.com", "wix", "squarespace", "joomla",
+    "drupal", "shopify", "blogger", "webnode", "jimdo", "sitew", "hostinger", "ovh",
+    "google", "facebook", "eventbrite", "billetweb", "helloasso", "weezevent",
+    "admin", "administrateur", "webmaster", "rédaction", "redaction", "la redaction",
+    "the events calendar", "tribe", "yoast", "wpbakery", "elementor",
+}
+_ORGA_MAX = 90       # au-delà, c'est une phrase, pas un nom d'organisme
+
+
+def _organisateur(src: dict) -> str:
+    """Nom de l'organisateur DÉCLARÉ par la page, ou '' — jamais une déduction.
+
+    Quatre refus, chacun contre une valeur qu'on a vue passer pour un organisateur :
+      • l'éditeur du site ou l'outil qui a fait la page (cf. _ORGA_REFUS) ;
+      • une URL, un courriel ou un @handle : ce sont des coordonnées, pas un nom ;
+      • une phrase (au-delà de _ORGA_MAX signes) : un descriptif, pas un organisme ;
+      • un nom d'un seul caractère, ou vide après nettoyage.
+    Plusieurs organisateurs déclarés → on prend le PREMIER exploitable, sans les
+    concaténer : « Ville de X et Association Y » n'est le nom de personne.
+    """
+    brut = src.get("organizer")
+    candidats = brut if isinstance(brut, list) else [brut]
+    for c in candidats:
+        nom = _texte(c).strip()
+        if not nom or len(nom) < 2 or len(nom) > _ORGA_MAX:
+            continue
+        if nom.lower().strip(" .") in _ORGA_REFUS:
+            continue
+        if nom.startswith(("http://", "https://", "www.", "@")) or "@" in nom:
+            continue
+        return nom
+    return ""
 
 
 # ── Microdata : la seconde forme que schema.org autorise ────────────────────────

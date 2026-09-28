@@ -328,6 +328,35 @@ def detect_lang(title: str = "", description: str = "", territoire: str = "") ->
     return "it" if it > fr else "fr"
 
 
+def langue_du_texte(texte: str, mini: int = 15, rapport: float = 2.0) -> str:
+    """'fr' | 'it' | '' — la langue d'un TEXTE PUBLIÉ entier (page, pas fiche en base).
+
+    Posée le 24/09/2026 pour `scripts.audit_langue_texte`. Pas `detect_lang` : lui juge une
+    fiche, pèse le titre ×3 et retombe sur 'fr' quand il hésite — un texte indécis y
+    deviendrait français, et l'audit crierait sur toutes les pages courtes. Ici on se tait
+    ('') quand il n'y a pas assez de mots-outils (`mini`) ou pas d'avance nette (`rapport`) :
+    un audit qui signale une page doit pouvoir le justifier, et un doute n'est pas un écart.
+
+    Réglages repris de la requête qui a trouvé, le 23/09, les cinq textes retouchés à la
+    main dans la mauvaise langue (15 mots-outils au moins, deux fois plus d'une langue que
+    de l'autre) : sur 423 fiches, elle en a laissé 25 sans verdict et aucun faux positif."""
+    fr, it = _score(texte or "")
+    if fr + it < mini:
+        return ""
+    if fr >= it * rapport:
+        return "fr"
+    if it >= fr * rapport:
+        return "it"
+    return ""
+
+
+# Avance en mots-outils au-delà de laquelle le CORPS d'un article tranche seul (voir
+# effective_lang). 4 : un corps de 500 caractères en porte une vingtaine dans sa langue ;
+# les noms propres de l'autre langue (« Plaisirs de Culture », « Museo regionale di… »)
+# en apportent deux ou trois — ils ne doivent pas suffire à renverser le verdict.
+_MARGE_CORPS = 4
+
+
 def effective_lang(ev: dict) -> str:
     """Langue à utiliser pour DÉCIDER une traduction/un jumelage : l'ARTICLE déjà rédigé
     fait foi s'il existe, jamais le seul titre brut. `scripts.enrich` écrit TOUJOURS en
@@ -346,6 +375,21 @@ def effective_lang(ev: dict) -> str:
             body = f"{art.get('chapo', '')} {art.get('corps', '')}"[:500]
         except (ValueError, TypeError):
             pass
+    # LE CORPS D'ABORD, PUIS LE TITRE (23/09/2026). `detect_lang` tranche sur le titre
+    # dès qu'il a deux mots-outils d'avance — juste pour une fiche BRUTE, faux pour un
+    # article rédigé, dont le titre garde souvent le NOM de l'événement. Mesuré sur
+    # Plaisirs de Culture : « La chiave della rinascita di un tesoro del 1462 » (5935),
+    # « Dall'automa al telefono… » (5958), « Cercami tra il bianco della neve… » (5973)
+    # coiffent des corps ENTIÈREMENT français. Verdict `it` : l'original publié sous
+    # l'étiquette italienne avec un texte français, et `--retranslate` qui visait le
+    # français pour la jumelle — trois événements sans aucune version italienne. Le
+    # lecteur lit 500 caractères de corps, pas le nom propre : c'est le corps qui décide
+    # quand il est net ; indécis (court, truffé de noms propres), on revient au jugement
+    # d'ensemble.
+    if body:
+        b_fr, b_it = _score(body)
+        if abs(b_fr - b_it) >= _MARGE_CORPS:
+            return "it" if b_it > b_fr else "fr"
     if article_title or body:
         return detect_lang(article_title, body, ev.get("territoire", ""))
     return detect_lang(ev.get("title", ""), ev.get("description", ""), ev.get("territoire", ""))

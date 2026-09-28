@@ -22,8 +22,15 @@ if (!defined('ABSPATH')) { exit; }
 
 if (!function_exists('cs_og_image')) {
 function cs_og_image($lang) {
-    $base = 'https://agendasabauda.eu/wp-content/uploads/2026/07/';
-    return $base . ($lang === 'it' ? 'og-agenda-sabauda-it.png' : 'og-agenda-sabauda-fr.png');
+    // 24/09/2026 (Franck, capture WhatsApp) : l'image de juillet coupait le logo en
+    // « genda Sabaud » — WhatsApp ne garde que le CARRÉ central (~630 px) d'une image
+    // 1200×630, et le logo en occupait 740. La nouvelle place tout l'essentiel dans ce
+    // carré : logo sur deux lignes (La Semplicita Bold), accroche, quatre monuments.
+    // NOUVEAU nom de fichier, pas un écrasement : les messageries gardent l'aperçu d'une
+    // URL en cache. Copies versionnées : assets/brand/. Retour arrière : les fichiers de
+    // juillet sont toujours dans uploads/2026/07/.
+    $base = 'https://agendasabauda.eu/wp-content/uploads/2026/09/';
+    return $base . ($lang === 'it' ? 'og-agenda-sabauda-it-2026-09.png' : 'og-agenda-sabauda-fr-2026-09.png');
 }
 }
 
@@ -109,8 +116,23 @@ function cs_og_data() {
         $ville = $venue_id ? get_post_meta($venue_id, '_VenueCity', true) : '';
         $start = get_post_meta($id, '_EventStartDate', true);
         $quand = $start ? date_i18n('j F Y', strtotime($start)) : '';
+        $quand_txt = $quand ? ($it ? "Il $quand" : "Le $quand") : '';
+        /* 2026-09-22 (Franck, exposition Matisse – Yves Saint Laurent) : le partage d'une
+           exposition commencee en juin disait « Le 17 juin 2026 » alors qu'elle court
+           jusqu'au 28/09 -- une date passee, la seule qu'on donnait. Pour un evenement
+           DEJA COMMENCE et pas termine, c'est la fin qui renseigne (CLAUDE.md regle 5),
+           comme sur les cartes (cs_event_date_short, cs_cvld_date). Italien : « fino
+           all'8 », « fino all'11 », « fino al 28 » ailleurs, meme regle que
+           cs_choix_langue_date(). */
+        $fin = substr((string) get_post_meta($id, '_EventEndDate', true), 0, 10);
+        $auj = current_time('Y-m-d');
+        if ($start && $fin && substr($start, 0, 10) < $auj && $fin >= $auj) {
+            $j = (int) substr($fin, 8, 2);
+            $quand_txt = ($it ? (in_array($j, array(8, 11), true) ? "Fino all'" : 'Fino al ') : "Jusqu'au ")
+                . date_i18n('j F Y', strtotime($fin));
+        }
         $ou = trim($lieu . ($ville ? ', ' . $ville : ''));
-        $desc = trim(($quand ? ($it ? "Il $quand" : "Le $quand") : '') . ($ou ? ' · ' . $ou : ''));
+        $desc = trim($quand_txt . ($ou ? ' · ' . $ou : ''));
         if ($desc === '') { $desc = $baseline; }
         if (has_post_thumbnail($id)) {
             $crop = cs_og_crop(get_post_thumbnail_id($id));
@@ -158,6 +180,15 @@ function cs_og_data() {
     // --- Pages listes connues (gabarits PHP) ---
     if (is_page()) {
         $pid = get_queried_object_id();
+        // Une page qui a sa propre vignette la partage : c'est elle qui distingue
+        // /que-faire-a-chambery/aujourdhui/ de .../ce-week-end/ dans un fil de
+        // discussion. Avant le 2026-09-21 cette branche renvoyait toujours l'image
+        // generique du site : six pages hub, deux images de partage pour six. Meme
+        // regle que pour les fiches, 55 lignes plus haut.
+        if (has_post_thumbnail($pid)) {
+            $crop = cs_og_crop(get_post_thumbnail_id($pid));
+            if ($crop) { $img = $crop; }
+        }
         $listes = [
             929  => ['fr', "Que faire aujourd'hui ?", "Les événements du jour dans les quatre territoires alpins."],
             931  => ['fr', "Que faire cette semaine ?", "Tous les événements de la semaine dans les quatre territoires alpins."],

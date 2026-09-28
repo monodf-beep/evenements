@@ -56,7 +56,36 @@ def _max_chars() -> int:
     # jamais vues, sans le moindre signal : la voix s'appliquait amputée de sa fin depuis
     # que la note a dépassé la limite. Le plafond reste utile (un prompt n'est pas
     # extensible), mais il tronque désormais À VOIX HAUTE (cf. load_voix).
-    return int(os.getenv("VOIX_MAX_CHARS", "8000"))
+    #
+    # 16000 depuis le 2026-09-22 — et LA RAISON QUE J'AVAIS D'ABORD ÉCRITE ICI ÉTAIT
+    # FAUSSE, c'est corrigé ci-dessous parce qu'un commentaire de ce dépôt est sa
+    # documentation, pas une trace de ce qu'on a cru.
+    #
+    # CE QUE J'AVAIS DÉDUIT : la fixture criait sur le VPS « 3202 caractères de la charte
+    # sont coupés, plafond = 8000 », j'en ai conclu que la voix concaténée y pesait
+    # ~11 200 caractères et que le plafond mordait. MESURÉ ENSUITE SUR LE SERVEUR :
+    # `voix_integrale()` y rend 3 972 caractères et `load_voix()` les rend TOUS. Le
+    # plafond ne mordait nulle part. Les 3 202 caractères d'écart venaient de la fixture,
+    # qui comparait la charte versionnée (7 174 car.) à des COUCHES choisies au
+    # back-office qui servent d'autres notes — et son message accusait le plafond.
+    # `tests/test_voix_troncature.py` a été corrigé le même jour pour mesurer la vraie
+    # troncature (l'écart entre les sources et ce qui est livré) au lieu de cet écart-là.
+    #
+    # POURQUOI ON GARDE QUAND MÊME 16000, sur son seul mérite et pas sur ma déduction :
+    # `docs/voix/VOIX.md` pèse 7 174 caractères pour un plafond de 8 000, soit 90 % de
+    # remplissage et 826 caractères de marge. La note a déjà rattrapé son plafond DEUX
+    # fois (6000 → 8000 le 05/09, sur un incident réel). Sur une machine sans couches
+    # configurées, le prochain paragraphe ajouté coupait la fin de la charte. 16000 laisse
+    # près de 9 000 caractères de marge.
+    #
+    # CE QUE ÇA COÛTE : environ 800 jetons de plus par appel qui injecte la voix (enrich,
+    # translate_events, textes_hubs), sur des prompts qui montent à 24 000 jetons. Pour
+    # revenir en arrière sans toucher au code : VOIX_MAX_CHARS dans le .env.
+    #
+    # LE VRAI GARDE-FOU reste la fixture, pas ce nombre : la troncature s'annonce
+    # (load_voix) et le test échoue dès qu'elle mord. Relever le plafond ne la remplace
+    # pas, il lui donne de l'air.
+    return int(os.getenv("VOIX_MAX_CHARS", "16000"))
 
 
 # Voix CANONIQUE versionnée dans le dépôt : sert de source par défaut ET de garde-fou
@@ -227,7 +256,7 @@ def load_voix() -> str:
 def _title_of(text: str) -> str:
     """Titre lisible d'une note : 1er titre markdown (# ...) nettoyé, sinon 1re ligne non
     vide. On IGNORE les lignes de citation Obsidian (commençant par « > ») et les lignes
-    vides, pour éviter les titres du type « > Voix de Enrico... »."""
+    vides, pour éviter les titres du type « > Voix de référence... »."""
     fallback = ""
     for line in (text or "").splitlines():
         line = line.strip()

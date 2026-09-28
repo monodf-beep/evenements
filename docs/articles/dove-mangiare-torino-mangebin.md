@@ -2,7 +2,7 @@
 
 *Jumelle italienne de `docs/articles/ou-manger-turin-mangebin.md`, troisième version du
 2026-09-06. **Vraie version éditoriale, pas une traduction.** Doctrine appliquée : voix
-commune Enrico (`clone-enrico-fr`), procédure et checklist du skill
+commune de référence (le skill de rédaction), procédure et checklist du skill
 `redaction-agenda-sabauda`, et surcharges Agenda Sabauda collées par Franck depuis Obsidian
 le 06/09, dont le dépôt ne garde volontairement aucun miroir depuis le 05/09.*
 
@@ -132,7 +132,7 @@ LEGGI ANCHE: [Sagre in Piemonte 2026](/it/sagre-piemonte-2026/)
 | Chapitres de longueur variée, moins de 250 mots chacun | ✅ 169 / 140 / 96 / 101 |
 | Liens dans le corps, jamais groupés en pied | ✅ tissés dans la prose |
 | Un lien externe vers la source publique | ✅ page italienne de turismotorino.org |
-| Clôture par un renvoi de lecture | ✅ « LEGGI ANCHE: », équivalent italien de la formule Enrico |
+| Clôture par un renvoi de lecture | ✅ « LEGGI ANCHE: », équivalent italien de la formule de la voix de référence |
 | Pas de tiret cadratin | ✅ |
 | Pas de séparateur, d'encadré, d'emoji, de point d'exclamation | ✅ |
 | Surcharge Agenda : listes autorisées | ✅ seuils et adresses |
@@ -215,7 +215,7 @@ contrôle n'en recrée pas un).
 | Titre-piège, clickbait | **à trancher** — « che cosa garantisce davvero Mangébin » joue sur la curiosité. Ce n'est pas un « vous n'allez pas croire », et la promesse est tenue dans le texte, mais le « davvero » est un jugement à valider, pas un fait acquis |
 | Confirmshaming | **absent** — aucun refus n'est sollicité |
 | Case pré-cochée, opt-in déguisé | **absent** — aucun formulaire |
-| Publicité déguisée en contenu éditorial | **à trancher par un œil humain**, et c'est le seul point qui le mérite. L'article nomme 7 établissements. Aucun partenariat, aucune contrepartie, et le critère de sélection est écrit dans le texte. L'épreuve d'Enrico (« l'article aurait-il pu être écrit par le service com d'un acteur cité ? ») donne non : un service com n'écrirait pas que le label ne garantit ni le service ni le cuisinier. Reste que la décision de nommer des commerces est éditoriale. |
+| Publicité déguisée en contenu éditorial | **à trancher par un œil humain**, et c'est le seul point qui le mérite. L'article nomme 7 établissements. Aucun partenariat, aucune contrepartie, et le critère de sélection est écrit dans le texte. L'épreuve de la voix de référence (« l'article aurait-il pu être écrit par le service com d'un acteur cité ? ») donne non : un service com n'écrirait pas que le label ne garantit ni le service ni le cuisinier. Reste que la décision de nommer des commerces est éditoriale. |
 | Collecte de données | **absent** |
 
 ---

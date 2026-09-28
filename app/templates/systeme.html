@@ -12,11 +12,58 @@
      coûte » sont la même question posée deux fois : une page, deux onglets, une seule
      entrée de menu. -->
 <div class="btn-row" style="margin-bottom:1rem;gap:.3rem">
-  <a class="btn btn-sm{{ ' btn-primary' if vue != 'couts' }}" href="/systeme">⚙️ La chaîne</a>
+  <a class="btn btn-sm{{ ' btn-primary' if vue == 'chaine' }}" href="/systeme">⚙️ La chaîne</a>
   <a class="btn btn-sm{{ ' btn-primary' if vue == 'couts' }}" href="/systeme?vue=couts">💶 Les coûts</a>
+  <a class="btn btn-sm{{ ' btn-primary' if vue == 'pages' }}" href="/systeme?vue=pages">🧭 Les pages</a>
 </div>
 
-{% if vue == 'couts' %}{% include "_couts.html" %}{% else %}
+{% if vue == 'pages' %}
+<!-- QUELLES PAGES S'OUVRENT ENCORE — Franck, 22/09 : « s'il y a des choses qui ne
+     servent plus, on les enlève ». Le journal nginx ne répondait pas : celui qu'on a lu
+     ce jour-là ne contenait aucune page du back-office, et presque rien d'autre que des
+     sondes /.env et /wp-login.php. Ce compteur-ci ne voit que des sessions connectées.
+     LA DATE DE DÉPART EST AFFICHÉE AVEC LES CHIFFRES : un zéro ne dit pas s'il vient
+     d'un désintérêt ou d'une mesure qui vient de commencer. -->
+<div class="card" style="padding:.85rem 1rem;margin-bottom:1rem">
+  <strong>Ce qui s'ouvre encore</strong>
+  <div class="muted text-sm" style="margin-top:.25rem">
+    {% if pages_depuis %}
+      Mesuré depuis le <strong>{{ pages_depuis }}</strong>, sur les seules sessions
+      connectées — les robots et les sondes ne comptent pas.
+      <strong>Un zéro ne veut rien dire tant que la mesure est jeune :</strong>
+      laisse passer deux ou trois semaines avant de supprimer quoi que ce soit.
+    {% else %}
+      La mesure commence maintenant : aucune page n'a encore été comptée. Reviens dans
+      quelques jours — avant ça, ce tableau ne dit rien d'autre que « on vient de brancher ».
+    {% endif %}
+  </div>
+</div>
+
+<div class="table-wrap">
+<table class="table">
+  <thead><tr>
+    <th scope="col">Page</th><th scope="col">Ce qu'on y fait</th>
+    <th scope="col" style="text-align:right">Ouvertures</th><th scope="col">Dernière fois</th>
+  </tr></thead>
+  <tbody>
+  {% for r in pages_vues %}
+  <tr{% if not r.n %} style="background:#fdf3f2"{% endif %}>
+    <td><span aria-hidden="true">{{ r.icone }}</span>
+      <a href="{{ r.url }}">{{ r.libelle }}</a></td>
+    <td class="muted text-sm">{{ r.resume }}</td>
+    <td style="text-align:right"><strong>{{ r.n }}</strong></td>
+    <td class="muted text-sm">{{ r.dernier or '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted text-sm" style="margin-top:.6rem">
+  Les lignes rouges n'ont jamais été ouvertes DEPUIS LE DÉBUT DE LA MESURE. Ce sont les
+  candidates au ménage — pas la preuve qu'elles sont inutiles.
+</p>
+
+{% elif vue == 'couts' %}{% include "_couts.html" %}{% else %}
 
 <!-- LE GOULOT, ET LUI SEUL. Une liste de huit alertes ne se lit pas, elle se subit :
      c'est la faute des 454 « points à contrôler » du 2026-08-11, où le seul qui comptait

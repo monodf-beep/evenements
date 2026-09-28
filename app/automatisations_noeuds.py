@@ -212,7 +212,7 @@ _COLLECTE = [
          "code": ["scripts/gmail_relink.py"]}},
 
     {"id": "pending", "label": "File « pending »", "icone": "📥", "flux": "collecte",
-     "kind": "etat", "col": 3, "row": 0, "sous_titre": "en attente d'évaluation",
+     "kind": "etat", "garage_cle": "pending", "col": 3, "row": 0, "sous_titre": "en attente d'évaluation",
      "resume": "Tout ce qui est entré et n'a pas encore été noté. C'est la file que lit l'évaluateur de 9h00.",
      "detail": {
          "fait": ["Statut par défaut de toute fiche insérée, par le scraper comme par Gmail.",
@@ -343,13 +343,13 @@ _COLLECTE = [
 # ══════════════════════════════════════════════════════════════════════════════
 _TRI = [
     {"id": "e_pending", "label": "File « pending »", "icone": "📥", "flux": "tri",
-     "kind": "etat", "col": 0, "row": 1, "sous_titre": "ce qui est entré ce matin",
+     "kind": "etat", "garage_cle": "pending", "col": 0, "row": 1, "sous_titre": "ce qui est entré ce matin",
      "resume": "Le stock brut. Cinq traitements le préparent avant que l'évaluateur ne tranche.",
      "detail": {"fait": ["Voir l'onglet Collecte pour savoir comment une fiche y entre."],
                 "cout_ia": "aucun"}},
 
     {"id": "dates_1", "label": "Datation gratuite", "icone": "📅", "flux": "tri",
-     "kind": "action", "col": 1, "row": 0, "cron_cle": "scripts/dates.py --no-fetch",
+     "kind": "action", "etage_cle": "date", "col": 1, "row": 0, "cron_cle": "scripts/dates.py --no-fetch",
      "script": "dates",
      "resume": "Premier passage, sans réseau ni modèle : il lit les dates écrites dans le titre et la description.",
      "detail": {
@@ -422,7 +422,7 @@ _TRI = [
          "code": ["scripts/dedupe.py", "scripts/unmerge.py"], "doc": ["docs/DEDOUBLONNAGE.md"]}},
 
     {"id": "dates_2", "label": "Datation complète", "icone": "🗓️", "flux": "tri",
-     "kind": "action", "col": 1, "row": 2, "cron_cle": "scripts/dates.py >>", "script": "dates",
+     "kind": "action", "etage_cle": "date", "garage_cle": "date_garage", "col": 1, "row": 2, "cron_cle": "scripts/dates.py >>", "script": "dates",
      "resume": "Le passage qui paie : il télécharge les pages, interroge un modèle, et republie les traductions réalignées.",
      "detail": {
          "fait": ["Passe 1 : relit le texte (comme à 8h25).",
@@ -459,7 +459,7 @@ _TRI = [
          "code": ["scripts/dates.py"]}},
 
     {"id": "venues", "label": "Lieux", "icone": "📍", "flux": "tri",
-     "kind": "action", "col": 1, "row": 3, "cron_cle": "scripts/venues.py", "script": "venues",
+     "kind": "action", "etage_cle": "lieu", "garage_cle": "venue_garage", "col": 1, "row": 3, "cron_cle": "scripts/venues.py", "script": "venues",
      "resume": "Renseigne lieu et ville en trois passes : le lieu par défaut de la source, la page, puis un modèle.",
      "detail": {
          "fait": ["Passe 0 : applique le lieu déclaré pour la source dans `config/sources.txt`.",
@@ -526,7 +526,7 @@ _TRI = [
          "code": ["scripts/cleanup_cinema.py"]}},
 
     {"id": "evaluator", "label": "Évaluation", "icone": "⚖️", "flux": "tri",
-     "kind": "action", "col": 2, "row": 1, "cron_cle": "scripts/evaluator.py", "script": "evaluator",
+     "kind": "action", "etage_cle": "evalue", "col": 2, "row": 1, "cron_cle": "scripts/evaluator.py", "script": "evaluator",
      "resume": "Le tri principal : 100 fiches par jour, quatre refus gratuits puis une note de 0 à 10.",
      "detail": {
          "fait": ["Prend 100 fiches « pending » par passage.",
@@ -647,7 +647,7 @@ _PUBLICATION = [
                 "cout_ia": "aucun"}},
 
     {"id": "daily_batch", "label": "Lot quotidien", "icone": "📦", "flux": "publication",
-     "kind": "action", "col": 1, "row": 1, "cron_cle": "scripts/daily_batch.py",
+     "kind": "action", "garage_cle": "enrich_erreur", "col": 1, "row": 1, "cron_cle": "scripts/daily_batch.py",
      "script": "daily_batch",
      "resume": "Le chef d'orchestre de 9h30 : il fait rédiger, re-vérifie chaque fiche, puis ne fait publier que les complètes.",
      "detail": {
@@ -675,7 +675,7 @@ _PUBLICATION = [
          "code": ["scripts/daily_batch.py"]}},
 
     {"id": "enrich", "label": "Rédaction de l'article", "icone": "✍️", "flux": "publication",
-     "kind": "agent", "col": 2, "row": 0,
+     "kind": "agent", "etage_cle": "redige", "garage_cle": "matiere_polluee", "col": 2, "row": 0,
      "resume": "Un agent rassemble la matière officielle, rédige l'article, puis le fait relire par un panel de lecteurs.",
      "detail": {
          "fait": ["Rassemble la matière : description propre, doublons, page officielle, dossiers de presse.",
@@ -748,7 +748,7 @@ _PUBLICATION = [
          "code": ["scripts/publish_batch_as.py", "utils/substance.py"]}},
 
     {"id": "publish", "label": "Envoi sur WordPress", "icone": "🚀", "flux": "publication",
-     "kind": "action", "col": 4, "row": 1,
+     "kind": "action", "etage_cle": "publie", "col": 4, "row": 1,
      "resume": "Construit le contenu, téléverse les images, et poste sur la route maison cs/v1/event.",
      "detail": {
          "fait": ["Construit le corps : l'article, puis le lien vers la source officielle et "
@@ -801,7 +801,7 @@ _PUBLICATION = [
          "code": ["deploy/wordpress/cs-publish.php"]}},
 
     {"id": "e_matiere_polluee", "label": "Matière polluée", "icone": "🕳️", "flux": "publication",
-     "kind": "etat", "col": 3, "row": 3, "sous_titre": "enrich_status",
+     "kind": "etat", "garage_cle": "matiere_polluee", "col": 3, "row": 3, "sous_titre": "enrich_status",
      "resume": "La description vient d'un agrégateur : impossible d'en tirer un article. La fiche sort de la file.",
      "detail": {
          "terminal": {
@@ -822,7 +822,7 @@ _EDITORIAL = [
      "detail": {"cout_ia": "aucun"}},
 
     {"id": "seo_batch", "label": "Métas de référencement", "icone": "🔍", "flux": "editorial",
-     "kind": "action", "col": 1, "row": 0, "cron_cle": "scripts/seo_batch.py", "script": "seo_batch",
+     "kind": "action", "etage_cle": "seo", "col": 1, "row": 0, "cron_cle": "scripts/seo_batch.py", "script": "seo_batch",
      "resume": "Fait écrire titre SEO, méta-description, réponse courte et questions fréquentes, puis les pousse sur le site.",
      "detail": {
          "fait": ["Génère les métas dans la langue de la fiche.",
@@ -859,7 +859,7 @@ _EDITORIAL = [
          "doc": ["docs/SEO_QUI_FAIT_QUOI.md"]}},
 
     {"id": "images_wide", "label": "Les deux orientations", "icone": "🖼️", "flux": "editorial",
-     "kind": "action", "col": 1, "row": 1, "cron_cle": "scripts.images_wide", "script": "images_wide",
+     "kind": "action", "etage_cle": "image", "col": 1, "row": 1, "cron_cle": "scripts.images_wide", "script": "images_wide",
      "resume": "Complète le haut du panier avec l'affiche officielle en portrait ET en paysage.",
      "detail": {
          "fait": ["Relit la page officielle et y cherche jusqu'à douze images.",
@@ -891,7 +891,7 @@ _EDITORIAL = [
          "code": ["scripts/images_wide.py", "utils/images.py"], "doc": ["docs/IMAGES.md"]}},
 
     {"id": "translate", "label": "Traduction FR ↔ IT", "icone": "🇮🇹", "flux": "editorial",
-     "kind": "action", "col": 1, "row": 2, "cron_cle": "scripts/translate_events.py",
+     "kind": "action", "etage_cle": "traduit", "garage_cle": "traduction_garage", "col": 1, "row": 2, "cron_cle": "scripts/translate_events.py",
      "script": "translate_events",
      "resume": "Crée la fiche jumelle dans l'autre langue, la publie, et lie les deux par Polylang.",
      "detail": {
@@ -957,6 +957,7 @@ _EDITORIAL = [
 
     {"id": "yoast", "label": "Notes Yoast", "icone": "📊", "flux": "editorial",
      "kind": "action", "col": 1, "row": 4, "cron_cle": "scripts.yoast_scores",
+     "script": "yoast_scores",
      "resume": "Calcule les notes SEO et lisibilité hors navigateur, avec le vrai moteur de Yoast, et les réécrit dans WordPress.",
      "detail": {
          "fait": ["Demande à WordPress la liste des contenus modifiés depuis le dernier passage.",
@@ -976,8 +977,9 @@ _EDITORIAL = [
              {"si": "Node ou le paquet Yoast est absent",
               "alors": "une erreur franche, jamais un « 0 noté » — une panne est une panne"}],
          "cout_ia": "aucun appel de modèle : c'est un moteur JavaScript local.",
-         "notes": ["⚠️ Ce cron n'est PAS surveillé par le chien de garde de midi : "
-                   "`yoast_scores` ne figure pas dans sa liste. S'il s'arrête, rien ne sonne."],
+         "notes": ["Ajouté au chien de garde le 21/09, en même temps que « Lieux et images "
+                   "des mails » : c'est la carte qui a montré que ni l'un ni l'autre "
+                   "n'était surveillé, en croisant `crontab.txt` avec la liste `ATTENDUS`."],
          "code": ["scripts/yoast_scores.py", "deploy/wordpress/cs-yoast-scores.php"]}},
 
     {"id": "republi", "label": "Republication texte seul", "icone": "♻️", "flux": "editorial",
@@ -993,6 +995,88 @@ _EDITORIAL = [
                     "les dates, le lieu, la catégorie et les métas passent, le texte non."],
          "cout_ia": "aucun",
          "code": ["scripts/publish_batch_as.py"]}},
+
+    {"id": "cowork_seo", "label": "SEO final (Cowork)", "icone": "🧑‍💻", "flux": "editorial",
+     "kind": "agent", "garage_cle": "gelees", "col": 3, "row": 0, "sous_titre": "lancé à la main",
+     "resume": "Le dernier étage : une session Claude reprend à la main le référencement des "
+               "meilleures fiches. Après elle, plus rien ne repasse.",
+     "detail": {
+         "fait": ["Reprend dans WordPress ce que le cron a posé à 10h30 : expression clé, "
+                  "titre de référencement, méta-description, chapô, intertitres.",
+                  "Ne traite que le haut du panier — le cron continue de s'occuper de tout le reste.",
+                  "Déclare son passage dans le journal de la fiche, une ligne par article "
+                  "(route `cs/v1/journal`, `qui: cowork`)."],
+         "lit": ["les fiches publiées, dans WordPress",
+                 "la doctrine éditoriale, relue à l'instant dans Obsidian (`/doctrine.txt`)"],
+         "ecrit": ["directement dans WordPress : titre, corps, extrait, et les trois métas Yoast",
+                   "RIEN en base SQLite — et c'est la limite du dispositif, voir « À savoir »"],
+         "regles": ["**Le sens de marche est unique** : création de l'article en français et "
+                    "en italien, puis le cron de référencement, puis Cowork. Jamais l'inverse. "
+                    "Arbitrage de Franck du 21/09 : « si Cowork a travaillé le SEO, on ne doit "
+                    "pas pouvoir revenir dessus avec le cron. »",
+                    "Chaque étage peut écraser ce que le précédent a posé ; aucun ne peut "
+                    "écraser le suivant.",
+                    "Le gel n'a PAS besoin d'être demandé : modifier le texte suffit, "
+                    "l'empreinte s'en charge. Le demander explicitement ne sert qu'à protéger "
+                    "une fiche jugée bonne SANS y avoir touché."],
+         "decisions": [
+             {"si": "Cowork a modifié l'un des six champs éditoriaux",
+              "alors": "la fiche est GELÉE au passage suivant du pipeline, et sort des deux "
+                       "files de référencement"},
+             {"si": "la fiche est ensuite annulée",
+              "alors": "le titre est forcé malgré le gel — seule exception, parce que le "
+                       "préfixe « ANNULÉ » est ce qu'un lecteur doit voir coûte que coûte"},
+             {"si": "la reprise date d'AVANT l'installation du gel (21/09, 17h)",
+              "alors": "aucune empreinte de référence n'existe : rien ne peut deviner qu'on "
+                       "y a touché. Ces fiches-là se protègent par leur liste d'identifiants, "
+                       "avec `scripts/gel_texte.py --wp --gel <ids> --apply`"}],
+         "terminal": {
+             "etat": "texte gelé — la fiche quitte la file de génération SEO et celle de poussée",
+             "rouvreur": "la case « Texte retravaillé à la main » de l'encadré Journal dans "
+                         "l'éditeur WordPress, ou `scripts/gel_texte.py --degel <id> --apply`. "
+                         "Le compte des fiches gelées part sur Slack tous les jours avec le "
+                         "bilan du cron de référencement."},
+         "cout_ia": "une session Claude, lancée à la main — pas un cron, donc rien ici ne "
+                    "part tout seul et rien n'est surveillé par le chien de garde.",
+         "notes": ["La page Cowork du backoffice porte aujourd'hui le prompt de "
+                   "l'AUTOCOMPLÉTION, pas celui du SEO : ce second rôle n'a pas de prompt "
+                   "rangé dans le dépôt, il ne vit que dans `docs/SEO_QUI_FAIT_QUOI.md`.",
+                   "Le dispositif ne fait PAS remonter le texte retouché dans la base : "
+                   "SQLite garde la version du pipeline, le site porte la version "
+                   "retravaillée. L'aperçu du backoffice et les audits qui jugent le texte "
+                   "publié en le lisant EN BASE raisonnent donc sur l'ancienne version pour "
+                   "ces fiches-là. C'est le chantier suivant ; en attendant, le nombre de "
+                   "fiches concernées est affiché chaque jour.",
+                   "Il ne protège pas non plus les IMAGES : une photo posée à la main se "
+                   "protège autrement."],
+         "code": ["deploy/wordpress/cs-gel-texte.php", "scripts/gel_texte.py"],
+         "doc": ["docs/SEO_QUI_FAIT_QUOI.md"]}},
+
+    {"id": "e_gel", "label": "Texte gelé", "icone": "🧊", "flux": "editorial",
+     "kind": "etat", "garage_cle": "gelees", "col": 4, "row": 0, "sous_titre": "le cron ne repasse plus",
+     "resume": "L'état qui protège une reprise humaine. Il est posé par le SITE, jamais par la base.",
+     "detail": {
+         "fait": ["Le site compare une empreinte des six champs éditoriaux à celle que le "
+                  "pipeline avait laissée. Si elle a changé, quelqu'un d'autre a écrit.",
+                  "Ce qui ne descend plus : titre, corps, extrait, titre Yoast, "
+                  "méta-description, expression clé, et l'adresse.",
+                  "Ce qui continue de descendre, et c'est voulu : dates, heure, lieu, ville, "
+                  "catégorie, territoire, langue, prix, source officielle, toutes les métas "
+                  "de classement, et l'image à la une."],
+         "regles": ["Le gel protège un TEXTE, il ne met pas la fiche à la retraite — sinon "
+                    "ce serait un cul-de-sac, et une date corrigée ne serait jamais republiée.",
+                    "`wp_gel_at` en base n'est qu'une COPIE de ce que le site répond. "
+                    "« Pas de gel » et « le mu-plugin n'est pas en ligne » ne doivent jamais "
+                    "se confondre : la seule source de vérité est le site, interrogé par "
+                    "`scripts/gel_texte.py --liste`."],
+         "terminal": {
+             "etat": "fiche gelée — hors de la file de génération SEO et de celle de poussée",
+             "rouvreur": "la case de l'encadré Journal dans l'éditeur WordPress, ou "
+                         "`scripts/gel_texte.py --degel <id> --apply`. Le compte des fiches "
+                         "garées se voit à trois endroits : le message Slack quotidien du "
+                         "cron SEO, le journal du lot de publication, et `--liste`."},
+         "cout_ia": "aucun",
+         "code": ["deploy/wordpress/cs-gel-texte.php"], "doc": ["docs/SEO_QUI_FAIT_QUOI.md"]}},
 
     {"id": "polylang", "label": "Lien FR ↔ IT", "icone": "🔗", "flux": "editorial",
      "kind": "sortie", "col": 2, "row": 2, "sous_titre": "route cs/v1/link-translations",
@@ -1099,6 +1183,31 @@ _CONTROLES = [
                   "eu lieu. Le 🔴 n'apparaît QUE pour une régression de code, jamais pour un "
                   "écart de versant.",
          "code": ["scripts/audit_langue_polylang.py"]}},
+
+    {"id": "audit_langue_texte", "label": "Langue des textes publiés", "icone": "🔤",
+     "flux": "controles", "kind": "action", "col": 2, "row": 2,
+     "cron_cle": "scripts.audit_langue_texte", "script": "audit_langue_texte",
+     "resume": "Relit le texte EN LIGNE de chaque fiche et vérifie qu'il est dans la langue "
+               "de sa page.",
+     "detail": {
+         "fait": ["Lit chaque fiche encore devant nous par son numéro (API REST publique) et "
+                  "compare la langue du texte au versant de la page (/it/ ou non)."],
+         "ecrit": ["rien — lecture seule"],
+         "regles": ["Complète « Langue Polylang », qui ne relit jamais le texte : le 23/09, "
+                    "cinq paires retouchées à la main avaient leurs textes inversés, gelées, "
+                    "invisibles des deux côtés.",
+                    "Un texte trop court ou mêlé ne reçoit pas de verdict : compté, jamais "
+                    "signalé comme écart."],
+         "decisions": [
+             {"si": "la fiche n'est pas gelée",
+              "alors": "translate_events --retranslate <original> la réécrit"},
+             {"si": "la fiche est gelée (retouche humaine)",
+              "alors": "le texte est à remettre à sa place à la main — le 23/09, échange des "
+                       "textes entre les deux jumelles"}],
+         "cout_ia": "aucun",
+         "slack": "Une ligne, même à zéro, avec le nombre de pages lues et de pages sans "
+                  "verdict à côté.",
+         "code": ["scripts/audit_langue_texte.py", "utils/lang.py"]}},
 
     {"id": "verifier_dates", "label": "Contradicteur de dates", "icone": "🕵️", "flux": "controles",
      "kind": "action", "col": 0, "row": 2, "cron_cle": "scripts.verifier_dates",
@@ -1218,7 +1327,9 @@ _CONTROLES = [
                       "l'âge de son journal et le signalent EN PREMIER au-delà de 30 heures",
      "resume": "Répond à une seule question : est-ce que les automatisations tournent encore ?",
      "detail": {
-         "fait": ["Tient la liste des 35 automatisations attendues, avec leur tolérance.",
+         "fait": ["Tient la liste des automatisations attendues, avec leur tolérance. Son "
+                  "propre commentaire dit pourquoi le nombre exact n'est écrit nulle part "
+                  "ailleurs : un chiffre recopié cesse d'être vrai le jour où on en ajoute un.",
                   "Croise DEUX sources : le registre des passages en base, et la date "
                   "d'écriture du journal. Il retient la plus récente.",
                   "Vérifie aussi le FUSEAU HORAIRE réel du serveur.",
@@ -1244,9 +1355,11 @@ _CONTROLES = [
          "cout_ia": "aucun",
          "slack": "Silence total si tout va bien. Sinon 🐕, en URGENT — c'est le seul message "
                   "qui court-circuite la boîte du jour, parce que le vidage est lui-même un cron.",
-         "notes": ["C'est LUI qui alimente les pastilles d'état de cette carte. Deux crons "
-                   "manquent à sa liste : la complétion depuis les mails (8h48) et les notes "
-                   "Yoast (12h00)."],
+         "notes": ["C'est LUI qui alimente les pastilles d'état de cette carte — et "
+                   "inversement, c'est la carte qui a trouvé les deux crons qui manquaient "
+                   "à sa liste le 21/09 (la complétion depuis les mails et les notes "
+                   "Yoast), en croisant `crontab.txt` avec `ATTENDUS`. Chacun voit ce que "
+                   "l'autre ne voit pas."],
          "code": ["scripts/watchdog_crons.py"]}},
 
     {"id": "publier_sante", "label": "Relevé d'état", "icone": "🩺", "flux": "controles",
@@ -1670,7 +1783,7 @@ _HUMAIN = [
          "cout_ia": "aucun", "code": ["app/app.py", "utils/score_memory.py"]}},
 
     {"id": "h_home", "label": "Mise en avant et cadrage", "icone": "🖼️", "flux": "humain",
-     "kind": "humain", "col": 1, "row": 1, "sous_titre": "aperçu",
+     "kind": "humain", "garage_cle": "ecartes_home", "col": 1, "row": 1, "sous_titre": "aperçu",
      "resume": "Épingler ou exclure de la home, ordonner les épinglées, recadrer l'image.",
      "detail": {
          "regles": ["Épingler republie aussitôt la méta sur le site.",
@@ -1739,6 +1852,29 @@ _HUMAIN = [
                     "avertissement dans le journal.",
                     "La route répond toujours 200 à Meta, pour éviter les renvois en boucle."],
          "cout_ia": "aucun", "code": ["app/app.py"]}},
+
+    {"id": "cowork_completer", "label": "Cowork : compléter au navigateur", "icone": "🧑‍💻",
+     "flux": "humain", "kind": "humain", "col": 2, "row": 0, "sous_titre": "page Cowork",
+     "resume": "Le dernier kilomètre : une session Claude ouvre les pages que le pipeline "
+               "n'atteint pas et remplit les champs manquants dans le backoffice.",
+     "detail": {
+         "fait": ["Travaille dans la file « À compléter », les événements les plus proches d'abord.",
+                  "Ouvre la source officielle de chaque fiche et n'y prend que ce qui est LU.",
+                  "Marque « récurrent » une activité permanente plutôt que d'inventer une date."],
+         "regles": ["À lancer APRÈS l'agent Python « Auto-compléter », qui est gratuit et "
+                    "rapide : Cowork ne traite que le résidu — pages en JavaScript, dates "
+                    "cachées, sites que le scraper n'atteint pas.",
+                    "Environ 15 événements par session, une fois par jour après la collecte.",
+                    "Règle d'or : ne jamais inventer. Mieux vaut un champ vide qu'une date "
+                    "incertaine. Dans le doute, on passe.",
+                    "Filet : une fiche complétée part en « À valider », pas en ligne."],
+         "ecrit": ["les champs de la fiche, par la même porte que la complétion à la main",
+                   "un rapport de passage horodaté (table `cowork_runs`), collé dans la page"],
+         "cout_ia": "une session Claude, lancée à la main.",
+         "notes": ["C'est ce prompt-là que la page Cowork du backoffice affiche. Le SEO final "
+                   "est un AUTRE rôle de Cowork, sans prompt rangé dans le dépôt : voir "
+                   "l'onglet « Traduction, SEO, images »."],
+         "code": ["app/app.py"], "doc": ["docs/COWORK_AUTOCOMPLETION.md"]}},
 
     {"id": "h_widget", "label": "Widget partenaire", "icone": "🧩", "flux": "humain",
      "kind": "sortie", "col": 2, "row": 3, "sous_titre": "embed/events.json",
@@ -1972,6 +2108,8 @@ LIENS = [
     {"de": "images_wide", "vers": "republi"},
     {"de": "refresh_depl", "vers": "republi"},
     {"de": "translate", "vers": "polylang"},
+    {"de": "seo_batch", "vers": "cowork_seo", "label": "puis Cowork — jamais l'inverse"},
+    {"de": "cowork_seo", "vers": "e_gel", "label": "l'empreinte change"},
 
     # ── Contrôles & socle ─────────────────────────────────────────────────────
     {"de": "verifier_doublons", "vers": "boite"},
@@ -1997,6 +2135,8 @@ LIENS = [
 
     # ── Ce que Franck déclenche ───────────────────────────────────────────────
     {"de": "h_slack_cmd", "vers": "h_completer", "type": "retour"},
+    {"de": "cowork_completer", "vers": "h_completer", "type": "retour",
+     "label": "remplit par la même porte"},
 
     # ── Côté site ─────────────────────────────────────────────────────────────
     {"de": "w_auth", "vers": "w_publish"},

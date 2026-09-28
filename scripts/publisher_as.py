@@ -412,9 +412,73 @@ def _source_publiable(event: dict, is_radar: bool) -> str:
     return url
 
 
+def _extrait_depuis_article(content: str, limite: int = 200) -> str:
+    """Le premier paragraphe substantiel du corps rendu par `build_post` (le chapeau quand
+    il y en a un), en texte brut, coupé à `limite` caractères sur une fin de mot. "" si le
+    corps n'a pas de paragraphe d'au moins 60 caractères. Voir l'extrait dans _build_payload."""
+    for bloc in re.findall(r"(?is)<p[^>]*>(.*?)</p>", content or ""):
+        texte = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", bloc))).strip()
+        if len(texte) < 60:
+            continue
+        if len(texte) <= limite:
+            return texte
+        coupe = texte[:limite].rsplit(" ", 1)[0].rstrip(" ,;:—-")
+        return coupe + "…"
+    return ""
+
+
 def _is_radar(event: dict) -> bool:
     return (event.get("source_type") == "radar"
             or "(radar)" in (event.get("source_name") or ""))
+
+
+def heriter_source_traduction(event: dict, conn=None) -> None:
+    """Une traduction sans source propre prend la source publiable de son ORIGINAL —
+    MODIFIE `event` en place (`url_source`).
+
+    ICI, et plus seulement dans `publish_batch_as` (24/09/2026). Mesuré ce jour-là en
+    préparant l'indexation des pages italiennes des Giornate : 21 jumelles italiennes à
+    venir étaient en `noindex` et hors sitemap (cs-completude : « source_officielle »),
+    alors que leurs jumelles françaises portaient la page cultura.gov.it. Le journal de
+    chaque fiche désignait le passage fautif : « Passage du pipeline » entre 10h52 et
+    10h55 le 23/09, c'est-à-dire `refresh_deplacement`, lancé à la suite de la traduction
+    de 10h45. Il appelle `publish_to_as` directement, sans l'héritage que
+    `publish_batch_as` fait avant d'appeler : pour une traduction, `url_source` vaut
+    `translated:<id>:<lang>`, `_source_publiable` rend "" — et la méta
+    `as_source_officielle_url` était RÉÉCRITE À VIDE. La passe de minuit (publish_batch_as)
+    la remettait, celle de 10h55 l'effaçait : trois des sept fiches mesurées avaient
+    retrouvé leur source, quatre non, selon laquelle des deux était passée en dernier.
+
+    Quatorze appelants de `publish_to_as` ; un seul héritait. Le mettre au point de
+    passage obligé est la seule façon qu'un quinzième n'oublie pas.
+
+    `conn` facultative : sans elle, lecture seule de la base (mode=ro). Une base
+    illisible ne bloque pas la publication — elle laisse la fiche telle quelle, comme
+    avant ce correctif, et le dit."""
+    tof = event.get("translation_of") or 0
+    if not tof or (event.get("url_source") or "").strip().startswith(_SCHEMAS_PUBLIABLES):
+        return
+    propre = conn is None
+    try:
+        if propre:
+            import sqlite3
+            db = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
+            conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
+    except Exception as e:  # noqa: BLE001 — une base absente ne doit pas bloquer la publication
+        log.warning("source de l'original %s illisible pour la traduction %s : %s",
+                    tof, event.get("id"), e)
+        return
+    finally:
+        if propre and conn is not None:
+            conn.close()
+    if not row:
+        return
+    parent = dict(row)
+    ancre = _source_publiable(parent, _is_radar(parent))
+    if ancre:
+        event["url_source"] = ancre
 
 
 def _recover_image(event: dict) -> str:
@@ -428,6 +492,15 @@ def _recover_image(event: dict) -> str:
     Renvoie une URL exploitable ou ""."""
     src = (event.get("url_source") or "").strip()
     if not src or _is_radar(event):
+        return ""
+    # TROISIÈME LECTEUR D'IMAGE DE PAGE, et le seul qui ne demandait pas à utils.pages
+    # s'il en avait le droit (23/09/2026). Les fiches de Plaisirs de Culture pointent
+    # toutes sur la même page-programme, chacune avec son ancre ; visuals et la moisson
+    # s'en abstenaient, pas ce repli-ci. Il y a pris le même graphisme pour 22 fiches,
+    # que la vignette a rendu en aplats noirs (transparence perdue, utils.card_image).
+    # Pas de juge vision ici : on s'abstient comme moisson_officielle.
+    from utils.pages import peut_illustrer
+    if not peut_illustrer(src, event.get("title", "") or ""):
         return ""
     try:
         from utils.images import fetch_content_image
@@ -783,8 +856,20 @@ def _build_payload(event: dict, skip_media: bool = False,
         except Exception:  # noqa: BLE001 — le registre est un CONFORT, jamais un prérequis
             pass
 
-    # Extrait : la réponse directe SEO si dispo, sinon le début de la description.
+    # Extrait : la réponse directe SEO si dispo, sinon le CHAPEAU DE L'ARTICLE publié,
+    # et la description brute seulement quand il n'y a pas d'article.
+    #
+    # L'ARTICLE AVANT LA DESCRIPTION (24/09/2026). Franck, capture du flux RSS : la page
+    # française de Palazzo Carignano résumée par « Palazzo Carignano, Torino — In
+    # occasione delle Giornate europee del patrimonio… ». La description est le texte
+    # BRUT de la source, dans SA langue ; l'article, lui, est rédigé ou traduit dans la
+    # langue de la page. Mesuré ce jour-là sur les 403 fiches à venir : 94 extraits dans
+    # l'autre langue que leur page, presque tous des descriptions de brochure italiennes
+    # sur des pages françaises (Plaisirs de Culture, Giornate). Le chapeau est déjà un
+    # résumé, écrit pour ça.
     excerpt = (event.get("seo_answer") or "").strip()
+    if not excerpt:
+        excerpt = _extrait_depuis_article(content)
     if not excerpt:
         # Cet extrait devient la meta description quand Yoast n'en a pas d'autre : sur
         # une fiche pas encore passée par seo_batch, c'est LUI que Google affiche. Le
@@ -873,6 +958,11 @@ def publish_to_as(event: dict, skip_media: bool = False,
         return None, "", ""
 
     auth = (wp_user, wp_pass)
+    # Sur une COPIE : l'appelant garde l'événement tel qu'il l'a lu (certains le
+    # réécrivent en base ensuite — `url_source` y reste le marqueur `translated:`, qui
+    # est UNIQUE et sert d'ancre à la paire).
+    event = dict(event)
+    heriter_source_traduction(event)
     payload = _build_payload(event, skip_media=skip_media, forcer_texte=forcer_texte)
 
     # Image à la une : on TÉLÉVERSE côté Python (fiable — le backoffice accède déjà à

@@ -528,21 +528,47 @@ def main(argv=None) -> int:
             # une commande dictée sans avoir lu ses options est une commande qui échoue
             # (faute 13 du journal du 08/09, sur `affiner_source`).
             from scripts.translate_events import main as translate_main
-            translate_main(["--retranslate", "--apply", *ids_orig])
+            # `sorts` : le SORT de chaque jumeau, tel que la retraduction l'a vécu
+            # ('done' / 'refus' / 'gele' / 'skip'). Voir plus bas pourquoi le versant seul
+            # ne suffit pas.
+            sorts: dict = {}
+            translate_main(["--retranslate", "--apply", *ids_orig], retour=sorts)
             # RAPPORTER LE RÉSULTAT, PAS L'INTENTION (règle 6) : on redemande à WordPress
             # de quel côté la jumelle est servie MAINTENANT. Le code de retour de la
             # retraduction ne dit rien de ça.
+            #
+            # ⚠️ MAIS LE VERSANT NE SUFFIT PAS — mesuré le 28/09/2026. Les paires
+            # [528→3547] et [1016→4146] sont sorties ✅ « versants fr / it » deux passages
+            # de suite : ce critère était DÉJÀ vrai avant la commande. Les deux pages
+            # (WP#2340, WP#3807) étaient servies côté italien avec un TITRE FRANÇAIS, et
+            # le site répondait « Fiche GELÉE — champs non écrits : title, content,
+            # excerpt, seo ». Un contrôle qui ne peut pas échouer n'est pas un contrôle :
+            # le ✅ demande donc les DEUX, le versant ET une retraduction réellement
+            # écrite.
             for orig, jum, cause in candidates:
                 co = cote_du_permalien(_lien_live(wp_url, int(orig["wp_post_id_as"])))
                 cj = cote_du_permalien(_lien_live(wp_url, int(jum["wp_post_id_as"])))
-                retraduites.append((orig, jum, cause, co, cj, co != cj and bool(co) and bool(cj)))
+                sort = sorts.get(int(jum["id"]), "?")
+                versants_ok = co != cj and bool(co) and bool(cj)
+                retraduites.append((orig, jum, cause, co, cj,
+                                    versants_ok and sort == "done", sort, versants_ok))
             reussies = [r for r in retraduites if r[5]]
-            print(f"\n   retraduites : {len(retraduites)}, dont {len(reussies)} désormais "
-                  f"servies de versants OPPOSÉS (relu sur WordPress après coup)")
-            for orig, jum, _c, co, cj, ok in retraduites:
+            print(f"\n   retraduites : {len(retraduites)}, dont {len(reussies)} réellement "
+                  f"réécrites ET servies de versants OPPOSÉS (relu sur WordPress après coup)")
+            for orig, jum, _c, co, cj, ok, sort, versants_ok in retraduites:
+                if ok:
+                    detail = ""
+                elif sort == "gele":
+                    detail = ("  — TEXTE GELÉ sur le site : la page a refusé la "
+                              "retraduction. Le rouvreur : gel_texte --degel "
+                              f"{jum['id']} --apply")
+                elif sort in ("refus", "error", "skip", "?"):
+                    detail = (f"  — la retraduction n'a rien écrit ({sort}) ; le versant, "
+                              "lui, est " + ("bon" if versants_ok else "toujours le même"))
+                else:
+                    detail = "  — toujours du même côté, le compteur a monté"
                 print(f"      {'✅' if ok else '⚠️ '} [{orig['id']}→{jum['id']}] "
-                      f"versants {co or '?'} / {cj or '?'}"
-                      + ("" if ok else "  — toujours du même côté, le compteur a monté"))
+                      f"versants {co or '?'} / {cj or '?'}{detail}")
             print("   Leur lien sera posé au passage suivant : `--retranslate` relie la")
             print("   paire, et si le liage a échoué la famille « lien absent » le reprendra.")
         else:

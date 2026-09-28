@@ -57,6 +57,7 @@ from utils import slack
 from utils import acronymes
 from utils.eventness import non_event_reason
 from utils.images import fetch_og_image
+from utils.sources import is_logo_image
 from scripts.dates import extract_time
 from scripts.scraper_events import init_db
 
@@ -308,7 +309,7 @@ Termine ta réponse par un UNIQUE bloc JSON valide, sans rien après, de la form
   "confiance": "<haute|moyenne|faible>",
   "a_verifier": ["<UNIQUEMENT un fait que TON ARTICLE AFFIRME et dont tu n'es pas sûr : nom peut-être mal orthographié, line-up ambigu (1 ou 2 artistes ?), date/horaire incertain, tarif annoncé mais non confirmé. Formule le DOUTE, pas le sujet : « gratuité annoncée mais non confirmée », jamais « tarifs ». JAMAIS D'ORTHOGRAPHE : les noms propres (personnes, lieux, groupes, œuvres) se RECOPIENT caractère pour caractère depuis la matière ci-dessus, accents et majuscules compris — ne les retranscris pas de mémoire, et ne demande jamais de confirmer une graphie. Si un nom n'est pas dans la matière, ne l'écris pas. INTERDIT : lister ce que la matière ne dit pas (tarifs non publiés, programme détaillé, capacités, âges, durées) — un article qui n'affirme rien ne peut pas se tromper, et personne ne peut vérifier une information que la source ne publie pas. Maximum DEUX. Liste vide [] si tu es sûr, et c'est le cas le plus fréquent>"],
   "article": {{
-    "titre": "<titre informatif et incarné, pas racoleur>",
+    "titre": "<titre informatif et incarné, pas racoleur. Il COMMENCE EN FRANÇAIS : un lecteur uniquement francophone doit comprendre de quoi il s'agit dès les premiers mots. Le nom officiel italien d'un événement ne vient en tête que s'il est vraiment connu du public francophone (Salone del Libro, Terra Madre, Festival delle Colline Torinesi) ; sinon, titre descriptif en français, et le nom officiel, s'il aide, APRÈS les deux-points et entre guillemets (« Le panthéon égyptien au Palazzo Mathis : « Egitto. Sulle tracce degli dei » »). Les noms de lieux se francisent quand l'usage existe (château, chapelle Saint-Joseph, Archives d'État, Saluces), les noms propres de personnes et de musées restent tels quels>",
     "chapo": "<1-2 phrases : l'essentiel (quoi/quand/lieu en bref) + l'angle. C'est la SEULE fois où ces faits de base sont énoncés en phrase complète — le corps ne les reformule PAS>",
     "corps": "<le lecteur a DÉJÀ LU le chapô : ne réécris PAS quoi/quand/où sous une autre forme (interdiction stricte d'une phrase-jumelle du chapô, même reformulée — ex. chapô 'le festival se poursuit jusqu'au 7 août' PUIS corps 'le festival se joue jusqu'au 7 août' est un DOUBLON À BANNIR). Le corps ENCHAÎNE directement sur du NOUVEAU : la PROGRAMMATION de cette édition (line-up, temps forts, horaires, nouveautés) — c'est la matière principale, pas un rappel. Termine au plus par UNE phrase de mise en perspective (jamais une reformulation des dates/lieu). On reste sur CET événement : AUCUN contexte historique/économique du lieu ou du territoire, AUCUNE montée vers l'universel, RIEN sur ce qui se passe ailleurs (ça, c'est Cultura Sabauda, pas ici). LONGUEUR : 300-380 mots (150→200 le 09/09, puis plancher porté à 300 le 10/09 : sous 300 mots Yoast classe la page « texte trop court », et c'est la cause la plus répandue du rouge sur la colonne SEO — mesuré sur deux fiches en ligne, 243 et 250 mots). Densité, pas délayage : plus de matière (programmation, horaires, temps forts, nouveautés), jamais des phrases pour faire du volume ; au plus un ou deux sous-titres '## ' si vraiment nécessaire. Phrases COURTES : UNE idée par phrase, 20 mots au plus, JAMAIS plus d'une subordonnée — une phrase qui enchaîne « qui…, avec…, suivie de… » se COUPE en deux ou trois phrases au point (mesuré le 09/09 sur 143 fiches en ligne : 22 mots par phrase en médiane, c'est trop). Voix ACTIVE : « deux commissaires portent l'exposition », pas « l'exposition est portée par ». Les connecteurs SIMPLES sont bienvenus quand ils aident à suivre (puis, ensuite, mais, car, donc, enfin, d'abord, aussi, surtout, avant, après) : vise environ UNE PHRASE SUR QUATRE, pas une sur trois — mesuré le 21/09 avec le moteur de Yoast, « mots de liaison » est le premier motif de rouge du site (235 fiches sur 389), parce que la consigne précédente disait « n'en mets pas pour en mettre » et que le modèle l'a lue comme une interdiction. Une sur quatre tient l'entre-deux voulu par Franck le 21/09 : assez pour que le texte se suive, pas assez pour qu'il sente la dissertation. Les connecteurs SCOLAIRES restent proscrits (« par ailleurs », « en effet », « force est de constater », « il convient de noter ») : le quota ne les rouvre PAS, il se remplit avec les simples ci-dessus. Un connecteur qui n'aide pas à lire reste du remplissage : mieux vaut trois phrases liées et une nue que quatre phrases appareillées de force. Phrases CONCRÈTES, de JOURNALISTE : on dit ce qui se passe, jamais ce que « ça raconte » (pas de « X n'est pas neutre », pas de fausse profondeur). GRAS UTILE : 3 à 5 expressions structurantes (tête d'affiche, temps fort, nouveauté), JAMAIS sur noms propres, lieux, dates ou chiffres. PAS de tiret cadratin (— ou –) : virgule, parenthèse, deux-points, point. Français soigné, aucun anglicisme (« programmes », pas « programs »), et AUCUN mot laissé dans une autre langue (un terme du billet comme « poltrona » se traduit : fauteuil/place — jamais recopié tel quel). N'écris PAS l'encadré pratique dans le corps — ni les dates/lieu/tarif, NI L'ACCÈS (parking, navette, réservation restaurant, contact accessibilité) : tout ça va dans « encadre », le site l'affiche nativement, le répéter en prose ferait doublon>",
     "programme": ["<UNE entrée par ligne de programme : jour/heure + intitulé (concert, séance, temps fort…). LISTE, jamais de la prose. Vide [] si l'événement n'a pas de programme/line-up dans la matière>"],
@@ -1531,10 +1532,75 @@ def enrich_event(ev: dict, material: str, client: anthropic.Anthropic, model: st
         log.warning("Pas de JSON pour '%s'", ev.get("title", "")[:50])
         return None
     try:
-        return json.loads(match.group())
+        objet = json.loads(match.group())
+        if not est_une_fiche(objet):
+            # 23/09 au soir : 5822 et 5828 ont rendu un JSON VALIDE sans clé « article »
+            # (seulement angle, contexte, infos pratiques, sources…). Sans le brut, impossible
+            # de dire si le modèle a omis l'article, l'a écrit ailleurs ou s'est arrêté —
+            # et la file les reprendra à l'identique. On le garde pour pouvoir trancher.
+            try:
+                _dump = ROOT / "logs" / f"enrich_brut_{ev['id']}.txt"
+                _dump.parent.mkdir(exist_ok=True)
+                _dump.write_text(f"# fiche {ev['id']} · JSON valide SANS article · "
+                                 f"stop_reason={message.stop_reason}\n\n{raw}", encoding="utf-8")
+                log.warning("[%s] JSON sans article — brut conservé : %s", ev.get("id"), _dump)
+            except OSError:
+                pass
+        return objet
     except json.JSONDecodeError as exc:
-        log.warning("JSON invalide pour '%s' : %s", ev.get("title", "")[:50], exc)
+        # « Extra data » (23/09/2026) : 4 fiches sur 23 d'un même lot perdues ainsi. La
+        # capture `\{.*\}` va de la PREMIÈRE accolade à la DERNIÈRE : le moindre texte
+        # à accolades écrit par le modèle APRÈS son objet fait échouer le tout, alors que
+        # l'objet lui-même est complet. On relit donc le premier objet entier, et on garde
+        # le brut sur disque pour savoir ce que le modèle ajoute.
+        objet = premier_objet_json(raw) if "Extra data" in str(exc) else None
+        try:
+            _dump = ROOT / "logs" / f"enrich_brut_{ev['id']}.txt"
+            _dump.parent.mkdir(exist_ok=True)
+            _dump.write_text(f"# fiche {ev['id']} · {exc}\n\n{raw}", encoding="utf-8")
+        except OSError:
+            _dump = None
+        if objet is not None:
+            log.warning("[%s] JSON suivi d'un texte en trop — premier objet retenu (brut : %s)",
+                        ev.get("id"), _dump)
+            return objet
+        log.warning("JSON invalide pour '%s' : %s (brut : %s)",
+                    ev.get("title", "")[:50], exc, _dump)
         return None
+
+
+def est_une_fiche(objet) -> bool:
+    """Un résultat de rédaction n'est une fiche que s'il porte un ARTICLE non vide.
+
+    23/09/2026 au soir : 5956 (Introd) et 5969 (Castello Gamba) étaient en base
+    `enrich_status='enriched'` avec un `enrich_data` SANS clé `article`. Le site affichait
+    donc le texte brut de la brochure, en italien, sous l'étiquette française — et la
+    traduction refusait leur jumelle faute d'article à traduire. 'enriched' les sortait de
+    la file de rédaction : un cul-de-sac (règle 3) que rien ne rouvrait. Un objet sans
+    article est désormais un ÉCHEC de rédaction ('error'), que la file reprend d'elle-même
+    après son délai."""
+    return (isinstance(objet, dict) and isinstance(objet.get("article"), dict)
+            and bool(objet["article"]))
+
+
+def premier_objet_json(texte: str):
+    """Le premier objet JSON COMPLET du texte qui est une FICHE (`est_une_fiche`), ce qui
+    le suit ignoré ; None s'il n'y en a pas. Chaque accolade ouvrante est essayée tour à
+    tour : un petit objet écrit AVANT la fiche (un exemple, une note entre accolades) ne
+    doit pas être pris pour elle — c'est ce qu'aurait fait la version du 23/09 au matin,
+    qui rendait le tout premier objet quel qu'il soit."""
+    texte = texte or ""
+    dec = json.JSONDecoder()
+    debut = texte.find("{")
+    while debut >= 0:
+        try:
+            objet, _fin = dec.raw_decode(texte[debut:])
+        except json.JSONDecodeError:
+            objet = None
+        if est_une_fiche(objet):
+            return objet
+        debut = texte.find("{", debut + 1)
+    return None
 
 
 _CHECKS_DDL = """
@@ -1978,7 +2044,8 @@ def revise_article(result: dict, panel: dict, ev: dict, material: str,
              "doit APPRENDRE quelque chose de réel.")
     revised = enrich_event(ev, material, client, model, court, extra_task=extra,
                            allow_web=allow_web, web_domains=web_domains)
-    return revised if (revised and revised is not API_ERROR) else result
+    # Une révision sans article ne remplace jamais un brouillon qui en a un (cf. est_une_fiche).
+    return revised if (revised and revised is not API_ERROR and est_une_fiche(revised)) else result
 
 
 def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -> str:
@@ -2014,9 +2081,16 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
         from urllib.parse import urlparse as _up0
         _src_host = _up0(ev.get("url_source", "") or "").netloc.lower()
         _src_agg = any(b in _src_host for b in _NOT_OFFICIAL)
-        if not (ev.get("url_image") or "").strip() and not _src_agg:
+        # utils.pages d'abord (23/09/2026) : ce lecteur-ci était le QUATRIÈME à prendre
+        # l'image d'une page sans demander s'il en avait le droit. Il a reposé l'affiche
+        # de Plaisirs de Culture, prise sur la page-programme partagée, sur « Viaggio alla
+        # scoperta della cultura Walser » le jour même où les trois autres l'avaient
+        # appris. Pas de juge vision ici : on s'abstient, comme moisson_officielle.
+        from utils.pages import peut_illustrer as _peut_illustrer
+        if (not (ev.get("url_image") or "").strip() and not _src_agg
+                and _peut_illustrer(ev.get("url_source", "") or "", ev.get("title", "") or "")):
             og = fetch_og_image(ev.get("url_source", ""))
-            if og:
+            if og and not is_logo_image(og):
                 conn.execute("UPDATE events_raw SET url_image=? WHERE id=?", (og, ev["id"]))
                 conn.commit()
                 ev["url_image"] = og
@@ -2175,6 +2249,11 @@ def _process_one_event(event, client, mode: str, pipeline_settings, stop_flag) -
             log.warning("[%d] erreur API — marqué 'api_error'", ev["id"])
             stop_flag.set()
             return "api_error"
+        if result is not None and not est_une_fiche(result):
+            log.warning("[%d] réponse sans article (clés : %s) — comptée comme un échec de "
+                        "rédaction, pas comme une fiche rédigée.", ev["id"],
+                        ", ".join(sorted(result)) if isinstance(result, dict) else type(result).__name__)
+            result = None
         if result is None:
             conn.execute(
                 "UPDATE events_raw SET enrich_status='error', "

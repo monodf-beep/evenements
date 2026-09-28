@@ -56,6 +56,15 @@ def _load(data) -> Image.Image:
     else:  # chemin
         img = Image.open(data)
     img = ImageOps.exif_transpose(img)          # respecte l'orientation photo
+    # TRANSPARENCE POSÉE SUR BLANC (23/09/2026). `convert("RGB")` jetait le canal alpha
+    # en gardant la couleur SOUS lui — noire, le plus souvent : 22 vignettes de Plaisirs
+    # de Culture sont parties en ligne en aplats noirs, un graphisme blanc sur fond
+    # transparent. Le blanc est le fond d'un PNG « sans fond » tel que son auteur le voit.
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        rgba = img.convert("RGBA")
+        fond = Image.new("RGB", rgba.size, (255, 255, 255))
+        fond.paste(rgba, mask=rgba.getchannel("A"))
+        return fond
     return img.convert("RGB")
 
 

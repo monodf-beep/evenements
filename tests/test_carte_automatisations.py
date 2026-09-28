@@ -113,20 +113,29 @@ else:
     passe("aucune fiche ne décrit un cron disparu")
 
 
-# ── 3. Les angles morts sont comptés ────────────────────────────────────────
-# Volontairement PAS une interdiction : ne pas surveiller un cron peut se décider.
-# Ce qui ne se décide pas, c'est de l'ignorer.
+# ── 3. Aucun cron sans surveillance ─────────────────────────────────────────
+# ÉTAT AU 2026-09-21 : zéro. Ce contrôle valait d'abord « les deux angles morts connus
+# sont nommés » — la carte en avait trouvé deux (completer_depuis_mail et yoast_scores)
+# que la liste du chien de garde ignorait. Ils y sont entrés le jour même, et cette
+# fixture a fait ce qu'on attend d'elle : elle est passée au ROUGE sur le changement,
+# au lieu de laisser la correction se perdre.
+#
+# Elle devient donc une interdiction, ce qui est plus fort et plus simple à tenir : un
+# cron ajouté sans sa ligne dans ATTENDUS fait échouer le commit. Si un jour on décide
+# sciemment de ne pas surveiller un cron — c'est possible, un cron éteint ou purement
+# décoratif — il faut l'inscrire ICI avec sa raison, pas juste le laisser passer.
 carte = A.carte()
 angles = [n["label"] for n in carte["angles_morts"]]
-attendus = {"Lieux et images des mails", "Notes Yoast"}
-if set(angles) != attendus:
-    rate(f"la liste des crons non surveillés a changé : {sorted(angles)} "
-         f"(attendu {sorted(attendus)})")
-    print("   → si c'est volontaire, mettre cette fixture à jour ET vérifier que la page "
-          "les affiche. Si c'est un oubli, ajouter la ligne à ATTENDUS dans "
-          "scripts/watchdog_crons.py.")
+TOLERES: set[str] = set()   # aucun pour l'instant, et c'est bien
+if set(angles) - TOLERES:
+    for a in sorted(set(angles) - TOLERES):
+        rate(f"« {a} » tourne en cron mais n'est surveillé par personne")
+    print("   → ajouter sa ligne (libellé, script, fichier de log, tolérance) à ATTENDUS "
+          "dans scripts/watchdog_crons.py. Attention : le nom du log suit la REDIRECTION "
+          "du crontab, pas le nom du script.")
 else:
-    passe(f"{len(angles)} crons non surveillés, nommés et affichés en haut de la page")
+    passe(f"aucun cron sans surveillance ({len(A.scripts_surveilles())} entrées au chien "
+          f"de garde)")
 
 
 # ── 4. Les contre-épreuves : le détecteur peut-il virer au rouge ? ───────────
@@ -194,6 +203,63 @@ if sans_rouvreur:
     rate(f"états terminaux sans rouvreur nommé : {sans_rouvreur}")
 else:
     passe("chaque état terminal décrit nomme qui le rouvre")
+
+
+# ── 6. La charge : les compteurs peuvent-ils valoir AUTRE CHOSE que zéro ? ───
+# « Un témoin ne prouve rien s'il n'a jamais été rouge » (docs/ERREURS_2026-09-14).
+# Sans base, la carte écrit « je ne peux pas le savoir » — c'est le bon comportement,
+# mais il ne démontre pas que le branchement fonctionne. On le démontre ici sur une base
+# JETABLE, jamais sur data/events.db : dix fiches retenues, sept datées, et l'étage
+# « Datés » DOIT sortir à 70 %, donc sous le seuil de 90 %, donc désigné comme goulot.
+import os as _os  # noqa: E402
+import sqlite3 as _sq  # noqa: E402
+
+with tempfile.TemporaryDirectory() as _tmp:
+    _bd = Path(_tmp) / "essai.db"
+    _avant = _os.environ.get("DB_PATH")
+    _os.environ["DB_PATH"] = str(_bd)
+    try:
+        from scripts.scraper_events import init_db as _init
+        _c = _sq.connect(_bd)
+        _init(_c)
+        for _col in ("date_tentatives INTEGER DEFAULT 0",):
+            try:
+                _c.execute("ALTER TABLE events_raw ADD COLUMN " + _col)
+            except _sq.OperationalError:
+                pass
+        for _i in range(10):
+            _c.execute(
+                "INSERT INTO events_raw (title,url_source,statut,llm_score,"
+                "date_event_start,lieu,ville,territoire,llm_categorie,url_image) "
+                "VALUES (?,?,'evaluated',7,?,'L','V','Savoie','Concerts','http://i/x.jpg')",
+                (f"E{_i}", f"http://x/{_i}", "2099-01-01" if _i < 7 else ""))
+        _c.execute("INSERT INTO events_raw (title,url_source,statut) "
+                   "VALUES ('P','http://p/1','pending')")
+        _c.commit()
+        _c.close()
+
+        _ch = A.charge()
+        if not _ch:
+            rate("la charge reste illisible alors qu'une base est disponible")
+        elif _ch["etages"]["date"]["pct"] != 70:
+            rate(f"l'étage « Datés » devrait valoir 70 %, il vaut "
+                 f"{_ch['etages']['date']['pct']} %")
+        elif not _ch.get("goulot") or _ch["goulot"]["cle"] != "date":
+            rate(f"le goulot devrait être « Datés », c'est "
+                 f"{(_ch.get('goulot') or {}).get('cle')}")
+        elif _ch["garages"]["pending"]["n"] != 1:
+            rate(f"le garage « en attente d'évaluation » devrait valoir 1, il vaut "
+                 f"{_ch['garages']['pending']['n']}")
+        else:
+            passe("contre-épreuve : sur une base nourrie, les files se comptent et le "
+                  "goulot est désigné")
+    except Exception as exc:  # noqa: BLE001
+        rate(f"la contre-épreuve de charge a échoué : {exc}")
+    finally:
+        if _avant is None:
+            _os.environ.pop("DB_PATH", None)
+        else:
+            _os.environ["DB_PATH"] = _avant
 
 
 print()

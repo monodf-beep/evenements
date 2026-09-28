@@ -55,12 +55,19 @@ FICHES = [
 ]
 for titre, desc, url, ville, territoire in FICHES:
     conn.execute(
+        # `enrich_status='enriched'` NE SUFFIT PAS : depuis le 22/09/2026 la sélection
+        # exige `enrich_data` non vide (« pas de publication sans un mot rédigé »), et
+        # c'est cette colonne-là qu'elle lit, pas le statut. Sans elle, les cinq fiches
+        # sortaient AVANT le portillon éditorial et la fixture annonçait « retenus [] » —
+        # rouge le 28/09, et verte sur rien si on avait comparé deux listes vides.
         "INSERT INTO events_raw (title, description, url_source, ville, territoire, "
         "lieu, statut, llm_score, llm_categorie, date_event_start, date_event_end, "
-        "url_image, enrich_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "url_image, enrich_status, enrich_data) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (titre, desc, url, ville, territoire, "Place centrale", "evaluated", 8,
          "Fêtes & Traditions", "2026-11-15", "2026-11-15",
-         "https://a.fr/img.jpg", "enriched"))
+         "https://a.fr/img.jpg", "enriched",
+         '{"article": {"titre": "%s", "chapo": "Un rendez-vous de plus.", '
+         '"corps": "Le texte redige de la fiche, qui tient lieu de matiere."}}' % titre))
 conn.commit()
 conn.close()
 

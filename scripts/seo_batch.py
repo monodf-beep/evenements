@@ -195,9 +195,24 @@ def _ensure_seo_pushed_col(conn) -> None:
     coûte une republication de texte en trop, jamais une perte. Après quoi la colonne
     est écrite par ce script seul, dans un format unique."""
     cols = {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
-    if "seo_pushed_at" in cols:
+    if "seo_pushed_at" not in cols:
+        conn.execute("ALTER TABLE events_raw ADD COLUMN seo_pushed_at TEXT")
+    # ⚠️ LE RATTRAPAGE NE SE DÉCLENCHE PLUS SUR L'ABSENCE DE LA COLONNE — 28/09/2026.
+    #
+    # `scripts.scraper_events.init_db` DÉCLARE désormais `seo_pushed_at` (elle a été
+    # ajoutée à la liste des colonnes le 22/09, en réparant les colonnes non déclarées).
+    # Le `return` d'avant sortait donc toujours, et le rattrapage était devenu du code
+    # mort : sur toute base neuve, une fiche publiée APRÈS le calcul de son SEO repartait
+    # en republication pour rien. Trouvé par la fixture, qui était rouge depuis.
+    #
+    # La condition porte maintenant sur ce qu'on veut vraiment savoir — « ce rattrapage
+    # a-t-il déjà eu lieu ? » — et pas sur un indice de surface (règle du journal des
+    # erreurs : conclure sur un indice au lieu d'aller lire la chose). En production la
+    # colonne est remplie depuis le 10/08, donc RIEN ne change là-bas.
+    deja = conn.execute("SELECT COUNT(*) FROM events_raw "
+                        "WHERE COALESCE(seo_pushed_at,'') <> ''").fetchone()[0]
+    if deja:
         return
-    conn.execute("ALTER TABLE events_raw ADD COLUMN seo_pushed_at TEXT")
     conn.execute(
         "UPDATE events_raw SET seo_pushed_at = seo_at "
         "WHERE seo_at IS NOT NULL AND published_as_date IS NOT NULL "

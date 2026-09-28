@@ -31,7 +31,8 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `148-cs-plan-du-site-et-villes-du-territoire.php` | #148 · CS - Plan du site généré et villes du territoire | front-end | oui | `ea7b320ce60d4cead610fdbb8d1520b9` (2026-09-06) |
 | `62-cs-header-compact-scroll.php` | #62 · CS · Header compact (scroll) | global | oui | `b899480a238c41ad673bc7b37d9f6ba2` (2026-09-07) |
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
-| `44-cs-home-allocateur-centralise.php` | #44 · CS - Home allocateur centralisé (dedup fiable + langue + territoire) | front-end | oui | `d63d864cc2fa09f7ba6fa093bad029c7` (2026-09-07) |
+| `44-cs-home-allocateur-centralise.php` | #44 · CS · Anti-doublon home (allocateur centralisé) | global | oui | `818cf5099b143865b17c193203f3396f` (2026-09-24 — la copie du 07/09 avait manqué les retouches des 08-09/09) |
+| `77-cs-ne-pas-cacher-colonnes-vides.php` | #77 · CS - Ne pas cacher colonnes vides desktop (CSS de la home : colonnes, plafonds mobile/ordinateur d'« À la une » et « 7 prochains jours ») | front-end | oui | `11009c6e4b4764c04523a820de2927dc` (2026-09-24) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
 capture de `/explore/savoie/` (via l'ancien /explore/) : la Foire de Savoie apparaissait

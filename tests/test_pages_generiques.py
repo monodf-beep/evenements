@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from utils.pages import (est_racine, est_page_generique,  # noqa: E402
-                         site_est_evenement, peut_illustrer)
+                         site_est_evenement, peut_illustrer, ancre_dans_une_liste)
 
 echecs = 0
 
@@ -107,6 +107,32 @@ _check("un titre fait QUE de millésimes ne vaut pas exception",
 _check("non-URL → jamais générique, et illustrable (l'appelant décide)",
        not est_page_generique("gmail:abc") and peut_illustrer("gmail:abc", "Peu importe"))
 _check("chaîne vide → pas de faux positif", not est_page_generique("") and not est_racine(""))
+
+print("\n──── une ancre dans une page-programme (23/09, Plaisirs de Culture) ────")
+PDC = "https://valledaostaheritage.com/events/plaisirs-de-culture-2026/"
+for ancre, titre in (
+    ("oltre-l-affresco-le-sorprese-nel-restauro-del-castello-di-issogne",
+     "Oltre l'affresco : les coulisses du restauro du château d'Issogne"),
+    ("aosta-si-rigenera-tra-restauro-storico-e-futuro-urbano",   # titre FR, ancre IT
+     "Aoste se régénère entre restauration historique et avenir urbain"),
+):
+    _check(f"#{ancre[:30]}… : n'illustre pas", ancre_dans_une_liste(PDC + "#" + ancre)
+           and not peut_illustrer(PDC + "#" + ancre, titre))
+_check("FRONTIÈRE : la même page SANS ancre reste illustrable (elle n'est pas générique)",
+       peut_illustrer(PDC, "Plaisirs de Culture en Vallée d'Aoste"))
+_check("FRONTIÈRE : une ancre de section (#billetterie) ne retire rien",
+       not ancre_dans_une_liste("https://theatre.fr/spectacle-x/#billetterie")
+       and peut_illustrer("https://theatre.fr/spectacle-x/#billetterie", "Spectacle X"))
+for court in ("artigiani-del-guscio", "tissus-d-histoire", "memorie-d-archivio"):
+    # Les trois ancres courtes que le seuil de quatre mots laissait passer (23/09) :
+    # la première a reçu logo2025.webp en vignette.
+    _check(f"ancre courte #{court} : n'illustre pas non plus",
+           ancre_dans_une_liste(PDC + "#" + court))
+_check("FRONTIÈRE : une ancre d'un seul mot (#programme) ne retire rien",
+       not ancre_dans_une_liste("https://festival.fr/edition-2026/#programme"))
+_check("FRONTIÈRE : un « # » vide ne compte pas", not ancre_dans_une_liste("https://x.fr/page#"))
+_check("une ancre ne rachète pas une page qui porte le nom de l'événement",
+       not peut_illustrer("https://doujador.it/#programma-della-douja-d-or-2026", "Douja d'Or"))
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)

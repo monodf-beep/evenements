@@ -14,7 +14,7 @@ caractères (avant le « … plus »), date/lieu explicites, CTA « enregistre /
 construit ailleurs (utils.social_image) — ici, le texte.
 
 Un second mode, `caption_ai()`, réécrit la légende via LLM dans la voix éditoriale de
-la maison (utils.voix, alimentée depuis Obsidian) + le ton Enrico Nos Alpes (factuel,
+la maison (utils.voix, alimentée depuis Obsidian) + le ton de référence (factuel,
 sobre, aucune emphase) + les principes anti-signes-IA (skill humanizer : pas de tiret
 cadratin, pas de vocabulaire IA générique, CTA jamais recopié mot pour mot). C'est un
 appel LLM PAYANT, à la demande (bouton), jamais automatique — cf. app.reseaux_rewrite.
@@ -317,7 +317,7 @@ def dm_keyword(title: str) -> str:
 _CAPTION_AI_RULES = """Tu écris la légende Instagram d'UN événement pour un compte
 territorial d'Agenda Sabauda (agenda culturel alpin sabaud). Réponds en {lang_full}.
 
-RÈGLES DE FOND (voix Enrico Nos Alpes — factuelle, sobre, jamais promotionnelle) :
+RÈGLES DE FOND (voix de référence — factuelle, sobre, jamais promotionnelle) :
 - 1ʳᵉ ligne = l'accroche, DANS LES 125 PREMIERS CARACTÈRES : ce qui se passe, où,
   éventuellement quand — pas un slogan. Voix active, phrase concrète.
 - Jamais de lieu cité sans être situé (ex. « à Chambéry, en Savoie »), si l'info est
@@ -360,7 +360,7 @@ _LANG_FULL = {"fr": "français", "it": "italien"}
 
 
 def caption_ai(event: dict, lang: str, client, model: str) -> str | None:
-    """Réécrit la légende via LLM (voix maison + Enrico Nos Alpes + anti-signes-IA).
+    """Réécrit la légende via LLM (voix maison + voix de référence + anti-signes-IA).
     Appel PAYANT — à la demande uniquement (bouton back-office), jamais en boucle.
     Renvoie None si la réponse est illisible ; les erreurs API remontent à l'appelant
     (la route les gère, comme pour utils.seo.optimize_seo)."""

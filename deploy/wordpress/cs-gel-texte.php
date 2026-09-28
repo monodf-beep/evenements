@@ -6,7 +6,7 @@ Description: Empêche le pipeline (route cs/v1/event) d'écraser le TITRE, le CO
   Cowork, n'importe qui d'autre dans wp-admin). Tient à côté un JOURNAL par fiche —
   qui a écrit quoi, quand — visible dans l'éditeur et lisible par le back-office.
 Author: Cultura Sabauda
-Version: 1.0
+Version: 1.3
 
   D'OÙ ÇA VIENT — Franck, 2026-09-21 : « si cowork a travaillé le seo, on ne doit pas
   pouvoir revenir dessus avec le cron ». Et le rapport de Cowork le même jour : « la
@@ -522,6 +522,16 @@ function cs_gel_metabox($post) {
                . ' (' . esc_html($etat['motif']) . ').</em></p>';
         }
     }
+    // NOTE LIBRE (24/09/2026, Franck : « si je change moi-même quelque chose, au moins je
+    // le mentionne »). Le journal ne savait dire d'un passage humain que « Enregistrement
+    // depuis l'éditeur WordPress » — QUI, jamais QUOI ni POURQUOI. Le cron et les sessions
+    // Claude/Cowork écrivent déjà ce qu'ils ont fait ; l'humain, lui, n'avait pas de stylo.
+    // AJOUT SEULEMENT : les entrées passées ne se réécrivent pas. Un journal qu'on peut
+    // corriger après coup ne prouve plus rien — une erreur se rectifie par une entrée de plus.
+    echo '<p style="margin-top:.8em"><label for="cs_journal_note"><strong>Ajouter une note</strong></label>'
+       . '<textarea id="cs_journal_note" name="cs_journal_note" rows="3" style="width:100%" '
+       . 'placeholder="Ce que vous avez changé, et pourquoi (ex. horaire corrigé : 22 h, source mairie)"></textarea>'
+       . '<span class="description">Enregistrée à votre nom en cliquant « Mettre à jour ».</span></p>';
     $j = array_reverse(cs_gel_journal_lire($post->ID));
     if (!$j) {
         echo '<p><em>Aucun passage enregistré pour l\'instant.</em></p>';
@@ -541,10 +551,18 @@ add_action('save_post', 'cs_gel_sauver_metabox', 10, 2);
 function cs_gel_sauver_metabox($post_id, $post) {
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) { return; }
     if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) { return; }
-    if ($post->post_type !== CS_GEL_TYPE) { return; }
+    if (!in_array($post->post_type, array(CS_GEL_TYPE, 'post', 'page'), true)) { return; }
     $nonce = isset($_POST['cs_gel_nonce']) ? sanitize_text_field(wp_unslash($_POST['cs_gel_nonce'])) : '';
     if (!$nonce || !wp_verify_nonce($nonce, 'cs_gel_box')) { return; }
     if (!current_user_can('edit_post', $post_id)) { return; }
+
+    // La note libre, sur tous les types qui portent l'encadré (événements, articles, pages).
+    $note = isset($_POST['cs_journal_note'])
+          ? trim(sanitize_textarea_field(wp_unslash($_POST['cs_journal_note']))) : '';
+    if ($note !== '') {
+        cs_gel_journal_ajouter($post_id, wp_get_current_user()->user_login, $note);
+    }
+    if ($post->post_type !== CS_GEL_TYPE) { return; }
 
     $veut = !empty($_POST['cs_gel_actif']);
     $a    = (string) get_post_meta($post_id, CS_GEL_META_GEL, true) !== '';
@@ -552,7 +570,7 @@ function cs_gel_sauver_metabox($post_id, $post) {
         cs_gel_poser($post_id, wp_get_current_user()->user_login, 'case cochée dans l\'éditeur');
     } elseif (!$veut && $a) {
         cs_gel_lever($post_id, wp_get_current_user()->user_login, 'case décochée dans l\'éditeur');
-    } elseif (!$veut) {
+    } elseif (!$veut && $note === '') {
         // Ni gelée ni demandée gelée : la fiche vient d'être enregistrée à la main, donc
         // son texte n'est plus celui du pipeline. On NE gèle pas (l'opérateur n'a rien
         // demandé) mais on garde la trace — c'est la prochaine lecture d'empreinte qui

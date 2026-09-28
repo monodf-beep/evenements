@@ -153,6 +153,12 @@ SLACK_DIGEST=1
 # MÊME À ZÉRO, avec le nombre d'examinées à côté : un zéro sur une file vide et un zéro
 # sur une requête cassée ont la même tête. Lecture seule, aucun appel LLM, aucun crédit.
 55 9 * * * cd /root/evenements && .venv/bin/python -m scripts.audit_langue_polylang --slack >> logs/audit_langue_polylang.log 2>&1
+# 24/09/2026 — le TEXTE publié est-il dans la langue de sa page ? L'audit ci-dessus compare
+# la langue demandée en base au versant où WordPress range la page ; il ne relit jamais le
+# texte. Le 23/09, cinq paires retouchées à la main (Cowork) avaient leurs deux textes
+# inversés, gelées donc hors de portée des crons, et invisibles de tous les audits.
+# Lecture seule (API REST publique, une fiche à la fois, ~2 min), une ligne au bilan même à zéro.
+57 9 * * * cd /root/evenements && .venv/bin/python -m scripts.audit_langue_texte --slack >> logs/audit_langue_texte.log 2>&1
 # SEO quotidien 10h30 (après le lot du jour) — republie automatiquement ce qui était déjà
 # en ligne (sinon le SEO reste invisible en base).
 # CAP 10 → 25 ET PÉRIMÈTRE ÉLARGI LE 2026-09-09. Jusque-là : score ≥ 7 seulement, et
