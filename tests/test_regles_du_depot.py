@@ -276,9 +276,23 @@ try:
 except (OSError, subprocess.CalledProcessError):
     _suivis = []
 
+# LA SEULE EXCEPTION, et elle se justifie en une phrase : CLAUDE.md est le fichier qui
+# POSE l'interdit (« Ne jamais écrire le nom … », arbitrage du 22/09), et une règle doit
+# pouvoir nommer ce qu'elle proscrit — sinon la session suivante ne sait pas quel mot
+# éviter avant de l'avoir écrit. Ce contrôle-ci peut se permettre de cacher le nom (il
+# l'écrit à l'envers, cf. ci-dessus) parce que personne ne le lit pour s'informer ; la
+# doctrine, elle, est lue pour ça.
+#
+# ⚠️ CE QUE CETTE EXCEPTION COÛTE, et il faut le savoir : le contrôle ne surveille plus
+# CLAUDE.md du tout. Une occurrence qui s'y ajouterait ailleurs que dans la règle
+# elle-même passerait inaperçue. Mesuré le 28/09 avant de l'écrire : CLAUDE.md était le
+# DERNIER fichier suivi à porter le nom — les 27 endroits annoncés le 22/09 ont été
+# nettoyés depuis. L'exception ne couvre donc qu'un reste connu, pas un chantier ouvert.
+_EXCEPTIONS = {"CLAUDE.md"}
+
 _porteurs = []
 for _rel in _suivis:
-    if not _rel:
+    if not _rel or _rel in _EXCEPTIONS:
         continue
     _p = ROOT / _rel
     try:

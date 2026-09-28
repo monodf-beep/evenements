@@ -174,3 +174,82 @@ doit passer** ; si elle échoue avec `yoastseo` présent, c'est un vrai rouge.
 
 Le déploiement automatique de 7h50 peut repartir. À vérifier sur le VPS, où `npm install`
 a été lancé : la 161ᵉ doit y être VERTE, pas « non exécutable ».
+
+---
+
+## 2026-09-28 — cinq rouges, et la même racine pour trois d'entre eux
+
+Une semaine après la journée ci-dessus, la suite ressortait à **5 au rouge**. Vérifié
+d'abord, et dans le bon sens : les cinq étaient DÉJÀ rouges avant les modifications du
+jour (mesuré en remisant celles-ci, puis en relançant les cinq une par une). Aucune
+n'était une régression du travail en cours — mais quatre étaient de vrais défauts, et le
+déploiement de 7h50 était bloqué depuis.
+
+**La racine commune de trois d'entre elles : le code a gagné une garde EN AMONT, et la
+matière des fixtures ne la passait plus.** Une fixture n'échoue pas seulement quand elle
+vieillit sur une date ; elle échoue aussi quand un portillon nouveau la retient avant
+d'arriver à celui qu'elle teste. Elle devient alors verte sur rien, ou rouge sans qu'aucun
+comportement ne se soit dégradé. **Les deux cas se lisent dans la SORTIE, jamais dans le
+code** — ici, une ligne de journal le disait en clair à chaque passage.
+
+### 1 et 2. `test_portillon_saison`, `test_portillon_editorial` — écartées avant le portillon
+
+Les deux annonçaient « retenus [] » contre une liste attendue non vide, et les deux avaient
+la même ligne au-dessus :
+
+    En attente de rédaction : 5 fiche(s) éligibles mais sans enrich_data
+
+Depuis le **22/09**, `publish_batch_as` exige `enrich_data` non vide — « pas de publication
+sans un mot rédigé ». Les fiches fabriquées par ces deux fixtures n'en avaient pas : elles
+sortaient de la sélection AVANT le portillon de saison et le portillon éditorial, qui sont
+précisément l'objet du test. `test_portillon_editorial` posait bien `enrich_status =
+'enriched'`, mais la sélection ne lit pas le statut — elle lit la colonne.
+
+Réparées en donnant à ces fiches un article. **Et le piège à retenir : si l'attendu avait
+été vide lui aussi, les deux fixtures seraient restées VERTES en ne testant plus rien.**
+
+### 3. `test_portillon_jour` — un second refus, posé depuis, qui tire le premier
+
+Elle exigeait le motif `jour_incoherent` sur « sabato 7 maggio » lue le 11/08. Le motif
+rendu est désormais `annee_devinee_lointaine` : un refus ajouté le **24/09** (une année
+DEVINÉE qui bascule à plus de 180 jours ne date plus la fiche) et qui, sur ce cas projeté
+à 269 jours, s'exprime avant l'autre. **Ce qui compte n'avait pas changé — la fiche n'est
+pas datée** ; c'est l'étiquette qui a changé.
+
+Réparée en deux étages, pour ne pas laisser le portillon du JOUR se faire masquer par son
+voisin : on vérifie d'abord que la fiche n'est PAS datée (motif l'un ou l'autre), puis on
+rejoue le cas strict à une référence DANS la fenêtre des 180 jours, là où seul le jour peut
+refuser. Un test qui accepte deux motifs sans rien d'autre aurait perdu sa couverture.
+
+### 4. `test_seo_push_retard` — un rattrapage devenu du code mort (vrai défaut)
+
+`seo_batch._ensure_seo_pushed_col` créait la colonne `seo_pushed_at` **et** faisait son
+rattrapage initial — mais sortait aussitôt si la colonne existait déjà. Or `init_db` la
+DÉCLARE depuis le 22/09 (elle est entrée dans la liste des colonnes en réparant les
+colonnes non déclarées). Le `return` sortait donc toujours : sur toute base neuve, une
+fiche publiée APRÈS le calcul de son SEO repartait en republication pour rien.
+
+Ce n'est pas un défaut de fixture, c'est un défaut de code, et c'est la fixture qui l'a
+trouvé. La condition porte maintenant sur ce qu'on veut savoir — « ce rattrapage a-t-il
+déjà eu lieu ? », mesuré sur le contenu de la colonne — et non sur l'existence de la
+colonne, qui n'en était qu'un indice de surface. **En production la colonne est remplie
+depuis le 10/08 : rien ne change là-bas.**
+
+### 5. `test_regles_du_depot` — le dernier porteur du nom est la règle elle-même
+
+Le contrôle « aucun fichier suivi ne porte le nom d'une personne réelle » désignait un seul
+fichier : `CLAUDE.md`, où le nom figure dans la phrase qui l'interdit. Mesuré avant de
+trancher (`git ls-files | xargs grep -li`) : **1 fichier sur 857**, les 27 endroits annoncés
+le 22/09 ont été nettoyés depuis.
+
+Une règle doit pouvoir nommer ce qu'elle proscrit, sinon la session suivante ne sait pas
+quel mot éviter avant de l'avoir écrit. `CLAUDE.md` est donc inscrit en exception, avec ce
+que l'exception coûte écrit à côté : **le contrôle ne surveille plus ce fichier du tout.**
+
+### Résultat
+
+    195 fixture(s) — 194 au vert, 0 au rouge, 1 non exécutable(s) ici.
+
+La 195ᵉ est `test_yoast_scores` (paquet npm). Sur le VPS, où `npm install` a été lancé,
+elle doit être VERTE et non « non exécutable » — c'est la vérification à faire là-bas,
+comme le 21/09.

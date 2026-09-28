@@ -37,13 +37,21 @@ AUJOURDHUI = date(2026, 8, 5)  # même date que le système, pour des écarts li
 
 def _ins(conn, eid, titre, jours_avant_debut, desc="Un bel événement."):
     debut = (AUJOURDHUI + timedelta(days=jours_avant_debut)).isoformat()
+    # `enrich_data` NON VIDE, et ce n'est pas un détail de remplissage : depuis le
+    # 22/09/2026 la sélection de publish_batch_as exige « pas de publication sans un mot
+    # rédigé ». Sans lui, les six fiches de cette fixture étaient écartées AVANT le
+    # portillon de saison, et le test annonçait « retenus [] » — vert sur rien. C'est la
+    # dérive normale d'une fixture : le code a gagné une garde en amont, la matière du
+    # test ne la passait pas. (Constaté le 28/09, la fixture était rouge.)
     conn.execute(
         "INSERT INTO events_raw (id, title, description, url_source, ville, "
         "territoire, lieu, statut, llm_score, llm_categorie, date_event_start, "
-        "date_event_end, url_image) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "date_event_end, url_image, enrich_data) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (eid, titre, desc, f"https://a.fr/{eid}", "Chambéry", "Savoie",
          "Place centrale", "evaluated", 8, "Musique", debut, debut,
-         "https://a.fr/img.jpg"))
+         "https://a.fr/img.jpg",
+         '{"article": {"titre": "%s", "chapo": "Un rendez-vous de plus.", '
+         '"corps": "Le texte redige de la fiche, qui tient lieu de matiere."}}' % titre))
 
 
 conn = sqlite3.connect(tmp)
