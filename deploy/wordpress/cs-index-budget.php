@@ -135,6 +135,30 @@ function cs_ib_est_vue_periode($id) {
 }
 }
 
+if (!defined('CS_IB_MIN_TEXTE')) { define('CS_IB_MIN_TEXTE', 400); }
+
+if (!function_exists('cs_ib_a_son_texte')) {
+/**
+ * Vrai si la page porte un texte editorial A ELLE, au-dela du shortcode.
+ *
+ * Le seuil (400 caracteres de texte nu, ~60 mots) existe pour qu'une ebauche de deux
+ * phrases ne rouvre pas l'index : le budget d'exploration que ce fichier protege ne doit
+ * pas etre repris par des pages a peine commencees. Les textes rediges font 2 500 a
+ * 3 000 caracteres, ils passent largement.
+ *
+ * Le marqueur <!--more--> (qui coupe le chapeau du corps, snippet 61) est retire avant
+ * de mesurer : une page qui ne porterait QUE lui n'a toujours pas de texte.
+ */
+function cs_ib_a_son_texte($id) {
+    $c = (string) get_post_field('post_content', $id);
+    if ($c === '') { return false; }
+    $c = preg_replace('/<!--.*?-->/s', ' ', $c);
+    $c = preg_replace('/\[[^\]]*\]/', ' ', $c);
+    $c = trim(preg_replace('/\s+/u', ' ', wp_strip_all_tags($c)));
+    return mb_strlen($c) >= CS_IB_MIN_TEXTE;
+}
+}
+
 if (!function_exists('cs_ib_hors_index')) {
 /**
  * Vrai si la page courante (ou $id) n'a pas de contenu propre à faire indexer.
@@ -155,7 +179,16 @@ function cs_ib_hors_index($id = 0) {
     }
 
     // 3. Vue « période » d'un hub : /que-faire-a-turin/ce-week-end/ et ses variantes.
-    if ($type === 'page') { return cs_ib_est_vue_periode($id); }
+    //    SAUF si elle a fini par avoir un texte a elle. Ajoute le 2026-09-21, sur
+    //    arbitrage de Franck : « c'est nous qui l'avons mis en noindex parce que Google
+    //    referencait mal, mais en retravaillant on peut remettre en index ».
+    //    LE CRITERE DE CE FICHIER N'A PAS CHANGE D'UN MOT : il sort de l'index les pages
+    //    « qui n'ont pas de contenu a elles ». Le 09/09 aucune vue periode n'en avait,
+    //    elles ne portaient que le shortcode. Depuis le 21/09 on leur en ecrit, et une
+    //    page redigee n'est plus un filtre de sa page parente.
+    //    LE TEXTE HERITE NE COMPTE PAS : get_post_field ne rend que le contenu PROPRE de
+    //    la page ; l'heritage depuis le hub parent se fait au rendu (snippet 61).
+    if ($type === 'page') { return cs_ib_est_vue_periode($id) && !cs_ib_a_son_texte($id); }
     return false;
 }
 }
@@ -221,7 +254,12 @@ add_filter('wpseo_exclude_from_sitemap_by_post_ids', function ($ids) {
             "SELECT ID FROM {$wpdb->posts}
              WHERE post_type = 'page' AND post_status = 'publish' AND post_parent > 0");
         foreach ((array) $pages as $pid) {
-            if (cs_ib_est_vue_periode((int) $pid)) { $hors[] = (int) $pid; }
+            // cs_ib_hors_index, et non cs_ib_est_vue_periode : le 2026-09-21, l'exception
+            // « la page a un texte a elle » a ete ajoutee a cs_ib_hors_index SEULEMENT. Mesure
+            // le 28/09 : les 102 vues periode retravaillees etaient indexables (balise
+            // robots « index ») mais ABSENTES du sitemap — exactement la divergence que le
+            // commentaire ci-dessus annoncait. Une seule question, une seule fonction.
+            if (cs_ib_hors_index((int) $pid)) { $hors[] = (int) $pid; }
         }
 
         // Lieux : ceux qu'AUCUN événement à venir ne réclame.
