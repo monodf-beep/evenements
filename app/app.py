@@ -2888,6 +2888,25 @@ def embed_widget_iframe():
     return resp
 
 
+# ---------- Image du bilan SEO du lundi (scripts/seo_hebdo.py) ----------
+# PUBLIQUE, sans @require_auth : Slack reçoit nos messages par webhook, qui ne sait pas
+# téléverser de fichier — il va chercher l'image à son adresse, sans être connecté.
+# Étroite exprès : un seul dossier, un seul motif de nom (date + empreinte), rien d'autre
+# n'est servi. Ce qu'on y lit est déjà ce que le message affiche dans le canal.
+_RAPPORT_PUBLIC = re.compile(r"^seo-hebdo-\d{4}-\d{2}-\d{2}-[0-9a-f]{8}\.gif$")
+_DOSSIER_RAPPORTS = ROOT / "data" / "rapports_publics"   # = seo_hebdo.DOSSIER_PUBLIC
+
+
+@app.route("/embed/rapports/<nom>")
+def embed_rapport_public(nom):
+    dossier = _DOSSIER_RAPPORTS
+    if not _RAPPORT_PUBLIC.match(nom) or not (dossier / nom).is_file():
+        return Response("introuvable", status=404, mimetype="text/plain")
+    resp = Response((dossier / nom).read_bytes(), mimetype="image/gif")
+    resp.headers["Cache-Control"] = "public, max-age=604800, immutable"
+    return resp
+
+
 def _embed_accent(raw):
     """Valide une couleur hex fournie par le partenaire (sinon accent par défaut)."""
     raw = (raw or "").strip()
