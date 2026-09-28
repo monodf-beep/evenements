@@ -146,6 +146,29 @@ def _ranger_local(conn, couples, gele: bool, motif: str) -> "tuple[int, list[int
     return n, orphelines
 
 
+def postes_geles() -> "set[int] | None":
+    """Les numéros de post WP dont le SITE dit le texte gelé — ou None si la route n'a pas
+    répondu (mu-plugin absent, réseau, 401).
+
+    None ET SURTOUT PAS set() : « aucune fiche gelée » et « on ne sait pas » ne se
+    confondent pas (CLAUDE.md, le zéro qui ne dit pas d'où il vient). L'appelant qui
+    reçoit None doit continuer sans bloquer et le DIRE, jamais conclure que rien n'est gelé.
+
+    Une seule définition de « l'ensemble des gelés » dans le dépôt : `cmd_sync` et
+    `scripts.translate_events` lisent la même — deux détecteurs pour la même chose
+    finissent toujours par diverger (docs/ERREURS_2026-09-08.md)."""
+    data = _appel("GET", "/cs/v1/gel")
+    if data is None:
+        return None
+    out: set[int] = set()
+    for f in data.get("fiches") or []:
+        try:
+            out.add(int(f["id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
 def cmd_liste(conn, args) -> int:
     data = _appel("GET", "/cs/v1/gel")
     if data is None:
@@ -168,10 +191,9 @@ def cmd_liste(conn, args) -> int:
 
 def cmd_sync(conn, args) -> int:
     """Site → base. Sens unique et volontaire : le site décide, la base recopie."""
-    data = _appel("GET", "/cs/v1/gel")
-    if data is None:
+    en_ligne = postes_geles()
+    if en_ligne is None:
         return 1
-    en_ligne = {int(f["id"]) for f in (data.get("fiches") or [])}
     locales = {int(r[1]): int(r[0]) for r in conn.execute(
         "SELECT id, wp_post_id_as FROM events_raw "
         "WHERE COALESCE(wp_gel_at,'') <> '' AND COALESCE(wp_post_id_as,0) > 0")}

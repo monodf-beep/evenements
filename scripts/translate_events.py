@@ -54,6 +54,7 @@ from scripts.scraper_events import init_db
 from scripts.publisher_as import (publish_to_as, wp_original_est_en_ligne,
                                   wp_site_joignable)
 from scripts.link_translations_as import _post_link
+from scripts.gel_texte import postes_geles
 # Portillon de justesse du titre traduit (C2 de docs/GO_NOGO_TRADUCTION.md). Défini dans
 # batch_report parce que c'est là que vit la doctrine des contrôles de justesse et la
 # seule définition du dépôt de « racine commune » — deux copies divergeraient.
@@ -782,14 +783,39 @@ def _retranslate_one(tw: dict, args, client, voix) -> str:
         upd = dict(tw)
         upd.update({"title": tr["title"], "description": tr["description"],
                     "article_title": tr_art_title, "enrich_data": tr_enrich, "force_lang": tgt})
-        publish_to_as(upd, skip_media=True)
+        # CONTRE-ÉPREUVE APRÈS COUP (CLAUDE.md : « un garde-fou posé dans un chemin de
+        # réécriture doit avoir sa contre-épreuve APRÈS coup »). Le portillon de
+        # `_retranslate` lit la liste des gelés AVANT ; ici on lit ce que le site a
+        # RÉELLEMENT fait de notre écriture. Les deux sont nécessaires : la liste peut
+        # être muette (401, mu-plugin absent) ou la fiche avoir été gelée entre-temps.
+        #
+        # MESURÉ LE 28/09 : les jumeaux 3547 (WP#2340) et 4146 (WP#3807) ont été
+        # « re-traduits ✅ » alors que le site répondait « Fiche GELÉE — champs non
+        # écrits : title, content, excerpt, seo ». Les deux pages sont restées EN
+        # FRANÇAIS côté italien, et la base, elle, portait le texte italien : le succès
+        # annoncé était l'intention, pas le résultat (règle 6).
+        reponse: dict = {}
+        publish_to_as(upd, skip_media=True, retour=reponse)
+        gel = reponse.get("gel") or {}
+        bloques = [c for c in (gel.get("champs") or [])
+                   if c in ("title", "content", "excerpt", "seo")]
+        if gel.get("gele") and bloques:
+            log.error("[jumeau %s] TEXTE NON PUBLIÉ — la fiche WP#%s est GELÉE (depuis %s) "
+                      "et le site a refusé : %s. La base porte désormais la traduction, la "
+                      "page NON : elles divergent. Pour trancher : "
+                      ".venv/bin/python -m scripts.gel_texte --degel %s --apply  puis  "
+                      ".venv/bin/python -m scripts.publish_batch_as --update --ids %s "
+                      "(0 appel API — le texte est déjà en base).",
+                      tw["id"], tw.get("wp_post_id_as"), gel.get("depuis") or "?",
+                      ", ".join(bloques), tw["id"], tw["id"])
+            return "gele"
         log.info("[jumeau %s] re-traduit (%s) : %s", tw["id"], tgt, tr["title"][:50])
         return "done"
     finally:
         conn.close()
 
 
-def _retranslate(args, client, voix) -> int:
+def _retranslate(args, client, voix, retour: "dict | None" = None) -> int:
     """RE-TRADUIT le jumeau EXISTANT des ids ORIGINAUX donnés : régénère titre + description
     + article (enrich_data) depuis l'original avec les règles courantes et MET À JOUR la fiche
     traduite en place (garde son id, son wp_post_id_as → update WP, sa liaison Polylang).
@@ -830,6 +856,46 @@ def _retranslate(args, client, voix) -> int:
         sains.append(tw)
     twins = sains
     conn.close()
+
+    # ⚠️ NE JAMAIS RE-TRADUIRE UNE FICHE DONT LE SITE A GELÉ LE TEXTE — 28/09/2026.
+    #
+    # CE QUI S'EST PASSÉ. Les jumeaux 3547 et 4146 ont été re-traduits deux fois de suite
+    # avec un ✅ à chaque passage : le contrôle final ne regardait que le VERSANT, qui
+    # était déjà bon. Le site, lui, répondait « Fiche GELÉE — champs non écrits : title,
+    # content, excerpt, seo » et gardait ses deux pages FRANÇAISES côté italien. Quatre
+    # appels API brûlés par passage, et `repair_lien_polylang --retraduire` tourne chaque
+    # semaine : c'est exactement le refus qui se rejoue sur la MÊME entrée que la règle 3
+    # de CLAUDE.md interdit.
+    #
+    # POURQUOI CE REFUS-CI N'EST PAS CELUI-LÀ. Il ne rejoue rien : il coûte UN GET et zéro
+    # appel LLM, il nomme son rouvreur (`gel_texte --degel <id> --apply`, qui rend la main
+    # au pipeline), et le nombre de fiches garées se lit d'un côté dans `gel_texte --liste`
+    # (avec son périmètre) et de l'autre dans le bilan ci-dessous, qui les compte à part.
+    #
+    # Et le gel se lit sur le SITE, jamais sur `wp_gel_at` : cette colonne n'est qu'une
+    # copie, entretenue par une republication ou par `gel_texte --sync` (règle 1).
+    geles = postes_geles()
+    n_geles = 0
+    if geles is None:
+        log.warning("Gel : le site n'a pas répondu (cs/v1/gel) — on ne sait donc PAS quelles "
+                    "fiches sont gelées, et on continue. La contre-épreuve d'après écriture "
+                    "rattrapera : elle lit la réponse de chaque publication.")
+    else:
+        ouverts = []
+        for tw in twins:
+            if int(tw.get("wp_post_id_as") or 0) in geles:
+                n_geles += 1
+                log.error("[%s] REFUS de retraduction : le texte de WP#%s est GELÉ sur le "
+                          "site — la re-traduction serait écrite en base et REFUSÉE par la "
+                          "page. Aucun appel API dépensé. Le rouvreur : "
+                          ".venv/bin/python -m scripts.gel_texte --degel %s --apply",
+                          tw["id"], tw.get("wp_post_id_as"), tw["id"])
+                if retour is not None:
+                    retour[int(tw["id"])] = "gele"
+                continue
+            ouverts.append(tw)
+        twins = ouverts
+
     log.info("%d jumeau(x) à re-traduire%s.", len(twins), "" if args.apply else " (simulation)")
     try:
         workers = max(1, int(os.getenv("TRANSLATE_WORKERS", "3") or 3))
@@ -838,16 +904,29 @@ def _retranslate(args, client, voix) -> int:
     results: list[str] = []
     if twins:
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="retranslate") as ex:
-            futures = [ex.submit(_retranslate_one, tw, args, client, voix) for tw in twins]
-            for fut in futures:
+            futures = {ex.submit(_retranslate_one, tw, args, client, voix): tw for tw in twins}
+            for fut, tw in futures.items():
                 try:
-                    results.append(fut.result())
+                    sort = fut.result()
                 except Exception as exc:  # noqa: BLE001 — un worker ne doit jamais planter le lot
                     log.warning("worker en échec (exception non gérée) : %s", exc)
-                    results.append("error")
+                    sort = "error"
+                results.append(sort)
+                if retour is not None:
+                    retour[int(tw["id"])] = sort
     done = results.count("done")
-    log.info("Re-traduction terminée — %d jumeau(x) mis à jour, %d refusé(s)%s.", done,
-             results.count("refus"), "" if args.apply else "  (simulation : rien écrit)")
+    # RÈGLE 6 : un état qui sort une fiche de la file la sort aussi des bilans si personne
+    # ne le compte. Les gelées sont donc dites, qu'elles aient été écartées avant les
+    # appels API (portillon) ou après l'écriture (contre-épreuve) — et un zéro dit d'où il
+    # vient : « site muet » n'est pas « aucune gelée ».
+    n_geles += results.count("gele")
+    log.info("Re-traduction terminée — %d jumeau(x) mis à jour, %d refusé(s), "
+             "%d écarté(s) pour TEXTE GELÉ (%s)%s.", done, results.count("refus"), n_geles,
+             "liste du site" if geles is not None else "site muet : compte partiel",
+             "" if args.apply else "  (simulation : rien écrit)")
+    if n_geles:
+        log.info("Les gelées se lisent avec leur périmètre : "
+                 ".venv/bin/python -m scripts.gel_texte --liste")
     return 0
 
 
@@ -1191,7 +1270,13 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
     return "done"
 
 
-def main(argv=None) -> int:
+def main(argv=None, retour: "dict | None" = None) -> int:
+    """`retour` : dictionnaire FACULTATIF que l'appelant fournit pour recevoir le SORT de
+    chaque jumeau en mode --retranslate — {id du jumeau: 'done'|'refus'|'gele'|'skip'}.
+    Même forme que `publish_to_as(..., retour=…)`, et pour la même raison : un seul
+    appelant en a besoin (`repair_lien_polylang`, dont le ✅ portait sur le VERSANT, déjà
+    bon avant la commande, et annonçait donc un succès que rien ne pouvait démentir —
+    28/09/2026). Le code de retour, lui, ne change pas."""
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Traduit les événements à bon score (FR↔IT).")
     parser.add_argument("--apply", action="store_true", help="Exécute (sinon simulation).")
@@ -1429,7 +1514,7 @@ def main(argv=None) -> int:
     # l'identique le lendemain (règle 3). La connexion se ferme désormais après le marquage.
     if args.retranslate:
         conn.close()
-        return _retranslate(args, client, voix)
+        return _retranslate(args, client, voix, retour=retour)
 
     # PARALLÉLISATION (TRANSLATE_WORKERS, déf. 3) : chaque événement passe par 1-2 appels
     # LLM (titre/description + article complet) + une publication WP — en séquentiel, un
