@@ -51,8 +51,16 @@ add_action('wp_head', function () {
         . '.as-desktop-col.wp-block-group,'
         . '.as-day-rail:not(.as-home)'
         . '{ display: block !important; }'
-        . '.as-home-desktop > div:has(+ .wp-block-group .jet-listing-not-found)'
-        . '{ display: block !important; }'
+        /* 2026-09-28 (Franck, capture Savoie mobile : deux boutons noirs "Voir tous les
+           evenements du week-end" colles l'un a l'autre) : borne a >= 900px. Sans borne,
+           quand la grille DESKTOP 'jour' est vide, cette regle (0,3,1 + !important) battait
+           celle du snippet 12 qui masque sous 900px les enfants non-cols3 de l'enveloppe
+           desktop (0,3,0), et reaffichait sur mobile le bouton week-end du desktop, pose
+           juste avant 'jour'. Sur mobile, l'enveloppe desktop ne montre QUE .as-desktop-cols3.
+           Mesure avant/apres dans un navigateur, 4 territoires a 390 et 1280px : Savoie
+           mobile 2 boutons -> 1, rien d'autre ne bouge. */
+        . '@media (min-width: 900px){ .as-home-desktop > div:has(+ .wp-block-group .jet-listing-not-found)'
+        . '{ display: block !important; } }'
         . '.as-home-desktop:has(> .as-desktop-cols3)'
         . '{ display: block !important; }'
         . '@media (max-width: 899px) {'
