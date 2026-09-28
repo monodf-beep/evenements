@@ -743,9 +743,17 @@ function cs_mf_css($moment) {
 .cs-mf a.cs-mf__cta:hover,.cs-mf a.cs-mf__cta:focus,.cs-mf a.cs-mf__cta:active{color:var(--mf-fond)}
 .cs-mf .cs-mf__liste a:hover,.cs-mf .cs-mf__liste a:focus,.cs-mf .cs-mf__liste a:active{color:inherit}
 .cs-mf__photo{display:none}
+/* Au bureau, la taille du titre suit la largeur de SA colonne, pas celle de l\'écran (25/09).
+   Posée dans la colonne de contenu d\'un hub, la strate n\'offrait plus que 179 px au titre,
+   toujours à 33 px : le thème (`.site-content{word-wrap:break-word}`) coupait « européen-nes »
+   en plein mot. Capture de Franck ; reproduit hors ligne sur le rendu réel, avant correctif.
+   Coefficients calés pour que l\'accueil garde EXACTEMENT sa taille d\'avant (221 px de
+   colonne, 33 px) : seul un bloc plus étroit que prévu voit son titre réduire. Un
+   navigateur sans requêtes de conteneur garde la taille fixe d\'avant. */
+.cs-mf__gauche{container-type:inline-size}
 @media(min-width:900px){
  .cs-mf__in{grid-template-columns:minmax(0,44%) minmax(0,1fr);gap:46px;padding:54px 20px 46px}
- .cs-mf__titre{font-size:40px;max-width:16ch}
+ .cs-mf__titre{font-size:40px;font-size:clamp(22px,8.8cqi,40px);max-width:16ch}
  .cs-mf__chapo{font-size:15px}
  .cs-mf--programme .cs-mf__droite{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px 26px}
  .cs-mf--programme .cs-mf__droite--une{grid-template-columns:minmax(0,1fr)}
@@ -756,7 +764,7 @@ function cs_mf_css($moment) {
  .cs-mf--programme .cs-mf__droite--une .cs-mf__liste{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 26px}
  .cs-mf--programme .cs-mf__droite--une .cs-mf__liste li{min-width:0}
  .cs-mf--voisins .cs-mf__in{grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:44px;padding:46px 20px 42px}
- .cs-mf--voisins .cs-mf__titre{font-size:32px;max-width:18ch}
+ .cs-mf--voisins .cs-mf__titre{font-size:32px;font-size:clamp(22px,8.8cqi,32px);max-width:18ch}
  .cs-mf--voisins .cs-mf__droite{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:30px}
  /* photo « épinglée » : un tirage penché à cheval sur le bord haut */
  .cs-mf--photo-epinglee .cs-mf__photo{display:block;position:absolute;right:calc(max(0px, 50% - 560px) + 4px);top:-30px;width:196px;
@@ -775,7 +783,7 @@ function cs_mf_css($moment) {
     1120 px, ce qui est le cas dans la colonne. La formule reste juste si la bande
     s\'élargit un jour. Même raisonnement pour la photo épinglée, calée sur ce bloc. */
  .cs-mf--photo-large .cs-mf__in{padding-left:max(0px, calc(27% + 30px - max(0px, (100% - 1120px) / 2)));grid-template-columns:minmax(0,31%) minmax(0,1fr);gap:34px}
- .cs-mf--photo-large .cs-mf__titre{font-size:33px}
+ .cs-mf--photo-large .cs-mf__titre{font-size:33px;font-size:clamp(22px,15cqi,33px)}
  .cs-mf--photo-large .cs-mf__jour-titre{display:block;font-size:16px}
  .cs-mf--photo-large .cs-mf__jour-titre em{display:block;margin-top:3px}
  .cs-mf--photo-large .cs-mf__quoi{font-size:13px}
