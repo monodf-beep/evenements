@@ -1,5 +1,82 @@
 # TypeSafe / Jev — ce que c'est, et où ça sert ICI
 
+> ## VERDICT DU 2026-09-22, EN DEUX TEMPS — et le second corrige le premier
+>
+> ### 1. Comme SUBSTITUTION à la facture actuelle : non, et c'est net
+>
+> `audit_couts --jours 30` : **157,44 $ sur 30 jours pour 320 fiches, 0,49 $ la fiche.**
+>
+> | | coût | part |
+> |---|---|---|
+> | Hors de portée de Jev par construction (rédaction, recherche web, vision) | **143,46 $** | **91,1 %** |
+> | Atteignable par de la décision typée | 12,33 $ | 7,8 % |
+> | `datation` — écartée, point faible annoncé du modèle | 1,65 $ | 1,0 % |
+>
+> Économie plausible en remplaçant tout l'atteignable : **~11 $/mois**, 7 % de la
+> facture. Ça ne paie pas une dépendance de plus.
+>
+> ### 2. Mais la substitution n'était PAS la question — correction de Franck
+>
+> « C'est pas là-dedans qu'on attend typesafe.ai. C'est sur du scraping, c'est de faire
+> en sorte que les données soient identifiées. Tu es parti sur du LLM, alors que Jev,
+> c'est pas du LLM. »
+>
+> Il a raison, et l'erreur est de cadrage. J'ai répondu à « que peut-il REMPLACER ? »
+> quand la question est « **que ne fait-on pas du tout parce que ce serait trop cher ?** »
+> Les 91 % restent exacts comme chiffre de substitution, et sans objet pour cette
+> question-là.
+>
+> **LA MESURE QUI COMPTE, faite le même jour : `config/sources.txt` déclare 92 sources.
+> LES 92 SONT DES FLUX RSS.** `scraper_events.py` l'annonce dès sa première ligne —
+> « collecte depuis les sources RSS ». **Un lieu sans flux est invisible pour ce dépôt.**
+> Ce n'est pas un réglage, c'est une limite structurelle, et elle se voit dans la
+> couverture :
+>
+> | zone | sources |
+> |---|---|
+> | Novara | **0** |
+> | Asti | **1** |
+> | Vercelli | 1 |
+> | Biella · Verbano-Cusio-Ossola | 2 |
+> | Alessandria | 3 |
+> | Haute-Savoie (tout le département) | **5** |
+>
+> Pourquoi si peu ? Parce qu'il faut un flux. Les sites en JavaScript, les Wix, la
+> plupart des *comuni* italiens n'en publient pas. On ne les rate pas par négligence :
+> on ne sait pas les lire.
+>
+> **Ce que coûterait de lire 100 pages d'agenda par jour** (≈ 5 000 jetons de texte
+> visible chacune, soit 15 M jetons/mois) :
+>
+> | | par mois |
+> |---|---|
+> | **Jev** (0,042 $/Mtok, sortie gratuite) | **0,63 $** |
+> | Haiku | 30,00 $ |
+> | Sonnet | 90,00 $ |
+> | Le modèle qualité, au tarif réel constaté (0,2455 $/appel) | **736,50 $** |
+>
+> Voilà l'argument, en chiffres : **soixante-trois centimes par mois contre sept cent
+> trente-six dollars.** Ce n'est pas une économie de 7 %, c'est une capacité qu'on n'a
+> pas et qu'on ne peut pas s'offrir autrement. Les cookbooks qui portent ce motif
+> existent déjà — `semantic_find` (218 lignes indexées en UNE requête, `Choice` sur
+> l'identifiant de ligne) et `pre_parsed_value_extraction` (une regex ramène tous les
+> candidats, `Choice` désigne le bon, avec une option « aucun »).
+>
+> ### Ce qui reste vrai, et ce qui reste à mesurer
+>
+> Jev ne génère toujours pas de texte, ne navigue pas, n'est pas multimodal : la
+> rédaction, la traduction, les images et la recherche web restent au LLM, et c'est bien
+> 91 % de la facture ACTUELLE. Le dossier ne se rouvre pas sur ces postes-là.
+>
+> Il se rouvre sur la MOISSON, et il y manque encore les deux mêmes mesures qu'au
+> premier jour : **est-ce qu'il lit le français et l'italien** (la documentation n'en dit
+> toujours rien), et **est-ce qu'il tient sur une page d'agenda réelle** — longue,
+> bruyante, avec trente blocs dont cinq sont des événements. La page des limites connues
+> range justement « contexte volumineux » parmi ses points faibles. Ces deux réponses
+> tiennent dans un banc d'essai hors ligne sur dix pages sans flux.
+
+
+
 Rapport demandé par Franck le 2026-09-22 : « comprendre la documentation de cet outil,
 chercher les cas d'usage, dire sur quoi on peut le mettre pour être plus performant et
 moins cher ».
@@ -266,8 +343,10 @@ conventions d'appel à la main.
 
 ---
 
-**Suite de ce rapport** : `docs/TYPESAFE_JEV_NOEUDS.md` passe la chaîne nœud par nœud et
-traite la question de la **complétion** — c'est là qu'est le gain le plus net.
+**Suite de ce rapport** : `docs/TYPESAFE_JEV_CHAINE.md` passe TOUTE la chaîne nœud par
+nœud sur le bon axe — ce qu'on ne fait pas faute de pouvoir se le payer — et répond aux
+trois questions de Franck : le panel de personas, les informations manquantes du site, et
+le score d'une home. (`docs/TYPESAFE_JEV_NOEUDS.md` est son brouillon, remplacé.)
 
 ## Sources
 
