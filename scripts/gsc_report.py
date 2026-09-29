@@ -36,6 +36,7 @@ Usage :
     .venv/bin/python -m scripts.gsc_report --articles        # seulement les articles
     .venv/bin/python -m scripts.gsc_report --une             # une indexée ? Discover ?
     .venv/bin/python -m scripts.gsc_report --indexation      # toutes les fiches non terminées
+    .venv/bin/python -m scripts.gsc_report --sitemaps        # Google lit-il nos sitemaps ?
     .venv/bin/python -m scripts.gsc_report --csv export.zip  # sans API, depuis un export
     .venv/bin/python -m scripts.gsc_report --auth --client client_secret.json
     .venv/bin/python -m scripts.gsc_report --enregistrer --apply --jours 30   # archivage
@@ -565,6 +566,38 @@ def _fiches_vivantes(base: str, aujourdhui: str) -> tuple[list[dict], int]:
     return fiches, total_annonce
 
 
+def _sitemaps_lus(service, propriete: str) -> None:
+    """Google LIT-il nos sitemaps, et quand pour la dernière fois ?
+
+    Question née du premier passage de --indexation (29/09) : 70 fiches « URL is unknown
+    to Google », dont des fiches publiées le 20/07 et PRÉSENTES au sitemap
+    `tribe_events` (vérifié le même soir). Une adresse déclarée depuis deux mois et
+    toujours inconnue désigne le sitemap lui-même : jamais soumis, plus relu, ou en
+    erreur. La Search Console garde la date du dernier téléchargement — c'est elle qui
+    tranche, pas une supposition sur la fréquence de passage de Google.
+    """
+    print("\n=== Sitemaps déclarés à Google : dernier téléchargement ===")
+    try:
+        liste = service.sitemaps().list(siteUrl=propriete).execute().get("sitemap", [])
+    except Exception as exc:  # noqa: BLE001
+        print(f"   lecture refusée : {exc}")
+        return
+    if not liste:
+        print("   AUCUN sitemap déclaré dans la Search Console pour cette propriété — "
+              "Google ne les découvre alors que par robots.txt, à son rythme.")
+        return
+    for s in liste:
+        print(f"   {s.get('path')}")
+        print(f"        soumis {str(s.get('lastSubmitted', '—'))[:10]} · téléchargé "
+              f"{str(s.get('lastDownloaded', 'jamais'))[:16]} · erreurs "
+              f"{s.get('errors', 0)} · avertissements {s.get('warnings', 0)}"
+              + (" · EN ATTENTE" if s.get("isPending") else ""))
+        for c in s.get("contents", []):
+            print(f"        {c.get('type')} : {c.get('submitted')} adresse(s) déclarée(s)")
+    print("   Un index (sitemap_index.xml) couvre ses sous-sitemaps ; la date qui compte "
+          "pour les fiches est celle de tribe_events-sitemap.xml s'il est listé à part.")
+
+
 def _indexation(service, propriete: str, base: str, plafond: int) -> int:
     """Combien des fiches encore devant nous Google a-t-il VRAIMENT indexées ?
 
@@ -642,6 +675,7 @@ def _indexation(service, propriete: str, base: str, plafond: int) -> int:
     for f in manquantes:
         print(f"   publiée {f['publie'] or '?':<10}  fin {f['fin']}  "
               f"{f['etat'][:34]:<34}  {f['url'].replace(base, '')}")
+    _sitemaps_lus(service, propriete)
     ok = sum(f["verdict"] == "PASS" for f in faites)
     print(f"\n   BILAN : {ok} indexée(s) sur {len(faites)} inspectée(s)"
           + (f", {len(fiches) - len(faites)} non inspectée(s) (plafond)"
@@ -677,6 +711,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--indexation", action="store_true",
                         help="Inspecte TOUTES les fiches en ligne non terminées (FR et IT) : "
                              "combien Google en a indexé, par ancienneté (lecture seule).")
+    parser.add_argument("--sitemaps", action="store_true",
+                        help="Quand Google a-t-il téléchargé nos sitemaps pour la dernière "
+                             "fois ? (lecture seule, instantané)")
     parser.add_argument("--plafond", type=int, default=1500,
                         help="Avec --indexation : nombre maximal d'inspections (quota Google "
                              "2 000/jour). Défaut 1500.")
@@ -745,6 +782,9 @@ def main(argv: list[str] | None = None) -> int:
             return _une_et_discover(service, propriete, base, args.jours)
         if args.indexation:
             return _indexation(service, propriete, base, args.plafond)
+        if args.sitemaps:
+            _sitemaps_lus(service, propriete)
+            return 0
         if args.enregistrer:
             pages = _interroge(service, propriete, debut, fin, ["page"], 5000)
             requetes = _interroge(service, propriete, debut, fin, ["query"], 5000)
