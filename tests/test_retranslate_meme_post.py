@@ -2,7 +2,17 @@
 """Fixture : `--retranslate` refuse un jumeau qui porte le MÊME post que son original.
 
 ⚠️ BASE JETABLE — jamais data/events.db. Aucun réseau, aucun LLM : `_retranslate_one`
-est remplacée par un mouchard, on n'éprouve ici que la SÉLECTION.
+ET `postes_geles` sont remplacées par des bouchons, on n'éprouve ici que la SÉLECTION.
+
+CE BOUCHON-LÀ A ÉTÉ AJOUTÉ LE 2026-09-29, et il répare un défaut de MA fixture. Le 28/09,
+une session a posé un second garde-fou dans `_retranslate` : ne jamais re-traduire une
+fiche dont le SITE dit le texte gelé (`postes_geles()`, route `cs/v1/gel`). Excellent
+garde-fou — mais ma fixture emploie de VRAIS numéros de production, et sur le VPS WP#8132
+est gelée. La jumelle « saine » se faisait donc écarter, et la fixture passait au rouge
+LÀ-BAS en restant verte ici, où la route ne répond pas. Une fixture qui dépend de l'état
+du site n'est pas une fixture : elle mesure la production, pas le code.
+
+On garde les numéros réels — ils portent l'incident — et on coupe la dépendance.
 
 D'OÙ ÇA VIENT (2026-09-21, le soir). Le relevé de `repair_lien_polylang` a sorti une
 ligne à deux fois le même numéro :
@@ -27,7 +37,10 @@ CE QUE LA FIXTURE SURVEILLE :
   1. le jumeau au même post est REFUSÉ, et l'original n'est pas réécrit ;
   2. ⚠️ le cas qui doit PASSER, pris dans la même famille : la vraie jumelle du MÊME
      original, elle, est bien retraduite. Un refus trop large ferait un cul-de-sac de
-     plus — on aurait protégé la page en cessant de réparer.
+     plus — on aurait protégé la page en cessant de réparer ;
+  3. le garde-fou du GEL (28/09) écarte aussi une jumelle que le site a gelée ;
+  4. et une route MUETTE (None) ne bloque rien — « on ne sait pas » n'est pas « rien
+     n'est gelé », et une route en panne ne doit pas arrêter toutes les reprises.
 
 Lancer : .venv/bin/python -m tests.test_retranslate_meme_post
 """
@@ -92,7 +105,7 @@ for eid, orig, wp, src in FICHES:
 conn.commit()
 conn.close()
 
-# Mouchard : on n'éprouve QUE la sélection, donc rien ne doit partir vers le réseau.
+# Mouchards : on n'éprouve QUE la sélection, donc rien ne doit partir vers le réseau.
 vus = []
 te._retranslate_one = lambda tw, args, client, voix: (vus.append(tw["id"]) or "done")
 
@@ -104,16 +117,37 @@ class _Args:
     retranslate = True
 
 
-print("──── qui part en retraduction, et qui reste dehors ────")
-te._retranslate(_Args(), client=object(), voix="")
+def _passage(geles):
+    """Rejoue la sélection avec une réponse donnée de la route `cs/v1/gel`."""
+    vus.clear()
+    te.postes_geles = lambda: geles
+    te._retranslate(_Args(), client=object(), voix="")
+    return list(vus)
 
+
+print("──── qui part en retraduction, et qui reste dehors (rien de gelé) ────")
+vus1 = _passage(set())
 _check("⚠️ le jumeau qui porte le MÊME post que son original est REFUSÉ",
-       3491 not in vus, vus)
+       3491 not in vus1, vus1)
 _check("⚠️ la VRAIE jumelle du même original, elle, est bien retraduite "
-       "(le cas qui doit passer)", 5223 in vus, vus)
+       "(le cas qui doit passer)", 5223 in vus1, vus1)
 _check("   et l'original lui-même n'est jamais traité comme un jumeau",
-       2507 not in vus, vus)
-_check("   exactement une fiche retraduite, pas deux", len(vus) == 1, vus)
+       2507 not in vus1, vus1)
+_check("   exactement une fiche retraduite, pas deux", len(vus1) == 1, vus1)
+
+print("\n──── et si le SITE dit que la jumelle est gelée (garde-fou du 28/09) ────")
+# Le cas exact rencontré sur le VPS le 29/09 : WP#8132 gelée. Les deux garde-fous se
+# cumulent, chacun pour son motif, et il ne reste personne à re-traduire — c'est voulu.
+vus2 = _passage({8132})
+_check("la jumelle gelée est écartée à son tour", vus2 == [], vus2)
+
+print("\n──── et si la route ne répond pas (le site est muet) ────")
+# `postes_geles()` rend None, et surtout pas set() : « on ne sait pas » n'est pas
+# « rien n'est gelé ». Le garde-fou doit alors continuer sans bloquer — sinon une route
+# muette gèlerait toutes les reprises du dépôt sans que personne le sache.
+vus3 = _passage(None)
+_check("un site muet ne bloque pas la reprise, il la laisse passer", vus3 == [5223], vus3)
+_check("   et le garde-fou du même post tient quand même", 3491 not in vus3, vus3)
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)

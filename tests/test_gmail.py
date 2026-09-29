@@ -9,7 +9,23 @@ import sys
 from pathlib import Path
 
 import anthropic
-import httpx
+# LE CLIENT HTTP DU SDK ANTHROPIC A CHANGÉ DE NOM, et ce fichier l'importait en dur.
+#
+# Trouvé le 2026-09-29 en cherchant pourquoi la suite refusait de passer au vert :
+# `anthropic` 1.x embarque `httpx2` et non plus `httpx` — sa propre signature le dit
+# (`APIConnectionError(*, message: str, request: httpx2.Request)`), et `httpx` n'est
+# ni dans requirements.txt ni tiré par le SDK. Cet import échouait donc AVANT celui de
+# `pytest`, et c'est ça qui coûtait cher : `tests/run_all.py` sait tolérer l'absence
+# d'un LANCEUR de tests (« non exécutable ici »), pas celle d'une bibliothèque. La
+# fixture comptait donc ROUGE, et `scripts/auto_deploiement` refuse de déployer sur une
+# suite rouge — un déploiement autonome bloqué par un renommage chez un fournisseur.
+#
+# On prend celui qui est là, plutôt que d'épingler un nom qui rebougera : la requête ne
+# sert ici qu'à remplir l'argument obligatoire d'une exception fabriquée pour le test.
+try:
+    import httpx
+except ModuleNotFoundError:            # SDK anthropic >= 1.x
+    import httpx2 as httpx
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
