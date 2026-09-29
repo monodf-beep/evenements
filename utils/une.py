@@ -84,8 +84,52 @@ MAX_BONUS = max(p for _s, p in _FENETRES) + 1      # fenêtre la plus proche + p
 MAX_UNE = MAX_INTERET + MAX_BONUS
 
 
+# QUELLE QUESTION LA UNE POSE (2026-09-29). Franck : « à la une, si je suis en Savoie,
+# c'est un événement qui est à côté — pas forcément une histoire de trois heures de
+# route ». La formule d'origine (« deplacement ») reprend les critères de « Ça vaut le
+# déplacement » : rayonnement ×2, spécificité territoriale ×3, notoriété du lieu plafonnée
+# à 1, moyens de l'organisateur EXCLUS — la question d'un visiteur qui vient de loin.
+# Mesuré ce jour-là (audit_une) : Mariam chante Amadou & Mariam à Bonlieu Scène nationale
+# 3/10, Bal clandestin 3/10, les estampes d'Hiroshige 3/10, Joana Vasconcelos 5/10.
+#
+# « locale » = la note d'ÉVALUATION telle quelle (`llm_score`, somme des cinq critères,
+# notoriété du lieu jusqu'à 3 et organisateur jusqu'à 2), dont la consigne dit qu'elle
+# mesure si l'événement « va réunir du monde, compte dans le territoire » : la question du
+# lecteur d'à côté. Aucun appel de modèle, la note est en base pour chaque fiche.
+#
+# Le panel de lecteurs n'y entre PAS : il pèse déjà 6 points sur 10 dans le score de
+# RENDU, l'autre portillon de la une. L'y ajouter le compterait deux fois et mêlerait
+# « l'article est-il bon » à « l'événement compte-t-il ».
+#
+# « deplacement » reste le DÉFAUT tant que Franck n'a pas lu, nom par nom, ce que
+# `audit_une` fait entrer et sortir. Basculer : UNE_FORMULE=locale.
+UNE_FORMULE = os.getenv("UNE_FORMULE", "deplacement")
+
+
+def interet_local(event: dict) -> int | None:
+    """La note d'évaluation (0-10) : l'importance de l'événement dans son territoire.
+    None si la fiche n'a jamais été évaluée — « pas mesuré » n'est pas « zéro »."""
+    v = event.get("llm_score")
+    if v is None or v == "":
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def interet(event: dict) -> int | None:
     """L'INTÉRÊT de l'événement, 0-10, ou None s'il n'a pas été évalué.
+
+    Suit UNE_FORMULE (lue à CHAQUE appel, pour que l'audit compare les deux) :
+    « locale » → interet_local ; « deplacement » (défaut) → critères de déplacement."""
+    if UNE_FORMULE == "locale":
+        return interet_local(event)
+    return _interet_deplacement(event)
+
+
+def _interet_deplacement(event: dict) -> int | None:
+    """L'INTÉRÊT au sens de « Ça vaut le déplacement », 0-10, ou None s'il n'a pas été évalué.
 
     None ≠ 0 : « pas mesuré » n'est pas « sans intérêt ». Une fiche non évaluée est écartée
     de la vitrine, pas classée dernière — même règle que `deplacement_score`, et pour la
