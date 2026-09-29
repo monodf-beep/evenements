@@ -100,8 +100,6 @@ def geste(ev: dict, motif: str) -> tuple[str, str]:
     if ev.get("translation_of"):
         return "traduction", ("traduction — reçoit le score de son original dès qu'il en a "
                               "un (copie, ce script)")
-    if motif.startswith("sans bloc source"):
-        return "enrich", "sans bloc source → ré-enrichir (réécrit l'article)"
     try:
         data = json.loads(ev.get("enrich_data") or "") or {}
     except (ValueError, TypeError):
@@ -109,12 +107,21 @@ def geste(ev: dict, motif: str) -> tuple[str, str]:
     corps = ((data.get("article") or {}).get("corps") or "").strip()
     from scripts.enrich import digne_de_la_une
     digne = digne_de_la_une(ev)
+    # UNE CLÉ PAR MOTIF, JAMAIS UN LIBELLÉ PAR GROUPE (corrigé le 29/09, premier dry-run en
+    # production) : les deux cas « ré-enrichir » partageaient une clé, et le libellé du
+    # groupe était celui de la DERNIÈRE fiche rangée — quatre fiches sans bloc source
+    # s'affichaient « article COURT », ce qu'elles n'étaient pas.
+    if motif.startswith("sans bloc source"):
+        if digne:
+            return "enrich_source", ("digne de la une, enrichie avant que la source soit "
+                                     "tracée → ré-enrichir (réécrit l'article)")
+        return "rien", "sans bloc source, intérêt sous le plancher de la une → rien à faire"
     if len(corps) >= COURT_MAX:
         return "panel", ("article développé sans panel → panel_rattrapage (relit, ne "
                          "réécrit rien ; en cron quotidien)")
     if digne:
-        return "enrich", ("article COURT d'un événement digne de la une → ré-enrichir : "
-                          "enrich écrit désormais un article long pour lui (réécrit)")
+        return "enrich_court", ("article COURT d'un événement digne de la une → ré-enrichir : "
+                                "enrich écrit désormais un article long pour lui (réécrit)")
     return "rien", "article court, intérêt sous le plancher de la une → rien à faire"
 
 
@@ -128,10 +135,19 @@ def propager_aux_traductions(conn: sqlite3.Connection, apply: bool) -> list[tupl
     même événement. Ce n'est PAS l'héritage de VERDICT que panel_rattrapage refuse (un
     verdict désigne un geste de réécriture) : un score de rendu ne désigne rien, il ouvre
     ou ferme une vitrine."""
+    # RÈGLE 5, oubliée dans la première version (dry-run du 29/09) : la requête recopiait
+    # aussi sur Terra Madre, terminé le 27, et sur une traduction rejetée comme doublon —
+    # inoffensif pour le site, mais un compte de 25 qui en contenait des mortes.
     rows = conn.execute(
         "SELECT t.id, t.title, o.home_score, o.id AS orig FROM events_raw t "
         "JOIN events_raw o ON o.id = t.translation_of "
-        "WHERE t.home_score IS NULL AND o.home_score IS NOT NULL").fetchall()
+        "WHERE t.home_score IS NULL AND o.home_score IS NOT NULL "
+        "AND t.duplicate_of IS NULL "
+        "AND COALESCE(t.statut,'') NOT IN ('rejected','merged') "
+        "AND (COALESCE(t.recurring,0)=1 "
+        "     OR COALESCE(NULLIF(t.date_event_end,''), t.date_event_start,'') = '' "
+        "     OR COALESCE(NULLIF(t.date_event_end,''), t.date_event_start) >= ?)",
+        (date.today().isoformat(),)).fetchall()
     if apply and rows:
         conn.executemany("UPDATE events_raw SET home_score=? WHERE id=?",
                          [(r["home_score"], r["id"]) for r in rows])
@@ -185,14 +201,14 @@ def main(argv=None) -> int:
             groupes.setdefault(cle, []).append(ev)
             libelles[cle] = lib
         print(f"\n  NON CALCULABLES ({len(sans)}), rangées par geste :")
-        for cle in ("enrich", "panel", "traduction", "rien"):
+        for cle in ("enrich_court", "enrich_source", "panel", "traduction", "rien"):
             evs = groupes.get(cle) or []
             if not evs:
                 continue
             print(f"\n    {len(evs):>3} · {libelles[cle]}")
             for ev in evs:
                 print(f"         [{ev['id']:>5}] {(ev.get('title') or '')[:60]}")
-            if cle == "enrich":
+            if cle.startswith("enrich"):
                 print("         .venv/bin/python -m scripts.enrich "
                       + " ".join(str(ev["id"]) for ev in evs))
 
