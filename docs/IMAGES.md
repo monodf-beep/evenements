@@ -207,6 +207,14 @@ Résultat : événement sans vraie photo → la bannière territoire×catégorie
 
 *Contrepartie assumée : retour d'une copie par événement dans la médiathèque WordPress (le doublon qu'on cherchait à éviter le 07-26). Décision consciente du 07-31 : correct côté « vraie image, jamais de génération WordPress » prime sur l'économie de stockage médiathèque.*
 
+> **Ce que cette contrepartie coûte, mesuré le 2026-09-29** : `docs/MEDIAS_DOUBLONS_2026-09-29.md`.
+> Sur les 1 288 médias déposés depuis le 15/09, **274 empreintes existent sous plusieurs noms —
+> 499 copies en trop**. Et la cause dominante n'est pas celle qu'on croit : 164 groupes sur 274
+> viennent de plusieurs fiches qui partagent une affiche (une exposition et ses visites guidées),
+> pas d'un titre réécrit. Le document porte les requêtes pour refaire la mesure, la réserve qui
+> interdit de traiter les 426 « orphelines » comme supprimables, et l'arbitrage qui reste entier —
+> mutualiser le média, c'est renoncer au texte alternatif par fiche.
+
 ---
 
 ## 11. Chantier : l'audit visuel dans le back-office (à développer)
