@@ -232,6 +232,46 @@ def main(argv=None) -> int:
     print("\n> La section affiche TROIS cartes. Un plancher qui n'en laisse que trois n'a")
     print("> aucune marge : deux événements passent et la une se fige à nouveau.\n")
 
+    # L'AUTRE FORMULE, NOM PAR NOM (2026-09-29). Franck : « à la une, si je suis en
+    # Savoie, c'est un événement qui est à côté ». On ne bascule pas sur un total : on
+    # montre ce qui ENTRE et ce qui SORT, territoire par territoire (utils.une.UNE_FORMULE).
+    garde_f = U.UNE_FORMULE
+    etat = {}
+    for f in ("deplacement", "locale"):
+        U.UNE_FORMULE = f
+        etat[f] = {id(ev): une_etat(ev, auj) for ev in vivantes}
+    U.UNE_FORMULE = garde_f
+    autre = "locale" if garde_f != "locale" else "deplacement"
+    print(f"## Et avec l'intérêt « {autre} » ? (formule en service : « {garde_f} »)\n")
+    print("« locale » = la note d'évaluation telle quelle (notoriété du lieu, organisateur,")
+    print("tradition, rayonnement, spécificité) : la question du lecteur d'à côté.")
+    print("« deplacement » = les critères de « Ça vaut le déplacement » : celle du visiteur")
+    print(f"qui vient de loin. Même plancher ({UNE_INTERET_MIN}), mêmes autres portillons.\n")
+    print(f"| Territoire | {garde_f} | {autre} | entrent | sortent |")
+    print("|---|---:|---:|---:|---:|")
+    mouvements = {}
+    for t in TERRITOIRES:
+        du_t = [ev for ev in vivantes if (ev.get("territoire") or "") == t]
+        avant = {id(e) for e in du_t if etat[garde_f][id(e)][0] is not None}
+        apres = {id(e) for e in du_t if etat[autre][id(e)][0] is not None}
+        ent = [e for e in du_t if id(e) in apres - avant]
+        sor = [e for e in du_t if id(e) in avant - apres]
+        mouvements[t] = (ent, sor)
+        print(f"| {t} | {len(avant)} | {len(apres)} | {len(ent)} | {len(sor)} |")
+    print("\n_Pages, pas événements : une fiche et sa traduction comptent deux fois._\n")
+    for t in TERRITOIRES:
+        ent, sor = mouvements[t]
+        if not ent and not sor:
+            continue
+        print(f"### {t}\n")
+        for e in sorted(ent, key=lambda x: -(etat[autre][id(x)][0] or 0)):
+            print(f"- ➕ ENTRE · {langue_fiche(e)} · {(e.get('title') or '')[:58]} — "
+                  f"{etat[autre][id(e)][1][:60]} (était : {etat[garde_f][id(e)][1][:48]})")
+        for e in sor:
+            print(f"- ➖ SORT  · {langue_fiche(e)} · {(e.get('title') or '')[:58]} — "
+                  f"{etat[autre][id(e)][1][:70]}")
+        print()
+
     # ET DEMAIN ? La rotation est la demande de départ — elle doit se VÉRIFIER, pas se
     # postuler. On rejoue les mêmes règles à trois dates et on compare les têtes de liste.
     print("## Est-ce que ça TOURNE vraiment ?\n")
