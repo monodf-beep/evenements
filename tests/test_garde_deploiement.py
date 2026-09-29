@@ -129,8 +129,66 @@ vps2 = scene()
 code, sortie = lancer(vps2)
 verifier("une modification NON COMMITÉE ne l'arrête pas (et c'est documenté)",
          code == 0, sortie[:200])
-verifier("le script le dit en toutes lettres dans son en-tête",
-         "modifications non COMMITÉES" in GARDE.read_text(encoding="utf-8"))
+# La formule a changé le 29/09 en même temps que le périmètre : le garde-fou voit
+# désormais l'index, donc sa limite n'est plus « non commité » mais « non INDEXÉ ». Ce
+# contrôle-ci porte sur la franchise du script, pas sur une formule — il suit donc.
+verifier("le script dit en toutes lettres ce qu'il ne protège pas",
+         "modifications non commitées et NON INDEXÉES" in GARDE.read_text(encoding="utf-8"))
+
+# --- 8. LA FUSION EN COURS : ce qui est passé SOUS le garde-fou le 28/09 -----------
+# Témoin rouge vérifié : sans le correctif du 29/09, ce cas sortait en 0 — « rien à
+# perdre » — alors que neuf fichiers indexés attendaient d'être commités. Le reset les a
+# effacés dans la nuit. Une fusion en cours n'est pas un commit : `rev-list` rend zéro.
+vps3 = scene()
+autre = Path(tempfile.mkdtemp()) / "autre"
+git(Path(autre).parent, "clone", git(vps3, "remote", "get-url", "origin").stdout.strip(),
+    str(autre))
+for k, v in (("user.email", "f@x.tld"), ("user.name", "Fixture")):
+    git(autre, "config", k, v)
+(autre / "mu-plugin-neuf.php").write_text("<?php // travail d'une autre branche\n")
+git(autre, "add", "-A"); git(autre, "commit", "-m", "travail d'une branche voisine")
+git(autre, "push", "origin", "principale:voisine")
+git(vps3, "fetch", "origin", "voisine")
+# Une fusion volontairement NON conclue : `--no-commit` laisse MERGE_HEAD et l'index plein.
+git(vps3, "merge", "--no-commit", "--no-ff", "FETCH_HEAD")
+_en_cours = (vps3 / ".git" / "MERGE_HEAD").exists()
+_avance = git(vps3, "rev-list", "--count", "origin/principale..HEAD").stdout.strip()
+verifier("   [mise en scène] une fusion est bien EN COURS", _en_cours)
+verifier("   [mise en scène] et elle ne compte pour AUCUN commit d'avance — la cause",
+         _avance == "0", _avance)
+
+code, sortie = lancer(vps3)
+verifier("une fusion EN COURS arrête le déploiement", code == 1, f"code={code} {sortie[:200]}")
+verifier("il nomme le fichier menacé", "mu-plugin-neuf.php" in sortie, sortie[:400])
+verifier("il donne la commande qui CONCLUT avant de pousser",
+         "git commit --no-edit && git push origin principale && bash deploy/update.sh"
+         in sortie, sortie[:600])
+verifier("il cite l'incident du 28/09", "28/09" in sortie, sortie[:400])
+verifier("il rassure : rien n'a bougé", "Le travail local est intact" in sortie)
+
+env8 = dict(os.environ, DEPLOY_ABANDONNER_LOCAL="1")
+code, sortie = lancer(vps3, env=env8)
+verifier("l'échappatoire explicite laisse passer la fusion en cours aussi", code == 0,
+         sortie[:200])
+verifier("   et elle DIT ce qu'elle abandonne", "ABANDONNÉ" in sortie, sortie[:200])
+
+# --- 9. ⚠️ LES CAS QUI DOIVENT PASSER, pris près de la NOUVELLE frontière -----------
+# Un garde-fou de déploiement qui refuse à tort est pire que pas de garde-fou. On vérifie
+# donc que la fusion CONCLUE et poussée ne bloque plus rien — c'est l'état d'après le
+# geste qu'on vient de conseiller — et que l'édition de passage continue de passer.
+git(vps3, "commit", "--no-edit", "-m", "fusion conclue")
+git(vps3, "push", "origin", "principale")
+git(vps3, "fetch", "origin")
+code, sortie = lancer(vps3)
+verifier("une fois la fusion CONCLUE et poussée, le déploiement repasse", code == 0,
+         sortie[:300])
+verifier("   et sans bruit", not sortie.strip(), repr(sortie[:120]))
+
+vps4 = scene()
+(vps4 / "a.txt").write_text("édité de passage, jamais indexé")
+code, sortie = lancer(vps4)
+verifier("une édition non indexée passe TOUJOURS (cas 7, préservé)", code == 0,
+         sortie[:200])
 
 print("\nSUCCÈS — 0 problème(s)." if echecs == 0 else f"\n{echecs} problème(s).")
 raise SystemExit(0 if echecs == 0 else 1)
