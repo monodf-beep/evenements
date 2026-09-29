@@ -18,10 +18,20 @@ ce texte est une VUE, périmée une seconde après avoir été rendue, et il le 
 en tête. Le jour où quelqu'un colle sa sortie dans un fichier versionné, la divergence
 recommence (cf. `docs/VOCABULAIRE_OBSIDIAN.md`, qui raconte la précédente).
 
-TROIS BLOCS, DEUX MONDES :
+QUATRE BLOCS, DEUX MONDES :
   1. la VOIX éditoriale        — Obsidian (filet : `docs/voix/VOIX.md`, dans le dépôt) ;
   2. le VOCABULAIRE interdit   — Obsidian, sans filet (choix de Franck le 05/09) ;
-  3. la CHARTE éditoriale      — `docs/CHARTE_EDITORIALE.md`, dans le dépôt.
+  3. la CHARTE éditoriale      — `docs/CHARTE_EDITORIALE.md`, dans le dépôt ;
+  4. les RÈGLES DE TRAVAIL     — des sections de `CLAUDE.md` et `docs/SEO_QUI_FAIT_QUOI.md`,
+                                 dans le dépôt, extraites à chaque lecture.
+
+POURQUOI LE QUATRIÈME. Franck, 29/09/2026, après avoir vu Cowork réécrire au passé des
+fiches d'événements terminés (règle 5 : « tout le reste est mort ») : « il faut que cowork
+respecte nos règles, pas lui donner les règles mais qu'il les consulte avant ». Recopier
+la règle 5 dans la consigne de sa tâche planifiée aurait marché ce jour-là, puis divergé
+à la première retouche de CLAUDE.md — la même histoire que le vocabulaire. Les sections
+sont donc LUES dans CLAUDE.md à chaque appel, par leur titre ; un titre renommé ne fait
+pas disparaître une règle en silence, il lève une alerte en tête du texte.
 
 ET IL CRIE QUAND UN BLOC MANQUE. C'est la seule différence assumée avec le pipeline :
 `utils/vocabulaire.interdits()` renvoie `()` en silence quand la note est injoignable, et
@@ -47,6 +57,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 CHARTE = ROOT / "docs" / "CHARTE_EDITORIALE.md"
+CLAUDE_MD = ROOT / "CLAUDE.md"
+SEO_QUI_FAIT_QUOI = ROOT / "docs" / "SEO_QUI_FAIT_QUOI.md"
+
+# Les sections de CLAUDE.md qui valent pour un agent qui TRAVAILLE les fiches, repérées par
+# le DÉBUT de leur titre de niveau 2. Pas le reste : le journal des erreurs, l'autonomie ou
+# le développement parlent du dépôt et du VPS, qu'un agent de rédaction ne touche pas — les
+# servir noierait la règle 5 sous vingt pages qui ne le concernent pas.
+SECTIONS_CLAUDE = (
+    "## Les six règles",
+    "## Périmètre éditorial",
+    "## Le dernier qui écrit est un humain",
+    "## Une adresse que Google connaît",
+)
 
 
 def _sous_le_depot(chemin: str) -> bool:
@@ -133,10 +156,65 @@ def _bloc_charte() -> dict:
                             "dark patterns proscrits (§ 7)."}
 
 
+def _sections(texte: str, debuts: tuple[str, ...]) -> tuple[list[str], list[str]]:
+    """(sections trouvées, titres introuvables). Une section court de son titre `## ` au
+    titre `## ` suivant ; les `###` qu'elle contient restent avec elle."""
+    lignes = texte.splitlines()
+    trouvees, manquants = [], []
+    for debut in debuts:
+        i = next((k for k, l in enumerate(lignes) if l.startswith(debut)), None)
+        if i is None:
+            manquants.append(debut)
+            continue
+        j = next((k for k in range(i + 1, len(lignes)) if lignes[k].startswith("## ")),
+                 len(lignes))
+        trouvees.append("\n".join(lignes[i:j]).strip().rstrip("-").strip())
+    return trouvees, manquants
+
+
+def _bloc_regles() -> dict:
+    alertes, morceaux = [], []
+    try:
+        claude = CLAUDE_MD.read_text(encoding="utf-8")
+    except OSError:
+        claude = ""
+    if claude:
+        trouvees, manquants = _sections(claude, SECTIONS_CLAUDE)
+        morceaux += trouvees
+        if manquants:
+            alertes.append("section(s) introuvable(s) dans CLAUDE.md — titre renommé ? "
+                           + ", ".join(f"« {m} »" for m in manquants))
+    else:
+        alertes.append("CLAUDE.md est illisible.")
+    try:
+        seo = SEO_QUI_FAIT_QUOI.read_text(encoding="utf-8")
+    except OSError:
+        seo = ""
+        alertes.append("docs/SEO_QUI_FAIT_QUOI.md est illisible.")
+    if seo:
+        morceaux.append(seo.strip())
+    texte = ""
+    if morceaux:
+        texte = ("Ces pages sont écrites pour la machine qui travaille ce dépôt — le « je » et "
+                 "le « moi » qu'elles emploient, c'est toi. Elles valent pour TOUT ce que tu "
+                 "fais sur une fiche, pas seulement pour la rédaction.\n\n"
+                 + "\n\n---\n\n".join(morceaux))
+    return {"cle": "regles", "titre": "RÈGLES DE TRAVAIL",
+            "texte": texte, "origine": "dépôt (versionné)",
+            "chemins": [{"chemin": str(CLAUDE_MD), "existe": bool(claude),
+                         "chars": len(claude), "notes": []},
+                        {"chemin": str(SEO_QUI_FAIT_QUOI), "existe": bool(seo),
+                         "chars": len(seo), "notes": []}],
+            "alerte": " ; ".join(alertes), "chars": len(texte),
+            "note_de_pied": "Les six règles (dont la 5 : on ne travaille que ce qui est "
+                            "encore devant nous), le périmètre, l'ordre cron → Cowork, "
+                            "les redirections, et le protocole Cowork du journal de fiche."}
+
+
 def blocs() -> list[dict]:
-    """Les trois blocs, relus À L'INSTANT. Aucun cache : une note éditée dans Obsidian
+    """Les quatre blocs, relus À L'INSTANT. Aucun cache : une note éditée dans Obsidian
     doit se voir au rafraîchissement suivant, sans redémarrer quoi que ce soit."""
-    return [_bloc_voix(), _bloc_vocabulaire(), _bloc_charte()]
+    return [_bloc_voix(), _bloc_vocabulaire(), _bloc_charte(), _bloc_regles()]
 
 
 def statut() -> dict:
@@ -145,7 +223,8 @@ def statut() -> dict:
     est précisément l'erreur qu'on ne verrait pas."""
     bs = blocs()
     alertes = [f"{b['titre']} : {b['alerte']}" for b in bs if b["alerte"]]
-    # `vide` ne regarde QUE la voix et le vocabulaire — pas la charte. La charte est
+    # `vide` ne regarde QUE la voix et le vocabulaire — ni la charte ni les règles de
+    # travail, versionnées elles aussi. La charte est
     # versionnée : elle répond toujours, donc un « tout est vide » qui l'inclurait ne
     # serait jamais vrai, et le 503 de /doctrine.txt serait un témoin qui n'a jamais été
     # rouge (journal du 14/09 : « un témoin ne prouve rien s'il n'a jamais été rouge »).
@@ -166,7 +245,7 @@ def doctrine_texte(st: dict | None = None) -> str:
     plus tard sans que personne puisse dire de quand il date."""
     st = st or statut()
     out = [
-        "DOCTRINE RÉDACTIONNELLE — Agenda Sabauda / Cultura Sabauda",
+        "DOCTRINE ET RÈGLES DE TRAVAIL — Agenda Sabauda / Cultura Sabauda",
         f"Lue en direct le {st['lu_le']} sur le VPS de production.",
         "",
         "Ceci est une VUE, pas un document : la voix et le vocabulaire vivent dans "
@@ -186,9 +265,12 @@ def doctrine_texte(st: dict | None = None) -> str:
         out += [f"  · {a}" for a in st["alertes"]]
     out += [
         "",
-        "CE QUE CE TEXTE NE CONTIENT PAS : le périmètre éditorial (quatre territoires, "
-        "public visé), les personas lecteurs, et la checklist d'auto-évaluation — ils "
-        "vivent dans le dépôt (CLAUDE.md, docs/personas/, "
+        "À LIRE AVANT CHAQUE PASSAGE, pas une fois pour toutes : ces règles changent, et "
+        "c'est pour ça qu'on ne te les recopie pas dans ta consigne.",
+        "",
+        "CE QUE CE TEXTE NE CONTIENT PAS : les personas lecteurs et la checklist "
+        "d'auto-évaluation — ils "
+        "vivent dans le dépôt (docs/personas/, "
         ".claude/skills/redaction-agenda-sabauda/). Une session qui a le dépôt sous la "
         "main les lit là ; une session qui ne l'a pas doit le dire plutôt que de deviner.",
         "",
