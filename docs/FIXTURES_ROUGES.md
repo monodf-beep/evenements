@@ -355,3 +355,31 @@ Trois hypothèses ont été éliminées par la mesure avant d'aller lire : pytes
 dans le conteneur, les fixtures sont restées vertes), la version du code (l'arbre local
 contenait le commit déployé), et l'état de la base. La quatrième tenait dans la sortie du
 programme, à une commande de distance.
+
+### Suite du 29/09 : `php` installé, et deux contrôles qui parlent enfin
+
+Franck a lancé `apt install php-cli`. `test_etiquette_langue` est passée au vert — elle
+n'attendait que ça. Les deux autres se sont exercées pour de bon et ont planté :
+
+    Call to undefined function mb_strlen() in …/cs-index-budget.php:158
+
+`php8.3-cli` s'installe avec un jeu d'extensions minimal, **sans `mbstring`**. Un
+`apt install php8.3-mbstring` a suffi.
+
+**Ce qui méritait un correctif, c'est la FORME de l'erreur.** Elle avait l'allure d'un
+bogue — une trace d'appels — et la nature d'un outil absent : un paquet à installer, pas
+un code à corriger. Les deux se ressemblent à s'y méprendre, et ça a coûté une demi-heure
+alors que le message nommait la fonction.
+
+`tests/_php_extensions.py` demande donc AVANT de jouer : quelles familles de fonctions ce
+fichier appelle-t-il, et `php -m` les a-t-il ? Si non, la fixture le DIT, avec la commande
+`apt` — et `run_all` reconnaît un outil absent.
+
+⚠️ **Ce qu'on ne fait surtout pas** : tolérer les « Call to undefined function ». Un nom
+de fonction mal tapé dans un mu-plugin rend la MÊME erreur, et c'est un vrai défaut. La
+table des familles est courte, une ligne n'y entre que le jour où un fichier du dépôt s'en
+sert, et un préfixe inconnu ne déclenche rien. `tests/test_php_extensions.py` garde ce
+point précis, et vérifie aussi que `run_all` ne classe PAS une vraie trace de bogue.
+
+Témoin de bout en bout : la fixture rejouée avec un `php -n` (sans extensions) écrit bien
+« extension php `mbstring` absente », et le lanceur la range en « non exécutable ».
