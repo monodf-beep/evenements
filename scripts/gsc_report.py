@@ -35,6 +35,7 @@ Usage :
     .venv/bin/python -m scripts.gsc_report --jours 90
     .venv/bin/python -m scripts.gsc_report --articles        # seulement les articles
     .venv/bin/python -m scripts.gsc_report --une             # une indexée ? Discover ?
+    .venv/bin/python -m scripts.gsc_report --indexation      # toutes les fiches non terminées
     .venv/bin/python -m scripts.gsc_report --csv export.zip  # sans API, depuis un export
     .venv/bin/python -m scripts.gsc_report --auth --client client_secret.json
     .venv/bin/python -m scripts.gsc_report --enregistrer --apply --jours 30   # archivage
@@ -509,6 +510,146 @@ def _une_et_discover(service, propriete: str, base: str, jours: int) -> int:
     return 0
 
 
+def _fiches_vivantes(base: str, aujourdhui: str) -> tuple[list[dict], int]:
+    """Toutes les fiches EN LIGNE non terminées, FR et IT — lues sur le site, pas en base.
+
+    ⚠️ LE PIÈGE MESURÉ LE 29/09 : `tribe/events/v1/events?start_date=<aujourd'hui>` rend les
+    événements qui COMMENCENT à partir d'aujourd'hui, et écarte donc tous ceux EN COURS —
+    47 des 200 premières fiches ce jour-là (We Want Jazz et Montrottier jusqu'au 31/10, la
+    salle de l'Arte povera à Rivoli jusqu'au 31/12). Or la règle 5 dit que c'est
+    `date_event_end` qui décide. On demande donc tout depuis une date lointaine et on
+    garde, ICI, ce dont la fin n'est pas passée.
+
+    Rend (fiches, total annoncé par l'API) : si les pages ramenées ne couvrent pas ce total,
+    l'appelant doit le dire — une liste incomplète ne doit pas passer pour la liste.
+    """
+    fiches: list[dict] = []
+    total_annonce = 0
+    vus = 0
+    page = 1
+    while True:
+        rep = None
+        for essai in range(3):
+            try:
+                rep = requests.get(f"{base}/wp-json/tribe/events/v1/events", timeout=60,
+                                   params={"per_page": 50, "page": page,
+                                           "start_date": "2020-01-01"},
+                                   headers={"User-Agent": "gsc_report"})
+                break
+            except requests.RequestException as exc:
+                log.warning("page %d des événements : %s (essai %d/3)", page, exc, essai + 1)
+        if rep is None or rep.status_code != 200:
+            # TEC répond 400 au-delà de la dernière page : c'est la fin normale, mais on ne
+            # le suppose pas — la comparaison au total annoncé tranche plus bas.
+            break
+        d = rep.json()
+        total_annonce = d.get("total", total_annonce)
+        lot = d.get("events", [])
+        if not lot:
+            break
+        for e in lot:
+            fin = (e.get("end_date") or e.get("start_date") or "")[:10]
+            if fin >= aujourdhui:
+                fiches.append({"url": e["url"], "debut": e["start_date"][:10], "fin": fin,
+                               "publie": (e.get("date") or "")[:10],
+                               "langue": "it" if "/it/" in e["url"] else "fr"})
+        vus = (page - 1) * 50 + len(lot)
+        print(f"   lecture du calendrier : {vus}/{total_annonce} fiche(s) parcourue(s)…",
+              flush=True)
+        if vus >= total_annonce:
+            break
+        page += 1
+    if vus < total_annonce:
+        print(f"   ⚠ LECTURE INCOMPLÈTE : {vus} fiche(s) parcourue(s) sur {total_annonce} "
+              f"annoncées — le rapport ci-dessous ne couvre pas tout le calendrier.")
+    return fiches, total_annonce
+
+
+def _indexation(service, propriete: str, base: str, plafond: int) -> int:
+    """Combien des fiches encore devant nous Google a-t-il VRAIMENT indexées ?
+
+    Né le 29/09/2026 : sur les 8 fiches à la une (`--une`), 3 seulement étaient indexées,
+    les 5 autres « Discovered - currently not indexed » — et le Marché au Fort de Bard, en
+    ligne depuis le 31/07, n'avait JAMAIS été visité par Google. Huit fiches sont un
+    échantillon ; ce mode donne le chiffre du site, sur le seul périmètre qui compte
+    (règle 5 : à venir et en cours, FR et IT).
+
+    Le tableau par ANCIENNETÉ est la lecture qui tranche : si seules les fiches de moins
+    d'une semaine manquent, c'est le délai normal de Google ; si des fiches d'un mois ou
+    plus n'ont jamais été visitées, Google a décidé qu'elles ne valaient pas le passage.
+
+    Lecture seule. Quota Google : 2 000 inspections par jour et par propriété — `--plafond`
+    borne le passage, et le rapport dit combien de fiches il n'a PAS inspectées.
+    """
+    aujourdhui = date.today().isoformat()
+    print(f"\n=== Indexation des fiches en ligne non terminées (fin ≥ {aujourdhui}) ===")
+    fiches, total = _fiches_vivantes(base, aujourdhui)
+    print(f"   {len(fiches)} fiche(s) non terminée(s) sur {total} au calendrier en ligne "
+          f"(FR {sum(f['langue'] == 'fr' for f in fiches)}, "
+          f"IT {sum(f['langue'] == 'it' for f in fiches)})")
+    if not fiches:
+        print("   aucune fiche — ce zéro vient de la LECTURE du calendrier (voir les lignes "
+              "ci-dessus), le site n'est pas vide.")
+        return 1
+    a_inspecter = fiches[:plafond]
+    if len(fiches) > plafond:
+        print(f"   ⚠ plafond {plafond} : {len(fiches) - plafond} fiche(s) NE seront PAS "
+              f"inspectées ce passage (relever --plafond, quota Google 2 000/jour)")
+
+    for n, f in enumerate(a_inspecter, 1):
+        try:
+            rep = service.urlInspection().index().inspect(
+                body={"inspectionUrl": f["url"], "siteUrl": propriete}).execute()
+            st = rep.get("inspectionResult", {}).get("indexStatusResult", {})
+            f["verdict"] = st.get("verdict", "?")
+            f["etat"] = st.get("coverageState", "?")
+            f["passage"] = (st.get("lastCrawlTime") or "")[:10]
+        except Exception as exc:  # noqa: BLE001
+            f["verdict"], f["etat"], f["passage"] = "REFUSÉE", str(exc)[:80], ""
+        if n % 25 == 0 or n == len(a_inspecter):
+            print(f"   inspection : {n}/{len(a_inspecter)}…", flush=True)
+
+    faites = a_inspecter
+
+    def _age(f: dict) -> str:
+        if not f["publie"]:
+            return "date de publication inconnue"
+        j = (date.fromisoformat(aujourdhui) - date.fromisoformat(f["publie"])).days
+        return ("1. moins de 7 jours" if j < 7 else "2. 7 à 30 jours" if j <= 30
+                else "3. plus de 30 jours")
+
+    print(f"\n=== Résultat sur {len(faites)} fiche(s) inspectée(s) ===")
+    par_etat: dict[str, int] = {}
+    for f in faites:
+        par_etat[f"{f['verdict']} · {f['etat']}"] = par_etat.get(
+            f"{f['verdict']} · {f['etat']}", 0) + 1
+    for k, v in sorted(par_etat.items(), key=lambda x: -x[1]):
+        print(f"   {v:>4}  {k}")
+
+    print("\n=== Par langue et par ancienneté de publication : indexées / inspectées ===")
+    groupes: dict[tuple[str, str], list[int]] = {}
+    for f in faites:
+        g = groupes.setdefault((f["langue"], _age(f)), [0, 0])
+        g[0] += f["verdict"] == "PASS"
+        g[1] += 1
+    for (langue, age), (ok, n) in sorted(groupes.items()):
+        print(f"   {langue}  {age:<30} {ok:>4} / {n:<4} ({ok * 100 // n}%)")
+
+    manquantes = sorted((f for f in faites if f["verdict"] != "PASS"),
+                        key=lambda f: f["publie"])
+    print(f"\n=== Les {len(manquantes)} fiche(s) NON indexée(s), les plus anciennes "
+          f"d'abord (liste complète) ===")
+    for f in manquantes:
+        print(f"   publiée {f['publie'] or '?':<10}  fin {f['fin']}  "
+              f"{f['etat'][:34]:<34}  {f['url'].replace(base, '')}")
+    ok = sum(f["verdict"] == "PASS" for f in faites)
+    print(f"\n   BILAN : {ok} indexée(s) sur {len(faites)} inspectée(s)"
+          + (f", {len(fiches) - len(faites)} non inspectée(s) (plafond)"
+             if len(fiches) > len(faites) else "")
+          + f". Périmètre : fiches en ligne dont la fin est ≥ {aujourdhui}, FR et IT.\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Lit la Search Console (lecture seule) : requêtes, pages, articles.")
@@ -533,6 +674,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--une", action="store_true",
                         help="Indexation des fiches « À la une » (inspection d'URL) et trafic "
                              "Discover (lecture seule).")
+    parser.add_argument("--indexation", action="store_true",
+                        help="Inspecte TOUTES les fiches en ligne non terminées (FR et IT) : "
+                             "combien Google en a indexé, par ancienneté (lecture seule).")
+    parser.add_argument("--plafond", type=int, default=1500,
+                        help="Avec --indexation : nombre maximal d'inspections (quota Google "
+                             "2 000/jour). Défaut 1500.")
     parser.add_argument("--enregistrer", action="store_true",
                         help="Archive le relevé en base (table gsc_perf) pour constituer "
                              "l'historique. Silencieux : n'envoie rien sur Slack.")
@@ -596,6 +743,8 @@ def main(argv: list[str] | None = None) -> int:
             return _tendance(service, propriete, base, args.jours)
         if args.une:
             return _une_et_discover(service, propriete, base, args.jours)
+        if args.indexation:
+            return _indexation(service, propriete, base, args.plafond)
         if args.enregistrer:
             pages = _interroge(service, propriete, debut, fin, ["page"], 5000)
             requetes = _interroge(service, propriete, debut, fin, ["query"], 5000)

@@ -51,6 +51,21 @@ Search Console, puis interroge le trafic `type=discover` des 28 derniers jours. 
 le site, et aucune impression pour la fiche de Yenne, en ligne depuis 19 jours — sans
 qu'on puisse dire si elle était indexée. C'est la question que cette commande tranche.
 
+Premier passage, 29/09 au soir : **3 fiches à la une indexées sur 8**, les cinq autres
+« Discovered - currently not indexed » (Google connaît l'adresse et n'est jamais venu) —
+dont le Marché au Fort FR, en ligne depuis le 31/07. Et **0 affichage Discover** du 29/08
+au 26/09. Une page non indexée ne peut pas entrer dans Discover : le frein est EN AMONT.
+
+Pour le chiffre du site entier, pas d'un échantillon de huit :
+
+    .venv/bin/python -m scripts.gsc_report --indexation
+
+Inspecte toutes les fiches en ligne dont la FIN n'est pas passée (221 le 29/09, FR et IT,
+en cours comprises), et les range par ancienneté de publication : si seules les fiches de
+moins d'une semaine manquent, c'est le délai de Google ; si des fiches d'un mois n'ont
+jamais été visitées, c'est que Google ne juge pas le site digne du passage. Compte
+quelques minutes (une inspection par fiche), avec un point d'avancement toutes les 25.
+
 `/feed/?cs_flux_une=1` renvoie l'en-tête `X-CS-Flux-Une` (« actif » ou la raison du
 refus) et `X-CS-Flux-Une-Ids` (les fiches retenues). Deux versions du 24/09 ont rendu un
 flux inchangé sans rien dire — d'où cet en-tête.
