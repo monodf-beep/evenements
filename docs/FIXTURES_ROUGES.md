@@ -63,6 +63,28 @@ l'explication la plus probable, mais **elle n'est pas établie** : je ne l'ai pa
 reproduite. Écrit ici pour que la prochaine session qui la voit rouge sache qu'elle a déjà
 oscillé, et cherche du côté de l'heure avant de chercher du côté du code.
 
+> ✅ **TRANCHÉ LE 2026-09-29, et ce n'était PAS l'heure.** Rouge sur le VPS à 15h04, verte
+> ici à la même minute — l'horloge ne distingue pas les deux. La cause est le `.env` :
+> `scripts/autocomplete.main()` appelle `load_dotenv(ROOT / ".env")`, ce qui REMET la
+> `ANTHROPIC_API_KEY` que la fixture venait de retirer. Sans `.env` (conteneur de session)
+> la clé reste absente et la complétion est déterministe ; avec (le serveur), la fixture
+> appelait le VRAI modèle — **quatre appels API par passage**, donc à chaque lancement de
+> la suite et à chaque déploiement automatique de 7h50 — et le modèle ne rend pas deux fois
+> la même chose.
+>
+> L'hypothèse a été TESTÉE, pas remplacée par une autre : un `.env` factice posé le temps
+> d'un passage, et les 401 sont apparus. Mesuré aussi, avant de parler d'une famille de
+> défauts : des trois fixtures qui retirent la clé de la même façon, **une seule** est
+> touchée. Les autres en POSENT une factice, que `load_dotenv` n'écrase pas.
+>
+> Correctif : la fixture neutralise `load_dotenv`, et porte un témoin qui vérifie la
+> CONSÉQUENCE — aucune clé réapparue à la fin du passage. Contre-épreuve sur la version
+> sans bouchon : « ÉCHEC ⚠️ une clé API est réapparue », et quatre appels réels.
+>
+> **La leçon dépasse cette fixture** : une fixture qui importe un script dont le `main()`
+> charge le `.env` n'est pas isolée, quoi qu'elle ait retiré de `os.environ` avant. Le
+> bon geste est de neutraliser le CHARGEMENT, pas de retirer la variable.
+
 ---
 
 ## La règle, pour la suite
