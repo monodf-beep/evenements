@@ -929,10 +929,78 @@ def stock_devant_nous(conn: sqlite3.Connection, aujourdhui: str | None = None) -
         (jour,)).fetchall()]
 
 
+# ── Trois gardes de plus que la fusion du matin — lues dans l'essai du 29/09 ─────────────
+#
+# Rejoué sur la base de production (30 jours d'arrivées, 886 fiches), le contrôle en
+# absorbait 33 ; onze étaient FAUSSES. Six venaient des titres en capitales (corrigé dans
+# `utils.sources.same_story`). Les cinq autres avaient des titres vraiment proches pour
+# des événements différents, et la fusion du matin les aurait prises aussi — mais là, deux
+# fiches pending partent ensemble en évaluation et un humain voit le groupe ; ici, la
+# nouvelle disparaît. D'où, pour l'absorption SEULE :
+#
+#   · des dates qui se CHEVAUCHENT, les deux fiches datées — pas la tolérance de 14 jours
+#     de `_dates_incompatible` : « Secondo » et « Terzo appuntamento del ciclo “La storia
+#     d'Italia al Cinema” » sont deux séances, à quelques jours d'écart ;
+#   · deux VILLES renseignées et différentes séparent : « Giornate europee del
+#     patrimonio » à l'abbaye de Vezzolano, aux Archives d'Asti, au Museo Civico de Casale
+#     et aux Musei Reali de Turin sont quatre portes ouvertes, pas une. Plus large que
+#     `_villes_separent`, qui ne sépare que deux communes DU REGISTRE — or Albugnano
+#     (Vezzolano) n'y est pas, mesuré. Une ville qui désigne une RÉGION ou « plusieurs
+#     communes » ne sépare rien (les deux Lo Pan Ner : « Vallée d'Aoste » / « Valle
+#     d'Aosta (vari comuni) ») ;
+#   · deux numéros de séance différents séparent (« secondo » / « terzo », « 2e » / « 3e »).
+_ORDINAUX = {
+    "premier": 1, "premiere": 1, "deuxieme": 2, "second": 2, "seconde": 2, "troisieme": 3,
+    "quatrieme": 4, "cinquieme": 5, "sixieme": 6, "septieme": 7, "huitieme": 8,
+    "primo": 1, "prima": 1, "secondo": 2, "seconda": 2, "terzo": 3, "terza": 3,
+    "quarto": 4, "quarta": 4, "quinto": 5, "quinta": 5, "sesto": 6, "sesta": 6,
+    "settimo": 7, "settima": 7, "ottavo": 8, "ottava": 8,
+}
+
+
+def _ordinaux(titre: str) -> set[int]:
+    mots = _titre_plie(titre).split()
+    return {_ORDINAUX[m] for m in mots if m in _ORDINAUX} | \
+        {int(m[:-1]) for m in mots if re.fullmatch(r"\d{1,2}[ea]", m)}
+
+
+_VILLES_FLOUES = re.compile(
+    r"\b(vari|varie|diversi|diverse|plusieurs|comuni|communes|region[ei]?|provincia|"
+    r"province|departement|dipartimento|valle d aosta|vallee d aoste|piemonte|piemont|"
+    r"savoie|savoia|haute savoie|alta savoia|comte de nice|contea di nizza|"
+    r"alpes maritimes|alpi marittime|online|en ligne)\b")
+
+
+def _villes_differentes(a: dict, b: dict) -> bool:
+    va, vb = _canon_ville(a.get("ville") or ""), _canon_ville(b.get("ville") or "")
+    if not va or not vb or va == vb:
+        return False
+    return not (_VILLES_FLOUES.search(_plie(va)) or _VILLES_FLOUES.search(_plie(vb)))
+
+
+def _dates_disjointes(a: dict, b: dict) -> bool:
+    sa, sb = _jour(a.get("date_event_start")), _jour(b.get("date_event_start"))
+    if not sa or not sb:
+        return False
+    ea = _jour(a.get("date_event_end")) or sa
+    eb = _jour(b.get("date_event_end")) or sb
+    return not (sa <= eb and sb <= ea)
+
+
+def meme_evenement_que_le_stock(n: dict, s: dict, cross_lang: bool = False) -> bool:
+    """Le chemin des titres, plus les trois gardes ci-dessus."""
+    if not _memes_titres(n, s, cross_lang):
+        return False
+    if _dates_disjointes(n, s) or _villes_separent(n, s) or _villes_differentes(n, s):
+        return False
+    on, os_ = _ordinaux(n.get("title", "")), _ordinaux(s.get("title", ""))
+    return not (on and os_ and on != os_)
+
+
 def absorptions(nouvelles: list[dict], stock: list[dict],
                 cross_lang: bool = False) -> list[tuple[dict, dict]]:
     """[(fiche nouvelle, fiche du stock qui la couvre déjà)] — même territoire, chemin
-    des TITRES seulement (`_memes_titres`, gardes années et dates comprises).
+    des TITRES seulement, gardes comprises (`meme_evenement_que_le_stock`).
 
     Plusieurs fiches du stock pour une même nouvelle : c'est que le stock a déjà un
     doublon (le rapport de 9h50 le montre). On absorbe dans la plus ANCIENNE publiée,
@@ -944,7 +1012,7 @@ def absorptions(nouvelles: list[dict], stock: list[dict],
     for n in nouvelles:
         couvrent = [s for s in par_terr.get(n.get("territoire") or "", [])
                     if s["id"] != n["id"] and not paire_de_traduction(n, s)
-                    and _memes_titres(n, s, cross_lang)]
+                    and meme_evenement_que_le_stock(n, s, cross_lang)]
         if couvrent:
             cible = min(couvrent, key=lambda s: (0 if s.get("wp_post_id_as") else 1, s["id"]))
             paires.append((n, cible))

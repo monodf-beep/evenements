@@ -228,6 +228,76 @@ _reste_pending("g. même titre dans un AUTRE territoire : pas comparé",
                lambda c: (_ins(c, 2190, T_2190_SOURCE, "published_cs", wp=2190),
                           _ins(c, 5534, T_5534, "pending", terr="savoie")))
 
+# ════════════════════════════════════════════════════════════════════════════════════════
+# 3 ter. L'ESSAI DU 29/09 SUR LA BASE DE PRODUCTION — 33 absorptions, 11 fausses
+# ════════════════════════════════════════════════════════════════════════════════════════
+# Les titres ci-dessous sont RECOPIÉS de la sortie de l'essai (30 jours d'arrivées, 886
+# fiches). Les villes des Giornate europee sont celles des lieux nommés dans les titres ;
+# 5997 est à Casale Monferrato (digest de l'agent quotidien du 23/09).
+print("\n──── 3 ter. les onze fausses absorptions de l'essai du 29/09 ────")
+FAUX = [
+    ("titres en capitales : « DI » pris pour un nom propre",
+     "UN FIORE GIGANTE NEL CORTILE DI VIA PO 59", "Torino",
+     "MUSEI REALI DI TORINO. NOMINATO IL NUOVO CONSIGLIO DI AMMINISTRAZIONE", "Torino"),
+    ("titres en capitales : « NEL »",
+     "UN FIORE GIGANTE NEL CORTILE DI VIA PO 59", "Torino", "L’ARTE NEL PIATTO", "Torino"),
+    ("titres en capitales : « AL »",
+     "ESTATE REALE 2026. UNA SERA AL MUSEO", "Torino",
+     "RIAPRE AL PUBBLICO LA COLLEZIONE LENCI CON UN RINNOVATO ALLESTIMENTO", "Torino"),
+    ("titres en capitales : Jessica Lange ≠ Giornate europee",
+     "STILL IMAGE. FOTOGRAFIE DI JESSICA LANGE", "Torino",
+     "I MUSEI REALI DI TORINO PARTECIPANO ALLE GIORNATE EUROPEE DEL PATRIMONIO", "Torino"),
+    ("Giornate europee : Vezzolano n'est pas les Musei Reali (Albugnano hors registre)",
+     "I MUSEI REALI DI TORINO PARTECIPANO ALLE GIORNATE EUROPEE DEL PATRIMONIO", "Torino",
+     "Giornate europee del patrimonio all'Abbazia di Vezzolano", "Albugnano"),
+    ("Giornate europee : Casale n'est pas Turin",
+     "I MUSEI REALI DI TORINO PARTECIPANO ALLE GIORNATE EUROPEE DEL PATRIMONIO", "Torino",
+     "Giornate Europee del Patrimonio: il Museo Civico apre le collezioni e il chiostro",
+     "Casale Monferrato"),
+]
+for label, t_stock, v_stock, t_new, v_new in FAUX:
+    _reste_pending(label, lambda c, a=t_stock, b=v_stock, x=t_new, y=v_new: (
+        _ins(c, 2190, a, "published_cs", wp=2190, ville=b),
+        _ins(c, 5534, x, "pending", ville=y)))
+_reste_pending("séances d'un cycle : « Terzo » n'est pas « Secondo », même sans date",
+               lambda c: (_ins(c, 2190, "Secondo appuntamento del ciclo di incontri “La "
+                               "storia d’Italia al Cinema”", "published_sub"),
+                          _ins(c, 5534, "Terzo appuntamento del ciclo di incontri “La storia "
+                               "d’Italia al Cinema”", "pending", debut="", fin="")))
+SEMAINE = (AUJ + timedelta(days=8)).isoformat()
+_reste_pending("séances datées sans chevauchement : pas absorbée, même dans la tolérance "
+               "de 14 jours de la fusion du matin",
+               lambda c: (_ins(c, 2190, "La storia d’Italia al Cinema: incontro con lo "
+                               "storico al Cinema Massimo", "published_sub", fin=DEBUT),
+                          _ins(c, 5534, "La storia d’Italia al Cinema: incontro con lo "
+                               "storico al Cinema Massimo", "pending", debut=SEMAINE,
+                               fin=SEMAINE)))
+
+print("\n──── 3 quater. les vrais doublons de l'essai restent absorbés ────")
+VRAIS = [
+    ("Matisse – Yves Saint Laurent, le Beau, la Mode et le Bonheur",
+     "Henri Matisse ‒ Yves Saint Laurent. Le beau, la mode et le bonheur", "Nice"),
+    ("Song Dong. Soul Out", "Song Dong. Soul Out", "Torino"),
+    ("Lo Pan Ner", "Lo Pan Ner", "Vallée d'Aoste"),
+    ("Public Program_GAZA il futuro ha un cuore antico",
+     "Public Program | Gaza, il futuro ha un cuore antico", "Torino"),
+    ("Operazione Enigma al Museo!", "Operazione Enigma al Museo!", "Torino"),
+]
+for t_stock, t_new, ville in VRAIS:
+    conn = _base()
+    _ins(conn, 2190, t_stock, "published_cs", wp=2190, ville=ville)
+    _ins(conn, 5534, t_new, "pending", ville=ville)
+    _cron()
+    _check(f"absorbée : « {t_new[:55]} »", _ligne(conn, 5534)["duplicate_of"] == 2190)
+    conn.close()
+conn = _base()
+_ins(conn, 2190, "Lo Pan Ner", "published_cs", wp=2190, ville="Vallée d'Aoste")
+_ins(conn, 5534, "Lo Pan Ner", "pending", ville="Valle d'Aosta (vari comuni)")
+_cron()
+_check("« Vallée d'Aoste » / « Valle d'Aosta (vari comuni) » ne séparent pas : absorbée",
+       _ligne(conn, 5534)["duplicate_of"] == 2190)
+conn.close()
+
 print("\n──── 3 bis. la jumelle traduite n'est jamais une cible ────")
 conn = _base()
 _ins(conn, 8132, T_2190_SOURCE, "published_cs", wp=8132, trad=9999)
