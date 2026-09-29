@@ -34,6 +34,7 @@ Usage :
     .venv/bin/python -m scripts.gsc_report                   # rapport complet, 28 jours
     .venv/bin/python -m scripts.gsc_report --jours 90
     .venv/bin/python -m scripts.gsc_report --articles        # seulement les articles
+    .venv/bin/python -m scripts.gsc_report --une             # une indexée ? Discover ?
     .venv/bin/python -m scripts.gsc_report --csv export.zip  # sans API, depuis un export
     .venv/bin/python -m scripts.gsc_report --auth --client client_secret.json
     .venv/bin/python -m scripts.gsc_report --enregistrer --apply --jours 30   # archivage
@@ -408,6 +409,106 @@ def _tendance(service, propriete: str, base: str, jours: int) -> int:
     return 0
 
 
+def _fiches_une(base: str) -> list[tuple[str, str]]:
+    """Les fiches « À la une » du jour, lues là où le SITE les désigne — FR et IT.
+
+    Source : l'en-tête `X-CS-Flux-Une-Ids` que `cs-flux-une.php` renvoie sur
+    `/feed/?cs_flux_une=1`. Pas de liste en dur, pas de lecture en base : la une tourne
+    chaque jour, et c'est le flux EN LIGNE que Google lit (règle 1). Les adresses sont
+    ensuite demandées à l'API REST, parce qu'un numéro ne dit pas l'URL publique.
+    """
+    fiches: list[tuple[str, str]] = []
+    for langue, flux in (("fr", f"{base}/feed/"), ("it", f"{base}/it/feed/")):
+        try:
+            r = requests.get(flux, params={"cs_flux_une": 1}, timeout=30,
+                             headers={"User-Agent": "gsc_report"})
+            r.raise_for_status()
+        except requests.RequestException as exc:
+            log.warning("flux %s injoignable (%s) — une %s ignorée", flux, exc, langue)
+            continue
+        etat = r.headers.get("X-CS-Flux-Une", "(en-tête absent)")
+        ids = [i for i in r.headers.get("X-CS-Flux-Une-Ids", "").split(",") if i.strip()]
+        print(f"   flux {langue} : X-CS-Flux-Une = {etat} — {len(ids)} fiche(s) désignée(s)")
+        if not ids:
+            continue
+        try:
+            rep = requests.get(f"{base}/wp-json/wp/v2/tribe_events", timeout=30,
+                               params={"include": ",".join(ids), "per_page": len(ids),
+                                       "_fields": "id,link", "lang": langue},
+                               headers={"User-Agent": "gsc_report"})
+            rep.raise_for_status()
+            liens = {str(e["id"]): e["link"] for e in rep.json()}
+        except (requests.RequestException, ValueError) as exc:
+            log.warning("API REST injoignable pour la une %s (%s)", langue, exc)
+            continue
+        for i in ids:
+            if i in liens:
+                fiches.append((langue, liens[i]))
+            else:
+                # Désignée par le flux mais introuvable en REST : on le DIT, sinon la
+                # fiche disparaît du rapport et le total ment (règle 6).
+                print(f"   ⚠ fiche {i} ({langue}) désignée par le flux, absente de l'API REST")
+    return fiches
+
+
+def _une_et_discover(service, propriete: str, base: str, jours: int) -> int:
+    """« Pourquoi mes fiches ne sont pas dans Discover ? » (Franck, 29/09/2026).
+
+    Deux questions qu'aucun autre outil ne tranchait ce jour-là :
+      1. **les fiches à la une sont-elles INDEXÉES ?** CrawlSEO ne donne que des
+         impressions ; « aucune impression » ne distingue pas « pas indexée » de
+         « indexée mais jamais montrée ». L'inspection d'URL, si : c'est la même réponse
+         que le bouton « Inspecter l'URL » de la Search Console ;
+      2. **Google a-t-il envoyé UN SEUL affichage Discover ?** Le rapport Discover de
+         l'interface n'apparaît qu'au premier affichage — son absence ne dit pas depuis
+         quand on attend. La requête `type=discover` rend le zéro explicite, avec sa
+         fenêtre de dates.
+    Lecture seule. Quota Google : 2 000 inspections par jour, on en fait une poignée.
+    """
+    print("\n=== Fiches à la une : état d'indexation (inspection d'URL) ===")
+    fiches = _fiches_une(base)
+    if not fiches:
+        print("   aucune fiche récupérée — voir les lignes ci-dessus : ce zéro vient d'un "
+              "échec de lecture, pas d'une une vide.")
+    compte: dict[str, int] = {}
+    for langue, url in fiches:
+        try:
+            rep = service.urlInspection().index().inspect(
+                body={"inspectionUrl": url, "siteUrl": propriete}).execute()
+        except Exception as exc:  # noqa: BLE001 — le message de Google est l'information
+            print(f"   [{langue}] {url.replace(base, '')}\n        inspection refusée : {exc}")
+            compte["refusée"] = compte.get("refusée", 0) + 1
+            continue
+        st = rep.get("inspectionResult", {}).get("indexStatusResult", {})
+        verdict = st.get("verdict", "?")
+        compte[verdict] = compte.get(verdict, 0) + 1
+        print(f"   [{langue}] {url.replace(base, '')}")
+        print(f"        verdict={verdict} · {st.get('coverageState', '?')}")
+        print(f"        dernier passage de Google : {st.get('lastCrawlTime', 'jamais')}")
+        canon = st.get("googleCanonical")
+        if canon and canon.rstrip("/") != url.rstrip("/"):
+            # Une canonique différente veut dire que Google indexe UNE AUTRE adresse à la
+            # place de celle-ci : c'est l'autre qui aurait une chance dans Discover.
+            print(f"        ⚠ Google retient une autre adresse comme canonique : {canon}")
+    print(f"\n   {len(fiches)} fiche(s) soumise(s) à l'inspection : "
+          + (", ".join(f"{v} {k}" for k, v in sorted(compte.items())) or "aucune"))
+    print("   PASS = indexée ; NEUTRAL = connue de Google mais PAS indexée (« détectée » ou "
+          "« explorée, non indexée ») ; FAIL = erreur.")
+
+    debut, fin = _fenetre(jours)
+    print(f"\n=== Trafic Discover du {debut} au {fin} ===")
+    lignes = service.searchanalytics().query(siteUrl=propriete, body={
+        "startDate": debut, "endDate": fin, "type": "discover",
+        "dimensions": ["page"], "rowLimit": 100}).execute().get("rows", [])
+    if not lignes:
+        print("   0 page affichée dans Discover sur la fenêtre. Requête aboutie : c'est une "
+              "absence mesurée, pas un échec de lecture.")
+    else:
+        _tableau(f"Discover — {len(lignes)} page(s) affichée(s)", lignes)
+    print()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Lit la Search Console (lecture seule) : requêtes, pages, articles.")
@@ -429,6 +530,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tendance", action="store_true",
                         help="Évolution semaine par semaine, et 14 derniers jours contre les 14 "
                              "précédents par type de page (lecture seule).")
+    parser.add_argument("--une", action="store_true",
+                        help="Indexation des fiches « À la une » (inspection d'URL) et trafic "
+                             "Discover (lecture seule).")
     parser.add_argument("--enregistrer", action="store_true",
                         help="Archive le relevé en base (table gsc_perf) pour constituer "
                              "l'historique. Silencieux : n'envoie rien sur Slack.")
@@ -490,6 +594,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.tendance:
             return _tendance(service, propriete, base, args.jours)
+        if args.une:
+            return _une_et_discover(service, propriete, base, args.jours)
         if args.enregistrer:
             pages = _interroge(service, propriete, debut, fin, ["page"], 5000)
             requetes = _interroge(service, propriete, debut, fin, ["query"], 5000)

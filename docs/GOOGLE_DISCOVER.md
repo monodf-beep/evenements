@@ -40,6 +40,17 @@ site a reçu du trafic Discover : son absence veut dire « pas encore », pas «
 
 ## Diagnostiquer
 
+**« Les fiches à la une sont-elles indexées ? Google a-t-il envoyé un seul affichage
+Discover ? »** — une commande, sur le VPS, lecture seule (ajoutée le 29/09) :
+
+    .venv/bin/python -m scripts.gsc_report --une
+
+Elle inspecte chaque fiche à la une (FR et IT) comme le bouton « Inspecter l'URL » de la
+Search Console, puis interroge le trafic `type=discover` des 28 derniers jours. Mesuré le
+29/09 via CrawlSEO avant son écriture : 7 clics et 211 impressions sur la période pour tout
+le site, et aucune impression pour la fiche de Yenne, en ligne depuis 19 jours — sans
+qu'on puisse dire si elle était indexée. C'est la question que cette commande tranche.
+
 `/feed/?cs_flux_une=1` renvoie l'en-tête `X-CS-Flux-Une` (« actif » ou la raison du
 refus) et `X-CS-Flux-Une-Ids` (les fiches retenues). Deux versions du 24/09 ont rendu un
 flux inchangé sans rien dire — d'où cet en-tête.
