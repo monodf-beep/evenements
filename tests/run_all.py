@@ -58,6 +58,34 @@ def _outil_manquant(sortie: str) -> str:
     # présent, c'est un vrai rouge et il reste rouge.
     if "Cannot find module 'yoastseo'" in sortie:
         return "paquet npm `yoastseo` absent (npm install dans le dépôt)"
+    # ══ LE BINAIRE `php`, MÊME FAMILLE — trouvé le 2026-09-29 ════════════════════════
+    #
+    # Franck : « répare les trois fixtures rouges ». Deux d'entre elles
+    # (`test_etiquette_langue`, `test_index_budget_sitemap`) passaient dans le conteneur
+    # de session et échouaient sur le VPS, sur le MÊME commit. Leur sortie le disait en
+    # une ligne, qu'il a fallu aller chercher :
+    #
+    #     php absent : fixture NON jouée (ce n'est pas un succès).
+    #
+    # `/usr/bin/php` existe dans le conteneur de développement, pas sur le serveur. Ces
+    # fixtures contrôlent des mu-plugins avec `php -l` ; sans le binaire elles ne peuvent
+    # rien contrôler, et leur auteur a fait le bon choix — rendre 1 plutôt que se
+    # déclarer verte. Restait le classement : un outil externe absent n'est pas une
+    # régression, et le compter rouge bloque le déploiement pour une raison qui n'est pas
+    # du code. Exactement l'argument écrit ci-dessus pour `yoastseo`.
+    #
+    # ⚠️ LE MOTIF EST ÉTROIT, et il faut qu'il le reste : on exige les DEUX marqueurs, le
+    # nom de l'outil ET la phrase par laquelle ces fixtures refusent de se dire vertes.
+    # Un `php -l` qui trouve une VRAIE faute de syntaxe n'écrit ni l'un ni l'autre : il
+    # reste rouge, et c'est tout l'intérêt de `tests/test_php_syntax.py`.
+    #
+    # ⚠️ ET LÀ OÙ `php` EST INSTALLÉ, elles tournent et doivent PASSER. On ne les
+    # neutralise pas, on reconnaît l'absence d'un outil. Les rendre au vert POUR DE BON
+    # demande `apt install php-cli` sur le serveur — ce que CLAUDE.md réserve à Franck.
+    # Tant que ce n'est pas fait, ce sont deux contrôles qui ne s'exercent nulle part, et
+    # la ligne « non exécutable » est là pour que ça se voie.
+    if "php absent" in sortie and "pas un succès" in sortie:
+        return "binaire `php` absent (apt install php-cli — demander à Franck)"
     return ""
 
 

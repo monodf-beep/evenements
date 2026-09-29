@@ -297,3 +297,39 @@ ne s'exécutent nulle part ici (`test_eval`, `test_gabarit_health`, `test_gmail`
 `test_publisher_media_reuse`, `test_site_health_solde`, `test_textes_hubs`). Ce sont six
 angles morts, pas six succès. `pip` demande Franck (CLAUDE.md) — la commande est
 `.venv/bin/pip install pytest`, et c'est à lui de la lancer.
+
+---
+
+## 7. `test_etiquette_langue` et `test_index_budget_sitemap` — le binaire `php` (2026-09-29)
+
+Rouges sur le VPS, VERTES dans le conteneur de session, sur le même commit. La sortie le
+disait en une ligne, qu'il a fallu aller lire :
+
+    php absent : fixture NON jouée (ce n'est pas un succès).
+
+`/usr/bin/php` existe dans le conteneur de développement, pas sur le serveur. Ces deux
+fixtures contrôlent des mu-plugins avec `php -l` ; sans le binaire, elles ne contrôlent
+rien — et leur auteur a fait le bon choix en rendant 1 plutôt qu'en se déclarant verte.
+
+Restait le CLASSEMENT, et c'est là qu'était le défaut : un outil externe absent n'est pas
+une régression, et le compter rouge bloque le déploiement pour une raison qui n'est pas du
+code. C'est mot pour mot l'argument écrit pour `yoastseo` le 21/09. `php` rejoint donc la
+liste étroite de `run_all._outil_manquant`.
+
+**Le motif exige DEUX marqueurs** — le nom de l'outil ET la phrase par laquelle ces
+fixtures refusent de se dire vertes. Contre-épreuve faite sur quatre sorties : une vraie
+faute de syntaxe PHP, un module du projet absent, un échec d'assertion ordinaire, et le
+mot « php » sans le refus. Les quatre restent rouges.
+
+**CE QUE ÇA NE RÈGLE PAS, et il faut le dire.** Ces deux contrôles ne s'exercent
+aujourd'hui NULLE PART : ni sur le serveur (pas de `php`), ni dans le déploiement
+autonome, qui lance la suite dans un `git worktree` jetable. La ligne « non exécutable »
+rend le trou visible, elle ne le comble pas. Pour de bon : `apt install php-cli` sur le
+VPS — ce que CLAUDE.md réserve à Franck.
+
+**Et la leçon de méthode.** Deux fixtures vertes ici et rouges là-bas, c'est presque
+toujours l'environnement, jamais le code — mais « presque toujours » ne se livre pas.
+Trois hypothèses ont été éliminées par la mesure avant d'aller lire : pytest (installé
+dans le conteneur, les fixtures sont restées vertes), la version du code (l'arbre local
+contenait le commit déployé), et l'état de la base. La quatrième tenait dans la sortie du
+programme, à une commande de distance.
