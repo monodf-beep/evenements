@@ -253,3 +253,47 @@ que l'exception coûte écrit à côté : **le contrôle ne surveille plus ce fi
 La 195ᵉ est `test_yoast_scores` (paquet npm). Sur le VPS, où `npm install` a été lancé,
 elle doit être VERTE et non « non exécutable » — c'est la vérification à faire là-bas,
 comme le 21/09.
+
+---
+
+## 6. `test_gmail` — quand une bibliothèque renommée masque « outil de test absent » (2026-09-29)
+
+Franck, le 29/09 : « répare les trois fixtures rouges ». Elles ne l'étaient plus — les
+sessions de la semaine les avaient reprises, et ce document le disait déjà. Vérifié une
+par une avant de toucher à quoi que ce soit : `test_audit_substance_published`,
+`test_dates_repasse_texte` et `test_dedupe_coincidence` rendent 0.
+
+La seule rouge dans le conteneur de session était `test_gmail`, et son motif mérite d'être
+gardé parce qu'il se rejouera :
+
+    import anthropic
+    import httpx        ← ModuleNotFoundError
+    import pytest
+
+**`anthropic` 1.x embarque `httpx2`, plus `httpx`.** Sa propre signature l'annonce :
+`APIConnectionError(*, message: str, request: httpx2.Request)`. Or `httpx` n'est ni dans
+`requirements.txt` ni tiré par le SDK — il n'arrivait que par ricochet, avec les anciennes
+versions.
+
+**CE QUE ÇA COÛTAIT, ET C'EST LE POINT.** `run_all._outil_manquant` tolère l'absence d'un
+LANCEUR de tests, jamais celle d'une bibliothèque — la distinction est étroite exprès
+(§ « Pourquoi elles ne comptent plus comme des échecs »), et c'est la bonne décision. Mais
+ici l'import de `httpx` tombait AVANT celui de `pytest` : le motif tolérable existait, il
+était simplement caché derrière un autre. Une fixture qui aurait dû compter « non
+exécutable » comptait ROUGE — et `scripts/auto_deploiement` refuse de déployer sur une
+suite rouge.
+
+Un déploiement autonome bloqué par un renommage chez un fournisseur, sans que personne
+puisse le deviner du message d'erreur.
+
+**Le correctif prend le client qui est là** (`try: import httpx / except: import httpx2`)
+plutôt que d'épingler un nom qui rebougera ; la requête ne sert qu'à remplir l'argument
+obligatoire d'une exception fabriquée pour le test. `requirements.txt` n'épingle aucune
+version, donc le prochain `deploy/update.sh` peut faire passer `anthropic` en 1.x sur le
+VPS : le piège s'y refermerait à ce moment-là, sans rapport apparent avec le déploiement.
+
+**Ce qui reste vrai et n'est pas réglé** : `pytest` est absent du venv, donc SIX fixtures
+ne s'exécutent nulle part ici (`test_eval`, `test_gabarit_health`, `test_gmail`,
+`test_publisher_media_reuse`, `test_site_health_solde`, `test_textes_hubs`). Ce sont six
+angles morts, pas six succès. `pip` demande Franck (CLAUDE.md) — la commande est
+`.venv/bin/pip install pytest`, et c'est à lui de la lancer.
