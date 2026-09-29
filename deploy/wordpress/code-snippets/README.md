@@ -32,6 +32,7 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `62-cs-header-compact-scroll.php` | #62 · CS · Header compact (scroll) | global | oui | `b899480a238c41ad673bc7b37d9f6ba2` (2026-09-07) |
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
 | `44-cs-home-allocateur-centralise.php` | #44 · CS · Anti-doublon home (allocateur centralisé) | global | oui | `818cf5099b143865b17c193203f3396f` (2026-09-24 — la copie du 07/09 avait manqué les retouches des 08-09/09) |
+| `56-cs-gabarit-fiche-evenement.php` | #56 · CS · Gabarit Fiche Événement (tribe_events) — rend le corps par `get_the_content()`, donc SANS le filtre `the_content` ; porte depuis le 24/09 le point d'accroche `cs_fiche_apres_corps` | front-end | oui | `c39e2f8cfb7c36d9d269dcf3214339cb` (2026-09-24) |
 | `77-cs-ne-pas-cacher-colonnes-vides.php` | #77 · CS - Ne pas cacher colonnes vides desktop (CSS de la home : colonnes, plafonds mobile/ordinateur d'« À la une » et « 7 prochains jours ») | front-end | oui | `11009c6e4b4764c04523a820de2927dc` (2026-09-24) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
