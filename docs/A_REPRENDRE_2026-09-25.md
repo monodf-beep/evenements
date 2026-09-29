@@ -5,7 +5,11 @@ Rayer une ligne quand elle l'est, avec la date et la mesure qui le prouve.
 
 ## Déploiement
 
-- [ ] Fusionner `claude/affectionate-turing-nj6m0w` dans `claude/quirky-davinci-jvqrnw`, puis
+- [x] **Fait le 29/09** : déployé en 30f7877 (« ✅ Déploiement terminé »), fusion comprise.
+  Au passage, le VPS portait `18f6c51` (redirections Terra Madre / EVO, branche
+  `focused-edison`), fusionné là-bas sans avoir été poussé : désormais sur GitHub. **Reste à
+  vérifier que ces redirections sont EN LIGNE** — le dépôt ne prouve pas le déploiement WordPress.
+  Ancienne consigne : fusionner `claude/affectionate-turing-nj6m0w` dans `claude/quirky-davinci-jvqrnw`, puis
   `bash deploy/update.sh`. Six commits, uniquement des miroirs `deploy/wordpress/` et des
   docs : **tout est déjà en ligne sur WordPress** (déposé par Novamira, md5 vérifiés). La
   fusion ne sert qu'à ce que le dépôt du VPS ne diverge pas du site.
