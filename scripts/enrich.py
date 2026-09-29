@@ -1341,10 +1341,36 @@ def _final_text(message) -> str:
     return "\n".join(out)
 
 
+def digne_de_la_une(ev: dict) -> bool:
+    """L'événement passe-t-il le plancher d'INTÉRÊT de « À la une » ? (2026-09-29)
+
+    DEUX DÉTECTEURS POUR LA MÊME CHOSE, ET ILS NE SE PARLAIENT PAS. Le palier se décidait sur
+    `llm_score` (< 7 → article court) ; la une, elle, retient sur l'INTÉRÊT (`utils.une`,
+    critères pondérés de l'évaluation) ET exige un score de rendu, que seul le panel de
+    lecteurs donne — et le panel ne relit que les articles LONGS. Un événement noté 6 à
+    l'évaluation mais 8/10 d'intérêt recevait donc un article court, jamais de panel, jamais
+    de score de rendu : il était exclu de la une par construction, en silence. Mesuré le
+    29/09 (Franck : « à la une, ça doit être les meilleurs événements ») : 52 fiches en
+    ligne et à venir sans panel, dont la 65e Fête de la Châtaigne de Fénis, la Foire des
+    Alpes, la Fiera del Bue grasso, Abd al Malik — et À la une du Comté de Nice à UNE carte.
+
+    Pourquoi un article LONG plutôt que faire noter l'article court : `panel_rattrapage`
+    écarte les courts pour une raison écrite et mesurée (13/08) — demander de la substance
+    à une entrée de catalogue produit un « revise » mécanique, donc une note sous le seuil
+    de rendu, donc toujours pas de une. Le prochain passage ne donnerait pas un autre
+    résultat (règle 3). C'est l'article qu'il faut, pas la note.
+
+    None (intérêt non mesuré) → False : « pas mesuré » n'est pas « digne »."""
+    from utils.une import UNE_INTERET_MIN, interet
+    i = interet(ev)
+    return i is not None and i >= UNE_INTERET_MIN
+
+
 def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
     """Décide le PALIER (court/long) et le MODÈLE pour un événement (CHARTE §3).
 
-    - mode "auto" (défaut) : le SCORE décide — ≥ LONG_MIN_SCORE → LONG, sinon COURT ;
+    - mode "auto" (défaut) : ≥ LONG_MIN_SCORE → LONG ; en dessous, LONG aussi si
+      l'événement est digne de la une (`digne_de_la_une`, 29/09), sinon COURT ;
       "court"/"long" forcent ; "off" est géré en amont.
     - modèle : Haiku PARTOUT par défaut (économique). Pour donner aux PHARES un
       modèle supérieur : ENRICH_LONG_MODEL=claude-sonnet-5. ANTHROPIC_MODEL_ENRICH
@@ -1356,7 +1382,7 @@ def _tier_model(ev: dict, mode: str) -> "tuple[bool, str]":
     elif mode == "court":
         court = True
     else:  # "auto"
-        court = score < LONG_MIN_SCORE
+        court = score < LONG_MIN_SCORE and not digne_de_la_une(ev)
     # Modèle : Haiku (éco) partout PAR DÉFAUT — on ne dépense pas tant que le prompt
     # renforcé (gras/structure) n'a pas été jugé insuffisant. Pour offrir aux PHARES
     # (long) un modèle supérieur : ENRICH_LONG_MODEL=claude-sonnet-5. ANTHROPIC_MODEL_ENRICH

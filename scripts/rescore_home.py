@@ -85,6 +85,60 @@ def evaluer(ev: dict) -> tuple[dict | None, str]:
     return h, "ok"
 
 
+COURT_MAX = 400   # même frontière que panel_rattrapage.a_relire : en dessous, un catalogue
+
+
+def geste(ev: dict, motif: str) -> tuple[str, str]:
+    """(clé, libellé) : ce qu'il faut FAIRE d'une fiche non calculable (2026-09-29).
+
+    Avant, la sortie donnait UNE commande pour les 52 : `enrich <tous les ids>`, qui aurait
+    réécrit 52 articles — traductions comprises (on ne réécrit jamais une traduction, on
+    retraduit l'original), et fiches sans intérêt pour la une comprises (un article réécrit
+    pour rien). Règle 6 : une file ne contient que ce qu'un humain peut faire, et chaque
+    ligne doit dire LEQUEL.
+    """
+    if ev.get("translation_of"):
+        return "traduction", ("traduction — reçoit le score de son original dès qu'il en a "
+                              "un (copie, ce script)")
+    if motif.startswith("sans bloc source"):
+        return "enrich", "sans bloc source → ré-enrichir (réécrit l'article)"
+    try:
+        data = json.loads(ev.get("enrich_data") or "") or {}
+    except (ValueError, TypeError):
+        data = {}
+    corps = ((data.get("article") or {}).get("corps") or "").strip()
+    from scripts.enrich import digne_de_la_une
+    digne = digne_de_la_une(ev)
+    if len(corps) >= COURT_MAX:
+        return "panel", ("article développé sans panel → panel_rattrapage (relit, ne "
+                         "réécrit rien ; en cron quotidien)")
+    if digne:
+        return "enrich", ("article COURT d'un événement digne de la une → ré-enrichir : "
+                          "enrich écrit désormais un article long pour lui (réécrit)")
+    return "rien", "article court, intérêt sous le plancher de la une → rien à faire"
+
+
+def propager_aux_traductions(conn: sqlite3.Connection, apply: bool) -> list[tuple]:
+    """Copie le score de rendu de l'original sur ses traductions qui n'en ont pas.
+
+    `translate_events` le copie À LA CRÉATION de la traduction (« quatrième oubli », 06/09)
+    — mais seulement ce jour-là. Un original qui reçoit son score APRÈS (rattrapage du
+    panel, re-enrichissement) laissait sa jumelle sans score : invisible dans la une de
+    l'autre langue. Copie et non recalcul, pour la raison déjà écrite là-bas : c'est le
+    même événement. Ce n'est PAS l'héritage de VERDICT que panel_rattrapage refuse (un
+    verdict désigne un geste de réécriture) : un score de rendu ne désigne rien, il ouvre
+    ou ferme une vitrine."""
+    rows = conn.execute(
+        "SELECT t.id, t.title, o.home_score, o.id AS orig FROM events_raw t "
+        "JOIN events_raw o ON o.id = t.translation_of "
+        "WHERE t.home_score IS NULL AND o.home_score IS NOT NULL").fetchall()
+    if apply and rows:
+        conn.executemany("UPDATE events_raw SET home_score=? WHERE id=?",
+                         [(r["home_score"], r["id"]) for r in rows])
+        conn.commit()
+    return [tuple(r) for r in rows]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -124,11 +178,31 @@ def main(argv=None) -> int:
               f"{h['affiches']:<16} {(ev.get('title') or '')[:40]}{flag}")
     print(f"\n  → {au_dessus} fiche(s) passeraient le seuil de rendu (6) — PLANCHER, affiches non comptées.")
     if sans:
-        ids = " ".join(str(ev["id"]) for ev, _, _ in sans)
-        print(f"\n  NON CALCULABLES ({len(sans)}) — à ré-enrichir (réécrit l'article) :")
+        groupes: dict[str, list] = {}
+        libelles: dict[str, str] = {}
         for ev, _, motif in sans:
-            print(f"    [{ev['id']:>5}] {(ev.get('title') or '')[:44]:<44} {motif.split(' — ')[0]}")
-        print(f"    .venv/bin/python -m scripts.enrich {ids}")
+            cle, lib = geste(ev, motif)
+            groupes.setdefault(cle, []).append(ev)
+            libelles[cle] = lib
+        print(f"\n  NON CALCULABLES ({len(sans)}), rangées par geste :")
+        for cle in ("enrich", "panel", "traduction", "rien"):
+            evs = groupes.get(cle) or []
+            if not evs:
+                continue
+            print(f"\n    {len(evs):>3} · {libelles[cle]}")
+            for ev in evs:
+                print(f"         [{ev['id']:>5}] {(ev.get('title') or '')[:60]}")
+            if cle == "enrich":
+                print("         .venv/bin/python -m scripts.enrich "
+                      + " ".join(str(ev["id"]) for ev in evs))
+
+    copies = propager_aux_traductions(conn, apply=False)
+    print(f"\n  TRADUCTIONS sans score dont l'original en a un : {len(copies)}"
+          + (" → copiées avec --apply" if copies else ""))
+    for tid, titre, sc, orig in copies[:15]:
+        print(f"    [{tid:>5}] ← [{orig:>5}] {sc:>4}  {(titre or '')[:50]}")
+    if len(copies) > 15:
+        print(f"    … et {len(copies) - 15} autre(s)")
 
     if not args.apply:
         print("\nDRY-RUN — rien écrit. --apply pour poser les scores.")
@@ -144,11 +218,19 @@ def main(argv=None) -> int:
         f"SELECT COUNT(*) FROM events_raw WHERE id IN ({','.join('?'*len(calculables))}) "
         "AND home_score IS NOT NULL", [ev["id"] for ev, _, _ in calculables]).fetchone()[0] if calculables else 0
     print(f"\nAPPLIQUÉ — {relus} score(s) relu(s) en base sur {len(calculables)} calculé(s).")
-    if calculables:
-        ids = " ".join(str(ev["id"]) for ev, _, _ in calculables)
-        print("Le site ne change qu'après republication :")
-        print(f"  .venv/bin/python -m scripts.publish_batch_as --ids {ids}")
-    log.info("rescore_home : %d score(s) posés (%s)", relus, perim)
+    # Les traductions APRÈS les originaux : un original noté à l'instant transmet son score
+    # dans le même passage, pas le lendemain.
+    copies = propager_aux_traductions(conn, apply=True)
+    recopies = conn.execute(
+        f"SELECT COUNT(*) FROM events_raw WHERE id IN ({','.join('?'*len(copies))}) "
+        "AND home_score IS NOT NULL", [c[0] for c in copies]).fetchone()[0] if copies else 0
+    print(f"APPLIQUÉ — {recopies} traduction(s) ont reçu le score de leur original "
+          f"(sur {len(copies)} candidate(s)).")
+    # Le site suit SANS republication manuelle : `refresh_deplacement` (10h45, juste après
+    # ce script) voit la note de une passer de « rien » à une valeur et republie la fiche.
+    # (Ce message disait « le site ne change qu'après republication » : vrai le 15/09,
+    # périmé depuis que refresh_deplacement pousse as_une_now.)
+    log.info("rescore_home : %d score(s) posés, %d traduction(s) (%s)", relus, recopies, perim)
     return 0
 
 
