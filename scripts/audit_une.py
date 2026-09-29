@@ -237,23 +237,28 @@ def main(argv=None) -> int:
     # montre ce qui ENTRE et ce qui SORT, territoire par territoire (utils.une.UNE_FORMULE).
     garde_f = U.UNE_FORMULE
     etat = {}
-    for f in ("deplacement", "locale"):
+    for f in ("deplacement", "locale", "combinee"):
         U.UNE_FORMULE = f
         etat[f] = {id(ev): une_etat(ev, auj) for ev in vivantes}
     U.UNE_FORMULE = garde_f
-    autre = "locale" if garde_f != "locale" else "deplacement"
-    print(f"## Et avec l'intérêt « {autre} » ? (formule en service : « {garde_f} »)\n")
+    # TOUJOURS DANS LE MÊME SENS : de l'ANCIENNE formule (« deplacement ») vers la
+    # nouvelle — celle en service, ou « combinee » si le service est l'ancienne. Sinon,
+    # une fois la bascule faite, les fiches gagnées s'afficheraient « SORT ».
+    avant_f = "deplacement"
+    apres_f = garde_f if garde_f != "deplacement" else "combinee"
+    print(f"## De « {avant_f} » à « {apres_f} » (formule en service : « {garde_f} »)\n")
     print("« locale » = la note d'évaluation telle quelle (notoriété du lieu, organisateur,")
     print("tradition, rayonnement, spécificité) : la question du lecteur d'à côté.")
     print("« deplacement » = les critères de « Ça vaut le déplacement » : celle du visiteur")
-    print(f"qui vient de loin. Même plancher ({UNE_INTERET_MIN}), mêmes autres portillons.\n")
-    print(f"| Territoire | {garde_f} | {autre} | entrent | sortent |")
+    print("qui vient de loin. « combinee » = la meilleure des deux.")
+    print(f"Même plancher ({UNE_INTERET_MIN}), mêmes autres portillons.\n")
+    print(f"| Territoire | {avant_f} | {apres_f} | entrent | sortent |")
     print("|---|---:|---:|---:|---:|")
     mouvements = {}
     for t in TERRITOIRES:
         du_t = [ev for ev in vivantes if (ev.get("territoire") or "") == t]
-        avant = {id(e) for e in du_t if etat[garde_f][id(e)][0] is not None}
-        apres = {id(e) for e in du_t if etat[autre][id(e)][0] is not None}
+        avant = {id(e) for e in du_t if etat[avant_f][id(e)][0] is not None}
+        apres = {id(e) for e in du_t if etat[apres_f][id(e)][0] is not None}
         ent = [e for e in du_t if id(e) in apres - avant]
         sor = [e for e in du_t if id(e) in avant - apres]
         mouvements[t] = (ent, sor)
@@ -264,12 +269,12 @@ def main(argv=None) -> int:
         if not ent and not sor:
             continue
         print(f"### {t}\n")
-        for e in sorted(ent, key=lambda x: -(etat[autre][id(x)][0] or 0)):
+        for e in sorted(ent, key=lambda x: -(etat[apres_f][id(x)][0] or 0)):
             print(f"- ➕ ENTRE · {langue_fiche(e)} · {(e.get('title') or '')[:58]} — "
-                  f"{etat[autre][id(e)][1][:60]} (était : {etat[garde_f][id(e)][1][:48]})")
+                  f"{etat[apres_f][id(e)][1][:60]} (était : {etat[avant_f][id(e)][1][:48]})")
         for e in sor:
             print(f"- ➖ SORT  · {langue_fiche(e)} · {(e.get('title') or '')[:58]} — "
-                  f"{etat[autre][id(e)][1][:70]}")
+                  f"{etat[apres_f][id(e)][1][:70]}")
         print()
 
     # ET DEMAIN ? La rotation est la demande de départ — elle doit se VÉRIFIER, pas se

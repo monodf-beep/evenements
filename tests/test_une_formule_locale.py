@@ -10,7 +10,8 @@ nationale y valait 3/10. `utils.une.UNE_FORMULE=locale` prend la note d'évaluat
 quelle. Défaut inchangé tant que Franck n'a pas lu l'audit.
 
 CE QU'ELLE SURVEILLE :
-  1. le DÉFAUT ne bouge pas (« deplacement ») — rien ne bascule sans décision ;
+  1. le DÉFAUT est « combinee » (la meilleure des deux notes), choisi après lecture de
+     l'audit nom par nom ; « deplacement » reste disponible et inchangé ;
   2. le cas Mariam (grande scène, organisateur institutionnel, sans ancrage local) :
      dehors en « deplacement », DEDANS en « locale » ;
   3. ⚠️ le cas qui doit RESTER DEHORS dans les deux formules : le pilates (évalué 4) ;
@@ -70,6 +71,10 @@ MARIAM = fiche("Mariam chante Amadou & Mariam", 7, _detail(3, 2, 0, 1, 1 - 1))
 PILATES = fiche("Bien-être aux Charmettes : Pilates", 4, _detail(1, 1, 1, 0, 1))
 PILE6 = fiche("Évalué pile 6", 6, _detail(2, 1, 1, 1, 1))
 JAMAIS = fiche("Jamais évalué", None, None)
+# Le cas qui a fait choisir « combinee » : un festival ANCRÉ, bien noté en déplacement
+# (rayonnement 2, spécificité 1, tradition 1 → 8) mais évalué 4 au total. « locale » le
+# faisait SORTIR (Festival des Jardins Alpestres, Musicastelle) ; il doit rester.
+JARDINS = fiche("Festival des Jardins Alpestres", 4, _detail(0, 0, 1, 2, 1))
 SANS_IMAGE = fiche("Grand concert sans image", 9, _detail(3, 2, 2, 2, 0), image="")
 
 
@@ -77,11 +82,12 @@ def dedans(ev):
     return U.une_etat(ev)[0] is not None
 
 
-print("1. Le défaut ne bouge pas")
-_check("UNE_FORMULE vaut « deplacement » sans variable d'environnement",
-       U.UNE_FORMULE == "deplacement", U.UNE_FORMULE)
-_check("Mariam : DEHORS avec la formule de déplacement (intérêt 3)",
-       not dedans(MARIAM), U.une_etat(MARIAM))
+print("1. Le défaut, et l'ancienne formule")
+_check("UNE_FORMULE vaut « combinee » sans variable d'environnement",
+       U.UNE_FORMULE == "combinee", U.UNE_FORMULE)
+U.UNE_FORMULE = "deplacement"
+_check("ancienne formule : Mariam DEHORS (intérêt 3)", not dedans(MARIAM), U.une_etat(MARIAM))
+_check("ancienne formule : Jardins DEDANS", dedans(JARDINS), U.une_etat(JARDINS))
 
 print("\n2. Formule locale")
 U.UNE_FORMULE = "locale"
@@ -91,9 +97,17 @@ _check("⚠️ évalué pile 6 : DEDANS (le cas qui doit passer)", dedans(PILE6)
 _check("jamais évalué : DEHORS", not dedans(JAMAIS), U.une_etat(JAMAIS))
 _check("évalué 9 mais sans image : DEHORS (les autres portillons tiennent)",
        not dedans(SANS_IMAGE), U.une_etat(SANS_IMAGE))
-U.UNE_FORMULE = "deplacement"
+_check("formule locale seule : Jardins SORT (c'est pourquoi on ne l'a pas retenue)",
+       not dedans(JARDINS), U.une_etat(JARDINS))
 
-print("\n3. L'audit nomme ce qui entre, sans basculer la formule")
+print("\n3. Formule combinée (en service)")
+U.UNE_FORMULE = "combinee"
+_check("Mariam : DEDANS", dedans(MARIAM), U.une_etat(MARIAM))
+_check("⚠️ Jardins : RESTE DEDANS (le cas qui a décidé)", dedans(JARDINS), U.une_etat(JARDINS))
+_check("⚠️ pilates : reste DEHORS", not dedans(PILATES), U.une_etat(PILATES))
+_check("jamais évalué, ni détail ni note : DEHORS", not dedans(JAMAIS), U.une_etat(JAMAIS))
+
+print("\n4. L'audit nomme ce qui entre, sans basculer la formule")
 from scripts.scraper_events import init_db  # noqa: E402
 conn = sqlite3.connect(TMP / "fixture.db")
 init_db(conn)
@@ -124,8 +138,8 @@ _check("Mariam listée « ➕ ENTRE »",
        any("ENTRE" in l and "Mariam" in l for l in sortie.splitlines()), sortie[-1500:])
 _check("le pilates n'est listé nulle part comme entrant",
        not any("ENTRE" in l and "Pilates" in l for l in sortie.splitlines()))
-_check("après l'audit, la formule en service est toujours « deplacement »",
-       U.UNE_FORMULE == "deplacement", U.UNE_FORMULE)
+_check("après l'audit, la formule en service est toujours « combinee »",
+       U.UNE_FORMULE == "combinee", U.UNE_FORMULE)
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)
