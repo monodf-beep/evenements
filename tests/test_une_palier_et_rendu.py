@@ -84,7 +84,8 @@ cols = {r[1] for r in conn.execute("PRAGMA table_info(events_raw)")}
 for col, decl in (("translation_of", "INTEGER"), ("enrich_data", "TEXT"), ("home_score", "REAL"),
                   ("llm_score_detail", "TEXT"), ("wp_post_id_as", "INTEGER"),
                   ("date_event_start", "TEXT"), ("date_event_end", "TEXT"),
-                  ("url_officiel", "TEXT")):
+                  ("url_officiel", "TEXT"), ("recurring", "INTEGER DEFAULT 0"),
+                  ("duplicate_of", "INTEGER")):
     if col not in cols:
         conn.execute(f"ALTER TABLE events_raw ADD COLUMN {col} {decl}")
 demain = (date.today() + timedelta(days=5)).isoformat()
@@ -100,7 +101,12 @@ fiches = [
     (4, "Court digne", INTERET_8, {"article": {"corps": COURT}, "source": {}}, None),
     (5, "Court sans intérêt", INTERET_5, {"article": {"corps": COURT}, "source": {}}, None),
     (6, "Traduction d'un sans-score", INTERET_8, {"article": {"corps": COURT}}, 4),
+    (7, "Digne, sans bloc source", INTERET_8, {"article": {"corps": LONG},
+                                               "reader_panel": {"mean": 4.0}}, None),
+    (8, "Sans intérêt, sans bloc source", INTERET_5, {"article": {"corps": LONG},
+                                                      "reader_panel": {"mean": 4.0}}, None),
 ]
+hier = (date.today() - timedelta(days=3)).isoformat()
 for i, titre, det, data, tr in fiches:
     conn.execute(
         "INSERT INTO events_raw (id, title, url_source, statut, wp_post_id_as, date_event_start,"
@@ -108,6 +114,14 @@ for i, titre, det, data, tr in fiches:
         " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (i, titre, f"https://ex/{i}", "published_sub", 100 + i, demain, demain, 5, det,
          json.dumps(data), tr))
+# Deux traductions MORTES de l'original noté : passée, et rejetée. Hors ligne (pas de
+# wp_post_id_as) pour ne pas entrer dans le périmètre principal de rescore_home.
+for i, statut, d in ((9, "published_sub", hier), (10, "rejected", demain)):
+    conn.execute(
+        "INSERT INTO events_raw (id, title, url_source, statut, date_event_start, date_event_end,"
+        " llm_score_detail, enrich_data, translation_of) VALUES (?,?,?,?,?,?,?,?,1)",
+        (i, f"Traduction morte {i}", f"https://ex/{i}", statut, d, d, INTERET_8,
+         json.dumps({"article": {"corps": LONG}})))
 conn.commit()
 conn.close()
 
@@ -115,13 +129,21 @@ buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
     rescore_home.main(["--db", str(db)])
 sortie = buf.getvalue()
-cmd = next((l for l in sortie.splitlines() if "scripts.enrich" in l), "")
-_check("la commande enrich ne vise QUE la fiche courte digne de la une (4)",
-       cmd.strip().endswith("scripts.enrich 4"), cmd or sortie)
+cmd = next((l for l in sortie.splitlines() if "scripts.enrich" in l and l.strip().endswith(" 4")), "")
+_check("la commande enrich de l'article court vise la seule fiche courte digne (4)",
+       cmd.strip().endswith("scripts.enrich 4"), sortie)
 _check("le long sans panel part au panel (3), pas à la réécriture",
        "panel_rattrapage" in sortie and "[    3]" in sortie.split("panel_rattrapage")[1][:400],
        sortie)
 _check("le court sans intérêt : « rien à faire » (5)", "rien à faire" in sortie, sortie)
+bloc_source = sortie.split("enrichie avant que la source")[1][:300] if "enrichie avant que la source" in sortie else ""
+_check("digne sans bloc source (7) : son PROPRE libellé, pas « article COURT »",
+       "[    7]" in bloc_source, sortie)
+cmds = [l.strip() for l in sortie.splitlines() if "scripts.enrich" in l]
+_check("sans bloc source mais sans intérêt pour la une (8) : jamais réécrit",
+       all(" 8" not in c.split("enrich")[1] for c in cmds), cmds)
+_check("la liste des copies ne compte AUCUNE traduction morte (9 passée, 10 rejetée)",
+       "[    9]" not in sortie and "[   10]" not in sortie, sortie[-600:])
 _check("les traductions ne sont jamais envoyées à enrich", " 2" not in cmd and " 6" not in cmd, cmd)
 
 conn = sqlite3.connect(db)
@@ -138,6 +160,7 @@ conn.close()
 _check("original (1) noté", sc[1] is not None, sc)
 _check("traduction (2) = score de l'original", sc[2] == sc[1], sc)
 _check("traduction d'un original sans score (6) : toujours rien", sc[6] is None, sc)
+_check("traductions mortes (9 passée, 10 rejetée) : rien écrit", sc[9] is None and sc[10] is None, sc)
 
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)
