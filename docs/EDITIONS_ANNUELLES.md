@@ -153,3 +153,35 @@ Elles ne se corrigent pas toutes seules, et c'est volontaire : renommer un slug 
 geste par fiche. **Renommer le slug dans WordPress suffit — il pose la 301 tout seul**
 (mesuré le 15/09 sur Vicoforte, `CLAUDE.md`). À faire en priorité sur les événements
 ANNUELS, qui sont ceux dont l'adresse doit durer ; les autres peuvent attendre.
+
+## 2026-09-28 — Les « moments forts » d'une année sur l'autre (Journées du patrimoine)
+
+La strate d'accueil et les pages dédiées des Journées européennes du patrimoine sont
+construites pour resservir. Ce qui est PERMANENT, et qu'on ne touche pas :
+
+- les quatre adresses, sans année : `/journees-europeennes-du-patrimoine-piemont/`,
+  `/it/giornate-europee-del-patrimonio-piemonte/`, `/plaisirs-de-culture-vallee-d-aoste/`,
+  `/it/plaisirs-de-culture-valle-d-aosta/` ;
+- les étiquettes (`journees-europeennes-du-patrimoine`, et en italien les DEUX slugs
+  `giornate-europee-del-patrimonio` et `…-it`, cf. `cs-etiquette-langue.php`) ;
+- le filtre `territoire=` du raccourci de chaque page : sans lui, la page Piémont liste
+  aussi les fiches valdôtaines (mesuré le 23/09 : 43 cartes au lieu de 39).
+
+Ce qui DOIT être mis à jour chaque année, sinon rien ne s'allume — c'est un état qui
+s'éteint tout seul le lendemain de la fenêtre, et que personne ne rallume (règle 3) :
+
+1. `deploy/wordpress/cs-moment-fort.php`, `cs_moments_forts()` : `affiche_du`,
+   `affiche_au`, et pour chaque volet `debut`, `fin`, `dates`, `quand`, `jours`, les
+   chiffres de `chapo` / `phrase` / `pied` (52 rendez-vous, 9 nocturnes, ~70 initiatives
+   en 2026 : ils changeront) ;
+2. `config/moments_forts.json` : `debut` / `fin` du moment (fenêtre d'étiquetage) ;
+3. le raccourci de chaque page : `debut`, `fin`, et les phrases `avant` / `apres` ;
+4. le texte des quatre pages : c'est lui qui porte le millésime (« 2026 » dans le titre
+   et le corps), l'adresse non ;
+5. les sources : `scripts/moisson_gep.py` (programme du ministère) et
+   `scripts/moisson_plaisirs_culture.py` (`URL_BROCHURE`, `ANNEE`, et la fixture, qui
+   rejoue la brochure 2026). La brochure valdôtaine se lit au folio près : une nouvelle
+   mise en page peut casser l'extraction — le script s'ARRÊTE alors avec une alerte
+   (calendrier vide, ou plus de deux fiches sans folio), il n'écrit rien.
+
+Quand : dès que le ministère et la Région publient le programme, en général fin août.
