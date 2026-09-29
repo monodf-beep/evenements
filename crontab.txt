@@ -442,6 +442,14 @@ SLACK_DIGEST=1
 # non pris est perdu pour toujours. Rejouer une période ne duplique pas (clé unique).
 # Tourne à vide et sans erreur tant qu'aucun identifiant n'est posé.
 45 7 * * 0 cd /root/evenements && .venv/bin/python -m scripts.gsc_report --enregistrer --apply --jours 30 >> logs/gsc_report.log 2>&1
+# Bilan SEO du LUNDI 8h40, en image animée dans Slack (Franck, 2026-09-28 : « une
+# notification Slack tous les lundis matin avec les derniers chiffres […] quelque chose de
+# visuel, de graphique, motion design »). Renverse l'arbitrage « ce cron n'envoie RIEN »
+# ci-dessus pour CE message-là seulement, à sa demande : un par semaine, pas un de plus.
+# Il part HORS de la boîte du jour (l'image serait perdue au vidage de 11h45) et après le
+# déploiement de 7h50, qui met en ligne la route publique de l'image.
+# Semaine = les 7 derniers jours PUBLIÉS par Google (retard 2-3 j), dates écrites dessus.
+40 8 * * 1 cd /root/evenements && .venv/bin/python -m scripts.seo_hebdo --apply >> logs/seo_hebdo.log 2>&1
 # Nettoyage hebdomadaire dimanche 5h — chaîne RÉVERSIBLE et DÉTERMINISTE uniquement
 # (purge hors-zone/passés/incomplétables, articles de presse publiés à tort, doublons
 # WordPress, sources non institutionnelles, audit visuel borné) — voir scripts/weekly_audits.py

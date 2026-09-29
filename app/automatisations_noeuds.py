@@ -1671,6 +1671,31 @@ _HEBDO = [
          "slack": "rien — ce cron est silencieux par construction.",
          "code": ["scripts/gsc_report.py"]}},
 
+    {"id": "seo_hebdo", "label": "Bilan SEO animé", "icone": "🎞️", "flux": "hebdo",
+     "kind": "action", "col": 0, "row": 3, "cron_cle": "scripts.seo_hebdo", "script": "seo_hebdo",
+     "resume": "Lundi 8h40 : clics, impressions, taux de clic et position de la semaine, "
+               "en image animée dans Slack.",
+     "detail": {
+         "fait": ["Interroge la Search Console en lecture seule (8 blocs de 7 jours).",
+                  "Fabrique un GIF animé : compteurs, variations, histogramme des clics.",
+                  "Le dépose dans `data/rapports_publics/`, servi par la route publique "
+                  "`/embed/rapports/…` — Slack va l'y chercher.",
+                  "Ajoute sous l'image les trois pages et les trois requêtes qui ont amené "
+                  "le plus de clics."],
+         "ecrit": ["un GIF par semaine (les 12 derniers sont gardés)",
+                   "rien en base, rien sur WordPress"],
+         "regles": ["La semaine = les 7 derniers jours que Google a PUBLIÉS, comparés aux 7 "
+                    "précédents ; les dates réelles sont écrites sur l'image.",
+                    "Position moyenne pondérée par les impressions ; une position qui baisse "
+                    "est un progrès, affiché en vert.",
+                    "Si l'adresse de l'image ne répond pas, le message part sans image et "
+                    "dit pourquoi.",
+                    "Une API muette donne « aucune donnée », jamais un graphique à zéro."],
+         "cout_ia": "aucun",
+         "slack": "un message par semaine, hors de la boîte du jour (l'image ne survivrait "
+                  "pas au vidage).",
+         "code": ["scripts/seo_hebdo.py"]}},
+
     {"id": "weekly_digest", "label": "Récapitulatif hebdomadaire", "icone": "📰", "flux": "hebdo",
      "kind": "action", "col": 1, "row": 0, "cron_cle": "scripts/weekly_digest.py",
      "script": "weekly_digest",

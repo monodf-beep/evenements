@@ -165,6 +165,7 @@ ATTENDUS = [
     ("Relevé d'état (WordPress)", "publier_sante",   "sante.log",            30),
     ("Santé des gabarits",        "gabarit_health",  "gabarit_health.log",   30),
     ("Search Console",            "gsc_report",      "gsc_report.log",      200),
+    ("Bilan SEO animé (lundi)",   "seo_hebdo",       "seo_hebdo.log",       200),
     ("Santé du site (hebdo)",     "site_health_check", "site_health_check.log", 200),
     # ── DEUX OUBLIS TROUVÉS LE 2026-09-21 PAR LA CARTE DES AUTOMATISATIONS ───────────
     # Ils ne viennent pas d'une relecture de cette liste — elle a déjà été relue trois

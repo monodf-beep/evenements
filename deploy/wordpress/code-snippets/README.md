@@ -33,7 +33,7 @@ tête de chaque section ci-dessous est celle du jour où la copie a été prise.
 | `134-cs-bloc-a-lire.php` | #134 · CS - Bloc A lire (rendu PHP) | front-end | oui | `7627ff584e34d66256334990f2e81e39` (2026-09-06, soir) |
 | `44-cs-home-allocateur-centralise.php` | #44 · CS · Anti-doublon home (allocateur centralisé) | global | oui | `818cf5099b143865b17c193203f3396f` (2026-09-24 — la copie du 07/09 avait manqué les retouches des 08-09/09) |
 | `56-cs-gabarit-fiche-evenement.php` | #56 · CS · Gabarit Fiche Événement (tribe_events) — rend le corps par `get_the_content()`, donc SANS le filtre `the_content` ; porte depuis le 24/09 le point d'accroche `cs_fiche_apres_corps` | front-end | oui | `c39e2f8cfb7c36d9d269dcf3214339cb` (2026-09-24) |
-| `77-cs-ne-pas-cacher-colonnes-vides.php` | #77 · CS - Ne pas cacher colonnes vides desktop (CSS de la home : colonnes, plafonds mobile/ordinateur d'« À la une » et « 7 prochains jours ») | front-end | oui | `11009c6e4b4764c04523a820de2927dc` (2026-09-24) |
+| `77-cs-ne-pas-cacher-colonnes-vides.php` | #77 · CS - Ne pas cacher colonnes vides desktop (CSS de la home : colonnes, plafonds mobile/ordinateur d'« À la une » et « 7 prochains jours ») | front-end | oui | `a85b43a9c918717c3bd65ece266cfc52` (2026-09-28 — règle « colonne vide » bornée à ≥ 900 px ; avant : `uploads/cs-backups/snippet-77-2026-09-28-avant.php.txt`) |
 | `88-cs-instagram-par-territoire.php` | #88 · CS - Instagram par territoire (bouton « Suivez-nous sur Instagram » des homes) | front-end | oui | `72b80cd171ecd485338e89b12870f669` (2026-09-29, après correctif ; version d'avant : `7879221f137723362152793d10db31f6`, inchangée depuis le 2026-07-23) |
 
 **Le cas #44 (2026-09-06) : « je ne veux plus autoriser 2x le même article ».** Franck,
