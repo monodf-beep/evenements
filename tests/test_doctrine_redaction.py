@@ -14,7 +14,7 @@ CE QUE CETTE FIXTURE SURVEILLE — et surtout, les cas qui doivent PASSER, chois
 la frontière (CLAUDE.md, règle 3 : une fixture qui ne contient que des cas qui confirment
 le design passe au vert sur un portillon faux) :
 
-  1. doctrine complète depuis de fausses notes HORS dépôt → trois blocs, aucune alerte.
+  1. doctrine complète depuis de fausses notes HORS dépôt → quatre blocs, aucune alerte.
      ⚠️ C'EST LE CAS QUI DOIT PASSER de la détection « filet du dépôt » : sans lui, un
      détecteur qui crierait TOUJOURS « ce n'est pas Obsidian » serait indétectable ;
   2. la syntaxe Obsidian est nettoyée (wikilinks, tags, commentaires %% %%) ;
@@ -102,7 +102,7 @@ from utils import voix as voixmod, vocabulaire as vocabmod   # noqa: E402
 st = doctrine.statut()
 texte = doctrine.doctrine_texte(st)
 
-verifier("trois blocs assemblés", len(st["blocs"]) == 3,
+verifier("quatre blocs assemblés", len(st["blocs"]) == 4,
          [b["cle"] for b in st["blocs"]])
 verifier("⚠️ CAS QUI DOIT PASSER : des notes hors dépôt ne déclenchent AUCUNE alerte",
          st["ok"] and not st["alertes"], st["alertes"])
@@ -267,6 +267,49 @@ with client.session_transaction() as sess:
     sess.clear()
 r = client.get("/doctrine")
 verifier("la page reste derrière l'authentification", r.status_code == 302, r.status_code)
+
+# --------------------------------------------------------------------------- #
+# 7 bis. Les RÈGLES DE TRAVAIL — lues dans CLAUDE.md, pas recopiées
+# --------------------------------------------------------------------------- #
+# Franck, 29/09 : « pas lui donner les règles mais qu'il les consulte avant ». Le cas qui
+# a tout déclenché : Cowork réécrivait au passé des fiches d'événements terminés. La
+# règle 5 doit donc être DANS le texte servi, lue dans le vrai CLAUDE.md du dépôt.
+os.environ["OBSIDIAN_VOIX_PATH"] = str(NOTE_VOIX)
+os.environ["OBSIDIAN_VOCAB_PATH"] = str(NOTE_VOCAB)
+st_r = doctrine.statut()
+t_r = doctrine.doctrine_texte(st_r)
+bloc_r = st_r["blocs"][3]
+verifier("⚠️ CAS QUI DOIT PASSER : le vrai CLAUDE.md donne toutes ses sections, sans alerte",
+         bloc_r["cle"] == "regles" and not bloc_r["alerte"], bloc_r["alerte"])
+verifier("la règle 5 est dans le texte servi",
+         "### 5. On ne travaille que sur ce qui est encore devant nous" in t_r)
+verifier("et sa section entière, jusqu'à la règle 6 incluse",
+         "### 6. Rapporter le RÉSULTAT" in t_r)
+verifier("le protocole Cowork du journal y est", "POST /wp-json/cs/v1/journal" in t_r)
+verifier("le périmètre éditorial y est", "arrondissement de Nice" in t_r)
+verifier("le reste de CLAUDE.md n'y est PAS (journal des erreurs, développement)",
+         "## Le journal des erreurs" not in t_r and "## Développement" not in t_r)
+verifier("la section s'arrête au titre suivant (pas de débordement)",
+         "## Le journal des erreurs" not in bloc_r["texte"])
+
+# Le témoin ROUGE : un titre renommé dans CLAUDE.md ne doit pas faire disparaître la règle
+# en silence. On pointe le module sur un faux CLAUDE.md privé de la section 5… de titre.
+faux = TMP / "CLAUDE.md"
+faux.write_text(doctrine.CLAUDE_MD.read_text(encoding="utf-8").replace(
+    "## Les six règles", "## Six règles renommées"), encoding="utf-8")
+vrai = doctrine.CLAUDE_MD
+doctrine.CLAUDE_MD = faux
+st_f = doctrine.statut()
+t_f = doctrine.doctrine_texte(st_f)
+doctrine.CLAUDE_MD = vrai
+verifier("titre renommé → alerte, pas un silence",
+         not st_f["ok"] and "Les six règles" in st_f["blocs"][3]["alerte"],
+         st_f["blocs"][3]["alerte"])
+verifier("et l'alerte est EN TÊTE du texte servi",
+         "Les six règles" in t_f.split("=" * 78)[0])
+verifier("les autres sections restent servies", "arrondissement de Nice" in t_f)
+verifier("les règles versionnées ne masquent pas un vault démonté (le 503 tient)",
+         st_vide["vide"])
 
 # --------------------------------------------------------------------------- #
 # 8. Voisinage : les DEUX doctrines existent, celle-ci et celle de l'affichage

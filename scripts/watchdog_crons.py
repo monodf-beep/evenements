@@ -166,6 +166,9 @@ ATTENDUS = [
     ("Santé des gabarits",        "gabarit_health",  "gabarit_health.log",   30),
     ("Search Console",            "gsc_report",      "gsc_report.log",      200),
     ("Bilan SEO animé (lundi)",   "seo_hebdo",       "seo_hebdo.log",       200),
+    # 2026-09-29 : les deux rattrapages de la une, dans la chaîne de 10h45.
+    ("Rattrapage du panel",       "panel_rattrapage", "panel_rattrapage.log", 30),
+    ("Score de rendu (une)",      "rescore_home",    "rescore_home.log",     30),
     ("Santé du site (hebdo)",     "site_health_check", "site_health_check.log", 200),
     # ── DEUX OUBLIS TROUVÉS LE 2026-09-21 PAR LA CARTE DES AUTOMATISATIONS ───────────
     # Ils ne viennent pas d'une relecture de cette liste — elle a déjà été relue trois

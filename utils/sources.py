@@ -136,8 +136,27 @@ def same_story(a: str, b: str) -> bool:
                 if len(w) >= 4 and _strip_accents(w).lower() not in _STORY_STOP}
 
     # Noms propres distinctifs : majuscule INTERNE (RareEarth, EIC, Mont-Blanc).
+    #
+    # SAUF DANS UN TITRE QUI CRIE (2026-09-29). Un titre écrit EN CAPITALES fait de CHAQUE
+    # mot un « nom propre » : « DI », « NEL », « AL ». Mesuré sur la base de production,
+    # en rejouant le contrôle « déjà couvert » sur 30 jours d'arrivées : « MUSEI REALI DI
+    # TORINO. NOMINATO IL NUOVO CONSIGLIO DI AMMINISTRAZIONE » ↔ « UN FIORE GIGANTE NEL
+    # CORTILE DI VIA PO 59 » rendait True sur le seul « di » ; « L'ARTE NEL PIATTO » sur
+    # « nel », « RIAPRE AL PUBBLICO LA COLLEZIONE LENCI » ↔ « ESTATE REALE 2026 » sur
+    # « al ». Six appariements faux sur trente-trois, tous venus des Musei Reali, qui
+    # titrent en capitales. Le défaut datait de l'écriture de cette fonction : il touchait
+    # déjà les fusions du matin et le rapport de 9h50, pas seulement la règle nouvelle.
+    # Dans un tel titre, seul le recouvrement de mots significatifs parle ; un sigle dans
+    # un titre ordinaire (« EIC », « MITO SettembreMusica ») reste un nom propre.
+    # Et un titre de un ou deux mots en capitales est un NOM, pas un cri : « EVO 2026 »
+    # (un seul mot) doit garder EVO — la fixture test_doublons_meme_versant l'a rappelé,
+    # rouge sur la première version de cette règle.
     def proper(s: str) -> set:
-        return {_strip_accents(w).lower() for w in words(s) if any(c.isupper() for c in w[1:])}
+        ws = words(s)
+        capitales = [w for w in ws if w.isupper()]
+        if len(ws) >= 3 and len(capitales) >= 0.6 * len(ws):
+            return set()
+        return {_strip_accents(w).lower() for w in ws if any(c.isupper() for c in w[1:])}
 
     shared_proper = (proper(a) & proper(b)) - _STORY_PLACES - _STORY_STOP
     if shared_proper:

@@ -729,7 +729,8 @@ def ensure_annulation_columns(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _porte_annulation(conn: sqlite3.Connection, group: list[dict], annulation_re) -> dict | None:
+def _porte_annulation(conn: sqlite3.Connection, group: list[dict], annulation_re,
+                      gagnant: dict | None = None) -> dict | None:
     """Si ce groupe cache une suspicion d'annulation, la traite et dit de NE PAS
     fusionner. Sinon renvoie None (fusion normale).
 
@@ -747,8 +748,11 @@ def _porte_annulation(conn: sqlite3.Connection, group: list[dict], annulation_re
     Deux rouvreurs, cf. `scripts.audit_annulations` : AUTOMATIQUE si la fiche visée
     était publiée et ne l'est plus (Franck l'a dépubliée) ; MANUEL sinon, via
     `--resolu <id>` — parce que rien ne peut deviner tout seul qu'un humain a
-    vérifié une fiche encore pending."""
-    winner = max(group, key=score)
+    vérifié une fiche encore pending.
+
+    `gagnant` : imposé par l'absorption dans le stock (cf. `absorber_dans_le_stock`) —
+    là, la fiche visée est TOUJOURS celle déjà retenue, quel que soit le score."""
+    winner = gagnant or max(group, key=score)
     for e in group:
         if e["id"] == winner["id"]:
             continue
@@ -867,6 +871,196 @@ def merge_group(conn: sqlite3.Connection, group: list[dict]) -> int:
     return merged_n
 
 
+# ══ LE STOCK — une nouvelle fiche ne se compare pas qu'aux autres nouvelles ══════════════
+#
+# Franck, 23/09 : « comment c'est possible d'avoir deux articles identiques ? Il n'y a pas,
+# dans le process, le fait de regarder si on n'a pas déjà écrit quelque chose sur le sujet,
+# et qu'on prenne une décision oui ou non d'écrire à nouveau ? »
+#
+# Réponse mesurée : non, il n'y en avait pas. Le cron de 8h30 tourne SANS --rescan, donc
+# sur `statut='pending'` seul — il compare les nouveautés du matin ENTRE ELLES, jamais au
+# stock déjà retenu ou publié. Terra Madre Salone del Gusto (24-27/09, Turin) : fiche
+# 2190 en ligne depuis le 20/07 ; un second article torinoclick arrive mi-septembre
+# (id 5534), n'est comparé à rien, est évalué, rédigé, traduit, publié le 15/09 (WP#9388,
+# puis WP#9503 en italien) ; un troisième (5639, turismotorino) devient WP#10303 le 22/09.
+# Le critère n'y était pour rien : `_memes_titres` apparie bien 5534 et 2190 — mesuré,
+# sur les titres publiés comme sur les titres des sources. Les deux fiches ne s'étaient
+# simplement jamais rencontrées. Le rapport de 9h50 l'a signalé chaque matin du 16 au
+# 23/09 ; le signalement arrivait APRÈS la rédaction et la publication, et il ne fait que
+# désigner.
+#
+# LA DÉCISION « ON A DÉJÀ ÉCRIT DESSUS » — prise ici, avant l'évaluation (donc avant tout
+# appel LLM) : une fiche pending qui raconte un événement déjà dans le stock est FUSIONNÉE
+# dans la fiche du stock. Elle ne sera ni évaluée, ni rédigée, ni publiée ; sa matière
+# reste attachée à la fiche existante par `duplicate_of`, comme toute fusion.
+#
+# CE QUE « STOCK » VEUT DIRE — écrit ici et répété dans le compteur (règle 6) : fiches
+# retenues (evaluated / published_cs / published_sub), non fusionnées, ORIGINALES (pas une
+# traduction : on absorbe dans la fiche source, jamais dans sa jumelle), datées et ENCORE
+# DEVANT NOUS (fin ≥ aujourd'hui, ou début ≥ aujourd'hui sans fin). Une fiche terminée ne
+# retient rien — l'édition suivante d'un événement annuel se publie (règle 5) ; une fiche
+# sans date non plus — donnée manquante, pas un événement connu.
+#
+# CE QUI NE SUFFIT PAS À ABSORBER : la coïncidence lieu + dates + un jeton. Le rapport du
+# 23/09 rangeait « In cucina con… Roberto Alajmo » (Mercato Centrale, Turin) parmi les
+# Terra Madre sur ce seul chemin. Ici l'erreur coûterait plus cher qu'à 9h50 : une fiche
+# absorbée à tort n'est jamais publiée, et personne ne la voit. Seul le chemin des TITRES
+# (avec ses gardes années et dates) absorbe ; la coïncidence reste au rapport de 9h50.
+#
+# LE GESTE NE TOUCHE PAS LA FICHE DU STOCK. `merge_group` complète le gagnant et peut
+# remplacer sa description ; sur une fiche déjà rédigée et publiée, ce serait réécrire en
+# silence la matière d'une page en ligne. On ne fait donc que marquer la nouvelle.
+#
+# QUI ROUVRE (règle 3) : `scripts.unmerge`, le rouvreur de toute fusion — l'entrée
+# `unmerge_data` a le format qu'il sait lire (statut d'avant restauré à l'identique). Et
+# ça ne dort pas en silence : chaque absorption part sur Slack le jour même, avec la
+# fiche du stock et la commande qui la défait. Le compteur est dans le log même à zéro.
+
+
+def stock_devant_nous(conn: sqlite3.Connection, aujourdhui: str | None = None) -> list[dict]:
+    """Les fiches déjà retenues, originales, datées et encore devant nous (cf. ci-dessus)."""
+    jour = aujourdhui or datetime.now().date().isoformat()
+    return [dict(r) for r in conn.execute(
+        "SELECT * FROM events_raw "
+        "WHERE statut IN ('evaluated','published_cs','published_sub') "
+        "AND duplicate_of IS NULL AND COALESCE(translation_of, 0) = 0 "
+        "AND COALESCE(date_event_start, '') <> '' "
+        "AND substr(COALESCE(NULLIF(date_event_end, ''), date_event_start), 1, 10) >= ?",
+        (jour,)).fetchall()]
+
+
+# ── Trois gardes de plus que la fusion du matin — lues dans l'essai du 29/09 ─────────────
+#
+# Rejoué sur la base de production (30 jours d'arrivées, 886 fiches), le contrôle en
+# absorbait 33 ; onze étaient FAUSSES. Six venaient des titres en capitales (corrigé dans
+# `utils.sources.same_story`). Les cinq autres avaient des titres vraiment proches pour
+# des événements différents, et la fusion du matin les aurait prises aussi — mais là, deux
+# fiches pending partent ensemble en évaluation et un humain voit le groupe ; ici, la
+# nouvelle disparaît. D'où, pour l'absorption SEULE :
+#
+#   · des dates qui se CHEVAUCHENT, les deux fiches datées — pas la tolérance de 14 jours
+#     de `_dates_incompatible` : « Secondo » et « Terzo appuntamento del ciclo “La storia
+#     d'Italia al Cinema” » sont deux séances, à quelques jours d'écart ;
+#   · deux VILLES renseignées et différentes séparent : « Giornate europee del
+#     patrimonio » à l'abbaye de Vezzolano, aux Archives d'Asti, au Museo Civico de Casale
+#     et aux Musei Reali de Turin sont quatre portes ouvertes, pas une. Plus large que
+#     `_villes_separent`, qui ne sépare que deux communes DU REGISTRE — or Albugnano
+#     (Vezzolano) n'y est pas, mesuré. Une ville qui désigne une RÉGION ou « plusieurs
+#     communes » ne sépare rien (les deux Lo Pan Ner : « Vallée d'Aoste » / « Valle
+#     d'Aosta (vari comuni) ») ;
+#   · deux numéros de séance différents séparent (« secondo » / « terzo », « 2e » / « 3e »).
+_ORDINAUX = {
+    "premier": 1, "premiere": 1, "deuxieme": 2, "second": 2, "seconde": 2, "troisieme": 3,
+    "quatrieme": 4, "cinquieme": 5, "sixieme": 6, "septieme": 7, "huitieme": 8,
+    "primo": 1, "prima": 1, "secondo": 2, "seconda": 2, "terzo": 3, "terza": 3,
+    "quarto": 4, "quarta": 4, "quinto": 5, "quinta": 5, "sesto": 6, "sesta": 6,
+    "settimo": 7, "settima": 7, "ottavo": 8, "ottava": 8,
+}
+
+
+def _ordinaux(titre: str) -> set[int]:
+    mots = _titre_plie(titre).split()
+    return {_ORDINAUX[m] for m in mots if m in _ORDINAUX} | \
+        {int(m[:-1]) for m in mots if re.fullmatch(r"\d{1,2}[ea]", m)}
+
+
+_VILLES_FLOUES = re.compile(
+    r"\b(vari|varie|diversi|diverse|plusieurs|comuni|communes|region[ei]?|provincia|"
+    r"province|departement|dipartimento|valle d aosta|vallee d aoste|piemonte|piemont|"
+    r"savoie|savoia|haute savoie|alta savoia|comte de nice|contea di nizza|"
+    r"alpes maritimes|alpi marittime|online|en ligne)\b")
+
+
+def _villes_differentes(a: dict, b: dict) -> bool:
+    va, vb = _canon_ville(a.get("ville") or ""), _canon_ville(b.get("ville") or "")
+    if not va or not vb or va == vb:
+        return False
+    return not (_VILLES_FLOUES.search(_plie(va)) or _VILLES_FLOUES.search(_plie(vb)))
+
+
+def _dates_disjointes(a: dict, b: dict) -> bool:
+    sa, sb = _jour(a.get("date_event_start")), _jour(b.get("date_event_start"))
+    if not sa or not sb:
+        return False
+    ea = _jour(a.get("date_event_end")) or sa
+    eb = _jour(b.get("date_event_end")) or sb
+    return not (sa <= eb and sb <= ea)
+
+
+def meme_evenement_que_le_stock(n: dict, s: dict, cross_lang: bool = False) -> bool:
+    """Le chemin des titres, plus les trois gardes ci-dessus."""
+    if not _memes_titres(n, s, cross_lang):
+        return False
+    if _dates_disjointes(n, s) or _villes_separent(n, s) or _villes_differentes(n, s):
+        return False
+    on, os_ = _ordinaux(n.get("title", "")), _ordinaux(s.get("title", ""))
+    return not (on and os_ and on != os_)
+
+
+def absorptions(nouvelles: list[dict], stock: list[dict],
+                cross_lang: bool = False) -> list[tuple[dict, dict]]:
+    """[(fiche nouvelle, fiche du stock qui la couvre déjà)] — même territoire, chemin
+    des TITRES seulement, gardes comprises (`meme_evenement_que_le_stock`).
+
+    Plusieurs fiches du stock pour une même nouvelle : c'est que le stock a déjà un
+    doublon (le rapport de 9h50 le montre). On absorbe dans la plus ANCIENNE publiée,
+    à défaut la plus ancienne — celle qui porte l'historique, pas la mieux notée."""
+    par_terr: dict[str, list[dict]] = {}
+    for s in stock:
+        par_terr.setdefault(s.get("territoire") or "", []).append(s)
+    paires = []
+    for n in nouvelles:
+        couvrent = [s for s in par_terr.get(n.get("territoire") or "", [])
+                    if s["id"] != n["id"] and not paire_de_traduction(n, s)
+                    and meme_evenement_que_le_stock(n, s, cross_lang)]
+        if couvrent:
+            cible = min(couvrent, key=lambda s: (0 if s.get("wp_post_id_as") else 1, s["id"]))
+            paires.append((n, cible))
+    return paires
+
+
+def absorber_dans_le_stock(conn: sqlite3.Connection, paires: list[tuple[dict, dict]],
+                           annulation_re) -> tuple[list[tuple[dict, dict]], int]:
+    """Marque chaque nouvelle 'merged' sur sa fiche du stock, sans toucher celle-ci.
+    Renvoie (absorptions faites, suspicions d'annulation retenues)."""
+    faites, suspectees = [], 0
+    for n, s in paires:
+        # « Terra Madre annullato » apparié à la fiche en ligne : absorber, ce serait
+        # taire l'annulation. On passe par la porte existante, fiche du stock imposée.
+        if _porte_annulation(conn, [s, n], annulation_re, gagnant=s):
+            suspectees += 1
+            continue
+        _empile(conn, n["id"], {
+            "role": "perdant", "at": datetime.now().isoformat(timespec="seconds"),
+            "gagnant": s["id"], "statut_avant": n.get("statut"),
+            "duplicate_of_avant": n.get("duplicate_of"), "motif": "absorbée dans le stock"})
+        conn.execute("UPDATE events_raw SET statut='merged', duplicate_of=? WHERE id=?",
+                     (s["id"], n["id"]))
+        faites.append((n, s))
+        log.info("Absorbée : id=%d « %s » → déjà couverte par id=%d%s « %s »",
+                 n["id"], (n.get("title") or "")[:60], s["id"],
+                 f" (WP#{s['wp_post_id_as']})" if s.get("wp_post_id_as") else "",
+                 (s.get("title") or "")[:60])
+    conn.commit()
+    return faites, suspectees
+
+
+def _message_absorptions(faites: list[tuple[dict, dict]], taille_stock: int) -> str:
+    lignes = [f"🧲 *{len(faites)} nouvelle(s) fiche(s) sur un sujet DÉJÀ couvert* — "
+              f"fusionnée(s) dans la fiche existante, rien n'est rédigé ni publié "
+              f"(stock comparé : {taille_stock} fiches retenues, originales, encore "
+              f"devant nous)"]
+    for n, s in faites:
+        wp = f" WP#{s['wp_post_id_as']}" if s.get("wp_post_id_as") else ""
+        lignes.append(f"• [{n['id']}] « {(n.get('title') or '')[:70]} » → "
+                      f"[{s['id']}]{wp} « {(s.get('title') or '')[:70]} »")
+    ids = " ".join(str(n["id"]) for n, _ in faites)
+    lignes.append(f"Si l'une n'est PAS le même événement : "
+                  f"`.venv/bin/python -m scripts.unmerge {ids}` (aperçu), puis `--apply` "
+                  f"sur celles à rendre.")
+    return "\n".join(lignes)
+
+
 def main(argv=None) -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(
@@ -902,6 +1096,14 @@ def main(argv=None) -> int:
 
     annulation_re = load_annulation_filter()
     merged = suspectees = 0
+    # D'ABORD le stock : une nouvelle qui raconte un événement déjà retenu n'a pas à
+    # entrer dans les groupes du matin — elle serait sinon capable d'y GAGNER et de
+    # partir en rédaction (cf. le bloc au-dessus de `stock_devant_nous`).
+    nouvelles = [r for r in rows if r.get("statut") == "pending"]
+    stock = stock_devant_nous(conn)
+    a_absorber = absorptions(nouvelles, stock, args.cross_lang)
+    ids_absorbes = {n["id"] for n, _ in a_absorber}
+    rows = [r for r in rows if r["id"] not in ids_absorbes]
     groups_titres = _groups(rows, cross_lang=args.cross_lang)
     groups_tous = _groups(rows, cross_lang=args.cross_lang, coincidence=True)
     # Un CANDIDAT est un groupe que seule la coïncidence lieu + dates + jeton a formé (ou
@@ -914,8 +1116,15 @@ def main(argv=None) -> int:
     if args.dry_run:
         # Aperçu lisible par un humain : ce que le passage réel fusionnerait, et dans quel
         # sens. Rien n'est écrit — pas même la garde annulation (elle empile en base).
-        print(f"DRY-RUN — {len(rows)} événement(s) examiné(s), "
+        print(f"DRY-RUN — {len(rows) + len(a_absorber)} événement(s) examiné(s), "
+              f"{len(a_absorber)} absorbé(s) dans le stock, "
               f"{len(dups)} groupe(s) de doublons (rien n'est écrit)")
+        print(f"\nSTOCK — {len(stock)} fiche(s) retenue(s), originale(s), encore devant "
+              f"nous ; {len(a_absorber)} nouvelle(s) déjà couverte(s) :")
+        for n, s in a_absorber:
+            wp = f" WP#{s['wp_post_id_as']}" if s.get("wp_post_id_as") else ""
+            print(f"   ⊂ id={n['id']} « {(n.get('title') or '')[:70]} » "
+                  f"→ déjà couverte par id={s['id']}{wp} « {(s.get('title') or '')[:70]} »")
         for g in dups:
             winner = max(g, key=score)
             print(f"\n▶ GAGNANT id={winner['id']} [{winner.get('statut')}] "
@@ -935,8 +1144,9 @@ def main(argv=None) -> int:
                 for e in sorted(g, key=lambda e: e["id"]):
                     print(f"       [{e['id']}] [{e.get('statut')}] « {(e.get('title') or '')[:70]} »")
         conn.close()
-        log.info("=== DRY-RUN : %d groupe(s) auraient été fusionnés, %d candidat(s) par "
-                 "coïncidence %s, 0 écriture ===", len(dups), len(candidats),
+        log.info("=== DRY-RUN : %d absorption(s) dans le stock, %d groupe(s) auraient été "
+                 "fusionnés, %d candidat(s) par coïncidence %s, 0 écriture ===",
+                 len(a_absorber), len(dups), len(candidats),
                  "inclus" if args.coincidence else "non fusionnés")
         return 0
     if candidats and not args.coincidence:
@@ -947,6 +1157,10 @@ def main(argv=None) -> int:
             log.info("CANDIDAT par coïncidence (non fusionné sans --coincidence) : ids %s — %s",
                      ", ".join(str(e["id"]) for e in sorted(g, key=lambda e: e["id"])),
                      motif_groupe(g, args.cross_lang))
+    absorbees, suspectes_stock = absorber_dans_le_stock(conn, a_absorber, annulation_re)
+    suspectees += suspectes_stock
+    if absorbees:
+        slack.notify(_message_absorptions(absorbees, len(stock)))
     for g in dups:
         signal = _porte_annulation(conn, g, annulation_re)
         if signal:
@@ -958,10 +1172,11 @@ def main(argv=None) -> int:
     # Le compteur de candidats est là même à zéro : un état qui sort une fiche d'une
     # file la sort aussi de tous les bilans (règle 6) — ici la fiche n'en sort pas, mais
     # le lecteur du log doit voir que la règle a tourné et combien de cas se sont présentés.
-    log.info("=== Dédup terminée : %d groupe(s) de doublons, %d événement(s) fusionné(s), "
-             "%d suspicion(s) d'annulation (fusion retenue), %d candidat(s) par coïncidence "
-             "lieu+dates+jeton %s ===",
-             len(dups), merged, suspectees, len(candidats),
+    log.info("=== Dédup terminée : %d nouvelle(s) absorbée(s) dans le stock (%d fiches "
+             "retenues, originales, devant nous), %d groupe(s) de doublons, %d événement(s) "
+             "fusionné(s), %d suspicion(s) d'annulation (fusion retenue), %d candidat(s) par "
+             "coïncidence lieu+dates+jeton %s ===",
+             len(absorbees), len(stock), len(dups), merged, suspectees, len(candidats),
              "fusionnés (--coincidence)" if args.coincidence else "listés, non fusionnés")
     return 0
 

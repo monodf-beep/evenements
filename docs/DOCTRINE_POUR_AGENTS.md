@@ -38,7 +38,7 @@ même instant, par le même code. Il les sert en deux endroits :
 | `/doctrine.txt?token=…` | **Cowork, Claude Code sur le web**, tout agent sans navigateur | `DOCTRINE_TOKEN` (`.env` du VPS) |
 
 Les deux rendent **la même chose, relue à l'instant** : voix éditoriale + vocabulaire
-interdit (Obsidian) + charte éditoriale (dépôt). Aucun cache (`Cache-Control: no-store`),
+interdit (Obsidian) + charte éditoriale (dépôt) + **règles de travail** (dépôt). Aucun cache (`Cache-Control: no-store`),
 aucun fichier intermédiaire. Une note éditée dans Obsidian est visible au rafraîchissement
 suivant — c'est la même propriété que le pipeline, étendue aux sessions de chat.
 
@@ -65,6 +65,26 @@ n'ouvre que la doctrine — aucune écriture, aucune donnée d'événement.
 > `https://backoffice.agendasabauda.eu/doctrine.txt?token=…` — c'est la doctrine vivante.
 
 Pour Claude Chrome, l'adresse sans jeton (`/doctrine`) suffit.
+
+## Les règles de travail — consultées, jamais recopiées
+
+**Franck, 29/09/2026**, après avoir constaté dans les journaux de fiche que Cowork
+réécrivait au passé des fiches d'événements terminés (WP#3807, 11716, 11838…) — du
+travail sur des fiches mortes, contre la règle 5 : « il faut que cowork respecte nos
+règles, pas lui donner les règles mais qu'il les consulte avant ».
+
+Le quatrième bloc sert donc, **extraites de `CLAUDE.md` à chaque lecture**, les sections
+qui valent pour un agent qui travaille les fiches : les six règles, le périmètre
+éditorial, « le dernier qui écrit est un humain », les redirections — plus
+`docs/SEO_QUI_FAIT_QUOI.md` en entier (le protocole du journal de fiche). Le journal des
+erreurs, l'autonomie et le développement n'y sont pas : ils parlent du dépôt et du VPS.
+
+Les sections sont repérées **par le début de leur titre** (`SECTIONS_CLAUDE`). Renommer
+l'un de ces titres dans `CLAUDE.md` ne fait pas disparaître la règle en silence : l'alerte
+monte en tête du texte servi, et la fixture a un cas pour ça.
+
+Ce que ça demande côté Cowork : **une seule ligne** dans sa tâche planifiée — lire
+`/doctrine.txt` au début de chaque passage et s'y conformer. Aucune règle recopiée.
 
 ## Ce que la page dit quand ça va mal — et pourquoi elle le dit fort
 
@@ -100,7 +120,7 @@ lire cette adresse elles aussi, sans que Franck soit dans la boucle.
 
 ## Fichiers
 
-- `utils/doctrine_redaction.py` — assemble les trois blocs, avec provenance et alertes.
+- `utils/doctrine_redaction.py` — assemble les quatre blocs, avec provenance et alertes.
   **À ne pas confondre avec `utils/doctrine.py`**, qui existait avant et parle d'autre
   chose : la doctrine d'*affichage* (`config/doctrine_affichage.md`, lue par
   `scripts/panel_site.py`). Ici ce qu'on écrit, là-bas ce qu'on montre ;
