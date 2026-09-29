@@ -103,6 +103,16 @@ _, blocs = sh.texte_et_blocs(syn, [], [], "https://x", None, "l'adresse publique
 _check("image absente : la RAISON est écrite dans le message",
        "répond 404" in blocs[-1]["elements"][0]["text"])
 
+tops = [{"keys": ["premio cantacronache"], "clicks": 2, "impressions": 25, "position": 8.6},
+        {"keys": ["eventi a biella"], "clicks": 1, "impressions": 1, "position": 2.0}]
+_, blocs = sh.texte_et_blocs(syn, [], tops, "https://x", None)
+txt = blocs[3]["text"]["text"]
+_check("requêtes : leur part du total est écrite (3 clics sur 70)",
+       "font 3 clic(s) sur 70" in txt, txt)
+_, blocs = sh.texte_et_blocs(sh.synthese(_jours(fin, 70, clics=0)), [], [], "https://x", None)
+_check("zéro clic : pas de « 0 sur 0 » absurde (le cas qui doit passer)",
+       "sur 0" not in blocs[3]["text"]["text"], blocs[3]["text"]["text"])
+
 print("\n5. Le GIF est une animation, et se range dans son dossier")
 gif = sh.rendre_gif(syn, "sc-domain:exemple", n_images=12)
 im = Image.open(io.BytesIO(gif))

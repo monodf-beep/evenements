@@ -287,6 +287,21 @@ def _court(url: str, base: str) -> str:
     return u if len(u) <= 60 else u[:57] + "…"
 
 
+def _part_masquee(tops_req: list[dict], total: float) -> str:
+    """Le périmètre des requêtes, écrit sous la liste (2026-09-29).
+
+    Premier envoi réel : les trois « meilleures » requêtes totalisaient 4 clics sur 164.
+    Google ne transmet pas les recherches trop rares (anonymat), si bien que la liste
+    montre les seules requêtes qu'il accepte de nommer, pas les sources du trafic. Sans
+    cette ligne, on lirait « premio cantacronache » comme la porte d'entrée du site."""
+    if not total:
+        return ""
+    vus = sum(r.get("clicks", 0) for r in tops_req)
+    return (f"\n_Ces {len(tops_req)} requêtes font {_fr(vus)} clic(s) sur {_fr(total)} : "
+            f"Google ne détaille pas les recherches rares, la liste ne dit donc pas d'où "
+            f"vient le trafic._")
+
+
 def texte_et_blocs(syn: dict, tops_pages: list[dict], tops_req: list[dict],
                    base: str, url_image: str | None, raison_sans_image: str = "") -> tuple[str, list]:
     s, p = syn["semaine"], syn["precedente"]
@@ -321,7 +336,8 @@ def texte_et_blocs(syn: dict, tops_pages: list[dict], tops_req: list[dict],
     blocs.append({"type": "section", "text": {"type": "mrkdwn", "text":
                   _liste("Pages qui ont amené le plus de clics", tops_pages, True)}})
     blocs.append({"type": "section", "text": {"type": "mrkdwn", "text":
-                  _liste("Requêtes qui ont amené le plus de clics", tops_req, False)}})
+                  _liste("Requêtes qui ont amené le plus de clics", tops_req, False)
+                  + _part_masquee(tops_req, s["clics"])}})
     contexte = (f"Les 7 derniers jours publiés par Google (retard habituel de 2-3 jours), "
                 f"comparés aux 7 précédents. {syn['lignes']} jour(s) de données reçus"
                 + (f" — SEMAINE INCOMPLÈTE, {s['jours']} jour(s) sur 7." if s["jours"] < 7
