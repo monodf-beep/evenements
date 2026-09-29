@@ -39,6 +39,26 @@ import scripts.autocomplete as ac  # noqa: E402
 ac.DB_PATH = tmp
 ac.RESURFACE_DAYS = 3
 
+# ⚠️ `main()` APPELLE `load_dotenv(ROOT / ".env")`, ET ÇA REMET LA CLÉ qu'on vient de
+# retirer huit lignes plus haut. Trouvé le 2026-09-29, et c'est la cause — enfin mesurée —
+# de l'oscillation que docs/FIXTURES_ROUGES.md § 5 attribuait au passage de minuit.
+#
+# CE QUI SE PASSAIT. Sur une machine SANS `.env` (un conteneur de session), `load_dotenv`
+# ne fait rien : la clé reste absente, la complétion est déterministe, la fixture est
+# verte. Sur le VPS, où le `.env` existe, la clé revient — et cette fixture appelait le
+# VRAI modèle. Mesuré ce jour-là : QUATRE appels API par passage, à chaque lancement de la
+# suite, donc à chaque déploiement automatique de 7h50. Et comme le modèle ne rend pas deux
+# fois la même chose, la fixture passait au rouge ou au vert selon l'humeur — l'hypothèse
+# « minuit » du 17/08 ne tenait pas : le 29/09 elle était rouge à 15h04 sur le serveur et
+# verte à la même minute ici.
+#
+# L'HYPOTHÈSE A ÉTÉ TESTÉE, pas devinée : un `.env` factice posé dans ce dépôt le temps
+# d'un passage, et les 401 sont apparus dans la sortie.
+#
+# On neutralise donc le chargement, et pas la clé : c'est `load_dotenv` qui défait le
+# travail de la ligne 34, et `main()` a raison de l'appeler en production.
+ac.load_dotenv = lambda *a, **k: False
+
 envoyes = []
 ac.slack.notify_incomplete = lambda ev, labels, note="": envoyes.append(
     (ev["id"], tuple(labels), note)) or True
@@ -131,6 +151,19 @@ if len(envoyes) == 1 and envoyes[0][0] == 1 and set(envoyes[0][1]) == {"Lieu", "
 else:
     echecs += 1
     print(f"ÉCHEC : {envoyes}")
+
+# ══ LE TÉMOIN DU BOUCHON ═══════════════════════════════════════════════════════════
+#
+# Sans lui, le jour où quelqu'un retire la ligne `ac.load_dotenv = …` la fixture
+# redeviendrait verte ici et rouge sur le serveur, et on recommencerait la chasse de
+# septembre. Il vérifie la CONSÉQUENCE (la clé n'est pas revenue), pas la présence de la
+# ligne : c'est le défaut qu'on surveille, pas sa correction du jour.
+if os.getenv("ANTHROPIC_API_KEY"):
+    echecs += 1
+    print("ÉCHEC ⚠️ une clé API est réapparue pendant le passage — `load_dotenv` a défait "
+          "l'isolation, cette fixture appelle le vrai modèle et redeviendra instable.")
+else:
+    print("OK    aucune clé API n'est réapparue : le passage est resté déterministe")
 
 print(f"\n{'ÉCHEC' if echecs else 'SUCCÈS'} — {echecs} problème(s).")
 sys.exit(1 if echecs else 0)
