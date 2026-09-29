@@ -299,7 +299,17 @@ SLACK_DIGEST=1
 # lesquels les fiches les plus proches passent leur date. À 25, quatre jours.
 # REDESCENDRE À 10 une fois l'arriéré résorbé — le flux normal, c'est quelques fiches par
 # jour, et un cap large sur une file vide ne coûte rien mais ne dit plus rien non plus.
-45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 25 --min-score 1 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
+# 2026-09-29 (Franck : « à la une, ça doit être les meilleurs événements ») : deux
+# rattrapages s'intercalent AVANT refresh_deplacement, dans cet ordre et pour une raison :
+#  · panel_rattrapage fait relire par le panel les articles développés qui n'ont jamais eu
+#    de verdict (il ne réécrit rien). Sans verdict, pas de score de rendu, pas de une.
+#    Écrit le 13/08, jamais planifié : 52 fiches en ligne et à venir sans panel au 29/09.
+#    Cap 15 : 3-4 appels du modèle éco par fiche ; le reste est DIT, et repris le lendemain ;
+#  · rescore_home pose le score de rendu de ce qui a désormais un panel, et le recopie sur
+#    les traductions (même événement). Écrit le 15/09, jamais planifié non plus ;
+#  · refresh_deplacement, juste derrière, voit la note de une changer et republie la fiche.
+# Deux rouvreurs qui existaient sans que personne ne les rouvre : la règle 3, encore.
+45 10 * * * cd /root/evenements && { .venv/bin/python scripts/translate_events.py --apply --cap 25 --min-score 1 >> logs/translate.log 2>&1 ; .venv/bin/python -m scripts.panel_rattrapage --apply --cap 15 >> logs/panel_rattrapage.log 2>&1 ; .venv/bin/python -m scripts.rescore_home --apply >> logs/rescore_home.log 2>&1 ; .venv/bin/python -m scripts.refresh_deplacement --apply >> logs/refresh_deplacement.log 2>&1 ; }
 # (Le rafraîchissement du tri « Ça vaut le déplacement » tourne DANS la ligne de 10h45
 # ci-dessus, enchaîné après la traduction — voir le commentaire de cette ligne. Son
 # journal reste logs/refresh_deplacement.log, le chien de garde ne change pas.)
