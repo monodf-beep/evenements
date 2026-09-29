@@ -16,6 +16,8 @@ import json, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+from tests import _php_extensions  # noqa: E402
+
 PHP_FILE = ROOT / "deploy" / "wordpress" / "cs-index-budget.php"
 echecs = 0
 
@@ -77,6 +79,15 @@ def verifie(cond, ok, ko):
 def main(php_file=PHP_FILE):
     if not shutil.which("php"):
         print("php absent : fixture NON jouée (ce n'est pas un succès).")
+        return 1
+    # ⚠️ ET LES EXTENSIONS, PAS SEULEMENT LE BINAIRE — ajouté le 2026-09-29. Le jour où
+    # `php` a été installé sur le VPS, cette fixture s'est enfin exercée… et a planté sur
+    # « Call to undefined function mb_strlen() », sous la forme d'une trace d'appels,
+    # c'est-à-dire sous la forme d'un BOGUE. C'en était l'opposé : `php8.3-cli` s'installe
+    # sans `mbstring`. On demande donc AVANT, et on le dit en une phrase.
+    absentes = _php_extensions.manquantes([php_file])
+    if absentes:
+        print(_php_extensions.message(absentes))
         return 1
     r = jouer(php_file)
     ex, hi = r["exclus"], {int(k): v for k, v in r["hors_index"].items()}

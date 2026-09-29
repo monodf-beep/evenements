@@ -86,6 +86,19 @@ def _outil_manquant(sortie: str) -> str:
     # la ligne « non exécutable » est là pour que ça se voie.
     if "php absent" in sortie and "pas un succès" in sortie:
         return "binaire `php` absent (apt install php-cli — demander à Franck)"
+    # ══ UNE EXTENSION PHP, ET PAS SEULEMENT LE BINAIRE — 2026-09-29, le même jour ══════
+    #
+    # `php` installé sur le VPS l'après-midi, et deux contrôles se sont mis à planter sur
+    # « Call to undefined function mb_strlen() » : `php8.3-cli` s'installe sans
+    # `mbstring`. L'erreur avait la FORME d'un bogue et la NATURE d'un outil absent.
+    #
+    # Ce n'est pas cette trace-là qu'on reconnaît ici — ce serait dangereux, un nom de
+    # fonction mal tapé dans un mu-plugin rend exactement la même. Les fixtures demandent
+    # désormais AVANT de jouer (tests/_php_extensions.py), en confrontant les fonctions du
+    # fichier à la sortie de `php -m`, et n'écrivent cette phrase que si l'extension est
+    # réellement absente. On ne reconnaît donc qu'un diagnostic déjà établi.
+    if "extension php" in sortie and "pas un succès" in sortie:
+        return "extension php absente (la fixture dit laquelle et la commande apt)"
     return ""
 
 

@@ -25,6 +25,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+from tests import _php_extensions  # noqa: E402
+
 FIXTURE = ROOT / "tests" / "fixtures" / "cs_slack_boite_fixture.php"
 LIVRE = ROOT / "deploy" / "wordpress" / "cs-slack-formulaires.php"
 
@@ -58,6 +60,14 @@ def main() -> int:
         print("php absent de cette machine — contrôle NON EFFECTUÉ (ce n'est pas un "
               "succès). À jouer là où php existe : php " + str(FIXTURE))
         return 0
+    # ⚠️ LES EXTENSIONS AUSSI — 2026-09-29, même incident que test_index_budget_sitemap :
+    # `php` installé sur le VPS, et ce contrôle plante sur « Call to undefined function
+    # mb_substr() » parce que `php8.3-cli` n'embarque pas `mbstring`. Un paquet à
+    # installer, pas un code à corriger — et les deux se ressemblaient à s'y méprendre.
+    absentes = _php_extensions.manquantes([LIVRE, FIXTURE])
+    if absentes:
+        print(_php_extensions.message(absentes))
+        return 1
 
     echecs = 0
 
