@@ -101,9 +101,15 @@ MAX_UNE = MAX_INTERET + MAX_BONUS
 # RENDU, l'autre portillon de la une. L'y ajouter le compterait deux fois et mêlerait
 # « l'article est-il bon » à « l'événement compte-t-il ».
 #
-# « deplacement » reste le DÉFAUT tant que Franck n'a pas lu, nom par nom, ce que
-# `audit_une` fait entrer et sortir. Basculer : UNE_FORMULE=locale.
-UNE_FORMULE = os.getenv("UNE_FORMULE", "deplacement")
+# « combinee » (DÉFAUT depuis le 29/09, après lecture de l'audit nom par nom) = la
+# MEILLEURE des deux notes. Ni l'une ni l'autre n'avait raison seule : « locale » faisait
+# entrer Orlando et les 60 minutes de violoncelle (Nice 2 → 6 pages), Jessica Lange, Song
+# Dong, la rentrée de la Filarmonica, le Bal clandestin — mais faisait SORTIR le Festival
+# des Jardins Alpestres et Musicastelle, que « deplacement » valorise à raison (ancrage
+# territorial). Le maximum garde les deux lectures : rien ne sort, tout ce qui entre est
+# ce que l'audit a nommé. Franck : « on ne peut pas combiner plusieurs critères qu'on a ? »
+# Revenir en arrière : UNE_FORMULE=deplacement (ancienne) ou =locale.
+UNE_FORMULE = os.getenv("UNE_FORMULE", "combinee")
 
 
 def interet_local(event: dict) -> int | None:
@@ -121,10 +127,14 @@ def interet_local(event: dict) -> int | None:
 def interet(event: dict) -> int | None:
     """L'INTÉRÊT de l'événement, 0-10, ou None s'il n'a pas été évalué.
 
-    Suit UNE_FORMULE (lue à CHAQUE appel, pour que l'audit compare les deux) :
-    « locale » → interet_local ; « deplacement » (défaut) → critères de déplacement."""
+    Suit UNE_FORMULE (lue à CHAQUE appel, pour que l'audit compare) : « combinee »
+    (défaut) → la meilleure des deux ; « locale » → interet_local ; « deplacement » →
+    critères de « Ça vaut le déplacement »."""
     if UNE_FORMULE == "locale":
         return interet_local(event)
+    if UNE_FORMULE == "combinee":
+        notes = [n for n in (interet_local(event), _interet_deplacement(event)) if n is not None]
+        return max(notes) if notes else None
     return _interet_deplacement(event)
 
 
