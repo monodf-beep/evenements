@@ -1939,7 +1939,17 @@ def reader_review(article: dict, ev: dict, client, model: str,
     try:
         msg = client.messages.create(model=model, max_tokens=400,
                                      messages=[{"role": "user", "content": prompt}])
-    except Exception:  # noqa: BLE001 — non bloquant
+    except Exception as exc:  # noqa: BLE001 — non bloquant pour la RÉDACTION…
+        # …mais plus jamais MUET (2026-09-29). Premier rattrapage en production : 25 panels
+        # sur 29 revenus vides, une seconde chacun, sans une ligne de journal — plafond,
+        # débit ou requête refusée, impossible de le dire. Un refus qu'on ne peut pas
+        # nommer ressemble trait pour trait à « aucun persona ». On le dit, et on garde la
+        # dernière exception pour que panel_rattrapage arrête le lot sur un PLAFOND au lieu
+        # de brûler les fiches suivantes (utils/api_limite).
+        global PANEL_DERNIERE_ERREUR
+        PANEL_DERNIERE_ERREUR = exc
+        log.warning("[%s] panel — relecture refusée par l'API (%s) : %s", ev.get("id"),
+                    getattr(exc, "status_code", None) or type(exc).__name__, str(exc)[:200])
         return {}
     # MESURÉ (2026-08-11). C'est l'appel le plus RÉPÉTÉ du pipeline : trois à quatre
     # relectures par fiche (locaux + visiteurs), et le double quand le panel vote la
@@ -1962,6 +1972,11 @@ def reader_review(article: dict, ev: dict, client, model: str,
     out["persona"] = pname
     out["role"] = mode
     return out
+
+
+# Dernière exception rendue par l'API pendant une relecture du panel (None = aucune).
+# Lue par scripts/panel_rattrapage.py pour distinguer un PLAFOND d'un panel vide.
+PANEL_DERNIERE_ERREUR: "BaseException | None" = None
 
 
 def reader_panel(article: dict, ev: dict, client, model: str) -> dict:

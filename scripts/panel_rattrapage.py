@@ -246,11 +246,28 @@ def main(argv: list[str]) -> int:
     client = anthropic.Anthropic(api_key=api_key, timeout=180.0)
     modele = pipeline_settings.model_eco()
 
+    from scripts import enrich as _enrich
+    from utils.api_limite import est_plafond
     faits, muets = 0, 0
+    erreurs: dict[str, int] = {}
     for r in lot:
         ev = dict(r)
         data = _data(ev)
+        _enrich.PANEL_DERNIERE_ERREUR = None
         panel = reader_panel({"article": data.get("article") or {}}, ev, client, modele)
+        err = _enrich.PANEL_DERNIERE_ERREUR
+        if err is not None:
+            cle = f"{getattr(err, 'status_code', None) or type(err).__name__} : {str(err)[:120]}"
+            erreurs[cle] = erreurs.get(cle, 0) + 1
+            if est_plafond(err):
+                # Un plafond condamne tous les appels suivants du lot : on s'arrête, on le
+                # dit une fois, et on n'écrit rien pour les fiches non tentées — elles
+                # reviennent d'elles-mêmes au prochain passage (utils/api_limite).
+                print(f"\n⛔ PLAFOND API atteint à la fiche [{ev['id']}] — lot arrêté. "
+                      f"{len(lot) - faits - muets - 1} fiche(s) non tentée(s), reprises au "
+                      f"prochain passage une fois le plafond relevé (console Anthropic).")
+                muets += 1
+                break
         if not panel:
             # {} = aucun persona pour ce territoire, ou l'appel a échoué. On le COMPTE :
             # sans ça, un panel muet ressemblerait trait pour trait à une fiche déjà jugée.
@@ -278,6 +295,10 @@ def main(argv: list[str]) -> int:
     print(f"\n✅ {faits} verdict(s) écrit(s), {poses} vérifié(s) en base"
           + (f", {muets} panel(s) muet(s) — aucun persona ou appel échoué." if muets
              else "."))
+    # LE MOTIF DES REFUS, compté (29/09) : « muet » seul ne disait pas si c'était la
+    # facture, le débit ou la requête.
+    for cle, n in sorted(erreurs.items(), key=lambda kv: -kv[1]):
+        print(f"   {n:>3} relecture(s) refusée(s) — {cle}")
     print("\n⚠️ AUCUN ARTICLE N'A ÉTÉ RÉÉCRIT, et aucun ne le sera par ce script : le "
           "panel rend un verdict, pas une publication.")
     if faits:

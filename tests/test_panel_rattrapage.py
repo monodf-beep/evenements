@@ -253,5 +253,44 @@ _check("le bilan RECOMPTE en base au lieu d'annoncer une longueur de liste",
 _check("et il rappelle qu'aucun article n'a été touché",
        "AUCUN ARTICLE N'A ÉTÉ RÉÉCRIT" in s)
 
+print("\n──── 4. Un refus de l'API n'est plus muet, et un PLAFOND arrête le lot ────")
+# 2026-09-29, premier rattrapage en production : 25 panels vides sur 29, une seconde
+# chacun, sans une ligne pour dire pourquoi. Le vrai reader_review range désormais
+# l'exception dans enrich.PANEL_DERNIERE_ERREUR ; on la simule ici.
+
+
+class _Refus(Exception):
+    def __init__(self, code, texte):
+        super().__init__(texte)
+        self.status_code = code
+
+
+def _panel_qui_refuse(exc):
+    appels = []
+
+    def f(article, ev, client, model):
+        appels.append(ev["id"])
+        _enrich.PANEL_DERNIERE_ERREUR = exc
+        return {}
+    return f, appels
+
+
+for nom, exc, doit_arreter in (
+        ("plafond (400 « usage limits ») → lot ARRÊTÉ à la première fiche",
+         _Refus(400, "You have reached your specified API usage limits."), True),
+        ("⚠️ débit (429) → le lot CONTINUE, ce n'est pas un plafond (le cas qui doit passer)",
+         _Refus(429, "rate_limit_error: too many requests"), False)):
+    f, appels = _panel_qui_refuse(exc)
+    _enrich.reader_panel = f
+    anthropic.Anthropic = lambda *a, **k: object()
+    try:
+        s = _sortie(["--apply", "--cap", "5"])
+    finally:
+        _enrich.reader_panel = _vrai_panel
+        anthropic.Anthropic = _vrai
+    _check(nom, ("PLAFOND API atteint" in s) is doit_arreter, s[-400:])
+    _check("   et le motif du refus est ÉCRIT dans le bilan",
+           str(exc.status_code) in s and "refusée" in s, s[-400:])
+
 print("\n" + ("TOUT PASSE" if not echecs else f"{echecs} ÉCHEC(S)"))
 raise SystemExit(1 if echecs else 0)
