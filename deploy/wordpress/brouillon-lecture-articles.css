@@ -1,0 +1,61 @@
+/*
+ * BROUILLON — lecture des articles (guides, curiosités). NON DÉPLOYÉ.
+ *
+ * Mesuré le 2026-09-30 sur /cuisine-nissarde-tables-labellisees/ (post 3648), via Novamira :
+ *   - corps : police SYSTÈME 17 px, interligne 1.6 (réglage GeneratePress « Typography »),
+ *     alors que les jetons du site prévoient --font-body (Nunito Sans) et --lh-body 1.65 ;
+ *   - H1 : style EN LIGNE, 23 px (La Semplicita) ;
+ *   - H2 : aucune règle du site, donc le défaut GeneratePress = 35 px ; H3 = 29 px.
+ *     → le H2 est PLUS GROS que le H1 (35 contre 23). C'est la capture 5 : « Restaurants ».
+ *   - listes : retrait GeneratePress par défaut (ul : marge gauche 3em).
+ *
+ * Non mesuré : le rendu sur téléphone après ces règles. À regarder avant de déployer, sur
+ * UN article, puis sur une fiche événement (le sélecteur ne doit pas l'atteindre).
+ *
+ * Portée : body.single-post uniquement. Les fiches événement sont des tribe_events
+ * (body.single-tribe_events), donc hors de portée.
+ *
+ * Où le poser : Apparence > Personnaliser > CSS additionnel est VIDE aujourd'hui
+ * (wp_get_custom_css() = 0 octet) ; le child theme style.css est un fichier serveur.
+ * Choix à faire avec Franck — voir docs/DEPLOIEMENT_WORDPRESS.md.
+ */
+
+body.single-post .entry-content {
+  font-family: var(--font-body);
+  font-size: 1.125rem;      /* 18 px, contre 17 aujourd'hui */
+  line-height: 1.75;        /* contre 1.6 */
+  color: var(--fg-1);
+}
+
+body.single-post .entry-content p {
+  margin-bottom: 1.3em;
+}
+
+/* Hiérarchie : le H2 doit rester sous le H1 (23 px en ligne). */
+body.single-post .entry-content h2 {
+  font-size: 1.5rem;        /* 24 px, contre 35 */
+  line-height: 1.25;
+  margin: 2em 0 .6em;
+}
+
+body.single-post .entry-content h3 {
+  font-size: 1.2rem;        /* ~19 px, contre 29 */
+  line-height: 1.3;
+  margin: 1.6em 0 .4em;
+}
+
+/* Listes : on rend la largeur au texte (retrait 3em par défaut → 1.2em). */
+body.single-post .entry-content ul,
+body.single-post .entry-content ol {
+  margin-left: 1.2em;
+  margin-bottom: 1.3em;
+}
+
+body.single-post .entry-content li {
+  margin-bottom: .45em;
+}
+
+/* Variante à essayer SÉPARÉMENT (décision de marque, pas de lisibilité) :
+   un corps en serif, comme un journal. Aucun serif n'est chargé aujourd'hui.
+body.single-post .entry-content p { font-family: Georgia, 'Times New Roman', serif; }
+*/
