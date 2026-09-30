@@ -808,11 +808,11 @@ def _build_payload(event: dict, skip_media: bool = False,
     if event.get("force_create"):
         payload["force_create"] = True
 
-    # Slug explicite (paires FR/IT) : sans ça, WordPress dérive le slug du TITRE — deux
-    # titres dans deux langues donnent deux URLs sans rapport, impossible de retrouver la
-    # paire à l'œil (retour Franck). Polylang autorise le MÊME slug dans les deux langues
-    # (le préfixe /fr//it/ suffit à les distinguer) : on réutilise donc le slug de
-    # l'original pour la fiche traduite.
+    # Slug explicite : celui qu'une traduction calcule depuis SON titre
+    # (utils.seo.slug_jumelle). ⚠️ Ce commentaire affirmait jusqu'au 30/09 que « Polylang
+    # autorise le MÊME slug dans les deux langues » : FAUX sur ce site (Polylang
+    # gratuit) — WordPress rendait chaque slug unique, d'où le `-2` sur toutes les
+    # jumelles. Une affirmation de commentaire n'est pas une mesure.
     if (event.get("slug") or "").strip():
         payload["slug"] = event["slug"].strip()
     elif not event.get("wp_post_id_as"):

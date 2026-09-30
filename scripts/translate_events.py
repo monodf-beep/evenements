@@ -60,6 +60,7 @@ from scripts.gel_texte import postes_geles
 # seule définition du dépôt de « racine commune » — deux copies divergeraient.
 from scripts.batch_report import verdict_titre_traduit
 from utils.voix import voix_block
+from utils.seo import slug_jumelle
 
 log = get_logger("translate-events")
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
@@ -1155,9 +1156,12 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
         "seo_title": "", "seo_meta": "", "seo_slug": "", "seo_keyphrase": "",
         "force_lang": tgt, "force_create": True,
         "wp_post_id_as": None, "wp_post_id_cs": None,
-        # URL commune à la paire (retour Franck : sans ça, impossible de s'y
-        # retrouver) — la fiche traduite reprend le slug de l'original.
-        "slug": _slug_of(ev.get("wp_permalink_as")),
+        # Adresse tirée du titre TRADUIT (arbitrage de Franck du 30/09 : « ça va pas du
+        # tout de mettre 2, 3 »). Reprendre le slug de l'original, comme avant, donnait
+        # à TOUTES les jumelles un `-2` et une adresse dans la mauvaise langue —
+        # voir utils.seo.slug_jumelle. La paire se retrouve par le lien Polylang.
+        "slug": slug_jumelle(tr["title"], _slug_of(ev.get("wp_permalink_as")),
+                             ev.get("ville") or ""),
     })
     new_ev.pop("id", None)
     wp_id, permalink, raw_url = publish_to_as(new_ev)

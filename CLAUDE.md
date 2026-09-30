@@ -369,6 +369,18 @@ une URL millésimée l'interdit. Le TITRE garde son millésime, l'ADRESSE non :
 jour-là : 27 des 188 fiches en ligne et non terminées portaient une année ou un mois dans
 leur URL, parce qu'aucun slug n'était envoyé et que WordPress le dérivait du titre.
 
+**Ni de `-2`, et une adresse italienne est en italien** — arbitrage de Franck du
+2026-09-30 : « ça va pas du tout de mettre 2, 3 ». Une traduction tire son adresse de SON
+titre (`utils.seo.slug_jumelle`), jamais de celui de l'original ; si le titre ne se
+traduit pas (« Orlando »), on ajoute la ville, jamais un chiffre. Cela remplace la règle
+« URL commune à la paire » du 28/07 : la paire se retrouve par le lien Polylang et le
+badge du back-office, plus par l'adresse. La règle du 28/07 reposait sur un commentaire
+qui affirmait que « Polylang autorise le même slug dans les deux langues » — faux sur ce
+site (Polylang gratuit) : les 103 jumelles italiennes à venir portaient TOUTES un `-2` et
+un slug français, et n'étaient indexées qu'à 29 % contre 56 % pour le français. Les
+adresses déjà en ligne se renomment avec une 301 (`scripts/renommer_slugs_jumelles.py`,
+une fiche d'abord). Fixture : `tests/test_slug_jumelle.py`.
+
 Où : `deploy/wordpress/cs-redirections-301.php`, une simple table chemin → chemin, avec
 un garde-fou contre la redirection vers soi-même (une boucle rend le site injoignable,
 au même prix que le mu-plugin cassé d'août).

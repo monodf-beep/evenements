@@ -146,11 +146,6 @@ def _link_map(group: list[dict]) -> dict[str, dict]:
     return out
 
 
-def _slug_of(permalink: str) -> str:
-    path = urlparse((permalink or "").strip()).path.rstrip("/")
-    return path.rsplit("/", 1)[-1] if path else ""
-
-
 def _mark_pair_in_db(conn: sqlite3.Connection, pair: dict[str, dict]) -> None:
     """Écrit translation_of/translated_lang en base sur la fiche SECONDAIRE de la paire,
     pour que le back-office (badge 🇮🇹, fiche liée, liste groupée) la reconnaisse — le lien
@@ -164,42 +159,6 @@ def _mark_pair_in_db(conn: sqlite3.Connection, pair: dict[str, dict]) -> None:
         conn.execute("UPDATE events_raw SET translation_of=?, translated_lang=? WHERE id=?",
                     (primary_id, lang, sec_id))
     conn.commit()
-
-
-def _align_slug(wp_url: str, auth, conn: sqlite3.Connection, pair: dict[str, dict]) -> None:
-    """Aligne le slug de la fiche SECONDAIRE sur celui de la PRIMAIRE (même règle que
-    _mark_pair_in_db : FR primaire si présent). Retour Franck : « les URL des paires
-    doivent avoir du commun sinon c'est impossible de s'y retrouver ». Ne touche RIEN si
-    le slug est déjà identique (idempotent, journalise seulement les vrais changements)."""
-    langs = sorted(pair, key=lambda l: (l != "fr", l))
-    primary, secondaries = langs[0], langs[1:]
-    primary_slug = _slug_of(pair[primary]["permalink"])
-    if not primary_slug:
-        log.warning("Pas de permalien connu pour la primaire WP#%s — alignement de "
-                    "slug ignoré pour ce groupe.", pair[primary]["wp"])
-        return
-    token = base64.b64encode(f"{auth[0]}:{auth[1]}".encode("utf-8")).decode("ascii")
-    endpoint = f"{wp_url}/?rest_route=/cs/v1/set-slug"
-    for lang in secondaries:
-        sec = pair[lang]
-        if _slug_of(sec["permalink"]) == primary_slug:
-            continue                                   # déjà aligné
-        try:
-            resp = requests.post(endpoint, json={"post_id": sec["wp"], "slug": primary_slug},
-                                 auth=auth, headers={**_UA, "X-CS-Auth": token}, timeout=30)
-            resp.raise_for_status()
-            new_permalink = resp.json().get("permalink") or ""
-            log.info("Slug aligné : WP#%s → « %s » (%s)", sec["wp"], primary_slug,
-                     new_permalink or "?")
-            if new_permalink:
-                conn.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=?",
-                            (new_permalink, sec["id"]))
-                conn.commit()
-        except requests.HTTPError as exc:
-            log.error("Alignement de slug refusé pour WP#%s (%s) : %s", sec["wp"],
-                      exc.response.status_code, exc.response.text[:200])
-        except requests.RequestException as exc:
-            log.error("Alignement de slug impossible pour WP#%s : %s", sec["wp"], exc)
 
 
 def _flag_lang_mismatch(conn: sqlite3.Connection, event_id: int, expected: str, found: str) -> None:
@@ -315,8 +274,10 @@ def main(argv=None) -> int:
             # Écrit le lien en base AUSSI : sans ça, le back-office (badge 🇮🇹, fiche
             # groupée) ignore la paire — seul le lien WordPress/Polylang serait à jour.
             _mark_pair_in_db(conn, p)
-            # URL commune à la paire (slug de la secondaire aligné sur la primaire).
-            _align_slug(wp_url, auth, conn, p)
+            # PLUS d'alignement de slug (arbitrage de Franck du 30/09) : copier l'adresse
+            # de la primaire sur la secondaire donnait `-2` à toutes les jumelles, et
+            # c'était ICI qu'il revenait chaque jour, même sur une fiche corrigée. Chaque
+            # langue garde l'adresse tirée de son titre (utils.seo.slug_jumelle).
     conn.close()
     log.info("=== Liage terminé : %d/%d paire(s) liée(s) (WordPress + base). ===", ok, len(pairs))
     return 0

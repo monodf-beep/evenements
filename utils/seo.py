@@ -188,15 +188,30 @@ def _slug_entier(texte: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", t).strip("-")
 
 
+# Mots-outils qu'une COUPE peut laisser en fin d'adresse, en plus des amorces de date.
+# Lus dans le dry-run du 30/09 des adresses italiennes : « …-che-resistono-alla »,
+# « …-museo-darte-orientale-di », « …-per-bambini-ad », « …-punta-sulla ».
+_MOTS_OUTILS_FIN = _AMORCES_DATE | frozenset({
+    "di", "d", "per", "ad", "ed", "alla", "alle", "allo", "agli", "ai", "all", "del",
+    "della", "dello", "degli", "dell", "con", "su", "sul", "sulla", "sui", "senza",
+    "un", "una", "uno", "nel", "nella", "nei", "che", "ne", "gli", "l",
+    "de", "pour", "avec", "sur", "dans", "par", "une", "sans", "aux", "qui", "que",
+})
+
+
 def _coupe_slug(slug: str, maxi: int = 70) -> str:
     """Coupe à `maxi` caractères SUR UN TIRET : une adresse ne se termine ni au milieu
     d'un mot ni par un tiret orphelin."""
-    if len(slug) > maxi:
+    coupe = len(slug) > maxi
+    if coupe:
         slug = slug[:maxi].rsplit("-", 1)[0] or slug[:maxi]
     # Une adresse ne se termine pas sur un mot-outil laissé en l'air par la coupe
-    # (« …-ouvre-sa-saison-au »). Lu dans le dry-run du 21/09.
+    # (« …-ouvre-sa-saison-au »). Lu dans le dry-run du 21/09. Quand il y a eu COUPE,
+    # la liste s'élargit aux articles et prépositions : un titre ENTIER qui finit
+    # vraiment par « di » reste tel quel, une coupe qui y tombe ne le garde pas.
+    fin = _MOTS_OUTILS_FIN if coupe else _AMORCES_DATE
     mots = slug.strip("-").split("-")
-    while len(mots) > 1 and mots[-1] in _AMORCES_DATE:
+    while len(mots) > 1 and mots[-1] in fin:
         mots.pop()
     return "-".join(mots)
 
@@ -271,6 +286,49 @@ def slug_sans_date(texte: str) -> str:
             j -= 1
     reste = [m for m, k in zip(mots, garde) if k]
     return _coupe_slug("-".join(reste) if len(reste) >= 2 else base)
+
+
+_SUFFIXE_WP = re.compile(r"-\d+$")
+
+
+def slug_jumelle(titre: str, slug_original: str = "", ville: str = "") -> str:
+    """L'adresse d'une fiche TRADUITE : tirée de SON titre, jamais de celui de l'original.
+
+    ══ ARBITRAGE DE FRANCK, 30/09/2026 ══ « ça va pas du tout de mettre 2, 3 ». Jusque-là
+    la jumelle reprenait le slug de l'original (« URL commune à la paire », 28/07), sur
+    la foi d'un commentaire qui affirmait que Polylang accepte le même slug dans deux
+    langues. C'est faux sur ce site (Polylang gratuit) : WordPress rend chaque slug
+    unique, donc TOUTES les jumelles portaient `-2`, `-3`… — et une adresse italienne
+    rédigée en français. Mesuré le 29/09 : 103 jumelles italiennes à venir, 29 % indexées
+    contre 56 % des françaises. La paire se retrouve par le lien Polylang (hreflang) et
+    le badge du back-office, plus par l'adresse.
+
+    Même règle que toute adresse : sans date (`slug_sans_date`), sans suffixe numérique.
+
+    LA COLLISION, cas réel : un titre qui ne se traduit pas (« Orlando », « James Carter »)
+    redonne le slug de l'original, déjà pris — WordPress remettrait `-2`. On ajoute alors
+    la VILLE, qui distingue sans dater. Si la ville est vide ou déjà dans le slug, on rend
+    le slug tel quel : l'appelant doit alors signaler la collision, pas l'avaler.
+    """
+    propre = slug_sans_date(titre)
+    if not propre:
+        return ""
+    racine_originale = _SUFFIXE_WP.sub("", (slug_original or "").strip())
+    if racine_originale and propre == racine_originale:
+        ville_slug = _slug_entier(re.sub(r"['’]", "", ville or ""))
+        if ville_slug and f"-{ville_slug}-" not in f"-{propre}-":
+            # La ville se garde entière : on coupe le TITRE pour lui faire place, sinon la
+            # coupe à 70 la retirerait et la collision reviendrait.
+            return f"{_coupe_slug(propre, 69 - len(ville_slug))}-{ville_slug}"
+    return propre
+
+
+def a_suffixe_wp(slug: str) -> bool:
+    """Vrai si le slug finit par le `-N` que WordPress ajoute pour dédoublonner.
+    Un titre qui se termine VRAIMENT par un nombre (« …-65 ») sort aussi vrai : c'est un
+    signal à lire, pas une preuve — `slug_jumelle` décide, cette fonction ne fait que
+    repérer."""
+    return bool(_SUFFIXE_WP.search(slug or ""))
 
 
 def build_event_jsonld(ev: dict) -> dict | None:

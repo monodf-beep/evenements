@@ -77,7 +77,9 @@ Beaucoup de sources (Vallée d'Aoste, transfrontalier) publient le **même évé
 
 Le liage passe par le même endpoint `cs/v1/link-translations`. **Dry-run par défaut**, `--apply` pour exécuter.
 
-**URL commune à la paire** (retour Franck, 28/07/2026) : `link_translations_as --apply` écrit aussi `translation_of`/`translated_lang` en base (pour le badge/groupement back-office, cf. §6) et **aligne le slug** de la fiche secondaire sur celui de la primaire (endpoint dédié `cs/v1/set-slug`, `wp_update_post` — ne touche QUE le slug, rien d'autre du post). Idempotent : ignore les paires déjà alignées.
+`link_translations_as --apply` écrit aussi `translation_of`/`translated_lang` en base (pour le badge/groupement back-office, cf. §6).
+
+**L'adresse de chaque langue vient de SON titre** (arbitrage de Franck, 30/09/2026 : « ça va pas du tout de mettre 2, 3 »). La règle précédente, « URL commune à la paire » (28/07), copiait le slug de l'original sur la jumelle ; WordPress le dédoublonnait en `-2`, `-3`, et l'adresse italienne restait en français. `translate_events` pose désormais `utils.seo.slug_jumelle(titre traduit)` — la ville en cas de collision, jamais un chiffre — et `link_translations_as` n'aligne plus aucun slug. Les jumelles déjà en ligne : `scripts/renommer_slugs_jumelles.py` (simulation par défaut, `--un <id> --apply` d'abord, puis `--apply` ; chaque renommage est vérifié en 301 → 200 et le lot s'arrête au premier échec).
 
 ---
 
