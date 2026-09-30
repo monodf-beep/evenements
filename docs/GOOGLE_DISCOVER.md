@@ -66,6 +66,23 @@ moins d'une semaine manquent, c'est le délai de Google ; si des fiches d'un moi
 jamais été visitées, c'est que Google ne juge pas le site digne du passage. Compte
 quelques minutes (une inspection par fiche), avec un point d'avancement toutes les 25.
 
+**Résultat du 29/09 au soir : 96 fiches indexées sur 221 (43 %).** Ce n'est PAS un
+délai : les fiches FR de plus de 30 jours ne sont indexées qu'à 53 %, et des fiches
+publiées le 20/07 étaient encore « URL is unknown to Google ». L'italien est le plus
+touché : 30 sur 103 (29 %), contre 66 sur 118 en français (56 %).
+
+**Le sitemap n'est pas en cause** (`--sitemaps`, 30/09 au matin) : `tribe_events` lu
+le 29/09 à 18h09, l'index le 30/09 à 4h29, zéro erreur, 221 adresses déclarées — le
+même nombre que les fiches non terminées. Google a donc la liste et CHOISIT de ne pas
+passer : c'est un jugement de priorité sur le site, pas un défaut de découverte.
+
+Deux précautions de lecture, mesurées le même soir :
+- la frontière « unknown » / « Discovered » n'est pas stable : le Marché au Fort FR a
+  donné l'un à 21h36 et l'autre à 22h25. Seul « indexée ou non » est un chiffre fiable ;
+- les `noindex` et les 5xx remontés par Google peuvent être périmés : sur 4 `noindex`,
+  2 seulement étaient encore posés (par `cs-completude`, volontairement) ; les 2 pages
+  en 5xx répondaient 200.
+
 `/feed/?cs_flux_une=1` renvoie l'en-tête `X-CS-Flux-Une` (« actif » ou la raison du
 refus) et `X-CS-Flux-Une-Ids` (les fiches retenues). Deux versions du 24/09 ont rendu un
 flux inchangé sans rien dire — d'où cet en-tête.
