@@ -982,7 +982,8 @@ def _translate_one(ev: dict, args, client, api_key: str, voix: str, wp_url: str,
     """Traduit UN événement de bout en bout (titre/description + article + publication WP
     + liaison Polylang), avec sa PROPRE connexion SQLite (WAL) — permet l'appel en parallèle
     sur plusieurs événements (cf. main(), ThreadPoolExecutor). Renvoie 'done' | 'skip' |
-    'refus' | 'lien_absent' | 'plafond' | 'error' — 'lien_absent' veut dire que la
+    'refus' | 'original_absent' | 'lien_absent' | 'plafond' | 'error' — 'original_absent' : le
+    post de l'original n'est pas public, rien dépensé ni marqué ; 'lien_absent' veut dire que la
     traduction est EN LIGNE mais que Polylang ne relie pas la paire : rien à retraduire,
     le geste est `scripts/repair_lien_polylang.py` (ajouté le 21/09, voir le commentaire
     du liage plus bas). La réservation de `img_lang` (dédup affiche) se fait ICI, sous verrou, AVANT
@@ -1034,6 +1035,31 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
                   ev["id"], motif, (ev.get("title") or "")[:45],
                   (ev.get("lieu") or "—")[:28], (ev.get("ville") or "—")[:20])
         return "refus"
+
+    # L'ORIGINAL EST-IL PUBLIC ? — demandé AVANT toute dépense (2026-10-01).
+    # Ce contrôle existait déjà plus bas (incident WP#7286 : un jumeau italien publié pour
+    # un original à la corbeille), mais APRÈS `translate_title_desc` : deux appels API payés,
+    # puis refus, puis `marquer_refus` — trois fois, et la fiche était GARÉE « sur une
+    # matière inchangée ». Mesuré en production : 5486, 5459, 5630 et 6342, dont les posts
+    # sont à la corbeille, refusés chaque jour du 22/09 au 01/10.
+    #
+    # Deux défauts, pas un. (1) Le coût : une lecture REST suffit à savoir. (2) Plus grave,
+    # CLAUDE.md règle 3 : le refus se rejouait sur la MÊME entrée, et le garage ne rouvre
+    # que si la MATIÈRE change — or ici ce n'est pas la matière qui est en cause, c'est
+    # l'état de l'original sur le site. Une fiche garée pour cette raison ne repartait
+    # JAMAIS quand l'original revenait en ligne (« Fiches remises en ligne », ou Franck).
+    #
+    # POURQUOI LE PROCHAIN PASSAGE PEUT DONNER AUTRE CHOSE : la réponse dépend de l'état
+    # du post, relu à chaque passage — pas du LLM. Verdict dédié, qui NE COMPTE PAS comme
+    # un refus de matière (aucun `marquer_refus`) et ne coûte qu'une lecture.
+    # Ne s'applique qu'en --apply (c'est un appel réseau) et si l'original a un post.
+    orig_wp_avant = ev.get("wp_post_id_as")
+    if args.apply and orig_wp_avant and not wp_original_est_en_ligne(orig_wp_avant):
+        log.warning("[%s] EN ATTENTE — l'original WP#%s n'est plus 'publish' sur WordPress "
+                    "(corbeille, brouillon ou injoignable). Aucun appel dépensé, rien "
+                    "marqué : la fiche repart d'elle-même quand l'original revient en "
+                    "ligne.", ev["id"], orig_wp_avant)
+        return "original_absent"
 
     src = effective_lang(ev)
     tgt = _target(src)
@@ -1147,7 +1173,10 @@ def _translate_one_interne(ev, args, client, api_key, voix, wp_url,
                    "produirait un jumeau public d'un original absent. Rien n'a été "
                    "publié ; translated_at reste vide, nouvelle tentative au run "
                    "suivant.", ev["id"], orig_wp_id)
-        return "refus"
+        # Même verdict que la sonde d'avant la dépense : c'est l'état de l'original, pas
+        # la matière — aucun `marquer_refus`. Ce second contrôle ne garde que la course
+        # (original corbeillé pendant que le LLM travaillait).
+        return "original_absent"
 
     new_ev = dict(ev)
     new_ev.update({
@@ -1569,6 +1598,10 @@ def main(argv=None, retour: "dict | None" = None) -> int:
     # `results` est rempli dans l'ORDRE de soumission des futures, donc dans l'ordre de
     # `rows` : on peut renommer les refus sans plomberie supplémentaire.
     refus = [rows[i] for i, v in enumerate(results) if v == "refus"]
+    # Original non public : compté à part, JAMAIS dans `refus` — ce n'est pas un jugement
+    # sur la matière, donc aucun `marquer_refus` (sinon la fiche serait garée à tort, et
+    # ne repartirait pas au retour de l'original : règle 3). Règle 6 : nommé dans le bilan.
+    en_attente = [rows[i] for i, v in enumerate(results) if v == "original_absent"]
     # COMPTER LE REFUS, sinon il se rejoue à l'identique demain (règle 3). On ne marque
     # qu'en --apply : une simulation ne doit pas garer une fiche.
     if args.apply:
@@ -1576,7 +1609,8 @@ def main(argv=None, retour: "dict | None" = None) -> int:
             marquer_refus(conn, ev)
     conn.close()
     log.info("=== Traduction terminée : %d traduit(s) et lié(s), %d publiée(s) SANS LIEN, "
-             "%d ignoré(s), %d refusé(s)%s ===", done, len(sans_lien), skipped, len(refus),
+             "%d ignoré(s), %d refusé(s), %d en attente d'un original public%s ===",
+             done, len(sans_lien), skipped, len(refus), len(en_attente),
              "" if args.apply else "  (simulation : rien écrit)")
     if args.apply:
         # Rapport uniquement quand on a vraiment agi (une simulation quotidienne en cron
@@ -1599,6 +1633,13 @@ def main(argv=None, retour: "dict | None" = None) -> int:
                                  for e in rows_garees[:4]))
         if errors:
             msg += f", {errors} erreur(s)"
+        if en_attente:
+            msg += (f"\n⏸ {len(en_attente)} fiche(s) en attente : leur ORIGINAL n'est pas "
+                    f"public sur WordPress (corbeille ou brouillon). Aucun appel dépensé, "
+                    f"rien marqué — relues à chaque passage, elles repartent quand l'original "
+                    f"revient en ligne : "
+                    + " · ".join(f"[{e['id']}] « {(e.get('title') or '')[:32]} »"
+                                 for e in en_attente[:5]))
         if refus:
             # NOMMER les refus, sinon le portillon bloque en silence : c'est exactement le
             # reproche fait aux contrôles qui « se déclarent ok ». Un refus demande une
