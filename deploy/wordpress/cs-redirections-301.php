@@ -212,6 +212,22 @@ add_action('template_redirect', function () {
         '/it/selections/questo-weekend/'              => '/it/questo-weekend/',
         '/selections/que-faire-a-annecy-ce-week-end/' => '/que-faire-a-annecy/ce-week-end/',
         '/it/selections/torino/'                      => '/it/cosa-fare-a-torino/',
+        // 2026-10-01 : « Viens avec ton doudou » (Opéra de Nice, 11/10 → 23/05/2027). Deux
+        // fiches locales (5492, 5725) portent le même post FR WP#10149 et ont chacune
+        // engendré une jumelle italienne, créées à 15 s d'intervalle le 24/09 (slugs -2
+        // et -3). WP#12494 (le -2) était orphelin : le sélecteur de langue de la page
+        // française pointe sur l'autre. Corbeillé par le cerveau le 28/09 (réversible).
+        //
+        // Les trois vérifications de CLAUDE.md, MESURÉES le 01/10 :
+        //   1. le -2 rend bien 404 (WordPress ne redirige pas un post corbeillé) ;
+        //   2. la cible rend 200 ;
+        //   3. la langue ne change pas (it → it).
+        // Le -3, lui, rend déjà 301 tout seul (slug renommé le 28/09) : pas de ligne.
+        // ⚠️ L'adresse du -2 est reconstituée depuis le slug de l'original + « -2 » (la
+        // jumelle n'avait pas encore son slug propre) ; elle rend 404 mais je n'ai pas pu
+        // lire le slug exact du post corbeillé — à confirmer dans la Search Console.
+        '/it/evenement/viens-avec-ton-doudou-lopera-de-nice-ouvre-ses-portes-aux-tout-petits-2/'
+            => '/it/evenement/lopera-di-nizza-apre-le-porte-ai-piu-piccoli-viens-avec-ton-doudou/',
     );
     // GARDE-FOU : jamais de redirection vers soi-meme (boucle infinie, site injoignable).
     // Le cout d'une erreur ici est le meme que celui du mu-plugin casse d'aout : tout le
