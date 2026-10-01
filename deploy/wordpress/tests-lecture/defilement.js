@@ -122,7 +122,12 @@
         '<div class="tl-corps">' + a.contenu + '</div>' +
         '<a class="tl-saut" href="#pied">Aller au pied de page</a><div class="tl-sentinelle"></div>' +
       '</div>' +
-      '<aside class="tl-pub" aria-label="Publicité"><div class="tl-pubbox"><span class="tl-publbl">Publicité</span><div class="tl-pubslot">Exemple d’emplacement<br>300 × 250</div></div></aside>' +
+      // Colonne de l'article suivant : mêmes types de blocs que la première, contenu NEUF
+      // (a.colonne, préparé côté serveur : événements que la première colonne n'affiche
+      // pas). La lettre d'information n'est pas répétée. La pub est un nouvel emplacement,
+      // seul bloc collant (le script de la page gère tous les .tl-collant).
+      '<aside class="tl-pub" aria-label="À côté de l’article">' + (a.colonne || '') +
+        '<div class="tl-collant"><div class="tl-pubbox"><span class="tl-publbl">Publicité</span><div class="tl-pubslot">Exemple d’emplacement<br>300 × 250</div></div></div></aside>' +
       '</div>';
     tl.insertBefore(s, annonce);
     arts.push({ url: a.url, titre: a.titre_onglet || a.titre, el: s.querySelector('.tl-head'), it: a.it, lu: false });
