@@ -1,4 +1,13 @@
 /*
+ * ⚠️ PÉRIMÉ (2026-10-01) — NE PAS DÉPLOYER. Deux erreurs, trouvées en mesurant dans un
+ * vrai navigateur le lendemain :
+ *   - le corps des articles fait 14,5 px, pas 17 : le gabarit Article (snippet Code
+ *     Snippets n° 27) l'impose EN LIGNE et écrase le réglage GeneratePress lu ci-dessous ;
+ *   - le sélecteur `.entry-content` n'existe pas dans ce gabarit : ces règles ne
+ *     changeraient rien.
+ * La maquette qui tient lieu de référence est sur les pages de test
+ * « test-lecture-corps-* » (noindex) ; le correctif réel passera par le snippet 27.
+ *
  * BROUILLON — lecture des articles (guides, curiosités). NON DÉPLOYÉ.
  *
  * Mesuré le 2026-09-30 sur /cuisine-nissarde-tables-labellisees/ (post 3648), via Novamira :
