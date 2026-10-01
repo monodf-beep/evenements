@@ -25,7 +25,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
 
 const URL0 = process.argv[2] || 'https://agendasabauda.eu/test-lecture-corps-19/';
-const ATTENTE = 1000; // doit rester aligné sur ATTENTE dans defilement.js
+const ATTENTE = 1000; // marge d'attente du test (le prototype ne temporise plus que 200 ms)
 const PIED = ['.as-footer-mobile', '.site-footer', 'footer'];
 
 const resultats = [];
@@ -39,7 +39,7 @@ async function ouvrir(navig, vue, opts = {}) {
   const pg = await ctx.newPage();
   const requetes = [];
   pg.on('request', r => { if (/cs-tests\/.*\.json/.test(r.url())) requetes.push(r.url()); });
-  const rep = await pg.goto(URL0, { waitUntil: 'load', timeout: 90000 });
+  const rep = await pg.goto(URL0 + (opts.suffixe || ''), { waitUntil: 'load', timeout: 90000 });
   await pg.waitForTimeout(800);
   // Le bandeau de consentement masque le bas de l'écran ; il n'est pas l'objet du test.
   await pg.evaluate(() => document.querySelectorAll('.cmplz-cookiebanner,#cmplz-cookiebanner-container').forEach(e => e.style.display = 'none')).catch(() => {});
@@ -47,27 +47,29 @@ async function ouvrir(navig, vue, opts = {}) {
 }
 
 // Amène le bas de l'article (sentinelle, ou à défaut fin du corps) au bas de l'écran
-// COMME UN LECTEUR : par pas de 250 px toutes les 120 ms, jamais d'un bond. Un saut direct
+// COMME UN LECTEUR : par pas de 150 px toutes les 150 ms (1 000 px/s), jamais d'un bond. Un saut direct
 // ressemble à la touche Fin, que le prototype doit justement ignorer : un test qui saute
 // ne mesure pas la lecture lente.
 //
 // LEÇON DU 01/10 : un échec « lecture lente » intermittent a été pris pour un défaut du
 // prototype ; c'était un 502 du serveur (page jamais servie). D'où le statut HTTP affiché
 // à chaque ouverture : un échec sans « statut 200 » ne dit rien du prototype.
-async function allerFinArticle(pg, rang) {
-  const cible = await pg.evaluate(rang => {
+// `avance` (en écrans) arrête la lecture AVANT la fin : 0,5 = la fin de l'article est
+// encore une demi-hauteur d'écran sous le bas de l'écran.
+async function allerFinArticle(pg, rang, avance = 0) {
+  const cible = await pg.evaluate(([rang, avance]) => {
     const s = document.querySelectorAll('.tl-sentinelle')[rang] || document.querySelectorAll('.tl-corps')[rang];
     if (!s) return null;
-    return Math.max(0, s.getBoundingClientRect().bottom + scrollY - innerHeight + 60);
-  }, rang);
+    return Math.max(0, s.getBoundingClientRect().bottom + scrollY - innerHeight + 60 - avance * innerHeight);
+  }, [rang, avance]);
   if (cible === null) return;
   for (let i = 0; i < 200; i++) {
     const y = await pg.evaluate(() => scrollY);
     if (Math.abs(cible - y) < 5) break;
-    const pas = Math.sign(cible - y) * Math.min(250, Math.abs(cible - y));
+    const pas = Math.sign(cible - y) * Math.min(150, Math.abs(cible - y));
     const avant = y;
     await pg.evaluate(p => scrollBy(0, p), pas);
-    await pg.waitForTimeout(120);
+    await pg.waitForTimeout(150);
     if (Math.abs((await pg.evaluate(() => scrollY)) - avant) < 1) break; // bas de page atteint
   }
 }
@@ -82,13 +84,20 @@ const piedVisible = pg => pg.evaluate(sel => sel.some(s => {
 async function scenarios(navig, vue) {
   const tag = `[${vue.nom}]`;
 
-  // 1. Lecture lente : on s'arrête en bas de l'article -> la suite apparaît, une requête.
-  let { ctx, pg, requetes, statut } = await ouvrir(navig, vue);
+  // 1. Lecture : la suite doit être LÀ avant qu'on ait fini le premier article (remarque de
+  //    Franck, 01/10 : avec « s'arrêter une seconde en bas », il fallait savoir qu'elle
+  //    viendrait). La page est ouverte avec #l2c pour vérifier que ce suffixe de test ne
+  //    fuit pas sur l'adresse de l'article suivant (vu par Franck le 01/10).
+  let { ctx, pg, requetes, statut } = await ouvrir(navig, vue, { suffixe: '#l2c' });
   verdict(`${tag} page de test en ligne`, statut === 200, `statut ${statut}`);
   const cheminDepart = await chemin(pg);
   const titreDepart = await pg.title();
   await pg.waitForTimeout(500);
-  verdict(`${tag} aucune requête avant l'arrêt en bas`, requetes.length === 0, `${requetes.length} requête(s)`);
+  verdict(`${tag} aucune requête au chargement`, requetes.length === 0, `${requetes.length} requête(s)`);
+  await allerFinArticle(pg, 0, 0.5);
+  await pg.waitForTimeout(600);
+  const n0 = await nbSuites(pg);
+  verdict(`${tag} la suite est là avant la fin du premier article`, n0 === 1, `${n0} article(s) ajouté(s), fin de l'article encore ½ écran plus bas`);
   await allerFinArticle(pg, 0);
   await pg.waitForTimeout(ATTENTE + 1200);
   const n1 = await nbSuites(pg);
@@ -106,6 +115,8 @@ async function scenarios(navig, vue) {
     const urlSuite = await pg.evaluate(() => document.querySelector('.tl-art').getAttribute('data-url'));
     const cheminApres = await chemin(pg);
     verdict(`${tag} titre suivant aux 2/10 : adresse de l'article suivant`, cheminApres === new URL(urlSuite).pathname, cheminApres);
+    const hashApres = await pg.evaluate(() => location.hash);
+    verdict(`${tag} pas de suffixe de test (#l2c) sur l'adresse suivante`, hashApres === '', hashApres || '(aucun)');
     const titreApres = await pg.title();
     verdict(`${tag} titre de l'onglet suit`, titreApres !== titreDepart, titreApres.slice(0, 60));
     // 3. On remonte : retour à l'article de départ.

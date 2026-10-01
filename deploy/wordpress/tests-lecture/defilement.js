@@ -6,8 +6,9 @@
  * Principe (choisi avec Franck, sur le modèle d'ItaliaOggi) :
  *  - Google ne fait pas défiler : il ne voit que le premier article, qui a sa propre adresse.
  *    L'article suivant n'est JAMAIS dans le HTML, il n'arrive qu'en JavaScript.
- *  - La suite ne se charge que si le lecteur RESTE en bas de l'article (ATTENTE). Un
- *    défilement rapide ou la touche Fin traversent la zone et atteignent le pied de page.
+ *  - La suite se charge pendant la lecture, quand la fin de l'article approche, pour être
+ *    déjà là quand on finit. Un défilement rapide ou la touche Fin traversent la zone et
+ *    atteignent le pied de page (voir « Déclencheur » plus bas).
  *  - L'adresse et le titre de l'onglet suivent l'article lu (seuil : tiers supérieur de
  *    l'écran), pour que partager ou recharger donne le bon article. replaceState et non
  *    pushState : le bouton Retour doit ramener d'où l'on vient, pas d'article en article.
@@ -22,10 +23,9 @@
   var tl = document.querySelector('.tl[data-suite]');
   if (!tl || !window.fetch) return;
 
-  var ATTENTE = 1000; // ms en bas de l'article avant de charger (aligné sur le test)
   var MAX = 2;        // articles ajoutés au plus
   var donnees = null, ajoutes = 0, enCours = false, fini = false, minuteur = null;
-  var base = location.href.split('#')[0];
+  var base = location.href.split('#')[0], hashDepart = location.hash;
   var liensIt = Array.prototype.filter.call(document.querySelectorAll('a'), function (a) { return a.textContent.trim() === 'IT'; });
   var itOrig = liensIt.map(function (a) { return a.getAttribute('href'); });
   var arts = [{ url: base, titre: document.title, el: tl.querySelector('.tl-head'), it: null, lu: true }];
@@ -55,21 +55,35 @@
     if (l) l.focus({ preventScroll: true });
   });
 
-  // Déclencheur : la fin de l'article est à l'écran ET le lecteur ne bouge plus depuis
-  // ATTENTE ms ET il n'est pas tout en bas de la page. Ce dernier point est mesuré : sur un
-  // écran d'ordinateur de 1 000 px, la touche Fin montrait à la fois le pied de page et la
-  // fin de l'article ; la suite se chargeait et repoussait le pied de page (test rouge du
-  // 01/10). Être au bas absolu, c'est vouloir le pied de page.
-  // Le minuteur repart à chaque défilement : seul un vrai arrêt compte, pas un passage.
+  // Déclencheur. Première version : « s'arrêter une seconde en bas de l'article ». Franck
+  // (01/10) : il fallait presque SAVOIR qu'un article allait venir ; la suite doit déjà être
+  // là quand on finit de lire. Donc on charge PENDANT la lecture, dès que la fin de
+  // l'article arrive à moins d'APPROCHE écran sous le bas de l'écran. Deux exceptions :
+  //  - on défile vite (plus de VITESSE_MAX écrans par seconde) : on survole, on ne lit pas.
+  //    On réévalue PAUSE ms après le dernier mouvement, au repos ;
+  //  - on est tout en bas de la page : touche Fin, ou coup de doigt fini sur le pied de
+  //    page. C'est le pied de page qu'on veut (test rouge du 01/10 sur un écran de
+  //    1 000 px : la suite chassait le pied de page).
+  var APPROCHE = 1, VITESSE_MAX = 3, PAUSE = 200, traces = [];
+  function noter() {
+    var t = Date.now();
+    traces.push({ t: t, y: scrollY });
+    while (traces.length && t - traces[0].t > 300) traces.shift();
+  }
+  function vitesse() { // écrans par seconde sur les 300 dernières ms
+    if (traces.length < 2) return 0;
+    var a = traces[0], b = traces[traces.length - 1], dt = (b.t - a.t) / 1000;
+    return dt > 0 ? Math.abs(b.y - a.y) / innerHeight / dt : 0;
+  }
   function sentinelle() { var s = tl.querySelectorAll('.tl-sentinelle'); return s.length ? s[s.length - 1] : null; }
   function enBasAbsolu() { return scrollY + innerHeight >= document.documentElement.scrollHeight - 4; }
-  function enVue(s) { var r = s.getBoundingClientRect(); return r.top <= innerHeight && r.bottom >= 0; }
-  function guetter() {
-    clearTimeout(minuteur);
+  function proche(s) { return s.getBoundingClientRect().top < innerHeight * (1 + APPROCHE); }
+  function evaluer(auRepos) {
     if (enCours || fini) return;
     var s = sentinelle();
-    if (!s || !enVue(s) || enBasAbsolu()) return;
-    minuteur = setTimeout(function () { if (enVue(s) && !enBasAbsolu()) charger(); }, ATTENTE);
+    if (!s || !proche(s) || enBasAbsolu()) return;
+    if (!auRepos && vitesse() > VITESSE_MAX) return;
+    charger();
   }
 
   function charger() {
@@ -131,7 +145,9 @@
     if (idx !== courant) {
       courant = idx;
       var a = arts[idx];
-      history.replaceState(history.state, '', a.url + location.hash);
+      // Le suffixe (#l2c…) n'appartient qu'à la page de départ : sur l'adresse d'un autre
+      // article il ne veut rien dire (vu par Franck le 01/10 sur /concerts-nice-2026/#l2c).
+      history.replaceState(history.state, '', a.url + (idx === 0 ? hashDepart : ''));
       document.title = a.titre;
       liensIt.forEach(function (l, k) { l.setAttribute('href', idx === 0 ? itOrig[k] : (a.it || itOrig[k])); });
       window.__asDefilement.adresses.push(a.url);
@@ -147,9 +163,12 @@
     }
   }
   addEventListener('scroll', function () {
-    guetter();
+    noter();
+    evaluer(false);
+    clearTimeout(minuteur);
+    minuteur = setTimeout(function () { traces = []; evaluer(true); }, PAUSE);
     if (!tic) { tic = true; requestAnimationFrame(suivreLecture); }
   }, { passive: true });
 
-  guetter();
+  evaluer(true);
 })();
