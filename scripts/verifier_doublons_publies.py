@@ -75,7 +75,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from scripts.dedupe import (_groups, cote_partage, motif_groupe,  # noqa: E402
+from scripts.dedupe import (_groups, _jour, cote_partage, motif_groupe,  # noqa: E402
                             paire_de_traduction)
 # MÊMES définitions que le dédoublonnage — jamais une seconde copie ici.
 from scripts.audit_substance_published import devant_nous  # noqa: E402
@@ -117,6 +117,50 @@ def _periode(ev: dict) -> str:
     return d or f or "sans date"
 
 
+def _periodes_disjointes(a: dict, b: dict) -> bool:
+    """Deux fiches DATÉES dont les périodes ne se touchent pas : deux occurrences, pas un
+    doublon. Une fiche sans date ne tranche rien (règle 5 : donnée manquante)."""
+    sa, sb = _jour(a.get("date_event_start")), _jour(b.get("date_event_start"))
+    if not sa or not sb:
+        return False
+    ea = _jour(a.get("date_event_end")) or sa
+    eb = _jour(b.get("date_event_end")) or sb
+    return not (sa <= eb and sb <= ea)
+
+
+def _composantes_compatibles(g: list[dict]) -> list[list[dict]]:
+    """Redécoupe un groupe en ensembles de fiches dont les périodes ne sont pas
+    disjointes deux à deux (union-find sur la relation « périodes qui se touchent »).
+
+    D'OÙ ÇA VIENT (2026-10-01). Le cerveau a interrogé par numéro les 12 posts de quatre
+    groupes « EN LIGNE » : 0 vrai doublon, et la commande du digest aurait corbeillé six
+    fiches saines. Mesuré sur le site (API TEC) pour le plus net : WP#12989, #12990 et
+    #12991 — « Giornata di porte aperte all'Ecomuseo del Cossatese » — tombent les 25/10,
+    04/10 et 11/10. Trois ouvertures hebdomadaires du même musée, titres quasi identiques :
+    elles se rapprochaient parce que `_groups` tolère 14 jours d'écart (MERGE_MAX_GAP_DAYS),
+    pensé pour deux SOURCES qui citent des bornes différentes d'un même festival avant
+    fusion. Sur des pages DÉJÀ en ligne, chacune avec sa date affichée, un visiteur les
+    distingue : ce n'est plus un doublon. Ce script désigne ce que le lecteur confondrait.
+
+    La tolérance de `_groups` n'est PAS modifiée : elle protège la fusion à l'arrivée."""
+    parent = list(range(len(g)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(g)):
+        for j in range(i + 1, len(g)):
+            if not _periodes_disjointes(g[i], g[j]):
+                parent[find(i)] = find(j)
+    morceaux: dict[int, list[dict]] = {}
+    for i, ev in enumerate(g):
+        morceaux.setdefault(find(i), []).append(ev)
+    return list(morceaux.values())
+
+
 def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
     """Renvoie les groupes suspects ET le compte de ce qui s'est présenté.
 
@@ -131,7 +175,15 @@ def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
     # sous la ressemblance de titres ; même lieu + mêmes dates + un jeton distinctif la
     # rattrape. Ce script ne fusionne rien, il DÉSIGNE — c'est exactement le circuit où
     # une règle à un seul mot commun a sa place : un humain lit le motif, puis tranche.
-    groupes = [g for g in _groups(vivantes, coincidence=True) if len(g) > 1]
+    groupes_bruts = [g for g in _groups(vivantes, coincidence=True) if len(g) > 1]
+    # Périodes disjointes ⇒ deux occurrences. COMPTÉ, jamais silencieux (règle 6) : un état
+    # qui sort une fiche d'une file la sort aussi des bilans.
+    groupes, dates_disjointes = [], 0
+    for g in groupes_bruts:
+        morceaux = _composantes_compatibles(g)
+        if len(morceaux) > 1:
+            dates_disjointes += 1
+        groupes.extend(m for m in morceaux if len(m) > 1)
     suspects, ecartes = [], 0
     for g in groupes:
         # Un groupe entièrement composé de traductions les unes des autres n'est pas un
@@ -172,7 +224,8 @@ def analyser(rows: list[dict], today: str) -> tuple[list[list[dict]], dict]:
             meme_cote += 1
     return suspects, {"publiees": len(rows), "vivantes": len(vivantes),
                       "groupes": len(groupes), "traductions": ecartes,
-                      "coincidence": par_coincidence, "meme_cote": meme_cote}
+                      "coincidence": par_coincidence, "meme_cote": meme_cote,
+                      "dates_disjointes": dates_disjointes}
 
 
 def _article(ev: dict) -> str:
@@ -384,6 +437,10 @@ def main(argv=None) -> int:
           f"titres trop différents pour la ressemblance ; le motif est écrit sous le groupe")
     print(f"…écartés (paires FR/IT)  : {compte['traductions']}  — liées par "
           f"translation_of ET servies de deux côtés du site : normales, à LIER")
+    if compte.get("dates_disjointes"):
+        print(f"…redécoupés (dates)      : {compte['dates_disjointes']}  — groupes dont des fiches "
+              f"ont des périodes DISJOINTES (deux occurrences, pas un doublon) : "
+              f"écartées ici, jamais supprimées")
     if compte.get("meme_cote"):
         # Le libellé dit ce qu'il compte : des TRADUCTIONS (des fiches), pas des groupes
         # écartés — les deux nombres ci-dessus comptent des groupes, et deux compteurs
