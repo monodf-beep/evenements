@@ -72,6 +72,8 @@ ATTENDUS = [
     ("Contradicteur de dates",    "verifier_dates",  "verifier_dates.log",   30),
     ("Contradicteur de lieux",    "verifier_lieux",  "verifier_lieux.log",   30),
     ("Relève Gmail",              "gmail_collect",   "gmail.log",            30),
+    # Ajoutée le 26/09 avec son cron : sans signalement, il écrit quand même son bilan.
+    ("Liens signalés",            "ajouter_par_lien", "ajouter_par_lien.log", 30),
     # Ajoutée le 04/09 avec le cron : le script existait depuis des semaines, écrit et
     # correct, mais jamais planifié (audit du 31/08 §2.2). Un silence ici ressemblerait
     # à « aucune fiche gmail: à rattraper aujourd'hui », son cas le plus fréquent.
