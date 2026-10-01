@@ -15,10 +15,12 @@ d'insister) — catégorisé séparément dans le résumé final pour distinguer
 « à réessayer plus tard » de « probablement supprimé, action éditoriale à toi ».
 
 Usage (sur le VPS) :
-    .venv/bin/python scripts/backfill_permalinks_as.py
+    .venv/bin/python scripts/backfill_permalinks_as.py            # relevé seul
+    .venv/bin/python scripts/backfill_permalinks_as.py --apply    # écrit en base
 """
 from __future__ import annotations
 
+import argparse
 import os
 import sqlite3
 import sys
@@ -79,7 +81,11 @@ def _resolve(wp_url: str, post_id: int, retries: int = 2) -> tuple[str, str]:
     return "", "indetermine"
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="Rattrape wp_permalink_as depuis l'API REST.")
+    ap.add_argument("--apply", action="store_true",
+                    help="Écrire en base. Sans cette option : relevé seul (règle 4).")
+    args = ap.parse_args(argv)
     load_dotenv(ROOT / ".env")
     wp_url = os.getenv("WP_AS_URL", "").rstrip("/")
     if not wp_url:
@@ -101,7 +107,12 @@ def main() -> int:
         "WHERE COALESCE(wp_post_id_as,'') <> '' "
         "  AND (COALESCE(wp_permalink_as,'') = '' "
         "       OR wp_permalink_as LIKE '%?p=%' "
-        "       OR wp_permalink_as LIKE '%post_type=tribe_events%')"
+        "       OR wp_permalink_as LIKE '%post_type=tribe_events%'"
+        # Troisième population (2026-10-01) : une TRADUCTION italienne enregistrée sans
+        # son `/it/`. `cs-publish.php` répondait get_permalink() avant que Polylang pose la
+        # langue ; publisher_as._lien_public corrige les NOUVELLES publications, ceci
+        # répare les anciennes. Le lien REST fait foi (mesuré : WP#12498, #13063, #8949).
+        "       OR (COALESCE(translated_lang,'') = 'it' AND wp_permalink_as NOT LIKE '%/it/%'))"
     ).fetchall()
     a_vide = sum(1 for r in rows if not (r["wp_permalink_as"] or "").strip())
     log.info("%d événement(s) à traiter : %d sans permalien, %d avec un permalien resté "
@@ -119,10 +130,13 @@ def main() -> int:
         title = (r["title"] or "")[:55]
         url, etat = _resolve(wp_url, int(r["wp_post_id_as"]))
         if etat == "public" and url:
-            conn.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=?", (url, r["id"]))
-            conn.commit()
+            if args.apply:
+                conn.execute("UPDATE events_raw SET wp_permalink_as=? WHERE id=?",
+                             (url, r["id"]))
+                conn.commit()
             done += 1
-            log.info("[%s] wp#%s -> %s — %s", r["id"], r["wp_post_id_as"], url[:70], title)
+            log.info("[%s] wp#%s -> %s — %s%s", r["id"], r["wp_post_id_as"], url[:70], title,
+                     "" if args.apply else "  (relevé : rien écrit)")
         elif etat == "non_public":
             non_public.append((r["id"], title))
             log.warning("[%s] wp#%s : EXISTE mais pas public (corbeille/brouillon) — %s",
