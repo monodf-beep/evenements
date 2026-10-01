@@ -57,3 +57,58 @@ def marqueur_annulation(titre: str, regex=None) -> str | None:
         return None
     m = regex.search(_strip_accents(titre or "").lower())
     return m.group(0) if m else None
+
+
+# ══ MARQUEUR SUR UNE PAGE ENTIÈRE (canal 3) ══════════════════════════════════════════
+#
+# Un TITRE qui dit « annullato » parle de l'événement ; une PAGE entière dit beaucoup
+# d'autres choses. Mesuré du 19/09 au 01/10 : `audit_annulations` a rendu 6 suspicions,
+# 6 faux positifs, 0 annulation réelle — et chaque faux positif était une phrase qui ne
+# vise pas l'événement :
+#   • les conditions de vente de la billetterie (« ART. 4 ANNULLAMENTO ORDINE »), présentes
+#     sur TOUTE page du site de la Fondazione Merz — 4 fois ;
+#   • la clause météo conditionnelle (« sarà rinviata in caso di forte maltempo »), qui
+#     est une promesse, pas un fait — 3 fois ;
+#   • l'édition précédente (« dopo l'annullamento dell'edizione 2025, … torna »).
+# On juge donc l'occurrence dans sa FENÊTRE, pas le mot nu. Les cas qui doivent RESTER
+# signalés sont près de la frontière et tenus en fixture : « rinviato causa maltempo »
+# (un report réel, dont la cause est la météo) et « rinviato al 2027 » (une année, mais
+# celle d'après).
+_FENETRE = 90
+_CGV_ARTICLE = re.compile(r"\bart\.?\s*\d+\s*[-–:.)]?\s*$")   # « ART. 4 » juste avant le mot
+_CGV = re.compile(
+    r"annullamento\s+(?:dell['’]\s*)?ordin[ei]"           # « annullamento (dell') ordine »
+    r"|diritto\s+di\s+recesso|condizioni\s+(?:generali\s+)?di\s+vendita"
+    r"|conditions\s+g[ée]n[ée]rales\s+de\s+vente")
+_METEO_CONDITIONNELLE = re.compile(
+    r"\bin\s+caso\s+di\s+(?:forte\s+|brutto\s+|cattivo\s+)?(?:maltempo|pioggia|meteo|"
+    r"condizioni\s+meteo)|\bse\s+(?:il\s+tempo|piove)|\bsalvo\s+maltempo"
+    r"|\ben\s+cas\s+de\s+(?:mauvais\s+temps|pluie|intemp[ée]ries)|\bsi\s+(?:le\s+temps|il\s+pleut)")
+_ANNEE = re.compile(r"\b(20\d\d)\b")
+
+
+def marqueur_annulation_page(texte: str, annee_evenement: int | None, regex=None) -> str | None:
+    """Le premier marqueur d'une PAGE qui vise vraiment l'événement, sinon None.
+
+    Écarte une occurrence quand sa fenêtre (±90 caractères) est : une condition de vente,
+    une clause météo CONDITIONNELLE, ou l'annulation d'une édition antérieure à
+    `annee_evenement` (année lue dans la fenêtre, strictement inférieure). Sans année
+    d'événement connue, ce dernier filtre ne s'applique pas — on ne devine pas."""
+    if regex is None:
+        regex = load_annulation_filter()
+    if regex is None:
+        return None
+    t = _strip_accents(texte or "").lower()
+    for m in regex.finditer(t):
+        avant = t[max(0, m.start() - _FENETRE):m.start()]
+        fenetre = t[max(0, m.start() - _FENETRE):m.end() + _FENETRE]
+        if _CGV_ARTICLE.search(avant) or _CGV.search(fenetre):
+            continue
+        if _METEO_CONDITIONNELLE.search(fenetre):
+            continue
+        if annee_evenement:
+            annees = [int(a) for a in _ANNEE.findall(fenetre)]
+            if annees and max(annees) < annee_evenement:
+                continue
+        return m.group(0)
+    return None

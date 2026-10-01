@@ -49,7 +49,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.logger import get_logger
 from utils import slack
-from utils.annulation import marqueur_annulation
+from utils.annulation import marqueur_annulation, marqueur_annulation_page
 from scripts.scraper_events import init_db
 from dotenv import load_dotenv
 
@@ -121,7 +121,11 @@ def signale_annulation_page(conn: sqlite3.Connection, event: dict, texte: str,
     confirme). Renvoie le marqueur trouvé (pour le log de l'appelant), ou None."""
     if event.get("annulation_detectee_at"):
         return None
-    marqueur = marqueur_annulation(texte, regex)
+    # Canal 3 = une PAGE entière, pas un titre : on juge l'occurrence dans sa fenêtre
+    # (CGV de billetterie, clause météo conditionnelle, édition passée — 6 faux sur 6
+    # du 19/09 au 01/10). Voir utils.annulation.marqueur_annulation_page.
+    debut = (event.get("date_event_start") or "")[:4]
+    marqueur = marqueur_annulation_page(texte, int(debut) if debut.isdigit() else None, regex)
     if not marqueur:
         return None
     conn.execute(
