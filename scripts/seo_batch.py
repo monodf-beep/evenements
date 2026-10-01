@@ -412,7 +412,22 @@ def main(argv=None) -> int:
     # suivant — c'est le rouvreur, et il ne dépend de personne.
     conn = sqlite3.connect(DB_PATH, timeout=30)
     apres = _dates_publication(conn, a_pousser)
-    arrives = [i for i in a_pousser if apres.get(i) and apres.get(i) != avant.get(i)]
+    republies = [i for i in a_pousser if apres.get(i) and apres.get(i) != avant.get(i)]
+    # « Republiée » n'est PAS « arrivée ». Une fiche dont le gel n'était pas encore connu
+    # d'ici (`wp_gel_at` vide) part en publication, le site la gèle et n'écrit aucune méta
+    # Yoast — mais `published_as_date` bouge quand même. Constaté les 23, 24, 27 et 28/09 :
+    # 91 fiches comptées « arrivées sur le site » alors que Yoast n'avait rien reçu, et
+    # ce matin encore (01/10) 25 optimisées pour 21 arrivées. `publish_batch_as._ranger_gel`
+    # vient de recopier ce que le site a dit : on relit la copie et on retire ces fiches
+    # du compte « arrivées ». Leur SEO reste en base ; la fiche sort de la file par son gel
+    # (wp_gel_at) et y rentre au dégel — le rouvreur existe (scripts.gel_texte --degel).
+    gelees_en_route: list[int] = []
+    if republies:
+        ph = ",".join("?" * len(republies))
+        gelees_en_route = [r[0] for r in conn.execute(
+            f"SELECT id FROM events_raw WHERE id IN ({ph}) AND COALESCE(wp_gel_at,'') <> ''",
+            republies)]
+    arrives = [i for i in republies if i not in gelees_en_route]
     if arrives:
         ph = ",".join("?" * len(arrives))
         conn.execute(f"UPDATE events_raw SET seo_pushed_at = seo_at WHERE id IN ({ph})",
@@ -430,6 +445,10 @@ def main(argv=None) -> int:
     from utils import pipeline_status
     msg = (f"🔍 *SEO quotidien* — {ok} optimisé(s) "
            f"({len(arrives)} arrivé(s) sur le site), {fail} échec(s)")
+    if gelees_en_route:
+        msg += (f"\n🧊 {len(gelees_en_route)} fiche(s) republiée(s) mais GELÉE(S) par le site : "
+                f"Yoast n'a rien reçu (SEO gardé en base, il repartira au dégel) — "
+                f"{', '.join(str(i) for i in gelees_en_route[:10])}")
     if mauvaise_langue:
         msg += (f"\n🔴 {mauvaise_langue} SEO rédigé(s) dans la mauvaise langue, NON écrits "
                 f"(ils repassent demain ; si ça se répète, c'est le prompt de utils/seo.py).")

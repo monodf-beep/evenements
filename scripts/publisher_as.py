@@ -921,6 +921,32 @@ def _build_payload(event: dict, skip_media: bool = False,
     return payload
 
 
+def _lien_public(wp_url: str, post_id, auth, repli: str) -> str:
+    """Le permalien que le SITE sert, lu par son numéro — `repli` si la lecture échoue.
+
+    D'OÙ ÇA VIENT (2026-10-01). `cs-publish.php` répond `get_permalink($post_id)` dans la
+    MÊME requête que la création : la langue Polylang n'est pas encore posée, l'adresse
+    rendue n'a pas son `/it/`. Mesuré ce jour-là sur trois traductions en ligne (WP#12498,
+    #13063, #8949) : l'API REST rend bien `/it/evenement/…`, la base garde l'adresse sans
+    préfixe. Conséquence, deux alertes fausses chaque matin — « traductions du mauvais
+    versant » (7 sur 7 fausses) et « doublons en ligne » (qui regroupe les deux versants).
+    Le site est la seule source de vérité de son adresse (règle 1) : on la lui redemande.
+    Un échec de lecture ne coûte rien — on garde ce que la création a répondu."""
+    if not post_id:
+        return repli
+    try:
+        r = requests.get(f"{wp_url}/wp-json/wp/v2/tribe_events/{post_id}",
+                         params={"_fields": "link"}, auth=auth,
+                         headers=_headers(auth), timeout=20)
+        if r.status_code == 200:
+            lien = str((r.json() or {}).get("link") or "").strip()
+            if lien and "?p=" not in lien and "post_type=" not in lien:
+                return lien
+    except (requests.RequestException, ValueError):
+        pass
+    return repli
+
+
 def publish_to_as(event: dict, skip_media: bool = False,
                   forcer_texte: "list[str] | None" = None,
                   retour: "dict | None" = None) -> "tuple[int, str, str] | tuple[None, str, str]":
@@ -1073,7 +1099,7 @@ def publish_to_as(event: dict, skip_media: bool = False,
         resp.raise_for_status()
         body = resp.json()
         post_id = body.get("id")
-        permalink = body.get("url") or ""
+        permalink = _lien_public(wp_url, post_id, auth, body.get("url") or "")
         verb = "mis à jour" if body.get("updated") else "créé"
         log.info("Événement Agenda Sabauda %s id=%s : %s", verb, post_id,
                  (event.get("title", "") or "")[:60])
