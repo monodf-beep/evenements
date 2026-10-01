@@ -29,6 +29,9 @@ const ATTENTE = 1000; // marge d'attente du test (le prototype ne temporise plus
 const PIED = ['.as-footer-mobile', '.site-footer', 'footer'];
 
 const resultats = [];
+// Apostrophes et espaces typographiques : la page affiche « ’ » et des insécables là où
+// les données gardent « ' » (vu le 02/10 sur « Huit violoncelles… l’Opéra »).
+const norm = t => String(t).replace(/[\u2019\u02bc]/g, "'").replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();
 function verdict(nom, ok, detail) {
   resultats.push({ nom, ok });
   console.log(`${ok ? 'PASSE ' : 'ÉCHOUE'}  ${nom}${detail ? '  — ' + detail : ''}`);
@@ -202,7 +205,7 @@ async function scenarios(navig, vue) {
   if (suite) {
     const rep = await p2.goto(suite.url, { waitUntil: 'load', timeout: 90000 });
     const h1 = await p2.evaluate(() => (document.querySelector('h1') || {}).textContent || '');
-    verdict('[rechargement] l\'adresse de la suite est une vraie page', rep.status() === 200 && h1.trim() === suite.titre, `${rep.status()} « ${h1.trim().slice(0, 50)} »`);
+    verdict('[rechargement] l\'adresse de la suite est une vraie page', rep.status() === 200 && norm(h1) === norm(suite.titre), `${rep.status()} « ${h1.trim().slice(0, 50)} »`);
   } else verdict('[rechargement] l\'adresse de la suite est une vraie page', false, 'pas de données de suite');
   await ctx2.close();
 

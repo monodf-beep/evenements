@@ -113,12 +113,17 @@
       '<div class="tl-sep" role="separator"><span class="tl-sr">Article suivant</span></div>' +
       '<div class="tl-head">' +
         '<nav class="tl-haut tl-fil" aria-label="Fil d’Ariane"><span>' + fil + '</span></nav>' +
+        (a.surtitre ? '<p class="tl-surtitre">' + esc(a.surtitre) + '</p>' : '') +
         '<h2 class="tl-titre">' + esc(a.titre) + '</h2>' +
         (a.chapeau ? '<p class="tl-dek">' + esc(a.chapeau) + '</p>' : '') +
-        '<p class="tl-sign">Par <b>' + esc(a.auteur) + '</b> · Publié le ' + esc(a.date) + '</p>' +
+        // Une fiche événement n'a pas de signature : sa ligne utile, ce sont ses infos
+        // pratiques, livrées dans a.encart (HTML préparé côté serveur, avant l'image).
+        (a.encart ? '' : '<p class="tl-sign">Par <b>' + esc(a.auteur) + '</b> · Publié le ' + esc(a.date) + '</p>') +
       '</div>' +
+      // Image d'abord, puis l'encart d'infos pratiques (choix de Franck, 02/10).
       '<div class="tl-grid"><div class="tl-main">' +
         (a.image ? '<div class="tl-img"><img src="' + attr(a.image) + '" width="' + attr(a.image_l) + '" height="' + attr(a.image_h) + '" alt="' + attr(a.alt) + '" loading="lazy" decoding="async"></div>' : '') +
+        (a.encart || '') +
         '<div class="tl-corps">' + a.contenu + '</div>' +
         '<a class="tl-saut" href="#pied">Aller au pied de page</a><div class="tl-sentinelle"></div>' +
       '</div>' +
