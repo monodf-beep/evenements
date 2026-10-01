@@ -1,8 +1,13 @@
 /* Prototype de défilement continu — pages de test « test-lecture-corps-* » seulement. */
 .tl .tl-titre{font-family:'La Semplicita','Saira Condensed',sans-serif;font-size:clamp(27px,3.1vw,33px);line-height:1.15;font-weight:700;margin:0 0 10px;text-wrap:balance;color:#1D1D1B}
-.tl-sep{display:flex;align-items:center;gap:14px;margin:56px 0 28px;font:800 11px/1 'Nunito Sans',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#6F6B62}
-.tl-sep::before,.tl-sep::after{content:"";flex:1;height:1px;background:#D9D1C2}
-.tl-saut{display:inline-block;margin:8px 0 0;font:700 13px/1.4 'Nunito Sans',sans-serif;color:#5E5A52}
+/* Limite entre deux articles : un filet, sans libellé (choix de Franck, sur le modèle
+   d'ItaliaOggi). « Article suivant » reste dit aux lecteurs d'écran (.tl-sr dans le filet). */
+.tl-sep{height:0;border-top:1px solid #D9D1C2;margin:56px 0 32px}
+/* « Aller au pied de page » : invisible à l'écran, il n'apparaît qu'au clavier (Tab) et
+   reste lu par les lecteurs d'écran. Franck ne voulait pas le voir ; le supprimer aurait
+   piégé ces lecteurs au-dessus d'un article qui se charge. */
+.tl-saut{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tl-saut:focus{position:static;width:auto;height:auto;overflow:visible;clip:auto;display:inline-block;margin:8px 0 0;font:700 13px/1.4 'Nunito Sans',sans-serif;color:#5E5A52}
 .tl-saut:focus-visible,.tl-bouton:focus-visible{outline:2px solid #18365E;outline-offset:3px}
 .tl-sentinelle{height:1px}
 .tl-finale{margin:48px 0 8px;text-align:center}

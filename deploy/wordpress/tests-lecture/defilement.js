@@ -96,7 +96,7 @@
     s.className = 'tl-art';
     s.setAttribute('data-url', a.url);
     s.innerHTML =
-      '<div class="tl-sep" role="separator"><span>Article suivant</span></div>' +
+      '<div class="tl-sep" role="separator"><span class="tl-sr">Article suivant</span></div>' +
       '<div class="tl-head">' +
         '<nav class="tl-haut tl-fil" aria-label="Fil d’Ariane"><span>' + fil + '</span></nav>' +
         '<h2 class="tl-titre">' + esc(a.titre) + '</h2>' +

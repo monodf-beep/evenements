@@ -46,14 +46,30 @@ async function ouvrir(navig, vue, opts = {}) {
   return { ctx, pg, requetes, statut: rep && rep.status() };
 }
 
-// Place le bas de l'article (sentinelle, ou à défaut fin du corps) au bas de l'écran.
+// Amène le bas de l'article (sentinelle, ou à défaut fin du corps) au bas de l'écran
+// COMME UN LECTEUR : par pas de 250 px toutes les 120 ms, jamais d'un bond. Un saut direct
+// ressemble à la touche Fin, que le prototype doit justement ignorer : un test qui saute
+// ne mesure pas la lecture lente.
+//
+// LEÇON DU 01/10 : un échec « lecture lente » intermittent a été pris pour un défaut du
+// prototype ; c'était un 502 du serveur (page jamais servie). D'où le statut HTTP affiché
+// à chaque ouverture : un échec sans « statut 200 » ne dit rien du prototype.
 async function allerFinArticle(pg, rang) {
-  await pg.evaluate(rang => {
+  const cible = await pg.evaluate(rang => {
     const s = document.querySelectorAll('.tl-sentinelle')[rang] || document.querySelectorAll('.tl-corps')[rang];
-    if (!s) return;
-    const y = s.getBoundingClientRect().bottom + scrollY - innerHeight + 60;
-    scrollTo(0, Math.max(0, y));
+    if (!s) return null;
+    return Math.max(0, s.getBoundingClientRect().bottom + scrollY - innerHeight + 60);
   }, rang);
+  if (cible === null) return;
+  for (let i = 0; i < 200; i++) {
+    const y = await pg.evaluate(() => scrollY);
+    if (Math.abs(cible - y) < 5) break;
+    const pas = Math.sign(cible - y) * Math.min(250, Math.abs(cible - y));
+    const avant = y;
+    await pg.evaluate(p => scrollBy(0, p), pas);
+    await pg.waitForTimeout(120);
+    if (Math.abs((await pg.evaluate(() => scrollY)) - avant) < 1) break; // bas de page atteint
+  }
 }
 
 const nbSuites = pg => pg.evaluate(() => document.querySelectorAll('.tl-art').length);
@@ -111,7 +127,8 @@ async function scenarios(navig, vue) {
   await ctx.close();
 
   // 5. Défilement rapide / touche Fin : le pied de page est atteint, rien ne se charge.
-  ({ ctx, pg, requetes } = await ouvrir(navig, vue));
+  ({ ctx, pg, requetes, statut } = await ouvrir(navig, vue));
+  if (statut !== 200) verdict(`${tag} touche Fin : page servie`, false, `statut ${statut}`);
   await pg.keyboard.press('End');
   await pg.waitForTimeout(300);
   verdict(`${tag} touche Fin : pied de page visible`, await piedVisible(pg));
@@ -122,12 +139,14 @@ async function scenarios(navig, vue) {
   await ctx.close();
 
   // 6. Clavier : « Aller au pied de page » existe, précède la sentinelle, et y amène le focus.
-  ({ ctx, pg } = await ouvrir(navig, vue));
+  ({ ctx, pg, statut } = await ouvrir(navig, vue));
+  if (statut !== 200) verdict(`${tag} clavier : page servie`, false, `statut ${statut}`);
   const ordre = await pg.evaluate(() => {
     const a = document.querySelector('.tl-saut'), s = document.querySelector('.tl-sentinelle');
     return !!a && !!s && !!(a.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING);
   });
-  verdict(`${tag} clavier : lien « Aller au pied de page » avant le chargement`, ordre);
+  const etat = await pg.evaluate(() => `saut=${document.querySelectorAll('.tl-saut').length} sentinelle=${document.querySelectorAll('.tl-sentinelle').length} titre=${document.title.slice(0, 30)}`);
+  verdict(`${tag} clavier : lien « Aller au pied de page » avant le chargement`, ordre, ordre ? '' : etat);
   if (ordre) {
     await pg.focus('.tl-saut');
     await pg.keyboard.press('Enter');
@@ -149,6 +168,10 @@ async function scenarios(navig, vue) {
 
   for (const vue of [
     { nom: 'ordinateur', taille: { width: 1900, height: 1000 }, mobile: false },
+    // Grand écran : la fin de l'article et le bas de la page y sont à moins d'un écran
+    // l'un de l'autre. C'est là qu'une règle « tout en bas = veut le pied de page »
+    // bloquerait aussi la lecture lente.
+    { nom: 'grand écran', taille: { width: 2560, height: 1440 }, mobile: false },
     { nom: 'téléphone', taille: { width: 390, height: 844 }, mobile: true },
   ]) await scenarios(navig, vue);
 
