@@ -1,0 +1,19 @@
+<!-- Soi-même — douceur : « moi » s’écrit à la main dans la case, un petit cœur, la tasse fume.
+     Style des icônes de l’accueil et de illu-agenda.svg. Se dessine, puis un seul
+     mouvement joué deux fois, puis image fixe (WCAG 2.2.2). Servie en <img>. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path,circle{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{stroke:#DC5D45;fill:#F6DDD5}.cp{fill:#DC5D45;stroke:none}
+.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .8s ease-out both}
+.d1{animation-delay:.1s}.d2{animation-delay:.5s}.d3{animation-delay:.9s}.d4{animation-delay:1.3s}
+.d5{animation-delay:1.7s}.d6{animation-delay:2.1s}.d7{animation-delay:2.5s}.d8{animation-delay:2.9s}
+.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .6s cubic-bezier(.3,1.6,.6,1) forwards}
+@keyframes trace{0%{opacity:0;stroke-dashoffset:1}2%{opacity:1}100%{opacity:1;stroke-dashoffset:0}}
+@keyframes pop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
+@keyframes bat{50%{transform:scale(1.18)}}
+.fume{opacity:0;animation:fume 2.4s ease-in-out 2.4s 2}@keyframes fume{0%{opacity:0;transform:translateY(6px)}40%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}.fixe{opacity:0;animation:vu .6s ease-out 7.4s forwards}@keyframes vu{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.t{animation:none!important;stroke-dashoffset:0}.pop{animation:none!important;opacity:1}.fume{animation:none!important;opacity:0}.fixe{animation:none!important;opacity:1}}
+</style>
+<path class="t d1" pathLength="1" d="M21 31 C19 52 21 79 23 101 C46 99 70 100 92 98 C91 76 92 51 90 29 C67 31 44 30 21 31Z"/><path class="t d2" pathLength="1" d="M21 45 C45 43 68 44 91 42 M38 21 C38 26 39 31 38 36 M73 20 C72 25 73 30 73 35"/><path class="c t d3" pathLength="1" d="M36 84 C36 79 36 75 37 71 C38 67 42 67 43 71 C43 75 43 79 43 84 M43 73 C44 67 49 67 50 72 C50 76 50 80 51 84" style="stroke-width:2.8"/><path class="c t d4" pathLength="1" d="M61 71 C56 70 53 75 54 79 C55 84 61 85 64 81 C67 77 65 71 61 71" style="stroke-width:2.8"/><path class="c t d5" pathLength="1" d="M72 72 C72 76 72 80 73 84" style="stroke-width:2.8"/><circle class="cp pop" style="animation-delay:2.1s" cx="72.5" cy="65" r="2.1"/><path class="cf pop" style="animation-delay:2.4s" d="M82.0 54.3 C79.9 51.4 76.1 52.6 77.0 55.6 C77.8 58.1 82.0 59.8 82.0 59.8 C82.0 59.8 86.2 58.1 87.0 55.6 C87.9 52.6 84.1 51.4 82.0 54.3Z"/><path class="t d4" pathLength="1" d="M122 62 C121 82 128 94 141 95 C154 94 161 82 160 62 C148 61 134 61 122 62Z M160 68 C172 66 174 82 159 84"/><path class="t d5" pathLength="1" d="M112 102 C132 106 152 106 172 102"/><g class="fume"><path d="M134 52 C128 44 140 38 134 28 M148 52 C142 44 154 38 148 28" style="stroke-width:2.6"/></g><g class="fixe"><path d="M134 52 C128 44 140 38 134 28 M148 52 C142 44 154 38 148 28" style="stroke-width:2.6"/></g>
+</svg>

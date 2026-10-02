@@ -1,0 +1,19 @@
+<!-- À deux — tendresse : la date se marque d’un cœur, un pointillé file vers deux cœurs blottis qui battent.
+     Style des icônes de l’accueil et de illu-agenda.svg. Se dessine, puis un seul
+     mouvement joué deux fois, puis image fixe (WCAG 2.2.2). Servie en <img>. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path,circle{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{stroke:#DC5D45;fill:#F6DDD5}.cp{fill:#DC5D45;stroke:none}
+.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .8s ease-out both}
+.d1{animation-delay:.1s}.d2{animation-delay:.5s}.d3{animation-delay:.9s}.d4{animation-delay:1.3s}
+.d5{animation-delay:1.7s}.d6{animation-delay:2.1s}.d7{animation-delay:2.5s}.d8{animation-delay:2.9s}
+.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .6s cubic-bezier(.3,1.6,.6,1) forwards}
+@keyframes trace{0%{opacity:0;stroke-dashoffset:1}2%{opacity:1}100%{opacity:1;stroke-dashoffset:0}}
+@keyframes pop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
+@keyframes bat{50%{transform:scale(1.18)}}
+.trait{stroke-dasharray:3 7;stroke-width:2.6;opacity:0;animation:vu .5s ease-out 1.6s forwards}@keyframes vu{to{opacity:1}}.b2{animation:pop .6s cubic-bezier(.3,1.6,.6,1) 2.4s forwards,bat 1.2s ease-in-out 3.2s 2}
+@media (prefers-reduced-motion:reduce){.t{animation:none!important;stroke-dashoffset:0}.pop{animation:none!important;opacity:1}.trait{animation:none!important;opacity:1}}
+</style>
+<path class="t d1" pathLength="1" d="M21 31 C19 52 21 79 23 101 C46 99 70 100 92 98 C91 76 92 51 90 29 C67 31 44 30 21 31Z"/><path class="t d2" pathLength="1" d="M21 45 C45 43 68 44 91 42 M38 21 C38 26 39 31 38 36 M73 20 C72 25 73 30 73 35"/><path class="c t d3" pathLength="1" d="M56.0 68.2 C51.2 61.5 42.7 64.4 44.6 71.0 C46.5 76.8 56.0 80.5 56.0 80.5 C56.0 80.5 65.5 76.8 67.4 71.0 C69.3 64.4 60.8 61.5 56.0 68.2Z"/><path class="c trait" d="M98 64 C112 44 132 36 146 42"/><path class="t d5" pathLength="1" d="M152.0 57.6 C144.0 46.4 129.6 51.2 132.8 62.4 C136.0 72.0 152.0 78.4 152.0 78.4 C152.0 78.4 168.0 72.0 171.2 62.4 C174.4 51.2 160.0 46.4 152.0 57.6Z"/><path class="cf pop b2"  d="M170.0 70.6 C163.2 61.1 151.1 65.2 153.8 74.7 C156.5 82.8 170.0 88.2 170.0 88.2 C170.0 88.2 183.5 82.8 186.2 74.7 C188.9 65.2 176.8 61.1 170.0 70.6Z"/>
+</svg>
