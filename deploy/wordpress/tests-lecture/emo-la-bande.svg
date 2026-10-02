@@ -1,19 +1,19 @@
-<!-- La bande — joie : la date s’entoure, trois « +1 » arrivent l’un après l’autre, confettis.
-     Style des icônes de l’accueil et de illu-agenda.svg. Se dessine, puis un seul
-     mouvement joué deux fois, puis image fixe (WCAG 2.2.2). Servie en <img>. -->
-<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
-<style>
-path,circle{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
-.c{stroke:#DC5D45}.cf{stroke:#DC5D45;fill:#F6DDD5}.cp{fill:#DC5D45;stroke:none}
-.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .8s ease-out both}
-.d1{animation-delay:.1s}.d2{animation-delay:.5s}.d3{animation-delay:.9s}.d4{animation-delay:1.3s}
-.d5{animation-delay:1.7s}.d6{animation-delay:2.1s}.d7{animation-delay:2.5s}.d8{animation-delay:2.9s}
-.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .6s cubic-bezier(.3,1.6,.6,1) forwards}
-@keyframes trace{0%{opacity:0;stroke-dashoffset:1}2%{opacity:1}100%{opacity:1;stroke-dashoffset:0}}
-@keyframes pop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
-@keyframes bat{50%{transform:scale(1.18)}}
-
-@media (prefers-reduced-motion:reduce){.t{animation:none!important;stroke-dashoffset:0}.pop{animation:none!important;opacity:1}}
+<!-- La bande — joie.
+     Grammaire des icônes de l’accueil (grille 24, trait 2,3). Les éléments arrivent,
+     un seul mouvement joué deux fois, puis image fixe. Servie en <img>. -->
+<svg viewBox="0 0 56 24" xmlns="http://www.w3.org/2000/svg"><style>
+path,circle,rect,ellipse{fill:none;stroke:#1D1D1B;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{fill:#DC5D45;stroke:#DC5D45}.f{fill:#1D1D1B;stroke:none}
+.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .45s cubic-bezier(.3,1.7,.6,1) both}
+.bas{transform-origin:center bottom}
+@keyframes pop{0%{opacity:0;transform:scale(.2)}100%{opacity:1;transform:scale(1)}}
+@keyframes bat{50%{transform:scale(1.25)}}
+@keyframes saute{50%{transform:translateY(-2.5px)}}
+@keyframes vibre{20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(6deg)}}
+@keyframes hesite{25%{transform:rotate(-15deg)}75%{transform:rotate(15deg)}}
+@keyframes sort{to{opacity:0;transform:scale(.3)}}
+.p0{animation:pop .45s cubic-bezier(.3,1.7,.6,1) 0.60s both,saute .45s ease-in-out 1.90s 2}.p1{animation:pop .45s cubic-bezier(.3,1.7,.6,1) 0.85s both,saute .45s ease-in-out 1.98s 2}.p2{animation:pop .45s cubic-bezier(.3,1.7,.6,1) 1.10s both,saute .45s ease-in-out 2.06s 2}
+@media (prefers-reduced-motion:reduce){*{animation-duration:1ms!important;animation-delay:0s!important;animation-iteration-count:1!important}}
 </style>
-<g transform="translate(-8 0)"><path class="t d1" pathLength="1" d="M21 31 C19 52 21 79 23 101 C46 99 70 100 92 98 C91 76 92 51 90 29 C67 31 44 30 21 31Z"/><path class="t d2" pathLength="1" d="M21 45 C45 43 68 44 91 42 M38 21 C38 26 39 31 38 36 M73 20 C72 25 73 30 73 35"/><path class="c t d3" pathLength="1" d="M58 60 C72 58 76 74 66 82 C58 88 44 84 43 74 C42 66 48 60 60 60"/></g><g class="pop" style="animation-delay:1.50s"><path d="M104 54 C116 52 130 53 140 54 C141 61 141 68 140 75 C130 76 122 76 116 76 L108 83 L110 76 C108 76 106 76 104 75 C103 68 103 61 104 54Z"/><path class="c" d="M113 65 L123 65 M118 60 L118 70 M128 61 L132 58 L132 71" style="stroke-width:3"/></g><g class="pop" style="animation-delay:1.95s"><path d="M132 18 C144 16 158 17 168 18 C169 25 169 32 168 39 C158 40 150 40 144 40 L136 47 L138 40 C136 40 134 40 132 39 C131 32 131 25 132 18Z"/><path class="c" d="M141 29 L151 29 M146 24 L146 34 M156 25 L160 22 L160 35" style="stroke-width:3"/></g><g class="pop" style="animation-delay:2.40s"><path d="M150 68 C162 66 176 67 186 68 C187 75 187 82 186 89 C176 90 168 90 162 90 L154 97 L156 90 C154 90 152 90 150 89 C149 82 149 75 150 68Z"/><path class="c" d="M159 79 L169 79 M164 74 L164 84 M174 75 L178 72 L178 85" style="stroke-width:3"/></g><path class="pop c" style="animation-delay:2.9s" d="M8 14 L13 9"/><path class="pop" style="animation-delay:3s;stroke:#18365E" d="M100 12 L104 6"/><path class="pop c" style="animation-delay:2.9s" d="M186 50 L193 48"/><path class="pop" style="animation-delay:3s;stroke:#18365E" d="M98 106 L104 110"/><path class="pop c" style="animation-delay:2.9s" d="M190 104 L195 99"/><path class="pop" style="animation-delay:3s;stroke:#18365E" d="M112 34 L118 36"/>
+<g class="pop" style="animation-delay:.1s"><rect x="3.5" y="5" width="17" height="15.5" rx="1"/><path d="M3.8 9.8c4.4-.2 9-.1 16.5 0"/><path d="M8 3v3.6M16 3v3.6"/></g><path class="c pop" style="animation-delay:.4s" d="M8.3 14.8l2.6 2.6 4.8-5.2"/><g transform="translate(25 0)"><g class="pop bas p0" style=""><circle cx="4.5" cy="7.5" r="2.4"/><path d="M0 20v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"/></g></g><g transform="translate(34.5 0)"><g class="pop bas p1" style=""><circle cx="4.5" cy="7.5" r="2.4"/><path d="M0 20v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"/></g></g><g transform="translate(44 0)"><g class="pop bas p2" style=""><circle cx="4.5" cy="7.5" r="2.4"/><path d="M0 20v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"/></g></g>
 </svg>

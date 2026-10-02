@@ -1,19 +1,19 @@
-<!-- Le pense-bête — humour : « c’était quand, déjà ? », la date s’entoure, le « ? » devient un « ! ».
-     Style des icônes de l’accueil et de illu-agenda.svg. Se dessine, puis un seul
-     mouvement joué deux fois, puis image fixe (WCAG 2.2.2). Servie en <img>. -->
-<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
-<style>
-path,circle{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
-.c{stroke:#DC5D45}.cf{stroke:#DC5D45;fill:#F6DDD5}.cp{fill:#DC5D45;stroke:none}
-.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .8s ease-out both}
-.d1{animation-delay:.1s}.d2{animation-delay:.5s}.d3{animation-delay:.9s}.d4{animation-delay:1.3s}
-.d5{animation-delay:1.7s}.d6{animation-delay:2.1s}.d7{animation-delay:2.5s}.d8{animation-delay:2.9s}
-.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .6s cubic-bezier(.3,1.6,.6,1) forwards}
-@keyframes trace{0%{opacity:0;stroke-dashoffset:1}2%{opacity:1}100%{opacity:1;stroke-dashoffset:0}}
-@keyframes pop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
-@keyframes bat{50%{transform:scale(1.18)}}
-.q{transform-box:fill-box;transform-origin:center bottom;animation:hesite .6s ease-in-out .9s 2,part .3s ease-in 2.2s forwards}@keyframes hesite{25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}@keyframes part{to{opacity:0;transform:scale(.4)}}
-@media (prefers-reduced-motion:reduce){.t{animation:none!important;stroke-dashoffset:0}.pop{animation:none!important;opacity:1}.q{animation:none!important;opacity:0}}
+<!-- Le pense-bête — humour.
+     Grammaire des icônes de l’accueil (grille 24, trait 2,3). Les éléments arrivent,
+     un seul mouvement joué deux fois, puis image fixe. Servie en <img>. -->
+<svg viewBox="0 -5 52 29" xmlns="http://www.w3.org/2000/svg"><style>
+path,circle,rect,ellipse{fill:none;stroke:#1D1D1B;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{fill:#DC5D45;stroke:#DC5D45}.f{fill:#1D1D1B;stroke:none}
+.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .45s cubic-bezier(.3,1.7,.6,1) both}
+.bas{transform-origin:center bottom}
+@keyframes pop{0%{opacity:0;transform:scale(.2)}100%{opacity:1;transform:scale(1)}}
+@keyframes bat{50%{transform:scale(1.25)}}
+@keyframes saute{50%{transform:translateY(-2.5px)}}
+@keyframes vibre{20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(6deg)}}
+@keyframes hesite{25%{transform:rotate(-15deg)}75%{transform:rotate(15deg)}}
+@keyframes sort{to{opacity:0;transform:scale(.3)}}
+.q{transform-box:fill-box;transform-origin:center bottom;animation:pop .45s cubic-bezier(.3,1.7,.6,1) .3s both,hesite .5s ease-in-out .8s 2,sort .2s ease-in 1.9s forwards}
+@media (prefers-reduced-motion:reduce){*{animation-duration:1ms!important;animation-delay:0s!important;animation-iteration-count:1!important}}
 </style>
-<path class="t d1" pathLength="1" d="M50 38 C59 38 65 45 64 54 C63 63 56 67 49 66 C41 65 36 58 37 51 C38 44 43 38 50 38Z"/><path class="t d2" pathLength="1" d="M20 114 C22 94 34 82 50 82 C66 82 78 94 80 114"/><path class="q" d="M43 12 C43 4 56 3 57 10 C58 16 50 17 50 23 M50 30 L50 30.5"/><path class="c pop" style="animation-delay:2.3s" d="M50 4 C50 10 50 16 50 22 M50 30 L50 30.5"/><path class="pop" style="animation-delay:2.5s" d="M30 10 L25 5 M70 10 L75 5 M28 24 L22 24 M72 24 L78 24" /><g transform="translate(96 0)"><path class="t d3" pathLength="1" d="M21 31 C19 52 21 79 23 101 C46 99 70 100 92 98 C91 76 92 51 90 29 C67 31 44 30 21 31Z"/><path class="t d3" pathLength="1" d="M21 45 C45 43 68 44 91 42 M38 21 C38 26 39 31 38 36 M73 20 C72 25 73 30 73 35"/><path class="c t d5" pathLength="1" d="M58 60 C72 58 76 74 66 82 C58 88 44 84 43 74 C42 66 48 60 60 60"/></g>
+<g transform="translate(5 3)"><g class="pop bas" style="animation-delay:.1s"><circle cx="4.5" cy="7.5" r="2.4"/><path d="M0 20v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"/></g></g><g transform="translate(0 -5)"><path class="q" d="M7.6 4.2c0-1.9 1.4-2.9 2.8-2.9s2.6 1 2.6 2.4c0 1.8-2.4 2-2.4 3.7M10.6 10.2v.1"/><path class="c pop" style="animation-delay:2s" d="M10.4 1.6v5.4M10.4 10.2v.1"/></g><g transform="translate(28 0)"><g class="pop" style="animation-delay:.5s"><rect x="3.5" y="5" width="17" height="15.5" rx="1"/><path d="M3.8 9.8c4.4-.2 9-.1 16.5 0"/><path d="M8 3v3.6M16 3v3.6"/></g><circle class="c pop" style="animation-delay:1.7s;stroke-width:2" cx="12" cy="15.2" r="3.6"/></g>
 </svg>
