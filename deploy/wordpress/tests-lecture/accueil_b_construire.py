@@ -151,7 +151,7 @@ aujourdhui = aujourdhui[:4]
 for e in aujourdhui:
     vus.add(e['id'])
 
-nouv = [E[n['id']] for n in B0['nouveautes'] if n['id'] in E and n['id'] not in vus][:8]
+nouv = [E[n['id']] for n in B0['nouveautes'] if n['id'] in E and n['id'] not in vus][:5]  # 5 et non 8 (02/10) : la colonne dépassait les deux autres de 950 px
 for e in nouv:
     vus.add(e['id'])
 dernier = datetime.strptime(B0['nouveautes'][0]['pd'], '%Y-%m-%d %H:%M:%S')
