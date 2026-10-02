@@ -218,3 +218,11 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gb[data-part=oui] .gb-une-bas .gh-une-g{height:auto!important;background:#FBF7F0;padding:46px 16px 16px}
 @media(max-width:760px){.gh-une-g{grid-template-columns:1fr}.gh-une-img{height:260px}.gh-une-g .gh-cart{margin:16px 8px 8px 0!important}
 .gb-une-bas .gh-une-l{grid-template-columns:1fr}}
+/* 02/10, Franck : « la disposition d'avant était mieux, il fallait juste mettre le texte sous l'image ».
+   Retour à la grande à gauche + trois à droite ; dans la grande, le cartouche passe SOUS l'image. */
+.gb-une-bas .gh-une{grid-template-columns:1.9fr 1fr!important}
+.gb-une-bas .gh-une-l{display:flex;flex-direction:column;gap:14px;margin-top:0}
+.gh-une-g{grid-template-columns:1fr!important}
+.gh-une-img{height:340px}
+.gh-une-g .gh-cart{margin:16px 8px 8px 0!important}
+@media(max-width:760px){.gb-une-bas .gh-une{grid-template-columns:1fr!important}.gh-une-img{height:260px}}
