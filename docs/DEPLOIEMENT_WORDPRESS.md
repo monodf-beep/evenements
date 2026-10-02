@@ -567,3 +567,20 @@ charge que les `*.php` du premier niveau). Les métas
 (`as_gel_texte`, `as_bot_empreinte`, `as_journal`) restent en base WordPress sans effet, et
 le pipeline reprend la main sur tout au passage suivant — y compris sur les fiches
 retravaillées, donc à ne faire qu'en connaissance de cause.
+
+## 02/10/2026 — `cs-pages-test.php` : retrouver les pages de maquette
+
+Demande de Franck : garder les pages de test et pouvoir les retrouver facilement dans
+WordPress. Mu-plugin NEUF (aucune version en ligne à écraser) : menu « Pages de test (N) »
+dans la barre d'administration et encadré sur le tableau de bord, réservés à `edit_pages`.
+La liste suit la méta `cs_page_test` = 1, posée sur les sept maquettes (13139-13142, 13147,
+13287, 13339), jamais le titre ni l'adresse. Une page listée qui ne serait pas en noindex
+est signalée « indexable ».
+
+Déployé par le canal du § 3 : upload en `.nouveau`, md5 comparé
+(`f32fad1f03b7573f18c85749c70359f1`), `token_get_all(…, TOKEN_PARSE)`, `rename()`.
+Vérifié après coup : accueil, page de test et `/wp-json/` en 200 ; le plugin rend
+« Pages de test (7) » et sept sous-entrées.
+
+**Retour arrière** : supprimer `wp-content/mu-plugins/cs-pages-test.php`. Rien n'est écrit
+en base hormis la méta `cs_page_test`, sans effet sans le plugin.
