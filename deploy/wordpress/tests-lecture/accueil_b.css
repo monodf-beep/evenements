@@ -183,3 +183,9 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gb-hon-r{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .gb-hon-p{margin-top:12px!important;font-weight:800;font-size:14px;color:#18365E}
 @media(max-width:760px){.gb-hon-r{grid-template-columns:1fr 1fr}.gb-hon-t{font-size:21px!important}}
+/* Une partenaire (02/10, Franck : « un encart qui cache tout ») : le cadre englobe TOUT le bloc, photo et
+   cartouche, avec un bandeau pleine largeur. La publicité se voit d'un seul regard, sans lire de petit texte. */
+.gb[data-part=oui] .gb-une-bas .gh-une-g{border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B;padding-top:34px;background:#1D1D1B;border-radius:0;height:420px}
+.gb[data-part=oui] .gb-une-bas .gh-une-g img{border-radius:0}
+.gb[data-part=oui] .gb-une-bas .gb-part-pill{top:0;left:0;right:0;padding:0 12px;height:34px;display:flex;align-items:center;font-size:12px}
+@media(max-width:760px){.gb[data-part=oui] .gb-une-bas .gh-une-g{height:340px}.gb[data-part=oui] .gb-une-bas .gb-part-pill{font-size:10.5px;letter-spacing:.04em}}

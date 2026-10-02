@@ -319,7 +319,7 @@ s.append('<div class="gb-une-r">' + onglet('À la une') + '<div class="gb-rang">
 # rel="sponsored" sur le lien, une seule fiche payée dans la une, aucun superlatif dans le texte.
 ub = unefixe.replace('fetchpriority="high"', 'loading="lazy"')
 ub = ub.replace('<span class="gh-sur">À la une · ', '<span class="gh-sur"><span class="gb-part-in">Partenaire · </span>À la une · ', 1)
-ub = re.sub(r'(<a class="gh-une-g") (href="[^"]+">)', r'\1 rel="sponsored" \2<span class="gb-part-pill">Partenaire · exemple</span>', ub, count=1)
+ub = re.sub(r'(<a class="gh-une-g") (href="[^"]+">)', r'\1 rel="sponsored" \2<span class="gb-part-pill">Partenaire · avec un office de tourisme (exemple)</span>', ub, count=1)
 s.append('<div class="gb-une-bas">' + onglet('À la une') + ub + '</div>')
 # Territoire à l'honneur, co-signé avec un office de tourisme (fictif)
 hon = sorted([e for e in E.values() if e['T'] == "Vallée d'Aoste" and e['id'] not in vus and e['S'] > NOW and e.get('img')], key=lambda e: e['S'])[:3]
