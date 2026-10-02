@@ -195,7 +195,105 @@ s = []
 s.append('<p class="gb-test">Page de test B de l’accueil (noindex), sur le modèle de Guidatorino. Instantané de la base du '
          f'{NOW.day} {MOIS[NOW.month-1]} à {NOW.hour} h {NOW.minute:02d}. La vraie page d’accueil n’est pas modifiée. '
          '<span class="gb-choix">Texte : <a href="#" data-gbt="sans">sans empattement (actuel)</a> <a href="#" data-gbt="serif">Georgia, comme Guidatorino</a></span> '
-         '<span class="gb-choix">Encadrés : <a href="#" data-gbc="croque">au trait décalé</a> <a href="#" data-gbc="sobre">sobres</a></span></p>')
+         '<span class="gb-choix">Encadrés : <a href="#" data-gbc="croque">au trait décalé</a> <a href="#" data-gbc="sobre">sobres</a></span> '
+         '<span class="gb-choix">Haut de page : <a href="#" data-gbh="actuel">1. carrousel actuel</a> <a href="#" data-gbh="carnet">2. carnet</a> '
+         '<a href="#" data-gbh="frise">3. frise</a> <a href="#" data-gbh="une">4. une fixe, sans carrousel</a></span></p>')
+
+# 0. En-tête de l'accueil (la vraie home l'affiche AU-DESSUS du menu ; une page de test
+#    hérite de l'en-tête réduit des pages intérieures, d'où son absence signalée par Franck).
+s.append('<div class="gh-mast"><p class="gh-mot"><b>Agenda</b> <span>Sabauda</span></p>'
+         f'<div class="gh-frise" role="img" aria-label="Frise des 4 territoires : Turin, Nice, Aoste, Chambéry" style="-webkit-mask-image:url({SKY});mask-image:url({SKY})"></div>'
+         '<p class="gh-devise">Quoi faire, où manger · 4 territoires</p></div>')
+
+# 0 bis. Haut de page : quatre options à comparer.
+ICO = {html.unescape(l.strip()): sv for u, sv, l in icones}
+
+
+def ico(nom):
+    sv = ICO.get(nom, '')
+    return re.sub(r'<svg width="34" height="34"', '<svg class="gh-ico" aria-hidden="true"', sv.replace(chr(10), ' '))
+
+
+def photo(evs):
+    """La meilleure PHOTO (pas une affiche) d'une liste : un fond de carrousel doit être un paysage."""
+    for e in sorted(evs, key=lambda e: -e.get('hs', 0)):
+        if e.get('img') and e.get('ih') and 1.3 < e['iw'] / e['ih'] < 2.2:
+            return e['img']
+    return ''
+
+
+def dans(mot):
+    return [e for e in E.values() if mot in e.get('cat', '') and e['S'] <= HORIZON]
+
+
+ven = auj0
+dim = fin_we
+expos = [e for e in dans('Expositions') if e['S'] <= NOW]
+gastro = [e for e in dans('Gastronomie') if e['S'].month == NOW.month or e['S'] <= NOW]
+famille = dans('famille') + dans('Famille')
+# Photos des couvertures : CHOISIES, pas tirées des fiches. Le 02/10, le choix automatique
+# a pris une affiche portant « Samedi 19 sept. » (date passée) pour illustrer « Ce week-end ».
+# Une couverture de rubrique se choisit une fois, comme les couvertures actuelles.
+def ph_post(i):
+    return P[i]['img'] if i in P else ''
+
+
+def ph_ev(i):
+    return E[i]['img'] if i in E else ''
+
+
+SLIDES = [  # (surtitre, titre, ligne chiffrée — périmètre écrit, lien, icône, photo)
+    (f'{JOURS_L[ven.weekday()].capitalize()} {ven.day} – {JOURS_L[dim.weekday()]} {dim.day} {MOIS_L[dim.month-1]}', 'Ce week-end',
+     f'<b>{len(we_tous)} rendez-vous</b> dans les quatre territoires', 'https://agendasabauda.eu/ce-week-end/', ico('Ce week-end'), ph_post(8227)),
+    ('Fraîchement ajoutées', 'Les nouveautés', f'<b>{nb_nouv} fiches</b> ajoutées depuis le {jm(datetime.strptime(B0["nouveautes"][-1]["pd"], "%Y-%m-%d %H:%M:%S"))}',
+     'https://agendasabauda.eu/selections/les-nouveautes/', CAL_PLUS.replace('gb-ico-enc', 'gh-ico'), ph_post(8233)),
+    (f'En {MOIS_L[NOW.month-1]}', 'Fêtes, foires et sagre', f'<b>{len(gastro)} rendez-vous</b> de gastronomie ce mois-ci',
+     'https://agendasabauda.eu/selections/quelle-sagre-ce-mois/', ico('Saveurs & gastronomie'), ph_post(3648)),
+    ('En ce moment', 'Les expositions', f'<b>{len(expos)} expositions</b> ouvertes aujourd’hui', 'https://agendasabauda.eu/evenements/categorie/expositions-patrimoine/',
+     ico('Expositions'), ph_ev(763)),
+    ('Avec les enfants', 'En famille', f'<b>{len(famille)} sorties</b> d’ici le {jm(HORIZON)}', 'https://agendasabauda.eu/evenements/categorie/jeune-public-famille/',
+     ico('En famille'), ph_post(2424)),
+]
+VAGUE = '<svg class="gh-vague" viewBox="0 0 120 8" aria-hidden="true"><path d="M2 5c10-4 18 3 29 0s19-4 29-1 19 4 29 0 19-3 29 0" fill="none" stroke="#DC5D45" stroke-width="2.6" stroke-linecap="round"/></svg>'
+
+
+COUR, PRIO, LAZY = ' aria-current="true"', 'fetchpriority="high"', 'loading="lazy"'
+
+
+def carrousel(cls, slides):
+    piste = ''.join(f'<li class="gh-slide">{x}</li>' for x in slides)
+    points = ''.join(f'<button type="button" data-i="{i}" aria-label="Diapositive {i+1}"{COUR if i == 0 else ""}></button>' for i in range(len(slides)))
+    return (f'<div class="gh-car {cls}"><ul class="gh-piste">{piste}</ul>'
+            '<button type="button" class="gh-nav gh-prec" data-dir="-1" aria-label="Précédent">‹</button>'
+            '<button type="button" class="gh-nav gh-suiv" data-dir="1" aria-label="Suivant">›</button>'
+            f'<div class="gh-points">{points}</div></div>')
+
+
+# 1. le carrousel d'aujourd'hui, tel quel (cinq couvertures, texte incrusté dans l'image)
+COUV = re.findall(r'<li class="as-cs__slide"[^>]*>\s*<a href="([^"]+)">\s*<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"', h0)
+COUV = list(dict.fromkeys(COUV))  # l'accueil contient le carrousel deux fois (ordinateur et téléphone)
+actuel = carrousel('gh-actuel', [f'<a href="{u}"><img src="{im}" alt="{esc(html.unescape(al))}" loading="lazy"></a>' for u, im, al in COUV])
+# 2. « carnet » : nos photos, notre cartouche au trait décalé, nos icônes, des chiffres VRAIS en texte
+carnet = carrousel('gh-carnet', [
+    (f'<a href="{u}"><img src="{esc(ph)}" alt="" {PRIO if i == 0 else LAZY}>'
+     f'<span class="gh-cart">{ic}<span class="gh-sur">{sur}</span><span class="gh-t">{t}</span>{VAGUE}<span class="gh-l">{ligne}</span>'
+     '<span class="gh-voir">Voir la sélection ›</span></span></a>')
+    for i, (sur, t, ligne, u, ic, ph) in enumerate(SLIDES)])
+# 3. « frise » : pas de photo, les quatre monuments cliquables
+ZONES = {'Piémont': (40, 100), 'Comté de Nice': (214, 88), "Vallée d'Aoste": (402, 116), 'Savoie': (586, 154)}
+frise = ('<div class="gh-frise-g"><p class="gh-frise-t">Choisissez votre côté des Alpes</p><div class="gh-frise-b">'
+         f'<div class="gh-frise-d" style="-webkit-mask-image:url({SKY});mask-image:url({SKY})"></div>'
+         + ''.join(f'<a class="gh-zone gh-z-{TERS[t]}" href="{MONU[t][5]}" style="left:{x/784*100:.2f}%;width:{w/784*100:.2f}%">'
+                   f'<span class="gh-zn">{esc(t)}</span><span class="gh-zc">{nb_ter[t]} rendez-vous</span></a>' for t, (x, w) in ZONES.items())
+         + f'</div><p class="gh-frise-p">Rendez-vous comptés d’ici le {jm(HORIZON)}.</p></div>')
+# 4. « une fixe » : la recommandation des études (pas de carrousel) — une grande, trois à côté
+g0 = une[0]
+unefixe = (f'<div class="gh-une"><a class="gh-une-g" href="{esc(g0["u"])}"><img src="{esc(g0["img"])}" alt="" fetchpriority="high">'
+           f'<span class="gh-cart"><span class="gh-sur">À la une · {esc(g0["T"])}</span><span class="gh-t gh-t-s">{esc(g0["t"])}</span>{VAGUE}'
+           f'<span class="gh-l"><b>{quand(g0)}</b> · {ville(g0)}</span></span></a><div class="gh-une-l">'
+           + ''.join(f'<a href="{esc(e["u"])}">{image(e, "gb-img")}<span><span class="gb-meta">{pill(e)} <span class="gb-date">{quand(e)}</span></span>'
+                     f'<span class="gb-ct">{esc(e["t"])}</span></span></a>' for e in une[1:4]) + '</div></div>')
+s.append(f'<div class="gh">{actuel}{carnet}{frise}{unefixe}</div>')
 
 # 1. Accroche + recherche
 s.append('<div class="gb-accroche"><div><p class="gb-h1">Que faire en Savoie, en Piémont, en Vallée d’Aoste et dans le Comté de Nice</p>'
@@ -210,7 +308,7 @@ s.append('<div class="gb-portes"><nav class="gb-paves" aria-label="Accès rapide
          '<span class="gb-nl-b">S’inscrire à la lettre</span></a></div>')
 
 # 3. À la une, 4. Aujourd'hui
-s.append(onglet('À la une') + '<div class="gb-rang">' + ''.join(carte(e, 'premier' if k == 0 else True) for k, e in enumerate(une)) + '</div>')
+s.append('<div class="gb-une-r">' + onglet('À la une') + '<div class="gb-rang">' + ''.join(carte(e, True) for e in une) + '</div></div>')
 s.append(onglet(f'Aujourd’hui, {JOURS_L[NOW.weekday()]} {NOW.day} {MOIS_L[NOW.month-1]}', 'https://agendasabauda.eu/aujourdhui/')
          + '<div class="gb-rang">' + ''.join(carte(e) for e in aujourdhui) + '</div>')
 
@@ -258,10 +356,23 @@ s.append(f'<div class="gb-cols"><div class="gb-c1">{col1}</div><div class="gb-c2
 
 JS = ('<script>(function(){var g=document.querySelector(".gb");if(!g){return}'
       'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbt],a[data-gbc]");if(!a){return}e.preventDefault();'
-      'if(a.dataset.gbt){g.dataset.texte=a.dataset.gbt}else{g.dataset.cadre=a.dataset.gbc}})})();</script>')
+      'if(a.dataset.gbt){g.dataset.texte=a.dataset.gbt}else{g.dataset.cadre=a.dataset.gbc}});'
+      # sélecteur du haut de page
+      'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbh]");if(!a){return}e.preventDefault();g.dataset.hero=a.dataset.gbh;'
+      'try{localStorage.setItem("gb-hero",a.dataset.gbh)}catch(x){}});'
+      'try{var h=localStorage.getItem("gb-hero");if(h){g.dataset.hero=h}}catch(x){}'
+      # carrousels : défilement au doigt (scroll-snap), flèches et points ; AUCUN défilement automatique
+      'document.querySelectorAll(".gh-car").forEach(function(c){var p=c.querySelector(".gh-piste");var pts=c.querySelectorAll(".gh-points button");'
+      'function va(i){p.scrollTo({left:i*p.clientWidth,behavior:"smooth"})}'
+      'c.querySelectorAll(".gh-nav").forEach(function(b){b.addEventListener("click",function(){var i=Math.round(p.scrollLeft/p.clientWidth)+Number(b.dataset.dir);'
+      'if(i==-1){i=pts.length-1}if(i==pts.length){i=0}va(i)})});'
+      'pts.forEach(function(b){b.addEventListener("click",function(){va(Number(b.dataset.i))})});'
+      'p.addEventListener("scroll",function(){var i=Math.round(p.scrollLeft/p.clientWidth);pts.forEach(function(b,k){if(k==i){b.setAttribute("aria-current","true")}else{b.removeAttribute("aria-current")}})},{passive:true})})'
+      '})();</script>')
 CSS = open('accueil_b.css', encoding='utf-8').read()
-page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="croque">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
-assert '\n\n' not in page and '&&' not in JS
+page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="croque" data-hero="carnet">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
+assert '\n\n' not in page and '&&' not in JS and '<' not in JS.replace('<script>', '').replace('</script>', '')
+print('carnet', [(sl[1], bool(sl[5])) for sl in SLIDES], '| couvertures', len(COUV))
 open('home_b.html', 'w', encoding='utf-8').write(page)
 print('une', [e['id'] for e in une], '| auj', [e['id'] for e in aujourdhui], '| nouv', [e['id'] for e in nouv], '| we', len(we), '/', len(we_tous),
       '| coude', [p['id'] for p in coude], '| paves', len(icones), '| ter', nb_ter, '| octets', len(page.encode()))
