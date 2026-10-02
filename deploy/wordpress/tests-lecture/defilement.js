@@ -120,11 +120,12 @@
         // pratiques, livrées dans a.encart (HTML préparé côté serveur, avant l'image).
         (a.encart ? '' : '<p class="tl-sign">Par <b>' + esc(a.auteur) + '</b> · Publié le ' + esc(a.date) + '</p>') +
       '</div>' +
-      // Image d'abord, puis l'encart d'infos pratiques (choix de Franck, 02/10).
+      // Image, texte, puis EN FIN DE FICHE l'encart d'infos pratiques, la carte et l'ajout à
+      // l'agenda (choix de Franck, 02/10 : « mettre ces 2 blocs en fin d'article d'événement »).
       '<div class="tl-grid"><div class="tl-main">' +
         (a.image ? '<div class="tl-img"><img src="' + attr(a.image) + '" width="' + attr(a.image_l) + '" height="' + attr(a.image_h) + '" alt="' + attr(a.alt) + '" loading="lazy" decoding="async"></div>' : '') +
-        (a.encart || '') +
         '<div class="tl-corps">' + a.contenu + '</div>' +
+        (a.encart || '') +
         '<a class="tl-saut" href="#pied">Aller au pied de page</a><div class="tl-sentinelle"></div>' +
       '</div>' +
       // Colonne de l'article suivant : mêmes types de blocs que la première, contenu NEUF
