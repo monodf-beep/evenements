@@ -135,7 +135,11 @@ une = []
 for i in alloc['ala-une'] + alloc['evidence'] + alloc['evidence-bottom'] + alloc['deplacement']:
     if i not in une:
         une.append(i)
-une = [E[i] for i in une[:4]]
+# 6 fiches (02/10, Franck : « que faire de cet espace » sous la colonne de droite) : la grande + 5,
+# complétées par le meilleur score si l'allocation n'en fournit pas assez.
+une = [E[i] for i in une[:6]]
+une += sorted([e for e in E.values() if e not in une and e['S'] > NOW and e.get('img') and (e['E'] - e['S']).days <= 10],
+              key=lambda e: -e.get('hs', 0))[:6 - len(une)]
 for e in une:
     vus.add(e['id'])
 
@@ -296,7 +300,8 @@ unefixe = (f'<div class="gh-une"><a class="gh-une-g" href="{esc(g0["u"])}"><span
            f'<span class="gh-cart"><span class="gh-sur">À la une · {esc(g0["T"])}</span><span class="gh-t gh-t-s">{esc(g0["t"])}</span>{VAGUE}'
            f'<span class="gh-l"><b>{quand(g0)}</b> · {ville(g0)}</span></span></a><div class="gh-une-l">'
            + ''.join(f'<a href="{esc(e["u"])}">{image(e, "gb-img")}<span><span class="gb-meta">{pill(e)} <span class="gb-date">{quand(e)}</span></span>'
-                     f'<span class="gb-ct">{esc(e["t"])}</span></span></a>' for e in une[1:4]) + '</div></div>')
+                     f'<span class="gb-ct">{esc(e["t"])}</span></span></a>' for e in une[1:6])
+           + '<a class="gh-une-tout" href="https://agendasabauda.eu/selections/ca-vaut-le-deplacement/">Toute la sélection ›</a></div></div>')
 s.append('<div class="gh">' + ''.join(f'<div class="gh-opt" data-lbl="{l}">{x}</div>' for l, x in (("Option 2 · carnet", carnet), ("Option 4 · une fixe", unefixe))) + '</div>')
 
 # 1. Accroche + recherche

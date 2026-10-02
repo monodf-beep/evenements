@@ -234,3 +234,5 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gh-une-g .gh-l{margin-top:6px;font-size:14px}
 .gh-une-g:hover .gh-t-s{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 @media(max-width:760px){.gh-une-g .gh-t-s{font-size:21px}}
+.gh-une-l .gh-une-tout{display:block!important;margin-top:4px;font-weight:800;font-size:14px;color:#18365E;border-bottom:2px solid #DC5D45;align-self:flex-start}
+.gh .gh-une-l > a:nth-child(n+4):not(.gh-une-tout){display:none}
