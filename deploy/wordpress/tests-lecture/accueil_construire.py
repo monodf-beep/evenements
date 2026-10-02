@@ -62,12 +62,14 @@ def pill(e):
     return f'<span class="hp-ter as-pill--{c}">{esc(e["T"])}</span>'
 
 
-def image(e, cls='hp-img'):
+def image(e, cls='hp-img', tot=False):
+    # tot : image du premier écran, pas de chargement différé (il retarde le LCP)
     if not e.get('img'):
         return f'<div class="{cls} hp-vide"></div>'
     r = (e['iw'] / e['ih']) if e.get('ih') else 1.33
     mode = 'couvre' if 1.15 < r < 1.6 else 'affiche'  # une affiche n'est pas recadrée
-    return (f'<div class="{cls} {mode}" style="--bg:url(\'{esc(e["img"])}\')"><img src="{esc(e["img"])}" alt="" loading="lazy" decoding="async"></div>')
+    charge = 'fetchpriority="high"' if tot else 'loading="lazy" decoding="async"'
+    return (f'<div class="{cls} {mode}" style="--bg:url(\'{esc(e["img"])}\')"><img src="{esc(e["img"])}" alt="" {charge}></div>')
 
 
 def lieu(e):
@@ -107,7 +109,7 @@ une = une[:4]
 g = E[une[0]]
 vus.add(g['id'])
 s_une = (tete('À la une') + '<div class="hp-une">'
-         f'<article class="hp-grande"><a href="{esc(g["u"])}">{image(g, "hp-img hp-img-g")}'
+         f'<article class="hp-grande"><a href="{esc(g["u"])}">{image(g, "hp-img hp-img-g", tot=True)}'
          f'<p class="hp-meta">{pill(g)}<span class="hp-date">{quand(g)}</span></p><h3 class="hp-tg">{esc(g["t"])}</h3>'
          f'<p class="hp-lieu">{lieu(g)}</p></a></article><ul class="hp-liste">'
          + ''.join(ligne(E[i]) for i in une[1:]) + '</ul></div>')
@@ -155,7 +157,8 @@ for j, evs in jours:
 s_7 += '</div>'
 
 # 4. À lire + colonne
-P = d['posts']
+PASSES = {11028, 10759, 2422}  # Plaisirs de Culture, Journées du patrimoine, Festivals de l'été : terminés
+P = [p for p in d['posts'] if p['id'] not in PASSES]
 p0 = P[0]
 s_lire = (tete('À lire', 'https://agendasabauda.eu/articles/', 'Tous les articles') + '<div class="hp-lire"><div class="hp-lire-g">'
           f'<article class="hp-art"><a href="{esc(p0["u"])}"><div class="hp-img couvre" style="--bg:url(\'{esc(p0["img"])}\')"><img src="{esc(p0["img"])}" alt="" loading="lazy"></div>'
