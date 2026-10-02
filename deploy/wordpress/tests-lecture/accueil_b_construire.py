@@ -195,7 +195,7 @@ s = []
 s.append('<p class="gb-test">Page de test B de l’accueil (noindex), sur le modèle de Guidatorino. Instantané de la base du '
          f'{NOW.day} {MOIS[NOW.month-1]} à {NOW.hour} h {NOW.minute:02d}. La vraie page d’accueil n’est pas modifiée. '
          '<span class="gb-choix">Texte : <a href="#" data-gbt="sans">sans empattement (actuel)</a> <a href="#" data-gbt="serif">Georgia, comme Guidatorino</a></span> '
-         '<span class="gb-choix">Encadrés : <a href="#" data-gbc="epais">A. trait épais</a> <a href="#" data-gbc="ombre">B. trait épais + ombre pleine</a> <a href="#" data-gbc="corail">C. ombre corail, sans trait</a> <a href="#" data-gbc="sans">D. sans cadre</a> <a href="#" data-gbc="croque">(avant : trait fin)</a></span> '
+         '<span class="gb-choix">Encadrés : <a href="#" data-gbc="mixte">B+C (retenu)</a> <a href="#" data-gbc="epais">A. trait épais</a> <a href="#" data-gbc="ombre">B. trait épais + ombre pleine</a> <a href="#" data-gbc="corail">C. ombre corail, sans trait</a> <a href="#" data-gbc="sans">D. sans cadre</a> <a href="#" data-gbc="croque">(avant : trait fin)</a></span> '
          '<span class="gb-choix">Haut de page : <a href="#" data-gbh="tous">les 4 empilées</a> <a href="#" data-gbh="actuel">1. carrousel actuel</a> <a href="#" data-gbh="carnet">2. carnet</a> '
          '<a href="#" data-gbh="frise">3. frise</a> <a href="#" data-gbh="une">4. une fixe, sans carrousel</a></span></p>')
 
@@ -373,7 +373,7 @@ JS = ('<script>(function(){var g=document.querySelector(".gb");if(!g){return}'
       'p.addEventListener("scroll",function(){var i=Math.round(p.scrollLeft/p.clientWidth);pts.forEach(function(b,k){if(k==i){b.setAttribute("aria-current","true")}else{b.removeAttribute("aria-current")}})},{passive:true})})'
       '})();</script>')
 CSS = open('accueil_b.css', encoding='utf-8').read()
-page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="ombre" data-hero="tous">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
+page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="mixte" data-hero="tous">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
 assert '\n\n' not in page and '&&' not in JS and '<' not in JS.replace('<script>', '').replace('</script>', '')
 print('carnet', [(sl[1], bool(sl[5])) for sl in SLIDES], '| couvertures', len(COUV))
 open('home_b.html', 'w', encoding='utf-8').write(page)
