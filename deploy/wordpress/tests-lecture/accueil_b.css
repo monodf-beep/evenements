@@ -196,3 +196,11 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gh-mast.gh-mast-haut{margin:0;padding:18px 16px 14px;background:#F7F1E8}
 .gh-mast-haut .gh-frise{width:560px;max-width:92%}
 @media(max-width:760px){.gh-mast-haut .gh-frise{width:300px}}
+/* 02/10, Franck : « beaucoup trop gros », « trop de hauteur ». Accueil réel mesuré : frise 460×138 et nom 27 px
+   sur ordinateur, 210×63 et 19 px sur téléphone. Ici plus serré encore : 400 px, marges réduites. */
+.gh-mast.gh-mast-haut{padding:8px 16px 6px}
+.gh-mast-haut .gh-mot{font-size:24px}
+.gh-mast-haut .gh-frise{width:400px;margin-top:2px}
+.gh-mast-haut .gh-devise{margin-top:4px!important;font-size:10px}
+@media(max-width:760px){.gh-mast-haut .gh-mot{font-size:19px}.gh-mast-haut .gh-frise{width:210px}.gh-mast.gh-mast-haut{padding:8px 16px 6px}}
+.gh-mast-haut p{margin:0!important;line-height:1.1}.gh-mast-haut .gh-devise{margin-top:4px!important}
