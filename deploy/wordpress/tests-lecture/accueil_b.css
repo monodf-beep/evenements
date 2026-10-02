@@ -173,3 +173,13 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gb-une-bas{display:none}.gb[data-hero=deux] .gh-carnet{display:block}.gb[data-hero=deux] .gb-une-r{display:none}.gb[data-hero=deux] .gb-une-bas{display:block}
 .gb-une-bas .gh-une{display:grid!important;grid-template-columns:1.9fr 1fr;gap:22px}
 @media(max-width:760px){.gb-une-bas .gh-une{grid-template-columns:1fr}.gb-une-bas .gh-une-g{height:300px}.gb-une-bas .gh-cart{left:12px;right:12px;bottom:12px}}
+.gb-part-in,.gb-part-pill,.gb-part-badge,.gb-hon{display:none}
+.gb[data-part=oui] .gb-part-in{display:inline}
+.gb[data-part=oui] .gb-part-pill{display:inline-block;position:absolute;top:12px;left:12px;z-index:3;background:#1D1D1B;color:#fff;font:800 11.5px/1 'Nunito Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:6px 9px}
+.gb[data-part=oui] .gb-part-badge{display:inline-block;margin:0 0 4px;background:#1D1D1B;color:#fff;font:800 10.5px/1 'Nunito Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:4px 7px}
+.gb[data-part=oui] .gb-hon{display:block;margin:40px 8px 8px 0;padding:18px 20px 16px;background:#EDE5D8;border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
+.gb-hon-l{font-size:13px;color:#4A4740}.gb-hon-l .gb-part-badge{margin:0 6px 0 0;vertical-align:1px}
+.gb-hon-t{font-family:'La Semplicita','Saira Condensed',sans-serif!important;font-weight:700!important;font-size:26px!important;color:#18365E!important;margin:6px 0 14px!important}
+.gb-hon-r{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.gb-hon-p{margin-top:12px!important;font-weight:800;font-size:14px;color:#18365E}
+@media(max-width:760px){.gb-hon-r{grid-template-columns:1fr 1fr}.gb-hon-t{font-size:21px!important}}

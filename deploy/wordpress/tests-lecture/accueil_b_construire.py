@@ -196,7 +196,8 @@ s.append('<p class="gb-test">Page de test B de l’accueil (noindex), sur le mod
          f'{NOW.day} {MOIS[NOW.month-1]} à {NOW.hour} h {NOW.minute:02d}. La vraie page d’accueil n’est pas modifiée. '
          '<span class="gb-choix">Texte : <a href="#" data-gbt="sans">sans empattement (actuel)</a> <a href="#" data-gbt="serif">Georgia, comme Guidatorino</a></span> '
          '<span class="gb-choix">Encadrés : <a href="#" data-gbc="mixte">B, et C de temps en temps (retenu)</a> <a href="#" data-gbc="epais">A. trait épais</a> <a href="#" data-gbc="ombre">B. trait épais + ombre pleine</a> <a href="#" data-gbc="corail">C. ombre corail, sans trait</a> <a href="#" data-gbc="sans">D. sans cadre</a> <a href="#" data-gbc="croque">(avant : trait fin)</a></span> '
-         '<span class="gb-choix">Haut de page : <a href="#" data-gbh="deux">2 + 4 combinées (proposé)</a> <a href="#" data-gbh="carnet">2. carnet seul</a> <a href="#" data-gbh="une">4. une fixe seule</a></span></p>')
+         '<span class="gb-choix">Haut de page : <a href="#" data-gbh="deux">2 + 4 combinées (proposé)</a> <a href="#" data-gbh="carnet">2. carnet seul</a> <a href="#" data-gbh="une">4. une fixe seule</a></span> '
+         '<span class="gb-choix">Partenaires (exemples fictifs) : <a href="#" data-gbp="oui">afficher</a> <a href="#" data-gbp="non">masquer</a></span></p>')
 
 # 0. En-tête de l'accueil (la vraie home l'affiche AU-DESSUS du menu ; une page de test
 #    hérite de l'en-tête réduit des pages intérieures, d'où son absence signalée par Franck).
@@ -313,7 +314,18 @@ s.append('<div class="gb-portes"><nav class="gb-paves" aria-label="Accès rapide
 s.append('<div class="gb-une-r">' + onglet('À la une') + '<div class="gb-rang">' + ''.join(carte(e, True) for e in une) + '</div></div>')
 # 2 + 4 combinées (02/10) : le carnet en haut de page, et « À la une » prend la forme de l'option 4
 # (une grande, trois à côté) à la place de la rangée de quatre cartes. Options 1 et 3 retirées à la demande de Franck.
-s.append('<div class="gb-une-bas">' + onglet('À la une') + unefixe.replace('fetchpriority="high"', 'loading="lazy"') + '</div>')
+# Emplacements vendables (02/10, demande de Franck) : maquettes, partenaires FICTIFS signalés « exemple ».
+# Règles tenues : mention « Partenaire » visible au même niveau que le surtitre (charte § 7, publicité identifiable),
+# rel="sponsored" sur le lien, une seule fiche payée dans la une, aucun superlatif dans le texte.
+ub = unefixe.replace('fetchpriority="high"', 'loading="lazy"')
+ub = ub.replace('<span class="gh-sur">À la une · ', '<span class="gh-sur"><span class="gb-part-in">Partenaire · </span>À la une · ', 1)
+ub = re.sub(r'(<a class="gh-une-g") (href="[^"]+">)', r'\1 rel="sponsored" \2<span class="gb-part-pill">Partenaire · exemple</span>', ub, count=1)
+s.append('<div class="gb-une-bas">' + onglet('À la une') + ub + '</div>')
+# Territoire à l'honneur, co-signé avec un office de tourisme (fictif)
+hon = sorted([e for e in E.values() if e['T'] == "Vallée d'Aoste" and e['id'] not in vus and e['S'] > NOW and e.get('img')], key=lambda e: e['S'])[:3]
+s.append('<section class="gb-hon" aria-label="Partenaire"><p class="gb-hon-l"><span class="gb-part-badge">Partenaire</span> Sélection réalisée avec un office de tourisme (exemple fictif)</p>'
+         '<h2 class="gb-hon-t">À l’honneur cette semaine : la Vallée d’Aoste</h2><div class="gb-hon-r">' + ''.join(carte(e) for e in hon) + '</div>'
+         '<p class="gb-hon-p"><a href="https://agendasabauda.eu/territoire/vallee-d-aoste/">Tous les rendez-vous en Vallée d’Aoste ›</a></p></section>')
 s.append(onglet(f'Aujourd’hui, {JOURS_L[NOW.weekday()]} {NOW.day} {MOIS_L[NOW.month-1]}', 'https://agendasabauda.eu/aujourdhui/')
          + '<div class="gb-rang">' + ''.join(carte(e) for e in aujourdhui) + '</div>')
 
@@ -352,7 +364,8 @@ col3 = ('<div class="gb-pub"><span>Publicité</span><div>Exemple d’emplacement
         f'<div class="gb-boite"><h2 class="gb-boite-t"><a href="https://agendasabauda.eu/ce-week-end/">Ce week-end ›</a></h2>')
 for e in we:
     vus.add(e['id'])
-    col3 += (f'<a class="gb-we" href="{esc(e["u"])}">{image(e, "gb-img gb-img-w")}<span><span class="gb-we-t">{esc(e["t"])}</span>'
+    badge = '<span class="gb-part-badge">Partenaire · exemple</span>' if e is we[0] else ''
+    col3 += (f'<a class="gb-we" href="{esc(e["u"])}">{image(e, "gb-img gb-img-w")}<span>{badge}<span class="gb-we-t">{esc(e["t"])}</span>'
              f'<span class="gb-date">{quand(e)} · {ville(e)}</span></span></a>')
 col3 += f'<p class="gb-plus"><a href="https://agendasabauda.eu/ce-week-end/">Les {len(we_tous)} rendez-vous du week-end ›</a></p></div>'
 col3 += '<p class="gb-contact">Écrire à l’agenda : <a href="mailto:contact@culturasabauda.eu">contact@culturasabauda.eu</a></p>'
@@ -360,8 +373,8 @@ col3 += '<p class="gb-contact">Écrire à l’agenda : <a href="mailto:contact@c
 s.append(f'<div class="gb-cols"><div class="gb-c1">{col1}</div><div class="gb-c2">{col2}</div><aside class="gb-c3" aria-label="À côté">{col3}</aside></div>')
 
 JS = ('<script>(function(){var g=document.querySelector(".gb");if(!g){return}'
-      'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbt],a[data-gbc]");if(!a){return}e.preventDefault();'
-      'if(a.dataset.gbt){g.dataset.texte=a.dataset.gbt}else{g.dataset.cadre=a.dataset.gbc}});'
+      'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbt],a[data-gbc],a[data-gbp]");if(!a){return}e.preventDefault();'
+      'if(a.dataset.gbp){g.dataset.part=a.dataset.gbp}else{if(a.dataset.gbt){g.dataset.texte=a.dataset.gbt}else{g.dataset.cadre=a.dataset.gbc}}});'
       # sélecteur du haut de page
       'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbh]");if(!a){return}e.preventDefault();g.dataset.hero=a.dataset.gbh;'
       'try{localStorage.setItem("gb-hero-v3",a.dataset.gbh)}catch(x){}});'
@@ -375,7 +388,7 @@ JS = ('<script>(function(){var g=document.querySelector(".gb");if(!g){return}'
       'p.addEventListener("scroll",function(){var i=Math.round(p.scrollLeft/p.clientWidth);pts.forEach(function(b,k){if(k==i){b.setAttribute("aria-current","true")}else{b.removeAttribute("aria-current")}})},{passive:true})})'
       '})();</script>')
 CSS = open('accueil_b.css', encoding='utf-8').read()
-page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="mixte" data-hero="deux">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
+page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="mixte" data-hero="deux" data-part="oui">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
 assert '\n\n' not in page and '&&' not in JS and '<' not in JS.replace('<script>', '').replace('</script>', '')
 print('carnet', [(sl[1], bool(sl[5])) for sl in SLIDES], '| couvertures', len(COUV))
 open('home_b.html', 'w', encoding='utf-8').write(page)
