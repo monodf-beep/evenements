@@ -50,6 +50,35 @@
     Les blocs 4, 5 et 6 n'ont besoin de rien : <code>cs-regie.php</code> les affiche directement.
   </p>
 
+  <!-- Offres partenaire (contenu signalé, pas display) -->
+  <h2 style="margin:1.4rem 0 .6rem;">Les offres « partenaire »</h2>
+  <p class="text-sm" style="background:#fffbeb;border-left:3px solid #b45309;padding:.55rem .75rem;border-radius:4px;margin:0 0 .7rem;">
+    <b>Prix = proposition à valider</b>, jamais négociés. Aucune de ces offres n'est encore vendable telle quelle :
+    il manque le marquage « partenaire » d'une fiche (avec dates) et le comptage des affichages.
+    Détail, garde-fous et sources : <code>docs/OFFRES_COMMERCIALES.md</code> · maquettes : <code>/test-accueil-b/</code>.
+  </p>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.4rem;">
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+      <thead><tr style="text-align:left;background:var(--code-bg,#f6f7f9);">
+        <th style="padding:.55rem .8rem;">Offre</th><th>Ce que c'est</th><th>Pour qui</th><th>Tarif</th><th>État</th>
+      </tr></thead>
+      <tbody>
+      {% for o in offres %}
+        <tr style="border-top:1px solid var(--border,#e2e4e8);vertical-align:top;">
+          <td style="padding:.55rem .8rem;"><b>{{ o.nom }}</b><div class="muted text-sm">{{ o.unite }}</div></td>
+          <td class="text-sm" style="padding:.55rem .4rem;">{{ o.quoi }}</td>
+          <td class="text-sm" style="padding:.55rem .4rem;">{{ o.pour }}</td>
+          <td style="font-family:ui-monospace,monospace;font-size:.82rem;padding:.55rem .4rem;white-space:nowrap;">
+            <b>{{ o.prix[0] }} €</b>
+            {% if o.prix[1] %}<span class="muted"> → {{ o.prix[1] }} € → {{ o.prix[2] }} €</span>{% endif %}
+          </td>
+          <td class="text-sm" style="padding:.55rem .4rem;">{{ o.etat }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
   <!-- Démarche -->
   <h2 style="margin:1.4rem 0 .4rem;">La démarche, pas à pas</h2>
   <div class="card" style="padding:1rem 1.2rem;margin-bottom:1.4rem;">

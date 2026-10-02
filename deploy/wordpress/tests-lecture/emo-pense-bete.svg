@@ -1,0 +1,19 @@
+<!-- Le pense-bête — humour.
+     Grammaire des icônes de l’accueil (grille 24, trait 2,3). Les éléments arrivent,
+     un seul mouvement joué deux fois, puis image fixe. Servie en <img>. -->
+<svg viewBox="0 -5 52 29" xmlns="http://www.w3.org/2000/svg"><style>
+path,circle,rect,ellipse{fill:none;stroke:#1D1D1B;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{fill:#DC5D45;stroke:#DC5D45}.f{fill:#1D1D1B;stroke:none}
+.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .45s cubic-bezier(.3,1.7,.6,1) both}
+.bas{transform-origin:center bottom}
+@keyframes pop{0%{opacity:0;transform:scale(.2)}100%{opacity:1;transform:scale(1)}}
+@keyframes bat{50%{transform:scale(1.25)}}
+@keyframes saute{50%{transform:translateY(-2.5px)}}
+@keyframes vibre{20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(6deg)}}
+@keyframes hesite{25%{transform:rotate(-15deg)}75%{transform:rotate(15deg)}}
+@keyframes sort{to{opacity:0;transform:scale(.3)}}
+.q{transform-box:fill-box;transform-origin:center bottom;animation:pop .45s cubic-bezier(.3,1.7,.6,1) .3s both,hesite .5s ease-in-out .8s 2,sort .2s ease-in 1.9s forwards}
+@media (prefers-reduced-motion:reduce){*{animation-duration:1ms!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+</style>
+<g transform="translate(5 3)"><g class="pop bas" style="animation-delay:.1s"><circle cx="4.5" cy="7.5" r="2.4"/><path d="M0 20v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"/></g></g><g transform="translate(0 -5)"><path class="q" d="M7.6 4.2c0-1.9 1.4-2.9 2.8-2.9s2.6 1 2.6 2.4c0 1.8-2.4 2-2.4 3.7M10.6 10.2v.1"/><path class="c pop" style="animation-delay:2s" d="M10.4 1.6v5.4M10.4 10.2v.1"/></g><g transform="translate(28 0)"><g class="pop" style="animation-delay:.5s"><rect x="3.5" y="5" width="17" height="15.5" rx="1"/><path d="M3.8 9.8c4.4-.2 9-.1 16.5 0"/><path d="M8 3v3.6M16 3v3.6"/></g><circle class="c pop" style="animation-delay:1.7s;stroke-width:2" cx="12" cy="15.2" r="3.6"/></g>
+</svg>

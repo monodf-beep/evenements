@@ -1,0 +1,19 @@
+<!-- Variante 2 de l'illustration agenda (02/10) : « ne pas oublier » — calendrier et cloche. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path,circle,rect{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}
+.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .7s ease-out forwards}
+.t1{animation-delay:.1s}.t2{animation-delay:.6s}.t3{animation-delay:1s}.t4{animation-delay:1.5s}.t5{animation-delay:2s}.t6{animation-delay:2.5s}
+.bouge{transform-box:fill-box;transform-origin:center;animation:oscille .5s ease-in-out 3s 3}
+@keyframes trace{to{stroke-dashoffset:0}}
+@keyframes oscille{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@media (prefers-reduced-motion:reduce){.t{animation:none;stroke-dashoffset:0}.bouge{animation:none}}
+</style>
+<path class="t t1" pathLength="1" d="M30 31 C28 52 30 79 32 101 C55 99 79 100 101 98 C100 76 101 51 99 29 C76 31 53 30 30 31Z"/>
+<path class="t t2" pathLength="1" d="M30 45 C54 43 77 44 100 42 M47 21 C47 26 48 31 47 36 M82 20 C81 25 82 30 82 35"/>
+<path class="t t3 c" pathLength="1" d="M52 62 C51 70 52 79 53 86 M44 70 C53 70 62 69 71 70"/>
+<g class="bouge"><path class="t t4" pathLength="1" d="M138 82 C137 66 139 52 151 47 C163 52 165 66 164 82 C155 84 147 84 138 82Z M131 84 C144 86 158 86 171 84"/>
+<path class="t t5 c" pathLength="1" d="M146 92 C148 96 154 96 156 92 M151 40 C151 43 151 45 151 47"/></g>
+<path class="t t6 c" pathLength="1" d="M124 52 C121 58 121 66 124 72 M178 52 C181 58 181 66 178 72"/>
+</svg>

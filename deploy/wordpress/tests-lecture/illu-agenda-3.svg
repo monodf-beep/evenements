@@ -1,0 +1,19 @@
+<!-- Variante 3 de l'illustration agenda (02/10) : inviter — deux personnes et une bulle avec un calendrier. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path,circle,rect{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}
+.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .7s ease-out forwards}
+.t1{animation-delay:.1s}.t2{animation-delay:.6s}.t3{animation-delay:1s}.t4{animation-delay:1.5s}.t5{animation-delay:2s}.t6{animation-delay:2.5s}
+.bouge{transform-box:fill-box;transform-origin:center;animation:oscille .5s ease-in-out 3s 3}
+@keyframes trace{to{stroke-dashoffset:0}}
+@keyframes oscille{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@media (prefers-reduced-motion:reduce){.t{animation:none;stroke-dashoffset:0}.bouge{animation:none}}
+</style>
+<path class="t t1" pathLength="1" d="M42 52 C49 52 53 57 52 63 C51 70 45 72 40 71 C34 69 32 63 33 59 C35 54 38 52 42 52Z M26 106 C27 92 33 83 43 83 C52 83 58 92 59 105"/>
+<path class="t t2" pathLength="1" d="M158 56 C163 56 166 60 165 65 C164 70 159 71 155 70 C151 68 150 64 151 61 C152 58 155 56 158 56Z M145 106 C146 95 151 87 158 87 C166 87 171 95 172 106"/>
+<path class="t t3" pathLength="1" d="M70 18 C95 16 118 17 138 19 C140 31 140 43 138 54 C125 55 112 55 99 55 C95 60 90 64 84 67 C86 63 87 59 87 55 C81 55 75 55 70 54 C68 42 68 30 70 18Z"/>
+<path class="t t4" pathLength="1" d="M90 28 C89 34 90 41 91 47 C99 46 108 47 117 46 C116 40 117 34 116 27 C107 28 99 28 90 28Z M90 33 C99 32 108 33 116 32"/>
+<path class="t t5 c" pathLength="1" d="M97 40 C99 42 101 44 103 45 C106 41 109 38 112 35"/>
+<path class="t t6 c" pathLength="1" d="M183 70 C183 74 184 78 183 83 M178 76 C181 76 185 75 189 76"/>
+</svg>

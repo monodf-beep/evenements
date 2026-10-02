@@ -1,0 +1,19 @@
+<!-- Mamie — chouchou.
+     Grammaire des icônes de l’accueil (grille 24, trait 2,3). Les éléments arrivent,
+     un seul mouvement joué deux fois, puis image fixe. Servie en <img>. -->
+<svg viewBox="0 0 52 24" xmlns="http://www.w3.org/2000/svg"><style>
+path,circle,rect,ellipse{fill:none;stroke:#1D1D1B;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{fill:#DC5D45;stroke:#DC5D45}.f{fill:#1D1D1B;stroke:none}
+.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .45s cubic-bezier(.3,1.7,.6,1) both}
+.bas{transform-origin:center bottom}
+@keyframes pop{0%{opacity:0;transform:scale(.2)}100%{opacity:1;transform:scale(1)}}
+@keyframes bat{50%{transform:scale(1.25)}}
+@keyframes saute{50%{transform:translateY(-2.5px)}}
+@keyframes vibre{20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(6deg)}}
+@keyframes hesite{25%{transform:rotate(-15deg)}75%{transform:rotate(15deg)}}
+@keyframes sort{to{opacity:0;transform:scale(.3)}}
+.tel{transform-box:fill-box;transform-origin:center bottom;animation:pop .45s cubic-bezier(.3,1.7,.6,1) .5s both,vibre .5s ease-in-out 1.1s 2}
+@media (prefers-reduced-motion:reduce){*{animation-duration:1ms!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+</style>
+<g transform="translate(3 0)"><g class="pop bas" style="animation-delay:.1s"><circle cx="6" cy="9" r="3"/><circle cx="8.9" cy="6.2" r="1.6"/><path d="M0 21v-3c0-2.4 2.4-4.2 6-4.2s6 1.8 6 4.2v3"/></g></g><g transform="translate(26 0)"><g class="tel"><rect x="5" y="3" width="11" height="18" rx="2"/><path d="M9 17.5h3"/><g transform="translate(10.5 10.5) scale(0.62)"><path class="cf pop" style="animation-delay:1.3s" d="M0 4.2c-2.2-1.5-4.6-3.2-4.6-5.6 0-1.4 1-2.4 2.3-2.4 1 0 1.8.6 2.3 1.5.5-.9 1.3-1.5 2.3-1.5 1.3 0 2.3 1 2.3 2.4 0 2.4-2.4 4.1-4.6 5.6z"/></g></g><path class="pop" style="animation-delay:1.1s" d="M2 8c-1.2 2-1.2 4.5 0 6.5M19 8c1.2 2 1.2 4.5 0 6.5"/></g>
+</svg>

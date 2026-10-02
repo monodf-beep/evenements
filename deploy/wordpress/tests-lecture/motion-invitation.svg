@@ -1,0 +1,98 @@
+<svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg">
+<!-- Motion design de l'encart agenda (02/10), demandé par Franck : expliquer les étapes.
+     1. je choisis mon agenda, 2. j'arrive dans mon agenda, 3. toutes les infos sont déjà
+     remplies, 4. j'ajoute l'adresse e-mail d'un invité et j'envoie l'invitation.
+     Boucle de 16 s (4 s par étape). Trait irrégulier des icônes de l'accueil.
+     Moins d'animations demandé : l'étape 4, terminée, fixe.
+     Servi en <img> (dans le contenu WordPress, wpautop casse un SVG en ligne). -->
+<style>
+path,circle,rect.t{fill:none;stroke:#1D1D1B;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}
+text{font-family:'Nunito Sans',system-ui,-apple-system,'Segoe UI',sans-serif;fill:#1D1D1B}
+.leg{font-size:14px;font-weight:800;fill:#18365E}.num{font-size:12px;font-weight:800;fill:#fff}
+.lab{font-size:13px;font-weight:700}.pt{font-size:12px}.ti{font-size:14px;font-weight:800}
+.s1,.s2,.s3,.s4{opacity:0}
+.s1{animation:v1 16s infinite}.s2{animation:v2 16s infinite}.s3{animation:v3 16s infinite}.s4{animation:v4 16s infinite}
+@keyframes v1{0%,22%{opacity:1}25%,100%{opacity:0}}
+@keyframes v2{0%,24%{opacity:0}26%,47%{opacity:1}50%,100%{opacity:0}}
+@keyframes v3{0%,49%{opacity:0}51%,72%{opacity:1}75%,100%{opacity:0}}
+@keyframes v4{0%,74%{opacity:0}76%,97%{opacity:1}100%{opacity:0}}
+/* 1 : le doigt va toucher « Google Agenda » */
+.doigt{animation:doigt 16s infinite}
+@keyframes doigt{0%,3%{transform:translate(70px,60px)}12%{transform:translate(0,0)}14%{transform:translate(0,3px)}16%,100%{transform:translate(0,0)}}
+.choix{fill:#FBF7F0;animation:choix 16s infinite}
+@keyframes choix{0%,13%{fill:#FBF7F0}15%,100%{fill:#F6DDD5}}
+/* 2 : le rendez-vous se pose sur le jour */
+.rdv{opacity:0;animation:rdv 16s infinite}
+@keyframes rdv{0%,31%{opacity:0;transform:translateY(-14px)}36%,100%{opacity:1;transform:translateY(0)}}
+/* 3 : les lignes de la fiche apparaissent une à une */
+.l1,.l2,.l3{opacity:0}
+.l1{animation:l1 16s infinite}.l2{animation:l2 16s infinite}.l3{animation:l3 16s infinite}
+@keyframes l1{0%,53%{opacity:0}56%,100%{opacity:1}}
+@keyframes l2{0%,57%{opacity:0}60%,100%{opacity:1}}
+@keyframes l3{0%,61%{opacity:0}64%,100%{opacity:1}}
+/* 4 : l'adresse se tape, on envoie, c'est coché */
+.cache{transform-box:fill-box;transform-origin:right center;animation:tape 16s infinite}
+@keyframes tape{0%,78%{transform:scaleX(1)}87%,100%{transform:scaleX(0)}}
+.env{fill:#18365E;animation:env 16s infinite}
+@keyframes env{0%,89%{fill:#18365E}91%,100%{fill:#DC5D45}}
+.ok{opacity:0;animation:ok 16s infinite}
+@keyframes ok{0%,91%{opacity:0}93%,100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+.s1,.s2,.s3{animation:none;opacity:0}.s4{animation:none;opacity:1}
+.cache{animation:none;transform:scaleX(0)}.env{animation:none;fill:#DC5D45}.ok{animation:none;opacity:1}}
+</style>
+
+<!-- 1. Choisis ton agenda -->
+<g class="s1">
+<path d="M70 34 C130 32 190 33 250 35 C251 46 251 56 250 66 C190 68 130 67 70 66 C69 56 69 45 70 34Z" class="choix"/>
+<path d="M70 34 C130 32 190 33 250 35 C251 46 251 56 250 66 C190 68 130 67 70 66 C69 56 69 45 70 34Z"/>
+<text x="160" y="55" text-anchor="middle" class="lab">Google Agenda</text>
+<path d="M70 80 C130 78 190 79 250 81 C251 92 251 102 250 112 C190 114 130 113 70 112 C69 102 69 91 70 80Z"/>
+<text x="160" y="101" text-anchor="middle" class="lab">Apple / iCal</text>
+<path d="M70 126 C130 124 190 125 250 127 C251 138 251 148 250 158 C190 160 130 159 70 158 C69 148 69 137 70 126Z"/>
+<text x="160" y="147" text-anchor="middle" class="lab">Outlook</text>
+<g class="doigt"><path d="M214 58 C214 50 222 50 222 58 L222 66 C222 60 230 60 230 67 C230 62 238 62 238 69 C238 64 245 65 245 71 L245 84 C245 94 238 100 228 100 C219 100 214 95 210 88 L203 77 C200 72 206 68 210 72 L214 77 Z" style="fill:#fff"/></g>
+<circle cx="15" cy="194" r="9" style="fill:#18365E;stroke:none"/><text x="15" y="198" text-anchor="middle" class="num">1</text>
+<text x="30" y="199" class="leg">Je choisis mon agenda</text>
+</g>
+
+<!-- 2. J'arrive dans mon agenda -->
+<g class="s2">
+<path d="M40 22 C120 20 200 21 280 23 C282 72 282 122 280 170 C200 172 120 172 40 170 C38 122 38 72 40 22Z"/>
+<path d="M40 40 C120 39 200 39 280 40"/>
+<circle cx="52" cy="31" r="2.5"/><circle cx="62" cy="31" r="2.5"/><circle cx="72" cy="31" r="2.5"/>
+<path d="M88 40 C88 84 89 127 88 170 M136 40 C136 84 137 127 136 170 M184 40 C184 84 185 127 184 170 M232 40 C232 84 233 127 232 170" style="stroke-width:1.6;stroke:#B8AE9B"/>
+<path d="M40 83 C120 82 200 82 280 83 M40 126 C120 125 200 125 280 126" style="stroke-width:1.6;stroke:#B8AE9B"/>
+<g class="rdv"><path d="M128 92 C150 91 170 91 192 92 C193 101 193 110 192 118 C170 119 150 119 128 118 C127 110 127 101 128 92Z" style="fill:#F6DDD5;stroke:#DC5D45"/>
+<text x="160" y="109" text-anchor="middle" class="pt" style="font-weight:800;fill:#8A3A28">Orlando</text></g>
+<circle cx="15" cy="194" r="9" style="fill:#18365E;stroke:none"/><text x="15" y="198" text-anchor="middle" class="num">2</text>
+<text x="30" y="199" class="leg">J’arrive dans mon agenda</text>
+</g>
+
+<!-- 3. Tout est déjà rempli -->
+<g class="s3">
+<path d="M40 18 C120 16 200 17 280 19 C282 68 282 120 280 170 C200 172 120 172 40 170 C38 120 38 68 40 18Z"/>
+<path d="M40 18 C40 26 40 34 40 42" class="c" style="stroke-width:6"/>
+<g class="l1"><text x="58" y="46" class="ti">Orlando de Haendel</text></g>
+<g class="l2"><circle cx="64" cy="78" r="8"/><path d="M64 73 L64 78 L68 80"/><text x="82" y="83" class="pt">mar. 6 octobre · 20 h</text></g>
+<g class="l3"><path d="M64 128 C58 120 56 115 58 110 C60 104 68 104 70 110 C72 115 70 120 64 128Z"/><circle cx="64" cy="112" r="2.5"/><text x="82" y="118" class="pt">Opéra Nice Côte d’Azur, Nice</text></g>
+<circle cx="15" cy="194" r="9" style="fill:#18365E;stroke:none"/><text x="15" y="198" text-anchor="middle" class="num">3</text>
+<text x="30" y="199" class="leg">Tout est déjà rempli</text>
+</g>
+
+<!-- 4. J'ajoute un e-mail et j'envoie l'invitation -->
+<g class="s4">
+<path d="M40 18 C120 16 200 17 280 19 C282 68 282 120 280 170 C200 172 120 172 40 170 C38 120 38 68 40 18Z"/>
+<text x="58" y="44" class="ti">Orlando de Haendel</text>
+<text x="58" y="72" class="pt" style="font-weight:800;fill:#6F6B62">INVITÉS</text>
+<path d="M58 82 C120 81 200 81 262 82 C263 92 263 101 262 110 C200 111 120 111 58 110 C57 101 57 91 58 82Z" style="fill:#fff"/>
+<text x="68" y="101" class="lab" style="fill:#18365E">camille@exemple.fr</text>
+<rect class="cache" x="66" y="86" width="190" height="20" style="fill:#fff;stroke:none"/>
+<path d="M170 128 C200 127 230 127 262 128 C263 137 263 146 262 154 C230 155 200 155 170 154 C169 146 169 137 170 128Z" class="env" style="stroke:none"/>
+<text x="216" y="146" text-anchor="middle" class="lab" style="fill:#fff">Envoyer</text>
+<g class="ok"><path d="M128 135 C132 139 136 143 139 146 C146 139 152 133 158 127" class="c" style="stroke-width:3.6"/></g>
+<circle cx="15" cy="194" r="9" style="fill:#18365E;stroke:none"/><text x="15" y="198" text-anchor="middle" class="num">4</text>
+<text x="30" y="199" class="leg">J’ajoute un e-mail et j’envoie</text>
+</g>
+</svg>

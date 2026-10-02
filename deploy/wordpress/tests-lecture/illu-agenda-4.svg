@@ -1,0 +1,19 @@
+<!-- Variante 4 de l'illustration agenda (02/10) : y aller à deux — deux billets décalés. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path,circle,rect{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}
+.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .7s ease-out forwards}
+.t1{animation-delay:.1s}.t2{animation-delay:.6s}.t3{animation-delay:1s}.t4{animation-delay:1.5s}.t5{animation-delay:2s}.t6{animation-delay:2.5s}
+.bouge{transform-box:fill-box;transform-origin:center;animation:oscille .5s ease-in-out 3s 3}
+@keyframes trace{to{stroke-dashoffset:0}}
+@keyframes oscille{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@media (prefers-reduced-motion:reduce){.t{animation:none;stroke-dashoffset:0}.bouge{animation:none}}
+</style>
+<path class="t t1" pathLength="1" d="M38 30 C65 28 92 29 118 31 C118 38 124 41 128 41 C128 48 128 55 128 62 C123 62 118 65 118 72 C92 73 65 72 38 72 C38 65 33 62 29 62 C29 55 29 48 29 41 C33 41 38 38 38 30Z"/>
+<path class="t t2" pathLength="1" d="M95 34 C95 46 95 58 95 69" style="stroke-dasharray:3 6;stroke-width:2.6"/>
+<path class="t t2 c" pathLength="1" d="M50 46 C58 45 70 46 80 45 M50 56 C56 56 63 56 70 55"/>
+<g class="bouge"><path class="t t3" pathLength="1" d="M82 54 C109 52 136 53 162 55 C162 62 168 65 172 65 C172 72 172 79 172 86 C167 86 162 89 162 96 C136 97 109 96 82 96 C82 89 77 86 73 86 C73 79 73 72 73 65 C77 65 82 62 82 54Z"/>
+<path class="t t4 c" pathLength="1" d="M96 70 C104 69 116 70 126 69 M96 80 C102 80 109 80 116 79"/></g>
+<path class="t t5 c" pathLength="1" d="M142 22 C144 27 146 31 148 34 M156 18 C156 23 156 28 156 32 M170 22 C168 27 166 31 164 34"/>
+</svg>

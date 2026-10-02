@@ -1,0 +1,18 @@
+<!-- Émotion 2 (02/10) : « épaule contre épaule » — deux personnes de dos devant une scène. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{stroke:#DC5D45;fill:#F6DDD5}
+.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .8s ease-out forwards}
+.t1{animation-delay:.1s}.t2{animation-delay:.6s}.t3{animation-delay:1.1s}.t4{animation-delay:1.6s}
+.coeur{transform-box:fill-box;transform-origin:center;opacity:0;animation:coeur 1s ease-out 2.1s forwards,bat 1.4s ease-in-out 3.2s 2}
+@keyframes trace{to{stroke-dashoffset:0}}
+@keyframes coeur{0%{opacity:0;transform:translateY(10px) scale(.5)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes bat{50%{transform:scale(1.18)}}
+@media (prefers-reduced-motion:reduce){.t{animation:none;stroke-dashoffset:0}.coeur{animation:none;opacity:1}}
+</style>
+<path class="t t1" pathLength="1" d="M28 20 C40 34 44 52 40 70 M172 20 C160 34 156 52 160 70 M28 20 C76 16 124 16 172 20"/>
+<path class="t t2" pathLength="1" d="M84 58 C92 57 98 63 97 70 C96 77 89 80 83 78 C77 76 74 70 76 64 C77 60 80 58 84 58Z M60 112 C62 96 72 86 86 86 C96 86 102 92 104 100"/>
+<path class="t t3" pathLength="1" d="M117 60 C124 60 128 66 126 72 C124 78 118 80 113 78 C108 76 106 71 107 66 C109 62 112 60 117 60Z M100 104 C102 94 108 88 117 88 C130 88 138 98 140 112"/>
+<path class="cf coeur" d="M100 34 C95 27 86 30 88 37 C90 43 100 47 100 47 C100 47 110 43 112 37 C114 30 105 27 100 34Z"/>
+</svg>
