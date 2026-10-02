@@ -189,3 +189,7 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gb[data-part=oui] .gb-une-bas .gh-une-g img{border-radius:0}
 .gb[data-part=oui] .gb-une-bas .gb-part-pill{top:0;left:0;right:0;padding:0 12px;height:34px;display:flex;align-items:center;font-size:12px}
 @media(max-width:760px){.gb[data-part=oui] .gb-une-bas .gh-une-g{height:340px}.gb[data-part=oui] .gb-une-bas .gb-part-pill{font-size:10.5px;letter-spacing:.04em}}
+/* Version « finie » (02/10, Franck) : le bandeau de réglages est masqué, rouvrable par un petit bouton. */
+.gb .gb-test{display:none}.gb[data-reglages=oui] .gb-test{display:block}
+.gb-reglages{position:fixed;left:12px;bottom:12px;z-index:70;background:#FBF7F0;border:1px solid #CFC5B4;color:#6F6B62;font:600 12px 'Nunito Sans',sans-serif;padding:5px 10px;border-radius:14px;cursor:pointer;opacity:.75}
+.gb-reglages:hover{opacity:1}

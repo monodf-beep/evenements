@@ -192,6 +192,7 @@ nb_ter = {t: len([e for e in E.values() if e['T'] == t and e['S'] <= HORIZON]) f
 
 # ---------- assemblage ----------
 s = []
+s.append('<button type="button" class="gb-reglages" aria-expanded="false">Options du test</button>')
 s.append('<p class="gb-test">Page de test B de l’accueil (noindex), sur le modèle de Guidatorino. Instantané de la base du '
          f'{NOW.day} {MOIS[NOW.month-1]} à {NOW.hour} h {NOW.minute:02d}. La vraie page d’accueil n’est pas modifiée. '
          '<span class="gb-choix">Texte : <a href="#" data-gbt="sans">sans empattement (actuel)</a> <a href="#" data-gbt="serif">Georgia, comme Guidatorino</a></span> '
@@ -376,6 +377,7 @@ JS = ('<script>(function(){var g=document.querySelector(".gb");if(!g){return}'
       'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbt],a[data-gbc],a[data-gbp]");if(!a){return}e.preventDefault();'
       'if(a.dataset.gbp){g.dataset.part=a.dataset.gbp}else{if(a.dataset.gbt){g.dataset.texte=a.dataset.gbt}else{g.dataset.cadre=a.dataset.gbc}}});'
       # sélecteur du haut de page
+      'document.addEventListener("click",function(e){if(!e.target.closest){return}var r=e.target.closest(".gb-reglages");if(!r){return}var o=g.dataset.reglages!=="oui";g.dataset.reglages=o?"oui":"non";r.setAttribute("aria-expanded",o?"true":"false")});'
       'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbh]");if(!a){return}e.preventDefault();g.dataset.hero=a.dataset.gbh;'
       'try{localStorage.setItem("gb-hero-v3",a.dataset.gbh)}catch(x){}});'
       'try{var h=localStorage.getItem("gb-hero-v3");if(h){g.dataset.hero=h}}catch(x){}'
