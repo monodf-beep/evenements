@@ -2479,6 +2479,46 @@ AD_BLOCKS = {
 }
 
 
+# Offres « partenaire » (02/10/2026, Franck : mettre les grilles dans le back-office). Ce ne
+# sont PAS des blocs display : la fiche ou la sélection reste du contenu, signalée
+# « Partenaire » (charte § 7, rel="sponsored"). Recensement complet et garde-fous :
+# docs/OFFRES_COMMERCIALES.md ; maquettes : /test-accueil-b/.
+# PRIX = PROPOSITION À VALIDER, jamais négociés : même méthode et mêmes rapports entre paliers
+# que la grille display du 05/08 (≈ ×2 puis ×3,5), ramenés à l'unité de vente de chaque offre.
+# « etat » dit ce qui existe : rien ici n'est encore vendable tel quel (pas de marquage
+# partenaire sur les fiches, pas de comptage des affichages).
+OFFRES_PARTENAIRES = [
+    {"nom": "Une partenaire", "unite": "par jour (2 jours/semaine au plus)",
+     "quoi": "La grande fiche de « À la une », encadrée, bandeau « Partenaire »",
+     "pour": "organisateur d'un gros événement",
+     "prix": (25, 50, 90), "etat": "maquette"},
+    {"nom": "Territoire ou ville à l'honneur", "unite": "par semaine (1 à la fois)",
+     "quoi": "Bloc de 3 rendez-vous co-signé sous la une, 3 vraies photos fournies",
+     "pour": "office de tourisme",
+     "prix": (90, 180, 320), "etat": "maquette"},
+    {"nom": "Diapositive du carnet", "unite": "par semaine (1 diapositive sur 5 au plus)",
+     "quoi": "Une diapositive du haut de page, photo et cartouche « Partenaire »",
+     "pour": "office de tourisme, festival",
+     "prix": (60, 120, 210), "etat": "maquette"},
+    {"nom": "Badge dans les listes", "unite": "par semaine",
+     "quoi": "Fiche en tête de « Ce week-end » ou d'une catégorie, badge « Partenaire »",
+     "pour": "petit organisateur",
+     "prix": (15, 30, 50), "etat": "maquette"},
+    {"nom": "Encart newsletter", "unite": "par envoi (1 encart par lettre)",
+     "quoi": "Encart 560×240 dans la lettre du vendredi",
+     "pour": "tous",
+     "prix": (40, 80, 140), "etat": "format défini (kit annonceurs), non câblé"},
+    {"nom": "Article partenaire", "unite": "par article",
+     "quoi": "Vrai article signalé « Contenu partenaire », relu par la rédaction",
+     "pour": "lieu, institution",
+     "prix": (150, 300, 500), "etat": "prévu au kit, jamais construit"},
+    {"nom": "Pack lancement", "unite": "par semaine, offre limitée dans le temps",
+     "quoi": "Une partenaire 1 jour + encart newsletter + badge",
+     "pour": "premiers clients",
+     "prix": (60, None, None), "etat": "proposition"},
+]
+
+
 def _ensure_regie_table(conn):
     conn.execute("CREATE TABLE IF NOT EXISTS ad_campaigns ("
                  "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -2524,7 +2564,7 @@ def regie_page():
                             and r["days_left"] < 0)
         if r["statut"] == "active" and not r["expired"]:
             occupied.setdefault(r["bloc"], r)
-    return render_template("regie.html", active="regie", blocks=AD_BLOCKS,
+    return render_template("regie.html", active="regie", blocks=AD_BLOCKS, offres=OFFRES_PARTENAIRES,
                            campaigns=rows, occupied=occupied,
                            today=today.isoformat(),
                            go_base=PUBLIC_BASE_URL)
