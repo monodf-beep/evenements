@@ -226,3 +226,11 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gh-une-img{height:340px}
 .gh-une-g .gh-cart{margin:16px 8px 8px 0!important}
 @media(max-width:760px){.gb-une-bas .gh-une{grid-template-columns:1fr!important}.gh-une-img{height:260px}}
+/* 02/10, Franck : « laisse tomber l'encadrement du texte, un texte comme les autres événements ». */
+.gb .gh-une-g .gh-cart{border:0!important;box-shadow:none!important;background:none!important;padding:0!important;margin:12px 0 0!important;transform:none!important}
+.gh-une-g .gh-cart::after,.gh-une-g .gh-vague{display:none!important}
+.gh-une-g .gh-sur{font:800 12px/1.3 'Nunito Sans',sans-serif;color:#DC5D45;margin-bottom:4px}
+.gh-une-g .gh-t-s{font-size:26px;line-height:1.15;color:#1D1D1B}
+.gh-une-g .gh-l{margin-top:6px;font-size:14px}
+.gh-une-g:hover .gh-t-s{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+@media(max-width:760px){.gh-une-g .gh-t-s{font-size:21px}}
