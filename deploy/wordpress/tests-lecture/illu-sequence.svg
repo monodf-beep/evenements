@@ -1,0 +1,28 @@
+<!-- Illustration en séquence pour l'encart agenda (02/10) : 1. l'agenda se coche, 2. un avion
+     en papier part vers un ami qui apparaît. Boucle de 8 s. Trait irrégulier des icônes de
+     l'accueil. Moins d'animations demandé : l'image finale, fixe. -->
+<svg viewBox="0 0 240 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}
+.coche{stroke-dasharray:1;stroke-dashoffset:1;animation:coche 8s ease-out infinite}
+.avion{animation:vol 8s ease-in-out infinite;transform-box:fill-box}
+.trace{stroke-dasharray:3 7;stroke-width:2.4;opacity:0;animation:trace 8s ease-out infinite}
+.ami{opacity:0;transform-box:fill-box;transform-origin:bottom center;animation:ami 8s ease-out infinite}
+.plus{opacity:0;animation:plus 8s ease-out infinite}
+@keyframes coche{0%,8%{stroke-dashoffset:1}20%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
+@keyframes vol{0%,26%{transform:translate(0,0) rotate(0);opacity:0}30%{opacity:1}55%{transform:translate(92px,-14px) rotate(8deg);opacity:1}62%,100%{transform:translate(104px,-6px);opacity:0}}
+@keyframes trace{0%,30%{opacity:0}45%,88%{opacity:1}96%,100%{opacity:0}}
+@keyframes ami{0%,55%{opacity:0;transform:scale(.6)}66%,92%{opacity:1;transform:scale(1)}100%{opacity:0}}
+@keyframes plus{0%,66%{opacity:0}72%,92%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.coche{animation:none;stroke-dashoffset:0}.avion{animation:none;opacity:0}.trace,.ami,.plus{animation:none;opacity:1}}
+</style>
+<path d="M18 31 C16 52 18 79 20 101 C43 99 67 100 89 98 C88 76 89 51 87 29 C64 31 41 30 18 31Z"/>
+<path d="M18 45 C42 43 65 44 88 42 M35 21 C35 26 36 31 35 36 M70 20 C69 25 70 30 70 35"/>
+<path class="c coche" pathLength="1" d="M37 71 C41 75 45 80 49 84 C57 75 65 67 74 59"/>
+<path class="c trace" d="M98 62 C125 44 160 40 196 50"/>
+<g class="avion"><path class="c" d="M96 66 L122 54 L107 76 L104 66 L96 66 Z M104 66 L122 54"/></g>
+<g class="ami"><path d="M206 50 C213 50 217 55 216 61 C215 68 209 70 204 69 C198 67 196 61 197 57 C199 52 202 50 206 50Z"/>
+<path d="M190 104 C191 90 197 81 207 81 C216 81 222 90 223 103"/></g>
+<path class="c plus" d="M228 38 C228 43 229 47 228 52 M221 45 C225 45 231 44 235 45"/>
+</svg>

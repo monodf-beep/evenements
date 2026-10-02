@@ -1,0 +1,19 @@
+<!-- Le chien — rigolo.
+     Grammaire des icônes de l’accueil (grille 24, trait 2,3). Les éléments arrivent,
+     un seul mouvement joué deux fois, puis image fixe. Servie en <img>. -->
+<svg viewBox="0 0 52 24" xmlns="http://www.w3.org/2000/svg"><style>
+path,circle,rect,ellipse{fill:none;stroke:#1D1D1B;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{fill:#DC5D45;stroke:#DC5D45}.f{fill:#1D1D1B;stroke:none}
+.pop{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .45s cubic-bezier(.3,1.7,.6,1) both}
+.bas{transform-origin:center bottom}
+@keyframes pop{0%{opacity:0;transform:scale(.2)}100%{opacity:1;transform:scale(1)}}
+@keyframes bat{50%{transform:scale(1.25)}}
+@keyframes saute{50%{transform:translateY(-2.5px)}}
+@keyframes vibre{20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(6deg)}}
+@keyframes hesite{25%{transform:rotate(-15deg)}75%{transform:rotate(15deg)}}
+@keyframes sort{to{opacity:0;transform:scale(.3)}}
+.chien{transform-box:fill-box;transform-origin:center bottom;animation:pop .45s cubic-bezier(.3,1.7,.6,1) .1s both,hesite .45s ease-in-out 1.6s 2}.emp{opacity:0;transform-box:fill-box;transform-origin:center;animation:tampon .4s ease-out 1.1s both}@keyframes tampon{0%{opacity:0;transform:scale(1.8)}100%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:1ms!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+</style>
+<g transform="translate(2 0)"><g class="chien"><circle cx="11" cy="12.5" r="6.5"/><path d="M6.4 8C3 7.6 1.8 12 2.6 17c1.6 1 3.4-1.2 3.6-4.4M15.6 8c3.4-.4 4.6 4 3.8 9-1.6 1-3.4-1.2-3.6-4.4"/><ellipse cx="11" cy="15" rx="1.5" ry="1.1" class="f"/><circle cx="8.6" cy="11.4" r=".9" class="f"/><circle cx="13.4" cy="11.4" r=".9" class="f"/></g></g><g transform="translate(28 0)"><g class="pop" style="animation-delay:.4s"><rect x="3.5" y="5" width="17" height="15.5" rx="1"/><path d="M3.8 9.8c4.4-.2 9-.1 16.5 0"/><path d="M8 3v3.6M16 3v3.6"/></g><g class="emp"><ellipse cx="12" cy="16.4" rx="2.1" ry="1.6" class="cf" style="stroke:none"/><circle cx="9" cy="13.4" r="1" class="cf" style="stroke:none"/><circle cx="11" cy="12" r="1" class="cf" style="stroke:none"/><circle cx="13" cy="12" r="1" class="cf" style="stroke:none"/><circle cx="15" cy="13.4" r="1" class="cf" style="stroke:none"/></g></g>
+</svg>

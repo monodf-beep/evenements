@@ -1,0 +1,8 @@
+{
+  "name": "evenements-yoast",
+  "private": true,
+  "description": "Le moteur d'analyse de Yoast, pour noter hors navigateur ce que le pipeline publie par API (scripts/yoast_score.js).",
+  "dependencies": {
+    "yoastseo": "^3.6.0"
+  }
+}

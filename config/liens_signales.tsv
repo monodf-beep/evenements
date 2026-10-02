@@ -1,0 +1,12 @@
+# Événements SIGNALÉS par un lien (post Instagram, affiche, message), avec leur page
+# OFFICIELLE trouvée et lue en session. Lu chaque matin par scripts/ajouter_par_lien.py
+# (8h10), qui les fait entrer dans la chaîne ordinaire. Voir sa docstring.
+#
+# url_officielle<TAB>territoire<TAB>titre<TAB>lien_signalé<TAB>note
+# territoire : Savoie | Piemonte | Vallee-Aoste | Nice
+#
+# 26/09/2026 — post @fieradelmarrone. Page lue : 27e édition, 16-18/10/2026, Cuneo, via
+# Roma → piazza Galimberti ; site édité par la Ville de Cuneo. Aucune fiche sur le site
+# (recherche wp/v2 « marrone », « fiera nazionale »). Le programme détaillé n'y est pas
+# encore publié : la page annonce les thèmes, pas les horaires.
+https://www.marrone.net/edizione-corrente/programma/	Piemonte	Fiera Nazionale del Marrone	https://www.instagram.com/p/DdtgNflG8ny/	Fiera Nazionale del Marrone, 27e édition, Cuneo, du 16 au 18 octobre 2026. Ven. et sam. 9h-23h, dim. 9h-21h (visitcuneese.it).

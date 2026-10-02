@@ -1,0 +1,191 @@
+body:has(.gb) .featured-image,body:has(.gb) #right-sidebar,body:has(.gb) .entry-header{display:none!important}
+body:has(.gb) .site-content{display:block}body:has(.gb) #primary,body:has(.gb) .content-area{width:100%!important;float:none!important}
+body:has(.gb) .inside-article{padding:0!important;background:transparent!important}
+.gb{max-width:910px;margin:0 auto;padding:0 16px 44px;font-family:'Nunito Sans',system-ui,sans-serif;color:#1D1D1B;box-sizing:border-box}
+.gb *{box-sizing:border-box}.gb a{color:inherit;text-decoration:none}.gb p{margin:0}.gb h2,.gb h3{margin:0;letter-spacing:0;text-transform:none}
+.gb[data-texte=serif],.gb[data-texte=serif] *:not(svg):not(path):not(g):not(rect){font-family:Georgia,'Times New Roman',serif!important}
+.gb-test{margin:18px 0 0!important;padding:8px 12px;font-size:12px;line-height:1.5;color:#6F6B62;border:1px dashed #CFC5B4;background:#FBF7F0}
+.gb-choix{display:inline-block;margin-left:10px}.gb-choix a{text-decoration:underline!important;margin-left:6px;color:#18365E!important}
+/* accroche */
+.gb-accroche{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:end;margin:26px 0 18px}
+.gb-h1{font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:28px;line-height:1.15;color:#1D1D1B}
+.gb-sous{margin-top:6px!important;font-size:15px;color:#4A4740}
+.gb-cherche{display:flex;gap:6px}.gb-cherche input{flex:1;min-width:0;height:42px;padding:0 12px;border:1px solid #CFC5B4;background:#fff;font:15px 'Nunito Sans',sans-serif;border-radius:0}
+.gb-cherche button{height:42px;padding:0 14px;background:#E6DECF;border:1px solid #CFC5B4;font:600 14px 'Nunito Sans',sans-serif;color:#1D1D1B;cursor:pointer;border-radius:0}
+/* pavés dessinés + lettre */
+.gb-portes{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:stretch}
+.gb-paves{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 14px;padding:12px 0 0 10px}
+.gb-pave{position:relative;display:flex;align-items:center;justify-content:center;min-height:92px;padding:10px 10px 10px 46px;background:#EDE5D8;text-align:center}
+.gb-pave svg{position:absolute;left:-12px;top:-14px;width:54px!important;height:54px!important;transform:rotate(-8deg);background:transparent}
+.gb-pave:nth-child(2n) svg{transform:rotate(6deg)}
+.gb-pave span{font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:18px;line-height:1.15}
+.gb-pave:hover{background:#E4DACA}
+.gb-enc{position:relative;display:block;border:2px solid #1D1D1B}
+.gb-enc::after{content:"";position:absolute;inset:0;border:2px solid #1D1D1B;transform:translate(6px,6px) rotate(.8deg);pointer-events:none}
+.gb-nl{background:#DC5D45;color:#fff!important;padding:34px 20px 20px;margin:10px 8px 8px 0;transform:rotate(-1deg)}
+.gb-env{position:absolute;top:-30px;right:16px;width:66px;height:66px;transform:rotate(12deg)}
+.gb-nl-t{display:block;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:24px;line-height:1.1}
+.gb-nl-s{display:block;font-size:14px;margin-top:6px}
+.gb-nl-b{display:inline-block;margin-top:14px;background:#fff;color:#1D1D1B;font-weight:800;font-size:14px;padding:9px 16px;border-radius:4px;box-shadow:2px 2px 0 #1D1D1B}
+.gb-nl:hover .gb-nl-b{background:#FBF7F0}
+/* onglets de section, façon Guidatorino */
+.gb-onglet{display:inline-block;margin:38px 0 14px!important;padding:5px 12px 4px;background:#E6DECF;font-family:'La Semplicita','Saira Condensed',sans-serif!important;font-weight:700!important;font-size:18px!important;line-height:1.2!important;color:#1D1D1B!important}
+.gb-onglet a:hover{text-decoration:underline}
+/* rangées de 4 cartes */
+.gb-rang{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 16px}
+.gb-img{position:relative;display:block;overflow:hidden;background:#E6DECF;aspect-ratio:16/10}
+.gb-img img{position:relative;display:block;width:100%;height:100%;object-fit:cover}
+.gb-img.affiche::before{content:"";position:absolute;inset:-20px;background:var(--bg) center/cover;filter:blur(16px) brightness(.85)}
+.gb-img.affiche img{object-fit:contain}
+.gb-meta{display:block;margin:8px 0 3px;font-size:12px;line-height:1.3}
+.gb-ter{font-weight:800}.gb-savoie{color:#1a56b0}.gb-piemonte{color:#b3261e}.gb-vallee-aoste{color:#1e7d34}.gb-nice{color:#b25e00}
+.gb-date{color:#4A4740;font-weight:700}
+.gb-ct{display:block;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:16px;line-height:1.22}
+.gb-carte a:hover .gb-ct,.gb-nouv h3 a:hover,.gb-coude:hover span:last-child,.gb-we:hover .gb-we-t{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+/* trois colonnes */
+.gb-cols{display:grid;grid-template-columns:390px 180px 300px;gap:20px;align-items:start;margin-top:8px}
+.gb-nouv{padding:0 0 16px;margin:0 0 16px;border-bottom:1px solid #DDD4C4}
+.gb-nouv h3{font-family:'La Semplicita','Saira Condensed',sans-serif!important;font-weight:700!important;font-size:21px!important;line-height:1.18!important;color:#1D1D1B!important;margin:0 0 9px!important}
+.gb-nouv-c{display:grid;grid-template-columns:168px 1fr;gap:12px;align-items:start}
+.gb-nouv-c p{font-size:13.5px;line-height:1.5;color:#2E2C28}
+.gb-nouv-c b{font-weight:800;color:#1D1D1B}
+.gb-suite{font-weight:800;color:#DC5D45!important}
+.gb-verif{display:block;margin-top:8px;font-size:11.5px;color:#6F6B62}
+.gb-plus{margin-top:4px!important;font-size:14px;font-weight:800;color:#18365E}.gb-plus a:hover{text-decoration:underline}
+.gb-terrs{display:flex;flex-direction:column;gap:18px;padding-top:18px}
+.gb-terr{position:relative;display:block;min-height:72px;padding:12px 8px 10px 84px;background:#EDE5D8}
+.gb-monu{position:absolute;left:8px;bottom:8px;background:#18365E;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.gb-terr-savoie{color:#1a56b0}.gb-terr-piemonte{color:#b3261e}.gb-terr-vallee-aoste{color:#1e7d34}.gb-terr-nice{color:#b25e00}
+.gb-terr-n{display:block;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:17px;line-height:1.1;color:#1D1D1B}
+.gb-terr-c{display:block;font-size:12px;color:#4A4740;margin-top:3px}
+.gb-terr:hover{background:#E4DACA}
+.gb-boite{margin-top:22px;padding:12px;border:1px solid #DDD4C4;background:#FBF7F0}
+.gb-boite-t{font-family:'La Semplicita','Saira Condensed',sans-serif!important;font-weight:700!important;font-size:19px!important;text-align:center;padding-bottom:10px;margin-bottom:10px!important;border-bottom:1px solid #DDD4C4;color:#1D1D1B!important}
+.gb-coude{display:block;padding:0 0 12px;margin:0 0 12px;border-bottom:1px solid #DDD4C4}.gb-coude:last-child{border:0;margin:0;padding:0}
+.gb-coude span:last-child{display:block;margin-top:6px;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:15px;line-height:1.2}
+.gb-pub{background:#EFE7DA;padding:10px;text-align:center}
+.gb-pub span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#6F6B62;font-weight:800}
+.gb-pub div{margin-top:8px;height:250px;border:1px dashed #BDB3A2;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6F6B62}
+.gb-enc-c{margin:30px 8px 8px 0;padding:16px 14px 14px 76px;background:#FBF7F0;min-height:84px}
+.gb-enc-c:nth-of-type(2){transform:rotate(.6deg)}
+.gb-ico-enc{position:absolute;left:-10px;top:-18px;width:76px;height:76px;transform:rotate(-7deg)}
+.gb-enc-t{display:block;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:19px;line-height:1.15}
+.gb-enc-s{display:block;font-size:13px;color:#4A4740;margin-top:4px}
+.gb-we{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:0 0 11px;margin:0 0 11px;border-bottom:1px solid #DDD4C4}
+.gb-img-w{aspect-ratio:16/10}
+.gb-we-t{display:block;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:15px;line-height:1.2}
+.gb-we .gb-date{display:block;font-size:12px;margin-top:3px;font-weight:600}
+.gb-contact{margin-top:16px!important;font-size:13px;color:#4A4740;border:1px solid #DDD4C4;padding:10px 12px;background:#FBF7F0}
+.gb-contact a{text-decoration:underline!important;color:#18365E!important}
+/* variante « sobre » : mêmes blocs, sans le fait main */
+.gb[data-cadre=sobre] .gb-enc::after{display:none}
+.gb[data-cadre=sobre] .gb-nl,.gb[data-cadre=sobre] .gb-enc-c{transform:none;border-width:1px}
+.gb[data-cadre=sobre] .gb-pave svg,.gb[data-cadre=sobre] .gb-env,.gb[data-cadre=sobre] .gb-ico-enc{position:static;transform:none;width:34px!important;height:34px!important}
+.gb[data-cadre=sobre] .gb-pave{flex-direction:column;gap:6px;padding:12px}
+.gb[data-cadre=sobre] .gb-nl,.gb[data-cadre=sobre] .gb-enc-c{padding:18px}
+.gb[data-cadre=sobre] .gb-ico-enc{margin-bottom:6px}
+@media(max-width:900px){.gb-cols{grid-template-columns:1fr 200px}.gb-c3{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0 20px}}
+@media(max-width:760px){
+.gb-accroche,.gb-portes{grid-template-columns:1fr}.gb-h1{font-size:23px}
+.gb-paves{grid-template-columns:repeat(2,1fr);padding:14px 0 0 10px}
+.gb-nl{margin:22px 8px 8px 0}
+.gb-rang{grid-template-columns:repeat(2,1fr);gap:20px 14px}
+.gb-cols{grid-template-columns:1fr}.gb-c3{display:block}
+.gb-terrs{display:grid;grid-template-columns:1fr 1fr;gap:20px 12px}
+.gb-nouv-c{grid-template-columns:120px 1fr}.gb-nouv h3{font-size:19px!important}
+.gb-nouv:nth-of-type(n+6){display:none}
+.gb-coude{display:grid;grid-template-columns:100px 1fr;gap:10px;align-items:start}.gb-coude span:last-child{margin-top:0}
+.gb-terr{padding-left:80px}}
+/* ===== haut de page : en-tête à frise + quatre options (02/10) ===== */
+.gh-mast{text-align:center;margin:22px 0 6px}
+.gh-mot{font-family:'La Semplicita','Saira Condensed',sans-serif;font-size:30px;line-height:1;color:#1D1D1B}.gh-mot b{font-weight:700}.gh-mot span{color:#DC5D45;font-weight:400}
+.gh-frise{width:300px;max-width:80%;aspect-ratio:784/236;margin:6px auto 0;background:#18365E;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
+.gh-devise{margin-top:8px!important;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#4A4740}
+.gh{margin:18px 0 6px}.gh-opt > *{display:none}
+.gb[data-hero=actuel] .gh-actuel,.gb[data-hero=carnet] .gh-carnet,.gb[data-hero=frise] .gh-frise-g,.gb[data-hero=une] .gh-une{display:block}
+.gb[data-hero=une] .gb-une-r{display:none}
+/* carrousels */
+.gh-car{position:relative}
+.gh-piste{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;list-style:none;margin:0!important;padding:0!important;height:360px;scrollbar-width:none;border-radius:4px}
+.gh-piste::-webkit-scrollbar{display:none}
+.gh-slide{flex:0 0 100%;scroll-snap-align:start;height:100%;margin:0!important;position:relative}
+.gh-slide a{display:block;height:100%;position:relative}
+.gh-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.gh-nav{position:absolute;top:180px;translate:0 -50%;z-index:3;width:38px;height:38px;border:2px solid #1D1D1B;background:#FBF7F0;color:#1D1D1B;font:700 22px/1 sans-serif;cursor:pointer;border-radius:50%;padding:0}
+.gh-prec{left:12px}.gh-suiv{right:12px}
+.gh-points{display:flex;justify-content:center;gap:8px;margin-top:12px}
+.gh-points button{width:9px;height:9px;padding:0;border:0;border-radius:99px;background:#C9BFAD;cursor:pointer}
+.gh-points button[aria-current=true]{width:24px;background:#DC5D45}
+/* cartouche « carnet » : notre trait décalé, notre icône qui déborde */
+.gh-cart{position:absolute;left:48px;bottom:40px;max-width:430px;padding:20px 24px 18px;background:#FBF7F0;border:2px solid #1D1D1B;color:#1D1D1B;transform:rotate(-1.2deg);z-index:2}
+.gh-cart::after{content:"";position:absolute;inset:0;border:2px solid #1D1D1B;transform:translate(7px,7px) rotate(1deg);pointer-events:none}
+.gh-ico{position:absolute;right:-18px;top:-30px;width:68px!important;height:68px!important;transform:rotate(9deg);background:#FBF7F0;border-radius:50%;padding:6px}
+.gh-sur{display:block;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:16px;color:#DC5D45}
+.gh-t{display:block;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:40px;line-height:1.05;color:#18365E}
+.gh-t-s{font-size:26px;line-height:1.15}
+.gh-vague{display:block;width:120px;height:8px;margin:6px 0 8px}
+.gh-l{display:block;font-size:15px;color:#2E2C28}.gh-l b{font-weight:800}
+.gh-voir{display:inline-block;margin-top:10px;font-weight:800;font-size:14px;color:#18365E;border-bottom:2px solid #DC5D45}
+/* frise */
+.gh-frise-g{padding:18px 0 4px;border-top:1px solid #1D1D1B;border-bottom:1px solid #1D1D1B}
+.gh-frise-t{text-align:center;font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:24px;color:#1D1D1B;margin-bottom:6px!important}
+.gh-frise-b{position:relative;width:100%;aspect-ratio:784/236}
+.gh-frise-d{position:absolute;inset:0;background:#18365E;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.gh-zone{position:absolute;top:0;bottom:-46px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;border-radius:6px}
+.gh-zone:hover{background:rgba(220,93,69,.10)}
+.gh-zn{font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:18px;line-height:1.1}
+.gh-zc{font-size:12px;color:#4A4740;margin-bottom:2px}
+.gh-z-savoie .gh-zn{color:#1a56b0}.gh-z-piemonte .gh-zn{color:#b3261e}.gh-z-vallee-aoste .gh-zn{color:#1e7d34}.gh-z-nice .gh-zn{color:#b25e00}
+.gh-frise-p{margin-top:56px!important;text-align:center;font-size:11.5px;color:#6F6B62}
+/* une fixe */
+.gh-une{display:none}
+.gb[data-hero=une] .gh-une{display:grid;grid-template-columns:1.9fr 1fr;gap:22px}
+.gh-une-g{position:relative;display:block;height:380px}
+.gh-une-g img{width:100%;height:100%;object-fit:cover;display:block;border-radius:4px}
+.gh-une-g .gh-cart{left:28px;bottom:28px;max-width:440px}
+.gh-une-l{display:flex;flex-direction:column;gap:14px}
+.gh-une-l a{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start}
+.gh-une-l .gb-meta{margin-top:0}
+@media(max-width:760px){
+.gh-mot{font-size:24px}.gh-piste{height:330px}.gh-nav{display:none}
+.gh-cart{left:14px;right:14px;bottom:18px;max-width:none;padding:14px 16px}.gh-t{font-size:30px}.gh-t-s{font-size:20px}.gh-ico{width:52px!important;height:52px!important;right:-6px;top:-24px}
+.gh-zn{font-size:13px}.gh-zc{display:none}.gh-zone{bottom:-30px}.gh-frise-p{margin-top:38px!important}
+.gb[data-hero=une] .gh-une{grid-template-columns:1fr}.gh-une-g{height:300px}.gh-une-g .gh-cart{left:12px;right:12px;bottom:12px}}
+.gh-credit{position:absolute;right:8px;bottom:6px;z-index:2;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+.gb[data-hero=tous] .gh-opt{margin-bottom:46px}.gb[data-hero=tous] .gh-opt::before{content:attr(data-lbl);display:inline-block;margin-bottom:10px;padding:4px 10px;background:#18365E;color:#fff;font-weight:800;font-size:13px}
+.gb[data-hero=tous] .gh-actuel,.gb[data-hero=tous] .gh-carnet,.gb[data-hero=tous] .gh-frise-g{display:block}.gb[data-hero=tous] .gh-une{display:grid;grid-template-columns:1.9fr 1fr;gap:22px}
+@media(max-width:760px){.gb[data-hero=tous] .gh-une{grid-template-columns:1fr}}
+/* ===== encadrés : quatre traitements (02/10). Franck : « trop fin ». Le trait des icônes vaut 2,3/24 de leur
+   taille, soit ≈ 4 px aux tailles affichées : c'est l'épaisseur retenue. Le double trait fin disparaît. ===== */
+.gb:not([data-cadre=croque]) :is(.gb-enc,.gh-cart)::after{display:none}
+.gb[data-cadre=epais] :is(.gb-enc,.gh-cart){border:4px solid #1D1D1B}
+.gb[data-cadre=ombre] :is(.gb-enc,.gh-cart){border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
+.gb[data-cadre=corail] :is(.gb-enc,.gh-cart){border:0;box-shadow:9px 9px 0 #DC5D45}
+.gb[data-cadre=corail] .gb-nl{box-shadow:9px 9px 0 #18365E}
+.gb[data-cadre=sans] :is(.gb-enc,.gh-cart){border:0;box-shadow:none}
+.gb[data-cadre=sans] .gb-enc-c{background:#EDE5D8}
+/* Retenu par Franck (02/10) : « commencer par B, et de temps en temps, pas tout le temps, du C ».
+   B (trait 4 px + ombre noire) partout ; C (ombre corail, sans trait) en accent, environ une fois sur trois ou
+   quatre : la 3e diapositive du carrousel (puis la 6e…) et le 2e encart de la colonne. Placement fixe, pas tiré
+   au hasard : la page ne change pas d'un chargement à l'autre. */
+.gb[data-cadre=mixte] :is(.gb-enc,.gh-cart){border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
+.gb[data-cadre=mixte] :is(.gh-slide:nth-child(3n) .gh-cart,.gb-c3 .gb-enc-c ~ .gb-enc-c){border:0;box-shadow:9px 9px 0 #DC5D45}
+.gb-une-bas{display:none}.gb[data-hero=deux] .gh-carnet{display:block}.gb[data-hero=deux] .gb-une-r{display:none}.gb[data-hero=deux] .gb-une-bas{display:block}
+.gb-une-bas .gh-une{display:grid!important;grid-template-columns:1.9fr 1fr;gap:22px}
+@media(max-width:760px){.gb-une-bas .gh-une{grid-template-columns:1fr}.gb-une-bas .gh-une-g{height:300px}.gb-une-bas .gh-cart{left:12px;right:12px;bottom:12px}}
+.gb-part-in,.gb-part-pill,.gb-part-badge,.gb-hon{display:none}
+.gb[data-part=oui] .gb-part-in{display:inline}
+.gb[data-part=oui] .gb-part-pill{display:inline-block;position:absolute;top:12px;left:12px;z-index:3;background:#1D1D1B;color:#fff;font:800 11.5px/1 'Nunito Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:6px 9px}
+.gb[data-part=oui] .gb-part-badge{display:inline-block;margin:0 0 4px;background:#1D1D1B;color:#fff;font:800 10.5px/1 'Nunito Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:4px 7px}
+.gb[data-part=oui] .gb-hon{display:block;margin:40px 8px 8px 0;padding:18px 20px 16px;background:#EDE5D8;border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
+.gb-hon-l{font-size:13px;color:#4A4740}.gb-hon-l .gb-part-badge{margin:0 6px 0 0;vertical-align:1px}
+.gb-hon-t{font-family:'La Semplicita','Saira Condensed',sans-serif!important;font-weight:700!important;font-size:26px!important;color:#18365E!important;margin:6px 0 14px!important}
+.gb-hon-r{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.gb-hon-p{margin-top:12px!important;font-weight:800;font-size:14px;color:#18365E}
+@media(max-width:760px){.gb-hon-r{grid-template-columns:1fr 1fr}.gb-hon-t{font-size:21px!important}}
+/* Une partenaire (02/10, Franck : « un encart qui cache tout ») : le cadre englobe TOUT le bloc, photo et
+   cartouche, avec un bandeau pleine largeur. La publicité se voit d'un seul regard, sans lire de petit texte. */
+.gb[data-part=oui] .gb-une-bas .gh-une-g{border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B;padding-top:34px;background:#1D1D1B;border-radius:0;height:420px}
+.gb[data-part=oui] .gb-une-bas .gh-une-g img{border-radius:0}
+.gb[data-part=oui] .gb-une-bas .gb-part-pill{top:0;left:0;right:0;padding:0 12px;height:34px;display:flex;align-items:center;font-size:12px}
+@media(max-width:760px){.gb[data-part=oui] .gb-une-bas .gh-une-g{height:340px}.gb[data-part=oui] .gb-une-bas .gb-part-pill{font-size:10.5px;letter-spacing:.04em}}

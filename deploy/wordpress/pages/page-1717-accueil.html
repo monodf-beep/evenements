@@ -1,0 +1,611 @@
+<!-- Home mobile — sections 1 à 11 (statique + In primo piano dynamique).
+     Source : Agenda Sabaudo - Mobile.dc.html (projet "Brief design agenda Sabaudo").
+     Sections 0 (interstitiel pub), 12-24 (transfrontalier, rail du jour, expositions,
+     tuiles secondaires, suivez-nous, footer, pub sticky) PAS ENCORE construites —
+     voir build-recipes/homepage-mobile.md pour le détail restant.
+     Interactions (menu, sélecteur territoire) en CSS pur (checkbox hack), pas de JS. -->
+
+<!-- wp:html -->
+<div class="as-home">
+<input type="checkbox" id="as-menu-toggle" class="as-menu-toggle">
+
+<!-- MASTHEAD (logo réel — assets/agenda/masthead-agenda-v7.png, skyline +
+     "Agenda Sabaudo" intégré, projet Claude Design "Cultura Sabauda Design
+     System") -->
+<div class="as-home-sticky-panel">
+<div class="as-masthead-block" style="padding:16px 0 0">
+  <a href="https://agendasabauda.eu/it/" style="display:block;text-decoration:none" aria-label="Agenda Sabauda, home">
+    <div class="as-masthead-sketch" style="display:flex;flex-direction:column;align-items:center;gap:4px;width:210px">
+      <div style="display:flex;align-items:baseline;gap:5px;font-family:var(--font-editorial)">
+        <span style="font-weight:700;font-size:19px;letter-spacing:.005em;color:var(--cs-noir)">Agenda</span>
+        <span style="font-weight:400;font-size:19px;letter-spacing:.005em;color:var(--cs-rouge)">Sabauda</span>
+      </div>
+      <div role="img" aria-label="Fascia dei 4 territori: Torino, Nizza, Aosta, Chambéry" style="width:100%;aspect-ratio:784/236;background:var(--cs-bleu);-webkit-mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/agenda-skyline-full.svg');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/agenda-skyline-full.svg');mask-size:contain;mask-repeat:no-repeat;mask-position:center"></div>
+    </div>
+  </a>
+  <div class="as-masthead-tagline" style="text-align:center;margin-top:8px">Cosa fare, dove mangiare · 4 territori</div>
+</div>
+
+<!-- BARRE FR|IT + BURGER (+ mini-logo au scroll) -->
+<div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #1D1D1B;border-bottom:1px solid #1D1D1B;margin-top:12px;padding:8px 20px">
+  <a href="https://agendasabauda.eu/it/" class="as-home-minilogo" aria-label="Agenda Sabauda, home" style="display:flex;align-items:center;gap:7px;text-decoration:none;max-width:0;overflow:hidden;opacity:0">
+    <img class="as-site-header__monogram" src="https://agendasabauda.eu/wp-content/uploads/2026/07/agenda-sabauda-monogramme-as-512.png" alt="" width="512" height="512" style="display:block;height:24px;width:auto;flex:none">
+    <img class="as-site-header__mole" src="data:image/png;base64,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" alt="Agenda Sabauda" style="display:none;height:30px;width:auto;flex:none">
+    <span class="as-site-header__wordmark-text" style="font-family:'Nunito Sans',sans-serif;font-weight:800;font-size:12.5px;color:#1D1D1B;white-space:nowrap">Agenda Sabauda</span>
+  </a>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:800;color:#1D1D1B"><a href="https://agendasabauda.eu/" style="color:#C9BFAD;text-decoration:none;font-weight:400">FR</a> <span style="color:#C9BFAD;font-weight:400">|</span> IT</div>
+    <label for="as-menu-toggle" aria-label="Apri il menu" style="cursor:pointer;display:flex"><svg width="17" height="17" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></label>
+  </div>
+</div>
+
+<!-- TERRITOIRE ACTIF -->
+<div class="as-terr-bar as-terr-bar-inline" style="position:relative">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#FBF7F0">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#1D1D1B">Stai guardando <strong style="color:#DC5D45">i 4 territori</strong></div>
+    <label for="as-terr-toggle" style="cursor:pointer;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#DC5D45;text-decoration:underline">Cambia territorio</label>
+  </div>
+  <input type="checkbox" id="as-terr-toggle" class="as-terr-toggle">
+  <div class="as-terr-dropdown">
+    <a href="https://agendasabauda.eu/?as_territoire=savoia" style="display:block;text-decoration:none;padding:12px 20px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;color:#1D1D1B;border-top:1px solid #E3DCCE">Savoia</a>
+    <a href="https://agendasabauda.eu/?as_territoire=piemonte" style="display:block;text-decoration:none;padding:12px 20px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:400;color:#1D1D1B;border-top:1px solid #E3DCCE">Piemonte</a>
+    <a href="https://agendasabauda.eu/?as_territoire=valle-d-aosta" style="display:block;text-decoration:none;padding:12px 20px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:400;color:#1D1D1B;border-top:1px solid #E3DCCE">Valle d'Aosta</a>
+    <a href="https://agendasabauda.eu/?as_territoire=contea-di-nizza" style="display:block;text-decoration:none;padding:12px 20px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:400;color:#1D1D1B;border-top:1px solid #E3DCCE">Contea di Nizza</a>
+  </div>
+</div>
+</div>
+
+<!-- MENU (overlay) -->
+<div class="as-menu-overlay">
+  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1D1D1B;padding:16px 20px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1D1D1B">Menu</div>
+    <label for="as-menu-toggle" aria-label="Chiudi il menu" style="cursor:pointer;display:flex"><svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg></label>
+  </div>
+  <div style="padding:8px 20px;flex:1;overflow-y:auto">[cs_menu_principal]</div>
+  <div style="border-top:1px solid #1D1D1B;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9BFAD;font-weight:400">|</span> <span style="color:#C9BFAD">IT</span></div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#6F6B62">Savoia · Piemonte · Valle d'Aosta · Nizza</div>
+  </div>
+</div>
+
+<!-- HERO (statique v1 — à rendre dynamique plus tard via un Listing Item "mise en avant") -->
+<div style="padding:16px 20px">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1721","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":10,"use_custom_post_types":true,"custom_post_types":["selection"],"custom_query":true,"custom_query_id":"4","carousel_enabled":true,"slides_to_scroll":1,"arrows":true,"dots":true,"infinite":true,"autoplay":true,"pause_on_hover":true,"autoplay_speed":6000,"effect":"slide","speed":500} /-->
+</div>
+
+<!-- PUB INLINE -->
+<div style="padding:0 20px 4px">
+  
+</div>
+
+<!-- RECHERCHE -->
+<form action="https://agendasabauda.eu/" method="get" style="padding:12px 20px 16px;display:flex;gap:8px">
+  <input type="text" name="s" placeholder="Cerca…" style="flex:1;padding:10px 14px;background:#fff;border:1px solid #E3DCCE;border-radius:3px;font-family:'Nunito Sans',sans-serif;font-size:13px;color:#1D1D1B">
+  <button type="submit" style="padding:10px 16px;background:#1D1D1B;color:#F7F1E8;border:0;border-radius:3px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;cursor:pointer">Cerca</button>
+</form>
+
+<!-- 6 TUILES -->
+<div style="padding:4px 20px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px">
+  <a href="https://agendasabauda.eu/it/questo-weekend/" class="as-tile" style="text-decoration:none;background:#FBF7F0;border-top:2px solid #1D1D1B;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;transform:rotate(-1deg)">
+    <svg width="40" height="40" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.2c1.6-4.3 2.1-8 3.4-10.4c.9 2.8 1.5 6 3.1 9c1.2-3.6 1.8-7.1 3.2-9.3c1 3.1 1.4 6.6 3 9.4c1.1-3.7 1.9-6.8 3.3-9c.9 2.9 1.7 6.4 3.2 9.3"></path><path d="M2.8 13c-.4 3-.1 4.9-.2 6.9c6.7.3 13.8.1 20.2 0c0-2.2.3-4.1-.1-6.8"></path></svg>
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;letter-spacing:0.01em;text-align:center">Questo weekend</div>
+  </a>
+  <a href="https://agendasabauda.eu/it/evenements/categorie/gastronomia-sagre/" class="as-tile" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;transform:rotate(1deg)">
+    <svg width="40" height="40" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 2.9c-.2 2.6-.3 5.3-.1 7.8c.2 1.2 1 2.1 2.3 2.2c.4 3.2.3 6.6.2 9.8"></path><path d="M9.4 2.8c0 2.4 0 4.9-.1 7.3"></path><path d="M18 3.1c-1.9 2-1.8 6.1-.2 8.6c.3 3.6.2 7.4.1 10.9"></path></svg>
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;letter-spacing:0.01em;text-align:center">Gastronomia</div>
+  </a>
+  <a href="https://agendasabauda.eu/it/evenements/categorie/concerti-musica/" class="as-tile" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;transform:rotate(-0.8deg)">
+    <svg width="40" height="40" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.2" cy="18.3" r="2.7"></circle><circle cx="18.2" cy="15.7" r="2.8"></circle><path d="M9.9 18.4V6c3.4-.9 7-1.5 10.5-2.2v12.1"></path></svg>
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;letter-spacing:0.01em;text-align:center">Concerti</div>
+  </a>
+  <a href="https://agendasabauda.eu/it/eventi/" class="as-tile" style="text-decoration:none;background:#FBF7F0;border-top:2px solid #1D1D1B;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;transform:rotate(0.6deg)">
+    <svg width="40" height="40" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.1 22.7v-13c2.8-1.9 5.7-3.8 8.7-5.5c3 1.8 6 3.7 8.7 5.6v12.8"></path><path d="M9.4 22.7v-6.9c1.1-.1 2.2-.2 3.4-.1c1.1 0 2.1.1 3.2.2v6.8"></path></svg>
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;letter-spacing:0.01em;text-align:center">Tutti gli eventi</div>
+  </a>
+</div>
+
+<!-- NEWSLETTER -->
+<div style="margin:0 20px 16px;padding:20px 22px 18px;border:1.5px solid #1D1D1B;border-radius:4px;transform:rotate(-0.6deg);background:#fff">
+  <div style="font-family:'Nunito Sans',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:0.18em;color:#DC5D45;text-transform:uppercase;margin-bottom:5px">Ogni venerdì mattina</div>
+  <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:22px;line-height:1.05;color:#1D1D1B;letter-spacing:0.02em;margin-bottom:12px">L'essenziale dei quattro territori, nella tua casella di posta</div>
+  <form action="https://agendasabauda.eu/it/iscriviti-alla-newsletter/" method="get" style="display:flex;border-bottom:1px solid #1D1D1B;padding-bottom:8px">
+    <input type="email" placeholder="Il tuo indirizzo e-mail" style="flex:1;border:0;background:transparent;font-family:'Nunito Sans',sans-serif;font-size:13px;color:#1D1D1B">
+    <button type="submit" style="border:0;background:transparent;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;color:#DC5D45;cursor:pointer">Iscriviti</button>
+  </form>
+</div>
+
+<!-- PUB INLINE -->
+<div style="padding:0 20px 4px">
+  
+</div>
+
+<!-- A LA UNE -->
+<div id="a-la-une" style="padding:0 20px">
+  <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #1D1D1B;padding-top:10px;margin-bottom:14px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">In primo piano</div>
+  </div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home","style":{"spacing":{"padding":{"left":"20px","right":"20px"}}}} -->
+<div class="wp-block-group as-home" style="padding-right:20px;padding-left:20px">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1696","columns":"2","columns_tablet":"2","columns_mobile":"2","posts_num":6,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"15","_element_id":"ala-une"} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home">
+<!-- CE WEEK-END (mobile) -- ajoute le 2026-09-06 (Franck) : la section existait sur desktop, pas sur mobile, alors que le bouton "Voir tous les evenements du week-end" y etait deja. Meme gabarit que A la une, meme listing, _element_id weekend (plan de l'allocateur #44). -->
+<div id="ce-week-end-mobile" style="padding:0 20px">
+  <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #1D1D1B;padding-top:10px;margin-bottom:14px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Questo weekend</div>
+  </div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home","style":{"spacing":{"padding":{"left":"20px","right":"20px"}}}} -->
+<div class="wp-block-group as-home" style="padding-right:20px;padding-left:20px"><!-- wp:jet-engine/listing-grid {"lisitng_id":"1696","columns":"2","columns_tablet":"2","columns_mobile":"2","posts_num":6,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"15","_element_id":"weekend"} /--></div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home">
+<div style="padding:0 20px">
+  <a href="https://agendasabauda.eu/it/questo-weekend/" style="display:block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:12px 0 16px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em;border:none;clip-path:polygon(0 0,100% 0,100% 88%,94% 100%,88% 89%,82% 100%,76% 89%,70% 100%,64% 89%,58% 100%,52% 89%,46% 100%,40% 89%,34% 100%,28% 89%,22% 100%,16% 89%,10% 100%,4% 89%,0 100%);margin-bottom:16px">Vedi tutti gli eventi del weekend →</a>
+</div>
+
+<!-- EVENEMENTS DU JOUR (rail horizontal) -->
+<div class="as-day-rail" style="padding:0 0 0 20px">
+  <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #1D1D1B;padding-top:10px;margin-bottom:14px;padding-right:20px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">I prossimi 7 giorni</div>
+  </div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home as-day-rail","style":{"spacing":{"padding":{"left":"20px","right":"20px"}}}} -->
+<div class="wp-block-group as-home as-day-rail" style="padding-right:20px;padding-left:20px">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1696","columns":"4","columns_tablet":"4","columns_mobile":"4","posts_num":8,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"14","_element_id":"jour"} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home">
+<div style="padding:0 20px">
+  <a href="https://agendasabauda.eu/it/eventi/" style="display:flex;align-items:center;gap:6px;text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B;margin-bottom:24px">Vedi tutto il calendario <span style="color:#DC5D45">→</span></a>
+</div>
+
+<!-- PUB INLINE -->
+<div style="padding:0 20px 4px">
+  
+</div>
+
+<!-- NOUVELLES EXPOSITIONS : bloc retire le 2026-08-11. Les deux articles affiches etaient des exemples de maquette (titres fictifs, liens #), rendus publiquement. A retablir quand le gabarit Le Fil / Article existera et qu il y aura de vraies selections. Sauvegarde : option cs_bk_1717_placeholder_expos_20260811. -->
+
+<!-- PUB INLINE -->
+<div style="padding:0 20px 4px">
+  
+</div>
+
+<!-- PUB INLINE -->
+<div style="padding:0 20px 4px">
+  
+</div>
+
+</div>
+<!-- /wp:html -->
+
+<!-- ==================================================================
+     HOME DESKTOP (≥1024px) — même page, bloc séparé masqué/affiché en CSS
+     (.as-home-desktop). Source : section DESKTOP du même Agenda Sabaudo -
+     Mobile.dc.html. Publicités gouttière non reproduites (v1). Carrousel :
+     un seul visuel statique, pas de JS (flèches/points retirés).
+     ================================================================== -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+
+<!-- MASTHEAD (logo réel — assets/agenda/masthead-agenda-v7.png) -->
+<div style="text-align:center;padding-bottom:14px">
+  <a href="https://agendasabauda.eu/it/" style="display:inline-block;text-decoration:none" aria-label="Agenda Sabauda, home">
+    <div class="as-masthead-sketch" style="display:flex;flex-direction:column;align-items:center;gap:6px;width:460px">
+      <div style="display:flex;align-items:baseline;gap:8px;font-family:var(--font-editorial)">
+        <span style="font-weight:700;font-size:27px;letter-spacing:.005em;color:var(--cs-noir)">Agenda</span>
+        <span style="font-weight:400;font-size:27px;letter-spacing:.005em;color:var(--cs-rouge)">Sabauda</span>
+      </div>
+      <div role="img" aria-label="Fascia dei 4 territori: Torino, Nizza, Aosta, Chambéry" style="width:100%;aspect-ratio:784/236;background:var(--cs-bleu);-webkit-mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/agenda-skyline-full.svg');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('https://agendasabauda.eu/wp-content/uploads/2026/07/agenda-skyline-full.svg');mask-size:contain;mask-repeat:no-repeat;mask-position:center"></div>
+    </div>
+  </a>
+  <div class="as-masthead-tagline" style="margin-top:8px">Cosa fare, dove mangiare · 4 territori</div>
+</div>
+
+<!-- NAV STICKY -->
+<div class="as-home-desktop__nav">
+  <a href="https://agendasabauda.eu/" class="as-home-desktop__nav-logo" style="display:flex;align-items:center;flex-shrink:0;margin-right:24px" aria-label="Agenda Sabauda, accueil"><img class="as-site-header__monogram" src="https://agendasabauda.eu/wp-content/uploads/2026/07/agenda-sabauda-monogramme-as-512.png" alt="" width="512" height="512" style="display:block;height:26px;width:auto;flex:none">
+    <img class="as-site-header__mole" src="data:image/png;base64,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" alt="Agenda Sabauda" style="display:none;height:30px;width:auto;flex:none"><span class="as-site-header__wordmark-text" style="font-family:'Nunito Sans',sans-serif;font-weight:800;font-size:14px;color:#1D1D1B;white-space:nowrap;margin-left:8px">Agenda Sabauda</span></a><nav style="flex:1">[cs_menu_principal]</nav>
+  <div style="display:flex;align-items:center;gap:20px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;color:#1D1D1B">FR <span style="color:#C9BFAD;font-weight:400">|</span> <span style="color:#C9BFAD">IT</span></div>
+    <a href="https://agendasabauda.eu/it/?s=" style="display:flex"><svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg></a>
+  </div>
+</div>
+
+<!-- TERRITOIRE ACTIF -->
+<div class="as-terr-bar as-terr-bar-inline" style="display:flex;align-items:center;gap:16px;margin-top:20px;padding:10px 16px;background:#FBF7F0;border-radius:3px">
+  <div style="font-family:'Nunito Sans',sans-serif;font-size:12.5px;color:#1D1D1B">Stai guardando <strong style="color:#DC5D45">i 4 territori</strong></div>
+  <div style="width:1px;height:12px;background:#C9BFAD"></div>
+  <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:#6F6B62">Cambia:</div><a href="https://agendasabauda.eu/?as_territoire=savoia" class="as-terr-link" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Savoia</a>
+  <a href="https://agendasabauda.eu/?as_territoire=piemonte" class="as-terr-link" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Piemonte</a>
+  <a href="https://agendasabauda.eu/?as_territoire=valle-d-aosta" class="as-terr-link" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Valle d'Aosta</a>
+  <a href="https://agendasabauda.eu/?as_territoire=contea-di-nizza" class="as-terr-link" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:600;color:#6F6B62">Contea di Nizza</a>
+</div>
+
+<!-- CARROUSEL (statique v1 — à rendre dynamique via un Listing Item "mise en avant") -->
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1722","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":10,"use_custom_post_types":true,"custom_post_types":["selection"],"custom_query":true,"custom_query_id":"4","carousel_enabled":true,"slides_to_scroll":1,"arrows":true,"dots":true,"infinite":true,"autoplay":true,"pause_on_hover":true,"autoplay_speed":6000,"effect":"slide","speed":500} /-->
+
+<!-- PUB SOUS CARROUSEL — bloc Ad Inserter #3 (950×120), à configurer dans
+     wp-admin → Réglages → Ad Inserter. -->
+[adinserter block="3"]
+
+<!-- RECHERCHE -->
+<form action="https://agendasabauda.eu/" method="get" style="margin-top:20px;display:flex;gap:10px">
+  <div style="flex:1;padding:13px 18px;background:#fff;border:1px solid #E3DCCE;border-radius:3px;display:flex;align-items:center;gap:10px">
+    <svg width="16" height="16" viewbox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg>
+    <input type="text" name="s" placeholder="Cerca un evento, una città…" style="flex:1;border:0;background:transparent;font-family:'Nunito Sans',sans-serif;font-size:14px;color:#1D1D1B">
+  </div>
+  <button type="submit" style="padding:13px 22px;background:#1D1D1B;color:#F7F1E8;border:0;border-radius:3px;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;cursor:pointer">Cerca</button>
+</form>
+
+<!-- 6 TUILES + NEWSLETTER -->
+<div class="as-desktop-tiles" style="margin-top:28px">
+  <div class="as-desktop-tiles__grid">
+    <a href="https://agendasabauda.eu/it/questo-weekend/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;transform:rotate(-1deg)">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.2c1.6-4.3 2.1-8 3.4-10.4c.9 2.8 1.5 6 3.1 9c1.2-3.6 1.8-7.1 3.2-9.3c1 3.1 1.4 6.6 3 9.4c1.1-3.7 1.9-6.8 3.3-9c.9 2.9 1.7 6.4 3.2 9.3"></path><path d="M2.8 13c-.4 3-.1 4.9-.2 6.9c6.7.3 13.8.1 20.2 0c0-2.2.3-4.1-.1-6.8"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Questo weekend</div>
+    </a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/gastronomia-sagre/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;transform:rotate(1.3deg)">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 2.9c-.2 2.6-.3 5.3-.1 7.8c.2 1.2 1 2.1 2.3 2.2c.4 3.2.3 6.6.2 9.8"></path><path d="M9.4 2.8c0 2.4 0 4.9-.1 7.3"></path><path d="M18 3.1c-1.9 2-1.8 6.1-.2 8.6c.3 3.6.2 7.4.1 10.9"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Sapori &amp; gastronomia</div>
+    </a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/concerti-musica/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;transform:rotate(-1.3deg)">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.2" cy="18.3" r="2.7"></circle><circle cx="18.2" cy="15.7" r="2.8"></circle><path d="M9.9 18.4V6c3.4-.9 7-1.5 10.5-2.2v12.1"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Concerti</div>
+    </a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/mostre-patrimonio/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;transform:rotate(1deg)">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="14" rx="0.5"></rect><circle cx="8.3" cy="9.5" r="1.7"></circle><path d="M4.5 16.5l4.7-4.4c.7-.6 1.6-.6 2.3.1l1.6 1.5"></path><path d="M12 16.5l3.5-3.3c.7-.6 1.6-.6 2.3.1l2.2 2.1"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Mostre</div>
+    </a>
+    <a href="https://agendasabauda.eu/evenements/categorie/jeune-public-famille/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;transform:rotate(-1deg)">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="7" r="2.3"></circle><path d="M4 19.5v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"></path><circle cx="17" cy="8.5" r="1.9"></circle><path d="M14.2 19.5v-2.3c0-1.6 1.3-2.9 2.8-2.9s2.8 1.3 2.8 2.9v2.3"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">In famiglia</div>
+    </a>
+    <a href="https://agendasabauda.eu/it/eventi/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;transform:rotate(-1.3deg)">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.1 22.7v-13c2.8-1.9 5.7-3.8 8.7-5.5c3 1.8 6 3.7 8.7 5.6v12.8"></path><path d="M9.4 22.7v-6.9c1.1-.1 2.2-.2 3.4-.1c1.1 0 2.1.1 3.2.2v6.8"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:15px;color:#1D1D1B;text-align:center">Tutti gli eventi</div>
+    </a>
+  </div>
+  <div class="as-desktop-tiles__newsletter" style="transform:rotate(-0.4deg)">
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:700;font-size:19px;line-height:1.2;color:#F7F1E8;text-transform:uppercase">Ricevi l'essenziale dei quattro territori</div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:11.5px;color:rgba(251,247,239,0.85)">Ogni venerdì mattina, nella tua casella di posta.</div>
+    <a href="https://agendasabauda.eu/it/iscriviti-alla-newsletter/" style="display:block;text-decoration:none;margin-top:6px;background:#F7F1E8;color:#DC5D45;text-align:center;padding:11px 14px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;border-radius:2px">Iscriviti alla newsletter</a>
+  </div>
+</div>
+
+<!-- PUB SOUS TUILES — bloc Ad Inserter #4 (950×90). -->
+[adinserter block="4"]
+
+<!-- A LA UNE -->
+<div style="margin-top:40px">
+  <div class="as-desktop-section-title">
+    <div class="as-desktop-section-title__label">In primo piano</div>
+    <a href="https://agendasabauda.eu/it/questo-weekend/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Vedi tutto <span style="color:#DC5D45">→</span></a>
+  </div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home-desktop as-desktop-grid-3"} -->
+<div class="wp-block-group as-home-desktop as-desktop-grid-3" style="margin-top:0">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1695","columns":"3","columns_tablet":"3","columns_mobile":"3","posts_num":6,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"15","_element_id":"ala-une"} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+
+<!-- CE WEEK-END -->
+<div style="margin-top:44px">
+  <div class="as-desktop-section-title"><div class="as-desktop-section-title__label">Questo weekend</div></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home-desktop as-desktop-grid-3"} -->
+<div class="wp-block-group as-home-desktop as-desktop-grid-3" style="margin-top:0;margin-bottom:20px">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1695","columns":"3","columns_tablet":"3","columns_mobile":"3","posts_num":6,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"_element_id":"weekend"} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+<div style="display:flex;justify-content:center;text-align:center">
+  <a href="https://agendasabauda.eu/it/questo-weekend/" style="display:inline-block;text-align:center;background:#1D1D1B;color:#F7F1E8;text-decoration:none;padding:13px 30px 17px;border:none;clip-path:polygon(0 0,100% 0,100% 88%,94% 100%,88% 89%,82% 100%,76% 89%,70% 100%,64% 89%,58% 100%,52% 89%,46% 100%,40% 89%,34% 100%,28% 89%,22% 100%,16% 89%,10% 100%,4% 89%,0 100%);font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">Vedi tutti gli eventi del weekend →</a>
+</div>
+
+<!-- EVENEMENTS DU JOUR -->
+<div style="margin-top:44px">
+  <div class="as-desktop-section-title">
+    <div class="as-desktop-section-title__label">I prossimi 7 giorni</div>
+    <a href="https://agendasabauda.eu/it/eventi/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Vedi tutto <span style="color:#DC5D45">→</span></a>
+  </div>
+</div>
+
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home-desktop as-desktop-grid-4"} -->
+<div class="wp-block-group as-home-desktop as-desktop-grid-4" style="margin-top:0">
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1696","columns":"4","columns_tablet":"4","columns_mobile":"4","posts_num":8,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"14","_element_id":"jour"} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div class="as-home-desktop">
+
+<!-- CA VAUT LE DEPLACEMENT — PLACEHOLDER v1 (même mécanisme non tranché que mobile) -->
+<div style="margin-top:44px">
+  <div class="as-desktop-section-title" style="margin-bottom:20px"><div class="as-desktop-section-title__label">Vale il viaggio</div><a href="https://agendasabauda.eu/it/" style="text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B">Vedi tutto <span style="color:#DC5D45">→</span></a></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">
+    <!-- CVLD_DESKTOP_START -->
+<div style="grid-column:1/-1;padding:14px 0 4px;font-family:'Nunito Sans',sans-serif;color:#6f6f6f;line-height:1.5"><div style="font-size:14px;font-weight:700;color:#1D1D1B;margin-bottom:4px">Nessuna selezione da mostrare al momento.</div><div style="font-size:13px">I suggerimenti tornano appena un evento soddisfa i criteri.</div></div>
+<!-- CVLD_DESKTOP_END -->
+  </div>
+  <!-- bouton "autres territoires" desktop retire le 2026-08-02 : la grille de la section porte desormais elle-meme l appel a action, en 4e case, quand un filtre territoire ne laisse que 3 territoires eligibles. Sans filtre les 4 territoires sont affiches et il n y a plus rien a "voir ailleurs". -->
+</div>
+
+</div>
+<!-- /wp:html -->
+
+<!-- 3 COLONNES : NOUVEAUTES / EN EVIDENCE / AGENDA A VENIR — chaque colonne est un
+     vrai bloc wp:group imbriqué (pas du HTML brut réparti entre plusieurs blocs
+     wp:html, qui casse la structure : chaque wp:html est un fragment indépendant
+     et ne peut pas garder une balise ouverte à travers un autre bloc). -->
+<!-- wp:group {"className":"as-home-desktop as-desktop-cols3"} -->
+<div class="wp-block-group as-home-desktop as-desktop-cols3" style="margin-top:0">
+
+<!-- wp:group {"className":"as-desktop-col"} -->
+<div class="wp-block-group as-desktop-col">
+<!-- wp:html -->
+<div>
+  <div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">Novità su Agenda Sabauda</div></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"6101","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":3,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"17","_element_id":"nouveautes"} /-->
+
+<!-- wp:html -->
+
+<!-- /wp:html -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"className":"as-desktop-col"} -->
+<div class="wp-block-group as-desktop-col">
+<!-- wp:html -->
+<div><div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">In evidenza</div></div></div>
+<!-- /wp:html -->
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1688","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":3,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"16","_element_id":"evidence"} /-->
+<!-- wp:html -->
+<div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0">
+    <a href="https://agendasabauda.eu/it/evenements/categorie/concerti-musica/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">Concerti &amp; Musica</div>
+    </a>
+    <a href="https://agendasabauda.eu/type-de-lieu/museo/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9.5" width="17" height="11.5" rx="0.5"></rect><path d="M6 9.5l2.8-6h6.4l2.8 6"></path><path d="M9 21v-5.5h6V21"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">Musei</div>
+    </a>
+    <a href="https://agendasabauda.eu/it/category/curiosita/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8.5c0-2.3 1.8-4 4-4s4 1.7 4 4c0 2-1.3 2.8-2.4 3.9c-1 1-1.6 1.9-1.6 3.3"></path><circle cx="12" cy="19.3" r="0.2"></circle></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">Curiosità</div>
+    </a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/per-bambini-famiglia/" style="text-decoration:none;background:#FBF7F0;border-radius:4px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <svg width="34" height="34" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="7" r="2.3"></circle><path d="M4 19.5v-2.8c0-2 1.8-3.5 4.5-3.5s4.5 1.5 4.5 3.5v2.8"></path><circle cx="17" cy="8.5" r="1.9"></circle><path d="M14.2 19.5v-2.3c0-1.6 1.3-2.9 2.8-2.9s2.8 1.3 2.8 2.9v2.3"></path></svg>
+      <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:14.5px;color:#1D1D1B;text-align:center">In famiglia</div>
+    </a>
+  </div>
+  <!-- bloc Ad Inserter #5 (300×250) -->
+  
+</div>
+<!-- /wp:html -->
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"1688","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":3,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"custom_query":true,"custom_query_id":"16","_element_id":"evidence-bottom"} /-->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"className":"as-desktop-col"} -->
+<div class="wp-block-group as-desktop-col">
+<!-- wp:html -->
+<div><div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">L'agenda in arrivo</div></div></div>
+<!-- /wp:html -->
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"6101","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"_element_id":"venir"} /-->
+<!-- wp:html -->
+<!-- bloc Ad Inserter #14 (300×250) — déplacé au milieu de la liste "L'agenda in arrivo" (entre les 4 premiers et les 4 derniers événements), cf. maquette. -->
+
+<!-- /wp:html -->
+<!-- wp:jet-engine/listing-grid {"lisitng_id":"6101","columns":"1","columns_tablet":"1","columns_mobile":"1","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"_element_id":"venir-bottom"} /-->
+<!-- wp:group {"className":"as-home as-cat-section"} -->
+<div class="wp-block-group as-home as-cat-section" style="margin-top:24px">
+<!-- wp:html -->
+<div>
+  <div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">Concerti &amp; Musica</div></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home as-cat-item"} -->
+<div class="wp-block-group as-home as-cat-item"><!-- wp:jet-engine/listing-grid {"lisitng_id":"1696","columns":"2","columns_tablet":"2","columns_mobile":"2","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"_element_id":"cat-concerts"} /--></div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div>
+  <div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">Mostre &amp; Patrimonio</div></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home as-cat-item"} -->
+<div class="wp-block-group as-home as-cat-item"><!-- wp:jet-engine/listing-grid {"lisitng_id":"1696","columns":"2","columns_tablet":"2","columns_mobile":"2","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"_element_id":"cat-expositions"} /--></div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div>
+  <div class="as-desktop-section-title" style="margin-bottom:16px"><div class="as-desktop-section-title__label">Gastronomia &amp; Sagre</div></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"className":"as-home as-cat-item"} -->
+<div class="wp-block-group as-home as-cat-item"><!-- wp:jet-engine/listing-grid {"lisitng_id":"1696","columns":"2","columns_tablet":"2","columns_mobile":"2","posts_num":4,"use_custom_post_types":true,"custom_post_types":["tribe_events"],"_element_id":"cat-gastronomie"} /--></div>
+<!-- /wp:group -->
+
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<div>
+  <a href="https://agendasabauda.eu/it/eventi/" style="display:block;text-decoration:none;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;color:#1D1D1B;margin:14px 0 36px">Tutti gli eventi <span style="color:#DC5D45">→</span></a>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+    <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;border:1px solid #1D1D1B;padding:11px 14px">
+      <span style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;letter-spacing:0.06em;color:#1D1D1B;text-transform:uppercase">Instagram</span>
+      <svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.2" cy="6.8" r="0.6" fill="#1D1D1B" stroke="none"></circle></svg>
+    </a>
+    <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;border:1px solid #1D1D1B;padding:11px 14px">
+      <span style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;letter-spacing:0.06em;color:#1D1D1B;text-transform:uppercase">Facebook</span>
+      <svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h-2.3c-1.9 0-3.2 1.3-3.2 3.3V10H7v3h2.5v7h3v-7h2.4l.4-3h-2.8V7.6c0-.7.3-1 1-1H15z"></path></svg>
+    </a>
+  </div>
+  <div style="border:1.5px solid #1D1D1B;padding:18px">
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:16px;line-height:1.2;color:#1D1D1B;margin-bottom:12px">Fare pubblicità su Agenda Sabauda</div>
+    <a href="mailto:contact@culturasabauda.eu" style="display:inline-block;background:#DC5D45;color:#F7F1E8;text-decoration:none;padding:9px 16px;font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:800;letter-spacing:0.02em">Scrivici</a>
+  </div>
+</div>
+<!-- /wp:html -->
+</div>
+<!-- /wp:group -->
+
+</div>
+<!-- /wp:group -->
+
+<!-- wp:html -->
+<!-- CATEGORIES SUPPLEMENTAIRES (2026-08-06, Franck) : 6 tuiles secondaires, sous "Agenda a venir", avant le bandeau newsletter -- volontairement plus discretes que les 2 blocs de tuiles principaux (icone 18px, padding reduit), pour ne pas surcharger la home. -->
+<div style="max-width:950px;margin:0 auto;padding:4px 20px 28px">
+  <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#6F6B62;text-transform:uppercase;margin-bottom:10px">Esplora altre categorie</div>
+  <div class="as-cat-supp-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px"><style>@media (min-width:600px){.as-cat-supp-grid{grid-template-columns:repeat(3,1fr) !important}}</style>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/cinema-it/" style="display:flex;align-items:center;gap:7px;text-decoration:none;background:#FBF7F0;border-radius:4px;padding:9px 12px;box-sizing:border-box;width:100%"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFkAAABQCAYAAAByBNlnAAABaklEQVR4nO3cQW7CMBQAUQdxC+T7H8zqOdoVG0QIjb/HP/K8dZXCxDiOFShFkiQp0lYGqfXxWyZp7WfY+zpju0K0q5+gwwOuEnfkyfj4hwaOiX374jjqHIhGBkIbGWBkgJEBRgbcS9IlUP3H+vx5jKxLznt0qDNxorweL0v03cgzX2CdcKIiPlHD5uSzb7IN3sSZ+YkaeuGjR39LdKJSXvhqkvky4kQdHWPLHoHQOx8fRZ6+hMtg9IDyZgRg5ADuwiUI7UgGGBlg5JmRsz27cGWOZICRAUYGTH+4pQ2Y+9+97p7/07ttGhJ5hYtk7WjhdAEwMsDIACMDjAwwMsDIACMDjAwwMsDIACMDjAwwMsDIACMDjAwwMsDIACMDjAwwMsDIACMDjHyVyCt9HS088gqPXxGcLgDLflmyglNcWGTn5X1OFwAjA4wMMDLAyAAjB9q7eTMy4KvbZtfAfVsPS//cenNvRpKkEu4PpWp4jBVwF30AAAAASUVORK5CYII=" width="18" height="18" style="display:block" alt=""><span style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:12.5px;color:#1D1D1B">Cinema</span></a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/conferenze-incontri/" style="display:flex;align-items:center;gap:7px;text-decoration:none;background:#FBF7F0;border-radius:4px;padding:9px 12px;box-sizing:border-box;width:100%"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAABbCAYAAAAvDeaQAAABrklEQVR4nO3bQXKDMAyF4ed/uEWH+x+s03O000WWEGMsxeb522KQZAcQJJGWZVmWcZWMIPv+9Vs79vv7JzSnMkqhWYWX0QqNLhwNXGzE8Rg5uYjjMnqxvY/PDMX2jMMISWTGQ2aYaXV7xN2U6OyemjV5KMm7BiK6pbxdcER/nFE0mlTrKYCCXV216FVGZpAZZAaZQWaQGWQGmUFmkBlkBplBZpAZZGZredDOeh0ToZxt7PFirWVyIr91JCLoJ73LGz3QWdHIDHqoo1VGg4m+diAzyAx6qKP7MSOdkxn3fpSgppDHfV26nxSU2dVtSjRCu4rMcLRh5kfAs9yRGWSGs40zfqybXwA8Fe8GzLTKNbkiM9QMurPK//vW7F877mz/mnFlhLeJdzuwKxO1yaitvHwOj3gBu5oT0QEiteRCVqDeWnMgO2APd2KXmS5IPSaZURLJilHUWe/V7j2ZRUEym4krioz+SjvkL+KjITPIDDKDy1PSS3HpsF7KjKt2ZwKYrdi7OaBJpfwVbx9gde9CZpAZZu6LWyAzpXXHT1/AWj9tRQM7mtQnnFrLsiyq8Yem48HwjLjXzgAAAABJRU5ErkJggg==" width="18" height="18" style="display:block" alt=""><span style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:12.5px;color:#1D1D1B">Conferenze &amp; Incontri</span></a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/feste-tradizioni/" style="display:flex;align-items:center;gap:7px;text-decoration:none;background:#FBF7F0;border-radius:4px;padding:9px 12px;box-sizing:border-box;width:100%"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGUAAABdCAYAAAC8VagPAAAC3ElEQVR4nO2dXW7EIAyEs1FvUfn+B7P2HK32YaVV1SRAjD1jPFKfmoDxZ/NXQretVCqVSqVSqVRKKZHvn5bnHvNNWVtyAkL1+RiG8lnwUUErOVUvfNCaEUdlPWaQ7tG7fETY0tn2Hhhn5UwlPlK2TobTGvktbX+9NwLiqu5DB8yorLVsnQSmJ/Lvtr9V/7V1n1XZq1Hvn5F3twn2tP7eC8iRvjwqiW4km53TMqV0raEpMUrkZNTZuOnSfZX6JjG31imlNvXOJk3WFiXbqf3weqAAzVtjmW2TrCw1XuyaFbYaHJ24HWRa8Apg1GHjtBaPHfLayd6RjEbcvo+QuRNGuzBvINJpp6d95t0XS7QrsJ0QYwqyg9JAYXGyNtrp3Z7wTGEBmAIKi7P1ws6IdoRu3b8bPPvEDNtCd3oUWDVejeAwTNndKvo833UHlN5wzswTOpZy7y8tMkcHnIOWsTCzLyvHSOB44FF3+JTYQwI8qIdCsXaMJM6W9JkiZFlCD0UIHQ4DhcF5qs8Hyi4EXKYokHOiAg0KCgMMD1t3xOiTm59PjL6P0s26RCZKYy1FnylM3RKCoLovFunkICsogHKDkqUL02y7xOxglPGEZGYwynwYLzMYL9VAD6iCAqgUXwfrQXfIupNADUU7DtIxAaKEogMTBSZANFDUcMaGDggeii44fYaffQlgJG+rQ1lR+8rdkoBmIUWmSMBNeUt/ycUe1emgRHVhAg6YJlOinBkROFRQIsBGBAIdFAHvepaEsgLQndFJ4uxc7/qWyRQhyRJqKJI4W8KgMEWut2gzpQcs21fJ1FCyKgSKZcRJx7/g8KjPQikyRZKNT3tmBwoprBSZ4n0ZzrKXG+jNr4SR/4iV8sKcWULJFthM8YpitCyBhaKBjkKABAnF+pjqnWciBAdFDxxlfSvq2fPRQOGgWAI7msGhZgjkHZKIzpI/9nrYCHPEBxFIqVQqlUql0matX6nun1s9Cx/mAAAAAElFTkSuQmCC" width="18" height="18" style="display:block" alt=""><span style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:12.5px;color:#1D1D1B">Feste &amp; Tradizioni popolari</span></a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/mercati-fiere/" style="display:flex;align-items:center;gap:7px;text-decoration:none;background:#FBF7F0;border-radius:4px;padding:9px 12px;box-sizing:border-box;width:100%"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFkAAABaCAYAAADTn/oBAAAB40lEQVR4nO2bTbKDIBAGNZVbpLj/waic473KIhsrCsyMnwjdax2lGQb8YVkAAAAAIlmtJ6b0+ltuRM5vc1u9rDMIvrrDHq0XmF2wxUGzZGgXjWQBTZIpFTYfZLIAJAtAck+Sqcd21mjJVz5ZXZUcpTY/l8HJjk6P6iBqsoAqydRjH2Ty3ST3NumpKI10MlmQNEXJ1GM/ZLKAp2popU3dsg7Fb5w71f8mMUccNTodxKmVtRejVfavONZ7r41zarn43GAq3GRNI46OqblG6biIJDjiETXhbY9vOT/tCKgVWLqetyO9hAyT0cib7PWWjOFfEFmITrDdcnGn2bt3WCdfLZlsbsO8hEO0qFwg2ueoeXKbeWlnTUDZX53Zsfb8Fcfb2Z84ETFqjjtVcs1NpIpYUe8W9mJFxOhacjSet31ntWu4J77c4UMUDyMCkCwAyQKQLADJApAsAMkCkCwAyQKQLADJApAsgA3sAsjkO0vu8ZXjVZDJApAsAMkCkCwAyQKQLADJApAsAMkCkCwAyQKQLADJApAsAMmCHQRIFoBkwccIJAs47U/7XnZJ5Q4+gw23naHHzqZcCECyACQLQLIAJPcouYcl0RSZPKvobGz3OsI6VIEnsYbNyBTY+bOOXAAAgMXCP3VPyeCpWzbLAAAAAElFTkSuQmCC" width="18" height="18" style="display:block" alt=""><span style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:12.5px;color:#1D1D1B">Mercati &amp; Fiere</span></a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/spettacolo-dal-vivo/" style="display:flex;align-items:center;gap:7px;text-decoration:none;background:#FBF7F0;border-radius:4px;padding:9px 12px;box-sizing:border-box;width:100%"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABYCAYAAABWO7HcAAACO0lEQVR4nO2cXW7EMAiE41VuUXH/g6Geo1UeVqqqpvhnwDieed3dgL/YQLCzx0FRFEVRq6pEGBH5+DoCpfoJG1dZFUIUvPJkGAhgZTcgrZDKzmBqIL2OG+0E5z/dAtpNcjMhCMgQARkiIEPnsVhlawmdXM6VYdTaH4F2rg7EW4xBhgjIEAFlyGIo/RVsvWOgKyCpyB7WAK1r/PzcA5YLIGlIq+/v/h5cT2q+u1aqGCSdNcf1u/dvR4s9ZLEIBSQAx1CDQ10HBkiS9o9q/WpumKEdWFWvXR8hasVCMQqQJptxKH8ggAQYh66BWYOr/RzhF2zbRw2nrELQ6uP0zIjRDHapRBiZJYTvDNK7FooSVUlrwqUTqRN913TyDkarfev7oe0OBcK7s4Fe6mVWrXN0Cg0Acj7IKwi3gJplf2pPWpJlvqE0r5tms20LRa284U2AdMNZtOUM0oYbvSWgFjUD0sWXWav/nEEegHTRWdTj9yvSmA6Cfbdja9qyKJXoSlhBA2u13Wu3zHpc0E6Ho+0NB2kNHGg0nEtTpnvLIEavPbqkH/9CnQ4CeuzOKsonaKGoiSCl2nrOBin1EbzZkNC23Z7FdAIkD5uPeG9eHW/Gsq8pRc3S8GUgjkWlh6ZmHAl64BzR1IaZBrYtesWOoiECMkRAhgjI0LQAKcHHWNICkol9IgQ0F0CSqHmWpqOYDQwKEoP0ruekUb5xBhnaApAyBvnp0ds+6dJ87ztmmU/2u911cf7LCIqiKOqgvgGYQUdlGp8OwQAAAABJRU5ErkJggg==" width="18" height="18" style="display:block" alt=""><span style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:12.5px;color:#1D1D1B">Spettacolo dal vivo</span></a>
+    <a href="https://agendasabauda.eu/it/evenements/categorie/sport-it/" style="display:flex;align-items:center;gap:7px;text-decoration:none;background:#FBF7F0;border-radius:4px;padding:9px 12px;box-sizing:border-box;width:100%"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGYAAABDCAYAAABuvnDnAAACXUlEQVR4nO1bW27EMAh0UG9R+f4HQ3uOVit11SptE2PzGBLmOzGG4RFs0lqhUCgUCoVCIR5bA0Lv7x8NFMyP7ZbEIJMSQRA1AGQhxXOvEMQUfqOIAY2aIgYURQwoihhQ0B17hAyAIOZFThH0jbd2UfBkFKL0VDARo22Ubmxg6/WhiEEAg9Q7GGIsPLCDpKW0xGQ2YKriP2ro2bTB/NhGZTyfQ0lPEmzZvJ6/jCyVJyFnRhdt8rdMaYh3yktkWxMzK8ukxmSqDX1gr89nNHTSWCdNE8b/eKFG1FjrMxNBlJkUjb176DMjg7KnLl4gzVMfqSzKQEo3OKqJ0EciE6LBXFWKhVGTwckoawrbI1MTOWJPsiTldcdiWbyvCsp26dUVU1okzpzskJiZY4+/jHN1T+dJRzyyi1rERDVvVlEzs45mxKb5KkPv1DXeHSImw1EHaq3RODCFiRjtDwZeuOuRvmPhgMvEoEXLVVIaRMRYpR4WrhudAs2JsbrAuhMgIsYS7HhzeRliKloCjmRaQjDQvilKSSQjrO7TQheKOFTMQkrkfrfIwb1ZeZZF/Wjd/TqSZ6UyVSYxNaYdLT+xWTC5qSkXosasKI70mdqV5spWyT4kxuMuHYkUJCdT/yqTTCF6zghzMifbsnk1B8yRncm0WDcVMaxQfFF0OdNnKJUh9B0MsAdPfehuhmEAPUb2QBmUYmW5keSMyiZ0pRjkEs1bJuykPDsZzvsXRfM+xtJw7OjNHrJmZEDNFEcX5m4QPbM6qRsC4Y/fVSAceLrmcTQCzmD5y3qhUCgUCoVC+4lPnKmjMndmRMoAAAAASUVORK5CYII=" width="18" height="18" style="display:block" alt=""><span style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:12.5px;color:#1D1D1B">Sport</span></a>
+  </div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:html -->
+<!-- NEWSLETTER (bandeau pleine largeur) -->
+<div class="as-desktop-newsletter-band">
+  <div style="flex:1">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#F7F1E8;text-transform:uppercase;margin-bottom:8px">Ogni venerdì mattina</div>
+    <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:30px;line-height:1.05;color:#F7F1E8;letter-spacing:0.02em;margin-bottom:8px">L'essenziale dei quattro territori, nella tua casella di posta</div>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:13.5px;line-height:1.55;color:rgba(251,247,239,0.92);max-width:46ch">Una lettera breve, scritta a mano: gli appuntamenti da non perdere, un indirizzo dove mangiare, un luogo da riscoprire. Senza pubblicità, disiscrizione con un clic.</div>
+  </div>
+  <div style="flex-shrink:0;width:400px">
+    <form action="https://agendasabauda.eu/it/iscriviti-alla-newsletter/" method="get" style="display:flex;gap:10px">
+      <input type="email" placeholder="Il tuo indirizzo e-mail" style="flex:1;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;background:#F7F1E8;border:1px solid transparent;font-family:'Nunito Sans',sans-serif;font-size:13px;color:#1D1D1B;border-radius:2px">
+      <button type="submit" style="box-sizing:border-box;height:48px;padding:0 24px;background:#1D1D1B;color:#F7F1E8;border:0;font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;border-radius:2px;white-space:nowrap;cursor:pointer">Iscriviti</button>
+    </form>
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:11px;color:rgba(251,247,239,0.85);margin-top:10px">Iscriviti per ricevere ogni settimana l'essenziale dei quattro territori.</div>
+  </div>
+</div>
+
+<!-- Le footer vit maintenant uniquement dans site-header-footer.php (footer
+     unique sur toutes les pages, y compris l'Accueil) — celui bâti ici (5
+     colonnes) a été retiré pour éviter le doublon. -->
+
+<!-- BARRE PUB STICKY (desktop) — bloc Ad Inserter #6 (728×90) -->
+<input type="checkbox" id="as-desktop-adbar-toggle" class="as-desktop-adbar-toggle">
+<div class="as-desktop-sticky-ad">
+  <div class="as-desktop-sticky-ad__inner">
+    <div style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:9px;color:#6F6B62;letter-spacing:0.14em;text-transform:uppercase;flex-shrink:0">Pubblicità</div>
+    <div style="flex:1;min-height:70px;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-family:'Nunito Sans',sans-serif;font-size:11px;color:#6F6B62">[adinserter block="6"]</div>
+    <label for="as-desktop-adbar-toggle" aria-label="Chiudi la pubblicità" style="cursor:pointer;flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center">
+      <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>
+    </label>
+  </div>
+</div>
+<!-- /wp:html -->
+</div>
+
+<!-- wp:html -->
+<div class="as-home">
+<!-- 2026-09-06 (Franck, maquette validee) : sur mobile, Ca vaut le deplacement passe APRES le territoire choisi (A lire / En evidence / Agenda a venir) et non plus avant Les 7 prochains jours. Suivez-nous, recherche bis et publicite suivent. La newsletter (bis) et les tuiles secondaires (doublons de blocs deja visibles) sont retirees. -->
+<!-- CA VAUT LE DEPLACEMENT (transfrontalier) — PLACEHOLDER v1, statique.
+     Mécanisme de données pas encore tranché avec Franck (sélection manuelle de
+     2 événements "vedettes" vs champ auto) — voir build-recipes/homepage-mobile.md.
+     Structure/styles fidèles à la source, contenu à remplacer une fois décidé. -->
+<div style="padding:0 20px">
+  <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #1D1D1B;padding-top:10px;margin-bottom:14px">
+    <div style="font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#1D1D1B;text-transform:uppercase">Vale il viaggio</div>
+  </div>
+  <!-- CVLD_MOBILE_START -->
+<div style="padding:14px 0 4px;font-family:'Nunito Sans',sans-serif;color:#6f6f6f;line-height:1.5"><div style="font-size:13.5px;font-weight:700;color:#1D1D1B;margin-bottom:4px">Nessuna selezione da mostrare al momento.</div><div style="font-size:12.5px">I suggerimenti tornano appena un evento soddisfa i criteri.</div></div>
+<!-- CVLD_MOBILE_END -->
+  <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;background:#1D1D1B;color:#F7F1E8;padding:13px 18px 16px;margin-bottom:24px;border:none;clip-path:polygon(0 0,100% 0,100% 88%,94% 100%,88% 89%,82% 100%,76% 89%,70% 100%,64% 89%,58% 100%,52% 89%,46% 100%,40% 89%,34% 100%,28% 89%,22% 100%,16% 89%,10% 100%,4% 89%,0 100%);font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.02em">
+    <span>Piemonte, Valle d'Aosta, Nizza: guarda negli altri territori</span>
+    <svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="#F7F1E8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-left:10px"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="13 6 19 12 13 18"></polyline></svg>
+  </a>
+</div>
+
+<!-- SUIVEZ-NOUS — URLs réelles à renseigner par Franck (placeholders # pour l'instant). -->
+<div style="padding:0 20px 24px">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <a href="#" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;border:1px solid #1D1D1B;padding:12px 16px;border-radius:3px">
+      <span style="font-family:'Nunito Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:0.08em;color:#1D1D1B;text-transform:uppercase">Seguici su Instagram</span>
+      <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="#1D1D1B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.2" cy="6.8" r="0.6" fill="#1D1D1B" stroke="none"></circle></svg>
+    </a>
+  </div>
+</div>
+
+<!-- RECHERCHE (bis) -->
+<form action="https://agendasabauda.eu/" method="get" style="padding:0 20px 24px;display:flex;gap:8px">
+  <input type="text" name="s" placeholder="Cerca…" style="flex:1;padding:10px 14px;background:#fff;border:1px solid #E3DCCE;border-radius:3px;font-family:'Nunito Sans',sans-serif;font-size:13px;color:#1D1D1B">
+  <button type="submit" style="padding:10px 16px;background:#1D1D1B;color:#F7F1E8;border:0;border-radius:3px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;cursor:pointer">Cerca</button>
+</form>
+
+<!-- FAIRE DE LA PUBLICITE -->
+<div style="margin:0 20px 24px;border:1.5px solid #1D1D1B;padding:18px">
+  <div style="font-family:'La Semplicita','Saira Condensed',sans-serif;font-weight:600;font-size:18px;line-height:1.2;color:#1D1D1B;margin-bottom:12px">Fare pubblicità su Agenda Sabauda</div>
+  <a href="mailto:contact@culturasabauda.eu" style="display:inline-block;background:#DC5D45;color:#F7F1E8;text-decoration:none;padding:9px 18px;font-family:'Nunito Sans',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:0.02em">Scrivici</a>
+</div>
+
+<!-- Le footer vit maintenant uniquement dans site-header-footer.php (footer
+     unique sur toutes les pages, y compris l'Accueil) — celui bâti ici a été
+     retiré pour éviter le doublon. On garde juste l'espace pour la barre pub
+     sticky. -->
+<div style="height:64px"></div>
+
+<!-- BARRE PUB STICKY (mobile) — bloc Ad Inserter #12 -->
+<input type="checkbox" id="as-adbar-toggle" class="as-adbar-toggle">
+<div class="as-sticky-ad" style="background:#F7F1E8;border-top:1px solid #1D1D1B;padding:10px 14px;display:flex;align-items:center;gap:10px">
+  <div style="flex:1;display:flex;align-items:center;gap:10px;min-width:0">
+    <div style="width:60px;height:42px;flex-shrink:0;background:#FBF7F0;border:1px solid #E3DCCE;display:flex;align-items:center;justify-content:center">
+      <div style="font-family:'Nunito Sans',sans-serif;font-size:9px;font-weight:800;color:#6F6B62;text-transform:uppercase;letter-spacing:0.05em">ADV</div>
+    </div>
+    <div style="min-width:0">
+      <div style="font-family:'Nunito Sans',sans-serif;font-size:8.5px;font-weight:700;color:#6F6B62;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px">Pubblicità</div>
+      <div style="font-family:'Nunito Sans',sans-serif;font-size:12px;font-weight:700;color:#1D1D1B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">[adinserter block="12"]</div>
+    </div>
+  </div>
+  <label for="as-adbar-toggle" aria-label="Chiudi la pubblicità" style="cursor:pointer;flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center">
+    <svg width="13" height="13" viewbox="0 0 24 24" fill="none" stroke="#6F6B62" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>
+  </label>
+</div>
+</div>
+<!-- /wp:html -->

@@ -1,0 +1,35 @@
+# Route Traefik (provider FICHIER) — backoffice sur le sous-domaine DÉDIÉ.
+#
+# URL propre et durable : https://backoffice.agendasabauda.eu
+# (remplace l'URL sslip.io pour BACKOFFICE_BASE_URL + la Slash Command Slack).
+# La route sslip existante (traefik-agenda-sslip.yml) reste en place : les deux
+# noms pointent vers le même backoffice gunicorn — on ne casse rien.
+#
+# Prérequis DNS : A  backoffice.agendasabauda.eu → <IP du VPS>  (déjà fait).
+#
+# Déploiement sur le VPS :
+#   cd /root/evenements && git pull
+#   sudo cp deploy/traefik-backoffice.yml /docker/traefik/dynamic/
+#   # Traefik recharge à chaud (providers.file.watch=true) et émet le certificat
+#   # Let's Encrypt tout seul (challenge HTTP-01 sur :80). Pas de redémarrage.
+#
+# Vérif : curl -I https://backoffice.agendasabauda.eu/login   (attendu : HTTP 200)
+#
+# Noms de routeur/service UNIQUES (backoffice*) pour éviter toute collision avec
+# la route « agenda »/« agenda-sslip » déjà chargée par le provider fichier.
+
+http:
+  routers:
+    backoffice:
+      rule: "Host(`backoffice.agendasabauda.eu`)"
+      entryPoints:
+        - websecure
+      service: backoffice
+      tls:
+        certResolver: letsencrypt
+  services:
+    backoffice:
+      loadBalancer:
+        servers:
+          # Traefik tourne en network_mode host → joint l'app sur la loopback.
+          - url: "http://127.0.0.1:8098"

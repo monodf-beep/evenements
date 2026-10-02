@@ -1,0 +1,647 @@
+#!/usr/bin/env python3
+"""Publication EN LOT vers Agenda Sabauda (mode « masse »).
+
+Boucle publish_to_as() sur les événements RETENUS, DATÉS et À VENIR. ⚠️ CORRIGÉ
+2026-07-31 : contrairement à ce que disait cette docstring, le payload envoyé ne fixe
+PAS de "status" → cs-publish.php applique son défaut (`'publish'`, cf. deploy/wordpress/
+cs-publish.php) : les événements partent EN LIGNE PUBLIQUE immédiatement, PAS en
+brouillon. Aucune relecture humaine n'a lieu entre l'écriture (enrich.py) et la mise en
+ligne dans ce chemin — s'appuie entièrement sur les garde-fous en amont (eventness,
+complétude, panel de relecture dans enrich.py) pour la qualité.
+
+Principes :
+  - RETENU      : statut IN ('evaluated','published_cs','published_sub'), non-doublon.
+  - DATÉ        : date_event_start non vide (sinon TEC daterait « aujourd'hui »).
+  - À VENIR     : fin (ou début) >= aujourd'hui — on n'inonde pas l'agenda de passé.
+  - RADAR       : une fiche d'origine radar (presse / Google News) n'est publiée QUE si
+                  une page officielle a été résolue pour elle (cf. utils/radar.py). Sinon
+                  elle est RETENUE — jamais supprimée, jamais rejetée — et repartira dès
+                  qu'un run d'enrichissement aura trouvé sa page. Levier : --allow-radar.
+  - IDEMPOTENT  : on saute ceux déjà sur l'agenda (wp_post_id_as), sauf --update.
+  - BORNÉ       : --cap limite le nombre par run ; --delay espace les envois (OVH mutualisé).
+  - On enregistre wp_post_id_as + published_as_date, SANS toucher au statut éditorial
+    (la présence sur l'agenda est tracée par wp_post_id_as, pas par le statut).
+
+Exemples :
+  .venv/bin/python3 -m scripts.publish_batch_as --dry-run              # voir la sélection
+  .venv/bin/python3 -m scripts.publish_batch_as --cap 30               # publier 30 brouillons
+  .venv/bin/python3 -m scripts.publish_batch_as --min-score 5 --cap 100
+"""
+from __future__ import annotations
+import argparse
+import os
+import sqlite3
+import sys
+import time
+from datetime import date
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from utils.logger import get_logger
+from utils import completeness as comp
+from utils import radar
+from utils.sources import is_excluded_event, load_excluded_events_filter
+from utils import saison
+from utils import substance
+from scripts.perimetre import ville_hors_perimetre
+from scripts.publisher import build_post
+from scripts.publisher_as import publish_to_as, wp_site_joignable
+# L'héritage de la source d'une traduction vit dans publisher_as depuis le 24/09 (tous
+# les appelants de publish_to_as en ont besoin) ; importé ici pour l'appel explicite.
+from scripts.publisher_as import heriter_source_traduction
+
+log = get_logger("publish_batch_as")
+DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "events.db"))
+
+
+def _select(conn, args, today: str):
+    if args.ids:
+        # Ciblage PRÉCIS (ex. republier après un correctif de contenu, cf.
+        # scripts/audit_bad_sources.py) : ignore les filtres de sélection habituels,
+        # republie ces ids tels quels (déjà publiés ou non).
+        ph = ",".join("?" * len(args.ids))
+        return conn.execute(
+            f"SELECT * FROM events_raw WHERE id IN ({ph})", args.ids).fetchall()
+    where = [
+        "statut IN ('evaluated','published_cs','published_sub')",
+        "duplicate_of IS NULL",
+        "COALESCE(date_event_start,'') <> ''",                 # daté
+        # PAS DE PUBLICATION SANS UN MOT RÉDIGÉ (22/09/2026).
+        #
+        # La charte §3 le dit depuis toujours : « score < 7 = vrai événement →
+        # catalogue, JAMAIS la description brute ». Le code ne le vérifiait nulle part.
+        # `publisher.build_post` donne la priorité à l'article enrichi mais RETOMBE sur
+        # le titre + la description bruts quand `enrich_data` est vide, et cette
+        # sélection-ci ne regardait pas `enrich_data` : une fiche évaluée et datée
+        # partait donc en ligne avec le texte de sa source, tel quel.
+        #
+        # Ce n'était pas théorique. Mesuré le 22/09 sur la base de production :
+        # 271 fiches publiées en trente jours, dont 17 SANS enrichissement (6,3 %), et
+        # 6 d'entre elles encore à venir. Le déclencheur : 52 fiches italiennes des
+        # Giornate Europee del Patrimonio venaient d'entrer d'un coup — le texte du
+        # ministère, en italien, serait parti sur le versant français.
+        #
+        # CE VERROU RETARDE, IL NE GARE PAS (règle 3 : qui rouvre ?). Une fiche retenue
+        # ici garde `statut='evaluated'`, et `enrich.py` sélectionne exactement ce
+        # statut avec ENRICH_MIN_SCORE=1 : le cron du lendemain la rédige, et elle part
+        # au passage suivant. Le compteur ci-dessous rend l'attente VISIBLE, parce
+        # qu'un état qui sort une fiche d'une file la sort aussi de tous les bilans.
+        "COALESCE(enrich_data,'') <> ''",
+    ]
+    params: list = []
+    if not args.include_past:
+        where.append("COALESCE(date_event_end, date_event_start) >= ?")
+        params.append(today)
+    if not args.update:
+        where.append("COALESCE(wp_post_id_as,0) = 0")          # pas déjà sur l'agenda
+    if args.min_score is not None:
+        where.append("COALESCE(llm_score,0) >= ?")
+        params.append(args.min_score)
+    sql = (f"SELECT * FROM events_raw WHERE {' AND '.join(where)} "
+           f"ORDER BY date_event_start ASC LIMIT ?")
+    params.append(args.cap)
+    rows = conn.execute(sql, params).fetchall()
+
+    # Ce que le verrou d'enrichissement a retenu : mêmes conditions, sauf celle-là.
+    # Sans ce compte, une file qui gonfle ne se verrait nulle part.
+    sans = [w for w in where if not w.startswith("COALESCE(enrich_data")]
+    retenues = conn.execute(
+        f"SELECT COUNT(*) FROM events_raw WHERE {' AND '.join(sans)}",
+        params[:-1]).fetchone()[0] - conn.execute(
+        f"SELECT COUNT(*) FROM events_raw WHERE {' AND '.join(where)}",
+        params[:-1]).fetchone()[0]
+    if retenues:
+        log.info("En attente de rédaction : %d fiche(s) éligibles mais sans enrich_data "
+                 "(elles partiront après le passage d'enrich.py).", retenues)
+    return rows
+
+
+def retenir_creations_brutes(rows: list) -> tuple:
+    """(à publier, retenues) : une CRÉATION sans texte rédigé est retenue — voir le verrou
+    de rédaction dans main(). Une fiche déjà en ligne, ou une traduction, passe."""
+    def brute(ev):
+        return (not int(ev.get("wp_post_id_as") or 0)
+                and not int(ev.get("translation_of") or 0)
+                and not (ev.get("enrich_data") or "").strip())
+    return [ev for ev in rows if not brute(ev)], [ev for ev in rows if brute(ev)]
+
+
+def _heriter_source_traduction(event: dict, conn) -> None:
+    """Complète `event['url_source']` avec la source publiable de l'ORIGINAL
+    si c'est une traduction dont la source propre est vide — MODIFIE `event`
+    en place.
+
+    Incident du 16/09, corrigé une première fois puis RE-MESURÉ FAUX : ma
+    première version copiait `radar.official_anchor(parent)` (lit UNIQUEMENT
+    `url_officiel` + `enrich_data.source`) dans `event['url_officiel']`. Sur
+    Chopin (id 525) et Egitto (id 5147), `url_officiel` est VIDE sur l'original
+    ET sur la traduction — leur statut de source officielle vient de
+    `url_source` (tier « officielle » de sources.txt : opera-nice.org,
+    enteturismolmr.sequar.com), un champ qu'`official_anchor` ne lit pas.
+    Vérifié en production après déploiement : le refus « source non publiable
+    écartée » persistait à l'identique — la première version ne changeait
+    RIEN pour ce cas, exactement celui qu'elle visait à réparer.
+
+    Le bon calcul est celui que `publisher_as._source_publiable` fait déjà
+    pour l'original lui-même (officiel PUIS url_source, filtré tracking) — on
+    le RÉUTILISE sur l'original plutôt que d'en reprendre un sous-ensemble, et
+    on écrit le résultat dans `url_source` de la traduction (pas
+    `url_officiel`, qui a son propre filtre de domaine — `_is_official_host`
+    — que ce résultat ne passerait pas forcément)."""
+    # Le calcul vit désormais dans publisher_as (24/09) : publish_to_as l'applique à
+    # TOUS ses appelants — refresh_deplacement effaçait la source à 10h55. Délégué ici
+    # plutôt que dupliqué, pour qu'il n'y ait qu'un seul calcul (journal du 08/09).
+    heriter_source_traduction(event, conn)
+
+
+# Confiance d'une image, du plus sûr au moins sûr. Sert à décider si une traduction doit
+# reprendre l'image de son original : on ne remonte JAMAIS vers du moins sûr.
+_RANG_IMAGE = {"manual": 5, "og": 4, "page": 4, "web": 3,
+               "commons": 2, "europeana": 2, "mail": 2, "banner": 1, "": 0}
+
+
+def _heriter_image_traduction(event: dict, conn) -> None:
+    """Une traduction montre la MÊME image que son original — MODIFIE `event` en place.
+
+    2026-09-21, fiche « Orlando » : la version française portait l'affiche du spectacle
+    (og:image de opera-nice.org/agenda/orlando/), l'italienne un scan du LIVRET IMPRIMÉ du
+    XVIIIe siècle trouvé sur Wikimedia Commons — deux colonnes de texte, illisibles en
+    vignette. Même événement, deux images.
+
+    L'origine n'est pas un bug isolé mais un enchaînement : `translate_events` copie bien
+    `url_image` à la CRÉATION de la traduction (l. 901) ; si l'original n'a alors qu'une
+    bannière, la traduction hérite de la bannière, `visuals` la reprend plus tard comme
+    « fiche à compléter » — et là, `url_source` vaut `translated:<id>:<lang>` : il n'y a
+    aucune page à lire, la chaîne saute donc directement à l'étage Commons. Quand
+    l'original reçoit enfin sa vraie affiche, plus rien ne réaligne la traduction.
+
+    D'où l'héritage ici, au même endroit que celui de la source (`_heriter_source_traduction`,
+    incident du 16/09) : à la publication, point de passage obligé. On ne copie que vers le
+    HAUT (`_RANG_IMAGE`) — une image posée à la main sur la traduction, ou une vraie photo
+    quand l'original n'a qu'une bannière, n'est jamais écrasée."""
+    tof = event.get("translation_of") or 0
+    if not tof:
+        return
+    parent_row = conn.execute(
+        "SELECT url_image, image_source, image_credit FROM events_raw WHERE id=?", (tof,)).fetchone()
+    if not parent_row:
+        return
+    parent = dict(parent_row)
+    img_parent = (parent.get("url_image") or "").strip()
+    if not img_parent or img_parent == (event.get("url_image") or "").strip():
+        return
+    rang_parent = _RANG_IMAGE.get((parent.get("image_source") or "").strip(), 0)
+    rang_trad = _RANG_IMAGE.get((event.get("image_source") or "").strip(), 0)
+    if rang_parent <= rang_trad:
+        return
+    log.info("[%s] image héritée de l'original %s (%s > %s) : %s", event.get("id"), tof,
+             parent.get("image_source"), event.get("image_source") or "aucune", img_parent[:70])
+    event["url_image"] = img_parent
+    event["image_source"] = parent.get("image_source") or ""
+    event["image_credit"] = parent.get("image_credit") or ""
+    conn.execute("UPDATE events_raw SET url_image=?, image_source=?, image_credit=? WHERE id=?",
+                 (event["url_image"], event["image_source"], event["image_credit"], event["id"]))
+    conn.commit()
+
+
+def _porte_radar(conn, rows: list[dict], allow_radar: bool) -> tuple[list[dict], list[tuple]]:
+    """VERROU « radar = DÉTECTION seule » (config/sources.txt, en-tête du tier radar).
+
+    POURQUOI ICI, ET NULLE PART AILLEURS
+    ------------------------------------
+    Le contrat est déclaré depuis toujours et n'était appliqué QUE côté crédit/lien
+    (publisher_as l.148-150 : on ne cite pas le journal). Rien n'empêchait une fiche
+    née d'un article de presse de devenir un événement publié : « Chambéry. Cirque,
+    danse, théâtre, déambulations : ce qu'il faut savoir » → WP#1097, « Annecy.
+    Défilé, concert, feu d'artifice, animations » → WP#1105, plus des faits divers
+    du Dauphiné (collisions, incendies), des comptes-rendus de conseil municipal et
+    des revues de presse.
+
+    Le verrou porte sur la PUBLICATION, jamais sur la collecte : on continue de
+    scraper les radars, c'est toute leur utilité (détecter, puis dédoublonner vers
+    la fiche officielle — dedupe.py:TIER_RANK met radar à 0, il ne gagne jamais un
+    groupe contre une source officielle). Il ne peut pas non plus vivre dans
+    enrich.py : c'est justement enrich qui TENTE la résolution vers la page
+    officielle (fetch_official_material) — avant lui, on ne sait pas encore si elle
+    aboutira.
+
+    RIEN N'EST SUPPRIMÉ NI REJETÉ : la fiche reste en base, telle quelle, avec son
+    statut. Réversible d'un flag : --allow-radar.
+
+    ⚠️ MAIS LA RÉTENTION EST DÉFINITIVE SANS GESTE — et il faut le dire, parce que
+    l'inverse serait rassurant et faux. Une fiche retenue ici est DÉJÀ enrichie, or
+    `scripts/enrich.py::select_events` (l.1155) n'auto-sélectionne que les fiches dont
+    `enrich_status` est vide. Aucun run automatique ne la reprendra donc JAMAIS : elle
+    ne « repartira » pas toute seule le jour où sa page officielle deviendrait
+    trouvable. Le seul chemin de sortie est un ré-enrichissement PAR ID EXPLICITE :
+
+        .venv/bin/python -m scripts.enrich <id> [<id> …]
+
+    C'est ce que doit faire Franck pour les fiches retenues qui sont de VRAIS
+    événements — l'audit du 2026-08-02 en a compté 9 en file, dont plusieurs
+    manifestement légitimes (Aosta Pride, Raggamuffin Festival, Risò, un spectacle à
+    La Giettaz). Le verrou dit « pas de page officielle », pas « pas un événement » :
+    il ne remplace pas le jugement éditorial, il empêche de publier sans matière.
+
+    NE S'APPLIQUE QU'AUX CRÉATIONS (`wp_post_id_as` vide). Une fiche radar DÉJÀ en
+    ligne n'est pas retenue ici : bloquer sa republication ne la retirerait pas du
+    site, ça y figerait seulement une version plus ancienne — on la signale, et son
+    retrait éventuel reste une décision explicite (voir scripts/audit_radar_published.py).
+    """
+    if allow_radar:
+        return rows, []
+    kept, blocked = [], []
+    for ev in rows:
+        # Traduction : source_type/source_name sont hérités, mais pas url_officiel
+        # (translate_events l.476-486) → on juge sur l'ancre de l'ORIGINAL.
+        parent = None
+        tof = ev.get("translation_of") or 0
+        if tof and radar.is_radar(ev):
+            row = conn.execute("SELECT * FROM events_raw WHERE id=?", (tof,)).fetchone()
+            parent = dict(row) if row else None
+        reason = radar.publication_block_reason(ev, parent)
+        if reason and (ev.get("wp_post_id_as") or 0) > 0:
+            log.warning("[%s] fiche RADAR non résolue DÉJÀ en ligne (WP#%s) — republiée "
+                        "quand même (bloquer figerait une version plus ancienne) : %s",
+                        ev.get("id"), ev.get("wp_post_id_as"), (ev.get("title") or "")[:60])
+            reason = None
+        (blocked if reason else kept).append((ev, reason) if reason else ev)
+    return kept, blocked
+
+
+def _ranger_gel(conn, event_id: int, gel, geles: list, restaures: list) -> None:
+    """Recopie en base ce que le SITE vient de dire du gel de cette fiche.
+
+    Règle 1 : un champ en base ne prouve rien sur l'état du site. C'est donc WordPress
+    (deploy/wordpress/cs-gel-texte.php) qui détecte la retouche et la fait respecter ;
+    ces colonnes ne sont qu'une COPIE, utilisée en amont pour ne pas dépenser un appel
+    LLM sur une fiche dont le SEO ne pourra pas être poussé (scripts/seo_batch.py) et
+    pour compter la file garée.
+
+    `gel` à None = la réponse ne contenait pas la clé : le mu-plugin n'est pas en ligne.
+    On NE TOUCHE À RIEN dans ce cas — « pas de gel » et « on ne sait pas » ne doivent pas
+    rendre le même résultat, sinon un déploiement oublié dégèlerait tout en silence."""
+    if not isinstance(gel, dict):
+        return
+    if gel.get("gele"):
+        conn.execute(
+            "UPDATE events_raw SET wp_gel_at=?, wp_gel_champs=?, wp_gel_motif=? WHERE id=?",
+            (gel.get("depuis") or "", ",".join(gel.get("champs") or []),
+             gel.get("motif") or "", event_id))
+        geles.append(event_id)
+    else:
+        # Dégelée sur le site (case décochée, ou scripts/gel_texte.py --degel) : la copie
+        # locale doit suivre, sinon seo_batch continuerait d'écarter la fiche pour
+        # toujours — le cul-de-sac de la règle 3, cette fois du côté du rouvreur.
+        conn.execute("UPDATE events_raw SET wp_gel_at=NULL, wp_gel_champs=NULL, "
+                     "wp_gel_motif=NULL WHERE id=? AND wp_gel_at IS NOT NULL", (event_id,))
+    if gel.get("restaures"):
+        restaures.append(event_id)
+    conn.commit()
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Publication en lot vers Agenda Sabauda.")
+    parser.add_argument("--cap", type=int, default=50, help="Nombre max d'événements par run.")
+    parser.add_argument("--ids", type=int, nargs="+", default=None,
+                        help="Ne republie que ces ids précis (ignore statut/date/score, "
+                             "republie même si déjà publiés). Ex. après un correctif de "
+                             "contenu — cf. scripts/audit_bad_sources.py.")
+    parser.add_argument("--min-score", type=int, default=None,
+                        help="Score minimum (défaut : aucun seuil — toute la masse retenue).")
+    parser.add_argument("--delay", type=float, default=1.5,
+                        help="Pause (s) entre deux envois, pour ménager l'hébergement.")
+    parser.add_argument("--update", action="store_true",
+                        help="Réactualiser aussi les événements déjà sur l'agenda.")
+    parser.add_argument("--include-past", action="store_true",
+                        help="Inclure les événements déjà terminés (déconseillé).")
+    parser.add_argument("--allow-incomplete", action="store_true",
+                        help="Publier MÊME les événements incomplets (contourne la porte "
+                             "qualité). Par défaut, seuls les événements COMPLETS partent.")
+    parser.add_argument("--allow-radar", action="store_true",
+                        help="Publier MÊME les fiches d'origine radar (presse / Google News) "
+                             "dont aucune page officielle n'a été résolue. Par défaut elles "
+                             "sont RETENUES (jamais supprimées) : le radar sert à DÉTECTER, "
+                             "pas à publier (config/sources.txt, tier radar).")
+    parser.add_argument("--allow-brut", action="store_true",
+                        help="Publier MÊME une création sans texte rédigé (enrich_data vide) "
+                             "— y compris par --ids. Par défaut elle est RETENUE, pas rejetée.")
+    parser.add_argument("--allow-early", action="store_true",
+                        help="Publier MÊME les événements hors de leur fenêtre de "
+                             "publication (docs/TEMPS_FORTS.md). Par défaut, un "
+                             "événement à plus de 90 jours (150 pour un temps fort "
+                             "nommé, config/temps_forts.json) est RETENU — le "
+                             "calendrier le reproposera de lui-même en approchant.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Lister la sélection sans rien publier.")
+    parser.add_argument("--skip-media", action="store_true",
+                        help="Ne retéléverse AUCUNE image (texte + méta seuls). Utile pour "
+                             "une passe --update en masse qui ne fait que resynchroniser les "
+                             "méta as_* (ex. as_enrich_status, ajouté après coup) sur des "
+                             "événements déjà publiés, sans marteler la médiathèque.")
+    args = parser.parse_args(argv)
+
+    load_dotenv(ROOT / ".env")
+
+    # ── SONDE AVANT LE LOT (2026-08-18) ─────────────────────────────────────────────────
+    # Pendant la panne réseau, chaque fiche attendait 60 s avant d'abandonner : sur 173
+    # fiches, presque trois heures de timeouts, plus des vignettes générées et téléversées
+    # dans le vide. Le lot annonçait ensuite des « échecs » un par un, ce qui se lit comme
+    # un problème de données alors que c'est un problème de tuyau.
+    # Une seule question, posée une seule fois : le site répond-il ? Sinon on ne tente
+    # rien. Aucune fiche n'est marquée, aucun état n'est posé — elles repassent au lot
+    # suivant exactement comme elles sont.
+    if not args.dry_run and not wp_site_joignable():
+        log.error("Site injoignable depuis cette machine — AUCUNE publication tentée. "
+                  "Rien n'a été marqué : le lot repassera à l'identique une fois le site "
+                  "joignable. (Voir docs/PANNE_OVH_2026-08-18.md.)")
+        return 0
+    today = date.today().isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = [dict(r) for r in _select(conn, args, today)]
+
+    # PORTE QUALITÉ : seuls les événements COMPLETS partent en brouillon (les
+    # incomplets restent dans le dashboard, à charge de l'agent d'auto-complétion).
+    # cf. utils/completeness.py + scripts/autocomplete.py. Ids EXPLICITES (--ids) : la
+    # décision de republier est déjà prise (ex. correctif de contenu), on ne re-filtre pas.
+    skipped = []
+    if not args.allow_incomplete and not args.ids:
+        kept = []
+        for ev in rows:
+            (kept if comp.is_complete(ev) else skipped).append(ev)
+        rows = kept
+
+    # VERROU RADAR — s'applique AUSSI aux --ids, contrairement à la porte qualité
+    # ci-dessus. Raison : --ids est passé sans aucun humain dans la boucle par
+    # scripts/daily_batch.py (seul chemin non supervisé qui met des fiches EN LIGNE,
+    # cf. sa docstring _porte_publication). L'exception « la décision est déjà prise
+    # par un humain » ne tient donc pas ici ; l'humain qui republie sciemment une
+    # fiche radar a --allow-radar pour le dire.
+    rows, radar_blocked = _porte_radar(conn, rows, args.allow_radar)
+
+    # PORTILLON ÉDITORIAL — dernier filet avant la mise en ligne (2026-08-05).
+    # L'évaluateur applique déjà config/excluded_event_keywords.txt, mais SEULEMENT aux
+    # fiches encore `pending` : une règle ajoutée aujourd'hui ne dit rien des milliers de
+    # fiches DÉJÀ évaluées, dont certaines sont en file de publication. Le 2026-08-05,
+    # quatre salons/afterworks B2B étaient concernés, deux en ligne et deux en file —
+    # dont un que le premier audit n'avait pas vu. audit_excluded_events les rattrape,
+    # mais il ne tourne que le dimanche : entre deux passages, une fiche redevenue
+    # publiable partirait en ligne et attendrait cinq jours. Ici, elle ne part pas.
+    # S'applique AUSSI aux --ids, pour la même raison que le verrou radar : daily_batch
+    # les passe sans humain dans la boucle. Coût nul (aucun appel LLM), et RIEN n'est
+    # écrit : la fiche est seulement retenue, son statut ne bouge pas.
+    exclusions = load_excluded_events_filter()
+    exclus = [ev for ev in rows
+              if is_excluded_event(ev.get("title", ""), ev.get("description", ""), exclusions,
+                                   url=ev.get("url_source", ""))]
+    if exclus:
+        ids_exclus = {ev.get("id") for ev in exclus}
+        rows = [ev for ev in rows if ev.get("id") not in ids_exclus]
+        for ev in exclus:
+            log.warning("[%s] RETENU : exclu par règle éditoriale (config/"
+                        "excluded_event_keywords.txt) — « %s »",
+                        ev.get("id"), (ev.get("title") or "")[:60])
+        log.warning("%d fiche(s) retenue(s) par règle éditoriale. Pour les SORTIR de la "
+                    "file (statut rejected) : .venv/bin/python -m "
+                    "scripts.audit_excluded_events --apply", len(exclus))
+
+    # VERROU DE RÉDACTION, AUSSI POUR --ids (2026-09-23). Le verrou « pas de publication
+    # sans un mot rédigé » posé le 22/09 dans _select ne tient que pour la sélection
+    # automatique : _select rend les --ids tels quels. Le lendemain, 37 fiches de Plaisirs
+    # de Culture sont parties en ligne par ce chemin entre 12h54 et 13h42, avec le texte
+    # BRUT de la brochure (« AOSTA, Via Piave 6 — … Date: 23/09, 26/09. Orario: 17.00.
+    # INFO: … ») — WP#11814 « Una rilettura dei monumenti cittadini », signalée par
+    # Franck. Leurs jumelles ont ensuite traduit ce texte brut.
+    #
+    # NE BLOQUE QUE LES CRÉATIONS, comme le portillon de substance ci-dessous : une fiche
+    # déjà en ligne doit pouvoir repartir, c'est le seul moyen de la réparer. Les
+    # traductions ont leur propre texte (translate_events). Rien n'est écrit : la fiche
+    # garde son statut, enrich.py la rédige, et elle part au passage suivant (règle 3).
+    # --allow-brut pour le dire quand c'est voulu.
+    if not args.allow_brut:
+        rows, bruts = retenir_creations_brutes(rows)
+        if bruts:
+            ids_bruts = {ev.get("id") for ev in bruts}
+            log.warning("%d création(s) RETENUE(S) : pas encore rédigée(s) (enrich_data "
+                        "vide) — %s. Les rédiger : .venv/bin/python scripts/enrich.py %s ; "
+                        "ou --allow-brut pour publier le texte de la source tel quel.",
+                        len(bruts), sorted(ids_bruts),
+                        " ".join(str(i) for i in sorted(ids_bruts)))
+
+    # PORTILLON DE SUBSTANCE (2026-08-05, le soir du refus AdSense « contenu à faible
+    # valeur informative »). 59 fiches publiées portaient moins de cent mots à elles.
+    # Une fiche de cent mots ne dit rien qu'un annuaire ne dise déjà : elle coûte une URL
+    # indexable et n'offre rien au lecteur.
+    #
+    # NE BLOQUE QUE LES CRÉATIONS, exactement comme le verrou radar et pour la même
+    # raison, écrite plus haut : retenir la republication d'une fiche DÉJÀ en ligne ne la
+    # retirerait pas du site, ça y figerait une version plus ancienne. Une fiche maigre
+    # déjà publiée qu'on vient d'enrichir DOIT pouvoir repartir — c'est même le seul
+    # moyen de la réparer.
+    #
+    # On mesure l'article rendu par build_post, pas la colonne `description` : c'est ce
+    # que le lecteur reçoit. Coût nul, aucun appel LLM, aucune écriture.
+    plancher = substance.plancher()
+    maigres, sous_surveillance = [], 0
+    for ev in rows:
+        n = substance.mots_publies(ev, build_post)
+        if n < plancher and not (ev.get("wp_post_id_as") or 0):
+            maigres.append((ev, n))
+        elif n < substance.BANDE_MAIGRE:
+            sous_surveillance += 1
+    if maigres:
+        ids_maigres = {ev.get("id") for ev, _ in maigres}
+        rows = [ev for ev in rows if ev.get("id") not in ids_maigres]
+        for ev, n in maigres:
+            log.warning("[%s] RETENU : %d mot(s) publiés, plancher %d — « %s »",
+                        ev.get("id"), n, plancher, (ev.get("title") or "")[:55])
+        log.warning("%d fiche(s) retenue(s) faute de substance. Les enrichir (scripts."
+                    "enrich <ids>) puis relancer ; ou remonter le plancher avec "
+                    "PUBLISH_MIN_MOTS.", len(maigres))
+    if sous_surveillance:
+        # Pas un blocage : une traîne qu'on veut voir plutôt que d'ignorer.
+        log.info("%d fiche(s) entre %d et %d mots — publiables, mais maigres.",
+                 sous_surveillance, plancher, substance.BANDE_MAIGRE)
+
+    # PORTILLON PÉRIMÈTRE — même famille de trou, même jour. L'arrondissement de Grasse
+    # est hors catalogue (charte §2), et purge_out_of_zone le fait respecter… le
+    # dimanche. Or sa propre docstring nomme le cas qui lui échappe : la `ville` est
+    # souvent renseignée APRÈS l'évaluation, par venues.py ou l'auto-complétion du
+    # back-office. Une fiche de Cannes datée mardi part donc en ligne mercredi et attend
+    # la purge suivante. Le contrôle coûte une comparaison de chaînes sur le seul champ
+    # `ville` (jamais le texte libre : « Vence » ⊂ « Provence », cf. perimetre.py).
+    hors = [ev for ev in rows if ville_hors_perimetre(ev.get("ville", ""))]
+    if hors:
+        ids_hors = {ev.get("id") for ev in hors}
+        rows = [ev for ev in rows if ev.get("id") not in ids_hors]
+        for ev in hors:
+            log.warning("[%s] RETENU : %s est dans l'arrondissement de Grasse, hors "
+                        "périmètre (charte §2) — « %s »",
+                        ev.get("id"), ev.get("ville"), (ev.get("title") or "")[:60])
+        log.warning("%d fiche(s) retenue(s) hors périmètre. Pour les SORTIR de la file : "
+                    ".venv/bin/python scripts/purge_out_of_zone.py --apply", len(hors))
+
+    # PORTILLON « LE JUSTE TEMPS » (2026-08-05, docs/TEMPS_FORTS.md). CORRIGÉ le
+    # jour même : la première version imposait une fenêtre de 90 jours à TOUT
+    # événement daté — faux. Franck : « je n'ai pas demandé les 90 jours pour Nice
+    # Jazz, Carnaval de Nice… ça peut être plus loin. » Le vrai problème n'est pas
+    # la distance dans le temps, c'est le DÉCALAGE THÉMATIQUE (Noël en plein été) —
+    # AUCUN plafond par défaut, seuls les temps forts NOMMÉS de config/
+    # temps_forts.json (Noël, Halloween pour l'instant) ont une fenêtre.
+    # Ce n'est PAS un état : rien n'est écrit, la fiche reste dans son statut, le
+    # calendrier la rouvre tout seul en se rapprochant (docs/ETATS_TERMINAUX.md).
+    # S'applique AUSSI aux --ids par défaut (même raison que les portillons
+    # ci-dessus) — --allow-early dit explicitement qu'un humain a choisi de publier
+    # en avance (ex. republication après correctif d'une fiche déjà passée par ce
+    # portillon la veille).
+    trop_tot = []
+    if not args.allow_early:
+        aujourdhui = date.fromisoformat(today)
+        temps_forts = saison._charger_temps_forts()
+        for ev in rows:
+            debut = (ev.get("date_event_start") or "").strip()
+            if not debut:
+                continue  # pas de date = pas concerné, cf. règle 5 de CLAUDE.md
+            fenetre = saison.fenetre_publication_jours(ev, temps_forts)
+            if fenetre is None:
+                continue  # pas un temps fort nommé : aucune fenêtre, jamais retenu ici
+            try:
+                ecart = (date.fromisoformat(debut[:10]) - aujourdhui).days
+            except ValueError:
+                continue
+            if ecart > fenetre:
+                trop_tot.append((ev, fenetre))
+    if trop_tot:
+        ids_trop_tot = {ev.get("id") for ev, _ in trop_tot}
+        rows = [ev for ev in rows if ev.get("id") not in ids_trop_tot]
+        for ev, fenetre in trop_tot:
+            log.info("[%s] RETENU : pas encore sa saison (fenêtre %dj) — « %s » (%s)",
+                     ev.get("id"), fenetre, (ev.get("title") or "")[:60],
+                     ev.get("date_event_start"))
+        log.warning("%d fiche(s) en attente de leur saison (le calendrier les "
+                    "reproposera de lui-même — rien à faire).", len(trop_tot))
+
+    log.info("Sélection : %d complet(s) à publier, %d incomplet(s) écarté(s), "
+             "%d radar non résolu(s) retenu(s), %d exclu(s) par règle éditoriale, "
+             "%d hors périmètre, %d en attente de leur saison (cap %d, min-score %s, %s)",
+             len(rows), len(skipped), len(radar_blocked), len(exclus), len(hors),
+             len(trop_tot), args.cap, args.min_score,
+             "MAJ incluse" if args.update else "création seule")
+    for ev, reason in radar_blocked:
+        log.info("[%s] RETENU (non publié, rien supprimé) : %s | %s",
+                 ev.get("id"), reason, (ev.get("title") or "")[:60])
+    if radar_blocked:
+        # La sortie de rétention n'est PAS automatique (cf. _porte_radar) : on donne la
+        # commande, sinon ces fiches restent bloquées en silence pour toujours.
+        log.info("Pour en débloquer une qui est un VRAI événement, ré-enrichir par id "
+                 "(résout la page officielle) : .venv/bin/python -m scripts.enrich %s",
+                 " ".join(str(ev.get("id")) for ev, _ in radar_blocked))
+
+    if args.dry_run:
+        for r in rows:
+            lieu = r.get("lieu") or "—"
+            print(f"  [{r['id']}] {r['date_event_start']} · {(r['title'] or '')[:60]:60} "
+                  f"· score={r['llm_score']} · lieu={lieu}")
+        for ev in skipped:
+            print(f"  ⤷ ÉCARTÉ [{ev['id']}] {(ev.get('title') or '')[:55]:55} "
+                  f"· manque : {', '.join(comp.missing_labels(ev))}")
+        for ev, reason in radar_blocked:
+            print(f"  ⤷ RADAR   [{ev['id']}] {(ev.get('title') or '')[:55]:55} · {reason}")
+        print(f"\n{len(rows)} publié(s) / {len(skipped)} incomplet(s) / "
+              f"{len(radar_blocked)} radar retenu(s) (dry-run — rien envoyé).")
+        conn.close()
+        return 0
+
+    ok = fail = 0
+    refuses = 0
+    geles = []      # fiches dont le SITE a dit « texte retouché à la main, non écrit »
+    restaures = []  # … et où l'interception n'a pas tenu (le site a dû remettre le texte)
+    for i, r in enumerate(rows, 1):
+        event = dict(r)
+        # ══ GARDE-FOU ULTIME : jamais de CRÉATION sans date ══════════════════════
+        # Incident du 2026-08-02, 22h24. Une republication ciblée par --ids a CRÉÉ le
+        # post WP#6959 « Peluches, textes, photos… » avec start='' end='' venue=None
+        # img=False. publisher_as a bien écrit « Événement sans date ISO exploitable »
+        # dans le log… puis l'a publié quand même. Sans date, The Events Calendar date
+        # l'événement du JOUR DE PUBLICATION : la fiche annonçait une exposition à la
+        # mauvaise date, nue, sur le site public.
+        #
+        # `--ids` désactive délibérément la porte de complétude — c'est légitime pour
+        # REPUBLIER une fiche déjà en ligne après un correctif de contenu, où la
+        # décision est prise par un humain. Ça ne l'est JAMAIS pour créer un post
+        # public neuf : personne ne décide sciemment de publier un événement sans date.
+        # Le contournement est donc restreint à ce qu'il devait couvrir.
+        #
+        # Exception maintenue : un événement RÉCURRENT n'a légitimement pas de date
+        # unique (utils/completeness.is_recurring) — sa date est une note renvoyant à
+        # la source. Il continue de passer.
+        cree = not (event.get("wp_post_id_as") or 0) > 0
+        sans_date = not (event.get("date_event_start") or "").strip()
+        if cree and sans_date and not comp.is_recurring(event):
+            refuses += 1
+            log.warning("[%s] CRÉATION REFUSÉE — aucune date : TEC la daterait du jour "
+                        "de publication. Datez-la (scripts/dates.py) puis relancez. « %s »",
+                        event.get("id"), (event.get("title") or "")[:60])
+            continue
+        # --skip-media ne doit JAMAIS priver une CRÉATION de sa photo (contrairement à un
+        # --update sur un post déjà en ligne, où l'image existante est de toute façon
+        # conservée) : une fiche encore jamais publiée n'a rien à "conserver". Bug
+        # 2026-07-31 : une passe --update --skip-media en masse (sans --ids) a élargi la
+        # sélection à des événements jamais publiés, créés sans photo (repli bannière
+        # générique côté WP, pas cassé — mais pas voulu).
+        skip = args.skip_media and (event.get("wp_post_id_as") or 0) > 0
+        _heriter_source_traduction(event, conn)
+        _heriter_image_traduction(event, conn)
+        retour: dict = {}
+        wp_id, permalink, raw_url = publish_to_as(event, skip_media=skip, retour=retour)
+        if wp_id:
+            conn.execute(
+                # `wp_deleted_at=NULL` : la fiche vient d'être (re)mise en ligne, le
+                # constat « post plus public » posé par reconcile_wp_deleted ne vaut
+                # plus. Sans cet effacement, une fiche republiée restait marquée hors
+                # ligne et scripts/site_audit.py cessait DÉFINITIVEMENT de la relire
+                # (il exclut wp_deleted_at) — en ligne, mais plus jamais surveillée.
+                # Seul reconcile savait déshorodater, et aucun cron ne le lance.
+                "UPDATE events_raw SET wp_post_id_as=?, wp_permalink_as=?, "
+                "wp_raw_image_url_as=?, published_as_date=datetime('now'), "
+                "wp_deleted_at=NULL WHERE id=?",
+                (wp_id, permalink, raw_url, event["id"]))
+            conn.commit()
+            ok += 1
+            _ranger_gel(conn, event["id"], retour.get("gel"), geles, restaures)
+        else:
+            fail += 1
+            log.warning("Échec pour id=%s : %s", event["id"], (event.get("title") or "")[:60])
+        if i % 10 == 0 or i == len(rows):
+            log.info("Progression : %d/%d (%d ok, %d échec)", i, len(rows), ok, fail)
+        if args.delay and i < len(rows):
+            time.sleep(args.delay)
+
+    conn.close()
+    log.info("=== Lot Agenda Sabauda : %d publié(s), %d échec(s), %d création(s) refusée(s) "
+             "faute de date ===", ok, fail, refuses)
+    if geles:
+        # RÈGLE 6 : un état qui sort une fiche d'une file la sort aussi des bilans si on
+        # ne le compte pas. Le périmètre est écrit à côté du nombre : ce sont les fiches
+        # de CE lot, pas la file entière (celle-là se lit avec `--liste` ci-dessous).
+        log.info("%d fiche(s) de ce lot ont le texte GELÉ (retouche à la main) : %s. "
+                 "Leurs dates, lieu, catégorie et métas as_* ont bien été mis à jour ; "
+                 "titre, corps, extrait et métas Yoast, non. Pour rendre la main au "
+                 "pipeline sur l'une d'elles : "
+                 ".venv/bin/python -m scripts.gel_texte --degel <id> --apply",
+                 len(geles), " ".join(str(i) for i in geles))
+    if restaures:
+        log.warning("🔴 %d fiche(s) où le site a dû RESTAURER le texte après coup (%s) : "
+                    "l'interception de cs-gel-texte.php n'a pas tenu. Le texte est "
+                    "intact (la seconde jambe du garde-fou a joué), mais c'est la "
+                    "première qu'il faut reprendre.",
+                    len(restaures), " ".join(str(i) for i in restaures))
+    return 0 if fail == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

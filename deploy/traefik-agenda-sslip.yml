@@ -1,0 +1,31 @@
+# Route Traefik HTTPS SANS nom de domaine, via sslip.io.
+#
+# sslip.io est un DNS joker public : « agenda.<IP>.sslip.io » résout
+# automatiquement vers <IP>. Le hostname étant publiquement résolvable, Traefik
+# peut obtenir un vrai certificat Let's Encrypt (challenge HTTP-01).
+# → URL stable : https://agenda.<IP_VPS>.sslip.io  (aucun domaine à posséder).
+#
+# Déploiement :
+#   1. Remplace <IP_VPS> par l'IP PUBLIQUE du VPS (garde les points),
+#      ex. 203.0.113.5  →  Host(`agenda.203.0.113.5.sslip.io`)
+#   2. sudo cp deploy/traefik-agenda-sslip.yml /docker/traefik/dynamic/
+#   3. Ouvre https://agenda.<IP_VPS>.sslip.io (login BACKOFFICE_USER/PASSWORD).
+#
+# ⚠ sslip.io est un domaine partagé : Let's Encrypt y applique des quotas
+# (certificats par domaine enregistré). Si l'émission échoue (rate limit), bascule
+# sur le tunnel Cloudflare (voir docs/DEPLOIEMENT_HOSTINGER.md) ou un vrai sous-domaine.
+
+http:
+  routers:
+    agenda-sslip:
+      rule: "Host(`agenda.<IP_VPS>.sslip.io`)"
+      entryPoints:
+        - websecure
+      service: agenda
+      tls:
+        certResolver: letsencrypt
+  services:
+    agenda:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8098"

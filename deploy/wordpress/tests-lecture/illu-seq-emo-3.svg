@@ -1,0 +1,31 @@
+<!-- Séquence 3 (02/10), en boucle comme un GIF : 1. l'agenda se coche, 2. « le oui » — la réponse avec un cœur.
+     Trait irrégulier des icônes de l'accueil. Moins d'animations demandé : la scène 2, fixe. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}.cf{stroke:#DC5D45;fill:#F6DDD5}
+.A{animation:sA 9s infinite}.B{opacity:0;animation:sB 9s infinite}
+.ta{stroke-dasharray:1;stroke-dashoffset:1;animation:dA 9s infinite}
+.ca{stroke-dasharray:1;stroke-dashoffset:1;animation:cA 9s infinite}
+.tb{stroke-dasharray:1;stroke-dashoffset:1;animation:dB 9s infinite}
+.coeur{transform-box:fill-box;transform-origin:center;opacity:0;animation:hB 9s infinite}
+@keyframes sA{0%,42%{opacity:1}47%,100%{opacity:0}}
+@keyframes sB{0%,45%{opacity:0}50%,93%{opacity:1}98%,100%{opacity:0}}
+@keyframes dA{0%{stroke-dashoffset:1}18%,100%{stroke-dashoffset:0}}
+@keyframes cA{0%,16%{stroke-dashoffset:1}27%,100%{stroke-dashoffset:0}}
+@keyframes dB{0%,47%{stroke-dashoffset:1}64%,100%{stroke-dashoffset:0}}
+@keyframes hB{0%,63%{opacity:0;transform:translateY(10px) scale(.5)}70%{opacity:1;transform:translateY(0) scale(1)}77%{transform:scale(1.2)}84%,100%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.A{display:none}.B{opacity:1;animation:none}.tb{animation:none;stroke-dashoffset:0}.coeur{animation:none;opacity:1}}
+</style>
+<g class="A" transform="translate(55 0)">
+<path class="ta" pathLength="1" d="M21 31 C19 52 21 79 23 101 C46 99 70 100 92 98 C91 76 92 51 90 29 C67 31 44 30 21 31Z"/>
+<path class="ta" pathLength="1" d="M21 45 C45 43 68 44 91 42 M38 21 C38 26 39 31 38 36 M73 20 C72 25 73 30 73 35"/>
+<path class="c ca" pathLength="1" d="M40 71 C44 75 48 80 52 84 C60 75 68 67 77 59"/>
+</g>
+<g class="B">
+<path class="tb" pathLength="1" d="M20 12 C55 10 90 11 116 13 C118 25 118 37 116 48 L50 48 C44 54 38 58 30 60 C33 55 34 51 34 48 L20 48 C18 36 18 24 20 12Z"/>
+<path class="tb c" pathLength="1" d="M62 24 C62 18 76 18 76 24 C76 29 69 30 69 35 M69 41 C69 41 69 42 69 42"/>
+<path class="tb" pathLength="1" d="M84 62 C119 60 154 61 180 63 C182 75 182 87 180 98 L168 98 C169 103 172 107 177 111 C168 109 162 104 158 98 L86 98 C84 86 84 74 84 62Z"/>
+<path class="cf coeur" d="M132 72 C127 65 118 68 120 75 C122 81 132 85 132 85 C132 85 142 81 144 75 C146 68 137 65 132 72Z"/>
+</g>
+</svg>

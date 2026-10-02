@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% set active = 'doctrine' %}
+{% block title %}Doctrine pour les agents{% endblock %}
+{% block h1 %}Doctrine rédactionnelle{% endblock %}
+{% block subtitle %}<div class="sub">La <b>voix</b>, le <b>vocabulaire interdit</b> et la <b>charte</b> en un seul texte, relu à l'instant dans Obsidian. Cette page existe pour qu'on <b>n'ait plus rien à coller</b> quand on demande un texte à Claude.</div>{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+  <!-- Ce qui manque, d'abord : c'est la seule chose qui change une décision -->
+  {% if st.alertes %}
+  <div class="card" style="padding:.8rem 1rem;margin-bottom:1.1rem;border-left:4px solid #b91c1c;background:#fdeaea;">
+    <b style="color:#b91c1c;">⚠️ Doctrine incomplète</b>
+    <ul class="text-sm" style="margin:.4rem 0 0 1rem;">{% for a in st.alertes %}<li>{{ a }}</li>{% endfor %}</ul>
+  </div>
+  {% else %}
+  <div class="card" style="padding:.8rem 1rem;margin-bottom:1.1rem;">
+    <b style="color:#16a34a;">● Doctrine complète</b> — {{ st.chars }} caractères, lus le {{ st.lu_le }}.
+  </div>
+  {% endif %}
+
+  <!-- Le périmètre à côté du nombre (CLAUDE.md, règle 6) -->
+  <h2 style="font-size:1.05rem;margin:.6rem 0 .4rem;">📚 D'où vient chaque bloc</h2>
+  {% for b in st.blocs %}
+  <div class="card" style="padding:.6rem .9rem;margin-bottom:.5rem;">
+    <div class="text-sm"><b>{{ b.titre }}</b> — {{ b.chars }} car. · <span class="muted">{{ b.origine }}</span></div>
+    {% for c in b.chemins %}
+    <div class="muted text-sm">↳ <code>{{ c.chemin }}</code> {% if c.existe %}<span style="color:#16a34a;">✓</span>{% else %}<span style="color:#b91c1c;">✗</span>{% endif %}{% for n in c.notes %} · {{ n }}{% endfor %}</div>
+    {% endfor %}
+    {% if b.note_de_pied %}<div class="muted text-sm" style="margin-top:.2rem;">{{ b.note_de_pied }}</div>{% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- L'adresse à donner à une session qui n'a pas ce navigateur -->
+  <h2 style="font-size:1.05rem;margin:1rem 0 .4rem;">🔗 Donner cette doctrine à une session Claude</h2>
+  <div class="card" style="padding:.7rem .9rem;margin-bottom:1.1rem;">
+    <div class="text-sm">
+      <b>Claude Chrome</b> — rien à faire : il lit cette page-ci dans ton navigateur, déjà connecté.
+      Lui dire « lis {{ base }}/doctrine avant d'écrire » suffit.
+    </div>
+    <div class="text-sm" style="margin-top:.5rem;">
+      <b>Cowork / Claude Code sur le web</b> — ces sessions n'ont pas ton cookie. Elles lisent cette adresse :
+    </div>
+    {% if jeton %}
+    <pre style="white-space:pre-wrap;background:#faf7f1;border:1px solid #ece5d8;border-radius:8px;padding:.6rem .8rem;font-size:.8rem;margin:.4rem 0 0;overflow-x:auto;">{{ base }}/doctrine.txt?token={{ jeton }}</pre>
+    <div class="muted text-sm" style="margin-top:.3rem;">Ce jeton ouvre la doctrine, rien d'autre — aucune écriture, aucune donnée d'événement. Le changer : la ligne <code>DOCTRINE_TOKEN</code> du <code>.env</code> du VPS, puis <code>bash deploy/update.sh</code>.</div>
+    {% else %}
+    <div class="text-sm" style="margin-top:.4rem;color:#b91c1c;">⚠️ Aucun <code>DOCTRINE_TOKEN</code> dans le <code>.env</code> du VPS : <code>/doctrine.txt</code> répond 503 et reste fermé. Ajouter la ligne <code>DOCTRINE_TOKEN=&lt;longue chaîne au hasard&gt;</code>, puis <code>bash deploy/update.sh</code>.</div>
+    {% endif %}
+  </div>
+
+  <!-- Le texte servi, mot pour mot : ce que l'agent lira, pas un résumé -->
+  <h2 style="font-size:1.05rem;margin:.6rem 0 .4rem;">📄 Le texte exact que reçoit l'agent</h2>
+  <pre style="white-space:pre-wrap;background:#faf7f1;border:1px solid #ece5d8;border-radius:8px;padding:.9rem 1rem;font-size:.85rem;line-height:1.5;overflow-x:auto;">{{ texte }}</pre>
+
+</div>
+{% endblock %}

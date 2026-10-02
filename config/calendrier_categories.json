@@ -1,0 +1,184 @@
+{
+  "_regle": "LE CALENDRIER DES CATÉGORIES : quand chacune des onze catégories est de saison — et donc laquelle mérite une tuile dans le bloc « Explorer d'autres catégories » de la page d'accueil. Ce fichier est la SOURCE UNIQUE : utils/calendrier.py le lit, le back-office (/calendrier-categories) l'affiche, et c'est lui que suivra le bloc de la home le jour où il sera piloté (aujourd'hui : six tuiles FIXES en HTML dans la page WP 928 / 1717, relevé le 05/09).",
+  "_origine": "Franck, 05/09/2026, devant la tuile Cinéma encore affichée en septembre : « le cinéma en plein air c'est terminé maintenant […] les festivals sont terminés aussi, c'est en été festivals et cinéma en plein air. à partir de septembre il y a d'autres catégories peut être. Il faut un calendrier où à partir de telle date on valorise telle catégorie, puis telle autre et etc, d'autres s'enlèvent à partir d'une date. » Et : « le comptage n'est pas forcément le point, mais la saisonnalité ». Donc : la SAISON décide de l'ordre, le NOMBRE de fiches n'est qu'un filet (une tuile qui mène à une page vide est pire qu'une tuile absente).",
+  "_lecture": "fenetres : liste de {debut, fin} au format MM-JJ, bornes INCLUSES, une fenêtre peut chevaucher le Nouvel An (debut > fin). niveau : 'fort' (à mettre en avant) ou 'moyen' (de saison, sans priorité). hors_fenetre : ce que vaut la catégorie en dehors de toute fenêtre — 'base' (éligible, en dernier) ou 'exclu' (retirée, c'est le « s'enlève à partir d'une date » de Franck). Les exemples sont des ANCRES vérifiées (source en face), pas une liste d'événements à publier : ils justifient la fenêtre, rien d'autre.",
+  "_a_recaler_chaque_ete": "Les fenêtres 'Jeune public' suivent les vacances scolaires françaises (zones A = Savoie, B = Nice) et italiennes ; elles bougent d'une année à l'autre de quelques jours. Les dates ci-dessous sont celles de 2026-2027 — à recaler quand le calendrier 2027-2028 paraît (juillet 2027).",
+  "_tuiles_principales": "Concerts, Expositions et Gastronomie ont chacune un BLOC PRINCIPAL sur la home (grilles JetEngine cat-concerts / cat-expositions / cat-gastronomie, 4 fiches chacune) : elles ne concourent pas pour les tuiles secondaires, sinon la home les montrerait deux fois. Elles gardent quand même leurs fenêtres ici, pour la visibilité (Journées du patrimoine, Luci d'Artista, Fiera del Tartufo…).",
+
+  "_home_actuelle": "Relevé le 05/09/2026 dans le HTML des pages WP 928 (FR) et 1717 (IT), par un `preg_match_all` sur les liens du bloc : SIX tuiles FIXES — Cinéma, Conférences & Rencontres, Fêtes & Traditions populaires, Marchés & Foires, Spectacle vivant, Sport. Festivals et Jeune public n'y sont jamais. Le back-office compare cette liste à ce que dit le calendrier ; tant que le bloc n'est pas piloté, l'écart se corrige à la main dans la page WP.",
+  "home_actuelle": ["Cinéma", "Conférences & Rencontres", "Fêtes & Traditions populaires",
+                    "Marchés & Foires", "Spectacle vivant", "Sport"],
+  "_hors_calendrier": "« Curiosités » / « Curiosità » (termes WP 344 / 346) existent dans la taxonomie mais ne sont pas une des onze catégories du pipeline et n'ont aucune fiche (05/09) : pas de ligne ici.",
+
+  "n_tuiles": 6,
+  "seuil_fiches": 1,
+  "_seuil_fiches": "Nombre minimal de fiches PUBLIÉES et ENCORE DEVANT NOUS (à venir, en cours, ou récurrentes — règle 5) pour qu'une catégorie ait droit à une tuile. 1 = on refuse seulement la page vide. La saison ordonne, le compte ne fait que retirer.",
+
+  "categories": [
+    {
+      "nom": "Expositions & Patrimoine", "slug_fr": "expositions-patrimoine", "slug_it": "mostre-patrimonio",
+      "tuile": "principale", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "09-10", "fin": "09-25", "niveau": "fort",
+         "raison": "Journées européennes du patrimoine (3e week-end de septembre) : monuments ouverts, gratuits, sur les quatre territoires.",
+         "exemples": [{"nom": "Journées européennes du patrimoine", "dates": "19–20 septembre 2026", "source": "https://journeesdupatrimoine.culture.gouv.fr/"}]},
+        {"debut": "10-20", "fin": "01-15", "niveau": "moyen",
+         "raison": "Grandes expositions d'automne-hiver à Turin (Artissima, Luci d'Artista) — la saison où les musées sortent leurs têtes d'affiche.",
+         "exemples": [{"nom": "Artissima, Turin", "dates": "30 oct.–1er nov. 2026", "source": "https://www.artissima.art/"},
+                      {"nom": "Luci d'Artista, Turin", "dates": "~24 oct. 2026–11 janv. 2027", "source": "https://www.comune.torino.it/"}]}
+      ]
+    },
+    {
+      "nom": "Concerts & Musique", "slug_fr": "concerts-musique", "slug_it": "concerti-musica",
+      "tuile": "principale", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "09-01", "fin": "09-25", "niveau": "fort",
+         "raison": "MITO SettembreMusica : Turin (et Milan) pendant trois semaines, la rentrée musicale du Piémont.",
+         "exemples": [{"nom": "MITO SettembreMusica « Harmonia »", "dates": "6–20 septembre 2026", "source": "https://www.comune.torino.it/novita/comunicati/harmonia-nuova-edizione-mito-settembremusica-torino-milano-6-al-20-settembre"}]},
+        {"debut": "10-01", "fin": "05-31", "niveau": "moyen",
+         "raison": "Saisons des salles (Teatro Regio, Auditorium RAI, Bonlieu, Malraux, Opéra de Nice) : programmation continue d'octobre à mai.",
+         "exemples": []}
+      ]
+    },
+    {
+      "nom": "Gastronomie & Sagre", "slug_fr": "gastronomie-sagre", "slug_it": "gastronomia-sagre",
+      "tuile": "principale", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "09-01", "fin": "12-10", "niveau": "fort",
+         "raison": "L'automne piémontais : Peperone de Carmagnola (fin août-début sept.), Douja d'Or, truffe d'Alba, châtaigne, Bagna Cauda Day — la plus grosse saison de l'année.",
+         "exemples": [{"nom": "Douja d'Or, Asti", "dates": "11–20 septembre 2026", "source": "https://www.atnews.it/2026/09/torna-ad-asti-la-douja-dor-il-programma-della-manifestazione-che-coinvolge-tutto-il-centro-cittadino-292375"},
+                      {"nom": "Fiera Internazionale del Tartufo Bianco, Alba", "dates": "10 oct.–6 déc. 2026", "source": "https://www.fieradeltartufo.org/"},
+                      {"nom": "Fiera Nazionale del Marrone, Cuneo", "dates": "16–18 octobre 2026", "source": "https://www.comune.cuneo.it/vivere-il-comune/eventi/fiera-nazionale-del-marrone-2/"}]},
+        {"debut": "06-15", "fin": "08-31", "niveau": "moyen",
+         "raison": "Sagre d'été dans les villages (Piémont, Vallée d'Aoste), fêtes de l'alpage en Savoie.",
+         "exemples": []}
+      ]
+    },
+
+    {
+      "nom": "Spectacle vivant", "slug_fr": "spectacle-vivant", "slug_it": "spettacolo-dal-vivo",
+      "tuile": "secondaire", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "09-01", "fin": "12-20", "niveau": "fort",
+         "raison": "Rentrée des saisons théâtrales et chorégraphiques : Torinodanza dès le 9 septembre, puis Teatro Stabile, Bonlieu, Malraux, TNN ouvrent leur saison.",
+         "exemples": [{"nom": "Torinodanza Festival, Fonderie Limone Moncalieri", "dates": "9 sept.–11 oct. 2026", "source": "https://turismotorino.org/en/visit/events/torinodanza-festival-2026"}]},
+        {"debut": "01-08", "fin": "05-15", "niveau": "moyen",
+         "raison": "Cœur de saison des salles (janvier–mai) ; les festivals de danse et de théâtre de printemps.",
+         "exemples": []}
+      ]
+    },
+    {
+      "nom": "Festivals", "slug_fr": "festivals", "slug_it": "festival-it",
+      "tuile": "secondaire", "hors_fenetre": "exclu",
+      "_arbitrage": "Franck, 05/09 : « les festivals sont terminés aussi, c'est en été ». Donc EXCLU hors fenêtre — même si MITO (6–20 sept.) et Torinodanza (sept.–oct.) sont aussi des festivals : ceux-là portent leur catégorie propre (Concerts, Spectacle vivant). À rediscuter si un festival hors été manque à l'appel.",
+      "fenetres": [
+        {"debut": "06-01", "fin": "08-31", "niveau": "fort",
+         "raison": "L'été des festivals : Musilac (Aix-les-Bains, juillet), Nice Jazz Festival (juillet), Kappa FuturFestival et Collisioni (Piémont, juillet), Fête du Lac d'Annecy (début août), Guitare en Scène.",
+         "exemples": [{"nom": "Nice Jazz Festival", "dates": "juillet", "source": "https://www.nicejazzfestival.fr/"},
+                      {"nom": "Musilac, Aix-les-Bains", "dates": "juillet", "source": "https://www.musilac.com/"}]}
+      ]
+    },
+    {
+      "nom": "Marchés & Foires", "slug_fr": "marches-foires", "slug_it": "mercati-fiere",
+      "tuile": "secondaire", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "11-15", "fin": "01-06", "niveau": "fort",
+         "raison": "Marchés de Noël (Marché Vert Noël d'Aoste, Annecy, Chambéry, Nice), Fiera Fredda de Borgo San Dalmazzo, Bue Grasso de Carrù — le temps fort de la catégorie.",
+         "exemples": [{"nom": "Marché Vert Noël, Aoste", "dates": "~22 nov. 2026–6 janv. 2027", "source": "https://www.lovevda.it/"},
+                      {"nom": "Fiera del Bue Grasso, Carrù", "dates": "~17 décembre 2026 (2e jeudi avant Noël)", "source": "https://www.comune.carru.cn.it/"},
+                      {"nom": "Fiera Fredda della Lumaca, Borgo San Dalmazzo", "dates": "début décembre (4–8 déc. en 2025 ; 2026 à confirmer)", "source": "https://fierafredda.it/"}]},
+        {"debut": "10-01", "fin": "11-14", "niveau": "moyen",
+         "raison": "Foires d'automne : truffe d'Alba (aussi un marché), Marrone de Cuneo, foires de la Saint-Martin, désalpes.",
+         "exemples": []},
+        {"debut": "01-25", "fin": "02-05", "niveau": "fort",
+         "raison": "Foire de Saint-Ours à Aoste, mille ans d'artisanat valdôtain — la plus grande foire des quatre territoires.",
+         "exemples": [{"nom": "Foire de Saint-Ours, Aoste", "dates": "30–31 janvier 2027", "source": "https://www.lovevda.it/"}]}
+      ]
+    },
+    {
+      "nom": "Sport", "slug_fr": "sport", "slug_it": "sport-it",
+      "tuile": "secondaire", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "12-01", "fin": "03-20", "niveau": "fort",
+         "raison": "Saison de ski : Critérium de la Première Neige (Val d'Isère), coupes du monde de Courchevel-Méribel, Sestriere, Cervinia ; ski nordique, patinage, hockey.",
+         "exemples": [{"nom": "Critérium de la Première Neige, Val d'Isère", "dates": "12–13 décembre 2026", "source": "https://www.worldcup-valdisere.com/"}]},
+        {"debut": "07-15", "fin": "09-20", "niveau": "fort",
+         "raison": "Été du trail et du vélo : UTMB (Chamonix, fin août), Tor des Géants (Vallée d'Aoste, mi-septembre), étapes alpines du Tour de France, cyclosportives.",
+         "exemples": [{"nom": "UTMB Mont-Blanc, Chamonix", "dates": "fin août", "source": "https://montblanc.utmb.world/"},
+                      {"nom": "Tor des Géants, Courmayeur", "dates": "mi-septembre", "source": "https://www.torxtrail.com/"}]}
+      ]
+    },
+    {
+      "nom": "Cinéma", "slug_fr": "cinema", "slug_it": "cinema-it",
+      "tuile": "secondaire", "hors_fenetre": "exclu",
+      "_arbitrage": "Franck, 05/09 : « c'est pas des salles, c'est pas commercial mais en plein air. et on est en septembre donc plus la saison des cinéma en plein air ». Le Torino Film Festival (24 nov.–2 déc. 2026) est un festival de SALLES : pas de fenêtre pour lui tant que Franck n'en décide pas autrement — il est listé ici pour qu'on n'oublie pas la question.",
+      "fenetres": [
+        {"debut": "06-01", "fin": "08-31", "niveau": "fort",
+         "raison": "Cinéma en plein air : Un'Estate al Cinema (Turin, Moncalieri, Exilles), Cinema nel Parco au château de Miradolo, ciné plein air d'Annecy, de Chambéry, du Comté de Nice.",
+         "exemples": [{"nom": "Un'Estate al Cinema, Turin", "dates": "4 juin–8 août 2026", "source": "https://www.guidatorino.com/eventi-torino/estate-cinema-torino-proiezioni-gratuite-2026/"},
+                      {"nom": "Cinema nel Parco, Castello di Miradolo", "dates": "26 juin–7 août 2026", "source": "https://www.artribune.com/arti-performative/cinema/2026/06/cinema-aperto-torino-guida-estate-2026/"}]}
+      ],
+      "fenetres_non_retenues": [
+        {"debut": "11-20", "fin": "12-05", "niveau": "moyen",
+         "raison": "Torino Film Festival — un festival de salles. NON RETENU (arbitrage ci-dessus), gardé pour mémoire.",
+         "exemples": [{"nom": "Torino Film Festival", "dates": "24 nov.–2 déc. 2026", "source": "https://www.torinofilmfest.org/"}]}
+      ]
+    },
+    {
+      "nom": "Jeune public & Famille", "slug_fr": "jeune-public-famille", "slug_it": "per-bambini-famiglia",
+      "tuile": "secondaire", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "10-17", "fin": "11-02", "niveau": "fort",
+         "raison": "Vacances de la Toussaint (toutes zones) — et Halloween.",
+         "exemples": [{"nom": "Vacances de la Toussaint 2026", "dates": "17 oct.–2 nov. 2026", "source": "https://www.education.gouv.fr/calendrier-scolaire-toutes-les-dates-des-cours-et-des-vacances-100148"}]},
+        {"debut": "12-19", "fin": "01-06", "niveau": "fort",
+         "raison": "Vacances de Noël (France 19 déc.–4 janv. ; Italie 23 déc.–6 janv.).",
+         "exemples": [{"nom": "Vacances de Noël 2026", "dates": "19 déc. 2026–4 janv. 2027", "source": "https://www.education.gouv.fr/calendrier-scolaire-toutes-les-dates-des-cours-et-des-vacances-100148"}]},
+        {"debut": "02-13", "fin": "03-08", "niveau": "fort",
+         "raison": "Vacances d'hiver : zone A (Savoie, Haute-Savoie) 13 fév.–1er mars, zone B (Nice) 20 fév.–8 mars ; carnavals côté italien.",
+         "exemples": [{"nom": "Vacances d'hiver 2027 zones A et B", "dates": "13 fév.–8 mars 2027", "source": "https://www.education.gouv.fr/calendrier-scolaire-toutes-les-dates-des-cours-et-des-vacances-100148"}]},
+        {"debut": "04-10", "fin": "05-09", "niveau": "moyen",
+         "raison": "Vacances de printemps (zones A puis B) et Pâques — dates 2027 à confirmer quand le calendrier officiel sera publié.",
+         "exemples": []},
+        {"debut": "07-04", "fin": "08-31", "niveau": "moyen",
+         "raison": "Grandes vacances : les familles sont sur place, mais l'été est déjà pris par Festivals et Cinéma — on reste au niveau moyen.",
+         "exemples": []}
+      ]
+    },
+    {
+      "nom": "Conférences & Rencontres", "slug_fr": "conferences-rencontres", "slug_it": "conferenze-incontri",
+      "tuile": "secondaire", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "10-01", "fin": "11-30", "niveau": "fort",
+         "raison": "Rentrée des cycles de conférences (Circolo dei Lettori, musées, universités populaires), Portici di Carta à Turin, salons du livre d'automne.",
+         "exemples": [{"nom": "Portici di Carta, Turin", "dates": "octobre", "source": "https://www.salonelibro.it/"}]},
+        {"debut": "05-01", "fin": "05-31", "niveau": "fort",
+         "raison": "Salone Internazionale del Libro de Turin — le plus grand rendez-vous du livre des quatre territoires.",
+         "exemples": [{"nom": "Salone Internazionale del Libro, Turin", "dates": "13–17 mai 2027", "source": "https://www.illibraio.it/news/editoria/salone-del-libro-di-torino-2026-date-2027-1498823/"}]}
+      ]
+    },
+    {
+      "nom": "Fêtes & Traditions populaires", "slug_fr": "fetes-traditions", "slug_it": "feste-tradizioni",
+      "tuile": "secondaire", "hors_fenetre": "base",
+      "fenetres": [
+        {"debut": "01-20", "fin": "03-10", "niveau": "fort",
+         "raison": "Le cœur de l'hiver des traditions : Saint-Ours (Aoste), Carnaval de Nice, Fête du Citron (Menton), Battaglia delle Arance (Ivrea), fête du Duché de Savoie (19 fév.), Festa della Valle d'Aosta (dernier dimanche de février).",
+         "exemples": [{"nom": "Carnaval de Nice", "dates": "9–28 février 2027", "source": "https://www.nicecarnaval.com/"},
+                      {"nom": "Fête du Citron, Menton", "dates": "13–28 février 2027", "source": "https://www.fete-du-citron.com/"},
+                      {"nom": "Storico Carnevale di Ivrea", "dates": "fin février–début mars 2027", "source": "https://www.storicocarnevaleivrea.it/"}]},
+        {"debut": "09-01", "fin": "10-15", "niveau": "moyen",
+         "raison": "Palio d'Asti (1er dimanche de septembre), désalpes et Désarpa (Savoie, Vallée d'Aoste), Dédition de Nice à la Savoie (28 septembre).",
+         "exemples": [{"nom": "Palio di Asti", "dates": "6 septembre 2026", "source": "https://visit.asti.it/en/september-in-asti/the-palio-of-asti/"}]},
+        {"debut": "12-01", "fin": "01-06", "niveau": "moyen",
+         "raison": "Traditions de Noël : presepi, Sainte-Lucie, veillées, feux de la Saint-Sylvestre.",
+         "exemples": []},
+        {"debut": "05-08", "fin": "05-16", "niveau": "moyen",
+         "raison": "Fête du drapeau des États de Savoie (2e dimanche de mai), sur les quatre territoires.",
+         "exemples": []},
+        {"debut": "07-16", "fin": "07-22", "niveau": "moyen",
+         "raison": "Bataille de l'Assiette (19 juillet), Piémont.",
+         "exemples": []}
+      ]
+    }
+  ]
+}

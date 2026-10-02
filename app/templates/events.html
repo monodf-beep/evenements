@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% set active = 'events' %}
+{% block title %}Événements — Agenda CS{% endblock %}
+{% block h1 %}Événements <span class="muted" style="font-size:1rem">({{ total }})</span>{% endblock %}
+{% block subtitle %}<div class="sub">Tout ce qui a été collecté. Filtre par statut, territoire, période ou photo.</div>{% endblock %}
+
+{% block content %}
+
+<!-- Chips statut -->
+<div class="btn-row" style="margin-bottom:.7rem">
+  <a href="/events?statut=actifs" class="pbtn {{ 'on' if statut in ('', 'actifs') and not dated }}">✓ Actifs ({{ actifs_count }})</a>
+  <a href="/events?statut=all" class="pbtn {{ 'on' if statut == 'all' }}">Tous ({{ total_all }})</a>
+  {% for key, lbl in status_labels.items() %}
+  <a href="/events?statut={{ key }}" class="pbtn {{ 'on' if statut == key }}">{{ lbl }} ({{ statut_counts.get(key, 0) }})</a>
+  {% endfor %}
+</div>
+
+<!-- Publication en lot vers Agenda Sabauda -->
+<form class="btn-row" method="POST" action="/publier-lot" style="margin-bottom:.9rem"
+      onsubmit="return confirm('Publier ce lot vers Agenda Sabauda ?\n\nLes fiches passées, sans date ou rejetées sont ignorées. Une fiche déjà en ligne est mise à jour, pas dupliquée.')">
+  <input type="hidden" name="next" value="{{ request.full_path }}">
+  <input type="text" name="ids" style="min-width:24rem"
+         placeholder="ids précis, ex. 13 924 931 — vide = tout ce qui est prêt à publier">
+  <button class="pbtn">🗓 Publier le lot</button>
+</form>
+
+<!-- Barre de période -->
+<form class="period" method="GET" action="/events" style="margin-bottom:.7rem">
+  <input type="hidden" name="statut" value="{{ statut }}">
+  <input type="hidden" name="territoire" value="{{ territoire }}">
+  <input type="hidden" name="q" value="{{ q }}">
+  <input type="hidden" name="img" value="{{ img }}">
+  <input type="hidden" name="src" value="{{ src }}">
+  <span class="plabel">📅 Période :</span>
+  <button name="preset" value="weekend" class="pbtn {{ 'on' if preset=='weekend' }}">Ce week-end</button>
+  <button name="preset" value="next_weekend" class="pbtn {{ 'on' if preset=='next_weekend' }}">Week-end prochain</button>
+  <button name="preset" value="7d" class="pbtn {{ 'on' if preset=='7d' }}">7 jours</button>
+  <button name="preset" value="month" class="pbtn {{ 'on' if preset=='month' }}">30 jours</button>
+  <span class="sep"></span>
+  du <input type="date" name="dfrom" value="{{ dfrom }}"> au <input type="date" name="dto" value="{{ dto }}">
+  <button class="pbtn">Plage perso</button>
+  <span class="sep"></span>
+  <a href="/events?dated=undated&statut={{ statut }}" class="pbtn {{ 'on' if dated=='undated' }}">📌 Date à confirmer ({{ undated_count }})</a>
+  {% if plabel or dated %}<a href="/events?statut={{ statut }}&territoire={{ territoire }}&q={{ q }}" class="muted">✕ effacer</a>{% endif %}
+</form>
+
+<!-- Filtres -->
+<form class="btn-row" method="GET" action="/events" style="margin-bottom:.9rem">
+  <input type="hidden" name="statut" value="{{ statut }}">
+  <input type="hidden" name="preset" value="{{ preset }}">
+  <input type="hidden" name="dfrom" value="{{ dfrom }}"><input type="hidden" name="dto" value="{{ dto }}">
+  <select name="territoire" class="field" aria-label="Filtrer par territoire">
+    <option value="">Tous territoires</option>
+    {% for t in territories %}<option value="{{ t }}" {{ 'selected' if territoire==t }}>{{ t }}</option>{% endfor %}
+  </select>
+  <input type="text" name="q" value="{{ q }}" placeholder="Rechercher dans le titre…" class="field" style="min-width:220px" aria-label="Rechercher dans le titre">
+  <select name="img" class="field" aria-label="Filtrer par photo">
+    <option value="">Photo : toutes</option>
+    <option value="1" {{ 'selected' if img=='1' }}>Avec photo ({{ with_img }})</option>
+    <option value="0" {{ 'selected' if img=='0' }}>Sans photo ({{ without_img }})</option>
+  </select>
+  <select name="src" class="field" aria-label="Filtrer par type de source">
+    <option value="">Source : toutes</option>
+    <option value="sans_radar" {{ 'selected' if src=='sans_radar' }}>🚫📡 Hors radar ({{ (src_counts.officiel or 0) + (src_counts.newsletter or 0) }})</option>
+    <option value="officiel" {{ 'selected' if src=='officiel' }}>🌐 Officiel / RSS ({{ src_counts.officiel or 0 }})</option>
+    <option value="newsletter" {{ 'selected' if src=='newsletter' }}>📬 Newsletter ({{ src_counts.newsletter or 0 }})</option>
+    <option value="radar" {{ 'selected' if src=='radar' }}>📡 Radar presse ({{ src_counts.radar or 0 }})</option>
+  </select>
+  <button class="btn btn-primary btn-sm">Filtrer</button>
+  <span class="sep"></span>
+  <span class="muted" style="font-size:.85rem">Tri :</span>
+  {% set sortbase = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&src=' ~ src ~ '&preset=' ~ preset ~ '&dfrom=' ~ dfrom ~ '&dto=' ~ dto ~ '&dated=' ~ dated %}
+  <a class="pbtn {{ 'on' if sort not in ('date','score','home') }}" href="{{ sortbase }}&sort=qualite" title="Photo + score + article prêt en haut">⭐ qualité</a>
+  <a class="pbtn {{ 'on' if sort == 'date' }}" href="{{ sortbase }}&sort=date">date</a>
+  <a class="pbtn {{ 'on' if sort == 'score' }}" href="{{ sortbase }}&sort=score">score ↓</a>
+  <a class="pbtn {{ 'on' if sort == 'home' }}" href="{{ sortbase }}&sort=home" title="Score home = qualité panel lecteurs + source officielle + affiches">🏠 home ↓</a>
+</form>
+
+{% if not events %}
+  <div class="card empty">Aucun événement pour ce filtre.</div>
+{% else %}
+<div class="table-wrap cards">
+<table class="table-cards">
+  <thead>
+  <tr><th scope="col">Photo</th><th scope="col">Titre</th><th scope="col">Date</th><th scope="col">Territoire</th><th scope="col">Source</th><th scope="col">Statut (clic = classer)</th><th scope="col">Score</th><th scope="col">Actions</th></tr>
+  </thead>
+  <tbody>
+  {% for e in events %}
+  <tr id="e{{ e.id }}">
+    <td class="full cell-photo" data-label="">{% if e.url_image %}<img class="thumb" src="{{ e.url_image }}" loading="lazy" decoding="async" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td class="full cell-title" data-label=""><a href="/preview/{{ e.id }}" target="_blank" rel="noopener"><strong>{{ e.title }}</strong></a>
+      {% set tw = twins.get(e.id) if twins else none %}
+      {% if tw %}
+        {% set tw_lang = tw.translated_lang or 'it' %}
+        <a class="badge" href="/preview/{{ tw.id }}" target="_blank" rel="noopener"
+           title="Version {{ tw_lang|upper }} — statut {{ tw.statut }}{% if tw.wp_post_id_as %} · WP #{{ tw.wp_post_id_as }}{% endif %}"
+           style="background:#eef2f8;border:1px solid #cbd8ea;color:#1f4c8f;text-decoration:none;">
+          {{ '🇫🇷' if tw_lang == 'fr' else '🇮🇹' }} {{ tw_lang|upper }} #{{ tw.id }}</a>
+      {% endif %}
+      {% set ready = e.enrich_status == 'enriched' and e.url_image and (e.date_event_start or e.date_event_end) %}
+      {% if ready %}<br><span class="badge ready" title="Article + photo + date : publiable tel quel">✓ prêt à publier</span>
+      {% elif e.enrich_status == 'enriched' %}<br><span class="badge article">✍️ article prêt</span>
+      {% elif e.enrich_status in ('error','api_error') %}<br><span class="badge fail">✍️ échec</span>{% endif %}
+      {% if e.llm_categorie %}<br><span class="badge grey">{{ e.llm_categorie }}</span>{% endif %}</td>
+    <td data-label="Date">
+      {% if e.recurring %}<span class="badge grey" title="{{ e.recurring_note or 'Récurrent — vérifiez les dates sur la source' }}">🔁 récurrent</span>
+      {% elif e.date_event_start and e.date_event_end and e.date_event_start != e.date_event_end %}
+        <span class="daterange">{{ e.date_event_start }} → {{ e.date_event_end }}</span>
+        <span class="ongoing">{{ '⏳ dernier week-end' if e._ending else 'en cours' }}</span>
+      {% elif e.date_event_start %}<span class="daterange">{{ e.date_event_start }}</span>
+      {% elif e.date_event_end %}<span class="daterange">jusqu'au {{ e.date_event_end }}</span>
+      {% elif e.date_source in ('none','nodate') %}<span class="muted">à confirmer</span>
+      {% else %}<span class="muted">{{ e.date_start or '—' }}</span>{% endif %}
+    </td>
+    <td data-label="Territoire">{{ e.territoire or '—' }}</td>
+    <td class="stack" data-label="Source">{% if e.source_type == 'radar' or '(radar)' in (e.source_name or '') %}<span class="muted">📡 radar</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source and e.url_source.startswith('gmail:') %}<span class="muted">📬 newsletter</span> <small>{{ e.source_name or '' }}</small>{% elif e.url_source %}<span class="muted">🌐 RSS</span> <a href="{{ e.url_source }}" target="_blank" rel="noopener" aria-label="Ouvrir la source (nouvel onglet)">↗</a> <small>{{ e.source_name or '' }}</small>{% else %}<small>{{ e.source_name or '' }}</small>{% endif %}</td>
+    <td class="stack" data-label="Statut">
+      {% set picks = [('evaluated','À valider'),('published_cs','Cultura Sabauda'),('published_sub','Agenda Sabauda'),('rejected','Rejeté')] %}
+      <div class="stpick" title="{{ e.llm_justification or 'Non évalué' }}">
+      {% for key, lbl in picks %}
+        {% if e.statut == key %}
+          <span class="st st-{{ key }}">{{ lbl }}</span>
+        {% else %}
+          <form method="POST" action="/set-status/{{ e.id }}/{{ key }}" style="display:inline">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <button type="submit" class="st st-off" title="Classer : {{ lbl }}">{{ lbl }}</button>
+          </form>
+        {% endif %}
+      {% endfor %}
+      </div>
+      {% if e.statut not in ['evaluated','published_cs','published_sub','rejected'] %}
+      <div class="muted" style="font-size:.7rem;margin-top:3px;">actuel : {{ status_labels.get(e.statut, e.statut) }}</div>
+      {% endif %}
+      {% if e.wp_post_id_cs %}<a class="wplink" href="{{ wp_base }}/wp-admin/post.php?post={{ e.wp_post_id_cs }}&action=edit" target="_blank" rel="noopener">↗ CS WP #{{ e.wp_post_id_cs }}</a>{% endif %}
+      {% if e.wp_post_id_as %}<a class="wplink" href="{{ wp_as_base }}/wp-admin/post.php?post={{ e.wp_post_id_as }}&action=edit" target="_blank" rel="noopener">↗ Agenda WP #{{ e.wp_post_id_as }}</a>{% endif %}
+      {# Annulation (docs/EVENEMENTS_ANNULES.md, canal 1) : pas un statut — badge à part,
+         posé ici en lecture seule ; le bouton qui la pose/la retire vit sur /preview. #}
+      {% if e.annule_le %}<br><span class="annule-banner" title="Depuis le {{ e.annule_le }}">🚫 ANNULÉ</span>{% endif %}
+    </td>
+    <td data-label="Score">
+      {{ e.llm_score if e.llm_score is not none else '—' }}
+      {% if e.home_score is not none %}
+        <br><span class="badge grey" title="Score home = qualité panel lecteurs + source officielle + affiches">🏠 {{ e.home_score }}/10</span>
+      {% endif %}
+      {% if e.home_override == 'featured' %}
+        <br><span class="badge ready" title="Forcé en avant à la main, indépendamment du score">🏠 forcé{% if e.home_order %} #{{ e.home_order }}{% endif %}</span>
+        <form method="POST" action="/set-home-order/{{ e.id }}/up" style="display:inline;">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="btn btn-ghost btn-sm" style="padding:0 .25rem;" title="Monter dans l'ordre des fiches forcées">▲</button>
+        </form>
+        <form method="POST" action="/set-home-order/{{ e.id }}/down" style="display:inline;">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="btn btn-ghost btn-sm" style="padding:0 .25rem;" title="Descendre dans l'ordre des fiches forcées">▼</button>
+        </form>
+      {% elif e.home_override == 'excluded' %}
+        <br><span class="badge fail" title="Exclu de la mise en avant à la main, indépendamment du score">🚫 exclu</span>
+      {% endif %}
+    </td>
+    <td class="full cell-actions" data-label="">
+      <a href="/preview/{{ e.id }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 Aperçu</a>
+      <form method="POST" action="/action/{{ e.id }}/publish_cs" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon article Cultura Sabauda (culturasabauda.eu)">🚀 Publier CS</button></form>
+      <form method="POST" action="/action/{{ e.id }}/publish_as" style="display:inline"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-ok btn-sm" title="Créer le brouillon événement Agenda Sabauda (agendasabauda.eu)">🗓 Publier Agenda</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="pager">
+  {% set base = '/events?statut=' ~ statut ~ '&territoire=' ~ territoire ~ '&q=' ~ q ~ '&img=' ~ img ~ '&src=' ~ src ~ '&preset=' ~ preset ~ '&dfrom=' ~ dfrom ~ '&dto=' ~ dto ~ '&dated=' ~ dated ~ '&sort=' ~ sort ~ '&page=' %}
+  {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="{{ base }}{{ page-1 }}">← précédent</a>{% endif %}
+  <span class="muted">page {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a class="btn btn-ghost btn-sm" href="{{ base }}{{ page+1 }}">suivant →</a>{% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

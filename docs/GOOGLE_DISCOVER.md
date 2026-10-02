@@ -1,0 +1,92 @@
+# Suivre Agenda Sabauda sur Google (Discover, sources préférées)
+
+Décidé par Franck le 24/09/2026, après l'encadré vu sur guidatorino.com.
+
+## Ce qui tourne tout seul
+
+- **Le flux** `https://agendasabauda.eu/feed/` (et `/it/feed/`) contient les articles
+  ET les quatre fiches « À la une » du jour — mu-plugin `deploy/wordpress/cs-flux-une.php`,
+  **actif depuis le 24/09 à 9h40** (option `cs_flux_une_actif` = 1). C'est ce flux que
+  Google lit pour les personnes qui suivent le site dans Discover.
+- Chaque fiche y est datée du jour où elle est ENTRÉE dans la une (méta
+  `as_flux_une_depuis`, posée une fois, jamais réécrite).
+- Vérifié à l'activation : 14 éléments en FR et en IT, XML bien formé, dates stables
+  d'un passage à l'autre.
+
+## Les deux liens
+
+- Suivre sur Discover : `https://profile.google.com/cp/EhIKEGFnZW5kYXNhYmF1ZGEuZXU=`
+  (page Google du site ; elle existe, mesuré le 24/09 : 200, « agendasabauda.eu | Google »).
+- Sources préférées : `https://google.com/preferences/source?q=agendasabauda.eu`
+
+## L'encadré sous les articles et les fiches
+
+`deploy/wordpress/cs-encadre-suivre.php`, **actif depuis le 25/09** (texte rédigé selon la
+doctrine, validé par Franck). Le texte vit dans les options `cs_encadre_suivre_texte_fr` /
+`_it`, avec les marqueurs `{discover:libellé}` et `{sources:libellé}` ; le corriger ne
+demande pas de toucher au code. Retour arrière : `cs_encadre_suivre_actif` = 0.
+
+Vérifié en ligne le 25/09 : un encadré, dans la bonne langue, sur les guides FR/IT et sur
+les fiches FR/IT (sous l'encadré de maillage des Journées du patrimoine quand il y en a
+un) ; aucun dans le flux RSS ni sur l'accueil.
+
+Non vérifié : que la fonction « sources préférées » de Google soit ouverte en France
+(guidatorino.com l'emploie en Italie).
+
+## Mesurer
+
+Search Console → Performances → **Discover**. Ce rapport n'apparaît qu'une fois que le
+site a reçu du trafic Discover : son absence veut dire « pas encore », pas « cassé ».
+
+## Diagnostiquer
+
+**« Les fiches à la une sont-elles indexées ? Google a-t-il envoyé un seul affichage
+Discover ? »** — une commande, sur le VPS, lecture seule (ajoutée le 29/09) :
+
+    .venv/bin/python -m scripts.gsc_report --une
+
+Elle inspecte chaque fiche à la une (FR et IT) comme le bouton « Inspecter l'URL » de la
+Search Console, puis interroge le trafic `type=discover` des 28 derniers jours. Mesuré le
+29/09 via CrawlSEO avant son écriture : 7 clics et 211 impressions sur la période pour tout
+le site, et aucune impression pour la fiche de Yenne, en ligne depuis 19 jours — sans
+qu'on puisse dire si elle était indexée. C'est la question que cette commande tranche.
+
+Premier passage, 29/09 au soir : **3 fiches à la une indexées sur 8**, les cinq autres
+« Discovered - currently not indexed » (Google connaît l'adresse et n'est jamais venu) —
+dont le Marché au Fort FR, en ligne depuis le 31/07. Et **0 affichage Discover** du 29/08
+au 26/09. Une page non indexée ne peut pas entrer dans Discover : le frein est EN AMONT.
+
+Pour le chiffre du site entier, pas d'un échantillon de huit :
+
+    .venv/bin/python -m scripts.gsc_report --indexation
+
+Inspecte toutes les fiches en ligne dont la FIN n'est pas passée (221 le 29/09, FR et IT,
+en cours comprises), et les range par ancienneté de publication : si seules les fiches de
+moins d'une semaine manquent, c'est le délai de Google ; si des fiches d'un mois n'ont
+jamais été visitées, c'est que Google ne juge pas le site digne du passage. Compte
+quelques minutes (une inspection par fiche), avec un point d'avancement toutes les 25.
+
+**Résultat du 29/09 au soir : 96 fiches indexées sur 221 (43 %).** Ce n'est PAS un
+délai : les fiches FR de plus de 30 jours ne sont indexées qu'à 53 %, et des fiches
+publiées le 20/07 étaient encore « URL is unknown to Google ». L'italien est le plus
+touché : 30 sur 103 (29 %), contre 66 sur 118 en français (56 %).
+
+**Le sitemap n'est pas en cause** (`--sitemaps`, 30/09 au matin) : `tribe_events` lu
+le 29/09 à 18h09, l'index le 30/09 à 4h29, zéro erreur, 221 adresses déclarées — le
+même nombre que les fiches non terminées. Google a donc la liste et CHOISIT de ne pas
+passer : c'est un jugement de priorité sur le site, pas un défaut de découverte.
+
+Deux précautions de lecture, mesurées le même soir :
+- la frontière « unknown » / « Discovered » n'est pas stable : le Marché au Fort FR a
+  donné l'un à 21h36 et l'autre à 22h25. Seul « indexée ou non » est un chiffre fiable ;
+- les `noindex` et les 5xx remontés par Google peuvent être périmés : sur 4 `noindex`,
+  2 seulement étaient encore posés (par `cs-completude`, volontairement) ; les 2 pages
+  en 5xx répondaient 200.
+
+`/feed/?cs_flux_une=1` renvoie l'en-tête `X-CS-Flux-Une` (« actif » ou la raison du
+refus) et `X-CS-Flux-Une-Ids` (les fiches retenues). Deux versions du 24/09 ont rendu un
+flux inchangé sans rien dire — d'où cet en-tête.
+
+## Revenir en arrière
+
+Option `cs_flux_une_actif` à 0 : le flux redevient celui des seuls articles.

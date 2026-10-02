@@ -1,0 +1,22 @@
+<!-- carte-evenement-blocks — markup Gutenberg (JetEngine "Blocks" listing view).
+     Source de vérité : ui_kits/agenda/components.jsx (EventRow) + kit.css + colors_and_type.css,
+     lus via DesignSync le 2026-07-12. Écrit sur le post 969 (post_type=jet-engine) par
+     apply-carte-evenement.mjs. Champs couverts (v1, vérifiés avec données réelles) :
+     heure (brute, non formatée — cf. limitation ci-dessous), catégorie, territoire, titre.
+     PAS ENCORE : lieu/venue (nécessite une Relation JetEngine event↔venue), statut (le
+     mapping de libellé as_statut→texte affiché nécessite un Glossary JetEngine), formatage
+     de l'heure (nécessite d'enregistrer _EventStartDate comme champ Date dans une Meta Box
+     JetEngine — tenté, bloqué par une UI instable ce jour, à refaire). -->
+<!-- wp:group {"className":"ag-row","tagName":"div","layout":{"type":"flex","flexWrap":"nowrap"}} -->
+<div class="wp-block-group ag-row"><!-- wp:jet-engine/dynamic-field {"dynamic_field_source":"meta","dynamic_field_post_meta":"_EventStartDate","date_format":"D j M · G\\hi","field_tag":"span","className":"ag-row__time"} /-->
+
+<!-- wp:group {"className":"ag-row__main","tagName":"div"} -->
+<div class="wp-block-group ag-row__main"><!-- wp:group {"className":"ag-row__catline","tagName":"div","layout":{"type":"flex"}} -->
+<div class="wp-block-group ag-row__catline"><!-- wp:jet-engine/dynamic-terms {"from_tax":"tribe_events_cat","terms_num":1,"terms_linked":false,"className":"cs-ev-cat"} /-->
+
+<!-- wp:jet-engine/dynamic-terms {"from_tax":"territoire","terms_num":1,"terms_linked":false,"className":"cs-terr"} /--></div>
+<!-- /wp:group -->
+
+<!-- wp:jet-engine/dynamic-field {"dynamic_field_source":"object","dynamic_field_post_object":"post_title","field_tag":"h3","className":"cs-ev-title ag-row__title"} /--></div>
+<!-- /wp:group --></div>
+<!-- /wp:group -->

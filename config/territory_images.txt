@@ -1,0 +1,21 @@
+# SYNCED FROM observatoire-business-sabaudo — DIVERGENCE ASSUMÉE (Agenda).
+# À répercuter lors de l'extraction cultura-core (ne PAS restaurer avec la version amont).
+#
+# Ce fichier contenait des bannières de marque « Observatoire économique Sabaudo »
+# (hébergées dans Brevo — img.mailinblue.com/content_library). Sur l'Agenda, elles
+# fuyaient comme image à la une sur des fiches événement : un visuel Observatoire n'a
+# rien à faire sur une fiche culturelle Agenda (violation charte §9).
+#
+# → Les URLs Observatoire ont été SUPPRIMÉES (pas seulement commentées). Ne PAS les
+#   réintroduire. Ne PAS resynchroniser ce fichier depuis l'amont Observatoire.
+#
+# Le repli d'image est désormais géré EXCLUSIVEMENT par pick_banner_image
+# (utils/sources.py) via le set catégorie Agenda (config/territory_category_images.txt,
+# hébergé agendasabauda.eu). À défaut, "" — « pas d'image plutôt qu'un visuel
+# inadapté » (charte §9).
+#
+# Depuis le 04/09 (audit du 31/08 §2.7), PLUS PERSONNE NE LIT CE FICHIER :
+# load_territory_images() a été retirée (elle renvoyait {} par construction et son
+# résultat était passé à pick_banner_image, qui l'ignorait). Le fichier reste ici
+# uniquement pour le manifeste de sync amont (config/sync_amont.json, divergence
+# assumée) et pour que personne ne le resynchronise depuis l'Observatoire.

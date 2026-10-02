@@ -1,0 +1,59 @@
+{
+  "_regle": "Franck, 2026-08-18 : « TNN, personne ne comprend ». RÈGLE : un sigle se développe à sa PREMIÈRE mention, puis s'emploie seul — « Théâtre national de Nice (TNN) », et ensuite « le TNN ». Le développement d'abord, le sigle entre parenthèses : le lecteur qui ne connaît pas comprend tout de suite, celui qui connaît n'est pas ralenti.",
+  "_pourquoi_un_dictionnaire_et_pas_un_detecteur": "Un détecteur de MAJUSCULES prendrait « ESTATE REALE 2026 », « NOTE D'ARTE », « TORINO RINASCIMENTALE » et « XII Monterosa Classica » pour des sigles — ce sont des titres en capitales et un chiffre romain. Seul ce dictionnaire fait AGIR ; le détecteur de scripts/audit_acronymes.py sert uniquement à DÉCOUVRIR des candidats à ajouter ici, et sa sortie se lit, elle ne s'applique pas.",
+  "_qui_le_remplit": "Franck, ou une session APRÈS vérification à la source. Ne jamais inventer un développement : un sigle mal développé est pire que le sigle seul, parce qu'il a l'air d'une information.",
+  "_forme": "sigle → { fr, it }. Une langue absente = pas de développement dans cette langue, le sigle reste seul.",
+
+  "sigles": {
+    "TNN": {
+      "fr": "Théâtre national de Nice",
+      "it": "Teatro nazionale di Nizza",
+      "_source": "Franck, 2026-08-18 — l'exemple qui a motivé cette règle."
+    },
+    "MAUTO": {
+      "fr": "Musée national de l'automobile",
+      "it": "Museo Nazionale dell'Automobile",
+      "_source": "Le nom de lieu de la source le donne lui-même : « MAUTO - Museo Nazionale dell'Automobile » (fiches 3433 et 4632)."
+    },
+    "TFF": {
+      "fr": "Festival du film de Turin",
+      "it": "Torino Film Festival",
+      "_source": "Vérifié le 04/09 (torinofilmfest.org, Wikipédia) : le nom officiel italien/international est déjà « Torino Film Festival », sans traduction — repéré dans le corpus via « Il 44TFF sarà dedicato a Marilyn Monroe »."
+    },
+    "TJF": {
+      "fr": "Festival de jazz de Turin",
+      "it": "Torino Jazz Festival",
+      "_source": "Vérifié le 04/09 (italiajazz.it, piemontedalvivo.it) : « TJF PIEMONTE 2026 » est la tournée hors les murs du Torino Jazz Festival — repéré via « TJF PIEMONTE 2026: al via l'ottava edizione », Teatro Alfieri, Asti."
+    },
+    "GAM": {
+      "fr": "Galerie civique d'art moderne et contemporain (Turin)",
+      "it": "Galleria Civica d'Arte Moderna e Contemporanea",
+      "_source": "Vérifié le 04/09 (comune.torino.it, MuseoTorino, Wikipédia) — repéré via « Musei civici (Palazzo Madama, MAO, GAM) », Turin."
+    },
+    "MAO": {
+      "fr": "Musée d'art oriental (Turin)",
+      "it": "Museo d'Arte Orientale",
+      "_source": "Vérifié le 04/09 (cultura.gov.it, comune.torino.it) — même source que GAM."
+    },
+    "OGR": {
+      "fr": "Grands ateliers de réparation (Turin)",
+      "it": "Officine Grandi Riparazioni",
+      "_source": "Vérifié le 04/09 (Wikipédia, cultura.gov.it) : anciens ateliers de maintenance ferroviaire, aujourd'hui lieu culturel — repéré via « Lingotto Fiere / OGR Torino »."
+    },
+    "C2C": {
+      "fr": "Club to Club",
+      "it": "Club to Club",
+      "_source": "Vérifié le 04/09 (clubtoclub.it, Wikipédia) : le sigle épelle littéralement son propre nom (« 2 » = « to »), identique en français et en italien — repéré via « un anniversaire marquant pour le C2C »."
+    },
+    "MITO": {
+      "fr": "Milan-Turin",
+      "it": "Milano-Torino",
+      "_source": "Vérifié le 04/09 (mitosettembremusica.it, Wikipédia italienne) : MITO = MIlano + TOrino, les deux villes qui coproduisent le festival MITO SettembreMusica — repéré via « MITO per la », Museo del Risorgimento."
+    }
+  },
+
+  "_candidats_a_confirmer": {
+    "_note": "REPÉRÉS dans le corpus, développement NON VÉRIFIÉ. Ils ne sont PAS appliqués — ils attendent une confirmation à la source. Les déplacer dans « sigles » une fois vérifiés.",
+    "_resolus_hors_sigles": "ARCA vérifié le 04/09 (visitvalsesiavercelli.it, comune.vercelli.it) : CE N'EST PAS UN SIGLE — « arca » est le mot italien pour « arche », le lieu tire son nom de l'image d'une arche moderne (verre et acier) protégeant l'ancienne église médiévale qui l'abrite. Retiré des candidats, rien à développer."
+  }
+}

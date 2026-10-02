@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% set active = 'cowork' %}
+{% block title %}Cowork — tâche d'auto-complétion{% endblock %}
+{% block h1 %}Cowork{% endblock %}
+{% block subtitle %}<div class="sub">Le prompt de la tâche Claude Cowork (aller chercher les infos manquantes via le navigateur) et le journal de ses passages.</div>{% endblock %}
+
+{% block content %}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:920px;">
+
+  <!-- Rappel de cadrage -->
+  <div class="card" style="padding:.8rem 1rem;margin-bottom:1rem;">
+    <b>À retenir.</b> Cowork = <b>dernier kilomètre</b> : lance d'abord l'agent Python
+    « Auto-compléter » (gratuit), Cowork ne traite que le résidu. <b>Ne jamais inventer</b>
+    une date — un événement complété part en « À valider », jamais en ligne directement.
+    {% if last %}<br><span class="muted text-sm">Dernier passage enregistré : <b>{{ last }}</b>.</span>
+    {% else %}<br><span class="muted text-sm">Aucun passage enregistré pour l'instant.</span>{% endif %}
+  </div>
+
+  <!-- Le prompt -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+    <h2 style="margin:.2rem 0;">Le prompt</h2>
+    <button type="button" class="btn btn-sm" onclick="cwCopy()">📋 Copier le prompt</button>
+  </div>
+  <pre id="cwPrompt" style="white-space:pre-wrap;background:var(--code-bg,#f6f7f9);border:1px solid var(--border,#e2e4e8);border-radius:8px;padding:1rem;font-size:.82rem;line-height:1.5;overflow-x:auto;">{{ prompt }}</pre>
+  <p class="muted text-sm">Source : <code>docs/COWORK_AUTOCOMPLETION.md</code> (versionné). Modifie le prompt là-bas ; cette page l'affiche automatiquement.</p>
+
+  <!-- Journal -->
+  <h2 id="journal" style="margin:1.4rem 0 .4rem;">Journal des passages</h2>
+  <p class="muted text-sm">Colle ici le rapport de fin de session de Cowork — l'horodatage est posé automatiquement (heure serveur).</p>
+
+  <form method="post" action="/cowork/log" style="margin:.4rem 0 1.2rem;">
+    <textarea name="report" rows="5" required placeholder="✅ Complétés : …&#10;🔁 Récurrents : …&#10;⏭️ Passés : …&#10;Total : …"
+      style="width:100%;box-sizing:border-box;font-family:inherit;font-size:.85rem;padding:.6rem;border:1px solid var(--border,#e2e4e8);border-radius:8px;"></textarea>
+    <button class="btn btn-ok btn-sm" style="margin-top:.5rem;">💾 Enregistrer un passage</button>
+  </form>
+
+  {% if runs %}
+    {% for r in runs %}
+    <div class="card" style="padding:.6rem .9rem;margin-bottom:.6rem;">
+      <div class="muted text-sm" style="margin-bottom:.3rem;">🕒 {{ r.created_at }}</div>
+      <pre style="white-space:pre-wrap;margin:0;font-size:.82rem;line-height:1.45;">{{ r.report }}</pre>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Le journal est vide — il se remplira dès le premier rapport enregistré.</p>
+  {% endif %}
+</div>
+
+<script>
+function cwCopy() {
+  var t = document.getElementById('cwPrompt').innerText;
+  navigator.clipboard.writeText(t).then(function(){
+    var b = event.target; var old = b.textContent;
+    b.textContent = '✓ Copié'; setTimeout(function(){ b.textContent = old; }, 1500);
+  });
+}
+</script>
+{% endblock %}

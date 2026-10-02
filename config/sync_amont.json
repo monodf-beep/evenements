@@ -1,0 +1,51 @@
+{
+  "_lisez_moi": "Voir scripts/audit_sync_amont.py. Ne pas éditer à la main : utiliser --record APRÈS avoir porté dans l'autre dépôt.",
+  "fichiers": {
+    "config/blocked_image_domains.txt": {
+      "statut": "a_porter",
+      "sha256_porte": null,
+      "porte_le": null,
+      "note": "Ajout du 2026-08-04 : presse RÉGIONALE (Dauphiné, Messager, Nice-Matin, La Stampa, Aosta Sera…) et agendas concurrents. La liste amont ne couvrait que la presse nationale — c'est cette divergence qui a laissé passer 41 fiches (CONFORMITE §3)."
+    },
+    "config/territory_category_images.txt": {
+      "statut": "porte",
+      "sha256_porte": "2477392987522f69d7183c5edf1115c2ffd723a12c5871404feff0e38e7bb077",
+      "porte_le": "2026-08-05",
+      "note": "Présumé aligné au 2026-08-05, non vérifié contre l'amont : ce script détecte les modifications À PARTIR de cette date, pas l'écart initial."
+    },
+    "config/territory_images.txt": {
+      "statut": "divergence_assumee",
+      "note": "DIVERGENCE ASSUMÉE déclarée dans l'en-tête du fichier lui-même : visuels propres à l'Agenda. Ne PAS restaurer avec la version amont."
+    },
+    "utils/brevo.py": {
+      "statut": "porte",
+      "sha256_porte": "c01f06d221e4bf8c6f2784e777d0eab801be5a8bbb58517cd461b62601a81574",
+      "porte_le": "2026-08-05",
+      "note": "Présumé aligné au 2026-08-05, non vérifié contre l'amont : ce script détecte les modifications À PARTIR de cette date, pas l'écart initial."
+    },
+    "utils/google_auth.py": {
+      "statut": "porte",
+      "sha256_porte": "ba186783a5977b2bc6063d5de035febb8264238bcecbd6dab4a3cec2bc20c793",
+      "porte_le": "2026-08-05",
+      "note": "Présumé aligné au 2026-08-05, non vérifié contre l'amont : ce script détecte les modifications À PARTIR de cette date, pas l'écart initial."
+    },
+    "utils/logger.py": {
+      "statut": "porte",
+      "sha256_porte": "a9e2d3c8e9f69d349b370091c3cfbea226b3b95731ed23db3272d2c839a89464",
+      "porte_le": "2026-08-05",
+      "note": "Présumé aligné au 2026-08-05, non vérifié contre l'amont : ce script détecte les modifications À PARTIR de cette date, pas l'écart initial."
+    },
+    "utils/sources.py": {
+      "statut": "a_porter",
+      "sha256_porte": null,
+      "porte_le": null,
+      "note": "Modifié le 2026-08-05 par une autre session (exclusion pro, deux portées). Report jamais noté — trouvé par ce script au moment de sa création."
+    },
+    "utils/usage.py": {
+      "statut": "a_porter",
+      "sha256_porte": null,
+      "porte_le": null,
+      "note": "Correctif du 2026-08-05 : TTL différencié du drapeau d'accès API. Sans lui, un solde tombé à zéro bloque encore sept jours après le rechargement (CONFORMITE §6)."
+    }
+  }
+}

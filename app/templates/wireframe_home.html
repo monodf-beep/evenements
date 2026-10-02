@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% set active = 'wireframe' %}
+{% block title %}Wireframe home — règles d'affichage{% endblock %}
+{% block h1 %}Wireframe home + règles d'affichage{% endblock %}
+{% block subtitle %}<div class="sub">La home d'Agenda Sabauda, section par section, avec la <b>règle</b> qui choisit et classe les événements (intention → filtre → score → tri).</div>{% endblock %}
+
+{% block content %}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:1000px;">
+
+  <!-- Concepts -->
+  <div class="card" style="padding:1rem 1.2rem;margin-bottom:1.2rem;">
+    <b>Comment lire une règle.</b> Chaque section répond à une <b>intention</b> (ce que
+    cherche le visiteur), pas à la « taille » d'un événement.
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.5rem;margin-top:.7rem;font-size:.86rem;">
+      <div><b>🎯 Intention</b><br><span class="muted">La question à laquelle la section répond.</span></div>
+      <div><b>🔎 Filtre</b><br><span class="muted">La requête : période + catégorie + territoire.</span></div>
+      <div><b>⭐ Score (llm_score)</b><br><span class="muted">Note d'évaluation du backoffice. Plus haut = mis en avant. C'est un <b>curseur de mise en avant</b>, jamais une section.</span></div>
+      <div><b>↕️ Tri</b><br><span class="muted">L'ordre : par date, ou par score.</span></div>
+    </div>
+  </div>
+
+  <!-- Vue d'ensemble : la page en un coup d'œil -->
+  <h2 style="margin:.2rem 0 .5rem;">La page en un coup d'œil</h2>
+  <div class="card" style="padding:1rem;margin-bottom:1.4rem;background:#F7F1E8;">
+    <div style="max-width:420px;margin:0 auto;display:flex;flex-direction:column;gap:5px;">
+      {% for s in sections %}
+      {% set lab = labels[s.statut] %}
+      <div style="border:1px solid {{ lab[1] }};background:{{ lab[2] }};border-radius:4px;padding:.4rem .6rem;
+                  display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+        <span style="font-size:.82rem;font-weight:600;color:#1D1D1B;">{{ loop.index }}. {{ s.nom }}</span>
+        <span style="font-size:.66rem;font-weight:700;color:{{ lab[1] }};text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;">{{ lab[0] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:.9rem;font-size:.72rem;">
+      {% for k, lab in labels.items() %}
+      <span style="display:inline-flex;align-items:center;gap:.3rem;"><span style="width:10px;height:10px;border-radius:2px;background:{{ lab[2] }};border:1px solid {{ lab[1] }};"></span>{{ lab[0] }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Détail section par section -->
+  <h2 style="margin:.2rem 0 .6rem;">Le détail, section par section</h2>
+  {% for s in sections %}
+  {% set lab = labels[s.statut] %}
+  <div class="card" style="padding:0;margin-bottom:.8rem;overflow:hidden;border-left:4px solid {{ lab[1] }};">
+    <div style="display:flex;gap:0;flex-wrap:wrap;">
+
+      <!-- Schéma visuel de la section -->
+      <div style="flex:0 0 150px;background:#FBF7F0;border-right:1px solid var(--border,#e2e4e8);
+                  padding:.9rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;min-height:110px;">
+        {% if s.kind == 'vedette' %}
+          <div style="width:100%;height:52px;background:#C9BFAD;border-radius:3px;"></div>
+          <div style="width:70%;height:7px;background:#1D1D1B;border-radius:2px;"></div>
+        {% elif s.kind == 'cartes' %}
+          <div style="display:flex;gap:5px;width:100%;">
+            {% for _ in range(3) %}<div style="flex:1;"><div style="height:34px;background:#C9BFAD;border-radius:3px;margin-bottom:4px;"></div><div style="height:5px;width:80%;background:#1D1D1B;border-radius:2px;"></div></div>{% endfor %}
+          </div>
+        {% elif s.kind == 'liste' %}
+          <div style="width:100%;display:flex;flex-direction:column;gap:6px;">
+            {% for _ in range(3) %}<div style="display:flex;gap:6px;align-items:center;"><div style="width:34px;height:24px;background:#C9BFAD;border-radius:3px;"></div><div style="flex:1;"><div style="height:6px;width:85%;background:#1D1D1B;border-radius:2px;margin-bottom:4px;"></div><div style="height:5px;width:50%;background:#D8D0C0;border-radius:2px;"></div></div></div>{% endfor %}
+          </div>
+        {% elif s.kind == 'chips' %}
+          <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;">
+            {% for _ in range(4) %}<div style="height:20px;width:46px;border:1px solid #C9BFAD;border-radius:3px;"></div>{% endfor %}
+          </div>
+        {% else %}
+          <div style="width:100%;height:20px;background:#E3DCCE;border-radius:3px;"></div>
+        {% endif %}
+        <span style="font-size:.62rem;color:#8a806f;text-transform:uppercase;letter-spacing:.06em;">{{ s.kind }}</span>
+      </div>
+
+      <!-- Règle -->
+      <div style="flex:1;min-width:250px;padding:.9rem 1.1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
+          <b style="font-size:1rem;">{{ loop.index }}. {{ s.nom }}</b>
+          <span style="font-size:.68rem;font-weight:700;color:{{ lab[1] }};background:{{ lab[2] }};border:1px solid {{ lab[1] }};border-radius:999px;padding:.15rem .55rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;">{{ lab[0] }}</span>
+        </div>
+        {% if s.kind != 'struct' %}
+        <table style="width:100%;font-size:.85rem;border-collapse:collapse;">
+          <tr><td style="padding:.15rem .5rem .15rem 0;color:#6F6B62;white-space:nowrap;vertical-align:top;">🎯 Intention</td><td style="padding:.15rem 0;"><b>{{ s.intention }}</b></td></tr>
+          <tr><td style="padding:.15rem .5rem .15rem 0;color:#6F6B62;white-space:nowrap;vertical-align:top;">🔎 Filtre</td><td style="padding:.15rem 0;">{{ s.filtre }}</td></tr>
+          <tr><td style="padding:.15rem .5rem .15rem 0;color:#6F6B62;white-space:nowrap;vertical-align:top;">⭐ Score</td><td style="padding:.15rem 0;">{{ s.score }}</td></tr>
+          <tr><td style="padding:.15rem .5rem .15rem 0;color:#6F6B62;white-space:nowrap;vertical-align:top;">↕️ Tri</td><td style="padding:.15rem 0;">{{ s.tri }}</td></tr>
+        </table>
+        {% else %}
+        <div style="font-size:.85rem;color:#4A4A48;">{{ s.intention }}</div>
+        {% endif %}
+        <div class="muted text-sm" style="margin-top:.5rem;line-height:1.45;">{{ s.note }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <p class="muted text-sm" style="margin-top:1rem;">
+    Chaque section « à câbler / placeholder » deviendra une <b>Sélection</b> (CPT en cours de
+    construction) : une requête = période + catégorie + territoire + score mini + tri. Cette
+    page est la <b>spécification</b> de ces règles — on la fait évoluer au fur et à mesure.
+  </p>
+
+  <!-- ===================== ENCARTS PUBLICITÉ ===================== -->
+  <h2 style="margin:1.8rem 0 .5rem;">📣 Les encarts publicité</h2>
+
+  <!-- Modèle override -->
+  <div class="card" style="padding:1rem 1.2rem;margin-bottom:1rem;background:#e8f0fe;border:1px solid #9db8e8;">
+    <b>Le modèle : « AdSense par défaut, remplaçable par le backoffice ».</b>
+    <div style="margin-top:.5rem;font-size:.9rem;line-height:1.5;">
+      Chaque emplacement affiche <b>Google AdSense</b> par défaut. Quand tu as un annonceur,
+      tu crées sa pub dans l'onglet <b>Régie</b> pour le bloc voulu : elle <b>prend la place</b>
+      de l'AdSense sur ce bloc, le temps de la campagne. Pas d'emplacement séparé — un même
+      slot, deux sources possibles, le backoffice gagne quand une campagne est active.
+    </div>
+    <div class="text-sm muted" style="margin-top:.5rem;">
+      Côté WordPress, chaque bloc AdSense s'enveloppe dans <code>[cs_slot bloc="N"]…code AdSense…[/cs_slot]</code>
+      (mu-plugin <code>cs-regie-serve.php</code>) : si <code>/api/active-ads</code> renvoie une campagne
+      pour le bloc N, la créative backoffice s'affiche à la place, gatée consentement Complianz.
+    </div>
+  </div>
+
+  <!-- Systèmes régie -->
+  <div class="card" style="padding:1rem 1.2rem;margin-bottom:1rem;background:#fdf3e3;border:1px solid #e8c98a;">
+    <b>Les briques de la régie</b> — qui fait quoi (deux ne sont pas encore déployées / à câbler).
+    <div style="margin-top:.6rem;display:flex;flex-direction:column;gap:.5rem;">
+      {% for s in regie_systems %}
+      {% set vc = {'garder':('GARDER','#1a7f4b','#e9f6ee'),'aligner':('ALIGNER','#b45309','#fdf3e3'),'abandonner':('ABANDONNER','#dc2626','#fdeaea')}[s.verdict] %}
+      <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;font-size:.86rem;padding:.35rem 0;border-top:1px solid #f0e2c4;">
+        <span style="font-weight:700;color:{{ vc[1] }};background:{{ vc[2] }};border:1px solid {{ vc[1] }};border-radius:999px;padding:.05rem .5rem;font-size:.66rem;white-space:nowrap;">{{ vc[0] }}</span>
+        <div style="flex:1;min-width:220px;"><b>{{ s.nom }}</b> <span class="muted">· {{ s.ou }}</span><br>
+          <span class="muted text-sm">{{ s.role }} — {{ s.note }}</span></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="text-sm" style="margin-top:.6rem;"><b>Reco :</b> plan 12 blocs (grille) + Ad Inserter (couche AdSense) + cs-regie-serve.php (override backoffice via <code>[cs_slot]</code>) ; abandonner cs-regie.php.</div>
+  </div>
+
+  <!-- Tableau des encarts -->
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:.84rem;min-width:640px;">
+      <thead><tr style="text-align:left;background:var(--code-bg,#f6f7f9);">
+        <th style="padding:.5rem .7rem;">Bloc</th><th>Format</th><th>Emplacement</th><th>Desktop / Mobile</th><th>Page</th><th>Statut</th>
+      </tr></thead>
+      <tbody>
+      {% for a in ad_plan %}
+      {% set sc = {'actif':'#1a7f4b','todo':'#b45309','reserve':'#6F6B62'}[a.src] %}
+      <tr style="border-top:1px solid var(--border,#e2e4e8);">
+        <td style="padding:.5rem .7rem;font-family:ui-monospace,monospace;font-weight:700;">{{ a.bloc }}</td>
+        <td>{{ a.format }}</td>
+        <td class="text-sm">{{ a.emplacement }}</td>
+        <td class="text-sm">{{ a.dm }}</td>
+        <td class="text-sm">{{ a.page }}</td>
+        <td><span style="color:{{ sc }};font-weight:600;font-size:.8rem;">{{ a.statut }}</span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted text-sm" style="margin-top:.6rem;">
+    Chaque bloc = <b>AdSense par défaut</b> (colonne Statut), <b>remplaçable par le backoffice</b> via
+    <code>[cs_slot bloc="N"]</code>. « À configurer » = le bloc existe dans le plan mais son code AdSense
+    n'est pas encore posé. Source : plan 12 blocs du thème (<code>agenda-sabauda-core</code>).
+    <b>FR / IT : aucune différence</b> (aucun code <code>pll_</code> dans les gabarits).
+    Les ⚠️ sont des points où le code et la doc (STATUS.md) divergent — <b>à vérifier à l'écran</b>.
+    Seul le <b>Bloc 2</b> (pavé <code>/evenement/*</code>) cible les fiches événement.
+  </p>
+</div>
+{% endblock %}

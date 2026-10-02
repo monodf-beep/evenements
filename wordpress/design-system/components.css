@@ -1,0 +1,631 @@
+/* =============================================================
+   Cultura Sabauda · CSS des composants (extrait des build-recipes)
+   Généré depuis wordpress/build-recipes/*.md — NE PAS éditer à la main.
+   Appliqué via Code Snippets (site-css) par apply-components.mjs.
+   Les classes ciblent des structures montées ensuite dans le builder.
+   ============================================================= */
+
+/* ===== carte-evenement — SOURCE RÉELLE (ui_kits/agenda/kit.css + colors_and_type.css,
+   lus via DesignSync le 2026-07-12). Remplace une version précédente FABRIQUÉE sans
+   accès au design system — structure "boîte à ombre + image + pastille date" INEXACTE.
+   Le vrai composant est une LIGNE DENSE (.ag-row) dans une liste groupée par jour,
+   SANS image, SANS pastille de date par ligne (la date vient du day-group au-dessus). ===== */
+
+/* ---- Ligne événement (EventRow) : grid 96px(heure) | 1fr(contenu) | auto(statut) ---- */
+.ag-row {
+  display: grid; grid-template-columns: 96px 1fr auto; gap: 18px; align-items: start;
+  padding: 12px 0; border-bottom: 1px solid var(--rule); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-std);
+}
+.ag-row:hover { background: var(--bg-alt); }
+.ag-row__time { font-family: var(--font-mono); font-size: var(--fs-c-sm); color: var(--fg-2); padding-top: 2px; }
+.ag-row__main { min-width: 0; }
+.ag-row__catline { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.cs-ev-title.ag-row__title {
+  font-family: var(--font-editorial); font-weight: 600; font-size: var(--fs-c-lg);
+  letter-spacing: 0; line-height: 1.2; margin: 0;
+}
+.ag-row:hover .ag-row__title { text-decoration: underline; text-underline-offset: 3px; }
+.ag-row__meta.cs-ev-meta { font-size: var(--fs-c-sm); color: var(--fg-3); margin-top: 3px; }
+.ag-row__right { display: flex; align-items: center; gap: 10px; }
+
+/* ---- En-tête de groupe par jour (le "gros chiffre" vit ICI, pas sur chaque ligne) ---- */
+.ag-daygroup { margin-bottom: 8px; }
+.ag-daygroup__head {
+  display: flex; align-items: baseline; gap: 12px;
+  border-top: 1px solid var(--fg-1); padding: 10px 0 8px; margin-top: 20px;
+}
+.ag-daygroup__num { font-family: var(--font-editorial); font-weight: 600; font-size: 22px; color: var(--fg-1); line-height: 1; }
+.ag-daygroup__wd { font-size: var(--fs-c-xs); font-weight: 700; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--fg-3); }
+.ag-daygroup--today .ag-daygroup__num,
+.ag-daygroup--today .ag-daygroup__wd { color: var(--cs-rouge); }
+
+/* ---- Statut (texte à droite ; annulé seul a le droit au rouge, cf. kit.css) ---- */
+.ag-statustag { font-family: var(--font-mono); font-size: var(--fs-c-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); white-space: nowrap; }
+.ag-statustag--annule { color: var(--cs-rouge); font-weight: 700; }
+
+/* ---- Catégorie (monochrome, libellé) et territoire (chip mono, mono-espace) ----
+   (règles issues de colors_and_type.css — inchangées, déjà correctes) */
+.cs-ev-cat {
+  font-family: var(--font-editorial); font-weight: 600; font-size: var(--fs-c-xs);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-1);
+}
+.cs-ev-cat--accent { color: var(--cs-rouge); }
+.cs-terr {
+  font-family: var(--font-mono); font-size: var(--fs-c-xs); letter-spacing: 0.06em;
+  color: var(--fg-2); border: 1px solid var(--rule-strong); border-radius: var(--r-1); padding: 2px 7px;
+}
+
+/* ---- Statut = TYPOGRAPHIE sur le wrapper .cs-ev--{statut}, jamais une couleur d'aplat ---- */
+.cs-ev-status { font-weight: 700; letter-spacing: var(--tracking-caps); text-transform: uppercase; font-size: var(--fs-c-xs); }
+.cs-ev--avenir  .cs-ev-title { color: var(--fg-1); }
+.cs-ev--complet .cs-ev-title,
+.cs-ev--complet .cs-ev-meta { color: var(--fg-3); }
+.cs-ev--annule  .cs-ev-title { color: var(--fg-3); text-decoration: line-through; text-decoration-thickness: 2px; }
+.cs-ev--annule  .cs-ev-meta  { color: var(--fg-3); }
+.cs-ev--passe   { opacity: 0.55; }
+.cs-ev--passe   .cs-ev-title { color: var(--fg-3); }
+
+/* ---- Liste (conteneur des day-groups) ---- */
+.ag-list { max-width: 1080px; margin: 0 auto; padding: 28px 24px 100px; }
+
+@media (max-width: 720px) {
+  .ag-row { grid-template-columns: 72px 1fr; }
+  .ag-row__right { grid-column: 2; justify-content: flex-start; margin-top: 4px; }
+}
+
+
+/* ===== header-menu ===== */
+/* ===== Header Agenda Sabauda ===== */
+.as-header {
+  background: var(--cs-blanc);
+  border-bottom: 1px solid var(--rule);
+  transition: box-shadow var(--dur-fast) var(--ease-std),
+              padding var(--dur-fast) var(--ease-std);
+}
+
+/* Wordmark + point rouge (la signature de marque) */
+.as-wordmark {
+  font-family: var(--font-editorial);      /* La Semplicita */
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: var(--tracking-caps);
+  color: var(--cs-bleu);                    /* #18365E */
+  text-decoration: none;
+  line-height: 1;
+}
+.as-wordmark .as-dot { color: var(--cs-rouge); }  /* #DC5D45 — le point */
+
+/* Menu de nav (JetBlocks Nav Menu) */
+.as-header .jet-nav__item-inner {
+  font-family: var(--font-body);            /* Nunito Sans */
+  font-size: var(--fs-body-sm);
+  font-weight: 600;
+  color: var(--fg-1);
+  letter-spacing: .01em;
+}
+.as-header .jet-nav__item > .jet-nav__link:hover,
+.as-header .jet-nav__item.jet-current-menu-item > .jet-nav__link {
+  color: var(--fg-link);                    /* rouge accent au survol/actif */
+}
+/* Les 2 items temporels reines : légèrement appuyés */
+.as-header .menu-item-aujourdhui > a,
+.as-header .menu-item-ce-week-end > a { font-weight: 700; }
+
+/* Sous-menus (dropdown) */
+.as-header .jet-nav__sub {
+  background: var(--cs-blanc);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-2);
+  box-shadow: var(--shadow-lift);
+  padding: var(--s-2);
+}
+/* Méga-menu Catégories : 2 colonnes */
+.as-header .menu-item-categories .jet-nav__sub { column-count: 2; column-gap: var(--s-5); min-width: 460px; }
+
+/* Loupe */
+.as-search-toggle { color: var(--fg-2); cursor: pointer; }
+.as-search-toggle:hover { color: var(--fg-link); }
+
+/* Switch de langue FR | IT (texte, pas de drapeau) */
+.as-lang { display: inline-flex; gap: var(--s-2); font-family: var(--font-body);
+           font-size: var(--fs-meta); font-weight: 700; }
+.as-lang a { color: var(--fg-3); text-decoration: none; }
+.as-lang a:hover { color: var(--fg-link); }
+.as-lang .current-lang > a,
+.as-lang .lang-item.current-lang { color: var(--cs-bleu); }         /* langue active */
+.as-lang .lang-item + .lang-item::before { content: "|"; color: var(--rule-strong);
+           margin-right: var(--s-2); }
+.as-lang img.flag, .as-lang .flag { display: none !important; }      /* jamais de drapeau */
+
+/* Sticky compact au scroll */
+.as-header.elementor-sticky--effects { padding-top: 6px; padding-bottom: 6px;
+           box-shadow: var(--shadow-paper); }
+.as-header.elementor-sticky--effects .as-wordmark { font-size: 1.25rem; }
+
+/* Mobile */
+@media (max-width: 1023.98px){
+  .as-header .as-nav-desktop { display: none; }
+  .as-header .as-burger { display: inline-flex; }
+}
+
+
+/* ===== footer ===== */
+/* ===== FOOTER Agenda Sabauda — fond deep (bleu Savoie) ===== */
+.as-footer{
+  background: var(--bg-deep);
+  color: var(--fg-on-deep);
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+}
+.as-footer a{
+  color: var(--fg-on-deep);          /* beige sur bleu = contraste AA large */
+  text-decoration: none;
+}
+.as-footer a:hover,
+.as-footer a:focus-visible{
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.as-footer a:focus-visible{          /* focus visible = rouge accent (non-texte, safe) */
+  outline: 2px solid var(--cs-rouge);
+  outline-offset: 2px;
+}
+
+/* ---- Zone A : newsletter ---- */
+.as-footer__news{
+  background: rgba(100,134,186,.14); /* --cs-bleu-clair translucide */
+  border-bottom: 1px solid var(--rule-on-deep);
+  padding: var(--s-6) var(--s-5);
+}
+.as-footer__news h2{
+  font-family: var(--font-editorial);
+  font-size: var(--fs-h4);
+  margin: 0 0 var(--s-2);
+}
+.as-footer__news form{ display:flex; gap: var(--s-2); flex-wrap:wrap; max-width: 34rem; }
+.as-footer__news input[type=email]{
+  flex:1 1 14rem; padding: var(--s-3) var(--s-4);
+  border:1px solid var(--rule-on-deep); border-radius: var(--r-2);
+  background: rgba(247,241,232,.06); color: var(--fg-on-deep);
+}
+.as-footer__news input::placeholder{ color: rgba(247,241,232,.55); }
+.as-footer__news button{
+  padding: var(--s-3) var(--s-5); border:0; border-radius: var(--r-2); cursor:pointer;
+  background: var(--cs-rouge); color: var(--cs-beige); font-weight:700;
+}
+
+/* ---- Layout général ---- */
+.as-footer__inner{ max-width: var(--page-max); margin:0 auto; padding: var(--s-8) var(--s-5); }
+
+/* ---- Zone B : marque ---- */
+.as-footer__brand{ margin-bottom: var(--s-7); max-width: 32rem; }
+.as-footer__wordmark{
+  font-family: var(--font-editorial);
+  font-size: var(--fs-h3); font-weight:800; letter-spacing: var(--tracking-caps);
+  color: var(--fg-on-deep); line-height: var(--lh-title);
+}
+.as-footer__wordmark .wm-dot{ color: var(--cs-rouge); }   /* le point rouge du logotype */
+.as-footer__baseline{ color: var(--cs-bleu-clair); margin-top: var(--s-2); }
+.as-footer__about{ color: rgba(247,241,232,.82); font-size: var(--fs-meta); margin-top: var(--s-3); }
+.as-footer__social{ display:flex; gap: var(--s-4); margin-top: var(--s-4); }
+.as-footer__social a{ display:inline-flex; }         /* icônes SVG trait, 20px */
+.as-footer__lang{ margin-top: var(--s-4); letter-spacing: var(--tracking-caps); }
+.as-footer__lang [aria-current="true"]{ font-weight:800; }
+.as-footer__lang .sep{ opacity:.5; margin:0 var(--s-2); }
+
+/* ---- Zone C : 4 colonnes ---- */
+.as-footer__cols{
+  display:grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-6);
+  border-top: 1px solid var(--rule-on-deep); padding-top: var(--s-6);
+}
+.as-footer__col h3{
+  font-family: var(--font-editorial);
+  font-size: var(--fs-meta); text-transform:uppercase; letter-spacing: var(--tracking-eyebrow);
+  color: var(--cs-bleu-clair); margin:0 0 var(--s-3);
+}
+.as-footer__col ul{ list-style:none; margin:0; padding:0; display:grid; gap: var(--s-2); }
+
+/* ---- Zone D : nav thématique ---- */
+.as-footer__themes{
+  border-top: 1px solid var(--rule-on-deep);
+  margin-top: var(--s-6); padding-top: var(--s-5);
+  font-size: var(--fs-meta); color: rgba(247,241,232,.82);
+}
+.as-footer__themes strong{ color: var(--fg-on-deep); }
+
+/* ---- Zone E : barre légale ---- */
+.as-footer__legal{
+  border-top: 1px solid var(--rule-on-deep);
+  margin-top: var(--s-6); padding: var(--s-5) 0 0;
+  display:flex; flex-wrap:wrap; justify-content:space-between; gap: var(--s-3);
+  font-size: var(--fs-meta); color: rgba(247,241,232,.75);
+}
+.as-footer__legal a{ color: rgba(247,241,232,.85); }
+.as-footer__editeur img{ height:24px; width:auto; vertical-align:middle; margin-right: var(--s-2); }
+
+/* ---- Responsive ---- */
+@media (max-width: 1024px){
+  .as-footer__cols{ grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px){
+  .as-footer__cols{ grid-template-columns: 1fr; }
+  .as-footer__legal{ flex-direction:column; }
+}
+
+
+/* ===== carte-à-la-une — SOURCE RÉELLE (Agenda Sabaudo - Mobile.dc.html, projet Claude
+   Design "Brief design agenda Sabaudo", lu via DesignSync le 2026-07-12). Variante
+   "grid 2×2 avec image" utilisée section 11 "À LA UNE" de la home — DISTINCTE de
+   .ag-row (ligne dense sans image). Valeurs en px littéraux pour coller exactement
+   à la source (pas de mapping token proposé par la maquette elle-même). ===== */
+.ala-une-card__image {
+  aspect-ratio: 3 / 2; overflow: hidden; background: #FBF7F0; border-radius: 3px; margin-bottom: 8px;
+}
+.ala-une-card__image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ala-une-card__eyebrow {
+  font-family: var(--font-body); font-size: 10.5px; font-weight: 800; color: var(--fg-1); margin-bottom: 3px;
+}
+.ala-une-card__title {
+  margin: 0; font-family: var(--font-editorial); font-weight: 600; font-size: 15.5px;
+  line-height: 1.22; color: var(--fg-1);
+}
+.ala-une-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; margin-bottom: 16px;
+}
+.ala-une-card__eyebrow { gap: 0; align-items: baseline; }
+.ala-une-card__terr::before { content: " · "; }
+
+/* ===== home mobile (sections 1-11) — SOURCE RÉELLE (Agenda Sabaudo - Mobile.dc.html,
+   projet "Brief design agenda Sabaudo", lu le 2026-07-12). Interactions (menu, sélecteur
+   territoire) en CSS pur ("checkbox hack") — pas de JS, contourne le risque de filtrage
+   <script> par WP au save du content. Certains espacements ({{heroPad}}, {{searchPad}},
+   {{tilesPad}}, {{newsletterPad}}…) n'étaient PAS résolus en valeurs px dans le .dc.html
+   exporté (variables du compilateur Claude Design, non présentes dans ce fichier) —
+   estimés ici à partir des espacements voisins connus ; à corriger si Franck a les
+   vraies valeurs. ===== */
+/* GeneratePress enveloppe #content en display:flex (layout contenu+sidebar,
+   body class "right-sidebar") — même avec une sidebar vide, un seul enfant
+   flex (.as-home-root, homepage-template.php) ne remplit pas la largeur du
+   conteneur par défaut (flex-basis:auto, pas de flex-grow), et reste calé à
+   gauche au lieu d'être centré. width:100% le force à occuper tout
+   l'espace, pour que .as-home/.as-home-desktop (max-width + margin:auto à
+   l'intérieur) se centrent réellement dans la page, pas juste dans une
+   zone décalée. Bug réel constaté le 2026-07-13 (contenu visiblement décalé
+   à gauche par rapport aux gouttières pub, ancrées au vrai viewport). */
+.as-home-root { width: 100%; }
+.as-home { position: relative; max-width: 480px; margin: 0 auto; overflow: hidden; background: #fff; }
+@media (min-width: 1024px) { .as-home { display: none; } }
+.as-home-desktop { display: none; }
+@media (min-width: 1024px) { .as-home-desktop { display: block; } }
+.as-menu-toggle, .as-terr-toggle { display: none; }
+/* Logo (assets/agenda/masthead-agenda-v7.png, skyline + "Agenda Sabaudo"
+   intégré) — la home a SON PROPRE masthead (plus grand, avec la nav riche
+   pour le desktop), le header site-wide compact (site-header-footer.php)
+   ne s'affiche donc pas sur la page Accueil (928, cf. exclusion PHP) pour
+   éviter un doublon. */
+.as-masthead-sketch { display: block; width: 100%; max-width: 210px; height: auto; margin: 0 auto; }
+.as-home-desktop .as-masthead-sketch { max-width: 460px; }
+.as-masthead-tagline {
+  font-family: 'Nunito Sans', sans-serif; font-weight: 700; font-size: 9px;
+  color: #6F6B62; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.as-home-desktop-hero .as-masthead-tagline { font-size: 10px; }
+.as-menu-overlay {
+  position: absolute; inset: 0; z-index: 20; background: #fff; display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 280ms cubic-bezier(0.2,0,0,1);
+}
+.as-menu-toggle:checked ~ .as-menu-overlay { transform: translateX(0); }
+.as-menu-toggle:checked ~ .as-menu-overlay { transform: translateX(0); }
+.as-terr-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 10;
+  background: #fff; border-bottom: 1.5px solid #1D1D1B; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+.as-terr-toggle:checked ~ .as-terr-dropdown { display: block; }
+.as-hero-frame { position: relative; aspect-ratio: 1 / 1.05; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
+.as-hero-frame img { position: relative; z-index: 0; }
+.as-hero-frame__gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 45%, rgba(29,29,27,.78) 100%); }
+.as-tile:hover { filter: brightness(0.98); }
+@media (min-width: 481px) { .as-home { border-left: 1px solid #E3DCCE; border-right: 1px solid #E3DCCE; } }
+
+/* ---- Rail horizontal "Événements d'aujourd'hui" — force le Listing Grid JetEngine
+   (grid 2D par défaut) en scroll horizontal flex avec cartes de largeur fixe. Filtre
+   par date pas encore câblé (nécessite JetEngine Query Builder) — affiche pour l'instant
+   les 4 derniers événements, pas seulement ceux du jour. ---- */
+.as-day-rail .jet-listing-grid__items { display: flex !important; overflow-x: auto; gap: 12px; padding-bottom: 4px; }
+.as-day-rail .ala-une-card { width: 150px; flex-shrink: 0; }
+.as-day-rail .ala-une-card__title { font-size: 14.5px; }
+
+/* ===== Fiche événement (single-event natif TEC) — touche typographique légère,
+   "mode minimal d'abord" (docs/TEMPLATES_WORDPRESS.md #7). Les champs manquants
+   (pilule territoire, statut, crédit photo, "Vérifié le") sont injectés en PHP
+   (design-system/single-event-meta.php), pas en Theme Builder. ===== */
+.tribe-events-single .tribe-events-single-event-title { font-family: var(--font-editorial); font-weight: 600; }
+.tribe-events-single .tribe-events-content { font-family: var(--font-body); font-size: 15px; line-height: 1.6; color: var(--fg-1); }
+.tribe-events-single .tribe-events-content p { margin-bottom: 1.1em; }
+/* Bandeau bas sticky MOBILE (bloc 3 de la régie, comme son homologue desktop
+   .as-desktop-sticky-ad plus bas). Volontairement LAISSÉ TEL QUEL lors du
+   passage du bandeau bas en plein écran (décision Franck du 2026-08-04) :
+   - sous 481px il est déjà bord à bord (left:0/right:0, aucun plafond) — sur
+     mobile, « plein écran » et « largeur de contenu » sont la même chose ;
+   - au-delà, le max-width:480px n'est pas une colonne éditoriale arbitraire,
+     c'est exactement la largeur de .as-home (max-width:480px; margin:0 auto,
+     plus haut dans ce fichier), la maquette mobile centrée dans la fenêtre.
+     L'élargir donnerait une publicité PLUS LARGE QUE LA PAGE elle-même, qui
+     déborderait de la maquette au lieu de s'y coller.
+   Bref : ici il n'y a rien à corriger, l'anchor est déjà pleine largeur. */
+.as-sticky-ad { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; }
+@media (min-width: 481px) { .as-sticky-ad { max-width: 480px; margin: 0 auto; } }
+
+/* ===== homepage ===== */
+/* ---- HERO ---- */
+.as-hero {
+  background: var(--bg);            /* beige #F7F1E8 ; ou var(--bg-deep) pour hero bleu */
+  color: var(--fg-1);
+  padding: var(--s-9) var(--s-5);   /* 96px / 24px */
+}
+.as-hero__h1 {
+  font-family: var(--font-display); /* Alumni Sans Pinstripe — CAPS only */
+  text-transform: uppercase;
+  font-size: var(--fs-hero);        /* clamp(3.5rem, 7vw, 6.5rem) */
+  line-height: var(--lh-display);   /* 0.95 */
+  letter-spacing: var(--tracking-display); /* 0.05em */
+  color: var(--cs-bleu);            /* #18365E ; var(--fg-on-deep) sur fond bleu */
+}
+.as-hero__lead {
+  font-family: var(--font-body);
+  font-size: var(--fs-lead);        /* 1.25rem */
+  line-height: var(--lh-body);
+  color: var(--fg-2);
+  max-width: var(--col-text);       /* 64ch */
+}
+.as-hero__dot { color: var(--cs-rouge); } /* le point rouge du logotype — accent RARE */
+
+/* ---- GRILLES de cartes ---- */
+.as-grid {
+  display: grid;
+  gap: var(--s-5);                                   /* 24px */
+  grid-template-columns: 1fr;                        /* mobile-first : 1 colonne */
+  max-width: var(--page-max);                        /* 1240px */
+  margin-inline: auto;
+}
+@media (min-width: 768px)  { .as-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .as-grid { grid-template-columns: repeat(3, 1fr); } }
+.as-grid--hero { gap: var(--s-6); }                  /* à la une : plus aéré */
+
+/* ---- CARTE (rappel des tokens ; le rendu réel = Listing JetEngine) ---- */
+.as-card              { background: var(--bg-white); box-shadow: var(--shadow-paper);
+                        border-radius: var(--r-2); overflow: hidden; }
+.as-card:hover        { box-shadow: var(--shadow-lift); }
+.as-card__media       { aspect-ratio: 3 / 2; object-fit: cover; }        /* ratio unique partout */
+.as-card__date        { font-family: var(--font-editorial); font-size: var(--fs-meta);
+                        letter-spacing: var(--tracking-caps); text-transform: uppercase; }
+.as-card__title       { font-family: var(--font-editorial); font-size: var(--fs-h4);
+                        line-height: var(--lh-title); }
+
+/* ---- Pilules territoire (couleur par terme) ---- */
+.as-pill              { border-radius: var(--r-pill); padding: 2px 10px; font-size: var(--fs-eyebrow); }
+.as-pill--savoie      { background:#e6effb; color:#1a56b0; }
+.as-pill--piemonte    { background:#fdeaea; color:#b3261e; }
+.as-pill--vallee-aoste{ background:#e7f6ea; color:#1e7d34; }
+.as-pill--nice        { background:#fff1e0; color:#b25e00; }
+
+/* ---- Bouton CTA noir « Voir tout l'agenda du week-end » ---- */
+.as-cta { background: var(--cs-noir); color: var(--cs-blanc); border-radius: var(--r-pill);
+          padding: var(--s-3) var(--s-5); font-family: var(--font-editorial); }
+
+/* ===== home desktop — SOURCE RÉELLE (section DESKTOP du même Agenda Sabaudo -
+   Mobile.dc.html). Carrousel : un seul visuel statique (pas de JS, cohérent
+   avec le reste du site), flèches/points non fonctionnels retirés. Nav/menu
+   retirés d'ici (vivent dans le header site-wide, site-header-footer.php) —
+   ne reste que le masthead décoratif (.as-home-desktop-hero). ===== */
+.as-home-desktop { max-width: 950px; margin: 0 auto; padding: 24px 20px 0; }
+.as-home-desktop__nav {
+  position: sticky; top: 0; z-index: 30; background: #fff; border-top: 1px solid #1D1D1B;
+  border-bottom: 1px solid #1D1D1B; height: 56px; display: flex; align-items: center; justify-content: space-between;
+}
+.as-home-desktop__nav a { text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #1D1D1B; }
+.as-home-desktop__carousel { position: relative; margin-top: 16px; width: 100%; height: 340px; overflow: hidden; background: #1D1D1B; border-radius: 4px; }
+.as-home-desktop__carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
+.as-home-desktop__carousel-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(29,29,27,0) 40%, rgba(29,29,27,.8) 100%); }
+/* ⚠️ display:none par défaut (pas seulement via le parent .as-home-desktop) —
+   ces classes cohabitent SUR LE MÊME élément que .as-home-desktop dans le HTML
+   généré (ex. class="as-home-desktop as-desktop-cols3"), et une règle
+   display:grid de même spécificité déclarée après display:none l'emporterait
+   en cascade, rendant la section visible sur mobile malgré .as-home-desktop.
+   Bug réel constaté le 2026-07-13 (sections "Nouveautés/En évidence/Agenda à
+   venir" et grilles "À la une" visibles sous le footer mobile). */
+.as-desktop-grid-3 { display: none; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.as-desktop-grid-4 { display: none; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.as-desktop-tiles { display: none; grid-template-columns: 1fr 280px; gap: 20px; align-items: stretch; }
+.as-desktop-tiles__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.as-desktop-tiles__newsletter { background: #DC5D45; border-radius: 4px; padding: 26px 22px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.as-desktop-cols3 { display: none; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; align-items: start; margin-top: 44px; }
+.as-desktop-section-title { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #1D1D1B; padding-top: 12px; margin-bottom: 20px; }
+.as-desktop-section-title__label { font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: #1D1D1B; text-transform: uppercase; }
+.as-desktop-newsletter-band { display: none; max-width: 950px; margin: 56px auto 0; background: #DC5D45; padding: 40px 48px; align-items: center; justify-content: space-between; gap: 48px; }
+.as-desktop-footer { display: none; background: #FBF7F0; padding: 48px 0 28px; margin-top: 0; }
+.as-desktop-footer__inner { max-width: 950px; margin: 0 auto; padding: 0 20px; }
+.as-desktop-footer__cols { display: grid; grid-template-columns: repeat(5, 1fr); gap: 28px; margin-bottom: 32px; }
+.as-desktop-footer__cols a { display: block; text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 13px; color: #1D1D1B; margin-bottom: 9px; }
+.as-desktop-footer__cols h3 { font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #1D1D1B; text-transform: uppercase; margin: 0 0 14px; }
+/* ---- Bandeau bas sticky desktop (bloc 3 de la régie) — PLEIN ÉCRAN, FOND ET
+   CRÉATIVE COMPRIS. Décision Franck du 2026-08-04 : Google recommande
+   explicitement le plein écran pour les « Anchor ads », c'est-à-dire le bandeau
+   collant en bas d'écran. C'est le SEUL format concerné — les formats display
+   standards gardent leurs tailles IAB fixes et ne doivent surtout PAS être
+   étirés : leaderboard 970×90 (bloc 1), pavé in-article 300×250 (bloc 2),
+   gouttières 160×600 (blocs 5/6, .as-desktop-gutter-ad plus bas, dont la
+   largeur reste écrite en dur à 160px). D'où le fait que TOUTES les règles
+   ci-dessous soient portées par .as-desktop-sticky-ad__inner et jamais par une
+   classe partagée.
+
+   Ce qui change exactement : le FOND traversait déjà l'écran (position:fixed +
+   left:0/right:0), mais `__inner` recalait la CRÉATIVE sur la colonne de
+   contenu de la home (max-width:950px, cf. .as-home-desktop). Ce plafond saute.
+   Le slot occupe désormais toute la largeur, ce qui permet à l'unité responsive
+   AdSense de servir une anchor pleine largeur au lieu d'un 728×90 centré.
+
+   z-index laissé à 40, délibérément : au-dessus du contenu, mais SOUS la
+   bannière de consentement Complianz (99 999) et son bouton « gérer le
+   consentement » (9 998) — inventaire relevé dans le navigateur, cf.
+   docs/CORRECTIFS_CSS_PRETS.md § « Risque de régression ». Ne pas le monter :
+   une publicité qui recouvre le bandeau de consentement est un défaut RGPD.
+
+   Le padding latéral de 20px est CONSERVÉ : il sépare du bord de l'écran le
+   libellé « Publicité » et la croix de fermeture, qui encadrent la créative
+   dans le markup et y sont tous deux en flex-shrink:0 — ils restent donc
+   lisibles et cliquables quelle que soit la largeur prise par la créative, qui
+   ne fait que consommer l'espace libre du flex (flex:1 sur le conteneur du
+   milieu). 40px perdus sur ~1900, le plein écran reste tenu. ---- */
+.as-desktop-sticky-ad { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; background: #F7F1E8; border-top: 1px solid #1D1D1B; box-shadow: 0 -2px 10px rgba(0,0,0,.07); }
+.as-desktop-sticky-ad__inner { margin: 0; padding: 8px 20px; display: flex; align-items: center; gap: 16px; }
+/* Créative servie par le backoffice (mu-plugin cs-regie-serve.php, markup
+   .cs-ad > a > img) : son style est injecté en wp_footer avec
+   `.cs-ad{max-width:100%;margin:0 auto}` et `.cs-ad img{max-width:100%;height:auto}`.
+   Ce sont des MAX-width : une créative plus étroite que la barre resterait
+   centrée au lieu de la remplir, et le plein écran s'arrêterait au fond. On
+   force donc width:100% ici — et UNIQUEMENT sous .as-desktop-sticky-ad__inner,
+   puisque les mêmes .cs-ad servent les blocs 1/2/4/5/6 qui doivent, eux,
+   garder leur taille IAB.
+   Cascade : le <style> du mu-plugin sort en wp_footer, donc APRÈS le CSS du
+   site — l'ordre ne peut pas nous sauver, c'est la spécificité qui tranche.
+   0,2,0 et 0,3,0 ici contre 0,1,0 et 0,1,1 côté mu-plugin : ces règles
+   l'emportent. (Trois bugs de spécificité relevés dans le projet le
+   2026-08-04 : on écrit le calcul plutôt que d'espérer.)
+   max-height + object-fit:contain = garde-fou d'aspect, pas un retour au
+   format fixe : sur un écran de 2560px, un visuel 728×90 étiré à 100% ferait
+   316px de haut et mangerait un tiers de la fenêtre. On plafonne la hauteur et
+   on laisse la créative se centrer dans le fond beige — qui, lui, reste
+   toujours plein écran — plutôt que de la déformer. */
+.as-desktop-sticky-ad__inner .cs-ad { width: 100%; max-width: none; }
+.as-desktop-sticky-ad__inner .cs-ad img { width: 100%; max-height: 120px; object-fit: contain; }
+.as-desktop-col { min-width: 0; }
+@media (min-width: 1024px) {
+  .as-desktop-newsletter-band { display: flex; }
+  .as-desktop-footer { display: block; }
+  .as-desktop-sticky-ad { display: block; }
+  .as-desktop-grid-3 { display: block; }
+  .as-desktop-grid-4 { display: block; }
+  .as-desktop-tiles { display: grid; }
+  .as-desktop-cols3 { display: grid; }
+}
+/* ⚠️ .as-desktop-grid-3/-4 ne sont QUE des wrappers .as-home-desktop (masqués
+   sur mobile) autour du bloc natif JetEngine `wp:jet-engine/listing-grid` —
+   PAS des grilles CSS elles-mêmes. Le composant JetEngine gère déjà ses N
+   colonnes en interne via flexbox (`.jet-listing-grid__items.grid-col-desk-3`
+   + `--columns:3`, cf. jet-engine/assets/css/frontend.css), piloté par les
+   attributs de bloc `columns`/`columns_tablet`/`columns_mobile`. Un ancien
+   `display:grid` forcé ICI (sur le wrapper) ET sur `.jet-listing-grid__items`
+   cassait ce système à deux niveaux : le wrapper créait sa propre grille de 3
+   cellules avec un seul enfant (2 cellules vides), et forcer display:grid
+   sur .jet-listing-grid__items annulait le flex/--columns natif, réduisant
+   les cartes à une colonne unique et minuscule. Bug réel constaté le
+   2026-07-14 ("aucune section ne va dans la homepage desktop", carte "À la
+   une" réduite à une colonne étroite). Ne plus toucher au display interne du
+   composant JetEngine — le bloc gère sa propre responsivité. */
+
+/* Gouttières pub (160×600) — position fixe, indépendante du conteneur 950px de
+   la home (contrairement à une grille wrapper qui aurait exigé de restructurer
+   toutes les sections en un seul bloc englobant). Injectées en PHP
+   (homepage-template.php), homepage uniquement. Visibles seulement au-delà de
+   1440px (160+950+160 + marges ≈ 1310px minimum, marge de confort). */
+.as-desktop-gutter-ad {
+  display: none; position: fixed; top: 88px; width: 160px; height: 600px;
+  background: #FBF7F0; border: 1px dashed #C9C4B8;
+  align-items: center; justify-content: center; flex-direction: column; gap: 8px;
+  font-family: 'Nunito Sans', sans-serif; font-size: 11px; color: #6F6B62; text-align: center;
+  z-index: 10;
+}
+.as-desktop-gutter-ad--left { left: 24px; }
+.as-desktop-gutter-ad--right { right: 24px; }
+@media (min-width: 1440px) {
+  .as-desktop-gutter-ad { display: flex; }
+}
+
+/* ===== Header/Footer de marque, site-wide (design-system/site-header-footer.php) —
+   injectés via wp_body_open/wp_footer, PAS de Theme Builder. Masque le
+   header/footer générique GeneratePress PARTOUT, y compris sur la page Accueil
+   (928) — un seul header/footer sur tout le site, plus de duplication avec
+   l'ancien masthead/nav baké dans le contenu de la home (retiré de
+   homepage-mobile.gutenberg.html). ===== */
+.site-header, #masthead, .site-footer, #colophon { display: none !important; }
+
+.as-site-header {
+  background: #fff; border-bottom: 1px solid #1D1D1B;
+  position: sticky; top: 0; z-index: 40;
+}
+.as-site-header__inner {
+  max-width: 1240px; margin: 0 auto; padding: 12px 20px; display: flex;
+  align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+/* Logo image (croquis skyline + nom "Agenda Sabaudo" intégré, projet Claude
+   Design "Cultura Sabauda Design System" — assets/agenda/masthead-agenda-v7.png,
+   ratio natif 778×250) — remplace l'ancien wordmark texte. Header plus haut
+   pour lui faire de la place, mobile ET desktop. */
+.as-site-header__wordmark { display: block; flex-shrink: 0; line-height: 0; }
+.as-site-header__wordmark img { display: block; height: 52px; width: auto; }
+@media (min-width: 1024px) {
+  .as-site-header__inner { padding: 16px 20px; }
+  .as-site-header__wordmark img { height: 64px; }
+}
+.as-site-header__menu { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 18px; }
+.as-site-header__menu li { position: relative; }
+.as-site-header__menu a {
+  text-decoration: none; font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; color: #1D1D1B;
+}
+.as-site-header__menu a:hover { color: #DC5D45; }
+.as-site-header__menu .sub-menu {
+  list-style: none; margin: 0; padding: 8px 0; position: absolute; top: 100%; left: 0; z-index: 30;
+  background: #fff; border: 1px solid #1D1D1B; min-width: 220px; display: none;
+}
+.as-site-header__menu li:hover > .sub-menu { display: block; }
+.as-site-header__menu .sub-menu a { display: block; padding: 6px 16px; text-transform: none; font-weight: 600; white-space: nowrap; }
+.as-site-header__lang { font-family: 'Nunito Sans', sans-serif; font-size: 12px; font-weight: 800; color: #1D1D1B; flex-shrink: 0; }
+.as-site-header__lang .muted { color: #C9C4B8; font-weight: 400; }
+
+/* Burger + menu overlay mobile (CSS-only, checkbox hack — même technique que
+   l'ancien menu baké dans la home, maintenant centralisée ici). */
+.as-site-header__burger-toggle { display: none; }
+.as-site-header__burger-label { display: none; cursor: pointer; }
+@media (max-width: 720px) {
+  .as-site-header__menu { display: none; }
+  .as-site-header__burger-label { display: flex; }
+  .as-site-header__burger-toggle:checked ~ .as-site-header__mobile-menu { display: block; }
+}
+.as-site-header__mobile-menu {
+  display: none; position: fixed; inset: 0; z-index: 50; background: #F7F1E8;
+  overflow-y: auto;
+}
+.as-site-header__mobile-menu-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid #1D1D1B; padding: 16px 20px;
+}
+.as-site-header__mobile-menu-title {
+  font-family: 'Nunito Sans', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase; color: #1D1D1B;
+}
+.as-site-header__mobile-menu ul { list-style: none; margin: 0; padding: 8px 20px; }
+.as-site-header__mobile-menu li { border-bottom: 1px solid #E3DCCE; }
+.as-site-header__mobile-menu li a {
+  display: block; text-decoration: none; padding: 16px 0;
+  font-family: 'Nunito Sans', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #1D1D1B;
+}
+.as-site-header__mobile-menu .sub-menu { padding: 0 0 0 16px; }
+.as-site-header__mobile-menu .sub-menu li a { font-size: 10px; }
+
+.as-site-footer { background: #FBF7F0; border-top: 1px solid #1D1D1B; padding: 24px 0; margin-top: 48px; }
+.as-site-footer__inner { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+.as-site-footer__row {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px;
+  font-family: 'Nunito Sans', sans-serif; font-size: 12px; color: #1D1D1B;
+}
+.as-site-footer__row a { color: #1D1D1B; text-decoration: underline; }
+.as-site-footer__row--rule { border-top: 1px solid #E3DCCE; padding-top: 12px; }
+.as-site-footer__legal {
+  border-top: 1px solid #E3DCCE; padding-top: 12px;
+  font-family: 'Nunito Sans', sans-serif; font-size: 11px; line-height: 1.8; color: #6F6B62;
+}
+
+

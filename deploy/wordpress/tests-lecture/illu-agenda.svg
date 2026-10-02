@@ -1,0 +1,30 @@
+<!-- Illustration de l'encart « Ajoute-le à ton agenda » (pages de test, 02/10) : noter le
+     créneau, puis inviter quelqu'un à le partager. Trait irrégulier et arrondi, comme les
+     icônes de l'accueil. Servie en <img> : en ligne dans le contenu, wpautop glissait des
+     </p> dans le SVG et le cassait. L'animation (CSS interne) joue une fois et se coupe si
+     le visiteur demande moins d'animations. -->
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+<style>
+path{fill:none;stroke:#1D1D1B;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.c{stroke:#DC5D45}
+.t{stroke-dasharray:1;stroke-dashoffset:1;animation:trace .7s ease-out forwards}
+.t1{animation-delay:.1s}.t2{animation-delay:.6s}.t3{animation-delay:.9s}
+.t4{animation-delay:1.4s}.t5{animation-delay:1.9s}.t6{animation-delay:2.3s}.t7{animation-delay:2.7s}
+.lien{stroke-dasharray:2 7;stroke-width:2.6;opacity:0;animation:apparait .5s ease-out 1.4s forwards}
+.plus{transform-origin:182px 37px;animation:pouls 1.6s ease-in-out 3.3s 2}
+@keyframes trace{to{stroke-dashoffset:0}}
+@keyframes apparait{to{opacity:1}}
+@keyframes pouls{50%{transform:scale(1.25)}}
+@media (prefers-reduced-motion:reduce){.t{animation:none;stroke-dashoffset:0}.lien{animation:none;opacity:1}.plus{animation:none}}
+</style>
+<path class="t t1" pathLength="1" d="M21 31 C19 52 21 79 23 101 C46 99 70 100 92 98 C91 76 92 51 90 29 C67 31 44 30 21 31Z"/>
+<path class="t t2" pathLength="1" d="M21 45 C45 43 68 44 91 42"/>
+<path class="t t2" pathLength="1" d="M38 21 C38 26 39 31 38 36 M73 20 C72 25 73 30 73 35"/>
+<path class="t t3 c" pathLength="1" d="M40 71 C44 75 48 80 52 84 C60 75 68 67 77 59"/>
+<path class="c lien" d="M97 68 C104 61 107 60 113 63"/>
+<path class="t t5" pathLength="1" d="M130 38 C137 38 141 43 140 49 C139 56 133 58 128 57 C122 55 120 49 121 45 C123 40 126 38 130 38Z"/>
+<path class="t t5" pathLength="1" d="M114 93 C115 79 121 69 131 69 C140 69 146 79 147 92"/>
+<path class="t t6" pathLength="1" d="M166 48 C171 48 174 52 173 57 C172 62 167 63 163 62 C159 60 158 56 159 53 C160 50 163 48 166 48Z"/>
+<path class="t t6" pathLength="1" d="M153 95 C154 84 159 76 166 76 C174 76 179 84 180 95"/>
+<g class="plus"><path class="t t7 c" pathLength="1" d="M182 29 C182 34 183 39 182 45 M175 37 C179 37 185 36 189 37"/></g>
+</svg>
