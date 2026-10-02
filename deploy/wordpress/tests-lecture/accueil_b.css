@@ -164,7 +164,9 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gb[data-cadre=corail] .gb-nl{box-shadow:9px 9px 0 #18365E}
 .gb[data-cadre=sans] :is(.gb-enc,.gh-cart){border:0;box-shadow:none}
 .gb[data-cadre=sans] .gb-enc-c{background:#EDE5D8}
-/* Retenu par Franck (02/10) : B et C, chacun selon son rôle. C (ombre corail, sans trait) pour les cartouches
-   posés sur une photo ; B (trait 4 px + ombre noire) pour les encadrés d'action : lettre, proposer, annoncer. */
-.gb[data-cadre=mixte] .gh-cart{border:0;box-shadow:9px 9px 0 #DC5D45}
-.gb[data-cadre=mixte] .gb-enc{border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
+/* Retenu par Franck (02/10) : « commencer par B, et de temps en temps, pas tout le temps, du C ».
+   B (trait 4 px + ombre noire) partout ; C (ombre corail, sans trait) en accent, environ une fois sur trois ou
+   quatre : la 3e diapositive du carrousel (puis la 6e…) et le 2e encart de la colonne. Placement fixe, pas tiré
+   au hasard : la page ne change pas d'un chargement à l'autre. */
+.gb[data-cadre=mixte] :is(.gb-enc,.gh-cart){border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
+.gb[data-cadre=mixte] :is(.gh-slide:nth-child(3n) .gh-cart,.gb-c3 .gb-enc-c ~ .gb-enc-c){border:0;box-shadow:9px 9px 0 #DC5D45}
