@@ -204,3 +204,17 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gh-mast-haut .gh-devise{margin-top:4px!important;font-size:10px}
 @media(max-width:760px){.gh-mast-haut .gh-mot{font-size:19px}.gh-mast-haut .gh-frise{width:210px}.gh-mast.gh-mast-haut{padding:8px 16px 6px}}
 .gh-mast-haut p{margin:0!important;line-height:1.1}.gh-mast-haut .gh-devise{margin-top:4px!important}
+/* 02/10, Franck : « pas possible d'avoir un encart sur l'image de l'événement ». L'image d'un événement est
+   souvent son AFFICHE : le cartouche en cachait les noms, les dates, les logos. Image entière à gauche (une
+   affiche reste entière sur un fond flouté d'elle-même), cartouche à droite, AUCUN chevauchement ; dessous sur
+   téléphone. Le carrousel du haut garde ses cartouches : ce sont nos photos de paysage, pas des affiches. */
+.gh-une-g{display:grid!important;grid-template-columns:1.3fr 1fr;align-items:center;height:auto!important;gap:0}
+.gh-une-img{position:relative;display:block;height:380px;overflow:hidden;background:#1D1D1B;border-radius:4px}
+.gh-une-img::before{content:"";position:absolute;inset:-24px;background:var(--bg) center/cover;filter:blur(18px) brightness(.8)}
+.gh-une-g .gh-une-img img{position:relative;width:100%;height:100%;object-fit:contain;border-radius:0}
+.gh-une-g .gh-cart{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;transform:none!important;max-width:none!important;margin:0 0 0 24px}
+.gb-une-bas .gh-une{grid-template-columns:1fr!important}
+.gb-une-bas .gh-une-l{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+.gb[data-part=oui] .gb-une-bas .gh-une-g{height:auto!important;background:#FBF7F0;padding:46px 16px 16px}
+@media(max-width:760px){.gh-une-g{grid-template-columns:1fr}.gh-une-img{height:260px}.gh-une-g .gh-cart{margin:16px 8px 8px 0!important}
+.gb-une-bas .gh-une-l{grid-template-columns:1fr}}

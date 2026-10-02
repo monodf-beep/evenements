@@ -292,7 +292,7 @@ frise = ('<div class="gh-frise-g"><p class="gh-frise-t">Choisissez votre côté 
          + f'</div><p class="gh-frise-p">Rendez-vous comptés d’ici le {jm(HORIZON)}.</p></div>')
 # 4. « une fixe » : la recommandation des études (pas de carrousel) — une grande, trois à côté
 g0 = une[0]
-unefixe = (f'<div class="gh-une"><a class="gh-une-g" href="{esc(g0["u"])}"><img src="{esc(g0["img"])}" alt="" fetchpriority="high">'
+unefixe = (f'<div class="gh-une"><a class="gh-une-g" href="{esc(g0["u"])}"><span class="gh-une-img" style="--bg:url(\'{esc(g0["img"])}\')"><img src="{esc(g0["img"])}" alt="" fetchpriority="high"></span>'
            f'<span class="gh-cart"><span class="gh-sur">À la une · {esc(g0["T"])}</span><span class="gh-t gh-t-s">{esc(g0["t"])}</span>{VAGUE}'
            f'<span class="gh-l"><b>{quand(g0)}</b> · {ville(g0)}</span></span></a><div class="gh-une-l">'
            + ''.join(f'<a href="{esc(e["u"])}">{image(e, "gb-img")}<span><span class="gb-meta">{pill(e)} <span class="gb-date">{quand(e)}</span></span>'
