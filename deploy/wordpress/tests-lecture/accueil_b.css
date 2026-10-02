@@ -155,3 +155,12 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gb[data-hero=tous] .gh-opt{margin-bottom:46px}.gb[data-hero=tous] .gh-opt::before{content:attr(data-lbl);display:inline-block;margin-bottom:10px;padding:4px 10px;background:#18365E;color:#fff;font-weight:800;font-size:13px}
 .gb[data-hero=tous] .gh-actuel,.gb[data-hero=tous] .gh-carnet,.gb[data-hero=tous] .gh-frise-g{display:block}.gb[data-hero=tous] .gh-une{display:grid;grid-template-columns:1.9fr 1fr;gap:22px}
 @media(max-width:760px){.gb[data-hero=tous] .gh-une{grid-template-columns:1fr}}
+/* ===== encadrés : quatre traitements (02/10). Franck : « trop fin ». Le trait des icônes vaut 2,3/24 de leur
+   taille, soit ≈ 4 px aux tailles affichées : c'est l'épaisseur retenue. Le double trait fin disparaît. ===== */
+.gb:not([data-cadre=croque]) :is(.gb-enc,.gh-cart)::after{display:none}
+.gb[data-cadre=epais] :is(.gb-enc,.gh-cart){border:4px solid #1D1D1B}
+.gb[data-cadre=ombre] :is(.gb-enc,.gh-cart){border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
+.gb[data-cadre=corail] :is(.gb-enc,.gh-cart){border:0;box-shadow:9px 9px 0 #DC5D45}
+.gb[data-cadre=corail] .gb-nl{box-shadow:9px 9px 0 #18365E}
+.gb[data-cadre=sans] :is(.gb-enc,.gh-cart){border:0;box-shadow:none}
+.gb[data-cadre=sans] .gb-enc-c{background:#EDE5D8}
