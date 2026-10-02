@@ -170,3 +170,6 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
    au hasard : la page ne change pas d'un chargement à l'autre. */
 .gb[data-cadre=mixte] :is(.gb-enc,.gh-cart){border:4px solid #1D1D1B;box-shadow:7px 7px 0 #1D1D1B}
 .gb[data-cadre=mixte] :is(.gh-slide:nth-child(3n) .gh-cart,.gb-c3 .gb-enc-c ~ .gb-enc-c){border:0;box-shadow:9px 9px 0 #DC5D45}
+.gb-une-bas{display:none}.gb[data-hero=deux] .gh-carnet{display:block}.gb[data-hero=deux] .gb-une-r{display:none}.gb[data-hero=deux] .gb-une-bas{display:block}
+.gb-une-bas .gh-une{display:grid!important;grid-template-columns:1.9fr 1fr;gap:22px}
+@media(max-width:760px){.gb-une-bas .gh-une{grid-template-columns:1fr}.gb-une-bas .gh-une-g{height:300px}.gb-une-bas .gh-cart{left:12px;right:12px;bottom:12px}}

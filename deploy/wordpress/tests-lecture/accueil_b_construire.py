@@ -196,8 +196,7 @@ s.append('<p class="gb-test">Page de test B de l’accueil (noindex), sur le mod
          f'{NOW.day} {MOIS[NOW.month-1]} à {NOW.hour} h {NOW.minute:02d}. La vraie page d’accueil n’est pas modifiée. '
          '<span class="gb-choix">Texte : <a href="#" data-gbt="sans">sans empattement (actuel)</a> <a href="#" data-gbt="serif">Georgia, comme Guidatorino</a></span> '
          '<span class="gb-choix">Encadrés : <a href="#" data-gbc="mixte">B, et C de temps en temps (retenu)</a> <a href="#" data-gbc="epais">A. trait épais</a> <a href="#" data-gbc="ombre">B. trait épais + ombre pleine</a> <a href="#" data-gbc="corail">C. ombre corail, sans trait</a> <a href="#" data-gbc="sans">D. sans cadre</a> <a href="#" data-gbc="croque">(avant : trait fin)</a></span> '
-         '<span class="gb-choix">Haut de page : <a href="#" data-gbh="tous">les 4 empilées</a> <a href="#" data-gbh="actuel">1. carrousel actuel</a> <a href="#" data-gbh="carnet">2. carnet</a> '
-         '<a href="#" data-gbh="frise">3. frise</a> <a href="#" data-gbh="une">4. une fixe, sans carrousel</a></span></p>')
+         '<span class="gb-choix">Haut de page : <a href="#" data-gbh="deux">2 + 4 combinées (proposé)</a> <a href="#" data-gbh="carnet">2. carnet seul</a> <a href="#" data-gbh="une">4. une fixe seule</a></span></p>')
 
 # 0. En-tête de l'accueil (la vraie home l'affiche AU-DESSUS du menu ; une page de test
 #    hérite de l'en-tête réduit des pages intérieures, d'où son absence signalée par Franck).
@@ -296,7 +295,7 @@ unefixe = (f'<div class="gh-une"><a class="gh-une-g" href="{esc(g0["u"])}"><img 
            f'<span class="gh-l"><b>{quand(g0)}</b> · {ville(g0)}</span></span></a><div class="gh-une-l">'
            + ''.join(f'<a href="{esc(e["u"])}">{image(e, "gb-img")}<span><span class="gb-meta">{pill(e)} <span class="gb-date">{quand(e)}</span></span>'
                      f'<span class="gb-ct">{esc(e["t"])}</span></span></a>' for e in une[1:4]) + '</div></div>')
-s.append('<div class="gh">' + ''.join(f'<div class="gh-opt" data-lbl="{l}">{x}</div>' for l, x in (("Option 1 · carrousel actuel", actuel), ("Option 2 · carnet", carnet), ("Option 3 · frise", frise), ("Option 4 · une fixe, sans carrousel", unefixe))) + '</div>')
+s.append('<div class="gh">' + ''.join(f'<div class="gh-opt" data-lbl="{l}">{x}</div>' for l, x in (("Option 2 · carnet", carnet), ("Option 4 · une fixe", unefixe))) + '</div>')
 
 # 1. Accroche + recherche
 s.append('<div class="gb-accroche"><div><p class="gb-h1">Que faire en Savoie, en Piémont, en Vallée d’Aoste et dans le Comté de Nice</p>'
@@ -312,6 +311,9 @@ s.append('<div class="gb-portes"><nav class="gb-paves" aria-label="Accès rapide
 
 # 3. À la une, 4. Aujourd'hui
 s.append('<div class="gb-une-r">' + onglet('À la une') + '<div class="gb-rang">' + ''.join(carte(e, True) for e in une) + '</div></div>')
+# 2 + 4 combinées (02/10) : le carnet en haut de page, et « À la une » prend la forme de l'option 4
+# (une grande, trois à côté) à la place de la rangée de quatre cartes. Options 1 et 3 retirées à la demande de Franck.
+s.append('<div class="gb-une-bas">' + onglet('À la une') + unefixe.replace('fetchpriority="high"', 'loading="lazy"') + '</div>')
 s.append(onglet(f'Aujourd’hui, {JOURS_L[NOW.weekday()]} {NOW.day} {MOIS_L[NOW.month-1]}', 'https://agendasabauda.eu/aujourdhui/')
          + '<div class="gb-rang">' + ''.join(carte(e) for e in aujourdhui) + '</div>')
 
@@ -362,8 +364,8 @@ JS = ('<script>(function(){var g=document.querySelector(".gb");if(!g){return}'
       'if(a.dataset.gbt){g.dataset.texte=a.dataset.gbt}else{g.dataset.cadre=a.dataset.gbc}});'
       # sélecteur du haut de page
       'document.addEventListener("click",function(e){if(!e.target.closest){return}var a=e.target.closest("a[data-gbh]");if(!a){return}e.preventDefault();g.dataset.hero=a.dataset.gbh;'
-      'try{localStorage.setItem("gb-hero-v2",a.dataset.gbh)}catch(x){}});'
-      'try{var h=localStorage.getItem("gb-hero-v2");if(h){g.dataset.hero=h}}catch(x){}'
+      'try{localStorage.setItem("gb-hero-v3",a.dataset.gbh)}catch(x){}});'
+      'try{var h=localStorage.getItem("gb-hero-v3");if(h){g.dataset.hero=h}}catch(x){}'
       # carrousels : défilement au doigt (scroll-snap), flèches et points ; AUCUN défilement automatique
       'document.querySelectorAll(".gh-car").forEach(function(c){var p=c.querySelector(".gh-piste");var pts=c.querySelectorAll(".gh-points button");'
       'function va(i){p.scrollTo({left:i*p.clientWidth,behavior:"smooth"})}'
@@ -373,7 +375,7 @@ JS = ('<script>(function(){var g=document.querySelector(".gb");if(!g){return}'
       'p.addEventListener("scroll",function(){var i=Math.round(p.scrollLeft/p.clientWidth);pts.forEach(function(b,k){if(k==i){b.setAttribute("aria-current","true")}else{b.removeAttribute("aria-current")}})},{passive:true})})'
       '})();</script>')
 CSS = open('accueil_b.css', encoding='utf-8').read()
-page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="mixte" data-hero="tous">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
+page = '<!-- wp:html -->\n<style>' + CSS + '</style><div class="gb" data-texte="sans" data-cadre="mixte" data-hero="deux">' + ''.join(s) + '</div>' + JS + '\n<!-- /wp:html -->'
 assert '\n\n' not in page and '&&' not in JS and '<' not in JS.replace('<script>', '').replace('</script>', '')
 print('carnet', [(sl[1], bool(sl[5])) for sl in SLIDES], '| couvertures', len(COUV))
 open('home_b.html', 'w', encoding='utf-8').write(page)
