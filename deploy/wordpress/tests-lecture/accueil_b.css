@@ -236,3 +236,8 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 @media(max-width:760px){.gh-une-g .gh-t-s{font-size:21px}}
 .gh-une-l .gh-une-tout{display:block!important;margin-top:4px;font-weight:800;font-size:14px;color:#18365E;border-bottom:2px solid #DC5D45;align-self:flex-start}
 .gh .gh-une-l > a:nth-child(n+4):not(.gh-une-tout){display:none}
+/* 03/10, Franck : traits noirs « un tout petit peu moins épais » : 4 → 3 px (ombres 7 → 6 px). */
+.gb[data-cadre=mixte] :is(.gb-enc,.gh-cart),.gb[data-cadre=epais] :is(.gb-enc,.gh-cart),.gb[data-cadre=ombre] :is(.gb-enc,.gh-cart){border-width:3px}
+.gb[data-cadre=mixte] .gb-enc,.gb[data-cadre=mixte] .gh-carnet .gh-cart,.gb[data-cadre=ombre] :is(.gb-enc,.gh-cart){box-shadow:6px 6px 0 #1D1D1B}
+.gb[data-cadre=mixte] .gh-slide:nth-child(3n) .gh-cart,.gb[data-cadre=mixte] .gb-c3 .gb-enc-c ~ .gb-enc-c{border:0;box-shadow:9px 9px 0 #DC5D45}
+.gb[data-part=oui] .gb-une-bas .gh-une-g,.gb[data-part=oui] .gb-hon{border-width:3px;box-shadow:6px 6px 0 #1D1D1B}
