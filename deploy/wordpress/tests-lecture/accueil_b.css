@@ -241,3 +241,6 @@ body:has(.gb) .inside-article{padding:0!important;background:transparent!importa
 .gb[data-cadre=mixte] .gb-enc,.gb[data-cadre=mixte] .gh-carnet .gh-cart,.gb[data-cadre=ombre] :is(.gb-enc,.gh-cart){box-shadow:6px 6px 0 #1D1D1B}
 .gb[data-cadre=mixte] .gh-slide:nth-child(3n) .gh-cart,.gb[data-cadre=mixte] .gb-c3 .gb-enc-c ~ .gb-enc-c{border:0;box-shadow:9px 9px 0 #DC5D45}
 .gb[data-part=oui] .gb-une-bas .gh-une-g,.gb[data-part=oui] .gb-hon{border-width:3px;box-shadow:6px 6px 0 #1D1D1B}
+/* 03/10, Franck : « toutes les icônes avec un trait moins épais ». 2.3 → 1.8 sur la grille 24
+   (−22 %, la même réduction que les cadres 4 → 3). La vague corail n'est pas une icône : intacte. */
+.gb svg:not(.gh-vague),.gb svg:not(.gh-vague) *{stroke-width:1.8}
